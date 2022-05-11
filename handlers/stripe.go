@@ -333,28 +333,21 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		priceID := subscription.Items.Data[0].Price.ID
 
 		currSub, err := db.StripeGetSubscription(subscription.ID)
-		if err == sql.ErrNoRows {
-			// subscription does not exist, create it
-			err = createNewStripeSubscription(subscription, event)
-			if err != nil {
-				logger.WithError(err).Error(err.Error(), event.Data.Object)
-				logger.Warn(" customer: " + subscription.Customer.ID + " | subscriptionID: " + subscription.ID + " | priceID: " + priceID)
-				http.Error(w, "error updating "+err.Error()+" customer: "+subscription.Customer.ID+" | subscriptionID: "+subscription.ID+" | priceID: "+priceID, 503)
-				return
-			}
 
-			currSub = &types.StripeSubscription{
-				CustomerID:     &subscription.Customer.ID,
-				SubscriptionID: &subscription.ID,
-				PriceID:        &subscription.Items.Data[0].Price.ID,
-			}
-		}
-		if err != nil && err != sql.ErrNoRows {
+		if err != nil {
 			logger.WithError(err).Error("error getting subscription from database with id ", subscription.ID)
 			http.Error(w, "error updating subscription could not get current subscription err:"+err.Error(), 503)
+			return
 		}
 
-		err = db.StripeUpdateSubscription(priceID, subscription.ID, event.Data.Raw)
+		tx, err := db.FrontendDB.Begin()
+		if err != nil {
+			logger.WithError(err).Error("error creating transaction ", subscription.ID)
+			http.Error(w, "error creating transaction :"+err.Error(), 503)
+		}
+		defer tx.Rollback()
+
+		err = db.StripeUpdateSubscription(tx, priceID, subscription.ID, event.Data.Raw)
 		if err != nil {
 			logger.WithError(err).Error("error updating user subscription", subscription.ID)
 			http.Error(w, "error updating user subscription, customer: "+subscription.Customer.ID, 503)
@@ -362,12 +355,18 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if utils.GetPurchaseGroup(priceID) == utils.GROUP_MOBILE {
-			err := db.ChangeProductIDFromStripe(subscription.ID, getCleanProductID(priceID))
+			err := db.ChangeProductIDFromStripe(tx, subscription.ID, getCleanProductID(priceID))
 			if err != nil {
 				logger.WithError(err).Error("error updating stripe mobile subscription", subscription.ID)
 				http.Error(w, "error updating stripe mobile subscription customer: "+subscription.Customer.ID, 503)
 				return
 			}
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			logger.WithError(err).Error("error commiting transaction ", subscription.ID)
+			http.Error(w, "error commiting transaction :"+err.Error(), 503)
 		}
 
 		if currSub.PriceID != nil && *currSub.PriceID != priceID && utils.GetPurchaseGroup(*currSub.PriceID) == utils.GetPurchaseGroup(priceID) {
@@ -389,7 +388,14 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = db.StripeUpdateSubscriptionStatus(subscription.ID, false, &event.Data.Raw)
+		tx, err := db.FrontendDB.Begin()
+		if err != nil {
+			logger.WithError(err).Error("error creating transaction ", subscription.ID)
+			http.Error(w, "error creating transaction :"+err.Error(), 503)
+		}
+		defer tx.Rollback()
+
+		err = db.StripeUpdateSubscriptionStatus(tx, subscription.ID, false, &event.Data.Raw)
 		if err != nil {
 			logger.WithError(err).Error("error while deactivating subscription", event.Data.Object)
 			http.Error(w, "error while deactivating subscription, customer:"+subscription.Customer.ID, 503)
@@ -405,7 +411,13 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			}
 			now := time.Now()
 			nowTs := now.Unix()
-			db.UpdateUserSubscription(appSubID, false, nowTs, "user_canceled")
+			db.UpdateUserSubscription(tx, appSubID, false, nowTs, "user_canceled")
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			logger.WithError(err).Error("error commiting transaction ", subscription.ID)
+			http.Error(w, "error commiting transaction :"+err.Error(), 503)
 		}
 
 	// inform the user when the subscription will expire
@@ -439,7 +451,14 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = db.StripeUpdateSubscriptionStatus(invoice.Lines.Data[0].Subscription, true, nil)
+		tx, err := db.FrontendDB.Begin()
+		if err != nil {
+			logger.WithError(err).Error("error creating transaction ")
+			http.Error(w, "error creating transaction :"+err.Error(), 503)
+		}
+		defer tx.Rollback()
+
+		err = db.StripeUpdateSubscriptionStatus(tx, invoice.Lines.Data[0].Subscription, true, nil)
 		if err != nil {
 			logger.WithError(err).Error("error processing invoice failed to activate subscription for customer", invoice.Customer.ID)
 			http.Error(w, "error proccesing invoice failed to activate subscription for customer", 503)
@@ -453,7 +472,13 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "error updating stripe mobile subscription, no users_app_subs id  found for subscription id, customer: "+invoice.Customer.ID, 503)
 				return
 			}
-			db.UpdateUserSubscription(appSubID, true, 0, "")
+			db.UpdateUserSubscription(tx, appSubID, true, 0, "")
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			logger.WithError(err).Error("error commiting transaction ")
+			http.Error(w, "error commiting transaction :"+err.Error(), 503)
 		}
 
 	case "invoice.payment_failed":
@@ -475,7 +500,12 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func createNewStripeSubscription(subscription stripe.Subscription, event stripe.Event) error {
-	err := db.StripeCreateSubscription(subscription.Customer.ID, subscription.Items.Data[0].Price.ID, subscription.ID, event.Data.Raw)
+	tx, err := db.FrontendDB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	err = db.StripeCreateSubscription(tx, subscription.Customer.ID, subscription.Items.Data[0].Price.ID, subscription.ID, event.Data.Raw)
 	if err != nil {
 		return err
 	}
@@ -496,20 +526,21 @@ func createNewStripeSubscription(subscription stripe.Subscription, event stripe.
 			},
 			Valid: false,
 		}
-		err = db.InsertMobileSubscription(userID, details, details.Transaction.Type, details.Transaction.Receipt, 0, "", subscription.ID)
+		err = db.InsertMobileSubscription(tx, userID, details, details.Transaction.Type, details.Transaction.Receipt, 0, "", subscription.ID)
 		if err != nil {
 			return err
 		}
 	}
+	err = tx.Commit()
 
-	return nil
+	return err
 }
 
 func emailCustomerAboutFailedPayment(email string) {
 	msg := fmt.Sprintf("Payment processing failed. Could not activate your subscription. Please contact support at support@beaconcha.in. Manage Subscription: https://" + utils.Config.Frontend.SiteDomain + "/user/settings")
 	// escape html
 	msg = template.HTMLEscapeString(msg)
-	err := mail.SendMail(email, "Failed Payment", msg, []types.EmailAttachment{})
+	err := mail.SendTextMail(email, "Failed Payment", msg, []types.EmailAttachment{})
 	if err != nil {
 		logger.Errorf("error sending failed payment mail: %v", err)
 		return
@@ -532,7 +563,7 @@ func emailCustomerAboutPlanChange(email, plan string) {
 	msg := fmt.Sprintf("You have successfully changed your payment plan to " + p + " to manage your subscription go to https://" + utils.Config.Frontend.SiteDomain + "/user/settings#api")
 	// escape html
 	msg = template.HTMLEscapeString(msg)
-	err := mail.SendMail(email, "Payment Plan Change", msg, []types.EmailAttachment{})
+	err := mail.SendTextMail(email, "Payment Plan Change", msg, []types.EmailAttachment{})
 	if err != nil {
 		logger.Errorf("error sending order fulfillment email: %v", err)
 		return

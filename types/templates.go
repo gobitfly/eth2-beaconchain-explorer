@@ -1105,6 +1105,7 @@ type Price struct {
 	JPY float64   `db:"jpy"`
 	CNY float64   `db:"cny"`
 	RUB float64   `db:"rub"`
+	AUD float64   `db:"aud"`
 }
 
 type ApiStatistics struct {
@@ -1182,4 +1183,10 @@ type WebhookPageData struct {
 type WebhookPageEvent struct {
 	EventLabel string
 	EventName
+}
+type Email struct {
+	Title                 string
+	Body                  template.HTML
+	SubscriptionManageURL string
+	UnSubURL              template.HTML
 }

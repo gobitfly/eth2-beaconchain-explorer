@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/hex"
@@ -15,6 +16,8 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"html"
+	"html/template"
 	"math/big"
 	"net/http"
 	"net/url"
@@ -364,20 +367,88 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 		}
 		go func(userEmail string, userNotifications map[types.EventName][]types.Notification) {
 			sentSubsByEpoch := map[uint64][]uint64{}
-			subject := fmt.Sprintf("%s: Notification", utils.Config.Frontend.SiteDomain)
-			msg := ""
+			notification := ""
+			othernotifications := ""
+			i := 0
+			for notificationEvent := range userNotifications {
+				if i == 0 {
+					notification = string(notificationEvent)
+				} else if i == 1 {
+					othernotifications = fmt.Sprintf(" and %s", notificationEvent)
+				}
+				i++
+			}
+			if i > 1 {
+				othernotifications = fmt.Sprintf(",... and %d other notifications", i)
+			}
+			subject := fmt.Sprintf("%s: %s", utils.Config.Frontend.SiteDomain, notification+othernotifications)
 			attachments := []types.EmailAttachment{}
+
+			var msg types.Email
+
 			for event, ns := range userNotifications {
-				if len(msg) > 0 {
-					msg += "\n"
+				if len(msg.Body) > 0 {
+					msg.Body += "<br>"
 				}
 				event_title := event
 				if event == types.TaxReportEventName {
 					event_title = "income_history"
 				}
-				msg += fmt.Sprintf("%s\n====\n\n", event_title)
-				for _, n := range ns {
-					msg += fmt.Sprintf("%s\n", n.GetInfo(true))
+				msg.Body += template.HTML(fmt.Sprintf("%s<br>====<br><br>", types.EventLabel[event_title]))
+				unsubURL := "https://" + utils.Config.Frontend.SiteDomain + "/notifications/unsubscribe"
+				for i, n := range ns {
+					unsubHash := n.GetUnsubscribeHash()
+					if unsubHash == "" {
+						id := n.GetSubscriptionID()
+
+						tx, err := db.FrontendDB.Beginx()
+						if err != nil {
+							logger.WithError(err).Error("error starting transaction")
+						}
+						var sub types.Subscription
+						err = tx.Get(&sub, `
+							SELECT
+								id,
+								user_id,
+								event_name,
+								event_filter,
+								last_sent_ts,
+								last_sent_epoch,
+								created_ts,
+								created_epoch,
+								event_threshold
+							FROM users_subscriptions
+							WHERE id = $1
+						`, id)
+						if err != nil {
+							logger.WithError(err).Error("error getting user subscription by subscription id")
+							tx.Rollback()
+						}
+
+						raw := fmt.Sprintf("%v%v%v%v", sub.ID, sub.UserID, sub.EventName, sub.CreatedTime)
+						digest := sha256.Sum256([]byte(raw))
+
+						_, err = tx.Exec("UPDATE users_subscriptions set unsubscribe_hash = $1 where id = $2", digest[:], id)
+						if err != nil {
+							logger.WithError(err).Error("error updating users subscriptions table with unsubscribe hash")
+							tx.Rollback()
+						}
+
+						err = tx.Commit()
+						if err != nil {
+							logger.WithError(err).Error("error committing transaction to update users subscriptions with an unsubscribe hash")
+							tx.Rollback()
+						}
+
+						unsubHash = hex.EncodeToString(digest[:])
+					}
+					if i == 0 {
+						unsubURL += "?hash=" + html.EscapeString(unsubHash)
+					} else {
+						unsubURL += "&hash=" + html.EscapeString(unsubHash)
+					}
+					msg.UnSubURL = template.HTML(fmt.Sprintf(`<a href="%v">Unsubscribe</a>`, unsubURL))
+					msg.Body += template.HTML(fmt.Sprintf("%s<br>", n.GetInfo(true)))
 					e := n.GetEpoch()
 					if _, exists := sentSubsByEpoch[e]; !exists {
 						sentSubsByEpoch[e] = []uint64{n.GetSubscriptionID()}
@@ -390,10 +461,11 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 
 				}
 				if event == "validator_balance_decreased" {
-					msg += "\nYou will not receive any further balance decrease mails for these validators until the balance of a validator is increasing again.\n"
+					msg.Body += template.HTML("<br>You will not receive any further balance decrease mails for these validators until the balance of a validator is increasing again.<br>")
 				}
 			}
-			msg += fmt.Sprintf("\nBest regards\n\n%s", utils.Config.Frontend.SiteDomain)
+
+			// msg.Body += template.HTML(fmt.Sprintf("<br>Best regards<br>\n%s", utils.Config.Frontend.SiteDomain))
 
 			err := mail.SendMailRateLimited(userEmail, subject, msg, attachments)
 			if err != nil {
@@ -421,6 +493,14 @@ type validatorBalanceDecreasedNotification struct {
 	EndBalance         uint64
 	SubscriptionID     uint64
 	EventFilter        string
+	UnsubscribeHash    sql.NullString
+}
+
+func (n *validatorBalanceDecreasedNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
 }
 
 func (n *validatorBalanceDecreasedNotification) GetEmailAttachment() *types.EmailAttachment {
@@ -479,7 +559,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	query := ""
 	resultsLen := len(dbResult)
 	for i, event := range dbResult {
-		query += fmt.Sprintf(`SELECT %d as ref, id, user_id from users_subscriptions where event_name = $1 AND event_filter = '%s'  AND (last_sent_epoch > $2 OR last_sent_epoch IS NULL) AND created_epoch <= $2`, i, event.Pubkey)
+		query += fmt.Sprintf(`SELECT %d as ref, id, user_id, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash from users_subscriptions where event_name = $1 AND event_filter = '%s'  AND (last_sent_epoch > $2 OR last_sent_epoch IS NULL) AND created_epoch <= $2`, i, event.Pubkey)
 		if i < resultsLen-1 {
 			query += " UNION "
 		}
@@ -488,9 +568,10 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 		return nil
 	}
 	var subscribers []struct {
-		Ref    uint64 `db:"ref"`
-		Id     uint64 `db:"id"`
-		UserId uint64 `db:"user_id"`
+		Ref             uint64         `db:"ref"`
+		Id              uint64         `db:"id"`
+		UserId          uint64         `db:"user_id"`
+		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 	}
 
 	err = db.FrontendDB.Select(&subscribers, query, types.ValidatorBalanceDecreasedEventName, latestEpoch)
@@ -501,13 +582,14 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	for _, sub := range subscribers {
 		event := dbResult[sub.Ref]
 		n := &validatorBalanceDecreasedNotification{
-			SubscriptionID: sub.Id,
-			ValidatorIndex: event.ValidatorIndex,
-			StartEpoch:     latestEpoch - 3,
-			EndEpoch:       latestEpoch,
-			StartBalance:   event.StartBalance,
-			EndBalance:     event.EndBalance,
-			EventFilter:    event.Pubkey,
+			SubscriptionID:  sub.Id,
+			ValidatorIndex:  event.ValidatorIndex,
+			StartEpoch:      latestEpoch - 3,
+			EndEpoch:        latestEpoch,
+			StartBalance:    event.StartBalance,
+			EndBalance:      event.EndBalance,
+			EventFilter:     event.Pubkey,
+			UnsubscribeHash: sub.UnsubscribeHash,
 		}
 
 		if _, exists := notificationsByUserID[sub.UserId]; !exists {
@@ -617,6 +699,14 @@ type validatorProposalNotification struct {
 	Status             uint64 // * Can be 0 = scheduled, 1 executed, 2 missed */
 	EventName          types.EventName
 	EventFilter        string
+	UnsubscribeHash    sql.NullString
+}
+
+func (n *validatorProposalNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
 }
 
 func (n *validatorProposalNotification) GetEmailAttachment() *types.EmailAttachment {
@@ -783,6 +873,14 @@ type validatorAttestationNotification struct {
 	Slot               uint64
 	InclusionSlot      uint64
 	EventFilter        string
+	UnsubscribeHash    sql.NullString
+}
+
+func (n *validatorAttestationNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
 }
 
 func (n *validatorAttestationNotification) GetEmailAttachment() *types.EmailAttachment {
@@ -803,16 +901,23 @@ func (n *validatorAttestationNotification) GetEventName() types.EventName {
 
 func (n *validatorAttestationNotification) GetInfo(includeUrl bool) string {
 	var generalPart = ""
-	switch n.Status {
-	case 0:
-		generalPart = fmt.Sprintf(`Validator %[1]v missed an attestation at slot %[2]v.`, n.ValidatorIndex, n.Slot)
-		//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
-	case 1:
-		generalPart = fmt.Sprintf(`Validator %[1]v submitted a successfull attestation for slot %[2]v.`, n.ValidatorIndex, n.Slot)
-	}
-
 	if includeUrl {
-		return generalPart + getUrlPart(n.ValidatorIndex)
+		switch n.Status {
+		case 0:
+			generalPart = fmt.Sprintf(`Validator <a href="%[3]v/validator/%[1]v">%[1]v</a> missed an attestation at slot <a href="%[3]v/block/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
+			//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
+		case 1:
+			generalPart = fmt.Sprintf(`Validator <a href="%[3]v/validator/%[1]v">%[1]v</a> submitted a successfull attestation for slot  <a href="%[3]v/block/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
+		}
+		// return generalPart + getUrlPart(n.ValidatorIndex)
+	} else {
+		switch n.Status {
+		case 0:
+			generalPart = fmt.Sprintf(`Validator %[1]v missed an attestation at slot %[2]v.`, n.ValidatorIndex, n.Slot)
+			//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
+		case 1:
+			generalPart = fmt.Sprintf(`Validator %[1]v submitted a successfull attestation for slot %[2]v.`, n.ValidatorIndex, n.Slot)
+		}
 	}
 	return generalPart
 }
@@ -832,12 +937,20 @@ func (n *validatorAttestationNotification) GetEventFilter() string {
 }
 
 type validatorGotSlashedNotification struct {
-	SubscriptionID uint64
-	ValidatorIndex uint64
-	Epoch          uint64
-	Slasher        uint64
-	Reason         string
-	EventFilter    string
+	SubscriptionID  uint64
+	ValidatorIndex  uint64
+	Epoch           uint64
+	Slasher         uint64
+	Reason          string
+	EventFilter     string
+	UnsubscribeHash sql.NullString
+}
+
+func (n *validatorGotSlashedNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
 }
 
 func (n *validatorGotSlashedNotification) GetEmailAttachment() *types.EmailAttachment {
@@ -891,7 +1004,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 	query := ""
 	resultsLen := len(dbResult)
 	for i, event := range dbResult {
-		query += fmt.Sprintf(`SELECT %d as ref, id, user_id from users_subscriptions where event_name = $1 AND event_filter = '%x'  AND (last_sent_epoch > $2 OR last_sent_epoch IS NULL)`, i, event.SlashedValidatorPubkey)
+		query += fmt.Sprintf(`SELECT %d as ref, id, user_id, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash from users_subscriptions where event_name = $1 AND event_filter = '%x'  AND (last_sent_epoch > $2 OR last_sent_epoch IS NULL)`, i, event.SlashedValidatorPubkey)
 		if i < resultsLen-1 {
 			query += " UNION "
 		}
@@ -902,9 +1015,10 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 	}
 
 	var subscribers []struct {
-		Ref    uint64 `db:"ref"`
-		Id     uint64 `db:"id"`
-		UserId uint64 `db:"user_id"`
+		Ref             uint64         `db:"ref"`
+		Id              uint64         `db:"id"`
+		UserId          uint64         `db:"user_id"`
+		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 	}
 
 	name := string(types.ValidatorGotSlashedEventName)
@@ -919,12 +1033,13 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 	for _, sub := range subscribers {
 		event := dbResult[sub.Ref]
 		n := &validatorGotSlashedNotification{
-			SubscriptionID: sub.Id,
-			Slasher:        event.SlasherIndex,
-			Epoch:          event.Epoch,
-			Reason:         event.Reason,
-			ValidatorIndex: event.SlashedValidatorIndex,
-			EventFilter:    hex.EncodeToString(event.SlashedValidatorPubkey),
+			SubscriptionID:  sub.Id,
+			Slasher:         event.SlasherIndex,
+			Epoch:           event.Epoch,
+			Reason:          event.Reason,
+			ValidatorIndex:  event.SlashedValidatorIndex,
+			EventFilter:     hex.EncodeToString(event.SlashedValidatorPubkey),
+			UnsubscribeHash: sub.UnsubscribeHash,
 		}
 
 		if _, exists := notificationsByUserID[sub.UserId]; !exists {
@@ -940,11 +1055,19 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 }
 
 type ethClientNotification struct {
-	SubscriptionID uint64
-	UserID         uint64
-	Epoch          uint64
-	EthClient      string
-	EventFilter    string
+	SubscriptionID  uint64
+	UserID          uint64
+	Epoch           uint64
+	EthClient       string
+	EventFilter     string
+	UnsubscribeHash sql.NullString
+}
+
+func (n *ethClientNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
 }
 
 func (n *ethClientNotification) GetEmailAttachment() *types.EmailAttachment {
@@ -1003,14 +1126,15 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 	updatedClients := ethclients.GetUpdatedClients() //only check if there are new updates
 	for _, client := range updatedClients {
 		var dbResult []struct {
-			SubscriptionID uint64 `db:"id"`
-			UserID         uint64 `db:"user_id"`
-			Epoch          uint64 `db:"created_epoch"`
-			EventFilter    string `db:"event_filter"`
+			SubscriptionID  uint64         `db:"id"`
+			UserID          uint64         `db:"user_id"`
+			Epoch           uint64         `db:"created_epoch"`
+			EventFilter     string         `db:"event_filter"`
+			UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 		}
 
 		err := db.FrontendDB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE 
 				us.event_name=$1 
@@ -1027,11 +1151,12 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 
 		for _, r := range dbResult {
 			n := &ethClientNotification{
-				SubscriptionID: r.SubscriptionID,
-				UserID:         r.UserID,
-				Epoch:          r.Epoch,
-				EventFilter:    r.EventFilter,
-				EthClient:      client.Name,
+				SubscriptionID:  r.SubscriptionID,
+				UserID:          r.UserID,
+				Epoch:           r.Epoch,
+				EventFilter:     r.EventFilter,
+				EthClient:       client.Name,
+				UnsubscribeHash: r.UnsubscribeHash,
 			}
 			if _, exists := notificationsByUserID[r.UserID]; !exists {
 				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
@@ -1049,8 +1174,9 @@ func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineOfflineEventName,
 		`SELECT 
 		us.user_id,
+		ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash,
 		max(us.id) as id,
-		machine  
+		machine
 	FROM users_subscriptions us
 	JOIN (
 		SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p 
@@ -1069,6 +1195,7 @@ func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineDiskAlmostFullEventName,
 		`SELECT 
 			us.user_id,
+			ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash,
 			max(us.id) as id,
 			machine 
 		FROM users_subscriptions us 
@@ -1087,7 +1214,8 @@ func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map
 func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineCpuLoadEventName,
 		`SELECT 
-			max(us.id) as id, 
+			max(us.id) as id,
+			ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash,
 			us.user_id,
 			machine 
 		FROM users_subscriptions us 
@@ -1118,7 +1246,8 @@ func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.
 func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineMemoryUsageEventName,
 		`SELECT 
-			max(us.id) as id, 
+			max(us.id) as id,
+			ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash,
 			us.user_id,
 			machine 
 		FROM users_subscriptions us 
@@ -1153,9 +1282,10 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 	}
 
 	var dbResult []struct {
-		SubscriptionID uint64 `db:"id"`
-		UserID         uint64 `db:"user_id"`
-		MachineName    string `db:"machine"`
+		SubscriptionID  uint64         `db:"id"`
+		UserID          uint64         `db:"user_id"`
+		MachineName     string         `db:"machine"`
+		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 	}
 
 	now := time.Now()
@@ -1168,13 +1298,13 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 	}
 
 	for _, r := range dbResult {
-
 		n := &monitorMachineNotification{
-			SubscriptionID: r.SubscriptionID,
-			MachineName:    r.MachineName,
-			UserID:         r.UserID,
-			EventName:      eventName,
-			Epoch:          latestEpoch,
+			SubscriptionID:  r.SubscriptionID,
+			MachineName:     r.MachineName,
+			UserID:          r.UserID,
+			EventName:       eventName,
+			Epoch:           latestEpoch,
+			UnsubscribeHash: r.UnsubscribeHash,
 		}
 
 		if _, exists := notificationsByUserID[r.UserID]; !exists {
@@ -1190,11 +1320,19 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 }
 
 type monitorMachineNotification struct {
-	SubscriptionID uint64
-	MachineName    string
-	UserID         uint64
-	Epoch          uint64
-	EventName      types.EventName
+	SubscriptionID  uint64
+	MachineName     string
+	UserID          uint64
+	Epoch           uint64
+	EventName       types.EventName
+	UnsubscribeHash sql.NullString
+}
+
+func (n *monitorMachineNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
 }
 
 func (n *monitorMachineNotification) GetEmailAttachment() *types.EmailAttachment {
@@ -1254,10 +1392,18 @@ func (n *monitorMachineNotification) GetEventFilter() string {
 }
 
 type taxReportNotification struct {
-	SubscriptionID uint64
-	UserID         uint64
-	Epoch          uint64
-	EventFilter    string
+	SubscriptionID  uint64
+	UserID          uint64
+	Epoch           uint64
+	EventFilter     string
+	UnsubscribeHash sql.NullString
+}
+
+func (n *taxReportNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
 }
 
 func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
@@ -1324,10 +1470,11 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 	firstDayOfMonth := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
 	if tNow.Year() == firstDayOfMonth.Year() && tNow.Month() == firstDayOfMonth.Month() && tNow.Day() == firstDayOfMonth.Day() { // Send the reports on the first day of the month
 		var dbResult []struct {
-			SubscriptionID uint64 `db:"id"`
-			UserID         uint64 `db:"user_id"`
-			Epoch          uint64 `db:"created_epoch"`
-			EventFilter    string `db:"event_filter"`
+			SubscriptionID  uint64         `db:"id"`
+			UserID          uint64         `db:"user_id"`
+			Epoch           uint64         `db:"created_epoch"`
+			EventFilter     string         `db:"event_filter"`
+			UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 		}
 
 		name := string(eventName)
@@ -1336,7 +1483,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 		}
 
 		err := db.FrontendDB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '2 DAY' OR us.last_sent_ts IS NULL);
 			`,
@@ -1348,10 +1495,11 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 
 		for _, r := range dbResult {
 			n := &taxReportNotification{
-				SubscriptionID: r.SubscriptionID,
-				UserID:         r.UserID,
-				Epoch:          r.Epoch,
-				EventFilter:    r.EventFilter,
+				SubscriptionID:  r.SubscriptionID,
+				UserID:          r.UserID,
+				Epoch:           r.Epoch,
+				EventFilter:     r.EventFilter,
+				UnsubscribeHash: r.UnsubscribeHash,
 			}
 			if _, exists := notificationsByUserID[r.UserID]; !exists {
 				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
@@ -1367,10 +1515,18 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 }
 
 type networkNotification struct {
-	SubscriptionID uint64
-	UserID         uint64
-	Epoch          uint64
-	EventFilter    string
+	SubscriptionID  uint64
+	UserID          uint64
+	Epoch           uint64
+	EventFilter     string
+	UnsubscribeHash sql.NullString
+}
+
+func (n *networkNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
 }
 
 func (n *networkNotification) GetEmailAttachment() *types.EmailAttachment {
@@ -1415,14 +1571,15 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 	if count > 0 {
 
 		var dbResult []struct {
-			SubscriptionID uint64 `db:"id"`
-			UserID         uint64 `db:"user_id"`
-			Epoch          uint64 `db:"created_epoch"`
-			EventFilter    string `db:"event_filter"`
+			SubscriptionID  uint64         `db:"id"`
+			UserID          uint64         `db:"user_id"`
+			Epoch           uint64         `db:"created_epoch"`
+			EventFilter     string         `db:"event_filter"`
+			UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 		}
 
 		err := db.FrontendDB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex')
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '1 hour' OR us.last_sent_ts IS NULL);
 			`,
@@ -1434,10 +1591,11 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 
 		for _, r := range dbResult {
 			n := &networkNotification{
-				SubscriptionID: r.SubscriptionID,
-				UserID:         r.UserID,
-				Epoch:          r.Epoch,
-				EventFilter:    r.EventFilter,
+				SubscriptionID:  r.SubscriptionID,
+				UserID:          r.UserID,
+				Epoch:           r.Epoch,
+				EventFilter:     r.EventFilter,
+				UnsubscribeHash: r.UnsubscribeHash,
 			}
 			if _, exists := notificationsByUserID[r.UserID]; !exists {
 				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
@@ -1453,12 +1611,20 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 }
 
 type rocketpoolNotification struct {
-	SubscriptionID uint64
-	UserID         uint64
-	Epoch          uint64
-	EventFilter    string
-	EventName      types.EventName
-	ExtraData      string
+	SubscriptionID  uint64
+	UserID          uint64
+	Epoch           uint64
+	EventFilter     string
+	EventName       types.EventName
+	ExtraData       string
+	UnsubscribeHash sql.NullString
+}
+
+func (n *rocketpoolNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
 }
 
 func (n *rocketpoolNotification) GetEmailAttachment() *types.EmailAttachment {
@@ -1540,14 +1706,15 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 	if fee > 0 {
 
 		var dbResult []struct {
-			SubscriptionID uint64 `db:"id"`
-			UserID         uint64 `db:"user_id"`
-			Epoch          uint64 `db:"created_epoch"`
-			EventFilter    string `db:"event_filter"`
+			SubscriptionID  uint64         `db:"id"`
+			UserID          uint64         `db:"user_id"`
+			Epoch           uint64         `db:"created_epoch"`
+			EventFilter     string         `db:"event_filter"`
+			UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 		}
 
 		err := db.FrontendDB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex')
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '8 hours' OR us.last_sent_ts IS NULL) AND (us.event_threshold <= $2 OR (us.event_threshold < 0 AND us.event_threshold * -1 >= $2));
 			`,
@@ -1559,12 +1726,13 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 
 		for _, r := range dbResult {
 			n := &rocketpoolNotification{
-				SubscriptionID: r.SubscriptionID,
-				UserID:         r.UserID,
-				Epoch:          r.Epoch,
-				EventFilter:    r.EventFilter,
-				EventName:      eventName,
-				ExtraData:      strconv.FormatInt(int64(fee*100), 10) + "%",
+				SubscriptionID:  r.SubscriptionID,
+				UserID:          r.UserID,
+				Epoch:           r.Epoch,
+				EventFilter:     r.EventFilter,
+				EventName:       eventName,
+				ExtraData:       strconv.FormatInt(int64(fee*100), 10) + "%",
+				UnsubscribeHash: r.UnsubscribeHash,
 			}
 			if _, exists := notificationsByUserID[r.UserID]; !exists {
 				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
@@ -1592,14 +1760,15 @@ func collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID map[ui
 	if ts+3*60*60 > time.Now().Unix() {
 
 		var dbResult []struct {
-			SubscriptionID uint64 `db:"id"`
-			UserID         uint64 `db:"user_id"`
-			Epoch          uint64 `db:"created_epoch"`
-			EventFilter    string `db:"event_filter"`
+			SubscriptionID  uint64         `db:"id"`
+			UserID          uint64         `db:"user_id"`
+			Epoch           uint64         `db:"created_epoch"`
+			EventFilter     string         `db:"event_filter"`
+			UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 		}
 
 		err := db.FrontendDB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex')
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '5 hours' OR us.last_sent_ts IS NULL);
 			`,
@@ -1611,11 +1780,12 @@ func collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID map[ui
 
 		for _, r := range dbResult {
 			n := &rocketpoolNotification{
-				SubscriptionID: r.SubscriptionID,
-				UserID:         r.UserID,
-				Epoch:          r.Epoch,
-				EventFilter:    r.EventFilter,
-				EventName:      eventName,
+				SubscriptionID:  r.SubscriptionID,
+				UserID:          r.UserID,
+				Epoch:           r.Epoch,
+				EventFilter:     r.EventFilter,
+				EventName:       eventName,
+				UnsubscribeHash: r.UnsubscribeHash,
 			}
 			if _, exists := notificationsByUserID[r.UserID]; !exists {
 				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
@@ -1708,11 +1878,12 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 		}
 
 		n := &rocketpoolNotification{
-			SubscriptionID: *sub.ID,
-			UserID:         *sub.UserID,
-			Epoch:          currentEpoch,
-			EventFilter:    sub.EventFilter,
-			EventName:      eventName,
+			SubscriptionID:  *sub.ID,
+			UserID:          *sub.UserID,
+			Epoch:           currentEpoch,
+			EventFilter:     sub.EventFilter,
+			EventName:       eventName,
+			UnsubscribeHash: sub.UnsubscribeHash,
 		}
 		if _, exists := notificationsByUserID[*sub.UserID]; !exists {
 			notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
@@ -1795,14 +1966,15 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 	}
 
 	var dbResult []struct {
-		SubscriptionID uint64 `db:"id"`
-		UserID         uint64 `db:"user_id"`
-		Epoch          uint64 `db:"created_epoch"`
-		EventFilter    string `db:"event_filter"`
+		SubscriptionID  uint64         `db:"id"`
+		UserID          uint64         `db:"user_id"`
+		Epoch           uint64         `db:"created_epoch"`
+		EventFilter     string         `db:"event_filter"`
+		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 	}
 
 	err = db.FrontendDB.Select(&dbResult, `
-				SELECT us.id, us.user_id, us.created_epoch, us.event_filter            
+				SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex')
 				FROM users_subscriptions AS us 
 				WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '26 hours' OR us.last_sent_ts IS NULL) AND event_filter = ANY($2);
 				`,
@@ -1815,12 +1987,13 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 
 	for _, r := range dbResult {
 		n := &rocketpoolNotification{
-			SubscriptionID: r.SubscriptionID,
-			UserID:         r.UserID,
-			Epoch:          r.Epoch,
-			EventFilter:    r.EventFilter,
-			EventName:      eventName,
-			ExtraData:      fmt.Sprintf("%v|%v|%v", mapping[r.EventFilter], nextPeriod*utils.Config.Chain.EpochsPerSyncCommitteePeriod, (nextPeriod+1)*utils.Config.Chain.EpochsPerSyncCommitteePeriod),
+			SubscriptionID:  r.SubscriptionID,
+			UserID:          r.UserID,
+			Epoch:           r.Epoch,
+			EventFilter:     r.EventFilter,
+			EventName:       eventName,
+			ExtraData:       fmt.Sprintf("%v|%v|%v", mapping[r.EventFilter], nextPeriod*utils.Config.Chain.EpochsPerSyncCommitteePeriod, (nextPeriod+1)*utils.Config.Chain.EpochsPerSyncCommitteePeriod),
+			UnsubscribeHash: r.UnsubscribeHash,
 		}
 		if _, exists := notificationsByUserID[r.UserID]; !exists {
 			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}

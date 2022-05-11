@@ -160,10 +160,10 @@ type GetSubscriptionsFilter struct {
 // GetSubscriptions returns the subscriptions filtered by the provided filter.
 func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, error) {
 	subs := []*types.Subscription{}
-	qry := "SELECT event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold FROM users_subscriptions"
+	qry := "SELECT event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash FROM users_subscriptions"
 
 	if filter.JoinValidator {
-		qry = "SELECT id, user_id, event_name, event_filter, last_sent_ts, created_ts, validators.balance as balance FROM users_subscriptions INNER JOIN validators ON users_subscriptions.event_filter = ENCODE(validators.pubkey::bytea, 'hex')"
+		qry = "SELECT id, user_id, event_name, event_filter, last_sent_ts, created_ts, validators.balance as balance, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash FROM users_subscriptions INNER JOIN validators ON users_subscriptions.event_filter = ENCODE(validators.pubkey::bytea, 'hex')"
 	}
 
 	if filter.EventNames == nil && filter.UserIDs == nil && filter.EventFilters == nil {

@@ -92,7 +92,7 @@ func AddStakingServicePost(w http.ResponseWriter, r *http.Request) {
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 
-	err = mail.SendMail("support@beaconcha.in", "New staking inquiry", msg, []types.EmailAttachment{})
+	err = mail.SendTextMail("support@beaconcha.in", "New staking inquiry", msg, []types.EmailAttachment{})
 	if err != nil {
 		logger.Errorf("error sending ad form: %v", err)
 		utils.SetFlash(w, r, "stake_flash", "Error: unable to submit ad request")
