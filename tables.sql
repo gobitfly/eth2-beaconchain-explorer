@@ -538,17 +538,20 @@ create table users_clients
 drop table if exists users_subscriptions;
 create table users_subscriptions
 (
-    id              serial                      not null,
-    user_id         int                         not null,
-    event_name      character varying(100)      not null,
-    event_filter    text                        not null default '',
-    event_threshold real                        default 0,
-    last_sent_ts    timestamp without time zone,
-    last_sent_epoch int,
-    created_ts      timestamp without time zone not null,
-    created_epoch   int                         not null,
+    id                serial                      not null,
+    user_id           int                         not null,
+    event_name        character varying(100)      not null,
+    event_filter      text                        not null default '',
+    event_threshold   real                        default 0,
+    last_sent_ts      timestamp without time zone,
+    last_sent_epoch   int,
+    created_ts        timestamp without time zone not null,
+    created_epoch     int                         not null,
+    unsubscribe_hash  bytea                        ,
     primary key (user_id, event_name, event_filter)
 );
+
+create index idx_users_subscriptions_unsubscribe_hash on users_subscriptions (unsubscribe_hash);
 
 drop table if exists users_notifications;
 create table users_notifications
@@ -726,14 +729,15 @@ create table stake_pools_stats
 drop table if exists price;
 create table price
 (
-    ts  timestamp without time zone not null,
-    eur numeric(20,10)              not null,
-    usd numeric(20,10)              not null,
-    rub numeric(20,10)              not null,
-    cny numeric(20,10)              not null,
-    cad numeric(20,10)              not null,
-    jpy numeric(20,10)              not null,
-    gbp numeric(20,10)              not null,
+    ts     timestamp without time zone not null,
+    eur numeric(20,10)                not null,
+    usd numeric(20,10)                not null,
+    rub numeric(20,10)                not null,
+    cny numeric(20,10)                not null,
+    cad numeric(20,10)                not null,
+    jpy numeric(20,10)                not null,
+    gbp numeric(20,10)                not null,
+    aud numeric(20,10)                not null,
     primary key (ts)
 );
 

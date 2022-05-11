@@ -40,6 +40,57 @@ const (
 	SyncCommitteeSoon                                EventName = "validator_synccommittee_soon"
 )
 
+var UserIndexEvents = []EventName{
+	EthClientUpdateEventName,
+	MonitoringMachineCpuLoadEventName,
+	EthClientUpdateEventName,
+	MonitoringMachineOfflineEventName,
+	MonitoringMachineDiskAlmostFullEventName,
+	MonitoringMachineCpuLoadEventName,
+	MonitoringMachineMemoryUsageEventName,
+	MonitoringMachineSwitchedToETH2FallbackEventName,
+	MonitoringMachineSwitchedToETH1FallbackEventName,
+}
+
+var EventLabel map[EventName]string = map[EventName]string{
+	ValidatorBalanceDecreasedEventName:               "Your validator(s) balance decreased",
+	ValidatorMissedProposalEventName:                 "Your validator(s) missed a proposal",
+	ValidatorExecutedProposalEventName:               "Your validator(s) submitted a proposal",
+	ValidatorMissedAttestationEventName:              "Your validator(s) missed an attestation",
+	ValidatorGotSlashedEventName:                     "Your validator(s) got slashed",
+	ValidatorDidSlashEventName:                       "Your validator(s) slashed another validator",
+	ValidatorStateChangedEventName:                   "Your validator(s) state changed",
+	ValidatorReceivedDepositEventName:                "Your validator(s) received a deposit",
+	NetworkSlashingEventName:                         "A slashing event has been registered by the network",
+	NetworkValidatorActivationQueueFullEventName:     "The activation queue is full",
+	NetworkValidatorActivationQueueNotFullEventName:  "The activation queue is empty",
+	NetworkValidatorExitQueueFullEventName:           "The validator exit queue is full",
+	NetworkValidatorExitQueueNotFullEventName:        "The validator exit queue is empty",
+	NetworkLivenessIncreasedEventName:                "The network is experiencing liveness issues",
+	EthClientUpdateEventName:                         "A ethereum client has a new available update",
+	MonitoringMachineOfflineEventName:                "Your machine(s) might be offline",
+	MonitoringMachineDiskAlmostFullEventName:         "Your machine(s) disk space is running low",
+	MonitoringMachineCpuLoadEventName:                "Your machine(s) has a high CPU load",
+	MonitoringMachineMemoryUsageEventName:            "Your machine(s) has a high memory load",
+	MonitoringMachineSwitchedToETH2FallbackEventName: "Your machine(s) is using its consensus client fallback",
+	MonitoringMachineSwitchedToETH1FallbackEventName: "Your machine(s) is using its execution client fallback",
+	TaxReportEventName:                               "You have an available tax report",
+	RocketpoolCommissionThresholdEventName:           "Your configured rocket pool commission threshold is reached",
+	RocketpoolNewClaimRoundStartedEventName:          "Your rocket pool claim round is available",
+	RocketpoolColleteralMinReached:                   "You reached the rocketpool min collateral",
+	RocketpoolColleteralMaxReached:                   "You reached the rocketpool max collateral",
+	SyncCommitteeSoon:                                "You will soon be part of the rocket pool sync committee",
+}
+
+func IsUserIndexed(event EventName) bool {
+	for _, ev := range UserIndexEvents {
+		if ev == event {
+			return true
+		}
+	}
+	return false
+}
+
 var EventNames = []EventName{
 	ValidatorBalanceDecreasedEventName,
 	ValidatorExecutedProposalEventName,
@@ -97,18 +148,20 @@ type Notification interface {
 	GetTitle() string
 	GetEventFilter() string
 	GetEmailAttachment() *EmailAttachment
+	GetUnsubscribeHash() string
 }
 
 type Subscription struct {
-	ID             *uint64    `db:"id,omitempty"`
-	UserID         *uint64    `db:"user_id,omitempty"`
-	EventName      string     `db:"event_name"`
-	EventFilter    string     `db:"event_filter"`
-	LastSent       *time.Time `db:"last_sent_ts"`
-	LastEpoch      *uint64    `db:"last_sent_epoch"`
-	CreatedTime    time.Time  `db:"created_ts"`
-	CreatedEpoch   uint64     `db:"created_epoch"`
-	EventThreshold float64    `db:"event_threshold"`
+	ID              *uint64        `db:"id,omitempty"`
+	UserID          *uint64        `db:"user_id,omitempty"`
+	EventName       string         `db:"event_name"`
+	EventFilter     string         `db:"event_filter"`
+	LastSent        *time.Time     `db:"last_sent_ts"`
+	LastEpoch       *uint64        `db:"last_sent_epoch"`
+	CreatedTime     time.Time      `db:"created_ts"`
+	CreatedEpoch    uint64         `db:"created_epoch"`
+	EventThreshold  float64        `db:"event_threshold"`
+	UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 }
 
 type TaggedValidators struct {

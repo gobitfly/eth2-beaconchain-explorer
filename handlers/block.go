@@ -45,9 +45,32 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(slotOrHash) != 64 {
 		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing blockslot to int: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
 	}
 
 	data := InitPageData(w, r, "blocks", "/blocks", "")
+
+	if blockSlot == -1 {
+		err = db.DB.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
+		if blockSlot == -1 {
+			err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+			if err != nil {
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+			return
+		}
+		if err != nil {
+			logger.Errorf("error retrieving entry count of given block or state data: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+	}
 
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
@@ -92,9 +115,10 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		WHERE blocks.slot = $1 OR blocks.blockroot = $2 ORDER BY blocks.status LIMIT 1`,
-		blockSlot, blockRootHash)
+		WHERE blocks.slot = $1 ORDER BY blocks.status LIMIT 1`,
+		blockSlot)
 
+	blockPageData.Slot = uint64(blockSlot)
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/block/" + slotOrHash
@@ -441,7 +465,7 @@ func BlockVoteData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		err = db.DB.Get(&blockSlot, `SELECT blocks.slot FROM blocks WHERE blocks.blockroot = $1`, blockRootHash)
+		err = db.DB.Get(&blockSlot, `SELECT blocks.slot FROM blocks WHERE blocks.blockroot = $1 OR blocks.stateroot = $1`, blockRootHash)
 		if err != nil {
 			logger.Errorf("error querying for block slot with block root hash %v err: %v", blockRootHash, err)
 			http.Error(w, "Interal server error", http.StatusInternalServerError)

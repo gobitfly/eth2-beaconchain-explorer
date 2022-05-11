@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -52,6 +54,8 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var searchLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
+
 // SearchAhead handles responses for the frontend search boxes
 func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -60,26 +64,49 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	searchType := vars["type"]
 	search := vars["search"]
 	search = strings.Replace(search, "0x", "", -1)
-
-	logger := logger.WithField("searchType", searchType)
-
+	search = strings.Replace(search, "0X", "", -1)
 	var err error
+	logger := logger.WithField("searchType", searchType)
 	var result interface{}
 
 	switch searchType {
 	case "blocks":
+		if len(search) <= 1 {
+			break
+		}
 		result = &types.SearchAheadBlocksResult{}
-		err = db.DB.Select(result, `
-			SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
-			FROM blocks 
-			WHERE CAST(slot AS text) LIKE $1 OR ENCODE(blockroot::bytea, 'hex') LIKE $1
-			ORDER BY slot LIMIT 10`, search+"%")
+		if len(search)%2 != 0 {
+			search = search[:len(search)-1]
+		}
+		if searchLikeRE.MatchString(search) {
+			if len(search) < 64 {
+				err = db.DB.Select(result, `
+				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
+				FROM blocks 
+				WHERE CAST(slot AS text) LIKE LOWER($1)
+				ORDER BY slot LIMIT 10`, search+"%")
+			} else if len(search) == 64 {
+				blockHash, err := hex.DecodeString(search)
+				if err != nil {
+					logger.Errorf("error parsing blockHash to int: %v", err)
+					http.Error(w, "Internal server error", 503)
+					return
+				}
+				err = db.DB.Select(result, `
+				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
+				FROM blocks 
+				WHERE blockroot = $1 OR
+					stateroot = $1
+				ORDER BY slot LIMIT 10`, blockHash)
+			}
+		}
+
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
 		err = db.DB.Select(graffiti, `
 			SELECT graffiti, count(*)
 			FROM blocks
-			WHERE graffiti_text ILIKE $1
+			WHERE graffiti_text ILIKE LOWER($1)
 			GROUP BY graffiti
 			ORDER BY count desc
 			LIMIT 10`, "%"+search+"%")
@@ -106,12 +133,20 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "eth1_addresses":
+		if len(search) <= 1 {
+			break
+		}
 		result = &types.SearchAheadEth1Result{}
-		err = db.DB.Select(result, `
-			SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
-			FROM eth1_deposits
-			WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
-			LIMIT 10`, search+"%")
+		if len(search)%2 != 0 {
+			search = search[:len(search)-1]
+		}
+		if searchLikeRE.MatchString(search) {
+			err = db.DB.Select(result, `
+				SELECT DISTINCT ENCODE(from_address, 'hex') as from_address
+				FROM eth1_deposits
+				WHERE ENCODE(from_address, 'hex') LIKE LOWER($1)
+				LIMIT 10`, search+"%")
+		}
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
@@ -124,26 +159,41 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "indexed_validators_by_eth1_addresses":
-		// find validators per eth1-address (limit result by N addresses and M validators per address)
-		result = &[]struct {
-			Eth1Address      string        `db:"from_address" json:"eth1_address"`
-			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
-			Count            uint64        `db:"count" json:"-"`
-		}{}
-		err = db.DB.Select(result, `
+		if len(search) <= 1 {
+			break
+		}
+		if len(search)%2 != 0 {
+			search = search[:len(search)-1]
+		}
+		if searchLikeRE.MatchString(search) {
+			// find validators per eth1-address (limit result by N addresses and M validators per address)
+			result = &[]struct {
+				Eth1Address      string        `db:"from_address" json:"eth1_address"`
+				ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
+				Count            uint64        `db:"count" json:"-"`
+			}{}
+			eth1AddressHash, err := hex.DecodeString(search)
+			if err != nil {
+				logger.Errorf("error parsing eth1AddressHash to hex: %v", err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+			logger.Infof("indexed_validators_by_eth1_addresses")
+			err = db.DB.Select(result, `
 			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
-					ENCODE(from_address::bytea, 'hex') as from_address,
+					ENCODE(from_address, 'hex') as from_address,
 					DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
 					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
 				FROM eth1_deposits
 				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1) 
+				WHERE ENCODE(from_address, 'hex') = LOWER($1)
 			) a 
 			WHERE validatorrow <= $2 AND addressrow <= 10
 			GROUP BY from_address
-			ORDER BY count DESC`, search+"%", searchValidatorsResultLimit)
+			ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
+		}
 	case "indexed_validators_by_graffiti":
 		// find validators per graffiti (limit result by N graffities and M validators per graffiti)
 		res := []struct {
@@ -160,7 +210,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 					DENSE_RANK() OVER(ORDER BY graffiti) AS graffitirow
 				FROM blocks 
 				LEFT JOIN validators ON blocks.proposer = validators.validatorindex
-				WHERE graffiti_text ILIKE $1
+				WHERE graffiti_text ILIKE LOWER($1)
 			) a 
 			WHERE validatorrow <= $2 AND graffitirow <= 10
 			GROUP BY graffiti

@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/price"
@@ -652,10 +653,10 @@ func getRocketpoolStats() ([]interface{}, error) {
 	}
 	rows, err := db.DB.Query(`
 		SELECT claim_interval_time, claim_interval_time_start, 
-		current_node_demand, current_node_fee, effective_rpl_staked,
-		node_operator_rewards, reth_exchange_rate, reth_supply, rpl_price, total_eth_balance, total_eth_staking, 
+		current_node_demand, TRUNC(current_node_fee::decimal, 10)::float as current_node_fee, effective_rpl_staked,
+		node_operator_rewards, TRUNC(reth_exchange_rate::decimal, 10)::float as reth_exchange_rate, reth_supply, rpl_price, total_eth_balance, total_eth_staking, 
 		minipool_count, node_count, odao_member_count, 
-		(SELECT ((1 - (min(history.reth_exchange_rate) / max(history.reth_exchange_rate))) * 52.14) FROM (SELECT ts, reth_exchange_rate FROM rocketpool_network_stats LIMIT 168) history) as reth_apr  
+		(SELECT TRUNC(((1 - (min(history.reth_exchange_rate) / max(history.reth_exchange_rate))) * 52.14)::decimal , 10) FROM (SELECT ts, reth_exchange_rate FROM rocketpool_network_stats LIMIT 168) history)::float as reth_apr  
 		from rocketpool_network_stats ORDER BY ts desc LIMIT 1;
 			`)
 
@@ -681,7 +682,7 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 		SELECT
 			rplm.node_address      AS node_address,
 			rplm.address           AS minipool_address,
-			rplm.node_fee          AS minipool_node_fee,
+			TRUNC(rplm.node_fee::decimal, 10)::float          AS minipool_node_fee,
 			rplm.deposit_type      AS minipool_deposit_type,
 			rplm.status            AS minipool_status,
 			rplm.status_time       AS minipool_status_time,
@@ -720,13 +721,13 @@ func validatorEffectiveness(epoch int64, indices []uint64) ([]interface{}, error
 	}
 
 	rows, err := db.DB.Query(`
-	SELECT aa.validatorindex, validators.pubkey, COALESCE(
+	SELECT aa.validatorindex, validators.pubkey, TRUNC(COALESCE(
 		AVG(1 + inclusionslot - COALESCE((
 			SELECT MIN(slot)
 			FROM blocks
 			WHERE slot > aa.attesterslot AND blocks.status = '1'
 		), 0)
-	), 0)::float AS attestation_efficiency
+	), 0)::decimal, 10)::float AS attestation_efficiency
 	FROM attestation_assignments_p aa
 	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
 	INNER JOIN validators ON validators.validatorindex = aa.validatorindex
@@ -752,7 +753,10 @@ type DashboardResponse struct {
 }
 
 func getEpoch(epoch int64) ([]interface{}, error) {
-	rows, err := db.DB.Query(`SELECT * FROM epochs WHERE epoch = $1`, epoch)
+	rows, err := db.DB.Query(`SELECT attestationscount, attesterslashingscount, averagevalidatorbalance,
+	blockscount, depositscount, eligibleether, epoch, finalized, TRUNC(globalparticipationrate::decimal, 10)::float as globalparticipationrate, proposerslashingscount,
+	totalvalidatorbalance, validatorscount, voluntaryexitscount, votedether
+	FROM epochs WHERE epoch = $1`, epoch)
 	if err != nil {
 		return nil, err
 	}
@@ -1427,7 +1431,7 @@ func RegisterEthpoolSubscription(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, 0, "", "")
+	err = db.InsertMobileSubscription(nil, claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, 0, "", "")
 	if err != nil {
 		logger.Errorf("could not save subscription data %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -1482,7 +1486,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	validationResult, _ := exporter.VerifyReceipt(nil, verifyPackage)
 	parsedBase.Valid = validationResult.Valid
 
-	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, validationResult.ExpirationDate, validationResult.RejectReason, "")
+	err = db.InsertMobileSubscription(nil, claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, validationResult.ExpirationDate, validationResult.RejectReason, "")
 	if err != nil {
 		logger.Errorf("could not save subscription data %v", err)
 		sendErrorResponse(j, r.URL.String(), "Can not save subscription data")
@@ -1967,7 +1971,9 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 			id, err = db.InsertStatsMeta(tx, userData.ID, parsedMeta)
 		}
 		if err != nil {
-			logger.Errorf("Could not store stats (meta stats) | %v", err)
+			if err != errors.New("sql: duplicate key value violates unique constraint") {
+				logger.Errorf("Could not store stats (meta stats) | %v", err)
+			}
 			sendErrorResponse(j, r.URL.String(), "could not store meta")
 			return false
 		}

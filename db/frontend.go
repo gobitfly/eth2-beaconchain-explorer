@@ -275,14 +275,34 @@ func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
 
 	var subscriptions []*types.Subscription
 	query := `
-		SELECT * 
+		SELECT
+			id,
+			user_id,
+			event_name,
+			event_filter,
+			last_sent_ts,
+			last_sent_epoch,
+			created_ts,
+			created_epoch,
+			event_threshold,
+			ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash 
 		FROM users_subscriptions
 		WHERE user_id = $1 AND event_name LIKE $2
 	`
 
 	if utils.GetNetwork() == "mainnet" {
 		query = `
-			SELECT * 
+			SELECT 
+				id,
+				user_id,
+				event_name,
+				event_filter,
+				last_sent_ts,
+				last_sent_epoch,
+				created_ts,
+				created_epoch,
+				event_threshold,
+				ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions
 			WHERE user_id = $1 AND (event_name LIKE $2 OR event_name LIKE 'monitoring_%')
 		`
@@ -311,7 +331,7 @@ func AddTestSubscription(userID uint64, network string, eventName types.EventNam
 // DeleteSubscription removes a subscription from the database.
 func DeleteSubscription(userID uint64, network string, eventName types.EventName, eventFilter string) error {
 	name := string(eventName)
-	if network != "" {
+	if network != "" && !types.IsUserIndexed(eventName) {
 		name = strings.ToLower(network) + ":" + string(eventName)
 	}
 
@@ -319,33 +339,34 @@ func DeleteSubscription(userID uint64, network string, eventName types.EventName
 	return err
 }
 
-func InsertMobileSubscription(userID uint64, paymentDetails types.MobileSubscription, store, receipt string, expiration int64, rejectReson string, extSubscriptionId string) error {
+func InsertMobileSubscription(tx *sql.Tx, userID uint64, paymentDetails types.MobileSubscription, store, receipt string, expiration int64, rejectReson string, extSubscriptionId string) error {
 	now := time.Now()
 	nowTs := now.Unix()
 	receiptHash := utils.HashAndEncode(receipt)
-	_, err := FrontendDB.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash, subscription_id) VALUES("+
-		"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14);",
-		userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, paymentDetails.Valid, paymentDetails.Valid, store, receipt, expiration, rejectReson, receiptHash, extSubscriptionId,
-	)
+	var err error
+	if tx == nil {
+		_, err = FrontendDB.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash, subscription_id) VALUES("+
+			"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14);",
+			userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, paymentDetails.Valid, paymentDetails.Valid, store, receipt, expiration, rejectReson, receiptHash, extSubscriptionId,
+		)
+	} else {
+		_, err = tx.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash, subscription_id) VALUES("+
+			"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14);",
+			userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, paymentDetails.Valid, paymentDetails.Valid, store, receipt, expiration, rejectReson, receiptHash, extSubscriptionId,
+		)
+	}
+
 	return err
 }
 
-func ChangeProductIDFromStripe(stripeSubscriptionID string, productID string) error {
+func ChangeProductIDFromStripe(tx *sql.Tx, stripeSubscriptionID string, productID string) error {
 	now := time.Now()
 	nowTs := now.Unix()
 
-	tx, err := FrontendDB.Begin()
+	_, err := tx.Exec("UPDATE users_app_subscriptions SET product_id = $2, updated_at = TO_TIMESTAMP($3) where subscription_id = $1 AND store = 'stripe'", stripeSubscriptionID, productID, nowTs)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec("UPDATE users_app_subscriptions SET product_id = $2, updated_at = TO_TIMESTAMP($3) where subscription_id = $1 AND store = 'stripe'", stripeSubscriptionID, productID, nowTs)
-	if err != nil {
-		return err
-	}
-
-	err = tx.Commit()
 	return err
 }
 
@@ -413,12 +434,20 @@ func GetUserSubscriptionIDByStripe(stripeSubscriptionID string) (uint64, error) 
 	return subscriptionID, err
 }
 
-func UpdateUserSubscription(id uint64, valid bool, expiration int64, rejectReason string) error {
+func UpdateUserSubscription(tx *sql.Tx, id uint64, valid bool, expiration int64, rejectReason string) error {
 	now := time.Now()
 	nowTs := now.Unix()
-	_, err := FrontendDB.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE id = $5;",
-		valid, nowTs, expiration, rejectReason, id,
-	)
+	var err error
+	if tx == nil {
+		_, err = FrontendDB.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE id = $5;",
+			valid, nowTs, expiration, rejectReason, id,
+		)
+	} else {
+		_, err = tx.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE id = $5;",
+			valid, nowTs, expiration, rejectReason, id,
+		)
+	}
+
 	return err
 }
 
@@ -824,7 +853,7 @@ func GetUserAPIKeyStatistics(apikey *string) (*types.ApiStatistics, error) {
 func GetSubsForEventFilter(eventName types.EventName) ([][]byte, map[string][]types.Subscription, error) {
 	var subs []types.Subscription
 	subQuery := `
-		SELECT id, user_id, event_filter, last_sent_epoch, created_epoch, event_threshold from users_subscriptions where event_name = $1
+		SELECT id, user_id, event_filter, last_sent_epoch, created_epoch, event_threshold, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash from users_subscriptions where event_name = $1
 	`
 
 	subMap := make(map[string][]types.Subscription, 0)

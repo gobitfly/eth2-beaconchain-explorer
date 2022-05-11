@@ -228,10 +228,12 @@ type ValidatorsPageData struct {
 	SlashingCount        uint64
 	SlashingOnlineCount  uint64
 	SlashingOfflineCount uint64
+	Slashed              uint64
 	ExitingCount         uint64
 	ExitingOnlineCount   uint64
 	ExitingOfflineCount  uint64
 	ExitedCount          uint64
+	VoluntaryExitsCount  uint64
 	UnknownCount         uint64
 	Validators           []*ValidatorsPageDataValidators
 }
@@ -1103,6 +1105,7 @@ type Price struct {
 	JPY float64   `db:"jpy"`
 	CNY float64   `db:"cny"`
 	RUB float64   `db:"rub"`
+	AUD float64   `db:"aud"`
 }
 
 type ApiStatistics struct {
@@ -1169,4 +1172,11 @@ type RocketpoolPageDataDAOMember struct {
 	LastProposalTime         time.Time `db:"last_proposal_time"`
 	RPLBondAmount            string    `db:"rpl_bond_amount"`
 	UnbondedValidatorCount   uint64    `db:"unbonded_validator_count"`
+}
+
+type Email struct {
+	Title                 string
+	Body                  template.HTML
+	SubscriptionManageURL string
+	UnSubURL              template.HTML
 }

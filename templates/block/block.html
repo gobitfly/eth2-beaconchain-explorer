@@ -144,7 +144,7 @@
                     {{if not (eq .PreviousSlot .Slot)}}
                         <a href="/block/{{.PreviousSlot}}"><i class="fa fa-chevron-left"></i></a>
                     {{end}}
-                    <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block at Slot {{.Slot}}</span>
+                    <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block at Slot {{formatAddCommas .Slot}}</span>
                     {{if gt .NextSlot 0}}
                         <a href="/block/{{.NextSlot}}"><i class="fa fa-chevron-right"></i></a>
                     {{end}}
@@ -200,11 +200,13 @@
                         {{template "block_overview" .}}
                     </div>
                 </div>
-                <div class="tab-pane fade" id="votes" role="tabpanel" aria-labelledby="votes-tab">
-                    <div class="card block-card">
-                        {{template "block_votes" .}}
+                {{if gt .VotesCount 0}}
+                    <div class="tab-pane fade" id="votes" role="tabpanel" aria-labelledby="votes-tab">
+                        <div class="card block-card">
+                            {{template "block_votes" .}}
+                        </div>
                     </div>
-                </div>
+                {{end}}
                 <div class="tab-pane fade" id="attestations" role="tabpanel" aria-labelledby="attestations-tab">
                     <div class="card block-card">
                         <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">

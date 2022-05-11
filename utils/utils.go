@@ -54,6 +54,8 @@ func getLocaliser() *i18n.I18n {
 	return localiser
 }
 
+var HashLikeRegex = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
+
 // GetTemplateFuncs will get the template functions
 func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
@@ -70,6 +72,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatEpoch":                             FormatEpoch,
 		"formatEth1Block":                         FormatEth1Block,
 		"formatEth1Address":                       FormatEth1Address,
+		"formatEth1AddressStringLowerCase":        FormatEth1AddressStringLowerCase,
 		"formatEth1TxHash":                        FormatEth1TxHash,
 		"formatGraffiti":                          FormatGraffiti,
 		"formatHash":                              FormatHash,
@@ -77,7 +80,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatBitvectorValidators":               formatBitvectorValidators,
 		"formatParticipation":                     FormatParticipation,
 		"formatIncome":                            FormatIncome,
-		"formatMoney":                             FormatMoney,
 		"formatIncomeSql":                         FormatIncomeSql,
 		"formatSqlInt64":                          FormatSqlInt64,
 		"formatValidator":                         FormatValidator,
@@ -100,7 +102,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatValidatorTags":                     FormatValidatorTags,
 		"formatValidatorTag":                      FormatValidatorTag,
 		"formatRPL":                               FormatRPL,
-		"formatFloatWithPrecision":                FormatFloatWithPrecision,
+		"formatFloat":                             FormatFloat,
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,

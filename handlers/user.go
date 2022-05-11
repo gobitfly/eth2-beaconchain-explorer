@@ -19,8 +19,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/context"
+	ctxt "context"
 
+	"github.com/gorilla/context"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
@@ -328,10 +329,10 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	}{}
 
 	err := db.FrontendDB.Select(&validatordb, `
-SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, extract( epoch from last_sent_ts)::Int as last_sent_ts, us.event_threshold
-FROM users_validators_tags uvt
-LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex') AND us.user_id = uvt.user_id
-WHERE uvt.user_id = $1;`, userId)
+	SELECT ENCODE(uvt.validator_publickey, 'hex') AS pubkey, us.event_name, extract( epoch from last_sent_ts)::Int as last_sent_ts, us.event_threshold
+		FROM users_validators_tags uvt
+		LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey, 'hex') AND us.user_id = uvt.user_id
+		WHERE uvt.user_id = $1;`, userId)
 
 	if err != nil {
 		return validatordb, err
@@ -1403,7 +1404,7 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, emailConfirmationHash, url.QueryEscape(newEmail))
-	err = mail.SendMail(newEmail, subject, msg, []types.EmailAttachment{})
+	err = mail.SendTextMail(newEmail, subject, msg, []types.EmailAttachment{})
 	if err != nil {
 		return err
 	}
@@ -1847,7 +1848,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 
 			var rocketpoolNodes []string
 			err = db.DB.Select(&rocketpoolNodes, `
-				SELECT DISTINCT(encode(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
+				SELECT DISTINCT(ENCODE(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
 			`, pq.ByteaArray(pubkeys))
 			if err != nil {
 				ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
@@ -1997,7 +1998,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 
 			var rocketpoolNodes []string
 			err = db.DB.Select(&rocketpoolNodes, `
-				SELECT DISTINCT(encode(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
+				SELECT DISTINCT(ENCODE(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
 			`, pq.ByteaArray(pubkeys))
 			if err != nil {
 				ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
@@ -2058,7 +2059,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") { // no filter = add all my watched validators
+	if filterLen == 0 && !types.IsUserIndexed(eventName) { // no filter = add all my watched validators
 
 		filter := db.WatchlistFilter{
 			UserId:         user.UserID,
@@ -2100,6 +2101,57 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	OKResponse(w, r)
+}
+
+func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	q := r.URL.Query()
+
+	ctx, done := ctxt.WithTimeout(ctxt.Background(), time.Second*30)
+	defer done()
+
+	hashes, ok := q["hash"]
+	if !ok {
+		logger.Errorf("no query params given")
+		http.Error(w, "invalid request", 400)
+		return
+	}
+
+	tx, err := db.FrontendDB.Beginx()
+	if err != nil {
+		//  return fmt.Errorf("error beginning transaction")
+		logger.Errorf("error committing transacton")
+		http.Error(w, "error processing request", 500)
+		return
+	}
+	defer tx.Rollback()
+
+	bHashes := make([][]byte, 0, len(hashes))
+	for _, hash := range hashes {
+		hash = strings.Replace(hash, "0x", "", -1)
+		if !utils.HashLikeRegex.MatchString(hash) {
+			logger.Errorf("error validating unsubscribe digest hashes")
+			http.Error(w, "error processing request", 500)
+		}
+		b, _ := hex.DecodeString(hash)
+		bHashes = append(bHashes, b)
+	}
+
+	_, err = tx.ExecContext(ctx, `DELETE from users_subscriptions where unsubscribe_hash = ANY($1)`, pq.ByteaArray(bHashes))
+	if err != nil {
+		logger.Errorf("error deleting from users_subscriptions %v", err)
+		http.Error(w, "error processing request", 500)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		logger.Errorf("error committing transacton")
+		http.Error(w, "error processing request", 500)
+		return
+	}
+
+	fmt.Fprintf(w, "successfully unsubscribed from %v events", len(hashes))
 }
 
 type UsersNotificationsRequest struct {

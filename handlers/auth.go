@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"strings"
 	"time"
 
 	"html/template"
@@ -62,6 +63,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := r.FormValue("email")
+	email = strings.ToLower(email)
 	pwd := r.FormValue("password")
 
 	if !utils.IsValidEmail(email) {
@@ -82,7 +84,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback()
 
 	var existingEmails int
-	err = tx.Get(&existingEmails, "SELECT COUNT(*) FROM users WHERE email = $1", email)
+	err = tx.Get(&existingEmails, "SELECT COUNT(*) FROM users WHERE LOWER(email) = $1", email)
 	if existingEmails > 0 {
 		session.AddFlash("Error: Email already exists!")
 		session.Save(r, w)
@@ -603,7 +605,7 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, emailConfirmationHash)
-	err = mail.SendMail(email, subject, msg, []types.EmailAttachment{})
+	err = mail.SendTextMail(email, subject, msg, []types.EmailAttachment{})
 	if err != nil {
 		return err
 	}
@@ -654,7 +656,7 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, resetHash)
-	err = mail.SendMail(email, subject, msg, []types.EmailAttachment{})
+	err = mail.SendTextMail(email, subject, msg, []types.EmailAttachment{})
 	if err != nil {
 		return err
 	}

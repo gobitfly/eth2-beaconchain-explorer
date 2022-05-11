@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocks.html"))
@@ -24,7 +26,7 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -37,23 +39,24 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 
 	search := q.Get("search[value]")
 	search = strings.Replace(search, "0x", "", -1)
+	searchForEmpty := (len(search) == 0 && q.Get("columns[11][search][value]") == "#showonlyemptygraffiti")
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	if length > 100 {
@@ -64,14 +67,14 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 	var filteredCount uint64
 	var blocks []*types.BlocksPageDataBlocks
 
-	err = db.DB.Get(&totalCount, "SELECT COALESCE(MAX(slot) + 1,0) FROM blocks")
+	err = db.DB.Get(&totalCount, "SELECT COALESCE(MAX(slot),0) FROM blocks")
 	if err != nil {
 		logger.Errorf("error retrieving max slot number: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
-	if search == "" {
+	if search == "" && !searchForEmpty {
 		filteredCount = totalCount
 		startSlot := totalCount - start
 		endSlot := totalCount - start - length + 1
@@ -102,11 +105,11 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 			FROM blocks 
 			LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			WHERE blocks.slot >= $1 AND blocks.slot <= $2 
+			WHERE blocks.slot >= $1 AND blocks.slot <= $2
 			ORDER BY blocks.slot DESC`, endSlot, startSlot)
 		if err != nil {
 			logger.Errorf("error retrieving block data: %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	} else {
@@ -134,35 +137,40 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 
 		searchLimit := 1000
 
-		searchBlocksQrys := []string{}
-		searchProposersQrys := []string{}
+		searchBlocksQry := ""
+		if searchForEmpty {
+			searchBlocksQry = fmt.Sprintf(`(select slot from blocks where blocks.graffiti_text is NULL OR blocks.graffiti_text = '' order by slot desc limit %d)`, searchLimit)
+		} else {
+			searchBlocksQrys := []string{}
+			searchProposersQrys := []string{}
 
-		args = append(args, "%"+search+"%")
-		searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`(select slot from blocks where graffiti_text ilike $%d order by slot desc limit %d)`, len(args), searchLimit))
-		searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select publickey as pubkey from validator_names where name ilike $%d limit %d)`, len(args), searchLimit))
+			args = append(args, "%"+search+"%")
+			searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`(select slot from blocks where graffiti_text ilike $%d order by slot desc limit %d)`, len(args), searchLimit))
+			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select publickey as pubkey from validator_names where name ilike $%d limit %d)`, len(args), searchLimit))
 
-		searchNumber, err := strconv.ParseUint(search, 10, 64)
-		if err == nil {
-			// if the search-string is a number we can look for exact matchings
-			args = append(args, searchNumber)
-			searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`(select slot from blocks where slot = $%d order by slot desc limit %d)`, len(args), searchLimit))
-			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select pubkey from validators where validatorindex = $%d limit %d)`, len(args), searchLimit))
+			searchNumber, err := strconv.ParseUint(search, 10, 64)
+			if err == nil {
+				// if the search-string is a number we can look for exact matchings
+				args = append(args, searchNumber)
+				searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`(select slot from blocks where slot = $%d order by slot desc limit %d)`, len(args), searchLimit))
+				searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select pubkey from validators where validatorindex = $%d limit %d)`, len(args), searchLimit))
+			}
+			if searchPubkeyExactRE.MatchString(search) {
+				// if the search-string is a valid hex-string but not long enough for a full publickey we look for prefix
+				pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
+				args = append(args, pubkey)
+				searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select pubkey from validators where pubkeyhex = $%d limit %d)`, len(args), searchLimit))
+			} else if len(search) > 2 && searchPubkeyLikeRE.MatchString(search) {
+				// if the search-string looks like a publickey we look for exact match
+				pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
+				args = append(args, pubkey+"%")
+				searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select pubkey from validators where pubkeyhex like $%d limit %d)`, len(args), searchLimit))
+			}
+
+			// join proposer-queries and append to block-queries looking for proposers
+			searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`select slot from blocks where proposer in (select v.validatorindex from (%v) a left join validators v on v.pubkey = a.pubkey) order by slot desc`, strings.Join(searchProposersQrys, " union ")))
+			searchBlocksQry = strings.Join(searchBlocksQrys, " union ")
 		}
-		if searchPubkeyExactRE.MatchString(search) {
-			// if the search-string is a valid hex-string but not long enough for a full publickey we look for prefix
-			pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
-			args = append(args, pubkey)
-			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select pubkey from validators where pubkeyhex = $%d limit %d)`, len(args), searchLimit))
-		} else if len(search) > 2 && searchPubkeyLikeRE.MatchString(search) {
-			// if the search-string looks like a publickey we look for exact match
-			pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
-			args = append(args, pubkey+"%")
-			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select pubkey from validators where pubkeyhex like $%d limit %d)`, len(args), searchLimit))
-		}
-
-		// join proposer-queries and append to block-queries looking for proposers
-		searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`select slot from blocks where proposer in (select v.validatorindex from (%v) a left join validators v on v.pubkey = a.pubkey) order by slot desc`, strings.Join(searchProposersQrys, " union ")))
-		searchBlocksQry := strings.Join(searchBlocksQrys, " union ")
 
 		args = append(args, length)
 		args = append(args, start)
@@ -193,10 +201,12 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN (select count(*) from matched_slots) cnt(total_count) ON true
 			ORDER BY slot DESC LIMIT $%v OFFSET $%v`, searchBlocksQry, len(args)-1, len(args))
 
-		err = db.DB.Select(&blocks, qry, args...)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		err = db.DB.SelectContext(ctx, &blocks, qry, args...)
 		if err != nil {
 			logger.Errorf("error retrieving block data (with search): %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 
@@ -251,7 +261,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
