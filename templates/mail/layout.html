@@ -1,0 +1,78 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <style lang="scss">
+        @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&family=Inter&display=swap');
+
+        @font-face {
+            font-family: 'Roboto';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: local('Roboto'), local('Roboto-Regular'),
+                url(https://fonts.gstatic.com/s/roboto/v20/KFOmCnqEu92Fr1Mu4mxK.woff2) format('woff2');
+            unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC,
+                U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+
+        .brand-link {
+            color: transparent;
+        }
+
+        table.val, th.val, td.val{
+            border:1px solid black;
+        }
+        .val tr:nth-child(even) {background-color: #f2f2f2;}
+
+    </style>
+</head>
+
+<body style="font-family: 'Roboto', sans-serif; margin: 0;font-size: 1rem;font-weight: 400;line-height: 1.5;color: #343A40;text-align: left;" ontouchstart="">
+    <div style="height: 45px; width: 100%;background-color: #2F2E42;position: relative;color: #413938">
+        <div class="nav-content">
+            <div class="burger brand">
+                <table border="0" cellpadding="0" cellspacing="0">
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div style="padding-left: 10px; padding-right: 10px;height:45px;width:100%;background-color:#2F2E42;">
+                                    <img src="C:\Arbeit\Design\Beaconchain\Logos\20220115_Logo_Redesign\sig_white.png" alt="beaconchain icon">
+                                </div>
+                            </td>
+                        </tr>
+                </table>
+            <div >
+        <div  style="padding-left: 10px; padding-right: 10px;">
+            <main style="padding-left: 10px";>
+                <div  style="padding-top: 20px; padding-bottom:10px" >
+                    <h2 style="margin-top: 0;margin-bottom: 0.5rem;font-family: 'Barlow', sans-serif;">{{ .Mail.Title }}
+                </h2>
+            </div>
+        <div style="padding-bottom: 20px;">
+            <p>{{ .Mail.Body }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div style="padding-top: 5px;">
+        <div style="padding-left: 10px; padding-right: 10px;">
+        </div>
+            <td>
+                <div style="height:45px;background-color:#2F2E42; text-align: center; line-height: 20px; font-size: 13px; ">
+                    <span style="font-family: Barlow; color: white;"> Bitfly GmbH, FN 472953 w, CR-Court: Commercial Court Vienna <br>
+                        <a href="https://{{ .Mail.UnSubURL }}" style="color:white" onMouseOver="this.style.color='#F5B498'" onMouseOut="this.style.color='#FFFFFF'">Unsubscribe</a> 
+                            <span>to stop receiving notifications of this kind. </span>
+                            {{ if .Mail.SubscriptionManageURL }} Manage your subscriptions <a href="{{.Mail.SubscriptionManageURL}}" style="color:white" onMouseOver="this.style.color='#F5B498'" onMouseOut="this.style.color='#FFFFFF'">here</a> {{end}}
+                        </span>
+                    </div>
+                </td>
+            </tbody>
+        </main>
+    </body>
+</html>
+
+{{end}}
