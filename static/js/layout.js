@@ -52,56 +52,67 @@ function setValidatorEffectiveness(elem, eff){
 }
 
 function setUtc() {
-  if ($('#optionLocal').is(':checked')) {
-      var text = $("#timestamp").text()
-      tsArr = text.split(" ")
-      var local = luxon.DateTime.fromFormat(tsArr[0] + " " + tsArr[1], 'MMM-dd-yyyy hh:mm:ss')
-      var utc = local.toUTC()
-      var utcHour = utc['c']['hour']
-      if (utcHour < 12) {
-          $("#timestamp").text(utc.toFormat("MMM-dd-yyyy hh:mm:ss")+" AM")
-      } else {
-          $("#timestamp").text(utc.toFormat("MMM-dd-yyyy hh:mm:ss")+" PM")
-      }
+  if ($('#optionLocal').is(':checked') || $('#optionTs').is(':checked')) {
+    var unixTs = $("#unixTs").text()
+    var ts = luxon.DateTime.fromMillis(unixTs * 1000)
+    var utcDiff = ts['o'] / 60
+    var hour = ts['c']['hour'] - utcDiff
+    var minute = ts['c']['minute']
+    var second = ts['c']['second']
+    var periode = ""
+    if (hour <= 12) {
+      periode = " AM"
+    } else {
+      hour -= 12
+      periode = " PM"
+    }
+    if (hour.toString().length == 1) {
+      hour = "0" + hour
+    }
+    if (minute.toString().length == 1) {
+      minute = "0" + minute
+    }
+    if (second.toString().length == 1) {
+      second = "0" + second
+    }
+    $("#timestamp").text(ts.toFormat("MMM-dd-yyyy")+" "+hour+":"+minute+":"+second+periode)
   }
 }
+
 function setLocal() {
-  if ($('#optionUtc').is(':checked')) {
-      var text = $("#timestamp").text()
-      tsArr = text.split(" ")
-      var utc = luxon.DateTime.fromFormat(tsArr[0] + " " + tsArr[1], 'MMM-dd-yyyy hh:mm:ss')
-      var local = utc.toLocal()
-      var utcDiff = local['o'] / 60
-      console.log(utcDiff)
-      var localHour = local['c']['hour'] + utcDiff
-      var localMinute = local['c']['minute']
-      var localSecond = local['c']['second']
-      var diff = ""
-      if (diff < 0) {
-          diff = " UTC - "+utcDiff*(-1)
-      } else {
-          diff = " UTC + "+utcDiff
-      }
-      if (tsArr[2] == "PM" && localHour < 12) {
-          localHour += 12
-      }
-      if (localHour.toString().length == 1) {
-          localHour = "0" + localHour
-      }
-      if (localMinute.toString().length == 1) {
-          localMinute = "0" + localMinute
-      }
-      if (localSecond.toString().length == 1) {
-          localSecond = "0" + localSecond
-      }
-      $("#timestamp").text(local.toFormat("MMM-dd-yyyy")+" "+localHour+":"+localMinute+":"+localSecond+diff+"h")
+  if ($('#optionUtc').is(':checked') || $('#optionTs').is(':checked')) {
+    var unixTs = $("#unixTs").text()
+    var ts = luxon.DateTime.fromMillis(unixTs * 1000)
+    var hour = ts['c']['hour']
+    var minute = ts['c']['minute']
+    var second = ts['c']['second']
+    if (hour.toString().length == 1) {
+      hour = "0" + hour
+    }
+    if (minute.toString().length == 1) {
+      minute = "0" + minute
+    }
+    if (second.toString().length == 1) {
+      second = "0" + second
+    }
+    $("#timestamp").text(ts.toFormat("MMM-dd-yyyy")+" "+hour+":"+minute+":"+second+" UTC + "+ts['o']/60+"h")
   }
+}
+
+function setTs() {
+  var unixTs = $("#unixTs").text()
+  var utc = luxon.DateTime.fromMillis(unixTs * 1000)
+  $("#timestamp").text(utc['ts'] / 1000)
 }
 
 function copyTs() {
   var text = $("#timestamp").text()
   tsArr = text.split(" ")
-  navigator.clipboard.writeText(tsArr[0] + " " + tsArr[1])
+  if (tsArr.length > 1) {
+    navigator.clipboard.writeText(tsArr[0] + " " + tsArr[1])
+  } else {
+    navigator.clipboard.writeText(tsArr[0])
+  }
 }
 
 // typeahead
