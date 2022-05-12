@@ -303,7 +303,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 
 		if dataQuery.Search != "" {
 			args = append(args, "%"+strings.ToLower(dataQuery.Search)+"%")
-			countWhere += fmt.Sprintf(`LOWER(name) LIKE $%d`, len(args))
+			countWhere += fmt.Sprintf(`LOWER(validator_names.name) LIKE $%d`, len(args))
 			searchQry += `SELECT publickey AS pubkey FROM validator_names WHERE ` + countWhere
 		} else {
 			if searchQry != "" {
