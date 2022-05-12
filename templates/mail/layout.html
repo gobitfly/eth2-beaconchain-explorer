@@ -45,33 +45,25 @@
                             </td>
                         </tr>
                 </table>
-            <div >
-        <div  style="padding-left: 10px; padding-right: 10px;">
-            <main style="padding-left: 10px";>
-                <div  style="padding-top: 20px; padding-bottom:10px" >
-                    <h2 style="margin-top: 0;margin-bottom: 0.5rem;font-family: 'Barlow', sans-serif;">{{ .Mail.Title }}
-                </h2>
-            </div>
-        <div style="padding-bottom: 20px;">
-            <p>{{ .Mail.Body }}</p>
-            </div>
-        </div>
-    </div>
-
-    <div style="padding-top: 5px;">
-        <div style="padding-left: 10px; padding-right: 10px;">
-        </div>
-            <td>
-                <div style="height:45px;background-color:#2F2E42; text-align: center; line-height: 20px; font-size: 13px; ">
-                    <span style="font-family: Barlow; color: white;"> Bitfly GmbH, FN 472953 w, CR-Court: Commercial Court Vienna <br>
-                        <a href="https://{{ .Mail.UnSubURL }}" style="color:white" onMouseOver="this.style.color='#F5B498'" onMouseOut="this.style.color='#FFFFFF'">Unsubscribe</a> 
-                            <span>to stop receiving notifications of this kind. </span>
-                            {{ if .Mail.SubscriptionManageURL }} Manage your subscriptions <a href="{{.Mail.SubscriptionManageURL}}" style="color:white" onMouseOver="this.style.color='#F5B498'" onMouseOut="this.style.color='#FFFFFF'">here</a> {{end}}
-                        </span>
+                    <main style="padding-left: 20px; padding-top: 20px; padding-bottom:10px";>
+                            <h2 style="margin-top: 0;margin-bottom: 0.5rem;font-family: 'Barlow', sans-serif;">{{ .Mail.Title }} </h2>
+                            <p>{{ .Mail.Body }}</p>
+                        </div>
                     </div>
-                </td>
+                </main>
+                <div>
+                    <td>
+                        <div style="height:41px; background-color:#2F2E42; text-align: start; line-height: 16px; font-size: 13px; padding-top:4px; padding-left:20px;">
+                            <span style="font-family: Barlow; color: white;"> Bitfly GmbH, FN 472953 w, CR-Court: Commercial Court Vienna <br>
+                                <a href="https://{{ .Mail.UnSubURL }}" style="color:white" onMouseOver="this.style.color='#F5B498'" onMouseOut="this.style.color='#FFFFFF'">Unsubscribe</a> 
+                                    <span>to stop receiving notifications of this kind. </span>
+                                    {{ if .Mail.SubscriptionManageURL }} Manage your subscriptions <a href="{{.Mail.SubscriptionManageURL}}" style="color:white" onMouseOver="this.style.color='#F5B498'" onMouseOut="this.style.color='#FFFFFF'">here</a> {{end}}
+                            </span>
+                        </div>
+                    </td>
+                </div>
             </tbody>
-        </main>
+            
     </body>
 </html>
 
