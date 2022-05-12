@@ -67,7 +67,8 @@ func notificationsSender() {
 	// }
 	// queueNotifications(notificationsByUserID, db.FrontendDB)
 
-	return
+	// return
+	go notificationSender()
 	for {
 		// check if the explorer is not too far behind, if we set this value to close (10m) it could potentially never send any notifications
 		// if IsSyncing() {
@@ -81,20 +82,23 @@ func notificationsSender() {
 
 		// Network DB Notifications (network related)
 		notifications := collectNotifications()
-		// for user, notification := range notifications {
-		// 	log.Printf("Sending Notification to User: %v", user)
-		// 	for event, n := range notification {
-		// 		log.Printf("Notification Event: %v, Notifications: %+v", event)
-		// 		for _, ev := range n {
-		// 			log.Printf("event Info: %v", ev.GetInfo(true))
-		// 		}
-		// 	}
-		// }
-
 		queueNotifications(notifications, db.FrontendDB)
 
 		// Network DB Notifications (user related)
+		if utils.Config.Notifications.UserDBNotifications {
+			userNotifications := collectUserDbNotifications()
+			queueNotifications(userNotifications, db.FrontendDB)
+		}
 
+		logger.WithField("notifications", len(notifications)).WithField("duration", time.Since(start)).Info("notifications completed")
+		metrics.TaskDuration.WithLabelValues("service_notifications").Observe(time.Since(start).Seconds())
+		time.Sleep(time.Second * 120)
+	}
+}
+
+func notificationSender() {
+	for {
+		start := time.Now()
 		err := dispatchNotifications(db.FrontendDB)
 		if err != nil {
 			logger.WithError(err).Error("error dispatchign notifications")
@@ -104,15 +108,9 @@ func notificationsSender() {
 		if err != nil {
 			logger.WithError(err).Errorf("error garbage collecting the notification queue")
 		}
-
-		if utils.Config.Notifications.UserDBNotifications {
-			// userNotifications := collectUserDbNotifications()
-			// queueNotifications(userNotifications, db.FrontendDB)
-		}
-
-		logger.WithField("notifications", len(notifications)).WithField("duration", time.Since(start)).Info("notifications completed")
-		metrics.TaskDuration.WithLabelValues("service_notifications").Observe(time.Since(start).Seconds())
-		time.Sleep(time.Second * 120)
+		logger.WithField("duration", time.Since(start)).Info("notifications dispatched and garbage collected")
+		metrics.TaskDuration.WithLabelValues("service_notifications_sender").Observe(time.Since(start).Seconds())
+		time.Sleep(time.Second * 10)
 	}
 }
 
@@ -257,12 +255,12 @@ func collectUserDbNotifications() map[uint64]map[types.EventName][]types.Notific
 func queueNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
 	subByEpoch := map[uint64][]uint64{}
 
-	err := queueEmailNotifications(notificationsByUserID, useDB)
-	if err != nil {
-		logger.WithError(err).Error("error queuing email notifications")
-	}
+	// err := queueEmailNotifications(notificationsByUserID, useDB)
+	// if err != nil {
+	// 	logger.WithError(err).Error("error queuing email notifications")
+	// }
 
-	err = queuePushNotification(notificationsByUserID, useDB)
+	err := queuePushNotification(notificationsByUserID, useDB)
 	if err != nil {
 		logger.WithError(err).Error("error queuing push notifications")
 	}
@@ -441,6 +439,9 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 	if err != nil {
 		return fmt.Errorf("error querying notification queue, err: %w", err)
 	}
+
+	logger.Infof("processing %v push notifications", len(notificationQueueItem))
+
 	for _, n := range notificationQueueItem {
 		tx, err := useDB.Beginx()
 		if err != nil {
@@ -623,6 +624,8 @@ func sendEmailNotifications(useDb *sqlx.DB) error {
 		return fmt.Errorf("error querying notification queue, err: %w", err)
 	}
 
+	logger.Infof("processing %v email notifications", len(notificationQueueItem))
+
 	for _, n := range notificationQueueItem {
 		tx, err := useDb.Beginx()
 		if err != nil {
@@ -664,7 +667,6 @@ func sendEmailNotifications(useDb *sqlx.DB) error {
 }
 
 func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) error {
-
 	for userID, userNotifications := range notificationsByUserID {
 		var webhooks []types.UserWebhook
 		err := useDB.Select(&webhooks, `
@@ -699,13 +701,13 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 				if eventSubscribed {
 					for _, n := range notifications {
 						var content interface{}
-						channel := "webhook"
-						if w.Destination.Valid && w.Destination.String == "discord" {
+						channel := w.Destination.String
+						if w.Destination.Valid && w.Destination.String == "webhook_discord" {
 							embeds := []types.DiscordEmbed{
 								{
 									Type:        "rich",
 									Color:       "16745472",
-									Description: n.GetInfo(true),
+									Description: n.GetInfo(false),
 									Title:       n.GetTitle(),
 									Fields: []types.DiscordEmbedField{
 										{
@@ -727,16 +729,12 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 							}
 
 							content = types.TransitDiscordContent{
-								WebhookID:      w.ID,
-								WebhookURL:     w.Url,
+								Webhook:        w,
 								DiscordRequest: req,
 							}
-							channel = "discord"
-
 						} else {
 							content = types.TransitWebhookContent{
-								WebhookID:  w.ID,
-								WebhookURL: w.Url,
+								Webhook: w,
 								Event: types.WebhookEvent{
 									Name:        string(n.GetEventName()),
 									Title:       n.GetTitle(),
@@ -746,7 +744,7 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 								},
 							}
 						}
-						_, err = useDB.Exec(`INSERT INTO notifications_queue (channel, payload) VALUES ($1, $2);`, channel, content)
+						_, err = useDB.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES (now(), $1, $2);`, channel, content)
 						if err != nil {
 							logger.WithError(err).Errorf("error inserting into webhooks_queue")
 							continue
@@ -775,7 +773,22 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 	}
 	client := &http.Client{Timeout: time.Second * 30}
 
+	logger.Infof("processing %v webhook notifications", len(notificationQueueItem))
+
+	now := time.Now()
 	for _, n := range notificationQueueItem {
+		// rate limit for 24 hours after 100 retries
+		if n.Content.Webhook.Retries > 100 {
+			// reset retries after 24 hours
+			if n.Content.Webhook.LastRetry.Add(time.Hour * 24).Before(now) {
+				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
+				if err != nil {
+					logger.WithError(err).Errorf("error updating users_webhooks table")
+					continue
+				}
+			}
+			continue
+		}
 
 		reqBody := new(bytes.Buffer)
 
@@ -784,25 +797,30 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 			logger.WithError(err).Errorf("error marschalling webhook event")
 		}
 
-		resp, err := client.Post(n.Content.WebhookURL, "application/json", reqBody)
+		resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
 		if err != nil {
 			logger.WithError(err).Errorf("error sending request")
 		}
 
-		if resp.StatusCode == http.StatusOK {
+		if resp.StatusCode < 400 {
 			_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
 			if err != nil {
 				logger.WithError(err).Errorf("error updating notification_queue table")
 				continue
 			}
-		}
 
-		// if resp.StatusCode != http.StatusOK {
-		// 	_, err := useDB.Exec(`UPDATE notification_queue SET retries = retries + 1;`)
-		// 	if err != nil {
-		// 		logger.WithError(err).Errorf("error updating notification_queue table")
-		// 	}
-		// }
+			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
+			if err != nil {
+				logger.WithError(err).Errorf("error updating users_webhooks table")
+				continue
+			}
+		} else {
+			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
+			if err != nil {
+				logger.WithError(err).Errorf("error updating users_webhooks table")
+				continue
+			}
+		}
 	}
 	return nil
 }
@@ -823,34 +841,51 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 	}
 	client := &http.Client{Timeout: time.Second * 30}
 
+	logger.Infof("processing %v discrod webhook notifications", len(notificationQueueItem))
+	now := time.Now()
 	for _, n := range notificationQueueItem {
 
-		reqBody := new(bytes.Buffer)
+		// rate limit for 24 hours after 100 retries
+		if n.Content.Webhook.Retries > 100 {
+			// reset retries after 24 hours
+			if n.Content.Webhook.LastRetry.Add(time.Hour * 24).Before(now) {
+				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
+				if err != nil {
+					logger.WithError(err).Errorf("error updating users_webhooks table")
+					continue
+				}
+			}
+			continue
+		}
 
+		reqBody := new(bytes.Buffer)
 		err := json.NewEncoder(reqBody).Encode(n.Content.DiscordRequest)
 		if err != nil {
 			logger.WithError(err).Errorf("error marschalling webhook event")
 		}
-
-		resp, err := client.Post(n.Content.WebhookURL, "application/json", reqBody)
+		resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
 		if err != nil {
 			logger.WithError(err).Errorf("error sending request")
 		}
 
-		if resp.StatusCode == http.StatusOK {
+		if resp.StatusCode < 400 {
 			_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
 			if err != nil {
 				logger.WithError(err).Errorf("error updating notification_queue table")
 				continue
 			}
+			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
+			if err != nil {
+				logger.WithError(err).Errorf("error updating users_webhooks table")
+				continue
+			}
+		} else {
+			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
+			if err != nil {
+				logger.WithError(err).Errorf("error updating users_webhooks table")
+				continue
+			}
 		}
-
-		// if resp.StatusCode != http.StatusOK {
-		// 	_, err := useDB.Exec(`UPDATE notification_queue SET retries = retries + 1;`)
-		// 	if err != nil {
-		// 		logger.WithError(err).Errorf("error updating notification_queue table")
-		// 	}
-		// }
 	}
 	return nil
 }

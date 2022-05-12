@@ -271,9 +271,8 @@ type TransitWebhook struct {
 }
 
 type TransitWebhookContent struct {
-	WebhookID  uint64       `json:"webhookID"`
-	WebhookURL string       `json:"webhookURL"`
-	Event      WebhookEvent `json:"event"`
+	Webhook UserWebhook
+	Event   WebhookEvent `json:"event"`
 }
 
 type WebhookEvent struct {
@@ -307,8 +306,7 @@ type TransitDiscord struct {
 }
 
 type TransitDiscordContent struct {
-	WebhookID      uint64     `json:"webhookID"`
-	WebhookURL     string     `json:"webhookURL"`
+	Webhook        UserWebhook
 	DiscordRequest DiscordReq `json:"discordRequest"`
 }
 
@@ -364,13 +362,13 @@ type Email struct {
 }
 
 type UserWebhook struct {
-	ID          uint64         `db:"id"`
-	UserID      uint64         `db:"user_id"`
-	Url         string         `db:"url"`
-	Retries     uint64         `db:"retries"`
-	LastRetry   time.Time      `db:"last_retry"`
-	Destination sql.NullString `db:"destination"`
-	EventNames  pq.StringArray `db:"event_names"`
+	ID          uint64         `db:"id" json:"id"`
+	UserID      uint64         `db:"user_id" json:"-"`
+	Url         string         `db:"url" json:"url"`
+	Retries     uint64         `db:"retries" json:"retries"`
+	LastRetry   time.Time      `db:"last_retry" json:"lastRetry"`
+	Destination sql.NullString `db:"destination" json:"destination"`
+	EventNames  pq.StringArray `db:"event_names" json:"-"`
 }
 
 type UserWebhookSubscriptions struct {

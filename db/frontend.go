@@ -266,8 +266,8 @@ func AddSubscription(userID uint64, network string, eventName types.EventName, e
 	if network != "" {
 		name = strings.ToLower(network) + ":" + string(eventName)
 	}
-
-	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold, channels) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6, $7) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, nowTs, nowEpoch, eventThreshold, []string{"email", "push", "webhook", "webhook_discord"})
+	channels := pq.StringArray{"email", "push", "webhook", "webhook_discord"}
+	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold, channels) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6, $7) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, nowTs, nowEpoch, eventThreshold, channels)
 	return err
 }
 

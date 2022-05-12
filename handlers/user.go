@@ -2403,6 +2403,8 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 
 	url := r.FormValue("url")
 
+	destination := "webhook"
+
 	validatorAttestationMissed := "on" == r.FormValue(string(types.ValidatorMissedAttestationEventName))
 	validatorProposalMissed := "on" == r.FormValue(string(types.ValidatorMissedProposalEventName))
 	validatorProposalSubmitted := "on" == r.FormValue(string(types.ValidatorExecutedProposalEventName))
@@ -2410,6 +2412,12 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	monitoringMachineOffline := "on" == r.FormValue(string(types.MonitoringMachineOfflineEventName))
 	monitoringHddAlmostfull := "on" == r.FormValue(string(types.MonitoringMachineDiskAlmostFullEventName))
 	monitoringCpuLoad := "on" == r.FormValue(string(types.MonitoringMachineCpuLoadEventName))
+	discord := "on" == r.FormValue("discord")
+
+	if discord {
+		destination = "webhook_discord"
+	}
+
 	all := "on" == r.FormValue("all")
 
 	events := make(map[string]bool, 0)
@@ -2438,7 +2446,7 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 
 	// logger.Infof("inserting events: %v", eventNames)
 
-	_, err = tx.Exec(`INSERT INTO users_webhooks (user_id, url, event_names) VALUES ($1, $2, $3)`, user.UserID, url, pq.StringArray(eventNames))
+	_, err = tx.Exec(`INSERT INTO users_webhooks (user_id, url, event_names, destination) VALUES ($1, $2, $3, $4)`, user.UserID, url, pq.StringArray(eventNames), destination)
 	if err != nil {
 		logger.WithError(err).Errorf("error inserting a new webhook for user")
 		http.Error(w, "Internal server error", 503)
