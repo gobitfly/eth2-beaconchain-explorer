@@ -2324,23 +2324,82 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 
 	pageData.CsrfField = csrf.TemplateField(r)
 
+	var webhookCount uint64
+	err := db.FrontendDB.GetContext(ctx, &webhookCount, `SELECT count(*) from users_webhooks where user_id = $1`, user.UserID)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting webhook count")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	pageData.WebhookCount = webhookCount
+
+	allowed := uint64(1)
+
+	var activeAPP uint64
+	err = db.FrontendDB.GetContext(ctx, &activeAPP, `SELECT count(*) from users_app_subscriptions where active = 't' and user_id = $1;`, user.UserID)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting app subscription count")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if activeAPP > 0 {
+		allowed = 2
+	}
+
+	var activeAPI uint64
+	err = db.FrontendDB.GetContext(ctx, &activeAPI, `SELECT count(*) from users_stripe_subscriptions us join users u on u.stripe_customer_id = us.customer_id where active = 't' and u.id = $1;`, user.UserID)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting api subscription count")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if activeAPI > 0 {
+		allowed = 5
+	}
+
+	pageData.Allowed = allowed
+
 	webhooks := []types.UserWebhook{}
-	err := db.FrontendDB.SelectContext(ctx, &webhooks, `
+	err = db.FrontendDB.SelectContext(ctx, &webhooks, `
 		SELECT 
 			id,
 			url,
 			retries,
+			last_sent,
 			event_names,
 			destination
 		FROM users_webhooks
-		WHERE user_id = $1
+		WHERE user_id = $1;
 	`, user.UserID)
 	if err != nil {
 		logger.Errorf("error querying for webhooks for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+
+	webhookRows := make([]types.UserWebhookRow, 0)
+
+	for _, wh := range webhooks {
+		url, _ := r.URL.Parse(wh.Url)
+		// events := template.HTML{}
+
+		// for _, ev := range wh.EventNames {
+
+		// }
+
+		webhookRows = append(webhookRows, types.UserWebhookRow{
+			ID:       wh.ID,
+			Retries:  template.HTML(fmt.Sprintf("%d", wh.Retries)),
+			Url:      template.HTML(fmt.Sprintf(`<span>%v</span><span style="margin-left: .5rem;">%v</span>`, url.Hostname(), utils.CopyButton(wh.Url))),
+			LastSent: utils.FormatTimestampTs(wh.LastSent),
+		})
+	}
+
 	pageData.Webhooks = webhooks
+	pageData.WebhookRows = webhookRows
 
 	// logger.Infof("events: %+v", webhooks)
 
@@ -2442,9 +2501,51 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	defer done()
 
 	tx, err := db.FrontendDB.BeginTxx(ctx, &sql.TxOptions{})
+	if err != nil {
+		logger.WithError(err).Errorf("error beginning transaction")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 	defer tx.Rollback()
 
-	// logger.Infof("inserting events: %v", eventNames)
+	var webhookCount uint64
+	err = tx.Get(&webhookCount, `SELECT count(*) from users_webhooks where user_id = $1`, user.UserID)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting webhook count")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	allowed := uint64(1)
+
+	var activeAPP uint64
+	err = tx.Get(&activeAPP, `SELECT count(*) from users_app_subscriptions where active = 't' and user_id = $1;`, user.UserID)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting app subscription count")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if activeAPP > 0 {
+		allowed = 2
+	}
+
+	var activeAPI uint64
+	err = db.FrontendDB.GetContext(ctx, &activeAPI, `SELECT count(*) from users_stripe_subscriptions us join users u on u.stripe_customer_id = us.customer_id where active = 't' and u.id = $1;`, user.UserID)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting api subscription count")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if activeAPI > 0 {
+		allowed = 5
+	}
+
+	if webhookCount >= allowed {
+		http.Error(w, "Too man webhooks exist already", 400)
+		return
+	}
 
 	_, err = tx.Exec(`INSERT INTO users_webhooks (user_id, url, event_names, destination) VALUES ($1, $2, $3, $4)`, user.UserID, url, pq.StringArray(eventNames), destination)
 	if err != nil {

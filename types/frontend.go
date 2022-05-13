@@ -366,7 +366,7 @@ type UserWebhook struct {
 	UserID      uint64         `db:"user_id" json:"-"`
 	Url         string         `db:"url" json:"url"`
 	Retries     uint64         `db:"retries" json:"retries"`
-	LastRetry   time.Time      `db:"last_retry" json:"lastRetry"`
+	LastSent    time.Time      `db:"last_sent" json:"lastRetry"`
 	Destination sql.NullString `db:"destination" json:"destination"`
 	EventNames  pq.StringArray `db:"event_names" json:"-"`
 }

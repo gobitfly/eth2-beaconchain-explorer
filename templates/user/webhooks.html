@@ -2,6 +2,16 @@
 
 {{end}}
 {{ define "css"}}
+<style>
+    .webhook-table .i-custom:hover {
+        border-radius: 50%;
+        box-shadow: 0 0 1.5px var(--dark);
+    }
+
+    .webhook-table td {
+        vertical-align: middle;
+    }
+</style>
 {{end}}
 {{ define "content"}}
     {{with .Data}}
@@ -19,21 +29,29 @@
                 <div class="card-body px-0 py-0">
                     {{ if len .Webhooks}}
                     <div class="table-responsive px-0 py-0">
-                        <table class="table" id="blocks">
+                        <table class="table webhook-table" id="blocks">
                             <thead>
                             <tr>
                                <th>URL</th>
-                               <th>Events</th>
+                               <th>Lased Sent</th>
                                <th>Retries</th>
+                               <th style="width: 2rem;"></th>
+                               <th style="width: 2rem;"></th>
                                <!-- <th>Destination</th> -->
                             </tr>
                             </thead>
                             <tbody>
-                                {{range $i, $row := .Webhooks}}
+                                {{range $i, $row := .WebhookRows}}
                                     <tr>
                                         <td>{{$row.Url}}</td>
-                                        <td>{{$row.EventNames}}</td>
+                                        <td>{{$row.LastSent}}</td>
                                         <td>{{$row.Retries}}</td>
+                                        <td style="text-align: center;">
+                                            <i class="fas fa-pen fa-xs text-muted i-custom mx-2" id="edit-webhook-btn" title="Edit webhook" style="padding: .5rem; cursor: pointer;" data-toggle="modal" data-target="#edit-webhook-modal"></i>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <i class="fas fa-times fa-lg mx-2 i-custom" id="remove-webhook-btn" title="Remove webhook" style="padding: .5rem; color: var(--red); cursor: pointer;" data-toggle="modal" data-target="#remove-webhook-modal"></i>
+                                        </td>
                                         <!-- <td>{{$row.Destination}}</td> -->
                                     </tr>
                                 {{end}}
@@ -45,31 +63,106 @@
                     {{end}}
                 </div>
             </div>
-            <p class="my-4">Add up to one webhook in the free tier.</p>
-            <div class="row justify-content-center">
-                <div class="col col-md-8 col-lg-6">
-                    <h3>Add a new Webhook</h3>
-                    <form action="/user/webhooks/add" method="post">
-                        {{.CsrfField}}
-                        <div class="input-group my-3">
-                             <input class="form-control" name="url" type="text" placeholder="https://..." id="webhook_endpoint" required>
-                        </div> 
-                        {{range $i, $event := .Events }}
-                            <div class="form-check form-check-inline w-100 my-2">
-                                <label for="{{$event.EventName}}" class="form-check-label mr-auto font-weight-normal">{{$event.EventLabel}}</label>
-                                <input name="{{$event.EventName}}" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="{{$event.EventName}}">
-                            </div>
-                        {{end}}
-                        <hr class="my-3" />
-                        <div class="form-check form-check-inline w-100 my-2">
-                            <label for="discord" class="form-check-label mr-auto font-weight-normal">Discord</label>
-                            <input name="discord" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="discord-checkbox">
-                        </div>
-                        <hr class="my-3" />
-                        <button type="submit" class="btn btn-outline-primary float-right">Add Webhook</button>
-                    </form>
-                </div>
+            <div class="text-right m-1">
+                <span style="font-size: 90%;">{{.WebhookCount}} / {{.Allowed}} webhooks registered</span>
             </div>
+            <p class="my-4">Add up to one webhook in the free tier.</p>
+            <button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#add-webhook-modal">
+                Add Webhook
+            </button>
+
+            {{template "AddWebhookModal" .}}
         </div>
     {{end}}
 {{end}}
+
+
+{{ define "AddWebhookModal" }}
+<div class="modal fade" id="add-webhook-modal" tabindex="-1" role="dialog"
+    aria-labelledby="edit-validator-modal-label" aria-hidden="true">
+    <form action="/user/webhooks/add" method="post">
+        {{.CsrfField}}
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Add Webhook</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="row justify-content-center">
+                        <div class="col-11">
+                                <div class="input-group my-3">
+                                     <input class="form-control" name="url" type="text" placeholder="https://..." id="webhook_endpoint" required>
+                                </div> 
+                                {{range $i, $event := .Events }}
+                                    <div class="form-check form-check-inline w-100 my-2">
+                                        <label for="{{$event.EventName}}" class="form-check-label mr-auto font-weight-normal">{{$event.EventLabel}}</label>
+                                        <input name="{{$event.EventName}}" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="{{$event.EventName}}">
+                                    </div>
+                                {{end}}
+                                <hr class="my-3" />
+                                <div class="form-check form-check-inline w-100 my-2">
+                                    <label for="discord" class="form-check-label mr-auto font-weight-normal">Discord</label>
+                                    <input name="discord" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="discord-checkbox">
+                                </div>
+                                <hr class="my-3" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <!-- <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button> -->
+                        <button type="submit" class="btn btn-outline-primary">Add Webhook</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{{ end }}
+
+
+{{ define "EditModalWebhook" }}
+<div class="modal fade" id="add-webhook-modal" tabindex="-1" role="dialog"
+    aria-labelledby="edit-validator-modal-label" aria-hidden="true">
+    <form action="/user/webhooks/add" method="post">
+        {{.CsrfField}}
+        <input hidden value="{{.WebhookID}}" />
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Edit Webhook</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="row justify-content-center">
+                        <div class="col-11">
+                                <div class="input-group my-3">
+                                     <input class="form-control" name="url" type="text" placeholder="https://..." id="webhook_endpoint" required>
+                                </div> 
+                                {{range $i, $event := .Events }}
+                                    <div class="form-check form-check-inline w-100 my-2">
+                                        <label for="{{$event.EventName}}" class="form-check-label mr-auto font-weight-normal">{{$event.EventLabel}}</label>
+                                        <input name="{{$event.EventName}}" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="{{$event.EventName}}">
+                                    </div>
+                                {{end}}
+                                <hr class="my-3" />
+                                <div class="form-check form-check-inline w-100 my-2">
+                                    <label for="discord" class="form-check-label mr-auto font-weight-normal">Discord</label>
+                                    <input name="discord" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="discord-checkbox">
+                                </div>
+                                <hr class="my-3" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <!-- <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button> -->
+                        <button type="submit" class="btn btn-outline-primary">Update Webhook</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{{ end }}

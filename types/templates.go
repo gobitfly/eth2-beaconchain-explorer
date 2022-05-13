@@ -1174,10 +1174,22 @@ type RocketpoolPageDataDAOMember struct {
 	UnbondedValidatorCount   uint64    `db:"unbonded_validator_count"`
 }
 
+type UserWebhookRow struct {
+	ID          uint64        `db:"id" json:"id"`
+	Url         template.HTML `db:"url" json:"url"`
+	Retries     template.HTML `db:"retries" json:"retries"`
+	LastSent    template.HTML `db:"last_retry" json:"lastSent"`
+	Destination template.HTML `db:"destination" json:"destination"`
+	Events      template.HTML `db:"event_names" json:"-"`
+}
+
 type WebhookPageData struct {
-	Webhooks  []UserWebhook
-	Events    []WebhookPageEvent
-	CsrfField template.HTML
+	WebhookRows  []UserWebhookRow
+	Webhooks     []UserWebhook
+	Events       []WebhookPageEvent
+	CsrfField    template.HTML
+	Allowed      uint64
+	WebhookCount uint64
 }
 
 type WebhookPageEvent struct {
