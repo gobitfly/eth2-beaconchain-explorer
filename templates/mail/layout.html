@@ -57,15 +57,20 @@
         <tr>
             <td style="height: 41px; background-color: #2f2e42; text-align: start; line-height: 20px; font-size: 12px; padding-top: 4px; padding-left: 20px; padding-bottom: 4px;">
                 <span style="font-family: Barlow; color: white;">
-                <span>Bitfly GmbH, FN 472953 w, CR-Court: Commercial Court Vienna</span>
+                <span style="color: white;">Bitfly GmbH, FN 472953 w, CR-Court: Commercial Court Vienna</span>
                 <br />
                 {{if .Mail.UnSubURL}}
-                  {{ .Mail.UnSubURL }}
-                  <span>to stop receiving notifications of this kind.</span>
+                  <span>
+                    {{ .Mail.UnSubURL }}
+                    <span>to stop receiving notifications of this kind.</span>
+                  </span>
                 {{end}}
                 {{ if .Mail.SubscriptionManageURL }}
-                  {{.Mail.SubscriptionManageURL}}
-                  <span>your subscriptions.</span>
+                  <br />
+                  <span>
+                    {{.Mail.SubscriptionManageURL}}
+                    <span>your subscriptions.</span>
+                  </span>
                 {{end}}
                 </span>
             </td>
