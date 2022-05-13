@@ -59,7 +59,7 @@
                 <span style="font-family: Barlow; color: white;">
                 Bitfly GmbH, FN 472953 w, CR-Court: Commercial Court Vienna
                 <br />
-                <a href="https://{{ .Mail.UnSubURL }}" style="color: white" onMouseOver="this.style.color='#F5B498'" onMouseOut="this.style.color='#FFFFFF'">Unsubscribe</a>
+                <a href="{{ .Mail.UnSubURL }}" style="color: white" onMouseOver="this.style.color='#F5B498'" onMouseOut="this.style.color='#FFFFFF'">Unsubscribe</a>
                 <span>to stop receiving notifications of this kind.</span>
                 {{ if .Mail.SubscriptionManageURL }}  <a href="{{.Mail.SubscriptionManageURL}}" style="color: white" onMouseOver="this.style.color='#F5B498'" onMouseOut="this.style.color='#FFFFFF'">Manage</a> your subscriptions.{{end}}
                 </span>
