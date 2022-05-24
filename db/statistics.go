@@ -20,7 +20,7 @@ func WriteStatisticsForDay(day uint64) error {
 
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
-	tx, err := DB.Begin()
+	tx, err := WriterDb.Begin()
 	if err != nil {
 		return err
 	}

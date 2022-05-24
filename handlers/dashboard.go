@@ -99,14 +99,14 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	latestEpoch := services.LatestEpoch()
 
 	var incomeHistory []*types.ValidatorIncomeHistory
-	err = db.DB.Select(&incomeHistory, "SELECT day, COALESCE(SUM(start_balance),0) AS start_balance, COALESCE(SUM(end_balance),0) AS end_balance, COALESCE(SUM(deposits_amount), 0) AS deposits_amount FROM validator_stats WHERE validatorindex = ANY($1) GROUP BY day ORDER BY day;", queryValidatorsArr)
+	err = db.ReaderDb.Select(&incomeHistory, "SELECT day, COALESCE(SUM(start_balance),0) AS start_balance, COALESCE(SUM(end_balance),0) AS end_balance, COALESCE(SUM(deposits_amount), 0) AS deposits_amount FROM validator_stats WHERE validatorindex = ANY($1) GROUP BY day ORDER BY day;", queryValidatorsArr)
 	if err != nil {
 		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 	var currentBalance uint64
-	err = db.DB.Get(&currentBalance, "SELECT SUM(balance) as balance FROM validators WHERE validatorindex = ANY($1) AND status <> 'deposited'", queryValidatorsArr)
+	err = db.ReaderDb.Get(&currentBalance, "SELECT SUM(balance) as balance FROM validators WHERE validatorindex = ANY($1) AND status <> 'deposited'", queryValidatorsArr)
 	if err != nil {
 		logger.Errorf("error retrieving validator current balance: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -169,7 +169,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 		Status uint64
 	}{}
 
-	err = db.DB.Select(&proposals, `
+	err = db.ReaderDb.Select(&proposals, `
 		SELECT slot, status
 		FROM blocks
 		WHERE proposer = ANY($1)
@@ -216,7 +216,7 @@ func DashboardDataMissedAttestations(w http.ResponseWriter, r *http.Request) {
 	maxEpoch := services.LatestEpoch() - 1
 	minEpoch := utils.TimeToEpoch(time.Now().Add(time.Hour * 24 * -7))
 
-	err = db.DB.Select(&missedAttestations, `
+	err = db.ReaderDb.Select(&missedAttestations, `
 		SELECT epoch, validatorindex
 		FROM attestation_assignments_p
 		WHERE 
@@ -266,7 +266,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	filter := pq.Array(filterArr)
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, `
+	err = db.ReaderDb.Select(&validators, `
 		WITH
 			proposals AS (
 				SELECT validatorindex, pa.status, count(*)
@@ -427,7 +427,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	filter := pq.Array(filterArr)
 
 	var activeValidators pq.Int64Array
-	err = db.DB.Select(&activeValidators, `
+	err = db.ReaderDb.Select(&activeValidators, `
 		SELECT validatorindex FROM validators where validatorindex = ANY($1) and activationepoch < $2 AND exitepoch > $2
 	`, filter, services.LatestEpoch())
 	if err != nil {
@@ -436,7 +436,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 
 	var avgIncDistance []float64
 
-	err = db.DB.Select(&avgIncDistance, `
+	err = db.ReaderDb.Select(&avgIncDistance, `
 	SELECT
 		(SELECT COALESCE(
 			AVG(1 + inclusionslot - COALESCE((
@@ -485,7 +485,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 		Orphaned       *uint64 `db:"orphaned_blocks"`
 	}{}
 
-	err = db.DB.Select(&proposals, `
+	err = db.ReaderDb.Select(&proposals, `
 		SELECT validatorindex, day, proposed_blocks, missed_blocks, orphaned_blocks
 		FROM validator_stats
 		WHERE validatorindex = ANY($1) AND (proposed_blocks IS NOT NULL OR missed_blocks IS NOT NULL OR orphaned_blocks IS NOT NULL)

@@ -50,12 +50,12 @@ func notificationsSender() {
 		// 		}
 		// 	}
 		// }
-		sendNotifications(notifications, db.FrontendDB)
+		sendNotifications(notifications, db.FrontendWriterDB)
 
 		// Network DB Notifications (user related)
 		if utils.Config.Notifications.UserDBNotifications {
 			userNotifications := collectUserDbNotifications()
-			sendNotifications(userNotifications, db.FrontendDB)
+			sendNotifications(userNotifications, db.FrontendWriterDB)
 		}
 
 		logger.WithField("notifications", len(notifications)).WithField("duration", time.Since(start)).Info("notifications completed")
@@ -345,7 +345,7 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 					if unsubHash == "" {
 						id := n.GetSubscriptionID()
 
-						tx, err := db.FrontendDB.Beginx()
+						tx, err := db.FrontendWriterDB.Beginx()
 						if err != nil {
 							logger.WithError(err).Error("error starting transaction")
 						}
@@ -519,7 +519,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 	}
 
-	err = db.FrontendDB.Select(&subscribers, query, types.ValidatorBalanceDecreasedEventName, latestEpoch)
+	err = db.FrontendWriterDB.Select(&subscribers, query, types.ValidatorBalanceDecreasedEventName, latestEpoch)
 	if err != nil {
 		return err
 	}
@@ -580,7 +580,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 
 		var partial []dbResult
 
-		err = db.DB.Select(&partial, `
+		err = db.WriterDb.Select(&partial, `
 				SELECT 
 					v.validatorindex, 
 					pa.epoch,
@@ -736,7 +736,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 		keys = pubkeys[start:end]
 
 		var partial []dbResult
-		err = db.DB.Select(&partial, `
+		err = db.WriterDb.Select(&partial, `
 		SELECT 
 			v.validatorindex,
 			v.pubkey,
@@ -970,7 +970,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 	if utils.Config.Chain.Phase0.ConfigName != "" {
 		name = utils.Config.Chain.Phase0.ConfigName + ":" + name
 	}
-	err = db.FrontendDB.Select(&subscribers, query, name, latestEpoch)
+	err = db.FrontendWriterDB.Select(&subscribers, query, name, latestEpoch)
 	if err != nil {
 		return fmt.Errorf("error querying subscribers, err: %w", err)
 	}
@@ -1078,7 +1078,7 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 			UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 		}
 
-		err := db.FrontendDB.Select(&dbResult, `
+		err := db.FrontendWriterDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE 
@@ -1237,7 +1237,7 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 	nowTs := now.Unix()
 	var day int = int(nowTs/86400) - 1 // -1 so we have no issue on partition table change
 
-	err := db.FrontendDB.Select(&dbResult, query, eventName, latestEpoch, day)
+	err := db.FrontendWriterDB.Select(&dbResult, query, eventName, latestEpoch, day)
 	if err != nil {
 		return err
 	}
@@ -1427,7 +1427,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 			name = utils.Config.Chain.Phase0.ConfigName + ":" + name
 		}
 
-		err := db.FrontendDB.Select(&dbResult, `
+		err := db.FrontendWriterDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '2 DAY' OR us.last_sent_ts IS NULL);
@@ -1505,7 +1505,7 @@ func (n *networkNotification) GetEventFilter() string {
 
 func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
 	count := 0
-	err := db.DB.Get(&count, `
+	err := db.WriterDb.Get(&count, `
 		select count(ts) from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '20 minutes';
 	`)
 
@@ -1523,7 +1523,7 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 			UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 		}
 
-		err := db.FrontendDB.Select(&dbResult, `
+		err := db.FrontendWriterDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex')
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '1 hour' OR us.last_sent_ts IS NULL);
@@ -1640,7 +1640,7 @@ func (n *rocketpoolNotification) GetEventFilter() string {
 
 func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
 	fee := 0.0
-	err := db.DB.Get(&fee, `
+	err := db.WriterDb.Get(&fee, `
 		select current_node_fee from rocketpool_network_stats order by id desc LIMIT 1;
 	`)
 
@@ -1658,7 +1658,7 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 			UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 		}
 
-		err := db.FrontendDB.Select(&dbResult, `
+		err := db.FrontendWriterDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex')
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '8 hours' OR us.last_sent_ts IS NULL) AND (us.event_threshold <= $2 OR (us.event_threshold < 0 AND us.event_threshold * -1 >= $2));
@@ -1694,7 +1694,7 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 
 func collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
 	var ts int64
-	err := db.DB.Get(&ts, `
+	err := db.WriterDb.Get(&ts, `
 		select date_part('epoch', claim_interval_time_start)::int from rocketpool_network_stats order by id desc LIMIT 1;
 	`)
 
@@ -1712,7 +1712,7 @@ func collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID map[ui
 			UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 		}
 
-		err := db.FrontendDB.Select(&dbResult, `
+		err := db.FrontendWriterDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex')
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '5 hours' OR us.last_sent_ts IS NULL);
@@ -1775,7 +1775,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 
 		var partial []dbResult
 
-		err = db.DB.Select(&partial, `
+		err = db.WriterDb.Select(&partial, `
 		SELECT address, rpl_stake, min_rpl_stake, max_rpl_stake                    
 		FROM rocketpool_nodes WHERE address = ANY($1)`, pq.ByteaArray(keys))
 		if err != nil {
@@ -1893,7 +1893,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 		PubKey string `db:"pubkey"`
 		Index  uint64 `db:"validatorindex"`
 	}
-	err := db.DB.Select(&validators, `SELECT encode(pubkey, 'hex') as pubkey, validators.validatorindex FROM sync_committees LEFT JOIN validators ON validators.validatorindex = sync_committees.validatorindex WHERE period = $1`, nextPeriod)
+	err := db.WriterDb.Select(&validators, `SELECT encode(pubkey, 'hex') as pubkey, validators.validatorindex FROM sync_committees LEFT JOIN validators ON validators.validatorindex = sync_committees.validatorindex WHERE period = $1`, nextPeriod)
 
 	if err != nil {
 		return err
@@ -1918,7 +1918,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 	}
 
-	err = db.FrontendDB.Select(&dbResult, `
+	err = db.FrontendWriterDB.Select(&dbResult, `
 				SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex')
 				FROM users_subscriptions AS us 
 				WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '26 hours' OR us.last_sent_ts IS NULL) AND event_filter = ANY($2);

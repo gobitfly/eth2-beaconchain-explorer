@@ -38,7 +38,7 @@ func rocketpoolExporter() {
 		logger.Fatal(err)
 	}
 	rpEth1Client = ethclient.NewClient(rpEth1RPRCClient)
-	rpExporter, err := NewRocketpoolExporter(rpEth1Client, utils.Config.RocketpoolExporter.StorageContractAddress, db.DB)
+	rpExporter, err := NewRocketpoolExporter(rpEth1Client, utils.Config.RocketpoolExporter.StorageContractAddress, db.WriterDb)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -430,7 +430,7 @@ func (rp *RocketpoolExporter) SaveMinipools() error {
 		i++
 	}
 
-	tx, err := db.DB.Beginx()
+	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		return err
 	}
@@ -495,7 +495,7 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 		i++
 	}
 
-	tx, err := db.DB.Beginx()
+	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		return err
 	}
@@ -558,7 +558,7 @@ func (rp *RocketpoolExporter) SaveDAOProposals() error {
 		i++
 	}
 
-	tx, err := db.DB.Beginx()
+	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		return err
 	}
@@ -633,7 +633,7 @@ func (rp *RocketpoolExporter) SaveDAOMembers() error {
 		i++
 	}
 
-	tx, err := db.DB.Beginx()
+	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		return err
 	}
@@ -691,7 +691,7 @@ func (rp *RocketpoolExporter) TagValidators() error {
 		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Debugf("saved rocketpool-validator-tags")
 	}(t0)
 
-	tx, err := db.DB.Beginx()
+	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		return err
 	}
@@ -729,7 +729,7 @@ func (rp *RocketpoolExporter) TagValidators() error {
 }
 
 func (rp *RocketpoolExporter) SaveNetworkStats() error {
-	_, err := db.DB.Exec("INSERT INTO rocketpool_network_stats (ts, rpl_price, claim_interval_time, claim_interval_time_start, current_node_fee, current_node_demand, reth_supply, effective_rpl_staked, node_operator_rewards, reth_exchange_rate, node_count, minipool_count, odao_member_count, total_eth_staking, total_eth_balance) VALUES(now(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
+	_, err := db.WriterDb.Exec("INSERT INTO rocketpool_network_stats (ts, rpl_price, claim_interval_time, claim_interval_time_start, current_node_fee, current_node_demand, reth_supply, effective_rpl_staked, node_operator_rewards, reth_exchange_rate, node_count, minipool_count, odao_member_count, total_eth_staking, total_eth_balance) VALUES(now(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
 		rp.NetworkStats.RPLPrice.String(),
 		rp.NetworkStats.ClaimIntervalTime.String(),
 		rp.NetworkStats.ClaimIntervalTimeStart,

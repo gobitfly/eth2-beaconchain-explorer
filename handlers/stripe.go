@@ -160,7 +160,7 @@ func StripeCustomerPortal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var customerID string
-	err := db.FrontendDB.Get(&customerID, `
+	err := db.FrontendWriterDB.Get(&customerID, `
 	SELECT
 		stripe_customer_id
 	FROM
@@ -340,7 +340,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		tx, err := db.FrontendDB.Begin()
+		tx, err := db.FrontendWriterDB.Begin()
 		if err != nil {
 			logger.WithError(err).Error("error creating transaction ", subscription.ID)
 			http.Error(w, "error creating transaction :"+err.Error(), 503)
@@ -388,7 +388,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		tx, err := db.FrontendDB.Begin()
+		tx, err := db.FrontendWriterDB.Begin()
 		if err != nil {
 			logger.WithError(err).Error("error creating transaction ", subscription.ID)
 			http.Error(w, "error creating transaction :"+err.Error(), 503)
@@ -451,7 +451,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		tx, err := db.FrontendDB.Begin()
+		tx, err := db.FrontendWriterDB.Begin()
 		if err != nil {
 			logger.WithError(err).Error("error creating transaction ")
 			http.Error(w, "error creating transaction :"+err.Error(), 503)
@@ -500,7 +500,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func createNewStripeSubscription(subscription stripe.Subscription, event stripe.Event) error {
-	tx, err := db.FrontendDB.Begin()
+	tx, err := db.FrontendWriterDB.Begin()
 	if err != nil {
 		return err
 	}

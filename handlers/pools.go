@@ -71,7 +71,7 @@ func GetAvgCurrentStreak(w http.ResponseWriter, r *http.Request) {
 
 	var sqlData []*string
 
-	err := db.DB.Select(&sqlData, `
+	err := db.ReaderDb.Select(&sqlData, `
 			with 
 				matched_validators as (
 					SELECT v.validatorindex  
