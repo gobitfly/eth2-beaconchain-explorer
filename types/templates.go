@@ -1177,6 +1177,6 @@ type RocketpoolPageDataDAOMember struct {
 type Email struct {
 	Title                 string
 	Body                  template.HTML
-	SubscriptionManageURL string
+	SubscriptionManageURL template.HTML
 	UnSubURL              template.HTML
 }
