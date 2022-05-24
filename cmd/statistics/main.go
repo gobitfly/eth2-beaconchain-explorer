@@ -32,8 +32,21 @@ func main() {
 	}
 	utils.Config = cfg
 
-	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
-	defer db.DB.Close()
+	db.MustInitDB(&types.DatabaseConfig{
+		Username: cfg.WriterDatabase.Username,
+		Password: cfg.WriterDatabase.Password,
+		Name:     cfg.WriterDatabase.Name,
+		Host:     cfg.WriterDatabase.Host,
+		Port:     cfg.WriterDatabase.Port,
+	}, &types.DatabaseConfig{
+		Username: cfg.ReaderDatabase.Username,
+		Password: cfg.ReaderDatabase.Password,
+		Name:     cfg.ReaderDatabase.Name,
+		Host:     cfg.ReaderDatabase.Host,
+		Port:     cfg.ReaderDatabase.Port,
+	})
+	defer db.ReaderDb.Close()
+	defer db.WriterDb.Close()
 
 	if *statisticsDaysToExport != "" {
 		s := strings.Split(*statisticsDaysToExport, "-")
@@ -50,7 +63,7 @@ func main() {
 		}
 		logrus.Infof("exporting statistics for days %v-%v", firstDay, lastDay)
 		for d := firstDay; d <= lastDay; d++ {
-			_, err := db.DB.Exec("delete from validator_stats_status where day = $1", d)
+			_, err := db.WriterDb.Exec("delete from validator_stats_status where day = $1", d)
 			if err != nil {
 				logrus.Fatalf("error resetting status for day %v: %v", d, err)
 			}
@@ -62,7 +75,7 @@ func main() {
 		}
 		return
 	} else if *statisticsDayToExport >= 0 {
-		_, err := db.DB.Exec("delete from validator_stats_status where day = $1", *statisticsDayToExport)
+		_, err := db.WriterDb.Exec("delete from validator_stats_status where day = $1", *statisticsDayToExport)
 		if err != nil {
 			logrus.Fatalf("error resetting status for day %v: %v", *statisticsDayToExport, err)
 		}
@@ -111,7 +124,7 @@ func statisticsLoop() {
 		}
 
 		var lastExportedDay uint64
-		err = db.DB.Get(&lastExportedDay, "select COALESCE(max(day), 0) from validator_stats_status where status")
+		err = db.WriterDb.Get(&lastExportedDay, "select COALESCE(max(day), 0) from validator_stats_status where status")
 		if err != nil {
 			logrus.Errorf("error retreiving latest exported day from the db: %v", err)
 		}

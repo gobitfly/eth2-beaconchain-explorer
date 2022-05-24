@@ -91,7 +91,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			// the validator might only have a public key but no index yet
 			var name string
-			err = db.DB.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
+			err = db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
 			if err != nil {
 				if err != sql.ErrNoRows {
 					logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
@@ -214,7 +214,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// start = time.Now()
 
 	// we use MAX(validatorindex)+1 instead of COUNT(*) for querying the rank_count for performance-reasons
-	err = db.DB.Get(&validatorPageData, `
+	err = db.ReaderDb.Get(&validatorPageData, `
 		SELECT
 			validators.pubkey,
 			validators.validatorindex,
@@ -316,7 +316,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		Status uint64
 	}{}
 
-	err = db.DB.Select(&proposals, "SELECT slot, status FROM blocks WHERE proposer = $1 ORDER BY slot", index)
+	err = db.ReaderDb.Select(&proposals, "SELECT slot, status FROM blocks WHERE proposer = $1 ORDER BY slot", index)
 	if err != nil {
 		logger.Errorf("error retrieving block-proposals: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -362,7 +362,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var lastStatsDay uint64
-	err = db.DB.Get(&lastStatsDay, "select coalesce(max(day),0) from validator_stats")
+	err = db.ReaderDb.Get(&lastStatsDay, "select coalesce(max(day),0) from validator_stats")
 	if err != nil {
 		logger.Errorf("error retrieving lastStatsDay: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -376,7 +376,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			OrphanedAttestations uint64 `db:"orphaned_attestations"`
 		}{}
 		if lastStatsDay > 0 {
-			err = db.DB.Get(&attestationStats, "select coalesce(sum(missed_attestations), 0) as missed_attestations, coalesce(sum(orphaned_attestations), 0) as orphaned_attestations from validator_stats where validatorindex = $1", index)
+			err = db.ReaderDb.Get(&attestationStats, "select coalesce(sum(missed_attestations), 0) as missed_attestations, coalesce(sum(orphaned_attestations), 0) as orphaned_attestations from validator_stats where validatorindex = $1", index)
 			if err != nil {
 				logger.Errorf("error retrieving validator attestationStats: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -389,7 +389,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			MissedAttestations   uint64 `db:"missed_attestations"`
 			OrphanedAttestations uint64 `db:"orphaned_attestations"`
 		}{}
-		err = db.DB.Get(&attestationStatsNotInStats, "select coalesce(sum(case when status = 0 then 1 else 0 end), 0) as missed_attestations, coalesce(sum(case when status = 3 then 1 else 0 end), 0) as orphaned_attestations from attestation_assignments_p where week >= $1/7 and epoch >= ($1+1)*225 and epoch < $2 and validatorindex = $3", lastStatsDay, services.LatestEpoch(), index)
+		err = db.ReaderDb.Get(&attestationStatsNotInStats, "select coalesce(sum(case when status = 0 then 1 else 0 end), 0) as missed_attestations, coalesce(sum(case when status = 3 then 1 else 0 end), 0) as orphaned_attestations from attestation_assignments_p where week >= $1/7 and epoch >= ($1+1)*225 and epoch < $2 and validatorindex = $3", lastStatsDay, services.LatestEpoch(), index)
 		if err != nil {
 			logger.Errorf("error retrieving validator attestationStatsAfterLastStatsDay: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -405,7 +405,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// start = time.Now()
 
 	var incomeHistory []*types.ValidatorIncomeHistory
-	err = db.DB.Select(&incomeHistory, "select day, coalesce(start_balance, 0) as start_balance, coalesce(end_balance, 0) as end_balance, coalesce(deposits_amount, 0) as deposits_amount from validator_stats where validatorindex = $1 order by day;", index)
+	err = db.ReaderDb.Select(&incomeHistory, "select day, coalesce(start_balance, 0) as start_balance, coalesce(end_balance, 0) as end_balance, coalesce(deposits_amount, 0) as deposits_amount from validator_stats where validatorindex = $1 order by day;", index)
 	if err != nil {
 		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -486,7 +486,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			Slasher uint64
 			Reason  string
 		}
-		err = db.DB.Get(&slashingInfo,
+		err = db.ReaderDb.Get(&slashingInfo,
 			`select block_slot as slot, proposer as slasher, 'Attestation Violation' as reason
 				from blocks_attesterslashings a1 left join blocks b1 on b1.slot = a1.block_slot
 				where b1.status = '1' and $1 = ANY(a1.attestation1_indices) and $1 = ANY(a1.attestation2_indices)
@@ -506,7 +506,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.SlashedFor = slashingInfo.Reason
 	}
 
-	err = db.DB.Get(&validatorPageData.SlashingsCount, `select COALESCE(sum(attesterslashingscount) + sum(proposerslashingscount), 0) from blocks where blocks.proposer = $1 and blocks.status = '1'`, index)
+	err = db.ReaderDb.Get(&validatorPageData.SlashingsCount, `select COALESCE(sum(attesterslashingscount) + sum(proposerslashingscount), 0) from blocks where blocks.proposer = $1 and blocks.status = '1'`, index)
 	if err != nil {
 		logger.Errorf("error retrieving slashings-count: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -516,7 +516,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("slashing data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
-	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, `
+	err = db.ReaderDb.Get(&validatorPageData.AverageAttestationInclusionDistance, `
 		SELECT COALESCE(
 			AVG(1 + inclusionslot - COALESCE((
 				SELECT MIN(slot)
@@ -541,7 +541,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var attestationStreaks []struct {
 		Length uint64
 	}
-	err = db.DB.Select(&attestationStreaks, `select greatest(0,length) as length from validator_attestation_streaks where validatorindex = $1 and status = 1 order by start desc`, index)
+	err = db.ReaderDb.Select(&attestationStreaks, `select greatest(0,length) as length from validator_attestation_streaks where validatorindex = $1 and status = 1 order by start desc`, index)
 	if err != nil {
 		logger.Errorf("error retrieving AttestationStreaks: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -558,7 +558,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
-	err = db.DB.Get(&validatorPageData.SyncCount, `SELECT count(*)*$1 FROM sync_committees WHERE validatorindex = $2`, utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch, index)
+	err = db.ReaderDb.Get(&validatorPageData.SyncCount, `SELECT count(*)*$1 FROM sync_committees WHERE validatorindex = $2`, utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch, index)
 	if err != nil {
 		logger.Errorf("error retrieving syncCount for validator %v: %v", index, err)
 		http.Error(w, "Internal server error", 503)
@@ -573,7 +573,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			OrphanedSync     uint64 `db:"orphaned_sync"`
 		}{}
 		if lastStatsDay > 0 {
-			err = db.DB.Get(&syncStats, "select coalesce(sum(participated_sync), 0) as participated_sync, coalesce(sum(missed_sync), 0) as missed_sync, coalesce(sum(orphaned_sync), 0) as orphaned_sync from validator_stats where validatorindex = $1", index)
+			err = db.ReaderDb.Get(&syncStats, "select coalesce(sum(participated_sync), 0) as participated_sync, coalesce(sum(missed_sync), 0) as missed_sync, coalesce(sum(orphaned_sync), 0) as orphaned_sync from validator_stats where validatorindex = $1", index)
 			if err != nil {
 				logger.Errorf("error retrieving validator syncStats: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -588,7 +588,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			MissedSync       uint64 `db:"missed_sync"`
 			OrphanedSync     uint64 `db:"orphaned_sync"`
 		}{}
-		err = db.DB.Get(&syncStatsNotInStats, "select coalesce(sum(case when status = 0 then 1 else 0 end), 0) as scheduled_sync, coalesce(sum(case when status = 1 then 1 else 0 end), 0) as participated_sync, coalesce(sum(case when status = 2 then 1 else 0 end), 0) as missed_sync, coalesce(sum(case when status = 3 then 1 else 0 end), 0) as orphaned_sync from sync_assignments_p where week >= $1/7 and slot >= ($1+1)*225*32 and validatorindex = $2", lastStatsDay, index)
+		err = db.ReaderDb.Get(&syncStatsNotInStats, "select coalesce(sum(case when status = 0 then 1 else 0 end), 0) as scheduled_sync, coalesce(sum(case when status = 1 then 1 else 0 end), 0) as participated_sync, coalesce(sum(case when status = 2 then 1 else 0 end), 0) as missed_sync, coalesce(sum(case when status = 3 then 1 else 0 end), 0) as orphaned_sync from sync_assignments_p where week >= $1/7 and slot >= ($1+1)*225*32 and validatorindex = $2", lastStatsDay, index)
 		if err != nil {
 			logger.Errorf("error retrieving validator syncStatsAfterLastStatsDay: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -605,7 +605,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	// add rocketpool-data if available
 	validatorPageData.Rocketpool = &types.RocketpoolValidatorPageData{}
-	err = db.DB.Get(validatorPageData.Rocketpool, `
+	err = db.ReaderDb.Get(validatorPageData.Rocketpool, `
 		SELECT
 			rplm.node_address      AS node_address,
 			rplm.address           AS minipool_address,
@@ -686,7 +686,7 @@ func ValidatorAttestationInclusionEffectiveness(w http.ResponseWriter, r *http.R
 
 	var avgIncDistance float64
 
-	err = db.DB.Get(&avgIncDistance, `
+	err = db.ReaderDb.Get(&avgIncDistance, `
 	SELECT COALESCE(
 		AVG(1 + inclusionslot - COALESCE((
 			SELECT MIN(slot)
@@ -759,7 +759,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	var totalCount uint64
 
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1", index)
+	err = db.ReaderDb.Get(&totalCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1", index)
 	if err != nil {
 		logger.Errorf("error retrieving proposed blocks count: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -785,7 +785,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var blocks []*types.IndexPageDataBlocks
-	err = db.DB.Select(&blocks, `
+	err = db.ReaderDb.Select(&blocks, `
 		SELECT 
 			blocks.epoch, 
 			blocks.slot, 
@@ -901,7 +901,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		ExitEpoch       uint64
 	}{}
 
-	err = db.DB.Get(&ae, "SELECT activationepoch, exitepoch FROM validators WHERE validatorindex = $1", index)
+	err = db.ReaderDb.Get(&ae, "SELECT activationepoch, exitepoch FROM validators WHERE validatorindex = $1", index)
 	if err != nil {
 		logger.Errorf("error retrieving attestations count: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -922,7 +922,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	if totalCount > 0 {
 		var blocks []*types.ValidatorAttestation
-		err = db.DB.Select(&blocks, `
+		err = db.ReaderDb.Select(&blocks, `
 			SELECT 
 				aa.epoch, 
 				aa.attesterslot, 
@@ -1002,7 +1002,7 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var totalCount uint64
-	err = db.DB.Get(&totalCount, `
+	err = db.ReaderDb.Get(&totalCount, `
 		select
 			(
 				select count(*) from blocks_attesterslashings a
@@ -1019,7 +1019,7 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var attesterSlashings []*types.ValidatorAttestationSlashing
-	err = db.DB.Select(&attesterSlashings, `
+	err = db.ReaderDb.Select(&attesterSlashings, `
 		SELECT 
 			blocks.slot, 
 			blocks.epoch, 
@@ -1037,7 +1037,7 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var proposerSlashings []*types.ValidatorProposerSlashing
-	err = db.DB.Select(&proposerSlashings, `
+	err = db.ReaderDb.Select(&proposerSlashings, `
 		SELECT blocks.slot, blocks.epoch, blocks.proposer, blocks_proposerslashings.proposerindex 
 		FROM blocks_proposerslashings 
 		INNER JOIN blocks ON blocks.proposer = $1 AND blocks_proposerslashings.block_slot = blocks.slot`, index)
@@ -1179,7 +1179,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 
 	if strings.ToLower(depositedAddress) == strings.ToLower(recoveredAddress.Hex()) {
 		if applyNameToAll == "on" {
-			res, err := db.DB.Exec(`
+			res, err := db.WriterDb.Exec(`
 				INSERT INTO validator_names (publickey, name)
 				SELECT publickey, $1 as name
 				FROM (SELECT DISTINCT publickey FROM eth1_deposits WHERE from_address = $2 AND valid_signature) a
@@ -1195,7 +1195,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 			utils.SetFlash(w, r, validatorEditFlash, fmt.Sprintf("Your custom name has been saved for %v validator(s).", rowsAffected))
 			http.Redirect(w, r, "/validator/"+pubkey, 301)
 		} else {
-			_, err := db.DB.Exec(`
+			_, err := db.WriterDb.Exec(`
 				INSERT INTO validator_names (publickey, name) 
 				VALUES($2, $1) 
 				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, pubkeyDecoded)
@@ -1252,7 +1252,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		ActivationEpoch uint64 `db:"activationepoch"`
 		ExitEpoch       uint64 `db:"exitepoch"`
 	}{}
-	err = db.DB.Get(&activationAndExitEpoch, "SELECT activationepoch, exitepoch FROM validators WHERE validatorindex = $1", index)
+	err = db.ReaderDb.Get(&activationAndExitEpoch, "SELECT activationepoch, exitepoch FROM validators WHERE validatorindex = $1", index)
 	if err != nil {
 		logger.Errorf("error retrieving activationAndExitEpoch for validator-history: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1287,7 +1287,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validatorHistory []*types.ValidatorHistory
-	err = db.DB.Select(&validatorHistory, `
+	err = db.ReaderDb.Select(&validatorHistory, `
 			SELECT 
 				vbalance.epoch, 
 				COALESCE(vbalance.balance - LAG(vbalance.balance) OVER (ORDER BY vbalance.epoch), 0) AS balancechange,
@@ -1407,7 +1407,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		Rows:           make([]*types.ValidatorStatsTableRow, 0),
 	}
 
-	err = db.DB.Select(&validatorStatsTablePageData.Rows, "SELECT * FROM validator_stats WHERE validatorindex = $1 ORDER BY day DESC", index)
+	err = db.ReaderDb.Select(&validatorStatsTablePageData.Rows, "SELECT * FROM validator_stats WHERE validatorindex = $1 ORDER BY day DESC", index)
 
 	if err != nil {
 		logger.Errorf("error retrieving validator stats history: %v", err)
@@ -1508,7 +1508,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		TotalCount uint64 `db:"totalcount"`
 		MaxPeriod  uint64 `db:"maxperiod"`
 	}
-	err = db.DB.Select(&countData, `
+	err = db.ReaderDb.Select(&countData, `
 		SELECT count(*)*$1 AS totalcount, max(period) AS maxperiod 
 		FROM sync_committees 
 		WHERE validatorindex = $2`, utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch, index)
@@ -1535,7 +1535,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			Status            uint64  `db:"status"`
 			ParticipationRate float64 `db:"participation"`
 		}
-		err = db.DB.Select(&dbRows, `
+		err = db.ReaderDb.Select(&dbRows, `
 			SELECT sa.slot, sa.status, COALESCE(b.syncaggregate_participation,0) AS participation
 			FROM sync_assignments_p sa
 			LEFT JOIN blocks b ON sa.slot = b.slot

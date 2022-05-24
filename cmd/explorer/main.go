@@ -55,18 +55,44 @@ func main() {
 	}
 	utils.Config = cfg
 
-	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
-	defer db.DB.Close()
+	db.MustInitDB(&types.DatabaseConfig{
+		Username: cfg.WriterDatabase.Username,
+		Password: cfg.WriterDatabase.Password,
+		Name:     cfg.WriterDatabase.Name,
+		Host:     cfg.WriterDatabase.Host,
+		Port:     cfg.WriterDatabase.Port,
+	}, &types.DatabaseConfig{
+		Username: cfg.ReaderDatabase.Username,
+		Password: cfg.ReaderDatabase.Password,
+		Name:     cfg.ReaderDatabase.Name,
+		Host:     cfg.ReaderDatabase.Host,
+		Port:     cfg.ReaderDatabase.Port,
+	})
+	defer db.ReaderDb.Close()
+	defer db.WriterDb.Close()
 
-	db.MustInitFrontendDB(cfg.Frontend.Database.Username, cfg.Frontend.Database.Password, cfg.Frontend.Database.Host, cfg.Frontend.Database.Port, cfg.Frontend.Database.Name, cfg.Frontend.SessionSecret)
-	defer db.FrontendDB.Close()
+	db.MustInitFrontendDB(&types.DatabaseConfig{
+		Username: cfg.Frontend.WriterDatabase.Username,
+		Password: cfg.Frontend.WriterDatabase.Password,
+		Name:     cfg.Frontend.WriterDatabase.Name,
+		Host:     cfg.Frontend.WriterDatabase.Host,
+		Port:     cfg.WriterDatabase.Port,
+	}, &types.DatabaseConfig{
+		Username: cfg.Frontend.ReaderDatabase.Username,
+		Password: cfg.Frontend.ReaderDatabase.Password,
+		Name:     cfg.Frontend.ReaderDatabase.Name,
+		Host:     cfg.Frontend.ReaderDatabase.Host,
+		Port:     cfg.Frontend.ReaderDatabase.Port,
+	}, cfg.Frontend.SessionSecret)
+	defer db.FrontendReaderDB.Close()
+	defer db.FrontendWriterDB.Close()
 
 	if utils.Config.Metrics.Enabled {
-		go metrics.MonitorDB(db.DB)
-		DBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
-		frontendDBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.Frontend.Database.Username, cfg.Frontend.Database.Password, cfg.Frontend.Database.Host, cfg.Frontend.Database.Port, cfg.Frontend.Database.Name)
+		go metrics.MonitorDB(db.WriterDb)
+		DBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.WriterDatabase.Username, cfg.WriterDatabase.Password, cfg.WriterDatabase.Host, cfg.WriterDatabase.Port, cfg.WriterDatabase.Name)
+		frontendDBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.Frontend.WriterDatabase.Username, cfg.Frontend.WriterDatabase.Password, cfg.Frontend.WriterDatabase.Host, cfg.Frontend.WriterDatabase.Port, cfg.Frontend.WriterDatabase.Name)
 		if DBStr != frontendDBStr {
-			go metrics.MonitorDB(db.FrontendDB)
+			go metrics.MonitorDB(db.FrontendWriterDB)
 		}
 	}
 

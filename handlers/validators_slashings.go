@@ -60,7 +60,7 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var slashings []*types.ValidatorSlashing
-	err = db.DB.Select(&slashings, `
+	err = db.ReaderDb.Select(&slashings, `
 		SELECT 
 			slot,
 			epoch,

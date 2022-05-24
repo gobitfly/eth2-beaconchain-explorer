@@ -246,7 +246,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	userNotificationsData.CsrfField = csrf.TemplateField(r)
 
 	var watchlistIndices []uint64
-	err := db.DB.Select(&watchlistIndices, `
+	err := db.WriterDb.Select(&watchlistIndices, `
 	SELECT validators.validatorindex as index
 	FROM users_validators_tags
 	INNER JOIN validators
@@ -261,7 +261,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var countSubscriptions int
-	err = db.FrontendDB.Get(&countSubscriptions, `
+	err = db.FrontendWriterDB.Get(&countSubscriptions, `
 	SELECT count(*) as count
 	FROM users_subscriptions
 	WHERE user_id = $1
@@ -304,7 +304,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 // 		ProposalsSubmitted uint64 `db:"proposals_submitted"`
 // 	}{}
 // 	net := strings.ToLower(utils.GetNetwork())
-// 	err := db.FrontendDB.Get(&metricsdb, `
+// 	err := db.FrontendWriterDB.Get(&metricsdb, `
 
 // 		SELECT COUNT(uvt.user_id) as validators,
 // 		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 MONTH' AND COUNT(uvt.user_id)>0) AS notifications,
@@ -328,7 +328,7 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 		Threshold    *string `db:"event_threshold"`
 	}{}
 
-	err := db.FrontendDB.Select(&validatordb, `
+	err := db.FrontendWriterDB.Select(&validatordb, `
 	SELECT ENCODE(uvt.validator_publickey, 'hex') AS pubkey, us.event_name, extract( epoch from last_sent_ts)::Int as last_sent_ts, us.event_threshold
 		FROM users_validators_tags uvt
 		LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey, 'hex') AND us.user_id = uvt.user_id
@@ -359,7 +359,7 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	for _, item := range validatordb {
 		var index uint64
 
-		err = db.DB.Get(&index, `
+		err = db.WriterDb.Get(&index, `
 		SELECT validatorindex
 		FROM validators WHERE pubkeyhex=$1
 		`, item.Pubkey)
@@ -404,7 +404,7 @@ func getUserNetworkEvents(userId uint64) (interface{}, error) {
 	}{Events_ts: []result{}}
 
 	c := 0
-	err := db.FrontendDB.Get(&c, `
+	err := db.FrontendWriterDB.Get(&c, `
 		SELECT count(user_id)                 
 		FROM users_subscriptions      
 		WHERE user_id=$1 AND event_name=$2;
@@ -413,7 +413,7 @@ func getUserNetworkEvents(userId uint64) (interface{}, error) {
 	if c > 0 {
 		net.IsSubscribed = true
 		n := []uint64{}
-		err = db.DB.Select(&n, `select extract( epoch from ts)::Int as ts from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '1 year';`)
+		err = db.WriterDb.Select(&n, `select extract( epoch from ts)::Int as ts from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '1 year';`)
 
 		resp := []result{}
 		for _, item := range n {
@@ -488,7 +488,7 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if reqData.Pubkey == "" {
-		err := db.DB.Get(&reqData.Pubkey, "SELECT ENCODE(pubkey, 'hex') as pubkey from validators where validatorindex = $1", reqData.Index)
+		err := db.WriterDb.Get(&reqData.Pubkey, "SELECT ENCODE(pubkey, 'hex') as pubkey from validators where validatorindex = $1", reqData.Index)
 		if err != nil {
 			logger.Errorf("error getting pubkey from validator index route: %v, %v", r.URL.String(), err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -575,7 +575,7 @@ func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
 		net + ":" + string(types.ValidatorGotSlashedEventName),
 		net + ":" + string(types.SyncCommitteeSoon)})
 
-	_, err = db.FrontendDB.Exec(`
+	_, err = db.FrontendWriterDB.Exec(`
 			DELETE FROM users_subscriptions WHERE user_id=$1 AND event_filter=ANY($2) AND event_name=ANY($3);
 		`, user.UserID, pqPubkeys, pqEventNames)
 	if err != nil {
@@ -658,7 +658,7 @@ func UserUpdateMonitoringSubscriptions(w http.ResponseWriter, r *http.Request) {
 		net + ":" + string(types.MonitoringMachineSwitchedToETH1FallbackEventName),
 		net + ":" + string(types.MonitoringMachineSwitchedToETH2FallbackEventName)})
 
-	_, err = db.FrontendDB.Exec(`
+	_, err = db.FrontendWriterDB.Exec(`
 			DELETE FROM users_subscriptions WHERE user_id=$1 AND event_filter=ANY($2) AND event_name=ANY($3);
 		`, user.UserID, pqPubkeys, pqEventNames)
 	if err != nil {
@@ -706,7 +706,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	userNotificationsCenterData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userNotificationsCenterData.CsrfField = csrf.TemplateField(r)
 	var watchlistPubkeys [][]byte
-	err := db.FrontendDB.Select(&watchlistPubkeys, `
+	err := db.FrontendWriterDB.Select(&watchlistPubkeys, `
 	SELECT validator_publickey
 	FROM users_validators_tags
 	WHERE user_id = $1 and tag = $2
@@ -723,7 +723,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	watchlist := []watchlistValidators{}
-	err = db.DB.Select(&watchlist, `
+	err = db.WriterDb.Select(&watchlist, `
 	SELECT 
 		validatorindex as index,
 		ENCODE(pubkey, 'hex') as pubkey
@@ -737,7 +737,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var subscriptions []types.Subscription
-	err = db.FrontendDB.Select(&subscriptions, `
+	err = db.FrontendWriterDB.Select(&subscriptions, `
 	SELECT 
 		event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold
 	FROM users_subscriptions
@@ -911,7 +911,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	wl := []watchlistSubscription{}
-	err = db.DB.Select(&wl, `
+	err = db.WriterDb.Select(&wl, `
 		SELECT 
 			validators.validatorindex as index,
 			users_validators_tags.validator_publickey as publickey,
@@ -995,7 +995,7 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 	user := getUser(r)
 
 	subs := []types.Subscription{}
-	err = db.FrontendDB.Select(&subs, `
+	err = db.FrontendWriterDB.Select(&subs, `
 			SELECT *
 			FROM users_subscriptions
 			WHERE user_id = $1
@@ -1185,7 +1185,7 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 		Confirmed bool   `db:"email_confirmed"`
 	}{}
 
-	err = db.FrontendDB.Get(&currentUser, "SELECT id, email, password, email_confirmed FROM users WHERE id = $1", user.UserID)
+	err = db.FrontendWriterDB.Get(&currentUser, "SELECT id, email, password, email_confirmed FROM users WHERE id = $1", user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving password for user %v: %v", user.UserID, err)
 		session.AddFlash("Error: Invalid password!")
@@ -1262,7 +1262,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 		Count int
 		Email string
 	}
-	err = db.FrontendDB.Get(&existingEmails, "SELECT email FROM users WHERE email = $1", email)
+	err = db.FrontendWriterDB.Get(&existingEmails, "SELECT email FROM users WHERE email = $1", email)
 
 	if existingEmails.Email == email {
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
@@ -1322,7 +1322,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		Confirmed bool      `db:"email_confirmed"`
 	}{}
 
-	err = db.FrontendDB.Get(&user, "SELECT id, email, email_confirmation_ts, email_confirmed FROM users WHERE email_confirmation_hash = $1", hash)
+	err = db.FrontendWriterDB.Get(&user, "SELECT id, email, email_confirmation_ts, email_confirmed FROM users WHERE email_confirmation_hash = $1", hash)
 	if err != nil {
 		logger.Errorf("error retreiveing email for confirmation_hash %v %v", hash, err)
 		utils.SetFlash(w, r, authSessionName, "Error: This confirmation link is invalid / outdated.")
@@ -1343,14 +1343,14 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var emailExists string
-	err = db.FrontendDB.Get(&emailExists, "SELECT email FROM users WHERE email = $1", newEmail)
+	err = db.FrontendWriterDB.Get(&emailExists, "SELECT email FROM users WHERE email = $1", newEmail)
 	if emailExists != "" {
 		utils.SetFlash(w, r, authSessionName, "Error: Email already exists. We could not update your email.")
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
-	_, err = db.FrontendDB.Exec(`UPDATE users SET email = $1 WHERE id = $2`, newEmail, user.ID)
+	_, err = db.FrontendWriterDB.Exec(`UPDATE users SET email = $1 WHERE id = $2`, newEmail, user.ID)
 	if err != nil {
 		logger.Errorf("error: updating email for user: %v", err)
 		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
@@ -1370,7 +1370,7 @@ func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
 	now := time.Now()
 	emailConfirmationHash := utils.RandomString(40)
 
-	tx, err := db.FrontendDB.Beginx()
+	tx, err := db.FrontendWriterDB.Beginx()
 	if err != nil {
 		return err
 	}
@@ -1409,7 +1409,7 @@ Best regards,
 		return err
 	}
 
-	_, err = db.FrontendDB.Exec("UPDATE users SET email_confirmation_ts = TO_TIMESTAMP($1) WHERE id = $2", time.Now().Unix(), userId)
+	_, err = db.FrontendWriterDB.Exec("UPDATE users SET email_confirmation_ts = TO_TIMESTAMP($1) WHERE id = $2", time.Now().Unix(), userId)
 	if err != nil {
 		return fmt.Errorf("error updating confirmation-ts: %w", err)
 	}
@@ -1571,7 +1571,7 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	publicKeys := make([]string, 0)
-	db.DB.Select(&publicKeys, `
+	db.WriterDb.Select(&publicKeys, `
 	SELECT pubkeyhex as pubkey
 	FROM validators
 	WHERE validatorindex = ANY($1)
@@ -1847,7 +1847,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 			}
 
 			var rocketpoolNodes []string
-			err = db.DB.Select(&rocketpoolNodes, `
+			err = db.WriterDb.Select(&rocketpoolNodes, `
 				SELECT DISTINCT(ENCODE(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
 			`, pq.ByteaArray(pubkeys))
 			if err != nil {
@@ -1997,7 +1997,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 			}
 
 			var rocketpoolNodes []string
-			err = db.DB.Select(&rocketpoolNodes, `
+			err = db.WriterDb.Select(&rocketpoolNodes, `
 				SELECT DISTINCT(ENCODE(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
 			`, pq.ByteaArray(pubkeys))
 			if err != nil {
@@ -2117,7 +2117,7 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	tx, err := db.FrontendDB.Beginx()
+	tx, err := db.FrontendWriterDB.Beginx()
 	if err != nil {
 		//  return fmt.Errorf("error beginning transaction")
 		logger.Errorf("error committing transacton")

@@ -20,7 +20,7 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 	}()
 
 	lastFinalizedEpoch := 0
-	err = DB.Get(&lastFinalizedEpoch, `select coalesce(max(epoch),0) from epochs where finalized = 't'`)
+	err = WriterDb.Get(&lastFinalizedEpoch, `select coalesce(max(epoch),0) from epochs where finalized = 't'`)
 	if err != nil {
 		return false, fmt.Errorf("error getting latestEpoch: %w", err)
 	}
@@ -30,7 +30,7 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 	}
 
 	lastStreaksEpoch := 0
-	err = DB.Get(&lastStreaksEpoch, `select coalesce(max(start+length)-1,0) from validator_attestation_streaks`)
+	err = WriterDb.Get(&lastStreaksEpoch, `select coalesce(max(start+length)-1,0) from validator_attestation_streaks`)
 	if err != nil {
 		return false, fmt.Errorf("error getting lastStreaksEpoch: %w", err)
 	}
@@ -56,7 +56,7 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 	}
 
 	var statsExist bool
-	err = DB.Get(&statsExist, `select coalesce((select status from validator_stats_status where day = $1),false)`, day)
+	err = WriterDb.Get(&statsExist, `select coalesce((select status from validator_stats_status where day = $1),false)`, day)
 	if err != nil {
 		return false, fmt.Errorf("error getting statsExist: %w", err)
 	}
@@ -161,14 +161,14 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 
 	// fmt.Println(strings.ReplaceAll(strings.ReplaceAll(qry, "$1", fmt.Sprintf("%d", startEpoch)), "$2", fmt.Sprintf("%d", endEpoch)))
 
-	err = DB.Select(&streaks, qry, uint64(startEpoch), uint64(endEpoch))
+	err = WriterDb.Select(&streaks, qry, uint64(startEpoch), uint64(endEpoch))
 	if err != nil {
 		return false, fmt.Errorf("error getting streaks: %w", err)
 	}
 
 	t1 := time.Now()
 
-	tx, err := DB.Beginx()
+	tx, err := WriterDb.Beginx()
 	if err != nil {
 		return false, fmt.Errorf("error starting db transaction: %w", err)
 	}

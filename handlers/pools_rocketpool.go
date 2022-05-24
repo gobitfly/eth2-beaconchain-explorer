@@ -81,7 +81,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 	recordsFiltered := uint64(0)
 	var minipools []types.RocketpoolPageDataMinipool
 	if search == "" {
-		err = db.DB.Select(&minipools, fmt.Sprintf(`
+		err = db.ReaderDb.Select(&minipools, fmt.Sprintf(`
 			select 
 				rocketpool_minipools.*, 
 				validators.validatorindex as validator_index,
@@ -100,7 +100,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		err = db.DB.Select(&minipools, fmt.Sprintf(`
+		err = db.ReaderDb.Select(&minipools, fmt.Sprintf(`
 			with matched_minipools as (
 				select address from rocketpool_minipools where encode(pubkey::bytea,'hex') like $3
 				union select address from rocketpool_minipools where encode(address::bytea,'hex') like $3
@@ -214,7 +214,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 	recordsFiltered := uint64(0)
 	var dbResult []types.RocketpoolPageDataNode
 	if search == "" {
-		err = db.DB.Select(&dbResult, fmt.Sprintf(`
+		err = db.ReaderDb.Select(&dbResult, fmt.Sprintf(`
 			select rocketpool_nodes.*, cnt.total_count
 			from rocketpool_nodes
 			left join (select count(*) from rocketpool_nodes) cnt(total_count) ON true
@@ -227,7 +227,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		err = db.DB.Select(&dbResult, fmt.Sprintf(`
+		err = db.ReaderDb.Select(&dbResult, fmt.Sprintf(`
 			with matched_nodes as (
 				select address from rocketpool_nodes where encode(address::bytea,'hex') like $3
 			)
@@ -329,7 +329,7 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 	recordsFiltered := uint64(0)
 	var dbResult []types.RocketpoolPageDataDAOProposal
 	if search == "" {
-		err = db.DB.Select(&dbResult, fmt.Sprintf(`
+		err = db.ReaderDb.Select(&dbResult, fmt.Sprintf(`
 			select rocketpool_dao_proposals.*, cnt.total_count
 			from rocketpool_dao_proposals
 			left join (select count(*) from rocketpool_dao_proposals) cnt(total_count) ON true
@@ -342,7 +342,7 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		err = db.DB.Select(&dbResult, fmt.Sprintf(`
+		err = db.ReaderDb.Select(&dbResult, fmt.Sprintf(`
 			with matched_proposals as (
 				select id from rocketpool_dao_proposals where cast(id as text) like $3
 				union select id from rocketpool_dao_proposals where dao like $5
@@ -469,7 +469,7 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 	recordsFiltered := uint64(0)
 	var dbResult []types.RocketpoolPageDataDAOMember
 	if search == "" {
-		err = db.DB.Select(&dbResult, fmt.Sprintf(`
+		err = db.ReaderDb.Select(&dbResult, fmt.Sprintf(`
 			select rocketpool_dao_members.*, cnt.total_count
 			from rocketpool_dao_members
 			left join (select count(*) from rocketpool_dao_members) cnt(total_count) ON true
@@ -482,7 +482,7 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		err = db.DB.Select(&dbResult, fmt.Sprintf(`
+		err = db.ReaderDb.Select(&dbResult, fmt.Sprintf(`
 			with matched_members as (
 				select address from rocketpool_dao_members where encode(address::bytea,'hex') like $3
 				union select address from rocketpool_dao_members where id ilike $4

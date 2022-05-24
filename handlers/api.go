@@ -143,7 +143,7 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 		epoch = int64(services.LatestEpoch())
 	}
 
-	rows, err := db.DB.Query(`SELECT *, 
+	rows, err := db.ReaderDb.Query(`SELECT *, 
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '0') as scheduledblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '1') as proposedblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '2') as missedblocks,
@@ -183,7 +183,7 @@ func ApiEpochBlocks(w http.ResponseWriter, r *http.Request) {
 		epoch = int64(services.LatestEpoch())
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM blocks WHERE epoch = $1 ORDER BY slot", epoch)
+	rows, err := db.ReaderDb.Query("SELECT * FROM blocks WHERE epoch = $1 ORDER BY slot", epoch)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -219,7 +219,7 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 		blockSlot = int64(services.LatestSlot())
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM blocks WHERE slot = $1 OR blockroot = $2", blockSlot, blockRootHash)
+	rows, err := db.ReaderDb.Query("SELECT * FROM blocks WHERE slot = $1 OR blockroot = $2", blockSlot, blockRootHash)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -250,7 +250,7 @@ func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM blocks_attestations WHERE block_slot = $1 ORDER BY block_index", slot)
+	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_attestations WHERE block_slot = $1 ORDER BY block_index", slot)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -281,7 +281,7 @@ func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM blocks_deposits WHERE block_slot = $1 ORDER BY block_index DESC", slot)
+	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_deposits WHERE block_slot = $1 ORDER BY block_index DESC", slot)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -302,7 +302,7 @@ func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	j := json.NewEncoder(w)
 
-	rows, err := db.DB.Query("SELECT entering_validators_count as beaconchain_entering, exiting_validators_count as beaconchain_exiting FROM queue ORDER BY ts DESC LIMIT 1")
+	rows, err := db.ReaderDb.Query("SELECT entering_validators_count as beaconchain_entering, exiting_validators_count as beaconchain_exiting FROM queue ORDER BY ts DESC LIMIT 1")
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -333,7 +333,7 @@ func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM blocks_attesterslashings WHERE block_slot = $1 ORDER BY block_index DESC", slot)
+	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_attesterslashings WHERE block_slot = $1 ORDER BY block_index DESC", slot)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -364,7 +364,7 @@ func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM blocks_proposerslashings WHERE block_slot = $1 ORDER BY block_index DESC", slot)
+	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_proposerslashings WHERE block_slot = $1 ORDER BY block_index DESC", slot)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -395,7 +395,7 @@ func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM blocks_voluntaryexits WHERE block_slot = $1 ORDER BY block_index DESC", slot)
+	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_voluntaryexits WHERE block_slot = $1 ORDER BY block_index DESC", slot)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -431,7 +431,7 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 		period = utils.SyncPeriodOfEpoch(services.LatestEpoch()) + 1
 	}
 
-	rows, err := db.DB.Query(`SELECT period, period*$2 AS start_epoch, (period+1)*$2-1 AS end_epoch, ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators FROM sync_committees WHERE period = $1 GROUP BY period`, period, utils.Config.Chain.EpochsPerSyncCommitteePeriod)
+	rows, err := db.ReaderDb.Query(`SELECT period, period*$2 AS start_epoch, (period+1)*$2-1 AS end_epoch, ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators FROM sync_committees WHERE period = $1 GROUP BY period`, period, utils.Config.Chain.EpochsPerSyncCommitteePeriod)
 	if err != nil {
 		logger.WithError(err).WithField("url", r.URL.String()).Errorf("error querying db")
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
@@ -462,7 +462,7 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM eth1_deposits WHERE tx_hash = $1", eth1TxHash)
+	rows, err := db.ReaderDb.Query("SELECT * FROM eth1_deposits WHERE tx_hash = $1", eth1TxHash)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -515,7 +515,7 @@ func ApiRocketpoolValidators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(queryPubkeys) > 0 {
-		err := db.DB.Select(&queryIndices, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY validatorindex", queryPubkeys)
+		err := db.ReaderDb.Select(&queryIndices, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY validatorindex", queryPubkeys)
 		if err != nil {
 			logger.Errorf("dashboard could not resolve pubkeys to indices err: %v", err)
 			sendErrorResponse(j, r.URL.String(), err.Error())
@@ -576,7 +576,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(queryPubkeys) > 0 {
-			err := db.DB.Select(&queryIndices, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY validatorindex", queryPubkeys)
+			err := db.ReaderDb.Select(&queryIndices, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY validatorindex", queryPubkeys)
 			if err != nil {
 				logger.Errorf("dashboard could not resolve pubkeys to indices err: %v", err)
 				sendErrorResponse(j, r.URL.String(), err.Error())
@@ -651,7 +651,7 @@ func getRocketpoolStats() ([]interface{}, error) {
 			return cachedObj.Data.([]interface{}), nil
 		}
 	}
-	rows, err := db.DB.Query(`
+	rows, err := db.ReaderDb.Query(`
 		SELECT claim_interval_time, claim_interval_time_start, 
 		current_node_demand, TRUNC(current_node_fee::decimal, 10)::float as current_node_fee, effective_rpl_staked,
 		node_operator_rewards, TRUNC(reth_exchange_rate::decimal, 10)::float as reth_exchange_rate, reth_supply, rpl_price, total_eth_balance, total_eth_staking, 
@@ -678,7 +678,7 @@ func getRocketpoolStats() ([]interface{}, error) {
 }
 
 func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
-	rows, err := db.DB.Query(`
+	rows, err := db.ReaderDb.Query(`
 		SELECT
 			rplm.node_address      AS node_address,
 			rplm.address           AS minipool_address,
@@ -705,7 +705,7 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 }
 
 func validators(queryIndices []uint64) ([]interface{}, error) {
-	rows, err := db.DB.Query("SELECT validators.validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, validators.balance, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, validator_names.name, performance1d, performance7d, performance31d, performance365d, rank7d FROM validators LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validators.validatorindex = ANY($1) ORDER BY validators.validatorindex", pq.Array(queryIndices))
+	rows, err := db.ReaderDb.Query("SELECT validators.validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, validators.balance, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, validator_names.name, performance1d, performance7d, performance31d, performance365d, rank7d FROM validators LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validators.validatorindex = ANY($1) ORDER BY validators.validatorindex", pq.Array(queryIndices))
 	if err != nil {
 		return nil, err
 	}
@@ -720,7 +720,7 @@ func validatorEffectiveness(epoch int64, indices []uint64) ([]interface{}, error
 		effectivenessEpochRange = 0
 	}
 
-	rows, err := db.DB.Query(`
+	rows, err := db.ReaderDb.Query(`
 	SELECT aa.validatorindex, validators.pubkey, TRUNC(COALESCE(
 		AVG(1 + inclusionslot - COALESCE((
 			SELECT MIN(slot)
@@ -753,7 +753,7 @@ type DashboardResponse struct {
 }
 
 func getEpoch(epoch int64) ([]interface{}, error) {
-	rows, err := db.DB.Query(`SELECT attestationscount, attesterslashingscount, averagevalidatorbalance,
+	rows, err := db.ReaderDb.Query(`SELECT attestationscount, attesterslashingscount, averagevalidatorbalance,
 	blockscount, depositscount, eligibleether, epoch, finalized, TRUNC(globalparticipationrate::decimal, 10)::float as globalparticipationrate, proposerslashingscount,
 	totalvalidatorbalance, validatorscount, voluntaryexitscount, votedether
 	FROM epochs WHERE epoch = $1`, epoch)
@@ -785,7 +785,7 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, balance, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, validator_names.name FROM validators LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validatorindex = ANY($1) OR pubkey = ANY($2) ORDER BY validatorindex", pq.Array(queryIndices), queryPubkeys)
+	rows, err := db.ReaderDb.Query("SELECT validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, balance, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, validator_names.name FROM validators LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validatorindex = ANY($1) OR pubkey = ANY($2) ORDER BY validatorindex", pq.Array(queryIndices), queryPubkeys)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -810,7 +810,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 
 	index := vars["index"]
 
-	rows, err := db.DB.Query("SELECT * FROM validator_stats WHERE validatorindex = $1 ORDER BY day DESC", index)
+	rows, err := db.ReaderDb.Query("SELECT * FROM validator_stats WHERE validatorindex = $1 ORDER BY day DESC", index)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -841,7 +841,7 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT publickey, validatorindex, valid_signature FROM eth1_deposits LEFT JOIN validators ON eth1_deposits.publickey = validators.pubkey WHERE from_address = $1 GROUP BY publickey, validatorindex, valid_signature ORDER BY validatorindex;", eth1Address)
+	rows, err := db.ReaderDb.Query("SELECT publickey, validatorindex, valid_signature FROM eth1_deposits LEFT JOIN validators ON eth1_deposits.publickey = validators.pubkey WHERE from_address = $1 GROUP BY publickey, validatorindex, valid_signature ORDER BY validatorindex;", eth1Address)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -872,7 +872,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT validator_balances_p.* FROM validator_balances_p LEFT JOIN validators ON validators.validatorindex = validator_balances_p.validatorindex WHERE week >= ((SELECT MAX(epoch) FROM epochs)-100)/(225*7) AND (validators.validatorindex = ANY($1) OR validators.pubkey = ANY($2)) ORDER BY epoch DESC, validatorindex LIMIT 100", pq.Array(queryIndices), queryPubkeys)
+	rows, err := db.ReaderDb.Query("SELECT validator_balances_p.* FROM validator_balances_p LEFT JOIN validators ON validators.validatorindex = validator_balances_p.validatorindex WHERE week >= ((SELECT MAX(epoch) FROM epochs)-100)/(225*7) AND (validators.validatorindex = ANY($1) OR validators.pubkey = ANY($2)) ORDER BY epoch DESC, validatorindex LIMIT 100", pq.Array(queryIndices), queryPubkeys)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -903,7 +903,7 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT validator_performance.* FROM validator_performance LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex WHERE validator_performance.validatorindex = ANY($1) OR validators.pubkey = ANY($2) ORDER BY validatorindex", pq.Array(queryIndices), queryPubkeys)
+	rows, err := db.ReaderDb.Query("SELECT validator_performance.* FROM validator_performance LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex WHERE validator_performance.validatorindex = ANY($1) OR validators.pubkey = ANY($2) ORDER BY validatorindex", pq.Array(queryIndices), queryPubkeys)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -940,7 +940,7 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	rows, err := db.DB.Query(`
+	rows, err := db.ReaderDb.Query(`
 		SELECT aa.validatorindex, validators.pubkey, COALESCE(
 			1 / AVG(1 + inclusionslot - COALESCE((
 				SELECT MIN(slot)
@@ -1005,7 +1005,7 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAttestationEfficiencyQuery(epoch int64, queryIndices []uint64, queryPubkeys pq.ByteaArray) (*sql.Rows, error) {
-	return db.DB.Query(`
+	return db.ReaderDb.Query(`
 	SELECT aa.validatorindex, validators.pubkey, COALESCE(
 		AVG(1 + inclusionslot - COALESCE((
 			SELECT MIN(slot)
@@ -1034,7 +1034,7 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 
-	rows, err := db.DB.Query(`
+	rows, err := db.ReaderDb.Query(`
 			SELECT 
 				validator_performance.*
 			FROM validator_performance 
@@ -1069,7 +1069,7 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT eth1_deposits.* FROM eth1_deposits LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey WHERE validators.validatorindex = ANY($1) or eth1_deposits.publickey = ANY($2)", pq.Array(queryIndices), queryPubkeys)
+	rows, err := db.ReaderDb.Query("SELECT eth1_deposits.* FROM eth1_deposits LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey WHERE validators.validatorindex = ANY($1) or eth1_deposits.publickey = ANY($2)", pq.Array(queryIndices), queryPubkeys)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1100,7 +1100,7 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT attestation_assignments_p.* FROM attestation_assignments_p LEFT JOIN validators ON validators.validatorindex = attestation_assignments_p.validatorindex WHERE (validators.validatorindex = ANY($1) OR validators.pubkey = ANY($2)) AND week >= $3 / 1575 AND epoch > $3 ORDER BY validatorindex, epoch desc LIMIT 100", pq.Array(queryIndices), queryPubkeys, services.LatestEpoch()-10)
+	rows, err := db.ReaderDb.Query("SELECT attestation_assignments_p.* FROM attestation_assignments_p LEFT JOIN validators ON validators.validatorindex = attestation_assignments_p.validatorindex WHERE (validators.validatorindex = ANY($1) OR validators.pubkey = ANY($2)) AND week >= $3 / 1575 AND epoch > $3 ORDER BY validatorindex, epoch desc LIMIT 100", pq.Array(queryIndices), queryPubkeys, services.LatestEpoch()-10)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1131,7 +1131,7 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT blocks.* FROM blocks LEFT JOIN validators on validators.validatorindex = blocks.proposer WHERE (proposer = ANY($1) OR validators.pubkey = ANY($2)) AND epoch > $3 ORDER BY proposer, epoch desc, slot desc LIMIT 100", pq.Array(queryIndices), queryPubkeys, services.LatestEpoch()-100)
+	rows, err := db.ReaderDb.Query("SELECT blocks.* FROM blocks LEFT JOIN validators on validators.validatorindex = blocks.proposer WHERE (proposer = ANY($1) OR validators.pubkey = ANY($2)) AND epoch > $3 ORDER BY proposer, epoch desc, slot desc LIMIT 100", pq.Array(queryIndices), queryPubkeys, services.LatestEpoch()-100)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1153,7 +1153,7 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 
-	rows, err := db.DB.Query("SELECT x, y, color, slot, validator FROM graffitiwall ORDER BY x, y LIMIT 1000000")
+	rows, err := db.ReaderDb.Query("SELECT x, y, color, slot, validator FROM graffitiwall ORDER BY x, y LIMIT 1000000")
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1178,7 +1178,7 @@ func ApiChart(w http.ResponseWriter, r *http.Request) {
 	chartName := vars["chart"]
 
 	var image []byte
-	err := db.DB.Get(&image, "SELECT image FROM chart_images WHERE name = $1", chartName)
+	err := db.ReaderDb.Get(&image, "SELECT image FROM chart_images WHERE name = $1", chartName)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "no data available for the requested chart")
 		return
@@ -1587,7 +1587,7 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query(
+	rows, err := db.ReaderDb.Query(
 		"SELECT pubkey, effectivebalance, slashed, activationeligibilityepoch, "+
 			"activationepoch, exitepoch, lastattestationslot, status, validator_performance.* FROM validators "+
 			"LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex "+
@@ -2126,7 +2126,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		ORDER BY epoch ASC`
 
 	data := []*types.DashboardValidatorBalanceHistory{}
-	err = db.DB.Select(&data, query, queryValidatorsArr, queryOffsetEpoch)
+	err = db.ReaderDb.Select(&data, query, queryValidatorsArr, queryOffsetEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance history")
 		http.Error(w, "Internal server error", 503)
