@@ -284,7 +284,6 @@ func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
 			event_filter,
 			last_sent_ts,
 			last_sent_epoch,
-			channels,
 			created_ts,
 			created_epoch,
 			event_threshold,
@@ -303,7 +302,6 @@ func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
 				last_sent_ts,
 				last_sent_epoch,
 				created_ts,
-				channels,
 				created_epoch,
 				event_threshold,
 				ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash

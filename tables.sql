@@ -546,7 +546,6 @@ create table users_subscriptions
     event_threshold   real                        default 0,
     last_sent_ts      timestamp without time zone,
     last_sent_epoch   int,
-    channels          text[] -- currently supported channels: webhook_discord, webhook, email, push
     created_ts        timestamp without time zone not null,
     created_epoch     int                         not null,
     unsubscribe_hash  bytea                        ,
@@ -555,46 +554,8 @@ create table users_subscriptions
 
 create index idx_users_subscriptions_unsubscribe_hash on users_subscriptions (unsubscribe_hash);
 
+
 CREATE TYPE notification_channels as ENUM ('webhook_discord', 'webhook', 'email', 'push');
-
-drop table if exists notifications_queue;
-create table notifications_queue
-(
-    id                  serial  not null,
-    subscription_id     int     not null,
-    created_ts          timestamp without time zone not null default now(),
-    created_epoch       int,
-    event_name          character varying(100),
-    sent_ts             timestamp without time zone,
-    payload             bytea          not null,
-    response            bytea,
-    channel             notification_channel not null,
-    primary key (subscription_id, id),
-);
-
--- drop table if exists email_queue;
--- create table email_queue
--- (
---     id                      serial       not null,
---     email                   varchar(256) not null,
---     subject                 text         not null,
---     title                   text         not null,
---     body                    text         not null,
---     subscriptionManageURL   varchar(256) not null,
---     UnsubURL                varchar(256) not null,
---     hasAttachment           boolean default 'f' not null,
---     sentTs                  timestamp without time zone,
---     deliveredTs             timestamp without time zone
--- );
-
--- drop table if exists email_queue_attachments;
--- create table email_queue_attachments (
---     queue_id int references email_queue (id) on delete cascade,
---     name varchar(256) not null,
---     content []bytea,
---     primary key (queue_id, name)
--- );
-
 drop table if exists notification_queue;
 create table notification_queue(
     id                  serial not null,
