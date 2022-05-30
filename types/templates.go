@@ -1175,12 +1175,15 @@ type RocketpoolPageDataDAOMember struct {
 }
 
 type UserWebhookRow struct {
-	ID          uint64        `db:"id" json:"id"`
-	Url         template.HTML `db:"url" json:"url"`
-	Retries     template.HTML `db:"retries" json:"retries"`
-	LastSent    template.HTML `db:"last_retry" json:"lastSent"`
-	Destination template.HTML `db:"destination" json:"destination"`
-	Events      template.HTML `db:"event_names" json:"-"`
+	ID          uint64 `db:"id" json:"id"`
+	UrlFull     string
+	Url         template.HTML      `db:"url" json:"url"`
+	Retries     template.HTML      `db:"retries" json:"retries"`
+	LastSent    template.HTML      `db:"last_retry" json:"lastSent"`
+	Destination template.HTML      `db:"destination" json:"destination"`
+	Events      []WebhookPageEvent `db:"event_names" json:"-"`
+	Discord     bool
+	CsrfField   template.HTML
 }
 
 type WebhookPageData struct {
@@ -1195,4 +1198,5 @@ type WebhookPageData struct {
 type WebhookPageEvent struct {
 	EventLabel string
 	EventName
+	Active bool
 }

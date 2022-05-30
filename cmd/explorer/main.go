@@ -362,7 +362,8 @@ func main() {
 			authRouter.HandleFunc("/rewards/subscriptions/data", handlers.RewardGetUserSubscriptions).Methods("POST")
 			authRouter.HandleFunc("/webhooks", handlers.NotificationWebhookPage).Methods("GET")
 			authRouter.HandleFunc("/webhooks/add", handlers.UsersAddWebhook).Methods("POST")
-			authRouter.HandleFunc("/webhooks/delete", handlers.UsersAddWebhook).Methods("POST")
+			authRouter.HandleFunc("/webhooks/{webhookID}/update", handlers.UsersEditWebhook).Methods("POST")
+			authRouter.HandleFunc("/webhooks/{webhookID}/delete", handlers.UsersDeleteWebhook).Methods("POST")
 
 			err = initStripe(authRouter)
 			if err != nil {
