@@ -297,7 +297,6 @@ func queueNotifications(notificationsByUserID map[uint64]map[types.EventName][]t
 }
 
 func dispatchNotifications(useDB *sqlx.DB) error {
-	logger.Infof("sending email notifications")
 	err := sendEmailNotifications(useDB)
 	if err != nil {
 		return fmt.Errorf("error sending email notifications, err: %w", err)
@@ -840,7 +839,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 	}
 	client := &http.Client{Timeout: time.Second * 30}
 
-	logger.Infof("processing %v discrod webhook notifications", len(notificationQueueItem))
+	logger.Infof("processing %v discord webhook notifications", len(notificationQueueItem))
 	now := time.Now()
 	for _, n := range notificationQueueItem {
 
