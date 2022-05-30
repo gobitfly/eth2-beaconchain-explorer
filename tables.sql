@@ -601,7 +601,7 @@ create table users_webhooks
 (   
     id                serial                  not null,
     user_id           int                     not null,
-    label             varchar(200)            not null,
+    -- label             varchar(200)            not null,
     url               character varying(1024) not null,
     retries           int                     not null default 0, -- a backoff parameter that indicates if the requests was successful and when to retry it again
     last_sent         timestamp without time zone,
