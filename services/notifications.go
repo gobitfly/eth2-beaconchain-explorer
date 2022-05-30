@@ -101,7 +101,7 @@ func notificationSender() {
 		start := time.Now()
 		err := dispatchNotifications(db.FrontendWriterDB)
 		if err != nil {
-			logger.WithError(err).Error("error dispatchign notifications")
+			logger.WithError(err).Error("error dispatching notifications")
 		}
 
 		err = garbageCollectNotificationQueue(db.FrontendWriterDB)
@@ -110,7 +110,7 @@ func notificationSender() {
 		}
 		logger.WithField("duration", time.Since(start)).Info("notifications dispatched and garbage collected")
 		metrics.TaskDuration.WithLabelValues("service_notifications_sender").Observe(time.Since(start).Seconds())
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 15)
 	}
 }
 

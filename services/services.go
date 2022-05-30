@@ -301,7 +301,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		return nil, fmt.Errorf("error retrieving scheduledCount from blocks: %v", err)
 	}
 	data.ScheduledCount = scheduledCount
-	logger.Info("getting blocks")
 
 	var blocks []*types.IndexPageDataBlocks
 	err = db.WriterDb.Select(&blocks, `
@@ -347,7 +346,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	for _, block := range data.Blocks {
 		block.Ts = utils.SlotToTime(block.Slot)
 	}
-	logger.Info("getting queue")
 	queueCount := struct {
 		EnteringValidators uint64 `db:"entering_validators_count"`
 		ExitingValidators  uint64 `db:"exiting_validators_count"`
@@ -370,7 +368,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	if epochLowerBound = 0; epoch > 1600 {
 		epochLowerBound = epoch - 1600
 	}
-	logger.Info("getting epochs")
 	var epochHistory []*types.IndexPageEpochHistory
 	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
 	if err != nil {
