@@ -86,3 +86,31 @@ type UsersNotificationsRequest struct {
 type DashboardRequest struct {
 	IndicesOrPubKey string `json:"indicesOrPubkey"`
 }
+
+type DiscordEmbed struct {
+	Color       string              `json:"color,omitempty"`
+	Description string              `json:"description,omitempty"`
+	Fields      []DiscordEmbedField `json:"fields,omitempty"`
+	Title       string              `json:"title,omitempty"`
+	Type        string              `json:"type,omitempty"`
+}
+
+type DiscordEmbedField struct {
+	Inline bool   `json:"inline"`
+	Name   string `json:"name"`
+	Value  string `json:"value"`
+}
+
+type DiscordReq struct {
+	Content         string         `json:"content,omitempty"`
+	Username        string         `json:"username,omitempty"`
+	Avatar_url      string         `json:"avatar_url,omitempty"`
+	Tts             bool           `json:"tts,omitempty"`
+	Embeds          []DiscordEmbed `json:"embeds,omitempty"`
+	AllowedMentions []interface{}  `json:"allowedMentions,omitempty"`
+	Components      []interface{}  `json:"components,omitempty"`
+	Files           interface{}    `json:"files,omitempty"`
+	Payload         string         `json:"payload,omitempty"`
+	Attachments     interface{}    `json:"attachments,omitempty"`
+	Flags           int            `json:"flags,omitempty"`
+}

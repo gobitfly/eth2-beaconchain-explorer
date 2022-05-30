@@ -1174,9 +1174,29 @@ type RocketpoolPageDataDAOMember struct {
 	UnbondedValidatorCount   uint64    `db:"unbonded_validator_count"`
 }
 
-type Email struct {
-	Title                 string
-	Body                  template.HTML
-	SubscriptionManageURL template.HTML
-	UnSubURL              template.HTML
+type UserWebhookRow struct {
+	ID          uint64 `db:"id" json:"id"`
+	UrlFull     string
+	Url         template.HTML      `db:"url" json:"url"`
+	Retries     template.HTML      `db:"retries" json:"retries"`
+	LastSent    template.HTML      `db:"last_retry" json:"lastSent"`
+	Destination template.HTML      `db:"destination" json:"destination"`
+	Events      []WebhookPageEvent `db:"event_names" json:"-"`
+	Discord     bool
+	CsrfField   template.HTML
+}
+
+type WebhookPageData struct {
+	WebhookRows  []UserWebhookRow
+	Webhooks     []UserWebhook
+	Events       []WebhookPageEvent
+	CsrfField    template.HTML
+	Allowed      uint64
+	WebhookCount uint64
+}
+
+type WebhookPageEvent struct {
+	EventLabel string
+	EventName
+	Active bool
 }

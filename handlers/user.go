@@ -2308,3 +2308,428 @@ func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
 
 	sendOKResponse(j, r.URL.String(), nil)
 }
+
+var webhookTemplate *template.Template = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/webhooks.html"))
+
+// Imprint will show the imprint data using a go template
+func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(r)
+
+	data := InitPageData(w, r, "webhook", "/webhook", "webhook")
+	pageData := types.WebhookPageData{}
+
+	ctx, done := ctxt.WithTimeout(ctxt.Background(), time.Second*30)
+	defer done()
+
+	pageData.CsrfField = csrf.TemplateField(r)
+
+	var webhookCount uint64
+	err := db.FrontendReaderDB.GetContext(ctx, &webhookCount, `SELECT count(*) from users_webhooks where user_id = $1`, user.UserID)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting webhook count")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	pageData.WebhookCount = webhookCount
+
+	allowed := uint64(1)
+
+	var activeAPP uint64
+	err = db.FrontendReaderDB.GetContext(ctx, &activeAPP, `SELECT count(*) from users_app_subscriptions where active = 't' and user_id = $1;`, user.UserID)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting app subscription count")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if activeAPP > 0 {
+		allowed = 2
+	}
+
+	var activeAPI uint64
+	err = db.FrontendReaderDB.GetContext(ctx, &activeAPI, `SELECT count(*) from users_stripe_subscriptions us join users u on u.stripe_customer_id = us.customer_id where active = 't' and u.id = $1;`, user.UserID)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting api subscription count")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if activeAPI > 0 {
+		allowed = 5
+	}
+
+	pageData.Allowed = allowed
+
+	webhooks := []types.UserWebhook{}
+	err = db.FrontendReaderDB.SelectContext(ctx, &webhooks, `
+		SELECT 
+			id,
+			url,
+			retries,
+			last_sent,
+			event_names,
+			destination
+		FROM users_webhooks
+		WHERE user_id = $1;
+	`, user.UserID)
+	if err != nil {
+		logger.Errorf("error querying for webhooks for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	webhookRows := make([]types.UserWebhookRow, 0)
+
+	for _, wh := range webhooks {
+		url, _ := r.URL.Parse(wh.Url)
+		// events := template.HTML{}
+
+		// for _, ev := range wh.EventNames {
+
+		// }
+
+		events := make([]types.WebhookPageEvent, 0, 7)
+
+		events = append(events, types.WebhookPageEvent{
+			EventLabel: "Missed Attestations",
+			EventName:  types.ValidatorMissedAttestationEventName,
+			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorMissedAttestationEventName)),
+		})
+		events = append(events, types.WebhookPageEvent{
+			EventLabel: "Missed Proposals",
+			EventName:  types.ValidatorMissedProposalEventName,
+			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorMissedProposalEventName)),
+		})
+		events = append(events, types.WebhookPageEvent{
+			EventLabel: "Submitted Proposals",
+			EventName:  types.ValidatorExecutedProposalEventName,
+			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorExecutedProposalEventName)),
+		})
+		events = append(events, types.WebhookPageEvent{
+			EventLabel: "Slashed",
+			EventName:  types.ValidatorGotSlashedEventName,
+			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorGotSlashedEventName)),
+		})
+		events = append(events, types.WebhookPageEvent{
+			EventLabel: "Machine Offline",
+			EventName:  types.MonitoringMachineOfflineEventName,
+			Active:     utils.ElementExists(wh.EventNames, string(types.MonitoringMachineOfflineEventName)),
+		})
+		events = append(events, types.WebhookPageEvent{
+			EventLabel: "Machine Disk Full",
+			EventName:  types.MonitoringMachineDiskAlmostFullEventName,
+			Active:     utils.ElementExists(wh.EventNames, string(types.MonitoringMachineDiskAlmostFullEventName)),
+		})
+		events = append(events, types.WebhookPageEvent{
+			EventLabel: "Machine CPU",
+			EventName:  types.MonitoringMachineCpuLoadEventName,
+			Active:     utils.ElementExists(wh.EventNames, string(types.MonitoringMachineCpuLoadEventName)),
+		})
+
+		isDiscord := false
+
+		if wh.Destination.Valid && wh.Destination.String == "webhook_discord" {
+			isDiscord = true
+		}
+
+		ls := template.HTML(`N/A`)
+
+		if wh.LastSent.Valid {
+			ls = utils.FormatTimestampTs(wh.LastSent.Time)
+		}
+
+		webhookRows = append(webhookRows, types.UserWebhookRow{
+			ID:        wh.ID,
+			Retries:   template.HTML(fmt.Sprintf("%d", wh.Retries)),
+			UrlFull:   wh.Url,
+			Url:       template.HTML(fmt.Sprintf(`<span>%v</span><span style="margin-left: .5rem;">%v</span>`, url.Hostname(), utils.CopyButton(wh.Url))),
+			LastSent:  ls,
+			Events:    events,
+			Discord:   isDiscord,
+			CsrfField: csrf.TemplateField(r),
+		})
+
+	}
+
+	pageData.Webhooks = webhooks
+	pageData.WebhookRows = webhookRows
+
+	// logger.Infof("events: %+v", webhooks)
+
+	events := make([]types.WebhookPageEvent, 0, 7)
+
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Missed Attestations",
+		EventName:  types.ValidatorMissedAttestationEventName,
+	})
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Missed Proposals",
+		EventName:  types.ValidatorMissedProposalEventName,
+	})
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Submitted Proposals",
+		EventName:  types.ValidatorExecutedProposalEventName,
+	})
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Slashed",
+		EventName:  types.ValidatorGotSlashedEventName,
+	})
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Machine Offline",
+		EventName:  types.MonitoringMachineOfflineEventName,
+	})
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Machine Disk Full",
+		EventName:  types.MonitoringMachineDiskAlmostFullEventName,
+	})
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Machine CPU",
+		EventName:  types.MonitoringMachineCpuLoadEventName,
+	})
+
+	pageData.Events = events
+
+	data.Data = pageData
+
+	err = webhookTemplate.ExecuteTemplate(w, "layout", data)
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}
+
+func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(r)
+
+	err := r.ParseForm()
+	if err != nil {
+		logger.WithError(err).Errorf("error parsing form")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	// const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed', 'validator_synccommittee_soon']
+	// const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
+
+	url := r.FormValue("url")
+
+	destination := "webhook"
+
+	validatorAttestationMissed := "on" == r.FormValue(string(types.ValidatorMissedAttestationEventName))
+	validatorProposalMissed := "on" == r.FormValue(string(types.ValidatorMissedProposalEventName))
+	validatorProposalSubmitted := "on" == r.FormValue(string(types.ValidatorExecutedProposalEventName))
+	validatorGotSlashed := "on" == r.FormValue(string(types.ValidatorGotSlashedEventName))
+	monitoringMachineOffline := "on" == r.FormValue(string(types.MonitoringMachineOfflineEventName))
+	monitoringHddAlmostfull := "on" == r.FormValue(string(types.MonitoringMachineDiskAlmostFullEventName))
+	monitoringCpuLoad := "on" == r.FormValue(string(types.MonitoringMachineCpuLoadEventName))
+	discord := "on" == r.FormValue("discord")
+
+	if discord {
+		destination = "webhook_discord"
+	}
+
+	all := "on" == r.FormValue("all")
+
+	events := make(map[string]bool, 0)
+
+	events[string(types.ValidatorMissedAttestationEventName)] = validatorAttestationMissed
+	events[string(types.ValidatorMissedProposalEventName)] = validatorProposalMissed
+	events[string(types.ValidatorExecutedProposalEventName)] = validatorProposalSubmitted
+	events[string(types.ValidatorGotSlashedEventName)] = validatorGotSlashed
+	events[string(types.MonitoringMachineOfflineEventName)] = monitoringMachineOffline
+	events[string(types.MonitoringMachineDiskAlmostFullEventName)] = monitoringHddAlmostfull
+	events[string(types.MonitoringMachineCpuLoadEventName)] = monitoringCpuLoad
+
+	eventNames := make([]string, 0)
+
+	for eventName, active := range events {
+		if active || all {
+			eventNames = append(eventNames, eventName)
+		}
+	}
+
+	ctx, done := ctxt.WithTimeout(ctxt.Background(), time.Second*30)
+	defer done()
+
+	tx, err := db.FrontendWriterDB.BeginTxx(ctx, &sql.TxOptions{})
+	if err != nil {
+		logger.WithError(err).Errorf("error beginning transaction")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	defer tx.Rollback()
+
+	var webhookCount uint64
+	err = tx.Get(&webhookCount, `SELECT count(*) from users_webhooks where user_id = $1`, user.UserID)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting webhook count")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	allowed := uint64(1)
+
+	var activeAPP uint64
+	err = tx.Get(&activeAPP, `SELECT count(*) from users_app_subscriptions where active = 't' and user_id = $1;`, user.UserID)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting app subscription count")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if activeAPP > 0 {
+		allowed = 2
+	}
+
+	var activeAPI uint64
+	err = db.FrontendWriterDB.GetContext(ctx, &activeAPI, `SELECT count(*) from users_stripe_subscriptions us join users u on u.stripe_customer_id = us.customer_id where active = 't' and u.id = $1;`, user.UserID)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting api subscription count")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if activeAPI > 0 {
+		allowed = 5
+	}
+
+	if webhookCount >= allowed {
+		http.Error(w, "Too man webhooks exist already", 400)
+		return
+	}
+
+	_, err = tx.Exec(`INSERT INTO users_webhooks (user_id, url, event_names, destination) VALUES ($1, $2, $3, $4)`, user.UserID, url, pq.StringArray(eventNames), destination)
+	if err != nil {
+		logger.WithError(err).Errorf("error inserting a new webhook for user")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		logger.WithError(err).Errorf("error for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
+}
+
+func UsersEditWebhook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(r)
+
+	err := r.ParseForm()
+	if err != nil {
+		logger.WithError(err).Errorf("error parsing form")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	webhookID := vars["webhookID"]
+
+	// const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed', 'validator_synccommittee_soon']
+	// const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
+
+	url := r.FormValue("url")
+
+	destination := "webhook"
+
+	validatorAttestationMissed := "on" == r.FormValue(string(types.ValidatorMissedAttestationEventName))
+	validatorProposalMissed := "on" == r.FormValue(string(types.ValidatorMissedProposalEventName))
+	validatorProposalSubmitted := "on" == r.FormValue(string(types.ValidatorExecutedProposalEventName))
+	validatorGotSlashed := "on" == r.FormValue(string(types.ValidatorGotSlashedEventName))
+	monitoringMachineOffline := "on" == r.FormValue(string(types.MonitoringMachineOfflineEventName))
+	monitoringHddAlmostfull := "on" == r.FormValue(string(types.MonitoringMachineDiskAlmostFullEventName))
+	monitoringCpuLoad := "on" == r.FormValue(string(types.MonitoringMachineCpuLoadEventName))
+	discord := "on" == r.FormValue("discord")
+
+	if discord {
+		destination = "webhook_discord"
+	}
+
+	all := "on" == r.FormValue("all")
+
+	events := make(map[string]bool, 0)
+
+	events[string(types.ValidatorMissedAttestationEventName)] = validatorAttestationMissed
+	events[string(types.ValidatorMissedProposalEventName)] = validatorProposalMissed
+	events[string(types.ValidatorExecutedProposalEventName)] = validatorProposalSubmitted
+	events[string(types.ValidatorGotSlashedEventName)] = validatorGotSlashed
+	events[string(types.MonitoringMachineOfflineEventName)] = monitoringMachineOffline
+	events[string(types.MonitoringMachineDiskAlmostFullEventName)] = monitoringHddAlmostfull
+	events[string(types.MonitoringMachineCpuLoadEventName)] = monitoringCpuLoad
+
+	eventNames := make([]string, 0)
+
+	for eventName, active := range events {
+		if active || all {
+			eventNames = append(eventNames, eventName)
+		}
+	}
+
+	ctx, done := ctxt.WithTimeout(ctxt.Background(), time.Second*30)
+	defer done()
+
+	tx, err := db.FrontendWriterDB.BeginTxx(ctx, &sql.TxOptions{})
+	if err != nil {
+		logger.WithError(err).Errorf("error beginning transaction")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`UPDATE users_webhooks set url = $1, event_names = $2, destination = $3 where user_id = $4 and id = $5`, url, pq.StringArray(eventNames), destination, user.UserID, webhookID)
+	if err != nil {
+		logger.WithError(err).Errorf("error update webhook for user")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		logger.WithError(err).Errorf("error for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
+}
+
+func UsersDeleteWebhook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(r)
+
+	vars := mux.Vars(r)
+
+	webhookID := vars["webhookID"]
+	ctx, done := ctxt.WithTimeout(ctxt.Background(), time.Second*30)
+	defer done()
+
+	tx, err := db.FrontendWriterDB.BeginTxx(ctx, &sql.TxOptions{})
+	if err != nil {
+		logger.WithError(err).Errorf("error beginning transaction")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`DELETE FROM users_webhooks where user_id = $1 and id = $2`, user.UserID, webhookID)
+	if err != nil {
+		logger.WithError(err).Errorf("error update webhook for user")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		logger.WithError(err).Errorf("error for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
+}
