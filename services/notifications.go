@@ -1983,7 +1983,7 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 		}
 
 		err := db.FrontendWriterDB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex')
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '1 hour' OR us.last_sent_ts IS NULL);
 			`,
@@ -2118,7 +2118,7 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 		}
 
 		err := db.FrontendWriterDB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex')
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '8 hours' OR us.last_sent_ts IS NULL) AND (us.event_threshold <= $2 OR (us.event_threshold < 0 AND us.event_threshold * -1 >= $2));
 			`,
@@ -2172,7 +2172,7 @@ func collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID map[ui
 		}
 
 		err := db.FrontendWriterDB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex')
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '5 hours' OR us.last_sent_ts IS NULL);
 			`,
@@ -2378,7 +2378,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 	}
 
 	err = db.FrontendWriterDB.Select(&dbResult, `
-				SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex')
+				SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 				FROM users_subscriptions AS us 
 				WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '26 hours' OR us.last_sent_ts IS NULL) AND event_filter = ANY($2);
 				`,
