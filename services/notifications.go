@@ -255,12 +255,12 @@ func collectUserDbNotifications() map[uint64]map[types.EventName][]types.Notific
 func queueNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
 	subByEpoch := map[uint64][]uint64{}
 
-	// err := queueEmailNotifications(notificationsByUserID, useDB)
-	// if err != nil {
-	// 	logger.WithError(err).Error("error queuing email notifications")
-	// }
+	err := queueEmailNotifications(notificationsByUserID, useDB)
+	if err != nil {
+		logger.WithError(err).Error("error queuing email notifications")
+	}
 
-	err := queuePushNotification(notificationsByUserID, useDB)
+	err = queuePushNotification(notificationsByUserID, useDB)
 	if err != nil {
 		logger.WithError(err).Error("error queuing push notifications")
 	}
