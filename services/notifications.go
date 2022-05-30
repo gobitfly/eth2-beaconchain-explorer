@@ -713,12 +713,12 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 										{
 											Name:   "Epoch",
 											Value:  fmt.Sprintf("%v", n.GetEpoch()),
-											Inline: true,
+											Inline: false,
 										},
 										{
 											Name:   "Target",
 											Value:  fmt.Sprintf("%v", n.GetEventFilter()),
-											Inline: true,
+											Inline: false,
 										},
 									},
 								},
