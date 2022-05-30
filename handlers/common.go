@@ -51,7 +51,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	balances := []*types.Validator{}
 
-	err := db.DB.Select(&balances, `SELECT 
+	err := db.ReaderDb.Select(&balances, `SELECT 
 			   COALESCE(balance, 0) AS balance, 
 			   COALESCE(balanceactivation, 0) AS balanceactivation, 
 			   COALESCE(balance1d, 0) AS balance1d, 
@@ -71,7 +71,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		Publickey []byte
 	}{}
 
-	err = db.DB.Select(&deposits, "SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))", validatorsPQArray)
+	err = db.ReaderDb.Select(&deposits, "SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))", validatorsPQArray)
 	if err != nil {
 		return nil, err
 	}

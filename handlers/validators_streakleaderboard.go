@@ -94,7 +94,7 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if search == "" {
-		err = db.DB.Select(&sqlData, `
+		err = db.ReaderDb.Select(&sqlData, `
 			with
 				longeststreaks as (
 					select validatorindex, start, length, rank() over(order by length desc)
@@ -121,7 +121,7 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			left join (select count(*) from longeststreaks) cnt(totalcount) on true
 			order by `+orderBy+` `+orderDir+` limit $1 offset $2`, length, start)
 	} else {
-		err = db.DB.Select(&sqlData, `
+		err = db.ReaderDb.Select(&sqlData, `
 			with 
 				matched_validators as (
 					select v.validatorindex, v.pubkey, coalesce(vn.name,'') as name

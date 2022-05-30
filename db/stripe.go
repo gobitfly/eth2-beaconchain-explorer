@@ -11,7 +11,7 @@ import (
 
 // StripeRemoveCustomer removes the stripe customer and sets all subscriptions to inactive
 func StripeRemoveCustomer(customerID string) error {
-	tx, err := FrontendDB.Begin()
+	tx, err := FrontendWriterDB.Begin()
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func StripeUpdateSubscriptionStatus(tx *sql.Tx, id string, status bool, payload 
 	var err error
 	var useInternTx bool = tx == nil
 	if useInternTx {
-		tx, err := FrontendDB.Begin()
+		tx, err := FrontendWriterDB.Begin()
 		if err != nil {
 			return err
 		}
@@ -103,20 +103,20 @@ func StripeUpdateSubscriptionStatus(tx *sql.Tx, id string, status bool, payload 
 // StripeGetUserAPISubscription returns a users current subscription
 func StripeGetUserSubscription(id uint64, purchaseGroup string) (types.UserSubscription, error) {
 	userSub := types.UserSubscription{}
-	err := FrontendDB.Get(&userSub, "SELECT id, email, stripe_customer_id, subscription_id, price_id, active, api_key FROM users LEFT JOIN (SELECT * FROM users_stripe_subscriptions WHERE purchase_group = $2 and (payload->'ended_at')::text = 'null') as us ON users.stripe_customer_id = us.customer_id WHERE users.id = $1 ORDER BY active desc LIMIT 1", id, purchaseGroup)
+	err := FrontendWriterDB.Get(&userSub, "SELECT id, email, stripe_customer_id, subscription_id, price_id, active, api_key FROM users LEFT JOIN (SELECT * FROM users_stripe_subscriptions WHERE purchase_group = $2 and (payload->'ended_at')::text = 'null') as us ON users.stripe_customer_id = us.customer_id WHERE users.id = $1 ORDER BY active desc LIMIT 1", id, purchaseGroup)
 	return userSub, err
 }
 
 // StripeGetSubscription returns a subscription given a subscription_id
 func StripeGetSubscription(id string) (*types.StripeSubscription, error) {
 	sub := types.StripeSubscription{}
-	err := FrontendDB.Get(&sub, "SELECT customer_id, subscription_id, price_id, active FROM users_stripe_subscriptions WHERE subscription_id = $1", id)
+	err := FrontendWriterDB.Get(&sub, "SELECT customer_id, subscription_id, price_id, active FROM users_stripe_subscriptions WHERE subscription_id = $1", id)
 	return &sub, err
 }
 
 // StripeUpdateCustomerID adds a stripe customer id to a user. It checks if the user already has a stripe customer id.
 func StripeUpdateCustomerID(email, customerID string) error {
-	tx, err := FrontendDB.Begin()
+	tx, err := FrontendWriterDB.Begin()
 	if err != nil {
 		return err
 	}
@@ -149,12 +149,12 @@ func StripeUpdateCustomerID(email, customerID string) error {
 // StripeGetCustomerEmail returns a customers email given their customerID
 func StripeGetCustomerEmail(customerID string) (string, error) {
 	email := ""
-	err := FrontendDB.Get(&email, "SELECT email FROM users WHERE stripe_customer_id = $1", customerID)
+	err := FrontendWriterDB.Get(&email, "SELECT email FROM users WHERE stripe_customer_id = $1", customerID)
 	return email, err
 }
 
 func StripeGetCustomerUserId(customerID string) (uint64, error) {
 	var id uint64 = 0
-	err := FrontendDB.Get(&id, "SELECT id FROM users WHERE stripe_customer_id = $1", customerID)
+	err := FrontendWriterDB.Get(&id, "SELECT id FROM users WHERE stripe_customer_id = $1", customerID)
 	return id, err
 }

@@ -67,7 +67,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 	var filteredCount uint64
 	var blocks []*types.BlocksPageDataBlocks
 
-	err = db.DB.Get(&totalCount, "SELECT COALESCE(MAX(slot),0) FROM blocks")
+	err = db.ReaderDb.Get(&totalCount, "SELECT COALESCE(MAX(slot),0) FROM blocks")
 	if err != nil {
 		logger.Errorf("error retrieving max slot number: %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -85,7 +85,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 		if endSlot > 9223372036854775807 {
 			endSlot = 0
 		}
-		err = db.DB.Select(&blocks, `
+		err = db.ReaderDb.Select(&blocks, `
 			SELECT 
 				blocks.epoch, 
 				blocks.slot, 
@@ -203,7 +203,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		err = db.DB.SelectContext(ctx, &blocks, qry, args...)
+		err = db.ReaderDb.SelectContext(ctx, &blocks, qry, args...)
 		if err != nil {
 			logger.Errorf("error retrieving block data (with search): %v", err)
 			http.Error(w, "Internal server error", http.StatusServiceUnavailable)

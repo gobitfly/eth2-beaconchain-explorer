@@ -101,7 +101,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	var performanceData []*types.ValidatorPerformance
 
 	if search == "" {
-		err = db.DB.Select(&performanceData, `
+		err = db.ReaderDb.Select(&performanceData, `
 			SELECT 
 				a.*,
 				validators.pubkey,
@@ -154,7 +154,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 				ORDER BY `+orderBy+` `+orderDir+`
 			) perf ON perf.validatorindex = v.validatorindex
 			LIMIT $%d OFFSET $%d`, searchQry, len(args)-1, len(args))
-		err = db.DB.Select(&performanceData, qry, args...)
+		err = db.ReaderDb.Select(&performanceData, qry, args...)
 	}
 	if err != nil {
 		logger.Errorf("error retrieving performanceData data (search=%v): %v", search != "", err)

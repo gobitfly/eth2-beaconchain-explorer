@@ -49,7 +49,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	epochPageData := types.EpochPageData{}
 
-	err = db.DB.Get(&epochPageData, `
+	err = db.ReaderDb.Get(&epochPageData, `
 		SELECT 
 			epoch, 
 			blockscount, 
@@ -78,7 +78,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.DB.Select(&epochPageData.Blocks, `
+	err = db.ReaderDb.Select(&epochPageData.Blocks, `
 		SELECT 
 			blocks.slot, 
 			blocks.proposer, 
@@ -125,7 +125,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	epochPageData.Ts = utils.EpochToTime(epochPageData.Epoch)
 
-	err = db.DB.Get(&epochPageData.NextEpoch, "SELECT epoch FROM epochs WHERE epoch > $1 ORDER BY epoch LIMIT 1", epochPageData.Epoch)
+	err = db.ReaderDb.Get(&epochPageData.NextEpoch, "SELECT epoch FROM epochs WHERE epoch > $1 ORDER BY epoch LIMIT 1", epochPageData.Epoch)
 	if err == sql.ErrNoRows {
 		epochPageData.NextEpoch = 0
 	} else if err != nil {
@@ -133,7 +133,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	err = db.DB.Get(&epochPageData.PreviousEpoch, "SELECT epoch FROM epochs WHERE epoch < $1 ORDER BY epoch DESC LIMIT 1", epochPageData.Epoch)
+	err = db.ReaderDb.Get(&epochPageData.PreviousEpoch, "SELECT epoch FROM epochs WHERE epoch < $1 ORDER BY epoch DESC LIMIT 1", epochPageData.Epoch)
 	if err != nil {
 		logger.Errorf("error retrieving previous epoch for epoch %v: %v", epochPageData.Epoch, err)
 		epochPageData.PreviousEpoch = 0

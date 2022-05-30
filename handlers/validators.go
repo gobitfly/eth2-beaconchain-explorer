@@ -29,7 +29,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	validatorsPageData := types.ValidatorsPageData{}
 	var validators []*types.ValidatorsPageDataValidators
 
-	err := db.DB.Select(&validators, `SELECT activationepoch, exitepoch, lastattestationslot, slashed FROM validators ORDER BY validatorindex`)
+	err := db.ReaderDb.Select(&validators, `SELECT activationepoch, exitepoch, lastattestationslot, slashed FROM validators ORDER BY validatorindex`)
 
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
@@ -53,7 +53,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	var currentStateCounts []*states
 
 	qry := "SELECT status AS statename, COUNT(*) AS statecount FROM validators GROUP BY status"
-	err = db.DB.Select(&currentStateCounts, qry)
+	err = db.ReaderDb.Select(&currentStateCounts, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -288,7 +288,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			ORDER BY %s %s
 			LIMIT $1 OFFSET $2`, dataQuery.OrderBy, dataQuery.OrderDir)
 
-		err = db.DB.Select(&validators, qry, dataQuery.Length, dataQuery.Start)
+		err = db.ReaderDb.Select(&validators, qry, dataQuery.Length, dataQuery.Start)
 		if err != nil {
 			logger.Errorf("error retrieving validators data: %v", err)
 			http.Error(w, "Internal server error", 503)
@@ -372,7 +372,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			ORDER BY %s %s
 			LIMIT $%d OFFSET $%d`, searchQry, dataQuery.StateFilter, addAnd, countWhere, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir, len(args)-1, len(args))
 
-		err = db.DB.Select(&validators, qry, args...)
+		err = db.ReaderDb.Select(&validators, qry, args...)
 		if err != nil {
 			logger.Errorf("error retrieving validators data (with search): %v", err)
 			http.Error(w, "Internal server error", 503)
@@ -430,7 +430,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 
 	countTotal := uint64(0)
 	qry = "SELECT count(*) as total FROM validators"
-	err = db.DB.Get(&countTotal, qry)
+	err = db.ReaderDb.Get(&countTotal, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators total count: %v", err)
 		http.Error(w, "Internal server error", 503)

@@ -357,7 +357,7 @@ type EmailAttachment struct {
 type Email struct {
 	Title                 string        `json:"title"`
 	Body                  template.HTML `json:"body"`
-	SubscriptionManageURL string        `json:"subscriptionManageUrl"`
+	SubscriptionManageURL template.HTML `json:"subscriptionManageUrl"`
 	UnSubURL              template.HTML `json:"unSubURL"`
 }
 

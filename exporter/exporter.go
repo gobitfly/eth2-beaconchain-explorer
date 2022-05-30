@@ -454,26 +454,26 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 	var one int
 	logger.Printf("checking partition status for epoch %v", epoch)
 	week := epoch / 1575
-	err := db.DB.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'attestation_assignments_%v'", week))
+	err := db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'attestation_assignments_%v'", week))
 	if err != nil {
 		logger.Infof("creating partition attestation_assignments_%v", week)
-		_, err := db.DB.Exec(fmt.Sprintf("CREATE TABLE attestation_assignments_%v PARTITION OF attestation_assignments_p FOR VALUES IN (%v);", week, week))
+		_, err := db.WriterDb.Exec(fmt.Sprintf("CREATE TABLE attestation_assignments_%v PARTITION OF attestation_assignments_p FOR VALUES IN (%v);", week, week))
 		if err != nil {
 			logger.Fatalf("unable to create partition attestation_assignments_%v: %v", week, err)
 		}
 	}
-	err = db.DB.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'validator_balances_%v'", week))
+	err = db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'validator_balances_%v'", week))
 	if err != nil {
 		logger.Infof("creating partition validator_balances_%v", week)
-		_, err := db.DB.Exec(fmt.Sprintf("CREATE TABLE validator_balances_%v PARTITION OF validator_balances_p FOR VALUES IN (%v);", week, week))
+		_, err := db.WriterDb.Exec(fmt.Sprintf("CREATE TABLE validator_balances_%v PARTITION OF validator_balances_p FOR VALUES IN (%v);", week, week))
 		if err != nil {
 			logger.Fatalf("unable to create partition validator_balances_%v: %v", week, err)
 		}
 	}
-	err = db.DB.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'sync_assignments_%v'", week))
+	err = db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'sync_assignments_%v'", week))
 	if err != nil {
 		logger.Infof("creating partition sync_assignments_%v", week)
-		_, err := db.DB.Exec(fmt.Sprintf("CREATE TABLE sync_assignments_%v PARTITION OF sync_assignments_p FOR VALUES IN (%v);", week, week))
+		_, err := db.WriterDb.Exec(fmt.Sprintf("CREATE TABLE sync_assignments_%v PARTITION OF sync_assignments_p FOR VALUES IN (%v);", week, week))
 		if err != nil {
 			logger.Fatalf("unable to create partition sync_assignments_%v: %v", week, err)
 		}
@@ -541,7 +541,7 @@ func updateValidatorPerformance() error {
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("update_validator_performance").Observe(time.Since(start).Seconds())
 	}()
-	tx, err := db.DB.Beginx()
+	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		return fmt.Errorf("error starting db transaction: %w", err)
 	}
@@ -713,7 +713,7 @@ func finalityCheckpointsUpdater(client rpc.Client) {
 	t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.SecondsPerSlot))
 	for range t.C {
 		var prevEpoch uint64
-		err := db.DB.Get(&prevEpoch, `select coalesce(max(epoch),1) from finality_checkpoints`)
+		err := db.WriterDb.Get(&prevEpoch, `select coalesce(max(epoch),1) from finality_checkpoints`)
 		if err != nil {
 			logger.WithError(err).Errorf("error getting last exported finality_checkpoints from db")
 			continue
@@ -724,7 +724,7 @@ func finalityCheckpointsUpdater(client rpc.Client) {
 			logger.WithFields(logrus.Fields{"error": err, "epoch": nextEpoch}).Errorf("error getting finality_checkpoints from client")
 			continue
 		}
-		_, err = db.DB.Exec(`
+		_, err = db.WriterDb.Exec(`
 			insert into finality_checkpoints (
 				epoch, 
 				current_justified_epoch, current_justified_root, 
@@ -746,7 +746,7 @@ func finalityCheckpointsUpdater(client rpc.Client) {
 
 func networkLivenessUpdater(client rpc.Client) {
 	var prevHeadEpoch uint64
-	err := db.DB.Get(&prevHeadEpoch, "SELECT COALESCE(MAX(headepoch), 0) FROM network_liveness")
+	err := db.WriterDb.Get(&prevHeadEpoch, "SELECT COALESCE(MAX(headepoch), 0) FROM network_liveness")
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -773,7 +773,7 @@ func networkLivenessUpdater(client rpc.Client) {
 			continue
 		}
 
-		_, err = db.DB.Exec(`
+		_, err = db.WriterDb.Exec(`
 			INSERT INTO network_liveness (ts, headepoch, finalizedepoch, justifiedepoch, previousjustifiedepoch)
 			VALUES (NOW(), $1, $2, $3, $4)`,
 			head.HeadEpoch, head.FinalizedEpoch, head.JustifiedEpoch, head.PreviousJustifiedEpoch)
@@ -792,7 +792,7 @@ func genesisDepositsExporter() {
 	for {
 		// check if the beaconchain has started
 		var latestEpoch uint64
-		err := db.DB.Get(&latestEpoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
+		err := db.WriterDb.Get(&latestEpoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 		if err != nil {
 			logger.Errorf("error retrieving latest epoch from the database: %v", err)
 			time.Sleep(time.Second * 10)
@@ -806,7 +806,7 @@ func genesisDepositsExporter() {
 
 		// check if genesis-deposits have already been exported
 		var genesisDepositsCount uint64
-		err = db.DB.Get(&genesisDepositsCount, "SELECT COUNT(*) FROM blocks_deposits INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1' WHERE block_slot=0")
+		err = db.WriterDb.Get(&genesisDepositsCount, "SELECT COUNT(*) FROM blocks_deposits INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1' WHERE block_slot=0")
 		if err != nil {
 			logger.Errorf("error retrieving genesis-deposits-count when exporting genesis-deposits: %v", err)
 			time.Sleep(time.Second * 60)
@@ -820,7 +820,7 @@ func genesisDepositsExporter() {
 
 		// get genesis-validators-count
 		var genesisValidatorsCount uint64
-		err = db.DB.Get(&genesisValidatorsCount, "SELECT validatorscount FROM epochs WHERE epoch=0")
+		err = db.WriterDb.Get(&genesisValidatorsCount, "SELECT validatorscount FROM epochs WHERE epoch=0")
 		if err != nil {
 			logger.Errorf("error retrieving validatorscount for genesis-epoch when exporting genesis-deposits: %v", err)
 			time.Sleep(time.Second * 60)
@@ -829,7 +829,7 @@ func genesisDepositsExporter() {
 
 		// check if eth1-deposits have already been exported
 		var missingEth1Deposits uint64
-		err = db.DB.Get(&missingEth1Deposits, `
+		err = db.WriterDb.Get(&missingEth1Deposits, `
 			SELECT COUNT(*)
 			FROM validators v
 			LEFT JOIN ( 
@@ -848,7 +848,7 @@ func genesisDepositsExporter() {
 			continue
 		}
 
-		tx, err := db.DB.Beginx()
+		tx, err := db.WriterDb.Beginx()
 		if err != nil {
 			logger.Errorf("error beginning db-tx when exporting genesis-deposits: %v", err)
 			time.Sleep(time.Second * 60)

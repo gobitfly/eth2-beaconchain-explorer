@@ -79,7 +79,7 @@ func calculateStats() (*types.Stats, error) {
 func eth1TopDepositers() (*[]types.StatsTopDepositors, error) {
 	topDepositors := []types.StatsTopDepositors{}
 
-	err := db.DB.Select(&topDepositors, `
+	err := db.WriterDb.Select(&topDepositors, `
 	SELECT 
 		ENCODE(from_address::bytea, 'hex') as from_address, 
 		count(from_address) as count 
@@ -99,7 +99,7 @@ func eth1TopDepositers() (*[]types.StatsTopDepositors, error) {
 func eth1InvalidDeposits() (*uint64, error) {
 	count := uint64(0)
 
-	err := db.DB.Get(&count, `
+	err := db.WriterDb.Get(&count, `
 	SELECT 
 		count(*) as count
 	FROM eth1_deposits
@@ -116,7 +116,7 @@ func eth1InvalidDeposits() (*uint64, error) {
 func eth1UniqueValidatorsCount() (*uint64, error) {
 	count := uint64(0)
 
-	err := db.DB.Get(&count, `
+	err := db.WriterDb.Get(&count, `
 	SELECT 
 		count(*) as count
 	FROM 

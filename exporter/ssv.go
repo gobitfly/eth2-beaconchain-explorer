@@ -95,7 +95,7 @@ func exportSSV() error {
 }
 
 func saveSSV(res *SSVExporterResponse) error {
-	tx, err := db.DB.Beginx()
+	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		return err
 	}
