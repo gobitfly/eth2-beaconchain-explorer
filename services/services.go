@@ -80,6 +80,7 @@ func epochUpdater() {
 		} else {
 			atomic.StoreUint64(&latestEpoch, epoch)
 			if firstRun {
+				logger.Info("initialized epoch updater")
 				ready.Done()
 				firstRun = false
 			}
@@ -100,6 +101,7 @@ func slotUpdater() {
 		} else {
 			atomic.StoreUint64(&latestSlot, slot)
 			if firstRun {
+				logger.Info("initialized slot updater")
 				ready.Done()
 				firstRun = false
 			}
@@ -120,6 +122,7 @@ func latestProposedSlotUpdater() {
 		} else {
 			atomic.StoreUint64(&latestProposedSlot, slot)
 			if firstRun {
+				logger.Info("initialized last proposed slot updater")
 				ready.Done()
 				firstRun = false
 			}
@@ -140,6 +143,7 @@ func indexPageDataUpdater() {
 		}
 		indexPageData.Store(data)
 		if firstRun {
+			logger.Info("initialized index page updater")
 			ready.Done()
 			firstRun = false
 		}
@@ -180,7 +184,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		}
 
 		deposit := Deposit{}
-
 		err = db.WriterDb.Get(&deposit, `
 			SELECT COUNT(*) as total, COALESCE(MAX(block_ts),NOW()) AS block_ts
 			FROM (
@@ -298,6 +301,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		return nil, fmt.Errorf("error retrieving scheduledCount from blocks: %v", err)
 	}
 	data.ScheduledCount = scheduledCount
+	logger.Info("getting blocks")
 
 	var blocks []*types.IndexPageDataBlocks
 	err = db.WriterDb.Select(&blocks, `
@@ -343,7 +347,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	for _, block := range data.Blocks {
 		block.Ts = utils.SlotToTime(block.Slot)
 	}
-
+	logger.Info("getting queue")
 	queueCount := struct {
 		EnteringValidators uint64 `db:"entering_validators_count"`
 		ExitingValidators  uint64 `db:"exiting_validators_count"`
@@ -366,7 +370,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	if epochLowerBound = 0; epoch > 1600 {
 		epochLowerBound = epoch - 1600
 	}
-
+	logger.Info("getting epochs")
 	var epochHistory []*types.IndexPageEpochHistory
 	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
 	if err != nil {

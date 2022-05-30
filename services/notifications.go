@@ -432,7 +432,6 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 		id,
 		created,
 		sent,
-		delivered,
 		channel,
 		content
 	FROM notification_queue where sent is null and channel = 'push' order by created asc`)
@@ -619,7 +618,6 @@ func sendEmailNotifications(useDb *sqlx.DB) error {
 		id,
 		created,
 		sent,
-		delivered,
 		channel,
 		content
 	FROM notification_queue where sent is null and channel = 'email' order by created asc`)
@@ -767,7 +765,6 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 		id,
 		created,
 		sent,
-		delivered,
 		channel,
 		content
 	FROM notification_queue where sent is null and channel = 'webhook' order by created asc`)
@@ -835,7 +832,6 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 		id,
 		created,
 		sent,
-		delivered,
 		channel,
 		content
 	FROM notification_queue where sent is null and channel = 'webhook_discord' order by created asc`)

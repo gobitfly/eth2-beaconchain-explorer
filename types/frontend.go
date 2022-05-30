@@ -233,12 +233,12 @@ type UserWithPremium struct {
 }
 
 type TransitEmail struct {
-	Id        uint64              `db:"id,omitempty"`
-	Created   sql.NullTime        `db:"created"`
-	Sent      sql.NullTime        `db:"sent"`
-	Delivered sql.NullTime        `db:"delivered"`
-	Channel   string              `db:"channel"`
-	Content   TransitEmailContent `db:"content"`
+	Id      uint64       `db:"id,omitempty"`
+	Created sql.NullTime `db:"created"`
+	Sent    sql.NullTime `db:"sent"`
+	// Delivered sql.NullTime        `db:"delivered"`
+	Channel string              `db:"channel"`
+	Content TransitEmailContent `db:"content"`
 }
 
 type TransitEmailContent struct {
@@ -262,12 +262,12 @@ func (a TransitEmailContent) Value() (driver.Value, error) {
 }
 
 type TransitWebhook struct {
-	Id        uint64                `db:"id,omitempty"`
-	Created   sql.NullTime          `db:"created"`
-	Sent      sql.NullTime          `db:"sent"`
-	Delivered sql.NullTime          `db:"delivered"`
-	Channel   string                `db:"channel"`
-	Content   TransitWebhookContent `db:"content"`
+	Id      uint64       `db:"id,omitempty"`
+	Created sql.NullTime `db:"created"`
+	Sent    sql.NullTime `db:"sent"`
+	// Delivered sql.NullTime          `db:"delivered"`
+	Channel string                `db:"channel"`
+	Content TransitWebhookContent `db:"content"`
 }
 
 type TransitWebhookContent struct {
@@ -297,12 +297,12 @@ func (a TransitWebhookContent) Value() (driver.Value, error) {
 }
 
 type TransitDiscord struct {
-	Id        uint64                `db:"id,omitempty"`
-	Created   sql.NullTime          `db:"created"`
-	Sent      sql.NullTime          `db:"sent"`
-	Delivered sql.NullTime          `db:"delivered"`
-	Channel   string                `db:"channel"`
-	Content   TransitDiscordContent `db:"content"`
+	Id      uint64       `db:"id,omitempty"`
+	Created sql.NullTime `db:"created"`
+	Sent    sql.NullTime `db:"sent"`
+	// Delivered sql.NullTime          `db:"delivered"`
+	Channel string                `db:"channel"`
+	Content TransitDiscordContent `db:"content"`
 }
 
 type TransitDiscordContent struct {
@@ -324,12 +324,12 @@ func (a TransitDiscordContent) Value() (driver.Value, error) {
 }
 
 type TransitPush struct {
-	Id        uint64             `db:"id,omitempty"`
-	Created   sql.NullTime       `db:"created"`
-	Sent      sql.NullTime       `db:"sent"`
-	Delivered sql.NullTime       `db:"delivered"`
-	Channel   string             `db:"channel"`
-	Content   TransitPushContent `db:"content"`
+	Id      uint64       `db:"id,omitempty"`
+	Created sql.NullTime `db:"created"`
+	Sent    sql.NullTime `db:"sent"`
+	// Delivered sql.NullTime       `db:"delivered"`
+	Channel string             `db:"channel"`
+	Content TransitPushContent `db:"content"`
 }
 
 type TransitPushContent struct {
