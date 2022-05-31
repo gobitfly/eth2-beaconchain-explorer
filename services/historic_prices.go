@@ -24,7 +24,7 @@ func updateHistoricPrices() error {
 	}()
 	var dates []time.Time
 
-	err := db.DB.Select(&dates, "SELECT ts FROM price")
+	err := db.WriterDb.Select(&dates, "SELECT ts FROM price")
 
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func updateHistoricPrices() error {
 				currentDay = currentDay.Add(time.Hour * 24)
 				continue
 			}
-			_, err = db.DB.Exec("INSERT INTO price (ts, eur, usd, rub, cny, cad, jpy, gbp) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+			_, err = db.WriterDb.Exec("INSERT INTO price (ts, eur, usd, rub, cny, cad, jpy, gbp, aud) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
 				currentDayTrunc,
 				historicPrice.MarketData.CurrentPrice.Eur,
 				historicPrice.MarketData.CurrentPrice.Usd,
@@ -56,6 +56,7 @@ func updateHistoricPrices() error {
 				historicPrice.MarketData.CurrentPrice.Cad,
 				historicPrice.MarketData.CurrentPrice.Jpy,
 				historicPrice.MarketData.CurrentPrice.Gbp,
+				historicPrice.MarketData.CurrentPrice.Aud,
 			)
 			if err != nil {
 				logger.Errorf("error saving historic eth prices for day %v: %v", currentDayTrunc, err)

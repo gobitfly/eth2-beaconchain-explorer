@@ -46,7 +46,7 @@ func AddToWatchlist(watchlist []WatchlistEntry, network string) error {
 
 	qry = qry[:len(qry)-1] + " ON CONFLICT (user_id, validator_publickey, tag) DO NOTHING;"
 
-	_, err := FrontendDB.Exec(qry, args...)
+	_, err := FrontendWriterDB.Exec(qry, args...)
 	return err
 }
 
@@ -57,7 +57,7 @@ func RemoveFromWatchlist(userId uint64, validator_publickey string, network stri
 	if err != nil {
 		return err
 	}
-	tx, err := FrontendDB.Begin()
+	tx, err := FrontendWriterDB.Begin()
 	if err != nil {
 		return fmt.Errorf("error starting db transactions: %v", err)
 	}
@@ -112,7 +112,7 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 	}
 
 	qry += " ORDER BY validator_publickey desc "
-	err := FrontendDB.Select(&list, qry, args...)
+	err := FrontendWriterDB.Select(&list, qry, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 
 	validators := make([]*types.Validator, 0, len(list))
 	if filter.JoinValidators {
-		err := DB.Select(&validators, `SELECT balance, pubkey, validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY pubkey desc`, *filter.Validators)
+		err := ReaderDb.Select(&validators, `SELECT balance, pubkey, validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY pubkey desc`, *filter.Validators)
 		if err != nil {
 			return nil, err
 		}
@@ -160,14 +160,14 @@ type GetSubscriptionsFilter struct {
 // GetSubscriptions returns the subscriptions filtered by the provided filter.
 func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, error) {
 	subs := []*types.Subscription{}
-	qry := "SELECT event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold FROM users_subscriptions"
+	qry := "SELECT event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash FROM users_subscriptions"
 
 	if filter.JoinValidator {
-		qry = "SELECT id, user_id, event_name, event_filter, last_sent_ts, created_ts, validators.balance as balance FROM users_subscriptions INNER JOIN validators ON users_subscriptions.event_filter = ENCODE(validators.pubkey::bytea, 'hex')"
+		qry = "SELECT id, user_id, event_name, event_filter, last_sent_ts, created_ts, validators.balance as balance, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash FROM users_subscriptions INNER JOIN validators ON users_subscriptions.event_filter = ENCODE(validators.pubkey::bytea, 'hex')"
 	}
 
 	if filter.EventNames == nil && filter.UserIDs == nil && filter.EventFilters == nil {
-		err := DB.Select(&subs, qry)
+		err := ReaderDb.Select(&subs, qry)
 		return subs, err
 	}
 
@@ -207,11 +207,11 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 	logger.Infof("user: %v getting subscriptions for query: %v and args: %+v", (*filter.UserIDs)[0], qry, filter)
 	args = append(args, filter.Offset)
 	qry += fmt.Sprintf(" OFFSET $%d", len(args))
-	err := FrontendDB.Select(&subs, qry, args...)
+	err := FrontendWriterDB.Select(&subs, qry, args...)
 	return subs, err
 }
 
-// UpdateSubscriptionsLastSent upates `last_sent_ts` column of the `users_subscriptions` table.
+// UpdateSubscriptionsLastSent updates `last_sent_ts` column of the `users_subscriptions` table.
 func UpdateSubscriptionsLastSent(subscriptionIDs []uint64, sent time.Time, epoch uint64, useDB *sqlx.DB) error {
 	_, err := useDB.Exec(`
 		UPDATE users_subscriptions
@@ -220,10 +220,19 @@ func UpdateSubscriptionsLastSent(subscriptionIDs []uint64, sent time.Time, epoch
 	return err
 }
 
+// UpdateSubscriptionLastSent updates `last_sent_ts` column of the `users_subscriptions` table.
+func UpdateSubscriptionLastSent(tx *sqlx.Tx, ts uint64, epoch uint64, subID uint64) error {
+	_, err := tx.Exec(`
+		UPDATE users_subscriptions
+		SET last_sent_ts = TO_TIMESTAMP($1), last_sent_epoch = $2
+		WHERE id = $3`, ts, epoch, subID)
+	return err
+}
+
 // CountSentMail increases the count of sent mails in the table `mails_sent` for this day.
 func CountSentMail(email string) error {
 	day := time.Now().Truncate(time.Hour * 24).Unix()
-	_, err := FrontendDB.Exec(`
+	_, err := FrontendWriterDB.Exec(`
 		INSERT INTO mails_sent (email, ts, cnt) VALUES ($1, TO_TIMESTAMP($2), 1)
 		ON CONFLICT (email, ts) DO UPDATE SET cnt = mails_sent.cnt+1`, email, day)
 	return err
@@ -233,7 +242,7 @@ func CountSentMail(email string) error {
 func GetMailsSentCount(email string, t time.Time) (int, error) {
 	day := t.Truncate(time.Hour * 24).Unix()
 	count := 0
-	err := FrontendDB.Get(&count, "SELECT cnt FROM mails_sent WHERE email = $1 AND ts = TO_TIMESTAMP($2)", email, day)
+	err := FrontendWriterDB.Get(&count, "SELECT cnt FROM mails_sent WHERE email = $1 AND ts = TO_TIMESTAMP($2)", email, day)
 	if err == sql.ErrNoRows {
 		return 0, nil
 	}

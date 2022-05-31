@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"strings"
 	"time"
 
 	"html/template"
@@ -62,6 +63,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := r.FormValue("email")
+	email = strings.ToLower(email)
 	pwd := r.FormValue("password")
 
 	if !utils.IsValidEmail(email) {
@@ -71,7 +73,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := db.FrontendDB.Beginx()
+	tx, err := db.FrontendWriterDB.Beginx()
 	if err != nil {
 		logger.Errorf("error creating db-tx for registering user: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
@@ -82,7 +84,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback()
 
 	var existingEmails int
-	err = tx.Get(&existingEmails, "SELECT COUNT(*) FROM users WHERE email = $1", email)
+	err = tx.Get(&existingEmails, "SELECT COUNT(*) FROM users WHERE LOWER(email) = $1", email)
 	if existingEmails > 0 {
 		session.AddFlash("Error: Email already exists!")
 		session.Save(r, w)
@@ -189,7 +191,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		Active    bool   `db:"active"`
 	}{}
 
-	err = db.FrontendDB.Get(&user, "SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
+	err = db.FrontendWriterDB.Get(&user, "SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
 	if err != nil {
 		logger.Errorf("error retrieving password for user %v: %v", email, err)
 		session.AddFlash("Error: Invalid email or password!")
@@ -287,7 +289,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		ProductID      string `db:"product_id"`
 		Active         bool   `db:"active"`
 	}{}
-	err = db.FrontendDB.Get(&dbUser, "SELECT users.id, email_confirmed, email, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active FROM users LEFT JOIN users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE password_reset_hash = $1", hash)
+	err = db.FrontendWriterDB.Get(&dbUser, "SELECT users.id, email_confirmed, email, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active FROM users LEFT JOIN users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE password_reset_hash = $1", hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			session.AddFlash("Error: Invalid reset link, please retry.")
@@ -304,7 +306,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	// if the user has not confirmed her email yet, just confirm it since she clicked this reset-password-link that has been sent to her email aswell anyway
 	if !dbUser.EmailConfirmed {
-		_, err = db.FrontendDB.Exec("UPDATE users SET email_confirmed = 'TRUE' WHERE id = $1", dbUser.ID)
+		_, err = db.FrontendWriterDB.Exec("UPDATE users SET email_confirmed = 'TRUE' WHERE id = $1", dbUser.ID)
 		if err != nil {
 			logger.Errorf("error setting confirmed when user is resetting password: %v", err)
 			session.AddFlash(authInternalServerErrorFlashMsg)
@@ -430,7 +432,7 @@ func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var exists int
-	err = db.FrontendDB.Get(&exists, "SELECT COUNT(*) FROM users WHERE email = $1", email)
+	err = db.FrontendWriterDB.Get(&exists, "SELECT COUNT(*) FROM users WHERE email = $1", email)
 	if err != nil {
 		logger.Errorf("error retrieving user-count: %v", err)
 		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
@@ -491,7 +493,7 @@ func ResendConfirmationPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var exists int
-	err = db.FrontendDB.Get(&exists, "SELECT COUNT(*) FROM users WHERE email = $1", email)
+	err = db.FrontendWriterDB.Get(&exists, "SELECT COUNT(*) FROM users WHERE email = $1", email)
 	if err != nil {
 		logger.Errorf("error checking if user exists for email-confirmation: %v", err)
 		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong :( Please retry later")
@@ -525,7 +527,7 @@ func ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	hash := vars["hash"]
 
 	var isConfirmed = false
-	err := db.FrontendDB.Get(&isConfirmed, `
+	err := db.FrontendWriterDB.Get(&isConfirmed, `
 	SELECT email_confirmed 
 	FROM users 
 	WHERE email_confirmation_hash = $1
@@ -542,7 +544,7 @@ func ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := db.FrontendDB.Exec("UPDATE users SET email_confirmed = 'TRUE' WHERE email_confirmation_hash = $1", hash)
+	res, err := db.FrontendWriterDB.Exec("UPDATE users SET email_confirmed = 'TRUE' WHERE email_confirmation_hash = $1", hash)
 	if err != nil {
 		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
@@ -569,7 +571,7 @@ func sendConfirmationEmail(email string) error {
 	now := time.Now()
 	emailConfirmationHash := utils.RandomString(40)
 
-	tx, err := db.FrontendDB.Beginx()
+	tx, err := db.FrontendWriterDB.Beginx()
 	if err != nil {
 		return err
 	}
@@ -603,12 +605,12 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, emailConfirmationHash)
-	err = mail.SendMail(email, subject, msg, []types.EmailAttachment{})
+	err = mail.SendTextMail(email, subject, msg, []types.EmailAttachment{})
 	if err != nil {
 		return err
 	}
 
-	_, err = db.FrontendDB.Exec("UPDATE users SET email_confirmation_ts = TO_TIMESTAMP($1) WHERE email = $2", time.Now().Unix(), email)
+	_, err = db.FrontendWriterDB.Exec("UPDATE users SET email_confirmation_ts = TO_TIMESTAMP($1) WHERE email = $2", time.Now().Unix(), email)
 	if err != nil {
 		return fmt.Errorf("error updating confirmation-ts: %w", err)
 	}
@@ -620,7 +622,7 @@ func sendResetEmail(email string) error {
 	now := time.Now()
 	resetHash := utils.RandomString(40)
 
-	tx, err := db.FrontendDB.Beginx()
+	tx, err := db.FrontendWriterDB.Beginx()
 	if err != nil {
 		return err
 	}
@@ -654,12 +656,12 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, resetHash)
-	err = mail.SendMail(email, subject, msg, []types.EmailAttachment{})
+	err = mail.SendTextMail(email, subject, msg, []types.EmailAttachment{})
 	if err != nil {
 		return err
 	}
 
-	_, err = db.FrontendDB.Exec("UPDATE users SET password_reset_ts = TO_TIMESTAMP($1) WHERE email = $2", time.Now().Unix(), email)
+	_, err = db.FrontendWriterDB.Exec("UPDATE users SET password_reset_ts = TO_TIMESTAMP($1) WHERE email = $2", time.Now().Unix(), email)
 	if err != nil {
 		return fmt.Errorf("error updating reset-ts: %w", err)
 	}

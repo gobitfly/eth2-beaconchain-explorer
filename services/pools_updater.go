@@ -143,7 +143,7 @@ func getPoolInfo() []PoolsInfo {
 	// addrName := map[string]Pools{}
 
 	if utils.Config.Chain.Network == "mainnet" || utils.Config.Chain.Network == "prater" {
-		err := db.DB.Select(&stakePools, `
+		err := db.WriterDb.Select(&stakePools, `
 		select sps.address, sps.name, sps.category, sps.deposit, b.vcount
 		from (select ENCODE(from_address::bytea, 'hex') as address, count(*) as vcount
 			from (
@@ -161,7 +161,7 @@ func getPoolInfo() []PoolsInfo {
 			logger.Errorf("error getting eth1-deposits-distribution for stake pools mainnet: %v", err)
 		}
 	} else {
-		err := db.DB.Select(&stakePools, `
+		err := db.WriterDb.Select(&stakePools, `
 			select ENCODE(from_address::bytea, 'hex') as address, count(*) as vcount
 			from (
 				select publickey, from_address
@@ -183,7 +183,7 @@ func getPoolInfo() []PoolsInfo {
 	for _, pool := range stakePools {
 		// li := time.Now()
 		var stats []PoolStatsData
-		err := db.DB.Select(&stats,
+		err := db.WriterDb.Select(&stats,
 			`SELECT status, validatorindex, balance31d, activationepoch, exitepoch
 			 FROM validators 
 			 WHERE pubkey = ANY(
@@ -219,7 +219,7 @@ func getPoolInfo() []PoolsInfo {
 
 func getPoolIncome(poolAddress string) (*types.ValidatorEarnings, error) {
 	var indexes []uint64
-	err := db.DB.Select(&indexes,
+	err := db.WriterDb.Select(&indexes,
 		`SELECT validatorindex
 		 FROM validators 
 		 WHERE pubkey = ANY(
@@ -261,7 +261,7 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 
 	balances := []*types.Validator{}
 
-	err := db.DB.Select(&balances, `SELECT 
+	err := db.WriterDb.Select(&balances, `SELECT 
 			   validatorindex,
 			   COALESCE(balance, 0) AS balance, 
 			   COALESCE(balanceactivation, 0) AS balanceactivation, 
@@ -283,7 +283,7 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		Publickey []byte
 	}{}
 
-	err = db.DB.Select(&deposits, `
+	err = db.WriterDb.Select(&deposits, `
 	SELECT block_slot / 32 AS epoch, amount, publickey 
 	FROM blocks_deposits 
 	WHERE publickey IN (
@@ -388,7 +388,7 @@ func getIDEthChartSeries() idEthSeriesDrill {
 	}
 
 	dbData := []idEthSeriesData{}
-	err := db.DB.Select(&dbData, `SELECT 
+	err := db.WriterDb.Select(&dbData, `SELECT 
 			   epoch,
 			   name, 
 			   income,
@@ -443,7 +443,7 @@ func GetTotalValidators() uint64 {
 	}
 	var activeValidators uint64
 
-	err := db.DB.Get(&activeValidators, `
+	err := db.WriterDb.Get(&activeValidators, `
 			SELECT validatorscount 
 			FROM epochs 
 			WHERE epoch = $1`, limit)

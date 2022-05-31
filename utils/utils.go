@@ -54,12 +54,15 @@ func getLocaliser() *i18n.I18n {
 	return localiser
 }
 
+var HashLikeRegex = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
+
 // GetTemplateFuncs will get the template functions
 func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"includeHTML":                             IncludeHTML,
 		"formatHTML":                              FormatMessageToHtml,
 		"formatBalance":                           FormatBalance,
+		"formatNotificationChannel":               FormatNotificationChannel,
 		"formatBalanceSql":                        FormatBalanceSql,
 		"formatCurrentBalance":                    FormatCurrentBalance,
 		"formatEffectiveBalance":                  FormatEffectiveBalance,
@@ -79,7 +82,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatBitvectorValidators":               formatBitvectorValidators,
 		"formatParticipation":                     FormatParticipation,
 		"formatIncome":                            FormatIncome,
-		"formatMoney":                             FormatMoney,
 		"formatIncomeSql":                         FormatIncomeSql,
 		"formatSqlInt64":                          FormatSqlInt64,
 		"formatValidator":                         FormatValidator,
@@ -102,7 +104,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatValidatorTags":                     FormatValidatorTags,
 		"formatValidatorTag":                      FormatValidatorTag,
 		"formatRPL":                               FormatRPL,
-		"formatFloatWithPrecision":                FormatFloatWithPrecision,
+		"formatFloat":                             FormatFloat,
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
@@ -601,4 +603,13 @@ func GetNetwork() string {
 		return strings.ToLower(Config.Chain.Network)
 	}
 	return strings.ToLower(Config.Chain.Phase0.ConfigName)
+}
+
+func ElementExists(arr []string, el string) bool {
+	for _, e := range arr {
+		if e == el {
+			return true
+		}
+	}
+	return false
 }

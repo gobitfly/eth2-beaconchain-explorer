@@ -569,32 +569,59 @@ create table users_clients
     primary key (user_id, client)
 );
 
+
 drop table if exists users_subscriptions;
 create table users_subscriptions
 (
-    id              serial                      not null,
-    user_id         int                         not null,
-    event_name      character varying(100)      not null,
-    event_filter    text                        not null default '',
-    event_threshold real                        default 0,
-    last_sent_ts    timestamp without time zone,
-    last_sent_epoch int,
-    created_ts      timestamp without time zone not null,
-    created_epoch   int                         not null,
+    id                serial                      not null,
+    user_id           int                         not null,
+    event_name        character varying(100)      not null,
+    event_filter      text                        not null default '',
+    event_threshold   real                        default 0,
+    last_sent_ts      timestamp without time zone,
+    last_sent_epoch   int,
+    created_ts        timestamp without time zone not null,
+    created_epoch     int                         not null,
+    unsubscribe_hash  bytea                        ,
     primary key (user_id, event_name, event_filter)
 );
+create index idx_users_subscriptions_unsubscribe_hash on users_subscriptions (unsubscribe_hash);
 
-drop table if exists users_notifications;
-create table users_notifications
+CREATE TYPE notification_channels as ENUM ('webhook_discord', 'webhook', 'email', 'push');
+
+drop table if exists users_notification_channels;
+create table users_notification_channels
 (
-    id              serial                      not null,
-    user_id         int                         not null,
-    event_name      character varying(100)      not null,
-    event_filter    text                        not null default '',
-    sent_ts         timestamp without time zone,
-    epoch           int                         not null,
-    primary key(user_id, event_name, event_filter, sent_ts)
+    user_id int                   not null,
+    channel notification_channels not null,
+    active  boolean default 't'   not null,
+    primary key (user_id, channel)
 );
+
+drop table if exists notification_queue;
+create table notification_queue(
+    id                  serial not null,
+    created             timestamp without time zone not null,
+    sent                timestamp without time zone, -- record when the transaction was dispatched
+    -- delivered           timestamp without time zone,  --record when the transaction arrived
+    channel             notification_channels not null,
+    content             jsonb not null
+);
+
+drop table if exists notification_
+
+-- deprecated
+-- drop table if exists users_notifications;
+-- create table users_notifications
+-- (
+--     id              serial                      not null,
+--     user_id         int                         not null,
+--     event_name      character varying(100)      not null,
+--     event_filter    text                        not null default '',
+--     sent_ts         timestamp without time zone,
+--     epoch           int                         not null,
+--     primary key(user_id, event_name, event_filter, sent_ts)
+-- );
 
 drop table if exists users_validators_tags;
 create table users_validators_tags
@@ -611,6 +638,20 @@ create table validator_tags
     publickey bytea                  not null,
     tag       character varying(100) not null,
     primary key (publickey, tag)
+);
+
+drop table if exists users_webhooks;
+create table users_webhooks
+(   
+    id                serial                  not null,
+    user_id           int                     not null,
+    -- label             varchar(200)            not null,
+    url               character varying(1024) not null,
+    retries           int                     not null default 0, -- a backoff parameter that indicates if the requests was successful and when to retry it again
+    last_sent         timestamp without time zone,
+    event_names       text[]                  not null,
+    destination       character varying(200), -- discord for example could be a destination and the request would be adapted
+    primary key (user_id, id)
 );
 
 drop table if exists mails_sent;
@@ -760,14 +801,15 @@ create table stake_pools_stats
 drop table if exists price;
 create table price
 (
-    ts  timestamp without time zone not null,
-    eur numeric(20,10)              not null,
-    usd numeric(20,10)              not null,
-    rub numeric(20,10)              not null,
-    cny numeric(20,10)              not null,
-    cad numeric(20,10)              not null,
-    jpy numeric(20,10)              not null,
-    gbp numeric(20,10)              not null,
+    ts     timestamp without time zone not null,
+    eur numeric(20,10)                not null,
+    usd numeric(20,10)                not null,
+    rub numeric(20,10)                not null,
+    cny numeric(20,10)                not null,
+    cad numeric(20,10)                not null,
+    jpy numeric(20,10)                not null,
+    gbp numeric(20,10)                not null,
+    aud numeric(20,10)                not null,
     primary key (ts)
 );
 

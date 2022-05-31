@@ -51,7 +51,7 @@ func VisBlocks(w http.ResponseWriter, r *http.Request) {
 
 	var chartData []*types.VisChartData
 
-	err = db.DB.Select(&chartData, "select slot, blockroot, parentroot, proposer from blocks where slot >= $1 and status in ('1', '2') order by slot desc limit 50;", sinceSlot)
+	err = db.ReaderDb.Select(&chartData, "select slot, blockroot, parentroot, proposer from blocks where slot >= $1 and status in ('1', '2') order by slot desc limit 50;", sinceSlot)
 
 	if err != nil {
 		logger.Errorf("error retrieving block tree data: %v", err)
@@ -94,7 +94,7 @@ func VisVotes(w http.ResponseWriter, r *http.Request) {
 
 	var chartData []*types.VotesVisChartData
 
-	rows, err := db.DB.Query(`select blocks.slot, 
+	rows, err := db.ReaderDb.Query(`select blocks.slot, 
        											ENCODE(blocks.blockroot::bytea, 'hex') AS blockroot, 
        											ENCODE(blocks.parentroot::bytea, 'hex') AS parentroot,
 												blocks_attestations.validators 

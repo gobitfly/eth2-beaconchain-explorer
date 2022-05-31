@@ -51,6 +51,70 @@ function setValidatorEffectiveness(elem, eff){
   }
 }
 
+function setUtc() {
+  if ($('#optionLocal').is(':checked') || $('#optionTs').is(':checked')) {
+    var unixTs = $("#unixTs").text()
+    var ts = luxon.DateTime.fromMillis(unixTs * 1000)
+    var utcDiff = ts['o'] / 60
+    var hour = ts['c']['hour'] - utcDiff
+    var minute = ts['c']['minute']
+    var second = ts['c']['second']
+    var periode = ""
+    if (hour <= 12) {
+      periode = " AM"
+    } else {
+      hour -= 12
+      periode = " PM"
+    }
+    if (hour.toString().length == 1) {
+      hour = "0" + hour
+    }
+    if (minute.toString().length == 1) {
+      minute = "0" + minute
+    }
+    if (second.toString().length == 1) {
+      second = "0" + second
+    }
+    $("#timestamp").text(ts.toFormat("MMM-dd-yyyy")+" "+hour+":"+minute+":"+second+periode)
+  }
+}
+
+function setLocal() {
+  if ($('#optionUtc').is(':checked') || $('#optionTs').is(':checked')) {
+    var unixTs = $("#unixTs").text()
+    var ts = luxon.DateTime.fromMillis(unixTs * 1000)
+    var hour = ts['c']['hour']
+    var minute = ts['c']['minute']
+    var second = ts['c']['second']
+    if (hour.toString().length == 1) {
+      hour = "0" + hour
+    }
+    if (minute.toString().length == 1) {
+      minute = "0" + minute
+    }
+    if (second.toString().length == 1) {
+      second = "0" + second
+    }
+    $("#timestamp").text(ts.toFormat("MMM-dd-yyyy")+" "+hour+":"+minute+":"+second+" UTC + "+ts['o']/60+"h")
+  }
+}
+
+function setTs() {
+  var unixTs = $("#unixTs").text()
+  var utc = luxon.DateTime.fromMillis(unixTs * 1000)
+  $("#timestamp").text(utc['ts'] / 1000)
+}
+
+function copyTs() {
+  var text = $("#timestamp").text()
+  tsArr = text.split(" ")
+  if (tsArr.length > 1) {
+    navigator.clipboard.writeText(tsArr[0] + " " + tsArr[1])
+  } else {
+    navigator.clipboard.writeText(tsArr[0])
+  }
+}
+
 // typeahead
 $(document).ready(function() {
   
@@ -273,6 +337,33 @@ $('[aria-ethereum-date]').each(function(item) {
 
   if (format === 'FROMNOW') {
     $(this).text(luxon.DateTime.fromMillis(dt * 1000).toRelative({ style: "short"}))
+    $(this).attr('title', luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
+    $(this).attr('data-toggle', 'tooltip')
+  } else if (format === 'LOCAL') {
+    var local = luxon.DateTime.fromMillis(dt * 1000)
+    var utc = local.toUTC()
+    var utcHour = utc['c']['hour']
+    var localHour = local['c']['hour']
+    var localMinute = local['c']['minute']
+    var localSecond = local['c']['minute']
+    var diff = localHour - utcHour
+    var utcDiff = ""
+    if (diff < 0) {
+        utcDiff = " UTC - "+diff*(-1)
+    } else {
+        utcDiff = " UTC + "+diff
+    }
+    if (localHour.toString().length == 1) {
+        localHour = "0" + localHour
+    }
+    if (localMinute.toString().length == 1) {
+        localMinute = "0" + localMinute
+    }
+    if (localSecond.toString().length == 1) {
+        localSecond = "0" + localSecond
+    }
+    
+    $(this).text(local.toFormat("MMM-dd-yyyy")+" "+localHour+":"+localMinute+":"+localSecond+utcDiff+"h")
     $(this).attr('title', luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
     $(this).attr('data-toggle', 'tooltip')
   } else {

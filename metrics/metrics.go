@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"database/sql"
 	"eth2-exporter/version"
 	"net/http"
 	"regexp"
@@ -60,9 +61,9 @@ func MonitorDB(db *sqlx.DB) {
 	defer t.Stop()
 	for ; true; <-t.C {
 		longRunningQueries := []struct {
-			Datname  string
-			Duration float64
-			Query    string
+			Datname  sql.NullString
+			Duration sql.NullFloat64
+			Query    sql.NullString
 		}{}
 		err := db.Select(&longRunningQueries, `select datname, extract(epoch from clock_timestamp()) - extract(epoch from query_start) as duration, query from pg_stat_activity where query != '<IDLE>' and query not ilike '%pg_stat_activity%' and query_start is not null and state = 'active' and age(clock_timestamp(), query_start) >= interval '1 minutes'`)
 		if err != nil {
@@ -70,8 +71,8 @@ func MonitorDB(db *sqlx.DB) {
 			continue
 		}
 		for _, q := range longRunningQueries {
-			normedQuery := multiWhitespaceRE.ReplaceAllString(strings.Trim(q.Query, "\t\r\n "), " ")
-			DBSLongRunningQueries.WithLabelValues(q.Datname, normedQuery).Inc()
+			normedQuery := multiWhitespaceRE.ReplaceAllString(strings.Trim(q.Query.String, "\t\r\n "), " ")
+			DBSLongRunningQueries.WithLabelValues(q.Datname.String, normedQuery).Inc()
 		}
 	}
 }

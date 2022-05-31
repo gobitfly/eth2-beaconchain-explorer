@@ -228,10 +228,12 @@ type ValidatorsPageData struct {
 	SlashingCount        uint64
 	SlashingOnlineCount  uint64
 	SlashingOfflineCount uint64
+	Slashed              uint64
 	ExitingCount         uint64
 	ExitingOnlineCount   uint64
 	ExitingOfflineCount  uint64
 	ExitedCount          uint64
+	VoluntaryExitsCount  uint64
 	UnknownCount         uint64
 	Validators           []*ValidatorsPageDataValidators
 }
@@ -1070,7 +1072,13 @@ type UserNotificationsCenterPageData struct {
 	MonitoringSubscriptions []Subscription                       `json:"monitoring_subscriptions"`
 	Machines                []string
 	DashboardLink           string `json:"dashboardLink"`
+	NotificationChannels    []UserNotificationChannels
 	// Subscriptions []*Subscription
+}
+
+type UserNotificationChannels struct {
+	Channel NotificationChannel `db:"channel"`
+	Active  bool                `db:"active"`
 }
 
 type UserValidatorNotificationTableData struct {
@@ -1149,6 +1157,7 @@ type Price struct {
 	JPY float64   `db:"jpy"`
 	CNY float64   `db:"cny"`
 	RUB float64   `db:"rub"`
+	AUD float64   `db:"aud"`
 }
 
 type ApiStatistics struct {
@@ -1215,4 +1224,31 @@ type RocketpoolPageDataDAOMember struct {
 	LastProposalTime         time.Time `db:"last_proposal_time"`
 	RPLBondAmount            string    `db:"rpl_bond_amount"`
 	UnbondedValidatorCount   uint64    `db:"unbonded_validator_count"`
+}
+
+type UserWebhookRow struct {
+	ID          uint64 `db:"id" json:"id"`
+	UrlFull     string
+	Url         template.HTML      `db:"url" json:"url"`
+	Retries     template.HTML      `db:"retries" json:"retries"`
+	LastSent    template.HTML      `db:"last_retry" json:"lastSent"`
+	Destination template.HTML      `db:"destination" json:"destination"`
+	Events      []WebhookPageEvent `db:"event_names" json:"-"`
+	Discord     bool
+	CsrfField   template.HTML
+}
+
+type WebhookPageData struct {
+	WebhookRows  []UserWebhookRow
+	Webhooks     []UserWebhook
+	Events       []WebhookPageEvent
+	CsrfField    template.HTML
+	Allowed      uint64
+	WebhookCount uint64
+}
+
+type WebhookPageEvent struct {
+	EventLabel string
+	EventName
+	Active bool
 }

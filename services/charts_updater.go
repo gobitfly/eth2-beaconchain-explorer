@@ -143,7 +143,7 @@ func blocksChartData() (*types.GenericChartData, error) {
 		NbrBlocks uint64
 	}{}
 
-	err := db.DB.Select(&rows, "SELECT epoch, status, count(*) as nbrBlocks FROM blocks GROUP BY epoch, status ORDER BY epoch")
+	err := db.ReaderDb.Select(&rows, "SELECT epoch, status, count(*) as nbrBlocks FROM blocks GROUP BY epoch, status ORDER BY epoch")
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func activeValidatorsChartData() (*types.GenericChartData, error) {
 		ValidatorsCount uint64
 	}{}
 
-	err := db.DB.Select(&rows, "SELECT epoch, validatorscount FROM epochs ORDER BY epoch")
+	err := db.ReaderDb.Select(&rows, "SELECT epoch, validatorscount FROM epochs ORDER BY epoch")
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +285,7 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 		EligibleEther uint64
 	}{}
 
-	err := db.DB.Select(&rows, "SELECT epoch, eligibleether FROM epochs ORDER BY epoch")
+	err := db.ReaderDb.Select(&rows, "SELECT epoch, eligibleether FROM epochs ORDER BY epoch")
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +328,7 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 		AverageValidatorBalance uint64
 	}{}
 
-	err := db.DB.Select(&rows, "SELECT epoch, averagevalidatorbalance FROM epochs ORDER BY epoch")
+	err := db.ReaderDb.Select(&rows, "SELECT epoch, averagevalidatorbalance FROM epochs ORDER BY epoch")
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +372,7 @@ func networkLivenessChartData() (*types.GenericChartData, error) {
 		FinalizedEpoch uint64
 	}{}
 
-	err := db.DB.Select(&rows, "SELECT EXTRACT(epoch FROM ts)::INT AS timestamp, headepoch, finalizedepoch FROM network_liveness ORDER BY ts")
+	err := db.ReaderDb.Select(&rows, "SELECT EXTRACT(epoch FROM ts)::INT AS timestamp, headepoch, finalizedepoch FROM network_liveness ORDER BY ts")
 	if err != nil {
 		return nil, err
 	}
@@ -419,7 +419,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 		Globalparticipationrate float64
 	}{}
 
-	err := db.DB.Select(&rows, "SELECT epoch, globalparticipationrate FROM epochs WHERE epoch < $1 ORDER BY epoch", LatestEpoch())
+	err := db.ReaderDb.Select(&rows, "SELECT epoch, globalparticipationrate FROM epochs WHERE epoch < $1 ORDER BY epoch", LatestEpoch())
 	if err != nil {
 		return nil, err
 	}
@@ -468,7 +468,7 @@ func inclusionDistanceChartData() (*types.GenericChartData, error) {
 		Inclusiondistance float64
 	}{}
 
-	err := db.DB.Select(&rows, `
+	err := db.ReaderDb.Select(&rows, `
 		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
 		from attestation_assignments_p a
 		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
@@ -523,7 +523,7 @@ func votingDistributionChartData() (*types.GenericChartData, error) {
 		Inclusiondistance float64
 	}{}
 
-	err := db.DB.Select(&rows, `
+	err := db.ReaderDb.Select(&rows, `
 		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
 		from attestation_assignments_p a
 		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
@@ -572,7 +572,7 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 		Rewards         int64
 	}{}
 
-	err := db.DB.Select(&rows, `
+	err := db.ReaderDb.Select(&rows, `
 		with
 			firstdeposits as (
 				select distinct
@@ -668,7 +668,7 @@ func stakingRewardsChartData() (*types.GenericChartData, error) {
 		Rewards int64
 	}{}
 
-	err := db.DB.Select(&rows, `
+	err := db.ReaderDb.Select(&rows, `
 		with
 			firstdeposits as (
 				select distinct
@@ -766,7 +766,7 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 
 	// note: eligibleether might not be correct, need to check what exactly the node returns
 	// for the reward-calculation we need the sum of all effective balances
-	err := db.DB.Select(&rows, `
+	err := db.ReaderDb.Select(&rows, `
 		with
 			extradeposits as (
 				select
@@ -878,7 +878,7 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 		Eligibleether         uint64
 	}{}
 
-	err := db.DB.Select(&rows, `
+	err := db.ReaderDb.Select(&rows, `
 		SELECT
 			epoch, 
 			COALESCE(totalvalidatorbalance, 0) AS totalvalidatorbalance,
@@ -926,7 +926,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
 	}
 
-	tx, err := db.DB.Beginx()
+	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		return nil, err
 	}
@@ -1009,7 +1009,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
 	}
 
-	tx, err := db.DB.Beginx()
+	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		return nil, err
 	}
@@ -1099,7 +1099,7 @@ func performanceDistribution1dChartData() (*types.GenericChartData, error) {
 		Count          float64
 	}{}
 
-	err = db.DB.Select(&rows, `
+	err = db.ReaderDb.Select(&rows, `
 		with
 			stats as (
 				select 
@@ -1165,7 +1165,7 @@ func performanceDistribution7dChartData() (*types.GenericChartData, error) {
 		Count          float64
 	}{}
 
-	err = db.DB.Select(&rows, `
+	err = db.ReaderDb.Select(&rows, `
 		with
 			stats as (
 				select 
@@ -1231,7 +1231,7 @@ func performanceDistribution31dChartData() (*types.GenericChartData, error) {
 		Count          float64
 	}{}
 
-	err = db.DB.Select(&rows, `
+	err = db.ReaderDb.Select(&rows, `
 		with
 			stats as (
 				select 
@@ -1297,7 +1297,7 @@ func performanceDistribution365dChartData() (*types.GenericChartData, error) {
 		Count          float64
 	}{}
 
-	err = db.DB.Select(&rows, `
+	err = db.ReaderDb.Select(&rows, `
 		with
 			stats as (
 				select 
@@ -1363,7 +1363,7 @@ func depositsChartData() (*types.GenericChartData, error) {
 		Valid     bool
 	}{}
 
-	err = db.DB.Select(&eth1Rows, `
+	err = db.ReaderDb.Select(&eth1Rows, `
 		select
 			extract(epoch from block_ts)::int as timestamp,
 			amount,
@@ -1379,7 +1379,7 @@ func depositsChartData() (*types.GenericChartData, error) {
 		Amount uint64
 	}{}
 
-	err = db.DB.Select(&eth2Rows, `
+	err = db.ReaderDb.Select(&eth2Rows, `
 		select block_slot as slot, amount 
 		from blocks_deposits
 		order by slot`)
@@ -1483,7 +1483,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			Count *uint64
 		}{}
 
-		err = db.DB.Select(&rows, `
+		err = db.ReaderDb.Select(&rows, `
 		select sps.name, b.count
 		from (select ENCODE(from_address::bytea, 'hex') as address, count(*) as count
 			from (
@@ -1653,7 +1653,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			Count *uint64
 		}{}
 
-		err = db.DB.Select(&rows, `
+		err = db.ReaderDb.Select(&rows, `
 		select sps.name, b.count
 		from (select ENCODE(from_address::bytea, 'hex') as address, count(*) as count
 			from (
@@ -1734,7 +1734,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			Count   uint64
 		}{}
 
-		err = db.DB.Select(&rows, `
+		err = db.ReaderDb.Select(&rows, `
 			select from_address as address, count(*) as count
 			from (
 				select publickey, from_address
@@ -1811,7 +1811,7 @@ func graffitiCloudChartData() (*types.GenericChartData, error) {
 
 	// \x are missed blocks
 	// \x0000000000000000000000000000000000000000000000000000000000000000 are empty graffities
-	err := db.DB.Select(&rows, `
+	err := db.ReaderDb.Select(&rows, `
 		with 
 			graffities as (
 				select count(*), graffiti

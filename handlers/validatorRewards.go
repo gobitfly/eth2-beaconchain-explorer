@@ -19,7 +19,7 @@ import (
 
 var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validatorRewards.html"))
 
-// var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub"}
+// var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub", "aud"}
 
 type rewardsResp struct {
 	Currencies        []string
@@ -36,7 +36,7 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "services", "/rewards", "Ethereum Validator Rewards")
 
 	var supportedCurrencies []string
-	err = db.DB.Select(&supportedCurrencies,
+	err = db.ReaderDb.Select(&supportedCurrencies,
 		`select column_name 
 			from information_schema.columns 
 			where table_name = 'price'`)
@@ -45,7 +45,7 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var minTime time.Time
-	err = db.DB.Get(&minTime,
+	err = db.ReaderDb.Get(&minTime,
 		`select ts from price order by ts asc limit 1`)
 	if err != nil {
 		logger.Errorf("error getting min ts: %w", err)
@@ -63,7 +63,7 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 
 func getUserRewardSubscriptions(uid uint64) [][]string {
 	var dbResp []types.Subscription
-	err := db.FrontendDB.Select(&dbResp,
+	err := db.FrontendWriterDB.Select(&dbResp,
 		`select * from users_subscriptions where event_name=$1 AND user_id=$2`, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName), uid)
 	if err != nil {
 		logger.Errorf("error getting prices: %w", err)
@@ -88,7 +88,7 @@ func getUserRewardSubscriptions(uid uint64) [][]string {
 
 func isValidCurrency(currency string) bool {
 	var count uint64
-	err := db.DB.Get(&count,
+	err := db.ReaderDb.Get(&count,
 		`select count(column_name) 
 		from information_schema.columns 
 		where table_name = 'price' AND column_name=$1;`, currency)
@@ -199,7 +199,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var count uint64
-	err := db.FrontendDB.Get(&count,
+	err := db.FrontendWriterDB.Get(&count,
 		`select count(event_name) 
 		from users_subscriptions 
 		where user_id=$1 AND event_name=$2;`, user.UserID, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName))
@@ -304,7 +304,7 @@ func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var count uint64
-	err := db.FrontendDB.Get(&count,
+	err := db.FrontendWriterDB.Get(&count,
 		`select count(event_name) 
 		from users_subscriptions 
 		where user_id=$1 AND event_name=$2;`, user.UserID, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName))

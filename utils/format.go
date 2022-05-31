@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"eth2-exporter/price"
+	"eth2-exporter/types"
 	"fmt"
 	"html"
 	"html/template"
@@ -83,20 +84,9 @@ func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint6
 // FormatBalance will return a string for a balance
 func FormatBalance(balanceInt uint64, currency string) template.HTML {
 	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := float64(balanceInt) / float64(1e9)
+	balance := FormatFloat((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
 
-	p := message.NewPrinter(language.English)
-	rb := []rune(p.Sprintf("%.2f", balance*exchangeRate))
-	// remove trailing zeros
-	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
-		for rb[len(rb)-1] == '0' {
-			rb = rb[:len(rb)-1]
-		}
-		if rb[len(rb)-1] == '.' {
-			rb = rb[:len(rb)-1]
-		}
-	}
-	return template.HTML(string(rb) + " " + currency)
+	return template.HTML(balance + " " + currency)
 }
 
 func FormatBalanceSql(balanceInt sql.NullInt64, currency string) template.HTML {
@@ -104,20 +94,9 @@ func FormatBalanceSql(balanceInt sql.NullInt64, currency string) template.HTML {
 		return template.HTML("0 " + currency)
 	}
 	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := float64(balanceInt.Int64) / float64(1e9)
+	balance := FormatFloat((float64(balanceInt.Int64)/float64(1e9))*float64(exchangeRate), 2)
 
-	p := message.NewPrinter(language.English)
-	rb := []rune(p.Sprintf("%.2f", balance*exchangeRate))
-	// remove trailing zeros
-	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
-		for rb[len(rb)-1] == '0' {
-			rb = rb[:len(rb)-1]
-		}
-		if rb[len(rb)-1] == '.' {
-			rb = rb[:len(rb)-1]
-		}
-	}
-	return template.HTML(string(rb) + " " + currency)
+	return template.HTML(balance + " " + currency)
 }
 
 func FormatBalanceGwei(balance *int64, currency string) template.HTML {
@@ -141,10 +120,8 @@ func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 func FormatBalanceChange(balance *int64, currency string) template.HTML {
 	balanceF := float64(*balance) / float64(1e9)
 	if currency == "ETH" {
-		if balance == nil {
-			return template.HTML("<span> 0.00000 " + currency + "</span>")
-		} else if *balance == 0 {
-			return template.HTML("0")
+		if balance == nil || *balance == 0 {
+			return template.HTML("<span> 0 " + currency + "</span>")
 		}
 
 		if balanceF < 0 {
@@ -153,26 +130,16 @@ func FormatBalanceChange(balance *int64, currency string) template.HTML {
 		return template.HTML(fmt.Sprintf("<span title=\"%.0f GWei\" data-toggle=\"tooltip\" class=\"text-success\">+%.5f ETH</span>", float64(*balance), balanceF))
 	} else {
 		if balance == nil {
-			return template.HTML("<span> 0.00" + currency + "</span>")
+			return template.HTML("<span> 0 " + currency + "</span>")
 		}
 		exchangeRate := ExchangeRateForCurrency(currency)
+		balanceFormated := FormatFloat(balanceF*float64(exchangeRate), 2)
 
-		p := message.NewPrinter(language.English)
-		rb := []rune(p.Sprintf("%.2f", balanceF*exchangeRate))
-		// remove trailing zeros
-		if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
-			for rb[len(rb)-1] == '0' {
-				rb = rb[:len(rb)-1]
-			}
-			if rb[len(rb)-1] == '.' {
-				rb = rb[:len(rb)-1]
-			}
-		}
 		if *balance > 0 {
-			return template.HTML("<span class=\"text-success\">" + string(rb) + " " + currency + "</span>")
+			return template.HTML("<span class=\"text-success\">" + balanceFormated + " " + currency + "</span>")
 		}
 		if *balance < 0 {
-			return template.HTML("<span class=\"text-danger\">" + string(rb) + " " + currency + "</span>")
+			return template.HTML("<span class=\"text-danger\">" + balanceFormated + " " + currency + "</span>")
 		}
 
 		return template.HTML("pending")
@@ -183,36 +150,15 @@ func FormatBalanceChange(balance *int64, currency string) template.HTML {
 // FormatBalance will return a string for a balance
 func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := float64(balanceInt) / float64(1e9)
+	balance := FormatFloat((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
 
-	p := message.NewPrinter(language.English)
-	rb := []rune(p.Sprintf("%.2f", balance*exchangeRate))
-	// remove trailing zeros
-	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
-		for rb[len(rb)-1] == '0' {
-			rb = rb[:len(rb)-1]
-		}
-		if rb[len(rb)-1] == '.' {
-			rb = rb[:len(rb)-1]
-
-		}
-	}
-	return template.HTML(rb)
+	return template.HTML(balance)
 }
 
 func FormatAddCommas(n uint64) template.HTML {
-	p := message.NewPrinter(language.English)
-	rb := []rune(p.Sprintf("%d", n))
-	if len(rb) >= 3 {
-		if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
-			if rb[len(rb)-1] == '.' {
-				rb = rb[:len(rb)-1]
+	number := FormatFloat(float64(n), 2)
 
-			}
-		}
-	}
-
-	return template.HTML(rb)
+	return template.HTML(number)
 }
 
 // FormatBlockRoot will return the block-root formated as html
@@ -297,8 +243,9 @@ func FormatCurrentBalance(balanceInt uint64, currency string) template.HTML {
 		return template.HTML(fmt.Sprintf("%.5f %v", balance*exchangeRate, currency))
 	} else {
 		exchangeRate := ExchangeRateForCurrency(currency)
-		balance := float64(balanceInt) / float64(1e9)
-		return template.HTML(fmt.Sprintf("%.2f %v", balance*exchangeRate, currency))
+		balance := FormatFloat((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
+
+		return template.HTML(fmt.Sprintf(`%s %v`, balance, currency))
 	}
 }
 
@@ -422,6 +369,10 @@ func CopyButton(clipboardText interface{}) string {
 	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
 }
 
+func CopyButtonWithTitle(clipboardText interface{}, title string) string {
+	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="%v" data-clipboard-text=0x%v></i>`, title, clipboardText)
+}
+
 func Reverse(s string) string {
 	runes := []rune(s)
 	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
@@ -509,43 +460,22 @@ func FormatParticipation(v float64) template.HTML {
 // FormatIncome will return a string for a balance
 func FormatIncome(balanceInt int64, currency string) template.HTML {
 
-	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := float64(balanceInt) / float64(1e9)
-
-	p := message.NewPrinter(language.English)
-
-	decimals := "%.2f"
+	decimals := 2
 
 	if currency == "ETH" {
-		decimals = "%.5f"
+		decimals = 5
 	}
 
-	rb := []rune(p.Sprintf(decimals, balance*exchangeRate))
-	// remove trailing zeros
-	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
-		for rb[len(rb)-1] == '0' {
-			rb = rb[:len(rb)-1]
-		}
-		if rb[len(rb)-1] == '.' {
-			rb = rb[:len(rb)-1]
-		}
-	}
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := (float64(balanceInt) / float64(1e9)) * float64(exchangeRate)
+	balanceFormated := FormatFloat(balance, decimals)
 
 	if balance > 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%s %v</b></span>`, string(rb), currency))
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%s %v</b></span>`, balanceFormated, currency))
 	} else if balance < 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%s %v</b></span>`, string(rb), currency))
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%s %v</b></span>`, balanceFormated, currency))
 	} else {
-		return template.HTML(fmt.Sprintf(`<b>%s %v</b>`, string(rb), currency))
-	}
-}
-
-// FormatMoney will return a string for a balance
-func FormatMoney(money float64) template.HTML {
-	if money > 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.2f</b></span>`, money))
-	} else {
-		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.2f</b></span>`, money))
+		return template.HTML(fmt.Sprintf(`<b>%s %v</b>`, balanceFormated, currency))
 	}
 }
 
@@ -900,6 +830,18 @@ func FormatRPL(num string) string {
 	return fmt.Sprintf("%.2f", floatNum/math.Pow10(18)) + " RPL"
 }
 
-func FormatFloatWithPrecision(precision int, num float64) string {
-	return fmt.Sprintf("%.*f", precision, num)
+func FormatFloat(num float64, precision int) string {
+	p := message.NewPrinter(language.English)
+	f := fmt.Sprintf("%%.%vf", precision)
+	s := strings.TrimRight(strings.TrimRight(p.Sprintf(f, num), "0"), ".")
+	r := []rune(p.Sprintf(s, num))
+	return string(r)
+}
+
+func FormatNotificationChannel(ch types.NotificationChannel) string {
+	label, ok := types.NotificationChannelLabels[ch]
+	if !ok {
+		return ""
+	}
+	return label
 }

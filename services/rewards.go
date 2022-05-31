@@ -28,7 +28,7 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 	validatorFilter := pq.Array(validatorArr)
 
 	var pricesDb []types.Price
-	err = db.DB.Select(&pricesDb,
+	err = db.WriterDb.Select(&pricesDb,
 		`select * from price where ts >= TO_TIMESTAMP($1) and ts <= TO_TIMESTAMP($2) order by ts desc`, start, end)
 	if err != nil {
 		logger.Errorf("error getting prices: %v", err)
@@ -38,7 +38,7 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 	upperBound := utils.TimeToDay(end)
 
 	var income []types.ValidatorStatsTableRow
-	err = db.DB.Select(&income,
+	err = db.WriterDb.Select(&income,
 		`select day, start_balance, end_balance
 		 from validator_stats 
 		 where validatorindex=ANY($1) AND day > $2 AND day <= $3
@@ -66,6 +66,8 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 			prices[date] = item.JPY
 		case "rub":
 			prices[date] = item.RUB
+		case "aud":
+			prices[date] = item.AUD
 		default:
 			prices[date] = item.USD
 			currency = "usd"
@@ -302,7 +304,7 @@ func GetPdfReport(validatorArr []uint64, currency string, start uint64, end uint
 func getValidatorDetails(validators []uint64) [][]string {
 	validatorFilter := pq.Array(validators)
 	var data []types.ValidatorPageData
-	err := db.DB.Select(&data,
+	err := db.WriterDb.Select(&data,
 		`select validatorindex, balanceactivation, balance, lastattestationslot
 		 from validators 
 		 where validatorindex=ANY($1)

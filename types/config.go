@@ -6,13 +6,20 @@ import (
 
 // Config is a struct to hold the configuration data
 type Config struct {
-	Database struct {
-		Username string `yaml:"user" envconfig:"DB_USERNAME"`
-		Password string `yaml:"password" envconfig:"DB_PASSWORD"`
-		Name     string `yaml:"name" envconfig:"DB_NAME"`
-		Host     string `yaml:"host" envconfig:"DB_HOST"`
-		Port     string `yaml:"port" envconfig:"DB_PORT"`
-	} `yaml:"database"`
+	ReaderDatabase struct {
+		Username string `yaml:"user" envconfig:"READER_DB_USERNAME"`
+		Password string `yaml:"password" envconfig:"READER_DB_PASSWORD"`
+		Name     string `yaml:"name" envconfig:"READER_DB_NAME"`
+		Host     string `yaml:"host" envconfig:"READER_DB_HOST"`
+		Port     string `yaml:"port" envconfig:"READER_DB_PORT"`
+	} `yaml:"readerDatabase"`
+	WriterDatabase struct {
+		Username string `yaml:"user" envconfig:"WRITER_DB_USERNAME"`
+		Password string `yaml:"password" envconfig:"WRITER_DB_PASSWORD"`
+		Name     string `yaml:"name" envconfig:"WRITER_DB_NAME"`
+		Host     string `yaml:"host" envconfig:"WRITER_DB_HOST"`
+		Port     string `yaml:"port" envconfig:"WRITER_DB_PORT"`
+	} `yaml:"writerDatabase"`
 	Chain struct {
 		// Deprecated Use Phase0 config CONFIG_NAME
 		Network string `yaml:"network" envconfig:"CHAIN_NETWORK"`
@@ -81,13 +88,20 @@ type Config struct {
 			Port string `yaml:"port" envconfig:"FRONTEND_SERVER_PORT"`
 			Host string `yaml:"host" envconfig:"FRONTEND_SERVER_HOST"`
 		} `yaml:"server"`
-		Database struct {
-			Username string `yaml:"user" envconfig:"FRONTEND_DB_USERNAME"`
-			Password string `yaml:"password" envconfig:"FRONTEND_DB_PASSWORD"`
-			Name     string `yaml:"name" envconfig:"FRONTEND_DB_NAME"`
-			Host     string `yaml:"host" envconfig:"FRONTEND_DB_HOST"`
-			Port     string `yaml:"port" envconfig:"FRONTEND_DB_PORT"`
-		} `yaml:"database"`
+		ReaderDatabase struct {
+			Username string `yaml:"user" envconfig:"FRONTEND_READER_DB_USERNAME"`
+			Password string `yaml:"password" envconfig:"FRONTEND_READER_DB_PASSWORD"`
+			Name     string `yaml:"name" envconfig:"FRONTEND_READER_DB_NAME"`
+			Host     string `yaml:"host" envconfig:"FRONTEND_READER_DB_HOST"`
+			Port     string `yaml:"port" envconfig:"FRONTEND_READER_DB_PORT"`
+		} `yaml:"readerDatabase"`
+		WriterDatabase struct {
+			Username string `yaml:"user" envconfig:"FRONTEND_WRITER_DB_USERNAME"`
+			Password string `yaml:"password" envconfig:"FRONTEND_WRITER_DB_PASSWORD"`
+			Name     string `yaml:"name" envconfig:"FRONTEND_WRITER_DB_NAME"`
+			Host     string `yaml:"host" envconfig:"FRONTEND_WRITER_DB_HOST"`
+			Port     string `yaml:"port" envconfig:"FRONTEND_WRITER_DB_PORT"`
+		} `yaml:"writerDatabase"`
 		Stripe struct {
 			SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`
 			PublicKey string `yaml:"publicKey" envconfig:"FRONTEND_STRIPE_PUBLIC_KEY"`
@@ -251,4 +265,12 @@ type Altair struct {
 	SyncCommitteeSize                    uint64 `yaml:"SYNC_COMMITTEE_SIZE"`
 	EpochsPerSyncCommitteePeriod         uint64 `yaml:"EPOCHS_PER_SYNC_COMMITTEE_PERIOD"`
 	MinSyncCommitteeParticipants         uint64 `yaml:"MIN_SYNC_COMMITTEE_PARTICIPANTS"`
+}
+
+type DatabaseConfig struct {
+	Username string
+	Password string
+	Name     string
+	Host     string
+	Port     string
 }

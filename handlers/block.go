@@ -8,14 +8,15 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/juliangruber/go-intersect"
-	"github.com/lib/pq"
 	"html/template"
 	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/juliangruber/go-intersect"
+	"github.com/lib/pq"
 
 	"github.com/gorilla/mux"
 )
@@ -59,7 +60,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "blocks", "/blocks", "")
 
 	if blockSlot == -1 {
-		err = db.DB.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
+		err = db.ReaderDb.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
 		if blockSlot == -1 {
 			err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 			if err != nil {
@@ -92,7 +93,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 	blockPageData := types.BlockPageData{}
 	blockPageData.Mainnet = utils.Config.Chain.Mainnet
-	err = db.DB.Get(&blockPageData, `
+	err = db.ReaderDb.Get(&blockPageData, `
 		SELECT
 			blocks.epoch,
 			blocks.slot,
@@ -158,7 +159,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	blockPageData.ExecTime = time.Unix(int64(blockPageData.ExecTimestamp), 0)
 	blockPageData.SlashingsCount = blockPageData.AttesterSlashingsCount + blockPageData.ProposerSlashingsCount
 
-	err = db.DB.Get(&blockPageData.NextSlot, "SELECT slot FROM blocks WHERE slot > $1 ORDER BY slot LIMIT 1", blockPageData.Slot)
+	err = db.ReaderDb.Get(&blockPageData.NextSlot, "SELECT slot FROM blocks WHERE slot > $1 ORDER BY slot LIMIT 1", blockPageData.Slot)
 	if err == sql.ErrNoRows {
 		blockPageData.NextSlot = 0
 	} else if err != nil {
@@ -166,14 +167,14 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	err = db.DB.Get(&blockPageData.PreviousSlot, "SELECT slot FROM blocks WHERE slot < $1 ORDER BY slot DESC LIMIT 1", blockPageData.Slot)
+	err = db.ReaderDb.Get(&blockPageData.PreviousSlot, "SELECT slot FROM blocks WHERE slot < $1 ORDER BY slot DESC LIMIT 1", blockPageData.Slot)
 	if err != nil {
 		logger.Errorf("error retrieving previous slot for block %v: %v", blockPageData.Slot, err)
 		blockPageData.PreviousSlot = 0
 	}
 
 	var transactions []*types.BlockPageTransaction
-	rows, err := db.DB.Query(`
+	rows, err := db.ReaderDb.Query(`
 		SELECT
     	block_slot,
     	block_index,
@@ -226,7 +227,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	blockPageData.Transactions = transactions
 
 	var attestations []*types.BlockPageAttestation
-	rows, err = db.DB.Query(`
+	rows, err = db.ReaderDb.Query(`
 		SELECT
 			block_slot,
 			block_index,
@@ -276,7 +277,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 	blockPageData.Attestations = attestations
 
-	rows, err = db.DB.Query(`
+	rows, err = db.ReaderDb.Query(`
 		SELECT validators
 		FROM blocks_attestations
 		WHERE beaconblockroot = $1`,
@@ -311,14 +312,14 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	blockPageData.VotingValidatorsCount = uint64(len(votesPerValidator))
 	blockPageData.VotesCount = uint64(votesCount)
 
-	err = db.DB.Select(&blockPageData.VoluntaryExits, "SELECT validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1", blockPageData.Slot)
+	err = db.ReaderDb.Select(&blockPageData.VoluntaryExits, "SELECT validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
 		logger.Errorf("error retrieving block deposit data: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	err = db.DB.Select(&blockPageData.AttesterSlashings, `
+	err = db.ReaderDb.Select(&blockPageData.AttesterSlashings, `
 		SELECT
 			block_slot,
 			block_index,
@@ -357,7 +358,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = db.DB.Select(&blockPageData.ProposerSlashings, "SELECT * FROM blocks_proposerslashings WHERE block_slot = $1", blockPageData.Slot)
+	err = db.ReaderDb.Select(&blockPageData.ProposerSlashings, "SELECT * FROM blocks_proposerslashings WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
 		logger.Errorf("error retrieving block proposer slashings data: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -365,7 +366,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: fix blockPageData data type to include SyncCommittee
-	err = db.DB.Select(&blockPageData.SyncCommittee, "SELECT validatorindex FROM sync_committees WHERE period = $1 ORDER BY committeeindex", utils.SyncPeriodOfEpoch(blockPageData.Epoch))
+	err = db.ReaderDb.Select(&blockPageData.SyncCommittee, "SELECT validatorindex FROM sync_committees WHERE period = $1 ORDER BY committeeindex", utils.SyncPeriodOfEpoch(blockPageData.Epoch))
 	if err != nil {
 		logger.Errorf("error retrieving sync-committee of block %v: %v", blockPageData.Slot, err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -407,7 +408,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		err = db.DB.Get(&blockSlot, `
+		err = db.ReaderDb.Get(&blockSlot, `
 		SELECT
 			blocks.slot
 		FROM blocks
@@ -451,7 +452,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 
 	var count uint64
 
-	err = db.DB.Get(&count, `
+	err = db.ReaderDb.Get(&count, `
 	SELECT 
 		count(*)
 	FROM
@@ -469,7 +470,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 
 	var deposits []*types.BlockPageDeposit
 
-	err = db.DB.Select(&deposits, `
+	err = db.ReaderDb.Select(&deposits, `
 		SELECT
 			publickey,
 			withdrawalcredentials,
@@ -530,14 +531,14 @@ func BlockVoteData(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		err = db.DB.Get(&blockRootHash, "select blocks.blockroot from blocks where blocks.slot = $1", blockSlot)
+		err = db.ReaderDb.Get(&blockRootHash, "select blocks.blockroot from blocks where blocks.slot = $1", blockSlot)
 		if err != nil {
 			logger.Errorf("error getting blockRootHash for slot %v: %v", blockSlot, err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 	} else {
-		err = db.DB.Get(&blockSlot, `SELECT blocks.slot FROM blocks WHERE blocks.blockroot = $1`, blockRootHash)
+		err = db.ReaderDb.Get(&blockSlot, `SELECT blocks.slot FROM blocks WHERE blocks.blockroot = $1 OR blocks.stateroot = $1`, blockRootHash)
 		if err != nil {
 			logger.Errorf("error querying for block slot with block root hash %v err: %v", blockRootHash, err)
 			http.Error(w, "Interal server error", http.StatusInternalServerError)
@@ -585,13 +586,13 @@ func BlockVoteData(w http.ResponseWriter, r *http.Request) {
 		CommitteeIndex uint64        `db:"committeeindex"`
 	}
 	if search == "" {
-		err = db.DB.Get(&count, `SELECT count(*) FROM blocks_attestations WHERE beaconblockroot = $1`, blockRootHash)
+		err = db.ReaderDb.Get(&count, `SELECT count(*) FROM blocks_attestations WHERE beaconblockroot = $1`, blockRootHash)
 		if err != nil {
 			logger.Errorf("error retrieving deposit count for slot %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		err = db.DB.Select(&votes, `
+		err = db.ReaderDb.Select(&votes, `
 			SELECT
 				block_slot,
 				validators,
@@ -608,13 +609,13 @@ func BlockVoteData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else if searchIsUint64 {
-		err = db.DB.Get(&count, `SELECT count(*) FROM blocks_attestations WHERE beaconblockroot = $1 AND $2 = ANY(validators)`, blockRootHash, searchUint64)
+		err = db.ReaderDb.Get(&count, `SELECT count(*) FROM blocks_attestations WHERE beaconblockroot = $1 AND $2 = ANY(validators)`, blockRootHash, searchUint64)
 		if err != nil {
 			logger.Errorf("error retrieving deposit count for slot %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		err = db.DB.Select(&votes, `
+		err = db.ReaderDb.Select(&votes, `
 			SELECT
 				block_slot,
 				validators,

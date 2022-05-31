@@ -25,12 +25,13 @@ import (
 var DBPGX *pgxpool.Conn
 
 // DB is a pointer to the explorer-database
-var DB *sqlx.DB
+var WriterDb *sqlx.DB
+var ReaderDb *sqlx.DB
 
 var logger = logrus.StandardLogger().WithField("module", "db")
 
-func mustInitDB(username, password, host, port, name string) *sqlx.DB {
-	dbConn, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", username, password, host, port, name))
+func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {
+	dbConnWriter, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", writer.Username, writer.Password, writer.Host, writer.Port, writer.Name))
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -42,26 +43,55 @@ func mustInitDB(username, password, host, port, name string) *sqlx.DB {
 		<-dbConnectionTimeout.C
 		logger.Fatalf("timeout while connecting to the database")
 	}()
-	err = dbConn.Ping()
+	err = dbConnWriter.Ping()
 	if err != nil {
 		logger.Fatal(err)
 	}
 	dbConnectionTimeout.Stop()
 
-	dbConn.SetConnMaxIdleTime(time.Second * 30)
-	dbConn.SetConnMaxLifetime(time.Second * 60)
+	dbConnWriter.SetConnMaxIdleTime(time.Second * 30)
+	dbConnWriter.SetConnMaxLifetime(time.Second * 60)
+	dbConnWriter.SetMaxOpenConns(200)
+	dbConnWriter.SetMaxIdleConns(200)
 
-	return dbConn
+	if reader == nil {
+
+		return dbConnWriter, dbConnWriter
+	}
+
+	dbConnReader, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", reader.Username, reader.Password, reader.Host, reader.Port, reader.Name))
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	// The golang sql driver does not properly implement PingContext
+	// therefore we use a timer to catch db connection timeouts
+	dbConnectionTimeout = time.NewTimer(15 * time.Second)
+	go func() {
+		<-dbConnectionTimeout.C
+		logger.Fatalf("timeout while connecting to the read replica database")
+	}()
+	err = dbConnReader.Ping()
+	if err != nil {
+		logger.Fatal(err)
+	}
+	dbConnectionTimeout.Stop()
+
+	dbConnReader.SetConnMaxIdleTime(time.Second * 30)
+	dbConnReader.SetConnMaxLifetime(time.Second * 60)
+	dbConnReader.SetMaxOpenConns(200)
+	dbConnReader.SetMaxIdleConns(200)
+	return dbConnWriter, dbConnReader
 }
 
-func MustInitDB(username, password, host, port, name string) {
-	DB = mustInitDB(username, password, host, port, name)
+func MustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) {
+	WriterDb, ReaderDb = mustInitDB(writer, reader)
 }
 
 func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsData, error) {
 	deposits := []*types.EthOneDepositsData{}
 
-	err := DB.Select(&deposits, `
+	err := ReaderDb.Select(&deposits, `
 	SELECT 
 		tx_hash,
 		tx_input,
@@ -86,6 +116,8 @@ func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepos
 	return deposits, nil
 }
 
+var searchLikeHash = regexp.MustCompile(`^0?x?[0-9a-fA-F]{2,96}`) // only search for pubkeys if string consists of 96 hex-chars
+
 func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsData, uint64, error) {
 	deposits := []*types.EthOneDepositsData{}
 
@@ -97,32 +129,48 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 	for _, column := range columns {
 		if orderBy == column {
 			hasColumn = true
+			break
 		}
 	}
 	if !hasColumn {
 		orderBy = "block_ts"
 	}
 
-	var err error
 	var totalCount uint64
-	if query != "" {
-		err = DB.Get(&totalCount, `
-			SELECT COUNT(*) FROM eth1_deposits as eth1
-			WHERE 
-				ENCODE(eth1.publickey::bytea, 'hex') LIKE LOWER($1)
-				OR ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($1)
-				OR ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($1)
-				OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($1)
-				OR CAST(eth1.block_number AS text) LIKE LOWER($1)`, query+"%")
+	var err error
+
+	query = strings.Replace(query, "0x", "", -1)
+
+	if searchLikeHash.MatchString(query) {
+		if query != "" {
+			err = ReaderDb.Get(&totalCount, `
+				SELECT COUNT(*) FROM eth1_deposits as eth1
+				WHERE 
+					ENCODE(eth1.publickey, 'hex') LIKE LOWER($1)
+					OR ENCODE(eth1.withdrawal_credentials, 'hex') LIKE LOWER($1)
+					OR ENCODE(eth1.from_address, 'hex') LIKE LOWER($1)
+					OR ENCODE(tx_hash, 'hex') LIKE LOWER($1)
+					OR CAST(eth1.block_number AS text) LIKE LOWER($1)`, query+"%")
+		}
 	} else {
-		err = DB.Get(&totalCount, "SELECT COUNT(*) FROM eth1_deposits")
+		if query != "" {
+			err = ReaderDb.Get(&totalCount, `
+				SELECT COUNT(*) FROM eth1_deposits as eth1
+				WHERE 
+				CAST(eth1.block_number AS text) LIKE LOWER($1)`, query+"%")
+		}
 	}
+
+	if query == "" {
+		err = ReaderDb.Get(&totalCount, "SELECT COUNT(*) FROM eth1_deposits")
+	}
+
 	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
 
 	if query != "" {
-		err = DB.Select(&deposits, fmt.Sprintf(`
+		wholeQuery := fmt.Sprintf(`
 		SELECT 
 			eth1.tx_hash as tx_hash,
 			eth1.tx_input as tx_input,
@@ -155,16 +203,17 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		ON
 			v.pubkey = eth1.publickey
 		WHERE
-			ENCODE(eth1.publickey::bytea, 'hex') LIKE LOWER($5)
-			OR ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($5)
-			OR ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($5)
-			OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($5)
+			ENCODE(eth1.publickey, 'hex') LIKE LOWER($5)
+			OR ENCODE(eth1.withdrawal_credentials, 'hex') LIKE LOWER($5)
+			OR ENCODE(eth1.from_address, 'hex') LIKE LOWER($5)
+			OR ENCODE(tx_hash, 'hex') LIKE LOWER($5)
 			OR CAST(eth1.block_number AS text) LIKE LOWER($5)
 		ORDER BY %s %s
 		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, validatorOnlineThresholdSlot, query+"%")
+		OFFSET $2`, orderBy, orderDir)
+		err = ReaderDb.Select(&deposits, wholeQuery, length, start, latestEpoch, validatorOnlineThresholdSlot, query+"%")
 	} else {
-		err = DB.Select(&deposits, fmt.Sprintf(`
+		err = ReaderDb.Select(&deposits, fmt.Sprintf(`
 		SELECT 
 			eth1.tx_hash as tx_hash,
 			eth1.tx_input as tx_input,
@@ -209,7 +258,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 
 func GetEth1DepositsCount() (uint64, error) {
 	deposits := uint64(0)
-	err := DB.Get(&deposits, `SELECT COUNT(*) FROM eth1_deposits`)
+	err := ReaderDb.Get(&deposits, `SELECT COUNT(*) FROM eth1_deposits`)
 	if err != nil {
 		return 0, err
 	}
@@ -246,7 +295,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 	var err error
 	var totalCount uint64
 	if query != "" {
-		err = DB.Get(&totalCount, `
+		err = ReaderDb.Get(&totalCount, `
 		SELECT
 			COUNT(from_address)
 			FROM
@@ -256,18 +305,18 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 					FROM
 						eth1_deposits as eth1
 					WHERE
-						ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($1)
+					ENCODE(eth1.from_address, 'hex') LOWER($1)
 						GROUP BY from_address
 				) as count
 		`, query+"%")
 	} else {
-		err = DB.Get(&totalCount, "SELECT COUNT(*) FROM (SELECT from_address FROM eth1_deposits GROUP BY from_address) as count")
+		err = ReaderDb.Get(&totalCount, "SELECT COUNT(*) FROM (SELECT from_address FROM eth1_deposits GROUP BY from_address) as count")
 	}
 	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
 
-	err = DB.Select(&deposits, fmt.Sprintf(`
+	err = ReaderDb.Select(&deposits, fmt.Sprintf(`
 		SELECT
 			eth1.from_address,
 			SUM(eth1.amount) as amount,
@@ -298,7 +347,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		) v ON v.pubkey = eth1.publickey
-		WHERE ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($4)
+		WHERE ENCODE(eth1.from_address, 'hex') LIKE LOWER($4)
 		GROUP BY eth1.from_address
 		ORDER BY %s %s
 		LIMIT $1
@@ -311,7 +360,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 
 func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthTwoDepositData, error) {
 	deposits := []*types.EthTwoDepositData{}
-	// ENCODE(publickey::bytea, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $3 OR
+	// ENCODE(publickey, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials, 'hex') LIKE $3 OR
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
 	}
@@ -327,7 +376,7 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	}
 
 	if query != "" {
-		err := DB.Select(&deposits, fmt.Sprintf(`
+		err := ReaderDb.Select(&deposits, fmt.Sprintf(`
 			SELECT 
 				blocks_deposits.block_slot,
 				blocks_deposits.block_index,
@@ -338,7 +387,9 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 				blocks_deposits.signature
 			FROM blocks_deposits
 			INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
-			WHERE ENCODE(publickey::bytea, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $3 OR CAST(block_slot as varchar) LIKE $3
+			WHERE ENCODE(publickey, 'hex') LIKE LOWER($3)
+				OR ENCODE(withdrawalcredentials, 'hex') LIKE LOWER($3)
+				OR CAST(block_slot as varchar) LIKE LOWER($3)
 			ORDER BY %s %s
 			LIMIT $1
 			OFFSET $2`, orderBy, orderDir), length, start, query+"%")
@@ -346,7 +397,7 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 			return nil, err
 		}
 	} else {
-		err := DB.Select(&deposits, fmt.Sprintf(`
+		err := ReaderDb.Select(&deposits, fmt.Sprintf(`
 			SELECT 
 				blocks_deposits.block_slot,
 				blocks_deposits.block_index,
@@ -372,20 +423,20 @@ func GetEth2DepositsCount(search string) (uint64, error) {
 	deposits := uint64(0)
 	var err error
 	if search == "" {
-		err = DB.Get(&deposits, `
+		err = ReaderDb.Get(&deposits, `
 		SELECT COUNT(*)
 		FROM blocks_deposits
 		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'`)
 	} else {
-		err = DB.Get(&deposits, `
+		err = ReaderDb.Get(&deposits, `
 		SELECT COUNT(*)
 		FROM blocks_deposits
 		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
 		WHERE 
-			ENCODE(publickey::bytea, 'hex') LIKE $1 
-			OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $1 
-			OR CAST(block_slot as varchar) LIKE $1
-		`, search)
+			ENCODE(publickey, 'hex') LIKE LOWER($1)
+			OR ENCODE(withdrawalcredentials, 'hex') LIKE LOWER($1)
+			OR CAST(block_slot as varchar) LIKE LOWER($1)
+		`, search+"%")
 	}
 	if err != nil {
 		return 0, err
@@ -396,7 +447,7 @@ func GetEth2DepositsCount(search string) (uint64, error) {
 func GetSlashingCount() (uint64, error) {
 	slashings := uint64(0)
 
-	err := DB.Get(&slashings, `
+	err := ReaderDb.Get(&slashings, `
 		SELECT SUM(count)
 		FROM 
 		(
@@ -420,7 +471,7 @@ func GetSlashingCount() (uint64, error) {
 // GetLatestEpoch will return the latest epoch from the database
 func GetLatestEpoch() (uint64, error) {
 	var epoch uint64
-	err := DB.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
+	err := WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 
 	if err != nil {
 		return 0, fmt.Errorf("error retrieving latest epoch from DB: %v", err)
@@ -432,7 +483,7 @@ func GetLatestEpoch() (uint64, error) {
 // GetAllEpochs will return a collection of all of the epochs from the database
 func GetAllEpochs() ([]uint64, error) {
 	var epochs []uint64
-	err := DB.Select(&epochs, "SELECT epoch FROM epochs ORDER BY epoch")
+	err := WriterDb.Select(&epochs, "SELECT epoch FROM epochs ORDER BY epoch")
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving all epochs from DB: %v", err)
@@ -445,7 +496,7 @@ func GetAllEpochs() ([]uint64, error) {
 func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
 	var blocks []*types.MinimalBlock
 
-	err := DB.Select(&blocks, "SELECT epoch, slot, blockroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND blockroot != '\x01' ORDER BY slot DESC", startEpoch, endEpoch)
+	err := WriterDb.Select(&blocks, "SELECT epoch, slot, blockroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND blockroot != '\x01' ORDER BY slot DESC", startEpoch, endEpoch)
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving last blocks (%v-%v) from DB: %v", startEpoch, endEpoch, err)
@@ -458,7 +509,7 @@ func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.Mini
 func GetBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
 	var blocks []*types.MinimalBlock
 
-	err := DB.Select(&blocks, "SELECT epoch, slot, blockroot, parentroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND length(blockroot) = 32 ORDER BY slot DESC", startEpoch, endEpoch)
+	err := ReaderDb.Select(&blocks, "SELECT epoch, slot, blockroot, parentroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND length(blockroot) = 32 ORDER BY slot DESC", startEpoch, endEpoch)
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving blocks for epoch %v to %v from DB: %v", startEpoch, endEpoch, err)
@@ -470,7 +521,7 @@ func GetBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
 // GetValidatorPublicKey will return the public key for a specific validator from the database
 func GetValidatorPublicKey(index uint64) ([]byte, error) {
 	var publicKey []byte
-	err := DB.Get(&publicKey, "SELECT pubkey FROM validators WHERE validatorindex = $1", index)
+	err := ReaderDb.Get(&publicKey, "SELECT pubkey FROM validators WHERE validatorindex = $1", index)
 
 	return publicKey, err
 }
@@ -478,7 +529,7 @@ func GetValidatorPublicKey(index uint64) ([]byte, error) {
 // GetValidatorIndex will return the validator-index for a public key from the database
 func GetValidatorIndex(publicKey []byte) (uint64, error) {
 	var index uint64
-	err := DB.Get(&index, "SELECT validatorindex FROM validators WHERE pubkey = $1", publicKey)
+	err := ReaderDb.Get(&index, "SELECT validatorindex FROM validators WHERE pubkey = $1", publicKey)
 
 	return index, err
 }
@@ -486,7 +537,7 @@ func GetValidatorIndex(publicKey []byte) (uint64, error) {
 // GetValidatorDeposits will return eth1- and eth2-deposits for a public key from the database
 func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	deposits := &types.ValidatorDeposits{}
-	err := DB.Select(&deposits.Eth1Deposits, `
+	err := ReaderDb.Select(&deposits.Eth1Deposits, `
 		SELECT tx_hash, tx_input, tx_index, block_number, EXTRACT(epoch FROM block_ts)::INT as block_ts, from_address, publickey, withdrawal_credentials, amount, signature, merkletree_index, valid_signature
 		FROM eth1_deposits WHERE publickey = $1 ORDER BY block_number ASC`, publicKey)
 	if err != nil {
@@ -496,8 +547,17 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 		deposits.LastEth1DepositTs = deposits.Eth1Deposits[len(deposits.Eth1Deposits)-1].BlockTs
 	}
 
-	err = DB.Select(&deposits.Eth2Deposits, `
-		SELECT blocks_deposits.* FROM blocks_deposits
+	err = ReaderDb.Select(&deposits.Eth2Deposits, `
+		SELECT 
+			blocks_deposits.block_slot,
+			blocks_deposits.block_index,
+			blocks_deposits.block_root,
+			blocks_deposits.proof,
+			blocks_deposits.publickey,
+			blocks_deposits.withdrawalcredentials,
+			blocks_deposits.amount,
+			blocks_deposits.signature
+		FROM blocks_deposits
 		INNER JOIN blocks ON (blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1') OR (blocks_deposits.block_slot = 0 AND blocks_deposits.block_slot = blocks.slot AND blocks_deposits.publickey = $1)
 		WHERE blocks_deposits.publickey = $1`, publicKey)
 	if err != nil {
@@ -516,7 +576,7 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalB
 		metrics.TaskDuration.WithLabelValues("db_update_canonical_blocks").Observe(time.Since(start).Seconds())
 	}()
 
-	tx, err := DB.Begin()
+	tx, err := WriterDb.Begin()
 	if err != nil {
 		return fmt.Errorf("error starting db transactions: %v", err)
 	}
@@ -545,7 +605,7 @@ func SetBlockStatus(blocks []*types.CanonBlock) error {
 		return nil
 	}
 
-	tx, err := DB.Begin()
+	tx, err := WriterDb.Begin()
 	if err != nil {
 		return fmt.Errorf("error starting db transactions: %v", err)
 	}
@@ -579,7 +639,7 @@ func SetBlockStatus(blocks []*types.CanonBlock) error {
 
 // SaveValidatorQueue will save the validator queue into the database
 func SaveValidatorQueue(validators *types.ValidatorQueue) error {
-	_, err := DB.Exec(`
+	_, err := WriterDb.Exec(`
 		INSERT INTO queue (ts, entering_validators_count, exiting_validators_count)
 		VALUES (date_trunc('hour', now()), $1, $2)
 		ON CONFLICT (ts) DO UPDATE SET
@@ -597,7 +657,7 @@ func SaveBlock(block *types.Block) error {
 	}
 	blocksMap[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 
-	tx, err := DB.Begin()
+	tx, err := WriterDb.Begin()
 	if err != nil {
 		return fmt.Errorf("error starting db transactions: %v", err)
 	}
@@ -626,7 +686,7 @@ func SaveEpoch(data *types.EpochData) error {
 		logger.WithFields(logrus.Fields{"epoch": data.Epoch, "duration": time.Since(start)}).Info("completed saving epoch")
 	}()
 
-	tx, err := DB.Begin()
+	tx, err := WriterDb.Begin()
 	if err != nil {
 		return fmt.Errorf("error starting db transactions: %w", err)
 	}
@@ -876,7 +936,7 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 	}
 
 	var latestBlock uint64
-	err := DB.Get(&latestBlock, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
+	err := WriterDb.Get(&latestBlock, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
 	if err != nil {
 		return err
 	}
@@ -1252,7 +1312,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 			blockLog := logger.WithFields(logrus.Fields{"slot": b.Slot, "blockRoot": fmt.Sprintf("%x", b.BlockRoot)})
 
 			var dbBlockRootHash []byte
-			err := DB.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
+			err := WriterDb.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
 			if err == nil && bytes.Compare(dbBlockRootHash, b.BlockRoot) == 0 {
 				blockLog.Infof("skipping export of block as it is already present in the db")
 				continue
@@ -1517,7 +1577,7 @@ func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
 		metrics.TaskDuration.WithLabelValues("db_update_epochs_status").Observe(time.Since(start).Seconds())
 	}()
 
-	_, err := DB.Exec(`
+	_, err := WriterDb.Exec(`
 		UPDATE epochs SET
 			finalized = $1,
 			eligibleether = $2,
@@ -1531,26 +1591,26 @@ func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
 
 // UpdateEpochFinalization will update finalized-flag of all epochs before the last finalized epoch
 func UpdateEpochFinalization() error {
-	_, err := DB.Exec(`UPDATE epochs SET finalized = true WHERE epoch < (SELECT MAX(epoch) FROM epochs WHERE finalized = true)`)
+	_, err := WriterDb.Exec(`UPDATE epochs SET finalized = true WHERE epoch < (SELECT MAX(epoch) FROM epochs WHERE finalized = true)`)
 	return err
 }
 
 // GetTotalValidatorsCount will return the total-validator-count
 func GetTotalValidatorsCount() (uint64, error) {
 	var totalCount uint64
-	err := DB.Get(&totalCount, "SELECT COUNT(*) FROM validators")
+	err := ReaderDb.Get(&totalCount, "SELECT COUNT(*) FROM validators")
 	return totalCount, err
 }
 
 // GetActiveValidatorCount will return the total-validator-count
 func GetActiveValidatorCount() (uint64, error) {
 	var count uint64
-	err := DB.Get(&count, "select count(*) from validators where status in ('active_offline', 'active_online');")
+	err := ReaderDb.Get(&count, "select count(*) from validators where status in ('active_offline', 'active_online');")
 	return count, err
 }
 
 func GetValidatorNames() (map[uint64]string, error) {
-	rows, err := DB.Query(`
+	rows, err := ReaderDb.Query(`
 		SELECT validatorindex, validator_names.name 
 		FROM validators 
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
@@ -1581,7 +1641,7 @@ func GetValidatorNames() (map[uint64]string, error) {
 // GetPendingValidatorCount queries the pending validators currently in the queue
 func GetPendingValidatorCount() (uint64, error) {
 	count := uint64(0)
-	err := DB.Get(&count, "SELECT entering_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
+	err := ReaderDb.Get(&count, "SELECT entering_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
 	if err != nil && err != sql.ErrNoRows {
 		return 0, fmt.Errorf("error retrieving validator queue count: %v", err)
 	}
@@ -1591,7 +1651,7 @@ func GetPendingValidatorCount() (uint64, error) {
 func GetTotalEligibleEther() (uint64, error) {
 	var total uint64
 
-	err := DB.Get(&total, `
+	err := ReaderDb.Get(&total, `
 		SELECT eligibleether FROM epochs ORDER BY epoch desc LIMIT 1
 	`)
 	if err == sql.ErrNoRows {
@@ -1605,7 +1665,7 @@ func GetTotalEligibleEther() (uint64, error) {
 
 func GetDepositThresholdTime() (*time.Time, error) {
 	var threshold *time.Time
-	err := DB.Get(&threshold, `
+	err := ReaderDb.Get(&threshold, `
 	select min(block_ts) from (
 		select block_ts, block_number, sum(amount) over (order by block_ts) as totalsum
 			from (
@@ -1643,7 +1703,7 @@ func GetValidatorsBalanceDecrease(epoch uint64) ([]struct {
 		EndBalance     uint64 `db:"endbalance"`
 	}
 
-	err := DB.Select(&dbResult, `
+	err := ReaderDb.Select(&dbResult, `
 	SELECT validatorindex, startbalance, endbalance, a.pubkey AS pubkey FROM (
 		SELECT 
 			v.validatorindex,
@@ -1688,10 +1748,16 @@ func GetValidatorsGotSlashed(epoch uint64) ([]struct {
 		SlashedValidatorPubkey []byte `db:"slashedvalidator_pubkey"`
 		Reason                 string `db:"reason"`
 	}
-	err := DB.Select(&dbResult, `
+	err := ReaderDb.Select(&dbResult, `
 		WITH
 			slashings AS (
-				SELECT DISTINCT ON (slashedvalidator) * FROM (
+				SELECT DISTINCT ON (slashedvalidator) 
+					slot,
+					epoch,
+					slasher,
+					slashedvalidator,
+					reason
+				FROM (
 					SELECT
 						blocks.slot, 
 						blocks.epoch, 
