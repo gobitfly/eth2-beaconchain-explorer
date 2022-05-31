@@ -66,7 +66,7 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 		Blockcount     uint64
 		Validatorcount uint64
 	}{}
-	err := db.DB.Select(&sqlRes, `
+	err := db.ReaderDb.Select(&sqlRes, `
 		select 
 			graffiti, 
 			count(*) as blockcount,

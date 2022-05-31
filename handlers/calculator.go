@@ -47,7 +47,7 @@ func estimatedValidatorIncomeChartData() ([][]float64, error) {
 		Finalitydelay           uint64
 		Globalparticipationrate float64
 	}{}
-	err := db.DB.Select(&rows, `
+	err := db.ReaderDb.Select(&rows, `
 		SELECT 
 			epoch, eligibleether, votedether, validatorscount, globalparticipationrate,
 			coalesce(nl.headepoch-nl.finalizedepoch,2) as finalitydelay

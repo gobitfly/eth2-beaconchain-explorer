@@ -25,7 +25,7 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 	// pageData.Banner = ethclients.GetBannerClients()
 	if data.User.Authenticated {
 		var dbData []string
-		err = db.FrontendDB.Select(&dbData,
+		err = db.FrontendWriterDB.Select(&dbData,
 			`select event_filter
 			 from users_subscriptions 
 			 where user_id = $1 AND event_name=$2

@@ -82,9 +82,9 @@ kbd {
   font-weight: 400;
   line-height: 1.45rem !important;
 }
-.heading-section { 
+/* .heading-section { 
   height: 60px; 
-}
+} */
 .i-custom:hover {
   display: inline-block;
   border-radius: 50%;

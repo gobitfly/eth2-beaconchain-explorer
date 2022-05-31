@@ -58,7 +58,7 @@ func eth1DepositsExporter() {
 		t0 := time.Now()
 
 		var lastDepositBlock uint64
-		err = db.DB.Get(&lastDepositBlock, "select coalesce(max(block_number),0) from eth1_deposits")
+		err = db.WriterDb.Get(&lastDepositBlock, "select coalesce(max(block_number),0) from eth1_deposits")
 		if err != nil {
 			logger.WithError(err).Errorf("error retrieving highest block_number of eth1-deposits from db")
 			time.Sleep(time.Second * 5)
@@ -261,7 +261,7 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 }
 
 func saveEth1Deposits(depositsToSave []*types.Eth1Deposit) error {
-	tx, err := db.DB.Begin()
+	tx, err := db.WriterDb.Begin()
 	if err != nil {
 		return err
 	}

@@ -15,17 +15,18 @@ import (
 	"github.com/lib/pq"
 )
 
-// FrontendDB is a pointer to the auth-database
-var FrontendDB *sqlx.DB
+// FrontendWriterDB is a pointer to the auth-database
+var FrontendReaderDB *sqlx.DB
+var FrontendWriterDB *sqlx.DB
 
-func MustInitFrontendDB(username, password, host, port, name, sessionSecret string) {
-	FrontendDB = mustInitDB(username, password, host, port, name)
+func MustInitFrontendDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, sessionSecret string) {
+	FrontendWriterDB, FrontendReaderDB = mustInitDB(writer, reader)
 }
 
 // GetUserEmailById returns the email of a user.
 func GetUserEmailById(id uint64) (string, error) {
 	var mail string = ""
-	err := FrontendDB.Get(&mail, "SELECT email FROM users WHERE id = $1", id)
+	err := FrontendWriterDB.Get(&mail, "SELECT email FROM users WHERE id = $1", id)
 	return mail, err
 }
 
@@ -39,7 +40,8 @@ func GetUserEmailsByIds(ids []uint64) (map[uint64]string, error) {
 		ID    uint64 `db:"id"`
 		Email string `db:"email"`
 	}
-	err := FrontendDB.Select(&rows, "SELECT id, email FROM users WHERE id = ANY($1)", pq.Array(ids))
+	//
+	err := FrontendWriterDB.Select(&rows, "SELECT id, email FROM users WHERE id = ANY($1) AND id NOT IN (SELECT user_id from users_notification_channels WHERE active = false and channel = $2)", pq.Array(ids), types.EmailNotificationChannel)
 	if err != nil {
 		return nil, err
 	}
@@ -51,32 +53,32 @@ func GetUserEmailsByIds(ids []uint64) (map[uint64]string, error) {
 
 // DeleteUserByEmail deletes a user.
 func DeleteUserByEmail(email string) error {
-	_, err := FrontendDB.Exec("DELETE FROM users WHERE email = $1", email)
+	_, err := FrontendWriterDB.Exec("DELETE FROM users WHERE email = $1", email)
 	return err
 }
 
 func GetUserApiKeyById(id uint64) (string, error) {
 	var apiKey string = ""
-	err := FrontendDB.Get(&apiKey, "SELECT api_key FROM users WHERE id = $1", id)
+	err := FrontendWriterDB.Get(&apiKey, "SELECT api_key FROM users WHERE id = $1", id)
 	return apiKey, err
 }
 
 func GetUserIdByApiKey(apiKey string) (*types.UserWithPremium, error) {
 	data := &types.UserWithPremium{}
-	row := FrontendDB.QueryRow("SELECT id, (SELECT product_id from users_app_subscriptions WHERE user_id = users.id AND active = true order by id desc limit 1) FROM users WHERE api_key = $1", apiKey)
+	row := FrontendWriterDB.QueryRow("SELECT id, (SELECT product_id from users_app_subscriptions WHERE user_id = users.id AND active = true order by id desc limit 1) FROM users WHERE api_key = $1", apiKey)
 	err := row.Scan(&data.ID, &data.Product)
 	return data, err
 }
 
 // DeleteUserById deletes a user.
 func DeleteUserById(id uint64) error {
-	_, err := FrontendDB.Exec("DELETE FROM users WHERE id = $1", id)
+	_, err := FrontendWriterDB.Exec("DELETE FROM users WHERE id = $1", id)
 	return err
 }
 
 // UpdatePassword updates the password of a user.
 func UpdatePassword(userId uint64, hash []byte) error {
-	_, err := FrontendDB.Exec("UPDATE users SET password = $1 WHERE id = $2", hash, userId)
+	_, err := FrontendWriterDB.Exec("UPDATE users SET password = $1 WHERE id = $2", hash, userId)
 	return err
 }
 
@@ -88,14 +90,14 @@ func AddAuthorizeCode(userId uint64, code, clientId string, appId uint64) error 
 	}
 	now := time.Now()
 	nowTs := now.Unix()
-	_, err := FrontendDB.Exec("INSERT INTO oauth_codes (user_id, code, app_id, created_ts, client_id) VALUES($1, $2, $3, TO_TIMESTAMP($4), $5) ON CONFLICT (user_id, app_id, client_id) DO UPDATE SET code = $2, created_ts = TO_TIMESTAMP($4), consumed = false", userId, code, appId, nowTs, dbClientID)
+	_, err := FrontendWriterDB.Exec("INSERT INTO oauth_codes (user_id, code, app_id, created_ts, client_id) VALUES($1, $2, $3, TO_TIMESTAMP($4), $5) ON CONFLICT (user_id, app_id, client_id) DO UPDATE SET code = $2, created_ts = TO_TIMESTAMP($4), consumed = false", userId, code, appId, nowTs, dbClientID)
 	return err
 }
 
 // GetAppNameFromRedirectUri receives an oauth redirect_url and returns the registered app name, if exists
 func GetAppDataFromRedirectUri(callback string) (*types.OAuthAppData, error) {
 	data := []*types.OAuthAppData{}
-	err := FrontendDB.Select(&data, "SELECT id, app_name, redirect_uri, active, owner_id FROM oauth_apps WHERE active = true AND redirect_uri = $1", callback)
+	err := FrontendWriterDB.Select(&data, "SELECT id, app_name, redirect_uri, active, owner_id FROM oauth_apps WHERE active = true AND redirect_uri = $1", callback)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +116,7 @@ func CreateAPIKey(userID uint64) error {
 		Email      string
 	}
 
-	tx, err := FrontendDB.Begin()
+	tx, err := FrontendWriterDB.Begin()
 	if err != nil {
 		return err
 	}
@@ -147,7 +149,7 @@ func CreateAPIKey(userID uint64) error {
 // GetUserAuthDataByAuthorizationCode checks an oauth code for validity, consumes the code and returns the userId on success
 func GetUserAuthDataByAuthorizationCode(code string) (*types.OAuthCodeData, error) {
 	var rows []*types.OAuthCodeData
-	err := FrontendDB.Select(&rows, "UPDATE oauth_codes SET consumed = true WHERE code = $1 AND "+
+	err := FrontendWriterDB.Select(&rows, "UPDATE oauth_codes SET consumed = true WHERE code = $1 AND "+
 		"consumed = false AND created_ts + INTERVAL '35 minutes' > NOW() "+
 		"RETURNING user_id, app_id;", code)
 
@@ -167,7 +169,7 @@ func GetUserAuthDataByAuthorizationCode(code string) (*types.OAuthCodeData, erro
 // GetByRefreshToken basically used to confirm the claimed user id with the refresh token. Returns the userId if successfull
 func GetByRefreshToken(claimUserID, claimAppID, claimDeviceID uint64, hashedRefreshToken string) (uint64, error) {
 	var userID uint64
-	err := FrontendDB.Get(&userID,
+	err := FrontendWriterDB.Get(&userID,
 		"SELECT user_id FROM users_devices WHERE user_id = $1 AND "+
 			"refresh_token = $2 AND app_id = $3 AND id = $4 AND active = true", claimUserID, hashedRefreshToken, claimAppID, claimDeviceID)
 
@@ -180,7 +182,7 @@ func GetByRefreshToken(claimUserID, claimAppID, claimDeviceID uint64, hashedRefr
 
 func GetUserMonitorSharingSetting(userID uint64) (bool, error) {
 	var share bool
-	err := FrontendDB.Get(&share,
+	err := FrontendWriterDB.Get(&share,
 		"SELECT share FROM stats_sharing WHERE user_id = $1 ORDER BY id desc limit 1", userID)
 
 	if err != nil {
@@ -194,7 +196,7 @@ func GetUserMonitorSharingSetting(userID uint64) (bool, error) {
 }
 
 func SetUserMonitorSharingSetting(userID uint64, share bool) error {
-	_, err := FrontendDB.Exec("INSERT INTO stats_sharing (user_id, share, ts) VALUES($1, $2, 'NOW()')",
+	_, err := FrontendWriterDB.Exec("INSERT INTO stats_sharing (user_id, share, ts) VALUES($1, $2, 'NOW()')",
 		userID, share,
 	)
 
@@ -204,7 +206,7 @@ func SetUserMonitorSharingSetting(userID uint64, share bool) error {
 func GetUserDevicesByUserID(userID uint64) ([]types.PairedDevice, error) {
 	data := []types.PairedDevice{}
 
-	rows, err := FrontendDB.Query(
+	rows, err := FrontendWriterDB.Query(
 		"SELECT users_devices.id, oauth_apps.app_name, users_devices.device_name, users_devices.active, "+
 			"users_devices.notify_enabled, users_devices.created_ts FROM users_devices "+
 			"left join oauth_apps on users_devices.app_id = oauth_apps.id WHERE users_devices.user_id = $1 order by created_ts desc", userID)
@@ -233,7 +235,7 @@ func GetUserDevicesByUserID(userID uint64) ([]types.PairedDevice, error) {
 // InsertUserDevice Insert user device and return device id
 func InsertUserDevice(userID uint64, hashedRefreshToken string, name string, appID uint64) (uint64, error) {
 	var deviceID uint64
-	err := FrontendDB.Get(&deviceID, "INSERT INTO users_devices (user_id, refresh_token, device_name, app_id, created_ts) VALUES($1, $2, $3, $4, 'NOW()') RETURNING id",
+	err := FrontendWriterDB.Get(&deviceID, "INSERT INTO users_devices (user_id, refresh_token, device_name, app_id, created_ts) VALUES($1, $2, $3, $4, 'NOW()') RETURNING id",
 		userID, hashedRefreshToken, name, appID,
 	)
 
@@ -245,7 +247,7 @@ func InsertUserDevice(userID uint64, hashedRefreshToken string, name string, app
 }
 
 func MobileNotificatonTokenUpdate(userID, deviceID uint64, notifyToken string) error {
-	_, err := FrontendDB.Exec("UPDATE users_devices SET notification_token = $1 WHERE user_id = $2 AND id = $3;",
+	_, err := FrontendWriterDB.Exec("UPDATE users_devices SET notification_token = $1 WHERE user_id = $2 AND id = $3;",
 		notifyToken, userID, deviceID,
 	)
 	return err
@@ -266,8 +268,9 @@ func AddSubscription(userID uint64, network string, eventName types.EventName, e
 	if network != "" {
 		name = strings.ToLower(network) + ":" + string(eventName)
 	}
-
-	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, nowTs, nowEpoch, eventThreshold)
+	// channels := pq.StringArray{"email", "push", "webhook"}
+	// _, err := FrontendWriterDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold, channels) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6, $7) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, nowTs, nowEpoch, eventThreshold, channels)
+	_, err := FrontendWriterDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, nowTs, nowEpoch, eventThreshold)
 	return err
 }
 
@@ -308,24 +311,8 @@ func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
 		`
 	}
 
-	err := FrontendDB.Select(&subscriptions, query, userId, utils.GetNetwork()+":"+"monitoring_"+"%")
+	err := FrontendWriterDB.Select(&subscriptions, query, userId, utils.GetNetwork()+":"+"monitoring_"+"%")
 	return subscriptions, err
-}
-
-// AddSubscription adds a new subscription to the database.
-func AddTestSubscription(userID uint64, network string, eventName types.EventName, eventFilter string, eventThreshold float64, epoch uint64) error {
-	var onConflictDo string = "NOTHING"
-	if strings.HasPrefix(string(eventName), "monitoring_") {
-		onConflictDo = "UPDATE SET event_threshold = $6"
-	}
-
-	name := string(eventName)
-	if network != "" {
-		name = strings.ToLower(network) + ":" + string(eventName)
-	}
-
-	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, utils.EpochToTime(epoch).Unix(), epoch, eventThreshold)
-	return err
 }
 
 // DeleteSubscription removes a subscription from the database.
@@ -335,7 +322,7 @@ func DeleteSubscription(userID uint64, network string, eventName types.EventName
 		name = strings.ToLower(network) + ":" + string(eventName)
 	}
 
-	_, err := FrontendDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, name, eventFilter)
+	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, name, eventFilter)
 	return err
 }
 
@@ -345,7 +332,7 @@ func InsertMobileSubscription(tx *sql.Tx, userID uint64, paymentDetails types.Mo
 	receiptHash := utils.HashAndEncode(receipt)
 	var err error
 	if tx == nil {
-		_, err = FrontendDB.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash, subscription_id) VALUES("+
+		_, err = FrontendWriterDB.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash, subscription_id) VALUES("+
 			"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14);",
 			userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, paymentDetails.Valid, paymentDetails.Valid, store, receipt, expiration, rejectReson, receiptHash, extSubscriptionId,
 		)
@@ -372,7 +359,7 @@ func ChangeProductIDFromStripe(tx *sql.Tx, stripeSubscriptionID string, productI
 
 func GetAppSubscriptionCount(userID uint64) (int64, error) {
 	var count int64
-	row := FrontendDB.QueryRow(
+	row := FrontendWriterDB.QueryRow(
 		"SELECT count(receipt) as count FROM users_app_subscriptions WHERE user_id = $1",
 		userID,
 	)
@@ -387,7 +374,7 @@ type PremiumResult struct {
 
 func GetUserPremiumPackage(userID uint64) (PremiumResult, error) {
 	var pkg PremiumResult
-	err := FrontendDB.Get(&pkg,
+	err := FrontendWriterDB.Get(&pkg,
 		"SELECT COALESCE(product_id, '') as product_id, COALESCE(store, '') as store from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
 		userID,
 	)
@@ -396,14 +383,14 @@ func GetUserPremiumPackage(userID uint64) (PremiumResult, error) {
 
 func GetUserPremiumSubscription(id uint64) (types.UserPremiumSubscription, error) {
 	userSub := types.UserPremiumSubscription{}
-	err := FrontendDB.Get(&userSub, "SELECT user_id, store, active, COALESCE(product_id, '') as product_id, COALESCE(reject_reason, '') as reject_reason FROM users_app_subscriptions WHERE user_id = $1 ORDER BY active desc, id desc LIMIT 1", id)
+	err := FrontendWriterDB.Get(&userSub, "SELECT user_id, store, active, COALESCE(product_id, '') as product_id, COALESCE(reject_reason, '') as reject_reason FROM users_app_subscriptions WHERE user_id = $1 ORDER BY active desc, id desc LIMIT 1", id)
 	return userSub, err
 }
 
 func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 	data := []*types.PremiumData{}
 
-	err := FrontendDB.Select(&data,
+	err := FrontendWriterDB.Select(&data,
 		"SELECT id, receipt, store, active, expires_at, product_id from users_app_subscriptions WHERE validate_remotely = true order by id desc",
 	)
 
@@ -418,7 +405,7 @@ func DisableAllSubscriptionsFromStripeUser(stripeCustomerID string) error {
 
 	now := time.Now()
 	nowTs := now.Unix()
-	_, err = FrontendDB.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE user_id = $5 AND store = 'stripe';",
+	_, err = FrontendWriterDB.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE user_id = $5 AND store = 'stripe';",
 		false, nowTs, nowTs, "stripe_user_deleted", userID,
 	)
 	return err
@@ -426,7 +413,7 @@ func DisableAllSubscriptionsFromStripeUser(stripeCustomerID string) error {
 
 func GetUserSubscriptionIDByStripe(stripeSubscriptionID string) (uint64, error) {
 	var subscriptionID uint64
-	row := FrontendDB.QueryRow(
+	row := FrontendWriterDB.QueryRow(
 		"SELECT id from users_app_subscriptions WHERE subscription_id = $1",
 		stripeSubscriptionID,
 	)
@@ -439,7 +426,7 @@ func UpdateUserSubscription(tx *sql.Tx, id uint64, valid bool, expiration int64,
 	nowTs := now.Unix()
 	var err error
 	if tx == nil {
-		_, err = FrontendDB.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE id = $5;",
+		_, err = FrontendWriterDB.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE id = $5;",
 			valid, nowTs, expiration, rejectReason, id,
 		)
 	} else {
@@ -461,7 +448,7 @@ func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 		Token string `db:"notification_token"`
 	}
 
-	err := FrontendDB.Select(&rows, "SELECT DISTINCT ON (user_id, notification_token) user_id, notification_token FROM users_devices WHERE user_id = ANY($1) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL AND LENGTH(notification_token) > 20 ORDER BY user_id, notification_token, id DESC", pq.Array(ids))
+	err := FrontendWriterDB.Select(&rows, "SELECT DISTINCT ON (user_id, notification_token) user_id, notification_token FROM users_devices WHERE (user_id = ANY($1) AND user_id NOT IN (SELECT user_id from users_notification_channels WHERE active = false and channel = $2)) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL AND LENGTH(notification_token) > 20 ORDER BY user_id, notification_token, id DESC", pq.Array(ids), types.PushNotificationChannel)
 	if err != nil {
 		return nil, err
 	}
@@ -498,14 +485,14 @@ func MobileDeviceSettingsUpdate(userID, deviceID uint64, notifyEnabled, active s
 		return nil, errors.New("No params for change provided")
 	}
 
-	rows, err := FrontendDB.Query("UPDATE users_devices SET "+query+" WHERE user_id = $1 AND id = $2 RETURNING notify_enabled;",
+	rows, err := FrontendWriterDB.Query("UPDATE users_devices SET "+query+" WHERE user_id = $1 AND id = $2 RETURNING notify_enabled;",
 		args...,
 	)
 	return rows, err
 }
 
 func MobileDeviceDelete(userID, deviceID uint64) error {
-	_, err := FrontendDB.Exec("DELETE FROM users_devices WHERE user_id = $1 AND id = $2 AND id != 2;", userID, deviceID)
+	_, err := FrontendWriterDB.Exec("DELETE FROM users_devices WHERE user_id = $1 AND id = $2 AND id != 2;", userID, deviceID)
 	return err
 }
 
@@ -519,7 +506,7 @@ func addParamToQuery(query, param string) string {
 }
 
 func MobileDeviceSettingsSelect(userID, deviceID uint64) (*sql.Rows, error) {
-	rows, err := FrontendDB.Query("SELECT notify_enabled FROM users_devices WHERE user_id = $1 AND id = $2;",
+	rows, err := FrontendWriterDB.Query("SELECT notify_enabled FROM users_devices WHERE user_id = $1 AND id = $2;",
 		userID, deviceID,
 	)
 	return rows, err
@@ -539,14 +526,14 @@ func CleanupOldMachineStats() error {
 	deleteConditionGeneral := "SELECT COALESCE(min(id), 0) from stats_process where meta_id <= $1"
 
 	var metaID uint64
-	row := FrontendDB.QueryRow(deleteCondition, day)
+	row := FrontendWriterDB.QueryRow(deleteCondition, day)
 	err := row.Scan(&metaID)
 	if err != nil {
 		return err
 	}
 
 	var generalID uint64
-	row = FrontendDB.QueryRow(deleteConditionGeneral, metaID)
+	row = FrontendWriterDB.QueryRow(deleteConditionGeneral, metaID)
 	err = row.Scan(&generalID)
 	if err != nil {
 		return err
@@ -554,7 +541,7 @@ func CleanupOldMachineStats() error {
 	metaID += deleteLIMIT
 	generalID += deleteLIMIT
 
-	tx, err := FrontendDB.Begin()
+	tx, err := FrontendWriterDB.Begin()
 
 	if err != nil {
 		return err
@@ -605,7 +592,7 @@ func GetStatsMachineCount(userID uint64) (uint64, error) {
 	var day int = int(nowTs / 86400)
 
 	var count uint64
-	row := FrontendDB.QueryRow(
+	row := FrontendWriterDB.QueryRow(
 		"SELECT COUNT(DISTINCT sub.machine) as count FROM (SELECT machine from stats_meta_p WHERE day = $2 AND user_id = $1 AND created_trunc + '15 minutes'::INTERVAL > 'now' LIMIT 15) sub",
 		userID, day,
 	)
@@ -623,7 +610,7 @@ func GetStatsMachine(userID uint64) ([]string, error) {
 	// log.Println("getting machine for day: ", day)
 
 	var machines []string
-	err := FrontendDB.Select(&machines,
+	err := FrontendWriterDB.Select(&machines,
 		"SELECT DISTINCT machine from stats_meta_p WHERE day = $2 AND user_id = $1 LIMIT 300",
 		userID, day,
 	)
@@ -654,12 +641,12 @@ func CreateNewStatsMetaPartition() error {
 	partitionName := "stats_meta_" + strconv.Itoa(day)
 	logger.Info("creating new partition table " + partitionName)
 
-	_, err := FrontendDB.Exec("CREATE TABLE " + partitionName + " PARTITION OF stats_meta_p FOR VALUES IN (" + strconv.Itoa(day) + ")")
+	_, err := FrontendWriterDB.Exec("CREATE TABLE " + partitionName + " PARTITION OF stats_meta_p FOR VALUES IN (" + strconv.Itoa(day) + ")")
 	if err != nil {
 		logger.Errorf("error creating partition %v", err)
 		return err
 	}
-	_, err = FrontendDB.Exec("CREATE UNIQUE INDEX " + partitionName + "_user_id_created_trunc_process_machine_key ON public." + partitionName + " USING btree (user_id, created_trunc, process, machine)")
+	_, err = FrontendWriterDB.Exec("CREATE UNIQUE INDEX " + partitionName + "_user_id_created_trunc_process_machine_key ON public." + partitionName + " USING btree (user_id, created_trunc, process, machine)")
 	if err != nil {
 		logger.Errorf("error creating index %v", err)
 		return err
@@ -729,7 +716,7 @@ func InsertStatsBeaconnode(tx *sql.Tx, general_id uint64, data *types.StatsAddit
 }
 
 func NewTransaction() (*sql.Tx, error) {
-	return FrontendDB.Begin()
+	return FrontendWriterDB.Begin()
 }
 
 func getMachineStatsGap(resultCount uint64) int {
@@ -763,7 +750,7 @@ func getMaxDay(limit uint64) int {
 func GetStatsValidator(userID, limit, offset uint64) (*sql.Rows, error) {
 	gapSize := getMachineStatsGap(limit)
 	maxDay := getMaxDay(limit)
-	row, err := FrontendDB.Query(
+	row, err := FrontendWriterDB.Query(
 		"SELECT t.* FROM (SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp, validator_active, validator_total, row_number() OVER(ORDER BY stats_meta_p.id desc) as row FROM stats_add_validator LEFT JOIN stats_process ON stats_add_validator.general_id = stats_process.id "+
 			" LEFT JOIN stats_meta_p on stats_process.meta_id = stats_meta_p.id "+
 			"WHERE stats_meta_p.day >= $5 AND user_id = $1 AND process = 'validator' ORDER BY stats_meta_p.id desc LIMIT $2 OFFSET $3) t where t.row % $4 = 0",
@@ -775,7 +762,7 @@ func GetStatsValidator(userID, limit, offset uint64) (*sql.Rows, error) {
 func GetStatsNode(userID, limit, offset uint64) (*sql.Rows, error) {
 	gapSize := getMachineStatsGap(limit)
 	maxDay := getMaxDay(limit)
-	row, err := FrontendDB.Query(
+	row, err := FrontendWriterDB.Query(
 		"SELECT t.* FROM (SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive, network_libp2p_bytes_total_transmit, network_peers_connected, sync_eth1_connected, sync_eth2_synced, sync_beacon_head_slot, row_number() OVER(ORDER BY stats_meta_p.id desc) as row FROM stats_add_beaconnode left join stats_process on stats_process.id = stats_add_beaconnode.general_id "+
 			" LEFT JOIN stats_meta_p on stats_process.meta_id = stats_meta_p.id "+
 			"WHERE stats_meta_p.day >= $5 AND user_id = $1 AND process = 'beaconnode' ORDER BY stats_meta_p.id desc LIMIT $2 OFFSET $3) t where t.row % $4 = 0",
@@ -787,7 +774,7 @@ func GetStatsNode(userID, limit, offset uint64) (*sql.Rows, error) {
 func GetStatsSystem(userID, limit, offset uint64) (*sql.Rows, error) {
 	gapSize := getMachineStatsGap(limit)
 	maxDay := getMaxDay(limit)
-	row, err := FrontendDB.Query(
+	row, err := FrontendWriterDB.Query(
 		"SELECT t.* FROM (SELECT cpu_cores, cpu_threads, cpu_node_system_seconds_total, cpu_node_user_seconds_total, cpu_node_iowait_seconds_total, cpu_node_idle_seconds_total, memory_node_bytes_total, memory_node_bytes_free, memory_node_bytes_cached, memory_node_bytes_buffers, disk_node_bytes_total, disk_node_bytes_free, disk_node_io_seconds, disk_node_reads_total, disk_node_writes_total, network_node_bytes_total_receive, network_node_bytes_total_transmit, misc_os, misc_node_boot_ts_seconds, ts as timestamp, machine, row_number() OVER(ORDER BY stats_meta_p.id desc) as row from stats_system"+
 			" LEFT JOIN stats_meta_p on stats_system.meta_id = stats_meta_p.id "+
 			"WHERE stats_meta_p.day >= $5 AND user_id = $1 AND process = 'system' ORDER BY stats_meta_p.id desc LIMIT $2 OFFSET $3) t where t.row % $4 = 0",
@@ -806,7 +793,7 @@ func GetHistoricPrices(currency string) (map[uint64]float64, error) {
 		return nil, fmt.Errorf("currency %v not supported", currency)
 	}
 
-	err := DB.Select(&data, fmt.Sprintf("SELECT ts, %s AS currency FROM price", currency))
+	err := ReaderDb.Select(&data, fmt.Sprintf("SELECT ts, %s AS currency FROM price", currency))
 	if err != nil {
 		return nil, err
 	}
@@ -842,7 +829,7 @@ func GetUserAPIKeyStatistics(apikey *string) (*types.ApiStatistics, error) {
 			ts > NOW() - INTERVAL '1 month' AND apikey = $1
 	)`)
 
-	err := FrontendDB.Get(stats, query, apikey)
+	err := FrontendWriterDB.Get(stats, query, apikey)
 	if err != nil {
 		return nil, err
 	}
@@ -857,7 +844,7 @@ func GetSubsForEventFilter(eventName types.EventName) ([][]byte, map[string][]ty
 	`
 
 	subMap := make(map[string][]types.Subscription, 0)
-	err := FrontendDB.Select(&subs, subQuery, utils.GetNetwork()+":"+string(eventName))
+	err := FrontendWriterDB.Select(&subs, subQuery, utils.GetNetwork()+":"+string(eventName))
 	if err != nil {
 		return nil, nil, err
 	}

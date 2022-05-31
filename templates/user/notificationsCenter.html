@@ -28,11 +28,14 @@
 			</nav>
 			<!-- <a href="/user/notifications">Old version</a> -->
 		</div>
-		<div class="row d-flex align-items-center justify-content-between mx-0 my-5 container-min-width heading-section">
-			<div class="col-12 col-md pl-0">
+		<div class="row d-flex align-items-center justify-content-between mx-0 my-5 container-min-width heading-section flex-wrap">
+			<div class="pl-0">
 				<h1 class="heading text-nowrap">Notifications Center</h1>
-        <h2 class="heading-l3 text-muted font-weight-light">Manage the notifications you want to receive</h2>
+        		<h2 class="heading-l3 text-muted font-weight-light">Manage the notifications you want to receive</h2>
 			</div>
+			<button class="btn btn-dark text-white mx-0 my-2 mr-md-3" data-toggle="modal" data-target="#manage-notification-channels">
+				<span class="text-nowrap">Notification Channels</span>
+			</button>
 		</div>
 		<div class="row flex-column flex-sm-row justify-content-center align-content-center mx-0 my-2 metrics-section mx-auto">
 		  <div class="col-12 col-sm col-xl mr-sm-3 mt-1 mb-2 p-2 shadow-sm border custom-border-radius custom-background-color">
@@ -348,7 +351,7 @@
 							<div class="mr-2">Web</div> -->
 						</div>
 						<div class="form-check form-check-inline w-100 my-2" id="manage_validator_attestation_missed">
-							<label class="form-check-label mr-auto font-weight-normal">Attestations missed</label>
+							<label class="form-check-label mr-auto font-weight-normal" for="manage-attestation-missed">Attestations missed</label>
 							<!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
 							<input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="">
 							<!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
@@ -460,5 +463,39 @@
 			</div>
 		</div>
 	</div>
+
+		<!-- Notification Channel Modal -->
+		<div class="modal fade custom-modal" id="manage-notification-channels" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addValidatorLabel" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
+				<div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
+					<form method="post" action="/user/notifications/channels">
+						{{ .CsrfField }}
+						<div class="mb-1 mb-sm-4 custom-remove-modal-close">
+							<button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+						</div>
+						<div class="col-sm-12 d-flex flex-column align-items-center justify-content-center mb-3 mb-sm-5 px-0 h6">
+							<div class="w-100 heading-l2 text-center">
+								Notification Channels
+								<span class="d-block mt-3 heading-l4 text-left">Global setting to toggle the channels over which you would like to receive notifications. By default all channels are active.</span>
+							</div>
+							<div class="w-100 my-3">
+								{{ range $i, $ch := .NotificationChannels }}
+									<div class="form-check form-check-inline w-100 my-2 py-1">
+										<label class="form-check-label w-100 font-weight-normal" for="channel-{{$ch.Channel}}">{{$ch.Channel | formatNotificationChannel}}</label>
+										<input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="channel-{{$ch.Channel}}" name="{{$ch.Channel}}" {{if $ch.Active}}checked{{end}}>
+									</div>
+								{{ end }}
+							</div>
+						</div>
+						<div class="col-sm-12 d-flex align-items-center justify-content-between mt-auto mt-sm-1 px-0">
+							<button class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
+							<button id="update-notification-channels" class="btn btn-primary btn-primary btn-sm w-50 ml-sm-3 text-white">Update</button>
+						</div>
+				    </form>
+				</div>
+			</div>
+		</div>
+
+	
 	{{end}}
 {{end}}

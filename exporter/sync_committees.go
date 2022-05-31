@@ -25,7 +25,7 @@ func syncCommitteesExporter(rpcClient rpc.Client) {
 
 func exportSyncCommittees(rpcClient rpc.Client) error {
 	var dbPeriods []uint64
-	err := db.DB.Select(&dbPeriods, `select period from sync_committees group by period`)
+	err := db.WriterDb.Select(&dbPeriods, `select period from sync_committees group by period`)
 	if err != nil {
 		return err
 	}
@@ -71,10 +71,10 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 	lastWeek := lastEpoch / 1575
 	for w := firstWeek; w <= lastWeek; w++ {
 		var one int
-		err := db.DB.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'sync_assignments_%v'", w))
+		err := db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'sync_assignments_%v'", w))
 		if err != nil {
 			logger.Infof("creating partition sync_assignments_%v", w)
-			_, err := db.DB.Exec(fmt.Sprintf("CREATE TABLE sync_assignments_%v PARTITION OF sync_assignments_p FOR VALUES IN (%v);", w, w))
+			_, err := db.WriterDb.Exec(fmt.Sprintf("CREATE TABLE sync_assignments_%v PARTITION OF sync_assignments_p FOR VALUES IN (%v);", w, w))
 			if err != nil {
 				logger.Fatalf("unable to create partition sync_assignments_%v: %v", w, err)
 			}
@@ -95,7 +95,7 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 		validatorsU64[i] = idxU64
 	}
 
-	tx, err := db.DB.Beginx()
+	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		return err
 	}

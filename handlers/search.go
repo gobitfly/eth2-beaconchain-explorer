@@ -80,7 +80,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 		if searchLikeRE.MatchString(search) {
 			if len(search) < 64 {
-				err = db.DB.Select(result, `
+				err = db.ReaderDb.Select(result, `
 				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
 				FROM blocks 
 				WHERE CAST(slot AS text) LIKE LOWER($1)
@@ -92,7 +92,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 					http.Error(w, "Internal server error", 503)
 					return
 				}
-				err = db.DB.Select(result, `
+				err = db.ReaderDb.Select(result, `
 				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
 				FROM blocks 
 				WHERE blockroot = $1 OR
@@ -103,7 +103,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
-		err = db.DB.Select(graffiti, `
+		err = db.ReaderDb.Select(graffiti, `
 			SELECT graffiti, count(*)
 			FROM blocks
 			WHERE graffiti_text ILIKE LOWER($1)
@@ -118,11 +118,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		result = graffiti
 	case "epochs":
 		result = &types.SearchAheadEpochsResult{}
-		err = db.DB.Select(result, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")
+		err = db.ReaderDb.Select(result, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")
 	case "validators":
 		// find all validators that have a index, publickey or name like the search-query
 		result = &types.SearchAheadValidatorsResult{}
-		err = db.DB.Select(result, `
+		err = db.ReaderDb.Select(result, `
 			SELECT
 				validatorindex AS index,
 				pubkeyhex AS pubkey
@@ -141,7 +141,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			search = search[:len(search)-1]
 		}
 		if searchLikeRE.MatchString(search) {
-			err = db.DB.Select(result, `
+			err = db.ReaderDb.Select(result, `
 				SELECT DISTINCT ENCODE(from_address, 'hex') as from_address
 				FROM eth1_deposits
 				WHERE ENCODE(from_address, 'hex') LIKE LOWER($1)
@@ -150,7 +150,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
-		err = db.DB.Select(result, `
+		err = db.ReaderDb.Select(result, `
 			SELECT validatorindex AS index, pubkeyhex AS pubkey
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
@@ -179,7 +179,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			logger.Infof("indexed_validators_by_eth1_addresses")
-			err = db.DB.Select(result, `
+			err = db.ReaderDb.Select(result, `
 			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
@@ -201,7 +201,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
 			Count            uint64        `db:"count" json:"-"`
 		}{}
-		err = db.DB.Select(&res, `
+		err = db.ReaderDb.Select(&res, `
 			SELECT graffiti, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
@@ -228,7 +228,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
 			Count            uint64        `db:"count" json:"-"`
 		}{}
-		err = db.DB.Select(&res, `
+		err = db.ReaderDb.Select(&res, `
 			SELECT name, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT
 					validatorindex,

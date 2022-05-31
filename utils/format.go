@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"eth2-exporter/price"
+	"eth2-exporter/types"
 	"fmt"
 	"html"
 	"html/template"
@@ -366,6 +367,10 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 
 func CopyButton(clipboardText interface{}) string {
 	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
+}
+
+func CopyButtonWithTitle(clipboardText interface{}, title string) string {
+	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="%v" data-clipboard-text=0x%v></i>`, title, clipboardText)
 }
 
 func Reverse(s string) string {
@@ -831,4 +836,12 @@ func FormatFloat(num float64, precision int) string {
 	s := strings.TrimRight(strings.TrimRight(p.Sprintf(f, num), "0"), ".")
 	r := []rune(p.Sprintf(s, num))
 	return string(r)
+}
+
+func FormatNotificationChannel(ch types.NotificationChannel) string {
+	label, ok := types.NotificationChannelLabels[ch]
+	if !ok {
+		return ""
+	}
+	return label
 }

@@ -62,6 +62,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"includeHTML":                             IncludeHTML,
 		"formatHTML":                              FormatMessageToHtml,
 		"formatBalance":                           FormatBalance,
+		"formatNotificationChannel":               FormatNotificationChannel,
 		"formatBalanceSql":                        FormatBalanceSql,
 		"formatCurrentBalance":                    FormatCurrentBalance,
 		"formatEffectiveBalance":                  FormatEffectiveBalance,
@@ -601,4 +602,13 @@ func GetNetwork() string {
 		return strings.ToLower(Config.Chain.Network)
 	}
 	return strings.ToLower(Config.Chain.Phase0.ConfigName)
+}
+
+func ElementExists(arr []string, el string) bool {
+	for _, e := range arr {
+		if e == el {
+			return true
+		}
+	}
+	return false
 }

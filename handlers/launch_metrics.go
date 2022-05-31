@@ -44,7 +44,7 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 
 	// highEpoch := latestEpoch
 
-	err := db.DB.Select(&blks, `
+	err := db.ReaderDb.Select(&blks, `
 	SELECT
 		b.slot,
 		case

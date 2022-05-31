@@ -80,7 +80,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 	var epochs []*types.EpochsPageData
 
 	if search == -1 {
-		err = db.DB.Select(&epochs, `
+		err = db.ReaderDb.Select(&epochs, `
 			SELECT epoch, 
 				blockscount, 
 				proposerslashingscount, 
@@ -98,7 +98,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 			WHERE epoch >= $1 AND epoch <= $2
 			ORDER BY epoch DESC`, endEpoch, startEpoch)
 	} else {
-		err = db.DB.Select(&epochs, `
+		err = db.ReaderDb.Select(&epochs, `
 			SELECT epoch, 
 				blockscount, 
 				proposerslashingscount, 
