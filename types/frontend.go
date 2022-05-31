@@ -377,3 +377,35 @@ type UserWebhookSubscriptions struct {
 	WebhookID      uint64 `db:"webhook_id"`
 	SubscriptionID uint64 `db:"subscription_id"`
 }
+
+type NotificationChannel string
+
+var NotificationChannelLabels map[NotificationChannel]string = map[NotificationChannel]string{
+	EmailNotificationChannel:          "Email Notification",
+	PushNotificationChannel:           "Push Notification",
+	WebhookNotificationChannel:        "Webhook Notification",
+	WebhookDiscordNotificationChannel: "Discord Notification",
+}
+
+const (
+	EmailNotificationChannel          NotificationChannel = "email"
+	PushNotificationChannel           NotificationChannel = "push"
+	WebhookNotificationChannel        NotificationChannel = "webhook"
+	WebhookDiscordNotificationChannel NotificationChannel = "webhook_discord"
+)
+
+var NotificationChannels = []NotificationChannel{
+	EmailNotificationChannel,
+	PushNotificationChannel,
+	WebhookNotificationChannel,
+	WebhookDiscordNotificationChannel,
+}
+
+func GetNotificationChannel(channel string) (NotificationChannel, error) {
+	for _, ch := range NotificationChannels {
+		if string(ch) == channel {
+			return ch, nil
+		}
+	}
+	return "", errors.Errorf("Could not convert channel from string to NotificationChannel type. %v is not a known channel type", channel)
+}

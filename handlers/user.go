@@ -853,6 +853,57 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	// 	return
 	// }
 
+	var notificationChannels []types.UserNotificationChannels
+
+	err = db.FrontendReaderDB.Select(&notificationChannels, `
+		SELECT
+			channel,
+			active
+		FROM
+			users_notification_channels
+		WHERE
+			user_id = $1
+	`, user.UserID)
+	if err != nil {
+		logger.Errorf("error retrieving notification channels: %v ", user.UserID, err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	email := false
+	push := false
+	webhook := false
+	for _, ch := range notificationChannels {
+		if ch.Channel == types.EmailNotificationChannel {
+			email = true
+		}
+		if ch.Channel == types.PushNotificationChannel {
+			push = true
+		}
+		if ch.Channel == types.WebhookNotificationChannel {
+			webhook = true
+		}
+	}
+
+	if !email {
+		notificationChannels = append(notificationChannels, types.UserNotificationChannels{
+			Channel: types.EmailNotificationChannel,
+			Active:  true,
+		})
+	}
+	if !push {
+		notificationChannels = append(notificationChannels, types.UserNotificationChannels{
+			Channel: types.PushNotificationChannel,
+			Active:  true,
+		})
+	}
+	if !webhook {
+		notificationChannels = append(notificationChannels, types.UserNotificationChannels{
+			Channel: types.WebhookNotificationChannel,
+			Active:  true,
+		})
+	}
+
+	userNotificationsCenterData.NotificationChannels = notificationChannels
 	userNotificationsCenterData.DashboardLink = link
 	userNotificationsCenterData.Metrics = metricsMonth
 	userNotificationsCenterData.Validators = validatorTableData
@@ -2732,4 +2783,59 @@ func UsersDeleteWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
+}
+
+// UsersNotificationChannel
+// Accepts form encoded values channel and active to set the global notification settings for a user
+func UsersNotificationChannels(w http.ResponseWriter, r *http.Request) {
+	user := getUser(r)
+
+	err := r.ParseForm()
+	if err != nil {
+		logger.Errorf("error parsing form: %v", err)
+		// session.AddFlash(authInternalServerErrorFlashMsg)
+		// session.Save(r, w)
+		http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
+		return
+	}
+
+	channelEmail := r.FormValue(string(types.EmailNotificationChannel))
+	channelPush := r.FormValue(string(types.PushNotificationChannel))
+	channelWebhook := r.FormValue(string(types.WebhookNotificationChannel))
+
+	tx, err := db.FrontendWriterDB.Beginx()
+	if err != nil {
+		logger.WithError(err).Error("error beginning transaction")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`INSERT INTO users_notification_channels (user_id, channel, active) VALUES ($1, $2, $3) ON CONFLICT (user_id, channel) DO UPDATE SET active = $3`, user.UserID, types.EmailNotificationChannel, channelEmail == "on")
+	if err != nil {
+		logger.WithError(err).Error("error updating users_notification_channels")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	_, err = tx.Exec(`INSERT INTO users_notification_channels (user_id, channel, active) VALUES ($1, $2, $3) ON CONFLICT (user_id, channel) DO UPDATE SET active = $3`, user.UserID, types.PushNotificationChannel, channelPush == "on")
+	if err != nil {
+		logger.WithError(err).Error("error updating users_notification_channels")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	_, err = tx.Exec(`INSERT INTO users_notification_channels (user_id, channel, active) VALUES ($1, $2, $3) ON CONFLICT (user_id, channel) DO UPDATE SET active = $3`, user.UserID, types.WebhookNotificationChannel, channelWebhook == "on")
+	if err != nil {
+		logger.WithError(err).Error("error updating users_notification_channels")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		logger.WithError(err).Error("error committing transaction")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 }

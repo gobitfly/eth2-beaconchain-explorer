@@ -551,11 +551,19 @@ create table users_subscriptions
     unsubscribe_hash  bytea                        ,
     primary key (user_id, event_name, event_filter)
 );
-
 create index idx_users_subscriptions_unsubscribe_hash on users_subscriptions (unsubscribe_hash);
 
-
 CREATE TYPE notification_channels as ENUM ('webhook_discord', 'webhook', 'email', 'push');
+
+drop table if exists users_notification_channels;
+create table users_notification_channels
+(
+    user_id int                   not null,
+    channel notification_channels not null,
+    active  boolean default 't'   not null,
+    primary key (user_id, channel)
+);
+
 drop table if exists notification_queue;
 create table notification_queue(
     id                  serial not null,
@@ -565,6 +573,8 @@ create table notification_queue(
     channel             notification_channels not null,
     content             jsonb not null
 );
+
+drop table if exists notification_
 
 -- deprecated
 -- drop table if exists users_notifications;

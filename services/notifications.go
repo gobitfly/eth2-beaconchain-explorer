@@ -480,8 +480,9 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 	for userID, userNotifications := range notificationsByUserID {
 		userEmail, exists := emailsByUserID[userID]
 		if !exists {
-			logger.Errorf("error when sending email-notification: could not find email for user %v", userID)
-			metrics.Errors.WithLabelValues("notifications_mail_not_found").Inc()
+			logger.Errorf("skipping user %v", userID)
+			// we don't need this metrics as users can now deactivate email notifications and it would increment the counter
+			// metrics.Errors.WithLabelValues("notifications_mail_not_found").Inc()
 			continue
 		}
 		go func(userEmail string, userNotifications map[types.EventName][]types.Notification) {
@@ -676,9 +677,11 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 				retries,
 				event_names,
 				destination
-			FROM users_webhooks
-			where user_id = $1
-		`, userID)
+			FROM 
+				users_webhooks
+			WHERE 
+				user_id = $1 AND user_id NOT IN (SELECT user_id from users_notification_channels WHERE active = false and channel = $2)
+		`, userID, types.WebhookNotificationChannel)
 		// continue if the user does not have a webhook
 		if err == sql.ErrNoRows {
 			continue
@@ -842,8 +845,8 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 	now := time.Now()
 	for _, n := range notificationQueueItem {
 
-		// rate limit for 24 hours after 100 retries
-		if n.Content.Webhook.Retries > 100 {
+		// rate limit for 24 hours after 20 retries
+		if n.Content.Webhook.Retries > 5 {
 			// reset retries after 24 hours
 			if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*24).Before(now) {
 				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)

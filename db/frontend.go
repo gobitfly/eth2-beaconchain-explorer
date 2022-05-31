@@ -40,7 +40,8 @@ func GetUserEmailsByIds(ids []uint64) (map[uint64]string, error) {
 		ID    uint64 `db:"id"`
 		Email string `db:"email"`
 	}
-	err := FrontendWriterDB.Select(&rows, "SELECT id, email FROM users WHERE id = ANY($1)", pq.Array(ids))
+	//
+	err := FrontendWriterDB.Select(&rows, "SELECT id, email FROM users WHERE id = ANY($1) AND id NOT IN (SELECT user_id from users_notification_channels WHERE active = false and channel = $2)", pq.Array(ids), types.EmailNotificationChannel)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +268,7 @@ func AddSubscription(userID uint64, network string, eventName types.EventName, e
 	if network != "" {
 		name = strings.ToLower(network) + ":" + string(eventName)
 	}
-	// channels := pq.StringArray{"email", "push", "webhook", "webhook_discord"}
+	// channels := pq.StringArray{"email", "push", "webhook"}
 	// _, err := FrontendWriterDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold, channels) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6, $7) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, nowTs, nowEpoch, eventThreshold, channels)
 	_, err := FrontendWriterDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, nowTs, nowEpoch, eventThreshold)
 	return err
@@ -447,7 +448,7 @@ func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 		Token string `db:"notification_token"`
 	}
 
-	err := FrontendWriterDB.Select(&rows, "SELECT DISTINCT ON (user_id, notification_token) user_id, notification_token FROM users_devices WHERE user_id = ANY($1) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL AND LENGTH(notification_token) > 20 ORDER BY user_id, notification_token, id DESC", pq.Array(ids))
+	err := FrontendWriterDB.Select(&rows, "SELECT DISTINCT ON (user_id, notification_token) user_id, notification_token FROM users_devices WHERE (user_id = ANY($1) AND user_id NOT IN (SELECT user_id from users_notification_channels WHERE active = false and channel = $2)) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL AND LENGTH(notification_token) > 20 ORDER BY user_id, notification_token, id DESC", pq.Array(ids), types.PushNotificationChannel)
 	if err != nil {
 		return nil, err
 	}

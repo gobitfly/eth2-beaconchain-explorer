@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"eth2-exporter/price"
+	"eth2-exporter/types"
 	"fmt"
 	"html"
 	"html/template"
@@ -835,4 +836,12 @@ func FormatFloat(num float64, precision int) string {
 	s := strings.TrimRight(strings.TrimRight(p.Sprintf(f, num), "0"), ".")
 	r := []rune(p.Sprintf(s, num))
 	return string(r)
+}
+
+func FormatNotificationChannel(ch types.NotificationChannel) string {
+	label, ok := types.NotificationChannelLabels[ch]
+	if !ok {
+		return ""
+	}
+	return label
 }
