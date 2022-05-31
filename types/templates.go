@@ -1026,7 +1026,13 @@ type UserNotificationsCenterPageData struct {
 	MonitoringSubscriptions []Subscription                       `json:"monitoring_subscriptions"`
 	Machines                []string
 	DashboardLink           string `json:"dashboardLink"`
+	NotificationChannels    []UserNotificationChannels
 	// Subscriptions []*Subscription
+}
+
+type UserNotificationChannels struct {
+	Channel NotificationChannel `db:"channel"`
+	Active  bool                `db:"active"`
 }
 
 type UserValidatorNotificationTableData struct {
