@@ -661,9 +661,7 @@ func sendEmailNotifications(useDb *sqlx.DB) error {
 			return fmt.Errorf("error committing transaction")
 		}
 	}
-
 	return nil
-
 }
 
 func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) error {
@@ -778,8 +776,8 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 
 	now := time.Now()
 	for _, n := range notificationQueueItem {
-		// rate limit for 24 hours after 100 retries
-		if n.Content.Webhook.Retries > 100 {
+		// rate limit for 24 hours after 5 retries
+		if n.Content.Webhook.Retries > 5 {
 			// reset retries after 24 hours
 			if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*24).Before(now) {
 				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
@@ -787,8 +785,13 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 					logger.WithError(err).Errorf("error updating users_webhooks table")
 					continue
 				}
+			} else {
+				_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
+				if err != nil {
+					return fmt.Errorf("error deleting from notification queue: %w", err)
+				}
+				continue
 			}
-			continue
 		}
 
 		reqBody := new(bytes.Buffer)
@@ -845,7 +848,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 	now := time.Now()
 	for _, n := range notificationQueueItem {
 
-		// rate limit for 24 hours after 20 retries
+		// rate limit for 24 hours after 5 retries
 		if n.Content.Webhook.Retries > 5 {
 			// reset retries after 24 hours
 			if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*24).Before(now) {
@@ -854,8 +857,13 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					logger.WithError(err).Errorf("error updating users_webhooks table")
 					continue
 				}
+			} else {
+				_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
+				if err != nil {
+					return fmt.Errorf("error deleting from notification queue: %w", err)
+				}
+				continue
 			}
-			continue
 		}
 
 		reqBody := new(bytes.Buffer)
