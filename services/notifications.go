@@ -780,6 +780,7 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 							content = types.TransitWebhookContent{
 								Webhook: w,
 								Event: types.WebhookEvent{
+									Network:     utils.GetNetwork(),
 									Name:        string(n.GetEventName()),
 									Title:       n.GetTitle(),
 									Description: n.GetInfo(false),
