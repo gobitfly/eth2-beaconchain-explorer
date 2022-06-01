@@ -574,8 +574,6 @@ create table notification_queue(
     content             jsonb not null
 );
 
-drop table if exists notification_
-
 -- deprecated
 -- drop table if exists users_notifications;
 -- create table users_notifications
