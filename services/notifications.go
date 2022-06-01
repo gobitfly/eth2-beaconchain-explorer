@@ -1586,10 +1586,11 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 
 func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineOfflineEventName,
-		`SELECT 
+		`
+	SELECT 
 		us.user_id,
-		ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash,
 		max(us.id) as id,
+		ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
 		machine
 	FROM users_subscriptions us
 	JOIN (
@@ -1609,9 +1610,9 @@ func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineDiskAlmostFullEventName,
 		`SELECT 
 			us.user_id,
-			ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash,
 			max(us.id) as id,
-			machine 
+			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
+			machine
 		FROM users_subscriptions us 
 		INNER JOIN stats_meta_p v ON us.user_id = v.user_id
 		INNER JOIN stats_system sy ON v.id = sy.meta_id
@@ -1629,8 +1630,8 @@ func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineCpuLoadEventName,
 		`SELECT 
 			max(us.id) as id,
-			ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash,
 			us.user_id,
+			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
 			machine 
 		FROM users_subscriptions us 
 		INNER JOIN (
@@ -1661,8 +1662,8 @@ func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[ty
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineMemoryUsageEventName,
 		`SELECT 
 			max(us.id) as id,
-			ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash,
 			us.user_id,
+			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
 			machine 
 		FROM users_subscriptions us 
 		INNER JOIN (
