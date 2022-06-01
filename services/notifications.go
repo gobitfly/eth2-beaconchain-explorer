@@ -730,7 +730,7 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 								{
 									Style:    5,
 									Label:    "Epoch",
-									URL:      fmt.Sprintf("https://beaconcha.in/epoch/%v", n.GetEpoch()),
+									URL:      fmt.Sprintf("https://"+utils.Config.Frontend.SiteDomain+"/epoch/%v", n.GetEpoch()),
 									Disabled: false,
 									Type:     2,
 								},
@@ -742,7 +742,7 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 									buttons = append(buttons, types.DiscordComponentButton{
 										Style:    5,
 										Label:    "Slot",
-										URL:      fmt.Sprintf("https://beaconcha.in/block/%v", v.Slot),
+										URL:      fmt.Sprintf("https://"+utils.Config.Frontend.SiteDomain+"/block/%v", v.Slot),
 										Disabled: false,
 										Type:     2,
 									})
@@ -753,7 +753,7 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 								buttons = append(buttons, types.DiscordComponentButton{
 									Style:    5,
 									Label:    "Validator",
-									URL:      fmt.Sprintf("https://beaconcha.in/validator/%v", n.GetEventFilter()),
+									URL:      fmt.Sprintf("https://"+utils.Config.Frontend.SiteDomain+"/validator/%v", n.GetEventFilter()),
 									Disabled: false,
 									Type:     2,
 								})
@@ -767,7 +767,7 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 							}
 							n.GetEventName()
 							req := types.DiscordReq{
-								Username:   "Beaconcha.in",
+								Username:   utils.Config.Frontend.SiteDomain,
 								Embeds:     embeds,
 								Components: components,
 							}
