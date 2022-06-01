@@ -31,6 +31,7 @@ import (
 )
 
 func notificationsSender() {
+	// debug example
 	// var notificationsByUserID map[uint64]map[types.EventName][]types.Notification = map[uint64]map[types.EventName][]types.Notification{
 	// 	4: {
 	// 		types.ValidatorMissedAttestationEventName: {
@@ -447,9 +448,8 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 		}
 		_, err = notify.SendPushBatch(n.Content.Messages)
 		if err != nil {
-			tx.Rollback()
 			metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
-			return fmt.Errorf("firebase batch job failed: %w", err)
+			logger.WithError(err).Error("error sending firebase batch job")
 		}
 
 		_, err = tx.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
@@ -634,21 +634,23 @@ func sendEmailNotifications(useDb *sqlx.DB) error {
 		}
 		err = mail.SendMailRateLimited(n.Content.Address, n.Content.Subject, n.Content.Email, n.Content.Attachments)
 		if err != nil {
-			if strings.Contains(err.Error(), "rate limit has been exceeded") {
-				_, err := tx.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
-				if err != nil {
-					return fmt.Errorf("error deleting from notification queue: %w", err)
-				}
-				err = tx.Commit()
-				if err != nil {
-					tx.Rollback()
-					return fmt.Errorf("error committing transaction")
-				}
-				continue
-			} else {
-				tx.Rollback()
-				return fmt.Errorf("error sending notification-email: %w", err)
-			}
+			if !strings.Contains(err.Error(), "rate limit has been exceeded") {
+				metrics.Errors.WithLabelValues("notifications_send_email").Inc()
+				logger.WithError(err).Error("error sending email notification")
+				// 	_, err := tx.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
+				// 	if err != nil {
+				// 		return fmt.Errorf("error deleting from notification queue: %w", err)
+				// 	}
+				// 	err = tx.Commit()
+				// 	if err != nil {
+				// 		tx.Rollback()
+				// 		return fmt.Errorf("error committing transaction")
+				// 	}
+				// 	continue
+			} //else {
+			// 	tx.Rollback()
+			// 	return fmt.Errorf("error sending notification-email: %w", err)
+			// }
 		}
 		_, err = tx.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
 		if err != nil {
