@@ -705,29 +705,71 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 						var content interface{}
 						channel := w.Destination.String
 						if w.Destination.Valid && w.Destination.String == "webhook_discord" {
+							fields := []types.DiscordEmbedField{}
+
+							if strings.HasPrefix(string(n.GetEventName()), "monitoring") || n.GetEventName() == types.EthClientUpdateEventName || n.GetEventName() == types.RocketpoolColleteralMaxReached || n.GetEventName() == types.RocketpoolColleteralMinReached {
+								fields = append(fields,
+									types.DiscordEmbedField{
+										Name:   "Target",
+										Value:  fmt.Sprintf("%v", n.GetEventFilter()),
+										Inline: false,
+									})
+							}
+
 							embeds := []types.DiscordEmbed{
 								{
 									Type:        "rich",
 									Color:       "16745472",
 									Description: n.GetInfo(false),
 									Title:       n.GetTitle(),
-									Fields: []types.DiscordEmbedField{
-										{
-											Name:   "Epoch",
-											Value:  fmt.Sprintf("%v", n.GetEpoch()),
-											Inline: false,
-										},
-										{
-											Name:   "Target",
-											Value:  fmt.Sprintf("%v", n.GetEventFilter()),
-											Inline: false,
-										},
-									},
+									Fields:      fields,
 								},
 							}
+
+							buttons := []types.DiscordComponentButton{
+								{
+									Style:    5,
+									Label:    "Epoch",
+									URL:      fmt.Sprintf("https://beaconcha.in/epoch/%v", n.GetEpoch()),
+									Disabled: false,
+									Type:     2,
+								},
+							}
+
+							if n.GetEventName() == types.ValidatorMissedAttestationEventName {
+								v, ok := n.(*validatorAttestationNotification)
+								if ok {
+									buttons = append(buttons, types.DiscordComponentButton{
+										Style:    5,
+										Label:    "Slot",
+										URL:      fmt.Sprintf("https://beaconcha.in/block/%v", v.Slot),
+										Disabled: false,
+										Type:     2,
+									})
+								}
+							}
+
+							if strings.HasPrefix(string(n.GetEventName()), "validator") {
+								buttons = append(buttons, types.DiscordComponentButton{
+									Style:    5,
+									Label:    "Validator",
+									URL:      fmt.Sprintf("https://beaconcha.in/validator/%v", n.GetEventFilter()),
+									Disabled: false,
+									Type:     2,
+								})
+							}
+
+							components := []types.DiscordComponent{
+								{
+									Type:       1,
+									Components: buttons,
+								},
+							}
+							n.GetEventName()
 							req := types.DiscordReq{
-								Username: "Beaconchain",
-								Embeds:   embeds,
+								Username:   "Beaconcha.in",
+								Embeds:     embeds,
+								Components: components,
 							}
 
 							content = types.TransitDiscordContent{
@@ -1292,27 +1334,16 @@ type validatorAttestationNotification struct {
 	UnsubscribeHash    sql.NullString
 }
 
-func (n *validatorAttestationNotification) GetUnsubscribeHash() string {
-	if n.UnsubscribeHash.Valid {
-		return n.UnsubscribeHash.String
-	}
-	return ""
-}
-
-func (n *validatorAttestationNotification) GetEmailAttachment() *types.EmailAttachment {
-	return nil
-}
-
 func (n *validatorAttestationNotification) GetSubscriptionID() uint64 {
 	return n.SubscriptionID
 }
 
-func (n *validatorAttestationNotification) GetEpoch() uint64 {
-	return n.Epoch
-}
-
 func (n *validatorAttestationNotification) GetEventName() types.EventName {
 	return n.EventName
+}
+
+func (n *validatorAttestationNotification) GetEpoch() uint64 {
+	return n.Epoch
 }
 
 func (n *validatorAttestationNotification) GetInfo(includeUrl bool) string {
@@ -1323,7 +1354,7 @@ func (n *validatorAttestationNotification) GetInfo(includeUrl bool) string {
 			generalPart = fmt.Sprintf(`Validator <a href="https://%[3]v/validator/%[1]v">%[1]v</a> missed an attestation at slot <a href="https://%[3]v/block/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
 			//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
 		case 1:
-			generalPart = fmt.Sprintf(`Validator <a href="https://%[3]v/validator/%[1]v">%[1]v</a> submitted a successfull attestation for slot  <a href="https://%[3]v/block/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
+			generalPart = fmt.Sprintf(`Validator <a href="https://%[3]v/validator/%[1]v">%[1]v</a> submitted a successful attestation for slot  <a href="https://%[3]v/block/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
 		}
 		// return generalPart + getUrlPart(n.ValidatorIndex)
 	} else {
@@ -1332,7 +1363,7 @@ func (n *validatorAttestationNotification) GetInfo(includeUrl bool) string {
 			generalPart = fmt.Sprintf(`Validator %[1]v missed an attestation at slot %[2]v.`, n.ValidatorIndex, n.Slot)
 			//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
 		case 1:
-			generalPart = fmt.Sprintf(`Validator %[1]v submitted a successfull attestation for slot %[2]v.`, n.ValidatorIndex, n.Slot)
+			generalPart = fmt.Sprintf(`Validator %[1]v submitted a successful attestation for slot %[2]v.`, n.ValidatorIndex, n.Slot)
 		}
 	}
 	return generalPart
@@ -1350,6 +1381,17 @@ func (n *validatorAttestationNotification) GetTitle() string {
 
 func (n *validatorAttestationNotification) GetEventFilter() string {
 	return n.EventFilter
+}
+
+func (n *validatorAttestationNotification) GetEmailAttachment() *types.EmailAttachment {
+	return nil
+}
+
+func (n *validatorAttestationNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
 }
 
 type validatorGotSlashedNotification struct {
