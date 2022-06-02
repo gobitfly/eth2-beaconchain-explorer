@@ -153,9 +153,8 @@ type Notification interface {
 	GetTitle() string
 	GetEventFilter() string
 	GetEmailAttachment() *EmailAttachment
-	// GetNotificationChannels() []string
 	GetUnsubscribeHash() string
-	// Marshal() []byte
+	GetInfoMarkdown() string
 }
 
 // func UnMarschal
@@ -276,6 +275,7 @@ type TransitWebhookContent struct {
 }
 
 type WebhookEvent struct {
+	Network     string `json:"network,omitempty"`
 	Name        string `json:"event,omitempty"`
 	Title       string `json:"title,omitempty"`
 	Description string `json:"description,omitempty"`
