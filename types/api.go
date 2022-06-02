@@ -108,6 +108,7 @@ type DiscordComponent struct {
 
 type DiscordComponentButton struct {
 	Style    uint64 `json:"style"`
+	CustomID string `json:"custom_id"`
 	Label    string `json:"label"`
 	URL      string `json:"url"`
 	Disabled bool   `json:"disabled"`

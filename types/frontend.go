@@ -154,6 +154,7 @@ type Notification interface {
 	GetEventFilter() string
 	GetEmailAttachment() *EmailAttachment
 	GetUnsubscribeHash() string
+	GetInfoMarkdown() string
 }
 
 // func UnMarschal
