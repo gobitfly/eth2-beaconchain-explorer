@@ -144,10 +144,22 @@ func notificationSender() {
 	for {
 		start := time.Now()
 
+		ctx, _ := context.WithTimeout(context.Background(), time.Second*60)
+
+		conn, err := db.FrontendReaderDB.Conn(ctx)
+		if err != nil {
+			logger.WithError(err).Error("error creating connection")
+			continue
+		}
+
 		obtainedLock := false
-		err := db.FrontendWriterDB.Get(&obtainedLock, `SELECT pg_try_advisory_lock(500)`)
+		rows, err := conn.QueryContext(ctx, `SELECT pg_try_advisory_lock(500)`)
 		if err != nil {
 			logger.WithError(err).Error("error getting advisory lock from db")
+		}
+
+		for rows.Next() {
+			rows.Scan(&obtainedLock)
 		}
 
 		if obtainedLock {
@@ -164,12 +176,22 @@ func notificationSender() {
 			metrics.TaskDuration.WithLabelValues("service_notifications_sender").Observe(time.Since(start).Seconds())
 
 			unlocked := false
-			err = db.FrontendWriterDB.Get(&unlocked, `SELECT pg_advisory_unlock(500)`)
+			rows, err = conn.QueryContext(ctx, `SELECT pg_advisory_unlock(500)`)
 			if err != nil {
-				logger.WithError(err).Error("error ")
+				logger.WithError(err).Error("error executing advisory unlock")
 			}
+
+			for rows.Next() {
+				rows.Scan(unlocked)
+			}
+
 			if !unlocked {
 				logger.Error("error releasing advisory lock unlocked: ", unlocked)
+			}
+
+			err = conn.Close()
+			if err != nil {
+				logger.WithError(err).Error("error returning connection to connection pool")
 			}
 		}
 		time.Sleep(time.Second * 15)
