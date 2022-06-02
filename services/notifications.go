@@ -153,7 +153,7 @@ func notificationSender() {
 		}
 
 		obtainedLock := false
-		rows, err := conn.QueryContext(ctx, `SELECT pg_try_advisory_lock(500)`)
+		rows, err := conn.QueryContext(ctx, `SELECT pg_advisory_lock(500)`)
 		if err != nil {
 			logger.WithError(err).Error("error getting advisory lock from db")
 		}
@@ -176,19 +176,19 @@ func notificationSender() {
 			logger.WithField("duration", time.Since(start)).Info("notifications dispatched and garbage collected")
 			metrics.TaskDuration.WithLabelValues("service_notifications_sender").Observe(time.Since(start).Seconds())
 
-			// unlocked := false
-			// rows, err = conn.QueryContext(ctx, `SELECT pg_advisory_unlock(500)`)
-			// if err != nil {
-			// 	logger.WithError(err).Error("error executing advisory unlock")
-			// }
+			unlocked := false
+			rows, err = conn.QueryContext(ctx, `SELECT pg_advisory_unlock(500)`)
+			if err != nil {
+				logger.WithError(err).Error("error executing advisory unlock")
+			}
 
-			// for rows.Next() {
-			// 	rows.Scan(&unlocked)
-			// }
+			for rows.Next() {
+				rows.Scan(&unlocked)
+			}
 
-			// if !unlocked {
-			// 	logger.Error("error releasing advisory lock unlocked: ", unlocked)
-			// }
+			if !unlocked {
+				logger.Error("error releasing advisory lock unlocked: ", unlocked)
+			}
 
 			err = conn.Close()
 			if err != nil {
