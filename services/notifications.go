@@ -71,40 +71,40 @@ func notificationsSender() {
 
 	// return
 	// make sure the lock is available
-	lockAvailableCh := make(chan bool, 1)
-	ctx, _ := context.WithTimeout(context.Background(), time.Second*60)
+	// lockAvailableCh := make(chan bool, 1)
+	// ctx, _ := context.WithTimeout(context.Background(), time.Second*60)
 
-	go func() {
-		// checks if the lock is available
-		_, err := db.FrontendWriterDB.Exec(`SELECT pg_advisory_lock(500)`)
-		if err != nil {
-			logger.WithError(err).Error("error getting advisory lock")
-			lockAvailableCh <- false
-			return
-		}
-		unlocked := false
-		err = db.FrontendWriterDB.Get(&unlocked, `SELECT pg_advisory_unlock(500)`)
-		if err != nil {
-			lockAvailableCh <- false
-			logger.WithError(err).Error("error unlocking advisory lock")
-			return
-		}
-		lockAvailableCh <- unlocked
-	}()
+	// go func() {
+	// 	// checks if the lock is available
+	// 	_, err := db.FrontendWriterDB.Exec(`SELECT pg_advisory_lock(500)`)
+	// 	if err != nil {
+	// 		logger.WithError(err).Error("error getting advisory lock")
+	// 		lockAvailableCh <- false
+	// 		return
+	// 	}
+	// 	unlocked := false
+	// 	err = db.FrontendWriterDB.Get(&unlocked, `SELECT pg_advisory_unlock(500)`)
+	// 	if err != nil {
+	// 		lockAvailableCh <- false
+	// 		logger.WithError(err).Error("error unlocking advisory lock")
+	// 		return
+	// 	}
+	// 	lockAvailableCh <- unlocked
+	// }()
 
-	// available := <-lockAvailable
-	// cancel()
+	// // available := <-lockAvailable
+	// // cancel()
 
-	select {
-	case av := <-lockAvailableCh:
-		if !av {
-			logger.Error("error acquiring advisory lock stopping notification sender")
-			return
-		}
-	case <-ctx.Done():
-		logger.Error("error acquiring advisory lock, timeout reached, stopping notification sender")
-		return
-	}
+	// select {
+	// case av := <-lockAvailableCh:
+	// 	if !av {
+	// 		logger.Error("error acquiring advisory lock stopping notification sender")
+	// 		return
+	// 	}
+	// case <-ctx.Done():
+	// 	logger.Error("error acquiring advisory lock, timeout reached, stopping notification sender")
+	// 	return
+	// }
 
 	// if !available {
 	// 	logger.Error("error acquiring advisory lock stopping notification sender")
@@ -163,6 +163,7 @@ func notificationSender() {
 		}
 
 		if obtainedLock {
+			logger.Info("lock obtained")
 			err := dispatchNotifications(db.FrontendWriterDB)
 			if err != nil {
 				logger.WithError(err).Error("error dispatching notifications")
@@ -175,19 +176,19 @@ func notificationSender() {
 			logger.WithField("duration", time.Since(start)).Info("notifications dispatched and garbage collected")
 			metrics.TaskDuration.WithLabelValues("service_notifications_sender").Observe(time.Since(start).Seconds())
 
-			unlocked := false
-			rows, err = conn.QueryContext(ctx, `SELECT pg_advisory_unlock(500)`)
-			if err != nil {
-				logger.WithError(err).Error("error executing advisory unlock")
-			}
+			// unlocked := false
+			// rows, err = conn.QueryContext(ctx, `SELECT pg_advisory_unlock(500)`)
+			// if err != nil {
+			// 	logger.WithError(err).Error("error executing advisory unlock")
+			// }
 
-			for rows.Next() {
-				rows.Scan(unlocked)
-			}
+			// for rows.Next() {
+			// 	rows.Scan(&unlocked)
+			// }
 
-			if !unlocked {
-				logger.Error("error releasing advisory lock unlocked: ", unlocked)
-			}
+			// if !unlocked {
+			// 	logger.Error("error releasing advisory lock unlocked: ", unlocked)
+			// }
 
 			err = conn.Close()
 			if err != nil {
