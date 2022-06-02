@@ -156,6 +156,7 @@ func notificationSender() {
 		rows, err := conn.QueryContext(ctx, `SELECT pg_advisory_lock(500)`)
 		if err != nil {
 			logger.WithError(err).Error("error getting advisory lock from db")
+			continue
 		}
 
 		for rows.Next() {
@@ -180,6 +181,7 @@ func notificationSender() {
 			rows, err = conn.QueryContext(ctx, `SELECT pg_advisory_unlock(500)`)
 			if err != nil {
 				logger.WithError(err).Error("error executing advisory unlock")
+				continue
 			}
 
 			for rows.Next() {
