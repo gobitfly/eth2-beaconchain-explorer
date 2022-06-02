@@ -816,53 +816,53 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 								},
 							}
 
-							buttons := []types.DiscordComponentButton{
-								{
-									Style:    5,
-									Label:    "Epoch",
-									URL:      fmt.Sprintf("https://"+utils.Config.Frontend.SiteDomain+"/epoch/%v", n.GetEpoch()),
-									Disabled: false,
-									CustomID: "epoch_link",
-									Type:     2,
-								},
-							}
+							// buttons := []types.DiscordComponentButton{
+							// 	{
+							// 		Style:    5,
+							// 		Label:    "Epoch",
+							// 		URL:      fmt.Sprintf("https://"+utils.Config.Frontend.SiteDomain+"/epoch/%v", n.GetEpoch()),
+							// 		Disabled: false,
+							// 		CustomID: "epoch_link",
+							// 		Type:     2,
+							// 	},
+							// }
 
-							if n.GetEventName() == types.ValidatorMissedAttestationEventName {
-								v, ok := n.(*validatorAttestationNotification)
-								if ok {
-									buttons = append(buttons, types.DiscordComponentButton{
-										Style:    5,
-										Label:    "Slot",
-										CustomID: "slot_link",
-										URL:      fmt.Sprintf("https://"+utils.Config.Frontend.SiteDomain+"/block/%v", v.Slot),
-										Disabled: false,
-										Type:     2,
-									})
-								}
-							}
+							// if n.GetEventName() == types.ValidatorMissedAttestationEventName {
+							// 	v, ok := n.(*validatorAttestationNotification)
+							// 	if ok {
+							// 		buttons = append(buttons, types.DiscordComponentButton{
+							// 			Style:    5,
+							// 			Label:    "Slot",
+							// 			CustomID: "slot_link",
+							// 			URL:      fmt.Sprintf("https://"+utils.Config.Frontend.SiteDomain+"/block/%v", v.Slot),
+							// 			Disabled: false,
+							// 			Type:     2,
+							// 		})
+							// 	}
+							// }
 
-							if strings.HasPrefix(string(n.GetEventName()), "validator") {
-								buttons = append(buttons, types.DiscordComponentButton{
-									Style:    5,
-									CustomID: "validator_link",
-									Label:    "Validator",
-									URL:      fmt.Sprintf("https://"+utils.Config.Frontend.SiteDomain+"/validator/%v", n.GetEventFilter()),
-									Disabled: false,
-									Type:     2,
-								})
-							}
+							// if strings.HasPrefix(string(n.GetEventName()), "validator") {
+							// 	buttons = append(buttons, types.DiscordComponentButton{
+							// 		Style:    5,
+							// 		CustomID: "validator_link",
+							// 		Label:    "Validator",
+							// 		URL:      fmt.Sprintf("https://"+utils.Config.Frontend.SiteDomain+"/validator/%v", n.GetEventFilter()),
+							// 		Disabled: false,
+							// 		Type:     2,
+							// 	})
+							// }
 
-							components := []types.DiscordComponent{
-								{
-									Type:       1,
-									Components: buttons,
-								},
-							}
-							n.GetEventName()
+							// components := []types.DiscordComponent{
+							// 	{
+							// 		Type:       1,
+							// 		Components: buttons,
+							// 	},
+							// }
+							// n.GetEventName()
 							req := types.DiscordReq{
-								Username:   utils.Config.Frontend.SiteDomain,
-								Embeds:     embeds,
-								Components: components,
+								Username: utils.Config.Frontend.SiteDomain,
+								Embeds:   embeds,
+								//Components: components,
 							}
 
 							content = types.TransitDiscordContent{
