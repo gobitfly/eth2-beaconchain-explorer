@@ -143,8 +143,7 @@ func notificationsSender() {
 func notificationSender() {
 	for {
 		start := time.Now()
-
-		ctx, _ := context.WithTimeout(context.Background(), time.Second*60)
+		ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
 
 		conn, err := db.FrontendReaderDB.Conn(ctx)
 		if err != nil {
@@ -152,52 +151,55 @@ func notificationSender() {
 			continue
 		}
 
-		obtainedLock := false
-		rows, err := conn.QueryContext(ctx, `SELECT pg_advisory_lock(500)`)
+		_, err = conn.ExecContext(ctx, `SELECT pg_advisory_lock(500)`)
 		if err != nil {
 			logger.WithError(err).Error("error getting advisory lock from db")
+
+			conn.Close()
+			if err != nil {
+				logger.WithError(err).Error("error returning connection to connection pool")
+			}
+			continue
+		}
+
+		logger.Info("lock obtained")
+		err = dispatchNotifications(db.FrontendWriterDB)
+		if err != nil {
+			logger.WithError(err).Error("error dispatching notifications")
+		}
+
+		err = garbageCollectNotificationQueue(db.FrontendWriterDB)
+		if err != nil {
+			logger.WithError(err).Errorf("error garbage collecting the notification queue")
+		}
+		logger.WithField("duration", time.Since(start)).Info("notifications dispatched and garbage collected")
+		metrics.TaskDuration.WithLabelValues("service_notifications_sender").Observe(time.Since(start).Seconds())
+
+		unlocked := false
+		rows, err := conn.QueryContext(ctx, `SELECT pg_advisory_unlock(500)`)
+		if err != nil {
+			logger.WithError(err).Error("error executing advisory unlock")
+			conn.Close()
+			if err != nil {
+				logger.WithError(err).Error("error returning connection to connection pool")
+			}
 			continue
 		}
 
 		for rows.Next() {
-			rows.Scan(&obtainedLock)
+			rows.Scan(&unlocked)
 		}
 
-		if obtainedLock {
-			logger.Info("lock obtained")
-			err := dispatchNotifications(db.FrontendWriterDB)
-			if err != nil {
-				logger.WithError(err).Error("error dispatching notifications")
-			}
-
-			err = garbageCollectNotificationQueue(db.FrontendWriterDB)
-			if err != nil {
-				logger.WithError(err).Errorf("error garbage collecting the notification queue")
-			}
-			logger.WithField("duration", time.Since(start)).Info("notifications dispatched and garbage collected")
-			metrics.TaskDuration.WithLabelValues("service_notifications_sender").Observe(time.Since(start).Seconds())
-
-			unlocked := false
-			rows, err = conn.QueryContext(ctx, `SELECT pg_advisory_unlock(500)`)
-			if err != nil {
-				logger.WithError(err).Error("error executing advisory unlock")
-				continue
-			}
-
-			for rows.Next() {
-				rows.Scan(&unlocked)
-			}
-
-			if !unlocked {
-				logger.Error("error releasing advisory lock unlocked: ", unlocked)
-			}
-
-			err = conn.Close()
-			if err != nil {
-				logger.WithError(err).Error("error returning connection to connection pool")
-			}
+		if !unlocked {
+			logger.Error("error releasing advisory lock unlocked: ", unlocked)
 		}
-		time.Sleep(time.Second * 15)
+
+		conn.Close()
+		if err != nil {
+			logger.WithError(err).Error("error returning connection to connection pool")
+		}
+
+		time.Sleep(time.Second * 30)
 	}
 }
 
