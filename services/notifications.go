@@ -1291,11 +1291,11 @@ func (n *validatorProposalNotification) GetInfoMarkdown() string {
 	var generalPart = ""
 	switch n.Status {
 	case 0:
-		generalPart = fmt.Sprintf(`New scheduled block proposal for Validator (%[1]v)[%v].`, n.ValidatorIndex)
+		generalPart = fmt.Sprintf(`New scheduled block proposal for Validator [%[1]v](https://%[2]v/%[1]v).`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator")
 	case 1:
-		generalPart = fmt.Sprintf(`Validator %[1]v proposed a new block.`, n.ValidatorIndex)
+		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[2]v/%[1]v) proposed a new block.`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator")
 	case 2:
-		generalPart = fmt.Sprintf(`Validator %[1]v missed a block proposal.`, n.ValidatorIndex)
+		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[2]v/%[1]v) missed a block proposal.`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator")
 	}
 
 	return generalPart
@@ -1480,7 +1480,14 @@ func (n *validatorAttestationNotification) GetUnsubscribeHash() string {
 }
 
 func (n *validatorAttestationNotification) GetInfoMarkdown() string {
-	return n.GetInfo(false)
+	var generalPart = ""
+	switch n.Status {
+	case 0:
+		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[3]v/validator/%[1]v) missed an attestation at slot [%[2]v](https://%[3]v/block/%[2]v).`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
+	case 1:
+		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[3]v/validator/%[1]v) submitted a successful attestation for slot [%[2]v](https://%[3]v/block/%[2]v).`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
+	}
+	return generalPart
 }
 
 type validatorGotSlashedNotification struct {
@@ -1533,7 +1540,8 @@ func (n *validatorGotSlashedNotification) GetEventFilter() string {
 }
 
 func (n *validatorGotSlashedNotification) GetInfoMarkdown() string {
-	return n.GetInfo(false)
+	generalPart := fmt.Sprintf(`Validator [%[1]v](https://%[5]v/validator/%[1]v) has been slashed at epoch [%[2]v](https://%[5]v/epoch/%[2]v) by validator [%[3]v](https://%[5]v/validator/%[3]v) for %[4]s.`, n.ValidatorIndex, n.Epoch, n.Slasher, n.Reason, utils.Config.Frontend.SiteDomain)
+	return generalPart
 }
 
 func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
@@ -1674,7 +1682,29 @@ func (n *ethClientNotification) GetEventFilter() string {
 }
 
 func (n *ethClientNotification) GetInfoMarkdown() string {
-	return n.GetInfo(false)
+	url := ""
+	switch n.EthClient {
+	case "Geth":
+		url = "https://github.com/ethereum/go-ethereum/releases"
+	case "Nethermind":
+		url = "https://github.com/NethermindEth/nethermind/releases"
+	case "OpenEthereum":
+		url = "https://github.com/openethereum/openethereum/releases"
+	case "Teku":
+		url = "https://github.com/ConsenSys/teku/releases"
+	case "Prysm":
+		url = "https://github.com/prysmaticlabs/prysm/releases"
+	case "Nimbus":
+		url = "https://github.com/status-im/nimbus-eth2/releases"
+	case "Lighthouse":
+		url = "https://github.com/sigp/lighthouse/releases"
+	default:
+		url = "https://beaconcha.in/ethClients"
+	}
+
+	generalPart := fmt.Sprintf(`A new version for [%s](%s) is available.`, n.EthClient, url)
+
+	return generalPart
 }
 
 func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
@@ -2123,7 +2153,8 @@ func (n *networkNotification) GetEventFilter() string {
 }
 
 func (n *networkNotification) GetInfoMarkdown() string {
-	return n.GetInfo(false)
+	generalPart := fmt.Sprintf(`Network experienced finality issues ([view chart](https://%v/charts/network_liveness)).`, utils.Config.Frontend.SiteDomain)
+	return generalPart
 }
 
 func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
