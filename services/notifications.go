@@ -795,7 +795,13 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 						var content interface{}
 						channel := w.Destination.String
 						if w.Destination.Valid && w.Destination.String == "webhook_discord" {
-							fields := []types.DiscordEmbedField{}
+							fields := []types.DiscordEmbedField{
+								{
+									Name:   "Epoch",
+									Value:  fmt.Sprintf("[%v](https://%s/%[1]v)", n.GetEpoch(), utils.Config.Frontend.SiteDomain+"/epoch"),
+									Inline: false,
+								},
+							}
 
 							if strings.HasPrefix(string(n.GetEventName()), "monitoring") || n.GetEventName() == types.EthClientUpdateEventName || n.GetEventName() == types.RocketpoolColleteralMaxReached || n.GetEventName() == types.RocketpoolColleteralMinReached {
 								fields = append(fields,
@@ -917,7 +923,7 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 		// rate limit for 24 hours after 5 retries
 		if n.Content.Webhook.Retries > 5 {
 			// reset retries after 24 hours
-			if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*24).Before(now) {
+			if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
 				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
 				if err != nil {
 					logger.WithError(err).Errorf("error updating users_webhooks table")
@@ -957,7 +963,7 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 				continue
 			}
 		} else {
-			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
+			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content, resp)
 			if err != nil {
 				logger.WithError(err).Errorf("error updating users_webhooks table")
 				continue
@@ -989,7 +995,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 		// rate limit for 24 hours after 5 retries
 		if n.Content.Webhook.Retries > 5 {
 			// reset retries after 24 hours
-			if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*24).Before(now) {
+			if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
 				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
 				if err != nil {
 					logger.WithError(err).Errorf("error updating users_webhooks table")
@@ -1026,7 +1032,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 				continue
 			}
 		} else {
-			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
+			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content.DiscordRequest, resp)
 			if err != nil {
 				logger.WithError(err).Errorf("error updating users_webhooks table")
 				continue

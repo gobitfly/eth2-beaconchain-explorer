@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"html/template"
+	"net/http"
 	"strings"
 	"time"
 
@@ -362,13 +363,15 @@ type Email struct {
 }
 
 type UserWebhook struct {
-	ID          uint64         `db:"id" json:"id"`
-	UserID      uint64         `db:"user_id" json:"-"`
-	Url         string         `db:"url" json:"url"`
-	Retries     uint64         `db:"retries" json:"retries"`
-	LastSent    sql.NullTime   `db:"last_sent" json:"lastRetry"`
-	Destination sql.NullString `db:"destination" json:"destination"`
-	EventNames  pq.StringArray `db:"event_names" json:"-"`
+	ID          uint64                  `db:"id" json:"id"`
+	UserID      uint64                  `db:"user_id" json:"-"`
+	Url         string                  `db:"url" json:"url"`
+	Retries     uint64                  `db:"retries" json:"retries"`
+	LastSent    sql.NullTime            `db:"last_sent" json:"lastRetry"`
+	Response    *http.Response          `db:"response" json:"response"`
+	Request     *map[string]interface{} `db:"request" json:"request"`
+	Destination sql.NullString          `db:"destination" json:"destination"`
+	EventNames  pq.StringArray          `db:"event_names" json:"-"`
 }
 
 type UserWebhookSubscriptions struct {
