@@ -1,7 +1,22 @@
 {{ define "js"}}
+<script>
+    document.querySelectorAll('code').forEach(code => {
+        try {
+            let j = JSON.parse(code.innerHTML)
+            code.innerHTML = JSON.stringify(j, null, '\t')
+
+        } catch(err) {
+            console.log("error failed to format json:", err);
+        }
+    })
+</script>
+
+<script src="/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
 
 {{end}}
 {{ define "css"}}
+<link rel="stylesheet" href="/highlight/styles/base16/dracula.min.css">
 <style>
     .webhook-table .i-custom:hover {
         border-radius: 50%;
@@ -85,42 +100,10 @@
                                     <tr>
                                         <td>{{$row.Url}}</td>
                                         <td>{{$row.Retries}}
-                                            {{ if gt $row.Retries 0 }}
-                                            <span class="ml-2" id="webhook-retries-{{$i}}" data-toggle="modal" data-target="debug-modal-{{$i}}">
+                                            {{ if ne $row.Retries "0" }}
+                                            <span class="ml-2 cursor-pointer" id="webhook-retries-{{$i}}" data-toggle="modal" data-target="#debug-modal-{{$row.ID}}">
                                                 <i class="fas fa-question"></i>
                                             </span>
-
-                                            <div class="modal fade" id="debug-modal-{{$i}}" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
-                                                <div class="modal-dialog modal-dialog-centered" role="document">
-                                                    <div class="modal-content custom-background-color custom-remove-modal row mx-0">
-                                                        <div class="mb-4 custom-remove-modal-close">
-                                                            <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                                                        </div>
-                                                        <div class="w-100 mb-2 heading-l2 text-center">Webhook Debug</div>
-                                                        <div class="col-12 d-flex align-items-center mb-5 px-0 h6">
-                                                            <span class="text-left font-weight-normal" id="modaltext">
-                                                                view information about the most recent failed webhook request.
-                                                            </span>
-                                                        </div>
-                                                        <div class="w-100 my-3">
-                                                            <details>
-                                                                <summary id="detail-modal-{{$i}}-request-summary">
-                                                                    {{$row.WebhookError.SummaryRequest}}
-                                                                </summary>
-                                                                <p id="detail-modal-{{$i}}-request-content">
-                                                                    {{$row.WebhookError.ContentRequest}}
-                                                                </p>
-                                                                <summary id="detail-modal-{{$i}}-response-summary">
-                                                                    {{$row.WebhookError.SummaryResponse}}
-                                                                </summary>
-                                                                <p id="detail-modal-{{$i}}-response-content">
-                                                                    {{$row.WebhookError.ContentResponse}}
-                                                                </p>
-                                                            </details>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
                                             {{ end }}
                                         </td>
                                         <td>{{$row.LastSent}}</td>
@@ -150,6 +133,7 @@
             {{range $i, $row := .WebhookRows}}
                 {{ template "ConfirmRemoveModal" $row }}
                 {{ template "EditModalWebhook" $row }}
+                {{ template "DebugModal" $row}}
             {{end}}
         </div>
     {{end}}
@@ -273,34 +257,37 @@
 </div>
 {{ end }}
 
-{{ define "ConfirmRemoveModal" }}
-<div class="modal fade" id="-{{.ID}}" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document">
+{{ define "DebugModal" }}
+<div class="modal fade" id="debug-modal-{{.ID}}" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 80% !important">
         <div class="modal-content custom-background-color custom-remove-modal row mx-0">
             <div class="mb-4 custom-remove-modal-close">
                 <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </div>
-            <div class="w-100 mb-2 heading-l2 text-center">Request Info</div>
-            <div class="col-12 d-flex align-items-center mb-5 px-0 h6">
-                <span class="text-left font-weight-normal" id="modaltext">
-                    view information about the failed request and response.
+            <div class="w-100 mb-2 heading-l2 text-center h4">Most recent webhook request</div>
+            <!-- <div class="col-12 d-flex align-items-center mb-3 px-0 h6 h5">
+                <span class="text-left font-weight-normal my-2" id="modaltext">
+                    View information about the most recent webhook request to see why it was not delivered.
                 </span>
-            </div>
+            </div> -->
             <div class="w-100 my-3">
-                <details open>
-                    <summary>System Requirements</summary>
-                    <p>{{}}</p>
-                  </details>
+                <details class="my-3">
+                    <summary class="h5" id="detail-modal-{{.ID}}-request-summary">
+                        {{.WebhookError.SummaryRequest}}
+                    </summary>
+                    <p id="detail-modal-{{.ID}}-request-content">
+                        {{.WebhookError.ContentRequest}}
+                    </p>
+                </details>
+                <details open class="my-3">
+                    <summary class="h5" id="detail-modal-{{.ID}}-response-summary">
+                        {{.WebhookError.SummaryResponse}}
+                    </summary>
+                    <p id="detail-modal-{{.ID}}-response-content">
+                        {{.WebhookError.ContentResponse}}
+                    </p>
+                </details>
             </div>
-
-
-            <form id="form-delete-webhook-{{.ID}}" action="/user/webhooks/{{.ID}}/delete" method="post">
-                {{.CsrfField}}
-                <div class="col-12 d-flex align-items-center justify-content-between px-0">
-                    <button class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-danger btn-sm w-50 ml-sm-3 text-white">Remove</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>

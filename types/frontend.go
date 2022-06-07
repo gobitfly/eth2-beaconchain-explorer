@@ -5,7 +5,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"html/template"
-	"net/http"
 	"strings"
 	"time"
 
@@ -363,15 +362,15 @@ type Email struct {
 }
 
 type UserWebhook struct {
-	ID          uint64                  `db:"id" json:"id"`
-	UserID      uint64                  `db:"user_id" json:"-"`
-	Url         string                  `db:"url" json:"url"`
-	Retries     uint64                  `db:"retries" json:"retries"`
-	LastSent    sql.NullTime            `db:"last_sent" json:"lastRetry"`
-	Response    *http.Response          `db:"response" json:"response"`
-	Request     *map[string]interface{} `db:"request" json:"request"`
-	Destination sql.NullString          `db:"destination" json:"destination"`
-	EventNames  pq.StringArray          `db:"event_names" json:"-"`
+	ID          uint64         `db:"id" json:"id"`
+	UserID      uint64         `db:"user_id" json:"-"`
+	Url         string         `db:"url" json:"url"`
+	Retries     uint64         `db:"retries" json:"retries"`
+	LastSent    sql.NullTime   `db:"last_sent" json:"lastRetry"`
+	Response    string         `db:"response" json:"response"`
+	Request     string         `db:"request" json:"request"`
+	Destination sql.NullString `db:"destination" json:"destination"`
+	EventNames  pq.StringArray `db:"event_names" json:"-"`
 }
 
 type UserWebhookSubscriptions struct {
@@ -411,4 +410,22 @@ func GetNotificationChannel(channel string) (NotificationChannel, error) {
 		}
 	}
 	return "", errors.Errorf("Could not convert channel from string to NotificationChannel type. %v is not a known channel type", channel)
+}
+
+type ErrorResponse struct {
+	Status string // e.g. "200 OK"
+	Body   string
+}
+
+func (e *ErrorResponse) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &e)
+}
+
+func (a ErrorResponse) Value() (driver.Value, error) {
+	return json.Marshal(a)
 }

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"html"
 	"html/template"
+	"io"
 	"math/big"
 	"net/http"
 	"net/url"
@@ -67,7 +68,19 @@ func notificationsSender() {
 	// 		},
 	// 	},
 	// }
-	// queueNotifications(notificationsByUserID, db.FrontendDB)
+	// queueNotifications(notificationsByUserID, db.FrontendWriterDB)
+
+	// err := dispatchNotifications(db.FrontendWriterDB)
+	// if err != nil {
+	// 	logger.WithError(err).Error("error dispatching notifications")
+	// }
+
+	// err = garbageCollectNotificationQueue(db.FrontendWriterDB)
+	// if err != nil {
+	// 	logger.WithError(err).Errorf("error garbage collecting the notification queue")
+	// }
+
+	// return
 
 	// return
 	// make sure the lock is available
@@ -110,8 +123,9 @@ func notificationsSender() {
 	// 	logger.Error("error acquiring advisory lock stopping notification sender")
 	// 	return
 	// }
-
-	go notificationSender()
+	if utils.Config.Notifications.Sender {
+		go notificationSender()
+	}
 
 	for {
 		// check if the explorer is not too far behind, if we set this value to close (10m) it could potentially never send any notifications
@@ -570,7 +584,7 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 	for userID, userNotifications := range notificationsByUserID {
 		userEmail, exists := emailsByUserID[userID]
 		if !exists {
-			logger.Errorf("skipping user %v", userID)
+			logger.Errorf("email notification skipping user %v", userID)
 			// we don't need this metrics as users can now deactivate email notifications and it would increment the counter
 			// metrics.Errors.WithLabelValues("notifications_mail_not_found").Inc()
 			continue
@@ -926,7 +940,7 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 			if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
 				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
 				if err != nil {
-					logger.WithError(err).Errorf("error updating users_webhooks table")
+					logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
 					continue
 				}
 			} else {
@@ -959,13 +973,26 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 
 			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
 			if err != nil {
-				logger.WithError(err).Errorf("error updating users_webhooks table")
+				logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
 				continue
 			}
 		} else {
-			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content, resp)
+
+			var errResp types.ErrorResponse
+
+			if resp != nil {
+				b, err := io.ReadAll(resp.Body)
+				if err != nil {
+					logger.WithError(err).Error("error reading body")
+				}
+
+				errResp.Status = resp.Status
+				errResp.Body = string(b)
+			}
+
+			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content, errResp)
 			if err != nil {
-				logger.WithError(err).Errorf("error updating users_webhooks table")
+				logger.WithError(err).Errorf("error updating users_webhooks table; increasing retries")
 				continue
 			}
 		}
@@ -998,7 +1025,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 			if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
 				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
 				if err != nil {
-					logger.WithError(err).Errorf("error updating users_webhooks table")
+					logger.WithError(err).Errorf("error updating users_webhooks table; resetting retries")
 					continue
 				}
 			} else {
@@ -1028,13 +1055,25 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 			}
 			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
 			if err != nil {
-				logger.WithError(err).Errorf("error updating users_webhooks table")
+				logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
 				continue
 			}
 		} else {
-			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content.DiscordRequest, resp)
+			var errResp types.ErrorResponse
+
+			if resp != nil {
+				b, err := io.ReadAll(resp.Body)
+				if err != nil {
+					logger.WithError(err).Error("error reading body")
+				}
+
+				errResp.Status = resp.Status
+				errResp.Body = string(b)
+			}
+
+			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content.DiscordRequest, errResp)
 			if err != nil {
-				logger.WithError(err).Errorf("error updating users_webhooks table")
+				logger.WithError(err).Errorf("error updating users_webhooks table; increasing retries")
 				continue
 			}
 		}

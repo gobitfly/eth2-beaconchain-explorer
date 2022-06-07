@@ -2496,11 +2496,12 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 		whErr := types.UserWebhookRowError{}
 
 		if wh.Retries > 0 {
+
 			whErr.SummaryRequest = template.HTML("Request Sent")
-			whErr.ContentRequest = template.HTML(fmt.Sprintf(`<code><pre>%v</pre></code>`, wh.Request))
+			whErr.ContentRequest = template.HTML(fmt.Sprintf(`<pre><code>%v</code></pre>`, wh.Request))
 
 			whErr.SummaryResponse = template.HTML("Response Received")
-			whErr.ContentResponse = template.HTML(fmt.Sprintf(`<code><pre>%v</pre></code>`, wh.Response))
+			whErr.ContentResponse = template.HTML(fmt.Sprintf(`<pre><code>%v</code></pre>`, wh.Response))
 		}
 
 		webhookRows = append(webhookRows, types.UserWebhookRow{
