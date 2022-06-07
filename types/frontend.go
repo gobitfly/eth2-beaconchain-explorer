@@ -84,7 +84,7 @@ var EventLabel map[EventName]string = map[EventName]string{
 	RocketpoolNewClaimRoundStartedEventName:          "Your rocket pool claim round is available",
 	RocketpoolColleteralMinReached:                   "You reached the rocketpool min collateral",
 	RocketpoolColleteralMaxReached:                   "You reached the rocketpool max collateral",
-	SyncCommitteeSoon:                                "You will soon be part of the rocket pool sync committee",
+	SyncCommitteeSoon:                                "Your validator(s) will soon be part of the sync committee",
 }
 
 func IsUserIndexed(event EventName) bool {
