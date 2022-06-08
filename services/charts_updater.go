@@ -1501,9 +1501,44 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		}
 		seriesData = []seriesDataItem{ // make sure this has the same order as "drillSeries" below
 			{
+				Name:      "Kraken",
+				Y:         0,
+				Drilldown: "Kraken",
+			},
+			{
+				Name:      "Lido",
+				Y:         0,
+				Drilldown: "Lido",
+			},
+			{
+				Name:      "Binance",
+				Y:         0,
+				Drilldown: "Binance",
+			},
+			{
+				Name:      "Whales",
+				Y:         0,
+				Drilldown: "Whale",
+			},
+			{
 				Name:      "Huobi",
 				Y:         0,
 				Drilldown: "Huobi",
+			},
+			{
+				Name:      "Bitcoin suisse",
+				Y:         0,
+				Drilldown: "Bitcoin suisse",
+			},
+			{
+				Name:      "Staked.us",
+				Y:         0,
+				Drilldown: "Staked.us",
+			},
+			{
+				Name:      "Stakefish",
+				Y:         0,
+				Drilldown: "Stakefish",
 			},
 			{
 				Name:      "Defi",
@@ -1515,208 +1550,8 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				Y:         0,
 				Drilldown: "Guarda",
 			},
-			{
-				Name:      "Rocketpool",
-				Y:         0,
-				Drilldown: "Rocketpool",
-			},
-			{
-				Name:      "Kraken",
-				Y:         0,
-				Drilldown: "Kraken",
-			},
-			{
-				Name:      "Lido",
-				Y:         0,
-				Drilldown: "Lido",
-			},
-			{
-				Name:      "Whale",
-				Y:         0,
-				Drilldown: "Whale",
-			},
-			{
-				Name:      "Figment",
-				Y:         0,
-				Drilldown: "Figment",
-			},
-			{
-				Name:      "Stakehound",
-				Y:         0,
-				Drilldown: "Stakehound",
-			},
-			{
-				Name:      "was.eth",
-				Y:         0,
-				Drilldown: "was.eth",
-			},
-			{
-				Name:      "Celsius Network",
-				Y:         0,
-				Drilldown: "Celsius Network",
-			},
-			{
-				Name:      "Stakewise",
-				Y:         0,
-				Drilldown: "Stakewise",
-			},
-			{
-				Name:      "TokenPocket",
-				Y:         0,
-				Drilldown: "TokenPocket",
-			},
-			{
-				Name:      "Staked.us",
-				Y:         0,
-				Drilldown: "Staked.us",
-			},
-			{
-				Name:      "Bitstamp",
-				Y:         0,
-				Drilldown: "Bitstamp",
-			},
-			{
-				Name:      "conurtrol.eth",
-				Y:         0,
-				Drilldown: "conurtrol.eth",
-			},
-			{
-				Name:      "nemorino.eth",
-				Y:         0,
-				Drilldown: "nemorino.eth",
-			},
-			{
-				Name:      "SharedStake",
-				Y:         0,
-				Drilldown: "SharedStake",
-			},
-			{
-				Name:      "piedao.org",
-				Y:         0,
-				Drilldown: "piedao.org",
-			},
-			{
-				Name:      "InfStones/imToken",
-				Y:         0,
-				Drilldown: "InfStones/imToken",
-			},
-			{
-				Name:      "KuCoin/Pool-X",
-				Y:         0,
-				Drilldown: "KuCoin/Pool-X",
-			},
-			{
-				Name:      "danielwang.eth",
-				Y:         0,
-				Drilldown: "danielwang.eth",
-			},
-			{
-				Name:      "wangdong.eth",
-				Y:         0,
-				Drilldown: "wangdong.eth",
-			},
-			{
-				Name:      "wolverine.eth",
-				Y:         0,
-				Drilldown: "wolverine.eth",
-			},
-			{
-				Name:      "Gemini",
-				Y:         0,
-				Drilldown: "Gemini",
-			},
-			{
-				Name:      "pogiboy.eth",
-				Y:         0,
-				Drilldown: "pogiboy.eth",
-			},
-			{
-				Name:      "superphiz.eth",
-				Y:         0,
-				Drilldown: "superphiz.eth",
-			},
-			{
-				Name:      "Bitcoin Suisse",
-				Y:         0,
-				Drilldown: "Bitcoin Suisse",
-			},
-			{
-				Name:      "tgerring.eth",
-				Y:         0,
-				Drilldown: "tgerring.eth",
-			},
-			{
-				Name:      "Bitfrost",
-				Y:         0,
-				Drilldown: "Bitfrost",
-			},
-			{
-				Name:      "Abyss Finance",
-				Y:         0,
-				Drilldown: "Abyss Finance",
-			},
-			{
-				Name:      "Binance",
-				Y:         0,
-				Drilldown: "Binance",
-			},
-			{
-				Name:      "Ankr",
-				Y:         0,
-				Drilldown: "Ankr",
-			},
-			{
-				Name:      "QuickCash",
-				Y:         0,
-				Drilldown: "QuickCash",
-			},
-			{
-				Name:      "Cream.Finance",
-				Y:         0,
-				Drilldown: "Cream.Finance",
-			},
-			{
-				Name:      "Coinbase",
-				Y:         0,
-				Drilldown: "Coinbase",
-			},
-			{
-				Name:      "Vitalik Buterin",
-				Y:         0,
-				Drilldown: "Vitalik Buterin",
-			},
-			{
-				Name:      "OKEx",
-				Y:         0,
-				Drilldown: "OKEx",
-			},
 		}
 		drillSeries = []drillSeriesData{
-			{
-				Name: "Huobi",
-				ID:   "Huobi",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Defi",
-				ID:   "Defi",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Guarda",
-				ID:   "Guarda",
-				Data: [][2]string{},
-			},
-			{ // always must be the last
-				Name: "Others",
-				ID:   "Others",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Rocketpool",
-				ID:   "Rocketpool",
-				Data: [][2]string{},
-			},
 			{
 				Name: "Kraken",
 				ID:   "Kraken",
@@ -1728,38 +1563,23 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				Data: [][2]string{},
 			},
 			{
+				Name: "Binance",
+				ID:   "Binance",
+				Data: [][2]string{},
+			},
+			{
 				Name: "Whale",
 				ID:   "Whale",
 				Data: [][2]string{},
 			},
 			{
-				Name: "Figment",
-				ID:   "Figment",
+				Name: "Huobi",
+				ID:   "Huobi",
 				Data: [][2]string{},
 			},
 			{
-				Name: "Stakehound",
-				ID:   "Stakehound",
-				Data: [][2]string{},
-			},
-			{
-				Name: "was.eth",
-				ID:   "was.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Celsius Network",
-				ID:   "Celsius Network",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Stakewise",
-				ID:   "Stakewise",
-				Data: [][2]string{},
-			},
-			{
-				Name: "TokenPocket",
-				ID:   "TokenPocket",
+				Name: "Bitcoin suisse",
+				ID:   "Bitcoin suisse",
 				Data: [][2]string{},
 			},
 			{
@@ -1768,123 +1588,18 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				Data: [][2]string{},
 			},
 			{
-				Name: "Bitstamp",
-				ID:   "Bitstamp",
+				Name: "Stakefish",
+				ID:   "Stakefish",
 				Data: [][2]string{},
 			},
 			{
-				Name: "conurtrol.eth",
-				ID:   "conurtrol.eth",
+				Name: "Defi",
+				ID:   "Defi",
 				Data: [][2]string{},
 			},
 			{
-				Name: "nemorino.eth",
-				ID:   "nemorino.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "SharedStake",
-				ID:   "SharedStake",
-				Data: [][2]string{},
-			},
-			{
-				Name: "piedao.org",
-				ID:   "piedao.org",
-				Data: [][2]string{},
-			},
-			{
-				Name: "InfStones/imToken",
-				ID:   "InfStones/imToken",
-				Data: [][2]string{},
-			},
-			{
-				Name: "KuCoin/Pool-X",
-				ID:   "KuCoin/Pool-X",
-				Data: [][2]string{},
-			},
-			{
-				Name: "danielwang.eth",
-				ID:   "danielwang.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "wangdong.eth",
-				ID:   "wangdong.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "wolverine.eth",
-				ID:   "wolverine.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Gemini",
-				ID:   "Gemini",
-				Data: [][2]string{},
-			},
-			{
-				Name: "pogiboy.eth",
-				ID:   "pogiboy.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "superphiz.eth",
-				ID:   "superphiz.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Bitcoin Suisse",
-				ID:   "Bitcoin Suisse",
-				Data: [][2]string{},
-			},
-			{
-				Name: "tgerring.eth",
-				ID:   "tgerring.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Bitfrost",
-				ID:   "Bitfrost",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Abyss Finance",
-				ID:   "Abyss Finance",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Binance",
-				ID:   "Binance",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Ankr",
-				ID:   "Ankr",
-				Data: [][2]string{},
-			},
-			{
-				Name: "QuickCash",
-				ID:   "QuickCash",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Cream.Finance",
-				ID:   "Cream.Finance",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Coinbase",
-				ID:   "Coinbase",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Vitalik Buterin",
-				ID:   "Vitalik Buterin",
-				Data: [][2]string{},
-			},
-			{
-				Name: "OKEx",
-				ID:   "OKEx",
+				Name: "Guarda",
+				ID:   "Guarda",
 				Data: [][2]string{},
 			},
 			{ // always must be the last
@@ -1910,11 +1625,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			foundMatch := false
 			for j, seriesItem := range seriesData {
 				if strings.Contains(name, seriesItem.Drilldown) {
-					if count != 0 {
-						seriesData[j].Y += count
-					} else {
-						seriesData[j].Y += 1
-					}
+					seriesData[j].Y += count
 				}
 
 				if strings.Contains(name, drillSeries[j].ID) {
@@ -1964,351 +1675,11 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				Y:         0,
 				Drilldown: "Rocketpool",
 			},
-			{
-				Name:      "Kraken",
-				Y:         0,
-				Drilldown: "Kraken",
-			},
-			{
-				Name:      "Lido",
-				Y:         0,
-				Drilldown: "Lido",
-			},
-			{
-				Name:      "Whale",
-				Y:         0,
-				Drilldown: "Whale",
-			},
-			{
-				Name:      "Figment",
-				Y:         0,
-				Drilldown: "Figment",
-			},
-			{
-				Name:      "Stakehound",
-				Y:         0,
-				Drilldown: "Stakehound",
-			},
-			{
-				Name:      "was.eth",
-				Y:         0,
-				Drilldown: "was.eth",
-			},
-			{
-				Name:      "Celsius Network",
-				Y:         0,
-				Drilldown: "Celsius Network",
-			},
-			{
-				Name:      "Stakewise",
-				Y:         0,
-				Drilldown: "Stakewise",
-			},
-			{
-				Name:      "TokenPocket",
-				Y:         0,
-				Drilldown: "TokenPocket",
-			},
-			{
-				Name:      "Staked.us",
-				Y:         0,
-				Drilldown: "Staked.us",
-			},
-			{
-				Name:      "Bitstamp",
-				Y:         0,
-				Drilldown: "Bitstamp",
-			},
-			{
-				Name:      "conurtrol.eth",
-				Y:         0,
-				Drilldown: "conurtrol.eth",
-			},
-			{
-				Name:      "nemorino.eth",
-				Y:         0,
-				Drilldown: "nemorino.eth",
-			},
-			{
-				Name:      "SharedStake",
-				Y:         0,
-				Drilldown: "SharedStake",
-			},
-			{
-				Name:      "piedao.org",
-				Y:         0,
-				Drilldown: "piedao.org",
-			},
-			{
-				Name:      "InfStones/imToken",
-				Y:         0,
-				Drilldown: "InfStones/imToken",
-			},
-			{
-				Name:      "KuCoin/Pool-X",
-				Y:         0,
-				Drilldown: "KuCoin/Pool-X",
-			},
-			{
-				Name:      "danielwang.eth",
-				Y:         0,
-				Drilldown: "danielwang.eth",
-			},
-			{
-				Name:      "wangdong.eth",
-				Y:         0,
-				Drilldown: "wangdong.eth",
-			},
-			{
-				Name:      "wolverine.eth",
-				Y:         0,
-				Drilldown: "wolverine.eth",
-			},
-			{
-				Name:      "Gemini",
-				Y:         0,
-				Drilldown: "Gemini",
-			},
-			{
-				Name:      "pogiboy.eth",
-				Y:         0,
-				Drilldown: "pogiboy.eth",
-			},
-			{
-				Name:      "superphiz.eth",
-				Y:         0,
-				Drilldown: "superphiz.eth",
-			},
-			{
-				Name:      "Bitcoin Suisse",
-				Y:         0,
-				Drilldown: "Bitcoin Suisse",
-			},
-			{
-				Name:      "tgerring.eth",
-				Y:         0,
-				Drilldown: "tgerring.eth",
-			},
-			{
-				Name:      "Bitfrost",
-				Y:         0,
-				Drilldown: "Bitfrost",
-			},
-			{
-				Name:      "Abyss Finance",
-				Y:         0,
-				Drilldown: "Abyss Finance",
-			},
-			{
-				Name:      "Binance",
-				Y:         0,
-				Drilldown: "Binance",
-			},
-			{
-				Name:      "Ankr",
-				Y:         0,
-				Drilldown: "Ankr",
-			},
-			{
-				Name:      "QuickCash",
-				Y:         0,
-				Drilldown: "QuickCash",
-			},
-			{
-				Name:      "Cream.Finance",
-				Y:         0,
-				Drilldown: "Cream.Finance",
-			},
-			{
-				Name:      "Coinbase",
-				Y:         0,
-				Drilldown: "Coinbase",
-			},
-			{
-				Name:      "Vitalik Buterin",
-				Y:         0,
-				Drilldown: "Vitalik Buterin",
-			},
-			{
-				Name:      "OKEx",
-				Y:         0,
-				Drilldown: "OKEx",
-			},
 		}
 		drillSeries = []drillSeriesData{
 			{
 				Name: "Rocketpool",
 				ID:   "Rocketpool",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Kraken",
-				ID:   "Kraken",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Lido",
-				ID:   "Lido",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Whale",
-				ID:   "Whale",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Figment",
-				ID:   "Figment",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Stakehound",
-				ID:   "Stakehound",
-				Data: [][2]string{},
-			},
-			{
-				Name: "was.eth",
-				ID:   "was.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Celsius Network",
-				ID:   "Celsius Network",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Stakewise",
-				ID:   "Stakewise",
-				Data: [][2]string{},
-			},
-			{
-				Name: "TokenPocket",
-				ID:   "TokenPocket",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Staked.us",
-				ID:   "Staked.us",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Bitstamp",
-				ID:   "Bitstamp",
-				Data: [][2]string{},
-			},
-			{
-				Name: "conurtrol.eth",
-				ID:   "conurtrol.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "nemorino.eth",
-				ID:   "nemorino.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "SharedStake",
-				ID:   "SharedStake",
-				Data: [][2]string{},
-			},
-			{
-				Name: "piedao.org",
-				ID:   "piedao.org",
-				Data: [][2]string{},
-			},
-			{
-				Name: "InfStones/imToken",
-				ID:   "InfStones/imToken",
-				Data: [][2]string{},
-			},
-			{
-				Name: "KuCoin/Pool-X",
-				ID:   "KuCoin/Pool-X",
-				Data: [][2]string{},
-			},
-			{
-				Name: "danielwang.eth",
-				ID:   "danielwang.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "wangdong.eth",
-				ID:   "wangdong.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "wolverine.eth",
-				ID:   "wolverine.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Gemini",
-				ID:   "Gemini",
-				Data: [][2]string{},
-			},
-			{
-				Name: "pogiboy.eth",
-				ID:   "pogiboy.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "superphiz.eth",
-				ID:   "superphiz.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Bitcoin Suisse",
-				ID:   "Bitcoin Suisse",
-				Data: [][2]string{},
-			},
-			{
-				Name: "tgerring.eth",
-				ID:   "tgerring.eth",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Bitfrost",
-				ID:   "Bitfrost",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Abyss Finance",
-				ID:   "Abyss Finance",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Binance",
-				ID:   "Binance",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Ankr",
-				ID:   "Ankr",
-				Data: [][2]string{},
-			},
-			{
-				Name: "QuickCash",
-				ID:   "QuickCash",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Cream.Finance",
-				ID:   "Cream.Finance",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Coinbase",
-				ID:   "Coinbase",
-				Data: [][2]string{},
-			},
-			{
-				Name: "Vitalik Buterin",
-				ID:   "Vitalik Buterin",
-				Data: [][2]string{},
-			},
-			{
-				Name: "OKEx",
-				ID:   "OKEx",
 				Data: [][2]string{},
 			},
 			{ // always must be the last
@@ -2334,12 +1705,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			foundMatch := false
 			for j, seriesItem := range seriesData {
 				if strings.Contains(name, seriesItem.Drilldown) {
-					if count != 0 {
-						seriesData[j].Y += count
-					} else {
-						seriesData[j].Y += 1
-					}
-
+					seriesData[j].Y += count
 				}
 
 				if strings.Contains(name, drillSeries[j].ID) {
