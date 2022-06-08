@@ -44,7 +44,7 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	poolData.TotalValidators = services.GetTotalValidators()
 	poolData.PoolInfo, poolData.EthSupply, poolData.LastUpdate = services.GetPoolsData()
 	poolData.IsMainnet = false
-	if utils.Config.Chain.Network == "mainnet" {
+	if utils.Config.Chain.Config.ConfigName == "mainnet" {
 		poolData.IsMainnet = true
 	}
 	poolData.NoAds = data.NoAds

@@ -172,14 +172,14 @@ func fixUtf(r rune) rune {
 }
 
 func SyncPeriodOfEpoch(epoch uint64) uint64 {
-	if epoch < Config.Chain.AltairForkEpoch {
+	if epoch < Config.Chain.Config.AltairForkEpoch {
 		return 0
 	}
-	return epoch / Config.Chain.EpochsPerSyncCommitteePeriod
+	return epoch / Config.Chain.Config.EpochsPerSyncCommitteePeriod
 }
 
 func FirstEpochOfSyncPeriod(syncPeriod uint64) uint64 {
-	return syncPeriod * Config.Chain.EpochsPerSyncCommitteePeriod
+	return syncPeriod * Config.Chain.Config.EpochsPerSyncCommitteePeriod
 }
 
 func TimeToSyncPeriod(t time.Time) uint64 {
@@ -188,22 +188,22 @@ func TimeToSyncPeriod(t time.Time) uint64 {
 
 // EpochOfSlot returns the corresponding epoch of a slot
 func EpochOfSlot(slot uint64) uint64 {
-	return slot / Config.Chain.SlotsPerEpoch
+	return slot / Config.Chain.Config.SlotsPerEpoch
 }
 
 // DayOfSlot returns the corresponding day of a slot
 func DayOfSlot(slot uint64) uint64 {
-	return Config.Chain.SecondsPerSlot * slot / (24 * 3600)
+	return Config.Chain.Config.SecondsPerSlot * slot / (24 * 3600)
 }
 
 // WeekOfSlot returns the corresponding week of a slot
 func WeekOfSlot(slot uint64) uint64 {
-	return Config.Chain.SecondsPerSlot * slot / (7 * 24 * 3600)
+	return Config.Chain.Config.SecondsPerSlot * slot / (7 * 24 * 3600)
 }
 
 // SlotToTime returns a time.Time to slot
 func SlotToTime(slot uint64) time.Time {
-	return time.Unix(int64(Config.Chain.GenesisTimestamp+slot*Config.Chain.SecondsPerSlot), 0)
+	return time.Unix(int64(Config.Chain.GenesisTimestamp+slot*Config.Chain.Config.SecondsPerSlot), 0)
 }
 
 // TimeToSlot returns time to slot in seconds
@@ -211,12 +211,12 @@ func TimeToSlot(timestamp uint64) uint64 {
 	if Config.Chain.GenesisTimestamp > timestamp {
 		return 0
 	}
-	return (timestamp - Config.Chain.GenesisTimestamp) / Config.Chain.SecondsPerSlot
+	return (timestamp - Config.Chain.GenesisTimestamp) / Config.Chain.Config.SecondsPerSlot
 }
 
 // EpochToTime will return a time.Time for an epoch
 func EpochToTime(epoch uint64) time.Time {
-	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0)
+	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.Config.SecondsPerSlot*Config.Chain.Config.SlotsPerEpoch), 0)
 }
 
 // TimeToDay will return a days since genesis for an timestamp
@@ -234,7 +234,7 @@ func TimeToEpoch(ts time.Time) int64 {
 	if int64(Config.Chain.GenesisTimestamp) > ts.Unix() {
 		return 0
 	}
-	return (ts.Unix() - int64(Config.Chain.GenesisTimestamp)) / int64(Config.Chain.SecondsPerSlot) / int64(Config.Chain.SlotsPerEpoch)
+	return (ts.Unix() - int64(Config.Chain.GenesisTimestamp)) / int64(Config.Chain.Config.SecondsPerSlot) / int64(Config.Chain.Config.SlotsPerEpoch)
 }
 
 // WaitForCtrlC will block/wait until a control-c is pressed
@@ -258,39 +258,17 @@ func ReadConfig(cfg *types.Config, path string) error {
 		return err
 	}
 
-	// decode phase0 config
-	if len(cfg.Chain.Phase0Path) == 0 {
-		cfg.Chain.Phase0Path = "config/phase0.yml"
-	}
-	phase0 := &types.Phase0{}
-	f, err := os.Open(cfg.Chain.Phase0Path)
+	f, err := os.Open(cfg.Chain.ConfigPath)
 	if err != nil {
-		logrus.Errorf("error opening Phase0 Config file %v: %v", cfg.Chain.Phase0Path, err)
+		logrus.Errorf("error opening Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
 	} else {
+		var chainConfig *types.ChainConfig
 		decoder := yaml.NewDecoder(f)
-		err = decoder.Decode(phase0)
+		err = decoder.Decode(chainConfig)
 		if err != nil {
-			logrus.Errorf("error decoding Phase0 Config file %v: %v", cfg.Chain.Phase0Path, err)
+			logrus.Errorf("error decoding Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
 		} else {
-			cfg.Chain.Phase0 = *phase0
-		}
-	}
-
-	// decode altair config
-	if len(cfg.Chain.AltairPath) == 0 {
-		cfg.Chain.AltairPath = "config/altair.yml"
-	}
-	altair := &types.Altair{}
-	f, err = os.Open(cfg.Chain.AltairPath)
-	if err != nil {
-		logrus.Errorf("error opening altair config file %v: %v", cfg.Chain.AltairPath, err)
-	} else {
-		decoder := yaml.NewDecoder(f)
-		err = decoder.Decode(altair)
-		if err != nil {
-			logrus.Errorf("error decoding altair Config file %v: %v", cfg.Chain.AltairPath, err)
-		} else {
-			cfg.Chain.Altair = *altair
+			cfg.Chain.Config = *chainConfig
 		}
 	}
 
@@ -599,10 +577,7 @@ func BitAtVectorReversed(b []byte, i int) bool {
 }
 
 func GetNetwork() string {
-	if Config.Chain.Network != "" {
-		return strings.ToLower(Config.Chain.Network)
-	}
-	return strings.ToLower(Config.Chain.Phase0.ConfigName)
+	return strings.ToLower(Config.Chain.Config.ConfigName)
 }
 
 func ElementExists(arr []string, el string) bool {

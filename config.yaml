@@ -7,13 +7,8 @@ database:
   password: "pass"
 # Chain network configuration
 chain:
-  slotsPerEpoch: 32
-  secondsPerSlot: 12
-  minGenesisActiveValidatorCount: 72100
+  configPath: ./config/mainnet.chain.yml
   genesisTimestamp: 1639659600
-  mainnet: false  # hide mainnet staking pool etc. info
-  phase0path: "./eth2_config.yaml"
-  altairForkEpoch: 10
 # Note: It is possible to run either the frontend or the indexer or both at the same time
 # Frontend config
 frontend:

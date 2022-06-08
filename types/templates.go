@@ -53,7 +53,7 @@ type PageData struct {
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
 	IsUserClientUpdated   func(uint64) bool
-	Phase0                Phase0
+	ChainConfig           ChainConfig
 	Lang                  string
 	NoAds                 bool
 }

@@ -142,7 +142,7 @@ func eth1UniqueValidatorsCount() (*uint64, error) {
 
 // GetValidatorChurnLimit returns the rate at which validators can enter or leave the system
 func GetValidatorChurnLimit() (uint64, error) {
-	min := utils.Config.Chain.MinPerEpochChurnLimit
+	min := utils.Config.Chain.Config.MinPerEpochChurnLimit
 
 	stats := GetLatestStats()
 	count := stats.ActiveValidatorCount
@@ -153,7 +153,7 @@ func GetValidatorChurnLimit() (uint64, error) {
 
 	adaptable := uint64(0)
 	if *count > 0 {
-		adaptable = utils.Config.Chain.ChurnLimitQuotient / *count
+		adaptable = utils.Config.Chain.Config.ChurnLimitQuotient / *count
 	}
 
 	if min > adaptable {

@@ -5,10 +5,11 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	gtypes "github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 	"sync"
 	"time"
+
+	gtypes "github.com/ethereum/go-ethereum/core/types"
 
 	lru "github.com/hashicorp/golang-lru"
 	ethpb "github.com/prysmaticlabs/prysm/proto/prysm/v1alpha1"
@@ -259,7 +260,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]map[string]*types.Block)
 
-	for slot := epoch * utils.Config.Chain.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.SlotsPerEpoch-1; slot++ {
+	for slot := epoch * utils.Config.Chain.Config.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch-1; slot++ {
 		blocks, err := pc.GetBlocksBySlot(slot)
 
 		if err != nil {
@@ -601,9 +602,9 @@ func (pc *PrysmClient) parsePhase0Block(block *ethpb.BeaconBlockContainerAltair)
 		}
 
 		aggregationBits := bitfield.Bitlist(a.AggregationBits)
-		assignments, err := pc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
+		assignments, err := pc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.Config.SlotsPerEpoch)
 		if err != nil {
-			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, err)
+			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.Config.SlotsPerEpoch, err)
 		}
 
 		a.Attesters = make([]uint64, 0)
@@ -756,9 +757,9 @@ func (pc *PrysmClient) parseAltairBlock(block *ethpb.BeaconBlockContainerAltair)
 		}
 
 		aggregationBits := bitfield.Bitlist(a.AggregationBits)
-		assignments, err := pc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
+		assignments, err := pc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.Config.SlotsPerEpoch)
 		if err != nil {
-			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, err)
+			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.Config.SlotsPerEpoch, err)
 		}
 
 		a.Attesters = make([]uint64, 0)
@@ -957,9 +958,9 @@ func (pc *PrysmClient) parseAltairBlock(block *ethpb.BeaconBlockContainerAltair)
 //		}
 //
 //		aggregationBits := bitfield.Bitlist(a.AggregationBits)
-//		assignments, err := pc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
+//		assignments, err := pc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.Config.SlotsPerEpoch)
 //		if err != nil {
-//			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, err)
+//			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.Config.SlotsPerEpoch, err)
 //		}
 //
 //		a.Attesters = make([]uint64, 0)

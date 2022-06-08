@@ -142,7 +142,7 @@ func getPoolInfo() []PoolsInfo {
 	var stakePools []Pools
 	// addrName := map[string]Pools{}
 
-	if utils.Config.Chain.Network == "mainnet" || utils.Config.Chain.Network == "prater" {
+	if utils.Config.Chain.Config.ConfigName == "mainnet" || utils.Config.Chain.Config.ConfigName == "prater" {
 		err := db.WriterDb.Select(&stakePools, `
 		select sps.address, sps.name, sps.category, sps.deposit, b.vcount
 		from (select ENCODE(from_address::bytea, 'hex') as address, count(*) as vcount

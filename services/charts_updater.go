@@ -50,7 +50,7 @@ func LatestChartsPageData() *[]*types.ChartsPageDataChart {
 }
 
 func chartsPageDataUpdater() {
-	sleepDuration := time.Second * time.Duration(utils.Config.Chain.SecondsPerSlot)
+	sleepDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot)
 	var prevEpoch uint64
 
 	for {
@@ -458,7 +458,7 @@ func inclusionDistanceChartData() (*types.GenericChartData, error) {
 
 	latestEpoch := LatestEpoch()
 	epochOffset := uint64(0)
-	maxEpochs := 1 * 24 * 3600 / (utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot)
+	maxEpochs := 1 * 24 * 3600 / (utils.Config.Chain.Config.SlotsPerEpoch * utils.Config.Chain.Config.SecondsPerSlot)
 	if latestEpoch > maxEpochs {
 		epochOffset = latestEpoch - maxEpochs
 	}
@@ -513,7 +513,7 @@ func votingDistributionChartData() (*types.GenericChartData, error) {
 
 	latestEpoch := LatestEpoch()
 	epochOffset := uint64(0)
-	maxEpochs := 7 * 3600 * 24 / (utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot)
+	maxEpochs := 7 * 3600 * 24 / (utils.Config.Chain.Config.SlotsPerEpoch * utils.Config.Chain.Config.SecondsPerSlot)
 	if latestEpoch > maxEpochs {
 		epochOffset = latestEpoch - maxEpochs
 	}
@@ -797,8 +797,8 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 	baseRewardFactor := uint64(64)
 	baseRewardPerEpoch := uint64(4)
 	proposerRewardQuotient := uint64(8)
-	slotsPerDay := 3600 * 24 / utils.Config.Chain.SecondsPerSlot
-	epochsPerDay := slotsPerDay / utils.Config.Chain.SlotsPerEpoch
+	slotsPerDay := 3600 * 24 / utils.Config.Chain.Config.SecondsPerSlot
+	epochsPerDay := slotsPerDay / utils.Config.Chain.Config.SlotsPerEpoch
 	minAttestationInclusionDelay := uint64(1) // epochs
 	minEpochsToInactivityPenalty := uint64(4) // epochs
 	// inactivityPenaltyQuotient := uint6(33554432) // 2**25
@@ -815,7 +815,7 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 		// Proposer and inclusion delay micro-rewards
 		proposerReward := baseReward / proposerRewardQuotient
 		attesters := float64(row.Validatorscount/32) * row.Globalparticipationrate
-		rewardPerEpoch += int64(attesters * float64(proposerReward*(utils.Config.Chain.SlotsPerEpoch/row.Validatorscount)))
+		rewardPerEpoch += int64(attesters * float64(proposerReward*(utils.Config.Chain.Config.SlotsPerEpoch/row.Validatorscount)))
 		rewardPerEpoch += int64((baseReward - proposerReward) / minAttestationInclusionDelay)
 
 		// inactivity-penalty
@@ -1477,7 +1477,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 	seriesData := []seriesDataItem{}
 	drillSeries := []drillSeriesData{}
 
-	if utils.Config.Chain.Network == "mainnet" {
+	if utils.Config.Chain.Config.ConfigName == "mainnet" {
 		rows := []struct {
 			Name  *string
 			Count *uint64
@@ -1647,7 +1647,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		drillSeries[len(drillSeries)-1].Data = append(drillSeries[len(drillSeries)-1].Data,
 			[2]string{"Unknown", fmt.Sprintf("%d", unknownCount)})
 		othersItem.Y += unknownCount
-	} else if utils.Config.Chain.Network == "prater" {
+	} else if utils.Config.Chain.Config.ConfigName == "prater" {
 		rows := []struct {
 			Name  *string
 			Count *uint64

@@ -98,14 +98,14 @@ func main() {
 	}
 
 	logrus.Infof("database connection established")
-	if utils.Config.Chain.SlotsPerEpoch == 0 || utils.Config.Chain.SecondsPerSlot == 0 {
+	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
 		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
 	}
 
 	if utils.Config.Indexer.Enabled {
 		var rpcClient rpc.Client
 
-		chainID := new(big.Int).SetUint64(utils.Config.Chain.DepositChainID)
+		chainID := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
 		if utils.Config.Indexer.Node.Type == "prysm" {
 			if utils.Config.Indexer.Node.PageSize == 0 {
 				logrus.Printf("setting default rpc page size to 500")

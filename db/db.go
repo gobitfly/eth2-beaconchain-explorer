@@ -1376,7 +1376,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				txCount = len(b.ExecutionPayload.Transactions)
 			}
 			_, err = stmtBlock.Exec(
-				b.Slot/utils.Config.Chain.SlotsPerEpoch,
+				b.Slot/utils.Config.Chain.Config.SlotsPerEpoch,
 				b.Slot,
 				b.BlockRoot,
 				b.ParentRoot,
@@ -1496,7 +1496,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				attestingValidators := make([]string, 0, 20000)
 
 				for _, validator := range a.Attesters {
-					attestationAssignmentsArgsWeek = append(attestationAssignmentsArgsWeek, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot, a.Data.Slot / utils.Config.Chain.SlotsPerEpoch / 1575})
+					attestationAssignmentsArgsWeek = append(attestationAssignmentsArgsWeek, []interface{}{a.Data.Slot / utils.Config.Chain.Config.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot, a.Data.Slot / utils.Config.Chain.Config.SlotsPerEpoch / 1575})
 					attestingValidators = append(attestingValidators, strconv.FormatUint(validator, 10))
 				}
 
@@ -1556,7 +1556,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 			blockLog.WithField("duration", time.Since(t)).Tracef("exits")
 			t = time.Now()
 
-			_, err = stmtProposalAssignments.Exec(b.Slot/utils.Config.Chain.SlotsPerEpoch, b.Proposer, b.Slot, b.Status)
+			_, err = stmtProposalAssignments.Exec(b.Slot/utils.Config.Chain.Config.SlotsPerEpoch, b.Proposer, b.Slot, b.Status)
 			if err != nil {
 				return fmt.Errorf("error executing stmtProposalAssignments for block %v: %w", b.Slot, err)
 			}
@@ -1681,7 +1681,7 @@ func GetDepositThresholdTime() (*time.Time, error) {
 			) a
 		) b
 		where totalsum > $1;
-		 `, utils.Config.Chain.MinGenesisActiveValidatorCount*32e9)
+		 `, utils.Config.Chain.Config.MinGenesisActiveValidatorCount*32e9)
 	if err != nil {
 		return nil, err
 	}

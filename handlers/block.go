@@ -92,7 +92,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	blockPageData := types.BlockPageData{}
-	blockPageData.Mainnet = utils.Config.Chain.Mainnet
+	blockPageData.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
 	err = db.ReaderDb.Get(&blockPageData, `
 		SELECT
 			blocks.epoch,

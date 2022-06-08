@@ -1436,8 +1436,8 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 	}
 
 	name := string(types.ValidatorGotSlashedEventName)
-	if utils.Config.Chain.Phase0.ConfigName != "" {
-		name = utils.Config.Chain.Phase0.ConfigName + ":" + name
+	if utils.Config.Chain.Config.ConfigName != "" {
+		name = utils.Config.Chain.Config.ConfigName + ":" + name
 	}
 	err = db.FrontendWriterDB.Select(&subscribers, query, name, latestEpoch)
 	if err != nil {
@@ -1892,8 +1892,8 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 		}
 
 		name := string(eventName)
-		if utils.Config.Chain.Phase0.ConfigName != "" {
-			name = utils.Config.Chain.Phase0.ConfigName + ":" + name
+		if utils.Config.Chain.Config.ConfigName != "" {
+			name = utils.Config.Chain.Config.ConfigName + ":" + name
 		}
 
 		err := db.FrontendWriterDB.Select(&dbResult, `
@@ -2354,7 +2354,7 @@ func bigFloat(x float64) *big.Float {
 
 func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
 
-	slotsPerSyncCommittee := utils.Config.Chain.EpochsPerSyncCommitteePeriod * utils.Config.Chain.SlotsPerEpoch
+	slotsPerSyncCommittee := utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
 	currentPeriod := LatestSlot() / slotsPerSyncCommittee
 	nextPeriod := currentPeriod + 1
 
@@ -2406,7 +2406,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 			Epoch:           r.Epoch,
 			EventFilter:     r.EventFilter,
 			EventName:       eventName,
-			ExtraData:       fmt.Sprintf("%v|%v|%v", mapping[r.EventFilter], nextPeriod*utils.Config.Chain.EpochsPerSyncCommitteePeriod, (nextPeriod+1)*utils.Config.Chain.EpochsPerSyncCommitteePeriod),
+			ExtraData:       fmt.Sprintf("%v|%v|%v", mapping[r.EventFilter], nextPeriod*utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, (nextPeriod+1)*utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod),
 			UnsubscribeHash: r.UnsubscribeHash,
 		}
 		if _, exists := notificationsByUserID[r.UserID]; !exists {

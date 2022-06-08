@@ -139,7 +139,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 			lastDayIncomeColor = "#f7a35c"
 		}
 
-		currentDay := latestEpoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
+		currentDay := latestEpoch / ((24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot)
 
 		incomeHistoryChartData[len(incomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(int64(currentDay)).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor}
 	}

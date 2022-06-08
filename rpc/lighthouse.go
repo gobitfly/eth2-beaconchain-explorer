@@ -47,7 +47,7 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 	blkCh := make(chan *types.Block, 10)
 	go func() {
 		// poll sync status 2 times per slot
-		t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.SecondsPerSlot) / 2)
+		t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot) / 2)
 
 		lastHeadSlot := uint64(0)
 		headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/head", lc.endpoint))
@@ -122,15 +122,15 @@ func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 
 	return &types.ChainHead{
 		HeadSlot:                   uint64(parsedHead.Data.Header.Message.Slot),
-		HeadEpoch:                  uint64(parsedHead.Data.Header.Message.Slot) / utils.Config.Chain.SlotsPerEpoch,
+		HeadEpoch:                  uint64(parsedHead.Data.Header.Message.Slot) / utils.Config.Chain.Config.SlotsPerEpoch,
 		HeadBlockRoot:              utils.MustParseHex(parsedHead.Data.Root),
-		FinalizedSlot:              uint64(parsedFinality.Data.Finalized.Epoch) * utils.Config.Chain.SlotsPerEpoch,
+		FinalizedSlot:              uint64(parsedFinality.Data.Finalized.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
 		FinalizedEpoch:             uint64(parsedFinality.Data.Finalized.Epoch),
 		FinalizedBlockRoot:         utils.MustParseHex(parsedFinality.Data.Finalized.Root),
-		JustifiedSlot:              uint64(parsedFinality.Data.CurrentJustified.Epoch) * utils.Config.Chain.SlotsPerEpoch,
+		JustifiedSlot:              uint64(parsedFinality.Data.CurrentJustified.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
 		JustifiedEpoch:             uint64(parsedFinality.Data.CurrentJustified.Epoch),
 		JustifiedBlockRoot:         utils.MustParseHex(parsedFinality.Data.CurrentJustified.Root),
-		PreviousJustifiedSlot:      uint64(parsedFinality.Data.PreviousJustified.Epoch) * utils.Config.Chain.SlotsPerEpoch,
+		PreviousJustifiedSlot:      uint64(parsedFinality.Data.PreviousJustified.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
 		PreviousJustifiedEpoch:     uint64(parsedFinality.Data.PreviousJustified.Epoch),
 		PreviousJustifiedBlockRoot: utils.MustParseHex(parsedFinality.Data.PreviousJustified.Root),
 	}, nil
@@ -242,10 +242,10 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 		}
 	}
 
-	if epoch >= utils.Config.Chain.AltairForkEpoch {
+	if epoch >= utils.Config.Chain.Config.AltairForkEpoch {
 		syncCommitteeState := depStateRoot
-		if epoch == utils.Config.Chain.AltairForkEpoch {
-			syncCommitteeState = fmt.Sprintf("%d", utils.Config.Chain.AltairForkEpoch*utils.Config.Chain.SlotsPerEpoch)
+		if epoch == utils.Config.Chain.Config.AltairForkEpoch {
+			syncCommitteeState = fmt.Sprintf("%d", utils.Config.Chain.Config.AltairForkEpoch*utils.Config.Chain.Config.SlotsPerEpoch)
 		}
 		parsedSyncCommittees, err := lc.GetSyncCommittee(syncCommitteeState, epoch)
 		if err != nil {
@@ -279,7 +279,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
-	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validators", lc.endpoint, epoch*utils.Config.Chain.SlotsPerEpoch))
+	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validators", lc.endpoint, epoch*utils.Config.Chain.Config.SlotsPerEpoch))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validators for epoch %v: %v", epoch, err)
 	}
@@ -389,7 +389,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]map[string]*types.Block)
 
-	for slot := epoch * utils.Config.Chain.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.SlotsPerEpoch-1; slot++ {
+	for slot := epoch * utils.Config.Chain.Config.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch-1; slot++ {
 		if slot == 0 || utils.SlotToTime(slot).After(time.Now()) { // Currently slot 0 returns all blocks, also skip asking for future blocks
 			continue
 		}
@@ -476,7 +476,7 @@ func (lc *LighthouseClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64,
 
 	validatorBalances := make(map[uint64]uint64)
 
-	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validator_balances", lc.endpoint, epoch*int64(utils.Config.Chain.SlotsPerEpoch)))
+	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validator_balances", lc.endpoint, epoch*int64(utils.Config.Chain.Config.SlotsPerEpoch)))
 	if err != nil {
 		return validatorBalances, err
 	}
@@ -587,7 +587,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		VoluntaryExits:    make([]*types.VoluntaryExit, len(parsedBlock.Message.Body.VoluntaryExits)),
 	}
 
-	epochAssignments, err := lc.GetEpochAssignments(slot / utils.Config.Chain.SlotsPerEpoch)
+	epochAssignments, err := lc.GetEpochAssignments(slot / utils.Config.Chain.Config.SlotsPerEpoch)
 	if err != nil {
 		return nil, err
 	}
@@ -595,8 +595,8 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 	if agg := parsedBlock.Message.Body.SyncAggregate; agg != nil {
 		bits := utils.MustParseHex(agg.SyncCommitteeBits)
 
-		if utils.Config.Chain.Altair.SyncCommitteeSize != uint64(len(bits)*8) {
-			return nil, fmt.Errorf("sync-aggregate-bits-size does not match sync-committee-size: %v != %v", len(bits)*8, utils.Config.Chain.Altair.SyncCommitteeSize)
+		if utils.Config.Chain.Config.SyncCommitteeSize != uint64(len(bits)*8) {
+			return nil, fmt.Errorf("sync-aggregate-bits-size does not match sync-committee-size: %v != %v", len(bits)*8, utils.Config.Chain.Config.SyncCommitteeSize)
 		}
 
 		block.SyncAggregate = &types.SyncAggregate{
@@ -741,9 +741,9 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		}
 
 		aggregationBits := bitfield.Bitlist(a.AggregationBits)
-		assignments, err := lc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
+		assignments, err := lc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.Config.SlotsPerEpoch)
 		if err != nil {
-			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, err)
+			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.Config.SlotsPerEpoch, err)
 		}
 
 		for i := uint64(0); i < aggregationBits.Len(); i++ {
@@ -785,12 +785,12 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 
 func syncCommitteeParticipation(bits []byte) float64 {
 	participating := 0
-	for i := 0; i < int(utils.Config.Chain.Altair.SyncCommitteeSize); i++ {
+	for i := 0; i < int(utils.Config.Chain.Config.SyncCommitteeSize); i++ {
 		if utils.BitAtVector(bits, i) {
 			participating++
 		}
 	}
-	return float64(participating) / float64(utils.Config.Chain.Altair.SyncCommitteeSize)
+	return float64(participating) / float64(utils.Config.Chain.Config.SyncCommitteeSize)
 }
 
 // GetValidatorParticipation will get the validator participation from the Lighthouse RPC api
