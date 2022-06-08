@@ -313,9 +313,11 @@ func main() {
 
 			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
-			router.HandleFunc("/pools", handlers.Pools).Methods("GET")
-			router.HandleFunc("/pools/streak/current", handlers.GetAvgCurrentStreak).Methods("GET")
-			router.HandleFunc("/pools/chart/income_per_eth", handlers.GetIncomePerEthChart).Methods("GET")
+			if utils.Config.Frontend.PoolsUpdater.Enabled {
+				router.HandleFunc("/pools", handlers.Pools).Methods("GET")
+				router.HandleFunc("/pools/streak/current", handlers.GetAvgCurrentStreak).Methods("GET")
+				router.HandleFunc("/pools/chart/income_per_eth", handlers.GetIncomePerEthChart).Methods("GET")
+			}
 			router.HandleFunc("/pools/rocketpool", handlers.PoolsRocketpool).Methods("GET")
 			router.HandleFunc("/pools/rocketpool/data/minipools", handlers.PoolsRocketpoolDataMinipools).Methods("GET")
 			router.HandleFunc("/pools/rocketpool/data/nodes", handlers.PoolsRocketpoolDataNodes).Methods("GET")
