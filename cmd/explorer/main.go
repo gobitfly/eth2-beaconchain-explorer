@@ -464,7 +464,9 @@ func main() {
 		services.InitGitCoinFeed()
 	}
 
-	services.InitPools() // making sure the website is available before updating
+	if utils.Config.Frontend.PoolsUpdater.Enabled {
+		services.InitPools() // making sure the website is available before updating
+	}
 
 	utils.WaitForCtrlC()
 
