@@ -612,6 +612,8 @@ create table users_webhooks
     -- label             varchar(200)            not null,
     url               character varying(1024) not null,
     retries           int                     not null default 0, -- a backoff parameter that indicates if the requests was successful and when to retry it again
+    request           jsonb,
+    response          jsonb,
     last_sent         timestamp without time zone,
     event_names       text[]                  not null,
     destination       character varying(200), -- discord for example could be a destination and the request would be adapted
