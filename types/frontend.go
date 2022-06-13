@@ -367,8 +367,8 @@ type UserWebhook struct {
 	Url         string         `db:"url" json:"url"`
 	Retries     uint64         `db:"retries" json:"retries"`
 	LastSent    sql.NullTime   `db:"last_sent" json:"lastRetry"`
-	Response    string         `db:"response" json:"response"`
-	Request     string         `db:"request" json:"request"`
+	Response    sql.NullString `db:"response" json:"response"`
+	Request     sql.NullString `db:"request" json:"request"`
 	Destination sql.NullString `db:"destination" json:"destination"`
 	EventNames  pq.StringArray `db:"event_names" json:"-"`
 }
