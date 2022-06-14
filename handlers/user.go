@@ -2421,7 +2421,9 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 			retries,
 			last_sent,
 			event_names,
-			destination
+			destination,
+			request,
+			response
 		FROM users_webhooks
 		WHERE user_id = $1;
 	`, user.UserID)
@@ -2491,15 +2493,29 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 			ls = utils.FormatTimestampTs(wh.LastSent.Time)
 		}
 
+		whErr := types.UserWebhookRowError{}
+
+		if wh.Retries > 0 && wh.Request.Valid {
+			whErr.SummaryRequest = template.HTML("Request Sent")
+			whErr.ContentRequest = template.HTML(fmt.Sprintf(`<pre><code>%v</code></pre>`, wh.Request.String))
+
+		}
+
+		if wh.Retries > 0 && wh.Response.Valid {
+			whErr.SummaryResponse = template.HTML("Response Received")
+			whErr.ContentResponse = template.HTML(fmt.Sprintf(`<pre><code>%v</code></pre>`, wh.Response.String))
+		}
+
 		webhookRows = append(webhookRows, types.UserWebhookRow{
-			ID:        wh.ID,
-			Retries:   template.HTML(fmt.Sprintf("%d", wh.Retries)),
-			UrlFull:   wh.Url,
-			Url:       template.HTML(fmt.Sprintf(`<span>%v</span><span style="margin-left: .5rem;">%v</span>`, url.Hostname(), utils.CopyButton(wh.Url))),
-			LastSent:  ls,
-			Events:    events,
-			Discord:   isDiscord,
-			CsrfField: csrf.TemplateField(r),
+			ID:           wh.ID,
+			Retries:      template.HTML(fmt.Sprintf("%d", wh.Retries)),
+			UrlFull:      wh.Url,
+			Url:          template.HTML(fmt.Sprintf(`<span>%v</span><span style="margin-left: .5rem;">%v</span>`, url.Hostname(), utils.CopyButton(wh.Url))),
+			LastSent:     ls,
+			Events:       events,
+			Discord:      isDiscord,
+			CsrfField:    csrf.TemplateField(r),
+			WebhookError: whErr,
 		})
 
 	}

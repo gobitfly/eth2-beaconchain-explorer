@@ -84,7 +84,7 @@ var EventLabel map[EventName]string = map[EventName]string{
 	RocketpoolNewClaimRoundStartedEventName:          "Your rocket pool claim round is available",
 	RocketpoolColleteralMinReached:                   "You reached the rocketpool min collateral",
 	RocketpoolColleteralMaxReached:                   "You reached the rocketpool max collateral",
-	SyncCommitteeSoon:                                "You will soon be part of the rocket pool sync committee",
+	SyncCommitteeSoon:                                "Your validator(s) will soon be part of the sync committee",
 }
 
 func IsUserIndexed(event EventName) bool {
@@ -367,6 +367,8 @@ type UserWebhook struct {
 	Url         string         `db:"url" json:"url"`
 	Retries     uint64         `db:"retries" json:"retries"`
 	LastSent    sql.NullTime   `db:"last_sent" json:"lastRetry"`
+	Response    sql.NullString `db:"response" json:"response"`
+	Request     sql.NullString `db:"request" json:"request"`
 	Destination sql.NullString `db:"destination" json:"destination"`
 	EventNames  pq.StringArray `db:"event_names" json:"-"`
 }
@@ -408,4 +410,22 @@ func GetNotificationChannel(channel string) (NotificationChannel, error) {
 		}
 	}
 	return "", errors.Errorf("Could not convert channel from string to NotificationChannel type. %v is not a known channel type", channel)
+}
+
+type ErrorResponse struct {
+	Status string // e.g. "200 OK"
+	Body   string
+}
+
+func (e *ErrorResponse) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &e)
+}
+
+func (a ErrorResponse) Value() (driver.Value, error) {
+	return json.Marshal(a)
 }

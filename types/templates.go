@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"net/http"
 	"time"
 
 	"github.com/lib/pq"
@@ -1181,15 +1182,25 @@ type RocketpoolPageDataDAOMember struct {
 }
 
 type UserWebhookRow struct {
-	ID          uint64 `db:"id" json:"id"`
-	UrlFull     string
-	Url         template.HTML      `db:"url" json:"url"`
-	Retries     template.HTML      `db:"retries" json:"retries"`
-	LastSent    template.HTML      `db:"last_retry" json:"lastSent"`
-	Destination template.HTML      `db:"destination" json:"destination"`
-	Events      []WebhookPageEvent `db:"event_names" json:"-"`
-	Discord     bool
-	CsrfField   template.HTML
+	ID           uint64 `db:"id" json:"id"`
+	UrlFull      string
+	Url          template.HTML `db:"url" json:"url"`
+	Retries      template.HTML `db:"retries" json:"retries"`
+	LastSent     template.HTML `db:"last_retry" json:"lastSent"`
+	Destination  template.HTML `db:"destination" json:"destination"`
+	WebhookError UserWebhookRowError
+	Response     *http.Response          `db:"response" json:"response"`
+	Request      *map[string]interface{} `db:"request" json:"request"`
+	Events       []WebhookPageEvent      `db:"event_names" json:"-"`
+	Discord      bool
+	CsrfField    template.HTML
+}
+
+type UserWebhookRowError struct {
+	SummaryRequest  template.HTML
+	SummaryResponse template.HTML
+	ContentRequest  template.HTML
+	ContentResponse template.HTML
 }
 
 type WebhookPageData struct {
