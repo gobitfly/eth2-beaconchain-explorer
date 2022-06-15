@@ -11,11 +11,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
-	"github.com/sirupsen/logrus"
 )
 
 const searchValidatorsResultLimit = 300
@@ -152,7 +150,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 
 		err = db.ReaderDb.Select(result, query, search)
 	case "eth1_addresses":
-		start := time.Now()
+		// start := time.Now()
 		if len(search) <= 1 {
 			break
 		}
@@ -173,9 +171,9 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				WHERE from_address LIKE $1 || '%'::bytea 
 				LIMIT 10`, eth1AddressHash)
 		}
-		logger.WithFields(logrus.Fields{
-			"duration": time.Since(start),
-		}).Infof("finished searching for eth1_addresses")
+		// logger.WithFields(logrus.Fields{
+		// 	"duration": time.Since(start),
+		// }).Infof("finished searching for eth1_addresses")
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
@@ -207,17 +205,16 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", 503)
 				return
 			}
-			logger.Infof("indexed_validators_by_eth1_addresses")
 			err = db.ReaderDb.Select(result, `
 			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
-					ENCODE(from_address, 'hex') as from_address,
+					ENCODE(from_address::bytea, 'hex') as from_address,
 					DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
 					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
 				FROM eth1_deposits
 				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE ENCODE(from_address, 'hex') = LOWER($1)
+				WHERE from_address LIKE $1 || '%'::bytea
 			) a 
 			WHERE validatorrow <= $2 AND addressrow <= 10
 			GROUP BY from_address
