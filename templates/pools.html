@@ -3,6 +3,97 @@
 <script src="/js/highcharts/highcharts-full-v9.min.js"></script>
 <script src="/js/highcharts/highcharts-global-options.js"></script>
 <script src="/js/requestInterval.js"></script>
+<script src="/js/jquery.min.js"></script>
+<script src="/js/luxon.min.js"></script>
+<script>
+
+    window.addEventListener('load', function () {
+        Highcharts.chart('pools-distribution-chart', {
+            chart: {
+                type: {{.PoolsDistribution.Data.Type }},
+        borderColor: null,
+        backgroundColor: "rgba(0,0,0,0.0)",
+        height: parseInt({{.PoolsDistribution.Height }}) ? parseInt({{.PoolsDistribution.Height }}) : 300,                       },
+        rangeSelector: { enabled: false },
+        title: {
+        useHTML: true,
+        text: '<a class="text-dark" href="/pools">{{.PoolsDistribution.Data.Title}}</a>',
+    },
+        subtitle: {
+        useHTML: true,
+        text: '<span class="text-dark">{{.PoolsDistribution.Data.Subtitle}}</span>'{{ if .PoolsDistribution.Data.ShowGapHider }} + ' <button class="button btn-secondary btn-xs hide-gaps text-light">hide gaps</button>'{{ end }}
+                                },
+        plotOptions: {
+        column: { stacking: {{.PoolsDistribution.Data.StackingMode }} },
+        {{ if .PoolsDistribution.Data.PlotOptionsPie }}pie: {{.PoolsDistribution.Data.PlotOptionsPie }}, {{ end }}
+        series: {
+        events: {
+            click: function (event) {
+                if (event.point.name === "Others") return
+
+                if (poolInfoTable) {
+                    if (event.point.name === "Whales") {
+                        poolInfoTable.search("Whale").draw();
+                    } else poolInfoTable.search(event.point.name).draw();
+                }
+            }
+        },
+                                        {{ if .PoolsDistribution.Data.PlotOptionsSeriesCursor }}cursor: {{.PoolsDistribution.Data.PlotOptionsSeriesCursor }}, {{ end }}
+                                        
+                                    },
+                                },
+        xAxis: {
+        labels: {
+                                        {{ if .PoolsDistribution.Data.XAxisLabelsFormatter }}formatter: {{.PoolsDistribution.Data.XAxisLabelsFormatter }}, {{ end }}
+                                    }
+                                },
+        yAxis: [{
+            type: 'logarithmic',
+            title: { text: {{.PoolsDistribution.Data.YAxisTitle }} },
+        opposite: false
+                                }],
+        legend: { enabled: false },
+        series: {{.PoolsDistribution.Data.Series }},
+        navigator: { enabled: false },
+        scrollbar: { enabled: false },
+        tooltip: {
+                                    {{ if .PoolsDistribution.Data.TooltipFormatter }}formatter: {{.PoolsDistribution.Data.TooltipFormatter }}, {{ end }}
+                                },
+        responsive: {
+        rules: [
+            {
+                condition: {
+                    maxWidth: 620
+                },
+                chartOptions: {
+                    plotOptions: {
+                        pie: {
+                            dataLabels: {
+                                // enabled: false,
+                                distance: 0,
+                                overflow: 'crop',
+                                formatter: function () {
+                                    if (this.point.percentage > 5) {
+                                        var name = this.point.name.length > 6 ? this.point.name.substring(0, 6) : this.point.name;
+                                        return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">' + name + '…</b><span style="stroke:none; fill: var(--font-color)">: ' + this.point.percentage.toFixed(2) + '%</span></span>'
+                                    } else {
+                                        return ''
+                                    }
+                                },
+                            }
+                        }
+                    },
+
+                    chart: {
+                        // marginRight: 80
+                    },
+                }
+            }
+        ]
+    },
+                            })
+                        })
+</script>
 {{end}}
 
 {{ define "css"}}
@@ -482,96 +573,4 @@
     </div>
 </section>
 <div id="tempcont" class=""></div>
-<script src="/js/jquery.min.js"></script>
-<script src="/js/luxon.min.js"></script>
-<script>
-
-    window.addEventListener('load', function () {
-        Highcharts.chart('pools-distribution-chart', {
-            chart: {
-                type: {{.Data.PoolsDistribution.Data.Type }},
-        borderColor: null,
-        backgroundColor: "rgba(0,0,0,0.0)",
-        height: parseInt({{.Data.PoolsDistribution.Height }}) ? parseInt({{.Data.PoolsDistribution.Height }}) : 300,                       },
-        rangeSelector: { enabled: false },
-        title: {
-        useHTML: true,
-        text: '<a class="text-dark" href="/pools">{{.Data.PoolsDistribution.Data.Title}}</a>',
-    },
-        subtitle: {
-        useHTML: true,
-        text: '<span class="text-dark">{{.Data.PoolsDistribution.Data.Subtitle}}</span>'{{ if .Data.PoolsDistribution.Data.ShowGapHider }} + ' <button class="button btn-secondary btn-xs hide-gaps text-light">hide gaps</button>'{{ end }}
-                                },
-        plotOptions: {
-        column: { stacking: {{.Data.PoolsDistribution.Data.StackingMode }} },
-        {{ if .Data.PoolsDistribution.Data.PlotOptionsPie }}pie: {{.Data.PoolsDistribution.Data.PlotOptionsPie }}, {{ end }}
-        series: {
-        events: {
-            click: function (event) {
-                if (event.point.name === "Others") return
-
-                if (poolInfoTable) {
-                    if (event.point.name === "Whales") {
-                        poolInfoTable.search("Whale").draw();
-                    } else poolInfoTable.search(event.point.name).draw();
-                }
-            }
-        },
-                                        {{ if .Data.PoolsDistribution.Data.PlotOptionsSeriesCursor }}cursor: {{.Data.PoolsDistribution.Data.PlotOptionsSeriesCursor }}, {{ end }}
-                                        
-                                    },
-                                },
-        xAxis: {
-        labels: {
-                                        {{ if .Data.PoolsDistribution.Data.XAxisLabelsFormatter }}formatter: {{.Data.PoolsDistribution.Data.XAxisLabelsFormatter }}, {{ end }}
-                                    }
-                                },
-        yAxis: [{
-            type: 'logarithmic',
-            title: { text: {{.Data.PoolsDistribution.Data.YAxisTitle }} },
-        opposite: false
-                                }],
-        legend: { enabled: false },
-        series: {{.Data.PoolsDistribution.Data.Series }},
-        navigator: { enabled: false },
-        scrollbar: { enabled: false },
-        tooltip: {
-                                    {{ if .Data.PoolsDistribution.Data.TooltipFormatter }}formatter: {{.Data.PoolsDistribution.Data.TooltipFormatter }}, {{ end }}
-                                },
-        responsive: {
-        rules: [
-            {
-                condition: {
-                    maxWidth: 620
-                },
-                chartOptions: {
-                    plotOptions: {
-                        pie: {
-                            dataLabels: {
-                                // enabled: false,
-                                distance: 0,
-                                overflow: 'crop',
-                                formatter: function () {
-                                    if (this.point.percentage > 5) {
-                                        var name = this.point.name.length > 6 ? this.point.name.substring(0, 6) : this.point.name;
-                                        return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">' + name + '…</b><span style="stroke:none; fill: var(--font-color)">: ' + this.point.percentage.toFixed(2) + '%</span></span>'
-                                    } else {
-                                        return ''
-                                    }
-                                },
-                            }
-                        }
-                    },
-
-                    chart: {
-                        // marginRight: 80
-                    },
-                }
-            }
-        ]
-    },
-                            })
-                        })
-</script>
-
 {{end}}
