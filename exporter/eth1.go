@@ -160,7 +160,8 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 	txsToFetch := []string{}
 
 	cfg := params.BeaconConfig()
-	genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Config.GenesisForkVersion.String(), "0x", "", -1))
+	genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Config.GenesisForkVersion, "0x", "", -1))
+	// genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Config.GenesisForkVersion.String(), "0x", "", -1))
 	if err != nil {
 		return nil, err
 	}

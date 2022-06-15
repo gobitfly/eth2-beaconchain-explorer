@@ -1,43 +1,38 @@
 package types
 
-import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-)
-
 // https://github.com/ethereum/consensus-specs/blob/dev/configs/mainnet.yaml
 type ChainConfig struct {
-	PresetBase                       string        `yaml:"PRESET_BASE"`
-	ConfigName                       string        `yaml:"CONFIG_NAME"`
-	TerminalTotalDifficulty          hexutil.Big   `yaml:"TERMINAL_TOTAL_DIFFICULTY"`
-	TerminalBlockHash                common.Hash   `yaml:"TERMINAL_BLOCK_HASH"`
-	TerminalBlockHashActivationEpoch uint64        `yaml:"TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH"`
-	MinGenesisActiveValidatorCount   uint64        `yaml:"MIN_GENESIS_ACTIVE_VALIDATOR_COUNT"`
-	MinGenesisTime                   int64         `yaml:"MIN_GENESIS_TIME"`
-	GenesisForkVersion               hexutil.Bytes `yaml:"GENESIS_FORK_VERSION"`
-	GenesisDelay                     uint64        `yaml:"GENESIS_DELAY"`
-	AltairForkVersion                hexutil.Bytes `yaml:"ALTAIR_FORK_VERSION"`
-	AltairForkEpoch                  uint64        `yaml:"ALTAIR_FORK_EPOCH"`
-	BellatrixForkVersion             hexutil.Bytes `yaml:"BELLATRIX_FORK_VERSION"`
-	BellatrixForkEpoch               uint64        `yaml:"BELLATRIX_FORK_EPOCH"`
-	CappellaForkVersion              hexutil.Bytes `yaml:"CAPELLA_FORK_VERSION"`
-	CappellaForkEpoch                uint64        `yaml:"CAPELLA_FORK_EPOCH"`
-	ShardingForkVersion              hexutil.Bytes `yaml:"SHARDING_FORK_VERSION"`
-	ShardingForkEpoch                uint64        `yaml:"SHARDING_FORK_EPOCH"`
-	SecondsPerSlot                   uint64        `yaml:"SECONDS_PER_SLOT"`
-	SecondsPerEth1Block              uint64        `yaml:"SECONDS_PER_ETH1_BLOCK"`
-	MinValidatorWithdrawabilityDelay uint64        `yaml:"MIN_VALIDATOR_WITHDRAWABILITY_DELAY"`
-	ShardCommitteePeriod             uint64        `yaml:"SHARD_COMMITTEE_PERIOD"`
-	Eth1FollowDistance               uint64        `yaml:"ETH1_FOLLOW_DISTANCE"`
-	InactivityScoreBias              uint64        `yaml:"INACTIVITY_SCORE_BIAS"`
-	InactivityScoreRecoveryRate      uint64        `yaml:"INACTIVITY_SCORE_RECOVERY_RATE"`
-	EjectionBalance                  uint64        `yaml:"EJECTION_BALANCE"`
-	MinPerEpochChurnLimit            uint64        `yaml:"MIN_PER_EPOCH_CHURN_LIMIT"`
-	ChurnLimitQuotient               uint64        `yaml:"CHURN_LIMIT_QUOTIENT"`
-	ProposerScoreBoost               uint64        `yaml:"PROPOSER_SCORE_BOOST"`
-	DepositChainID                   uint64        `yaml:"DEPOSIT_CHAIN_ID"`
-	DepositNetworkID                 uint64        `yaml:"DEPOSIT_NETWORK_ID"`
-	DepositContractAddress           uint64        `yaml:"DEPOSIT_CONTRACT_ADDRESS"`
+	PresetBase                       string `yaml:"PRESET_BASE"`
+	ConfigName                       string `yaml:"CONFIG_NAME"`
+	TerminalTotalDifficulty          string `yaml:"TERMINAL_TOTAL_DIFFICULTY"`
+	TerminalBlockHash                string `yaml:"TERMINAL_BLOCK_HASH"`
+	TerminalBlockHashActivationEpoch uint64 `yaml:"TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH"`
+	MinGenesisActiveValidatorCount   uint64 `yaml:"MIN_GENESIS_ACTIVE_VALIDATOR_COUNT"`
+	MinGenesisTime                   int64  `yaml:"MIN_GENESIS_TIME"`
+	GenesisForkVersion               string `yaml:"GENESIS_FORK_VERSION"`
+	GenesisDelay                     uint64 `yaml:"GENESIS_DELAY"`
+	AltairForkVersion                string `yaml:"ALTAIR_FORK_VERSION"`
+	AltairForkEpoch                  uint64 `yaml:"ALTAIR_FORK_EPOCH"`
+	BellatrixForkVersion             string `yaml:"BELLATRIX_FORK_VERSION"`
+	BellatrixForkEpoch               uint64 `yaml:"BELLATRIX_FORK_EPOCH"`
+	CappellaForkVersion              string `yaml:"CAPELLA_FORK_VERSION"`
+	CappellaForkEpoch                uint64 `yaml:"CAPELLA_FORK_EPOCH"`
+	ShardingForkVersion              string `yaml:"SHARDING_FORK_VERSION"`
+	ShardingForkEpoch                uint64 `yaml:"SHARDING_FORK_EPOCH"`
+	SecondsPerSlot                   uint64 `yaml:"SECONDS_PER_SLOT"`
+	SecondsPerEth1Block              uint64 `yaml:"SECONDS_PER_ETH1_BLOCK"`
+	MinValidatorWithdrawabilityDelay uint64 `yaml:"MIN_VALIDATOR_WITHDRAWABILITY_DELAY"`
+	ShardCommitteePeriod             uint64 `yaml:"SHARD_COMMITTEE_PERIOD"`
+	Eth1FollowDistance               uint64 `yaml:"ETH1_FOLLOW_DISTANCE"`
+	InactivityScoreBias              uint64 `yaml:"INACTIVITY_SCORE_BIAS"`
+	InactivityScoreRecoveryRate      uint64 `yaml:"INACTIVITY_SCORE_RECOVERY_RATE"`
+	EjectionBalance                  uint64 `yaml:"EJECTION_BALANCE"`
+	MinPerEpochChurnLimit            uint64 `yaml:"MIN_PER_EPOCH_CHURN_LIMIT"`
+	ChurnLimitQuotient               uint64 `yaml:"CHURN_LIMIT_QUOTIENT"`
+	ProposerScoreBoost               uint64 `yaml:"PROPOSER_SCORE_BOOST"`
+	DepositChainID                   uint64 `yaml:"DEPOSIT_CHAIN_ID"`
+	DepositNetworkID                 uint64 `yaml:"DEPOSIT_NETWORK_ID"`
+	DepositContractAddress           string `yaml:"DEPOSIT_CONTRACT_ADDRESS"`
 
 	// phase0
 	// https://github.com/ethereum/consensus-specs/blob/dev/presets/mainnet/phase0.yaml

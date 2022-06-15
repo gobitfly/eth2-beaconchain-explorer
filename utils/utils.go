@@ -29,7 +29,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
@@ -258,13 +258,14 @@ func ReadConfig(cfg *types.Config, path string) error {
 		return err
 	}
 
+	logrus.WithFields(logrus.Fields{"path": cfg.Chain.ConfigPath}).Infof("reading chain-config")
 	f, err := os.Open(cfg.Chain.ConfigPath)
 	if err != nil {
 		logrus.Errorf("error opening Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
 	} else {
 		var chainConfig *types.ChainConfig
 		decoder := yaml.NewDecoder(f)
-		err = decoder.Decode(chainConfig)
+		err = decoder.Decode(&chainConfig)
 		if err != nil {
 			logrus.Errorf("error decoding Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
 		} else {
