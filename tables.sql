@@ -35,6 +35,14 @@ create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
 create index idx_validators_activationepoch on validators (activationepoch);
 
+drop table if exists validator_pool;
+create table validator_pool
+(
+    publickey bytea not null,
+    pool      varchar(40),
+    primary key (publickey)
+);
+
 drop table if exists validator_names;
 create table validator_names
 (

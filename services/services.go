@@ -22,6 +22,7 @@ var latestProposedSlot uint64
 var latestValidatorCount uint64
 var indexPageData atomic.Value
 var chartsPageData atomic.Value
+var poolsData atomic.Value
 var ready = sync.WaitGroup{}
 
 var latestStats atomic.Value
@@ -33,15 +34,17 @@ var logger = logrus.New().WithField("module", "services")
 
 // Init will initialize the services
 func Init() {
-	ready.Add(4)
+	ready.Add(5)
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
 
 	if utils.Config.Frontend.OnlyAPI {
 		ready.Done()
+		ready.Done()
 	} else {
 		go indexPageDataUpdater()
+		go poolsUpdater()
 	}
 	ready.Wait()
 
@@ -64,7 +67,7 @@ func InitNotifications() {
 func epochUpdater() {
 	firstRun := true
 
-	for true {
+	for {
 		var latestFinalized uint64
 		err := db.WriterDb.Get(&latestFinalized, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
 		if err != nil {
@@ -92,7 +95,7 @@ func epochUpdater() {
 func slotUpdater() {
 	firstRun := true
 
-	for true {
+	for {
 		var slot uint64
 		err := db.WriterDb.Get(&slot, "SELECT COALESCE(MAX(slot), 0) FROM blocks where slot < $1", utils.TimeToSlot(uint64(time.Now().Add(time.Second*10).Unix())))
 
@@ -110,10 +113,41 @@ func slotUpdater() {
 	}
 }
 
+func poolsUpdater() {
+	firstRun := true
+
+	for {
+		data, err := getPoolsPageData()
+		if err != nil {
+			logger.Errorf("error retrieving pools page data: %v", err)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+		poolsData.Store(data)
+		if firstRun {
+			logger.Info("initialized pools page updater")
+			ready.Done()
+			firstRun = false
+		}
+		time.Sleep(time.Minute * 10)
+	}
+}
+
+func getPoolsPageData() (*types.PoolsResp, error) {
+	var poolData types.PoolsResp
+
+	err := db.ReaderDb.Select(&poolData.PoolInfos, "select coalesce(pool, 'Unknown') as name, count(*) as count, avg(performance31d)::integer as avg_performance_31d, avg(performance7d)::integer as avg_performance_7d, avg(performance1d)::integer as avg_performance_1d from validators left outer join validator_pool on validators.pubkey = validator_pool.publickey left outer join validator_performance on validators.validatorindex = validator_performance.validatorindex where validators.status in ('active_online', 'active_offline') group by name order by count(*) desc;")
+	if err != nil {
+		return nil, err
+	}
+
+	return &poolData, nil
+}
+
 func latestProposedSlotUpdater() {
 	firstRun := true
 
-	for true {
+	for {
 		var slot uint64
 		err := db.WriterDb.Get(&slot, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
 
@@ -134,7 +168,7 @@ func latestProposedSlotUpdater() {
 func indexPageDataUpdater() {
 	firstRun := true
 
-	for true {
+	for {
 		data, err := getIndexPageData()
 		if err != nil {
 			logger.Errorf("error retrieving index page data: %v", err)
@@ -427,6 +461,11 @@ func LatestProposedSlot() uint64 {
 // LatestIndexPageData returns the latest index page data
 func LatestIndexPageData() *types.IndexPageData {
 	return indexPageData.Load().(*types.IndexPageData)
+}
+
+// LatestPoolsPageData returns the latest pools page data
+func LatestPoolsPageData() *types.PoolsResp {
+	return poolsData.Load().(*types.PoolsResp)
 }
 
 func LatestValidatorCount() uint64 {

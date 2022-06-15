@@ -18,7 +18,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 	total, err := db.GetTotalEligibleEther()
 	if err != nil {
 		logger.WithError(err).Error("error getting total staked ether")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -33,7 +33,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 	err = stakingCalculatorTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
