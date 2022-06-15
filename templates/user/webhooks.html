@@ -1,7 +1,22 @@
 {{ define "js"}}
+<script>
+    document.querySelectorAll('code').forEach(code => {
+        try {
+            let j = JSON.parse(code.innerHTML)
+            code.innerHTML = JSON.stringify(j, null, '\t')
+
+        } catch(err) {
+            console.log("error failed to format json:", err);
+        }
+    })
+</script>
+
+<script src="/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
 
 {{end}}
 {{ define "css"}}
+<link rel="stylesheet" href="/highlight/styles/base16/dracula.min.css">
 <style>
     .webhook-table .i-custom:hover {
         border-radius: 50%;
@@ -84,7 +99,13 @@
                                 {{range $i, $row := .WebhookRows}}
                                     <tr>
                                         <td>{{$row.Url}}</td>
-                                        <td>{{$row.Retries}}</td>
+                                        <td>{{$row.Retries}}
+                                            {{ if ne $row.Retries "0" }}
+                                            <span class="ml-2 cursor-pointer" id="webhook-retries-{{$i}}" data-toggle="modal" data-target="#debug-modal-{{$row.ID}}">
+                                                <i class="fas fa-question"></i>
+                                            </span>
+                                            {{ end }}
+                                        </td>
                                         <td>{{$row.LastSent}}</td>
                                         <td style="text-align: center;">
                                             <i class="fas fa-pen fa-xs text-muted i-custom mx-2" id="edit-webhook-btn" title="Edit webhook" style="padding: .5rem; cursor: pointer;" data-toggle="modal" data-target="#edit-webhook-modal-{{$row.ID}}"></i>
@@ -112,6 +133,7 @@
             {{range $i, $row := .WebhookRows}}
                 {{ template "ConfirmRemoveModal" $row }}
                 {{ template "EditModalWebhook" $row }}
+                {{ template "DebugModal" $row}}
             {{end}}
         </div>
     {{end}}
@@ -230,6 +252,42 @@
                     <button type="submit" class="btn btn-primary btn-danger btn-sm w-50 ml-sm-3 text-white">Remove</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+{{ end }}
+
+{{ define "DebugModal" }}
+<div class="modal fade" id="debug-modal-{{.ID}}" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 80% !important">
+        <div class="modal-content custom-background-color custom-remove-modal row mx-0">
+            <div class="mb-4 custom-remove-modal-close">
+                <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="w-100 mb-2 heading-l2 text-center h4">Most recent webhook request</div>
+            <!-- <div class="col-12 d-flex align-items-center mb-3 px-0 h6 h5">
+                <span class="text-left font-weight-normal my-2" id="modaltext">
+                    View information about the most recent webhook request to see why it was not delivered.
+                </span>
+            </div> -->
+            <div class="w-100 my-3">
+                <details class="my-3">
+                    <summary class="h5" id="detail-modal-{{.ID}}-request-summary">
+                        {{.WebhookError.SummaryRequest}}
+                    </summary>
+                    <p id="detail-modal-{{.ID}}-request-content">
+                        {{.WebhookError.ContentRequest}}
+                    </p>
+                </details>
+                <details open class="my-3">
+                    <summary class="h5" id="detail-modal-{{.ID}}-response-summary">
+                        {{.WebhookError.SummaryResponse}}
+                    </summary>
+                    <p id="detail-modal-{{.ID}}-response-content">
+                        {{.WebhookError.ContentResponse}}
+                    </p>
+                </details>
+            </div>
         </div>
     </div>
 </div>

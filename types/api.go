@@ -1,5 +1,12 @@
 package types
 
+import (
+	"database/sql/driver"
+	"encoding/json"
+
+	"github.com/pkg/errors"
+)
+
 type ApiResponse struct {
 	Status string      `json:"status"`
 	Data   interface{} `json:"data"`
@@ -127,4 +134,17 @@ type DiscordReq struct {
 	Payload         string             `json:"payload,omitempty"`
 	Attachments     interface{}        `json:"attachments,omitempty"`
 	Flags           int                `json:"flags,omitempty"`
+}
+
+func (e *DiscordReq) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &e)
+}
+
+func (a DiscordReq) Value() (driver.Value, error) {
+	return json.Marshal(a)
 }
