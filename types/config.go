@@ -133,7 +133,7 @@ type Config struct {
 		} `yaml:"countdown"`
 		PoolsUpdater struct {
 			Enabled bool `yaml:"enabled" envconfig:"FRONTEND_POOLS_UPDATER"`
-		}
+		} `yaml:"poolsUpdater"`
 	} `yaml:"frontend"`
 	Metrics struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`
@@ -141,6 +141,7 @@ type Config struct {
 	} `yaml:"metrics"`
 	Notifications struct {
 		Enabled                                       bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+		Sender                                        bool   `yaml:"sender" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
 		UserDBNotifications                           bool   `yaml:"userDbNotifications" envconfig:"FRONTEND_USERDB_NOTIFICATIONS_ENABLED"`
 		FirebaseCredentialsPath                       string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
 		ValidatorBalanceDecreasedNotificationsEnabled bool   `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"FRONTEND_VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`

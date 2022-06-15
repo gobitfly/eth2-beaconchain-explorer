@@ -1,5 +1,12 @@
 package types
 
+import (
+	"database/sql/driver"
+	"encoding/json"
+
+	"github.com/pkg/errors"
+)
+
 type ApiResponse struct {
 	Status string      `json:"status"`
 	Data   interface{} `json:"data"`
@@ -101,16 +108,43 @@ type DiscordEmbedField struct {
 	Value  string `json:"value"`
 }
 
+type DiscordComponent struct {
+	Type       uint64                   `json:"type"`
+	Components []DiscordComponentButton `json:"components"`
+}
+
+type DiscordComponentButton struct {
+	Style    uint64 `json:"style"`
+	CustomID string `json:"custom_id"`
+	Label    string `json:"label"`
+	URL      string `json:"url"`
+	Disabled bool   `json:"disabled"`
+	Type     uint64 `json:"type"`
+}
+
 type DiscordReq struct {
-	Content         string         `json:"content,omitempty"`
-	Username        string         `json:"username,omitempty"`
-	Avatar_url      string         `json:"avatar_url,omitempty"`
-	Tts             bool           `json:"tts,omitempty"`
-	Embeds          []DiscordEmbed `json:"embeds,omitempty"`
-	AllowedMentions []interface{}  `json:"allowedMentions,omitempty"`
-	Components      []interface{}  `json:"components,omitempty"`
-	Files           interface{}    `json:"files,omitempty"`
-	Payload         string         `json:"payload,omitempty"`
-	Attachments     interface{}    `json:"attachments,omitempty"`
-	Flags           int            `json:"flags,omitempty"`
+	Content         string             `json:"content,omitempty"`
+	Username        string             `json:"username,omitempty"`
+	Avatar_url      string             `json:"avatar_url,omitempty"`
+	Tts             bool               `json:"tts,omitempty"`
+	Embeds          []DiscordEmbed     `json:"embeds,omitempty"`
+	AllowedMentions []interface{}      `json:"allowedMentions,omitempty"`
+	Components      []DiscordComponent `json:"components,omitempty"`
+	Files           interface{}        `json:"files,omitempty"`
+	Payload         string             `json:"payload,omitempty"`
+	Attachments     interface{}        `json:"attachments,omitempty"`
+	Flags           int                `json:"flags,omitempty"`
+}
+
+func (e *DiscordReq) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &e)
+}
+
+func (a DiscordReq) Value() (driver.Value, error) {
+	return json.Marshal(a)
 }

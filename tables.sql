@@ -35,6 +35,14 @@ create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
 create index idx_validators_activationepoch on validators (activationepoch);
 
+drop table if exists validator_pool;
+create table validator_pool
+(
+    publickey bytea not null,
+    pool      varchar(40),
+    primary key (publickey)
+);
+
 drop table if exists validator_names;
 create table validator_names
 (
@@ -608,8 +616,6 @@ create table notification_queue(
     content             jsonb not null
 );
 
-drop table if exists notification_
-
 -- deprecated
 -- drop table if exists users_notifications;
 -- create table users_notifications
@@ -648,6 +654,8 @@ create table users_webhooks
     -- label             varchar(200)            not null,
     url               character varying(1024) not null,
     retries           int                     not null default 0, -- a backoff parameter that indicates if the requests was successful and when to retry it again
+    request           jsonb,
+    response          jsonb,
     last_sent         timestamp without time zone,
     event_names       text[]                  not null,
     destination       character varying(200), -- discord for example could be a destination and the request would be adapted

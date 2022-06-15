@@ -66,7 +66,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	err := dashboardTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error executing template")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -102,14 +102,14 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	err = db.ReaderDb.Select(&incomeHistory, "SELECT day, COALESCE(SUM(start_balance),0) AS start_balance, COALESCE(SUM(end_balance),0) AS end_balance, COALESCE(SUM(deposits_amount), 0) AS deposits_amount FROM validator_stats WHERE validatorindex = ANY($1) GROUP BY day ORDER BY day;", queryValidatorsArr)
 	if err != nil {
 		logger.Errorf("error retrieving validator balance history: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	var currentBalance uint64
 	err = db.ReaderDb.Get(&currentBalance, "SELECT SUM(balance) as balance FROM validators WHERE validatorindex = ANY($1) AND status <> 'deposited'", queryValidatorsArr)
 	if err != nil {
 		logger.Errorf("error retrieving validator current balance: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -147,7 +147,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(incomeHistoryChartData)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -176,7 +176,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 		ORDER BY slot`, filter)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving block-proposals")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -191,7 +191,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(proposalsResult)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -228,7 +228,7 @@ func DashboardDataMissedAttestations(w http.ResponseWriter, r *http.Request) {
 			AND status = 0`, filter, maxEpoch, minEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving daily proposed blocks blocks count")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -246,7 +246,7 @@ func DashboardDataMissedAttestations(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(result)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -301,7 +301,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator data")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -379,7 +379,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error enconding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -398,7 +398,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 	earnings, err := GetValidatorEarnings(queryValidators, GetCurrency(r))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator earnings")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 	}
 
 	if earnings == nil {
@@ -408,7 +408,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(earnings)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error enconding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -453,14 +453,14 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	`, int64(services.LatestEpoch())-100, activeValidators)
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(avgIncDistance)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -492,7 +492,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 		ORDER BY day DESC`, filter)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving validator_stats")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -520,7 +520,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(proposalsHistResult)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
