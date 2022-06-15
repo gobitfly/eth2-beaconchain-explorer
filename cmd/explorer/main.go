@@ -70,13 +70,12 @@ func main() {
 	})
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
-
 	db.MustInitFrontendDB(&types.DatabaseConfig{
 		Username: cfg.Frontend.WriterDatabase.Username,
 		Password: cfg.Frontend.WriterDatabase.Password,
 		Name:     cfg.Frontend.WriterDatabase.Name,
 		Host:     cfg.Frontend.WriterDatabase.Host,
-		Port:     cfg.WriterDatabase.Port,
+		Port:     cfg.Frontend.WriterDatabase.Port,
 	}, &types.DatabaseConfig{
 		Username: cfg.Frontend.ReaderDatabase.Username,
 		Password: cfg.Frontend.ReaderDatabase.Password,
@@ -315,8 +314,8 @@ func main() {
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
 			if utils.Config.Frontend.PoolsUpdater.Enabled {
 				router.HandleFunc("/pools", handlers.Pools).Methods("GET")
-				router.HandleFunc("/pools/streak/current", handlers.GetAvgCurrentStreak).Methods("GET")
-				router.HandleFunc("/pools/chart/income_per_eth", handlers.GetIncomePerEthChart).Methods("GET")
+				// router.HandleFunc("/pools/streak/current", handlers.GetAvgCurrentStreak).Methods("GET")
+				// router.HandleFunc("/pools/chart/income_per_eth", handlers.GetIncomePerEthChart).Methods("GET")
 			}
 			router.HandleFunc("/pools/rocketpool", handlers.PoolsRocketpool).Methods("GET")
 			router.HandleFunc("/pools/rocketpool/data/minipools", handlers.PoolsRocketpoolDataMinipools).Methods("GET")
@@ -467,7 +466,7 @@ func main() {
 	}
 
 	if utils.Config.Frontend.PoolsUpdater.Enabled {
-		services.InitPools() // making sure the website is available before updating
+		// services.InitPools() // making sure the website is available before updating
 	}
 
 	utils.WaitForCtrlC()

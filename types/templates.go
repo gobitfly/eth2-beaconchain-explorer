@@ -1217,3 +1217,16 @@ type WebhookPageEvent struct {
 	EventName
 	Active bool
 }
+
+type PoolsResp struct {
+	PoolsDistribution ChartsPageDataChart
+	PoolInfos         []*PoolInfo
+}
+
+type PoolInfo struct {
+	Name              string `db:"name"`
+	Count             int64  `db:"count"`
+	AvgPerformance31d int64  `db:"avg_performance_31d"`
+	AvgPerformance7d  int64  `db:"avg_performance_7d"`
+	AvgPerformance1d  int64  `db:"avg_performance_1d"`
+}
