@@ -11,9 +11,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 )
 
 const searchValidatorsResultLimit = 300
@@ -150,6 +152,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 
 		err = db.ReaderDb.Select(result, query, search)
 	case "eth1_addresses":
+		start := time.Now()
 		if len(search) <= 1 {
 			break
 		}
@@ -158,12 +161,21 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			search = search[:len(search)-1]
 		}
 		if searchLikeRE.MatchString(search) {
+			eth1AddressHash, err := hex.DecodeString(search)
+			if err != nil {
+				logger.Errorf("error parsing eth1AddressHash to hash: %v", err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
 			err = db.ReaderDb.Select(result, `
-				SELECT DISTINCT ENCODE(from_address, 'hex') as from_address
+				SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
 				FROM eth1_deposits
-				WHERE ENCODE(from_address, 'hex') LIKE LOWER($1)
-				LIMIT 10`, search+"%")
+				WHERE from_address LIKE $1 || '%'::bytea 
+				LIMIT 10`, eth1AddressHash)
 		}
+		logger.WithFields(logrus.Fields{
+			"duration": time.Since(start),
+		}).Infof("finished searching for eth1_addresses")
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}

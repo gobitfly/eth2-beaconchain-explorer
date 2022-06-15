@@ -441,6 +441,7 @@ create table eth1_deposits
     primary key (tx_hash, merkletree_index)
 );
 create index idx_eth1_deposits on eth1_deposits (publickey);
+create index idx_eth1_deposits_from_address on eth1_deposits (from_address);
 
 drop table if exists users;
 create table users
