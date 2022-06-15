@@ -47,7 +47,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 		if err != nil {
 			logger.Errorf("error parsing blockslot to int: %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	}
@@ -60,14 +60,14 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 			if err != nil {
 				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-				http.Error(w, "Internal server error", 503)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 				return
 			}
 			return
 		}
 		if err != nil {
 			logger.Errorf("error retrieving entry count of given block or state data: %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	}
@@ -327,7 +327,6 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 	blockSlot := int64(-1)
 	blockRootHash, err := hex.DecodeString(slotOrHash)
 	if err != nil || len(slotOrHash) != 64 {
-		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 		if err != nil {
 			logger.Errorf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
@@ -349,9 +348,6 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := r.URL.Query()
-
-	search := q.Get("search[value]")
-	search = strings.Replace(search, "0x", "", -1)
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {

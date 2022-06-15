@@ -140,6 +140,9 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 				VALUES %s ON CONFLICT (slot, validatorindex, week) DO NOTHING`,
 				strings.Join(valueIds, ",")),
 			valueArgs...)
+		if err != nil {
+			return err
+		}
 	}
 
 	return tx.Commit()

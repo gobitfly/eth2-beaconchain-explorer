@@ -75,7 +75,7 @@ func Start(client rpc.Client) error {
 			logger.Fatal(err)
 		}
 
-		for epoch := head.HeadEpoch - 1; epoch >= 0; epoch-- {
+		for epoch := head.HeadEpoch - 1; true; epoch-- {
 			blocks, err := client.GetBlockStatusByEpoch(epoch)
 			if err != nil {
 				logger.Errorf("error retrieving block status: %v", err)
@@ -85,6 +85,9 @@ func Start(client rpc.Client) error {
 			if err != nil {
 				logger.Errorf("error saving block status: %v", err)
 				continue
+			}
+			if epoch == 0 {
+				break
 			}
 		}
 	}
@@ -169,7 +172,7 @@ func Start(client rpc.Client) error {
 			} else if block.Node == nil {
 				logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
-			} else if bytes.Compare(block.Db.BlockRoot, block.Node.BlockRoot) != 0 {
+			} else if !bytes.Equal(block.Db.BlockRoot, block.Node.BlockRoot) {
 				logger.Printf("queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
 			}
@@ -217,22 +220,18 @@ func Start(client rpc.Client) error {
 	doFullCheck(client)
 
 	for {
-		select {
-		case block := <-newBlockChan:
-			// Do a full check on any epoch transition or after during the first run
-			if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
-				doFullCheck(client)
-			} else { // else just save the in epoch block
-				err := db.SaveBlock(block)
-				if err != nil {
-					logger.Errorf("error saving block: %v", err)
-				}
+		block := <-newBlockChan
+		// Do a full check on any epoch transition or after during the first run
+		if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
+			doFullCheck(client)
+		} else { // else just save the in epoch block
+			err := db.SaveBlock(block)
+			if err != nil {
+				logger.Errorf("error saving block: %v", err)
 			}
-			lastExportedSlot = block.Slot
 		}
+		lastExportedSlot = block.Slot
 	}
-
-	return nil
 }
 
 // Will ensure the db is fully in sync with the node
@@ -309,7 +308,7 @@ func doFullCheck(client rpc.Client) {
 		} else if block.Node == nil {
 			logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
 			epochsToExport[block.Epoch] = true
-		} else if bytes.Compare(block.Db.BlockRoot, block.Node.BlockRoot) != 0 {
+		} else if !bytes.Equal(block.Db.BlockRoot, block.Node.BlockRoot) {
 			logger.Printf("queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
 			epochsToExport[block.Epoch] = true
 		}
@@ -709,40 +708,40 @@ func updateValidatorPerformance() error {
 	return tx.Commit()
 }
 
-func finalityCheckpointsUpdater(client rpc.Client) {
-	t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.SecondsPerSlot))
-	for range t.C {
-		var prevEpoch uint64
-		err := db.WriterDb.Get(&prevEpoch, `select coalesce(max(epoch),1) from finality_checkpoints`)
-		if err != nil {
-			logger.WithError(err).Errorf("error getting last exported finality_checkpoints from db")
-			continue
-		}
-		nextEpoch := prevEpoch + 1
-		checkpoints, err := client.GetFinalityCheckpoints(nextEpoch)
-		if err != nil {
-			logger.WithFields(logrus.Fields{"error": err, "epoch": nextEpoch}).Errorf("error getting finality_checkpoints from client")
-			continue
-		}
-		_, err = db.WriterDb.Exec(`
-			insert into finality_checkpoints (
-				epoch, 
-				current_justified_epoch, current_justified_root, 
-				previous_justified_epoch, previous_justified_root, 
-				finalized_epoch, finalized_root
-			)
-			values ($1, $2, $3, $4, $5, $6, $7)`,
-			nextEpoch,
-			checkpoints.CurrentJustified.Epoch, checkpoints.CurrentJustified.Root,
-			checkpoints.PreviousJustified.Epoch, checkpoints.PreviousJustified.Root,
-			checkpoints.Finalized.Epoch, checkpoints.Finalized.Root,
-		)
-		if err != nil {
-			logger.WithFields(logrus.Fields{"error": err, "epoch": nextEpoch}).Errorf("error inserting finality_checkpoints into db")
-			continue
-		}
-	}
-}
+// func finalityCheckpointsUpdater(client rpc.Client) {
+// 	t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.SecondsPerSlot))
+// 	for range t.C {
+// 		var prevEpoch uint64
+// 		err := db.WriterDb.Get(&prevEpoch, `select coalesce(max(epoch),1) from finality_checkpoints`)
+// 		if err != nil {
+// 			logger.WithError(err).Errorf("error getting last exported finality_checkpoints from db")
+// 			continue
+// 		}
+// 		nextEpoch := prevEpoch + 1
+// 		checkpoints, err := client.GetFinalityCheckpoints(nextEpoch)
+// 		if err != nil {
+// 			logger.WithFields(logrus.Fields{"error": err, "epoch": nextEpoch}).Errorf("error getting finality_checkpoints from client")
+// 			continue
+// 		}
+// 		_, err = db.WriterDb.Exec(`
+// 			insert into finality_checkpoints (
+// 				epoch,
+// 				current_justified_epoch, current_justified_root,
+// 				previous_justified_epoch, previous_justified_root,
+// 				finalized_epoch, finalized_root
+// 			)
+// 			values ($1, $2, $3, $4, $5, $6, $7)`,
+// 			nextEpoch,
+// 			checkpoints.CurrentJustified.Epoch, checkpoints.CurrentJustified.Root,
+// 			checkpoints.PreviousJustified.Epoch, checkpoints.PreviousJustified.Root,
+// 			checkpoints.Finalized.Epoch, checkpoints.Finalized.Root,
+// 		)
+// 		if err != nil {
+// 			logger.WithFields(logrus.Fields{"error": err, "epoch": nextEpoch}).Errorf("error inserting finality_checkpoints into db")
+// 			continue
+// 		}
+// 	}
+// }
 
 func networkLivenessUpdater(client rpc.Client) {
 	var prevHeadEpoch uint64

@@ -15,7 +15,6 @@ import (
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/rocket-pool/rocketpool-go/dao"
-	rpDAO "github.com/rocket-pool/rocketpool-go/dao"
 	rpDAOTrustedNode "github.com/rocket-pool/rocketpool-go/dao/trustednode"
 	"github.com/rocket-pool/rocketpool-go/minipool"
 	"github.com/rocket-pool/rocketpool-go/network"
@@ -288,7 +287,7 @@ func (rp *RocketpoolExporter) UpdateDAOProposals() error {
 		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Infof("updated rocketpool-dao-proposals")
 	}(t0)
 
-	pc, err := rpDAO.GetProposalCount(rp.API, nil)
+	pc, err := dao.GetProposalCount(rp.API, nil)
 	if err != nil {
 		return err
 	}
@@ -793,8 +792,8 @@ func NewRocketpoolMinipool(rp *rocketpool.RocketPool, addr []byte) (*RocketpoolM
 	return rpm, nil
 }
 
-func (this *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
-	mp, err := minipool.NewMinipool(rp, common.BytesToAddress(this.Address))
+func (rpmp *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
+	mp, err := minipool.NewMinipool(rp, common.BytesToAddress(rpmp.Address))
 	if err != nil {
 		return err
 	}
@@ -818,8 +817,8 @@ func (this *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
 		return err
 	}
 
-	this.Status = status.String()
-	this.StatusTime = statusTime
+	rpmp.Status = status.String()
+	rpmp.StatusTime = statusTime
 
 	return nil
 }
@@ -848,23 +847,23 @@ func NewRocketpoolNode(rp *rocketpool.RocketPool, addr []byte) (*RocketpoolNode,
 	return rpn, nil
 }
 
-func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool) error {
-	stake, err := node.GetNodeRPLStake(rp, common.BytesToAddress(this.Address), nil)
+func (rn *RocketpoolNode) Update(rp *rocketpool.RocketPool) error {
+	stake, err := node.GetNodeRPLStake(rp, common.BytesToAddress(rn.Address), nil)
 	if err != nil {
 		return err
 	}
-	minStake, err := node.GetNodeMinimumRPLStake(rp, common.BytesToAddress(this.Address), nil)
+	minStake, err := node.GetNodeMinimumRPLStake(rp, common.BytesToAddress(rn.Address), nil)
 	if err != nil {
 		return err
 	}
-	maxStake, err := node.GetNodeMaximumRPLStake(rp, common.BytesToAddress(this.Address), nil)
+	maxStake, err := node.GetNodeMaximumRPLStake(rp, common.BytesToAddress(rn.Address), nil)
 	if err != nil {
 		return err
 	}
 
-	this.RPLStake = stake
-	this.MinRPLStake = minStake
-	this.MaxRPLStake = maxStake
+	rn.RPLStake = stake
+	rn.MinRPLStake = minStake
+	rn.MaxRPLStake = maxStake
 	return nil
 }
 
@@ -897,28 +896,28 @@ func NewRocketpoolDAOProposal(rp *rocketpool.RocketPool, pid uint64) (*Rocketpoo
 	return p, nil
 }
 
-func (this *RocketpoolDAOProposal) Update(rp *rocketpool.RocketPool) error {
-	pd, err := dao.GetProposalDetails(rp, this.ID, nil)
+func (rpdp *RocketpoolDAOProposal) Update(rp *rocketpool.RocketPool) error {
+	pd, err := dao.GetProposalDetails(rp, rpdp.ID, nil)
 	if err != nil {
 		return err
 	}
-	this.ID = pd.ID
-	this.DAO = pd.DAO
-	this.ProposerAddress = pd.ProposerAddress.Bytes()
-	this.Message = pd.Message
-	this.CreatedTime = time.Unix(int64(pd.CreatedTime), 0)
-	this.StartTime = time.Unix(int64(pd.StartTime), 0)
-	this.EndTime = time.Unix(int64(pd.EndTime), 0)
-	this.ExpiryTime = time.Unix(int64(pd.ExpiryTime), 0)
-	this.VotesRequired = pd.VotesRequired
-	this.VotesFor = pd.VotesFor
-	this.VotesAgainst = pd.VotesAgainst
-	this.MemberVoted = pd.MemberVoted
-	this.MemberSupported = pd.MemberSupported
-	this.IsCancelled = pd.IsCancelled
-	this.IsExecuted = pd.IsExecuted
-	this.Payload = pd.Payload
-	this.State = pd.State.String()
+	rpdp.ID = pd.ID
+	rpdp.DAO = pd.DAO
+	rpdp.ProposerAddress = pd.ProposerAddress.Bytes()
+	rpdp.Message = pd.Message
+	rpdp.CreatedTime = time.Unix(int64(pd.CreatedTime), 0)
+	rpdp.StartTime = time.Unix(int64(pd.StartTime), 0)
+	rpdp.EndTime = time.Unix(int64(pd.EndTime), 0)
+	rpdp.ExpiryTime = time.Unix(int64(pd.ExpiryTime), 0)
+	rpdp.VotesRequired = pd.VotesRequired
+	rpdp.VotesFor = pd.VotesFor
+	rpdp.VotesAgainst = pd.VotesAgainst
+	rpdp.MemberVoted = pd.MemberVoted
+	rpdp.MemberSupported = pd.MemberSupported
+	rpdp.IsCancelled = pd.IsCancelled
+	rpdp.IsExecuted = pd.IsExecuted
+	rpdp.Payload = pd.Payload
+	rpdp.State = pd.State.String()
 	return nil
 }
 
@@ -942,16 +941,16 @@ func NewRocketpoolDAOMember(rp *rocketpool.RocketPool, addr []byte) (*Rocketpool
 	return m, nil
 }
 
-func (this *RocketpoolDAOMember) Update(rp *rocketpool.RocketPool) error {
-	d, err := rpDAOTrustedNode.GetMemberDetails(rp, common.BytesToAddress(this.Address), nil)
+func (rpdm *RocketpoolDAOMember) Update(rp *rocketpool.RocketPool) error {
+	d, err := rpDAOTrustedNode.GetMemberDetails(rp, common.BytesToAddress(rpdm.Address), nil)
 	if err != nil {
 		return err
 	}
-	this.ID = d.ID
-	this.URL = d.Url
-	this.JoinedTime = time.Unix(int64(d.JoinedTime), 0)
-	this.LastProposalTime = time.Unix(int64(d.LastProposalTime), 0)
-	this.RPLBondAmount = d.RPLBondAmount
-	this.UnbondedValidatorCount = d.UnbondedValidatorCount
+	rpdm.ID = d.ID
+	rpdm.URL = d.Url
+	rpdm.JoinedTime = time.Unix(int64(d.JoinedTime), 0)
+	rpdm.LastProposalTime = time.Unix(int64(d.LastProposalTime), 0)
+	rpdm.RPLBondAmount = d.RPLBondAmount
+	rpdm.UnbondedValidatorCount = d.UnbondedValidatorCount
 	return nil
 }

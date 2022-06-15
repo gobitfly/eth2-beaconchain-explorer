@@ -127,6 +127,7 @@ var EventNames = []EventName{
 }
 
 func GetDisplayableEventName(event EventName) string {
+	//lint:ignore SA1019 Ignore the deprecation warnings
 	return strings.Title(strings.ReplaceAll(string(event), "_", " "))
 }
 

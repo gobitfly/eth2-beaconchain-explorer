@@ -90,8 +90,6 @@ func exportSSV() error {
 			return nil
 		}
 	}
-
-	return nil
 }
 
 func saveSSV(res *SSVExporterResponse) error {

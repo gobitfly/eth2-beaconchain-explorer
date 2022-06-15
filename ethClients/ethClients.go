@@ -125,7 +125,7 @@ func getRepoTime(date string, dTime string) (time.Time, error) {
 	dateDays := strings.Split(date, "-")
 	dateTimes := strings.Split(dTime, ":")
 	if len(dateDays) < 3 || len(dateTimes) < 3 {
-		return time.Now(), fmt.Errorf("Invalid date string %s %s", date, dTime)
+		return time.Now(), fmt.Errorf("error: invalid date string %s %s", date, dTime)
 	}
 	year, err = strconv.ParseInt(dateDays[0], 10, 0)
 	if err != nil {
@@ -181,7 +181,7 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 		}
 
 		if timeDiff <= 1.5 && timeDiff >= 1.0 {
-			return client.Name, fmt.Sprintf("1 day ago")
+			return client.Name, "1 day ago"
 		}
 
 		if timeDiff > 30 {
@@ -245,7 +245,7 @@ func updateEthClient() {
 }
 
 func update() {
-	for true {
+	for {
 		updateEthClient()
 		time.Sleep(time.Minute * 5)
 	}
@@ -262,10 +262,7 @@ func GetEthClientData() EthClientServicesPageData {
 func ClientsUpdated() bool {
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
-	if len(bannerClients) == 0 {
-		return false
-	}
-	return true
+	return len(bannerClients) != 0
 }
 
 //GetUpdatedClients returns a slice of latest updated clients or empty slice if no updates

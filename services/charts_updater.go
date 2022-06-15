@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"strings"
-
-	"github.com/prysmaticlabs/prysm/shared/mathutil"
 )
 
 type chartHandler struct {
@@ -451,421 +449,421 @@ func participationRateChartData() (*types.GenericChartData, error) {
 	return chartData, nil
 }
 
-func inclusionDistanceChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
+// func inclusionDistanceChartData() (*types.GenericChartData, error) {
+// 	if LatestEpoch() == 0 {
+// 		return nil, fmt.Errorf("chart-data not available pre-genesis")
+// 	}
 
-	latestEpoch := LatestEpoch()
-	epochOffset := uint64(0)
-	maxEpochs := 1 * 24 * 3600 / (utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot)
-	if latestEpoch > maxEpochs {
-		epochOffset = latestEpoch - maxEpochs
-	}
+// 	latestEpoch := LatestEpoch()
+// 	epochOffset := uint64(0)
+// 	maxEpochs := 1 * 24 * 3600 / (utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot)
+// 	if latestEpoch > maxEpochs {
+// 		epochOffset = latestEpoch - maxEpochs
+// 	}
 
-	rows := []struct {
-		Epoch             uint64
-		Inclusiondistance float64
-	}{}
+// 	rows := []struct {
+// 		Epoch             uint64
+// 		Inclusiondistance float64
+// 	}{}
 
-	err := db.ReaderDb.Select(&rows, `
-		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
-		from attestation_assignments_p a
-		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
-		where a.week >= $1 / 1575 a.epoch > $1 and a.inclusionslot > 0
-		group by a.epoch
-		order by a.epoch asc`, epochOffset)
-	if err != nil {
-		return nil, err
-	}
+// 	err := db.ReaderDb.Select(&rows, `
+// 		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
+// 		from attestation_assignments_p a
+// 		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
+// 		where a.week >= $1 / 1575 a.epoch > $1 and a.inclusionslot > 0
+// 		group by a.epoch
+// 		order by a.epoch asc`, epochOffset)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	seriesData := [][]float64{}
+// 	seriesData := [][]float64{}
 
-	for _, row := range rows {
-		seriesData = append(seriesData, []float64{
-			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
-			utils.RoundDecimals(row.Inclusiondistance, 2),
-		})
-	}
+// 	for _, row := range rows {
+// 		seriesData = append(seriesData, []float64{
+// 			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
+// 			utils.RoundDecimals(row.Inclusiondistance, 2),
+// 		})
+// 	}
 
-	chartData := &types.GenericChartData{
-		Title:        "Average Inclusion Distance (last 24h)",
-		Subtitle:     "Inclusion Distance measures how long it took to include attestations in slots.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Average Inclusion Distance [slots]",
-		StackingMode: "false",
-		Type:         "line",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "Average Inclusion Distance",
-				Data: seriesData,
-			},
-		},
-	}
+// 	chartData := &types.GenericChartData{
+// 		Title:        "Average Inclusion Distance (last 24h)",
+// 		Subtitle:     "Inclusion Distance measures how long it took to include attestations in slots.",
+// 		XAxisTitle:   "",
+// 		YAxisTitle:   "Average Inclusion Distance [slots]",
+// 		StackingMode: "false",
+// 		Type:         "line",
+// 		Series: []*types.GenericChartDataSeries{
+// 			{
+// 				Name: "Average Inclusion Distance",
+// 				Data: seriesData,
+// 			},
+// 		},
+// 	}
 
-	return chartData, nil
-}
+// 	return chartData, nil
+// }
 
-func votingDistributionChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
+// func votingDistributionChartData() (*types.GenericChartData, error) {
+// 	if LatestEpoch() == 0 {
+// 		return nil, fmt.Errorf("chart-data not available pre-genesis")
+// 	}
 
-	latestEpoch := LatestEpoch()
-	epochOffset := uint64(0)
-	maxEpochs := 7 * 3600 * 24 / (utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot)
-	if latestEpoch > maxEpochs {
-		epochOffset = latestEpoch - maxEpochs
-	}
+// 	latestEpoch := LatestEpoch()
+// 	epochOffset := uint64(0)
+// 	maxEpochs := 7 * 3600 * 24 / (utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot)
+// 	if latestEpoch > maxEpochs {
+// 		epochOffset = latestEpoch - maxEpochs
+// 	}
 
-	rows := []struct {
-		Epoch             uint64
-		Inclusiondistance float64
-	}{}
+// 	rows := []struct {
+// 		Epoch             uint64
+// 		Inclusiondistance float64
+// 	}{}
 
-	err := db.ReaderDb.Select(&rows, `
-		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
-		from attestation_assignments_p a
-		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
-		where a.inclusionslot > 0 and a.epoch > $1and a.week >= $1 / 1575
-		group by a.epoch
-		order by a.epoch asc`, epochOffset)
-	if err != nil {
-		return nil, err
-	}
+// 	err := db.ReaderDb.Select(&rows, `
+// 		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
+// 		from attestation_assignments_p a
+// 		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
+// 		where a.inclusionslot > 0 and a.epoch > $1and a.week >= $1 / 1575
+// 		group by a.epoch
+// 		order by a.epoch asc`, epochOffset)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	seriesData := [][]float64{}
+// 	seriesData := [][]float64{}
 
-	for _, row := range rows {
-		seriesData = append(seriesData, []float64{
-			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
-			utils.RoundDecimals(row.Inclusiondistance, 2),
-		})
-	}
+// 	for _, row := range rows {
+// 		seriesData = append(seriesData, []float64{
+// 			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
+// 			utils.RoundDecimals(row.Inclusiondistance, 2),
+// 		})
+// 	}
 
-	chartData := &types.GenericChartData{
-		Title:        "Average Inclusion Distance (last 7 days)",
-		Subtitle:     "Inclusion Distance measures how long it took to include attestations in slots.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Average Inclusion Distance [slots]",
-		StackingMode: "false",
-		Type:         "line",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "Average Inclusion Distance",
-				Data: seriesData,
-			},
-		},
-	}
+// 	chartData := &types.GenericChartData{
+// 		Title:        "Average Inclusion Distance (last 7 days)",
+// 		Subtitle:     "Inclusion Distance measures how long it took to include attestations in slots.",
+// 		XAxisTitle:   "",
+// 		YAxisTitle:   "Average Inclusion Distance [slots]",
+// 		StackingMode: "false",
+// 		Type:         "line",
+// 		Series: []*types.GenericChartDataSeries{
+// 			{
+// 				Name: "Average Inclusion Distance",
+// 				Data: seriesData,
+// 			},
+// 		},
+// 	}
 
-	return chartData, nil
-}
+// 	return chartData, nil
+// }
 
-func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
+// func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
+// 	if LatestEpoch() == 0 {
+// 		return nil, fmt.Errorf("chart-data not available pre-genesis")
+// 	}
 
-	rows := []struct {
-		Epoch           uint64
-		Validatorscount uint64
-		Rewards         int64
-	}{}
+// 	rows := []struct {
+// 		Epoch           uint64
+// 		Validatorscount uint64
+// 		Rewards         int64
+// 	}{}
 
-	err := db.ReaderDb.Select(&rows, `
-		with
-			firstdeposits as (
-				select distinct
-					vb.epoch,
-					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
-				from validators v
-					left join validator_balances_p vb
-						on vb.validatorindex = v.validatorindex
-						and vb.epoch = v.activationepoch
-						and vb.week = v.activationepoch / 1575
-				order by vb.epoch
-			),
-			extradeposits as (
-				select distinct
-					(d.block_slot/32)-1 AS epoch,
-					sum(d.amount) over (
-						order by d.block_slot/32 asc
-					) as amount
-				from validators
-					inner join blocks_deposits d
-						on d.publickey = validators.pubkey
-						and d.block_slot/32 > validators.activationepoch
-				order by epoch
-			)
-		select 
-			e.epoch,
-			e.validatorscount,
-			e.totalvalidatorbalance-coalesce(fd.amount,0)-coalesce(ed.amount,0) as rewards
-		from epochs e
-			left join firstdeposits fd on fd.epoch = (
-				select epoch from firstdeposits where epoch <= e.epoch order by epoch desc limit 1
-			)
-			left join extradeposits ed on fd.epoch = (
-				select epoch from extradeposits where epoch <= e.epoch order by epoch desc limit 1
-			)
-		order by epoch`)
-	if err != nil {
-		return nil, err
-	}
+// 	err := db.ReaderDb.Select(&rows, `
+// 		with
+// 			firstdeposits as (
+// 				select distinct
+// 					vb.epoch,
+// 					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
+// 				from validators v
+// 					left join validator_balances_p vb
+// 						on vb.validatorindex = v.validatorindex
+// 						and vb.epoch = v.activationepoch
+// 						and vb.week = v.activationepoch / 1575
+// 				order by vb.epoch
+// 			),
+// 			extradeposits as (
+// 				select distinct
+// 					(d.block_slot/32)-1 AS epoch,
+// 					sum(d.amount) over (
+// 						order by d.block_slot/32 asc
+// 					) as amount
+// 				from validators
+// 					inner join blocks_deposits d
+// 						on d.publickey = validators.pubkey
+// 						and d.block_slot/32 > validators.activationepoch
+// 				order by epoch
+// 			)
+// 		select
+// 			e.epoch,
+// 			e.validatorscount,
+// 			e.totalvalidatorbalance-coalesce(fd.amount,0)-coalesce(ed.amount,0) as rewards
+// 		from epochs e
+// 			left join firstdeposits fd on fd.epoch = (
+// 				select epoch from firstdeposits where epoch <= e.epoch order by epoch desc limit 1
+// 			)
+// 			left join extradeposits ed on fd.epoch = (
+// 				select epoch from extradeposits where epoch <= e.epoch order by epoch desc limit 1
+// 			)
+// 		order by epoch`)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	seriesData := [][]float64{}
+// 	seriesData := [][]float64{}
 
-	var rewards int64
-	var day float64
-	validatorsCount := uint64(0)
-	prevDayRewards := int64(0)
-	prevDay := float64(utils.EpochToTime(0).Truncate(time.Hour*24).Unix() * 1000)
-	for _, row := range rows {
-		validatorsCount = row.Validatorscount
-		rewards = row.Rewards
-		day = float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-		if day != prevDay {
-			// data for previous day
-			seriesData = append(seriesData, []float64{
-				prevDay,
-				utils.RoundDecimals(float64(rewards-prevDayRewards)/float64(validatorsCount)/1e9, 4),
-			})
-			prevDayRewards = row.Rewards
-			prevDay = day
-		}
-	}
-	// data for current day
-	seriesData = append(seriesData, []float64{
-		day,
-		utils.RoundDecimals(float64(rewards-prevDayRewards)/float64(validatorsCount)/1e9, 4),
-	})
+// 	var rewards int64
+// 	var day float64
+// 	validatorsCount := uint64(0)
+// 	prevDayRewards := int64(0)
+// 	prevDay := float64(utils.EpochToTime(0).Truncate(time.Hour*24).Unix() * 1000)
+// 	for _, row := range rows {
+// 		validatorsCount = row.Validatorscount
+// 		rewards = row.Rewards
+// 		day = float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
+// 		if day != prevDay {
+// 			// data for previous day
+// 			seriesData = append(seriesData, []float64{
+// 				prevDay,
+// 				utils.RoundDecimals(float64(rewards-prevDayRewards)/float64(validatorsCount)/1e9, 4),
+// 			})
+// 			prevDayRewards = row.Rewards
+// 			prevDay = day
+// 		}
+// 	}
+// 	// data for current day
+// 	seriesData = append(seriesData, []float64{
+// 		day,
+// 		utils.RoundDecimals(float64(rewards-prevDayRewards)/float64(validatorsCount)/1e9, 4),
+// 	})
 
-	chartData := &types.GenericChartData{
-		Title:        "Validator Income",
-		Subtitle:     "Average Daily Validator Income.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Average Daily Validator Income [ETH/day]",
-		StackingMode: "false",
-		Type:         "column",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "Average Daily Validator Income",
-				Data: seriesData,
-			},
-		},
-	}
+// 	chartData := &types.GenericChartData{
+// 		Title:        "Validator Income",
+// 		Subtitle:     "Average Daily Validator Income.",
+// 		XAxisTitle:   "",
+// 		YAxisTitle:   "Average Daily Validator Income [ETH/day]",
+// 		StackingMode: "false",
+// 		Type:         "column",
+// 		Series: []*types.GenericChartDataSeries{
+// 			{
+// 				Name: "Average Daily Validator Income",
+// 				Data: seriesData,
+// 			},
+// 		},
+// 	}
 
-	return chartData, nil
-}
+// 	return chartData, nil
+// }
 
-func stakingRewardsChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
+// func stakingRewardsChartData() (*types.GenericChartData, error) {
+// 	if LatestEpoch() == 0 {
+// 		return nil, fmt.Errorf("chart-data not available pre-genesis")
+// 	}
 
-	rows := []struct {
-		Epoch   uint64
-		Rewards int64
-	}{}
+// 	rows := []struct {
+// 		Epoch   uint64
+// 		Rewards int64
+// 	}{}
 
-	err := db.ReaderDb.Select(&rows, `
-		with
-			firstdeposits as (
-				select distinct
-					vb.epoch,
-					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
-				from validators v
-					left join validator_balances_p vb
-						on vb.validatorindex = v.validatorindex
-						and vb.epoch = v.activationepoch
-						and vb.week = v.activationepoch / 1575
-				order by vb.epoch
-			),
-			extradeposits as (
-				select distinct
-					(d.block_slot/32)-1 AS epoch,
-					sum(d.amount) over (
-						order by d.block_slot/32 asc
-					) as amount
-				from validators
-					inner join blocks_deposits d
-						on d.publickey = validators.pubkey
-						and d.block_slot/32 > validators.activationepoch
-				order by epoch
-			)
-		select 
-			e.epoch,
-			e.totalvalidatorbalance-coalesce(fd.amount,0)-coalesce(ed.amount,0) as rewards
-		from epochs e
-			left join firstdeposits fd on fd.epoch = (
-				select epoch from firstdeposits where epoch <= e.epoch order by epoch desc limit 1
-			)
-			left join extradeposits ed on ed.epoch = (
-				select epoch from extradeposits where epoch <= e.epoch order by epoch desc limit 1
-			)
-		order by epoch`)
-	if err != nil {
-		return nil, err
-	}
+// 	err := db.ReaderDb.Select(&rows, `
+// 		with
+// 			firstdeposits as (
+// 				select distinct
+// 					vb.epoch,
+// 					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
+// 				from validators v
+// 					left join validator_balances_p vb
+// 						on vb.validatorindex = v.validatorindex
+// 						and vb.epoch = v.activationepoch
+// 						and vb.week = v.activationepoch / 1575
+// 				order by vb.epoch
+// 			),
+// 			extradeposits as (
+// 				select distinct
+// 					(d.block_slot/32)-1 AS epoch,
+// 					sum(d.amount) over (
+// 						order by d.block_slot/32 asc
+// 					) as amount
+// 				from validators
+// 					inner join blocks_deposits d
+// 						on d.publickey = validators.pubkey
+// 						and d.block_slot/32 > validators.activationepoch
+// 				order by epoch
+// 			)
+// 		select
+// 			e.epoch,
+// 			e.totalvalidatorbalance-coalesce(fd.amount,0)-coalesce(ed.amount,0) as rewards
+// 		from epochs e
+// 			left join firstdeposits fd on fd.epoch = (
+// 				select epoch from firstdeposits where epoch <= e.epoch order by epoch desc limit 1
+// 			)
+// 			left join extradeposits ed on ed.epoch = (
+// 				select epoch from extradeposits where epoch <= e.epoch order by epoch desc limit 1
+// 			)
+// 		order by epoch`)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	seriesData := [][]float64{}
+// 	seriesData := [][]float64{}
 
-	var rewards float64
-	var day float64
-	prevDay := float64(utils.EpochToTime(0).Truncate(time.Hour*24).Unix() * 1000)
-	for _, row := range rows {
-		rewards = utils.RoundDecimals(float64(row.Rewards)/1e9, 4)
-		day = float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-		if day != prevDay {
-			// data for previous day
-			seriesData = append(seriesData, []float64{
-				prevDay,
-				rewards,
-			})
-			prevDay = day
-		}
-	}
-	// data for current day
-	seriesData = append(seriesData, []float64{
-		day,
-		rewards,
-	})
+// 	var rewards float64
+// 	var day float64
+// 	prevDay := float64(utils.EpochToTime(0).Truncate(time.Hour*24).Unix() * 1000)
+// 	for _, row := range rows {
+// 		rewards = utils.RoundDecimals(float64(row.Rewards)/1e9, 4)
+// 		day = float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
+// 		if day != prevDay {
+// 			// data for previous day
+// 			seriesData = append(seriesData, []float64{
+// 				prevDay,
+// 				rewards,
+// 			})
+// 			prevDay = day
+// 		}
+// 	}
+// 	// data for current day
+// 	seriesData = append(seriesData, []float64{
+// 		day,
+// 		rewards,
+// 	})
 
-	chartData := &types.GenericChartData{
-		Title:        "Staking Rewards",
-		Subtitle:     "Total Accumulated Staking Rewards",
-		XAxisTitle:   "",
-		YAxisTitle:   "Staking Rewards [ETH]",
-		StackingMode: "false",
-		Type:         "line",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "Staking Rewards",
-				Data: seriesData,
-			},
-		},
-	}
+// 	chartData := &types.GenericChartData{
+// 		Title:        "Staking Rewards",
+// 		Subtitle:     "Total Accumulated Staking Rewards",
+// 		XAxisTitle:   "",
+// 		YAxisTitle:   "Staking Rewards [ETH]",
+// 		StackingMode: "false",
+// 		Type:         "line",
+// 		Series: []*types.GenericChartDataSeries{
+// 			{
+// 				Name: "Staking Rewards",
+// 				Data: seriesData,
+// 			},
+// 		},
+// 	}
 
-	return chartData, nil
-}
+// 	return chartData, nil
+// }
 
-func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
+// func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
+// 	if LatestEpoch() == 0 {
+// 		return nil, fmt.Errorf("chart-data not available pre-genesis")
+// 	}
 
-	rows := []struct {
-		Epoch                   uint64
-		Eligibleether           uint64
-		Votedether              uint64
-		Validatorscount         uint64
-		Finalitydelay           uint64
-		Globalparticipationrate float64
-		Totalvalidatorbalance   uint64
-	}{}
+// 	rows := []struct {
+// 		Epoch                   uint64
+// 		Eligibleether           uint64
+// 		Votedether              uint64
+// 		Validatorscount         uint64
+// 		Finalitydelay           uint64
+// 		Globalparticipationrate float64
+// 		Totalvalidatorbalance   uint64
+// 	}{}
 
-	// note: eligibleether might not be correct, need to check what exactly the node returns
-	// for the reward-calculation we need the sum of all effective balances
-	err := db.ReaderDb.Select(&rows, `
-		with
-			extradeposits as (
-				select
-					(d.block_slot/32) as epoch,
-					sum(d.amount) as amount
-					from validators
-				inner join blocks_deposits d 
-					on d.publickey = validators.pubkey
-					and (d.block_slot/32) > validators.activationepoch
-				group by epoch
-			)
-		select 
-			epochs.epoch, eligibleether, votedether, validatorscount, globalparticipationrate,
-			coalesce(totalvalidatorbalance - coalesce(ed.amount,0),0) as totalvalidatorbalance
-		from epochs
-			left join extradeposits ed on epochs.epoch = ed.epoch
-			left join network_liveness nl on epochs.epoch = nl.headepoch
-		order by epoch;`)
-	if err != nil {
-		return nil, err
-	}
+// 	// note: eligibleether might not be correct, need to check what exactly the node returns
+// 	// for the reward-calculation we need the sum of all effective balances
+// 	err := db.ReaderDb.Select(&rows, `
+// 		with
+// 			extradeposits as (
+// 				select
+// 					(d.block_slot/32) as epoch,
+// 					sum(d.amount) as amount
+// 					from validators
+// 				inner join blocks_deposits d
+// 					on d.publickey = validators.pubkey
+// 					and (d.block_slot/32) > validators.activationepoch
+// 				group by epoch
+// 			)
+// 		select
+// 			epochs.epoch, eligibleether, votedether, validatorscount, globalparticipationrate,
+// 			coalesce(totalvalidatorbalance - coalesce(ed.amount,0),0) as totalvalidatorbalance
+// 		from epochs
+// 			left join extradeposits ed on epochs.epoch = ed.epoch
+// 			left join network_liveness nl on epochs.epoch = nl.headepoch
+// 		order by epoch;`)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	seriesData := [][]float64{}
-	avgDailyValidatorIncomeSeries := [][]float64{}
+// 	seriesData := [][]float64{}
+// 	avgDailyValidatorIncomeSeries := [][]float64{}
 
-	// see: https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/beacon-chain.md#rewards-and-penalties-1
-	maxEffectiveBalance := uint64(32e9)
-	baseRewardFactor := uint64(64)
-	baseRewardPerEpoch := uint64(4)
-	proposerRewardQuotient := uint64(8)
-	slotsPerDay := 3600 * 24 / utils.Config.Chain.SecondsPerSlot
-	epochsPerDay := slotsPerDay / utils.Config.Chain.SlotsPerEpoch
-	minAttestationInclusionDelay := uint64(1) // epochs
-	minEpochsToInactivityPenalty := uint64(4) // epochs
-	// inactivityPenaltyQuotient := uint6(33554432) // 2**25
+// 	// see: https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/beacon-chain.md#rewards-and-penalties-1
+// 	maxEffectiveBalance := uint64(32e9)
+// 	baseRewardFactor := uint64(64)
+// 	baseRewardPerEpoch := uint64(4)
+// 	proposerRewardQuotient := uint64(8)
+// 	slotsPerDay := 3600 * 24 / utils.Config.Chain.SecondsPerSlot
+// 	epochsPerDay := slotsPerDay / utils.Config.Chain.SlotsPerEpoch
+// 	minAttestationInclusionDelay := uint64(1) // epochs
+// 	minEpochsToInactivityPenalty := uint64(4) // epochs
+// 	// inactivityPenaltyQuotient := uint6(33554432) // 2**25
 
-	var prevTotalvalidatorbalance uint64
-	var prevDay float64
-	for _, row := range rows {
-		if row.Eligibleether == 0 {
-			continue
-		}
-		baseReward := maxEffectiveBalance * baseRewardFactor / mathutil.IntegerSquareRoot(row.Eligibleether) / baseRewardPerEpoch
-		// Micro-incentives for matching FFG source, FFG target, and head
-		rewardPerEpoch := int64(3 * baseReward * row.Votedether / row.Eligibleether)
-		// Proposer and inclusion delay micro-rewards
-		proposerReward := baseReward / proposerRewardQuotient
-		attesters := float64(row.Validatorscount/32) * row.Globalparticipationrate
-		rewardPerEpoch += int64(attesters * float64(proposerReward*(utils.Config.Chain.SlotsPerEpoch/row.Validatorscount)))
-		rewardPerEpoch += int64((baseReward - proposerReward) / minAttestationInclusionDelay)
+// 	var prevTotalvalidatorbalance uint64
+// 	var prevDay float64
+// 	for _, row := range rows {
+// 		if row.Eligibleether == 0 {
+// 			continue
+// 		}
+// 		baseReward := maxEffectiveBalance * baseRewardFactor / mathutil.IntegerSquareRoot(row.Eligibleether) / baseRewardPerEpoch
+// 		// Micro-incentives for matching FFG source, FFG target, and head
+// 		rewardPerEpoch := int64(3 * baseReward * row.Votedether / row.Eligibleether)
+// 		// Proposer and inclusion delay micro-rewards
+// 		proposerReward := baseReward / proposerRewardQuotient
+// 		attesters := float64(row.Validatorscount/32) * row.Globalparticipationrate
+// 		rewardPerEpoch += int64(attesters * float64(proposerReward*(utils.Config.Chain.SlotsPerEpoch/row.Validatorscount)))
+// 		rewardPerEpoch += int64((baseReward - proposerReward) / minAttestationInclusionDelay)
 
-		// inactivity-penalty
-		if row.Finalitydelay > minEpochsToInactivityPenalty {
-			rewardPerEpoch -= int64(baseReward * baseRewardPerEpoch)
-			// if the validator is slashed
-			// rewardPerEpoch -=  maxEffectiveBalance*finality_delay/inactivityPenaltyQuotient
-		}
+// 		// inactivity-penalty
+// 		if row.Finalitydelay > minEpochsToInactivityPenalty {
+// 			rewardPerEpoch -= int64(baseReward * baseRewardPerEpoch)
+// 			// if the validator is slashed
+// 			// rewardPerEpoch -=  maxEffectiveBalance*finality_delay/inactivityPenaltyQuotient
+// 		}
 
-		ts := float64(utils.EpochToTime(row.Epoch).Unix() * 1000)
-		rewardPerDay := rewardPerEpoch * int64(epochsPerDay)
-		seriesData = append(seriesData, []float64{
-			ts,
-			float64(rewardPerDay) / 1e9,
-		})
+// 		ts := float64(utils.EpochToTime(row.Epoch).Unix() * 1000)
+// 		rewardPerDay := rewardPerEpoch * int64(epochsPerDay)
+// 		seriesData = append(seriesData, []float64{
+// 			ts,
+// 			float64(rewardPerDay) / 1e9,
+// 		})
 
-		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-		if prevDay != day && prevTotalvalidatorbalance != 0 {
-			avgDailyValidatorIncomeSeries = append(avgDailyValidatorIncomeSeries, []float64{
-				day,
-				float64(int64(prevTotalvalidatorbalance)-int64(row.Totalvalidatorbalance)) / float64(row.Validatorscount) / 1e9,
-			})
-		}
-		if prevDay != day {
-			prevDay = day
-			prevTotalvalidatorbalance = row.Totalvalidatorbalance
-		}
-	}
+// 		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
+// 		if prevDay != day && prevTotalvalidatorbalance != 0 {
+// 			avgDailyValidatorIncomeSeries = append(avgDailyValidatorIncomeSeries, []float64{
+// 				day,
+// 				float64(int64(prevTotalvalidatorbalance)-int64(row.Totalvalidatorbalance)) / float64(row.Validatorscount) / 1e9,
+// 			})
+// 		}
+// 		if prevDay != day {
+// 			prevDay = day
+// 			prevTotalvalidatorbalance = row.Totalvalidatorbalance
+// 		}
+// 	}
 
-	chartData := &types.GenericChartData{
-		Title:        "Average Daily Validator Income",
-		Subtitle:     "",
-		XAxisTitle:   "",
-		YAxisTitle:   "Average Daily Validator Income [ETH/day]",
-		StackingMode: "false",
-		Type:         "line",
-		Series: []*types.GenericChartDataSeries{
-			// {
-			// 	Name: "Estimated Daily Validator Income",
-			// 	Data: seriesData,
-			// },
-			{
-				Name: "Average Daily Validator Income",
-				Data: avgDailyValidatorIncomeSeries,
-			},
-		},
-	}
+// 	chartData := &types.GenericChartData{
+// 		Title:        "Average Daily Validator Income",
+// 		Subtitle:     "",
+// 		XAxisTitle:   "",
+// 		YAxisTitle:   "Average Daily Validator Income [ETH/day]",
+// 		StackingMode: "false",
+// 		Type:         "line",
+// 		Series: []*types.GenericChartDataSeries{
+// 			// {
+// 			// 	Name: "Estimated Daily Validator Income",
+// 			// 	Data: seriesData,
+// 			// },
+// 			{
+// 				Name: "Average Daily Validator Income",
+// 				Data: avgDailyValidatorIncomeSeries,
+// 			},
+// 		},
+// 	}
 
-	return chartData, nil
-}
+// 	return chartData, nil
+// }
 
 func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 	if LatestEpoch() == 0 {
@@ -1087,203 +1085,203 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 	return chartData, nil
 }
 
-func performanceDistribution1dChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
+// func performanceDistribution1dChartData() (*types.GenericChartData, error) {
+// 	if LatestEpoch() == 0 {
+// 		return nil, fmt.Errorf("chart-data not available pre-genesis")
+// 	}
 
-	var err error
+// 	var err error
 
-	rows := []struct {
-		MaxPerformance float64
-		Count          float64
-	}{}
+// 	rows := []struct {
+// 		MaxPerformance float64
+// 		Count          float64
+// 	}{}
 
-	err = db.ReaderDb.Select(&rows, `
-		with
-			stats as (
-				select 
-					min(performance1d) as min,
-					max(performance1d) as max
-				from validator_performance
-			),
-			histogram as (
-				select 
-					width_bucket(performance1d, min, max, 9999) as bucket,
-					max(performance1d) as max,
-					count(*) as cnt
-				from  validator_performance, stats
-				group by bucket
-				order by bucket
-			)
-		select max/1e9 as maxperformance, cnt as count
-		from histogram`)
-	if err != nil {
-		return nil, err
-	}
+// 	err = db.ReaderDb.Select(&rows, `
+// 		with
+// 			stats as (
+// 				select
+// 					min(performance1d) as min,
+// 					max(performance1d) as max
+// 				from validator_performance
+// 			),
+// 			histogram as (
+// 				select
+// 					width_bucket(performance1d, min, max, 9999) as bucket,
+// 					max(performance1d) as max,
+// 					count(*) as cnt
+// 				from  validator_performance, stats
+// 				group by bucket
+// 				order by bucket
+// 			)
+// 		select max/1e9 as maxperformance, cnt as count
+// 		from histogram`)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	seriesData := make([][]float64, len(rows))
+// 	seriesData := make([][]float64, len(rows))
 
-	for i, row := range rows {
-		seriesData[i] = []float64{row.MaxPerformance, row.Count}
-	}
+// 	for i, row := range rows {
+// 		seriesData[i] = []float64{row.MaxPerformance, row.Count}
+// 	}
 
-	chartData := &types.GenericChartData{
-		IsNormalChart: true,
-		ShowGapHider:  true,
-		Title:         "Income Distribution (1 day)",
-		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last day at epoch %d.", LatestEpoch()),
-		XAxisTitle:    "Income",
-		XAxisLabelsFormatter: `function(){
-  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
-  return '<span style="color:var(--success)">'+this.value+'ETH<span>'
-}
-`,
-		YAxisTitle:   "# of Validators",
-		StackingMode: "false",
-		Type:         "column",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "# of Validators",
-				Data: seriesData,
-			},
-		},
-	}
+// 	chartData := &types.GenericChartData{
+// 		IsNormalChart: true,
+// 		ShowGapHider:  true,
+// 		Title:         "Income Distribution (1 day)",
+// 		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last day at epoch %d.", LatestEpoch()),
+// 		XAxisTitle:    "Income",
+// 		XAxisLabelsFormatter: `function(){
+//   if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
+//   return '<span style="color:var(--success)">'+this.value+'ETH<span>'
+// }
+// `,
+// 		YAxisTitle:   "# of Validators",
+// 		StackingMode: "false",
+// 		Type:         "column",
+// 		Series: []*types.GenericChartDataSeries{
+// 			{
+// 				Name: "# of Validators",
+// 				Data: seriesData,
+// 			},
+// 		},
+// 	}
 
-	return chartData, nil
-}
+// 	return chartData, nil
+// }
 
-func performanceDistribution7dChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
+// func performanceDistribution7dChartData() (*types.GenericChartData, error) {
+// 	if LatestEpoch() == 0 {
+// 		return nil, fmt.Errorf("chart-data not available pre-genesis")
+// 	}
 
-	var err error
+// 	var err error
 
-	rows := []struct {
-		MaxPerformance float64
-		Count          float64
-	}{}
+// 	rows := []struct {
+// 		MaxPerformance float64
+// 		Count          float64
+// 	}{}
 
-	err = db.ReaderDb.Select(&rows, `
-		with
-			stats as (
-				select 
-					min(performance7d) as min,
-					max(performance7d) as max
-				from validator_performance
-			),
-			histogram as (
-				select 
-					width_bucket(performance7d, min, max, 9999) as bucket,
-					max(performance7d) as max,
-					count(*) as cnt
-				from  validator_performance, stats
-				group by bucket
-				order by bucket
-			)
-		select max/1e9 as maxperformance, cnt as count
-		from histogram`)
-	if err != nil {
-		return nil, err
-	}
+// 	err = db.ReaderDb.Select(&rows, `
+// 		with
+// 			stats as (
+// 				select
+// 					min(performance7d) as min,
+// 					max(performance7d) as max
+// 				from validator_performance
+// 			),
+// 			histogram as (
+// 				select
+// 					width_bucket(performance7d, min, max, 9999) as bucket,
+// 					max(performance7d) as max,
+// 					count(*) as cnt
+// 				from  validator_performance, stats
+// 				group by bucket
+// 				order by bucket
+// 			)
+// 		select max/1e9 as maxperformance, cnt as count
+// 		from histogram`)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	seriesData := make([][]float64, len(rows))
+// 	seriesData := make([][]float64, len(rows))
 
-	for i, row := range rows {
-		seriesData[i] = []float64{row.MaxPerformance, row.Count}
-	}
+// 	for i, row := range rows {
+// 		seriesData[i] = []float64{row.MaxPerformance, row.Count}
+// 	}
 
-	chartData := &types.GenericChartData{
-		IsNormalChart: true,
-		ShowGapHider:  true,
-		Title:         "Income Distribution (7 days)",
-		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 7 days at epoch %d.", LatestEpoch()),
-		XAxisTitle:    "Income",
-		XAxisLabelsFormatter: `function(){
-  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
-  return '<span style="color:var(--success)">'+this.value+'ETH<span>'
-}
-`,
-		YAxisTitle:   "# of Validators",
-		StackingMode: "false",
-		Type:         "column",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "# of Validators",
-				Data: seriesData,
-			},
-		},
-	}
+// 	chartData := &types.GenericChartData{
+// 		IsNormalChart: true,
+// 		ShowGapHider:  true,
+// 		Title:         "Income Distribution (7 days)",
+// 		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 7 days at epoch %d.", LatestEpoch()),
+// 		XAxisTitle:    "Income",
+// 		XAxisLabelsFormatter: `function(){
+//   if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
+//   return '<span style="color:var(--success)">'+this.value+'ETH<span>'
+// }
+// `,
+// 		YAxisTitle:   "# of Validators",
+// 		StackingMode: "false",
+// 		Type:         "column",
+// 		Series: []*types.GenericChartDataSeries{
+// 			{
+// 				Name: "# of Validators",
+// 				Data: seriesData,
+// 			},
+// 		},
+// 	}
 
-	return chartData, nil
-}
+// 	return chartData, nil
+// }
 
-func performanceDistribution31dChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
+// func performanceDistribution31dChartData() (*types.GenericChartData, error) {
+// 	if LatestEpoch() == 0 {
+// 		return nil, fmt.Errorf("chart-data not available pre-genesis")
+// 	}
 
-	var err error
+// 	var err error
 
-	rows := []struct {
-		MaxPerformance float64
-		Count          float64
-	}{}
+// 	rows := []struct {
+// 		MaxPerformance float64
+// 		Count          float64
+// 	}{}
 
-	err = db.ReaderDb.Select(&rows, `
-		with
-			stats as (
-				select 
-					min(performance31d) as min,
-					max(performance31d) as max
-				from validator_performance
-			),
-			histogram as (
-				select 
-					width_bucket(performance31d, min, max, 9999) as bucket,
-					max(performance31d) as max,
-					count(*) as cnt
-				from  validator_performance, stats
-				group by bucket
-				order by bucket
-			)
-		select max/1e9 as maxperformance, cnt as count
-		from histogram`)
-	if err != nil {
-		return nil, err
-	}
+// 	err = db.ReaderDb.Select(&rows, `
+// 		with
+// 			stats as (
+// 				select
+// 					min(performance31d) as min,
+// 					max(performance31d) as max
+// 				from validator_performance
+// 			),
+// 			histogram as (
+// 				select
+// 					width_bucket(performance31d, min, max, 9999) as bucket,
+// 					max(performance31d) as max,
+// 					count(*) as cnt
+// 				from  validator_performance, stats
+// 				group by bucket
+// 				order by bucket
+// 			)
+// 		select max/1e9 as maxperformance, cnt as count
+// 		from histogram`)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	seriesData := make([][]float64, len(rows))
+// 	seriesData := make([][]float64, len(rows))
 
-	for i, row := range rows {
-		seriesData[i] = []float64{row.MaxPerformance, row.Count}
-	}
+// 	for i, row := range rows {
+// 		seriesData[i] = []float64{row.MaxPerformance, row.Count}
+// 	}
 
-	chartData := &types.GenericChartData{
-		IsNormalChart: true,
-		ShowGapHider:  true,
-		Title:         "Income Distribution (31 days)",
-		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 31 days at epoch %d.", LatestEpoch()),
-		XAxisTitle:    "Income",
-		XAxisLabelsFormatter: `function(){
-  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
-  return '<span style="color:var(--success)">'+this.value+'ETH<span>'
-}
-`,
-		YAxisTitle:   "# of Validators",
-		StackingMode: "false",
-		Type:         "column",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "# of Validators",
-				Data: seriesData,
-			},
-		},
-	}
+// 	chartData := &types.GenericChartData{
+// 		IsNormalChart: true,
+// 		ShowGapHider:  true,
+// 		Title:         "Income Distribution (31 days)",
+// 		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 31 days at epoch %d.", LatestEpoch()),
+// 		XAxisTitle:    "Income",
+// 		XAxisLabelsFormatter: `function(){
+//   if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
+//   return '<span style="color:var(--success)">'+this.value+'ETH<span>'
+// }
+// `,
+// 		YAxisTitle:   "# of Validators",
+// 		StackingMode: "false",
+// 		Type:         "column",
+// 		Series: []*types.GenericChartDataSeries{
+// 			{
+// 				Name: "# of Validators",
+// 				Data: seriesData,
+// 			},
+// 		},
+// 	}
 
-	return chartData, nil
-}
+// 	return chartData, nil
+// }
 
 func performanceDistribution365dChartData() (*types.GenericChartData, error) {
 	if LatestEpoch() == 0 {

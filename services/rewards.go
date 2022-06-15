@@ -145,6 +145,9 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 
 	sort.Slice(data, func(p, q int) bool {
 		i, err := time.Parse("2006-01-02", data[p][0])
+		if err != nil {
+			return false
+		}
 		i2, err := time.Parse("2006-01-02", data[q][0])
 		if err != nil {
 			return false

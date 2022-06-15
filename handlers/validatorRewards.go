@@ -56,7 +56,7 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 	err = validatorRewardsServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -123,6 +123,11 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	dateRange := strings.Split(q.Get("days"), "-")
 	if len(dateRange) == 2 {
 		start, err = strconv.ParseUint(dateRange[0], 10, 64)
+		if err != nil {
+			logger.Errorf("error retrieving days range %v", err)
+			http.Error(w, "Invalid query", 400)
+			return
+		}
 		end, err = strconv.ParseUint(dateRange[1], 10, 64)
 		if err != nil {
 			logger.Errorf("error retrieving days range %v", err)
@@ -136,7 +141,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -159,6 +164,11 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	dateRange := strings.Split(q.Get("days"), "-")
 	if len(dateRange) == 2 {
 		start, err = strconv.ParseUint(dateRange[0], 10, 64)
+		if err != nil {
+			logger.Errorf("error retrieving days range %v", err)
+			http.Error(w, "Invalid query", 400)
+			return
+		}
 		end, err = strconv.ParseUint(dateRange[1], 10, 64)
 		if err != nil {
 			logger.Errorf("error retrieving days range %v", err)
@@ -183,7 +193,7 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(services.GeneratePdfReport(hist))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error writing response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -245,7 +255,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -289,7 +299,7 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -324,7 +334,7 @@ func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

@@ -32,7 +32,7 @@ func Init() {
 }
 
 func updateEthPrice() {
-	for true {
+	for {
 		fetchPrice()
 		time.Sleep(time.Minute)
 	}

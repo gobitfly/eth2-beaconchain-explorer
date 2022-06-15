@@ -162,7 +162,7 @@ func LatestState(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error sending latest index page data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -219,9 +219,9 @@ func GetCurrentPriceFormatted(r *http.Request) string {
 	userAgent = strings.ToLower(userAgent)
 	price := GetCurrentPrice(r)
 	if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") || strings.Contains(userAgent, "windows phone") {
-		return fmt.Sprintf("%s", utils.KFormatterEthPrice(price))
+		return utils.KFormatterEthPrice(price)
 	}
-	return fmt.Sprintf("%s", utils.FormatAddCommas(uint64(price)))
+	return string(utils.FormatAddCommas(uint64(price)))
 }
 
 func GetTruncCurrentPriceFormatted(r *http.Request) string {

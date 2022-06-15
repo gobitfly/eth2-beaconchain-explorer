@@ -101,6 +101,10 @@ func FormatBalanceSql(balanceInt sql.NullInt64, currency string) template.HTML {
 
 func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 	if currency == "ETH" {
+		if balance == nil {
+			return " ETH"
+		}
+		//lint:ignore SA5011 False positive?
 		balanceF := float64(*balance)
 		if balance == nil {
 			return template.HTML("<span> 0.00000 " + currency + "</span>")
@@ -271,7 +275,7 @@ func FormatEpoch(epoch uint64) template.HTML {
 // FormatEth1AddressString will return the eth1-address formated as html string
 func FormatEth1AddressString(addr []byte) template.HTML {
 	eth1Addr := eth1common.BytesToAddress(addr)
-	return template.HTML(fmt.Sprintf("%s", eth1Addr.Hex()))
+	return template.HTML(eth1Addr.Hex())
 }
 
 // FormatEth1AddressString will return the eth1-address formated as html string
@@ -444,9 +448,9 @@ func formatBitvectorValidators(bits []byte, validators []uint64) template.HTML {
 		}
 
 		if (i+1)%64 == 0 {
-			buf.WriteString(fmt.Sprintf("\n"))
+			buf.WriteString("\n")
 		} else if (i+1)%8 == 0 {
-			buf.WriteString(fmt.Sprintf(" "))
+			buf.WriteString(" ")
 		}
 	}
 	buf.WriteString("</pre>")

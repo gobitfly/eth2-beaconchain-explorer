@@ -9,11 +9,12 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"flag"
+	"time"
+
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/chromedp"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 func main() {
@@ -29,8 +30,21 @@ func main() {
 	}
 	utils.Config = cfg
 
-	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
-	defer db.DB.Close()
+	db.MustInitDB(&types.DatabaseConfig{
+		Username: cfg.WriterDatabase.Username,
+		Password: cfg.WriterDatabase.Password,
+		Name:     cfg.WriterDatabase.Name,
+		Host:     cfg.WriterDatabase.Host,
+		Port:     cfg.WriterDatabase.Port,
+	}, &types.DatabaseConfig{
+		Username: cfg.ReaderDatabase.Username,
+		Password: cfg.ReaderDatabase.Password,
+		Name:     cfg.ReaderDatabase.Name,
+		Host:     cfg.ReaderDatabase.Host,
+		Port:     cfg.ReaderDatabase.Port,
+	})
+	defer db.ReaderDb.Close()
+	defer db.WriterDb.Close()
 
 	// create context
 	ctx, cancel := chromedp.NewContext(context.Background())
@@ -45,7 +59,7 @@ func main() {
 				logrus.Errorf("error rendering chart page: %v", err)
 				continue
 			}
-			_, err := db.DB.Query("INSERT INTO chart_images (name, image) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET image = excluded.image", path, buf)
+			_, err := db.WriterDb.Query("INSERT INTO chart_images (name, image) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET image = excluded.image", path, buf)
 
 			if err != nil {
 				logrus.Errorf("error writing image data for path %v to the database: %v", path, err)

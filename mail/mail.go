@@ -39,7 +39,10 @@ func SendHTMLMail(to, subject string, msg types.Email, attachment []types.EmailA
 		err = SendMailSMTP(to, body.Bytes())
 	} else if utils.Config.Frontend.Mail.Mailgun.PrivateKey != "" {
 		err = renderer.ExecuteTemplate(&body, "layout", MailTemplate{Mail: msg, Domain: utils.Config.Frontend.SiteDomain})
-		content := string(body.Bytes())
+		if err != nil {
+			return err
+		}
+		content := body.String()
 		err = SendMailMailgun(to, subject, content, createTextMessage(msg), attachment)
 	} else {
 		logrus.Errorf("error sending reset-email: invalid config for mail-service", err)
@@ -93,7 +96,9 @@ func SendMailRateLimited(to, subject string, msg types.Email, attachment []types
 		}
 		if count >= utils.Config.Frontend.MaxMailsPerEmailPerDay {
 			timeLeft := now.Add(time.Hour * 24).Truncate(time.Hour * 24).Sub(now)
-			return &types.RateLimitError{timeLeft}
+			return &types.RateLimitError{
+				TimeLeft: timeLeft,
+			}
 		}
 	}
 

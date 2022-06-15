@@ -157,11 +157,12 @@ func notificationsSender() {
 func notificationSender() {
 	for {
 		start := time.Now()
-		ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 
 		conn, err := db.FrontendReaderDB.Conn(ctx)
 		if err != nil {
 			logger.WithError(err).Error("error creating connection")
+			cancel()
 			continue
 		}
 
@@ -173,6 +174,7 @@ func notificationSender() {
 			if err != nil {
 				logger.WithError(err).Error("error returning connection to connection pool")
 			}
+			cancel()
 			continue
 		}
 
@@ -197,6 +199,7 @@ func notificationSender() {
 			if err != nil {
 				logger.WithError(err).Error("error returning connection to connection pool")
 			}
+			cancel()
 			continue
 		}
 
@@ -213,6 +216,7 @@ func notificationSender() {
 			logger.WithError(err).Error("error returning connection to connection pool")
 		}
 
+		cancel()
 		time.Sleep(time.Second * 30)
 	}
 }
@@ -452,6 +456,7 @@ func garbageCollectNotificationQueue(useDB *sqlx.DB) error {
 func getNetwork() string {
 	domainParts := strings.Split(utils.Config.Frontend.SiteDomain, ".")
 	if len(domainParts) >= 3 {
+		//lint:ignore SA1019 Ignore the deprecation warnings
 		return fmt.Sprintf("%s: ", strings.Title(domainParts[0]))
 	}
 	return ""
@@ -1081,63 +1086,63 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 	return nil
 }
 
-type validatorBalanceDecreasedNotification struct {
-	ValidatorIndex     uint64
-	ValidatorPublicKey string
-	StartEpoch         uint64
-	EndEpoch           uint64
-	StartBalance       uint64
-	EndBalance         uint64
-	SubscriptionID     uint64
-	EventFilter        string
-	UnsubscribeHash    sql.NullString
-}
+// type validatorBalanceDecreasedNotification struct {
+// 	ValidatorIndex     uint64
+// 	ValidatorPublicKey string
+// 	StartEpoch         uint64
+// 	EndEpoch           uint64
+// 	StartBalance       uint64
+// 	EndBalance         uint64
+// 	SubscriptionID     uint64
+// 	EventFilter        string
+// 	UnsubscribeHash    sql.NullString
+// }
 
-func (n *validatorBalanceDecreasedNotification) GetUnsubscribeHash() string {
-	if n.UnsubscribeHash.Valid {
-		return n.UnsubscribeHash.String
-	}
-	return ""
-}
+// func (n *validatorBalanceDecreasedNotification) GetUnsubscribeHash() string {
+// 	if n.UnsubscribeHash.Valid {
+// 		return n.UnsubscribeHash.String
+// 	}
+// 	return ""
+// }
 
-func (n *validatorBalanceDecreasedNotification) GetEmailAttachment() *types.EmailAttachment {
-	return nil
-}
+// func (n *validatorBalanceDecreasedNotification) GetEmailAttachment() *types.EmailAttachment {
+// 	return nil
+// }
 
-func (n *validatorBalanceDecreasedNotification) GetSubscriptionID() uint64 {
-	return n.SubscriptionID
-}
+// func (n *validatorBalanceDecreasedNotification) GetSubscriptionID() uint64 {
+// 	return n.SubscriptionID
+// }
 
-func (n *validatorBalanceDecreasedNotification) GetEpoch() uint64 {
-	return n.StartEpoch
-}
+// func (n *validatorBalanceDecreasedNotification) GetEpoch() uint64 {
+// 	return n.StartEpoch
+// }
 
-func (n *validatorBalanceDecreasedNotification) GetEventName() types.EventName {
-	return types.ValidatorBalanceDecreasedEventName
-}
+// func (n *validatorBalanceDecreasedNotification) GetEventName() types.EventName {
+// 	return types.ValidatorBalanceDecreasedEventName
+// }
 
-func (n *validatorBalanceDecreasedNotification) GetInfo(includeUrl bool) string {
-	balance := float64(n.EndBalance) / 1e9
-	diff := float64(n.StartBalance-n.EndBalance) / 1e9
+// func (n *validatorBalanceDecreasedNotification) GetInfo(includeUrl bool) string {
+// 	balance := float64(n.EndBalance) / 1e9
+// 	diff := float64(n.StartBalance-n.EndBalance) / 1e9
 
-	generalPart := fmt.Sprintf(`The balance of validator %[1]v decreased for 3 consecutive epochs by %.9[2]f ETH to %.9[3]f ETH from epoch %[4]v to epoch %[5]v.`, n.ValidatorIndex, diff, balance, n.StartEpoch, n.EndEpoch)
-	if includeUrl {
-		return generalPart + getUrlPart(n.ValidatorIndex)
-	}
-	return generalPart
-}
+// 	generalPart := fmt.Sprintf(`The balance of validator %[1]v decreased for 3 consecutive epochs by %.9[2]f ETH to %.9[3]f ETH from epoch %[4]v to epoch %[5]v.`, n.ValidatorIndex, diff, balance, n.StartEpoch, n.EndEpoch)
+// 	if includeUrl {
+// 		return generalPart + getUrlPart(n.ValidatorIndex)
+// 	}
+// 	return generalPart
+// }
 
-func (n *validatorBalanceDecreasedNotification) GetTitle() string {
-	return "Validator Balance Decreased"
-}
+// func (n *validatorBalanceDecreasedNotification) GetTitle() string {
+// 	return "Validator Balance Decreased"
+// }
 
-func (n *validatorBalanceDecreasedNotification) GetEventFilter() string {
-	return n.EventFilter
-}
+// func (n *validatorBalanceDecreasedNotification) GetEventFilter() string {
+// 	return n.EventFilter
+// }
 
-func (n *validatorBalanceDecreasedNotification) GetInfoMarkdown() string {
-	return n.GetInfo(false)
-}
+// func (n *validatorBalanceDecreasedNotification) GetInfoMarkdown() string {
+// 	return n.GetInfo(false)
+// }
 
 func getUrlPart(validatorIndex uint64) string {
 	return fmt.Sprintf(` For more information visit: https://%[2]s/validator/%[1]v`, validatorIndex, utils.Config.Frontend.SiteDomain)
@@ -1147,63 +1152,63 @@ func getUrlPart(validatorIndex uint64) string {
 // and creates notifications for all subscriptions which have not been notified about the validator since the last time its balance increased.
 // It looks 10 epochs back for when the balance increased the last time, this means if the explorer is not running for 10 epochs it is possible
 // that no new notification is sent even if there was a balance-increase.
-func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	latestEpoch := LatestEpoch()
-	if latestEpoch < 3 {
-		return nil
-	}
-	dbResult, err := db.GetValidatorsBalanceDecrease(latestEpoch)
-	if err != nil {
-		return err
-	}
+// func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
+// 	latestEpoch := LatestEpoch()
+// 	if latestEpoch < 3 {
+// 		return nil
+// 	}
+// 	dbResult, err := db.GetValidatorsBalanceDecrease(latestEpoch)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	query := ""
-	resultsLen := len(dbResult)
-	for i, event := range dbResult {
-		query += fmt.Sprintf(`SELECT %d as ref, id, user_id, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash from users_subscriptions where event_name = $1 AND event_filter = '%s'  AND (last_sent_epoch > $2 OR last_sent_epoch IS NULL) AND created_epoch <= $2`, i, event.Pubkey)
-		if i < resultsLen-1 {
-			query += " UNION "
-		}
-	}
-	if query == "" {
-		return nil
-	}
-	var subscribers []struct {
-		Ref             uint64         `db:"ref"`
-		Id              uint64         `db:"id"`
-		UserId          uint64         `db:"user_id"`
-		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
-	}
+// 	query := ""
+// 	resultsLen := len(dbResult)
+// 	for i, event := range dbResult {
+// 		query += fmt.Sprintf(`SELECT %d as ref, id, user_id, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash from users_subscriptions where event_name = $1 AND event_filter = '%s'  AND (last_sent_epoch > $2 OR last_sent_epoch IS NULL) AND created_epoch <= $2`, i, event.Pubkey)
+// 		if i < resultsLen-1 {
+// 			query += " UNION "
+// 		}
+// 	}
+// 	if query == "" {
+// 		return nil
+// 	}
+// 	var subscribers []struct {
+// 		Ref             uint64         `db:"ref"`
+// 		Id              uint64         `db:"id"`
+// 		UserId          uint64         `db:"user_id"`
+// 		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
+// 	}
 
-	err = db.FrontendWriterDB.Select(&subscribers, query, types.ValidatorBalanceDecreasedEventName, latestEpoch)
-	if err != nil {
-		return err
-	}
+// 	err = db.FrontendWriterDB.Select(&subscribers, query, types.ValidatorBalanceDecreasedEventName, latestEpoch)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	for _, sub := range subscribers {
-		event := dbResult[sub.Ref]
-		n := &validatorBalanceDecreasedNotification{
-			SubscriptionID:  sub.Id,
-			ValidatorIndex:  event.ValidatorIndex,
-			StartEpoch:      latestEpoch - 3,
-			EndEpoch:        latestEpoch,
-			StartBalance:    event.StartBalance,
-			EndBalance:      event.EndBalance,
-			EventFilter:     event.Pubkey,
-			UnsubscribeHash: sub.UnsubscribeHash,
-		}
+// 	for _, sub := range subscribers {
+// 		event := dbResult[sub.Ref]
+// 		n := &validatorBalanceDecreasedNotification{
+// 			SubscriptionID:  sub.Id,
+// 			ValidatorIndex:  event.ValidatorIndex,
+// 			StartEpoch:      latestEpoch - 3,
+// 			EndEpoch:        latestEpoch,
+// 			StartBalance:    event.StartBalance,
+// 			EndBalance:      event.EndBalance,
+// 			EventFilter:     event.Pubkey,
+// 			UnsubscribeHash: sub.UnsubscribeHash,
+// 		}
 
-		if _, exists := notificationsByUserID[sub.UserId]; !exists {
-			notificationsByUserID[sub.UserId] = map[types.EventName][]types.Notification{}
-		}
-		if _, exists := notificationsByUserID[sub.UserId][n.GetEventName()]; !exists {
-			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
-		}
-		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
-	}
+// 		if _, exists := notificationsByUserID[sub.UserId]; !exists {
+// 			notificationsByUserID[sub.UserId] = map[types.EventName][]types.Notification{}
+// 		}
+// 		if _, exists := notificationsByUserID[sub.UserId][n.GetEventName()]; !exists {
+// 			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
+// 		}
+// 		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
 	latestEpoch := LatestEpoch()
@@ -2115,12 +2120,12 @@ func (n *taxReportNotification) GetEventName() types.EventName {
 }
 
 func (n *taxReportNotification) GetInfo(includeUrl bool) string {
-	generalPart := fmt.Sprint(`Please find attached the income history of your selected validators.`)
+	generalPart := `Please find attached the income history of your selected validators.`
 	return generalPart
 }
 
 func (n *taxReportNotification) GetTitle() string {
-	return fmt.Sprint("Income Report")
+	return "Income Report"
 }
 
 func (n *taxReportNotification) GetEventFilter() string {
@@ -2217,7 +2222,7 @@ func (n *networkNotification) GetInfo(includeUrl bool) string {
 }
 
 func (n *networkNotification) GetTitle() string {
-	return fmt.Sprint("Beaconchain Network Issues")
+	return "Beaconchain Network Issues"
 }
 
 func (n *networkNotification) GetEventFilter() string {
@@ -2319,7 +2324,7 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 	case types.RocketpoolCommissionThresholdEventName:
 		return fmt.Sprintf(`The current RPL commission rate of %v has reached your configured threshold.`, n.ExtraData)
 	case types.RocketpoolNewClaimRoundStartedEventName:
-		return fmt.Sprintf(`A new reward round has started. You can now claim your rewards from the previous round.`)
+		return `A new reward round has started. You can now claim your rewards from the previous round.`
 	case types.RocketpoolColleteralMaxReached:
 		return `Your RPL collateral has reached your configured threshold at 150%.`
 	case types.RocketpoolColleteralMinReached:
@@ -2347,9 +2352,9 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 func (n *rocketpoolNotification) GetTitle() string {
 	switch n.EventName {
 	case types.RocketpoolCommissionThresholdEventName:
-		return fmt.Sprintf(`Rocketpool Commission`)
+		return `Rocketpool Commission`
 	case types.RocketpoolNewClaimRoundStartedEventName:
-		return fmt.Sprintf(`Rocketpool Claim Available`)
+		return `Rocketpool Claim Available`
 	case types.RocketpoolColleteralMaxReached:
 		return `Rocketpool Max Collateral`
 	case types.RocketpoolColleteralMinReached:
@@ -2583,7 +2588,7 @@ func (b *BigFloat) Value() (driver.Value, error) {
 
 func (b *BigFloat) Scan(value interface{}) error {
 	if value == nil {
-		return errors.New("Can not cast nil to BigFloat")
+		return errors.New("can not cast nil to BigFloat")
 	}
 
 	switch t := value.(type) {
@@ -2600,7 +2605,7 @@ func (b *BigFloat) Scan(value interface{}) error {
 			return fmt.Errorf("failed to load value to []uint8: %v", value)
 		}
 	default:
-		return fmt.Errorf("Could not scan type %T into BigFloat", t)
+		return fmt.Errorf("could not scan type %T into BigFloat", t)
 	}
 
 	return nil

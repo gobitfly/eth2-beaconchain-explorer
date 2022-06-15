@@ -128,8 +128,9 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%d", i)
 		},
-		"derefString":      DerefString,
-		"trLang":           TrLang,
+		"derefString": DerefString,
+		"trLang":      TrLang,
+		//lint:ignore SA1019 Ignore the deprecation warnings
 		"firstCharToUpper": func(s string) string { return strings.Title(s) },
 		"eqsp": func(a, b *string) bool {
 			if a != nil && b != nil {
@@ -338,7 +339,6 @@ func CORSMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
-		return
 	})
 }
 
@@ -414,22 +414,16 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 			switch v.DatabaseTypeName() {
 			case "VARCHAR", "TEXT", "UUID":
 				scanArgs[i] = new(sql.NullString)
-				break
 			case "BOOL":
 				scanArgs[i] = new(sql.NullBool)
-				break
 			case "INT4", "INT8":
 				scanArgs[i] = new(sql.NullInt64)
-				break
 			case "FLOAT8":
 				scanArgs[i] = new(sql.NullFloat64)
-				break
 			case "TIMESTAMP":
 				scanArgs[i] = new(sql.NullTime)
-				break
 			case "_INT4", "_INT8":
 				scanArgs[i] = new(pq.Int64Array)
-				break
 			default:
 				scanArgs[i] = new(sql.NullString)
 			}
@@ -575,7 +569,7 @@ func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
 		return false, err
 	}
 	if len(googleResponse.ErrorCodes) > 0 {
-		err = fmt.Errorf("Error validating ReCaptcha %v", googleResponse.ErrorCodes)
+		err = fmt.Errorf("error validating ReCaptcha %v", googleResponse.ErrorCodes)
 	} else {
 		err = nil
 	}
@@ -584,7 +578,7 @@ func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
 		return true, err
 	}
 
-	return false, fmt.Errorf("Score too low threshold not reached, Score: %v - Required >0.5; %v", googleResponse.Score, err)
+	return false, fmt.Errorf("score too low threshold not reached, Score: %v - Required >0.5; %v", googleResponse.Score, err)
 }
 
 func BitAtVector(b []byte, i int) bool {

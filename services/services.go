@@ -64,7 +64,7 @@ func InitNotifications() {
 func epochUpdater() {
 	firstRun := true
 
-	for true {
+	for {
 		var latestFinalized uint64
 		err := db.WriterDb.Get(&latestFinalized, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
 		if err != nil {
@@ -92,7 +92,7 @@ func epochUpdater() {
 func slotUpdater() {
 	firstRun := true
 
-	for true {
+	for {
 		var slot uint64
 		err := db.WriterDb.Get(&slot, "SELECT COALESCE(MAX(slot), 0) FROM blocks where slot < $1", utils.TimeToSlot(uint64(time.Now().Add(time.Second*10).Unix())))
 
@@ -113,7 +113,7 @@ func slotUpdater() {
 func latestProposedSlotUpdater() {
 	firstRun := true
 
-	for true {
+	for {
 		var slot uint64
 		err := db.WriterDb.Get(&slot, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
 
@@ -134,7 +134,7 @@ func latestProposedSlotUpdater() {
 func indexPageDataUpdater() {
 	firstRun := true
 
-	for true {
+	for {
 		data, err := getIndexPageData()
 		if err != nil {
 			logger.Errorf("error retrieving index page data: %v", err)

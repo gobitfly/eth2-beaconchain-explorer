@@ -68,7 +68,7 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 `, lookBack, services.LatestEpoch())
 	if err != nil {
 		logger.Errorf("error querying blocks table for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -145,7 +145,7 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(res)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

@@ -61,11 +61,11 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 	lastEpoch, err := db.GetLatestEpoch()
 
 	if err != nil {
-		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", 503)
+		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", http.StatusServiceUnavailable)
 		return
 	}
 
-	if 18446744073709551615 == utils.Config.Chain.GenesisTimestamp {
+	if utils.Config.Chain.GenesisTimestamp == 18446744073709551615 {
 		fmt.Fprint(w, "OK. No GENESIS_TIMESTAMP defined yet")
 		return
 	}
@@ -78,7 +78,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 
 	epochTime := utils.EpochToTime(lastEpoch)
 	if epochTime.Before(time.Now().Add(time.Minute * -13)) {
-		http.Error(w, "Internal server error: last epoch in db is more than 13 minutes old", 503)
+		http.Error(w, "Internal server error: last epoch in db is more than 13 minutes old", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -99,11 +99,11 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 	lastEpoch, err := db.GetLatestEpoch()
 
 	if err != nil {
-		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", 503)
+		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", http.StatusServiceUnavailable)
 		return
 	}
 
-	if 18446744073709551615 == utils.Config.Chain.GenesisTimestamp {
+	if utils.Config.Chain.GenesisTimestamp == 18446744073709551615 {
 		fmt.Fprint(w, "OK. No GENESIS_TIMESTAMP defined yet")
 		return
 	}
@@ -213,6 +213,10 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(slotOrHash) != 64 {
 		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
+		if err != nil {
+			sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+			return
+		}
 	}
 	if slotOrHash == "latest" {
 		blockSlot = int64(services.LatestSlot())
@@ -1492,7 +1496,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if parsedBase.Valid == false {
+	if !parsedBase.Valid {
 		logger.Errorf("receipt is not valid %v", validationResult.RejectReason)
 		sendErrorResponse(j, r.URL.String(), "receipt is not valid")
 		return
@@ -1967,6 +1971,12 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 			db.CreateNewStatsMetaPartition()
 			tx.Rollback()
 			tx, err = db.NewTransaction()
+			if err != nil {
+				logger.Errorf("Could not transact | %v", err)
+				sendErrorResponse(j, r.URL.String(), "could not store")
+				return false
+			}
+
 			id, err = db.InsertStatsMeta(tx, userData.ID, parsedMeta)
 		}
 		if err != nil {
@@ -2128,7 +2138,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	err = db.ReaderDb.Select(&data, query, queryValidatorsArr, queryOffsetEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance history")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -2143,7 +2153,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(balanceHistoryChartData)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -2185,7 +2195,6 @@ func sendErrorResponse(j *json.Encoder, route, message string) {
 	if err != nil {
 		logger.Errorf("error serializing json error for API %v route: %v", route, err)
 	}
-	return
 }
 
 // SendOKResponse exposes sendOKResponse
@@ -2207,7 +2216,6 @@ func sendOKResponse(j *json.Encoder, route string, data []interface{}) {
 	if err != nil {
 		logger.Errorf("error serializing json data for API %v route: %v", route, err)
 	}
-	return
 }
 
 func parseApiValidatorParam(origParam string, limit int) (indices []uint64, pubkeys pq.ByteaArray, err error) {

@@ -1305,7 +1305,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 
 			var dbBlockRootHash []byte
 			err := WriterDb.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
-			if err == nil && bytes.Compare(dbBlockRootHash, b.BlockRoot) == 0 {
+			if err == nil && bytes.Equal(dbBlockRootHash, b.BlockRoot) {
 				blockLog.Infof("skipping export of block as it is already present in the db")
 				continue
 			}
@@ -1402,11 +1402,9 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 
 			for i, a := range b.Attestations {
 				attestationAssignmentsArgsWeek := make([][]interface{}, 0, 20000)
-				attestingValidators := make([]string, 0, 20000)
 
 				for _, validator := range a.Attesters {
 					attestationAssignmentsArgsWeek = append(attestationAssignmentsArgsWeek, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot, a.Data.Slot / utils.Config.Chain.SlotsPerEpoch / 1575})
-					attestingValidators = append(attestingValidators, strconv.FormatUint(validator, 10))
 				}
 
 				batchSize := 20000
@@ -1433,11 +1431,6 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 						return fmt.Errorf("error executing stmtAttestationAssignments_p for block %v: %w", b.Slot, err)
 					}
 				}
-
-				// _, err = stmtValidatorsLastAttestationSlot.Exec(a.Data.Slot, "{"+strings.Join(attestingValidators, ",")+"}")
-				// if err != nil {
-				// 	return fmt.Errorf("error executing stmtValidatorsLastAttestationSlot for block %v: %w", b.Slot, err)
-				// }
 
 				_, err = stmtAttestations.Exec(b.Slot, i, b.BlockRoot, bitfield.Bitlist(a.AggregationBits).Bytes(), pq.Array(a.Attesters), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
 				if err != nil {
@@ -1470,7 +1463,6 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				return fmt.Errorf("error executing stmtProposalAssignments for block %v: %w", b.Slot, err)
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtProposalAssignments")
-			t = time.Now()
 
 			blockLog.Infof("export of block completed, took %v", time.Since(start))
 		}

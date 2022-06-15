@@ -90,7 +90,7 @@ func updatePoolInfo() {
 
 	lastUpdateTime := poolInfoTempTime.Load().(time.Time)
 
-	if time.Now().Sub(lastUpdateTime).Hours() > 3 { // query db every 3 hour
+	if time.Since(lastUpdateTime).Hours() > 3 { // query db every 3 hour
 		// deleteOldChartEntries()
 		poolInfoTempLocal := getPoolInfo()
 		ethSupplyLocal := getEthSupply()
@@ -116,7 +116,7 @@ func InitPools() {
 	ethSupply.Store(ethPriceResp{})
 	idEthSeriesTemp.Store(idEthSeriesDrill{})
 	go func() {
-		for true {
+		for {
 			updatePoolInfo()
 			time.Sleep(time.Minute * 10)
 		}
@@ -213,7 +213,7 @@ func getPoolInfo() []PoolsInfo {
 			})
 		}
 	}
-	logger.Infof("pool update for loop took %f seconds", time.Now().Sub(loopstart).Seconds())
+	logger.Infof("pool update for loop took %f seconds", time.Since(loopstart).Seconds())
 	return resp
 }
 

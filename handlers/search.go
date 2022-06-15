@@ -28,18 +28,18 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	_, err := strconv.Atoi(search)
 
 	if err == nil {
-		http.Redirect(w, r, "/block/"+search, 301)
+		http.Redirect(w, r, "/block/"+search, http.StatusMovedPermanently)
 		return
 	}
 
 	search = strings.Replace(search, "0x", "", -1)
 
 	if len(search) == 64 {
-		http.Redirect(w, r, "/block/"+search, 301)
+		http.Redirect(w, r, "/block/"+search, http.StatusMovedPermanently)
 	} else if len(search) == 96 {
-		http.Redirect(w, r, "/validator/"+search, 301)
+		http.Redirect(w, r, "/validator/"+search, http.StatusMovedPermanently)
 	} else if utils.IsValidEth1Address(search) {
-		http.Redirect(w, r, "/validators/eth1deposits?q="+search, 301)
+		http.Redirect(w, r, "/validators/eth1deposits?q="+search, http.StatusMovedPermanently)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
 		data := InitPageData(w, r, "search", "/search", "")
@@ -48,7 +48,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
 			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	}
@@ -65,7 +65,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	search := vars["search"]
 	search = strings.Replace(search, "0x", "", -1)
 	search = strings.Replace(search, "0X", "", -1)
-	var err error
+	var queryErr error
 	logger := logger.WithField("searchType", searchType)
 	var result interface{}
 
@@ -80,7 +80,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 		if searchLikeRE.MatchString(search) {
 			if len(search) < 64 {
-				err = db.ReaderDb.Select(result, `
+				queryErr = db.ReaderDb.Select(result, `
 				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
 				FROM blocks 
 				WHERE CAST(slot AS text) LIKE LOWER($1)
@@ -89,10 +89,10 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				blockHash, err := hex.DecodeString(search)
 				if err != nil {
 					logger.Errorf("error parsing blockHash to int: %v", err)
-					http.Error(w, "Internal server error", 503)
+					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 					return
 				}
-				err = db.ReaderDb.Select(result, `
+				queryErr = db.ReaderDb.Select(result, `
 				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
 				FROM blocks 
 				WHERE blockroot = $1 OR
@@ -103,7 +103,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
-		err = db.ReaderDb.Select(graffiti, `
+		err := db.ReaderDb.Select(graffiti, `
 			SELECT graffiti, count(*)
 			FROM blocks
 			WHERE graffiti_text ILIKE LOWER($1)
@@ -118,11 +118,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		result = graffiti
 	case "epochs":
 		result = &types.SearchAheadEpochsResult{}
-		err = db.ReaderDb.Select(result, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")
+		queryErr = db.ReaderDb.Select(result, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")
 	case "validators":
 		// find all validators that have a index, publickey or name like the search-query
 		result = &types.SearchAheadValidatorsResult{}
-		err = db.ReaderDb.Select(result, `
+		queryErr = db.ReaderDb.Select(result, `
 			SELECT
 				validatorindex AS index,
 				pubkeyhex AS pubkey
@@ -141,7 +141,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			search = search[:len(search)-1]
 		}
 		if searchLikeRE.MatchString(search) {
-			err = db.ReaderDb.Select(result, `
+			queryErr = db.ReaderDb.Select(result, `
 				SELECT DISTINCT ENCODE(from_address, 'hex') as from_address
 				FROM eth1_deposits
 				WHERE ENCODE(from_address, 'hex') LIKE LOWER($1)
@@ -150,7 +150,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
-		err = db.ReaderDb.Select(result, `
+		queryErr = db.ReaderDb.Select(result, `
 			SELECT validatorindex AS index, pubkeyhex AS pubkey
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
@@ -175,11 +175,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			eth1AddressHash, err := hex.DecodeString(search)
 			if err != nil {
 				logger.Errorf("error parsing eth1AddressHash to hex: %v", err)
-				http.Error(w, "Internal server error", 503)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 				return
 			}
 			logger.Infof("indexed_validators_by_eth1_addresses")
-			err = db.ReaderDb.Select(result, `
+			queryErr = db.ReaderDb.Select(result, `
 			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
@@ -201,7 +201,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
 			Count            uint64        `db:"count" json:"-"`
 		}{}
-		err = db.ReaderDb.Select(&res, `
+		err := db.ReaderDb.Select(&res, `
 			SELECT graffiti, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
@@ -228,7 +228,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
 			Count            uint64        `db:"count" json:"-"`
 		}{}
-		err = db.ReaderDb.Select(&res, `
+		err := db.ReaderDb.Select(&res, `
 			SELECT name, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT
 					validatorindex,
@@ -253,14 +253,14 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err != nil {
-		logger.WithError(err).Error("error doing query for searchAhead")
-		http.Error(w, "Internal server error", 503)
+	if queryErr != nil {
+		logger.WithError(queryErr).Error("error doing query for searchAhead")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
-	err = json.NewEncoder(w).Encode(result)
+	err := json.NewEncoder(w).Encode(result)
 	if err != nil {
 		logger.WithError(err).Error("error encoding searchAhead")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 	}
 }

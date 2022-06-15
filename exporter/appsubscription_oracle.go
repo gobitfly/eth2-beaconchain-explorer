@@ -104,7 +104,7 @@ func VerifyGoogle(client *playstore.Client, receipt *types.PremiumData) (*Verify
 				Valid:          false,
 				ExpirationDate: 0,
 				RejectReason:   "gclient_init_exception",
-			}, errors.New("Google client can't be initialized")
+			}, errors.New("google client can't be initialized")
 		}
 	}
 

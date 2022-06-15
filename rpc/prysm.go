@@ -148,8 +148,10 @@ func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 	}
 
 	return &types.ValidatorQueue{
+		//lint:ignore SA1019 Ignore the deprecation warnings
 		Activating: uint64(len(validators.ActivationPublicKeys)),
-		Exititing:  uint64(len(validators.ExitPublicKeys)),
+		//lint:ignore SA1019 Ignore the deprecation warnings
+		Exititing: uint64(len(validators.ExitPublicKeys)),
 	}, nil
 }
 
@@ -226,24 +228,36 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	// Retrieve the validator balances for the requested epoch
 	start := time.Now()
 	validatorBalances, err := pc.getBalancesForEpoch(int64(epoch))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving validator balances for epoch %v: %v", epoch, err)
+	}
 	logger.Printf("retrieved data for %v validator balances for epoch %v took %v", len(validatorBalances), epoch, time.Since(start))
 
 	// Retrieve the validator balances for the n-1d epoch
 	start = time.Now()
 	epoch1d := int64(epoch) - 225
 	validatorBalances1d, err := pc.getBalancesForEpoch(epoch1d)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving validator balances 1d for epoch %v: %v", epoch, err)
+	}
 	logger.Printf("retrieved data for %v validator balances for 1d epoch %v took %v", len(validatorBalances), epoch1d, time.Since(start))
 
 	// Retrieve the validator balances for the n-7d epoch
 	start = time.Now()
 	epoch7d := int64(epoch) - 225*7
 	validatorBalances7d, err := pc.getBalancesForEpoch(epoch7d)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving validator balances 7d for epoch %v: %v", epoch, err)
+	}
 	logger.Printf("retrieved data for %v validator balances for 7d epoch %v took %v", len(validatorBalances), epoch7d, time.Since(start))
 
 	// Retrieve the validator balances for the n-7d epoch
 	start = time.Now()
 	epoch31d := int64(epoch) - 225*31
 	validatorBalances31d, err := pc.getBalancesForEpoch(epoch31d)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving validator balances 31d for epoch %v: %v", epoch, err)
+	}
 	logger.Printf("retrieved data for %v validator balances for 31d epoch %v took %v", len(validatorBalances), epoch31d, time.Since(start))
 
 	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
@@ -808,11 +822,14 @@ func (pc *PrysmClient) GetValidatorParticipation(epoch uint64) (*types.Validator
 		}, nil
 	}
 	return &types.ValidatorParticipation{
-		Epoch:                   epoch,
-		Finalized:               epochParticipationStatistics.Finalized,
+		Epoch:     epoch,
+		Finalized: epochParticipationStatistics.Finalized,
+		//lint:ignore SA1019 Ignore the deprecation warnings
 		GlobalParticipationRate: epochParticipationStatistics.Participation.GlobalParticipationRate,
-		VotedEther:              epochParticipationStatistics.Participation.VotedEther,
-		EligibleEther:           epochParticipationStatistics.Participation.EligibleEther,
+		//lint:ignore SA1019 Ignore the deprecation warnings
+		VotedEther: epochParticipationStatistics.Participation.VotedEther,
+		//lint:ignore SA1019 Ignore the deprecation warnings
+		EligibleEther: epochParticipationStatistics.Participation.EligibleEther,
 	}, nil
 }
 

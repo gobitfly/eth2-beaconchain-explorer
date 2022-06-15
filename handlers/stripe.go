@@ -61,7 +61,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	subscription, err := db.StripeGetUserSubscription(user.UserID, purchaseGroup)
 	if err != nil {
 		logger.Errorf("error retrieving user subscriptions %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -105,7 +105,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		AllowPromotionCodes: &enabled,
 		Mode:                stripe.String(string(stripe.CheckoutSessionModeSubscription)),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
-			&stripe.CheckoutSessionLineItemParams{
+			{
 				Price:    stripe.String(req.Price),
 				Quantity: stripe.Int64(1),
 				// DynamicTaxRates: taxRates,
@@ -215,19 +215,19 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(event.Data.Raw, &customer)
 		if err != nil {
 			logger.WithError(err).Error("error parsing stripe webhook JSON")
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 		if customer.Email != "" {
 			err = db.StripeUpdateCustomerID(customer.Email, customer.ID)
 			if err != nil {
 				logger.WithError(err).Error("error could not update user with a stripe customerID ", customer.ID)
-				http.Error(w, "error could not update user with a stripe customerID "+customer.ID+" err: "+err.Error(), 503)
+				http.Error(w, "error could not update user with a stripe customerID "+customer.ID+" err: "+err.Error(), http.StatusServiceUnavailable)
 				return
 			}
 		} else {
 			logger.Error("error no email provided when creating stripe customer ", customer.ID)
-			http.Error(w, "error no email provided when creating stripe customer "+customer.ID, 503)
+			http.Error(w, "error no email provided when creating stripe customer "+customer.ID, http.StatusServiceUnavailable)
 			return
 		}
 
@@ -236,7 +236,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(event.Data.Raw, &customer)
 		if err != nil {
 			logger.WithError(err).Error("error parsing stripe webhook JSON", err)
-			http.Error(w, "error parsing stripe webhook JSON", 503)
+			http.Error(w, "error parsing stripe webhook JSON", http.StatusServiceUnavailable)
 			return
 		}
 
@@ -249,7 +249,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err = db.StripeRemoveCustomer(customer.ID)
 		if err != nil {
 			logger.WithError(err).Error("error could not delete user with customer ID: " + customer.ID + "err: ")
-			http.Error(w, "error could not delete user with customer ID: "+customer.ID+"err: "+err.Error(), 503)
+			http.Error(w, "error could not delete user with customer ID: "+customer.ID+"err: "+err.Error(), http.StatusServiceUnavailable)
 			return
 		}
 
@@ -261,7 +261,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(event.Data.Raw, &session)
 		if err != nil {
 			logger.WithError(err).Error("error parsing stripe webhook JSON")
-			http.Error(w, "error parsing stripe webhook JSON", 503)
+			http.Error(w, "error parsing stripe webhook JSON", http.StatusServiceUnavailable)
 			return
 		}
 
@@ -269,12 +269,12 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		// 	err = db.UpdateStripeCustomer(session.Customer.Email, session.Customer.ID)
 		// 	if err != nil {
 		// 		logger.WithError(err).Error("error could not update user with a stripe customerID")
-		// 		http.Error(w, "Internal server error", 503)
+		// 		http.Error(w, "Internal server error",http.StatusServiceUnavailable)
 		// 		return
 		// 	}
 		// } else {
 		// 	logger.Error("the session object does not have a customer email", session, session.Customer)
-		// 	http.Error(w, "Internal server error", 503)
+		// 	http.Error(w, "Internal server error",http.StatusServiceUnavailable)
 		// 	return
 		// }
 
@@ -283,19 +283,19 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(event.Data.Raw, &subscription)
 		if err != nil {
 			logger.WithError(err).Error("error parsing stripe webhook JSON")
-			http.Error(w, "error parsing stripe webhook JSON", 503)
+			http.Error(w, "error parsing stripe webhook JSON", http.StatusServiceUnavailable)
 			return
 		}
 
 		if subscription.Items == nil {
 			logger.WithError(err).Error("error creating subscription no items found", subscription)
-			http.Error(w, "error creating subscription no items found", 503)
+			http.Error(w, "error creating subscription no items found", http.StatusServiceUnavailable)
 			return
 		}
 
 		if len(subscription.Items.Data) == 0 {
 			logger.WithError(err).Error("error creating subscription no items found", subscription)
-			http.Error(w, "error creating subscription no items found", 503)
+			http.Error(w, "error creating subscription no items found", http.StatusServiceUnavailable)
 			return
 		}
 
@@ -305,7 +305,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			err = createNewStripeSubscription(subscription, event)
 			if err != nil {
 				logger.WithError(err).Error(err.Error(), event.Data.Object)
-				http.Error(w, "error "+err.Error()+" customer: "+subscription.Customer.ID, 503)
+				http.Error(w, "error "+err.Error()+" customer: "+subscription.Customer.ID, http.StatusServiceUnavailable)
 				return
 			}
 		}
@@ -315,19 +315,19 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(event.Data.Raw, &subscription)
 		if err != nil {
 			logger.WithError(err).Error("error parsing stripe webhook JSON")
-			http.Error(w, "error parsing stripe webhook JSON", 503)
+			http.Error(w, "error parsing stripe webhook JSON", http.StatusServiceUnavailable)
 			return
 		}
 
 		if subscription.Items == nil {
 			logger.Error("error updating subscription no items found", subscription)
-			http.Error(w, "error updating subscription no items found", 503)
+			http.Error(w, "error updating subscription no items found", http.StatusServiceUnavailable)
 			return
 		}
 
 		if len(subscription.Items.Data) == 0 {
 			logger.Error("error updating subscription no items found", subscription)
-			http.Error(w, "error updating subscription no items found", 503)
+			http.Error(w, "error updating subscription no items found", http.StatusServiceUnavailable)
 			return
 		}
 		priceID := subscription.Items.Data[0].Price.ID
@@ -336,21 +336,21 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			logger.WithError(err).Error("error getting subscription from database with id ", subscription.ID)
-			http.Error(w, "error updating subscription could not get current subscription err:"+err.Error(), 503)
+			http.Error(w, "error updating subscription could not get current subscription err:"+err.Error(), http.StatusServiceUnavailable)
 			return
 		}
 
 		tx, err := db.FrontendWriterDB.Begin()
 		if err != nil {
 			logger.WithError(err).Error("error creating transaction ", subscription.ID)
-			http.Error(w, "error creating transaction :"+err.Error(), 503)
+			http.Error(w, "error creating transaction :"+err.Error(), http.StatusServiceUnavailable)
 		}
 		defer tx.Rollback()
 
 		err = db.StripeUpdateSubscription(tx, priceID, subscription.ID, event.Data.Raw)
 		if err != nil {
 			logger.WithError(err).Error("error updating user subscription", subscription.ID)
-			http.Error(w, "error updating user subscription, customer: "+subscription.Customer.ID, 503)
+			http.Error(w, "error updating user subscription, customer: "+subscription.Customer.ID, http.StatusServiceUnavailable)
 			return
 		}
 
@@ -358,7 +358,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			err := db.ChangeProductIDFromStripe(tx, subscription.ID, getCleanProductID(priceID))
 			if err != nil {
 				logger.WithError(err).Error("error updating stripe mobile subscription", subscription.ID)
-				http.Error(w, "error updating stripe mobile subscription customer: "+subscription.Customer.ID, 503)
+				http.Error(w, "error updating stripe mobile subscription customer: "+subscription.Customer.ID, http.StatusServiceUnavailable)
 				return
 			}
 		}
@@ -366,14 +366,14 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err = tx.Commit()
 		if err != nil {
 			logger.WithError(err).Error("error commiting transaction ", subscription.ID)
-			http.Error(w, "error commiting transaction :"+err.Error(), 503)
+			http.Error(w, "error commiting transaction :"+err.Error(), http.StatusServiceUnavailable)
 		}
 
 		if currSub.PriceID != nil && *currSub.PriceID != priceID && utils.GetPurchaseGroup(*currSub.PriceID) == utils.GetPurchaseGroup(priceID) {
 			email, err := db.StripeGetCustomerEmail(subscription.Customer.ID)
 			if err != nil {
 				logger.WithError(err).Error("error retrieving customer email for subscription ", subscription.ID)
-				http.Error(w, "error retrieving customer email for subscription err:"+err.Error(), 503)
+				http.Error(w, "error retrieving customer email for subscription err:"+err.Error(), http.StatusServiceUnavailable)
 			}
 			emailCustomerAboutPlanChange(email, priceID)
 		}
@@ -384,21 +384,21 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(event.Data.Raw, &subscription)
 		if err != nil {
 			logger.WithError(err).Error("error parsing stripe webhook JSON")
-			http.Error(w, "error parsing stripe webhook JSON", 503)
+			http.Error(w, "error parsing stripe webhook JSON", http.StatusServiceUnavailable)
 			return
 		}
 
 		tx, err := db.FrontendWriterDB.Begin()
 		if err != nil {
 			logger.WithError(err).Error("error creating transaction ", subscription.ID)
-			http.Error(w, "error creating transaction :"+err.Error(), 503)
+			http.Error(w, "error creating transaction :"+err.Error(), http.StatusServiceUnavailable)
 		}
 		defer tx.Rollback()
 
 		err = db.StripeUpdateSubscriptionStatus(tx, subscription.ID, false, &event.Data.Raw)
 		if err != nil {
 			logger.WithError(err).Error("error while deactivating subscription", event.Data.Object)
-			http.Error(w, "error while deactivating subscription, customer:"+subscription.Customer.ID, 503)
+			http.Error(w, "error while deactivating subscription, customer:"+subscription.Customer.ID, http.StatusServiceUnavailable)
 			return
 		}
 
@@ -406,7 +406,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			appSubID, err := db.GetUserSubscriptionIDByStripe(subscription.ID)
 			if err != nil {
 				logger.WithError(err).Error("error updating stripe mobile subscription, no users_app_subs id found for subscription id", subscription.ID)
-				http.Error(w, "error updating stripe mobile subscription, no users_app_subs id  found for subscription id, customer: "+subscription.Customer.ID, 503)
+				http.Error(w, "error updating stripe mobile subscription, no users_app_subs id  found for subscription id, customer: "+subscription.Customer.ID, http.StatusServiceUnavailable)
 				return
 			}
 			now := time.Now()
@@ -417,7 +417,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err = tx.Commit()
 		if err != nil {
 			logger.WithError(err).Error("error commiting transaction ", subscription.ID)
-			http.Error(w, "error commiting transaction :"+err.Error(), 503)
+			http.Error(w, "error commiting transaction :"+err.Error(), http.StatusServiceUnavailable)
 		}
 
 	// inform the user when the subscription will expire
@@ -429,39 +429,39 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(event.Data.Raw, &invoice)
 		if err != nil {
 			logger.WithError(err).Error("error parsing stripe webhook JSON")
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 
 		if invoice.Lines == nil {
 			logger.Warn("warning processing invoice and updating subscription no items found", invoice.ID)
-			// http.Error(w, "error processing invoice and updating subscription no items found", 503)
+			// http.Error(w, "error processing invoice and updating subscription no items found",http.StatusServiceUnavailable)
 			return
 		}
 
 		if len(invoice.Lines.Data) == 0 {
 			logger.Warn("warning processing invoice and updating subscription no items found", invoice.ID)
-			// http.Error(w, "error processing invoice and updating subscription no items found", 503)
+			// http.Error(w, "error processing invoice and updating subscription no items found",http.StatusServiceUnavailable)
 			return
 		}
 
 		if len(invoice.Lines.Data[0].Subscription) == 0 {
 			logger.Warn("error processing invoice and updating subscription no items found", invoice.ID)
-			// http.Error(w, "error processing invoice and updating subscription line items does not include a subscription", 503)
+			// http.Error(w, "error processing invoice and updating subscription line items does not include a subscription",http.StatusServiceUnavailable)
 			return
 		}
 
 		tx, err := db.FrontendWriterDB.Begin()
 		if err != nil {
 			logger.WithError(err).Error("error creating transaction ")
-			http.Error(w, "error creating transaction :"+err.Error(), 503)
+			http.Error(w, "error creating transaction :"+err.Error(), http.StatusServiceUnavailable)
 		}
 		defer tx.Rollback()
 
 		err = db.StripeUpdateSubscriptionStatus(tx, invoice.Lines.Data[0].Subscription, true, nil)
 		if err != nil {
 			logger.WithError(err).Error("error processing invoice failed to activate subscription for customer", invoice.Customer.ID)
-			http.Error(w, "error proccesing invoice failed to activate subscription for customer", 503)
+			http.Error(w, "error proccesing invoice failed to activate subscription for customer", http.StatusServiceUnavailable)
 			return
 		}
 
@@ -469,7 +469,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			appSubID, err := db.GetUserSubscriptionIDByStripe(invoice.Lines.Data[0].Subscription)
 			if err != nil {
 				logger.WithError(err).Error("error updating stripe mobile subscription (paid), no users_app_subs id found for subscription id", invoice.Lines.Data[0].Subscription)
-				http.Error(w, "error updating stripe mobile subscription, no users_app_subs id  found for subscription id, customer: "+invoice.Customer.ID, 503)
+				http.Error(w, "error updating stripe mobile subscription, no users_app_subs id  found for subscription id, customer: "+invoice.Customer.ID, http.StatusServiceUnavailable)
 				return
 			}
 			db.UpdateUserSubscription(tx, appSubID, true, 0, "")
@@ -478,7 +478,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err = tx.Commit()
 		if err != nil {
 			logger.WithError(err).Error("error commiting transaction ")
-			http.Error(w, "error commiting transaction :"+err.Error(), 503)
+			http.Error(w, "error commiting transaction :"+err.Error(), http.StatusServiceUnavailable)
 		}
 
 	case "invoice.payment_failed":
@@ -489,7 +489,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(event.Data.Raw, &invoice)
 		if err != nil {
 			logger.WithError(err).Error("error parsing stripe webhook JSON")
-			http.Error(w, "error parsing stripe webhook JSON", 503)
+			http.Error(w, "error parsing stripe webhook JSON", http.StatusServiceUnavailable)
 			return
 		}
 		emailCustomerAboutFailedPayment(invoice.CustomerEmail)
