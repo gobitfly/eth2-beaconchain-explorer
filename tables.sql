@@ -51,6 +51,7 @@ create table validator_names
     primary key (publickey)
 );
 create index idx_validator_names_publickey on validator_names (publickey);
+create index idx_validator_names_name on validator_names(name);
 
 drop table if exists validator_set;
 create table validator_set

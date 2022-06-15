@@ -20,6 +20,9 @@ const searchValidatorsResultLimit = 300
 
 var searchNotFoundTemplate = template.Must(template.New("searchnotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/searchnotfound.html"))
 
+var searchLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
+var thresholdHexLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{5,96}$`)
+
 // Search handles search requests
 func Search(w http.ResponseWriter, r *http.Request) {
 
@@ -53,8 +56,6 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-
-var searchLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
 
 // SearchAhead handles responses for the frontend search boxes
 func SearchAhead(w http.ResponseWriter, r *http.Request) {
@@ -122,16 +123,32 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "validators":
 		// find all validators that have a index, publickey or name like the search-query
 		result = &types.SearchAheadValidatorsResult{}
-		err = db.ReaderDb.Select(result, `
+		query := `
 			SELECT
 				validatorindex AS index,
 				pubkeyhex AS pubkey
 			FROM validators
-			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			WHERE CAST(validatorindex AS text) LIKE $1
-				OR pubkeyhex LIKE LOWER($1)
-				OR LOWER(validator_names.name) LIKE LOWER($2)
-			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
+			WHERE CAST(validatorindex AS text) LIKE $1 || '%' OR pubkeyhex LIKE LOWER($1 || '%')
+			UNION
+			SELECT
+				validators.validatorindex AS index,
+				validators.pubkeyhex AS pubkey
+			FROM validator_names LEFT JOIN validators ON validator_names.name LIKE '%' || $1 || '%' AND validators.pubkey = validator_names.publickey;		
+		`
+
+		// its too slow to search for names
+		if thresholdHexLikeRE.MatchString(search) {
+			query = `
+				SELECT
+					validatorindex AS index,
+					pubkeyhex AS pubkey
+				FROM validators
+				WHERE CAST(validatorindex AS text) LIKE $1 || '%'
+					OR pubkeyhex LIKE LOWER($1 || '%')
+		`
+		}
+
+		err = db.ReaderDb.Select(result, query, search)
 	case "eth1_addresses":
 		if len(search) <= 1 {
 			break
