@@ -15,6 +15,7 @@ import (
 	"eth2-exporter/version"
 	"flag"
 	"fmt"
+	"math/big"
 	"net/http"
 	"time"
 
@@ -96,24 +97,25 @@ func main() {
 	}
 
 	logrus.Infof("database connection established")
-	if utils.Config.Chain.SlotsPerEpoch == 0 || utils.Config.Chain.SecondsPerSlot == 0 {
+	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
 		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
 	}
 
 	if utils.Config.Indexer.Enabled {
 		var rpcClient rpc.Client
 
+		chainID := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
 		if utils.Config.Indexer.Node.Type == "prysm" {
 			if utils.Config.Indexer.Node.PageSize == 0 {
 				logrus.Printf("setting default rpc page size to 500")
 				utils.Config.Indexer.Node.PageSize = 500
 			}
-			rpcClient, err = rpc.NewPrysmClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
+			rpcClient, err = rpc.NewPrysmClient(cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainID)
 			if err != nil {
 				logrus.Fatal(err)
 			}
 		} else if utils.Config.Indexer.Node.Type == "lighthouse" {
-			rpcClient, err = rpc.NewLighthouseClient("http://" + cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
+			rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainID)
 			if err != nil {
 				logrus.Fatal(err)
 			}

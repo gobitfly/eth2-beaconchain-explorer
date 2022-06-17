@@ -1088,11 +1088,11 @@ type SyncAggregate struct {
 
 type ExecutionPayload struct {
 	ParentHash    bytesHexStr   `json:"parent_hash"`
-	CoinBase      bytesHexStr   `json:"coinbase"`
+	FeeRecipient  bytesHexStr   `json:"fee_recipient"`
 	StateRoot     bytesHexStr   `json:"state_root"`
-	ReceiptRoot   bytesHexStr   `json:"receipt_root"`
+	ReceiptsRoot  bytesHexStr   `json:"receipts_root"`
 	LogsBloom     bytesHexStr   `json:"logs_bloom"`
-	Random        bytesHexStr   `json:"random"`
+	PrevRandao    bytesHexStr   `json:"prev_randao"`
 	BlockNumber   uint64Str     `json:"block_number"`
 	GasLimit      uint64Str     `json:"gas_limit"`
 	GasUsed       uint64Str     `json:"gas_used"`

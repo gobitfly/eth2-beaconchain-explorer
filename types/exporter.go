@@ -137,11 +137,11 @@ type Transaction struct {
 
 type ExecutionPayload struct {
 	ParentHash    []byte
-	CoinBase      []byte
+	FeeRecipient  []byte
 	StateRoot     []byte
-	ReceiptRoot   []byte
+	ReceiptsRoot  []byte
 	LogsBloom     []byte
-	Random        []byte
+	PrevRandao    []byte
 	BlockNumber   uint64
 	GasLimit      uint64
 	GasUsed       uint64
