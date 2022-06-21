@@ -47,7 +47,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 		if err != nil {
 			logger.Errorf("error parsing blockslot to int: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", 503)
 			return
 		}
 	}
@@ -60,14 +60,14 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 			if err != nil {
 				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				http.Error(w, "Internal server error", 503)
 				return
 			}
 			return
 		}
 		if err != nil {
 			logger.Errorf("error retrieving entry count of given block or state data: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", 503)
 			return
 		}
 	}

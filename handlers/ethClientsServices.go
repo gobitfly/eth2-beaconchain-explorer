@@ -64,7 +64,7 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 	err = ethClientsServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", 503)
 		return
 	}
 }
