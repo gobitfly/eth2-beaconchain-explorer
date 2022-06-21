@@ -1472,7 +1472,7 @@ func poolsDistributionChartData() (*types.GenericChartData, error) {
 	}{}
 
 	err = db.ReaderDb.Select(&rows, `
-	select coalesce(pool, 'Unknown') as name, count(*) as count from validators left outer join validator_pool on validators.pubkey = validator_pool.publickey where validators.status in ('active_online', 'active_offline') group by name order by count(*) desc`)
+	select coalesce(pool, 'Unknown') as name, count(*) as count from validators left outer join validator_pool on validators.pubkey = validator_pool.publickey where validators.status in ('active_online', 'active_offline') group by pool order by count(*) desc`)
 	if err != nil {
 		return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
 	}
