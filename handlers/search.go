@@ -20,6 +20,9 @@ const searchValidatorsResultLimit = 300
 
 var searchNotFoundTemplate = template.Must(template.New("searchnotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/searchnotfound.html"))
 
+var searchLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
+var thresholdHexLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{5,96}$`)
+
 // Search handles search requests
 func Search(w http.ResponseWriter, r *http.Request) {
 
@@ -53,8 +56,6 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-
-var searchLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
 
 // SearchAhead handles responses for the frontend search boxes
 func SearchAhead(w http.ResponseWriter, r *http.Request) {
@@ -122,17 +123,34 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "validators":
 		// find all validators that have a index, publickey or name like the search-query
 		result = &types.SearchAheadValidatorsResult{}
-		err = db.ReaderDb.Select(result, `
+		query := `
 			SELECT
 				validatorindex AS index,
 				pubkeyhex AS pubkey
 			FROM validators
-			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			WHERE CAST(validatorindex AS text) LIKE $1
-				OR pubkeyhex LIKE LOWER($1)
-				OR LOWER(validator_names.name) LIKE LOWER($2)
-			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
+			WHERE CAST(validatorindex AS text) LIKE $1 || '%' OR pubkeyhex LIKE LOWER($1 || '%')
+			UNION
+			SELECT
+				validators.validatorindex AS index,
+				validators.pubkeyhex AS pubkey
+			FROM validator_names LEFT JOIN validators ON validator_names.name LIKE '%' || $1 || '%' AND validators.pubkey = validator_names.publickey;		
+		`
+
+		// its too slow to search for names
+		if thresholdHexLikeRE.MatchString(search) {
+			query = `
+				SELECT
+					validatorindex AS index,
+					pubkeyhex AS pubkey
+				FROM validators
+				WHERE CAST(validatorindex AS text) LIKE $1 || '%'
+					OR pubkeyhex LIKE LOWER($1 || '%')
+		`
+		}
+
+		err = db.ReaderDb.Select(result, query, search)
 	case "eth1_addresses":
+		// start := time.Now()
 		if len(search) <= 1 {
 			break
 		}
@@ -141,12 +159,21 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			search = search[:len(search)-1]
 		}
 		if searchLikeRE.MatchString(search) {
+			eth1AddressHash, err := hex.DecodeString(search)
+			if err != nil {
+				logger.Errorf("error parsing eth1AddressHash to hash: %v", err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
 			err = db.ReaderDb.Select(result, `
-				SELECT DISTINCT ENCODE(from_address, 'hex') as from_address
+				SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
 				FROM eth1_deposits
-				WHERE ENCODE(from_address, 'hex') LIKE LOWER($1)
-				LIMIT 10`, search+"%")
+				WHERE from_address LIKE $1 || '%'::bytea 
+				LIMIT 10`, eth1AddressHash)
 		}
+		// logger.WithFields(logrus.Fields{
+		// 	"duration": time.Since(start),
+		// }).Infof("finished searching for eth1_addresses")
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
@@ -178,17 +205,16 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", 503)
 				return
 			}
-			logger.Infof("indexed_validators_by_eth1_addresses")
 			err = db.ReaderDb.Select(result, `
 			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
-					ENCODE(from_address, 'hex') as from_address,
+					ENCODE(from_address::bytea, 'hex') as from_address,
 					DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
 					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
 				FROM eth1_deposits
 				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE ENCODE(from_address, 'hex') = LOWER($1)
+				WHERE from_address LIKE $1 || '%'::bytea
 			) a 
 			WHERE validatorrow <= $2 AND addressrow <= 10
 			GROUP BY from_address

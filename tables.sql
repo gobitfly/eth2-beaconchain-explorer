@@ -35,6 +35,14 @@ create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
 create index idx_validators_activationepoch on validators (activationepoch);
 
+drop table if exists validator_pool;
+create table validator_pool
+(
+    publickey bytea not null,
+    pool      varchar(40),
+    primary key (publickey)
+);
+
 drop table if exists validator_names;
 create table validator_names
 (
@@ -43,6 +51,7 @@ create table validator_names
     primary key (publickey)
 );
 create index idx_validator_names_publickey on validator_names (publickey);
+create index idx_validator_names_name on validator_names(name);
 
 drop table if exists validator_set;
 create table validator_set
@@ -432,6 +441,7 @@ create table eth1_deposits
     primary key (tx_hash, merkletree_index)
 );
 create index idx_eth1_deposits on eth1_deposits (publickey);
+create index idx_eth1_deposits_from_address on eth1_deposits (from_address);
 
 drop table if exists users;
 create table users
