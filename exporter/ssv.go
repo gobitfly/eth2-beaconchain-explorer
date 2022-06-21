@@ -139,7 +139,7 @@ func saveSSV(res *SSVExporterResponse) error {
 		if err != nil {
 			return err
 		}
-		_, err = tx.Exec(fmt.Sprintf(`insert into validator_pool (publickey, pool) values %s on conflict (publickey) do update set pool = exlcuded.pool`, strings.Join(valueStrings, ",")), valueArgs...)
+		_, err = tx.Exec(fmt.Sprintf(`insert into validator_pool (publickey, pool) values %s on conflict (publickey) do nothing`, strings.Join(valueStrings, ",")), valueArgs...)
 		if err != nil {
 			return err
 		}
