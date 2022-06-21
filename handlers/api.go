@@ -61,7 +61,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 	lastEpoch, err := db.GetLatestEpoch()
 
 	if err != nil {
-		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", 503)
 		return
 	}
 
@@ -78,7 +78,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 
 	epochTime := utils.EpochToTime(lastEpoch)
 	if epochTime.Before(time.Now().Add(time.Minute * -13)) {
-		http.Error(w, "Internal server error: last epoch in db is more than 13 minutes old", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error: last epoch in db is more than 13 minutes old", 503)
 		return
 	}
 
@@ -99,7 +99,7 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 	lastEpoch, err := db.GetLatestEpoch()
 
 	if err != nil {
-		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", 503)
 		return
 	}
 
@@ -2128,7 +2128,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	err = db.ReaderDb.Select(&data, query, queryValidatorsArr, queryOffsetEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance history")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", 503)
 		return
 	}
 
@@ -2143,7 +2143,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(balanceHistoryChartData)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", 503)
 		return
 	}
 }

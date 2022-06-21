@@ -6,7 +6,7 @@ WORKDIR /src
 RUN make -B all
 
 # final stage
-FROM alpine:3.15.4
+FROM alpine
 WORKDIR /app
 RUN apk --no-cache add libstdc++ libgcc
 COPY --from=build-env /src/bin /app/
