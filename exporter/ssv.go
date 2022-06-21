@@ -135,8 +135,11 @@ func saveSSV(res *SSVExporterResponse) error {
 			}
 			valueArgs = append(valueArgs, pubkey)
 		}
-		stmt := fmt.Sprintf(`insert into validator_tags (publickey, tag) values %s on conflict (publickey, tag) do nothing`, strings.Join(valueStrings, ","))
-		_, err := tx.Exec(stmt, valueArgs...)
+		_, err := tx.Exec(fmt.Sprintf(`insert into validator_tags (publickey, tag) values %s on conflict (publickey, tag) do nothing`, strings.Join(valueStrings, ",")), valueArgs...)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(fmt.Sprintf(`insert into validator_pool (publickey, pool) values %s on conflict (publickey) do update set pool = exlcuded.pool`, strings.Join(valueStrings, ",")), valueArgs...)
 		if err != nil {
 			return err
 		}

@@ -718,10 +718,13 @@ func (rp *RocketpoolExporter) TagValidators() error {
 			valueStrings = append(valueStrings, fmt.Sprintf("($%d, 'rocketpool')", i*n+1))
 			valueArgs = append(valueArgs, d.Pubkey)
 		}
-		stmt := fmt.Sprintf(`insert into validator_tags (publickey, tag) values %s on conflict (publickey, tag) do nothing`, strings.Join(valueStrings, ","))
-		_, err := tx.Exec(stmt, valueArgs...)
+		_, err := tx.Exec(fmt.Sprintf(`insert into validator_tags (publickey, tag) values %s on conflict (publickey, tag) do nothing`, strings.Join(valueStrings, ",")), valueArgs...)
 		if err != nil {
 			return fmt.Errorf("error inserting into validator_tags: %w", err)
+		}
+		_, err = tx.Exec(fmt.Sprintf(`insert into validator_pool (publickey, pool) values %s on conflict (publickey) do update set pool = excluded.pool`, strings.Join(valueStrings, ",")), valueArgs...)
+		if err != nil {
+			return fmt.Errorf("error inserting into validator_pool: %w", err)
 		}
 	}
 
