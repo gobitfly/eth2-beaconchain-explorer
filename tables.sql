@@ -297,36 +297,25 @@ create table blocks
     voluntaryexitscount         int     not null,
     proposer                    int     not null,
     status                      text    not null, /* Can be 0 = scheduled, 1 proposed, 2 missed, 3 orphaned */
-    exec_parent_hash            bytea   not null,
-    exec_fee_recipient          bytea   not null,
-    exec_state_root             bytea   not null,
-    exec_receipts_root          bytea   not null,
-    exec_logs_bloom             bytea   not null,
-    exec_prev_randao            bytea   not null,
-    exec_block_number           int     not null,
-    exec_gas_limit              int     not null,
-    exec_gas_use                int     not null,
-    exec_timestamp              int     not null,
-    exec_extra_data             bytea   not null,
-    exec_base_fee_per_gas       bigint  not null,
-    exec_block_hash             bytea   not null,
-    exec_transactions_count     int     not null,
 
-
-    exec_coinbase               bytea,
-    
-    exec_parenthash             bytea,
-    exec_receiptroot            bytea,
-    exec_logsbloom              bytea,
-    exec_random                 bytea,
-    exec_block_number           int,
-    exec_gas_limit              int,
-    exec_gas_used               int,
-    exec_timestamp              int,
-    exec_extra_data             bytea,
-    exec_base_fee_per_gas       bigint,
-    exec_blockhash              bytea,
+    -- https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockV2
+    -- https://github.com/ethereum/consensus-specs/blob/v1.1.9/specs/bellatrix/beacon-chain.md#executionpayload
+    --                                     RPC-NAME
+    exec_parenthash             bytea,  -- parent_hash
+    exec_fee_recipient          bytea,  -- fee_recipient
+    exec_stateroot              bytea,  -- state_root
+    exec_receiptroot            bytea,  -- receipts_root
+    exec_logsbloom              bytea,  -- logs_bloom
+    exec_random                 bytea,  -- prev_randao
+    exec_block_number           int,    -- block_number
+    exec_gas_limit              int,    -- gas_limit
+    exec_gas_used               int,    -- gas_used
+    exec_timestamp              int,    -- timestamp
+    exec_extra_data             bytea,  -- extra_data
+    exec_base_fee_per_gas       bigint, -- base_fee_per_gas
+    exec_blockhash              bytea,  -- block_hash
     exec_transactioncount       int,
+
     primary key (slot, blockroot)
 );
 create index idx_blocks_proposer on blocks (proposer);

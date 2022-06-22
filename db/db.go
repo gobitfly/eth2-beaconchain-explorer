@@ -1221,7 +1221,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 	}()
 
 	stmtBlock, err := tx.Prepare(`
-		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, syncaggregate_bits, syncaggregate_signature, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, syncaggregate_participation, proposer, status, exec_parenthash, exec_coinbase, exec_stateroot, exec_receiptroot, exec_logsbloom, exec_random, exec_block_number, exec_gas_limit, exec_gas_used, exec_timestamp, exec_extra_data, exec_base_fee_per_gas, exec_blockhash, exec_transactioncount)
+		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, syncaggregate_bits, syncaggregate_signature, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, syncaggregate_participation, proposer, status, exec_parenthash, exec_fee_recipient, exec_stateroot, exec_receiptroot, exec_logsbloom, exec_random, exec_block_number, exec_gas_limit, exec_gas_used, exec_timestamp, exec_extra_data, exec_base_fee_per_gas, exec_blockhash, exec_transactioncount)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
 		ON CONFLICT (slot, blockroot) DO NOTHING`)
 	if err != nil {
@@ -1346,7 +1346,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 			}
 
 			parentHash := []byte{}
-			coinBase := []byte{}
+			feeRecipient := []byte{}
 			stateRoot := []byte{}
 			receiptRoot := []byte{}
 			logsBloom := []byte{}
@@ -1361,11 +1361,11 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 			txCount := 0
 			if b.ExecutionPayload != nil {
 				parentHash = b.ExecutionPayload.ParentHash
-				coinBase = b.ExecutionPayload.CoinBase
+				feeRecipient = b.ExecutionPayload.FeeRecipient
 				stateRoot = b.ExecutionPayload.StateRoot
-				receiptRoot = b.ExecutionPayload.ReceiptRoot
+				receiptRoot = b.ExecutionPayload.ReceiptsRoot
 				logsBloom = b.ExecutionPayload.LogsBloom
-				random = b.ExecutionPayload.Random
+				random = b.ExecutionPayload.PrevRandao
 				blockNumber = b.ExecutionPayload.BlockNumber
 				gasLimit = b.ExecutionPayload.GasLimit
 				gasUsed = b.ExecutionPayload.GasUsed
@@ -1399,7 +1399,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				b.Proposer,
 				strconv.FormatUint(b.Status, 10),
 				parentHash,
-				coinBase,
+				feeRecipient,
 				stateRoot,
 				receiptRoot,
 				logsBloom,

@@ -640,11 +640,11 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		}
 		block.ExecutionPayload = &types.ExecutionPayload{
 			ParentHash:    payload.ParentHash,
-			CoinBase:      payload.CoinBase,
+			FeeRecipient:  payload.FeeRecipient,
 			StateRoot:     payload.StateRoot,
-			ReceiptRoot:   payload.ReceiptRoot,
+			ReceiptsRoot:  payload.ReceiptsRoot,
 			LogsBloom:     payload.LogsBloom,
-			Random:        payload.Random,
+			PrevRandao:    payload.PrevRandao,
 			BlockNumber:   uint64(payload.BlockNumber),
 			GasLimit:      uint64(payload.GasLimit),
 			GasUsed:       uint64(payload.GasUsed),
@@ -1086,6 +1086,8 @@ type SyncAggregate struct {
 	SyncCommitteeSignature string `json:"sync_committee_signature"`
 }
 
+// https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockV2
+// https://github.com/ethereum/consensus-specs/blob/v1.1.9/specs/bellatrix/beacon-chain.md#executionpayload
 type ExecutionPayload struct {
 	ParentHash    bytesHexStr   `json:"parent_hash"`
 	FeeRecipient  bytesHexStr   `json:"fee_recipient"`
