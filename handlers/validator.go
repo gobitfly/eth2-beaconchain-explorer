@@ -92,12 +92,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			// the validator might only have a public key but no index yet
 			var name string
 			err = db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
-			if err != nil {
-				if err != sql.ErrNoRows {
-					logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
-					http.Error(w, "Internal server error", http.StatusInternalServerError)
-					return
-				}
+			if err != nil && err != sql.ErrNoRows {
+				logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
 				// err == sql.ErrNoRows -> unnamed
 			} else {
 				validatorPageData.Name = name
@@ -105,12 +103,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 			var pool string
 			err = db.ReaderDb.Get(&pool, `SELECT pool FROM validator_pool WHERE publickey = $1`, pubKey)
-			if err != nil {
-				if err != sql.ErrNoRows {
-					logger.Errorf("error getting validator-pool from db for pubKey %v: %v", pubKey, err)
-					http.Error(w, "Internal server error", http.StatusInternalServerError)
-					return
-				}
+			if err != nil && err != sql.ErrNoRows {
+				logger.Errorf("error getting validator-pool from db for pubKey %v: %v", pubKey, err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
 				// err == sql.ErrNoRows -> (no pool set)
 			} else {
 				if validatorPageData.Name == "" {
