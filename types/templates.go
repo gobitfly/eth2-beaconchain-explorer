@@ -283,6 +283,7 @@ type ValidatorPageData struct {
 	Index                               uint64         `db:"index"`
 	LastAttestationSlot                 *uint64        `db:"lastattestationslot"`
 	Name                                string         `db:"name"`
+	Pool                                string         `db:"pool"`
 	Tags                                pq.StringArray `db:"tags"`
 	WithdrawableTs                      time.Time
 	ActivationEligibilityTs             time.Time

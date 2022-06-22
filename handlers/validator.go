@@ -92,15 +92,28 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			// the validator might only have a public key but no index yet
 			var name string
 			err = db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
-			if err != nil {
-				if err != sql.ErrNoRows {
-					logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
-					http.Error(w, "Internal server error", http.StatusInternalServerError)
-					return
-				}
+			if err != nil && err != sql.ErrNoRows {
+				logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
 				// err == sql.ErrNoRows -> unnamed
 			} else {
 				validatorPageData.Name = name
+			}
+
+			var pool string
+			err = db.ReaderDb.Get(&pool, `SELECT pool FROM validator_pool WHERE publickey = $1`, pubKey)
+			if err != nil && err != sql.ErrNoRows {
+				logger.Errorf("error getting validator-pool from db for pubKey %v: %v", pubKey, err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+				// err == sql.ErrNoRows -> (no pool set)
+			} else {
+				if validatorPageData.Name == "" {
+					validatorPageData.Name = fmt.Sprintf("Pool: %s", pool)
+				} else {
+					validatorPageData.Name += fmt.Sprintf(" / Pool: %s", pool)
+				}
 			}
 			deposits, err := db.GetValidatorDeposits(pubKey)
 			if err != nil {
@@ -226,6 +239,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch,
 			validators.lastattestationslot,
 			COALESCE(validator_names.name, '') AS name,
+			COALESCE(validator_pool.pool, '') AS pool,
 			COALESCE(validators.balance, 0) AS balance,
 			COALESCE(validator_performance.rank7d, 0) AS rank7d,
 			COALESCE(validator_performance_count.total_count, 0) AS rank_count,
@@ -236,6 +250,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			COALESCE((SELECT ARRAY_AGG(tag) FROM validator_tags WHERE publickey = validators.pubkey),'{}') AS tags
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+		LEFT JOIN validator_pool ON validators.pubkey = validator_pool.publickey
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance) validator_performance_count(total_count) ON true
 		WHERE validators.validatorindex = $1`, index)
@@ -252,6 +267,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error getting validator for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
+	}
+
+	if validatorPageData.Pool != "" {
+		if validatorPageData.Name == "" {
+			validatorPageData.Name = fmt.Sprintf("Pool: %s", validatorPageData.Pool)
+		} else {
+			validatorPageData.Name += fmt.Sprintf(" / Pool: %s", validatorPageData.Pool)
+		}
 	}
 
 	if validatorPageData.Rank7d > 0 && validatorPageData.RankCount > 0 {
