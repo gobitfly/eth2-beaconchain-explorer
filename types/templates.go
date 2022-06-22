@@ -549,7 +549,7 @@ type BlockPageData struct {
 	Mainnet                bool
 
 	ExecParentHash        []byte `db:"exec_parenthash"`
-	ExecCoinbase          []byte `db:"exec_coinbase"`
+	ExecFeeRecipient      []byte `db:"exec_fee_recipient"`
 	ExecStateRoot         []byte `db:"exec_stateroot"`
 	ExecReceiptRoot       []byte `db:"exec_receiptroot"`
 	ExecLogsBloom         []byte `db:"exec_logsbloom"`

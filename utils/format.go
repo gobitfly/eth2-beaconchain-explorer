@@ -304,6 +304,18 @@ func FormatEth1Block(block uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/block/%[1]d\">%[1]d</a>", block))
 }
 
+// FormatEth1BlockHash will return the eth1-block formated as html
+func FormatEth1BlockHash(block []byte) template.HTML {
+	copyBtn := CopyButton(hex.EncodeToString(block))
+	if Config.Chain.Config.ConfigName == "prater" {
+		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
+	}
+	if Config.Chain.Config.ConfigName == "ropsten" {
+		return template.HTML(fmt.Sprintf("<a href=\"https://ropsten.etherscan.io/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
+	}
+	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/block/%#[1]x\">%[1]x</a>%s", block, copyBtn))
+}
+
 // FormatEth1TxHash will return the eth1-tx-hash formated as html
 func FormatEth1TxHash(hash []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(hash))

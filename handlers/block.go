@@ -117,7 +117,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			blocks.proposer,
 			blocks.status,
 			exec_parenthash,
-			exec_coinbase,
+			exec_fee_recipient,
 			exec_stateroot,
 		    exec_receiptroot,
 		    exec_logsbloom,

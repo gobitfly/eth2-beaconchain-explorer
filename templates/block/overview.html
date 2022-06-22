@@ -89,13 +89,7 @@
     <div class="col-md-10">
       <div class="row p-1">
         <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Hash of the received Eth1 Block">Block Hash:</span></div>
-        <div class="col-md-10 text-monospace text-break">
-          {{if .Mainnet}}
-            <a href="https://etherchain.org/block/0x{{printf "%x" .Eth1dataBlockhash}}">0x{{printf "%x" .Eth1dataBlockhash}}</a> <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .Eth1dataBlockhash}}></i>
-          {{else}}
-            <a href="https://goerli.etherscan.io/block/0x{{printf "%x" .Eth1dataBlockhash}}">0x{{printf "%x" .Eth1dataBlockhash}}</a> <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .Eth1dataBlockhash}}></i>
-          {{end}}
-        </div>
+        <div class="col-md-10 text-monospace text-break">{{formatEth1BlockHash .Eth1dataBlockhash}}</div>
       </div>
       <div class="row p-1">
         <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of validator deposits to the deposit contract in this block">Deposit Count:</span></div>
@@ -147,9 +141,7 @@
 
             <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Fee recipient">Fee recipient:</span></div>
-                <div class="col-md-10 text-monospace text-break">
-                    0x{{printf "%x" .ExecCoinbase}}
-                </div>
+                <div class="col-md-10 text-monospace text-break">{{formatEth1Address .ExecFeeRecipient}}</div>
             </div>
 
             <div class="row p-1">
