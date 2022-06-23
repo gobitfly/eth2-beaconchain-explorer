@@ -290,6 +290,9 @@ func FormatEth1Address(addr []byte) template.HTML {
 	if Config.Chain.Config.ConfigName == "ropsten" {
 		return template.HTML(fmt.Sprintf("<a href=\"https://ropsten.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
 	}
+	if Config.Chain.Config.ConfigName == "sepolia" {
+		return template.HTML(fmt.Sprintf("<a href=\"https://sepolia.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
+	}
 	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
 }
 
@@ -300,6 +303,9 @@ func FormatEth1Block(block uint64) template.HTML {
 	}
 	if Config.Chain.Config.ConfigName == "ropsten" {
 		return template.HTML(fmt.Sprintf("<a href=\"https://ropsten.etherscan.io/block/%[1]d\">%[1]d</a>", block))
+	}
+	if Config.Chain.Config.ConfigName == "sepolia" {
+		return template.HTML(fmt.Sprintf("<a href=\"https://sepolia.etherscan.io/block/%[1]d\">%[1]d</a>", block))
 	}
 	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/block/%[1]d\">%[1]d</a>", block))
 }
@@ -312,6 +318,9 @@ func FormatEth1BlockHash(block []byte) template.HTML {
 	}
 	if Config.Chain.Config.ConfigName == "ropsten" {
 		return template.HTML(fmt.Sprintf("<a href=\"https://ropsten.etherscan.io/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
+	}
+	if Config.Chain.Config.ConfigName == "sepolia" {
+		return template.HTML(fmt.Sprintf("<a href=\"https://sepolia.etherscan.io/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
 	}
 	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/block/%#[1]x\">%[1]x</a>%s", block, copyBtn))
 }
