@@ -147,7 +147,7 @@ func getPoolsPageData() (*types.PoolsResp, error) {
 		left outer join validator_pool on validators.pubkey = validator_pool.publickey 
 		left outer join validator_performance on validators.validatorindex = validator_performance.validatorindex 
 	where validators.status in ('active_online', 'active_offline') 
-	group by name 
+	group by pool 
 	order by count(*) desc;`)
 
 	if err != nil {
