@@ -1,21 +1,16 @@
 package rpc
 
 import (
-	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"io/ioutil"
-	"math/big"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
-
-	gtypes "github.com/ethereum/go-ethereum/core/types"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prysmaticlabs/go-bitfield"
@@ -27,16 +22,13 @@ type LighthouseClient struct {
 	endpoint            string
 	assignmentsCache    *lru.Cache
 	assignmentsCacheMux *sync.Mutex
-	signer              gtypes.Signer
 }
 
 // NewLighthouseClient is used to create a new Lighthouse client
-func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, error) {
-	signer := gtypes.NewLondonSigner(chainID)
+func NewLighthouseClient(endpoint string) (*LighthouseClient, error) {
 	client := &LighthouseClient{
 		endpoint:            endpoint,
 		assignmentsCacheMux: &sync.Mutex{},
-		signer:              signer,
 	}
 	client.assignmentsCache, _ = lru.New(10)
 
@@ -47,7 +39,7 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 	blkCh := make(chan *types.Block, 10)
 	go func() {
 		// poll sync status 2 times per slot
-		t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot) / 2)
+		t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.SecondsPerSlot) / 2)
 
 		lastHeadSlot := uint64(0)
 		headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/head", lc.endpoint))
@@ -122,15 +114,15 @@ func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 
 	return &types.ChainHead{
 		HeadSlot:                   uint64(parsedHead.Data.Header.Message.Slot),
-		HeadEpoch:                  uint64(parsedHead.Data.Header.Message.Slot) / utils.Config.Chain.Config.SlotsPerEpoch,
+		HeadEpoch:                  uint64(parsedHead.Data.Header.Message.Slot) / utils.Config.Chain.SlotsPerEpoch,
 		HeadBlockRoot:              utils.MustParseHex(parsedHead.Data.Root),
-		FinalizedSlot:              uint64(parsedFinality.Data.Finalized.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
+		FinalizedSlot:              uint64(parsedFinality.Data.Finalized.Epoch) * utils.Config.Chain.SlotsPerEpoch,
 		FinalizedEpoch:             uint64(parsedFinality.Data.Finalized.Epoch),
 		FinalizedBlockRoot:         utils.MustParseHex(parsedFinality.Data.Finalized.Root),
-		JustifiedSlot:              uint64(parsedFinality.Data.CurrentJustified.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
+		JustifiedSlot:              uint64(parsedFinality.Data.CurrentJustified.Epoch) * utils.Config.Chain.SlotsPerEpoch,
 		JustifiedEpoch:             uint64(parsedFinality.Data.CurrentJustified.Epoch),
 		JustifiedBlockRoot:         utils.MustParseHex(parsedFinality.Data.CurrentJustified.Root),
-		PreviousJustifiedSlot:      uint64(parsedFinality.Data.PreviousJustified.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
+		PreviousJustifiedSlot:      uint64(parsedFinality.Data.PreviousJustified.Epoch) * utils.Config.Chain.SlotsPerEpoch,
 		PreviousJustifiedEpoch:     uint64(parsedFinality.Data.PreviousJustified.Epoch),
 		PreviousJustifiedBlockRoot: utils.MustParseHex(parsedFinality.Data.PreviousJustified.Root),
 	}, nil
@@ -242,10 +234,10 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 		}
 	}
 
-	if epoch >= utils.Config.Chain.Config.AltairForkEpoch {
+	if epoch >= utils.Config.Chain.AltairForkEpoch {
 		syncCommitteeState := depStateRoot
-		if epoch == utils.Config.Chain.Config.AltairForkEpoch {
-			syncCommitteeState = fmt.Sprintf("%d", utils.Config.Chain.Config.AltairForkEpoch*utils.Config.Chain.Config.SlotsPerEpoch)
+		if epoch == utils.Config.Chain.AltairForkEpoch {
+			syncCommitteeState = fmt.Sprintf("%d", utils.Config.Chain.AltairForkEpoch*utils.Config.Chain.SlotsPerEpoch)
 		}
 		parsedSyncCommittees, err := lc.GetSyncCommittee(syncCommitteeState, epoch)
 		if err != nil {
@@ -274,12 +266,13 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	wg := &sync.WaitGroup{}
 	mux := &sync.Mutex{}
+
 	var err error
 
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
-	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validators", lc.endpoint, epoch*utils.Config.Chain.Config.SlotsPerEpoch))
+	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validators", lc.endpoint, epoch*utils.Config.Chain.SlotsPerEpoch))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validators for epoch %v: %v", epoch, err)
 	}
@@ -389,7 +382,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]map[string]*types.Block)
 
-	for slot := epoch * utils.Config.Chain.Config.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch-1; slot++ {
+	for slot := epoch * utils.Config.Chain.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.SlotsPerEpoch-1; slot++ {
 		if slot == 0 || utils.SlotToTime(slot).After(time.Now()) { // Currently slot 0 returns all blocks, also skip asking for future blocks
 			continue
 		}
@@ -476,7 +469,7 @@ func (lc *LighthouseClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64,
 
 	validatorBalances := make(map[uint64]uint64)
 
-	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validator_balances", lc.endpoint, epoch*int64(utils.Config.Chain.Config.SlotsPerEpoch)))
+	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validator_balances", lc.endpoint, epoch*int64(utils.Config.Chain.SlotsPerEpoch)))
 	if err != nil {
 		return validatorBalances, err
 	}
@@ -572,7 +565,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		Slot:         slot,
 		ParentRoot:   utils.MustParseHex(parsedBlock.Message.ParentRoot),
 		StateRoot:    utils.MustParseHex(parsedBlock.Message.StateRoot),
-		Signature:    parsedBlock.Signature,
+		Signature:    utils.MustParseHex(parsedBlock.Signature),
 		RandaoReveal: utils.MustParseHex(parsedBlock.Message.Body.RandaoReveal),
 		Graffiti:     utils.MustParseHex(parsedBlock.Message.Body.Graffiti),
 		Eth1Data: &types.Eth1Data{
@@ -587,7 +580,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		VoluntaryExits:    make([]*types.VoluntaryExit, len(parsedBlock.Message.Body.VoluntaryExits)),
 	}
 
-	epochAssignments, err := lc.GetEpochAssignments(slot / utils.Config.Chain.Config.SlotsPerEpoch)
+	epochAssignments, err := lc.GetEpochAssignments(slot / utils.Config.Chain.SlotsPerEpoch)
 	if err != nil {
 		return nil, err
 	}
@@ -595,8 +588,8 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 	if agg := parsedBlock.Message.Body.SyncAggregate; agg != nil {
 		bits := utils.MustParseHex(agg.SyncCommitteeBits)
 
-		if utils.Config.Chain.Config.SyncCommitteeSize != uint64(len(bits)*8) {
-			return nil, fmt.Errorf("sync-aggregate-bits-size does not match sync-committee-size: %v != %v", len(bits)*8, utils.Config.Chain.Config.SyncCommitteeSize)
+		if utils.Config.Chain.Altair.SyncCommitteeSize != uint64(len(bits)*8) {
+			return nil, fmt.Errorf("sync-aggregate-bits-size does not match sync-committee-size: %v != %v", len(bits)*8, utils.Config.Chain.Altair.SyncCommitteeSize)
 		}
 
 		block.SyncAggregate = &types.SyncAggregate{
@@ -604,55 +597,6 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 			SyncCommitteeBits:          bits,
 			SyncAggregateParticipation: syncCommitteeParticipation(bits),
 			SyncCommitteeSignature:     utils.MustParseHex(agg.SyncCommitteeSignature),
-		}
-	}
-
-	if payload := parsedBlock.Message.Body.ExecutionPayload; payload != nil && !bytes.Equal(payload.ParentHash, make([]byte, 32)) {
-		txs := make([]*types.Transaction, 0, len(payload.Transactions))
-		for i, rawTx := range payload.Transactions {
-			tx := &types.Transaction{Raw: rawTx}
-			var decTx gtypes.Transaction
-			if err := decTx.UnmarshalBinary(rawTx); err != nil {
-				return nil, fmt.Errorf("error parsing tx %d block %x: %v", i, payload.BlockHash, err)
-			} else {
-				h := decTx.Hash()
-				tx.TxHash = h[:]
-				tx.AccountNonce = decTx.Nonce()
-				// big endian
-				tx.Price = decTx.GasPrice().Bytes()
-				tx.GasLimit = decTx.Gas()
-				sender, err := lc.signer.Sender(&decTx)
-				if err != nil {
-					return nil, fmt.Errorf("transaction with invalid sender (tx hash: %x): %v", h, err)
-				}
-				tx.Sender = sender.Bytes()
-				if v := decTx.To(); v != nil {
-					tx.Recipient = v.Bytes()
-				} else {
-					tx.Recipient = []byte{}
-				}
-				tx.Amount = decTx.Value().Bytes()
-				tx.Payload = decTx.Data()
-				tx.MaxPriorityFeePerGas = decTx.GasTipCap().Uint64()
-				tx.MaxFeePerGas = decTx.GasFeeCap().Uint64()
-			}
-			txs = append(txs, tx)
-		}
-		block.ExecutionPayload = &types.ExecutionPayload{
-			ParentHash:    payload.ParentHash,
-			FeeRecipient:  payload.FeeRecipient,
-			StateRoot:     payload.StateRoot,
-			ReceiptsRoot:  payload.ReceiptsRoot,
-			LogsBloom:     payload.LogsBloom,
-			PrevRandao:    payload.PrevRandao,
-			BlockNumber:   uint64(payload.BlockNumber),
-			GasLimit:      uint64(payload.GasLimit),
-			GasUsed:       uint64(payload.GasUsed),
-			Timestamp:     uint64(payload.Timestamp),
-			ExtraData:     payload.ExtraData,
-			BaseFeePerGas: uint64(payload.BaseFeePerGas),
-			BlockHash:     payload.BlockHash,
-			Transactions:  txs,
 		}
 	}
 
@@ -741,9 +685,9 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		}
 
 		aggregationBits := bitfield.Bitlist(a.AggregationBits)
-		assignments, err := lc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.Config.SlotsPerEpoch)
+		assignments, err := lc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
 		if err != nil {
-			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.Config.SlotsPerEpoch, err)
+			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, err)
 		}
 
 		for i := uint64(0); i < aggregationBits.Len(); i++ {
@@ -785,12 +729,12 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 
 func syncCommitteeParticipation(bits []byte) float64 {
 	participating := 0
-	for i := 0; i < int(utils.Config.Chain.Config.SyncCommitteeSize); i++ {
+	for i := 0; i < int(utils.Config.Chain.Altair.SyncCommitteeSize); i++ {
 		if utils.BitAtVector(bits, i) {
 			participating++
 		}
 	}
-	return float64(participating) / float64(utils.Config.Chain.Config.SyncCommitteeSize)
+	return float64(participating) / float64(utils.Config.Chain.Altair.SyncCommitteeSize)
 }
 
 // GetValidatorParticipation will get the validator participation from the Lighthouse RPC api
@@ -819,7 +763,7 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 func (lc *LighthouseClient) GetFinalityCheckpoints(epoch uint64) (*types.FinalityCheckpoints, error) {
 	// finalityResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/finality_checkpoints", lc.endpoint, id))
 	// if err != nil {
-	//      return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
+	// 	return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
 	// }
 	return &types.FinalityCheckpoints{}, nil
 }
@@ -843,6 +787,7 @@ func (lc *LighthouseClient) get(url string) ([]byte, error) {
 	// t0 := time.Now()
 	// defer func() { fmt.Println(url, time.Since(t0)) }()
 	client := &http.Client{Timeout: time.Second * 120}
+
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
@@ -860,21 +805,6 @@ func (lc *LighthouseClient) get(url string) ([]byte, error) {
 	}
 
 	return data, err
-}
-
-type bytesHexStr []byte
-
-func (s *bytesHexStr) UnmarshalText(b []byte) error {
-	if s == nil {
-		return fmt.Errorf("cannot unmarshal bytes into nil")
-	}
-	if len(b) >= 2 && b[0] == '0' && b[1] == 'x' {
-		b = b[2:]
-	}
-	out := make([]byte, len(b)/2, len(b)/2)
-	hex.Decode(out, b)
-	*s = out
-	return nil
 }
 
 type uint64Str uint64
@@ -1086,25 +1016,6 @@ type SyncAggregate struct {
 	SyncCommitteeSignature string `json:"sync_committee_signature"`
 }
 
-// https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockV2
-// https://github.com/ethereum/consensus-specs/blob/v1.1.9/specs/bellatrix/beacon-chain.md#executionpayload
-type ExecutionPayload struct {
-	ParentHash    bytesHexStr   `json:"parent_hash"`
-	FeeRecipient  bytesHexStr   `json:"fee_recipient"`
-	StateRoot     bytesHexStr   `json:"state_root"`
-	ReceiptsRoot  bytesHexStr   `json:"receipts_root"`
-	LogsBloom     bytesHexStr   `json:"logs_bloom"`
-	PrevRandao    bytesHexStr   `json:"prev_randao"`
-	BlockNumber   uint64Str     `json:"block_number"`
-	GasLimit      uint64Str     `json:"gas_limit"`
-	GasUsed       uint64Str     `json:"gas_used"`
-	Timestamp     uint64Str     `json:"timestamp"`
-	ExtraData     bytesHexStr   `json:"extra_data"`
-	BaseFeePerGas uint64Str     `json:"base_fee_per_gas"`
-	BlockHash     bytesHexStr   `json:"block_hash"`
-	Transactions  []bytesHexStr `json:"transactions"`
-}
-
 type AnySignedBlock struct {
 	Message struct {
 		Slot          uint64Str `json:"slot"`
@@ -1123,12 +1034,9 @@ type AnySignedBlock struct {
 
 			// not present in phase0 blocks
 			SyncAggregate *SyncAggregate `json:"sync_aggregate,omitempty"`
-
-			// not present in phase0/altair blocks
-			ExecutionPayload *ExecutionPayload `json:"execution_payload"`
 		} `json:"body"`
 	} `json:"message"`
-	Signature bytesHexStr `json:"signature"`
+	Signature string `json:"signature"`
 }
 
 type StandardV2BlockResponse struct {

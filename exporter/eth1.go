@@ -2,14 +2,12 @@ package exporter
 
 import (
 	"context"
-	"encoding/hex"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -160,38 +158,33 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 	txsToFetch := []string{}
 
 	cfg := params.BeaconConfig()
-	genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Config.GenesisForkVersion, "0x", "", -1))
-	// genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Config.GenesisForkVersion.String(), "0x", "", -1))
-	if err != nil {
-		return nil, err
-	}
 	domain, err := helpers.ComputeDomain(
 		cfg.DomainDeposit,
-		genForkVersion,
+		cfg.GenesisForkVersion,
 		cfg.ZeroHash[:],
 	)
-	if utils.Config.Chain.Config.ConfigName == "zinken" {
+	if utils.Config.Chain.Network == "zinken" {
 		domain, err = helpers.ComputeDomain(
 			cfg.DomainDeposit,
 			[]byte{0x00, 0x00, 0x00, 0x03},
 			cfg.ZeroHash[:],
 		)
 	}
-	if utils.Config.Chain.Config.ConfigName == "toledo" {
+	if utils.Config.Chain.Network == "toledo" {
 		domain, err = helpers.ComputeDomain(
 			cfg.DomainDeposit,
 			[]byte{0x00, 0x70, 0x1E, 0xD0},
 			cfg.ZeroHash[:],
 		)
 	}
-	if utils.Config.Chain.Config.ConfigName == "pyrmont" {
+	if utils.Config.Chain.Network == "pyrmont" {
 		domain, err = helpers.ComputeDomain(
 			cfg.DomainDeposit,
 			[]byte{0x00, 0x00, 0x20, 0x09},
 			cfg.ZeroHash[:],
 		)
 	}
-	if utils.Config.Chain.Config.ConfigName == "prater" {
+	if utils.Config.Chain.Network == "prater" {
 		domain, err = helpers.ComputeDomain(
 			cfg.DomainDeposit,
 			[]byte{0x00, 0x00, 0x10, 0x20},

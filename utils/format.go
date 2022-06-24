@@ -284,57 +284,30 @@ func FormatEth1Address(addr []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(addr))
 	eth1Addr := eth1common.BytesToAddress(addr)
 
-	if Config.Chain.Config.ConfigName == "prater" {
+	if !Config.Chain.Mainnet {
 		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
 	}
-	if Config.Chain.Config.ConfigName == "ropsten" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://ropsten.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
-	}
-	if Config.Chain.Config.ConfigName == "sepolia" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://sepolia.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
-	}
+
 	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
 }
 
 // FormatEth1Block will return the eth1-block formated as html
 func FormatEth1Block(block uint64) template.HTML {
-	if Config.Chain.Config.ConfigName == "prater" {
+	if !Config.Chain.Mainnet {
 		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/block/%[1]d\">%[1]d</a>", block))
 	}
-	if Config.Chain.Config.ConfigName == "ropsten" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://ropsten.etherscan.io/block/%[1]d\">%[1]d</a>", block))
-	}
-	if Config.Chain.Config.ConfigName == "sepolia" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://sepolia.etherscan.io/block/%[1]d\">%[1]d</a>", block))
-	}
 	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/block/%[1]d\">%[1]d</a>", block))
-}
-
-// FormatEth1BlockHash will return the eth1-block formated as html
-func FormatEth1BlockHash(block []byte) template.HTML {
-	copyBtn := CopyButton(hex.EncodeToString(block))
-	if Config.Chain.Config.ConfigName == "prater" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
-	}
-	if Config.Chain.Config.ConfigName == "ropsten" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://ropsten.etherscan.io/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
-	}
-	if Config.Chain.Config.ConfigName == "sepolia" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://sepolia.etherscan.io/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
-	}
-	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/block/%#[1]x\">%[1]x</a>%s", block, copyBtn))
 }
 
 // FormatEth1TxHash will return the eth1-tx-hash formated as html
 func FormatEth1TxHash(hash []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(hash))
 
-	if Config.Chain.Config.ConfigName == "prater" {
+	if !Config.Chain.Mainnet {
+		// return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
 		return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="https://goerli.etherscan.io/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 	}
-	if Config.Chain.Config.ConfigName == "ropsten" {
-		return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="https://ropsten.etherscan.io/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
-	}
+	// return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
 	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="https://etherchain.org/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 }
 

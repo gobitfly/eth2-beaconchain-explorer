@@ -112,44 +112,8 @@ type Block struct {
 	Attestations      []*Attestation
 	Deposits          []*Deposit
 	VoluntaryExits    []*VoluntaryExit
-	SyncAggregate     *SyncAggregate    // warning: sync aggregate may be nil, for phase0 blocks
-	ExecutionPayload  *ExecutionPayload // warning: payload may be nil, for phase0/altair blocks
+	SyncAggregate     *SyncAggregate // warning: sync aggregate may be nil, for phase0 blocks
 	Canonical         bool
-}
-
-type Transaction struct {
-	Raw []byte
-	// Note: below values may be nil/0 if Raw fails to decode into a valid transaction
-	TxHash       []byte
-	AccountNonce uint64
-	// big endian
-	Price     []byte
-	GasLimit  uint64
-	Sender    []byte
-	Recipient []byte
-	// big endian
-	Amount  []byte
-	Payload []byte
-
-	MaxPriorityFeePerGas uint64
-	MaxFeePerGas         uint64
-}
-
-type ExecutionPayload struct {
-	ParentHash    []byte
-	FeeRecipient  []byte
-	StateRoot     []byte
-	ReceiptsRoot  []byte
-	LogsBloom     []byte
-	PrevRandao    []byte
-	BlockNumber   uint64
-	GasLimit      uint64
-	GasUsed       uint64
-	Timestamp     uint64
-	ExtraData     []byte
-	BaseFeePerGas uint64
-	BlockHash     []byte
-	Transactions  []*Transaction
 }
 
 // Eth1Data is a struct to hold the ETH1 data

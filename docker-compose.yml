@@ -15,6 +15,8 @@ services:
 
         command: # comment this out for mainnet
             - --goerli # comment this out for mainnet
+
+
     postgres:
         image: postgres:12.0
         container_name: postgres 
@@ -26,11 +28,7 @@ services:
             - PGDATA=/postgresql/data
         volumes:
             - db:/postgresql/data
-        network_mode: bridge
-        ports:
-            -   "5432:5432"
-        expose:
-            - 5432
+        network_mode: host
 
     prysm:
         image: gcr.io/prysmaticlabs/prysm/beacon-chain:latest
@@ -59,13 +57,11 @@ services:
         volumes:
             - ./:/usr/src/app
         working_dir: /usr/src/app
-        network_mode: bridge
-        ports:
-            - "3333:3333"
-        expose:
-            - 3333
+        network_mode: host
         depends_on:
+            - eth1
             - postgres
+            - prysm
         command: /bin/sh
         stdin_open: true
         tty: true

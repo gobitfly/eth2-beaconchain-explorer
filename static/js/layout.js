@@ -145,18 +145,6 @@ $(document).ready(function() {
     }
   })
 
-  var bhTransactions = new Bloodhound({
-    datumTokenizer: Bloodhound.tokenizers.whitespace,
-    queryTokenizer: Bloodhound.tokenizers.whitespace,
-    identify: function(obj) {
-      return obj.txhash
-    },
-    remote: {
-      url: '/search/transactions/%QUERY',
-      wildcard: '%QUERY'
-    }
-  })
-
   var bhGraffiti = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -221,18 +209,6 @@ $(document).ready(function() {
         header: '<h3 class="h5">Blocks</h3>',
         suggestion: function(data) {
           return `<div class="text-monospace text-truncate">${data.slot}: ${data.blockroot}</div>`
-        }
-      }
-    },
-    {
-      limit: 5,
-      name: 'transactions',
-      source: bhTransactions,
-      display: 'txhash',
-      templates: {
-        header: '<h3 class="h5">Transactions</h3>',
-        suggestion: function(data) {
-          return `<div class="text-monospace text-truncate">${data.slot}: ${data.txhash}</div>`
         }
       }
     },
@@ -305,8 +281,7 @@ $(document).ready(function() {
 
   $('.typeahead').on('typeahead:select', function(ev, sug) {
     if (sug.slot !== undefined) {
-      if (sug.txhash !== undefined) window.location = '/block/' + sug.slot + '#transactions'
-      else window.location = '/block/' + sug.slot
+      window.location = '/block/' + sug.slot
     } else if (sug.index !== undefined) {
       if (sug.index === 'deposited')
         window.location = '/validator/' + sug.pubkey

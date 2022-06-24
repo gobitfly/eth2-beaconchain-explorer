@@ -3,4 +3,3 @@ config-staging.yml
 config-pyrmont.yml
 cmd/test
 cmd/playground
-_gitignore

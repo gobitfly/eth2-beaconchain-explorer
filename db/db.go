@@ -17,6 +17,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/lib/pq"
+	"github.com/prysmaticlabs/go-bitfield"
 	"github.com/sirupsen/logrus"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -1221,22 +1222,13 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 	}()
 
 	stmtBlock, err := tx.Prepare(`
-		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, syncaggregate_bits, syncaggregate_signature, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, syncaggregate_participation, proposer, status, exec_parenthash, exec_fee_recipient, exec_stateroot, exec_receiptroot, exec_logsbloom, exec_random, exec_block_number, exec_gas_limit, exec_gas_used, exec_timestamp, exec_extra_data, exec_base_fee_per_gas, exec_blockhash, exec_transactioncount)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
+		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, syncaggregate_bits, syncaggregate_signature, syncaggregate_participation, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, proposer, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
 		ON CONFLICT (slot, blockroot) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtBlock.Close()
-
-	stmtTransaction, err := tx.Prepare(`
-		INSERT INTO blocks_transactions (block_slot, block_index, block_root, raw, txhash, nonce, gas_price, gas_limit, sender, recipient, amount, payload, max_priority_fee_per_gas, max_fee_per_gas)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-		ON CONFLICT (block_slot, block_index) DO NOTHING`)
-	if err != nil {
-		return err
-	}
-	defer stmtTransaction.Close()
 
 	stmtProposerSlashing, err := tx.Prepare(`
 		INSERT INTO blocks_proposerslashings (block_slot, block_index, block_root, proposerindex, header1_slot, header1_parentroot, header1_stateroot, header1_bodyroot, header1_signature, header2_slot, header2_parentroot, header2_stateroot, header2_bodyroot, header2_signature)
@@ -1344,96 +1336,13 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				syncAggParticipation = b.SyncAggregate.SyncAggregateParticipation
 				// blockLog = blockLog.WithField("syncParticipation", b.SyncAggregate.SyncAggregateParticipation)
 			}
-
-			parentHash := []byte{}
-			feeRecipient := []byte{}
-			stateRoot := []byte{}
-			receiptRoot := []byte{}
-			logsBloom := []byte{}
-			random := []byte{}
-			blockNumber := uint64(0)
-			gasLimit := uint64(0)
-			gasUsed := uint64(0)
-			timestamp := uint64(0)
-			extraData := []byte{}
-			baseFeePerGas := uint64(0)
-			blockHash := []byte{}
-			txCount := 0
-			if b.ExecutionPayload != nil {
-				parentHash = b.ExecutionPayload.ParentHash
-				feeRecipient = b.ExecutionPayload.FeeRecipient
-				stateRoot = b.ExecutionPayload.StateRoot
-				receiptRoot = b.ExecutionPayload.ReceiptsRoot
-				logsBloom = b.ExecutionPayload.LogsBloom
-				random = b.ExecutionPayload.PrevRandao
-				blockNumber = b.ExecutionPayload.BlockNumber
-				gasLimit = b.ExecutionPayload.GasLimit
-				gasUsed = b.ExecutionPayload.GasUsed
-				timestamp = b.ExecutionPayload.Timestamp
-				extraData = b.ExecutionPayload.ExtraData
-				baseFeePerGas = b.ExecutionPayload.BaseFeePerGas
-				blockHash = b.ExecutionPayload.BlockHash
-				txCount = len(b.ExecutionPayload.Transactions)
-			}
-			_, err = stmtBlock.Exec(
-				b.Slot/utils.Config.Chain.Config.SlotsPerEpoch,
-				b.Slot,
-				b.BlockRoot,
-				b.ParentRoot,
-				b.StateRoot,
-				b.Signature,
-				b.RandaoReveal,
-				b.Graffiti,
-				utils.GraffitiToSring(b.Graffiti),
-				b.Eth1Data.DepositRoot,
-				b.Eth1Data.DepositCount,
-				b.Eth1Data.BlockHash,
-				syncAggBits,
-				syncAggSig,
-				len(b.ProposerSlashings),
-				len(b.AttesterSlashings),
-				len(b.Attestations),
-				len(b.Deposits),
-				len(b.VoluntaryExits),
-				syncAggParticipation,
-				b.Proposer,
-				strconv.FormatUint(b.Status, 10),
-				parentHash,
-				feeRecipient,
-				stateRoot,
-				receiptRoot,
-				logsBloom,
-				random,
-				blockNumber,
-				gasLimit,
-				gasUsed,
-				timestamp,
-				extraData,
-				baseFeePerGas,
-				blockHash,
-				txCount,
-			)
+			_, err = stmtBlock.Exec(b.Slot/utils.Config.Chain.SlotsPerEpoch, b.Slot, b.BlockRoot, b.ParentRoot, b.StateRoot, b.Signature, b.RandaoReveal, b.Graffiti, utils.GraffitiToSring(b.Graffiti), b.Eth1Data.DepositRoot, b.Eth1Data.DepositCount, b.Eth1Data.BlockHash, syncAggBits, syncAggSig, syncAggParticipation, len(b.ProposerSlashings), len(b.AttesterSlashings), len(b.Attestations), len(b.Deposits), len(b.VoluntaryExits), b.Proposer, strconv.FormatUint(b.Status, 10))
 			if err != nil {
 				return fmt.Errorf("error executing stmtBlocks for block %v: %w", b.Slot, err)
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtBlock")
 			t = time.Now()
 
-			n := time.Now()
-			logger.Tracef("done, took %v", time.Since(n))
-			logger.Tracef("writing transactions data")
-			if payload := b.ExecutionPayload; payload != nil {
-				for i, tx := range payload.Transactions {
-					_, err := stmtTransaction.Exec(b.Slot, i, b.BlockRoot,
-						tx.Raw, tx.TxHash, tx.AccountNonce, tx.Price, tx.GasLimit, tx.Sender, tx.Recipient, tx.Amount, tx.Payload, tx.MaxPriorityFeePerGas, tx.MaxFeePerGas)
-					if err != nil {
-						return fmt.Errorf("error executing stmtTransaction for block %v: %v", b.Slot, err)
-					}
-				}
-			}
-			logger.Tracef("done, took %v", time.Since(n))
-			n = time.Now()
-			logger.Tracef("writing proposer slashings data")
 			for i, ps := range b.ProposerSlashings {
 				_, err := stmtProposerSlashing.Exec(b.Slot, i, b.BlockRoot, ps.ProposerIndex, ps.Header1.Slot, ps.Header1.ParentRoot, ps.Header1.StateRoot, ps.Header1.BodyRoot, ps.Header1.Signature, ps.Header2.Slot, ps.Header2.ParentRoot, ps.Header2.StateRoot, ps.Header2.BodyRoot, ps.Header2.Signature)
 				if err != nil {
@@ -1496,7 +1405,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				attestingValidators := make([]string, 0, 20000)
 
 				for _, validator := range a.Attesters {
-					attestationAssignmentsArgsWeek = append(attestationAssignmentsArgsWeek, []interface{}{a.Data.Slot / utils.Config.Chain.Config.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot, a.Data.Slot / utils.Config.Chain.Config.SlotsPerEpoch / 1575})
+					attestationAssignmentsArgsWeek = append(attestationAssignmentsArgsWeek, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot, a.Data.Slot / utils.Config.Chain.SlotsPerEpoch / 1575})
 					attestingValidators = append(attestingValidators, strconv.FormatUint(validator, 10))
 				}
 
@@ -1530,7 +1439,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				// 	return fmt.Errorf("error executing stmtValidatorsLastAttestationSlot for block %v: %w", b.Slot, err)
 				// }
 
-				_, err = stmtAttestations.Exec(b.Slot, i, b.BlockRoot, a.AggregationBits, pq.Array(a.Attesters), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
+				_, err = stmtAttestations.Exec(b.Slot, i, b.BlockRoot, bitfield.Bitlist(a.AggregationBits).Bytes(), pq.Array(a.Attesters), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
 				if err != nil {
 					return fmt.Errorf("error executing stmtAttestations for block %v: %w", b.Slot, err)
 				}
@@ -1556,7 +1465,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 			blockLog.WithField("duration", time.Since(t)).Tracef("exits")
 			t = time.Now()
 
-			_, err = stmtProposalAssignments.Exec(b.Slot/utils.Config.Chain.Config.SlotsPerEpoch, b.Proposer, b.Slot, b.Status)
+			_, err = stmtProposalAssignments.Exec(b.Slot/utils.Config.Chain.SlotsPerEpoch, b.Proposer, b.Slot, b.Status)
 			if err != nil {
 				return fmt.Errorf("error executing stmtProposalAssignments for block %v: %w", b.Slot, err)
 			}
@@ -1681,7 +1590,7 @@ func GetDepositThresholdTime() (*time.Time, error) {
 			) a
 		) b
 		where totalsum > $1;
-		 `, utils.Config.Chain.Config.MinGenesisActiveValidatorCount*32e9)
+		 `, utils.Config.Chain.MinGenesisActiveValidatorCount*32e9)
 	if err != nil {
 		return nil, err
 	}
