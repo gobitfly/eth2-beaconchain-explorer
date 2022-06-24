@@ -117,6 +117,13 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		result = graffiti
+	case "transactions":
+		result = &types.SearchAheadTransactionsResult{}
+		err = db.ReaderDb.Select(result, `
+			SELECT block_slot as slot, ENCODE(txhash::bytea, 'hex') AS txhash
+			FROM blocks_transactions
+			WHERE ENCODE(txhash::bytea, 'hex') LIKE LOWER($1)
+			ORDER BY block_slot LIMIT 10`, search+"%")
 	case "epochs":
 		result = &types.SearchAheadEpochsResult{}
 		err = db.ReaderDb.Select(result, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")

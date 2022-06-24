@@ -58,7 +58,7 @@ func getPoolInfo() {
 	var stakePools []Pools
 	addrName := map[string]Pools{}
 
-	if utils.Config.Chain.Network == "mainnet" || utils.Config.Chain.Network == "prater" {
+	if utils.Config.Chain.Config.ConfigName == "mainnet" || utils.Config.Chain.Config.ConfigName == "prater" {
 		var stakePoolsNames []Pools
 		err := ReaderDb.Select(&stakePoolsNames, "select address, name, deposit, category from stake_pools_stats;") // deposit is a placeholder the actual value is not used on frontend
 		if err != nil {
@@ -109,7 +109,7 @@ func getPoolInfo() {
 		// st := time.Now().Sub(li).Seconds()
 		if len(stats) > 0 {
 			pName := ""
-			if utils.Config.Chain.Network == "mainnet" || utils.Config.Chain.Network == "prater" {
+			if utils.Config.Chain.Config.ConfigName == "mainnet" || utils.Config.Chain.Config.ConfigName == "prater" {
 				nPool, exist := addrName[pool.Address]
 				if exist {
 					pName = nPool.Name

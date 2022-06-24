@@ -417,8 +417,8 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 	wrappedBlocks := make([]*types.MinimalBlock, 0)
 
 	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
-		startSlot := epoch * utils.Config.Chain.SlotsPerEpoch
-		endSlot := (epoch+1)*utils.Config.Chain.SlotsPerEpoch - 1
+		startSlot := epoch * utils.Config.Chain.Config.SlotsPerEpoch
+		endSlot := (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
 		for slot := startSlot; slot <= endSlot; slot++ {
 			blocks, err := client.GetBlocksBySlot(slot)
 			if err != nil {
@@ -710,7 +710,7 @@ func updateValidatorPerformance() error {
 }
 
 func finalityCheckpointsUpdater(client rpc.Client) {
-	t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.SecondsPerSlot))
+	t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot))
 	for range t.C {
 		var prevEpoch uint64
 		err := db.WriterDb.Get(&prevEpoch, `select coalesce(max(epoch),1) from finality_checkpoints`)
@@ -751,8 +751,8 @@ func networkLivenessUpdater(client rpc.Client) {
 		logger.Fatal(err)
 	}
 
-	epochDuration := time.Second * time.Duration(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch)
-	slotDuration := time.Second * time.Duration(utils.Config.Chain.SecondsPerSlot)
+	epochDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch)
+	slotDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot)
 
 	for {
 		head, err := client.GetChainHead()

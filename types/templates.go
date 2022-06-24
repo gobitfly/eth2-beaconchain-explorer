@@ -54,7 +54,7 @@ type PageData struct {
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
 	IsUserClientUpdated   func(uint64) bool
-	Phase0                Phase0
+	ChainConfig           ChainConfig
 	Lang                  string
 	NoAds                 bool
 }
@@ -549,12 +549,30 @@ type BlockPageData struct {
 	VotingValidatorsCount  uint64
 	Mainnet                bool
 
-	SyncCommittee     []uint64
+	ExecParentHash        []byte `db:"exec_parenthash"`
+	ExecFeeRecipient      []byte `db:"exec_fee_recipient"`
+	ExecStateRoot         []byte `db:"exec_stateroot"`
+	ExecReceiptRoot       []byte `db:"exec_receiptroot"`
+	ExecLogsBloom         []byte `db:"exec_logsbloom"`
+	ExecRandom            []byte `db:"exec_random"`
+	ExecNumber            uint64 `db:"exec_block_number"`
+	ExecGasLimit          uint64 `db:"exec_gas_limit"`
+	ExecGasUsed           uint64 `db:"exec_gas_used"`
+	ExecTimestamp         uint64 `db:"exec_timestamp"`
+	ExecTime              time.Time
+	ExecExtraData         []byte `db:"exec_extra_data"`
+	ExecBaseFeePerGas     uint64 `db:"exec_base_fee_per_gas"`
+	ExecBlockHash         []byte `db:"exec_blockhash"`
+	ExecTransactionsCount uint64 `db:"exec_transactioncount"`
+
+	Transactions []*BlockPageTransaction
+
 	Attestations      []*BlockPageAttestation // Attestations included in this block
 	VoluntaryExits    []*BlockPageVoluntaryExits
 	Votes             []*BlockVote // Attestations that voted for that block
 	AttesterSlashings []*BlockPageAttesterSlashing
 	ProposerSlashings []*BlockPageProposerSlashing
+	SyncCommittee     []uint64 // TODO: Setting it to contain the validator index
 }
 
 func (u *BlockPageData) MarshalJSON() ([]byte, error) {
@@ -581,6 +599,29 @@ type BlockVote struct {
 type BlockPageMinMaxSlot struct {
 	MinSlot uint64
 	MaxSlot uint64
+}
+
+// BlockPageTransaction is a struct to hold execution transactions on the block page
+type BlockPageTransaction struct {
+	BlockSlot    uint64 `db:"block_slot"`
+	BlockIndex   uint64 `db:"block_index"`
+	TxHash       []byte `db:"txhash"`
+	AccountNonce uint64 `db:"nonce"`
+	// big endian
+	Price       []byte `db:"gas_price"`
+	PricePretty string
+	GasLimit    uint64 `db:"gas_limit"`
+	Sender      []byte `db:"sender"`
+	Recipient   []byte `db:"recipient"`
+	// big endian
+	Amount       []byte `db:"amount"`
+	AmountPretty string
+	Payload      []byte `db:"payload"`
+
+	// TODO: transaction type
+
+	MaxPriorityFeePerGas uint64 `db:"max_priority_fee_per_gas"`
+	MaxFeePerGas         uint64 `db:"max_fee_per_gas"`
 }
 
 // BlockPageAttestation is a struct to hold attestations on the block page
@@ -724,6 +765,11 @@ type SearchAheadEpochsResult []struct {
 type SearchAheadBlocksResult []struct {
 	Slot string `db:"slot" json:"slot,omitempty"`
 	Root string `db:"blockroot" json:"blockroot,omitempty"`
+}
+
+type SearchAheadTransactionsResult []struct {
+	Slot   string `db:"slot" json:"slot,omitempty"`
+	TxHash string `db:"txhash" json:"txhash,omitempty"`
 }
 
 // SearchAheadGraffitiResult is a struct to hold the search ahead blocks results with a given graffiti

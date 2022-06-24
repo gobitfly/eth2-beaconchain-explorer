@@ -202,8 +202,8 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	currency := "ETH"
 
 	data := &types.IndexPageData{}
-	data.Mainnet = utils.Config.Chain.Mainnet
-	data.NetworkName = utils.Config.Chain.Network
+	data.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
+	data.NetworkName = utils.Config.Chain.Config.ConfigName
 	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
 
 	var epoch uint64
@@ -252,11 +252,11 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			threshold = &deposit.BlockTs
 		}
 
-		data.DepositThreshold = float64(utils.Config.Chain.Phase0.MinGenesisActiveValidatorCount) * 32
+		data.DepositThreshold = float64(utils.Config.Chain.Config.MinGenesisActiveValidatorCount) * 32
 		data.DepositedTotal = float64(deposit.Total) * 32
 
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
-		genesisDelay := time.Duration(int64(utils.Config.Chain.Phase0.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
+		genesisDelay := time.Duration(int64(utils.Config.Chain.Config.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
 
@@ -303,7 +303,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			daysUntilThreshold := (data.DepositThreshold - data.DepositedTotal) / avgDepositPerDay
 			estimatedTimeToThreshold := time.Now().Add(time.Hour * 24 * time.Duration(daysUntilThreshold))
 			if estimatedTimeToThreshold.After(time.Unix(data.NetworkStartTs, 0)) {
-				data.NetworkStartTs = estimatedTimeToThreshold.Add(time.Duration(int64(utils.Config.Chain.GenesisDelay) * 1000 * 1000 * 1000)).Unix()
+				data.NetworkStartTs = estimatedTimeToThreshold.Add(time.Duration(int64(utils.Config.Chain.Config.GenesisDelay) * 1000 * 1000 * 1000)).Unix()
 			}
 		}
 	}

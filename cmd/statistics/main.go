@@ -109,7 +109,7 @@ func statisticsLoop() {
 			continue
 		}
 
-		epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot
+		epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
 		if latestEpoch < epochsPerDay {
 			logrus.Infof("skipping exporting validator_stats, first day has not been indexed yet")
 			time.Sleep(time.Minute)

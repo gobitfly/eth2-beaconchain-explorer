@@ -35,7 +35,7 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 	}
 	currEpoch := utils.TimeToEpoch(time.Now())
 	lastPeriod := utils.SyncPeriodOfEpoch(uint64(currEpoch)) + 1 // we can look into the future
-	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.AltairForkEpoch)
+	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.Config.AltairForkEpoch)
 	for p := firstPeriod; p <= lastPeriod; p++ {
 		_, exists := dbPeriodsMap[p]
 		if !exists {
@@ -57,16 +57,16 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 	stateID := uint64(0)
 	if p > 0 {
-		stateID = utils.FirstEpochOfSyncPeriod(p-1) * utils.Config.Chain.SlotsPerEpoch
+		stateID = utils.FirstEpochOfSyncPeriod(p-1) * utils.Config.Chain.Config.SlotsPerEpoch
 	}
 	epoch := utils.FirstEpochOfSyncPeriod(p)
-	if stateID/utils.Config.Chain.SlotsPerEpoch <= utils.Config.Chain.AltairForkEpoch {
-		stateID = utils.Config.Chain.AltairForkEpoch * utils.Config.Chain.SlotsPerEpoch
-		epoch = utils.Config.Chain.AltairForkEpoch
+	if stateID/utils.Config.Chain.Config.SlotsPerEpoch <= utils.Config.Chain.Config.AltairForkEpoch {
+		stateID = utils.Config.Chain.Config.AltairForkEpoch * utils.Config.Chain.Config.SlotsPerEpoch
+		epoch = utils.Config.Chain.Config.AltairForkEpoch
 	}
 
 	firstEpoch := utils.FirstEpochOfSyncPeriod(p)
-	lastEpoch := firstEpoch + utils.Config.Chain.EpochsPerSyncCommitteePeriod
+	lastEpoch := firstEpoch + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod
 	firstWeek := firstEpoch / 1575
 	lastWeek := lastEpoch / 1575
 	for w := firstWeek; w <= lastWeek; w++ {
@@ -120,8 +120,8 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 		return err
 	}
 
-	slotsPerSyncPeriod := utils.Config.Chain.EpochsPerSyncCommitteePeriod * utils.Config.Chain.SlotsPerEpoch
-	firstSlot := utils.FirstEpochOfSyncPeriod(p) * utils.Config.Chain.SlotsPerEpoch
+	slotsPerSyncPeriod := utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
+	firstSlot := utils.FirstEpochOfSyncPeriod(p) * utils.Config.Chain.Config.SlotsPerEpoch
 	nArgs = 4
 	valueArgs = make([]interface{}, int(slotsPerSyncPeriod)*nArgs)
 	valueIds = make([]string, slotsPerSyncPeriod)
