@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"eth2-exporter/config"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"fmt"
@@ -249,7 +250,6 @@ func WaitForCtrlC() {
 // ReadConfig will process a configuration
 func ReadConfig(cfg *types.Config, path string) error {
 	err := readConfigFile(cfg, path)
-
 	if err != nil {
 		return err
 	}
@@ -260,18 +260,52 @@ func ReadConfig(cfg *types.Config, path string) error {
 		return err
 	}
 
-	logrus.WithFields(logrus.Fields{"path": cfg.Chain.ConfigPath}).Infof("reading chain-config")
-	f, err := os.Open(cfg.Chain.ConfigPath)
-	if err != nil {
-		logrus.Errorf("error opening Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
+	if cfg.Chain.ConfigPath == "" {
+		switch cfg.Chain.Name {
+		case "mainnet":
+			cfg.Chain.GenesisTimestamp = 1606824023
+			return yaml.Unmarshal([]byte(config.SepoliaChainYml), cfg.Chain.Config)
+		case "prater":
+			cfg.Chain.GenesisTimestamp = 1616508000
+			return yaml.Unmarshal([]byte(config.PraterChainYml), cfg.Chain.Config)
+		case "ropsten":
+			cfg.Chain.GenesisTimestamp = 1653922800
+			return yaml.Unmarshal([]byte(config.RopstenChainYml), cfg.Chain.Config)
+		case "sepolia":
+			cfg.Chain.GenesisTimestamp = 1655733600
+			return yaml.Unmarshal([]byte(config.SepoliaChainYml), cfg.Chain.Config)
+		default:
+			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
+		}
 	} else {
-		var chainConfig *types.ChainConfig
-		decoder := yaml.NewDecoder(f)
-		err = decoder.Decode(&chainConfig)
+		f, err := os.Open(cfg.Chain.ConfigPath)
 		if err != nil {
-			logrus.Errorf("error decoding Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
+			logrus.Errorf("error opening Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
 		} else {
-			cfg.Chain.Config = *chainConfig
+			var chainConfig *types.ChainConfig
+			decoder := yaml.NewDecoder(f)
+			err = decoder.Decode(&chainConfig)
+			if err != nil {
+				logrus.Errorf("error decoding Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
+			} else {
+				cfg.Chain.Config = *chainConfig
+			}
+		}
+	}
+	cfg.Chain.Name = cfg.Chain.Config.ConfigName
+
+	if cfg.Chain.GenesisTimestamp == 0 {
+		switch cfg.Chain.Name {
+		case "mainnet":
+			cfg.Chain.GenesisTimestamp = 1606824023
+		case "prater":
+			cfg.Chain.GenesisTimestamp = 1616508000
+		case "ropsten":
+			cfg.Chain.GenesisTimestamp = 1653922800
+		case "sepolia":
+			cfg.Chain.GenesisTimestamp = 1655733600
+		default:
+			return fmt.Errorf("tried to set known genesis-timestamp, but unknown chain-name")
 		}
 	}
 
@@ -279,6 +313,10 @@ func ReadConfig(cfg *types.Config, path string) error {
 }
 
 func readConfigFile(cfg *types.Config, path string) error {
+	if path == "" {
+		return yaml.Unmarshal([]byte(config.DefaultConfigYml), cfg)
+	}
+
 	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("error opening config file %v: %v", path, err)

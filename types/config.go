@@ -21,6 +21,7 @@ type Config struct {
 		Port     string `yaml:"port" envconfig:"WRITER_DB_PORT"`
 	} `yaml:"writerDatabase"`
 	Chain struct {
+		Name             string `yaml:"name" envconfig:"CHAIN_NAME"`
 		GenesisTimestamp uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
 		ConfigPath       string `yaml:"configPath" envconfig:"CHAIN_CONFIG_PATH"`
 		Config           ChainConfig
