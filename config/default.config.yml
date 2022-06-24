@@ -1,5 +1,11 @@
 # Database credentials
-database:
+readerDatabase:
+  user: "<dbuser>"
+  name: "<dbname>"
+  host: "<dbhost>"
+  port: "<dbport>"
+  password: "<dbpassword>"
+writerDatabase:
   user: "<dbuser>"
   name: "<dbname>"
   host: "<dbhost>"
@@ -8,13 +14,7 @@ database:
 
 # Chain network configuration (example will work for the prysm testnet)
 chain:
-  slotsPerEpoch: 32
-  secondsPerSlot: 12
-  genesisTimestamp: 1573489682
-  minGenesisActiveValidatorCount: 16384
-  altairForkEpoch: 74240  # Oct 27, 2021, 10:56:23am UTC
-  phase0path: "./config/phase0.yml"
-  altairPath: "./config/altair.yml"
+  name: "mainnet"
 
 # Note: It is possible to run either the frontend or the indexer or both at the same time
 # Frontend config
@@ -30,7 +30,13 @@ frontend:
   server:
     host: "localhost" # Address to listen on
     port: "3333" # Port to listen on
-  database:
+  readerDatabase:
+    user: "<dbuser>"
+    name: "<dbname>"
+    host: "<dbhost>"
+    port: "<dbport>"
+    password: "<dbpassword>"
+  writerDatabase:
     user: "<dbuser>"
     name: "<dbname>"
     host: "<dbhost>"

@@ -417,7 +417,7 @@ func getUserNetworkEvents(userId uint64) (interface{}, error) {
 
 		resp := []result{}
 		for _, item := range n {
-			resp = append(resp, result{Notification: "Finality issue", Network: utils.Config.Chain.Network, Timestamp: item * 1000})
+			resp = append(resp, result{Notification: "Finality issue", Network: utils.Config.Chain.Config.ConfigName, Timestamp: item * 1000})
 		}
 		net.Events_ts = resp
 

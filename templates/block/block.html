@@ -167,6 +167,13 @@
                 <li class="nav-item">
                     <a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
                 </li>
+                {{if gt .ExecTransactionsCount 0}}
+                <li class="nav-item">
+                    <a class="nav-link" id="transactions-tab" data-toggle="tab" href="#transactions" role="tab"
+                       aria-controls="transactions" aria-selected="false">Transactions <span
+                            class="badge bg-secondary text-white">{{.ExecTransactionsCount}}</span></a>
+                </li>
+                {{end}}
                 {{if gt .DepositsCount 0}}
                     <li class="nav-item">
                         <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{.DepositsCount}}</span></a>
@@ -217,6 +224,13 @@
                     </div>
                     {{template "block_attestations" .}}
                 </div>
+                {{if gt .ExecTransactionsCount 0}}
+                    <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
+                        <div class="card block-card">
+                            {{ template "block_transactions" . }}
+                        </div>
+                    </div>
+                {{end}}
                 {{if gt .DepositsCount 0}}
                     <div class="tab-pane fade" id="deposits" role="tabpanel" aria-labelledby="deposits-tab">
                         <div class="card block-card">

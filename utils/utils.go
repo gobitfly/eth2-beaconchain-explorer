@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"eth2-exporter/config"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"fmt"
@@ -29,7 +30,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
@@ -73,11 +74,13 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatDepositAmount":                     FormatDepositAmount,
 		"formatEpoch":                             FormatEpoch,
 		"formatEth1Block":                         FormatEth1Block,
+		"formatEth1BlockHash":                     FormatEth1BlockHash,
 		"formatEth1Address":                       FormatEth1Address,
 		"formatEth1AddressStringLowerCase":        FormatEth1AddressStringLowerCase,
 		"formatEth1TxHash":                        FormatEth1TxHash,
 		"formatGraffiti":                          FormatGraffiti,
 		"formatHash":                              FormatHash,
+		"formatBitvector":                         FormatBitvector,
 		"formatBitlist":                           FormatBitlist,
 		"formatBitvectorValidators":               formatBitvectorValidators,
 		"formatParticipation":                     FormatParticipation,
@@ -172,14 +175,14 @@ func fixUtf(r rune) rune {
 }
 
 func SyncPeriodOfEpoch(epoch uint64) uint64 {
-	if epoch < Config.Chain.AltairForkEpoch {
+	if epoch < Config.Chain.Config.AltairForkEpoch {
 		return 0
 	}
-	return epoch / Config.Chain.EpochsPerSyncCommitteePeriod
+	return epoch / Config.Chain.Config.EpochsPerSyncCommitteePeriod
 }
 
 func FirstEpochOfSyncPeriod(syncPeriod uint64) uint64 {
-	return syncPeriod * Config.Chain.EpochsPerSyncCommitteePeriod
+	return syncPeriod * Config.Chain.Config.EpochsPerSyncCommitteePeriod
 }
 
 func TimeToSyncPeriod(t time.Time) uint64 {
@@ -188,22 +191,22 @@ func TimeToSyncPeriod(t time.Time) uint64 {
 
 // EpochOfSlot returns the corresponding epoch of a slot
 func EpochOfSlot(slot uint64) uint64 {
-	return slot / Config.Chain.SlotsPerEpoch
+	return slot / Config.Chain.Config.SlotsPerEpoch
 }
 
 // DayOfSlot returns the corresponding day of a slot
 func DayOfSlot(slot uint64) uint64 {
-	return Config.Chain.SecondsPerSlot * slot / (24 * 3600)
+	return Config.Chain.Config.SecondsPerSlot * slot / (24 * 3600)
 }
 
 // WeekOfSlot returns the corresponding week of a slot
 func WeekOfSlot(slot uint64) uint64 {
-	return Config.Chain.SecondsPerSlot * slot / (7 * 24 * 3600)
+	return Config.Chain.Config.SecondsPerSlot * slot / (7 * 24 * 3600)
 }
 
 // SlotToTime returns a time.Time to slot
 func SlotToTime(slot uint64) time.Time {
-	return time.Unix(int64(Config.Chain.GenesisTimestamp+slot*Config.Chain.SecondsPerSlot), 0)
+	return time.Unix(int64(Config.Chain.GenesisTimestamp+slot*Config.Chain.Config.SecondsPerSlot), 0)
 }
 
 // TimeToSlot returns time to slot in seconds
@@ -211,12 +214,12 @@ func TimeToSlot(timestamp uint64) uint64 {
 	if Config.Chain.GenesisTimestamp > timestamp {
 		return 0
 	}
-	return (timestamp - Config.Chain.GenesisTimestamp) / Config.Chain.SecondsPerSlot
+	return (timestamp - Config.Chain.GenesisTimestamp) / Config.Chain.Config.SecondsPerSlot
 }
 
 // EpochToTime will return a time.Time for an epoch
 func EpochToTime(epoch uint64) time.Time {
-	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0)
+	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.Config.SecondsPerSlot*Config.Chain.Config.SlotsPerEpoch), 0)
 }
 
 // TimeToDay will return a days since genesis for an timestamp
@@ -234,7 +237,7 @@ func TimeToEpoch(ts time.Time) int64 {
 	if int64(Config.Chain.GenesisTimestamp) > ts.Unix() {
 		return 0
 	}
-	return (ts.Unix() - int64(Config.Chain.GenesisTimestamp)) / int64(Config.Chain.SecondsPerSlot) / int64(Config.Chain.SlotsPerEpoch)
+	return (ts.Unix() - int64(Config.Chain.GenesisTimestamp)) / int64(Config.Chain.Config.SecondsPerSlot) / int64(Config.Chain.Config.SlotsPerEpoch)
 }
 
 // WaitForCtrlC will block/wait until a control-c is pressed
@@ -247,7 +250,6 @@ func WaitForCtrlC() {
 // ReadConfig will process a configuration
 func ReadConfig(cfg *types.Config, path string) error {
 	err := readConfigFile(cfg, path)
-
 	if err != nil {
 		return err
 	}
@@ -258,46 +260,65 @@ func ReadConfig(cfg *types.Config, path string) error {
 		return err
 	}
 
-	// decode phase0 config
-	if len(cfg.Chain.Phase0Path) == 0 {
-		cfg.Chain.Phase0Path = "config/phase0.yml"
-	}
-	phase0 := &types.Phase0{}
-	f, err := os.Open(cfg.Chain.Phase0Path)
-	if err != nil {
-		logrus.Errorf("error opening Phase0 Config file %v: %v", cfg.Chain.Phase0Path, err)
+	if cfg.Chain.ConfigPath == "" {
+		switch cfg.Chain.Name {
+		case "mainnet":
+			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
+		case "prater":
+			err = yaml.Unmarshal([]byte(config.PraterChainYml), &cfg.Chain.Config)
+		case "ropsten":
+			err = yaml.Unmarshal([]byte(config.RopstenChainYml), &cfg.Chain.Config)
+		case "sepolia":
+			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
+		default:
+			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
+		}
 	} else {
-		decoder := yaml.NewDecoder(f)
-		err = decoder.Decode(phase0)
+		f, err := os.Open(cfg.Chain.ConfigPath)
 		if err != nil {
-			logrus.Errorf("error decoding Phase0 Config file %v: %v", cfg.Chain.Phase0Path, err)
-		} else {
-			cfg.Chain.Phase0 = *phase0
+			return fmt.Errorf("error opening Chain Config file %v: %w", cfg.Chain.ConfigPath, err)
+		}
+		var chainConfig *types.ChainConfig
+		decoder := yaml.NewDecoder(f)
+		err = decoder.Decode(&chainConfig)
+		if err != nil {
+			return fmt.Errorf("error decoding Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
+		}
+		cfg.Chain.Config = *chainConfig
+	}
+	cfg.Chain.Name = cfg.Chain.Config.ConfigName
+
+	if cfg.Chain.GenesisTimestamp == 0 {
+		switch cfg.Chain.Name {
+		case "mainnet":
+			cfg.Chain.GenesisTimestamp = 1606824023
+		case "prater":
+			cfg.Chain.GenesisTimestamp = 1616508000
+		case "ropsten":
+			cfg.Chain.GenesisTimestamp = 1653922800
+		case "sepolia":
+			cfg.Chain.GenesisTimestamp = 1655733600
+		default:
+			return fmt.Errorf("tried to set known genesis-timestamp, but unknown chain-name")
 		}
 	}
 
-	// decode altair config
-	if len(cfg.Chain.AltairPath) == 0 {
-		cfg.Chain.AltairPath = "config/altair.yml"
-	}
-	altair := &types.Altair{}
-	f, err = os.Open(cfg.Chain.AltairPath)
-	if err != nil {
-		logrus.Errorf("error opening altair config file %v: %v", cfg.Chain.AltairPath, err)
-	} else {
-		decoder := yaml.NewDecoder(f)
-		err = decoder.Decode(altair)
-		if err != nil {
-			logrus.Errorf("error decoding altair Config file %v: %v", cfg.Chain.AltairPath, err)
-		} else {
-			cfg.Chain.Altair = *altair
-		}
-	}
+	logrus.WithFields(logrus.Fields{
+		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
+		"configName":             cfg.Chain.Config.ConfigName,
+		"depositChainID":         cfg.Chain.Config.DepositChainID,
+		"depositNetworkID":       cfg.Chain.Config.DepositNetworkID,
+		"depositContractAddress": cfg.Chain.Config.DepositContractAddress,
+	}).Infof("did init config")
 
 	return nil
 }
 
 func readConfigFile(cfg *types.Config, path string) error {
+	if path == "" {
+		return yaml.Unmarshal([]byte(config.DefaultConfigYml), cfg)
+	}
+
 	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("error opening config file %v: %v", path, err)
@@ -599,10 +620,7 @@ func BitAtVectorReversed(b []byte, i int) bool {
 }
 
 func GetNetwork() string {
-	if Config.Chain.Network != "" {
-		return strings.ToLower(Config.Chain.Network)
-	}
-	return strings.ToLower(Config.Chain.Phase0.ConfigName)
+	return strings.ToLower(Config.Chain.Config.ConfigName)
 }
 
 func ElementExists(arr []string, el string) bool {

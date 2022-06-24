@@ -12,11 +12,11 @@ func WriteStatisticsForDay(day uint64) error {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
-	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot
+	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
 	firstEpoch := day * epochsPerDay
 	lastEpoch := (day+1)*epochsPerDay - 1
-	firstSlot := firstEpoch * utils.Config.Chain.SlotsPerEpoch
-	lastSlot := (lastEpoch+1)*utils.Config.Chain.SlotsPerEpoch - 1
+	firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
+	lastSlot := (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
 
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 

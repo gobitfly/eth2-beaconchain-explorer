@@ -1,0 +1,47 @@
+# Database credentials
+database:
+  user: "postgres"
+  name: "db"
+  host: "localhost"
+  port: "5432"
+  password: "pass"
+# Chain network configuration
+chain:
+  configPath: ./config/mainnet.chain.yml
+  genesisTimestamp: 1639659600
+# Note: It is possible to run either the frontend or the indexer or both at the same time
+# Frontend config
+frontend:
+  enabled: true # Enable or disable to web frontend
+  imprint: "./imprint.html"  # Path to the imprint page content
+  siteName: "Kintsugi Explorer" # Name of the site, displayed in the title tag
+  siteSubtitle: "Kintsugi explorer" # Subtitle shown on the main page
+  csrfAuthKey: '0123456789abcdef000000000000000000000000000000000000000000000000'
+  jwtSigningSecret: "0123456789abcdef000000000000000000000000000000000000000000000000"
+  jwtIssuer: "localblockexplorer"
+  jwtValidityInMinutes: 30
+  server:
+    host: "0.0.0.0" # Address to listen on
+    port: "3333" # Port to listen on
+  database:
+    user: "postgres"
+    name: "db"
+    host: "localhost"
+    port: "5432"
+    password: "pass"
+  # sessionSecret: "<sessionSecret>"
+  # flashSecret: "" # Encryption secret for flash cookies
+# Indexer config
+indexer:
+  enabled: true # Enable or disable the indexing service
+  fullIndexOnStartup: true # Perform a one time full db index on startup
+  indexMissingEpochsOnStartup: true # Check for missing epochs and export them after startup
+  node:
+    host: "localhost" # Address of the backend node
+    port: "4000" # GRPC port of the Prysm node
+    type: "lighthouse" # can be either prysm or lighthouse
+    pageSize: 100 # the amount of entries to fetch per paged rpc call, TODO set to 500
+  eth1Endpoint: 'http://localhost:8545'
+  eth1DepositContractAddress: '0x4242424242424242424242424242424242424242'
+  # Note: 0 is correct, but due to an underflow bug (being fixed), doesn't work.
+  eth1DepositContractFirstBlock: 1
