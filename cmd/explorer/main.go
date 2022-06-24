@@ -45,7 +45,7 @@ func initStripe(http *mux.Router) error {
 }
 
 func main() {
-	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
+	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
 	flag.Parse()
 
 	logrus.WithField("config", *configPath).WithField("version", version.Version).Printf("starting")

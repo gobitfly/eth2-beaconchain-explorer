@@ -14,8 +14,7 @@ writerDatabase:
 
 # Chain network configuration (example will work for the prysm testnet)
 chain:
-  genesisTimestamp: 1573489682
-  configPath: "./config/mainnet.yml"
+  name: "mainnet"
 
 # Note: It is possible to run either the frontend or the indexer or both at the same time
 # Frontend config

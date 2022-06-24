@@ -263,34 +263,28 @@ func ReadConfig(cfg *types.Config, path string) error {
 	if cfg.Chain.ConfigPath == "" {
 		switch cfg.Chain.Name {
 		case "mainnet":
-			cfg.Chain.GenesisTimestamp = 1606824023
-			return yaml.Unmarshal([]byte(config.SepoliaChainYml), cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
 		case "prater":
-			cfg.Chain.GenesisTimestamp = 1616508000
-			return yaml.Unmarshal([]byte(config.PraterChainYml), cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.PraterChainYml), &cfg.Chain.Config)
 		case "ropsten":
-			cfg.Chain.GenesisTimestamp = 1653922800
-			return yaml.Unmarshal([]byte(config.RopstenChainYml), cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.RopstenChainYml), &cfg.Chain.Config)
 		case "sepolia":
-			cfg.Chain.GenesisTimestamp = 1655733600
-			return yaml.Unmarshal([]byte(config.SepoliaChainYml), cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
 		default:
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
 		}
 	} else {
 		f, err := os.Open(cfg.Chain.ConfigPath)
 		if err != nil {
-			logrus.Errorf("error opening Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
-		} else {
-			var chainConfig *types.ChainConfig
-			decoder := yaml.NewDecoder(f)
-			err = decoder.Decode(&chainConfig)
-			if err != nil {
-				logrus.Errorf("error decoding Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
-			} else {
-				cfg.Chain.Config = *chainConfig
-			}
+			return fmt.Errorf("error opening Chain Config file %v: %w", cfg.Chain.ConfigPath, err)
 		}
+		var chainConfig *types.ChainConfig
+		decoder := yaml.NewDecoder(f)
+		err = decoder.Decode(&chainConfig)
+		if err != nil {
+			return fmt.Errorf("error decoding Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
+		}
+		cfg.Chain.Config = *chainConfig
 	}
 	cfg.Chain.Name = cfg.Chain.Config.ConfigName
 
@@ -308,6 +302,14 @@ func ReadConfig(cfg *types.Config, path string) error {
 			return fmt.Errorf("tried to set known genesis-timestamp, but unknown chain-name")
 		}
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
+		"configName":             cfg.Chain.Config.ConfigName,
+		"depositChainID":         cfg.Chain.Config.DepositChainID,
+		"depositNetworkID":       cfg.Chain.Config.DepositNetworkID,
+		"depositContractAddress": cfg.Chain.Config.DepositContractAddress,
+	}).Infof("did init config")
 
 	return nil
 }
