@@ -9,9 +9,9 @@ require (
 	github.com/awa/go-iap v1.3.7
 	github.com/chromedp/cdproto v0.0.0-20200709115526-d1f6fc58448b
 	github.com/chromedp/chromedp v0.5.3
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ethereum/go-ethereum v1.10.8
 	github.com/evanw/esbuild v0.8.23
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/context v1.1.1
