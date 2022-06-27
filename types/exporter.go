@@ -141,7 +141,7 @@ type ExecutionPayload struct {
 	StateRoot     []byte
 	ReceiptsRoot  []byte
 	LogsBloom     []byte
-	PrevRandao    []byte
+	Random        []byte
 	BlockNumber   uint64
 	GasLimit      uint64
 	GasUsed       uint64

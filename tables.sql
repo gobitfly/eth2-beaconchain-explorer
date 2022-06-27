@@ -301,21 +301,20 @@ create table blocks
 
     -- https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockV2
     -- https://github.com/ethereum/consensus-specs/blob/v1.1.9/specs/bellatrix/beacon-chain.md#executionpayload
-    --                                     RPC-NAME
-    exec_parenthash             bytea,  -- parent_hash
-    exec_fee_recipient          bytea,  -- fee_recipient
-    exec_stateroot              bytea,  -- state_root
-    exec_receiptroot            bytea,  -- receipts_root
-    exec_logsbloom              bytea,  -- logs_bloom
-    exec_random                 bytea,  -- prev_randao
-    exec_block_number           int,    -- block_number
-    exec_gas_limit              int,    -- gas_limit
-    exec_gas_used               int,    -- gas_used
-    exec_timestamp              int,    -- timestamp
-    exec_extra_data             bytea,  -- extra_data
-    exec_base_fee_per_gas       bigint, -- base_fee_per_gas
-    exec_blockhash              bytea,  -- block_hash
-    exec_transactioncount       int,
+    exec_parent_hash            bytea, 
+    exec_fee_recipient          bytea, 
+    exec_state_root             bytea, 
+    exec_receipts_root          bytea, 
+    exec_logs_bloom             bytea, 
+    exec_random                 bytea, 
+    exec_block_number           int,   
+    exec_gas_limit              int,   
+    exec_gas_used               int,   
+    exec_timestamp              int,   
+    exec_extra_data             bytea, 
+    exec_base_fee_per_gas       bigint,
+    exec_block_hash             bytea, 
+    exec_transactions_count     int     not null default 0,
 
     primary key (slot, blockroot)
 );

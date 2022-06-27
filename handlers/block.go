@@ -141,7 +141,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/block/" + slotOrHash
-		logger.Errorf("error retrieving block data: %v", err)
+		logger.Errorf("error retrieving blockPageData: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
@@ -156,7 +156,9 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Path = fmt.Sprintf("/block/%v", blockPageData.Slot)
 
 	blockPageData.Ts = utils.SlotToTime(blockPageData.Slot)
-	blockPageData.ExecTime = time.Unix(int64(blockPageData.ExecTimestamp), 0)
+	if blockPageData.ExecTimestamp.Valid {
+		blockPageData.ExecTime = time.Unix(int64(blockPageData.ExecTimestamp.Int64), 0)
+	}
 	blockPageData.SlashingsCount = blockPageData.AttesterSlashingsCount + blockPageData.ProposerSlashingsCount
 
 	err = db.ReaderDb.Get(&blockPageData.NextSlot, "SELECT slot FROM blocks WHERE slot > $1 ORDER BY slot LIMIT 1", blockPageData.Slot)
