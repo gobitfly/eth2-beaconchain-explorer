@@ -56,6 +56,8 @@ func main() {
 	}
 	utils.Config = cfg
 
+	fmt.Println("NETWORK", utils.GetNetwork(), utils.Config.Chain.Name)
+
 	db.MustInitDB(&types.DatabaseConfig{
 		Username: cfg.WriterDatabase.Username,
 		Password: cfg.WriterDatabase.Password,

@@ -263,7 +263,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 	if cfg.Chain.ConfigPath == "" {
 		switch cfg.Chain.Name {
 		case "mainnet":
-			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.MainnetChainYml), &cfg.Chain.Config)
 		case "prater":
 			err = yaml.Unmarshal([]byte(config.PraterChainYml), &cfg.Chain.Config)
 		case "ropsten":
@@ -620,8 +620,7 @@ func BitAtVectorReversed(b []byte, i int) bool {
 }
 
 func GetNetwork() string {
-	return strings.ToLower(Config.Chain.Name)
-	// return strings.ToLower(Config.Chain.Config.ConfigName)
+	return strings.ToLower(Config.Chain.Config.ConfigName)
 }
 
 func ElementExists(arr []string, el string) bool {
