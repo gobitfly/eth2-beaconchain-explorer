@@ -41,8 +41,8 @@ require (
 	github.com/rocket-pool/rocketpool-go v1.0.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stripe/stripe-go/v72 v72.50.0
-	github.com/swaggo/http-swagger v1.2.8
-	github.com/swaggo/swag v1.8.2
+	github.com/swaggo/http-swagger v1.1.2
+	github.com/swaggo/swag v1.7.4
 	github.com/urfave/negroni v1.0.0
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
@@ -73,6 +73,7 @@ require (
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/ferranbt/fastssz v0.0.0-20210905181407-59cf6761a7d5 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
+	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-chi/chi v4.0.2+incompatible // indirect
 	github.com/go-logr/logr v0.2.1 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
