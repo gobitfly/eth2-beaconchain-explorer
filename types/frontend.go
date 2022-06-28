@@ -170,7 +170,7 @@ type Subscription struct {
 	CreatedTime     time.Time      `db:"created_ts"`
 	CreatedEpoch    uint64         `db:"created_epoch"`
 	EventThreshold  float64        `db:"event_threshold"`
-	UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
+	UnsubscribeHash sql.NullString `db:"unsubscribe_hash" swaggertype:"string"`
 }
 
 type TaggedValidators struct {
