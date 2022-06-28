@@ -116,11 +116,11 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			blocks.voluntaryexitscount,
 			blocks.proposer,
 			blocks.status,
-			exec_parenthash,
+			exec_parent_hash,
 			exec_fee_recipient,
-			exec_stateroot,
-		    exec_receiptroot,
-		    exec_logsbloom,
+			exec_state_root,
+		    exec_receipts_root,
+		    exec_logs_bloom,
 		    exec_random,
 			exec_block_number,
 			exec_gas_limit,
@@ -128,8 +128,8 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			exec_timestamp,
 		    exec_extra_data,
 		    exec_base_fee_per_gas,
-		    exec_blockhash,
-			exec_transactioncount,
+		    exec_block_hash,
+			exec_transactions_count,
 			COALESCE(validator_names.name, '') AS name
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
