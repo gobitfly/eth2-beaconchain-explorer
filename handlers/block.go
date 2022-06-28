@@ -116,11 +116,11 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			blocks.voluntaryexitscount,
 			blocks.proposer,
 			blocks.status,
-			exec_parenthash,
+			exec_parent_hash,
 			exec_fee_recipient,
-			exec_stateroot,
-		    exec_receiptroot,
-		    exec_logsbloom,
+			exec_state_root,
+		    exec_receipts_root,
+		    exec_logs_bloom,
 		    exec_random,
 			exec_block_number,
 			exec_gas_limit,
@@ -128,8 +128,8 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			exec_timestamp,
 		    exec_extra_data,
 		    exec_base_fee_per_gas,
-		    exec_blockhash,
-			exec_transactioncount,
+		    exec_block_hash,
+			exec_transactions_count,
 			COALESCE(validator_names.name, '') AS name
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
@@ -141,7 +141,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/block/" + slotOrHash
-		logger.Errorf("error retrieving block data: %v", err)
+		logger.Errorf("error retrieving blockPageData: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
@@ -156,7 +156,9 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Path = fmt.Sprintf("/block/%v", blockPageData.Slot)
 
 	blockPageData.Ts = utils.SlotToTime(blockPageData.Slot)
-	blockPageData.ExecTime = time.Unix(int64(blockPageData.ExecTimestamp), 0)
+	if blockPageData.ExecTimestamp.Valid {
+		blockPageData.ExecTime = time.Unix(int64(blockPageData.ExecTimestamp.Int64), 0)
+	}
 	blockPageData.SlashingsCount = blockPageData.AttesterSlashingsCount + blockPageData.ProposerSlashingsCount
 
 	err = db.ReaderDb.Get(&blockPageData.NextSlot, "SELECT slot FROM blocks WHERE slot > $1 ORDER BY slot LIMIT 1", blockPageData.Slot)

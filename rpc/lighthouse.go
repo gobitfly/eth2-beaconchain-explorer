@@ -644,7 +644,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 			StateRoot:     payload.StateRoot,
 			ReceiptsRoot:  payload.ReceiptsRoot,
 			LogsBloom:     payload.LogsBloom,
-			PrevRandao:    payload.PrevRandao,
+			Random:        payload.PrevRandao,
 			BlockNumber:   uint64(payload.BlockNumber),
 			GasLimit:      uint64(payload.GasLimit),
 			GasUsed:       uint64(payload.GasUsed),

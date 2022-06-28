@@ -549,21 +549,21 @@ type BlockPageData struct {
 	VotingValidatorsCount  uint64
 	Mainnet                bool
 
-	ExecParentHash        []byte `db:"exec_parenthash"`
-	ExecFeeRecipient      []byte `db:"exec_fee_recipient"`
-	ExecStateRoot         []byte `db:"exec_stateroot"`
-	ExecReceiptRoot       []byte `db:"exec_receiptroot"`
-	ExecLogsBloom         []byte `db:"exec_logsbloom"`
-	ExecRandom            []byte `db:"exec_random"`
-	ExecNumber            uint64 `db:"exec_block_number"`
-	ExecGasLimit          uint64 `db:"exec_gas_limit"`
-	ExecGasUsed           uint64 `db:"exec_gas_used"`
-	ExecTimestamp         uint64 `db:"exec_timestamp"`
+	ExecParentHash        []byte        `db:"exec_parent_hash"`
+	ExecFeeRecipient      []byte        `db:"exec_fee_recipient"`
+	ExecStateRoot         []byte        `db:"exec_state_root"`
+	ExecReceiptsRoot      []byte        `db:"exec_receipts_root"`
+	ExecLogsBloom         []byte        `db:"exec_logs_bloom"`
+	ExecRandom            []byte        `db:"exec_random"`
+	ExecBlockNumber       sql.NullInt64 `db:"exec_block_number"`
+	ExecGasLimit          sql.NullInt64 `db:"exec_gas_limit"`
+	ExecGasUsed           sql.NullInt64 `db:"exec_gas_used"`
+	ExecTimestamp         sql.NullInt64 `db:"exec_timestamp"`
 	ExecTime              time.Time
-	ExecExtraData         []byte `db:"exec_extra_data"`
-	ExecBaseFeePerGas     uint64 `db:"exec_base_fee_per_gas"`
-	ExecBlockHash         []byte `db:"exec_blockhash"`
-	ExecTransactionsCount uint64 `db:"exec_transactioncount"`
+	ExecExtraData         []byte        `db:"exec_extra_data"`
+	ExecBaseFeePerGas     sql.NullInt64 `db:"exec_base_fee_per_gas"`
+	ExecBlockHash         []byte        `db:"exec_block_hash"`
+	ExecTransactionsCount uint64        `db:"exec_transactions_count"`
 
 	Transactions []*BlockPageTransaction
 
