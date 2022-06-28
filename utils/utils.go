@@ -263,7 +263,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 	if cfg.Chain.ConfigPath == "" {
 		switch cfg.Chain.Name {
 		case "mainnet":
-			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.MainnetChainYml), &cfg.Chain.Config)
 		case "prater":
 			err = yaml.Unmarshal([]byte(config.PraterChainYml), &cfg.Chain.Config)
 		case "ropsten":

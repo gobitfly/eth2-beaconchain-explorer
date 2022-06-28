@@ -52,6 +52,10 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 				pageData.Teku.IsUserSubscribed = true
 			case "nimbus":
 				pageData.Nimbus.IsUserSubscribed = true
+			case "erigon":
+				pageData.Erigon.IsUserSubscribed = true
+			case "rocketpool":
+				pageData.RocketpoolSmartnode.IsUserSubscribed = true
 			default:
 				continue
 			}

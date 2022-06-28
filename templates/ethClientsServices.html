@@ -191,14 +191,32 @@
                                         <td data-column="Latest update"><a
                                                     href="https://github.com/hyperledger/besu/releases">{{.Besu.ClientReleaseVersion}}</a> - {{.Besu.ClientReleaseDate}}</td>
                                         <td data-column="Social media">
-                                        <a href="" target="_blank">
+                                        <a href="https://discord.gg/invite/hyperledger" target="_blank">
                                             <i class="fab fa-discord ml-1 mr-1"></i></a>
-                                        <a href="" target="_blank"><i
+                                        <a href="https://mobile.twitter.com/hyperledgerbesu" target="_blank"><i
                                                 class="fab fa-twitter ml-1 mr-1"></i></a>
                                         </td>
                                         <td data-column="Support">N/A</td>
                                         {{if $.User.Authenticated}}
                                         <td><input id="besu-checkbox" type="checkbox" data-toggle="toggle" {{if .Besu.IsUserSubscribed}} checked {{end}} onchange="updateUserSubscription('besu-checkbox', 'eth_client_update', 'besu')"/></td>
+                                        {{end}}
+                                    </tr>
+                                    <tr>
+                                        <td data-column="Name"><a
+                                                    href="https://github.com/ledgerwatch/erigon">Erigon </a></td>
+                                        <td data-column="Language">Go</td>
+                                        <td data-column="Network share"><a
+                                                    href="https://ethernodes.org">{{ if .Erigon.NetworkShare}}{{.Erigon.NetworkShare}}{{else}}N/a{{end}}</a></td>
+                                        <td data-column="Latest update"><a
+                                                    href="https://github.com/ledgerwatch/erigon/releases">{{.Erigon.ClientReleaseVersion}}</a> - {{.Erigon.ClientReleaseDate}}</td>
+                                        <td data-column="Social media">
+                          
+                                        <a href="https://twitter.com/erigoneth" target="_blank"><i
+                                                class="fab fa-twitter ml-1 mr-1"></i></a>
+                                        </td>
+                                        <td data-column="Support">N/A</td>
+                                        {{if $.User.Authenticated}}
+                                        <td><input id="erigon-checkbox" type="checkbox" data-toggle="toggle" {{if .Erigon.IsUserSubscribed}} checked {{end}} onchange="updateUserSubscription('erigon-checkbox', 'eth_client_update', 'erigon')"/></td>
                                         {{end}}
                                     </tr>
                                 </tbody>
@@ -297,6 +315,50 @@
                                                     href="https://gitcoin.co/grants/25/lighthouse-ethereum-20-client">Gitcoin</a></td>
                                         {{if $.User.Authenticated}}
                                         <td><input id="lighthouse-checkbox" type="checkbox" data-toggle="toggle" {{if .Lighthouse.IsUserSubscribed}} checked {{end}} onchange="updateUserSubscription('lighthouse-checkbox', 'eth_client_update', 'lighthouse')"/></td>
+                                        {{end}}
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="my-5">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h1 class="h2 mb-4 font-weight-bold text-primary text-center">Other</h1>
+                        
+                        <div class="table-responsive">
+                            <table class="table" id="ethOtherServices">
+                                <thead>
+                                <tr>	
+                                    <th>Name</th>	
+                                    <th>Language</th>
+                                    <th>Latest update</th>
+                                    <th>Social media</th>
+                                    <th>Support</th>
+                                    {{if $.User.Authenticated}}
+                                    <th>Subscribe</th>
+                                    {{end}}
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                        <td data-column="Name"><a
+                                                    href="https://rocketpool.net">Rocketpool Smart Node</a></td>
+                                        <td data-column="Language">Go</td>
+                                        <td data-column="Latest update"><a
+                                                    href="https://github.com/rocket-pool/smartnode-install/releases">{{.RocketpoolSmartnode.ClientReleaseVersion}}</a> - {{.RocketpoolSmartnode.ClientReleaseDate}}</td>
+                                        <td data-column="Social media">
+                                                        <a href="https://discordapp.com/invite/9mwXaDY" target="_blank">
+                                                        <i class="fab fa-discord ml-1 mr-1"></i></a>
+                                                        <a href="https://twitter.com/Rocket_Pool" target="_blank"><i
+                                                            class="fab fa-twitter ml-1 mr-1"></i></a>
+                                                                </td>
+                                        <td data-column="Support">N/A</td>
+                                        {{if $.User.Authenticated}}
+                                        <td><input id="rocketpool-checkbox" type="checkbox" data-toggle="toggle" {{if .RocketpoolSmartnode.IsUserSubscribed}} checked {{end}} onchange="updateUserSubscription('rocketpool-checkbox', 'eth_client_update', 'rocketpool')"/></td>
                                         {{end}}
                                     </tr>
                                 </tbody>
