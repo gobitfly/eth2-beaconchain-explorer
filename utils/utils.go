@@ -620,7 +620,8 @@ func BitAtVectorReversed(b []byte, i int) bool {
 }
 
 func GetNetwork() string {
-	return strings.ToLower(Config.Chain.Config.ConfigName)
+	return strings.ToLower(Config.Chain.Name)
+	// return strings.ToLower(Config.Chain.Config.ConfigName)
 }
 
 func ElementExists(arr []string, el string) bool {
