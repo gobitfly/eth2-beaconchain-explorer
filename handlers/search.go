@@ -140,7 +140,9 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			SELECT
 				validators.validatorindex AS index,
 				validators.pubkeyhex AS pubkey
-			FROM validator_names LEFT JOIN validators ON validator_names.name LIKE '%' || $1 || '%' AND validators.pubkey = validator_names.publickey;		
+			FROM validator_names LEFT JOIN validators ON validator_names.name LIKE '%' || $1 || '%' AND validators.pubkey = validator_names.publickey
+			ORDER BY index
+			LIMIT 10
 		`
 
 		// its too slow to search for names
@@ -152,6 +154,8 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				FROM validators
 				WHERE CAST(validatorindex AS text) LIKE $1 || '%'
 					OR pubkeyhex LIKE LOWER($1 || '%')
+				ORDER BY index
+				LIMIT 10
 		`
 		}
 
