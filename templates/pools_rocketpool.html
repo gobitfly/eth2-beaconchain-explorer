@@ -1,526 +1,526 @@
-{{define "js"}}
-    <script type="text/javascript" src="/js/datatablesNew.min.js"></script>
-    <script type="text/javascript" src="/js/datatables.min.js"></script>
-    <script type="text/javascript" src="/js/datatable_input.js"></script>
-    <script>
-        $('#minipools').DataTable({
-            ajax: '/pools/rocketpool/data/minipools',
-            language: {
-                info: '_TOTAL_ entries',
-                infoEmpty: 'No entries match',
-                search: '',
-                searchPlaceholder: 'Search...',
-                paginate: {
-                    previous: '<i class="fas fa-chevron-left"></i>',
-                    next: '<i class="fas fa-chevron-right"></i>'
-                }
-            },
-            paging: true,
-            pagingType: 'input',
-            processing: true,
-            ordering: true,
-            responsive: true,
-            searching: true,
-            serverSide: true,
-            columnDefs: [
-                {
-                    targets: '_all',
-                    createdCell: function(td, cellData, rowData, row, col) {
-                        $(td).css('padding-top', '20px')
-                        $(td).css('padding-bottom', '20px')
-                    }
-                },
-                {
-                    targets: 0,
-                    className: 'first-col'
-                },
-                {
-                    targets: 3,
-                    render: function(data, type, row, meta) {
-                        return `${(data * 100).toFixed(2) + '%'}`
-                    }
-                },
-                {
-                    targets: 4,
-                    render: function(data, type, row, meta) {
-                        if (data === 'Empty') {
-                            return `<span class="badge badge-pill badge-light badge-custom">${data}</span>`
-                        }
-                        if (data === 'Half') {
-                            return `<span class="badge badge-pill badge-warning badge-custom text-white">${data}</span>`
-                        }
-                        return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
-                    }
-                },
-                {
-                    targets: 5,
-                    render: function(data, type, row, meta) {
-                        if (data === 'Initialized') {
-                            return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
-                        }
-                        if (data === 'Dissolved') {
-                            return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
-                        }
-                        if (data === 'Withdrawable') {
-                            return `<span class="badge badge-pill badge-warning badge-custom text-white">${data}</span>`
-                        }
-                        return `<span class="badge badge-pill badge-info badge-custom text-white">${data}</span>`
-                    }
-                }
-            ],
-            initComplete: function(settings, json) {
-                $('#minipools .first-col a').on('click', function(e) {
-                    e.stopPropagation()
-                })
-            },
-            preDrawCallback: function() {
-                try {
-                    $('#minipools').find('[data-toggle="tooltip"]').tooltip('dispose')
-                } catch(e) {}
-            },
-            drawCallback: function() {
-                formatTimestamps()
+{{ define "js" }}
+  <script type="text/javascript" src="/js/datatablesNew.min.js"></script>
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script>
+    $("#minipools").DataTable({
+      ajax: "/pools/rocketpool/data/minipools",
+      language: {
+        info: "_TOTAL_ entries",
+        infoEmpty: "No entries match",
+        search: "",
+        searchPlaceholder: "Search...",
+        paginate: {
+          previous: '<i class="fas fa-chevron-left"></i>',
+          next: '<i class="fas fa-chevron-right"></i>',
+        },
+      },
+      paging: true,
+      pagingType: "input",
+      processing: true,
+      ordering: true,
+      responsive: true,
+      searching: true,
+      serverSide: true,
+      columnDefs: [
+        {
+          targets: "_all",
+          createdCell: function (td, cellData, rowData, row, col) {
+            $(td).css("padding-top", "20px")
+            $(td).css("padding-bottom", "20px")
+          },
+        },
+        {
+          targets: 0,
+          className: "first-col",
+        },
+        {
+          targets: 3,
+          render: function (data, type, row, meta) {
+            return `${(data * 100).toFixed(2) + "%"}`
+          },
+        },
+        {
+          targets: 4,
+          render: function (data, type, row, meta) {
+            if (data === "Empty") {
+              return `<span class="badge badge-pill badge-light badge-custom">${data}</span>`
             }
-        })
-
-        $('#nodes').DataTable({
-            ajax: '/pools/rocketpool/data/nodes',
-            language: {
-                info: '_TOTAL_ entries',
-                infoEmpty: 'No entries match',
-                search: '',
-                searchPlaceholder: 'Search...',
-                paginate: {
-                    previous: '<i class="fas fa-chevron-left"></i>',
-                    next: '<i class="fas fa-chevron-right"></i>'
-                }
-            },
-            paging: true,
-            pagingType: 'input',
-            processing: true,
-            ordering: true,
-            responsive: true,
-            searching: true,
-            serverSide: true,
-            columnDefs: [
-                {
-                    targets: '_all',
-                    createdCell: function(td, cellData, rowData, row, col) {
-                        $(td).css('padding-top', '20px')
-                        $(td).css('padding-bottom', '20px')
-                    }
-                },
-                {
-                    targets: 0,
-                    className: 'first-col'
-                },
-                {
-                    targets: 1,
-                    render: function(data, type, row, meta) {
-                        if (data === 'Hidden/Hidden') {
-                            return 'Hidden'
-                        }
-                        return data.replaceAll('_', " ")
-                    }
-                },
-                {
-                    targets: 2,
-                    render: function(data, type, row, meta) {
-                        if (parseInt(data) !== 0) {
-                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
-                        }
-                        return `${data} RPL`
-                    }
-                },
-                {
-                    targets: 3,
-                    render: function(data, type, row, meta) {
-                        if (parseInt(data) !== 0) {
-                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
-                        }
-                        return `${data} RPL`
-                    }
-                },
-                {
-                    targets: 4,
-                    render: function(data, type, row, meta) {
-                        if (parseInt(data) !== 0) {
-                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
-                        }
-                        return `${data} RPL`
-                    }
-                }
-            ],
-            initComplete: function(settings, json) {
-                $('#nodes .first-col a').on('click', function(e) {
-                    e.stopPropagation()
-                })
-            },
-            preDrawCallback: function() {
-                try {
-                    $('#nodes').find('[data-toggle="tooltip"]').tooltip('dispose')
-                } catch(e) {}
-            },
-            drawCallback: function() {
-                formatTimestamps()
+            if (data === "Half") {
+              return `<span class="badge badge-pill badge-warning badge-custom text-white">${data}</span>`
             }
-        })
-
-        $('#dao_members').DataTable({
-            ajax: '/pools/rocketpool/data/dao_members',
-            language: {
-                info: '_TOTAL_ entries',
-                infoEmpty: 'No entries match',
-                search: '',
-                searchPlaceholder: 'Search...',
-                paginate: {
-                    previous: '<i class="fas fa-chevron-left"></i>',
-                    next: '<i class="fas fa-chevron-right"></i>'
-                }
-            },
-            paging: true,
-            pagingType: 'input',
-            processing: true,
-            ordering: true,
-            responsive: true,
-            searching: true,
-            serverSide: true,
-            columnDefs: [
-                {
-                    targets: '_all',
-                    createdCell: function(td, cellData, rowData, row, col) {
-                        $(td).css('padding-top', '20px')
-                        $(td).css('padding-bottom', '20px')
-                    }
-                },
-                {
-                    targets: 0,
-                    className: 'first-col'
-                },
-                {
-                    targets: 2,
-                    render: function(data, type, row, meta) {
-                        if (data.startsWith('http')) {
-                            return `<span class="d-block text-wrap" style="max-width: 300px;"><a href=${data} target="_blank">${data}</a></span>`
-                        }
-                        return data
-                    }
-                },
-                {
-                    targets: 3,
-                    render: function(data, type, row, meta) {
-                        return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
-                    }
-                },
-                {
-                    targets: 4,
-                    render: function(data, type, row, meta) {
-                        return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
-                    }
-                },
-                {
-                    targets: 5,
-                    render: function(data, type, row, meta) {
-                        if (parseInt(data) !== 0) {
-                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
-                        }
-                        return `${data} RPL`
-                    }
-                }
-            ],
-            initComplete: function(settings, json) {
-                $('#dao_members .first-col a').on('click', function(e) {
-                    e.stopPropagation()
-                })
-            },
-            preDrawCallback: function() {
-                try {
-                    $('#dao_members').find('[data-toggle="tooltip"]').tooltip('dispose')
-                } catch(e) {}
-            },
-            drawCallback: function() {
-                formatTimestamps()
+            return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
+          },
+        },
+        {
+          targets: 5,
+          render: function (data, type, row, meta) {
+            if (data === "Initialized") {
+              return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
             }
-        })
-
-        $('#dao_proposals').DataTable({
-            ajax: '/pools/rocketpool/data/dao_proposals',
-            language: {
-                info: '_TOTAL_ entries',
-                infoEmpty: 'No entries match',
-                search: '',
-                searchPlaceholder: 'Search...',
-                paginate: {
-                    previous: '<i class="fas fa-chevron-left"></i>',
-                    next: '<i class="fas fa-chevron-right"></i>'
-                }
-            },
-            paging: true,
-            pagingType: 'input',
-            processing: true,
-            ordering: true,
-            responsive: true,
-            searching: true,
-            serverSide: true,
-            columnDefs: [
-                {
-                    targets: '_all',
-                    createdCell: function(td, cellData, rowData, row, col) {
-                        $(td).css('padding-top', '20px')
-                        $(td).css('padding-bottom', '20px')
-                    }
-                },
-                {
-                    targets: 0,
-                    responsivePriority: 3
-                },
-                {
-                    targets: 1,
-                    responsivePriority: 2
-                },
-                {
-                    targets: 3,
-                    render: function(data, type, row, meta) {
-                        return `<span class="d-block text-wrap" style="max-width: 400px; line-height: 1.4rem; letter-spacing: .05rem;">${data}</span>`
-                    }
-                },
-                {
-                    targets: 4,
-                    render: function(data, type, row, meta) {
-                        return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
-                    }
-                },
-                {
-                    targets: 5,
-                    render: function(data, type, row, meta) {
-                        return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
-                    }
-                },
-                {
-                    targets: 6,
-                    render: function(data, type, row, meta) {
-                        return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
-                    }
-                },
-                {
-                    targets: 7,
-                    render: function(data, type, row, meta) {
-                        return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
-                    }
-                },
-                {
-                    targets: 9,
-                    render: function(data, type, row, meta) {
-                        return `<span class="d-flex align-items-center">${data}<i class="fas fa-thumbs-up ml-2 text-muted"></i></span>`
-                    }
-                },
-                {
-                    targets: 10,
-                    render: function(data, type, row, meta) {
-                        return `<span class="d-flex align-items-center">${data}<i class="fas fa-thumbs-down ml-2 text-muted"></i></span>`
-                    }
-                },
-                {
-                    targets: 11,
-                    render: function(data, type, row, meta) {
-                        if (data) {
-                            return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
-                        }
-                        return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
-                    }
-                },
-                {
-                    targets: 12,
-                    render: function(data, type, row, meta) {
-                        if (data) {
-                            return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
-                        }
-                        return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
-                    }
-                },
-                {
-                    targets: 13,
-                    render: function(data, type, row, meta) {
-                        if (data) {
-                            return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
-                        }
-                        return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
-                    }
-                },
-                {
-                    targets: 14,
-                    responsivePriority: 2,
-                    render: function(data, type, row, meta) {
-                        if (data) {
-                            return `<span class="badge badge-pill badge-success badge-custom-size text-white" style="font-size: 12px; font-weight: 500;">${data}</span>`
-                        }
-                        return `<span class="badge badge-pill badge-danger badge-custom-size text-white" style="font-size: 12px; font-weight: 500;">${data}</span>`
-                    }
-                },
-                {
-                    targets: 15,
-                    responsivePriority: 1
-                },
-                {
-                    targets: 16,
-                    responsivePriority: 1,
-                    render: function(data, type, row, meta) {
-                        if (data === 'Executed') {
-                            return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
-                        }
-                        if (data === 'Cancelled') {
-                            return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
-                        }
-                        if (data === 'Defeated') {
-                            return `<span class="badge badge-pill badge-warning badge-custom text-white">${data}</span>`
-                        }
-                        return `<span class="badge badge-pill badge-info badge-custom text-white">${data}</span>`
-                    }
-                }
-            ],
-            preDrawCallback: function() {
-                try {
-                    $('#dao_proposals').find('[data-toggle="tooltip"]').tooltip('dispose')
-                } catch(e) {}
-            },
-            drawCallback: function() {
-                formatTimestamps()
+            if (data === "Dissolved") {
+              return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
             }
+            if (data === "Withdrawable") {
+              return `<span class="badge badge-pill badge-warning badge-custom text-white">${data}</span>`
+            }
+            return `<span class="badge badge-pill badge-info badge-custom text-white">${data}</span>`
+          },
+        },
+      ],
+      initComplete: function (settings, json) {
+        $("#minipools .first-col a").on("click", function (e) {
+          e.stopPropagation()
         })
-    </script>
-{{end}}
+      },
+      preDrawCallback: function () {
+        try {
+          $("#minipools").find('[data-toggle="tooltip"]').tooltip("dispose")
+        } catch (e) {}
+      },
+      drawCallback: function () {
+        formatTimestamps()
+      },
+    })
 
-{{define "css"}}
-    <link rel="stylesheet" type="text/css" href="/css/datatablesNew.min.css" />
-    <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
-    <style>
-        .badge-custom {
-            font-size: 12px;
-            font-weight: 500;
-        }
-        #slashings td:first-child {
-            white-space: break-spaces;
-        }
-        #minipools_wrapper div.dataTables_paginate ul li,
-        #nodes_wrapper div.dataTables_paginate ul li,
-        #dao_members_wrapper div.dataTables_paginate ul li,
-        #dao_proposals_wrapper div.dataTables_paginate ul li { 
-            background-color: var(--bg-color);
-        }
-        div.dataTables_filter {
-            margin-top: 2.5px;
-            margin-right: 3px;
-            padding-right: 0 !important;
-        }
-    </style>
-{{end}}
+    $("#nodes").DataTable({
+      ajax: "/pools/rocketpool/data/nodes",
+      language: {
+        info: "_TOTAL_ entries",
+        infoEmpty: "No entries match",
+        search: "",
+        searchPlaceholder: "Search...",
+        paginate: {
+          previous: '<i class="fas fa-chevron-left"></i>',
+          next: '<i class="fas fa-chevron-right"></i>',
+        },
+      },
+      paging: true,
+      pagingType: "input",
+      processing: true,
+      ordering: true,
+      responsive: true,
+      searching: true,
+      serverSide: true,
+      columnDefs: [
+        {
+          targets: "_all",
+          createdCell: function (td, cellData, rowData, row, col) {
+            $(td).css("padding-top", "20px")
+            $(td).css("padding-bottom", "20px")
+          },
+        },
+        {
+          targets: 0,
+          className: "first-col",
+        },
+        {
+          targets: 1,
+          render: function (data, type, row, meta) {
+            if (data === "Hidden/Hidden") {
+              return "Hidden"
+            }
+            return data.replaceAll("_", " ")
+          },
+        },
+        {
+          targets: 2,
+          render: function (data, type, row, meta) {
+            if (parseInt(data) !== 0) {
+              return `${(parseInt(data) / 10 ** 18).toFixed(2)} RPL`
+            }
+            return `${data} RPL`
+          },
+        },
+        {
+          targets: 3,
+          render: function (data, type, row, meta) {
+            if (parseInt(data) !== 0) {
+              return `${(parseInt(data) / 10 ** 18).toFixed(2)} RPL`
+            }
+            return `${data} RPL`
+          },
+        },
+        {
+          targets: 4,
+          render: function (data, type, row, meta) {
+            if (parseInt(data) !== 0) {
+              return `${(parseInt(data) / 10 ** 18).toFixed(2)} RPL`
+            }
+            return `${data} RPL`
+          },
+        },
+      ],
+      initComplete: function (settings, json) {
+        $("#nodes .first-col a").on("click", function (e) {
+          e.stopPropagation()
+        })
+      },
+      preDrawCallback: function () {
+        try {
+          $("#nodes").find('[data-toggle="tooltip"]').tooltip("dispose")
+        } catch (e) {}
+      },
+      drawCallback: function () {
+        formatTimestamps()
+      },
+    })
 
-{{define "content"}}
-    {{with .Data}}
-        <div class="container-fluid container-xl">
-            <div class="mt-4">
-                <div class="d-flex align-items-center justify-content-md-end">
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
-                            <li class="breadcrumb-item"><a href="/">Home</a></li>
-                            <li class="breadcrumb-item"><a href="/pools">Pools</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Rocket Pool</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-            <h1 class="mt-2 mb-5 text-nowrap" style="font-size: 1.8rem; letter-spacing: 2px;">
-                <a href="https://rocketpool.net/">Rocket Pool
-                    <i class="fas fa-rocket"></i>
-                </a>
-            </h1>
-            </li>
-            <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Minipools</h2>
-            <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
-                <div class="table-responsive">
-                    <table class="table table-hover" id="minipools" width="100%">
-                        <thead style="background-color: var(--bg);">
-                            <tr>
-                                <th scope="col" class="h6 border-bottom-0">Minipool</th>
-                                <th scope="col" class="h6 border-bottom-0">Validator</th>
-                                <th scope="col" class="h6 border-bottom-0">Node</th>
-                                <th scope="col" class="h6 border-bottom-0">Node Fee</th>
-                                <th scope="col" class="h6 border-bottom-0">Deposit Type</th>
-                                <th scope="col" class="h6 border-bottom-0">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-            <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Nodes</h2>
-            <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
-                <div class="table-responsive">
-                    <table class="table table-hover" id="nodes" width="100%">
-                        <thead style="background-color: var(--bg);">
-                            <tr>
-                                <th scope="col" class="h6 border-bottom-0">Address</th>
-                                <th scope="col" class="h6 border-bottom-0">Timezone Location</th>
-                                <th scope="col" class="h6 border-bottom-0">RPL Stake</th>
-                                <th scope="col" class="h6 border-bottom-0">Min RPL Stake</th>
-                                <th scope="col" class="h6 border-bottom-0">Max RPL Stake</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-            <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">DAO Members</h2>
-            <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
-                <div class="table-responsive">
-                    <table class="table table-hover" id="dao_members" width="100%">
-                        <thead style="background-color: var(--bg);">
-                            <tr>
-                                <th scope="col" class="h6 border-bottom-0">Address</th>
-                                <th scope="col" class="h6 border-bottom-0">ID</th>
-                                <th scope="col" class="h6 border-bottom-0">URL</th>
-                                <th scope="col" class="h6 border-bottom-0">Joined Time</th>
-                                <th scope="col" class="h6 border-bottom-0">Last Proposal Time</th>
-                                <th scope="col" class="h6 border-bottom-0">RPL Bond Amount</th>
-                                <th scope="col" class="h6 border-bottom-0">Unbonded Validator Count</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-            <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Proposals</h2>
-            <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
-                <div class="table-responsive">
-                    <table class="table table-hover" id="dao_proposals" width="100%">
-                        <thead style="background-color: var(--bg);">
-                            <tr>
-                                <th scope="col" class="h6 border-bottom-0">ID</th>
-                                <th scope="col" class="h6 border-bottom-0">DAO</th>
-                                <th scope="col" class="h6 border-bottom-0">Proposer</th>
-                                <th scope="col" class="h6 border-bottom-0">Message</th>
-                                <th scope="col" class="h6 border-bottom-0">Created Time</th>
-                                <th scope="col" class="h6 border-bottom-0">Start Time</th>
-                                <th scope="col" class="h6 border-bottom-0">End Time</th>
-                                <th scope="col" class="h6 border-bottom-0">Expiry Time</th>
-                                <th scope="col" class="h6 border-bottom-0">Votes Required</th>
-                                <th scope="col" class="h6 border-bottom-0">Votes For</th>
-                                <th scope="col" class="h6 border-bottom-0">Votes Against</th>
-                                <th scope="col" class="h6 border-bottom-0">Member Voted</th>
-                                <th scope="col" class="h6 border-bottom-0">Member Supported</th>
-                                <th scope="col" class="h6 border-bottom-0">Is Cancelled</th>
-                                <th scope="col" class="h6 border-bottom-0">Is Executed</th>
-                                <th scope="col" class="h6 border-bottom-0">Payload</th>
-                                <th scope="col" class="h6 border-bottom-0">State</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="d-flex align-items-center" style="margin-top: 5rem;">
-                <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-            </div>
+    $("#dao_members").DataTable({
+      ajax: "/pools/rocketpool/data/dao_members",
+      language: {
+        info: "_TOTAL_ entries",
+        infoEmpty: "No entries match",
+        search: "",
+        searchPlaceholder: "Search...",
+        paginate: {
+          previous: '<i class="fas fa-chevron-left"></i>',
+          next: '<i class="fas fa-chevron-right"></i>',
+        },
+      },
+      paging: true,
+      pagingType: "input",
+      processing: true,
+      ordering: true,
+      responsive: true,
+      searching: true,
+      serverSide: true,
+      columnDefs: [
+        {
+          targets: "_all",
+          createdCell: function (td, cellData, rowData, row, col) {
+            $(td).css("padding-top", "20px")
+            $(td).css("padding-bottom", "20px")
+          },
+        },
+        {
+          targets: 0,
+          className: "first-col",
+        },
+        {
+          targets: 2,
+          render: function (data, type, row, meta) {
+            if (data.startsWith("http")) {
+              return `<span class="d-block text-wrap" style="max-width: 300px;"><a href=${data} target="_blank">${data}</a></span>`
+            }
+            return data
+          },
+        },
+        {
+          targets: 3,
+          render: function (data, type, row, meta) {
+            return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+          },
+        },
+        {
+          targets: 4,
+          render: function (data, type, row, meta) {
+            return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+          },
+        },
+        {
+          targets: 5,
+          render: function (data, type, row, meta) {
+            if (parseInt(data) !== 0) {
+              return `${(parseInt(data) / 10 ** 18).toFixed(2)} RPL`
+            }
+            return `${data} RPL`
+          },
+        },
+      ],
+      initComplete: function (settings, json) {
+        $("#dao_members .first-col a").on("click", function (e) {
+          e.stopPropagation()
+        })
+      },
+      preDrawCallback: function () {
+        try {
+          $("#dao_members").find('[data-toggle="tooltip"]').tooltip("dispose")
+        } catch (e) {}
+      },
+      drawCallback: function () {
+        formatTimestamps()
+      },
+    })
+
+    $("#dao_proposals").DataTable({
+      ajax: "/pools/rocketpool/data/dao_proposals",
+      language: {
+        info: "_TOTAL_ entries",
+        infoEmpty: "No entries match",
+        search: "",
+        searchPlaceholder: "Search...",
+        paginate: {
+          previous: '<i class="fas fa-chevron-left"></i>',
+          next: '<i class="fas fa-chevron-right"></i>',
+        },
+      },
+      paging: true,
+      pagingType: "input",
+      processing: true,
+      ordering: true,
+      responsive: true,
+      searching: true,
+      serverSide: true,
+      columnDefs: [
+        {
+          targets: "_all",
+          createdCell: function (td, cellData, rowData, row, col) {
+            $(td).css("padding-top", "20px")
+            $(td).css("padding-bottom", "20px")
+          },
+        },
+        {
+          targets: 0,
+          responsivePriority: 3,
+        },
+        {
+          targets: 1,
+          responsivePriority: 2,
+        },
+        {
+          targets: 3,
+          render: function (data, type, row, meta) {
+            return `<span class="d-block text-wrap" style="max-width: 400px; line-height: 1.4rem; letter-spacing: .05rem;">${data}</span>`
+          },
+        },
+        {
+          targets: 4,
+          render: function (data, type, row, meta) {
+            return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+          },
+        },
+        {
+          targets: 5,
+          render: function (data, type, row, meta) {
+            return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+          },
+        },
+        {
+          targets: 6,
+          render: function (data, type, row, meta) {
+            return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+          },
+        },
+        {
+          targets: 7,
+          render: function (data, type, row, meta) {
+            return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+          },
+        },
+        {
+          targets: 9,
+          render: function (data, type, row, meta) {
+            return `<span class="d-flex align-items-center">${data}<i class="fas fa-thumbs-up ml-2 text-muted"></i></span>`
+          },
+        },
+        {
+          targets: 10,
+          render: function (data, type, row, meta) {
+            return `<span class="d-flex align-items-center">${data}<i class="fas fa-thumbs-down ml-2 text-muted"></i></span>`
+          },
+        },
+        {
+          targets: 11,
+          render: function (data, type, row, meta) {
+            if (data) {
+              return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
+            }
+            return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
+          },
+        },
+        {
+          targets: 12,
+          render: function (data, type, row, meta) {
+            if (data) {
+              return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
+            }
+            return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
+          },
+        },
+        {
+          targets: 13,
+          render: function (data, type, row, meta) {
+            if (data) {
+              return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
+            }
+            return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
+          },
+        },
+        {
+          targets: 14,
+          responsivePriority: 2,
+          render: function (data, type, row, meta) {
+            if (data) {
+              return `<span class="badge badge-pill badge-success badge-custom-size text-white" style="font-size: 12px; font-weight: 500;">${data}</span>`
+            }
+            return `<span class="badge badge-pill badge-danger badge-custom-size text-white" style="font-size: 12px; font-weight: 500;">${data}</span>`
+          },
+        },
+        {
+          targets: 15,
+          responsivePriority: 1,
+        },
+        {
+          targets: 16,
+          responsivePriority: 1,
+          render: function (data, type, row, meta) {
+            if (data === "Executed") {
+              return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
+            }
+            if (data === "Cancelled") {
+              return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
+            }
+            if (data === "Defeated") {
+              return `<span class="badge badge-pill badge-warning badge-custom text-white">${data}</span>`
+            }
+            return `<span class="badge badge-pill badge-info badge-custom text-white">${data}</span>`
+          },
+        },
+      ],
+      preDrawCallback: function () {
+        try {
+          $("#dao_proposals").find('[data-toggle="tooltip"]').tooltip("dispose")
+        } catch (e) {}
+      },
+      drawCallback: function () {
+        formatTimestamps()
+      },
+    })
+  </script>
+{{ end }}
+
+{{ define "css" }}
+  <link rel="stylesheet" type="text/css" href="/css/datatablesNew.min.css" />
+  <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
+  <style>
+    .badge-custom {
+      font-size: 12px;
+      font-weight: 500;
+    }
+    #slashings td:first-child {
+      white-space: break-spaces;
+    }
+    #minipools_wrapper div.dataTables_paginate ul li,
+    #nodes_wrapper div.dataTables_paginate ul li,
+    #dao_members_wrapper div.dataTables_paginate ul li,
+    #dao_proposals_wrapper div.dataTables_paginate ul li {
+      background-color: var(--bg-color);
+    }
+    div.dataTables_filter {
+      margin-top: 2.5px;
+      margin-right: 3px;
+      padding-right: 0 !important;
+    }
+  </style>
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container-fluid container-xl">
+      <div class="mt-4">
+        <div class="d-flex align-items-center justify-content-md-end">
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
+              <li class="breadcrumb-item"><a href="/">Home</a></li>
+              <li class="breadcrumb-item"><a href="/pools">Pools</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Rocket Pool</li>
+            </ol>
+          </nav>
         </div>
-    {{end}}
-{{end}}
+      </div>
+      <h1 class="mt-2 mb-5 text-nowrap" style="font-size: 1.8rem; letter-spacing: 2px;">
+        <a href="https://rocketpool.net/"
+          >Rocket Pool
+          <i class="fas fa-rocket"></i>
+        </a>
+      </h1>
+      <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Minipools</h2>
+      <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
+        <div class="table-responsive">
+          <table class="table table-hover" id="minipools" width="100%">
+            <thead style="background-color: var(--bg);">
+              <tr>
+                <th scope="col" class="h6 border-bottom-0">Minipool</th>
+                <th scope="col" class="h6 border-bottom-0">Validator</th>
+                <th scope="col" class="h6 border-bottom-0">Node</th>
+                <th scope="col" class="h6 border-bottom-0">Node Fee</th>
+                <th scope="col" class="h6 border-bottom-0">Deposit Type</th>
+                <th scope="col" class="h6 border-bottom-0">Status</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Nodes</h2>
+      <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
+        <div class="table-responsive">
+          <table class="table table-hover" id="nodes" width="100%">
+            <thead style="background-color: var(--bg);">
+              <tr>
+                <th scope="col" class="h6 border-bottom-0">Address</th>
+                <th scope="col" class="h6 border-bottom-0">Timezone Location</th>
+                <th scope="col" class="h6 border-bottom-0">RPL Stake</th>
+                <th scope="col" class="h6 border-bottom-0">Min RPL Stake</th>
+                <th scope="col" class="h6 border-bottom-0">Max RPL Stake</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">DAO Members</h2>
+      <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
+        <div class="table-responsive">
+          <table class="table table-hover" id="dao_members" width="100%">
+            <thead style="background-color: var(--bg);">
+              <tr>
+                <th scope="col" class="h6 border-bottom-0">Address</th>
+                <th scope="col" class="h6 border-bottom-0">ID</th>
+                <th scope="col" class="h6 border-bottom-0">URL</th>
+                <th scope="col" class="h6 border-bottom-0">Joined Time</th>
+                <th scope="col" class="h6 border-bottom-0">Last Proposal Time</th>
+                <th scope="col" class="h6 border-bottom-0">RPL Bond Amount</th>
+                <th scope="col" class="h6 border-bottom-0">Unbonded Validator Count</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Proposals</h2>
+      <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
+        <div class="table-responsive">
+          <table class="table table-hover" id="dao_proposals" width="100%">
+            <thead style="background-color: var(--bg);">
+              <tr>
+                <th scope="col" class="h6 border-bottom-0">ID</th>
+                <th scope="col" class="h6 border-bottom-0">DAO</th>
+                <th scope="col" class="h6 border-bottom-0">Proposer</th>
+                <th scope="col" class="h6 border-bottom-0">Message</th>
+                <th scope="col" class="h6 border-bottom-0">Created Time</th>
+                <th scope="col" class="h6 border-bottom-0">Start Time</th>
+                <th scope="col" class="h6 border-bottom-0">End Time</th>
+                <th scope="col" class="h6 border-bottom-0">Expiry Time</th>
+                <th scope="col" class="h6 border-bottom-0">Votes Required</th>
+                <th scope="col" class="h6 border-bottom-0">Votes For</th>
+                <th scope="col" class="h6 border-bottom-0">Votes Against</th>
+                <th scope="col" class="h6 border-bottom-0">Member Voted</th>
+                <th scope="col" class="h6 border-bottom-0">Member Supported</th>
+                <th scope="col" class="h6 border-bottom-0">Is Cancelled</th>
+                <th scope="col" class="h6 border-bottom-0">Is Executed</th>
+                <th scope="col" class="h6 border-bottom-0">Payload</th>
+                <th scope="col" class="h6 border-bottom-0">State</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="d-flex align-items-center" style="margin-top: 5rem;">
+        <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

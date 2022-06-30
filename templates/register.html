@@ -1,157 +1,151 @@
-{{ define "js"}}
-    <script>
-        function validateEmail(email) {
-            var tester = /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/;
-            if (!email) return false;
+{{ define "js" }}
+  <script>
+    function validateEmail(email) {
+      var tester = /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/
+      if (!email) return false
 
-            var emailParts = email.split('@');
+      var emailParts = email.split("@")
 
-            if (emailParts.length !== 2) return false
+      if (emailParts.length !== 2) return false
 
-            var account = emailParts[0];
-            var address = emailParts[1];
+      var account = emailParts[0]
+      var address = emailParts[1]
 
-            if (account.length > 64) return false
+      if (account.length > 64) return false
+      else if (address.length > 255) return false
 
-            else if (address.length > 255) return false
-
-            var domainParts = address.split('.');
-            if (domainParts.some(function (part) {
-                return part.length > 63;
-            })) return false;
-
-
-            if (!tester.test(email)) return false;
-
-            return true;
-        };
-        // form validations
-        function checkPasswordsMatch(input) {
-            var pass = document.getElementById('password')
-            var pwConfirm = document.getElementById('pw-confirm')
-            if (pass.value !== input.value) {
-                input.setCustomValidity('Passwords do not match');
-            } else {
-                input.setCustomValidity('');
-            }
-        }
-               // form validations
-        function tosAccepted(input) {
-            var ipt = document.getElementById('tos-checkbox')
-            if (!ipt.checked) {
-                input.setCustomValidity('Please accept the Terms and Conditions before creating an account');
-            } else {
-                input.setCustomValidity('');
-            }
-        }
-        var passwordInput = document.getElementById('password')
-        togglePasswordHelp(passwordInput.value)
-        passwordInput.addEventListener('input', function(e) {
-            togglePasswordHelp(e.target.value)
-            toggleConfirmPasswordHelp()
+      var domainParts = address.split(".")
+      if (
+        domainParts.some(function (part) {
+          return part.length > 63
         })
+      )
+        return false
 
-        function togglePasswordHelp(value) {
-            if (value && value.length >= 5) {
-                document.getElementById('passwordHelp').classList.add('invisible')
-            } else {
-                document.getElementById('passwordHelp').classList.remove('invisible')
-            }
-        }
+      if (!tester.test(email)) return false
 
-        var confirmPasswordInput = document.getElementById('pw-confirm')
-        toggleConfirmPasswordHelp(confirmPasswordInput.value)
-        confirmPasswordInput.addEventListener('input', function(e) {
-            toggleConfirmPasswordHelp(e.target.value)
-        })
+      return true
+    }
+    // form validations
+    function checkPasswordsMatch(input) {
+      var pass = document.getElementById("password")
+      // var pwConfirm = document.getElementById("pw-confirm")
+      if (pass.value !== input.value) {
+        input.setCustomValidity("Passwords do not match")
+      } else {
+        input.setCustomValidity("")
+      }
+    }
+    // form validations
+    function tosAccepted(input) {
+      var ipt = document.getElementById("tos-checkbox")
+      if (!ipt.checked) {
+        input.setCustomValidity("Please accept the Terms and Conditions before creating an account")
+      } else {
+        input.setCustomValidity("")
+      }
+    }
+    var passwordInput = document.getElementById("password")
+    togglePasswordHelp(passwordInput.value)
+    passwordInput.addEventListener("input", function (e) {
+      togglePasswordHelp(e.target.value)
+      toggleConfirmPasswordHelp()
+    })
 
-        function toggleConfirmPasswordHelp() {
-            var password = document.getElementById('password')
-            var confirmPassword = document.getElementById('pw-confirm')
-            if (confirmPassword && confirmPassword.value && password.value && confirmPassword.value === password.value) {
-                document.getElementById('confirmPasswordHelp').classList.add('invisible')
-            } else {
-                document.getElementById('confirmPasswordHelp').classList.remove('invisible')
-            }
-        }
+    function togglePasswordHelp(value) {
+      if (value && value.length >= 5) {
+        document.getElementById("passwordHelp").classList.add("invisible")
+      } else {
+        document.getElementById("passwordHelp").classList.remove("invisible")
+      }
+    }
 
-        var emailInput = document.getElementById('email')
-        toggleEmailHelp(emailInput.value)
-        emailInput.addEventListener('input', function(e) {
-           toggleEmailHelp(e.target.value)
-        })
+    var confirmPasswordInput = document.getElementById("pw-confirm")
+    toggleConfirmPasswordHelp(confirmPasswordInput.value)
+    confirmPasswordInput.addEventListener("input", function (e) {
+      toggleConfirmPasswordHelp(e.target.value)
+    })
 
-        function toggleEmailHelp(value) {
-            if (value && validateEmail(value)) {
-                document.getElementById('emailHelp').classList.add('invisible')
-            } else {
-                document.getElementById('emailHelp').classList.remove('invisible')
-            }
-        }
-    </script>
+    function toggleConfirmPasswordHelp() {
+      var password = document.getElementById("password")
+      var confirmPassword = document.getElementById("pw-confirm")
+      if (confirmPassword && confirmPassword.value && password.value && confirmPassword.value === password.value) {
+        document.getElementById("confirmPasswordHelp").classList.add("invisible")
+      } else {
+        document.getElementById("confirmPasswordHelp").classList.remove("invisible")
+      }
+    }
 
-{{end}}
+    var emailInput = document.getElementById("email")
+    toggleEmailHelp(emailInput.value)
+    emailInput.addEventListener("input", function (e) {
+      toggleEmailHelp(e.target.value)
+    })
 
-{{ define "css"}}
-{{end}}
+    function toggleEmailHelp(value) {
+      if (value && validateEmail(value)) {
+        document.getElementById("emailHelp").classList.add("invisible")
+      } else {
+        document.getElementById("emailHelp").classList.remove("invisible")
+      }
+    }
+  </script>
+{{ end }}
 
-{{ define "content"}}
-    {{with .Data}}
-        <div class="container">
-            <div class="row my-3">
-                <div class="col-lg-6 col-sm-8 col-xl-5 mx-auto">
-                    <h1 class="h2">Sign up to <i>beaconcha.in</i></h1>
-                    <p>Manage and track the progress of your validator.</p>
-                    {{if .Flashes}}
-                        {{range $i, $flash := .Flashes}}
-                            <div class="alert {{if contains $flash "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2"
-                                 role="alert">
-                                <div class="p-2">{{$flash | formatHTML}}</div>
-                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                        {{end}}
-                    {{end}}
-                    <form action="/register" method="post">
-                        {{.CsrfField}}
-                        <div class="form-group mb-2">
-                            <label for="email">Email address</label>
-                            <input tabindex="1" required inputmode="email" type="text" maxlength="100" class="form-control"
-                                   autocomplete="email" id="email" name="email" autofocus>
-                            <small id="emailHelp" class="form-text text-muted">Please provide a valid email.</small>
-                        </div>
-                        <div class="form-group mb-2">
-                            <label for="password">Password</label>
-                            <input tabindex="2" required type="password" minlength="5" maxlength="256" class="form-control"
-                                   autocomplete="new-password" id="password" name="password">
-                            <small id="passwordHelp" class="form-text text-muted">Provide at least <span id="passwordHelpCount">5</span> characters.</small>
-                        </div>
-                        <div class="form-group mb-2">
-                            <label for="pw-confirm">Confirm Password</label>
-                            <input tabindex="3" oninput="checkPasswordsMatch(this)" required type="password" minlength="5"
-                                   maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm"
-                                   name="pw-confirm">
-                            <small id="confirmPasswordHelp" class="form-text text-muted">Passwords do not yet match</small>
-                        </div>
-                        <div class="custom-control custom-checkbox d-flex align-items-center text-muted mb-2">
-                            <input tabindex="4"  oninput="tosAccepted(this)" type="checkbox" id="tos-checkbox" class="custom-control-input" required>
-                            <label class="custom-control-label active" for="tos-checkbox">
-                               <span>I agree to the <a tabindex="7" class="link-muted" href="/legal/tos.pdf" target="_blank">Terms and Conditions</a> and <a tabindex="8" class="link-muted" href="/legal/privacy.pdf" target="_blank">Privacy Policy</a>
-                            </span>
-                            </label>
-                        </div>
-                        <div style="text-align: right;">
-                            <button tabindex="5" type="submit" class="btn btn-primary">Register</button>
-                        </div>
-                    </form>
+{{ define "css" }}
+{{ end }}
 
-                    <div class="mt-1">
-                        <!-- <hr> -->
-                        <span style="font-size: 90%;" class="text-muted mt-3">Already have an account?</span> <a tabindex="6" href="/login">Login</a>
-                    </div>
-                </div>
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container">
+      <div class="row my-3">
+        <div class="col-lg-6 col-sm-8 col-xl-5 mx-auto">
+          <h1 class="h2">Sign up to <i>beaconcha.in</i></h1>
+          <p>Manage and track the progress of your validator.</p>
+          {{ if .Flashes }}
+            {{ range $i, $flash := .Flashes }}
+              <div class="alert {{ if contains $flash "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
+                <div class="p-2">{{ $flash | formatHTML }}</div>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+            {{ end }}
+          {{ end }}
+          <form action="/register" method="post">
+            {{ .CsrfField }}
+            <div class="form-group mb-2">
+              <label for="email">Email address</label>
+              <input tabindex="1" required inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email" autofocus />
+              <small id="emailHelp" class="form-text text-muted">Please provide a valid email.</small>
             </div>
+            <div class="form-group mb-2">
+              <label for="password">Password</label>
+              <input tabindex="2" required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="password" name="password" />
+              <small id="passwordHelp" class="form-text text-muted">Provide at least <span id="passwordHelpCount">5</span> characters.</small>
+            </div>
+            <div class="form-group mb-2">
+              <label for="pw-confirm">Confirm Password</label>
+              <input tabindex="3" oninput="checkPasswordsMatch(this)" required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm" name="pw-confirm" />
+              <small id="confirmPasswordHelp" class="form-text text-muted">Passwords do not yet match</small>
+            </div>
+            <div class="custom-control custom-checkbox d-flex align-items-center text-muted mb-2">
+              <input tabindex="4" oninput="tosAccepted(this)" type="checkbox" id="tos-checkbox" class="custom-control-input" required />
+              <label class="custom-control-label active" for="tos-checkbox">
+                <span>I agree to the <a tabindex="7" class="link-muted" href="/legal/tos.pdf" target="_blank">Terms and Conditions</a> and <a tabindex="8" class="link-muted" href="/legal/privacy.pdf" target="_blank">Privacy Policy</a> </span>
+              </label>
+            </div>
+            <div style="text-align: right;">
+              <button tabindex="5" type="submit" class="btn btn-primary">Register</button>
+            </div>
+          </form>
+
+          <div class="mt-1">
+            <!-- <hr> -->
+            <span style="font-size: 90%;" class="text-muted mt-3">Already have an account?</span> <a tabindex="6" href="/login">Login</a>
+          </div>
         </div>
-    {{end}}
-{{end}}
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

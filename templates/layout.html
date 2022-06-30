@@ -1,61 +1,61 @@
-{{define "layout"}}
-    <!DOCTYPE html>
-    <html lang="en">
+{{ define "layout" }}
+  <!DOCTYPE html>
+  <html lang="en">
     <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1.0">
-        <meta name="keywords" content="ethereum 2.0 block explorer, eth2 block explorer, beacon chain explorer, ethereum blockchain explorer"/>
-        <meta name="description" content={{.Meta.Description}}>
-        <meta property="og:title" content="{{.Meta.Title}}"/>
-        <meta property="og:type" content="website"/>
-        <meta property="og:image" content="https://beaconcha.in/img/logo.png"/>
-        <meta property="og:image:alt" content="The beaconcha.in logo is a satelite dish expanding its signal."/>
-        <meta property="og:description" content="{{.Meta.Description}}"/>
-        <meta property="og:url" content="https://beaconcha.in{{.Meta.Path}}"/>
-        <meta property="og:site_name" content="beaconcha.in"/>
-        <meta name="twitter:card" content="summary"/>
-        <meta name="twitter:site" content="@etherchain_org"/>
-        <meta name="twitter:title" content="{{.Meta.Title}}"/>
-        <meta property="twitter:description" content="{{.Meta.Description}}"/>
-        <meta property="twitter:image" content="https://beaconcha.in/img/logo.png"/>
-        <meta property="twitter:image:alt" content="The beaconcha.in logo is a satelite dish expanding its signal."/>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+      <meta name="keywords" content="ethereum 2.0 block explorer, eth2 block explorer, beacon chain explorer, ethereum blockchain explorer" />
+      <meta name="description" content="{{ .Meta.Description }}" />
+      <meta property="og:title" content="{{ .Meta.Title }}" />
+      <meta property="og:type" content="website" />
+      <meta property="og:image" content="https://beaconcha.in/img/logo.png" />
+      <meta property="og:image:alt" content="The beaconcha.in logo is a satelite dish expanding its signal." />
+      <meta property="og:description" content="{{ .Meta.Description }}" />
+      <meta property="og:url" content="https://beaconcha.in{{ .Meta.Path }}" />
+      <meta property="og:site_name" content="beaconcha.in" />
+      <meta name="twitter:card" content="summary" />
+      <meta name="twitter:site" content="@etherchain_org" />
+      <meta name="twitter:title" content="{{ .Meta.Title }}" />
+      <meta property="twitter:description" content="{{ .Meta.Description }}" />
+      <meta property="twitter:image" content="https://beaconcha.in/img/logo.png" />
+      <meta property="twitter:image:alt" content="The beaconcha.in logo is a satelite dish expanding its signal." />
 
-        <link rel="canonical" href="https://beaconcha.in{{.Meta.Path}}"/>
-        <title>{{.Meta.Title}}</title>
-        <link rel="shortcut icon" type="image/png" href="/favicon.ico"/>
-        <link rel="stylesheet" href="/css/fontawesome.min.css">
-        <link rel="preload" as="font" href="/webfonts/fa-solid-900.woff2" crossorigin>
-        <link rel="preload" as="font" href="/webfonts/fa-regular-400.woff2" crossorigin>
-        <link rel="preload" as="font" href="/webfonts/fa-brands-400.woff2" crossorigin>
-        <link rel="preload" as="font" href="https://fonts.gstatic.com/s/robotomono/v7/L0x5DF4xlVMF-BfR8bXMIjhLq38.woff2" crossorigin>
-        <link rel="preload" as="font" href="https://fonts.gstatic.com/s/barlow/v4/7cHqv4kjgoGqM7E3_-gs51os.woff2" crossorigin>
-        <link rel="preload" as="font" href="/fonts/Inter-Regular.woff2" crossorigin>
-        <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css">
-        <link id="app-style" rel="stylesheet" href="/css/layout.css">
-        <link rel="stylesheet" href="/css/layout/toggle.css">
-        <link rel="stylesheet" href="/css/layout/banner.css">
-        <link rel="stylesheet" href="/css/layout/herofeed.css">
-        <script>
-            var mql = window.matchMedia('(prefers-color-scheme: light)')
-            var lightScheme = mql.matches
-            var currentTheme = localStorage.getItem('theme')
-            var d1 = document.getElementById('app-style')
+      <link rel="canonical" href="https://beaconcha.in{{ .Meta.Path }}" />
+      <title>{{ .Meta.Title }}</title>
+      <link rel="shortcut icon" type="image/png" href="/favicon.ico" />
+      <link rel="stylesheet" href="/css/fontawesome.min.css" />
+      <link rel="preload" as="font" href="/webfonts/fa-solid-900.woff2" crossorigin />
+      <link rel="preload" as="font" href="/webfonts/fa-regular-400.woff2" crossorigin />
+      <link rel="preload" as="font" href="/webfonts/fa-brands-400.woff2" crossorigin />
+      <link rel="preload" as="font" href="https://fonts.gstatic.com/s/robotomono/v7/L0x5DF4xlVMF-BfR8bXMIjhLq38.woff2" crossorigin />
+      <link rel="preload" as="font" href="https://fonts.gstatic.com/s/barlow/v4/7cHqv4kjgoGqM7E3_-gs51os.woff2" crossorigin />
+      <link rel="preload" as="font" href="/fonts/Inter-Regular.woff2" crossorigin />
+      <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css" />
+      <link id="app-style" rel="stylesheet" href="/css/layout.css" />
+      <link rel="stylesheet" href="/css/layout/toggle.css" />
+      <link rel="stylesheet" href="/css/layout/banner.css" />
+      <link rel="stylesheet" href="/css/layout/herofeed.css" />
+      <script>
+        var mql = window.matchMedia("(prefers-color-scheme: light)")
+        var lightScheme = mql.matches
+        var currentTheme = localStorage.getItem("theme")
+        var d1 = document.getElementById("app-style")
 
-            if (currentTheme !== 'light' && currentTheme !== 'dark') {
-                currentTheme = lightScheme ? 'light' : 'dark'
-            }
-            document.documentElement.setAttribute('data-theme', currentTheme)
-            localStorage.setItem('theme', currentTheme)
+        if (currentTheme !== "light" && currentTheme !== "dark") {
+          currentTheme = lightScheme ? "light" : "dark"
+        }
+        document.documentElement.setAttribute("data-theme", currentTheme)
+        localStorage.setItem("theme", currentTheme)
 
-            if (currentTheme === 'dark') {
-                d1.insertAdjacentHTML('beforebegin', '<link id="app-theme" rel="stylesheet" type="text/css" href="/theme/css/beacon-' + currentTheme + '.min.css" onload="document.documentElement.style.display = ``">')
-                window.addEventListener('load', function () {
-                    document.getElementById('app-style-initial').remove()
-                })
-            } else {
-                document.getElementById('app-style-initial').id = 'app-theme'
-            }
-        </script>
+        if (currentTheme === "dark") {
+          d1.insertAdjacentHTML("beforebegin", '<link id="app-theme" rel="stylesheet" type="text/css" href="/theme/css/beacon-' + currentTheme + '.min.css" onload="document.documentElement.style.display = ``">')
+          window.addEventListener("load", function () {
+            document.getElementById("app-style-initial").remove()
+          })
+        } else {
+          document.getElementById("app-style-initial").id = "app-theme"
+        }
+      </script>
         <script>
             function updateLang(lang) {
                 document.cookie = "language=" + lang + ";samesite=strict;path=/"
@@ -140,135 +140,135 @@
     </head>
     <header></header>
     <body ontouchstart="">
-        <noscript>
-            <strong>We're sorry but beaconcha.in doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
-        </noscript>
+      <noscript>
+        <strong>We're sorry but beaconcha.in doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+      </noscript>
 
-        <!-- Banner start -->
-        <div {{if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register"))}}style="display:none;"{{end}} class="info-banner-container">
-            <div class="info-banner-content container">
-                <div id="banner-stats" class="info-banner-left">
-                    <a style="white-space: nowrap;" class="mr-2" href="/"><i class="fas fa-home"></i> <span>|</span></a>
-                    <div data-toggle="tooltip" title="" data-original-title="Epoch" id="banner-epoch" class="info-item d-flex mr-2 mr-lg-3">
-                        <div class="info-item-header mr-1">
-              			    <span class="item-icon"><i class="fas fa-history"></i></span>
-                            <span class="d-none d-sm-inline item-text">Ep<span class="d-none d-xl-inline">och</span></span>
-                        </div>
-                        <div class="info-item-body"><a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{formatAddCommas .CurrentEpoch}}</a></div>
-                    </div>
-                    <div data-toggle="tooltip" title="" data-original-title="Slot" class="d-none d-lg-block">
-                        <div id="banner-slot" class="info-item d-flex mr-2 mr-lg-3">
-                            <div class="info-item-header mr-1">
-							    <span class="item-icon"><i class="fas fa-cubes"></i></span>
-                                <span class="item-text">Slot</span>
-                            </div>
-                            <div class="info-item-body"><a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{formatAddCommas .CurrentSlot}}</a></div>
-                        </div>
-                    </div>
-                    <div data-toggle="tooltip" title="" data-original-title="Price" id="banner-eth-price">
-                        <div class="info-item d-flex mr-2 mr-lg-3">
-                            <div class="info-item-header mr-1">
-							    <span class="item-icon"><i class="fas fa-cubes"></i></span>
-                                <span class="d-none d-xl-inline item-text">Price</span>
-                            </div>
-                            <div class="info-item-body">
-                                <a id="banner-eth-price-data">
-                                    <span id="currentCurrencySymbol" class="currency-symbol">{{.CurrentSymbol}}</span>
-                                    <span id="initialPrice">{{.CurrentPriceFormatted}}</span>
-                                    <span id="currentKFormattedPrice" class="k-formatted-price"></span>
-                                    <span id="currentCurencyPrice" class="price"></span>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    {{if not .ShowSyncingMessage}}
-                        {{if gt .FinalizationDelay 3}}
-                            <div data-toggle="tooltip" title="" data-original-title="Finality: the last finalized epoch was {{.FinalizationDelay}} epochs ago" id="banner-fin" class="info-item d-flex mr-2 mr-lg-3">
-                                <div class="info-item-header mr-1">
-                                    <span class="item-icon"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago"></i></span>
-                                </div>
-                                <div class="info-item-body text-warning">
-                                    <span id="banner-fin-data">{{.FinalizationDelay}}</span>
-                                    <i class="fas fa-exclamation-triangle item-text"></i>
-                                </div>
-                            </div>
-                        {{end}}
-                    {{end}}
-                    {{if .ShowSyncingMessage}}
-                        <div data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network" id="banner-status" class="info-item d-flex mr-1 mr-lg-3">
-                            <div class="info-item-body"><i class="fas fa-sync"></i></div>
-                        </div>
-                    {{end}}
+      <!-- Banner start -->
+      <div {{ if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register")) }}style="display:none;"{{ end }} class="info-banner-container">
+        <div class="info-banner-content container">
+          <div id="banner-stats" class="info-banner-left">
+            <a style="white-space: nowrap;" class="mr-2" href="/"><i class="fas fa-home"></i> <span>|</span></a>
+            <div data-toggle="tooltip" title="" data-original-title="Epoch" id="banner-epoch" class="info-item d-flex mr-2 mr-lg-3">
+              <div class="info-item-header mr-1">
+                <span class="item-icon"><i class="fas fa-history"></i></span>
+                <span class="d-none d-sm-inline item-text">Ep<span class="d-none d-xl-inline">och</span></span>
+              </div>
+              <div class="info-item-body"><a id="banner-epoch-data" href="/epoch/{{ .CurrentEpoch }}">{{ formatAddCommas .CurrentEpoch }}</a></div>
+            </div>
+            <div data-toggle="tooltip" title="" data-original-title="Slot" class="d-none d-lg-block">
+              <div id="banner-slot" class="info-item d-flex mr-2 mr-lg-3">
+                <div class="info-item-header mr-1">
+                  <span class="item-icon"><i class="fas fa-cubes"></i></span>
+                  <span class="item-text">Slot</span>
                 </div>
-                <!-- Fill content -->
-                <!-- <div class="d-flex flex-fill"></div> -->
-                <div class="info-banner-center">
-                    <div class="info-banner-search">
-                        <div class="search-container">
-                            <form class="form-inline" action="/search" method="POST">
-                                <input id="banner-search-input" class="typeahead" autocomplete="off" name="search" type="text" placeholder="Public Key / Block Number / Block Hash / Graffiti / State Hash" aria-label="Search">
-                            </form>
-                        </div>
-                        <a class="search-button"><i id="banner-search" class="fas fa-search"></i></a>
-                    </div>
+                <div class="info-item-body"><a id="banner-slot-data" href="/block/{{ .CurrentSlot }}">{{ formatAddCommas .CurrentSlot }}</a></div>
+              </div>
+            </div>
+            <div data-toggle="tooltip" title="" data-original-title="Price" id="banner-eth-price">
+              <div class="info-item d-flex mr-2 mr-lg-3">
+                <div class="info-item-header mr-1">
+                  <span class="item-icon"><i class="fas fa-cubes"></i></span>
+                  <span class="d-none d-xl-inline item-text">Price</span>
                 </div>
-                <div class="info-banner-right">
-                    <div class="dropdown">
-                        <a class="btn btn-transparent btn-sm dropdown-toggle currency-dropdown-toggle"  data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <div id="currencyFlagDropdown">
-                                <img class='currency-flag-dropdown-image' src='/img/{{.Currency}}.svg'>
-                            </div>
-                             <div id="currencyDropdown">{{.Currency}}</div>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
-                            <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('ETH')">
-                                <img class="currency-flag-option" src="/img/ETH.svg">
-                                <span class="currency-name">Ether</span>
-                                ETH
-                            </a>
-                            <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('USD')">
-                                <img class="currency-flag-option" src="/img/USD.svg">
-                                <span class="currency-name">United States Dollar</span>
-                                USD
-                            </a>
-                            <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('EUR')">
-                                <img class="currency-flag-option" src="/img/EUR.svg">
-                                <span class="currency-name">Euro</span>
-                                EUR
-                            </a>
-                            <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('GBP')">
-                                <img class="currency-flag-option" src="/img/GBP.svg">
-                                <span class="currency-name">Pound Sterling</span>
-                                GBP
-                            </a>
-                            <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CNY')">
-                                <img class="currency-flag-option" src="/img/CNY.svg">
-                                <span class="currency-name">Chinese Yuan</span>
-                                CNY
-                            </a>
-                            <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('RUB')">
-                                <img class="currency-flag-option" src="/img/RUB.svg">
-                                <span class="currency-name">Russian Ruble</span>
-                                RUB
-                            </a>
-                            <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CAD')">
-                                <img class="currency-flag-option" src="/img/CAD.svg">
-                                <span class="currency-name">Canadian Dollar</span>
-                                CAD
-                            </a>
-                            <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('AUD')">
-                                <img class="currency-flag-option" src="/img/AUD.svg">
-                                <span class="currency-name">Australian Dollar</span>
-                                AUD
-                            </a>
-                            <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('JPY')">
-                                <img class="currency-flag-option" src="/img/JPY.svg">
-                                <span class="currency-name">Japanese Yen</span>
-                                JPY
-                            </a>
-                        </div>
-                    </div>
-                    <!--<div class="dropdown">
+                <div class="info-item-body">
+                  <a id="banner-eth-price-data">
+                    <span id="currentCurrencySymbol" class="currency-symbol">{{ .CurrentSymbol }}</span>
+                    <span id="initialPrice">{{ .CurrentPriceFormatted }}</span>
+                    <span id="currentKFormattedPrice" class="k-formatted-price"></span>
+                    <span id="currentCurencyPrice" class="price"></span>
+                  </a>
+                </div>
+              </div>
+            </div>
+            {{ if not .ShowSyncingMessage }}
+              {{ if gt .FinalizationDelay 3 }}
+                <div data-toggle="tooltip" title="" data-original-title="Finality: the last finalized epoch was {{ .FinalizationDelay }} epochs ago" id="banner-fin" class="info-item d-flex mr-2 mr-lg-3">
+                  <div class="info-item-header mr-1">
+                    <span class="item-icon"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{ .FinalizationDelay }} epochs ago"></i></span>
+                  </div>
+                  <div class="info-item-body text-warning">
+                    <span id="banner-fin-data">{{ .FinalizationDelay }}</span>
+                    <i class="fas fa-exclamation-triangle item-text"></i>
+                  </div>
+                </div>
+              {{ end }}
+            {{ end }}
+            {{ if .ShowSyncingMessage }}
+              <div data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network" id="banner-status" class="info-item d-flex mr-1 mr-lg-3">
+                <div class="info-item-body"><i class="fas fa-sync"></i></div>
+              </div>
+            {{ end }}
+          </div>
+          <!-- Fill content -->
+          <!-- <div class="d-flex flex-fill"></div> -->
+          <div class="info-banner-center">
+            <div class="info-banner-search">
+              <div class="search-container">
+                <form class="form-inline" action="/search" method="POST">
+                  <input id="banner-search-input" class="typeahead" autocomplete="off" name="search" type="text" placeholder="Public Key / Block Number / Block Hash / Graffiti / State Hash" aria-label="Search" />
+                </form>
+              </div>
+              <a class="search-button"><i id="banner-search" class="fas fa-search"></i></a>
+            </div>
+          </div>
+          <div class="info-banner-right">
+            <div class="dropdown">
+              <a class="btn btn-transparent btn-sm dropdown-toggle currency-dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <div id="currencyFlagDropdown">
+                  <img class="currency-flag-dropdown-image" src="/img/{{ .Currency }}.svg" />
+                </div>
+                <div id="currencyDropdown">{{ .Currency }}</div>
+              </a>
+              <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
+                <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('ETH')">
+                  <img class="currency-flag-option" src="/img/ETH.svg" />
+                  <span class="currency-name">Ether</span>
+                  ETH
+                </a>
+                <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('USD')">
+                  <img class="currency-flag-option" src="/img/USD.svg" />
+                  <span class="currency-name">United States Dollar</span>
+                  USD
+                </a>
+                <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('EUR')">
+                  <img class="currency-flag-option" src="/img/EUR.svg" />
+                  <span class="currency-name">Euro</span>
+                  EUR
+                </a>
+                <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('GBP')">
+                  <img class="currency-flag-option" src="/img/GBP.svg" />
+                  <span class="currency-name">Pound Sterling</span>
+                  GBP
+                </a>
+                <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CNY')">
+                  <img class="currency-flag-option" src="/img/CNY.svg" />
+                  <span class="currency-name">Chinese Yuan</span>
+                  CNY
+                </a>
+                <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('RUB')">
+                  <img class="currency-flag-option" src="/img/RUB.svg" />
+                  <span class="currency-name">Russian Ruble</span>
+                  RUB
+                </a>
+                <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CAD')">
+                  <img class="currency-flag-option" src="/img/CAD.svg" />
+                  <span class="currency-name">Canadian Dollar</span>
+                  CAD
+                </a>
+                <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('AUD')">
+                  <img class="currency-flag-option" src="/img/AUD.svg" />
+                  <span class="currency-name">Australian Dollar</span>
+                  AUD
+                </a>
+                <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('JPY')">
+                  <img class="currency-flag-option" src="/img/JPY.svg" />
+                  <span class="currency-name">Japanese Yen</span>
+                  JPY
+                </a>
+              </div>
+            </div>
+            <!--<div class="dropdown">
                         <a class="btn btn-transparent btn-sm dropdown-toggle" id="langDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <i class="fas fa-globe m-0 p-0"></i>
                         </a>
@@ -277,71 +277,74 @@
                             <a class="dropdown-item" onClick="updateLang('ru-RU')">Russian</a>
                         </div>
                     </div> -->
-                    {{if .User.Authenticated}}
-                        <div class="dropdown">
-                            <a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <i class="fas fa-user-circle m-0 p-0"></i>
-                            </a>
-                            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
-                                <a class="dropdown-item" href="/user/notifications">Notifications</a>
-                                <a class="dropdown-item" href="/user/settings">Settings</a>
-                                <a data-no-instant class="dropdown-item" href="/logout">Logout</a>
-                            </div>
-                        </div>
-                    {{else}}
-                        <div class="d-md-none">
-                            <div class="dropdown" class="d-md-none">
-                                <a class="btn btn-transparent btn-sm dropdown-toggle" id="loginDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    <i style="margin: 0; padding: 0;" class="fas fa-sign-in-alt"></i>
-                                </a>
-                                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="loginDropdown">
-                                    <a class="dropdown-item" href="/login">Log in</a>
-                                    <a class="dropdown-item" href="/register">Sign Up</a>
-                                </div>
-                            </div>
-                        </div>
-                        <a href="/login" class="mr-3 d-none d-md-flex"><span>Log in</span></a>
-                        <a href="/register" class="btn btn-primary btn-sm d-none d-md-flex"><span class="text-white"><b>Sign Up</b></span></a>
-                    {{end}}
-                </div>
-            </div>
-        </div>
-        <!-- Banner end -->
-
-        <nav {{if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register"))}}style="display:none;"{{end}} id="nav" class="navbar navbar-expand-lg navbar-light">
-            <div class="container">
-                <a class=navbar-brand href="/">
-                    <svg style="width: 22px; height: 22px; margin-bottom: .55rem;" id="Ebene_1" data-name="Ebene 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-                        <defs>
-                          <style>
-                            .cls-1 {
-                              fill: #1d1d1b;
-                            }
-                      
-                            .cls-2 {
-                              fill: #fff;
-                            }
-                            [data-theme='dark'] .cls-1 {
-                                fill: #fff;
-                            }
-
-                            [data-theme='dark'] .cls-2 {
-                                fill: #1e1c1f;
-                            }
-                            
-                          </style>
-                        </defs>
-                        <rect class="cls-1" x="-14.88" y="-19.92" width="149.75" height="146.77"/>
-                        <path class="cls-2" d="M59-12.9c-47.25,0-66.43-4.44-66.43,32.35C-7.45,45-8.17,120-8.17,120H22.56S35.78,94.52,36.41,93.86c1.36-1.42,20.81,9,22,10.23.25.26,5.4,15.91,5.4,15.91h64.48s-.15-68-.15-90.77C128.17-15.07,99.59-12.9,59-12.9ZM84.32,88c-16.59,13.26-43.13,6.9-51-15.71a36.18,36.18,0,0,1-1.21-19.85c.85-4,2.2-4.57,5.49-2.37,7,4.68,13.88,9.24,21.36,14.22.73-1.33,1.7-2.6,2.35-4.05a4.31,4.31,0,0,0,.31-2.3c-.5-3.11,1-5.85,3.83-6.55a5.18,5.18,0,0,1,6.24,4,5.48,5.48,0,0,1-3.93,6.44,2.48,2.48,0,0,0-1.24.65c-.17.26-3.07,4.92-3.07,4.92L73.72,74.5c3.47,2.39,6.91,4.76,10.41,7.1S87.52,85.42,84.32,88ZM66.2,39.23a16.16,16.16,0,0,1,16.27,9.91c.06.15.12.31.19.46.66,1.53.42,2-1.22,2.44l-.59.15c-1.08.28-1.25-.7-2.07-2.57a11.47,11.47,0,0,0-11.87-6.85c-1.65.18-2.79.48-3-.39C63.25,39.65,63.37,39.49,66.2,39.23ZM89.32,50l-.92.24c-1.68.44-2-1.13-3.25-4.13A18,18,0,0,0,66.62,35c-2.55.26-4.32.72-4.66-.67-1.05-4.37-.87-4.62,3.53-5a25.51,25.51,0,0,1,25.4,16c.09.25.18.5.29.75C92.22,48.55,91.86,49.3,89.32,50Zm11.77-3.08-1.4.36-.77.2c-2.19.57-2.68.21-3.62-1.91a42.4,42.4,0,0,0-3.91-7.76c-7.3-10-17-14.34-29.28-12.41-1.47.24-2.36-.22-2.72-1.71-.22-1-.47-1.9-.68-2.86-.38-1.72.17-2.58,1.86-2.89,10.6-2,20.2.43,28.84,6.86,6.46,4.81,10.69,11.29,13.32,19C103.34,45.49,102.85,46.39,101.09,46.89Z"/>
-                      </svg>                      
-                    <span class="brand-text">beaconcha.in</span>
+            {{ if .User.Authenticated }}
+              <div class="dropdown">
+                <a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <i class="fas fa-user-circle m-0 p-0"></i>
                 </a>
-                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                    <ul class="navbar-nav ml-auto">
-                        <!-- <li class="nav-item">
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
+                  <a class="dropdown-item" href="/user/notifications">Notifications</a>
+                  <a class="dropdown-item" href="/user/settings">Settings</a>
+                  <a data-no-instant class="dropdown-item" href="/logout">Logout</a>
+                </div>
+              </div>
+            {{ else }}
+              <div class="d-md-none">
+                <div class="dropdown" class="d-md-none">
+                  <a class="btn btn-transparent btn-sm dropdown-toggle" id="loginDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i style="margin: 0; padding: 0;" class="fas fa-sign-in-alt"></i>
+                  </a>
+                  <div class="dropdown-menu dropdown-menu-right" aria-labelledby="loginDropdown">
+                    <a class="dropdown-item" href="/login">Log in</a>
+                    <a class="dropdown-item" href="/register">Sign Up</a>
+                  </div>
+                </div>
+              </div>
+              <a href="/login" class="mr-3 d-none d-md-flex"><span>Log in</span></a>
+              <a href="/register" class="btn btn-primary btn-sm d-none d-md-flex"
+                ><span class="text-white"><b>Sign Up</b></span></a
+              >
+            {{ end }}
+          </div>
+        </div>
+      </div>
+      <!-- Banner end -->
+
+      <nav {{ if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register")) }}style="display:none;"{{ end }} id="nav" class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+          <a class="navbar-brand" href="/">
+            <svg style="width: 22px; height: 22px; margin-bottom: .55rem;" id="Ebene_1" data-name="Ebene 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+              <defs>
+                <style>
+                  .cls-1 {
+                    fill: #1d1d1b;
+                  }
+
+                  .cls-2 {
+                    fill: #fff;
+                  }
+                  [data-theme="dark"] .cls-1 {
+                    fill: #fff;
+                  }
+
+                  [data-theme="dark"] .cls-2 {
+                    fill: #1e1c1f;
+                  }
+                </style>
+              </defs>
+              <rect class="cls-1" x="-14.88" y="-19.92" width="149.75" height="146.77" />
+              <path
+                class="cls-2"
+                d="M59-12.9c-47.25,0-66.43-4.44-66.43,32.35C-7.45,45-8.17,120-8.17,120H22.56S35.78,94.52,36.41,93.86c1.36-1.42,20.81,9,22,10.23.25.26,5.4,15.91,5.4,15.91h64.48s-.15-68-.15-90.77C128.17-15.07,99.59-12.9,59-12.9ZM84.32,88c-16.59,13.26-43.13,6.9-51-15.71a36.18,36.18,0,0,1-1.21-19.85c.85-4,2.2-4.57,5.49-2.37,7,4.68,13.88,9.24,21.36,14.22.73-1.33,1.7-2.6,2.35-4.05a4.31,4.31,0,0,0,.31-2.3c-.5-3.11,1-5.85,3.83-6.55a5.18,5.18,0,0,1,6.24,4,5.48,5.48,0,0,1-3.93,6.44,2.48,2.48,0,0,0-1.24.65c-.17.26-3.07,4.92-3.07,4.92L73.72,74.5c3.47,2.39,6.91,4.76,10.41,7.1S87.52,85.42,84.32,88ZM66.2,39.23a16.16,16.16,0,0,1,16.27,9.91c.06.15.12.31.19.46.66,1.53.42,2-1.22,2.44l-.59.15c-1.08.28-1.25-.7-2.07-2.57a11.47,11.47,0,0,0-11.87-6.85c-1.65.18-2.79.48-3-.39C63.25,39.65,63.37,39.49,66.2,39.23ZM89.32,50l-.92.24c-1.68.44-2-1.13-3.25-4.13A18,18,0,0,0,66.62,35c-2.55.26-4.32.72-4.66-.67-1.05-4.37-.87-4.62,3.53-5a25.51,25.51,0,0,1,25.4,16c.09.25.18.5.29.75C92.22,48.55,91.86,49.3,89.32,50Zm11.77-3.08-1.4.36-.77.2c-2.19.57-2.68.21-3.62-1.91a42.4,42.4,0,0,0-3.91-7.76c-7.3-10-17-14.34-29.28-12.41-1.47.24-2.36-.22-2.72-1.71-.22-1-.47-1.9-.68-2.86-.38-1.72.17-2.58,1.86-2.89,10.6-2,20.2.43,28.84,6.86,6.46,4.81,10.69,11.29,13.32,19C103.34,45.49,102.85,46.39,101.09,46.89Z" />
+            </svg>
+            <span class="brand-text">beaconcha.in</span>
+          </a>
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav ml-auto">
+              <!-- <li class="nav-item">
                             <a ga-outbound="" class="nav-link text-primary"
                             href="https://gitcoin.co/grants/collections?collection_id=14#">
                                 <span class="nav-icon">
@@ -350,59 +353,59 @@
                                 <span class="nav-text">Support Eth2</span>
                             </a>
                         </li> -->
-                        <li class="nav-item {{ if eq .Active "epochs"}}active{{end}}">
-                            <a class="nav-link" href="/epochs">
-                                <!-- <span class="nav-icon"><i class="fas fa-history"></i></span> -->
-                                <span class="nav-text">Epochs</span>
-                            </a>
-                        </li>
-                        <li class="nav-item {{ if eq .Active "blocks"}}active{{end}}">
-                            <a class="nav-link" href="/blocks">
-                                <!-- <span class="nav-icon"><i class="fas fa-cubes"></i></span> -->
-                                <span class="nav-text">Blocks</span>
-                            </a>
-                        </li>
-                        <li class="nav-item {{ if eq .Active "validators"}}active{{end}} dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <!-- <span class="nav-icon"><i class="fas fa-thumbs-up"></i></span> -->
-                                <span class="nav-text">Validators</span>
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <a class="dropdown-item" href="/validators">
-                                    <span class="nav-icon"><i class="fas fa-table mr-2"></i></span>
-                                    <span class="nav-text">Overview</span>
-                                </a>
-                                <a class="dropdown-item" href="/validators/slashings">
-                                    <span class="nav-icon"><i class="fas fa-user-slash mr-2"></i></span>
-                                    <span class="nav-text">Slashings</span>
-                                </a>
-                                <hr>
-                                <a class="dropdown-item" href="/validators/leaderboard">
-                                    <span class="nav-icon"><i class="fas fa-medal mr-2"></i></span>
-                                    <span class="nav-text">Validator Leaderboard</span>
-                                </a>
-                                <a class="dropdown-item" href="/validators/eth1leaderboard">
-                                    <span class="nav-icon"><i class="fas fa-file-import mr-2"></i></span>
-                                    <span class="nav-text">Deposit Leaderboard</span>
-                                </a>
-                                <!--
+              <li class="nav-item {{ if eq .Active "epochs" }}active{{ end }}">
+                <a class="nav-link" href="/epochs">
+                  <!-- <span class="nav-icon"><i class="fas fa-history"></i></span> -->
+                  <span class="nav-text">Epochs</span>
+                </a>
+              </li>
+              <li class="nav-item {{ if eq .Active "blocks" }}active{{ end }}">
+                <a class="nav-link" href="/blocks">
+                  <!-- <span class="nav-icon"><i class="fas fa-cubes"></i></span> -->
+                  <span class="nav-text">Blocks</span>
+                </a>
+              </li>
+              <li class="nav-item {{ if eq .Active "validators" }}active{{ end }} dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <!-- <span class="nav-icon"><i class="fas fa-thumbs-up"></i></span> -->
+                  <span class="nav-text">Validators</span>
+                </a>
+                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                  <a class="dropdown-item" href="/validators">
+                    <span class="nav-icon"><i class="fas fa-table mr-2"></i></span>
+                    <span class="nav-text">Overview</span>
+                  </a>
+                  <a class="dropdown-item" href="/validators/slashings">
+                    <span class="nav-icon"><i class="fas fa-user-slash mr-2"></i></span>
+                    <span class="nav-text">Slashings</span>
+                  </a>
+                  <hr />
+                  <a class="dropdown-item" href="/validators/leaderboard">
+                    <span class="nav-icon"><i class="fas fa-medal mr-2"></i></span>
+                    <span class="nav-text">Validator Leaderboard</span>
+                  </a>
+                  <a class="dropdown-item" href="/validators/eth1leaderboard">
+                    <span class="nav-icon"><i class="fas fa-file-import mr-2"></i></span>
+                    <span class="nav-text">Deposit Leaderboard</span>
+                  </a>
+                  <!--
                                 <a class="dropdown-item" href="/validators/streakleaderboard">
                                     <span class="nav-icon"><i class="fas fa-fire mr-2"></i></span>
                                     <span class="nav-text">Streak Leaderboard</span>
                                 </a>
                                 -->
-                                <hr>
-                                <a class="dropdown-item" href="/validators/eth1deposits">
-                                    <span class="nav-icon"><i class="fas fa-file-signature mr-2"></i></span>
-                                    <span class="nav-text">Eth1 Deposits</span>
-                                </a>
-                                <a class="dropdown-item" href="/validators/eth2deposits">
-                                    <span class="nav-icon"><i class="fas fa-clipboard-check mr-2"></i></span>
-                                    <span class="nav-text">Eth2 Deposits</span>
-                                </a>
-                            </div>
-                        </li>
-                        <!-- <li class="nav-item {{ if eq .Active "stats"}}active{{end}} dropdown">
+                  <hr />
+                  <a class="dropdown-item" href="/validators/eth1deposits">
+                    <span class="nav-icon"><i class="fas fa-file-signature mr-2"></i></span>
+                    <span class="nav-text">Eth1 Deposits</span>
+                  </a>
+                  <a class="dropdown-item" href="/validators/eth2deposits">
+                    <span class="nav-icon"><i class="fas fa-clipboard-check mr-2"></i></span>
+                    <span class="nav-text">Eth2 Deposits</span>
+                  </a>
+                </div>
+              </li>
+              <!-- <li class="nav-item {{ if eq .Active "stats" }}active{{ end }} dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <span class="nav-icon"><i class="fas fa-cubes"></i></span>
                                 <span class="nav-text">Stats</span>
@@ -432,35 +435,35 @@
                                 </a>
                             </div>
                         </li> -->
-                        <style>
-                            .nav-cube {
-                                --mainColor: rgba(75, 75, 75, .7);
-                                --strokeColor: rgba(55, 55, 55, 1);
-                                --lightColor: rgba(0, 0, 0, .5);
-                                --darkColor: rgba(100, 100, 100, .8);
-                            }
-                            .active .nav-cube {
-                                --mainColor: rgba(55, 55, 55, 1);
-                                --strokeColor: rgba(35, 35, 35, 1);
-                                --lightColor: rgba(0, 0, 0, 1);
-                                --darkColor: rgba(80, 80, 80, 1);
-                            }
-                            [data-theme='dark'] .nav-cube {
-                                --mainColor: rgba(180, 180, 180, .7);
-                                --strokeColor: rgba(200, 200, 200, 1);
-                                --lightColor: rgba(255, 255, 255, .5);
-                                --darkColor: rgba(150, 150, 150, .8);
-                            }
-                            [data-theme='dark'] .active .nav-cube {
-                                --mainColor: rgba(200, 200, 200, 1);
-                                --strokeColor: rgba(220, 220, 220, 1);
-                                --lightColor: rgba(255, 255, 255, 1);
-                                --darkColor: rgba(170, 170, 170, 1);
-                            }
-                        </style>
-                        <li class="nav-item {{ if eq .Active "dashboard"}}active{{end}}">
-                            <a class="nav-link" href="/dashboard">
-                                <!-- <span class="nav-icon">
+              <style>
+                .nav-cube {
+                  --mainColor: rgba(75, 75, 75, 0.7);
+                  --strokeColor: rgba(55, 55, 55, 1);
+                  --lightColor: rgba(0, 0, 0, 0.5);
+                  --darkColor: rgba(100, 100, 100, 0.8);
+                }
+                .active .nav-cube {
+                  --mainColor: rgba(55, 55, 55, 1);
+                  --strokeColor: rgba(35, 35, 35, 1);
+                  --lightColor: rgba(0, 0, 0, 1);
+                  --darkColor: rgba(80, 80, 80, 1);
+                }
+                [data-theme="dark"] .nav-cube {
+                  --mainColor: rgba(180, 180, 180, 0.7);
+                  --strokeColor: rgba(200, 200, 200, 1);
+                  --lightColor: rgba(255, 255, 255, 0.5);
+                  --darkColor: rgba(150, 150, 150, 0.8);
+                }
+                [data-theme="dark"] .active .nav-cube {
+                  --mainColor: rgba(200, 200, 200, 1);
+                  --strokeColor: rgba(220, 220, 220, 1);
+                  --lightColor: rgba(255, 255, 255, 1);
+                  --darkColor: rgba(170, 170, 170, 1);
+                }
+              </style>
+              <li class="nav-item {{ if eq .Active "dashboard" }}active{{ end }}">
+                <a class="nav-link" href="/dashboard">
+                  <!-- <span class="nav-icon">
                                     <svg style="width: 21px; height: 23px;" xmlns="http://www.w3.org/2000/svg" class="nav-cube" viewBox="80 20 150 100">
                                         <defs>
                                             <g id="cube" class="cube-unit">
@@ -517,15 +520,15 @@
                                         </g>
                                     </svg>
                                 </span> -->
-                                <span class="nav-text">Dashboard</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a class="nav-link" href="/user/notifications">
-                                <span class="nav-text">Notifications</span>
-                            </a>
-                        </li>
-                        <!-- <li class="nav-item {{ if eq .Active "services"}}active{{end}} dropdown">
+                  <span class="nav-text">Dashboard</span>
+                </a>
+              </li>
+              <li>
+                <a class="nav-link" href="/user/notifications">
+                  <span class="nav-text">Notifications</span>
+                </a>
+              </li>
+              <!-- <li class="nav-item {{ if eq .Active "services" }}active{{ end }} dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">  
                                 <span class="nav-icon"><i class="fas fa-tools"></i></span>
                                 <span class="nav-text">Services</span> 
@@ -562,13 +565,13 @@
                                 </a>
                             </div>
                         </li> -->
-                        <li class="nav-item dropdown {{ if eq .Active "more"}}active{{end}}">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <!-- <span class="nav-icon"><i class="fas fa-info mr-2"></i></span> -->
-                                <span class="nav-text">More</span>
-                            </a>
-                            <div class="dropdown-menu dropdown-menu-right p-sm-2 p-md-4 px-lg-2" aria-labelledby="navbarDropdown">
-                                <!--<a class="dropdown-item" href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121">
+              <li class="nav-item dropdown {{ if eq .Active "more" }}active{{ end }}">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <!-- <span class="nav-icon"><i class="fas fa-info mr-2"></i></span> -->
+                  <span class="nav-text">More</span>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right p-sm-2 p-md-4 px-lg-2" aria-labelledby="navbarDropdown">
+                  <!--<a class="dropdown-item" href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121">
                                     <span class="nav-icon"><i class="fab fa-apple mr-2"></i></span>
                                     <span class="nav-text">iOS App</span>
                                 </a>
@@ -577,112 +580,113 @@
                                     <span class="nav-text">Android App</span>
                                 </a>-->
 
-                                <!-- MEGAMENU -->
-                                <div class="d-flex align-content-between flex-wrap flex-lg-nowrap">
-                                    <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
-                                        <span class="ml-4" style="font-size: 18px; font-weight: 700; letter-spacing: .3px;">Staking Pools</span>
-                                        <a class="dropdown-item" href="/stakingServices">
-                                            <span class="nav-icon"><i class="fas fa-drumstick-bite"></i></span>
-                                            <span class="nav-text ml-3">Staking Services</span>
-                                        </a>
-                                        <a class="dropdown-item" href="/pools">
-                                            <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
-                                            <span class="nav-text ml-3">Pool Benchmarks</span>
-                                        </a>
-                                        <a class="dropdown-item" href="/pools/rocketpool">
-                                            <span class="nav-icon"><i class="fas fa-rocket"></i></span>
-                                            <span class="nav-text ml-3">Rocket Pool Stats</span>
-                                        </a>
-                                    </div>
-                                    <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
-                                        <span class="ml-4" style="display: block; font-size: 18px; font-weight: 700; letter-spacing: .3px;">Stats</span>
-                                        <a class="dropdown-item" href="/charts">
-                                            <span class="nav-icon"><i class="fas fa-chart-bar"></i></span>
-                                            <span class="nav-text ml-3">Charts</span>
-                                        </a>
-                                        <a class="dropdown-item" href="/rewards">
-                                            <span class="nav-icon"><i class="far fa-money-bill-alt"></i></span>
-                                            <span class="nav-text ml-3">Income History</span>
-                                        </a>
-                                        <a class="dropdown-item" href="/calculator">
-                                            <span class="nav-icon"><i class="fas fa-calculator"></i></span>
-                                            <span class="nav-text ml-3">Profit Calculator</span>
-                                        </a>
-                                        <a class="dropdown-item" href="/vis">
-                                            <span class="nav-icon"><i class="fas fa-project-diagram"></i></span>
-                                            <span class="nav-text ml-3">Block Viz</span>
-                                        </a>
-                                        <!-- <a ga-outbound class="dropdown-item" href="https://eth2.ethernodes.org/">
+                  <!-- MEGAMENU -->
+                  <div class="d-flex align-content-between flex-wrap flex-lg-nowrap">
+                    <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
+                      <span class="ml-4" style="font-size: 18px; font-weight: 700; letter-spacing: .3px;">Staking Pools</span>
+                      <a class="dropdown-item" href="/stakingServices">
+                        <span class="nav-icon"><i class="fas fa-drumstick-bite"></i></span>
+                        <span class="nav-text ml-3">Staking Services</span>
+                      </a>
+                      <a class="dropdown-item" href="/pools">
+                        <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
+                        <span class="nav-text ml-3">Pool Benchmarks</span>
+                      </a>
+                      <a class="dropdown-item" href="/pools/rocketpool">
+                        <span class="nav-icon"><i class="fas fa-rocket"></i></span>
+                        <span class="nav-text ml-3">Rocket Pool Stats</span>
+                      </a>
+                    </div>
+                    <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
+                      <span class="ml-4" style="display: block; font-size: 18px; font-weight: 700; letter-spacing: .3px;">Stats</span>
+                      <a class="dropdown-item" href="/charts">
+                        <span class="nav-icon"><i class="fas fa-chart-bar"></i></span>
+                        <span class="nav-text ml-3">Charts</span>
+                      </a>
+                      <a class="dropdown-item" href="/rewards">
+                        <span class="nav-icon"><i class="far fa-money-bill-alt"></i></span>
+                        <span class="nav-text ml-3">Income History</span>
+                      </a>
+                      <a class="dropdown-item" href="/calculator">
+                        <span class="nav-icon"><i class="fas fa-calculator"></i></span>
+                        <span class="nav-text ml-3">Profit Calculator</span>
+                      </a>
+                      <a class="dropdown-item" href="/vis">
+                        <span class="nav-icon"><i class="fas fa-project-diagram"></i></span>
+                        <span class="nav-text ml-3">Block Viz</span>
+                      </a>
+                      <!-- <a ga-outbound class="dropdown-item" href="https://eth2.ethernodes.org/">
                                             <span class="nav-icon"><i class="fas fa-network-wired"></i></span>
                                             <span class="nav-text ml-3">Nodes</span>
                                         </a> -->
-                                    </div>
-                                    <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
-                                        <span class="ml-4" style="display: block; font-size: 18px; font-weight: 700; letter-spacing: .3px;">Tools</span>
-                                        <a class="dropdown-item" href="/mobile">
-                                            <span class="nav-icon"><i class="fas fa-mobile-alt"></i></span>
-                                            <span class="nav-text ml-3" style="padding-right: 10px;">Beaconchain App</span>
-                                        </a>
-                                        <a class="dropdown-item" href="/premium">
-                                            <span class="nav-icon"><i class="far fa-gem"></i></span>
-                                            <span class="nav-text ml-3" style="padding-right: 10px;">Beaconchain Premium</span>
-                                        </a>
-                                        <a class="dropdown-item" href="/user/webhooks">
-                                            <span class="nav-icon">
-                                            <svg id="icon" viewBox="0 0 32 32" style="width: 20px; margin-bottom: 3px; fill: var(--font-color);" xmlns="http://www.w3.org/2000/svg">
-                                                <!-- credit https://www.iconfinder.com/carbon-design -->
-                                                  <defs>
-                                                  <style>
-                                                    .webhook-cls-1 {
-                                                      fill: none;
-                                                    }
-                                                  </style>
-                                                </defs>
-                                                <path d="M24,26a3,3,0,1,0-2.8164-4H13v1a5,5,0,1,1-5-5V16a7,7,0,1,0,6.9287,8h6.2549A2.9914,2.9914,0,0,0,24,26Z"/>
-                                                <path d="M24,16a7.024,7.024,0,0,0-2.57.4873l-3.1656-5.5395a3.0469,3.0469,0,1,0-1.7326.9985l4.1189,7.2085.8686-.4976a5.0006,5.0006,0,1,1-1.851,6.8418L17.937,26.501A7.0005,7.0005,0,1,0,24,16Z"/><path d="M8.532,20.0537a3.03,3.03,0,1,0,1.7326.9985C11.74,18.47,13.86,14.7607,13.89,14.708l.4976-.8682-.8677-.497a5,5,0,1,1,6.812-1.8438l1.7315,1.002a7.0008,7.0008,0,1,0-10.3462,2.0356c-.457.7427-1.1021,1.8716-2.0737,3.5728Z"/>
-                                                <rect class="webhook-cls-1" data-name="&lt;Transparent Rectangle&gt;" height="32" id="_Transparent_Rectangle_" width="32"/>
-                                            </svg>
-                                            </span>
-                                            <span class="nav-text ml-3">Webhooks</span>
-                                        </a>
-                                        <a class="dropdown-item" href="https://beaconcha.in/api/v1/docs/index.html">
-                                            <span class="nav-icon"><i class="fas fa-laptop-code"></i></span>
-                                            <span class="nav-text ml-3">API Docs</span>
-                                        </a>
-                                        <a class="dropdown-item" href="/pricing">
-                                            <span class="nav-icon"><i class="fas fa-laptop-code"></i></span>
-                                            <span class="nav-text ml-3">API Pricing</span>
-                                        </a>
-                                    </div>
-                                    <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
-                                        <span class="ml-4" style="display: block; font-size: 18px; font-weight: 700; letter-spacing: .3px;">Services</span>
-                                        <a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in">
-                                            <span class="nav-icon"><i class="fas fa-external-link-alt"></i></span>
-                                            <span class="nav-text ml-3">Knowledge Base</span>
-                                        </a>
-                                        <a class="dropdown-item" href="/user/notifications-center">
-                                            <span class="nav-icon"><i class="fas fa-bell"></i></span>
-                                            <span class="nav-text ml-3">Notifications</span>
-                                        </a>
-                                        <a class="dropdown-item" href="/graffitiwall">
-                                            <span class="nav-icon"><i class="fas fa-paint-brush"></i></span>
-                                            <span class="nav-text ml-3">Graffiti Wall</span>
-                                        </a>
-                                        <a class="dropdown-item" href="/ethClients">
-                                            <span class="nav-icon"><i class="fas fa-desktop mr-2"></i></span><span class="nav-text ml-3">Ethereum Clients</span>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </li>
-                    </ul>
+                    </div>
+                    <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
+                      <span class="ml-4" style="display: block; font-size: 18px; font-weight: 700; letter-spacing: .3px;">Tools</span>
+                      <a class="dropdown-item" href="/mobile">
+                        <span class="nav-icon"><i class="fas fa-mobile-alt"></i></span>
+                        <span class="nav-text ml-3" style="padding-right: 10px;">Beaconchain App</span>
+                      </a>
+                      <a class="dropdown-item" href="/premium">
+                        <span class="nav-icon"><i class="far fa-gem"></i></span>
+                        <span class="nav-text ml-3" style="padding-right: 10px;">Beaconchain Premium</span>
+                      </a>
+                      <a class="dropdown-item" href="/user/webhooks">
+                        <span class="nav-icon">
+                          <svg id="icon" viewBox="0 0 32 32" style="width: 20px; margin-bottom: 3px; fill: var(--font-color);" xmlns="http://www.w3.org/2000/svg">
+                            <!-- credit https://www.iconfinder.com/carbon-design -->
+                            <defs>
+                              <style>
+                                .webhook-cls-1 {
+                                  fill: none;
+                                }
+                              </style>
+                            </defs>
+                            <path d="M24,26a3,3,0,1,0-2.8164-4H13v1a5,5,0,1,1-5-5V16a7,7,0,1,0,6.9287,8h6.2549A2.9914,2.9914,0,0,0,24,26Z" />
+                            <path d="M24,16a7.024,7.024,0,0,0-2.57.4873l-3.1656-5.5395a3.0469,3.0469,0,1,0-1.7326.9985l4.1189,7.2085.8686-.4976a5.0006,5.0006,0,1,1-1.851,6.8418L17.937,26.501A7.0005,7.0005,0,1,0,24,16Z" />
+                            <path d="M8.532,20.0537a3.03,3.03,0,1,0,1.7326.9985C11.74,18.47,13.86,14.7607,13.89,14.708l.4976-.8682-.8677-.497a5,5,0,1,1,6.812-1.8438l1.7315,1.002a7.0008,7.0008,0,1,0-10.3462,2.0356c-.457.7427-1.1021,1.8716-2.0737,3.5728Z" />
+                            <rect class="webhook-cls-1" data-name="&lt;Transparent Rectangle&gt;" height="32" id="_Transparent_Rectangle_" width="32" />
+                          </svg>
+                        </span>
+                        <span class="nav-text ml-3">Webhooks</span>
+                      </a>
+                      <a class="dropdown-item" href="https://beaconcha.in/api/v1/docs/index.html">
+                        <span class="nav-icon"><i class="fas fa-laptop-code"></i></span>
+                        <span class="nav-text ml-3">API Docs</span>
+                      </a>
+                      <a class="dropdown-item" href="/pricing">
+                        <span class="nav-icon"><i class="fas fa-laptop-code"></i></span>
+                        <span class="nav-text ml-3">API Pricing</span>
+                      </a>
+                    </div>
+                    <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
+                      <span class="ml-4" style="display: block; font-size: 18px; font-weight: 700; letter-spacing: .3px;">Services</span>
+                      <a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in">
+                        <span class="nav-icon"><i class="fas fa-external-link-alt"></i></span>
+                        <span class="nav-text ml-3">Knowledge Base</span>
+                      </a>
+                      <a class="dropdown-item" href="/user/notifications-center">
+                        <span class="nav-icon"><i class="fas fa-bell"></i></span>
+                        <span class="nav-text ml-3">Notifications</span>
+                      </a>
+                      <a class="dropdown-item" href="/graffitiwall">
+                        <span class="nav-icon"><i class="fas fa-paint-brush"></i></span>
+                        <span class="nav-text ml-3">Graffiti Wall</span>
+                      </a>
+                      <a class="dropdown-item" href="/ethClients">
+                        <span class="nav-icon"><i class="fas fa-desktop mr-2"></i></span><span class="nav-text ml-3">Ethereum Clients</span>
+                      </a>
+                    </div>
+                  </div>
                 </div>
-            <!-- </div> -->
-            </div>
-        </nav>
-        {{template "css" .Data}}
-         <main>	
-             <!-- <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;"> 
+              </li>
+            </ul>
+          </div>
+          <!-- </div> -->
+        </div>
+      </nav>
+      {{ template "css" .Data }}
+      <main>
+        <!-- <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;"> 
                 <span class="d-none d-md-block">
                     <span>
                         <span>
@@ -699,7 +703,7 @@
                 </span>
             </div>  -->
 
-            <!-- Discount banner
+        <!-- Discount banner
             <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;"> 
                 <span class="d-none d-md-block">
                 <span>
@@ -739,109 +743,107 @@
                 </span>
             </div> -->
 
-            <!-- {{ if .HeaderAd }}
-                <div class="container">
-                    <div class="d-flex justify-content-between pt-4 pb-3">
-                        <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-                    </div>
+        <!-- {{ if .HeaderAd }}
+          <div class="container">
+            <div class="d-flex justify-content-between pt-4 pb-3">
+              <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+            </div>
+          </div>
+        {{ end }} -->
+        {{ template "content" . }}
+        {{ if not .User.Authenticated }}
+          <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index: 999; bottom: 3%; left: 50%; transform: translateX(-50%); width: 100%; justify-content: center; align-items: center;">
+            <div style="width: 80%; max-width: 600px;" class="card card-body row">
+              <div class="row">
+                <div class="col">
+                  <span>By using our site you agree to our <a href="/legal/privacy.pdf">use of cookies</a> to deliver a better user experience.</span>
                 </div>
-            {{end}} -->
-            {{template "content" .}}
-                {{if not .User.Authenticated}}
-                    <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index: 999; bottom: 3%; left: 50%; transform: translateX(-50%); width: 100%; justify-content: center; align-items: center;">
-                        <div style="width: 80%; max-width: 600px;" class="card card-body row">
-                            <div class="row">
-                                <div class="col">
-                                    <span>By using our site you agree to our <a href="/legal/privacy.pdf">use of cookies</a> to deliver a better user experience.</span>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col d-flex justify-content-end align-items-end">
-                                    <button class="btn btn-secondary btn" style="margin-left: 1%;" onclick="acceptOnlyNecessaryCookies()">Only Necessary</button>
-                                    <button class="btn btn-primary btn" style="margin-left: 1%;" onclick="acceptCookieBanner()">Accept All Cookies</button>
-                                <div>
-                            </div>
-                        </div>
-                    </div>
-                {{end}}
-        </main>
-        <div style="margin-top: 3rem; margin-bottom: 4.2rem;">
-            <hr>
-            <footer class="container">
-                <div class="row">
-                    <div class="col-md-4 mb-2">
-                        <h5>Legal Notices</h5>
-                        <div class="d-flex flex-column">
-                            <a class="my-1" href="/imprint">Imprint</a>
-                        </div>
-                        <div class="d-flex flex-column">
-                            <a class="my-1" href="/legal/tos.pdf">Terms</a>
-                        </div>
-                        <div class="d-flex flex-column">
-                            <a class="my-1" href="/legal/privacy.pdf">Privacy</a>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-2">
-                        <h5>Resources</h5>
-                        <div class="d-flex flex-column">
-                            <a class="my-1" href="/advertisewithus"><i class="fas fa-ad mr-2"></i>Advertise</a>
-                            <a class="my-1" href="/premium"><i class="fas fa-user-astronaut mr-2"></i></i>Beaconcha.in Premium</a>
-                            <a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag Shop</a>
-                            <a class="my-1" href="/pricing"><i class="fas fa-laptop-code mr-2"></i></i>API Pricing</a>
-                            <!-- <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>Github</a> -->
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-2">
-                        <h5>Links</h5>
-                        <div class="d-flex flex-column">
-                            <a class="my-1" href="https://twitter.com/beaconcha_in"><i class="fab fa-twitter mr-2"></i>Beaconcha.in</a>
-                            <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>Github</a>
-                            <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer-app"><i class="fab fa-github mr-2"></i>Github Mobile App</a>
-                            <!-- <a class="my-1" href="https://www.reddit.com/u/etherchain/"><i class="fab fa-reddit mr-2"></i>Reddit</a> -->
-                            <!-- <a class="my-1" href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a> -->
-                        </div>
-                    </div>
+              </div>
+              <div class="row">
+                <div class="col d-flex justify-content-end align-items-end">
+                  <button class="btn btn-secondary btn" style="margin-left: 1%;" onclick="acceptOnlyNecessaryCookies()">Only Necessary</button>
+                  <button class="btn btn-primary btn" style="margin-left: 1%;" onclick="acceptCookieBanner()">Accept All Cookies</button>
+                  <div></div>
                 </div>
-                <div class="text-center row justify-content-center">
-                    <div class="col-12">
-                        <span>© bitfly gmbh 2021 | {{.Version}} |</span>
-                        <div class="theme-switch-wrapper">
-                            <label class="theme-switch" for="toggleSwitch">
-                                <input type="checkbox" id="toggleSwitch"/>
-                                <div class="slider round"></div>
-                                <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">
-                                    <path
-                                        fill="#FFF"
-                                        d="M7.41171457,11.9411805 C7.41235047,11.8273018 7.371175,11.728217 7.28817876,11.6445798 C7.21032953,11.5673743 7.11382258,11.5287724 6.99994588,11.5294069 C6.88606754,11.5287714 6.78698296,11.5673743 6.70334602,11.6445798 C6.62614078,11.7282186 6.58753899,11.8273035 6.58817343,11.9411805 L6.58817343,13.5882301 C6.587538,13.7021088 6.62614078,13.7986078 6.70334602,13.8764638 C6.78698461,13.9594603 6.88606919,14.0006366 6.99994588,14 C7.11382422,14.0006359 7.21032294,13.9594603 7.28817876,13.8764638 C7.371175,13.7986144 7.41235113,13.7021072 7.41171457,13.5882301 L7.41171457,11.9411805 L7.41171457,11.9411805 Z M10.7797495,10.2117784 C10.7031882,10.1307122 10.606678,10.089536 10.4915166,10.0882417 C10.3808549,10.0876063 10.2849936,10.1262092 10.2032837,10.2034146 C10.1222178,10.2857671 10.0810417,10.3816254 10.0797553,10.4916483 C10.0797553,10.6080997 10.1177148,10.7065389 10.19492,10.788249 L11.3562185,11.9579178 C11.4385708,12.0389839 11.5350711,12.0801602 11.6444514,12.0814465 C11.7609024,12.0814465 11.8599837,12.0402703 11.9410512,11.9579178 C12.0221172,11.8807124 12.0632933,11.7848458 12.064587,11.6696841 C12.065223,11.5590238 12.0240475,11.4625182 11.9410512,11.3814504 L10.7797528,10.2117817 L10.7797495,10.2117784 Z M3.78821142,10.7638068 C3.86927733,10.6866014 3.91045345,10.5907348 3.91174722,10.4755731 C3.91238313,10.3642688 3.87120766,10.2684072 3.78821142,10.1873394 C3.71165018,10.1056309 3.61513993,10.0644547 3.49997854,10.0638028 C3.38931688,10.0631674 3.29345557,10.1017703 3.21174567,10.1789757 L2.04208019,11.3402775 C1.96101428,11.42263 1.91983815,11.5184883 1.91855181,11.6285112 C1.91855181,11.7443202 1.95651126,11.8434017 2.03435884,11.9244695 C2.1160671,12.006178 2.21256911,12.0473543 2.32259172,12.0480057 C2.43840039,12.0486416 2.53748168,12.007466 2.61854923,11.9244695 L3.78821471,10.7638101 L3.78821142,10.7638068 Z M2.05881746,6.58820191 L0.411772455,6.58820191 C0.297894116,6.58756648 0.198809536,6.62616938 0.11517259,6.70337483 C0.0379673559,6.78701366 -0.000634437862,6.88609852 7.72715225e-14,6.99997553 C-0.000635426089,7.11385419 0.0379673559,7.21035318 0.11517259,7.28820922 C0.198811183,7.3712057 0.297895763,7.41238194 0.411772455,7.41174538 L2.05881746,7.41174538 C2.1726958,7.41238128 2.26919452,7.3712057 2.34705033,7.28820922 C2.43004658,7.21035977 2.4712227,7.11385254 2.47058615,6.99997553 C2.47122205,6.88609687 2.43004658,6.78701201 2.34705033,6.70337483 C2.26920111,6.62616938 2.17269415,6.58756747 2.05881746,6.58820191 L2.05881746,6.58820191 Z M2.65201719,2.02604698 C2.57352561,1.94884153 2.477661,1.91023963 2.36378431,1.91087407 C2.24926363,1.91023864 2.15082139,1.94884153 2.06718445,2.02604698 C1.98997921,2.10968581 1.95137742,2.20812832 1.95201186,2.32264769 C1.95137643,2.43652635 1.98997921,2.53238299 2.06718445,2.61088138 L3.22848294,3.77990781 C3.31147918,3.86290429 3.41056376,3.90408053 3.52444046,3.90344397 C3.63896114,3.90407987 3.73481751,3.86290429 3.81267333,3.77990781 C3.89566958,3.70205836 3.9368457,3.60619348 3.93620914,3.49167412 C3.93684504,3.37779546 3.89566958,3.2787106 3.81267333,3.19507342 L2.65201719,2.02604698 L2.65201719,2.02604698 Z M9.61852344,4.37309274 C8.8985836,3.65315087 8.02551798,3.29414345 7.00005129,3.29414345 C5.9745846,3.29414345 5.09886725,3.65315087 4.37317922,4.37309274 C3.65323938,5.09881576 3.29423298,5.97446971 3.29423298,6.99997224 C3.29423298,8.02547476 3.65323938,8.89852637 4.37317922,9.61845178 C5.09890019,10.3435324 5.97455166,10.7057681 7.00005129,10.7057681 C8.02555093,10.7057681 8.89860007,10.3435489 9.61852344,9.61845178 C10.3436021,8.8985099 10.7058367,8.02544182 10.7058367,6.99997224 C10.7058367,5.97450265 10.3436185,5.09878282 9.61852344,4.37309274 L9.61852344,4.37309274 Z M7.41181998,0.411773617 C7.41245588,0.297894957 7.37128041,0.198810097 7.28828417,0.115172916 C7.21043494,0.0379674631 7.11392799,-0.000634439654 7.00005129,0 C6.88617296,-0.000635427883 6.78708838,0.0379674631 6.70345143,0.115172916 C6.6262462,0.198811744 6.5876444,0.297896604 6.58827884,0.411773617 L6.58827884,2.05882327 C6.58764341,2.17270193 6.6262462,2.26920092 6.70345143,2.34705696 C6.78709002,2.43005344 6.8861746,2.47122968 7.00005129,2.47059312 C7.11392963,2.47122902 7.21042835,2.43005344 7.28828417,2.34705696 C7.37128041,2.26920751 7.41245654,2.17270029 7.41181998,2.05882327 L7.41181998,0.411773617 L7.41181998,0.411773617 Z M11.6773297,1.93528664 C11.5634514,1.93465121 11.4643668,1.9732541 11.3813722,2.05045955 L10.2117067,3.21176132 C10.1345015,3.29540015 10.0958997,3.39384266 10.0965341,3.50836203 C10.0958987,3.62224069 10.1345015,3.71809733 10.2117067,3.79659572 C10.2953453,3.8789482 10.3937875,3.92012444 10.5083066,3.92012444 C10.6221849,3.92012444 10.7180413,3.8789482 10.7965394,3.79659572 L11.9655626,2.63529395 C12.0485588,2.5574445 12.0897349,2.46093727 12.0890984,2.34706026 C12.0897343,2.2331816 12.0485588,2.13409674 11.9655626,2.05045955 C11.8877133,1.9732541 11.7918487,1.9346522 11.6773297,1.93528664 L11.6773297,1.93528664 Z M13.8764642,6.70333859 C13.798615,6.62613314 13.702108,6.58753124 13.5882313,6.58816568 L11.9411863,6.58816568 C11.827308,6.58753025 11.7282234,6.62613314 11.6445864,6.70333859 C11.5673812,6.78697742 11.5287794,6.88606228 11.5294139,6.9999393 C11.5287784,7.11381796 11.5673812,7.21031695 11.6445864,7.28817298 C11.728225,7.37116946 11.8273096,7.41234571 11.9411863,7.41170915 L13.5882313,7.41170915 C13.7021096,7.41234505 13.7986084,7.37116946 13.8764642,7.28817298 C13.9594604,7.21032354 14.0006366,7.11381631 14,6.9999393 C14.0006359,6.88606063 13.9594604,6.78697577 13.8764642,6.70333859 Z"
-                                    />
-                                </svg>
-                                <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="10" height="11" viewBox="0 0 10 11">
-                                    <path
-                                        fill="#FFF"
-                                        fill-rule="evenodd"
-                                        d="M10,0.816452081 C7.14055555,1.08494197 4.91953976,3.07942693 4.91953976,5.5 C4.91953976,7.92057307 7.14055555,9.91505803 10,10.1835479 C8.99974691,10.7012666 7.82117277,11 6.55938635,11 C2.9367373,11 0,8.53756612 0,5.5 C0,2.46243388 2.9367373,0 6.55938635,0 C7.82117277,0 8.99974691,0.298733377 10,0.816452081 Z"
-                                    />
-                                </svg>
-                            </label>
-                            <script>
-                                if (document.documentElement.getAttribute('data-theme') === 'light') {
-                                    document.getElementById('toggleSwitch').checked = true
-                                }
-                            </script>
-                        </div>
-                    </div>
-                </div>
-            </footer>
-        </div>
+              </div>
+            </div>
+          </div>
+        {{ end }}
+      </main>
+      <div style="margin-top: 3rem; margin-bottom: 4.2rem;">
+        <hr />
+        <footer class="container">
+          <div class="row">
+            <div class="col-md-4 mb-2">
+              <h5>Legal Notices</h5>
+              <div class="d-flex flex-column">
+                <a class="my-1" href="/imprint">Imprint</a>
+              </div>
+              <div class="d-flex flex-column">
+                <a class="my-1" href="/legal/tos.pdf">Terms</a>
+              </div>
+              <div class="d-flex flex-column">
+                <a class="my-1" href="/legal/privacy.pdf">Privacy</a>
+              </div>
+            </div>
+            <div class="col-md-4 mb-2">
+              <h5>Resources</h5>
+              <div class="d-flex flex-column">
+                <a class="my-1" href="/advertisewithus"><i class="fas fa-ad mr-2"></i>Advertise</a>
+                <a class="my-1" href="/premium"><i class="fas fa-user-astronaut mr-2"></i>Beaconcha.in Premium</a>
+                <a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag Shop</a>
+                <a class="my-1" href="/pricing"><i class="fas fa-laptop-code mr-2"></i>API Pricing</a>
+                <!-- <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>Github</a> -->
+              </div>
+            </div>
+            <div class="col-md-4 mb-2">
+              <h5>Links</h5>
+              <div class="d-flex flex-column">
+                <a class="my-1" href="https://twitter.com/beaconcha_in"><i class="fab fa-twitter mr-2"></i>Beaconcha.in</a>
+                <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>Github</a>
+                <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer-app"><i class="fab fa-github mr-2"></i>Github Mobile App</a>
+                <!-- <a class="my-1" href="https://www.reddit.com/u/etherchain/"><i class="fab fa-reddit mr-2"></i>Reddit</a> -->
+                <!-- <a class="my-1" href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a> -->
+              </div>
+            </div>
+          </div>
+          <div class="text-center row justify-content-center">
+            <div class="col-12">
+              <span>© bitfly gmbh 2021 | {{ .Version }} |</span>
+              <div class="theme-switch-wrapper">
+                <label class="theme-switch" for="toggleSwitch">
+                  <input type="checkbox" id="toggleSwitch" />
+                  <div class="slider round"></div>
+                  <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">
+                    <path
+                      fill="#FFF"
+                      d="M7.41171457,11.9411805 C7.41235047,11.8273018 7.371175,11.728217 7.28817876,11.6445798 C7.21032953,11.5673743 7.11382258,11.5287724 6.99994588,11.5294069 C6.88606754,11.5287714 6.78698296,11.5673743 6.70334602,11.6445798 C6.62614078,11.7282186 6.58753899,11.8273035 6.58817343,11.9411805 L6.58817343,13.5882301 C6.587538,13.7021088 6.62614078,13.7986078 6.70334602,13.8764638 C6.78698461,13.9594603 6.88606919,14.0006366 6.99994588,14 C7.11382422,14.0006359 7.21032294,13.9594603 7.28817876,13.8764638 C7.371175,13.7986144 7.41235113,13.7021072 7.41171457,13.5882301 L7.41171457,11.9411805 L7.41171457,11.9411805 Z M10.7797495,10.2117784 C10.7031882,10.1307122 10.606678,10.089536 10.4915166,10.0882417 C10.3808549,10.0876063 10.2849936,10.1262092 10.2032837,10.2034146 C10.1222178,10.2857671 10.0810417,10.3816254 10.0797553,10.4916483 C10.0797553,10.6080997 10.1177148,10.7065389 10.19492,10.788249 L11.3562185,11.9579178 C11.4385708,12.0389839 11.5350711,12.0801602 11.6444514,12.0814465 C11.7609024,12.0814465 11.8599837,12.0402703 11.9410512,11.9579178 C12.0221172,11.8807124 12.0632933,11.7848458 12.064587,11.6696841 C12.065223,11.5590238 12.0240475,11.4625182 11.9410512,11.3814504 L10.7797528,10.2117817 L10.7797495,10.2117784 Z M3.78821142,10.7638068 C3.86927733,10.6866014 3.91045345,10.5907348 3.91174722,10.4755731 C3.91238313,10.3642688 3.87120766,10.2684072 3.78821142,10.1873394 C3.71165018,10.1056309 3.61513993,10.0644547 3.49997854,10.0638028 C3.38931688,10.0631674 3.29345557,10.1017703 3.21174567,10.1789757 L2.04208019,11.3402775 C1.96101428,11.42263 1.91983815,11.5184883 1.91855181,11.6285112 C1.91855181,11.7443202 1.95651126,11.8434017 2.03435884,11.9244695 C2.1160671,12.006178 2.21256911,12.0473543 2.32259172,12.0480057 C2.43840039,12.0486416 2.53748168,12.007466 2.61854923,11.9244695 L3.78821471,10.7638101 L3.78821142,10.7638068 Z M2.05881746,6.58820191 L0.411772455,6.58820191 C0.297894116,6.58756648 0.198809536,6.62616938 0.11517259,6.70337483 C0.0379673559,6.78701366 -0.000634437862,6.88609852 7.72715225e-14,6.99997553 C-0.000635426089,7.11385419 0.0379673559,7.21035318 0.11517259,7.28820922 C0.198811183,7.3712057 0.297895763,7.41238194 0.411772455,7.41174538 L2.05881746,7.41174538 C2.1726958,7.41238128 2.26919452,7.3712057 2.34705033,7.28820922 C2.43004658,7.21035977 2.4712227,7.11385254 2.47058615,6.99997553 C2.47122205,6.88609687 2.43004658,6.78701201 2.34705033,6.70337483 C2.26920111,6.62616938 2.17269415,6.58756747 2.05881746,6.58820191 L2.05881746,6.58820191 Z M2.65201719,2.02604698 C2.57352561,1.94884153 2.477661,1.91023963 2.36378431,1.91087407 C2.24926363,1.91023864 2.15082139,1.94884153 2.06718445,2.02604698 C1.98997921,2.10968581 1.95137742,2.20812832 1.95201186,2.32264769 C1.95137643,2.43652635 1.98997921,2.53238299 2.06718445,2.61088138 L3.22848294,3.77990781 C3.31147918,3.86290429 3.41056376,3.90408053 3.52444046,3.90344397 C3.63896114,3.90407987 3.73481751,3.86290429 3.81267333,3.77990781 C3.89566958,3.70205836 3.9368457,3.60619348 3.93620914,3.49167412 C3.93684504,3.37779546 3.89566958,3.2787106 3.81267333,3.19507342 L2.65201719,2.02604698 L2.65201719,2.02604698 Z M9.61852344,4.37309274 C8.8985836,3.65315087 8.02551798,3.29414345 7.00005129,3.29414345 C5.9745846,3.29414345 5.09886725,3.65315087 4.37317922,4.37309274 C3.65323938,5.09881576 3.29423298,5.97446971 3.29423298,6.99997224 C3.29423298,8.02547476 3.65323938,8.89852637 4.37317922,9.61845178 C5.09890019,10.3435324 5.97455166,10.7057681 7.00005129,10.7057681 C8.02555093,10.7057681 8.89860007,10.3435489 9.61852344,9.61845178 C10.3436021,8.8985099 10.7058367,8.02544182 10.7058367,6.99997224 C10.7058367,5.97450265 10.3436185,5.09878282 9.61852344,4.37309274 L9.61852344,4.37309274 Z M7.41181998,0.411773617 C7.41245588,0.297894957 7.37128041,0.198810097 7.28828417,0.115172916 C7.21043494,0.0379674631 7.11392799,-0.000634439654 7.00005129,0 C6.88617296,-0.000635427883 6.78708838,0.0379674631 6.70345143,0.115172916 C6.6262462,0.198811744 6.5876444,0.297896604 6.58827884,0.411773617 L6.58827884,2.05882327 C6.58764341,2.17270193 6.6262462,2.26920092 6.70345143,2.34705696 C6.78709002,2.43005344 6.8861746,2.47122968 7.00005129,2.47059312 C7.11392963,2.47122902 7.21042835,2.43005344 7.28828417,2.34705696 C7.37128041,2.26920751 7.41245654,2.17270029 7.41181998,2.05882327 L7.41181998,0.411773617 L7.41181998,0.411773617 Z M11.6773297,1.93528664 C11.5634514,1.93465121 11.4643668,1.9732541 11.3813722,2.05045955 L10.2117067,3.21176132 C10.1345015,3.29540015 10.0958997,3.39384266 10.0965341,3.50836203 C10.0958987,3.62224069 10.1345015,3.71809733 10.2117067,3.79659572 C10.2953453,3.8789482 10.3937875,3.92012444 10.5083066,3.92012444 C10.6221849,3.92012444 10.7180413,3.8789482 10.7965394,3.79659572 L11.9655626,2.63529395 C12.0485588,2.5574445 12.0897349,2.46093727 12.0890984,2.34706026 C12.0897343,2.2331816 12.0485588,2.13409674 11.9655626,2.05045955 C11.8877133,1.9732541 11.7918487,1.9346522 11.6773297,1.93528664 L11.6773297,1.93528664 Z M13.8764642,6.70333859 C13.798615,6.62613314 13.702108,6.58753124 13.5882313,6.58816568 L11.9411863,6.58816568 C11.827308,6.58753025 11.7282234,6.62613314 11.6445864,6.70333859 C11.5673812,6.78697742 11.5287794,6.88606228 11.5294139,6.9999393 C11.5287784,7.11381796 11.5673812,7.21031695 11.6445864,7.28817298 C11.728225,7.37116946 11.8273096,7.41234571 11.9411863,7.41170915 L13.5882313,7.41170915 C13.7021096,7.41234505 13.7986084,7.37116946 13.8764642,7.28817298 C13.9594604,7.21032354 14.0006366,7.11381631 14,6.9999393 C14.0006359,6.88606063 13.9594604,6.78697577 13.8764642,6.70333859 Z" />
+                  </svg>
+                  <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="10" height="11" viewBox="0 0 10 11">
+                    <path fill="#FFF" fill-rule="evenodd" d="M10,0.816452081 C7.14055555,1.08494197 4.91953976,3.07942693 4.91953976,5.5 C4.91953976,7.92057307 7.14055555,9.91505803 10,10.1835479 C8.99974691,10.7012666 7.82117277,11 6.55938635,11 C2.9367373,11 0,8.53756612 0,5.5 C0,2.46243388 2.9367373,0 6.55938635,0 C7.82117277,0 8.99974691,0.298733377 10,0.816452081 Z" />
+                  </svg>
+                </label>
+                <script>
+                  if (document.documentElement.getAttribute("data-theme") === "light") {
+                    document.getElementById("toggleSwitch").checked = true
+                  }
+                </script>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
 
-        <script src="/js/jquery.min.js"></script>
-        <script src="/js/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-        <script src="/theme/js/bootstrap.min.js"></script>
-        <script src="/js/luxon.min.js"></script>
-        <script>luxon.DateTime.local()</script>
-        <script src="/js/typeahead.bundle.min.js"></script>
-        <script src="/js/layout.js"></script>
-        <script src="/js/banner.js"></script>
+      <script src="/js/jquery.min.js"></script>
+      <script src="/js/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+      <script src="/theme/js/bootstrap.min.js"></script>
+      <script src="/js/luxon.min.js"></script>
+      <script>
+        luxon.DateTime.local()
+      </script>
+      <script src="/js/typeahead.bundle.min.js"></script>
+      <script src="/js/layout.js"></script>
+      <script src="/js/banner.js"></script>
         <script>
             var currency = {{.Currency}}
             var exchangeRate = {{.ExchangeRate}}
@@ -877,47 +879,45 @@
                 if (slot < 0) return 0
                 return slot
             }
-        </script>
-        {{if not .Meta.NoTrack}}
-            {{if not .User.Authenticated}}
-                <script>
-                    function hideCookieBanner() {
-                        $('#cookie-banner').attr('class', 'd-none')
-                    }
+        </script> {{ if not .Meta.NoTrack }}
+        {{ if not .User.Authenticated }}
+          <script>
+            function hideCookieBanner() {
+              $("#cookie-banner").attr("class", "d-none")
+            }
 
-                    function acceptCookieBanner() {
-                        document.cookie = "cookie=accepted;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
-                        hideCookieBanner()
-                    }
+            function acceptCookieBanner() {
+              document.cookie = "cookie=accepted;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
+              hideCookieBanner()
+            }
 
-                    function acceptOnlyNecessaryCookies() {
-                        document.cookie = "cookie=accepted-necessary;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
-                        hideCookieBanner()
-                    }
+            function acceptOnlyNecessaryCookies() {
+              document.cookie = "cookie=accepted-necessary;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
+              hideCookieBanner()
+            }
 
-                    if (document.cookie.indexOf('cookie=accepted') != -1) {
-                        hideCookieBanner()
-                    } else {
-                        $('#cookie-banner').attr('class', "")
-                    }
-                </script>
-            {{end}}
-        {{end}}
-        <script src="/js/clipboard.min.js"></script>
-        {{template "js" .Data}}
-            <script src="/js/instant.min.js" type="module"></script>
-            {{if not .Meta.NoTrack}}
-                {{if ne .Meta.GATag ""}}
-                    <!-- Global site tag (gtag.js) - Google Analytics -->
+            if (document.cookie.indexOf("cookie=accepted") != -1) {
+              hideCookieBanner()
+            } else {
+              $("#cookie-banner").attr("class", "")
+            }
+          </script>
+        {{ end }}
+      {{ end }}
+      <script src="/js/clipboard.min.js"></script>
+      {{ template "js" .Data }}
+      <script src="/js/instant.min.js" type="module"></script>
+      {{ if not .Meta.NoTrack }}
+        {{ if ne .Meta.GATag "" }}
+          <!-- Global site tag (gtag.js) - Google Analytics -->
                     <script>
                         if (document.cookie.indexOf("cookie=accepted-necessary") == -1) {
                             let src = 'https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}'
                             let a = document.createElement('script')
                             a.src = src
                             document.body.appendChild(a)
-                        } 
-                    </script>
-                    <script>
+                        }
+                    </script>                    <script>
                         window.dataLayer = window.dataLayer || []
 
                         function gtag() {
@@ -963,11 +963,9 @@
                             element.addEventListener('click', handleOutboundLinkClicks)
                         }
                     </script>
-                {{end}}
-            {{end}}
-            {{if not .NoAds}} 
-                <script type="text/javascript" async src="/js/revive.min.js"></script>
-            {{end}}
-        </body>
-    </html>
-{{end}}
+        {{ end }}
+      {{ end }}
+      {{ if not .NoAds }}<script type="text/javascript" async src="/js/revive.min.js"></script>{{ end }}
+    </body>
+  </html>
+{{ end }}

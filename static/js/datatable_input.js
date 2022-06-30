@@ -7,8 +7,8 @@
     var isPage0 = start <= 0
     var page = noEntries || isPage0 ? 0 : Math.ceil(start / length)
     var pages = noEntries || isPage0 ? 1 : Math.ceil(visibleRecords / length)
-    var disableFirstPrevClass = page > 0 ? '' : oSettings.oClasses.sPageButtonDisabled
-    var disableNextLastClass = page < pages - 1 ? '' : oSettings.oClasses.sPageButtonDisabled
+    var disableFirstPrevClass = page > 0 ? "" : oSettings.oClasses.sPageButtonDisabled
+    var disableNextLastClass = page < pages - 1 ? "" : oSettings.oClasses.sPageButtonDisabled
     return { first: disableFirstPrevClass, previous: disableFirstPrevClass, next: disableNextLastClass, last: disableNextLastClass }
   }
   function calcCurrentPage(oSettings) {
@@ -17,48 +17,48 @@
   function calcPages(oSettings) {
     return Math.ceil(oSettings.fnRecordsDisplay() / oSettings._iDisplayLength)
   }
-  var firstClassName = 'first'
-  var previousClassName = 'previous'
-  var nextClassName = 'next'
-  var lastClassName = 'last'
-  var paginateClassName = 'paginate'
-  var paginatePageClassName = 'paginate_page'
-  var paginateInputClassName = 'paginate_input'
-  var paginateTotalClassName = 'paginate_total'
+  var firstClassName = "first"
+  var previousClassName = "previous"
+  var nextClassName = "next"
+  var lastClassName = "last"
+  var paginateClassName = "paginate"
+  // var paginatePageClassName = 'paginate_page'
+  var paginateInputClassName = "paginate_input"
+  var paginateTotalClassName = "paginate_total"
   $.fn.dataTableExt.oPagination.input = {
     fnInit: function (oSettings, nPaging, fnCallbackDraw) {
-      var nWrap = document.createElement('ul')
-      var nFirst = document.createElement('li')
-      var nPrevious = document.createElement('li')
-      var nNext = document.createElement('li')
-      var nLast = document.createElement('li')
-      var nInput = document.createElement('input')
-      var nTotal = document.createElement('li')
-      var nInfo = document.createElement('li')
+      var nWrap = document.createElement("ul")
+      var nFirst = document.createElement("li")
+      var nPrevious = document.createElement("li")
+      var nNext = document.createElement("li")
+      var nLast = document.createElement("li")
+      var nInput = document.createElement("input")
+      var nTotal = document.createElement("li")
+      var nInfo = document.createElement("li")
       var language = oSettings.oLanguage.oPaginate
       var classes = oSettings.oClasses
-      var info = language.info || 'Page _INPUT_ of _TOTAL_'
-      nFirst.innerHTML = '<a tab-index="1" aria-controls="' + oSettings.sTableId + '_' + firstClassName + '" class="page-link">' + language.sFirst + '</a>'
-      nPrevious.innerHTML = '<a tab-index="1" aria-controls="' + oSettings.sTableId + '_' + previousClassName + '" class="page-link">' + language.sPrevious + '</a>'
-      nNext.innerHTML = '<a tab-index="1" aria-controls="' + oSettings.sTableId + '_' + nextClassName + '" class="page-link">' + language.sNext + '</a>'
-      nLast.innerHTML = '<a tab-index="1" aria-controls="' + oSettings.sTableId + '_' + lastClassName + '" class="page-link">' + language.sLast + '</a>'
-      nWrap.className = 'pagination'
-      nFirst.className = firstClassName + ' ' + classes.sPageButton
-      nPrevious.className = previousClassName + ' ' + classes.sPageButton
-      nNext.className = nextClassName + ' ' + classes.sPageButton
-      nLast.className = lastClassName + ' ' + classes.sPageButton
+      var info = language.info || "Page _INPUT_ of _TOTAL_"
+      nFirst.innerHTML = '<a tab-index="1" aria-controls="' + oSettings.sTableId + "_" + firstClassName + '" class="page-link">' + language.sFirst + "</a>"
+      nPrevious.innerHTML = '<a tab-index="1" aria-controls="' + oSettings.sTableId + "_" + previousClassName + '" class="page-link">' + language.sPrevious + "</a>"
+      nNext.innerHTML = '<a tab-index="1" aria-controls="' + oSettings.sTableId + "_" + nextClassName + '" class="page-link">' + language.sNext + "</a>"
+      nLast.innerHTML = '<a tab-index="1" aria-controls="' + oSettings.sTableId + "_" + lastClassName + '" class="page-link">' + language.sLast + "</a>"
+      nWrap.className = "pagination"
+      nFirst.className = firstClassName + " " + classes.sPageButton
+      nPrevious.className = previousClassName + " " + classes.sPageButton
+      nNext.className = nextClassName + " " + classes.sPageButton
+      nLast.className = lastClassName + " " + classes.sPageButton
       nInput.className = paginateInputClassName
       nTotal.className = paginateTotalClassName
-      if (oSettings.sTableId !== '') {
-        nPaging.setAttribute('id', oSettings.sTableId + '_' + paginateClassName)
-        nFirst.setAttribute('id', oSettings.sTableId + '_' + firstClassName)
-        nPrevious.setAttribute('id', oSettings.sTableId + '_' + previousClassName)
-        nNext.setAttribute('id', oSettings.sTableId + '_' + nextClassName)
-        nLast.setAttribute('id', oSettings.sTableId + '_' + lastClassName)
+      if (oSettings.sTableId !== "") {
+        nPaging.setAttribute("id", oSettings.sTableId + "_" + paginateClassName)
+        nFirst.setAttribute("id", oSettings.sTableId + "_" + firstClassName)
+        nPrevious.setAttribute("id", oSettings.sTableId + "_" + previousClassName)
+        nNext.setAttribute("id", oSettings.sTableId + "_" + nextClassName)
+        nLast.setAttribute("id", oSettings.sTableId + "_" + lastClassName)
       }
-      nInput.type = 'text'
-      info = info.replace(/_INPUT_/g, '</li>' + nInput.outerHTML + '<li>')
-      info = info.replace(/_TOTAL_/g, '</li>' + nTotal.outerHTML)
+      nInput.type = "text"
+      info = info.replace(/_INPUT_/g, "</li>" + nInput.outerHTML + "<li>")
+      info = info.replace(/_TOTAL_/g, "</li>" + nTotal.outerHTML)
       nInfo.innerHTML = info
       nWrap.appendChild(nFirst)
       nWrap.appendChild(nPrevious)
@@ -66,15 +66,15 @@
         .children()
         .each(function (i, n) {
           if (i === 0) {
-            var nLi = document.createElement('li')
-            nLi.className = 'paginate_input_wrap page-item'
+            var nLi = document.createElement("li")
+            nLi.className = "paginate_input_wrap page-item"
             nLi.appendChild(n)
             nWrap.appendChild(nLi)
           } else {
             if (i === 1) {
-              n.className = 'paginate_of'
+              n.className = "paginate_of"
             }
-            n.className = n.className + ' page-item'
+            n.className = n.className + " page-item"
             nWrap.appendChild(n)
           }
         })
@@ -84,41 +84,41 @@
       $(nFirst).click(function () {
         var iCurrentPage = calcCurrentPage(oSettings)
         if (iCurrentPage !== 1) {
-          oSettings.oApi._fnPageChange(oSettings, 'first')
+          oSettings.oApi._fnPageChange(oSettings, "first")
           fnCallbackDraw(oSettings)
         }
       })
       $(nPrevious).click(function () {
         var iCurrentPage = calcCurrentPage(oSettings)
         if (iCurrentPage !== 1) {
-          oSettings.oApi._fnPageChange(oSettings, 'previous')
+          oSettings.oApi._fnPageChange(oSettings, "previous")
           fnCallbackDraw(oSettings)
         }
       })
       $(nNext).click(function () {
         var iCurrentPage = calcCurrentPage(oSettings)
         if (iCurrentPage !== calcPages(oSettings)) {
-          oSettings.oApi._fnPageChange(oSettings, 'next')
+          oSettings.oApi._fnPageChange(oSettings, "next")
           fnCallbackDraw(oSettings)
         }
       })
       $(nLast).click(function () {
         var iCurrentPage = calcCurrentPage(oSettings)
         if (iCurrentPage !== calcPages(oSettings)) {
-          oSettings.oApi._fnPageChange(oSettings, 'last')
+          oSettings.oApi._fnPageChange(oSettings, "last")
           fnCallbackDraw(oSettings)
         }
       })
       $(nPaging)
-        .find('.' + paginateInputClassName)
+        .find("." + paginateInputClassName)
         .keyup(function (e) {
           if (e.which === 38 || e.which === 39) {
             this.value++
           } else if ((e.which === 37 || e.which === 40) && this.value > 1) {
             this.value--
           }
-          if (this.value === '' || this.value.match(/[^0-9]/) !== null) {
-            this.value = this.value.replace(/[^\d]/g, '')
+          if (this.value === "" || this.value.match(/[^0-9]/) !== null) {
+            this.value = this.value.replace(/[^\d]/g, "")
             return
           }
           var iNewStart = oSettings._iDisplayLength * (this.value - 1)
@@ -129,13 +129,13 @@
             iNewStart = (Math.ceil(oSettings.fnRecordsDisplay() / oSettings._iDisplayLength) - 1) * oSettings._iDisplayLength
           }
           oSettings._iDisplayStart = iNewStart
-          oSettings.oInstance.trigger('page.dt', oSettings)
+          oSettings.oInstance.trigger("page.dt", oSettings)
           fnCallbackDraw(oSettings)
         })
-      $('span', nPaging).bind('mousedown', function () {
+      $("span", nPaging).bind("mousedown", function () {
         return false
       })
-      $('span', nPaging).bind('selectstart', function () {
+      $("span", nPaging).bind("selectstart", function () {
         return false
       })
       var iPages = calcPages(oSettings)
@@ -156,33 +156,33 @@
       }
       var disableClasses = calcDisableClasses(oSettings)
       $(an).show()
-      var _newWidth = '45px'
+      var _newWidth = "45px"
       $(an)
-        .find('.' + paginateInputClassName)
+        .find("." + paginateInputClassName)
         .width(_newWidth)
       $(an)
-        .find('.' + firstClassName)
+        .find("." + firstClassName)
         .removeClass(oSettings.oClasses.sPageButtonDisabled)
         .addClass(disableClasses[firstClassName])
       $(an)
-        .find('.' + previousClassName)
+        .find("." + previousClassName)
         .removeClass(oSettings.oClasses.sPageButtonDisabled)
         .addClass(disableClasses[previousClassName])
       if (iPages === 1) {
         $(an)
-          .find('.' + nextClassName)
+          .find("." + nextClassName)
           .removeClass(oSettings.oClasses.sPageButtonDisabled)
           .addClass(disableClasses[nextClassName])
         $(an)
-          .find('.' + lastClassName)
+          .find("." + lastClassName)
           .removeClass(oSettings.oClasses.sPageButtonDisabled)
           .addClass(disableClasses[lastClassName])
       }
       $(an)
-        .find('.' + paginateTotalClassName)
+        .find("." + paginateTotalClassName)
         .html(iPages)
       $(an)
-        .find('.' + paginateInputClassName)
+        .find("." + paginateInputClassName)
         .val(iCurrentPage)
     },
   }

@@ -1,165 +1,165 @@
-{{ define "js"}}
-    <script type="text/javascript" src="/js/datatables.min.js"></script>
-    <script type="text/javascript" src="/js/datatable_input.js"></script>
-    <script src="/js/highcharts/highcharts.min.js"></script>
-    <script src="/js/highcharts/annotations.min.js"></script>
-    <script src="/js/highcharts/data.min.js"></script>
-    <script src="/js/highcharts/highcharts-global-options.js"></script>
-    <script>
-        var debounce = null
-        var scatterOptions = {
-            title: {
-                text: "Validators by Eth1 Address"
-            },
-            chart: {
-                type: 'column',
-                // zoomType: 'xy'
-            },
-            plotOptions: {
-                column: {
-                    stacking: 'normal',
-                    borderColor: 'var(--border-color-transparent)'
-                    // dataLabels: {
-                    // 	enabled: true
-                    // }
-                }
-            },
-            tooltip: {
-                shared: true,
-                split: false,
-                pointFormatter: function () {
-                    var rows = document.querySelectorAll('#deposits tbody tr')
-                    for (let i = 0; i < rows.length; i++) {
-                        var r = rows[i];
-                        r.classList.remove('row-highlight')
-                    }
-                    var row = document.querySelector('#deposits tbody tr:nth-child(' + (this.category + 1) + ')')
-                    row.classList.add('row-highlight')
-                    if (debounce) {
-                        clearTimeout(debounce)
-                    }
-                    debounce = setTimeout(function () {
-                        var rows = document.querySelectorAll('#deposits tbody tr')
-                        for (let i = 0; i < rows.length; i++) {
-                            var r = rows[i];
-                            r.classList.remove('row-highlight')
-                        }
-                    }, 1500)
-                    return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${this.y}</b><br/>`
-                }
-
-            },
-            xAxis: {
-                title: {
-                    text: 'Eth1 Address',
-                    style: {
-                        color: 'var(--font-color)'
-                    }
-                },
-                // categories: ['pending', 'active']
-            },
-            yAxis: {
-                min: 0,
-                title: {
-                    text: 'Validators',
-                },
-                stackLabels: {
-                    enabled: true,
-                    style: {
-                        // fontWeight: 'bold',
-                        color: 'var(--font-color)',
-                        textOutline: "none"
-                    }
-                },
-                offset: 30
-            },
-            colors: ['#003f5c', '#58508d', '#50bc90', '#ff6361', '#ffa600' ],
-            legend: {enabled: true},
-            navigator: {enabled: false},
-            rangeSelector: {enabled: false},
-            scrollbar: {enabled: false},
-            data: {
-                table: 'deposits',
-                startRow: 1,
-                startColumn: 0,
-                firstRowAsNames: false,
-                parsed: function (data) {
-                    var newData = []
-                    newData[0] = data[0].map(function (x) {
-                        return x.replace(/\<[^\>]+\>/g, '')
-                    })
-                    newData[1] = data[4]
-                    data = newData
-                    return newData
-                },
-                complete: function (columns) {
-                    var series = []
-
-                    series[0] = columns.series[1]
-                    series[1] = columns.series[3]
-                    series[2] = columns.series[4]
-                    series[3] = columns.series[5]
-                    series[4] = columns.series[6]
-
-                    series[0].name = 'Deposited'
-                    series[1].name = 'Pending'
-                    series[2].name = 'Active'
-                    series[3].name = 'Slashed'
-                    series[4].name = 'Voluntary Exits'
-
-                    if (series && series[0] && series[0].data && series[0].data.length) {
-                        for (var i = 0; i < series[0].data.length; i++) {
-                            series[0].data[i][1] = series[0].data[i][1] - columns.series[4].data[i][1] - columns.series[5].data[i][1] - columns.series[6].data[i][1] - columns.series[3].data[i][1]
-                        }
-                    }
-
-                    // replace keys with eth1 address
-                    for (var i = 0; i < series.length; i++) {
-                        var serie = series[i];
-                        serie.data = serie.data.map(function (el) {
-                            el[0] = el[0].replace(/\<[^\>]+\>/g, '')
-                            return el
-                        })
-                    }
-                    columns.series = series
-                    return series
-                }
+{{ define "js" }}
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script src="/js/highcharts/highcharts.min.js"></script>
+  <script src="/js/highcharts/annotations.min.js"></script>
+  <script src="/js/highcharts/data.min.js"></script>
+  <script src="/js/highcharts/highcharts-global-options.js"></script>
+  <script>
+    var debounce = null
+    var scatterOptions = {
+      title: {
+        text: "Validators by Eth1 Address",
+      },
+      chart: {
+        type: "column",
+        // zoomType: 'xy'
+      },
+      plotOptions: {
+        column: {
+          stacking: "normal",
+          borderColor: "var(--border-color-transparent)",
+          // dataLabels: {
+          // 	enabled: true
+          // }
+        },
+      },
+      tooltip: {
+        shared: true,
+        split: false,
+        pointFormatter: function () {
+          var rows = document.querySelectorAll("#deposits tbody tr")
+          for (let i = 0; i < rows.length; i++) {
+            var r = rows[i]
+            r.classList.remove("row-highlight")
+          }
+          var row = document.querySelector("#deposits tbody tr:nth-child(" + (this.category + 1) + ")")
+          row.classList.add("row-highlight")
+          if (debounce) {
+            clearTimeout(debounce)
+          }
+          debounce = setTimeout(function () {
+            var rows = document.querySelectorAll("#deposits tbody tr")
+            for (let i = 0; i < rows.length; i++) {
+              var r = rows[i]
+              r.classList.remove("row-highlight")
             }
-        }
-    </script>
-    <script>
+          }, 1500)
+          return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${this.y}</b><br/>`
+        },
+      },
+      xAxis: {
+        title: {
+          text: "Eth1 Address",
+          style: {
+            color: "var(--font-color)",
+          },
+        },
+        // categories: ['pending', 'active']
+      },
+      yAxis: {
+        min: 0,
+        title: {
+          text: "Validators",
+        },
+        stackLabels: {
+          enabled: true,
+          style: {
+            // fontWeight: 'bold',
+            color: "var(--font-color)",
+            textOutline: "none",
+          },
+        },
+        offset: 30,
+      },
+      colors: ["#003f5c", "#58508d", "#50bc90", "#ff6361", "#ffa600"],
+      legend: { enabled: true },
+      navigator: { enabled: false },
+      rangeSelector: { enabled: false },
+      scrollbar: { enabled: false },
+      data: {
+        table: "deposits",
+        startRow: 1,
+        startColumn: 0,
+        firstRowAsNames: false,
+        parsed: function (data) {
+          var newData = []
+          newData[0] = data[0].map(function (x) {
+            return x.replace(/\<[^\>]+\>/g, "")
+          })
+          newData[1] = data[4]
+          data = newData
+          return newData
+        },
+        complete: function (columns) {
+          var series = []
+
+          series[0] = columns.series[1]
+          series[1] = columns.series[3]
+          series[2] = columns.series[4]
+          series[3] = columns.series[5]
+          series[4] = columns.series[6]
+
+          series[0].name = "Deposited"
+          series[1].name = "Pending"
+          series[2].name = "Active"
+          series[3].name = "Slashed"
+          series[4].name = "Voluntary Exits"
+
+          if (series && series[0] && series[0].data && series[0].data.length) {
+            for (let i = 0; i < series[0].data.length; i++) {
+              series[0].data[i][1] = series[0].data[i][1] - columns.series[4].data[i][1] - columns.series[5].data[i][1] - columns.series[6].data[i][1] - columns.series[3].data[i][1]
+            }
+          }
+
+          // replace keys with eth1 address
+          for (let i = 0; i < series.length; i++) {
+            var serie = series[i]
+            serie.data = serie.data.map(function (el) {
+              el[0] = el[0].replace(/\<[^\>]+\>/g, "")
+              return el
+            })
+          }
+          columns.series = series
+          return series
+        },
+      },
+    }
+  </script>
+  <script>
         $(document).ready(function () {
             var usp = new URLSearchParams(window.location.search)
             var q = usp.get('q')
             {{if len .DepositContract}}
-            var tbl = $('#deposits').DataTable({
-                processing: true,
-                serverSide: true,
-                ordering: true,
-                order: [[1, 'desc']],
-                searching: true,
-                ajax: '/validators/eth1leaderboard/data',
-                pagingType: 'input',
-                preDrawCallback: function () {
-                    // this does not always work.. not sure how to solve the staying tooltip
-                    try {
-                        $('#deposits').find('[data-toggle="tooltip"]').tooltip('dispose')
-                    } catch (e) {
-                    }
-                },
-                drawCallback: function (settings) {
-                    formatTimestamps('#deposits')
-                    var scatterChart = Highcharts.chart('scatterChart', scatterOptions)
-                },
-                language: {
-                    searchPlaceholder: 'Address',
-                    search: '',
-                    paginate: {
-                        previous: '<i class="fas fa-chevron-left"></i>',
-                        next: '<i class="fas fa-chevron-right"></i>'
-                    }
-                }
-            })
+                  var tbl = $('#deposits').DataTable({
+                  processing: true,
+                  serverSide: true,
+                  ordering: true,
+                  order: [[1, 'desc']],
+                  searching: true,
+                  ajax: '/validators/eth1leaderboard/data',
+                  pagingType: 'input',
+                  preDrawCallback: function () {
+                        // this does not always work.. not sure how to solve the staying tooltip
+                        try {
+                              $('#deposits').find('[data-toggle="tooltip"]').tooltip('dispose')
+                        } catch (e) {
+                              console.error(e)
+                        }
+                  },
+                  drawCallback: function (settings) {
+                        formatTimestamps('#deposits')
+                        Highcharts.chart('scatterChart', scatterOptions)
+                  },
+                  language: {
+                        searchPlaceholder: 'Address',
+                        search: '',
+                        paginate: {
+                              previous: '<i class="fas fa-chevron-left"></i>',
+                              next: '<i class="fas fa-chevron-right"></i>'
+                        }
+                  }
+                  })
             {{end}}
             if (q) {
                 tbl.search(q);
@@ -167,324 +167,220 @@
             }
         })
     </script>
-
-{{end}} {{ define "css"}}
-    <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
-    <style>
-        .row-highlight {
-            background: var(--highlight) !important;
-        }
-    </style>
-
-
-{{end}}
-{{ define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-            <div class="my-3">
-                <div class="d-md-flex py-2 justify-content-md-between">
-                    <div class="heading">
-                        <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-file-signature mr-2"></i></i>Eth1 Deposits
-                            Leaderboard</h1>
-                    </div>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                            <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Eth1 Deposits</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-            <div id="scatterChart" class="card my-3 justify-content-center align-items-center">
-                <div class="p-2 w-25 ">
-                    <svg id="f885adbf-893a-4cbc-9f2f-51541a368feb" data-name="Layer 1"
-                         xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-                         viewBox="0 0 1090.76 795.07">
-                        <defs>
-                            <linearGradient id="b2e9a30e-d699-40a8-8c6a-b63a5f54a941" x1="946.56" y1="846.78"
-                                            x2="946.56" y2="635.52" gradientUnits="userSpaceOnUse">
-                                <stop offset="0" stop-color="gray" stop-opacity="0.25"/>
-                                <stop offset="0.54" stop-color="gray" stop-opacity="0.12"/>
-                                <stop offset="1" stop-color="gray" stop-opacity="0.1"/>
-                            </linearGradient>
-                        </defs>
-                        <title>Leaderboard</title>
-                        <path d="M1145.38,293.87s-15.23-6.19-63.68,16-54.5,19.4-67.05,16-19.53-4.21-33-22.77c0,0-9.48-51.4-18.66-59.37s-48.18,4.54-48.18,4.54S868.06,259,859.15,196.54c0,0,6.32-47.11-2.29-61.56,0,0,17.38,7.49,46.06-4.61s51.65,13,51.65,13,7.23,18.73,6.47,29.89,3.83,15.36,17.51,10c0,0,6.72-9.56-2.8-25.36s-16.31-27.57-13.65-39.85,10.29-29.28,34.83-37.79,57.87-10.15,73.87-16.81,19.87-11,19.87-11-9.84,9.86,13.35,51.68,8.41,60,8.41,60-12.34,29.4-66.81,27c0,0-52.49,1.92-23.87,24.18,0,0,18.32-3.73,45.72-12.44s47.18,27.23,52.09,52.24S1145.38,293.87,1145.38,293.87Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M1074.83,84.17l.28-.07c2.11,8-21.35,40-41.4,65.53l-.24-.18C1061.76,113.49,1076.45,90.31,1074.83,84.17Z"
-                              transform="translate(-54.62 -52.46)" fill="#444053"/>
-                        <path d="M1033.89,148.92l.12.33c-16,20.36-36.17,44.66-52.29,62.66-1.53,1.72-3.06,3.52-4.53,5.36l-.46-.37c1.48-1.85,3-3.66,4.55-5.38C997.4,193.53,1017.88,169.28,1033.89,148.92Z"
-                              transform="translate(-54.62 -52.46)" fill="#444053"/>
-                        <path d="M977.12,216.41l.32.55c-29.34,36.63-31.28,93.51-31.35,94l-6.19-7.14C940,303.32,947.57,253.3,977.12,216.41Z"
-                              transform="translate(-54.62 -52.46)" fill="#444053"/>
-                        <path d="M1111.35,274s-34.6-18-61.56-11.53-87.67-22.81-87.67-22.81-25.77-10.47-31-22.41c0,0-17.69-18.69-18.7-28.38s-18.22-34-29.45-34.93"
-                              transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M1106.34,291.32s-17.42-11.74-15.4-25.42" transform="translate(-54.62 -52.46)"
-                              fill="none" stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M1079.61,306.48s-24.91-9.05-27.42-44.52" transform="translate(-54.62 -52.46)"
-                              fill="none" stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M1039.4,315.66s-23.81-19.76-15.91-54.28" transform="translate(-54.62 -52.46)"
-                              fill="none" stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M991.09,306s-15.87-33.25-1.75-54.89" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M1111.75,252.08s-18,5.72-14.15,15.2" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M1090,219.37s-24.11,7.65-24.68,41.76" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M1056.38,211.5s-21.94,27.09-20.34,51.71" transform="translate(-54.62 -52.46)"
-                              fill="none" stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M1018,222.12s-21.8,20.84-19,32.43" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M1004.8,214.76s-20.44,3.67-23.3-3" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M978.24,190.08s10.33,13.68,13,10.62" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M1080.62,181.43s-51.53,3.74-63.19-11.79" transform="translate(-54.62 -52.46)"
-                              fill="none" stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M967.4,121.16s24.18,51.9,41.73,58.51" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M992.76,96.44s14.85,47.74,33.25,62.64" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M1102.3,142s-39.18,16.82-62.71-.19" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10" stroke-width="0.75"/>
-                        <path d="M1027.67,86.26s8.95,35.1,21,43.57" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10" stroke-width="0.75"/>
-                        <path d="M1096.39,102.73s-22,8.33-30.25,2" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10" stroke-width="0.75"/>
-                        <path d="M959.38,201.55s-.06,30.59-8.34,32.76" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M891.3,241.18S924.37,244,939.62,227" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M950.84,165.41s-8,31-30.08,39.38" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M871.46,208.5s23.41,8.14,43.54-12.59" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M924.81,138.74s-2.21,26.35-16.53,38.68" transform="translate(-54.62 -52.46)"
-                              fill="none" stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M872.35,168.35s19.43.13,24-6.2" transform="translate(-54.62 -52.46)" fill="none"
-                              stroke="#444053" stroke-miterlimit="10"/>
-                        <path d="M242.53,795.07s13.31-8.78,26.5-2.53c0,0-4.06,7.82-20.76,7.08Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M240.9,795.54S236.85,811,247,821.45c0,0,6.11-6.36.05-21.93Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M224.3,780.74s1-13.12,30.6-8.77c0,0,.14,8.46-10.26,12.47S229.49,785.07,224.3,780.74Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M222.48,780.65s-12.52,4-1.36,31.79c0,0,8.26-1.84,9.72-12.89S227.91,784.67,222.48,780.65Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M205.71,762s-1.69-21.58,28.57-19.36c0,0,2.15,19.53-23.22,24.55Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M185.72,737.68s4.14-24.45,34.39-17.16c0,0,.12,21.14-29.46,23Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M171.1,712.5s7-23.88,36.92-16.69c0,0-7.13,21.42-34.93,21.09Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M157.22,687.9s6.79-24.72,35.72-17.3c0,0-9.66,23.49-33.82,21.51Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M148.27,664.53s5.22-30.23,32.2-23.54c0,0-7.84,27.5-30.21,27.94Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M139.88,636.3s6.27-30.47,33.54-21.61c0,0-10.71,28.8-31.64,25.82Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M134.69,610s9.94-30.48,31.05-29.65c0,0-10.17,32.19-29.29,35.76Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M131.39,584.39s10.82-36.69,28-33.85c0,0-7.49,28-27.39,39.57Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M129.51,553.77S139.66,523.2,156.62,522c0,0-6.91,30.08-26.73,39.73Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M127.46,525.26s12.66-30.61,23.86-31.3c0,0-5.49,30.14-22.74,36.32Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M126.05,498.71s7.78-33.24,19-36c0,0-1.53,27.18-17.85,38.48Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M121.85,464s8.18-26.49,17.24-30.53c0,0-1.79,31.23-15.14,37Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M118.34,441.14l-1.65-46.71s16.92,35.26,2.9,54.95Z" transform="translate(-54.62 -52.46)"
-                              fill="#f9a826"/>
-                        <path d="M105.26,394.72s-12.2-34.11-15.13-36c0,0,23.93,22.13,21.59,50.6Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M204.89,761.89s-21.46-2.81-20.82,27.52c0,0,19.4,3.16,25.73-21.92Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M184.7,736.87s-24.8-.09-22.78,31c0,0,20.81,3.72,27.68-25.1Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M170.86,714.51S148.35,704,133.94,731.2c0,0,20.8,8.79,38.91-12.29Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M156.72,688.13s-23.05-11.24-36.59,15.39c0,0,24,8.26,38.49-11.18Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M148.56,665.19s-22.18-21.2-39.89.24c0,0,22.67,17.44,40.91,4.48Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M141.14,635.58s-22.32-21.68-39.89,1c0,0,25.06,17.78,40.68,3.55Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M137,609.16s-17.19-27-37.44-21c0,0,17.84,28.66,37.25,27.38Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M131.9,584.22s-17.35-34.09-33.72-28.17c0,0,12.49,26.2,34.16,33.9Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M130.7,552s-17.81-26.84-34.5-23.56c0,0,14.56,27.21,36.23,31.32Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M129.34,524.66s-13.8-30.11-25-30.37c0,0,6.63,29.9,24.1,35.43Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M126.61,498.05s-15.35-30.49-26.88-30.55c0,0,7.86,26.07,26.36,33.24Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M124.3,465.84s-11.48-25.24-21-28.1c0,0,5.74,30.76,19.72,34.79Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M117,440.26,91.33,401.19s6.57,38.54,29.39,46.52Z" transform="translate(-54.62 -52.46)"
-                              fill="#f9a826"/>
-                        <path d="M99.37,397.87S69.56,377.29,68.48,374c0,0,15.21,28.83,43.32,33.91Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M97.59,388.61s-34.23-32.9-43-32.87c0,0,28.23,1.29,43.79,31.12Z"
-                              transform="translate(-54.62 -52.46)" fill="#f9a826"/>
-                        <path d="M124,470.72l-1.25.16c-6.43-50.35-15.81-80.1-26.41-83.78l.42-1.19C108,389.81,117.38,419.14,124,470.72Z"
-                              transform="translate(-54.62 -52.46)" fill="#444053"/>
-                        <path d="M133.42,591.1l-1.88.16c-.4-4.7-.7-9.51-.91-14.3-1.79-41.68-4.58-79.94-8.24-108.63l1.09-1.34c3.67,28.73,7.24,68.16,9,109.88C132.73,581.64,133,586.42,133.42,591.1Z"
-                              transform="translate(-54.62 -52.46)" fill="#444053"/>
-                        <path d="M277.68,819c-.33-.15-33.49-14.95-67.92-50.28a273.54,273.54,0,0,1-49.65-70.34C144.2,666,134.5,626.19,131.25,587.5l2,.92c7.31,86.84,46.84,146.21,78.28,178.5,34.09,35,66.88,49.67,67.21,49.81Z"
-                              transform="translate(-54.62 -52.46)" fill="#444053"/>
-                        <path d="M1055.26,185.73V790.57c0,18-17.35,32.61-38.78,32.61H195.85c-21.42,0-38.77-14.63-38.77-32.61V185.73c0-18,17.35-36.39,38.77-36.39l820.59,2C1037.86,151.33,1055.26,167.71,1055.26,185.73Z"
-                              transform="translate(-54.62 -52.46)" fill="#e8eaf2"/>
-                        <path d="M1055.26,185.91v28H157.08v-28a36.57,36.57,0,0,1,36.57-36.57h825A36.58,36.58,0,0,1,1055.26,185.91Z"
-                              transform="translate(-54.62 -52.46)" fill="#65617d"/>
-                        <circle cx="145.97" cy="129.16" r="12.92" fill="#fa5959" opacity="0.8"/>
-                        <circle cx="183.58" cy="129.16" r="12.92" fill="#fed253" opacity="0.8"/>
-                        <circle cx="221.18" cy="129.16" r="12.92" fill="#8ccf4d" opacity="0.8"/>
-                        <path d="M1035.31,810.63,1013.48,779s-.41-7.83-1.84-9.66-.3-5.91-.3-5.91,1.53-2.24.2-2.44-.2-5.19-.2-5.19l-.11-7.94s1.23-7.63.21-9.46a3,3,0,0,1,.1-3.25s1.22-4.38,0-5.5-.92-7.94-.61-13.33-2.14-8.44-2.14-9.26-8.06-8.75-8.06-9.46-5.1-3.67-8.16-4.48-4.59-1.42-4.49-1.83-4.79-2-4.79-2-4.29-.3-5.92-2.44-6.62-2.75-6.76-2.77-.07-.29-.1-.43l-.09-.46c.38-.64.74-1.31,1.06-2l.29-.62a8.7,8.7,0,0,0,5-1.56,6.87,6.87,0,0,0,2.44-4.88,10.67,10.67,0,0,0-1.19-5.42c-.9-1.84-2.21-3.73-1.76-5.72.2-.86.71-1.61,1-2.45a6.5,6.5,0,0,0-.73-4.82c-.78-1.48-1.85-2.78-2.71-4.21a16.52,16.52,0,0,1-2.16-6,9.29,9.29,0,0,0-.79-3.24,6.17,6.17,0,0,0-1.79-1.81,17.85,17.85,0,0,0-11-3.32c-2.78.09-5.55.84-8.31.5a29.23,29.23,0,0,1-4.84-1.27c-3.42-1-7.37-1.43-10.35.53s-4.16,5.81-6.18,8.82c-1.79,2.67-4.4,4.9-5.76,7.72,0-.05,0-.11,0-.16a9.57,9.57,0,0,0-.76,2.06,14.71,14.71,0,0,0,.45,6.74,4.74,4.74,0,0,0,1.65,3c1,.64,2.39.49,3.57.7,0,.19-.1.38-.14.58a23.28,23.28,0,0,0,16.17,27.17c0,.21,0,.42,0,.62a14,14,0,0,1-.11,1.75h0s-10.25-2.11-13-.68-8.16,2.54-9,3.36-2.86.2-4.7,5-2,9.67-4.38,11.91-3.57,3.76-3.67,5.39.3,2-.62,2.54-2.24,2.65-1.83,3.46a2.91,2.91,0,0,1-1.12,3.06,3.37,3.37,0,0,0-1.43,3s-.61,2.24-2,2.75-2.35,3.86-2.35,3.86l-4.62,5.32-9.17-10.14a3.88,3.88,0,0,0-5.46-.28l-4.5,4a8.92,8.92,0,0,0-4.5,2.68,11.8,11.8,0,0,0-2.34,3.47l-2.46,2.22a6.26,6.26,0,0,0-.63,6.92l5.87,6.49,0,.06A10.37,10.37,0,0,0,866,762.7c-8.77,7.73-8.88,14.86-7.55,18.11s12.44,15.78,12.44,15.78,6.46,8.39,15.78,12.86h0l-.07.07c-.18.2-.37.41-.55.64l-.15.19a2.43,2.43,0,0,1-.14.2l-.16.24-.13.2-.18.3-.11.19-.21.4s-.05.08-.07.13-.17.36-.25.55a1.8,1.8,0,0,0-.08.21c-.06.13-.11.27-.16.4l-.09.27c0,.13-.09.26-.13.39l-.09.29-.12.45c0,.09-.05.18-.08.27s-.11.48-.16.73a2.5,2.5,0,0,1-.05.29l-.09.53c0,.12,0,.24-.05.37l-.06.5c0,.13,0,.26,0,.39s0,.38,0,.58l0,.36c0,.32,0,.64,0,1-.21,11.91.49,13.64.49,13.64a6.6,6.6,0,0,0,5.41,4.06,7.07,7.07,0,0,0,1.75-.09c5.3-.92,17.74-3.06,22.13-2.24,2.64.49,7.52-.24,11-.89l.92-.18.64,2,2-.55,1.72,1c.45.27.82.48,1.08.62,2,6.83,10.18,4.5,10.18,4.5l1.94,1.12,19.68.51a39.93,39.93,0,0,0,7,3.34,6.44,6.44,0,0,0,1,.22,46.07,46.07,0,0,0,5.49.1c1.51,0,2.67-.1,2.67-.1s-.2-5.35-.48-11.33a160.37,160.37,0,0,0,18.23-1.49c10.51-1.85,14.9-11.41,16.51-16.52a47.54,47.54,0,0,1,1,6.34,47.23,47.23,0,0,0,1.63,5.5,18.57,18.57,0,0,0,2.25,4.07c7.75-2.65,3.06-6.62,1.43-8.35s1.12-3.15,1.12-3.15,2.14-1.43,1.94-2.75-.31-2.75,6.63-2.64S1035.31,810.63,1035.31,810.63Zm-107.71-65c.09.59,1.06,6.85,1.93,8.5a10.86,10.86,0,0,1,.23,3.36c-4.11-.33-8.39-.51-8.39-.51a1,1,0,0,1,.22.53l-.64-.15-.94-.23,7.57-11.51Zm-15,23.87,7.12,1.12.59.1a25.2,25.2,0,0,0-.37,3.36c0,.1.17.23.39.38a9,9,0,0,0-.13,1.68c.11.56,3.44,1.78,7.25,2.79-.05.21-.1.4-.16.58h0c-3.37-1.77-8.67-2.6-9.28-3.91S899.34,768,899.34,768s-.66-.35-1.8-.9l4.76.9,1.3-.13A70.63,70.63,0,0,0,912.6,769.52Z"
-                              transform="translate(-54.62 -52.46)" fill="url(#b2e9a30e-d699-40a8-8c6a-b63a5f54a941)"/>
-                        <path d="M1012.09,815.05s-2.83,17.09-17.19,19.61-62.27,2-62.27,2-27.39-4-37.3-27.1-16.27-32.34-7.78-32.75,54.28,15.47,56.91,15.67S1014.62,757.33,1012.09,815.05Z"
-                              transform="translate(-54.62 -52.46)" fill="#65617d"/>
-                        <path d="M1012.09,815.05s-2.83,17.09-17.19,19.61-62.27,2-62.27,2-27.39-4-37.3-27.1-16.27-32.34-7.78-32.75,54.28,15.47,56.91,15.67S1014.62,757.33,1012.09,815.05Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.05"/>
-                        <path d="M883.59,834.06a6.55,6.55,0,0,0,5.36,4,6.91,6.91,0,0,0,1.73-.09c5.26-.91,17.59-3,21.94-2.22,2.61.48,7.45-.24,10.89-.89,2.29-.43,4-.83,4-.83s-4.05-13.45-4.55-13.85-18.2-11-18.2-11l-14-1h0a7.42,7.42,0,0,0-4.75,2.79c-1.48,1.79-2.75,4.73-2.83,9.54C882.9,832.34,883.59,834.06,883.59,834.06Z"
-                              transform="translate(-54.62 -52.46)" fill="#3f3d56"/>
-                        <path d="M883.59,834.06a6.55,6.55,0,0,0,5.36,4,56.39,56.39,0,0,1-3.8-5.55l.07-9.8a17.28,17.28,0,0,1,5.5-14.56h0s-7.38.5-7.58,12.33S883.59,834.06,883.59,834.06Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.05"/>
-                        <path d="M944.36,812.63l13-10.21,20.52-20.22s-2.21-.11-5.56-.25c-.83.53-3.16,2.2-3.25,4.22-.1,2.47-5.54.17-8.37,1.59s-16.68,19.14-19.11,19-4.35-1.23-5.36.49l-.07.11Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.1"/>
-                        <path d="M885.93,811l1.42.65c9.9,4.24,22.13,13.14,23,14.76.56,1,7.65,5.28,13.12,8.51,2.29-.43,4-.83,4-.83s-4.05-13.45-4.55-13.85-18.2-11-18.2-11l-14-1h0A7.42,7.42,0,0,0,885.93,811Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.1"/>
-                        <path d="M858.43,782c1.32,3.23,12.34,15.67,12.34,15.67s7,9.09,16.88,13.34,22.14,13.14,23.05,14.76c.58,1,8.48,5.79,14,9.06l1.25.73,2.76,1.6,1.46.84,6.75-5.45c3.33-2.7,6.64-5.42,6.69-5.57.1-.3,1.42-3.74,1.11-3.94-.15-.11-.85-1.5-2.13-3.13a14.19,14.19,0,0,0-5.15-4.25,14.67,14.67,0,0,1-6.67-7s-.44-.32-1.11-.74a13.39,13.39,0,0,0-4.55-2c-2.22-.28-6.36-4.83-6.36-4.83a12.45,12.45,0,0,1-3.95-4.14c-1.06-2.22-16.74-13-18.19-14l38,24.41,9.09,5.84,13-10.21,20.53-20.21s-2.76-.14-6.78-.31c-10-.43-27.68-1.11-29.92-.6a17.19,17.19,0,0,1-5.56.36s-5,.23-8.39-1.54-8.59-2.58-9.2-3.89-18.5-7.57-18.5-7.57-24.36-12.94-33.06-5.26S857.12,778.76,858.43,782Z"
-                              transform="translate(-54.62 -52.46)" fill="#65617d"/>
-                        <path d="M937,707.8l3.13,10.41,4,23.45,14.86,1,4.3-7.13,4.29-7.12s2.68-9.48,4.6-18.64c1.7-8.12,2.81-16,1-16.84-1.64-.76-2.72-3.49-3.42-6.43-.09-.36-.17-.73-.24-1.1a56.73,56.73,0,0,1-1-7.54s-31.14-1.61-26.79,11.23a20.31,20.31,0,0,1,1.17,6.82,16.14,16.14,0,0,1-.1,1.74A14.56,14.56,0,0,1,937,707.8Z"
-                              transform="translate(-54.62 -52.46)" fill="#ee8e9e"/>
-                        <path d="M930.51,706.08l1.11,17.69,2.53,15.06,2.83,7L939.51,784s24.37,2.82,30.3-.05a2.64,2.64,0,0,0,1.07-.84C978,772.27,975.7,741,975.7,741l2.73-20.21-1.82-10.5-4.4-.46-3.39-.37s-.76.94-1.86,2.4c-3,4-8.51,11.74-8.14,15,.5,4.45-.61,9-2.33,9.71s-3.13,1.92-3.44.7a5.51,5.51,0,0,1-.3-3.23c.3-1.72-1.31-7-1.31-7s-2.73-6.16-2.53-8.79-.3-5.66-1.11-6.37-1.92-1.42-1-4.65-4-9.53-4-9.53Z"
-                              transform="translate(-54.62 -52.46)" fill="#e3e8f4"/>
-                        <path d="M962.71,750.26l1,30.23,5.84,3.23a2.54,2.54,0,0,0,1.07-.83c7.16-10.82,4.81-42.13,4.81-42.13l2.73-20.22-1.82-10.49-4.39-.47c1.7-8.11,2.81-16,1-16.84-1.64-.76-2.72-3.49-3.42-6.42h0l-3.15,21.38s.26,1.93.35,3.92a11,11,0,0,1-.25,3.76c-.71,1.82-.2,5.06-.2,5.06-1.83,3.21-2.74,9.16-3.18,14.9C962.48,743,962.71,750.26,962.71,750.26Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.1"/>
-                        <path d="M969.59,685.83s5.1.64,6.71,2.76,5.87,2.43,5.87,2.43,4.85,1.61,4.75,2,1.41,1,4.45,1.82,8.08,3.74,8.08,4.45,8,8.59,8,9.4,2.43,3.84,2.12,9.2-.6,12.13.61,13.24,0,5.46,0,5.46a3,3,0,0,0-.1,3.23c1,1.82-.2,9.4-.2,9.4l.1,7.89s-1.11,5,.2,5.15-.2,2.43-.2,2.43-1.11,4,.3,5.86,1.82,9.61,1.82,9.61l21.63,31.44s.31,5.76-6.57,5.66-6.77,1.31-6.57,2.63-1.92,2.72-1.92,2.72-2.73,1.42-1.11,3.14,6.27,5.66-1.42,8.29a18.58,18.58,0,0,1-2.22-4,45.59,45.59,0,0,1-1.62-5.45s-.71-7.69-2.12-8.7S1009,810,1009,810s2-3.94-.81-5.56-43.88-24.36-43.88-24.36l-1-30.23s-.7-22.34,3.54-29.82c0,0-.5-3.24.2-5.06s-.1-7.68-.1-7.68Z"
-                              transform="translate(-54.62 -52.46)" fill="#3f3d56"/>
-                        <path d="M943.1,698s-10.16-2.09-12.89-.68-8.09,2.53-8.9,3.34-2.83.2-4.65,5-2,9.61-4.35,11.83-3.53,3.74-3.63,5.36.3,2-.61,2.53-2.23,2.62-1.82,3.43,21,18.6,21,18.6,1,6.78,1.92,8.49-1,25.38-3,27,13.65,1.46,13.65,1.46.71-15.52,1.32-16.32-.41-17.39-.41-17.39-.1-14.15,1.21-17.9,1.17-16.17,1.17-16.17,1.16-7.46,2.57-9.2S943.1,698,943.1,698Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.1"/>
-                        <path d="M942.8,697.66s-10.17-2.1-12.9-.68-8.08,2.53-8.89,3.34-2.83.2-4.65,4.95-2,9.6-4.35,11.83-3.54,3.74-3.64,5.35.31,2-.6,2.53-2.23,2.63-1.82,3.44S927,747,927,747s1,6.77,1.92,8.49-1,25.37-3,27S939.51,784,939.51,784s.71-15.52,1.31-16.33-.4-17.39-.4-17.39-.1-14.15,1.21-17.89,1.17-16.17,1.17-16.17,1.16-7.46,2.57-9.2S942.8,697.66,942.8,697.66Z"
-                              transform="translate(-54.62 -52.46)" fill="#3f3d56"/>
-                        <path d="M941.73,689.1a20.31,20.31,0,0,1,1.17,6.82,23.18,23.18,0,0,0,26.61-10.51,56.73,56.73,0,0,1-1-7.54S937.38,676.26,941.73,689.1Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.1"/>
-                        <path d="M926.37,673.12a23.12,23.12,0,1,0,.5-4.81A23.14,23.14,0,0,0,926.37,673.12Z"
-                              transform="translate(-54.62 -52.46)" fill="#ee8e9e"/>
-                        <path d="M911.51,726.7,906,728.42a2.88,2.88,0,0,1-1.12,3,3.39,3.39,0,0,0-1.41,3s-.61,2.23-2,2.73-2.33,3.85-2.33,3.85l-4.65,5.35s-1.72,1.42-1.41,2.13-1.82.91-1.82.91l1.11,18,9.6,1.82,6-.61,4.85-1.82,4.24-2.52,1.93-5,8.49-12.94Z"
-                              transform="translate(-54.62 -52.46)" fill="#3f3d56"/>
-                        <path d="M892.6,750.86s-12.33-17.79-21.53-8.19,3.74,25.17,6.77,24.67S895.33,766,895.33,766Z"
-                              transform="translate(-54.62 -52.46)" fill="#ee8e9e"/>
-                        <rect x="850.79" y="726.52" width="64.55" height="50.12" rx="1.54"
-                              transform="translate(383.51 -371.73) rotate(27.04)" fill="#3f3d56"/>
-                        <rect x="856.02" y="731.07" width="54.26" height="40.89"
-                              transform="translate(383.49 -371.77) rotate(27.04)" fill="#f9a826"/>
-                        <circle cx="802.48" cy="685.76" r="0.89" fill="#e6e8ec"/>
-                        <circle cx="854.79" cy="712.56" r="1.47" fill="#e6e8ec"/>
-                        <path d="M884.62,754.6c-.1,13.35,27.49,16.17,27.49,16.17l7,1.12,3.16.5,1.32-13s-1.45-.21-3.26-.63c-2.67-.63-6.13-1.7-6.85-3.21C912.31,753,884.72,741.26,884.62,754.6Z"
-                              transform="translate(-54.62 -52.46)" fill="#ee8e9e"/>
-                        <path d="M926.87,668.31a2.7,2.7,0,0,1,1.69.76c.79.83.83,2.29,1.84,2.8a2,2,0,0,0,1.21.14c2.69-.38,4.24-3.41,6.82-4.25a7,7,0,0,1,4.53.39,3.35,3.35,0,0,1,1.49,1c.87,1.12.26,2.77.66,4.12.56,1.88,2.8,2.62,4.74,2.87s4.13.38,5.42,1.84a4.94,4.94,0,0,1,1,3.92,3.05,3.05,0,0,0,0,1.44c.54,1.52,3.16,1.29,3.85.1.5-.87.34-1.6,1.52-1.84a5.06,5.06,0,0,1,2.48.43,18.08,18.08,0,0,0,6.4,1,23.15,23.15,0,1,0-43.6-14.66Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.1"/>
-                        <path d="M956.22,682.7a3.09,3.09,0,0,1,0-1.45,4.93,4.93,0,0,0-1-3.91c-1.29-1.47-3.48-1.61-5.42-1.85s-4.18-1-4.74-2.87c-.4-1.35.21-3-.66-4.11a3.19,3.19,0,0,0-1.49-1,6.83,6.83,0,0,0-4.53-.39c-2.58.83-4.13,3.87-6.82,4.25a2.17,2.17,0,0,1-1.21-.14c-1-.51-1.06-2-1.84-2.81-1.22-1.3-3.55-.46-5.06-1.42a4.68,4.68,0,0,1-1.63-3,14.67,14.67,0,0,1-.45-6.7c.88-3.76,4.24-6.34,6.39-9.55,2-3,3.12-6.78,6.13-8.76s6.86-1.53,10.25-.53a30,30,0,0,0,4.8,1.26c2.74.34,5.48-.41,8.23-.5a17.7,17.7,0,0,1,10.87,3.3,6.07,6.07,0,0,1,1.77,1.8,9.18,9.18,0,0,1,.79,3.21,16.44,16.44,0,0,0,2.13,5.92c.85,1.42,1.92,2.71,2.69,4.18a6.47,6.47,0,0,1,.72,4.79c-.26.83-.77,1.58-1,2.43-.45,2,.85,3.86,1.74,5.68a10.81,10.81,0,0,1,1.18,5.39,6.79,6.79,0,0,1-2.43,4.85,8.67,8.67,0,0,1-5.12,1.55,18.12,18.12,0,0,1-6.53-1,5.16,5.16,0,0,0-2.47-.43c-1.18.25-1,1-1.53,1.84C959.38,684,956.76,684.21,956.22,682.7Z"
-                              transform="translate(-54.62 -52.46)" fill="#3f3d56"/>
-                        <path d="M943.75,813.23l13-10.21,20.53-20.21s-2.76-.14-6.78-.31a4.48,4.48,0,0,0-1.43,2.76c-.1,2.47-5.54.17-8.37,1.59s-16.68,19.14-19.11,19-4.35-1.23-5.36.49l-.07.11a2.9,2.9,0,0,1-1.54.92Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.1"/>
-                        <path d="M917.47,812.53,924,833.44l1,3.29,3.12-.86,6.88-1.89,30.64-8.41a26.63,26.63,0,0,0,11-3,33.42,33.42,0,0,1,19-4.15c4,.38,8.55-1.37,12.29-8.27,0,0,8.49-25.07-12.94-32.25s-22.46,3.82-22.46,3.82l-.29.18c-.83.53-3.16,2.2-3.25,4.22-.1,2.47-5.54.17-8.37,1.59s-16.68,19.14-19.11,19-4.35-1.23-5.36.49l-.07.11c-.75,1-3,1.27-4.49,1.32-.81,0-1.4,0-1.4,0l-.19.06-1.56.46Z"
-                              transform="translate(-54.62 -52.46)" fill="#65617d"/>
-                        <path d="M919.16,771.89l3.16.5,1.32-13s-1.45-.21-3.26-.63C920.86,760.54,919.78,767.57,919.16,771.89Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.1"/>
-                        <path d="M1001.83,711s9.4-2.73,7.07,24-19.71,43.57-19.71,43.57-20,8.79-29,7.38-15.57-1.72-15.57-1.72a22.82,22.82,0,0,0-9.1-2.43c-5-.2-15.67-3.33-15.87-4.35s2.63-15.87,1.41-17c0,0,14.16.58,15.57,1.61s3.44.29,5,0,6.16-4.34,15.36-.8c0,0,3.14.3,4.35-.5a4.35,4.35,0,0,1,3.16-.21,8.81,8.81,0,0,0,2.2-1.11c.3-.4,2.73,0,2.73,0a1.07,1.07,0,0,0,1.51-.71,6.68,6.68,0,0,1,1.42-2.22s2.73-15.37,7.88-21.13a3.27,3.27,0,0,0,1.11-2.93C980.9,730.77,989.69,707.72,1001.83,711Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.1"/>
-                        <path d="M1001.58,708.91s9.4-2.73,7.07,24-19.71,43.57-19.71,43.57-20,8.79-29,7.38-15.57-1.72-15.57-1.72a22.76,22.76,0,0,0-9.1-2.43c-5-.2-15.67-3.33-15.87-4.35s2.63-15.87,1.42-17c0,0,14.15.58,15.56,1.61s3.44.29,5,0,6.16-4.34,15.36-.8c0,0,3.14.3,4.35-.51a4.38,4.38,0,0,1,3.16-.2,8.81,8.81,0,0,0,2.2-1.11c.3-.4,2.73,0,2.73,0a1.07,1.07,0,0,0,1.51-.71,6.68,6.68,0,0,1,1.42-2.22s2.73-15.37,7.88-21.13a3.29,3.29,0,0,0,1.12-2.93C980.65,728.72,989.45,705.67,1001.58,708.91Z"
-                              transform="translate(-54.62 -52.46)" fill="#3f3d56"/>
-                        <path d="M928.56,809.2l13.36,16.16.08-.09c.1-.31,1.41-3.75,1.11-3.95s-2.63-5.26-7.28-7.38a13.72,13.72,0,0,1-5.71-5.2Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.1"/>
-                        <path d="M928.75,837.16l1.46.84,6.75-5.45c3.33-2.7,6.64-5.42,6.69-5.57.1-.3,1.42-3.74,1.11-3.94-.15-.11-.85-1.5-2.13-3.13-9-2.53-3.28,3.75-2.52,4,0,0-11-2.53-11.62,9.47A14.24,14.24,0,0,0,928.75,837.16Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.1"/>
-                        <path d="M939.91,842.25l1.92,1.11,19.51.5a39.53,39.53,0,0,0,6.91,3.33,6,6,0,0,0,1,.21,43.24,43.24,0,0,0,5.44.1c1.49,0,2.65-.1,2.65-.1s-.93-24.6-1.62-27.19c-.34-1.24-2-1-3.58-.35a23.87,23.87,0,0,0-3.5,1.77s-8.29.8-9.6,1.52-5.06-.41-7.38,0-6.47-2.74-6.47-2.74c-11.32-3.74-5,3.24-4.15,3.54,0,0-11-2.53-11.62,9.47S939.91,842.25,939.91,842.25Z"
-                              transform="translate(-54.62 -52.46)" fill="#3f3d56"/>
-                        <path d="M968.11,832.74c.22,5.1,4.19,11.42,6.56,14.76,1.49,0,2.65-.1,2.65-.1s-.93-24.6-1.62-27.19c-.34-1.24-2-1-3.58-.35C970.16,823.53,968,828.64,968.11,832.74Z"
-                              transform="translate(-54.62 -52.46)" fill="#565387"/>
-                        <path d="M968.11,832.74c.22,5.1,4.19,11.42,6.56,14.76,1.49,0,2.65-.1,2.65-.1s-.93-24.6-1.62-27.19c-.34-1.24-2-1-3.58-.35C970.16,823.53,968,828.64,968.11,832.74Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.1"/>
-                        <path d="M964.78,833.42c1.34,4.92,1.33,10.43,3.47,13.77a6,6,0,0,0,1,.21,43.24,43.24,0,0,0,5.44.1c1.49,0,2.65-.1,2.65-.1s-.93-24.6-1.62-27.19c-.34-1.24-2-1-3.58-.35a23.87,23.87,0,0,0-3.5,1.77S963.06,827.12,964.78,833.42Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.05"/>
-                        <path d="M897.47,783.54s9.69,3.15,17.9,14.33Z" transform="translate(-54.62 -52.46)"
-                              opacity="0.1"/>
-                        <g opacity="0.1">
-                            <path d="M976.22,662.24l-.06.22a6.71,6.71,0,0,1-.34.84A6.78,6.78,0,0,1,976.22,662.24Z"
-                                  transform="translate(-54.62 -52.46)"/>
-                            <path d="M921.39,657.34a9.38,9.38,0,0,1,.75-2c0,.17-.1.34-.14.52a14.45,14.45,0,0,0,.45,6.71,4.64,4.64,0,0,0,1.63,3c1.5,1,3.83.13,5.06,1.43.78.82.82,2.29,1.84,2.8a2.08,2.08,0,0,0,1.21.14c2.68-.38,4.24-3.42,6.82-4.25a6.8,6.8,0,0,1,4.52.39,3.44,3.44,0,0,1,1.5,1c.86,1.12.26,2.76.66,4.12.55,1.87,2.79,2.62,4.73,2.86s4.13.39,5.43,1.85a5,5,0,0,1,1,3.91,3,3,0,0,0,0,1.45c.53,1.52,3.15,1.29,3.84.09.5-.87.35-1.59,1.53-1.83a4.91,4.91,0,0,1,2.47.43,18.37,18.37,0,0,0,6.53,1,8.78,8.78,0,0,0,5.13-1.56,5.81,5.81,0,0,0,1.57-1.91,6.43,6.43,0,0,1-2.18,3.43,8.69,8.69,0,0,1-5.12,1.55,18.12,18.12,0,0,1-6.53-1,5.18,5.18,0,0,0-2.48-.43c-1.18.25-1,1-1.53,1.84-.68,1.2-3.3,1.42-3.84-.09a3.23,3.23,0,0,1,0-1.45,4.89,4.89,0,0,0-1-3.91c-1.29-1.47-3.48-1.61-5.42-1.85s-4.18-1-4.74-2.87c-.4-1.35.21-3-.66-4.11a3.24,3.24,0,0,0-1.49-1,6.83,6.83,0,0,0-4.53-.39c-2.58.83-4.14,3.87-6.82,4.25a2.17,2.17,0,0,1-1.21-.14c-1-.51-1.06-2-1.84-2.81-1.23-1.3-3.55-.46-5.06-1.42a4.64,4.64,0,0,1-1.63-3A14.53,14.53,0,0,1,921.39,657.34Z"
-                                  transform="translate(-54.62 -52.46)"/>
-                        </g>
-                        <path d="M977.79,738.25c-1.86,2.5-4,4.81-5.61,7.46a14.16,14.16,0,0,0-2.46,8.82c1.7-1.74,2.48-4.14,3.55-6.32,1.81-3.7,4.51-6.83,6.8-10.23.43-.65,3.22-4.4,1.81-4.57C980.71,733.26,978.42,737.4,977.79,738.25Z"
-                              transform="translate(-54.62 -52.46)" opacity="0.1"/>
-                        <path d="M341.27,412.72H258.54a2.76,2.76,0,1,0,0,5.51h82.73a2.76,2.76,0,1,0,0-5.51Zm0,9.45H258.54a2.76,2.76,0,0,0,0,5.52h82.73a2.76,2.76,0,0,0,0-5.52Zm-4.15-63.78H262.7a6.93,6.93,0,0,0-6.92,6.91v35a6.93,6.93,0,0,0,6.92,6.91h74.42a6.93,6.93,0,0,0,6.91-6.91v-35A6.93,6.93,0,0,0,337.12,358.39Zm-65.19,42.55h-7.09a2.76,2.76,0,0,1,0-5.52h7.09a2.76,2.76,0,0,1,0,5.52Zm0-30.73h-7.09a2.76,2.76,0,0,1,0-5.52h7.09a2.76,2.76,0,0,1,0,5.52Zm28,28.36a15.76,15.76,0,1,1,15.76-15.76A15.78,15.78,0,0,1,299.91,398.57ZM335,400.94h-7.09a2.76,2.76,0,0,1,0-5.52H335a2.76,2.76,0,0,1,0,5.52Zm0-30.73h-7.09a2.76,2.76,0,0,1,0-5.52H335a2.76,2.76,0,0,1,0,5.52Z"
-                              transform="translate(-54.62 -52.46)" fill="#fff"/>
-                        <circle cx="245.29" cy="330.73" r="10.44" fill="#fff"/>
-                        <rect x="403.44" y="236.28" width="375.69" height="208.58" fill="#f9a826" opacity="0.2"/>
-                        <rect x="403.44" y="491.52" width="375.69" height="208.58" fill="#f9a826" opacity="0.2"/>
-                        <rect x="477.32" y="381.52" width="11.37" height="38.1" fill="#fff"/>
-                        <rect x="498.97" y="334.35" width="11.37" height="85.27" fill="#fff"/>
-                        <rect x="520.63" y="291.85" width="11.37" height="127.77" fill="#dfe3ef"/>
-                        <rect x="542.29" y="261.53" width="11.37" height="158.09" fill="#fff"/>
-                        <rect x="520.63" y="261.53" width="11.37" height="158.09" fill="#f9a826"/>
-                        <rect x="563.94" y="332.72" width="11.37" height="86.9" fill="#f9a826"/>
-                        <rect x="585.6" y="310.26" width="11.37" height="109.36" fill="#f9a826" opacity="0.2"/>
-                        <rect x="607.25" y="276.15" width="11.37" height="143.47" fill="#f9a826"/>
-                        <rect x="628.91" y="355.73" width="11.37" height="63.89" fill="#f9a826" opacity="0.2"/>
-                        <rect x="650.57" y="326.23" width="11.37" height="93.39" fill="#f9a826"/>
-                        <rect x="672.22" y="291.85" width="11.37" height="127.77" fill="#f9a826" opacity="0.2"/>
-                        <rect x="693.88" y="291.85" width="11.37" height="127.77" fill="#f9a826"/>
-                        <path d="M344,623.05a6.32,6.32,0,0,0-6.3-6.3H262.09a6.33,6.33,0,0,0-6.31,6.3v9.46H344Zm-88.25,50.43a6.33,6.33,0,0,0,6.31,6.31h75.64a6.32,6.32,0,0,0,6.3-6.31V642H255.78Zm28-9.45h32.31a2.76,2.76,0,1,1,0,5.51H283.75a2.76,2.76,0,0,1,0-5.51Zm-14.18,0h2.36a2.76,2.76,0,1,1,0,5.51h-2.36a2.76,2.76,0,1,1,0-5.51Z"
-                              transform="translate(-54.62 -52.46)" fill="#fff"/>
-                        <rect x="477.32" y="636.75" width="11.37" height="38.1" fill="#fff"/>
-                        <rect x="498.97" y="589.58" width="11.37" height="85.27" fill="#fff"/>
-                        <rect x="520.63" y="547.08" width="11.37" height="127.77" fill="#dfe3ef"/>
-                        <rect x="542.29" y="516.76" width="11.37" height="158.09" fill="#fff"/>
-                        <rect x="520.63" y="516.76" width="11.37" height="158.09" fill="#f9a826"/>
-                        <rect x="563.94" y="587.95" width="11.37" height="86.9" fill="#f9a826"/>
-                        <rect x="585.6" y="565.49" width="11.37" height="109.36" fill="#fff"/>
-                        <rect x="607.25" y="531.38" width="11.37" height="143.47" fill="#fff"/>
-                        <rect x="628.91" y="610.96" width="11.37" height="63.89" fill="#f9a826" opacity="0.2"/>
-                        <rect x="650.57" y="581.46" width="11.37" height="93.39" fill="#f9a826" opacity="0.2"/>
-                        <rect x="672.22" y="547.08" width="11.37" height="127.77" fill="#f9a826" opacity="0.2"/>
-                        <rect x="693.88" y="547.08" width="11.37" height="127.77" fill="#f9a826" opacity="0.2"/>
-                    </svg>
-                </div>
-            </div>
-            <h6 class="">This table displays the leaderboard for deposits made by Eth1 Addresses to the Deposit
-                Contract</h6>
-            <div class="card">
-                <div class="card-body px-0 py-2">
-                    <div class="table-responsive pt-2">
-                        <table class="table" id="deposits">
-                            <thead>
-                            <tr>
-                                <th>Eth1 Address</th>
-                                <!-- <th>Name</th> -->
-                                <th>Total Deposited</th>
-                                <th data-toggle="tooltip" title="Valid deposits">Valid</th>
-                                <th data-toggle="tooltip" title="Invalid deposits">Invalid</th>
-                                <th data-toggle="tooltip" title="Number of pending validators">Pen</th>
-                                <th data-toggle="tooltip" title="Number of attesting validators">Att</th>
-                                <th data-toggle="tooltip" title="Number of slashed validators">Sla</th>
-                                <th data-toggle="tooltip" title="Number of voluntary exited validators">Ex</th>
-                                <th data-toggle="tooltip" title="Total number of validators">Tot</th>
-                            </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <div class="d-flex justify-content-between py-2">
-                <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-            </div>
+{{ end }}
+{{ define "css" }}
+  <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
+  <style>
+    .row-highlight {
+      background: var(--highlight) !important;
+    }
+  </style>
+{{ end }}
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+          <div class="heading">
+            <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-file-signature mr-2"></i>Eth1 Deposits Leaderboard</h1>
+          </div>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+              <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Eth1 Deposits</li>
+            </ol>
+          </nav>
         </div>
-    {{end}}
-{{end}}
+      </div>
+      <div id="scatterChart" class="card my-3 justify-content-center align-items-center">
+        <div class="p-2 w-25 ">
+          <svg id="f885adbf-893a-4cbc-9f2f-51541a368feb" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1090.76 795.07">
+            <defs>
+              <linearGradient id="b2e9a30e-d699-40a8-8c6a-b63a5f54a941" x1="946.56" y1="846.78" x2="946.56" y2="635.52" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="gray" stop-opacity="0.25" />
+                <stop offset="0.54" stop-color="gray" stop-opacity="0.12" />
+                <stop offset="1" stop-color="gray" stop-opacity="0.1" />
+              </linearGradient>
+            </defs>
+            <title>Leaderboard</title>
+            <path d="M1145.38,293.87s-15.23-6.19-63.68,16-54.5,19.4-67.05,16-19.53-4.21-33-22.77c0,0-9.48-51.4-18.66-59.37s-48.18,4.54-48.18,4.54S868.06,259,859.15,196.54c0,0,6.32-47.11-2.29-61.56,0,0,17.38,7.49,46.06-4.61s51.65,13,51.65,13,7.23,18.73,6.47,29.89,3.83,15.36,17.51,10c0,0,6.72-9.56-2.8-25.36s-16.31-27.57-13.65-39.85,10.29-29.28,34.83-37.79,57.87-10.15,73.87-16.81,19.87-11,19.87-11-9.84,9.86,13.35,51.68,8.41,60,8.41,60-12.34,29.4-66.81,27c0,0-52.49,1.92-23.87,24.18,0,0,18.32-3.73,45.72-12.44s47.18,27.23,52.09,52.24S1145.38,293.87,1145.38,293.87Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M1074.83,84.17l.28-.07c2.11,8-21.35,40-41.4,65.53l-.24-.18C1061.76,113.49,1076.45,90.31,1074.83,84.17Z" transform="translate(-54.62 -52.46)" fill="#444053" />
+            <path d="M1033.89,148.92l.12.33c-16,20.36-36.17,44.66-52.29,62.66-1.53,1.72-3.06,3.52-4.53,5.36l-.46-.37c1.48-1.85,3-3.66,4.55-5.38C997.4,193.53,1017.88,169.28,1033.89,148.92Z" transform="translate(-54.62 -52.46)" fill="#444053" />
+            <path d="M977.12,216.41l.32.55c-29.34,36.63-31.28,93.51-31.35,94l-6.19-7.14C940,303.32,947.57,253.3,977.12,216.41Z" transform="translate(-54.62 -52.46)" fill="#444053" />
+            <path d="M1111.35,274s-34.6-18-61.56-11.53-87.67-22.81-87.67-22.81-25.77-10.47-31-22.41c0,0-17.69-18.69-18.7-28.38s-18.22-34-29.45-34.93" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M1106.34,291.32s-17.42-11.74-15.4-25.42" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M1079.61,306.48s-24.91-9.05-27.42-44.52" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M1039.4,315.66s-23.81-19.76-15.91-54.28" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M991.09,306s-15.87-33.25-1.75-54.89" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M1111.75,252.08s-18,5.72-14.15,15.2" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M1090,219.37s-24.11,7.65-24.68,41.76" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M1056.38,211.5s-21.94,27.09-20.34,51.71" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M1018,222.12s-21.8,20.84-19,32.43" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M1004.8,214.76s-20.44,3.67-23.3-3" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M978.24,190.08s10.33,13.68,13,10.62" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M1080.62,181.43s-51.53,3.74-63.19-11.79" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M967.4,121.16s24.18,51.9,41.73,58.51" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M992.76,96.44s14.85,47.74,33.25,62.64" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M1102.3,142s-39.18,16.82-62.71-.19" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" stroke-width="0.75" />
+            <path d="M1027.67,86.26s8.95,35.1,21,43.57" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" stroke-width="0.75" />
+            <path d="M1096.39,102.73s-22,8.33-30.25,2" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" stroke-width="0.75" />
+            <path d="M959.38,201.55s-.06,30.59-8.34,32.76" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M891.3,241.18S924.37,244,939.62,227" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M950.84,165.41s-8,31-30.08,39.38" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M871.46,208.5s23.41,8.14,43.54-12.59" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M924.81,138.74s-2.21,26.35-16.53,38.68" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M872.35,168.35s19.43.13,24-6.2" transform="translate(-54.62 -52.46)" fill="none" stroke="#444053" stroke-miterlimit="10" />
+            <path d="M242.53,795.07s13.31-8.78,26.5-2.53c0,0-4.06,7.82-20.76,7.08Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M240.9,795.54S236.85,811,247,821.45c0,0,6.11-6.36.05-21.93Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M224.3,780.74s1-13.12,30.6-8.77c0,0,.14,8.46-10.26,12.47S229.49,785.07,224.3,780.74Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M222.48,780.65s-12.52,4-1.36,31.79c0,0,8.26-1.84,9.72-12.89S227.91,784.67,222.48,780.65Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M205.71,762s-1.69-21.58,28.57-19.36c0,0,2.15,19.53-23.22,24.55Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M185.72,737.68s4.14-24.45,34.39-17.16c0,0,.12,21.14-29.46,23Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M171.1,712.5s7-23.88,36.92-16.69c0,0-7.13,21.42-34.93,21.09Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M157.22,687.9s6.79-24.72,35.72-17.3c0,0-9.66,23.49-33.82,21.51Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M148.27,664.53s5.22-30.23,32.2-23.54c0,0-7.84,27.5-30.21,27.94Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M139.88,636.3s6.27-30.47,33.54-21.61c0,0-10.71,28.8-31.64,25.82Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M134.69,610s9.94-30.48,31.05-29.65c0,0-10.17,32.19-29.29,35.76Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M131.39,584.39s10.82-36.69,28-33.85c0,0-7.49,28-27.39,39.57Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M129.51,553.77S139.66,523.2,156.62,522c0,0-6.91,30.08-26.73,39.73Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M127.46,525.26s12.66-30.61,23.86-31.3c0,0-5.49,30.14-22.74,36.32Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M126.05,498.71s7.78-33.24,19-36c0,0-1.53,27.18-17.85,38.48Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M121.85,464s8.18-26.49,17.24-30.53c0,0-1.79,31.23-15.14,37Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M118.34,441.14l-1.65-46.71s16.92,35.26,2.9,54.95Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M105.26,394.72s-12.2-34.11-15.13-36c0,0,23.93,22.13,21.59,50.6Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M204.89,761.89s-21.46-2.81-20.82,27.52c0,0,19.4,3.16,25.73-21.92Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M184.7,736.87s-24.8-.09-22.78,31c0,0,20.81,3.72,27.68-25.1Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M170.86,714.51S148.35,704,133.94,731.2c0,0,20.8,8.79,38.91-12.29Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M156.72,688.13s-23.05-11.24-36.59,15.39c0,0,24,8.26,38.49-11.18Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M148.56,665.19s-22.18-21.2-39.89.24c0,0,22.67,17.44,40.91,4.48Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M141.14,635.58s-22.32-21.68-39.89,1c0,0,25.06,17.78,40.68,3.55Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M137,609.16s-17.19-27-37.44-21c0,0,17.84,28.66,37.25,27.38Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M131.9,584.22s-17.35-34.09-33.72-28.17c0,0,12.49,26.2,34.16,33.9Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M130.7,552s-17.81-26.84-34.5-23.56c0,0,14.56,27.21,36.23,31.32Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M129.34,524.66s-13.8-30.11-25-30.37c0,0,6.63,29.9,24.1,35.43Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M126.61,498.05s-15.35-30.49-26.88-30.55c0,0,7.86,26.07,26.36,33.24Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M124.3,465.84s-11.48-25.24-21-28.1c0,0,5.74,30.76,19.72,34.79Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M117,440.26,91.33,401.19s6.57,38.54,29.39,46.52Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M99.37,397.87S69.56,377.29,68.48,374c0,0,15.21,28.83,43.32,33.91Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M97.59,388.61s-34.23-32.9-43-32.87c0,0,28.23,1.29,43.79,31.12Z" transform="translate(-54.62 -52.46)" fill="#f9a826" />
+            <path d="M124,470.72l-1.25.16c-6.43-50.35-15.81-80.1-26.41-83.78l.42-1.19C108,389.81,117.38,419.14,124,470.72Z" transform="translate(-54.62 -52.46)" fill="#444053" />
+            <path d="M133.42,591.1l-1.88.16c-.4-4.7-.7-9.51-.91-14.3-1.79-41.68-4.58-79.94-8.24-108.63l1.09-1.34c3.67,28.73,7.24,68.16,9,109.88C132.73,581.64,133,586.42,133.42,591.1Z" transform="translate(-54.62 -52.46)" fill="#444053" />
+            <path d="M277.68,819c-.33-.15-33.49-14.95-67.92-50.28a273.54,273.54,0,0,1-49.65-70.34C144.2,666,134.5,626.19,131.25,587.5l2,.92c7.31,86.84,46.84,146.21,78.28,178.5,34.09,35,66.88,49.67,67.21,49.81Z" transform="translate(-54.62 -52.46)" fill="#444053" />
+            <path d="M1055.26,185.73V790.57c0,18-17.35,32.61-38.78,32.61H195.85c-21.42,0-38.77-14.63-38.77-32.61V185.73c0-18,17.35-36.39,38.77-36.39l820.59,2C1037.86,151.33,1055.26,167.71,1055.26,185.73Z" transform="translate(-54.62 -52.46)" fill="#e8eaf2" />
+            <path d="M1055.26,185.91v28H157.08v-28a36.57,36.57,0,0,1,36.57-36.57h825A36.58,36.58,0,0,1,1055.26,185.91Z" transform="translate(-54.62 -52.46)" fill="#65617d" />
+            <circle cx="145.97" cy="129.16" r="12.92" fill="#fa5959" opacity="0.8" />
+            <circle cx="183.58" cy="129.16" r="12.92" fill="#fed253" opacity="0.8" />
+            <circle cx="221.18" cy="129.16" r="12.92" fill="#8ccf4d" opacity="0.8" />
+            <path
+              d="M1035.31,810.63,1013.48,779s-.41-7.83-1.84-9.66-.3-5.91-.3-5.91,1.53-2.24.2-2.44-.2-5.19-.2-5.19l-.11-7.94s1.23-7.63.21-9.46a3,3,0,0,1,.1-3.25s1.22-4.38,0-5.5-.92-7.94-.61-13.33-2.14-8.44-2.14-9.26-8.06-8.75-8.06-9.46-5.1-3.67-8.16-4.48-4.59-1.42-4.49-1.83-4.79-2-4.79-2-4.29-.3-5.92-2.44-6.62-2.75-6.76-2.77-.07-.29-.1-.43l-.09-.46c.38-.64.74-1.31,1.06-2l.29-.62a8.7,8.7,0,0,0,5-1.56,6.87,6.87,0,0,0,2.44-4.88,10.67,10.67,0,0,0-1.19-5.42c-.9-1.84-2.21-3.73-1.76-5.72.2-.86.71-1.61,1-2.45a6.5,6.5,0,0,0-.73-4.82c-.78-1.48-1.85-2.78-2.71-4.21a16.52,16.52,0,0,1-2.16-6,9.29,9.29,0,0,0-.79-3.24,6.17,6.17,0,0,0-1.79-1.81,17.85,17.85,0,0,0-11-3.32c-2.78.09-5.55.84-8.31.5a29.23,29.23,0,0,1-4.84-1.27c-3.42-1-7.37-1.43-10.35.53s-4.16,5.81-6.18,8.82c-1.79,2.67-4.4,4.9-5.76,7.72,0-.05,0-.11,0-.16a9.57,9.57,0,0,0-.76,2.06,14.71,14.71,0,0,0,.45,6.74,4.74,4.74,0,0,0,1.65,3c1,.64,2.39.49,3.57.7,0,.19-.1.38-.14.58a23.28,23.28,0,0,0,16.17,27.17c0,.21,0,.42,0,.62a14,14,0,0,1-.11,1.75h0s-10.25-2.11-13-.68-8.16,2.54-9,3.36-2.86.2-4.7,5-2,9.67-4.38,11.91-3.57,3.76-3.67,5.39.3,2-.62,2.54-2.24,2.65-1.83,3.46a2.91,2.91,0,0,1-1.12,3.06,3.37,3.37,0,0,0-1.43,3s-.61,2.24-2,2.75-2.35,3.86-2.35,3.86l-4.62,5.32-9.17-10.14a3.88,3.88,0,0,0-5.46-.28l-4.5,4a8.92,8.92,0,0,0-4.5,2.68,11.8,11.8,0,0,0-2.34,3.47l-2.46,2.22a6.26,6.26,0,0,0-.63,6.92l5.87,6.49,0,.06A10.37,10.37,0,0,0,866,762.7c-8.77,7.73-8.88,14.86-7.55,18.11s12.44,15.78,12.44,15.78,6.46,8.39,15.78,12.86h0l-.07.07c-.18.2-.37.41-.55.64l-.15.19a2.43,2.43,0,0,1-.14.2l-.16.24-.13.2-.18.3-.11.19-.21.4s-.05.08-.07.13-.17.36-.25.55a1.8,1.8,0,0,0-.08.21c-.06.13-.11.27-.16.4l-.09.27c0,.13-.09.26-.13.39l-.09.29-.12.45c0,.09-.05.18-.08.27s-.11.48-.16.73a2.5,2.5,0,0,1-.05.29l-.09.53c0,.12,0,.24-.05.37l-.06.5c0,.13,0,.26,0,.39s0,.38,0,.58l0,.36c0,.32,0,.64,0,1-.21,11.91.49,13.64.49,13.64a6.6,6.6,0,0,0,5.41,4.06,7.07,7.07,0,0,0,1.75-.09c5.3-.92,17.74-3.06,22.13-2.24,2.64.49,7.52-.24,11-.89l.92-.18.64,2,2-.55,1.72,1c.45.27.82.48,1.08.62,2,6.83,10.18,4.5,10.18,4.5l1.94,1.12,19.68.51a39.93,39.93,0,0,0,7,3.34,6.44,6.44,0,0,0,1,.22,46.07,46.07,0,0,0,5.49.1c1.51,0,2.67-.1,2.67-.1s-.2-5.35-.48-11.33a160.37,160.37,0,0,0,18.23-1.49c10.51-1.85,14.9-11.41,16.51-16.52a47.54,47.54,0,0,1,1,6.34,47.23,47.23,0,0,0,1.63,5.5,18.57,18.57,0,0,0,2.25,4.07c7.75-2.65,3.06-6.62,1.43-8.35s1.12-3.15,1.12-3.15,2.14-1.43,1.94-2.75-.31-2.75,6.63-2.64S1035.31,810.63,1035.31,810.63Zm-107.71-65c.09.59,1.06,6.85,1.93,8.5a10.86,10.86,0,0,1,.23,3.36c-4.11-.33-8.39-.51-8.39-.51a1,1,0,0,1,.22.53l-.64-.15-.94-.23,7.57-11.51Zm-15,23.87,7.12,1.12.59.1a25.2,25.2,0,0,0-.37,3.36c0,.1.17.23.39.38a9,9,0,0,0-.13,1.68c.11.56,3.44,1.78,7.25,2.79-.05.21-.1.4-.16.58h0c-3.37-1.77-8.67-2.6-9.28-3.91S899.34,768,899.34,768s-.66-.35-1.8-.9l4.76.9,1.3-.13A70.63,70.63,0,0,0,912.6,769.52Z"
+              transform="translate(-54.62 -52.46)"
+              fill="url(#b2e9a30e-d699-40a8-8c6a-b63a5f54a941)" />
+            <path d="M1012.09,815.05s-2.83,17.09-17.19,19.61-62.27,2-62.27,2-27.39-4-37.3-27.1-16.27-32.34-7.78-32.75,54.28,15.47,56.91,15.67S1014.62,757.33,1012.09,815.05Z" transform="translate(-54.62 -52.46)" fill="#65617d" />
+            <path d="M1012.09,815.05s-2.83,17.09-17.19,19.61-62.27,2-62.27,2-27.39-4-37.3-27.1-16.27-32.34-7.78-32.75,54.28,15.47,56.91,15.67S1014.62,757.33,1012.09,815.05Z" transform="translate(-54.62 -52.46)" opacity="0.05" />
+            <path d="M883.59,834.06a6.55,6.55,0,0,0,5.36,4,6.91,6.91,0,0,0,1.73-.09c5.26-.91,17.59-3,21.94-2.22,2.61.48,7.45-.24,10.89-.89,2.29-.43,4-.83,4-.83s-4.05-13.45-4.55-13.85-18.2-11-18.2-11l-14-1h0a7.42,7.42,0,0,0-4.75,2.79c-1.48,1.79-2.75,4.73-2.83,9.54C882.9,832.34,883.59,834.06,883.59,834.06Z" transform="translate(-54.62 -52.46)" fill="#3f3d56" />
+            <path d="M883.59,834.06a6.55,6.55,0,0,0,5.36,4,56.39,56.39,0,0,1-3.8-5.55l.07-9.8a17.28,17.28,0,0,1,5.5-14.56h0s-7.38.5-7.58,12.33S883.59,834.06,883.59,834.06Z" transform="translate(-54.62 -52.46)" opacity="0.05" />
+            <path d="M944.36,812.63l13-10.21,20.52-20.22s-2.21-.11-5.56-.25c-.83.53-3.16,2.2-3.25,4.22-.1,2.47-5.54.17-8.37,1.59s-16.68,19.14-19.11,19-4.35-1.23-5.36.49l-.07.11Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <path d="M885.93,811l1.42.65c9.9,4.24,22.13,13.14,23,14.76.56,1,7.65,5.28,13.12,8.51,2.29-.43,4-.83,4-.83s-4.05-13.45-4.55-13.85-18.2-11-18.2-11l-14-1h0A7.42,7.42,0,0,0,885.93,811Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <path d="M858.43,782c1.32,3.23,12.34,15.67,12.34,15.67s7,9.09,16.88,13.34,22.14,13.14,23.05,14.76c.58,1,8.48,5.79,14,9.06l1.25.73,2.76,1.6,1.46.84,6.75-5.45c3.33-2.7,6.64-5.42,6.69-5.57.1-.3,1.42-3.74,1.11-3.94-.15-.11-.85-1.5-2.13-3.13a14.19,14.19,0,0,0-5.15-4.25,14.67,14.67,0,0,1-6.67-7s-.44-.32-1.11-.74a13.39,13.39,0,0,0-4.55-2c-2.22-.28-6.36-4.83-6.36-4.83a12.45,12.45,0,0,1-3.95-4.14c-1.06-2.22-16.74-13-18.19-14l38,24.41,9.09,5.84,13-10.21,20.53-20.21s-2.76-.14-6.78-.31c-10-.43-27.68-1.11-29.92-.6a17.19,17.19,0,0,1-5.56.36s-5,.23-8.39-1.54-8.59-2.58-9.2-3.89-18.5-7.57-18.5-7.57-24.36-12.94-33.06-5.26S857.12,778.76,858.43,782Z" transform="translate(-54.62 -52.46)" fill="#65617d" />
+            <path d="M937,707.8l3.13,10.41,4,23.45,14.86,1,4.3-7.13,4.29-7.12s2.68-9.48,4.6-18.64c1.7-8.12,2.81-16,1-16.84-1.64-.76-2.72-3.49-3.42-6.43-.09-.36-.17-.73-.24-1.1a56.73,56.73,0,0,1-1-7.54s-31.14-1.61-26.79,11.23a20.31,20.31,0,0,1,1.17,6.82,16.14,16.14,0,0,1-.1,1.74A14.56,14.56,0,0,1,937,707.8Z" transform="translate(-54.62 -52.46)" fill="#ee8e9e" />
+            <path d="M930.51,706.08l1.11,17.69,2.53,15.06,2.83,7L939.51,784s24.37,2.82,30.3-.05a2.64,2.64,0,0,0,1.07-.84C978,772.27,975.7,741,975.7,741l2.73-20.21-1.82-10.5-4.4-.46-3.39-.37s-.76.94-1.86,2.4c-3,4-8.51,11.74-8.14,15,.5,4.45-.61,9-2.33,9.71s-3.13,1.92-3.44.7a5.51,5.51,0,0,1-.3-3.23c.3-1.72-1.31-7-1.31-7s-2.73-6.16-2.53-8.79-.3-5.66-1.11-6.37-1.92-1.42-1-4.65-4-9.53-4-9.53Z" transform="translate(-54.62 -52.46)" fill="#e3e8f4" />
+            <path d="M962.71,750.26l1,30.23,5.84,3.23a2.54,2.54,0,0,0,1.07-.83c7.16-10.82,4.81-42.13,4.81-42.13l2.73-20.22-1.82-10.49-4.39-.47c1.7-8.11,2.81-16,1-16.84-1.64-.76-2.72-3.49-3.42-6.42h0l-3.15,21.38s.26,1.93.35,3.92a11,11,0,0,1-.25,3.76c-.71,1.82-.2,5.06-.2,5.06-1.83,3.21-2.74,9.16-3.18,14.9C962.48,743,962.71,750.26,962.71,750.26Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <path d="M969.59,685.83s5.1.64,6.71,2.76,5.87,2.43,5.87,2.43,4.85,1.61,4.75,2,1.41,1,4.45,1.82,8.08,3.74,8.08,4.45,8,8.59,8,9.4,2.43,3.84,2.12,9.2-.6,12.13.61,13.24,0,5.46,0,5.46a3,3,0,0,0-.1,3.23c1,1.82-.2,9.4-.2,9.4l.1,7.89s-1.11,5,.2,5.15-.2,2.43-.2,2.43-1.11,4,.3,5.86,1.82,9.61,1.82,9.61l21.63,31.44s.31,5.76-6.57,5.66-6.77,1.31-6.57,2.63-1.92,2.72-1.92,2.72-2.73,1.42-1.11,3.14,6.27,5.66-1.42,8.29a18.58,18.58,0,0,1-2.22-4,45.59,45.59,0,0,1-1.62-5.45s-.71-7.69-2.12-8.7S1009,810,1009,810s2-3.94-.81-5.56-43.88-24.36-43.88-24.36l-1-30.23s-.7-22.34,3.54-29.82c0,0-.5-3.24.2-5.06s-.1-7.68-.1-7.68Z" transform="translate(-54.62 -52.46)" fill="#3f3d56" />
+            <path d="M943.1,698s-10.16-2.09-12.89-.68-8.09,2.53-8.9,3.34-2.83.2-4.65,5-2,9.61-4.35,11.83-3.53,3.74-3.63,5.36.3,2-.61,2.53-2.23,2.62-1.82,3.43,21,18.6,21,18.6,1,6.78,1.92,8.49-1,25.38-3,27,13.65,1.46,13.65,1.46.71-15.52,1.32-16.32-.41-17.39-.41-17.39-.1-14.15,1.21-17.9,1.17-16.17,1.17-16.17,1.16-7.46,2.57-9.2S943.1,698,943.1,698Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <path d="M942.8,697.66s-10.17-2.1-12.9-.68-8.08,2.53-8.89,3.34-2.83.2-4.65,4.95-2,9.6-4.35,11.83-3.54,3.74-3.64,5.35.31,2-.6,2.53-2.23,2.63-1.82,3.44S927,747,927,747s1,6.77,1.92,8.49-1,25.37-3,27S939.51,784,939.51,784s.71-15.52,1.31-16.33-.4-17.39-.4-17.39-.1-14.15,1.21-17.89,1.17-16.17,1.17-16.17,1.16-7.46,2.57-9.2S942.8,697.66,942.8,697.66Z" transform="translate(-54.62 -52.46)" fill="#3f3d56" />
+            <path d="M941.73,689.1a20.31,20.31,0,0,1,1.17,6.82,23.18,23.18,0,0,0,26.61-10.51,56.73,56.73,0,0,1-1-7.54S937.38,676.26,941.73,689.1Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <path d="M926.37,673.12a23.12,23.12,0,1,0,.5-4.81A23.14,23.14,0,0,0,926.37,673.12Z" transform="translate(-54.62 -52.46)" fill="#ee8e9e" />
+            <path d="M911.51,726.7,906,728.42a2.88,2.88,0,0,1-1.12,3,3.39,3.39,0,0,0-1.41,3s-.61,2.23-2,2.73-2.33,3.85-2.33,3.85l-4.65,5.35s-1.72,1.42-1.41,2.13-1.82.91-1.82.91l1.11,18,9.6,1.82,6-.61,4.85-1.82,4.24-2.52,1.93-5,8.49-12.94Z" transform="translate(-54.62 -52.46)" fill="#3f3d56" />
+            <path d="M892.6,750.86s-12.33-17.79-21.53-8.19,3.74,25.17,6.77,24.67S895.33,766,895.33,766Z" transform="translate(-54.62 -52.46)" fill="#ee8e9e" />
+            <rect x="850.79" y="726.52" width="64.55" height="50.12" rx="1.54" transform="translate(383.51 -371.73) rotate(27.04)" fill="#3f3d56" />
+            <rect x="856.02" y="731.07" width="54.26" height="40.89" transform="translate(383.49 -371.77) rotate(27.04)" fill="#f9a826" />
+            <circle cx="802.48" cy="685.76" r="0.89" fill="#e6e8ec" />
+            <circle cx="854.79" cy="712.56" r="1.47" fill="#e6e8ec" />
+            <path d="M884.62,754.6c-.1,13.35,27.49,16.17,27.49,16.17l7,1.12,3.16.5,1.32-13s-1.45-.21-3.26-.63c-2.67-.63-6.13-1.7-6.85-3.21C912.31,753,884.72,741.26,884.62,754.6Z" transform="translate(-54.62 -52.46)" fill="#ee8e9e" />
+            <path d="M926.87,668.31a2.7,2.7,0,0,1,1.69.76c.79.83.83,2.29,1.84,2.8a2,2,0,0,0,1.21.14c2.69-.38,4.24-3.41,6.82-4.25a7,7,0,0,1,4.53.39,3.35,3.35,0,0,1,1.49,1c.87,1.12.26,2.77.66,4.12.56,1.88,2.8,2.62,4.74,2.87s4.13.38,5.42,1.84a4.94,4.94,0,0,1,1,3.92,3.05,3.05,0,0,0,0,1.44c.54,1.52,3.16,1.29,3.85.1.5-.87.34-1.6,1.52-1.84a5.06,5.06,0,0,1,2.48.43,18.08,18.08,0,0,0,6.4,1,23.15,23.15,0,1,0-43.6-14.66Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <path
+              d="M956.22,682.7a3.09,3.09,0,0,1,0-1.45,4.93,4.93,0,0,0-1-3.91c-1.29-1.47-3.48-1.61-5.42-1.85s-4.18-1-4.74-2.87c-.4-1.35.21-3-.66-4.11a3.19,3.19,0,0,0-1.49-1,6.83,6.83,0,0,0-4.53-.39c-2.58.83-4.13,3.87-6.82,4.25a2.17,2.17,0,0,1-1.21-.14c-1-.51-1.06-2-1.84-2.81-1.22-1.3-3.55-.46-5.06-1.42a4.68,4.68,0,0,1-1.63-3,14.67,14.67,0,0,1-.45-6.7c.88-3.76,4.24-6.34,6.39-9.55,2-3,3.12-6.78,6.13-8.76s6.86-1.53,10.25-.53a30,30,0,0,0,4.8,1.26c2.74.34,5.48-.41,8.23-.5a17.7,17.7,0,0,1,10.87,3.3,6.07,6.07,0,0,1,1.77,1.8,9.18,9.18,0,0,1,.79,3.21,16.44,16.44,0,0,0,2.13,5.92c.85,1.42,1.92,2.71,2.69,4.18a6.47,6.47,0,0,1,.72,4.79c-.26.83-.77,1.58-1,2.43-.45,2,.85,3.86,1.74,5.68a10.81,10.81,0,0,1,1.18,5.39,6.79,6.79,0,0,1-2.43,4.85,8.67,8.67,0,0,1-5.12,1.55,18.12,18.12,0,0,1-6.53-1,5.16,5.16,0,0,0-2.47-.43c-1.18.25-1,1-1.53,1.84C959.38,684,956.76,684.21,956.22,682.7Z"
+              transform="translate(-54.62 -52.46)"
+              fill="#3f3d56" />
+            <path d="M943.75,813.23l13-10.21,20.53-20.21s-2.76-.14-6.78-.31a4.48,4.48,0,0,0-1.43,2.76c-.1,2.47-5.54.17-8.37,1.59s-16.68,19.14-19.11,19-4.35-1.23-5.36.49l-.07.11a2.9,2.9,0,0,1-1.54.92Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <path d="M917.47,812.53,924,833.44l1,3.29,3.12-.86,6.88-1.89,30.64-8.41a26.63,26.63,0,0,0,11-3,33.42,33.42,0,0,1,19-4.15c4,.38,8.55-1.37,12.29-8.27,0,0,8.49-25.07-12.94-32.25s-22.46,3.82-22.46,3.82l-.29.18c-.83.53-3.16,2.2-3.25,4.22-.1,2.47-5.54.17-8.37,1.59s-16.68,19.14-19.11,19-4.35-1.23-5.36.49l-.07.11c-.75,1-3,1.27-4.49,1.32-.81,0-1.4,0-1.4,0l-.19.06-1.56.46Z" transform="translate(-54.62 -52.46)" fill="#65617d" />
+            <path d="M919.16,771.89l3.16.5,1.32-13s-1.45-.21-3.26-.63C920.86,760.54,919.78,767.57,919.16,771.89Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <path d="M1001.83,711s9.4-2.73,7.07,24-19.71,43.57-19.71,43.57-20,8.79-29,7.38-15.57-1.72-15.57-1.72a22.82,22.82,0,0,0-9.1-2.43c-5-.2-15.67-3.33-15.87-4.35s2.63-15.87,1.41-17c0,0,14.16.58,15.57,1.61s3.44.29,5,0,6.16-4.34,15.36-.8c0,0,3.14.3,4.35-.5a4.35,4.35,0,0,1,3.16-.21,8.81,8.81,0,0,0,2.2-1.11c.3-.4,2.73,0,2.73,0a1.07,1.07,0,0,0,1.51-.71,6.68,6.68,0,0,1,1.42-2.22s2.73-15.37,7.88-21.13a3.27,3.27,0,0,0,1.11-2.93C980.9,730.77,989.69,707.72,1001.83,711Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <path d="M1001.58,708.91s9.4-2.73,7.07,24-19.71,43.57-19.71,43.57-20,8.79-29,7.38-15.57-1.72-15.57-1.72a22.76,22.76,0,0,0-9.1-2.43c-5-.2-15.67-3.33-15.87-4.35s2.63-15.87,1.42-17c0,0,14.15.58,15.56,1.61s3.44.29,5,0,6.16-4.34,15.36-.8c0,0,3.14.3,4.35-.51a4.38,4.38,0,0,1,3.16-.2,8.81,8.81,0,0,0,2.2-1.11c.3-.4,2.73,0,2.73,0a1.07,1.07,0,0,0,1.51-.71,6.68,6.68,0,0,1,1.42-2.22s2.73-15.37,7.88-21.13a3.29,3.29,0,0,0,1.12-2.93C980.65,728.72,989.45,705.67,1001.58,708.91Z" transform="translate(-54.62 -52.46)" fill="#3f3d56" />
+            <path d="M928.56,809.2l13.36,16.16.08-.09c.1-.31,1.41-3.75,1.11-3.95s-2.63-5.26-7.28-7.38a13.72,13.72,0,0,1-5.71-5.2Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <path d="M928.75,837.16l1.46.84,6.75-5.45c3.33-2.7,6.64-5.42,6.69-5.57.1-.3,1.42-3.74,1.11-3.94-.15-.11-.85-1.5-2.13-3.13-9-2.53-3.28,3.75-2.52,4,0,0-11-2.53-11.62,9.47A14.24,14.24,0,0,0,928.75,837.16Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <path d="M939.91,842.25l1.92,1.11,19.51.5a39.53,39.53,0,0,0,6.91,3.33,6,6,0,0,0,1,.21,43.24,43.24,0,0,0,5.44.1c1.49,0,2.65-.1,2.65-.1s-.93-24.6-1.62-27.19c-.34-1.24-2-1-3.58-.35a23.87,23.87,0,0,0-3.5,1.77s-8.29.8-9.6,1.52-5.06-.41-7.38,0-6.47-2.74-6.47-2.74c-11.32-3.74-5,3.24-4.15,3.54,0,0-11-2.53-11.62,9.47S939.91,842.25,939.91,842.25Z" transform="translate(-54.62 -52.46)" fill="#3f3d56" />
+            <path d="M968.11,832.74c.22,5.1,4.19,11.42,6.56,14.76,1.49,0,2.65-.1,2.65-.1s-.93-24.6-1.62-27.19c-.34-1.24-2-1-3.58-.35C970.16,823.53,968,828.64,968.11,832.74Z" transform="translate(-54.62 -52.46)" fill="#565387" />
+            <path d="M968.11,832.74c.22,5.1,4.19,11.42,6.56,14.76,1.49,0,2.65-.1,2.65-.1s-.93-24.6-1.62-27.19c-.34-1.24-2-1-3.58-.35C970.16,823.53,968,828.64,968.11,832.74Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <path d="M964.78,833.42c1.34,4.92,1.33,10.43,3.47,13.77a6,6,0,0,0,1,.21,43.24,43.24,0,0,0,5.44.1c1.49,0,2.65-.1,2.65-.1s-.93-24.6-1.62-27.19c-.34-1.24-2-1-3.58-.35a23.87,23.87,0,0,0-3.5,1.77S963.06,827.12,964.78,833.42Z" transform="translate(-54.62 -52.46)" opacity="0.05" />
+            <path d="M897.47,783.54s9.69,3.15,17.9,14.33Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <g opacity="0.1">
+              <path d="M976.22,662.24l-.06.22a6.71,6.71,0,0,1-.34.84A6.78,6.78,0,0,1,976.22,662.24Z" transform="translate(-54.62 -52.46)" />
+              <path
+                d="M921.39,657.34a9.38,9.38,0,0,1,.75-2c0,.17-.1.34-.14.52a14.45,14.45,0,0,0,.45,6.71,4.64,4.64,0,0,0,1.63,3c1.5,1,3.83.13,5.06,1.43.78.82.82,2.29,1.84,2.8a2.08,2.08,0,0,0,1.21.14c2.68-.38,4.24-3.42,6.82-4.25a6.8,6.8,0,0,1,4.52.39,3.44,3.44,0,0,1,1.5,1c.86,1.12.26,2.76.66,4.12.55,1.87,2.79,2.62,4.73,2.86s4.13.39,5.43,1.85a5,5,0,0,1,1,3.91,3,3,0,0,0,0,1.45c.53,1.52,3.15,1.29,3.84.09.5-.87.35-1.59,1.53-1.83a4.91,4.91,0,0,1,2.47.43,18.37,18.37,0,0,0,6.53,1,8.78,8.78,0,0,0,5.13-1.56,5.81,5.81,0,0,0,1.57-1.91,6.43,6.43,0,0,1-2.18,3.43,8.69,8.69,0,0,1-5.12,1.55,18.12,18.12,0,0,1-6.53-1,5.18,5.18,0,0,0-2.48-.43c-1.18.25-1,1-1.53,1.84-.68,1.2-3.3,1.42-3.84-.09a3.23,3.23,0,0,1,0-1.45,4.89,4.89,0,0,0-1-3.91c-1.29-1.47-3.48-1.61-5.42-1.85s-4.18-1-4.74-2.87c-.4-1.35.21-3-.66-4.11a3.24,3.24,0,0,0-1.49-1,6.83,6.83,0,0,0-4.53-.39c-2.58.83-4.14,3.87-6.82,4.25a2.17,2.17,0,0,1-1.21-.14c-1-.51-1.06-2-1.84-2.81-1.23-1.3-3.55-.46-5.06-1.42a4.64,4.64,0,0,1-1.63-3A14.53,14.53,0,0,1,921.39,657.34Z"
+                transform="translate(-54.62 -52.46)" />
+            </g>
+            <path d="M977.79,738.25c-1.86,2.5-4,4.81-5.61,7.46a14.16,14.16,0,0,0-2.46,8.82c1.7-1.74,2.48-4.14,3.55-6.32,1.81-3.7,4.51-6.83,6.8-10.23.43-.65,3.22-4.4,1.81-4.57C980.71,733.26,978.42,737.4,977.79,738.25Z" transform="translate(-54.62 -52.46)" opacity="0.1" />
+            <path d="M341.27,412.72H258.54a2.76,2.76,0,1,0,0,5.51h82.73a2.76,2.76,0,1,0,0-5.51Zm0,9.45H258.54a2.76,2.76,0,0,0,0,5.52h82.73a2.76,2.76,0,0,0,0-5.52Zm-4.15-63.78H262.7a6.93,6.93,0,0,0-6.92,6.91v35a6.93,6.93,0,0,0,6.92,6.91h74.42a6.93,6.93,0,0,0,6.91-6.91v-35A6.93,6.93,0,0,0,337.12,358.39Zm-65.19,42.55h-7.09a2.76,2.76,0,0,1,0-5.52h7.09a2.76,2.76,0,0,1,0,5.52Zm0-30.73h-7.09a2.76,2.76,0,0,1,0-5.52h7.09a2.76,2.76,0,0,1,0,5.52Zm28,28.36a15.76,15.76,0,1,1,15.76-15.76A15.78,15.78,0,0,1,299.91,398.57ZM335,400.94h-7.09a2.76,2.76,0,0,1,0-5.52H335a2.76,2.76,0,0,1,0,5.52Zm0-30.73h-7.09a2.76,2.76,0,0,1,0-5.52H335a2.76,2.76,0,0,1,0,5.52Z" transform="translate(-54.62 -52.46)" fill="#fff" />
+            <circle cx="245.29" cy="330.73" r="10.44" fill="#fff" />
+            <rect x="403.44" y="236.28" width="375.69" height="208.58" fill="#f9a826" opacity="0.2" />
+            <rect x="403.44" y="491.52" width="375.69" height="208.58" fill="#f9a826" opacity="0.2" />
+            <rect x="477.32" y="381.52" width="11.37" height="38.1" fill="#fff" />
+            <rect x="498.97" y="334.35" width="11.37" height="85.27" fill="#fff" />
+            <rect x="520.63" y="291.85" width="11.37" height="127.77" fill="#dfe3ef" />
+            <rect x="542.29" y="261.53" width="11.37" height="158.09" fill="#fff" />
+            <rect x="520.63" y="261.53" width="11.37" height="158.09" fill="#f9a826" />
+            <rect x="563.94" y="332.72" width="11.37" height="86.9" fill="#f9a826" />
+            <rect x="585.6" y="310.26" width="11.37" height="109.36" fill="#f9a826" opacity="0.2" />
+            <rect x="607.25" y="276.15" width="11.37" height="143.47" fill="#f9a826" />
+            <rect x="628.91" y="355.73" width="11.37" height="63.89" fill="#f9a826" opacity="0.2" />
+            <rect x="650.57" y="326.23" width="11.37" height="93.39" fill="#f9a826" />
+            <rect x="672.22" y="291.85" width="11.37" height="127.77" fill="#f9a826" opacity="0.2" />
+            <rect x="693.88" y="291.85" width="11.37" height="127.77" fill="#f9a826" />
+            <path d="M344,623.05a6.32,6.32,0,0,0-6.3-6.3H262.09a6.33,6.33,0,0,0-6.31,6.3v9.46H344Zm-88.25,50.43a6.33,6.33,0,0,0,6.31,6.31h75.64a6.32,6.32,0,0,0,6.3-6.31V642H255.78Zm28-9.45h32.31a2.76,2.76,0,1,1,0,5.51H283.75a2.76,2.76,0,0,1,0-5.51Zm-14.18,0h2.36a2.76,2.76,0,1,1,0,5.51h-2.36a2.76,2.76,0,1,1,0-5.51Z" transform="translate(-54.62 -52.46)" fill="#fff" />
+            <rect x="477.32" y="636.75" width="11.37" height="38.1" fill="#fff" />
+            <rect x="498.97" y="589.58" width="11.37" height="85.27" fill="#fff" />
+            <rect x="520.63" y="547.08" width="11.37" height="127.77" fill="#dfe3ef" />
+            <rect x="542.29" y="516.76" width="11.37" height="158.09" fill="#fff" />
+            <rect x="520.63" y="516.76" width="11.37" height="158.09" fill="#f9a826" />
+            <rect x="563.94" y="587.95" width="11.37" height="86.9" fill="#f9a826" />
+            <rect x="585.6" y="565.49" width="11.37" height="109.36" fill="#fff" />
+            <rect x="607.25" y="531.38" width="11.37" height="143.47" fill="#fff" />
+            <rect x="628.91" y="610.96" width="11.37" height="63.89" fill="#f9a826" opacity="0.2" />
+            <rect x="650.57" y="581.46" width="11.37" height="93.39" fill="#f9a826" opacity="0.2" />
+            <rect x="672.22" y="547.08" width="11.37" height="127.77" fill="#f9a826" opacity="0.2" />
+            <rect x="693.88" y="547.08" width="11.37" height="127.77" fill="#f9a826" opacity="0.2" />
+          </svg>
+        </div>
+      </div>
+      <h6 class="">This table displays the leaderboard for deposits made by Eth1 Addresses to the Deposit Contract</h6>
+      <div class="card">
+        <div class="card-body px-0 py-2">
+          <div class="table-responsive pt-2">
+            <table class="table" id="deposits">
+              <thead>
+                <tr>
+                  <th>Eth1 Address</th>
+                  <!-- <th>Name</th> -->
+                  <th>Total Deposited</th>
+                  <th data-toggle="tooltip" title="Valid deposits">Valid</th>
+                  <th data-toggle="tooltip" title="Invalid deposits">Invalid</th>
+                  <th data-toggle="tooltip" title="Number of pending validators">Pen</th>
+                  <th data-toggle="tooltip" title="Number of attesting validators">Att</th>
+                  <th data-toggle="tooltip" title="Number of slashed validators">Sla</th>
+                  <th data-toggle="tooltip" title="Number of voluntary exited validators">Ex</th>
+                  <th data-toggle="tooltip" title="Total number of validators">Tot</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex justify-content-between py-2">
+        <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

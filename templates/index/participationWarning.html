@@ -1,12 +1,12 @@
 {{ define "participationWarning" }}
-		<div v-if="participation < 0.66" class="page-info my-2 p-1">
-			<div class="d-flex justify-content-between">
-				<h5><i class="fas fa-hands-helping"></i> Get the network back on track by turning on your validator</h5>
-				<span class="d-none d-lg-block">${validatorsMissing} validators missing</span>
-			</div>			
-			<div class="progress w-100" :title="'For the network to reach finality we need '+ ((0.66 - participation) * 100).toFixed(2) + '% more validators attesting and proposing'" data-placement="top">
-				<div class="progress-bar bg-danger participation-info" role="progressbar" :style="'width:'+participation * 100+'%;'" aria-valuenow="5" aria-valuemin="0" aria-valuemax="100">${(participation * 100).toFixed(2)}%</div>
-			</div>
-			<span class="text-muted">The Beacon Chain requires <strong>66% Network Participation</strong> for it to reach finality.</span>
-		</div>
-{{end}}
+  <div v-if="participation < 0.66" class="page-info my-2 p-1">
+    <div class="d-flex justify-content-between">
+      <h5><i class="fas fa-hands-helping"></i> Get the network back on track by turning on your validator</h5>
+      <span class="d-none d-lg-block">${validatorsMissing} validators missing</span>
+    </div>
+    <div class="progress w-100" :title="'For the network to reach finality we need '+ ((0.66 - participation) * 100).toFixed(2) + '% more validators attesting and proposing'" data-placement="top">
+      <div class="progress-bar bg-danger participation-info" role="progressbar" :style="'width:'+participation * 100+'%;'" aria-valuenow="5" aria-valuemin="0" aria-valuemax="100">${(participation * 100).toFixed(2)}%</div>
+    </div>
+    <span class="text-muted">The Beacon Chain requires <strong>66% Network Participation</strong> for it to reach finality.</span>
+  </div>
+{{ end }}

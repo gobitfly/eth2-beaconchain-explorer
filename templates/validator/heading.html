@@ -1,58 +1,58 @@
-{{ define "validatorHeading"}}
-    <div class="my-3 py-2">
+{{ define "validatorHeading" }}
+  <div class="my-3 py-2">
     <div class="d-md-flex justify-content-md-between">
-        <div class="d-flex mb-1">
-            <h1 class="h4 mb-1 mb-md-0">
-                <span>Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}{{if ne .Name ""}} ({{formatValidatorName .Name}}){{end}}</span>
-                <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}">
-                    <i class="fa fa-copy"></i>
+      <div class="d-flex mb-1">
+        <h1 class="h4 mb-1 mb-md-0">
+          <span>Validator{{ if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid") }}{{ .Index }}{{ end }}{{ if ne .Name "" }}({{ formatValidatorName .Name }}){{ end }}</span>
+          <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .PublicKey }}">
+            <i class="fa fa-copy"></i>
+          </button>
+          <span data-toggle="tooltip" title="Edit validator name">
+            <button class="btn btn-dark text-white btn-sm" type="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal">
+              <i class="fa fa-edit"></i>
+            </button>
+          </span>
+          {{ if len .Watchlist }}
+            <span data-toggle="tooltip" title="Stop receiving updates for this validator.">
+              <form class="d-inline-block" action="{{ printf "%#x" .PublicKey }}/remove" method="post">
+                <button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button">
+                  <i class="fas fa-bookmark"></i>
                 </button>
-                <span data-toggle="tooltip" title="Edit validator name">
-                    <button class="btn btn-dark text-white btn-sm" type="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal">
-                        <i  class="fa fa-edit"></i>
-                    </button>
-                </span>
-                {{ if len .Watchlist }}
-                <span data-toggle="tooltip" title="Stop receiving updates for this validator.">
-                    <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/remove" method="post">
-                        <button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button" >
-                            <i class="fas fa-bookmark"></i>
-                        </button>
-                    </form>
-                </span>
-                {{else}}
-                    {{ if .User.Authenticated }}
-                    <span data-toggle="tooltip" title="Follow this validator and receive email notifications">
-                        <button class="btn btn-dark text-white btn-sm" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal" >
-                            <i class="far fa-bookmark"></i>
-                        </button>
-                    </span>
-                    {{ else }}
-                        <span data-toggle="tooltip" title="Follow this validator and receive email notifications">
-                            <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
-                                <button class="btn btn-dark text-white btn-sm" id="follow-button">
-                                    <i class="far fa-bookmark"></i>
-                                </button>
-                            </form>
-                        </span>
-                    {{end}}
-                {{end}}
-                <span data-toggle="tooltip" title="View daily statistics">
-                    <a class="btn btn-dark text-white btn-sm" href="/validator/{{.Index}}/stats">
-                        <i class="fas fa-table"></i>
-                    </a>
-                </span>
-            </h1>
-        </div>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Validator details</li>
-            </ol>
-        </nav>
+              </form>
+            </span>
+          {{ else }}
+            {{ if .User.Authenticated }}
+              <span data-toggle="tooltip" title="Follow this validator and receive email notifications">
+                <button class="btn btn-dark text-white btn-sm" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal">
+                  <i class="far fa-bookmark"></i>
+                </button>
+              </span>
+            {{ else }}
+              <span data-toggle="tooltip" title="Follow this validator and receive email notifications">
+                <form class="d-inline-block" action="{{ printf "%#x" .PublicKey }}/add" method="post">
+                  <button class="btn btn-dark text-white btn-sm" id="follow-button">
+                    <i class="far fa-bookmark"></i>
+                  </button>
+                </form>
+              </span>
+            {{ end }}
+          {{ end }}
+          <span data-toggle="tooltip" title="View daily statistics">
+            <a class="btn btn-dark text-white btn-sm" href="/validator/{{ .Index }}/stats">
+              <i class="fas fa-table"></i>
+            </a>
+          </span>
+        </h1>
+      </div>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+          <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+          <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Validator details</li>
+        </ol>
+      </nav>
     </div>
-    {{if .Tags}} {{formatValidatorTags .Tags}}{{end}}
-    <div class="text-monospace text-secondary text-truncate text-sm mb-0" id="copy-input">0x{{printf "%x" .PublicKey}}</div>
-    </div>
-{{end}}
+    {{ if .Tags }}{{ formatValidatorTags .Tags }}{{ end }}
+    <div class="text-monospace text-secondary text-truncate text-sm mb-0" id="copy-input">0x{{ printf "%x" .PublicKey }}</div>
+  </div>
+{{ end }}

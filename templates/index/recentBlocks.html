@@ -1,63 +1,63 @@
 {{ define "recentBlocks" }}
-<div class="card">
-  <div class="card-header">
-    <h3 class="card-title d-flex justify-content-between align-items-center" style="margin: .5rem 0;">
-      <span><i class="fa fa-cubes"></i> Most recent blocks</span>
-      <a class="btn btn-primary btn-sm float-right text-white" href="/blocks">View more</a>
-    </h3>
-  </div>
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table">
-        <thead>
-        <tr>
-          <th>Epoch</th>
-          <th>Slot</th>
-          <th>Status</th>
-          <th>Time</th>
-          <th>Proposer</th>
-          <!-- <th>Root Hash</th> -->
-          <th data-toggle="tooltip" title="Attestations">Att</th>
-          <!-- <th>Deposits</th>
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title d-flex justify-content-between align-items-center" style="margin: .5rem 0;">
+        <span><i class="fa fa-cubes"></i> Most recent blocks</span>
+        <a class="btn btn-primary btn-sm float-right text-white" href="/blocks">View more</a>
+      </h3>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Epoch</th>
+              <th>Slot</th>
+              <th>Status</th>
+              <th>Time</th>
+              <th>Proposer</th>
+              <!-- <th>Root Hash</th> -->
+              <th data-toggle="tooltip" title="Attestations">Att</th>
+              <!-- <th>Deposits</th>
           <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
           <th>Exits</th> -->
-        </tr>
-        </thead>
-        <tbody v-if="page && page.blocks && page.blocks.length">
-        <tr v-for="block in page.blocks">
-          <td><a v-bind:href="'/epoch/' + block.epoch">${ addCommas(block.epoch) }</a></td>
-          <td><a v-bind:href="'/block/' + block.slot">${ addCommas(block.slot) }</a></td>
-          <td v-if="block.slot === 0">
-            <span style="background: rgba(179, 159, 70, 0.8)" class="badge text-dark">Genesis</span>
-          </td>
-          <td v-else v-html="block.status_formatted"></td>
-          <td>${ block.ts | fromNow }</td>
-          <td v-if="block.slot !== 0" v-html="block.proposer_formatted"></td>
-          <td v-else>N/A</td>
-          <!-- <td class="text-monospace">
+            </tr>
+          </thead>
+          <tbody v-if="page && page.blocks && page.blocks.length">
+            <tr v-for="block in page.blocks">
+              <td><a v-bind:href="'/epoch/' + block.epoch">${ addCommas(block.epoch) }</a></td>
+              <td><a v-bind:href="'/block/' + block.slot">${ addCommas(block.slot) }</a></td>
+              <td v-if="block.slot === 0">
+                <span style="background: rgba(179, 159, 70, 0.8)" class="badge text-dark">Genesis</span>
+              </td>
+              <td v-else v-html="block.status_formatted"></td>
+              <td>${ block.ts | fromNow }</td>
+              <td v-if="block.slot !== 0" v-html="block.proposer_formatted"></td>
+              <td v-else>N/A</td>
+              <!-- <td class="text-monospace">
             <a v-if="block.status === 1 || block.status === 3" v-bind:href="'/block/' + block.block_root_formatted">0x${ block.block_root_formatted.substr(0, 6) }...</a>
             <a v-if="block.status === 0 || block.status === 2">N/A</a>
           </td> -->
-          <td>${ block.attestations }</td>
-          <!-- <td>${ block.deposits }</td>
+              <td>${ block.attestations }</td>
+              <!-- <td>${ block.deposits }</td>
           <td>${ block.proposerslashings } / ${ block.attesterslashings }</td>
           <td>${ block.exits }</td> -->
-        </tr>
-        </tbody>
-        <tbody v-else>
-          <tr style="height: 430px;">
-            <td></td>
-            <td style="vertical-align: middle;" colspan="4">
-              <div  class="img-fluid mx-auto p-3 d-flex align-items-center" style="max-height: 400px; width: auto; overflow: hidden;">
-                {{ template "timeline_svg"}}
-              </div>
-            </td>
-            <td></td>
-          </tr>
-        </tbody>
-      </table>
-      <small style="position: absolute; right: 0;" class="float-right pt-md-0 pt-2 m-2"> Next update in ${updateIn}s</small>
+            </tr>
+          </tbody>
+          <tbody v-else>
+            <tr style="height: 430px;">
+              <td></td>
+              <td style="vertical-align: middle;" colspan="4">
+                <div class="img-fluid mx-auto p-3 d-flex align-items-center" style="max-height: 400px; width: auto; overflow: hidden;">
+                  {{ template "timeline_svg" }}
+                </div>
+              </td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+        <small style="position: absolute; right: 0;" class="float-right pt-md-0 pt-2 m-2"> Next update in ${updateIn}s</small>
+      </div>
     </div>
   </div>
-</div>
-{{end}}
+{{ end }}

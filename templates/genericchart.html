@@ -1,10 +1,10 @@
-{{ define "js"}}
-    <script src="/js/highcharts/highstock.min.js"></script>
-    <script src="/js/highcharts/exporting.min.js"></script>
-    <script src="/js/highcharts/wordcloud.min.js"></script>
-    <script src="/js/highcharts/bellcurve.min.js"></script>
-    <script src="/js/highcharts/highcharts-global-options.js"></script>
-    <script src="/js/highcharts/drilldown.js"></script>
+{{ define "js" }}
+  <script src="/js/highcharts/highstock.min.js"></script>
+  <script src="/js/highcharts/exporting.min.js"></script>
+  <script src="/js/highcharts/wordcloud.min.js"></script>
+  <script src="/js/highcharts/bellcurve.min.js"></script>
+  <script src="/js/highcharts/highcharts-global-options.js"></script>
+  <script src="/js/highcharts/drilldown.min.js"></script>
 
     <script>
         {{if .IsNormalChart}}
@@ -127,30 +127,30 @@
         });
         {{end}}
     </script>
-{{end}} {{ define "css"}} {{end}}
-{{ define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-            <div class="my-3">
-                <div class="d-md-flex py-2 justify-content-md-between">
-                    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-chart-line mr-2"></i>Ethereum 2.0 Beacon Chain Chart
-                    </h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                            <li class="breadcrumb-item"><a href="/charts" title="Charts">Charts</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">{{ .Title }}</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-body">
-                    <div id="chart" height="600"></div>
-                </div>
-            </div>
-            <div class="d-flex justify-content-between py-2">
-                <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-            </div>
+{{ end }}
+{{ define "css" }}{{ end }}
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-chart-line mr-2"></i>Ethereum 2.0 Beacon Chain Chart</h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+              <li class="breadcrumb-item"><a href="/charts" title="Charts">Charts</a></li>
+              <li class="breadcrumb-item active" aria-current="page">{{ .Title }}</li>
+            </ol>
+          </nav>
         </div>
-    {{end}}
-{{end}}
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div id="chart" height="600"></div>
+        </div>
+      </div>
+      <div class="d-flex justify-content-between py-2">
+        <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

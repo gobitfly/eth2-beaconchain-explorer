@@ -1,11 +1,11 @@
-{{ define "js"}}
-<script src="/js/payment.js" defer></script>
-<script type="text/javascript" src="/js/bootstrap4-toggle.min.js"></script>
+{{ define "js" }}
+  <script src="/js/payment.js" defer></script>
+  <script type="text/javascript" src="/js/bootstrap4-toggle.min.js"></script>
 <script>
     // form validations
     function checkPasswordsMatch(input) {
         var pass = document.getElementById('password')
-        var pwConfirm = document.getElementById('pw-confirm')
+        // var pwConfirm = document.getElementById('pw-confirm')
         if (pass.value !== input.value) {
             input.setCustomValidity('Passwords do not match');
         } else {
@@ -91,12 +91,12 @@
         const installScript = this.architecture == "arm" ? "installARM.sh" : "install.sh"
 
         initExplorerDownloads(
-            "dl-normal", 
+            "dl-normal",
             "curl -L https://raw.githubusercontent.com/gobitfly/eth2-client-metrics-exporter/master/.script/" + installScript + " | bash"
         )
     }
 
-    function initExplorerDownloads(className, content) { 
+    function initExplorerDownloads(className, content) {
         let dlNormals = document.getElementsByClassName(className)
         let dlNormalCopyBtn = document.getElementsByClassName("copy-" + className)
         if(dlNormals.length != dlNormalCopyBtn.length) return;
@@ -110,7 +110,7 @@
     }
 
     applyMachineConfigs();
-   
+
     // false is edit true is save
     var buttonState = false;
 
@@ -145,7 +145,7 @@
                 let csrfToken = document.getElementsByName("CsrfField")[0].value
 
                 debounceTimeouts[box.id] = null
-                
+
                 let postData = new FormData();
                 postData.append("shareStats", value);
 
@@ -188,7 +188,7 @@
             body: postData
         }).then(function (response) {
             if (response.status === 200) {
-                window.location.reload(false); 
+                window.location.reload(false);
             } else {
                 console.log('unexpected status', response.status)
             }
@@ -273,695 +273,619 @@
             } else {
                 console.log('unexpected status', response.status)
             }
-            
+
         }).catch(function (err) {
             console.log(err)
         })
     }
 </script>
-{{end}}
+{{ end }}
 
 {{ define "css" }}
-<link rel="stylesheet" type="text/css" href="/css/bootstrap4-toggle.min.css" />
-{{end}}
+  <link rel="stylesheet" type="text/css" href="/css/bootstrap4-toggle.min.css" />
+{{ end }}
 
-{{ define "content"}}
-{{with .Data}}
-<div class="container mt-2">
-
-    <div class="my-3">
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="my-3">
         <div class="d-md-flex py-2 justify-content-md-between">
-            <h1 class="h4 mb-1 mb-md-0"><i class="mr-2 fas fa-user-circle"></i>Account Settings</h1>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                    <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Settings</li>
-                </ol>
-            </nav>
+          <h1 class="h4 mb-1 mb-md-0"><i class="mr-2 fas fa-user-circle"></i>Account Settings</h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Settings</li>
+            </ol>
+          </nav>
         </div>
-    </div>
-    <div class="row ">
+      </div>
+      <div class="row ">
         <div class="col-xl-7 col-lg-7 col-md-10 col-sm-12 m-auto">
-            {{if .Flashes}}
-            {{range $i, $flash := .Flashes}}
-            <div class="alert {{if contains $flash " Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible
-                fade show my-3 py-2" role="alert">
-                <div class="p-2">{{$flash | formatHTML}}</div>
+          {{ if .Flashes }}
+            {{ range $i, $flash := .Flashes }}
+              <div
+                class="alert {{ if contains $flash " Error" }}
+                  alert-danger
+                {{ else }}
+                  alert-success
+                {{ end }} alert-dismissible
+                fade show my-3 py-2"
+                role="alert">
+                <div class="p-2">{{ $flash | formatHTML }}</div>
                 <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                  <span aria-hidden="true">&times;</span>
                 </button>
-            </div>
-            {{end}}
-            {{end}}
-            <div class="user__settings-container">
-                <ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs" id="dashChartTabs" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link show active" id="account-tab" data-toggle="tab" href="#account" role="tab"
-                            aria-controls="account" aria-selected="true"><i
-                                class="tab-icon mr-md-1 fas fa-user"></i><span class="tab-text" style="margin-left: 6px;">Account</span></a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="app-tab" data-toggle="tab" href="#app" role="tab" aria-controls="app"
-                            aria-selected="false"><i class="tab-icon mr-md-1 fas fa-mobile-alt"></i><span
-                                class="tab-text" style="margin-left: 6px;">Mobile App</span></a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="api-tab" data-toggle="tab" href="#api" role="tab" aria-controls="api"
-                            aria-selected="false"><i class="tab-icon mr-md-1 fas fas fa-drafting-compass"></i><span
-                                class="tab-text" style="margin-left: 6px;">API</span></a>
-                    </li>
-                </ul>
+              </div>
+            {{ end }}
+          {{ end }}
+          <div class="user__settings-container">
+            <ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs" id="dashChartTabs" role="tablist">
+              <li class="nav-item">
+                <a class="nav-link show active" id="account-tab" data-toggle="tab" href="#account" role="tab" aria-controls="account" aria-selected="true"><i class="tab-icon mr-md-1 fas fa-user"></i><span class="tab-text" style="margin-left: 6px;">Account</span></a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" id="app-tab" data-toggle="tab" href="#app" role="tab" aria-controls="app" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-mobile-alt"></i><span class="tab-text" style="margin-left: 6px;">Mobile App</span></a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" id="api-tab" data-toggle="tab" href="#api" role="tab" aria-controls="api" aria-selected="false"><i class="tab-icon mr-md-1 fas fas fa-drafting-compass"></i><span class="tab-text" style="margin-left: 6px;">API</span></a>
+              </li>
+            </ul>
 
+            <div class="tab-content h-100" id="dashTabContent">
+              <div id="account" class="tab-pane fade h-100 show active" role="tabpanel" aria-labelledby="account-tab">
+                <!-- Upgrade to premium -->
+                <div class="card my-3">
+                  <div class="card-header justify-content-between d-flex align-items-center">
+                    <h3 class="h5">
+                      <span>Beaconcha.in Premium</span> <span class="mx-1">|</span>
+                      <span style="font-size: 80%;" class="font-weight-light">
+                        {{ if not .Premium.Active }}
+                          Free Tier
+                          {{ if and (.Premium.Store) (eq .Premium.RejectReason "") }}(waiting on payment){{ end }}
+                        {{ else }}
+                          {{ if eq .Premium.Package "plankton" }}
+                            <strong style="color: #50c878; font-size: 1.1em">Plankton </strong>
+                          {{ else }}
+                            {{ if eq .Premium.Package "goldfish" }}
+                              <strong style="color: #d89a3e; font-size: 1.1em">Goldfish </strong>
+                            {{ else }}
+                              {{ if eq .Premium.Package "whale" }}<strong style="color: #44a1c5; font-size: 1.1em">Whale </strong>{{ end }}
 
-                <div class="tab-content h-100" id="dashTabContent">
-                    <div id="account" class="tab-pane fade h-100 show active" role="tabpanel"
-                        aria-labelledby="account-tab">
-                        <!-- Upgrade to premium -->
-                        <div class="card my-3">
-                            <div class="card-header justify-content-between d-flex align-items-center">
-                                <h3 class="h5">
-                                    <span>Beaconcha.in Premium</span> <span class="mx-1">|</span>
-                                    <span style="font-size: 80%;" class="font-weight-light">
-                                        {{if not .Premium.Active }}
-                                        Free Tier {{if and (.Premium.Store) (eq .Premium.RejectReason "")}}(waiting on payment){{end}}
-                                        {{else}}
-                                        {{if eq .Premium.Package "plankton"}} <strong style="color: #50c878; font-size: 1.1em">Plankton </strong>
-                                        {{else}}
-                                        {{if eq .Premium.Package "goldfish"}} <strong style="color: #d89a3e; font-size: 1.1em">Goldfish </strong>
-                                        {{else}}
-                                        {{if eq .Premium.Package "whale"}} <strong style="color: #44a1c5; font-size: 1.1em">Whale </strong> {{end}}
-    
-                                        {{end}}
-                                        {{end}}
-                                        {{end}}
-                                    </span>
-                                </h3>
-                                {{if and (eq .Premium.Store "stripe") (eq .Premium.RejectReason "" )}}
-                                <form class="manage-billing-form">
-                                    {{ .CsrfField }}
-                                    <button class="btn btn-outline-primary">Manage Subscription</button>
-                                </form>
-                                {{else}}
-                                    {{if or (not .Premium.Package) (not (eq .Premium.RejectReason "")) }}
-                                       <a href="/premium" class="btn btn-outline-primary">Get Premium</a>
-                                    {{else}}
-                                        {{if eq .Premium.Store "ios-appstore" }}
-                                            <span class="text-muted">via Apple</span>
-                                        {{else}}
-                                            <span class="text-muted">via Google</span>
-                                        {{end}}
-                                    {{end}}
-                                {{end}}
-                            </div>
-                            <div class="card-body">
-                                <div class="text-center">
-
-                                    <div class="my-2">
-                                        <span class="text-muted" style="margin-left: 12px; margin-right: 12px;">
-                                            {{if not .Premium.Active }}
-                                            Premium features for your beaconcha.in explorer and <a href="/mobile">beaconcha.in mobile app</a> experience. No ads, support for more validators and more.
-                                            {{else}}
-                                            Your premium subscription is active. Thank you for supporting us! 
-                                            {{end}}
-                                        </span>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
-
-
-                        <!-- Update Email -->
-                        <div class="card my-3">
-                            <div class="card-header">
-                                <h3 class="h5">Update Email</h3>
-                            </div>
-                            <div class="card-body">
-                                <form id="email-form" action="settings/email" method="POST">
-                                    {{ .CsrfField }}
-                                    <div class="form-group">
-                                        <label for="email">Email address</label>
-                                        <div class="input-group">
-                                            <input value="{{.Subscription.Email}}" disabled inputmode="email"
-                                                type="text" maxlength="100" class="form-control" autocomplete="email"
-                                                id="email" name="email">
-                                            <div class="input-group-append">
-                                                <button id="email-edit-button" onclick="toggleButton(this)"
-                                                    type="button" class="btn btn-outline-primary">Edit
-                                                </button>
-                                            </div>
-                                        </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Update Password -->
-                    <div class="card my-3">
-                        <div class="card-header">
-                            <h3 class="h5">Update Password</h3>
-                        </div>
-                        <div class="card-body">
-                            <form action="settings/password" method="post">
-                                {{ .CsrfField }}
-                                <input value="{{.Subscription.Email}}" inputmode="email" type="text" maxlength="100"
-                                    class="form-control visually-hidden" autocomplete="email" name="email">
-                                <div class="form-group">
-                                    <label for="old-password">Old Password</label>
-                                    <input required type="password" minlength="5" maxlength="256" class="form-control"
-                                        autocomplete="current-password" id="old-password" name="old-password">
-                                </div>
-                                <div class="form-group">
-                                    <label for="password">New Password</label>
-                                    <input required type="password" minlength="5" maxlength="256" class="form-control"
-                                        autocomplete="new-password" id="password" name="password">
-                                </div>
-                                <div class="form-group">
-                                    <label for="pw-confirm">Confirm New Password</label>
-                                    <input oninput="checkPasswordsMatch(this)" required type="password" minlength="5"
-                                        maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm"
-                                        name="pw-confirm">
-                                </div>
-                                <button type="submit" class="btn btn-outline-primary float-right">Save Changes</button>
-                            </form>
-                        </div>
-                    </div>
-
-
-                    <!-- Delete Account -->
-                    <div class="card my-3">
-                        <div class="card-header">
-                            <h3 class="h5">Delete Account <i class="fas fa-exclamation-triangle text-warning"></i></h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <span>
-                                    Warning, you will not be able to recover your account!
-                                </span>
-                                <!-- Button trigger modal -->
-                                <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal"
-                                    data-target="#deleteAccountModal">
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="app" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="app-tab">
-                    <!-- Monitoring Helper -->
-                    <div class="card my-3">
-                        <div class="card-header">
-                            <h3 class="h5">Set up client monitoring</h3>
-                        </div>
-                        <div class="card-body">
-
-                            <span>Monitor your staking machine via the mobile app. Learn more <a
-                                href="https://kb.beaconcha.in/mobile-app-less-than-greater-than-beacon-node"><b>here</b></a>.</span><br/><br/>
-
-                                    {{if .Subscription.ApiKey}}
-
-                                    <h4>Architecture</h4>
-                                    <div class="btn-group btn-group-toggle" role="group" aria-label="Architecture" data-toggle="buttons">
-                                        <label class="btn btn-light active">
-                                            <input type="radio" name="options" id="desktop" autocomplete="off" checked onclick="switchedArchitecture('desktop')">Desktop
-                                          </label>
-                                          <label class="btn btn-light">
-                                            <input type="radio" name="options" id="arm" autocomplete="off" onclick="switchedArchitecture('arm')">ARM (Raspberry Pi)
-                                          </label>
-                                    </div>
-                                    <br/><br/>
-
-
-                                    <div class="form-group my-3" >
-                                        <label for="client-input">Machine Name (Optional)</label>
-                                        <input id="client-input" type="text" oninput="changeMachineName(this.value);" class="form-control"
-                                            placeholder="e.g. Boris" aria-describedby="eth-input-help">
-                                        <i id="invalid-name" style="color: red;"></i>
-                                    </div>
-                                    <br/>
-
-                                 
-                                    <h4 >Select your Client</h4>
-                                    <div class="accordion" id="accordionExample" style="padding-top: 7px;">
-                                        <div class="card" style="box-shadow: none; ">
-                                            <h2 class="card-header" id="headingOne">
-                                                <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapseOne"
-                                                    aria-expanded="true" aria-controls="collapseOne">
-                                                    Lighthouse Setup Guide
-                                                </button>
-                                            </h2>
-                                            <div id="collapseOne" class="collapse" aria-labelledby="headingOne"
-                                                data-parent="#accordionExample" style="margin: 15px;">
-                                                <div class="accordion-body">
-                                                    
-                                                    Copy & Paste the following flags to your Lighthouse validator <strong>and</strong> beaconnode:<br/><br/>
-
-                                                    <div style="margin-left: 5px; margin-right: 5px;">
-                                                        <div style="float: left;  width: 90%;">
-                                                            <code >
-                                                                <span id="lighthouse-graffiti"></span>
-                                                            </code>
-                                                        </div>
-                                                        <div style="float: right;">
-                                                            <a id="copy-lighthouse-graffiti" data-toggle="tooltip" data-original-title="Copy Command"
-                                                            data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
-                                                            <span class="fa fa-copy icon-inside" ></span> </a>
-                                                        </div>
-                                                    </div>
-                                                    <div style="clear: both;"></div><br/>
-                                                 
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="card" style="box-shadow: none;">
-                                            <h2 class="card-header" id="headingTwo">
-                                                <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse"
-                                                    data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                                                    Prysm Setup Guide
-                                                </button>
-                                            </h2>
-                                            <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo"
-                                                data-parent="#accordionExample" style="margin: 15px;">
-                                                <div class="accordion-body">
-                                                    <h4>1. Install Metric Exporter</h4>
-                                                    Download the latest beaconcha.in metrics exporter on your machine:<br/><br/>
-
-
-                                                    <div style="margin-left: 5px; margin-right: 5px;">
-                                                        <div style="float: left; width: 90%;">
-                                                            <code >
-                                                                <span>
-                                                                    <span class="dl-normal"></span>
-                                                                </span>
-                                                            </code>
-                                                        </div>
-                                                        <div style="float: right;">
-                                                            <a data-toggle="tooltip" data-original-title="Copy Command"
-                                                            class="copy-dl-normal d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white" 
-                                                            data-clipboard-text="">
-                                                            <span class="fa fa-copy icon-inside" ></span> </a>
-                                                        </div>
-                                                    </div>
-
-                                                    <div style="clear: both;"></div><br/>
-
-                                                    <h4>2. Run Metrics Exporter</h4>
-                                                    <div style="margin-left: 5px; margin-right: 5px;">
-                                                        <div style="float: left;  width: 90%;">
-                                                            <code >
-                                                                <span id="prysm-graffiti"></span>
-                                                            </code>
-                                                        </div>
-                                                        <div style="float: right;">
-                                                            <a id="copy-prysm-graffiti" data-toggle="tooltip" data-original-title="Copy Command"
-                                                            data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
-                                                            <span class="fa fa-copy icon-inside" ></span> </a>
-                                                        </div>
-                                                    </div>
-
-                                                    <div style="clear: both;"></div><br/>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="card" style="box-shadow: none;">
-                                            <h2 class="card-header" id="headingThree">
-                                                <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse"
-                                                    data-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                                                    Nimbus Setup Guide
-                                                </button>
-                                            </h2>
-                                            <div id="collapseThree" class="collapse" aria-labelledby="headingThree"
-                                                data-parent="#accordionExample" style="margin: 15px;">
-                                                <div class="accordion-body">
-                                                    
-                                                    <h4>1. Run Nimbus Client</h4>
-                                                    Copy & Paste the following flags to your Nimbus node:<br/><br/>
-                                                    <div style="margin-left: 5px; margin-right: 5px;">
-                                                        <div style="float: left;  width: 90%;">
-                                                            <code >
-                                                                <span>--metrics --metrics-port=8008</span>
-                                                            </code>
-                                                        </div>
-                                                        <div style="float: right;">
-                                                            <a data-toggle="tooltip" data-original-title="Copy Command"
-                                                            data-clipboard-text="--metrics --metric-port=8008" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
-                                                            <span class="fa fa-copy icon-inside" ></span> </a>
-                                                        </div>
-                                                    </div>
-                                               
-                                                    <div style="clear: both;"></div><br/>
-
-                                                    <h4>2. Install Metric Exporter</h4>
-                                                    Download the latest beaconcha.in metrics exporter on your machine:<br/><br/>
-
-
-                                                    <div style="margin-left: 5px; margin-right: 5px;">
-                                                        <div style="float: left;  width: 90%;">
-                                                            <code >
-                                                                <span>
-                                                                    <span class="dl-normal"></span>
-                                                                </span>
-                                                            </code>
-                                                        </div>
-                                                        <div style="float: right;">
-                                                            <a data-toggle="tooltip" data-original-title="Copy Command" 
-                                                            class="copy-dl-normal d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white" 
-                                                            data-clipboard-text="" >
-                                                            <span class="fa fa-copy icon-inside" ></span> </a>
-                                                        </div>
-                                                    </div>
-
-
-                                                    <div style="clear: both;"></div><br/>
-
-                                                    <h4>3. Run Metrics Exporter</h4>
-                                                    <div style="margin-left: 5px; margin-right: 5px;">
-                                                        <div style="float: left;  width: 90%;">
-                                                            <code >
-                                                                <span id="nimbus-graffiti"></span>
-                                                            </code>
-                                                        </div>
-                                                        <div style="float: right;">
-                                                            <a id="copy-nimbus-graffiti" data-toggle="tooltip" data-original-title="Copy Command"
-                                                            data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
-                                                            <span class="fa fa-copy icon-inside" ></span> </a>
-                                                        </div>
-                                                    </div>
-                                               
-                                                    <div style="clear: both;"></div><br/>
-
-
-
-
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="card" style="box-shadow: none;">
-                                            <h2 class="card-header" id="headingFour">
-                                                <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse"
-                                                    data-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
-                                                    Teku Setup Guide
-                                                </button>
-                                            </h2>
-                                            <div id="collapseFour" class="collapse" aria-labelledby="headingFour"
-                                            data-parent="#accordionExample" style="margin: 15px;">
-                                            <div class="accordion-body">
-                                                
-                                                Copy & Paste the following flags to your Teku validator client:<br/><br/>
-
-                                                <div style="margin-left: 5px; margin-right: 5px;">
-                                                    <div style="float: left;  width: 90%;">
-                                                        <code >
-                                                            <span id="teku-graffiti"></span>
-                                                        </code>
-                                                    </div>
-                                                    <div style="float: right;">
-                                                        <a id="copy-teku-graffiti" data-toggle="tooltip" data-original-title="Copy Command"
-                                                        data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
-                                                        <span class="fa fa-copy icon-inside" ></span> </a>
-                                                    </div>
-                                                </div>
-                                                <div style="clear: both;"></div><br/>
-                                             
-                                            </div>
-                                        </div>
-                                        </div>
-                                    </div>
-
-                            {{else}}
-                            <div class="my-2">
-                                <span class="text-muted">
-                                    You need to generate an API key before you can continue.
-                                </span>
-                            </div>
-                            <div class="my-2">
-                                {{ .CsrfField }}
-                                <button onclick="generateApiKey()" id="generate-api-key" class="btn btn-outline-primary">Generate
-                                    Key</button>
-                            </div>
-                            {{end}}
-
-                            <div style="padding-top: 15px; padding-bottom: 18px; margin-left: 1%; margin-right: 1%;">
-                                <hr />
-                            </div>
-
-                            <div style="margin-left: 1%; margin-right: 1%;">
-
-                                <span>
-                                    <input id="change_monitor_sharing" data-event="monitor_sharing"
-                                        onchange="changeMonitorSharing(this)" class="mr-2" type="checkbox"
-                                        {{ if .ShareMonitoringData }} checked {{end}}
-                                        data-toggle="toggle" data-on="&shy;" data-off="&shy;" data-size="xs">
-                                    Share anonymized data with eth2 teams
-                                </span>
-                                <br /><br />
-
-                                <p style="color: #a3a3a3;">Sharing anonymized data with your prefered eth2 client team
-                                    can help them improve their software. You can change this setting later on.</p>
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <!-- Active linked devices -->
-                    {{ $pairedDevicesLen := len .PairedDevices }}
-                    {{ $lastPairedElement := sub $pairedDevicesLen 1 }}
-
-                    {{ if gt $pairedDevicesLen 0 }}
-                    <div class="card my-3">
-                        <div class="card-header">
-                            <h3 class="h5">Paired devices</h3>
-                        </div>
-                        <div class="card-body">
-                            <div>
-                                {{ range $key, $value := .PairedDevices }}
-                                <div id="device_container_{{ $value.ID }}">
-                                <div style="display: flex;justify-content: space-between;">
-                                    <div >
-                                        <h5>Device: {{ $value.DeviceName }}</h5>
-                                        <h6>Linked App: {{ $value.AppName }}</h6>
-                                    </div>
-                                    {{ if not (eq $value.AppName "Ethpool Solo Staking") }}
-                                    <div >
-                                        <a style="color: #fff" id="active_{{ $value.ID }}" data-deviceid="{{ $value.ID }}"
-                                            class="btn btn-danger ml-2 btn-icon-inside btn-sm text-white device-delete-btn"
-                                            data-toggle="modal"
-                                            data-target="#deleteDevicePair">
-                                            <span class="fas fa-trash icon-inside"></span>
-                                        </a>
-                                    </div>
-                                    <script src="/js/jquery.min.js"></script>
-                                    <script>
-                                        $(document).on("click", ".device-delete-btn", function () {
-                                            var deviceId = $(this).data('deviceid');
-                                            CURRENT_DELETE_DEVICE_ID = deviceId;
-                                        });
-                                    </script>
-                                    {{end}}
-                                </div>
-                                <br />
-                                <span style="margin-left:4%;">
-                                    <input id="notify_enabled_{{ $value.ID }}" data-event="notify_enabled"
-                                        data-deviceid="{{ $value.ID }}" onchange="changePairSetting(this)" class="mr-2"
-                                        {{ if not $value.Active }} disabled {{end}} {{ if $value.NotifyEnabled }}
-                                        checked {{end}} type="checkbox" data-toggle="toggle" data-on="&shy;"
-                                        data-off="&shy;" data-size="xs">
-                                    Mobile notifications
-                                </span>
-                                <br />
-                                <br />
-                                <span style="margin-left:4%;">
-                                    <input id="active_{{ $value.ID }}" data-event="active"
-                                        data-deviceid="{{ $value.ID }}" onchange="changePairSetting(this)" class="mr-2"
-                                        {{ if $value.Active }} checked {{end}} type="checkbox" data-toggle="toggle"
-                                        data-on="&shy;" data-off="&shy;" data-size="xs">
-                                    Grant account access (required)
-                                </span>
-                                <br /><br />
-                                <span>Paired:</span><i> {{ formatTimestampTs $value.CreatedAt }}</i>
-
-                                {{ if lt $key $lastPairedElement }}
-                                <hr style="width: 98%; margin-top:28px;margin-bottom:28px;" />
-                                {{ end }}
-                                </div>
-                                {{ end }}
-                            </div>
-                           
-                        </div>
-                    </div>
-                    {{end}}
-                </div>
-
-                <div id="api" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="api-tab">
-                    <!-- User Api Key -->
-                    <div class="card my-3">
-                        <div class="card-header justify-content-between d-flex align-items-center">
-                            <h3 class="h5">
-                                <span>Api Key</span> <span class="mx-1">|</span>
-                                <span style="font-size: 80%;" class="font-weight-light">
-                                    {{if not .Subscription.Active}}
-                                    Free Tier {{if .Subscription.SubscriptionID}}(waiting on payment){{end}}
-                                    {{else}}
-                                    {{if eqsp .Subscription.PriceID .Sapphire}} Sapphire <i style="color: #0f52ba"
-                                        class="fas fa-gem"></i>
-                                    {{else}}
-                                    {{if eqsp .Subscription.PriceID .Emerald}} Emerald <i style="color: #50c878;"
-                                        class="fas fa-gem"></i>
-                                    {{else}}
-                                    {{if eqsp .Subscription.PriceID .Diamond}} Diamond <i style="color: #b9f2ff"
-                                        class="fas fa-gem"></i> {{end}}
-
-                                    {{end}}
-                                    {{end}}
-                                    {{end}}
-                                </span>
-                            </h3>
-                            {{if .Subscription.SubscriptionID}}
-                            <form class="manage-billing-form">
-                                {{ .CsrfField }}
-                                <button class="btn btn-outline-primary">Manage Subscription</button>
-                            </form>
-                            {{else}}
-                            <a href="/pricing" class="btn btn-outline-primary">Upgrade Plan</a>
-                            {{end}}
-                        </div>
-                        <div class="card-body">
-                            <div class="text-center">
-                                {{if .Subscription.ApiKey}}
-                                <div class="my-2">
-                                    <span class="text-muted">
-                                        Warning, everybody can access your account with this key. KEEP IT SAFE!
-                                    </span>
-                                </div>
-                                <div class="my-2">
-                                    <span style="font-weight:bold">
-                                        <i class="fas fa-key"></i>
-                                    </span>
-                                    <span style="font-size: 90%;">
-                                        <span style="user-select: all;">{{.Subscription.ApiKey}}</span>
-                                        <a style="color: #fff" id="copy-apiKey" data-toggle="tooltip"
-                                            data-original-title="Copy API Key"
-                                            data-clipboard-text="{{.Subscription.ApiKey}}"
-                                            class="btn btn-primary mb-1 btn-icon-inside">
-                                            <span class="fa fa-copy icon-inside text-white"></span>
-                                        </a>
-                                    </span>
-                                </div>
-                                {{else}}
-                                <div class="my-2">
-                                    <span class="text-muted">
-                                        No API key found for this account.
-                                    </span>
-                                </div>
-                                <div class="my-2">
-                                    <button onclick="generateApiKey()" id="generate-api-key" class="btn btn-outline-primary">Generate
-                                        Key</button>
-                                </div>
-                                {{end}}
-                            </div>
-                        </div>
-                    </div>
-                {{if .Subscription.ApiKey}}
-                    <div class="card my-3">
-                        <div class="card-header justify-content-between d-flex align-items-center">
-                            <h3 class="h5">
-                                <span>Usage <span class="mx-1">|</span> <a style="font-size: 80%;" class="font-weight-light" href="/api/v1/docs/index.html">docs <i style="font-size: 80%;" class="fas fa-laptop-code"></i></a></span>                                
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            {{ if not (eqsp .Subscription.PriceID .Diamond) }}
-                            <div class="my-3">
-                                <div class="d-flex justify-content-between">
-                                    <div>Daily:</div> 
-                                    <div>{{formatThousandsInt .ApiStatistics.Daily}} / {{formatThousandsInt .ApiStatistics.MaxDaily}}</div>
-                                </div>
-                                {{ if .ApiStatistics.Daily }}
-                                <div style="white-space: nowrap;" class="progress">
-                                    {{$percentageDaily := formatPercentage (divInt .ApiStatistics.Daily .ApiStatistics.MaxDaily)}}
-                                    <div class="progress-bar" role="progressbar" style="width: {{$percentageDaily}}%; white-space: no-wrap;" aria-valuenow="{{.ApiStatistics.Daily}}" aria-valuemin="0" aria-valuemax="{{.ApiStatistics.MaxDaily}}">{{$percentageDaily}} %</div>
-                                </div>
-                                {{end}}
-                            </div>
                             {{ end }}
-                            <div class="my-3">
-                                <div class="d-flex justify-content-between">
-                                    <div>Monthly:</div> 
-                                    <div>{{formatThousandsInt .ApiStatistics.Monthly}} / {{formatThousandsInt .ApiStatistics.MaxMonthly}}</div>
-                                </div>
-                                {{ if .ApiStatistics.Monthly}}
-                                <div style="white-space: nowrap;" class="progress">
-                                    {{$percentageMonthly := formatPercentage (divInt .ApiStatistics.Monthly .ApiStatistics.MaxMonthly)}}
-                                    <div class="progress-bar" role="progressbar" style="width: {{$percentageMonthly}}%; white-space: nowrap;" aria-valuenow="{{.ApiStatistics.Monthly}}" aria-valuemin="0" aria-valuemax="{{.ApiStatistics.MaxMonthly}}">{{$percentageMonthly}} %</div>
-                                </div>
-                                {{end}}
-                            </div>
-                        </div>
+                          {{ end }}
+                        {{ end }}
+                      </span>
+                    </h3>
+                    {{ if and (eq .Premium.Store "stripe") (eq .Premium.RejectReason "" ) }}
+                      <form class="manage-billing-form">
+                        {{ .CsrfField }}
+                        <button class="btn btn-outline-primary">Manage Subscription</button>
+                      </form>
+                    {{ else }}
+                      {{ if or (not .Premium.Package) (not (eq .Premium.RejectReason "")) }}
+                        <a href="/premium" class="btn btn-outline-primary">Get Premium</a>
+                      {{ else }}
+                        {{ if eq .Premium.Store "ios-appstore" }}
+                          <span class="text-muted">via Apple</span>
+                        {{ else }}
+                          <span class="text-muted">via Google</span>
+                        {{ end }}
+                      {{ end }}
+                    {{ end }}
+                  </div>
+                  <div class="card-body">
+                    <div class="text-center">
+                      <div class="my-2">
+                        <span class="text-muted" style="margin-left: 12px; margin-right: 12px;">
+                          {{ if not .Premium.Active }}
+                            Premium features for your beaconcha.in explorer and <a href="/mobile">beaconcha.in mobile app</a> experience. No ads, support for more validators and more.
+                          {{ else }}
+                            Your premium subscription is active. Thank you for supporting us!
+                          {{ end }}
+                        </span>
+                      </div>
                     </div>
-                {{end}}
+                  </div>
                 </div>
-            </div>
-        </div>
-    </div>
 
-
-    <!-- Modals -->
-    <div class="modal fade" id="deleteAccountModal" data-backdrop="static" data-keyboard="false" tabindex="-1"
-        role="dialog" aria-labelledby="deleteAccountLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteAccountLabel">Please Confirm Account Deletion</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <i class="text-warning fas fa-exclamation-triangle"></i> Warning, you will not be able to
-                    recover your account!
-                </div>
-                <div class="modal-footer">
-                    <form id="delete-form" action="settings/delete" method="POST">
-                        {{ .CsrfField }}
-                        <button id="delete-button" type="submit" class="btn btn-outline-danger btn-sm"
-                            data-dismiss="modal">Delete
-                        </button>
+                <!-- Update Email -->
+                <div class="card my-3">
+                  <div class="card-header">
+                    <h3 class="h5">Update Email</h3>
+                  </div>
+                  <div class="card-body">
+                    <form id="email-form" action="settings/email" method="POST">
+                      {{ .CsrfField }}
+                      <div class="form-group">
+                        <label for="email">Email address</label>
+                        <div class="input-group">
+                          <input value="{{ .Subscription.Email }}" disabled inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email" />
+                          <div class="input-group-append">
+                            <button id="email-edit-button" onclick="toggleButton(this)" type="button" class="btn btn-outline-primary">Edit</button>
+                          </div>
+                        </div>
+                      </div>
                     </form>
+                  </div>
                 </div>
-                <script>
-                    document.getElementById('delete-button').addEventListener('click', function (event) {
-                        event.preventDefault()
-                        document.getElementById('delete-form').submit()
-                    })
-                </script>
-            </div>
-        </div>
-    </div>
+              </div>
 
-    <div class="modal fade" id="deleteDevicePair" data-backdrop="static" data-keyboard="false" tabindex="-1"
-        role="dialog" aria-labelledby="deleteAccountLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteAccountLabel">Remove Device</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+              <!-- Update Password -->
+              <div class="card my-3">
+                <div class="card-header">
+                  <h3 class="h5">Update Password</h3>
                 </div>
-                <div class="modal-body">
-                    <i class="text-warning fas fa-exclamation-triangle"></i> Do you want to remove this device from your account?
+                <div class="card-body">
+                  <form action="settings/password" method="post">
+                    {{ .CsrfField }}
+                    <input value="{{ .Subscription.Email }}" inputmode="email" type="text" maxlength="100" class="form-control visually-hidden" autocomplete="email" name="email" />
+                    <div class="form-group">
+                      <label for="old-password">Old Password</label>
+                      <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="current-password" id="old-password" name="old-password" />
+                    </div>
+                    <div class="form-group">
+                      <label for="password">New Password</label>
+                      <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="password" name="password" />
+                    </div>
+                    <div class="form-group">
+                      <label for="pw-confirm">Confirm New Password</label>
+                      <input oninput="checkPasswordsMatch(this)" required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm" name="pw-confirm" />
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary float-right">Save Changes</button>
+                  </form>
                 </div>
-                <div class="modal-footer">
-                 
-                        {{ .CsrfField }}
-                        <button id="delete-device-button" onclick="deleteDevicePairConfirm(this)" class="btn btn-outline-danger btn-sm"
-                            data-dismiss="modal">Delete
-                        </button>
-                    
+              </div>
+
+              <!-- Delete Account -->
+              <div class="card my-3">
+                <div class="card-header">
+                  <h3 class="h5">Delete Account <i class="fas fa-exclamation-triangle text-warning"></i></h3>
                 </div>
+                <div class="card-body">
+                  <div class="d-flex justify-content-between">
+                    <span> Warning, you will not be able to recover your account! </span>
+                    <!-- Button trigger modal -->
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#deleteAccountModal">Delete</button>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            <div id="app" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="app-tab">
+              <!-- Monitoring Helper -->
+              <div class="card my-3">
+                <div class="card-header">
+                  <h3 class="h5">Set up client monitoring</h3>
+                </div>
+                <div class="card-body">
+                  <span
+                    >Monitor your staking machine via the mobile app. Learn more <a href="https://kb.beaconcha.in/mobile-app-less-than-greater-than-beacon-node"><b>here</b></a
+                    >.</span
+                  ><br /><br />
+
+                  {{ if .Subscription.ApiKey }}
+
+                    <h4>Architecture</h4>
+                    <div class="btn-group btn-group-toggle" role="group" aria-label="Architecture" data-toggle="buttons">
+                      <label class="btn btn-light active"> <input type="radio" name="options" id="desktop" autocomplete="off" checked onclick="switchedArchitecture('desktop')" />Desktop </label>
+                      <label class="btn btn-light"> <input type="radio" name="options" id="arm" autocomplete="off" onclick="switchedArchitecture('arm')" />ARM (Raspberry Pi) </label>
+                    </div>
+                    <br /><br />
+
+                    <div class="form-group my-3">
+                      <label for="client-input">Machine Name (Optional)</label>
+                      <input id="client-input" type="text" oninput="changeMachineName(this.value);" class="form-control" placeholder="e.g. Boris" aria-describedby="eth-input-help" />
+                      <i id="invalid-name" style="color: red;"></i>
+                    </div>
+                    <br />
+
+                    <h4>Select your Client</h4>
+                    <div class="accordion" id="accordionExample" style="padding-top: 7px;">
+                      <div class="card" style="box-shadow: none; ">
+                        <h2 class="card-header" id="headingOne">
+                          <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">Lighthouse Setup Guide</button>
+                        </h2>
+                        <div id="collapseOne" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample" style="margin: 15px;">
+                          <div class="accordion-body">
+                            Copy & Paste the following flags to your Lighthouse validator <strong>and</strong> beaconnode:<br /><br />
+
+                            <div style="margin-left: 5px; margin-right: 5px;">
+                              <div style="float: left;  width: 90%;">
+                                <code>
+                                  <span id="lighthouse-graffiti"></span>
+                                </code>
+                              </div>
+                              <div style="float: right;">
+                                <a id="copy-lighthouse-graffiti" data-toggle="tooltip" data-original-title="Copy Command" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white"> <span class="fa fa-copy icon-inside"></span> </a>
+                              </div>
+                            </div>
+                            <div style="clear: both;"></div>
+                            <br />
+                          </div>
+                        </div>
+                      </div>
+                      <div class="card" style="box-shadow: none;">
+                        <h2 class="card-header" id="headingTwo">
+                          <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">Prysm Setup Guide</button>
+                        </h2>
+                        <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionExample" style="margin: 15px;">
+                          <div class="accordion-body">
+                            <h4>1. Install Metric Exporter</h4>
+                            Download the latest beaconcha.in metrics exporter on your machine:<br /><br />
+
+                            <div style="margin-left: 5px; margin-right: 5px;">
+                              <div style="float: left; width: 90%;">
+                                <code>
+                                  <span>
+                                    <span class="dl-normal"></span>
+                                  </span>
+                                </code>
+                              </div>
+                              <div style="float: right;">
+                                <a data-toggle="tooltip" data-original-title="Copy Command" class="copy-dl-normal d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white" data-clipboard-text=""> <span class="fa fa-copy icon-inside"></span> </a>
+                              </div>
+                            </div>
+
+                            <div style="clear: both;"></div>
+                            <br />
+
+                            <h4>2. Run Metrics Exporter</h4>
+                            <div style="margin-left: 5px; margin-right: 5px;">
+                              <div style="float: left;  width: 90%;">
+                                <code>
+                                  <span id="prysm-graffiti"></span>
+                                </code>
+                              </div>
+                              <div style="float: right;">
+                                <a id="copy-prysm-graffiti" data-toggle="tooltip" data-original-title="Copy Command" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white"> <span class="fa fa-copy icon-inside"></span> </a>
+                              </div>
+                            </div>
+
+                            <div style="clear: both;"></div>
+                            <br />
+                          </div>
+                        </div>
+                      </div>
+                      <div class="card" style="box-shadow: none;">
+                        <h2 class="card-header" id="headingThree">
+                          <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">Nimbus Setup Guide</button>
+                        </h2>
+                        <div id="collapseThree" class="collapse" aria-labelledby="headingThree" data-parent="#accordionExample" style="margin: 15px;">
+                          <div class="accordion-body">
+                            <h4>1. Run Nimbus Client</h4>
+                            Copy & Paste the following flags to your Nimbus node:<br /><br />
+                            <div style="margin-left: 5px; margin-right: 5px;">
+                              <div style="float: left;  width: 90%;">
+                                <code>
+                                  <span>--metrics --metrics-port=8008</span>
+                                </code>
+                              </div>
+                              <div style="float: right;">
+                                <a data-toggle="tooltip" data-original-title="Copy Command" data-clipboard-text="--metrics --metric-port=8008" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white"> <span class="fa fa-copy icon-inside"></span> </a>
+                              </div>
+                            </div>
+
+                            <div style="clear: both;"></div>
+                            <br />
+
+                            <h4>2. Install Metric Exporter</h4>
+                            Download the latest beaconcha.in metrics exporter on your machine:<br /><br />
+
+                            <div style="margin-left: 5px; margin-right: 5px;">
+                              <div style="float: left;  width: 90%;">
+                                <code>
+                                  <span>
+                                    <span class="dl-normal"></span>
+                                  </span>
+                                </code>
+                              </div>
+                              <div style="float: right;">
+                                <a data-toggle="tooltip" data-original-title="Copy Command" class="copy-dl-normal d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white" data-clipboard-text=""> <span class="fa fa-copy icon-inside"></span> </a>
+                              </div>
+                            </div>
+
+                            <div style="clear: both;"></div>
+                            <br />
+
+                            <h4>3. Run Metrics Exporter</h4>
+                            <div style="margin-left: 5px; margin-right: 5px;">
+                              <div style="float: left;  width: 90%;">
+                                <code>
+                                  <span id="nimbus-graffiti"></span>
+                                </code>
+                              </div>
+                              <div style="float: right;">
+                                <a id="copy-nimbus-graffiti" data-toggle="tooltip" data-original-title="Copy Command" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white"> <span class="fa fa-copy icon-inside"></span> </a>
+                              </div>
+                            </div>
+
+                            <div style="clear: both;"></div>
+                            <br />
+                          </div>
+                        </div>
+                      </div>
+                      <div class="card" style="box-shadow: none;">
+                        <h2 class="card-header" id="headingFour">
+                          <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">Teku Setup Guide</button>
+                        </h2>
+                        <div id="collapseFour" class="collapse" aria-labelledby="headingFour" data-parent="#accordionExample" style="margin: 15px;">
+                          <div class="accordion-body">
+                            Copy & Paste the following flags to your Teku validator client:<br /><br />
+
+                            <div style="margin-left: 5px; margin-right: 5px;">
+                              <div style="float: left;  width: 90%;">
+                                <code>
+                                  <span id="teku-graffiti"></span>
+                                </code>
+                              </div>
+                              <div style="float: right;">
+                                <a id="copy-teku-graffiti" data-toggle="tooltip" data-original-title="Copy Command" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white"> <span class="fa fa-copy icon-inside"></span> </a>
+                              </div>
+                            </div>
+                            <div style="clear: both;"></div>
+                            <br />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  {{ else }}
+                    <div class="my-2">
+                      <span class="text-muted"> You need to generate an API key before you can continue. </span>
+                    </div>
+                    <div class="my-2">
+                      {{ .CsrfField }}
+                      <button onclick="generateApiKey()" id="generate-api-key" class="btn btn-outline-primary">Generate Key</button>
+                    </div>
+                  {{ end }}
+
+
+                  <div style="padding-top: 15px; padding-bottom: 18px; margin-left: 1%; margin-right: 1%;">
+                    <hr />
+                  </div>
+
+                  <div style="margin-left: 1%; margin-right: 1%;">
+                    <span>
+                      <input
+                        id="change_monitor_sharing"
+                        data-event="monitor_sharing"
+                        onchange="changeMonitorSharing(this)"
+                        class="mr-2"
+                        type="checkbox"
+                        {{ if .ShareMonitoringData }}checked{{ end }}
+                        data-toggle="toggle"
+                        data-on="&shy;"
+                        data-off="&shy;"
+                        data-size="xs" />
+                      Share anonymized data with eth2 teams
+                    </span>
+                    <br /><br />
+
+                    <p style="color: #a3a3a3;">Sharing anonymized data with your prefered eth2 client team can help them improve their software. You can change this setting later on.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Active linked devices -->
+              {{ $pairedDevicesLen := len .PairedDevices }}
+              {{ $lastPairedElement := sub $pairedDevicesLen 1 }}
+
+              {{ if gt $pairedDevicesLen 0 }}
+                <div class="card my-3">
+                  <div class="card-header">
+                    <h3 class="h5">Paired devices</h3>
+                  </div>
+                  <div class="card-body">
+                    <div>
+                      {{ range $key, $value := .PairedDevices }}
+                        <div id="device_container_{{ $value.ID }}">
+                          <div style="display: flex;justify-content: space-between;">
+                            <div>
+                              <h5>Device: {{ $value.DeviceName }}</h5>
+                              <h6>Linked App: {{ $value.AppName }}</h6>
+                            </div>
+                            {{ if not (eq $value.AppName "Ethpool Solo Staking") }}
+                              <div>
+                                <a style="color: #fff" id="active_{{ $value.ID }}" data-deviceid="{{ $value.ID }}" class="btn btn-danger ml-2 btn-icon-inside btn-sm text-white device-delete-btn" data-toggle="modal" data-target="#deleteDevicePair">
+                                  <span class="fas fa-trash icon-inside"></span>
+                                </a>
+                              </div>
+                              <script src="/js/jquery.min.js"></script>
+                              <script>
+                                $(document).on("click", ".device-delete-btn", function () {
+                                  var deviceId = $(this).data("deviceid")
+                                  CURRENT_DELETE_DEVICE_ID = deviceId
+                                })
+                              </script>
+                            {{ end }}
+                          </div>
+                          <br />
+                          <span style="margin-left:4%;">
+                            <input
+                              id="notify_enabled_{{ $value.ID }}"
+                              data-event="notify_enabled"
+                              data-deviceid="{{ $value.ID }}"
+                              onchange="changePairSetting(this)"
+                              class="mr-2"
+                              {{ if not $value.Active }}disabled{{ end }}
+                              {{ if $value.NotifyEnabled }}
+                                checked
+                              {{ end }}
+                              type="checkbox"
+                              data-toggle="toggle"
+                              data-on="&shy;"
+                              data-off="&shy;"
+                              data-size="xs" />
+                            Mobile notifications
+                          </span>
+                          <br />
+                          <br />
+                          <span style="margin-left:4%;">
+                            <input id="active_{{ $value.ID }}" data-event="active" data-deviceid="{{ $value.ID }}" onchange="changePairSetting(this)" class="mr-2" {{ if $value.Active }}checked{{ end }} type="checkbox" data-toggle="toggle" data-on="&shy;" data-off="&shy;" data-size="xs" />
+                            Grant account access (required)
+                          </span>
+                          <br /><br />
+                          <span>Paired:</span><i> {{ formatTimestampTs $value.CreatedAt }}</i>
+
+                          {{ if lt $key $lastPairedElement }}
+                            <hr style="width: 98%; margin-top:28px;margin-bottom:28px;" />
+                          {{ end }}
+                        </div>
+                      {{ end }}
+                    </div>
+                  </div>
+                </div>
+              {{ end }}
+            </div>
+
+            <div id="api" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="api-tab">
+              <!-- User Api Key -->
+              <div class="card my-3">
+                <div class="card-header justify-content-between d-flex align-items-center">
+                  <h3 class="h5">
+                    <span>Api Key</span> <span class="mx-1">|</span>
+                    <span style="font-size: 80%;" class="font-weight-light">
+                      {{ if not .Subscription.Active }}
+                        Free Tier
+                        {{ if .Subscription.SubscriptionID }}(waiting on payment){{ end }}
+                      {{ else }}
+                        {{ if eqsp .Subscription.PriceID .Sapphire }}
+                          Sapphire <i style="color: #0f52ba" class="fas fa-gem"></i>
+                        {{ else }}
+                          {{ if eqsp .Subscription.PriceID .Emerald }}
+                            Emerald <i style="color: #50c878;" class="fas fa-gem"></i>
+                          {{ else }}
+                            {{ if eqsp .Subscription.PriceID .Diamond }}Diamond <i style="color: #b9f2ff" class="fas fa-gem"></i>{{ end }}
+
+                          {{ end }}
+                        {{ end }}
+                      {{ end }}
+                    </span>
+                  </h3>
+                  {{ if .Subscription.SubscriptionID }}
+                    <form class="manage-billing-form">
+                      {{ .CsrfField }}
+                      <button class="btn btn-outline-primary">Manage Subscription</button>
+                    </form>
+                  {{ else }}
+                    <a href="/pricing" class="btn btn-outline-primary">Upgrade Plan</a>
+                  {{ end }}
+                </div>
+                <div class="card-body">
+                  <div class="text-center">
+                    {{ if .Subscription.ApiKey }}
+                      <div class="my-2">
+                        <span class="text-muted"> Warning, everybody can access your account with this key. KEEP IT SAFE! </span>
+                      </div>
+                      <div class="my-2">
+                        <span style="font-weight:bold">
+                          <i class="fas fa-key"></i>
+                        </span>
+                        <span style="font-size: 90%;">
+                          <span style="user-select: all;">{{ .Subscription.ApiKey }}</span>
+                          <a style="color: #fff" id="copy-apiKey" data-toggle="tooltip" data-original-title="Copy API Key" data-clipboard-text="{{ .Subscription.ApiKey }}" class="btn btn-primary mb-1 btn-icon-inside">
+                            <span class="fa fa-copy icon-inside text-white"></span>
+                          </a>
+                        </span>
+                      </div>
+                    {{ else }}
+                      <div class="my-2">
+                        <span class="text-muted"> No API key found for this account. </span>
+                      </div>
+                      <div class="my-2">
+                        <button onclick="generateApiKey()" id="generate-api-key" class="btn btn-outline-primary">Generate Key</button>
+                      </div>
+                    {{ end }}
+                  </div>
+                </div>
+              </div>
+              {{ if .Subscription.ApiKey }}
+                <div class="card my-3">
+                  <div class="card-header justify-content-between d-flex align-items-center">
+                    <h3 class="h5">
+                      <span
+                        >Usage <span class="mx-1">|</span> <a style="font-size: 80%;" class="font-weight-light" href="/api/v1/docs/index.html">docs <i style="font-size: 80%;" class="fas fa-laptop-code"></i></a
+                      ></span>
+                    </h3>
+                  </div>
+                  <div class="card-body">
+                    {{ if not (eqsp .Subscription.PriceID .Diamond) }}
+                      <div class="my-3">
+                        <div class="d-flex justify-content-between">
+                          <div>Daily:</div>
+                          <div>{{ formatThousandsInt .ApiStatistics.Daily }} / {{ formatThousandsInt .ApiStatistics.MaxDaily }}</div>
+                        </div>
+                        {{ if .ApiStatistics.Daily }}
+                          <div style="white-space: nowrap;" class="progress">
+                            {{ $percentageDaily := formatPercentage (divInt .ApiStatistics.Daily .ApiStatistics.MaxDaily) }}
+                            <div class="progress-bar" role="progressbar" style="width: {{ $percentageDaily }}%; white-space: no-wrap;" aria-valuenow="{{ .ApiStatistics.Daily }}" aria-valuemin="0" aria-valuemax="{{ .ApiStatistics.MaxDaily }}">{{ $percentageDaily }} %</div>
+                          </div>
+                        {{ end }}
+                      </div>
+                    {{ end }}
+                    <div class="my-3">
+                      <div class="d-flex justify-content-between">
+                        <div>Monthly:</div>
+                        <div>{{ formatThousandsInt .ApiStatistics.Monthly }} / {{ formatThousandsInt .ApiStatistics.MaxMonthly }}</div>
+                      </div>
+                      {{ if .ApiStatistics.Monthly }}
+                        <div style="white-space: nowrap;" class="progress">
+                          {{ $percentageMonthly := formatPercentage (divInt .ApiStatistics.Monthly .ApiStatistics.MaxMonthly) }}
+                          <div class="progress-bar" role="progressbar" style="width: {{ $percentageMonthly }}%; white-space: nowrap;" aria-valuenow="{{ .ApiStatistics.Monthly }}" aria-valuemin="0" aria-valuemax="{{ .ApiStatistics.MaxMonthly }}">{{ $percentageMonthly }} %</div>
+                        </div>
+                      {{ end }}
+                    </div>
+                  </div>
+                </div>
+              {{ end }}
+            </div>
+          </div>
         </div>
+      </div>
+
+      <!-- Modals -->
+      <div class="modal fade" id="deleteAccountModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="deleteAccountLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="deleteAccountLabel">Please Confirm Account Deletion</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body"><i class="text-warning fas fa-exclamation-triangle"></i> Warning, you will not be able to recover your account!</div>
+            <div class="modal-footer">
+              <form id="delete-form" action="settings/delete" method="POST">
+                {{ .CsrfField }}
+                <button id="delete-button" type="submit" class="btn btn-outline-danger btn-sm" data-dismiss="modal">Delete</button>
+              </form>
+            </div>
+            <script>
+              document.getElementById("delete-button").addEventListener("click", function (event) {
+                event.preventDefault()
+                document.getElementById("delete-form").submit()
+              })
+            </script>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal fade" id="deleteDevicePair" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="deleteAccountLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="deleteAccountLabel">Remove Device</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body"><i class="text-warning fas fa-exclamation-triangle"></i> Do you want to remove this device from your account?</div>
+            <div class="modal-footer">
+              {{ .CsrfField }}
+              <button id="delete-device-button" onclick="deleteDevicePairConfirm(this)" class="btn btn-outline-danger btn-sm" data-dismiss="modal">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-</div>
-{{end}}
-{{end}}
+  {{ end }}
+{{ end }}

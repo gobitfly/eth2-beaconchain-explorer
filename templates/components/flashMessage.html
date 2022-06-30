@@ -1,10 +1,10 @@
 {{ define "flashMessage" }}
-    {{if ne .FlashMessage ""}}
-    <div class="alert {{if contains .FlashMessage "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2" role="alert">
-        <div class="p-2">{{.FlashMessage | formatHTML}}</div>
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
+  {{ if ne .FlashMessage "" }}
+    <div class="alert {{ if contains .FlashMessage "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
+      <div class="p-2">{{ .FlashMessage | formatHTML }}</div>
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
     </div>
-    {{end}}
-{{end}}
+  {{ end }}
+{{ end }}

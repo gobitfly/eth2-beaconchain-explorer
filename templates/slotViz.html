@@ -1,390 +1,382 @@
-{{define "content"}}
-<div class="container mt-2">
-  <div class="d-md-flex py-2 justify-content-md-between">
-    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-sitemap mr-2"></i>Slot Visualization</h1>
-    <nav aria-label="breadcrumb">
+{{ define "content" }}
+  <div class="container mt-2">
+    <div class="d-md-flex py-2 justify-content-md-between">
+      <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-sitemap mr-2"></i>Slot Visualization</h1>
+      <nav aria-label="breadcrumb">
         <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-            <li class="breadcrumb-item"><a href="/charts" title="Charts">Charts</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Slotviz</li>
+          <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+          <li class="breadcrumb-item"><a href="/charts" title="Charts">Charts</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Slotviz</li>
         </ol>
-    </nav>
-</div>
-<div class="description">
-  <p>This chart displays the most recent epochs and their slots. The color of the slots indicates if the slot has been proposed, orphaned or missed. The bar below the epochs displays the participation during the epoch. The y axis represents the epoch number and the x axis represents the slot number.</p>
-</div>
-<div class="mt-4">
-  <div class="w-100" id="checklist"></div>
-</div>
-</div>
-{{end}}
-{{define "css"}}
-<style>
-  #checklist > svg {
-    overflow: visible;
-  }
-  svg rect[slot], svg rect[epoch] {
-    cursor: pointer;
-  }
-</style>
-{{end}}
-{{define "js"}}
-<script src="/js/d3.min.js"></script>
-<script>
-  var defaultEpoch = '{ "epoch": 0, "finalized": false, "justified": false, "previousjustified": false, "participation": 0, "slots": [{ "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }] }'
-  // set the default
+      </nav>
+    </div>
+    <div class="description">
+      <p>This chart displays the most recent epochs and their slots. The color of the slots indicates if the slot has been proposed, orphaned or missed. The bar below the epochs displays the participation during the epoch. The y axis represents the epoch number and the x axis represents the slot number.</p>
+    </div>
+    <div class="mt-4">
+      <div class="w-100" id="checklist"></div>
+    </div>
+  </div>
+{{ end }}
+{{ define "css" }}
+  <style>
+    #checklist > svg {
+      overflow: visible;
+    }
+    svg rect[slot],
+    svg rect[epoch] {
+      cursor: pointer;
+    }
+  </style>
+{{ end }}
+{{ define "js" }}
+  <script src="/js/d3.min.js"></script>
+  <script>
+    var defaultEpoch =
+      '{ "epoch": 0, "finalized": false, "justified": false, "previousjustified": false, "participation": 0, "slots": [{ "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }] }'
+    // set the default
 
-  var epoch0 = JSON.parse(defaultEpoch)
-  var epoch1 = JSON.parse(defaultEpoch)
-  var epoch2 = JSON.parse(defaultEpoch)
-  var epoch3 = JSON.parse(defaultEpoch)
-  var epoch4 = JSON.parse(defaultEpoch)
-  // var epoch5 = JSON.parse(defaultEpoch)
-  // var epoch6 = JSON.parse(defaultEpoch)
+    var epoch0 = JSON.parse(defaultEpoch)
+    var epoch1 = JSON.parse(defaultEpoch)
+    var epoch2 = JSON.parse(defaultEpoch)
+    var epoch3 = JSON.parse(defaultEpoch)
+    var epoch4 = JSON.parse(defaultEpoch)
+    // var epoch5 = JSON.parse(defaultEpoch)
+    // var epoch6 = JSON.parse(defaultEpoch)
 
+    var epochs = [epoch0, epoch1, epoch2, epoch3, epoch4]
+    epochs[1].epoch = 1
+    epochs[2].epoch = 2
+    epochs[3].epoch = 3
+    epochs[4].epoch = 4
+    // epochs[5].epoch = 5
+    // epochs[6].epoch = 5
 
+    // epochs[4].participation = 65.9
+    // epochs[0].slots[0].status = "proposed"
+    // epochs[1].slots[0].status = "missed"
+    // epochs[0].slots[1].active = true
 
+    document.addEventListener("DOMContentLoaded", function () {
+      /// Chat Dimensions
+      var margin = { top: 20, right: 30, bottom: 0, left: 30 }
+      var width = document.getElementById("checklist").clientWidth
+      var height = 120 + margin.top + margin.bottom + epochs.length * 50
 
+      // var reveal = (path) =>
+      //   path
+      //     .transition()
+      //     .duration(750)
+      //     .ease(d3.easeLinear)
+      //     .attrTween("width", function () {
+      //       var width = this.width.baseVal.value
+      //       return d3.interpolate(0, width)
+      //     })
 
-  var epochs = [epoch0, epoch1, epoch2, epoch3, epoch4]
-  epochs[1].epoch = 1
-  epochs[2].epoch = 2
-  epochs[3].epoch = 3
-  epochs[4].epoch = 4
-  // epochs[5].epoch = 5
-  // epochs[6].epoch = 5
+      roma = ["#ff3333", "#cc3333", "#33cc33"]
 
-  // epochs[4].participation = 65.9
-  // epochs[0].slots[0].status = "proposed"
-  // epochs[1].slots[0].status = "missed"
-  // epochs[0].slots[1].active = true
+      // define a color interpolation that turnes green over 66%
+      var color = d3.scaleSequential().domain([0, 99]).interpolator(d3.interpolateDiscrete(roma))
 
-  document.addEventListener('DOMContentLoaded', function () {
+      var colorProposed = d3.scaleSequential().domain([0, 12]).interpolator(d3.interpolateRgb("rgba(100, 200, 100, 1)", "rgba(100, 200, 100, 0.3)"))
 
-    /// Chat Dimensions
-    var margin = { top: 20, right: 30, bottom: 0, left: 30 }
-    var width = document.getElementById('checklist').clientWidth
-    var height = 120 + margin.top + margin.bottom + epochs.length * 50
+      // Chart Svg
+      var svg = d3.select("#checklist").append("svg").attr("viewBox", [0, 0, width, height]).attr("style", `max-width: ${width}px; font: 10px sans-serif;`)
 
+      // Define X axis
+      var x = d3
+        .scaleLinear()
+        .domain([0, 32])
+        .range([margin.left, width - margin.right])
+        .interpolate(d3.interpolateRound)
 
+      var participationX = d3
+        .scaleLinear()
+        .domain([0, 100])
+        .range([margin.left, width - margin.right])
+        .interpolate(d3.interpolateRound)
 
-    var reveal = path => path.transition()
-      .duration(750)
-      .ease(d3.easeLinear)
-      .attrTween("width", function () {
-        var width = this.width.baseVal.value
-        return d3.interpolate(0, width);
-      })
+      // define Y axis
+      var y = d3
+        .scaleBand()
+        .domain(epochs.map((d) => d.epoch))
+        .range([margin.top, height - margin.bottom])
+        .padding(0.1)
 
-    roma = [
-      "#ff3333",
-      "#cc3333",
-      "#33cc33",
-    ]
+      // var gx =
+      svg
+        .append("g")
+        .attr("transform", `translate(0,${margin.top})`)
+        .call(d3.axisTop(x))
+        .call((g) => g.select(".domain").remove())
 
-    // define a color interpolation that turnes green over 66%
-    var color = d3.scaleSequential()
-      .domain([0, 99])
-      .interpolator(d3.interpolateDiscrete(roma))
-
-    var colorProposed = d3.scaleSequential()
-      .domain([0, 12])
-      .interpolator(d3.interpolateRgb("rgba(100, 200, 100, 1)", "rgba(100, 200, 100, 0.3)"))
-
-    // Chart Svg
-    var svg = d3.select("#checklist").append("svg")
-      .attr("viewBox", [0, 0, width, height])
-      .attr("style", `max-width: ${ width }px; font: 10px sans-serif;`)
-
-    // Define X axis
-    var x = d3.scaleLinear()
-      .domain([0, 32])
-      .range([margin.left, width - margin.right])
-      .interpolate(d3.interpolateRound)
-
-    var participationX = d3.scaleLinear()
-      .domain([0, 100])
-      .range([margin.left, width - margin.right])
-      .interpolate(d3.interpolateRound)
-
-
-    // define Y axis
-    var y = d3.scaleBand()
-      .domain(epochs.map(d => d.epoch))
-      .range([margin.top, height - margin.bottom])
-      .padding(0.1)
-
-    var gx = svg.append("g")
-      .attr("transform", `translate(0,${ margin.top })`)
-      .call(d3.axisTop(x))
-      .call(g => g.select(".domain").remove())
-
-    var gy = svg.append("g")
-      .attr("transform", `translate(${ margin.left }, 0)`)
-      .call(d3.axisLeft(y))
-      .call(g => g.selectAll('line').remove())
-      .call(g => g.select(".domain").remove())
-
-    var yAxis = (g, x) => g
-      .attr("transform", `translate(${ margin.left }, 0)`)
-      .call(d3.axisLeft(x))
-      .call(g => g.selectAll('line').remove())
-      .call(g => g.select(".domain").remove())
-
-
-
-    var bars = svg.append("g")
-      .selectAll("rect")
-      .data(epochs, d => d)
-      .join("rect")
-      .attr("id", ({ epoch, participation }) => epoch)
-      .attr("fill", ({ participation }) => color(participation))
-      .attr("y", ({ epoch }) => y(epoch) + (y.bandwidth() / 2) + ((width - margin.right - margin.left) / 48))
-      .attr("x", x(0))
-      .attr("width", ({ participation }) => participationX(participation) - participationX(0))
-      .attr("height", "10")
-      .attr('data-original-title', (d, i) => `epoch ${ d.epoch } participation ${ d.participation }%`)
-      .attr('data-toggle', "tooltip")
-
-    var barLabels = svg.append('g')
-      .attr('text-anchor', "end")
-      .attr("transform", `translate(6, 5)`)
-      .selectAll('text')
-      .data(epochs, d => d)
-      .join('text')
-      .attr('fill', d => `${ d3.lab(color(d.participation)).l < 60 ? "white" : "black" }`)
-      .attr('y', d => y(d.epoch) + (y.bandwidth() / 2) + ((width - margin.right - margin.left) / 48))
-      .attr('x', d => participationX(d.participation) - x(0))
-      .attr('dy', '0.35em')
-      .attr('style', 'font-size: .7rem')
-      .text((d) => {
-        if (d.participation) {
-          var txt = d.justified ? (d.finalized ? 'finalized' : 'justified') : '' 
-          return txt + ' ' + d.participation + '%'
-        } else {
-          return ''
-        }
-      })
-
-
-    var heatmaps = svg.append("g")
-      .attr("text-anchor", "middle")
-      .selectAll("g")
-      .data(epochs, d => d.epoch)
-      .join('g')
-      .attr("transform", ({ epoch }) => `translate(0, ${ y(epoch) })`)
-
-
-    var slots = heatmaps.selectAll('rect')
-      .data(d => d.slots)
-      .join('rect')
-      
-    slots
-      // .attr('xlink:href', d => {
-      //     if(d && d.Slot) {
-      //       return "/block/"+ d.Slot
-      //     }
-      //   })
-      // .append('rect')
-      .attr('x', (d, i) => x(i))
-      .attr('y', (d, i) => (y.bandwidth() / 2) - 7.5)
-      .attr('class', (s, i) => {
-        if (s.active) {
-          return 'active-slot'
-        } else {
-          return ""
-        }
-      })
-      .attr("data-original-title", (s, i) => {
-        if (s.active) {
-          return `current slot`
-        }
-        if (s.status === "proposed" && s.delay) {
-          return `slot: ${ s.Slot } proposed in ${ s.delay }s`
-        } else if (s.status === "proposed") {
-          return `slot: ${ s.Slot } status: ${ s.status }`
-        }
-        if (s.status !== "scheduled") {
-          return `slot: ${ s.Slot } status: ${ s.status }`
-        } else {
-          return `slot: ${ s.Slot }`
-        }
-      })
-      // .attr("data-toggle", (s, i) => s.status !== "scheduled" || s.active ? "tooltip" : "")
-      .attr("data-toggle", (s, i) => "tooltip")
-      .attr('stroke-width', '.5')
-      .attr('stroke', (d) => d.active ? 'var(--body-color)' : 'transparent')
-      .attr('width', d => (width - margin.right - margin.left) / 48)
-      .attr('height', d => (width - margin.right - margin.left) / 48)
-      .attr("rx", "1")
-      .attr("ry", "1")
-      .attr("fill", (d) => {
-        if (d.status === "missed") {
-          return "rgba(200,100,100,0.8)"
-        } else if (d.status === "proposed") {
-          if (d.delay) {
-            return colorProposed(d.delay)
-          } else {
-            return colorProposed(1)
-          }
-        } else if (d.status === "orphaned") {
-          return "rgba(100,100, 200, 0.8)"
-        } else if (d.status === "genesis") {
-          return "rgba(119, 110, 255, 0.8)"
-        } else {
-          return "rgba(100,100,100, 0.5)"
-        }
-      })
-
-
-    var chart = Object.assign(svg.node(), {
-      update(newData) {
-        var t = svg.transition().duration(550)
-
-        // update y axis domain
-        y.domain(newData.map(d => d.epoch))
-        // update y axis labels
-        gy
-        .join('g')
+      var gy = svg
+        .append("g")
+        .attr("transform", `translate(${margin.left}, 0)`)
         .call(d3.axisLeft(y))
-        .call(g => g.selectAll('line').remove())
-        .call(g => g.select(".domain").remove())
+        .call((g) => g.selectAll("line").remove())
+        .call((g) => g.select(".domain").remove())
 
-        bars = bars
-        .data(newData, d => d.epoch)
-        .join(
-          enter => enter.append("rect"),
-          update => {
-            return update
-            .attr('epoch', d => d.epoch)
-            .on('click', (d) => {
-              var epoch = d.target.getAttribute('epoch')
-              window.location = "/epoch/"+epoch
-            })
-            .call(bar => bar.transition(t)
-              .attr("width", ({ participation }) => participationX(participation) - participationX(0))
-              .attr("fill", ({ participation }) => color(participation))
-              .attr('data-original-title', (d, i) => `epoch ${ d.epoch } participation ${ d.participation }%`)
-            )
-          },
-          exit => exit.remove()
-        )
-        barLabels = barLabels
-        .data(newData, d => d.epoch)
-        .join('text')
-        .attr('fill', d => `${ d3.lab(color(d.participation)).l < 60 ? "white" : "black" }`)
-        .attr('x', d => participationX(d.participation) - x(0))
+      // var yAxis = (g, x) =>
+      //   g
+      //     .attr("transform", `translate(${margin.left}, 0)`)
+      //     .call(d3.axisLeft(x))
+      //     .call((g) => g.selectAll("line").remove())
+      //     .call((g) => g.select(".domain").remove())
+
+      var bars = svg
+        .append("g")
+        .selectAll("rect")
+        .data(epochs, (d) => d)
+        .join("rect")
+        .attr("id", ({ epoch, participation }) => epoch)
+        .attr("fill", ({ participation }) => color(participation))
+        .attr("y", ({ epoch }) => y(epoch) + y.bandwidth() / 2 + (width - margin.right - margin.left) / 48)
+        .attr("x", x(0))
+        .attr("width", ({ participation }) => participationX(participation) - participationX(0))
+        .attr("height", "10")
+        .attr("data-original-title", (d, i) => `epoch ${d.epoch} participation ${d.participation}%`)
+        .attr("data-toggle", "tooltip")
+
+      var barLabels = svg
+        .append("g")
+        .attr("text-anchor", "end")
+        .attr("transform", `translate(6, 5)`)
+        .selectAll("text")
+        .data(epochs, (d) => d)
+        .join("text")
+        .attr("fill", (d) => `${d3.lab(color(d.participation)).l < 60 ? "white" : "black"}`)
+        .attr("y", (d) => y(d.epoch) + y.bandwidth() / 2 + (width - margin.right - margin.left) / 48)
+        .attr("x", (d) => participationX(d.participation) - x(0))
+        .attr("dy", "0.35em")
+        .attr("style", "font-size: .7rem")
         .text((d) => {
           if (d.participation) {
-            var txt = d.justified ? (d.finalized ? 'finalized' : 'justified') : '' 
-            return txt + ' ' + d.participation + '%'
+            var txt = d.justified ? (d.finalized ? "finalized" : "justified") : ""
+            return txt + " " + d.participation + "%"
           } else {
-            return ''
+            return ""
           }
+        })
+
+      var heatmaps = svg
+        .append("g")
+        .attr("text-anchor", "middle")
+        .selectAll("g")
+        .data(epochs, (d) => d.epoch)
+        .join("g")
+        .attr("transform", ({ epoch }) => `translate(0, ${y(epoch)})`)
+
+      var slots = heatmaps
+        .selectAll("rect")
+        .data((d) => d.slots)
+        .join("rect")
+
+      slots
+        // .attr('xlink:href', d => {
+        //     if(d && d.Slot) {
+        //       return "/block/"+ d.Slot
+        //     }
+        //   })
+        // .append('rect')
+        .attr("x", (d, i) => x(i))
+        .attr("y", (d, i) => y.bandwidth() / 2 - 7.5)
+        .attr("class", (s, i) => {
+          if (s.active) {
+            return "active-slot"
+          } else {
+            return ""
+          }
+        })
+        .attr("data-original-title", (s, i) => {
+          if (s.active) {
+            return `current slot`
+          }
+          if (s.status === "proposed" && s.delay) {
+            return `slot: ${s.Slot} proposed in ${s.delay}s`
+          } else if (s.status === "proposed") {
+            return `slot: ${s.Slot} status: ${s.status}`
+          }
+          if (s.status !== "scheduled") {
+            return `slot: ${s.Slot} status: ${s.status}`
+          } else {
+            return `slot: ${s.Slot}`
+          }
+        })
+        // .attr("data-toggle", (s, i) => s.status !== "scheduled" || s.active ? "tooltip" : "")
+        .attr("data-toggle", (s, i) => "tooltip")
+        .attr("stroke-width", ".5")
+        .attr("stroke", (d) => (d.active ? "var(--body-color)" : "transparent"))
+        .attr("width", (d) => (width - margin.right - margin.left) / 48)
+        .attr("height", (d) => (width - margin.right - margin.left) / 48)
+        .attr("rx", "1")
+        .attr("ry", "1")
+        .attr("fill", (d) => {
+          if (d.status === "missed") {
+            return "rgba(200,100,100,0.8)"
+          } else if (d.status === "proposed") {
+            if (d.delay) {
+              return colorProposed(d.delay)
+            } else {
+              return colorProposed(1)
+            }
+          } else if (d.status === "orphaned") {
+            return "rgba(100,100, 200, 0.8)"
+          } else if (d.status === "genesis") {
+            return "rgba(119, 110, 255, 0.8)"
+          } else {
+            return "rgba(100,100,100, 0.5)"
+          }
+        })
+
+      var chart = Object.assign(svg.node(), {
+        update(newData) {
+          var t = svg.transition().duration(550)
+
+          // update y axis domain
+          y.domain(newData.map((d) => d.epoch))
+          // update y axis labels
+          gy.join("g")
+            .call(d3.axisLeft(y))
+            .call((g) => g.selectAll("line").remove())
+            .call((g) => g.select(".domain").remove())
+
+          bars = bars
+            .data(newData, (d) => d.epoch)
+            .join(
+              (enter) => enter.append("rect"),
+              (update) => {
+                return update
+                  .attr("epoch", (d) => d.epoch)
+                  .on("click", (d) => {
+                    var epoch = d.target.getAttribute("epoch")
+                    window.location = "/epoch/" + epoch
+                  })
+                  .call((bar) =>
+                    bar
+                      .transition(t)
+                      .attr("width", ({ participation }) => participationX(participation) - participationX(0))
+                      .attr("fill", ({ participation }) => color(participation))
+                      .attr("data-original-title", (d, i) => `epoch ${d.epoch} participation ${d.participation}%`)
+                  )
+              },
+              (exit) => exit.remove()
+            )
+          barLabels = barLabels
+            .data(newData, (d) => d.epoch)
+            .join("text")
+            .attr("fill", (d) => `${d3.lab(color(d.participation)).l < 60 ? "white" : "black"}`)
+            .attr("x", (d) => participationX(d.participation) - x(0))
+            .text((d) => {
+              if (d.participation) {
+                var txt = d.justified ? (d.finalized ? "finalized" : "justified") : ""
+                return txt + " " + d.participation + "%"
+              } else {
+                return ""
+              }
+            })
+          heatmaps = heatmaps
+            .data(epochs, (d) => d.epoch)
+            .join("g")
+            .attr("transform", ({ epoch }) => `translate(0, ${y(epoch)})`)
+          slots = slots
+            .data((d) => d.slots)
+            .join(
+              (enter) => enter.append("rect"),
+              (update) => {
+                return update
+                  .attr("slot", (d) => d.Slot)
+                  .on("click", (d) => {
+                    var slot = d.target.getAttribute("slot")
+                    window.location = "/block/" + slot
+                  })
+                  .call((rect) =>
+                    rect
+                      .transition(t)
+                      .attr("stroke", (d) => (d.active ? "var(--body-color)" : "transparent"))
+                      .attr("fill", (d) => {
+                        if (d.status === "missed") {
+                          return "rgba(200,100,100,0.8)"
+                        } else if (d.status === "proposed") {
+                          if (d.delay) {
+                            return colorProposed(d.delay)
+                          } else {
+                            return colorProposed(1)
+                          }
+                        } else if (d.status === "orphaned") {
+                          return "rgba(100,100, 200, 0.8)"
+                        } else if (d.status === "genesis") {
+                          return "rgba(196, 174, 77, 0.8)"
+                        } else {
+                          return "rgba(100,100,100, 0.5)"
+                        }
+                      })
+                      .attr("class", (s, i) => {
+                        if (s.active) {
+                          return "active-slot"
+                        } else {
+                          return ""
+                        }
+                      })
+                      .attr("data-original-title", (s, i) => {
+                        if (s.active) {
+                          return `current slot`
+                        }
+                        if (s.status === "proposed" && s.delay) {
+                          return `slot: ${s.Slot} proposed in ${s.delay}s`
+                        } else if (s.status === "proposed") {
+                          return `slot: ${s.Slot} status: ${s.status}`
+                        }
+                        if (s.status !== "scheduled") {
+                          return `slot: ${s.Slot} status: ${s.status}`
+                        } else {
+                          return `slot: ${s.Slot}`
+                        }
+                      })
+                  )
+              },
+              (exit) => exit.remove()
+            )
+        },
       })
-        heatmaps = heatmaps
-          .data(epochs, d => d.epoch)
-          .join('g')
-          .attr("transform", ({ epoch }) => `translate(0, ${ y(epoch) })`)
-        slots = slots
-          .data(d => d.slots)
-          .join(
-            enter => enter.append('rect'),
-            update => {
-              return update
-                .attr('slot', d => d.Slot)
-                .on('click', (d) => {
-                  var slot = d.target.getAttribute('slot')
-                  window.location = "/block/"+slot
-                })
-                .call(rect => rect.transition(t)
-                .attr('stroke', (d) => d.active ? 'var(--body-color)' : 'transparent')
-                .attr("fill", (d) => {
-                  if (d.status === "missed") {
-                    return "rgba(200,100,100,0.8)"
-                  } else if (d.status === "proposed") {
-                    if (d.delay) {
-                      return colorProposed(d.delay)
-                    } else {
-                      return colorProposed(1)
-                    }
-                  } else if (d.status === "orphaned") {
-                    return "rgba(100,100, 200, 0.8)"
-                  } else if (d.status === "genesis") {
-                    return "rgba(196, 174, 77, 0.8)"
-                  } else {
-                    return "rgba(100,100,100, 0.5)"
-                  }
-                })
-                .attr('class', (s, i) => {
-                  if (s.active) {
-                    return 'active-slot'
-                  } else {
-                    return ""
-                  }
-                })
-                .attr("data-original-title", (s, i) => {
-                  if (s.active) {
-                    return `current slot`
-                  }
-                  if (s.status === "proposed" && s.delay) {
-                    return `slot: ${ s.Slot } proposed in ${ s.delay }s`
-                  } else if (s.status === "proposed") {
-                    return `slot: ${ s.Slot } status: ${ s.status }`
-                  }
-                  if (s.status !== "scheduled") {
-                    return `slot: ${ s.Slot } status: ${ s.status }`
-                  } else {
-                    return `slot: ${ s.Slot }`
-                  }
-                })
-              )
-            },
-            exit => exit.remove(),
-          )  
-          
+
+      function fetchMetrics() {
+        fetch("/launchMetrics")
+          .then((res) => res.json())
+          .then((data) => {
+            data = data.Epochs
+
+            for (var i = 0; i < data.length; i++) {
+              if (data[i].participation <= 1) {
+                data[i].participation = Math.round(data[i].participation * 10000) / 100
+              }
+              var slots = data[i].slots
+
+              if (epochs[i] === undefined) {
+                epochs[i] = {}
+                epochs[i].slots = []
+              }
+
+              for (let k = 0; k < slots.length; k++) {
+                // var slot = slots[k]
+                epochs[i].slots[k] = data[i].slots[k]
+              }
+              epochs[i].slots.reverse()
+              epochs[i].participation = data[i].participation
+              epochs[i].finalized = data[i].finalized
+              epochs[i].justified = data[i].justified
+              epochs[i].previousjustified = data[i].previousjustified
+              epochs[i].epoch = data[i].epoch
+            }
+            chart.update(data)
+          })
+          .catch((error) => {
+            console.error("error fetching resource", error)
+          })
       }
+
+      fetchMetrics()
+      setInterval(fetchMetrics, 6000)
     })
-
-    function fetchMetrics() {
-      fetch('/launchMetrics').then(res => res.json()).then(data => {
-        data = data.Epochs
-
-        for (var i = 0; i < data.length; i++) {
-          if (data[i].participation <= 1) {
-            data[i].participation = Math.round(data[i].participation * 10000) / 100
-          }
-          var slots = data[i].slots
-
-          if (epochs[i] === undefined) {
-            epochs[i] = {}
-            epochs[i].slots = []
-          }
-
-
-          for (let k = 0; k < slots.length; k++) {
-            var slot = slots[k];
-            epochs[i].slots[k] = data[i].slots[k]
-          }
-          epochs[i].slots.reverse()
-          epochs[i].participation = data[i].participation
-          epochs[i].finalized = data[i].finalized
-          epochs[i].justified = data[i].justified
-          epochs[i].previousjustified = data[i].previousjustified
-          epochs[i].epoch = data[i].epoch
-
-        }
-        chart.update(data)
-      }).catch(error => {
-        console.log('error fetching resource', error)
-      })
-    }
-
-    fetchMetrics()
-    setInterval(fetchMetrics, 6000)
-
-  })
-
-
-</script>
-{{end}}
+  </script>
+{{ end }}

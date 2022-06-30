@@ -1,14 +1,16 @@
-{{ define "js"}}
-{{end}}
+{{ define "js" }}
+{{ end }}
 
-{{ define "css"}}
-{{end}}
+{{ define "css" }}
+{{ end }}
 
-{{ define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-            <h2>Imprint</h2>
-        </div><a href="/" class="btn btn-primary mt-4">Back</a>
-        </div>
-    {{end}}
-{{end}}
+{{ define "content" }}
+  {{ with .Data }}
+    <div>
+      <div class="container mt-2">
+        <h2>Imprint</h2>
+      </div>
+      <a href="/" class="btn btn-primary mt-4">Back</a>
+    </div>
+  {{ end }}
+{{ end }}

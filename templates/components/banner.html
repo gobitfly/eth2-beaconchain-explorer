@@ -1,51 +1,47 @@
 {{ define "banner" }}
-<div id="r-banner" class=" my-2 pb-1 ad d-flex justify-content-center">
-  <div style="height: 62px" class="position-relative" style="width:fit-content">
-    <div v-if="windowWidth > 1140" id="revive-banner">
-      <ins ref="ins" data-revive-zoneid="2" data-revive-id="5b200397ccf8a9353bf44ef99b45268c">
-      </ins>
+  <div id="r-banner" class=" my-2 pb-1 ad d-flex justify-content-center">
+    <div style="height: 62px" class="position-relative" style="width:fit-content">
+      <div v-if="windowWidth > 1140" id="revive-banner">
+        <ins ref="ins" data-revive-zoneid="2" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"> </ins>
+      </div>
+      <div v-else id="revive-banner">
+        <ins ref="ins" data-revive-zoneid="3" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"> </ins>
+      </div>
     </div>
-    <div v-else id="revive-banner">
-      <ins ref="ins" data-revive-zoneid="3" data-revive-id="5b200397ccf8a9353bf44ef99b45268c">
-      </ins>
-    </div>
-  </div>
 
-  <script>
-    window.addEventListener('load', function() {
-
-      if (!$("#r-banner").find('ins').attr('data-revive-zoneid')) {
-        $('#r-banner').children('div').removeAttr('style')
-      }
-
-      function refreshAd() {
-        if(document.hasFocus()) {
-          $("#revive-banner").find('ins').removeAttr('data-revive-loaded');
-          $("#revive-banner").find('ins').removeAttr('data-revive-seq');
-          reviveAsync["5b200397ccf8a9353bf44ef99b45268c"].refresh();
+    <script>
+      window.addEventListener("load", function () {
+        if (!$("#r-banner").find("ins").attr("data-revive-zoneid")) {
+          $("#r-banner").children("div").removeAttr("style")
         }
-      }
-      window.requestInterval(refreshAd, 6000)
 
-      if (!$("#revive-banner").find('ins').children('a')) {
-        $("#revive-banner").find('span').remove()
-      }
-
-      window.addEventListener('resize',  function(e) {
-        var id = $("#revive-banner").find('ins').attr('data-revive-zoneid')
-
-        if(e.target.innerWidth < 1140 && id === "2") {
-          // change to mobile
-          $("#revive-banner").find('ins').attr('data-revive-zoneid', "3")
-          refreshAd()
-        } else if(e.target.innerWidth >= 1140 && id === "3") {
-          // change to desktop
-          $("#revive-banner").find('ins').attr('data-revive-zoneid', "2")
-          refreshAd()
+        function refreshAd() {
+          if (document.hasFocus()) {
+            $("#revive-banner").find("ins").removeAttr("data-revive-loaded")
+            $("#revive-banner").find("ins").removeAttr("data-revive-seq")
+            reviveAsync["5b200397ccf8a9353bf44ef99b45268c"].refresh()
+          }
         }
+        window.requestInterval(refreshAd, 6000)
+
+        if (!$("#revive-banner").find("ins").children("a")) {
+          $("#revive-banner").find("span").remove()
+        }
+
+        window.addEventListener("resize", function (e) {
+          var id = $("#revive-banner").find("ins").attr("data-revive-zoneid")
+
+          if (e.target.innerWidth < 1140 && id === "2") {
+            // change to mobile
+            $("#revive-banner").find("ins").attr("data-revive-zoneid", "3")
+            refreshAd()
+          } else if (e.target.innerWidth >= 1140 && id === "3") {
+            // change to desktop
+            $("#revive-banner").find("ins").attr("data-revive-zoneid", "2")
+            refreshAd()
+          }
+        })
       })
-    })
-  </script>
-</div>
-{{end}}
-
+    </script>
+  </div>
+{{ end }}
