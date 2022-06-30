@@ -1,16 +1,15 @@
 {{ define "js" }}
-    <script src="https://js.stripe.com/v3/"></script>
-    <script src="/js/payment.js" defer></script>
-    <script src="https://www.google.com/recaptcha/api.js" async></script>
-    <script>
-        function onSubmit(token) {
-            var form = document.getElementById('contact')
-            if(form.reportValidity()) {
-                form.submit();
-            }
-        }
-      </script>
-     
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="/js/payment.js" defer></script>
+  <script src="https://www.google.com/recaptcha/api.js" async></script>
+  <script>
+    function onSubmit(token) {
+      var form = document.getElementById("contact")
+      if (form.reportValidity()) {
+        form.submit()
+      }
+    }
+  </script>
 
     <script>
         // If a fetch error occurs, log it to the console
@@ -135,307 +134,308 @@
 {{ end }}
 
 {{ define "css" }}
-    <style>
-        .box-shadow {
-            border: 1px solid var(--shadow-light);
-        }
-        .hot-box {
-            border: 1px solid #ee7112;
-        }
+  <style>
+    .box-shadow {
+      border: 1px solid var(--shadow-light);
+    }
+    .hot-box {
+      border: 1px solid #ee7112;
+    }
 
-        .badge-hot {
-            color: #ee7112;
-        }
+    .badge-hot {
+      color: #ee7112;
+    }
 
-        .container-pricing li {
-            margin-bottom: 12px;
-        }
+    .container-pricing li {
+      margin-bottom: 12px;
+    }
 
-        .card {
-            min-width: 200px;
-        }
+    .card {
+      min-width: 200px;
+    }
 
-        .plan-select {
-            appearance: none;
-            -moz-appearance: none;
-            -webkit-appearance: none;
-        }
-    </style>
+    .plan-select {
+      appearance: none;
+      -moz-appearance: none;
+      -webkit-appearance: none;
+    }
+  </style>
 {{ end }}
 
 {{ define "content" }}
-    {{with .Data}}
-        {{.CsrfField}}
+  {{ with .Data }}
+    {{ .CsrfField }}
 
-        {{if ne .FlashMessage ""}}
-            <div
-                    class="alert container mt-2 {{if contains .FlashMessage "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2"
-                    role="alert">
-                <div class="p-2">{{.FlashMessage | formatHTML}}</div>
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-        {{end}}
-
-        <section style="background: var(--bg-color-light)">
-            <div class="container">
-                <div style="padding-top: 2rem;" class="row justify-content-between align-items-center">
-                    <div class="col-md-6 mb-5">
-                        <h1 class="h6 font-weight-bold text-primary">API Pricing Plans</h1>
-                        <h2 class="mb-4">Start for free or choose a plan that suits you best.</h2>
-                        <a href="#contact" class="btn btn-sm btn-outline-primary">Contact Us</a>
-                    </div>
-                    <div class="col-md-5 p-1">
-                        {{ template "pricing_svg" }}
-                    </div>
-                </div>
-            </div>
-        </section>
-
-
-        <div class="container mt-2 container-pricing">
-            <section class="my-5">
-                <div class="card-deck mb-3 justify-content-center text-center position-relative">
-                    <div style="margin: 0" class="row justify-content-center">
-                        <div class="card mx-2 mb-4 box-shadow">
-                            <div class="card-header">
-                                <h4 class="my-0 font-weight-normal">Free</h4>
-                            </div>
-                            <div class="card-body">
-                                <h1 class="card-title pricing-card-title">0€ <small class="text-muted">/ mo</small></h1>
-                                <ul class="list-unstyled mt-3 mb-4">
-                                    <li>Rate limit per minute:<br/> 10</li>
-                                    <li>Requests per day:<br/> 10,000</li>
-                                    <li>Total requests per month:<br/> 30,000</li>
-                                </ul>
-                                <a href="https://beaconcha.in/api/v1/docs/index.html" target="_blank"
-                                   class="btn btn-lg btn-block btn-outline-primary">Get started</a>
-                            </div>
-                        </div>
-                        <div class="card mx-2 mb-4 box-shadow hot-box">
-                            <div class="card-header">
-                                <h4 class="my-0 font-weight-normal">Sapphire <span
-                                            class="badge badge-hot">Popular</span></h4>
-                            </div>
-                            <div class="card-body">
-                                <h1 class="card-title pricing-card-title">59€* <small class="text-muted">/ mo</small></h1>
-                                <ul class="list-unstyled mt-3 mb-4">
-                                    <li>Rate limit per minute:<br/> 100</li>
-                                    <li>Requests per day:<br/> 100,000</li>
-                                    <li>Total requests per month:<br/> 500,000</li>
-                                </ul>
-                                {{if .User.Authenticated}}
-                                    {{if .Subscription.Active}}
-                                        <form class="manage-billing-form">
-                                            {{.CsrfField}}
-                                            <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing
-                                            </button>
-                                        </form>
-                                    {{else}}
-                                        {{ if and .StripePK .Sapphire }}
-                                            <button id="sapphire" class="btn btn-lg btn-block btn-outline-primary">
-                                                Select
-                                            </button>
-                                        {{else}}
-                                            <a href="#contact" class="btn btn-lg btn-block btn-outline-primary">Contact
-                                                Us</a>
-                                        {{end}}
-                                    {{end}}
-                                {{else}}
-                                    <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
-                                {{end}}
-
-                            </div>
-                        </div>
-                    </div>
-                    <div style="margin: 0" class="row justify-content-center position-relative">
-                        <div class="card mx-2 mb-4 box-shadow ">
-                            <div class="card-header">
-                                <h4 class="my-0 font-weight-normal">Emerald</h4>
-                            </div>
-                            <div class="card-body">
-                                <h1 class="card-title pricing-card-title">99€* <small class="text-muted">/ mo</small>
-                                </h1>
-                                <ul class="list-unstyled mt-3 mb-4">
-                                    <li>Rate limit per minute:<br/> <strong>Unlimited</strong></li>
-                                    <li>Requests per day:<br/> 200,000</li>
-                                    <li>Total requests per month:<br/> 1,000,000</li>
-                                </ul>
-                                {{if .User.Authenticated}}
-                                    {{if .Subscription.Active}}
-                                        <form class="manage-billing-form">
-                                            {{.CsrfField}}
-                                            <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing
-                                            </button>
-                                        </form>
-                                    {{else}}
-                                        {{ if and .StripePK .Emerald }}
-                                            <button id="emerald" class="btn btn-lg btn-block btn-outline-primary">
-                                                Select
-                                            </button>
-                                        {{else}}
-                                            <a href="#contact" class="btn btn-lg btn-block btn-outline-primary">Contact
-                                                Us</a>
-                                        {{end}}
-                                    {{end}}
-                                {{else}}
-                                    <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
-                                {{end}}
-                            </div>
-                        </div>
-                        <div class="card mx-2 mb-4 box-shadow">
-                            <div class="card-header">
-                                <h4 class="my-0 font-weight-normal">Diamond</h4>
-                            </div>
-                            <div class="card-body">
-                                <h1 class="card-title pricing-card-title">399€* <small class="text-muted">/ mo</small>
-                                </h1>
-                                <ul class="list-unstyled mt-3 mb-4">
-                                    <li>Rate limit per minute:<br/> <strong>Unlimited</strong></li>
-                                    <li>Requests per day:<br/> <strong>Unlimited</strong></li>
-                                    <li>Total requests per month:<br/> 4,000,000</li>
-                                </ul>
-                                {{if .User.Authenticated}}
-                                    {{if .Subscription.Active}}
-                                        <form class="manage-billing-form">
-                                            {{.CsrfField}}
-                                            <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing
-                                            </button>
-                                        </form>
-                                    {{else}}
-                                        {{ if and .StripePK .Diamond }}
-                                            <button id="diamond" class="btn btn-lg btn-block btn-outline-primary">
-                                                Select
-                                            </button>
-                                        {{else}}
-                                            <a href="#contact" class="btn btn-lg btn-block btn-outline-primary">Contact
-                                                Us</a>
-                                        {{end}}
-                                    {{end}}
-                                {{else}}
-                                    <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
-                                {{end}}
-                            </div>
-                        </div>
-                        <div class="position-absolute" style="right: 1rem; bottom: -1rem;">
-                            <span class="text-muted">* All prices are excluding VAT</span>
-                        </div>
-                    </div>
-                </div>
-                
-            </section>
-            <section class="my-5">
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="row justify-content-center">
-                            <div class="col-md-12 col-lg-8 text-center">
-                                <p class="text-muted col-md-8 px-0 mx-auto">Your API key's are available in the <a href="/user/settings#api">user settings</a>.</p>
-                                <br>
-                                <h1 class="h4 ">Contact us about your API needs</h1>
-                                <p class="text-muted col-md-8 px-0 mx-auto">Let us know which plan works best for you
-                                    and we'll get back to
-                                    you.</p>
-                                <form id="contact" action="/pricing" method="post">
-                                    {{.CsrfField}}
-                                    <div class="text-left">
-                                        <div class="form-row">
-                                            <div class="form-group col-md-6">
-                                                <label for="inputName">Contact name (required)</label>
-                                                <input type="text" class="form-control" id="inputName"
-                                                       placeholder="Ex.: Will Smith" required
-                                                       name="name">
-                                            </div>
-                                            <div class="form-group col-md-6">
-                                                <label for="inputEmail">Email (required)</label>
-                                                <input type="email" class="form-control" id="inputEmail"
-                                                       placeholder="Ex.: office@company.com"
-                                                       required name="email">
-                                            </div>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="inputUrl">Official Website URL (required)</label>
-                                            <input type="text" class="form-control" id="inputUrl"
-                                                   placeholder="Ex.: https://example.com/"
-                                                   required name="url">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="inputCompanyName">Company / Project name (required)</label>
-                                            <input type="text" class="form-control" id="inputCompanyName"
-                                                   placeholder="Ex.: Chainlab" required
-                                                   name="company">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="inputAddress2">Which plan are you interested in?
-                                                (required)</label>
-
-                                            <select class="form-control plan-select" required name="plan">
-                                                <option>Sapphire</option>
-                                                <option>Emerald</option>
-                                                <option>Diamond</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="inputQuestions">Comments & Questions</label>
-                                            <textarea class="form-control" id="inputQuestions"
-                                                      name="comments"></textarea>
-                                        </div>
-                                    </div>
-                                    <button data-sitekey="{{.RecaptchaKey}}" data-callback='onSubmit' data-action='submit' type="submit" class="g-recaptcha btn btn-primary text-center text-white">Send Message</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Error Modal -->
-            <div class="modal fade" id="error-modal" tabindex="-1" role="dialog" aria-labelledby="error-modal-label"
-                 aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="exampleModalLabel">Something went wrong</h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <p id="error-modal-content"></p>
-                            <p>Please contact us if this error persists</p>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-
-            <!-- VAT Modal -->
-            <div class="modal fade" id="vat-modal" tabindex="-1" role="dialog" aria-labelledby="vat-modal-label"
-                 aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="exampleModalLabel">Select your Country</h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <select name="contry-select" id="contry-select">
-                                <option value="AT">Austria</option>
-                                <option value="DE">Germany</option>
-                            </select>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+    {{ if ne .FlashMessage "" }}
+      <div class="alert container mt-2 {{ if contains .FlashMessage "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
+        <div class="p-2">{{ .FlashMessage | formatHTML }}</div>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
     {{ end }}
+
+
+    <section style="background: var(--bg-color-light)">
+      <div class="container">
+        <div style="padding-top: 2rem;" class="row justify-content-between align-items-center">
+          <div class="col-md-6 mb-5">
+            <h1 class="h6 font-weight-bold text-primary">API Pricing Plans</h1>
+            <h2 class="mb-4">Start for free or choose a plan that suits you best.</h2>
+            <a href="#contact" class="btn btn-sm btn-outline-primary">Contact Us</a>
+          </div>
+          <div class="col-md-5 p-1">
+            {{ template "pricing_svg" }}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="container mt-2 container-pricing">
+      <section class="my-5">
+        <div class="card-deck mb-3 justify-content-center text-center position-relative">
+          <div style="margin: 0" class="row justify-content-center">
+            <div class="card mx-2 mb-4 box-shadow">
+              <div class="card-header">
+                <h4 class="my-0 font-weight-normal">Free</h4>
+              </div>
+              <div class="card-body">
+                <h1 class="card-title pricing-card-title">0€ <small class="text-muted">/ mo</small></h1>
+                <ul class="list-unstyled mt-3 mb-4">
+                  <li>
+                    Rate limit per minute:<br />
+                    10
+                  </li>
+                  <li>
+                    Requests per day:<br />
+                    10,000
+                  </li>
+                  <li>
+                    Total requests per month:<br />
+                    30,000
+                  </li>
+                </ul>
+                <a href="https://beaconcha.in/api/v1/docs/index.html" target="_blank" class="btn btn-lg btn-block btn-outline-primary">Get started</a>
+              </div>
+            </div>
+            <div class="card mx-2 mb-4 box-shadow hot-box">
+              <div class="card-header">
+                <h4 class="my-0 font-weight-normal">Sapphire <span class="badge badge-hot">Popular</span></h4>
+              </div>
+              <div class="card-body">
+                <h1 class="card-title pricing-card-title">59€* <small class="text-muted">/ mo</small></h1>
+                <ul class="list-unstyled mt-3 mb-4">
+                  <li>
+                    Rate limit per minute:<br />
+                    100
+                  </li>
+                  <li>
+                    Requests per day:<br />
+                    100,000
+                  </li>
+                  <li>
+                    Total requests per month:<br />
+                    500,000
+                  </li>
+                </ul>
+                {{ if .User.Authenticated }}
+                  {{ if .Subscription.Active }}
+                    <form class="manage-billing-form">
+                      {{ .CsrfField }}
+                      <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing</button>
+                    </form>
+                  {{ else }}
+                    {{ if and .StripePK .Sapphire }}
+                      <button id="sapphire" class="btn btn-lg btn-block btn-outline-primary">Select</button>
+                    {{ else }}
+                      <a href="#contact" class="btn btn-lg btn-block btn-outline-primary">Contact Us</a>
+                    {{ end }}
+                  {{ end }}
+                {{ else }}
+                  <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
+                {{ end }}
+
+              </div>
+            </div>
+          </div>
+          <div style="margin: 0" class="row justify-content-center position-relative">
+            <div class="card mx-2 mb-4 box-shadow ">
+              <div class="card-header">
+                <h4 class="my-0 font-weight-normal">Emerald</h4>
+              </div>
+              <div class="card-body">
+                <h1 class="card-title pricing-card-title">99€* <small class="text-muted">/ mo</small></h1>
+                <ul class="list-unstyled mt-3 mb-4">
+                  <li>
+                    Rate limit per minute:<br />
+                    <strong>Unlimited</strong>
+                  </li>
+                  <li>
+                    Requests per day:<br />
+                    200,000
+                  </li>
+                  <li>
+                    Total requests per month:<br />
+                    1,000,000
+                  </li>
+                </ul>
+                {{ if .User.Authenticated }}
+                  {{ if .Subscription.Active }}
+                    <form class="manage-billing-form">
+                      {{ .CsrfField }}
+                      <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing</button>
+                    </form>
+                  {{ else }}
+                    {{ if and .StripePK .Emerald }}
+                      <button id="emerald" class="btn btn-lg btn-block btn-outline-primary">Select</button>
+                    {{ else }}
+                      <a href="#contact" class="btn btn-lg btn-block btn-outline-primary">Contact Us</a>
+                    {{ end }}
+                  {{ end }}
+                {{ else }}
+                  <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
+                {{ end }}
+              </div>
+            </div>
+            <div class="card mx-2 mb-4 box-shadow">
+              <div class="card-header">
+                <h4 class="my-0 font-weight-normal">Diamond</h4>
+              </div>
+              <div class="card-body">
+                <h1 class="card-title pricing-card-title">399€* <small class="text-muted">/ mo</small></h1>
+                <ul class="list-unstyled mt-3 mb-4">
+                  <li>
+                    Rate limit per minute:<br />
+                    <strong>Unlimited</strong>
+                  </li>
+                  <li>
+                    Requests per day:<br />
+                    <strong>Unlimited</strong>
+                  </li>
+                  <li>
+                    Total requests per month:<br />
+                    4,000,000
+                  </li>
+                </ul>
+                {{ if .User.Authenticated }}
+                  {{ if .Subscription.Active }}
+                    <form class="manage-billing-form">
+                      {{ .CsrfField }}
+                      <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing</button>
+                    </form>
+                  {{ else }}
+                    {{ if and .StripePK .Diamond }}
+                      <button id="diamond" class="btn btn-lg btn-block btn-outline-primary">Select</button>
+                    {{ else }}
+                      <a href="#contact" class="btn btn-lg btn-block btn-outline-primary">Contact Us</a>
+                    {{ end }}
+                  {{ end }}
+                {{ else }}
+                  <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
+                {{ end }}
+              </div>
+            </div>
+            <div class="position-absolute" style="right: 1rem; bottom: -1rem;">
+              <span class="text-muted">* All prices are excluding VAT</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="my-5">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="row justify-content-center">
+              <div class="col-md-12 col-lg-8 text-center">
+                <p class="text-muted col-md-8 px-0 mx-auto">Your API key's are available in the <a href="/user/settings#api">user settings</a>.</p>
+                <br />
+                <h1 class="h4 ">Contact us about your API needs</h1>
+                <p class="text-muted col-md-8 px-0 mx-auto">Let us know which plan works best for you and we'll get back to you.</p>
+                <form id="contact" action="/pricing" method="post">
+                  {{ .CsrfField }}
+                  <div class="text-left">
+                    <div class="form-row">
+                      <div class="form-group col-md-6">
+                        <label for="inputName">Contact name (required)</label>
+                        <input type="text" class="form-control" id="inputName" placeholder="Ex.: Will Smith" required name="name" />
+                      </div>
+                      <div class="form-group col-md-6">
+                        <label for="inputEmail">Email (required)</label>
+                        <input type="email" class="form-control" id="inputEmail" placeholder="Ex.: office@company.com" required name="email" />
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label for="inputUrl">Official Website URL (required)</label>
+                      <input type="text" class="form-control" id="inputUrl" placeholder="Ex.: https://example.com/" required name="url" />
+                    </div>
+                    <div class="form-group">
+                      <label for="inputCompanyName">Company / Project name (required)</label>
+                      <input type="text" class="form-control" id="inputCompanyName" placeholder="Ex.: Chainlab" required name="company" />
+                    </div>
+                    <div class="form-group">
+                      <label for="inputAddress2">Which plan are you interested in? (required)</label>
+
+                      <select class="form-control plan-select" required name="plan">
+                        <option>Sapphire</option>
+                        <option>Emerald</option>
+                        <option>Diamond</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label for="inputQuestions">Comments & Questions</label>
+                      <textarea class="form-control" id="inputQuestions" name="comments"></textarea>
+                    </div>
+                  </div>
+                  <button data-sitekey="{{ .RecaptchaKey }}" data-callback="onSubmit" data-action="submit" type="submit" class="g-recaptcha btn btn-primary text-center text-white">Send Message</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Error Modal -->
+      <div class="modal fade" id="error-modal" tabindex="-1" role="dialog" aria-labelledby="error-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="exampleModalLabel">Something went wrong</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p id="error-modal-content"></p>
+              <p>Please contact us if this error persists</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VAT Modal -->
+      <div class="modal fade" id="vat-modal" tabindex="-1" role="dialog" aria-labelledby="vat-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="exampleModalLabel">Select your Country</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <select name="contry-select" id="contry-select">
+                <option value="AT">Austria</option>
+                <option value="DE">Germany</option>
+              </select>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {{ end }}
 {{ end }}

@@ -1,0 +1,38 @@
+{
+  "name": "eth2-beaconchain-explorer",
+  "version": "1.0.0",
+  "description": "The explorer provides a comprehensive and easy to use interface for the upcoming Eth2 beacon chain. It makes it easy to view proposed blocks, follow attestations and monitor your staking activity.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "check-style": "npm run eslint-js",
+    "eslint-js": "eslint static/js",
+    "eslint-html": "eslint templates/**.html",
+    "check-format": "npm run check-html && npm run check-js",
+    "check-html": "prettier -c templates/",
+    "check-js": "prettier -c static/js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gobitfly/eth2-beaconchain-explorer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gobitfly/eth2-beaconchain-explorer/issues"
+  },
+  "homepage": "https://github.com/gobitfly/eth2-beaconchain-explorer#readme",
+  "dependencies": {
+    "eslint": "^8.18.0",
+    "eslint-plugin-html": "^6.2.0",
+    "prettier": "^2.7.1",
+    "prettier-plugin-go-template": "^0.0.13"
+  },
+  "devDependencies": {
+    "espree": "^9.3.2"
+  }
+}

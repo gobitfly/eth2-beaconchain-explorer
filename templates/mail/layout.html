@@ -1,83 +1,76 @@
-{{define "layout"}}
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
-      integrity="sha512-NhSC1YmyruXifcj/KFRWoC561YpHpc5Jtzgvbuzx5VozKpWvQ+4nXhPdFgmx8xqexRcpAglTj9sIBWINXa8x5w=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    />
-    <style lang="scss">
-      @import url("https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&family=Inter&display=swap");
+{{ define "layout" }}
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" integrity="sha512-NhSC1YmyruXifcj/KFRWoC561YpHpc5Jtzgvbuzx5VozKpWvQ+4nXhPdFgmx8xqexRcpAglTj9sIBWINXa8x5w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+      <style lang="scss">
+        @import url("https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&family=Inter&display=swap");
 
-      @font-face {
-        font-family: "Roboto";
-        font-style: normal;
-        font-weight: 400;
-        font-display: swap;
-        src: local("Roboto"), local("Roboto-Regular"), url(https://fonts.gstatic.com/s/roboto/v20/KFOmCnqEu92Fr1Mu4mxK.woff2) format("woff2");
-        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-      }
+        @font-face {
+          font-family: "Roboto";
+          font-style: normal;
+          font-weight: 400;
+          font-display: swap;
+          src: local("Roboto"), local("Roboto-Regular"), url(https://fonts.gstatic.com/s/roboto/v20/KFOmCnqEu92Fr1Mu4mxK.woff2) format("woff2");
+          unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
 
-      .brand-link {
-        color: transparent;
-      }
+        .brand-link {
+          color: transparent;
+        }
 
-      table.val,
-      th.val,
-      td.val {
-        border: 1px solid black;
-      }
-      .val tr:nth-child(even) {
-        background-color: #f2f2f2;
-      }
-    </style>
-  </head>
+        table.val,
+        th.val,
+        td.val {
+          border: 1px solid black;
+        }
+        .val tr:nth-child(even) {
+          background-color: #f2f2f2;
+        }
+      </style>
+    </head>
 
-  <body style="font-family: 'Roboto', sans-serif; margin: 0; font-size: 1rem; font-weight: 400; line-height: 1.5; color: #343a40; text-align: left" ontouchstart="">
-    <table style="max-width: 800px" width="100%" border="0" cellpadding="0" cellspacing="0">
-      <thead style="height: 35px; width: inherit; background-color: #2f2e42; position: relative; color: #413938;">
-        <tr style="height: inherit;">
-          <th style="padding-left: 10px; padding-right: 10px; padding-top: 6px; height: inherit; width: 100%; background-color: #2f2e42">
-              <img style="color: white; height: 40px;" src="https://{{.Domain}}/img/beaconchainTextLogoEmail.png" alt="Beaconchain Wordmark" />
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="padding-left: 20px; padding-top: 20px; padding-bottom: 20px; padding-top: 20px;">
+    <body style="font-family: 'Roboto', sans-serif; margin: 0; font-size: 1rem; font-weight: 400; line-height: 1.5; color: #343a40; text-align: left" ontouchstart="">
+      <table style="max-width: 800px" width="100%" border="0" cellpadding="0" cellspacing="0">
+        <thead style="height: 35px; width: inherit; background-color: #2f2e42; position: relative; color: #413938;">
+          <tr style="height: inherit;">
+            <th style="padding-left: 10px; padding-right: 10px; padding-top: 6px; height: inherit; width: 100%; background-color: #2f2e42">
+              <img style="color: white; height: 40px;" src="https://{{ .Domain }}/img/beaconchainTextLogoEmail.png" alt="Beaconchain Wordmark" />
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding-left: 20px; padding-top: 20px; padding-bottom: 20px; padding-top: 20px;">
               <h2 style="margin-top: 0; margin-bottom: 0.5rem; font-family: 'Barlow', sans-serif">{{ .Mail.Title }}</h2>
               <p>{{ .Mail.Body }}</p>
-          </td>
-        </tr>
-        <tr>
+            </td>
+          </tr>
+          <tr>
             <td style="height: 41px; background-color: #2f2e42; text-align: start; line-height: 20px; font-size: 12px; padding-top: 4px; padding-left: 20px; padding-bottom: 4px;">
-                <span style="font-family: Barlow; color: white;">
+              <span style="font-family: Barlow; color: white;">
                 <span style="color: white;">Bitfly GmbH, FN 472953 w, CR-Court: Commercial Court Vienna</span>
                 <br />
-                {{if .Mail.UnSubURL}}
+                {{ if .Mail.UnSubURL }}
                   <span>
                     {{ .Mail.UnSubURL }}
                     <span>to stop receiving notifications of this kind.</span>
                   </span>
-                {{end}}
+                {{ end }}
                 {{ if .Mail.SubscriptionManageURL }}
                   <br />
                   <span>
-                    {{.Mail.SubscriptionManageURL}}
+                    {{ .Mail.SubscriptionManageURL }}
                     <span>your subscriptions.</span>
                   </span>
-                {{end}}
-                </span>
+                {{ end }}
+              </span>
             </td>
-        </tr>
-      </tbody>
-    </table>
-  </body>
-</html>
-
-{{end}}
+          </tr>
+        </tbody>
+      </table>
+    </body>
+  </html>
+{{ end }}

@@ -1,21 +1,18 @@
 {{ define "depositProgress" }}
   <div class="d-flex flex-column justify-content-center">
     <h6 class="d-flex justify-content-between">
-      <span>
-        Deposit Progress
-      </span>
-      {{if gt .ValidatorsRemaining 0.0}}
-      <span class="text-muted">{{.ValidatorsRemaining | formatThousands}} validators left</span>
-      {{else}}
-      <span class="text-muted">threshold reached 🎉</span>
-      <!-- <span class="text-muted text-success">{{round (percent ((div (.DepositedTotal) (.DepositThreshold)))) 2 }}%</span> -->
-      {{end}}
+      <span> Deposit Progress </span>
+      {{ if gt .ValidatorsRemaining 0.0 }}
+        <span class="text-muted">{{ .ValidatorsRemaining | formatThousands }} validators left</span>
+      {{ else }}
+        <span class="text-muted">threshold reached 🎉</span>
+        <!-- <span class="text-muted text-success">{{ round (percent ((div (.DepositedTotal) (.DepositThreshold)))) 2 }}%</span> -->
+      {{ end }}
     </h6>
-    <div class="progress w-100 position-relative" data-toggle="tooltip" data-placement="top" title="A total of {{.DepositedTotal | formatThousands}} ETH ({{round (percent (div (.DepositedTotal) (.DepositThreshold))) 2 }}%) has been deposited.">
-      <span class="text-dark" style="position:absolute; margin-right:.5rem; right: 0; top: .5rem;">{{round (percent ((div (.DepositedTotal) (.DepositThreshold)))) 2 }}%</span>
-      <div class="progress-bar bg-info" role="progressbar" style="width:{{div (.DepositedTotal) (.DepositThreshold) | percent}}%" aria-valuenow="{{.DepositedTotal | formatThousands}}" aria-valuemin="0" aria-valuemax="{{.DepositThreshold | formatThousands}}">
-      </div>
+    <div class="progress w-100 position-relative" data-toggle="tooltip" data-placement="top" title="A total of {{ .DepositedTotal | formatThousands }} ETH ({{ round (percent (div (.DepositedTotal) (.DepositThreshold))) 2 }}%) has been deposited.">
+      <span class="text-dark" style="position:absolute; margin-right:.5rem; right: 0; top: .5rem;">{{ round (percent ((div (.DepositedTotal) (.DepositThreshold)))) 2 }}%</span>
+      <div class="progress-bar bg-info" role="progressbar" style="width:{{ div (.DepositedTotal) (.DepositThreshold) | percent }}%" aria-valuenow="{{ .DepositedTotal | formatThousands }}" aria-valuemin="0" aria-valuemax="{{ .DepositThreshold | formatThousands }}"></div>
     </div>
-    <span class="text-muted">{{.DepositedTotal | formatThousands}} / {{.DepositThreshold | formatThousands}} ETH has been deposited.</span>
+    <span class="text-muted">{{ .DepositedTotal | formatThousands }} / {{ .DepositThreshold | formatThousands }} ETH has been deposited.</span>
   </div>
-{{end}}
+{{ end }}

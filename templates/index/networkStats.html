@@ -1,49 +1,49 @@
 {{ define "networkStats" }}
-<div class="col-md-4 responsive-border-right responsive-border-right-l">
-  <div class="d-flex justify-content-between">
-    <div class="p-2">
-      <div class="text-secondary mb-0">Epoch</div>
-      <h5 class="font-weight-normal mb-0"><span data-toggle="tooltip" data-placement="top" title="The most recent epoch">${ page.current_epoch.toLocaleString('en-GB') }</span> / <span data-toggle="tooltip" data-placement="top" title="The most recent finalized epoch">${ page.current_finalized_epoch.toLocaleString('en-GB') }</span></h5>
-    </div>
-    <div class="text-right p-2">
-      <div class="text-secondary mb-0">Current Slot</div>
-      <h5 class="font-weight-normal mb-0">
-        <span data-toggle="tooltip" data-placement="top" title="The most recent slot">${ page.current_slot.toLocaleString('en-GB') }</span>
-      </h5>
-    </div>
-  </div>
-</div>
-<div class="col-md-4 responsive-border-right responsive-border-right-l">
-  <div class="d-flex justify-content-between">
-    <div class="p-2">
-      <div class="text-secondary mb-0">Active Validators</div>
-      <h5 class="font-weight-normal mb-0">
-        <span data-toggle="tooltip" data-placement="top" title="The number of currently active validators">${ page.active_validators.toLocaleString('en-GB') }</span>
-      </h5>
-    </div>
-    <div class="text-right p-2">
-      <div class="text-secondary mb-0">Pending Validators</div>
-      <h5 class="font-weight-normal mb-0">
-        <span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to enter the active validator set">${ page.entering_validators.toLocaleString('en-GB') }</span>
-        / <span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to exit the active validator set">${ page.exiting_validators.toLocaleString('en-GB') }</span>
-      </h5>
+  <div class="col-md-4 responsive-border-right responsive-border-right-l">
+    <div class="d-flex justify-content-between">
+      <div class="p-2">
+        <div class="text-secondary mb-0">Epoch</div>
+        <h5 class="font-weight-normal mb-0"><span data-toggle="tooltip" data-placement="top" title="The most recent epoch">${ page.current_epoch.toLocaleString('en-GB') }</span> / <span data-toggle="tooltip" data-placement="top" title="The most recent finalized epoch">${ page.current_finalized_epoch.toLocaleString('en-GB') }</span></h5>
+      </div>
+      <div class="text-right p-2">
+        <div class="text-secondary mb-0">Current Slot</div>
+        <h5 class="font-weight-normal mb-0">
+          <span data-toggle="tooltip" data-placement="top" title="The most recent slot">${ page.current_slot.toLocaleString('en-GB') }</span>
+        </h5>
+      </div>
     </div>
   </div>
-</div>
-<div class="col-md-4">
-  <div class="d-flex justify-content-between">
-    <div class="p-2">
-      <div class="text-secondary mb-0">Staked Ether</div>
-      <h5 class="font-weight-normal mb-0">
-        <span data-toggle="tooltip" data-placement="top" title="The sum of all effective balances">${ page.staked_ether.toLocaleString('en-GB') || 0 }</span>
-      </h5>
-    </div>
-    <div class="text-right p-2">
-      <div class="text-secondary mb-0">Average Balance</div>
-      <h5 class="font-weight-normal mb-0">
-        <span data-toggle="tooltip" data-placement="top" title="The average current balance of all validators staked">${ page.average_balance.toLocaleString('en-GB') || 0 }</span>
-      </h5>
+  <div class="col-md-4 responsive-border-right responsive-border-right-l">
+    <div class="d-flex justify-content-between">
+      <div class="p-2">
+        <div class="text-secondary mb-0">Active Validators</div>
+        <h5 class="font-weight-normal mb-0">
+          <span data-toggle="tooltip" data-placement="top" title="The number of currently active validators">${ page.active_validators.toLocaleString('en-GB') }</span>
+        </h5>
+      </div>
+      <div class="text-right p-2">
+        <div class="text-secondary mb-0">Pending Validators</div>
+        <h5 class="font-weight-normal mb-0">
+          <span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to enter the active validator set">${ page.entering_validators.toLocaleString('en-GB') }</span>
+          / <span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to exit the active validator set">${ page.exiting_validators.toLocaleString('en-GB') }</span>
+        </h5>
+      </div>
     </div>
   </div>
-</div>
-{{end}}
+  <div class="col-md-4">
+    <div class="d-flex justify-content-between">
+      <div class="p-2">
+        <div class="text-secondary mb-0">Staked Ether</div>
+        <h5 class="font-weight-normal mb-0">
+          <span data-toggle="tooltip" data-placement="top" title="The sum of all effective balances">${ page.staked_ether.toLocaleString('en-GB') || 0 }</span>
+        </h5>
+      </div>
+      <div class="text-right p-2">
+        <div class="text-secondary mb-0">Average Balance</div>
+        <h5 class="font-weight-normal mb-0">
+          <span data-toggle="tooltip" data-placement="top" title="The average current balance of all validators staked">${ page.average_balance.toLocaleString('en-GB') || 0 }</span>
+        </h5>
+      </div>
+    </div>
+  </div>
+{{ end }}

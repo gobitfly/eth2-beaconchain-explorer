@@ -1,6 +1,6 @@
-{{define "js"}}
-    <script type="text/javascript" src="/js/datatables.min.js"></script>
-    <script type="text/javascript" src="/js/datatable_input.js"></script>
+{{ define "js" }}
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/datatable_input.js"></script>
     <script>
         var validatorsDataTable;
         var stateFilterDropDownHtml = `<div><label>
@@ -125,6 +125,7 @@
                     try {
                         $('#validators').find('[data-toggle="tooltip"]').tooltip('dispose')
                     } catch (e) {
+                        console.error(e)
                     }
                 },
                 drawCallback: function() {
@@ -180,7 +181,8 @@
                         targets: 4,
                         data: '4',
                         render: function(data, type, row, meta) {
-                            if (data === null || data[0] === 9223372036854775807)
+                            // 9223372036854775808 gets rounded up as it is above the Number.MAX_SAFE_INTEGER value
+                            if (data === null || data[0] === 9223372036854776000)
                                 return '-';
                             return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
                         }
@@ -234,102 +236,102 @@
             })
         })
     </script>
-{{end}} {{define "css"}}
-    <link rel="stylesheet" type="text/css"
-          href="/css//datatables.min.css"/>
-    <style>
-        .dataTables_wrapper {
-            min-height: 400px; /* this is needed to make the bootstrap-dropdown work when the table is empty */
-        }
+{{ end }}
+{{ define "css" }}
+  <link rel="stylesheet" type="text/css" href="/css//datatables.min.css" />
+  <style>
+    .dataTables_wrapper {
+      min-height: 400px; /* this is needed to make the bootstrap-dropdown work when the table is empty */
+    }
 
-        .filter-by-status {
-            padding-left: 1rem !important;
-        }
+    .filter-by-status {
+      padding-left: 1rem !important;
+    }
 
-        #validators_wrapper .dropdown-item:focus,
-        #validators_wrapper .dropdown-item:hover {
-            color: var(--font-color);
-            background-color: var(--bg-color-nav);
-        }
+    #validators_wrapper .dropdown-item:focus,
+    #validators_wrapper .dropdown-item:hover {
+      color: var(--font-color);
+      background-color: var(--bg-color-nav);
+    }
 
-        #validators_wrapper .dropdown-menu {
-            color: var(--font-color);
-            background-color: var(--bg-color-secondary);
-        }
+    #validators_wrapper .dropdown-menu {
+      color: var(--font-color);
+      background-color: var(--bg-color-secondary);
+    }
 
-        #validators_wrapper .dropdown-header {
-            padding: 0.25rem 1rem;
-            color: var(--body-color);
-            display: flex;
-        }
+    #validators_wrapper .dropdown-header {
+      padding: 0.25rem 1rem;
+      color: var(--body-color);
+      display: flex;
+    }
 
-        #validators_wrapper .dropdown-header > span:nth-child(1) {
-            width: 40%;
-        }
+    #validators_wrapper .dropdown-header > span:nth-child(1) {
+      width: 40%;
+    }
 
-        #validators_wrapper .dropdown-header > span:nth-child(2) {
-            width: 60%;
-            padding-left: 0.5rem;
-        }
+    #validators_wrapper .dropdown-header > span:nth-child(2) {
+      width: 60%;
+      padding-left: 0.5rem;
+    }
 
-        #validators_wrapper .dropdown-item {
-            display: flex;
-            padding: 0.25rem 1rem;
-            color: var(--font-color);
-        }
+    #validators_wrapper .dropdown-item {
+      display: flex;
+      padding: 0.25rem 1rem;
+      color: var(--font-color);
+    }
 
-        #validators_wrapper .dropdown-item > span:nth-child(1) {
-            width: 40%;
-            min-width: 80px;
-        }
+    #validators_wrapper .dropdown-item > span:nth-child(1) {
+      width: 40%;
+      min-width: 80px;
+    }
 
-        #validators_wrapper .dropdown-item > span:nth-child(2) {
-            width: 60%;
-            min-width: 130px;
-            padding-left: 0.5rem;
-        }
-    </style>
-{{end}}
-{{define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-            <div class="my-3">
-                <div class="d-md-flex py-2 justify-content-md-between">
-                    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-table"></i> Validators Overview</h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                            <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Overview</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-body px-0 py-2">
-                    <div class="table-responsive pt-2">
-                        <table class="table" id="validators">
-                            <thead>
-                            <tr>
-                                <th>Public Key</th>
-                                <th>Index</th>
-                                <th>Balance</th>
-                                <th>State</th>
-                                <th>Activation</th>
-                                <th>Exit</th>
-                                <th title="Withdrawable epoch number">W/able</th>
-                                <th>Last Attestation</th>
-                                <th>Slashed</th>
-                            </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <div class="d-flex justify-content-between py-2">
-                <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-            </div>
+    #validators_wrapper .dropdown-item > span:nth-child(2) {
+      width: 60%;
+      min-width: 130px;
+      padding-left: 0.5rem;
+    }
+  </style>
+{{ end }}
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-table"></i> Validators Overview</h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+              <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Overview</li>
+            </ol>
+          </nav>
         </div>
-    {{end}}
-{{end}}
+      </div>
+      <div class="card">
+        <div class="card-body px-0 py-2">
+          <div class="table-responsive pt-2">
+            <table class="table" id="validators">
+              <thead>
+                <tr>
+                  <th>Public Key</th>
+                  <th>Index</th>
+                  <th>Balance</th>
+                  <th>State</th>
+                  <th>Activation</th>
+                  <th>Exit</th>
+                  <th title="Withdrawable epoch number">W/able</th>
+                  <th>Last Attestation</th>
+                  <th>Slashed</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex justify-content-between py-2">
+        <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

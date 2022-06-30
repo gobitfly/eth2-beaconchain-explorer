@@ -1,28 +1,28 @@
-{{ define "js"}}
-{{end}}
+{{ define "js" }}
+{{ end }}
 
-{{ define "css"}}
-{{end}}
+{{ define "css" }}
+{{ end }}
 
-{{ define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-            <div class="my-3">
-                <div class="d-md-flex border-bottom py-3 justify-content-md-between">
-                    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-question mr-2"></i>FAQ</h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">FAQ</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-1">Not available right now :(</div>
-                </div>
-            </div>
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="my-3">
+        <div class="d-md-flex border-bottom py-3 justify-content-md-between">
+          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-question mr-2"></i>FAQ</h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">FAQ</li>
+            </ol>
+          </nav>
         </div>
-    {{end}}
-{{end}}
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="d-1">Not available right now :(</div>
+        </div>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

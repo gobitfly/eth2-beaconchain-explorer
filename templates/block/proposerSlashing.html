@@ -1,66 +1,60 @@
 {{ define "block_proposerSlashing" }}
-{{range $i, $proposerSlashing := .ProposerSlashings}}
-			<div class="card block-card my-2">
-				<div class="card-body px-0 py-1 ">
-					<!-- #TODO:stefan please make this pretty -->
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-12 text-center"><b>Slashing {{$i}}</b></div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2">Slashed Validator:</div>
-						<div class="col-md-10">{{formatSlashedValidator $proposerSlashing.ProposerIndex}}</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2">Header 1 Slot:</div>
-						<div class="col-md-10">{{$proposerSlashing.Header1Slot}}</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2">Header 1 Parent Root:</div>
-						<div class="col-md-10 text-monospace text-break">
-							0x{{printf "%x" $proposerSlashing.Header1ParentRoot}}</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2">Header 1 State Root:</div>
-						<div class="col-md-10 text-monospace text-break">
-							0x{{printf "%x" $proposerSlashing.Header1StateRoot}}</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2">Header 1 Body Root:</div>
-						<div class="col-md-10 text-monospace text-break">
-							0x{{printf "%x" $proposerSlashing.Header1BodyRoot}}
-						</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2">Header 1 Signature:</div>
-						<div class="col-md-10 text-monospace text-break">
-							0x{{printf "%x" $proposerSlashing.Header1Signature}}</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2">Header 2 Slot:</div>
-						<div class="col-md-10">{{$proposerSlashing.Header2Slot}}</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2">Header 2 Parent Root:</div>
-						<div class="col-md-10 text-monospace text-break">
-							0x{{printf "%x" $proposerSlashing.Header2ParentRoot}}</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2">Header 2 State Root:</div>
-						<div class="col-md-10 text-monospace text-break">
-							0x{{printf "%x" $proposerSlashing.Header2StateRoot}}</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2">Header 2 Body Root:</div>
-						<div class="col-md-10 text-monospace text-break">
-							0x{{printf "%x" $proposerSlashing.Header2BodyRoot}}
-						</div>
-					</div>
-					<div class="row p-1 pb-0 mx-0">
-						<div class="col-md-2">Header 2 Signature:</div>
-						<div class="col-md-10 text-monospace text-break">
-							0x{{printf "%x" $proposerSlashing.Header2Signature}}</div>
-					</div>
-				</div>
-			</div>
-			{{end}}
-{{end}}
+  {{ range $i, $proposerSlashing := .ProposerSlashings }}
+    <div class="card block-card my-2">
+      <div class="card-body px-0 py-1 ">
+        <!-- #TODO:stefan please make this pretty -->
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-12 text-center"><b>Slashing {{ $i }}</b></div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2">Slashed Validator:</div>
+          <div class="col-md-10">{{ formatSlashedValidator $proposerSlashing.ProposerIndex }}</div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2">Header 1 Slot:</div>
+          <div class="col-md-10">{{ $proposerSlashing.Header1Slot }}</div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2">Header 1 Parent Root:</div>
+          <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" $proposerSlashing.Header1ParentRoot }}</div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2">Header 1 State Root:</div>
+          <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" $proposerSlashing.Header1StateRoot }}</div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2">Header 1 Body Root:</div>
+          <div class="col-md-10 text-monospace text-break">
+            0x{{ printf "%x" $proposerSlashing.Header1BodyRoot }}
+          </div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2">Header 1 Signature:</div>
+          <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" $proposerSlashing.Header1Signature }}</div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2">Header 2 Slot:</div>
+          <div class="col-md-10">{{ $proposerSlashing.Header2Slot }}</div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2">Header 2 Parent Root:</div>
+          <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" $proposerSlashing.Header2ParentRoot }}</div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2">Header 2 State Root:</div>
+          <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" $proposerSlashing.Header2StateRoot }}</div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2">Header 2 Body Root:</div>
+          <div class="col-md-10 text-monospace text-break">
+            0x{{ printf "%x" $proposerSlashing.Header2BodyRoot }}
+          </div>
+        </div>
+        <div class="row p-1 pb-0 mx-0">
+          <div class="col-md-2">Header 2 Signature:</div>
+          <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" $proposerSlashing.Header2Signature }}</div>
+        </div>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}
