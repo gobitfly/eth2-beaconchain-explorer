@@ -56,6 +56,10 @@ func Init() {
 		go chartsPageDataUpdater()
 	}
 
+	if utils.Config.FailedDutiesExporter.Enabled {
+		go FailedDutiesExporter()
+	}
+
 	go statsUpdater()
 }
 

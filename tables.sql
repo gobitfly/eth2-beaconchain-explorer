@@ -961,3 +961,32 @@ create table rocketpool_network_stats
 
     primary key(id)
 );
+
+
+
+/*
+encoding for validator_failed_duties.duty:
+
+source target head proposal sync                                     
+x                                   1  
+x      x                            2         
+x      x      x                     3                
+                   x                4
+                            x       5
+*/
+drop table if exists validator_failed_duties;
+create table validator_failed_duties(
+    validatorindex int not null,
+    slot int not null,
+    duty int not null,
+    primary key (validatorindex, slot, duty)
+);
+create index idx_validator_failed_duties_slot on validator_failed_duties (slot);
+
+drop table if exists validator_failed_duties_status;
+create table validator_failed_duties_status
+(
+    epoch  int     not null,
+    status boolean not null,
+    primary key (epoch)
+);
