@@ -93,8 +93,8 @@ func eth1DepositsExporter() {
 			toBlock = blockHeight
 		}
 		// if we are synced to the head look at the last 100 blocks
-		if toBlock-fromBlock < eth1LookBack {
-			fromBlock = toBlock - 100
+		if (toBlock-fromBlock < eth1LookBack) && (toBlock > eth1LookBack) {
+			fromBlock = toBlock - eth1LookBack
 		}
 
 		depositsToSave, err := fetchEth1Deposits(fromBlock, toBlock)
