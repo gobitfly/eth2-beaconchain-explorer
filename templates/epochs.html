@@ -1,82 +1,79 @@
-{{ define "js"}}
-
-    <script type="text/javascript" src="/js/datatables.min.js"></script>
-    <script type="text/javascript" src="/js/datatable_input.js"></script>
-    <script>
-        $(document).ready(function () {
-            $('#epochs').DataTable({
-                processing: true,
-                serverSide: true,
-                ordering: false,
-                searching: true,
-                ajax: '/epochs/data',
-                pagingType: 'input',
-                pageLength: 50,
-                language: {
-                    searchPlaceholder: 'Search by Epoch Number',
-                    search: '',
-                    paginate: {
-                        previous: '<i class="fas fa-chevron-left"></i>',
-                        next: '<i class="fas fa-chevron-right"></i>'
-                    }
-                },
-                preDrawCallback: function () {
-                    // this does not always work.. not sure how to solve the staying tooltip
-                    try {
-                        $('#epochs').find('[data-toggle="tooltip"]').tooltip('dispose')
-                    } catch (e) {
-                    }
-                },
-                drawCallback: function (settings) {
-                    formatTimestamps()
-                },
-            })
-            $('div.toolbar').html('<b>Custom tool bar! Text/images etc.</b>')
-        })
-    </script>
-{{end}}
-{{ define "css"}}
-    <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
-{{end}}
-{{ define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-            <div class="d-md-flex py-2 justify-content-md-between">
-                <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-history mr-2"></i>Epochs</h1>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                        <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Epochs</li>
-                    </ol>
-                </nav>
-            </div>
-            <div class="card">
-                <div class="card-body px-0 py-3">
-                    <div class="table-responsive px-0 py-1">
-                        <table class="table" id="epochs">
-                            <thead>
-                            <tr>
-                                <th>Epoch</th>
-                                <th>Time</th>
-                                <th>Attestations</th>
-                                <th>Deposits</th>
-                                <th>Slashings <span data-toggle="tooltip" data-placement="top"
-                                                    title="Proposers">P</span> / <span data-toggle="tooltip"
-                                                                                       data-placement="top"
-                                                                                       title="Attesters">A</span></th>
-                                <th>Finalized</th>
-                                <th>Eligible</th>
-                                <th>Voted</th>
-                            </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <div class="d-flex justify-content-between py-2">
-                <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-            </div>
+{{ define "js" }}
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script>
+    $(document).ready(function () {
+      $("#epochs").DataTable({
+        processing: true,
+        serverSide: true,
+        ordering: false,
+        searching: true,
+        ajax: "/epochs/data",
+        pagingType: "input",
+        pageLength: 50,
+        language: {
+          searchPlaceholder: "Search by Epoch Number",
+          search: "",
+          paginate: {
+            previous: '<i class="fas fa-chevron-left"></i>',
+            next: '<i class="fas fa-chevron-right"></i>',
+          },
+        },
+        preDrawCallback: function () {
+          // this does not always work.. not sure how to solve the staying tooltip
+          try {
+            $("#epochs").find('[data-toggle="tooltip"]').tooltip("dispose")
+          } catch (e) {
+            console.error(e)
+          }
+        },
+        drawCallback: function (settings) {
+          formatTimestamps()
+        },
+      })
+      $("div.toolbar").html("<b>Custom tool bar! Text/images etc.</b>")
+    })
+  </script>
+{{ end }}
+{{ define "css" }}
+  <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
+{{ end }}
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="d-md-flex py-2 justify-content-md-between">
+        <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-history mr-2"></i>Epochs</h1>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Epochs</li>
+          </ol>
+        </nav>
+      </div>
+      <div class="card">
+        <div class="card-body px-0 py-3">
+          <div class="table-responsive px-0 py-1">
+            <table class="table" id="epochs">
+              <thead>
+                <tr>
+                  <th>Epoch</th>
+                  <th>Time</th>
+                  <th>Attestations</th>
+                  <th>Deposits</th>
+                  <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+                  <th>Finalized</th>
+                  <th>Eligible</th>
+                  <th>Voted</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
-    {{end}}
-{{end}}
+      </div>
+      <div class="d-flex justify-content-between py-2">
+        <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

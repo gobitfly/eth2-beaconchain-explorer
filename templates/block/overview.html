@@ -1,249 +1,231 @@
-{{define "block_overview"}}
-<div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the number of 32 slots">Epoch:</span></div>
-    <div class="col-md-10"><a href="/epoch/{{.Epoch}}">{{formatAddCommas .Epoch}} </a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text={{.Epoch}}></i></div>
-  </div>
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="A slot is a chance for a block to be added to the Beacon Chain and shards">Slot:</span></div>
-    <div class="col-md-10"><b>{{formatAddCommas .Slot}} </b><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text={{.Slot}}></i></div>
-  </div>
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the current state of the block">Status:</span></div>
-    <div class="col-md-10">
-      {{if ne .Slot 0}}
-        {{formatBlockStatus .Status}}
-      {{else}}
-        <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
-      {{end}}
+{{ define "block_overview" }}
+  <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
+    <div class="row border-bottom p-3 mx-0">
+      <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the number of 32 slots">Epoch:</span></div>
+      <div class="col-md-10"><a href="/epoch/{{ .Epoch }}">{{ formatAddCommas .Epoch }} </a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Epoch }}"></i></div>
     </div>
-  </div>
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2">Time:</div>
-    <div class="col-md-7"><span aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW">{{.Ts}}</span> (<span id="timestamp"
-      aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="LOCAL">{{.Ts}}</span>) <i class="fa fa-copy text-muted p-1" role="button"
-      data-toggle="tooltip" title="Copy to clipboard" onclick="copyTs()"></i>
+    <div class="row border-bottom p-3 mx-0">
+      <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="A slot is a chance for a block to be added to the Beacon Chain and shards">Slot:</span></div>
+      <div class="col-md-10"><b>{{ formatAddCommas .Slot }} </b><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Slot }}"></i></div>
     </div>
-    <div class="col-md-3 text-right">
-      <div id="unixTs" hidden>{{.Ts.Unix}}</div>
-      <div class="btn-group btn-group-toggle" data-toggle="buttons">
-        <label class="btn btn-light text-dark active btn-sm" onclick="setTs()">
-          <input type="radio" name="options" id="optionTs"> Timestamp
-        </label>
-        <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setUtc()">
-          <input type="radio" name="options" id="optionUtc"> UTC
-        </label>
-        <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setLocal()">
-          <input type="radio" name="options" id="optionLocal" checked> Local
-        </label>
+    <div class="row border-bottom p-3 mx-0">
+      <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the current state of the block">Status:</span></div>
+      <div class="col-md-10">
+        {{ if ne .Slot 0 }}
+          {{ formatBlockStatus .Status }}
+        {{ else }}
+          <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
+        {{ end }}
       </div>
     </div>
-  </div>
-  {{if ne .Slot 0}}
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="A chosen validator by the beacon chain to propose the next block">Proposer:</span></div>
-    <div class="col-md-10">{{formatValidatorWithName .Proposer .ProposerName}}</div>
-  </div>
-  {{end}}
-  {{if (or (eq .Status 1) (eq .Status 3))}}
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash-tree-root of the BeaconBlock">Block Root:</span></div>
-    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .BlockRoot}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .BlockRoot}}></i></div>
-  </div>
-  {{if ne .Slot 0}}
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash pointing to the previous block">Parent Root:</span></div>
-    <div class="col-md-10 text-monospace text-break"><a href="/block/{{printf "%x" .ParentRoot}}">0x{{printf "%x" .ParentRoot}} </a><i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .ParentRoot}}></i>
-    </div>
-  </div>
-  {{end}}
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash-tree-root of the BeaconState">State Root:</span></div>
-    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .StateRoot}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .StateRoot}}></i></div>
-  </div>
-  {{if ne .Slot 0}}
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The BLS signature obtained by using the BeaconState, BeaconBlock and private key">Signature:</span></div>
-    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .Signature}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .Signature}}></i></div>
-  </div>
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Signature verifying the proposer">Randao Reveal:</span></div>
-    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .RandaoReveal}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .RandaoReveal}}></i></div>
-  </div>
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="32 byte long message included by the block proposer">Graffiti:</span></div>
-    <div class="col-md-7 text-monospace text-break" id="graffiti" aria-graffiti="{{printf "%x" .Graffiti}}">0x{{printf "%x" .Graffiti}}</div>
-    <div class="col-md-3 text-right">
-      <div class="btn-group btn-group-toggle" data-toggle="buttons">
-        <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="viewGraffitiAs('hex')">
-          <input type="radio" name="options" id="optionHex"> Hex
-        </label>
-        <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="viewGraffitiAs('utf-8')">
-          <input type="radio" name="options" id="optionUTF8" checked> UTF-8
-        </label>
-      </div>
-    </div>
-  </div>
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Received Eth1 Block headers and Deposit data">Eth 1 Data:</span></div>
-    <div class="col-md-10">
-      <div class="row p-1">
-        <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Hash of the received Eth1 Block">Block Hash:</span></div>
-        <div class="col-md-10 text-monospace text-break">{{formatEth1BlockHash .Eth1dataBlockhash}}</div>
-      </div>
-      <div class="row p-1">
-        <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of validator deposits to the deposit contract in this block">Deposit Count:</span></div>
-        <div class="col-md-10 text-monospace text-break">{{formatAddCommas .Eth1dataDepositcount}}</div>
-      </div>
-      <div class="row p-1">
-        <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The root of the merkle tree of deposits">Deposit Root:</span></div>
-        <div class="col-md-10 text-monospace text-break">
-          0x{{printf "%x" .Eth1dataDepositroot}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .Eth1dataDepositroot}}></i>
+    <div class="row border-bottom p-3 mx-0">
+      <div class="col-md-2">Time:</div>
+      <div class="col-md-7"><span aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW">{{ .Ts }}</span> (<span id="timestamp" aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="LOCAL">{{ .Ts }}</span>) <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" onclick="copyTs()"></i></div>
+      <div class="col-md-3 text-right">
+        <div id="unixTs" hidden>{{ .Ts.Unix }}</div>
+        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+          <label class="btn btn-light text-dark active btn-sm" onclick="setTs()"> <input type="radio" name="options" id="optionTs" /> Timestamp </label>
+          <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setUtc()"> <input type="radio" name="options" id="optionUtc" /> UTC </label>
+          <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setLocal()"> <input type="radio" name="options" id="optionLocal" checked /> Local </label>
         </div>
       </div>
     </div>
-  </div>
-  {{if .SyncAggregateSignature}}
-    <div class="row border-bottom p-3 mx-0">
-      <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Aggregate (Altair Light-Client support)">Sync Aggregate:</span></div>
-      <div class="col-md-10">
-        <div class="row p-1">
-          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Aggregate Participation">Participation:</span></div>
-          <div class="col-md-10 text-break">
-              <span>{{formatParticipation .SyncAggParticipation}}</span>
+    {{ if ne .Slot 0 }}
+      <div class="row border-bottom p-3 mx-0">
+        <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="A chosen validator by the beacon chain to propose the next block">Proposer:</span></div>
+        <div class="col-md-10">{{ formatValidatorWithName .Proposer .ProposerName }}</div>
+      </div>
+    {{ end }}
+    {{ if (or (eq .Status 1) (eq .Status 3)) }}
+      <div class="row border-bottom p-3 mx-0">
+        <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash-tree-root of the BeaconBlock">Block Root:</span></div>
+        <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" .BlockRoot }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ printf "%x" .BlockRoot }}"></i></div>
+      </div>
+      {{ if ne .Slot 0 }}
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash pointing to the previous block">Parent Root:</span></div>
+          <div class="col-md-10 text-monospace text-break"><a href="/block/{{ printf "%x" .ParentRoot }}">0x{{ printf "%x" .ParentRoot }} </a><i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ printf "%x" .ParentRoot }}"></i></div>
+        </div>
+      {{ end }}
+      <div class="row border-bottom p-3 mx-0">
+        <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash-tree-root of the BeaconState">State Root:</span></div>
+        <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" .StateRoot }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ printf "%x" .StateRoot }}"></i></div>
+      </div>
+      {{ if ne .Slot 0 }}
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The BLS signature obtained by using the BeaconState, BeaconBlock and private key">Signature:</span></div>
+          <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" .Signature }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ printf "%x" .Signature }}"></i></div>
+        </div>
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Signature verifying the proposer">Randao Reveal:</span></div>
+          <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" .RandaoReveal }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ printf "%x" .RandaoReveal }}"></i></div>
+        </div>
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="32 byte long message included by the block proposer">Graffiti:</span></div>
+          <div class="col-md-7 text-monospace text-break" id="graffiti" aria-graffiti="{{ printf "%x" .Graffiti }}">0x{{ printf "%x" .Graffiti }}</div>
+          <div class="col-md-3 text-right">
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+              <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="viewGraffitiAs('hex')"> <input type="radio" name="options" id="optionHex" /> Hex </label>
+              <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="viewGraffitiAs('utf-8')"> <input type="radio" name="options" id="optionUTF8" checked /> UTF-8 </label>
+            </div>
           </div>
         </div>
-        <div class="row p-1">
-          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Committee Aggregation Bits">Bits:</span></div>
-          <div class="col-md-10 text-monospace text-break">{{formatBitvectorValidators .SyncAggregateBits .SyncCommittee}}</div>
-        </div>
-        <div class="row p-1">
-            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Committee Signature">Signature:</span></div>
-            <div class="col-md-10 text-monospace text-break">
-                <span>0x{{printf "%x" .SyncAggregateSignature}}</span>
-            </div>
-        </div>
-      </div>
-    </div>
-  {{end}}
-
-  {{if .ExecBlockHash}}
-    <div class="row border-bottom p-3 mx-0">
-        <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Received Eth1 Block headers and Deposit data">Execution Payload:</span></div>
-
-        <div class="col-md-10">
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Received Eth1 Block headers and Deposit data">Eth 1 Data:</span></div>
+          <div class="col-md-10">
             <div class="row p-1">
+              <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Hash of the received Eth1 Block">Block Hash:</span></div>
+              <div class="col-md-10 text-monospace text-break">{{ formatEth1BlockHash .Eth1dataBlockhash }}</div>
+            </div>
+            <div class="row p-1">
+              <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of validator deposits to the deposit contract in this block">Deposit Count:</span></div>
+              <div class="col-md-10 text-monospace text-break">{{ formatAddCommas .Eth1dataDepositcount }}</div>
+            </div>
+            <div class="row p-1">
+              <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The root of the merkle tree of deposits">Deposit Root:</span></div>
+              <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" .Eth1dataDepositroot }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ printf "%x" .Eth1dataDepositroot }}"></i></div>
+            </div>
+          </div>
+        </div>
+        {{ if .SyncAggregateSignature }}
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Aggregate (Altair Light-Client support)">Sync Aggregate:</span></div>
+            <div class="col-md-10">
+              <div class="row p-1">
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Aggregate Participation">Participation:</span></div>
+                <div class="col-md-10 text-break">
+                  <span>{{ formatParticipation .SyncAggParticipation }}</span>
+                </div>
+              </div>
+              <div class="row p-1">
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Committee Aggregation Bits">Bits:</span></div>
+                <div class="col-md-10 text-monospace text-break">{{ formatBitvectorValidators .SyncAggregateBits .SyncCommittee }}</div>
+              </div>
+              <div class="row p-1">
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Committee Signature">Signature:</span></div>
+                <div class="col-md-10 text-monospace text-break">
+                  <span>0x{{ printf "%x" .SyncAggregateSignature }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        {{ end }}
+
+        {{ if .ExecBlockHash }}
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Received Eth1 Block headers and Deposit data">Execution Payload:</span></div>
+
+            <div class="col-md-10">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Parent Execution Block Hash">Parent Hash:</span></div>
                 <div class="col-md-10 text-monospace text-break">
-                    0x{{printf "%x" .ExecParentHash}}
+                  0x{{ printf "%x" .ExecParentHash }}
                 </div>
-            </div>
+              </div>
 
-            <div class="row p-1">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Fee recipient">Fee Recipient:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{formatEth1Address .ExecFeeRecipient}}</div>
-            </div>
+                <div class="col-md-10 text-monospace text-break">{{ formatEth1Address .ExecFeeRecipient }}</div>
+              </div>
 
-            <div class="row p-1">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Execution State Root">State Root:</span></div>
                 <div class="col-md-10 text-monospace text-break">
-                    0x{{printf "%x" .ExecStateRoot}}
+                  0x{{ printf "%x" .ExecStateRoot }}
                 </div>
-            </div>
+              </div>
 
-            <div class="row p-1">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Receipts Root">Receipts Root:</span></div>
                 <div class="col-md-10 text-monospace text-break">
-                    0x{{printf "%x" .ExecReceiptsRoot}}
+                  0x{{ printf "%x" .ExecReceiptsRoot }}
                 </div>
-            </div>
+              </div>
 
-            <div class="row p-1">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Logs Bloom">Logs Bloom:</span></div>
-                <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .ExecLogsBloom}}</div>
-            </div>
+                <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" .ExecLogsBloom }}</div>
+              </div>
 
-            <div class="row p-1">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Randomness">Block Randomness:</span></div>
                 <div class="col-md-10 text-monospace text-break">
-                    0x{{printf "%x" .ExecRandom}}
+                  0x{{ printf "%x" .ExecRandom }}
                 </div>
-            </div>
+              </div>
 
-            <div class="row p-1">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Number, the height, not the slot">Block Number:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{.ExecBlockNumber.Int64}}</div>
-            </div>
+                <div class="col-md-10 text-monospace text-break">{{ .ExecBlockNumber.Int64 }}</div>
+              </div>
 
-            <div class="row p-1">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Limit">Gas Limit:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{.ExecGasLimit.Int64}}</div>
-            </div>
+                <div class="col-md-10 text-monospace text-break">{{ .ExecGasLimit.Int64 }}</div>
+              </div>
 
-            <div class="row p-1">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Used">Gas Used:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{.ExecGasUsed.Int64}}</div>
-            </div>
+                <div class="col-md-10 text-monospace text-break">{{ .ExecGasUsed.Int64 }}</div>
+              </div>
 
-            <div class="row p-1">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Timestamp">Timestamp:</span></div>
-                <div class="col-md-5 text-monospace text-break">{{.ExecTimestamp.Int64}}</div>
-                <div class="col-md-5"><span aria-ethereum-date="{{.ExecTimestamp}}">{{.ExecTime}}</span> (<span aria-ethereum-date="{{.ExecTimestamp}}" aria-ethereum-date-format="FROMNOW"></span>)</div>
-            </div>
+                <div class="col-md-5 text-monospace text-break">{{ .ExecTimestamp.Int64 }}</div>
+                <div class="col-md-5"><span aria-ethereum-date="{{ .ExecTimestamp }}">{{ .ExecTime }}</span> (<span aria-ethereum-date="{{ .ExecTimestamp }}" aria-ethereum-date-format="FROMNOW"></span>)</div>
+              </div>
 
-            <div class="row p-1">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Extra Data">Block Extra Data</span></div>
                 <div class="col-md-10 text-monospace text-break">
-                    0x{{printf "%x" .ExecExtraData}}
+                  0x{{ printf "%x" .ExecExtraData }}
                 </div>
-            </div>
+              </div>
 
-            <div class="row p-1">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Base fee per gas">Base fee per gas:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{.ExecBaseFeePerGas.Int64}}</div>
-            </div>
+                <div class="col-md-10 text-monospace text-break">{{ .ExecBaseFeePerGas.Int64 }}</div>
+              </div>
 
-            <div class="row p-1">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Execution Block Hash">Block Hash:</span></div>
                 <div class="col-md-10 text-monospace text-break">
-                    0x{{printf "%x" .ExecBlockHash}}
+                  0x{{ printf "%x" .ExecBlockHash }}
                 </div>
-            </div>
+              </div>
 
-            <div class="row p-1">
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transactions">Transactions:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{.ExecTransactionsCount}}</div>
+                <div class="col-md-10 text-monospace text-break">{{ .ExecTransactionsCount }}</div>
+              </div>
             </div>
+          </div>
+        {{ end }}
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of attestations included in this block by the block proposer">Attestations:</span></div>
+          <div class="col-md-10"><b>{{ formatAddCommas .AttestationsCount }}</b></div>
         </div>
-    </div>
-  {{ end }}
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of attestations included in this block by the block proposer">Attestations:</span></div>
-    <div class="col-md-10"><b>{{formatAddCommas .AttestationsCount}}</b></div>
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of votes included in this block">Votes:</span></div>
+          <div class="col-md-10"><b>{{ formatAddCommas .VotesCount }}</b></div>
+        </div>
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of voting validators">Voting Validators:</span></div>
+          <div class="col-md-10"><b>{{ formatAddCommas .VotingValidatorsCount }}</b></div>
+        </div>
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of voluntary Exits which have been included in this block by the block proposer">Voluntary Exits:</span></div>
+          <div class="col-md-10"><b>{{ formatAddCommas .VoluntaryExitscount }}</b></div>
+        </div>
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of slashings which have been included in this block by the block proposer">Slashings:</span></div>
+          <div class="col-md-10"><b>{{ .AttesterSlashingsCount }}</b> attester & <b>{{ .ProposerSlashingsCount }}</b> proposer slashings</div>
+        </div>
+      {{ end }}
+      <div class="row border-bottom p-3 mx-0">
+        <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of validator deposits which have been included in this block by the block proposer">Deposits:</span></div>
+        <div class="col-md-10"><b>{{ formatAddCommas .DepositsCount }}</b></div>
+      </div>
+    {{ end }}
   </div>
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of votes included in this block">Votes:</span></div>
-    <div class="col-md-10"><b>{{formatAddCommas .VotesCount}}</b></div>
-  </div>
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of voting validators">Voting Validators:</span></div>
-    <div class="col-md-10"><b>{{formatAddCommas .VotingValidatorsCount}}</b></div>
-  </div>
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of voluntary Exits which have been included in this block by the block proposer">Voluntary Exits:</span></div>
-    <div class="col-md-10"><b>{{formatAddCommas .VoluntaryExitscount}}</b></div>
-  </div>
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of slashings which have been included in this block by the block proposer">Slashings:</span></div>
-    <div class="col-md-10"><b>{{.AttesterSlashingsCount}}</b> attester &
-      <b>{{.ProposerSlashingsCount}}</b> proposer slashings
-    </div>
-  </div>
-  {{end}}
-  <div class="row border-bottom p-3 mx-0">
-    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of validator deposits which have been included in this block by the block proposer">Deposits:</span></div>
-    <div class="col-md-10"><b>{{formatAddCommas .DepositsCount}}</b></div>
-  </div>
-  {{end}}
-</div>
-{{end}}
+{{ end }}

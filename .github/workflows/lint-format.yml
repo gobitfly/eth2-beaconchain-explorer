@@ -1,0 +1,29 @@
+name: Lint & Format
+
+on:
+  push:
+    branches:
+      - master
+      - staging
+  pull_request:
+    branches:
+      - staging
+      - master
+
+jobs:
+  lint-format:
+    name: lint-format
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+    - name: Setup Node Environment
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16
+    - name: Install Dependencies
+      run: npm ci
+    - name: Check File Format
+      run: npm run check-format 
+    - name: Lint Files
+      run: npm run check-style

@@ -1,276 +1,275 @@
-{{define "js"}}
+{{ define "js" }}
 
-    <script type="text/javascript" src="/js/datatables.min.js"></script>
-    <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/datatable_input.js"></script>
 
-    <script>
-        $(document).ready(function() {
-            var depositsTblOpts = {
-                processing: true,
-                serverSide: true,
-                ordering: false,
-                searching: false,
-                ajax: window.location.pathname + '/deposits',
-                pageLength: 10,
-                pagingType: 'input',
-                language: {
-                    searchPlaceholder: 'Deposit Number / Public Key / Credentials',
-                    search: '',
-                    paginate: {
-                        previous: '<i class="fas fa-chevron-left"></i>',
-                        next: '<i class="fas fa-chevron-right"></i>'
-                    }
-                },
-                columnDefs: [
-                    {
-                        targets: 3,
-                        render: function(data, type, row) {
-                            return `<div class="d-flex justify-content-between">${data}<i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i></div>`
-                        }
-                    },
-                    {
-                        targets: 4,
-                        render: function(data, type, row) {
-                            return `<div class="d-flex"><div data-toggle="tooltip" title="${data}" style="max-width: 130px;" class="text-truncate">${data}</div><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i></div>`
-                        }
-                    }
-                ],
-                preDrawCallback: function() {
-                    // this does not always work.. not sure how to solve the staying tooltip
-                    try {
-                        $('#block_deposits').find('[data-toggle="tooltip"]').tooltip('dispose')
-                    } catch (e) {
-                    }
-                },
-                drawCallback: function(settings) {
-                    formatTimestamps()
-                    $('#block_deposits').find('[data-toggle="tooltip"]').tooltip()
-                },
-            }
-            var usp = new URLSearchParams(window.location.search)
-            var q = usp.get('q')
-            if (q) {
-                depositsTblOpts.search = {"search": q}
-            }
-            var depositsTbl = $('#block_deposits').DataTable(depositsTblOpts)
+  <script>
+    $(document).ready(function () {
+      var depositsTblOpts = {
+        processing: true,
+        serverSide: true,
+        ordering: false,
+        searching: false,
+        ajax: window.location.pathname + "/deposits",
+        pageLength: 10,
+        pagingType: "input",
+        language: {
+          searchPlaceholder: "Deposit Number / Public Key / Credentials",
+          search: "",
+          paginate: {
+            previous: '<i class="fas fa-chevron-left"></i>',
+            next: '<i class="fas fa-chevron-right"></i>',
+          },
+        },
+        columnDefs: [
+          {
+            targets: 3,
+            render: function (data, type, row) {
+              return `<div class="d-flex justify-content-between">${data}<i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i></div>`
+            },
+          },
+          {
+            targets: 4,
+            render: function (data, type, row) {
+              return `<div class="d-flex"><div data-toggle="tooltip" title="${data}" style="max-width: 130px;" class="text-truncate">${data}</div><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i></div>`
+            },
+          },
+        ],
+        preDrawCallback: function () {
+          // this does not always work.. not sure how to solve the staying tooltip
+          try {
+            $("#block_deposits").find('[data-toggle="tooltip"]').tooltip("dispose")
+          } catch (e) {
+            console.error(e)
+          }
+        },
+        drawCallback: function (settings) {
+          formatTimestamps()
+          $("#block_deposits").find('[data-toggle="tooltip"]').tooltip()
+        },
+      }
+      let usp = new URLSearchParams(window.location.search)
+      let q = usp.get("q")
 
-            var votesTblOpts = {
-                processing: true,
-                serverSide: true,
-                ordering: false,
-                searching: true,
-                ajax: window.location.pathname + '/votes',
-                pageLength: 10,
-                pagingType: 'input',
-                language: {
-                    searchPlaceholder: 'Validator',
-                    search: '',
-                    paginate: {
-                        previous: '<i class="fas fa-chevron-left"></i>',
-                        next: '<i class="fas fa-chevron-right"></i>'
-                    }
-                },
-                columnDefs: [
-                    { targets: [2], className: 'white-space-normal'},
-                ],
-                preDrawCallback: function() {
-                    // this does not always work.. not sure how to solve the staying tooltip
-                    try {
-                        $('#block_votes').find('[data-toggle="tooltip"]').tooltip('dispose')
-                    } catch (e) {
-                    }
-                },
-                drawCallback: function(settings) {
-                    formatTimestamps()
-                    $('#block_votes').find('[data-toggle="tooltip"]').tooltip()
-                },
-            }
-            var usp = new URLSearchParams(window.location.search)
-            var q = usp.get('q')
-            if (q) {
-                votesTblOpts.search = {"search": q}
-            }
-            var votesTbl = $('#block_votes').DataTable(votesTblOpts)
-        })
-    </script>
+      if (q) {
+        depositsTblOpts.search = { search: q }
+      }
 
-    <script>
-        window.addEventListener('popstate', function(event) {
-            event.preventDefault();
-            history.back();
-        })
-    </script>
-    <script type="text/javascript">
-        function viewGraffitiAs(type) {
-            var graffitiHex = $("[aria-graffiti]").attr("aria-graffiti");
+      $("#block_deposits").DataTable(depositsTblOpts)
 
-            if (!graffitiHex) {
-                return
-            }
+      let votesTblOpts = {
+        processing: true,
+        serverSide: true,
+        ordering: false,
+        searching: true,
+        ajax: window.location.pathname + "/votes",
+        pageLength: 10,
+        pagingType: "input",
+        language: {
+          searchPlaceholder: "Validator",
+          search: "",
+          paginate: {
+            previous: '<i class="fas fa-chevron-left"></i>',
+            next: '<i class="fas fa-chevron-right"></i>',
+          },
+        },
+        columnDefs: [{ targets: [2], className: "white-space-normal" }],
+        preDrawCallback: function () {
+          // this does not always work.. not sure how to solve the staying tooltip
+          try {
+            $("#block_votes").find('[data-toggle="tooltip"]').tooltip("dispose")
+          } catch (e) {
+            console.error(e)
+          }
+        },
+        drawCallback: function (settings) {
+          formatTimestamps()
+          $("#block_votes").find('[data-toggle="tooltip"]').tooltip()
+        },
+      }
 
-            if (type === "hex") {
-                $("#graffiti").text("0x" + graffitiHex)
-            } else {
-                try {
-                    var r = decodeURIComponent(graffitiHex.replace(/\s+/g, '').replace(/[0-9a-f]{2}/g, '%$&'));
-                    $("#graffiti").text(r)
-                } catch (e) {
-                    $("#graffiti").text(hex2a(graffitiHex.replace("0x", "")))
-                }
-            }
+      if (q) {
+        votesTblOpts.search = { search: q }
+      }
+
+      $("#block_votes").DataTable(votesTblOpts)
+    })
+  </script>
+
+  <script>
+    window.addEventListener("popstate", function (event) {
+      event.preventDefault()
+      history.back()
+    })
+  </script>
+  <script type="text/javascript">
+    function viewGraffitiAs(type) {
+      var graffitiHex = $("[aria-graffiti]").attr("aria-graffiti")
+
+      if (!graffitiHex) {
+        return
+      }
+
+      if (type === "hex") {
+        $("#graffiti").text("0x" + graffitiHex)
+      } else {
+        try {
+          var r = decodeURIComponent(graffitiHex.replace(/\s+/g, "").replace(/[0-9a-f]{2}/g, "%$&"))
+          $("#graffiti").text(r)
+        } catch (e) {
+          $("#graffiti").text(hex2a(graffitiHex.replace("0x", "")))
         }
+      }
+    }
 
-        function hex2a(hexx) {
-            var hex = hexx.toString();//force conversion
-            var str = '';
-            for (var i = 0; i < hex.length; i += 2)
-                str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
-            return str;
+    function hex2a(hexx) {
+      var hex = hexx.toString() //force conversion
+      var str = ""
+      for (var i = 0; i < hex.length; i += 2) str += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
+      return str
+    }
+
+    viewGraffitiAs("utf-8")
+  </script>
+{{ end }}
+
+{{ define "css" }}
+  <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="d-md-flex py-2 justify-content-md-between">
+        <h1 class="h4 my-3 mb-md-0">
+          {{ if not (eq .PreviousSlot .Slot) }}
+            <a href="/block/{{ .PreviousSlot }}"><i class="fa fa-chevron-left"></i></a>
+          {{ end }}
+          <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block at Slot {{ formatAddCommas .Slot }}</span>
+          {{ if gt .NextSlot 0 }}
+            <a href="/block/{{ .NextSlot }}"><i class="fa fa-chevron-right"></i></a>
+          {{ end }}
+        </h1>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
+            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+            <li class="breadcrumb-item"><a href="/blocks" title="Blocks">Blocks</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Block details</li>
+          </ol>
+        </nav>
+      </div>
+      <ul style="margin-bottom: -1px;" class="nav nav-tabs justify-content-start" id="tab" role="tablist">
+        <li class="nav-item">
+          <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true">Overview</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="votes-tab" data-toggle="tab" href="#votes" role="tab" aria-controls="votes" aria-selected="false">Votes <span class="badge bg-secondary text-white">{{ .VotesCount }}</span></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{ .AttestationsCount }}</span></a>
+        </li>
+        {{ if gt .ExecTransactionsCount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="transactions-tab" data-toggle="tab" href="#transactions" role="tab" aria-controls="transactions" aria-selected="false">Transactions <span class="badge bg-secondary text-white">{{ .ExecTransactionsCount }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt .DepositsCount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{ .DepositsCount }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt .VoluntaryExitscount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="voluntary-exits-tab" data-toggle="tab" href="#voluntary-exits" role="tab" aria-controls="voluntary-exits" aria-selected="false">Voluntary Exits <span class="badge bg-secondary text-white">{{ .VoluntaryExitscount }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt .AttesterSlashingsCount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="attester-slashings-tab" data-toggle="tab" href="#attester-slashings" role="tab" aria-controls="attester-slashings" aria-selected="false">Attester Slashings <span class="badge bg-secondary text-white">{{ .AttesterSlashingsCount }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt .ProposerSlashingsCount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="proposer-slashings-tab" data-toggle="tab" href="#proposer-slashings" role="tab" aria-controls="proposer-slashings" aria-selected="false">Proposer Slashings <span class="badge bg-secondary text-white">{{ .ProposerSlashingsCount }}</span></a>
+          </li>
+        {{ end }}
+      </ul>
+      <style>
+        .block-card {
+          border-top-left-radius: 0;
+          border-top-right-radius: 0;
         }
-
-        viewGraffitiAs('utf-8')
-    </script>
-{{end}}
-
-{{define "css"}}
-    <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
-{{end}}
-
-{{define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-            <div class="d-md-flex py-2 justify-content-md-between">
-                <h1 class="h4 my-3 mb-md-0">
-                    {{if not (eq .PreviousSlot .Slot)}}
-                        <a href="/block/{{.PreviousSlot}}"><i class="fa fa-chevron-left"></i></a>
-                    {{end}}
-                    <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block at Slot {{formatAddCommas .Slot}}</span>
-                    {{if gt .NextSlot 0}}
-                        <a href="/block/{{.NextSlot}}"><i class="fa fa-chevron-right"></i></a>
-                    {{end}}
-                </h1>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
-                        <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                        <li class="breadcrumb-item"><a href="/blocks" title="Blocks">Blocks</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Block details</li>
-                    </ol>
-                </nav>
-            </div>
-            <ul style="margin-bottom: -1px;" class="nav nav-tabs justify-content-start" id="tab" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true">Overview</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="votes-tab" data-toggle="tab" href="#votes" role="tab" aria-controls="votes" aria-selected="false">Votes <span class="badge bg-secondary text-white">{{.VotesCount}}</span></a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
-                </li>
-                {{if gt .ExecTransactionsCount 0}}
-                <li class="nav-item">
-                    <a class="nav-link" id="transactions-tab" data-toggle="tab" href="#transactions" role="tab"
-                       aria-controls="transactions" aria-selected="false">Transactions <span
-                            class="badge bg-secondary text-white">{{.ExecTransactionsCount}}</span></a>
-                </li>
-                {{end}}
-                {{if gt .DepositsCount 0}}
-                    <li class="nav-item">
-                        <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{.DepositsCount}}</span></a>
-                    </li>
-                {{end}}
-                {{if gt .VoluntaryExitscount 0}}
-                    <li class="nav-item">
-                        <a class="nav-link" id="voluntary-exits-tab" data-toggle="tab" href="#voluntary-exits" role="tab" aria-controls="voluntary-exits" aria-selected="false">Voluntary Exits <span class="badge bg-secondary text-white">{{.VoluntaryExitscount}}</span></a>
-                    </li>
-                {{end}}
-                {{if gt .AttesterSlashingsCount 0}}
-                    <li class="nav-item">
-                        <a class="nav-link" id="attester-slashings-tab" data-toggle="tab" href="#attester-slashings" role="tab" aria-controls="attester-slashings" aria-selected="false">Attester Slashings <span class="badge bg-secondary text-white">{{.AttesterSlashingsCount}}</span></a>
-                    </li>
-                {{end}}
-                {{if gt .ProposerSlashingsCount 0}}
-                    <li class="nav-item">
-                        <a class="nav-link" id="proposer-slashings-tab" data-toggle="tab" href="#proposer-slashings" role="tab" aria-controls="proposer-slashings" aria-selected="false">Proposer Slashings <span class="badge bg-secondary text-white">{{.ProposerSlashingsCount}}</span></a>
-                    </li>
-                {{end}}
-            </ul>
-            <style>
-                .block-card {
-                    border-top-left-radius: 0;
-                    border-top-right-radius: 0;
-                }
-            </style>
-            <div class="tab-content" id="tabContent">
-                <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
-                    <div class="card block-card">
-                        {{template "block_overview" .}}
-                    </div>
-                </div>
-                {{if gt .VotesCount 0}}
-                    <div class="tab-pane fade" id="votes" role="tabpanel" aria-labelledby="votes-tab">
-                        <div class="card block-card">
-                            {{template "block_votes" .}}
-                        </div>
-                    </div>
-                {{end}}
-                <div class="tab-pane fade" id="attestations" role="tabpanel" aria-labelledby="attestations-tab">
-                    <div class="card block-card">
-                        <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
-                            <div class="row p-1 mx-0">
-                                <h3 class="h5 col-md-12 text-center"><b>Showing {{ .AttestationsCount }} Attestations </b></h3>
-                            </div>
-                        </div>
-                    </div>
-                    {{template "block_attestations" .}}
-                </div>
-                {{if gt .ExecTransactionsCount 0}}
-                    <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
-                        <div class="card block-card">
-                            {{ template "block_transactions" . }}
-                        </div>
-                    </div>
-                {{end}}
-                {{if gt .DepositsCount 0}}
-                    <div class="tab-pane fade" id="deposits" role="tabpanel" aria-labelledby="deposits-tab">
-                        <div class="card block-card">
-                            {{template "block_deposits" .}}
-                        </div>
-                    </div>
-                {{end}}
-                {{if gt .VoluntaryExitscount 0}}
-                    <div class="tab-pane fade" id="voluntary-exits" role="tabpanel" aria-labelledby="voluntary-exits-tab">
-                        <div class="card block-card">
-                            {{template "block_exits" .}}
-                        </div>
-                    </div>
-                {{end}}
-                {{if gt .AttesterSlashingsCount 0}}
-                    <!-- Nav tabs -->
-                    <div class="tab-pane fade" id="attester-slashings" role="tabpanel" aria-labelledby="attester-slashings-tab">
-                        <div class="card block-card">
-                            <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
-                                <div class="row p-1 mx-0">
-                                    <h3 class="h5 col-md-12 text-center"><b>Showing {{.AttesterSlashingsCount}} Attester Slashing(s) </b></h3>
-                                </div>
-                            </div>
-                        </div>
-                        {{template "block_attesterSlashing" .}}
-                    </div>
-                {{end}}
-                {{if gt .ProposerSlashingsCount 0}}
-                    <div class="tab-pane fade" id="proposer-slashings" role="tabpanel" aria-labelledby="proposer-slashings-tab">
-                        <div class="card block-card">
-                            <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
-                                <div class="row p-1 mx-0">
-                                    <h3 class="h5 col-md-12 text-center"><b>Showing {{.ProposerSlashingsCount}} Proposer Slashing(s) </b></h3>
-                                </div>
-                            </div>
-                        </div>
-                        {{template "block_proposerSlashing" .}}
-                    </div>
-                {{end}}
-            </div>
+      </style>
+      <div class="tab-content" id="tabContent">
+        <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+          <div class="card block-card">
+            {{ template "block_overview" . }}
+          </div>
         </div>
-    {{end}}
-{{end}}
+        {{ if gt .VotesCount 0 }}
+          <div class="tab-pane fade" id="votes" role="tabpanel" aria-labelledby="votes-tab">
+            <div class="card block-card">
+              {{ template "block_votes" . }}
+            </div>
+          </div>
+        {{ end }}
+        <div class="tab-pane fade" id="attestations" role="tabpanel" aria-labelledby="attestations-tab">
+          <div class="card block-card">
+            <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
+              <div class="row p-1 mx-0">
+                <h3 class="h5 col-md-12 text-center"><b>Showing {{ .AttestationsCount }} Attestations </b></h3>
+              </div>
+            </div>
+          </div>
+          {{ template "block_attestations" . }}
+        </div>
+        {{ if gt .ExecTransactionsCount 0 }}
+          <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
+            <div class="card block-card">
+              {{ template "block_transactions" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt .DepositsCount 0 }}
+          <div class="tab-pane fade" id="deposits" role="tabpanel" aria-labelledby="deposits-tab">
+            <div class="card block-card">
+              {{ template "block_deposits" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt .VoluntaryExitscount 0 }}
+          <div class="tab-pane fade" id="voluntary-exits" role="tabpanel" aria-labelledby="voluntary-exits-tab">
+            <div class="card block-card">
+              {{ template "block_exits" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt .AttesterSlashingsCount 0 }}
+          <!-- Nav tabs -->
+          <div class="tab-pane fade" id="attester-slashings" role="tabpanel" aria-labelledby="attester-slashings-tab">
+            <div class="card block-card">
+              <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
+                <div class="row p-1 mx-0">
+                  <h3 class="h5 col-md-12 text-center"><b>Showing {{ .AttesterSlashingsCount }} Attester Slashing(s) </b></h3>
+                </div>
+              </div>
+            </div>
+            {{ template "block_attesterSlashing" . }}
+          </div>
+        {{ end }}
+        {{ if gt .ProposerSlashingsCount 0 }}
+          <div class="tab-pane fade" id="proposer-slashings" role="tabpanel" aria-labelledby="proposer-slashings-tab">
+            <div class="card block-card">
+              <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
+                <div class="row p-1 mx-0">
+                  <h3 class="h5 col-md-12 text-center"><b>Showing {{ .ProposerSlashingsCount }} Proposer Slashing(s) </b></h3>
+                </div>
+              </div>
+            </div>
+            {{ template "block_proposerSlashing" . }}
+          </div>
+        {{ end }}
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

@@ -1,29 +1,29 @@
 {{ define "postGenesis" }}
-<div style="position:relative" class="card mt-3 index-stats">
-  {{ if not .ShowSyncingMessage }}
-  <div style="position:absolute; border-bottom-left-radius: 0; border-bottom-right-radius: 0; font-size:.70rem; height:.8rem;" class="progress w-100" data-placement="bottom" :title="'This epoch is '+ epochCompletePercent +'% complete'">
-    <div :style="'width:' + epochCompletePercent + '%;padding: 0 .3rem;'" class="progress-bar bg-secondary" role="progressbar"  :aria-valuenow="scheduledCount" aria-valuemin="0" aria-valuemax="32"><span v-if="scheduledCount > 0">${scheduledCount} / 32 slots left in epoch ${ page.current_epoch }</span><span v-else>${page.current_epoch} epoch complete</span></div>
-  </div>
-  {{end}}
-  <div class="card-header pt-3">
-    <div class="row">
-      {{ template "networkStats" }}
+  <div style="position:relative" class="card mt-3 index-stats">
+    {{ if not .ShowSyncingMessage }}
+      <div style="position:absolute; border-bottom-left-radius: 0; border-bottom-right-radius: 0; font-size:.70rem; height:.8rem;" class="progress w-100" data-placement="bottom" :title="'This epoch is '+ epochCompletePercent +'% complete'">
+        <div :style="'width:' + epochCompletePercent + '%;padding: 0 .3rem;'" class="progress-bar bg-secondary" role="progressbar" :aria-valuenow="scheduledCount" aria-valuemin="0" aria-valuemax="32"><span v-if="scheduledCount > 0">${scheduledCount} / 32 slots left in epoch ${ page.current_epoch }</span><span v-else>${page.current_epoch} epoch complete</span></div>
+      </div>
+    {{ end }}
+    <div class="card-header pt-3">
+      <div class="row">
+        {{ template "networkStats" }}
+      </div>
     </div>
-  </div>
-  <div class="card-body">
-    <div class="row">
-      <div class="col-lg-12">
-        <highcharts height="600px" :constructor-type="'stockChart'" :options="chartOptions"></highcharts>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-lg-12">
+          <highcharts height="600px" :constructor-type="'stockChart'" :options="chartOptions"></highcharts>
+        </div>
       </div>
     </div>
   </div>
-</div>
-<div class="row">
-  <div class="col-lg-6 mt-3 pr-lg-2">
-    {{template "recentEpochs"}}
+  <div class="row">
+    <div class="col-lg-6 mt-3 pr-lg-2">
+      {{ template "recentEpochs" }}
+    </div>
+    <div class="col-lg-6 mt-3 pl-lg-2">
+      {{ template "recentBlocks" }}
+    </div>
   </div>
-  <div class="col-lg-6 mt-3 pl-lg-2">
-    {{ template "recentBlocks"}}
-  </div>
-</div>
-{{end}}
+{{ end }}

@@ -1,86 +1,83 @@
-{{ define "js"}}
-{{end}}
+{{ define "js" }}
+{{ end }}
 
 {{ define "css" }}
-    <style>
-        .authorize-button {
-            min-width: 200px;
-            margin: auto;
-            display: block;
-        }
+  <style>
+    .authorize-button {
+      min-width: 200px;
+      margin: auto;
+      display: block;
+    }
 
-        .authorize-brand {
-            display: block;
-            margin: auto;
-        }
+    .authorize-brand {
+      display: block;
+      margin: auto;
+    }
 
-        .authorize-card {
-            text-align: center;
-        }
+    .authorize-card {
+      text-align: center;
+    }
 
-        .authorize-buttons {
-            padding-top: 20px;
-        }
+    .authorize-buttons {
+      padding-top: 20px;
+    }
 
-        .authorize-description {
-            padding-top: 20px;
-            margin-left: 4vh;
-            margin-right: 4vh;
-        }
+    .authorize-description {
+      padding-top: 20px;
+      margin-left: 4vh;
+      margin-right: 4vh;
+    }
 
-        .authorize-img {
-            margin: 12px;
-        }
+    .authorize-img {
+      margin: 12px;
+    }
 
-        .authorize-logo {
-            font-size: 64px !important;
-        }
-    </style>
-{{end}}
+    .authorize-logo {
+      font-size: 64px !important;
+    }
+  </style>
+{{ end }}
 
-{{ define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-
-        <div class="row ">
-            <div class="col-xl-7 col-lg-7 col-md-10 col-sm-12 m-auto">
-                {{if .Flashes}}
-                    {{range $i, $flash := .Flashes}}
-                        <div class="alert {{if contains $flash "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2"
-                             role="alert">
-                            <div class="p-2">{{$flash | formatHTML}}</div>
-                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                    {{end}}
-                {{end}}
-                {{if .AppData }}
-                    <div class="user__settings-container">
-                        <div class="card my-3 authorize-card">
-                            <div class="card-body">
-                                <div class="authorize-img">
-                                    <h1 class="h1 mb-1 mb-md-0 authorize-logo"><i class="mr-2 fas fa-user-circle"></i>
-                                    </h1>
-                                </div>
-                                <p class="authorize-description">Do you want to link your account with
-                                    <strong>{{ .AppData.AppName }}</strong>?</p>
-                                <form class="authorize-buttons" action="authorize" method="post">
-                                    {{ .CsrfField }}
-                                    <input type="hidden" name="state" value="{{ .State }}">
-                                    <input type="hidden" name="redirect_uri" value="{{ .AppData.RedirectURI }}">
-                                    <div class="form-group col-md-12">
-                                        <button type="submit" class="btn btn-primary authorize-button">Continue</button>
-                                    </div>
-                                    <div class="form-group col-md-12">
-                                        <a href="/" class="btn secondary authorize-button">Cancel</a>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="row ">
+        <div class="col-xl-7 col-lg-7 col-md-10 col-sm-12 m-auto">
+          {{ if .Flashes }}
+            {{ range $i, $flash := .Flashes }}
+              <div class="alert {{ if contains $flash "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
+                <div class="p-2">{{ $flash | formatHTML }}</div>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+            {{ end }}
+          {{ end }}
+          {{ if .AppData }}
+            <div class="user__settings-container">
+              <div class="card my-3 authorize-card">
+                <div class="card-body">
+                  <div class="authorize-img">
+                    <h1 class="h1 mb-1 mb-md-0 authorize-logo"><i class="mr-2 fas fa-user-circle"></i></h1>
+                  </div>
+                  <p class="authorize-description">Do you want to link your account with <strong>{{ .AppData.AppName }}</strong>?</p>
+                  <form class="authorize-buttons" action="authorize" method="post">
+                    {{ .CsrfField }}
+                    <input type="hidden" name="state" value="{{ .State }}" />
+                    <input type="hidden" name="redirect_uri" value="{{ .AppData.RedirectURI }}" />
+                    <div class="form-group col-md-12">
+                      <button type="submit" class="btn btn-primary authorize-button">Continue</button>
                     </div>
-                {{end}}
+                    <div class="form-group col-md-12">
+                      <a href="/" class="btn secondary authorize-button">Cancel</a>
+                    </div>
+                  </form>
+                </div>
+              </div>
             </div>
+          {{ end }}
         </div>
-    {{end}}
-{{end}}
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

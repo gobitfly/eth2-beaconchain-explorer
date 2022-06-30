@@ -1,327 +1,298 @@
-{{ define "js"}}
-$('#carousel').carousel()
-<script src="https://www.google.com/recaptcha/api.js" async></script>
+{{ define "js" }}
+  $('#carousel').carousel()
+  <script src="https://www.google.com/recaptcha/api.js" async></script>
 
-<script>
+  <script>
     function onSubmit(token) {
-        var form = document.getElementById('contact')
-        if(form.reportValidity()) {
-            form.submit();
-        }
+      var form = document.getElementById("contact")
+      if (form.reportValidity()) {
+        form.submit()
+      }
     }
   </script>
+{{ end }}
 
-{{end}}
-
-{{ define "css"}}
-<style>
+{{ define "css" }}
+  <style>
     .feature-entry {
-        padding-bottom: 25px;
-        padding-top: 25px;
+      padding-bottom: 25px;
+      padding-top: 25px;
     }
 
     .feature-text-container {
-        font-size: 95%;
+      font-size: 95%;
     }
 
     .feature-text {
-        display: block;
-        width: 200px;
+      display: block;
+      width: 200px;
 
-        text-align: center;
-        margin: auto;
+      text-align: center;
+      margin: auto;
     }
 
     .feature-icon {
-        padding-bottom: 13px;
-        font-size: 180%;
+      padding-bottom: 13px;
+      font-size: 180%;
     }
 
     .badge-button {
-        width: 175px;
-        height: 53px;
-        margin-right: 12px;
-        margin-top: 6px;
+      width: 175px;
+      height: 53px;
+      margin-right: 12px;
+      margin-top: 6px;
     }
 
     .screenshot {
-        width: 271px;
-        height: 525px;
-        margin-bottom: 50px;
-        margin-top: 25px;
+      width: 271px;
+      height: 525px;
+      margin-bottom: 50px;
+      margin-top: 25px;
     }
 
     .screenshot-small {
-        width: 222px;
-        height: 430px;
-        margin-bottom: 15px;
+      width: 222px;
+      height: 430px;
+      margin-bottom: 15px;
     }
 
     .spotlight-entry {
-        padding-left: 60px;
-        padding-right: 60px;
+      padding-left: 60px;
+      padding-right: 60px;
     }
 
     .spotlight-text-container {
-        margin-top: 20px;
-        font-size: 105%;
+      margin-top: 20px;
+      font-size: 105%;
     }
 
-
     .spotlight-text {
-        display: block;
-        width: 250px;
+      display: block;
+      width: 250px;
 
-        text-align: center;
-        margin: auto;
+      text-align: center;
+      margin: auto;
     }
 
     .zoom {
-        transition: transform .2s;
-        /* Animation */
+      transition: transform 0.2s;
+      /* Animation */
     }
 
     .zoom:hover {
-        transform: scale(1.20);
-        /* (150% zoom - Note: if the zoom is too large, it will go outside of the viewport) */
-
+      transform: scale(1.2);
+      /* (150% zoom - Note: if the zoom is too large, it will go outside of the viewport) */
     }
 
     .carousel {
-        margin-bottom: 12px;
+      margin-bottom: 12px;
     }
 
-    .carousel-inner>.item {
-        width: 100%;
+    .carousel-inner > .item {
+      width: 100%;
     }
 
-    .carousel-inner>.item>img,
-    .carousel-inner>.item>a>img {
-        margin: auto;
+    .carousel-inner > .item > img,
+    .carousel-inner > .item > a > img {
+      margin: auto;
     }
 
     .carousel-indicators li {
-        background-color: #e99555;
-        opacity: 0.4;
-        width: 25px;
+      background-color: #e99555;
+      opacity: 0.4;
+      width: 25px;
     }
-</style>
-{{end}}
+  </style>
+{{ end }}
 
-{{ define "content"}}
-{{with .Data}}
-{{if ne .FlashMessage ""}}
-<div class="alert container mt-2 {{if contains .FlashMessage "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2"
-    role="alert">
-    <div class="p-2">{{.FlashMessage | formatHTML}}</div>
-    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-        <span aria-hidden="true">&times;</span>
-    </button>
-</div>
-{{end}}
+{{ define "content" }}
+  {{ with .Data }}
+    {{ if ne .FlashMessage "" }}
+      <div class="alert container mt-2 {{ if contains .FlashMessage "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
+        <div class="p-2">{{ .FlashMessage | formatHTML }}</div>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    {{ end }}
 
-<section style="background: var(--bg-color-light)">
-    <div class="container">
+
+    <section style="background: var(--bg-color-light)">
+      <div class="container">
         <div style="padding-top: 2rem;" class="row justify-content-between align-items-center">
-            <div class="col-md-6 mb-5">
-                <h1 class="h6 font-weight-bold text-primary">Beaconchain Dashboard App</h1>
-                <h2 class="mb-4">Keeping the network secure is hard enough.<br/>Let us help you with that.</h2>
-                <p>Easily check on your validators with our Beaconchain Dashboard app. Wherever you are, whenever you want. Now available for Android and iOS.</p>
-                <a href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121" target="_blank" class="no-highlight">
-                    <img src="img/ios.png" class="badge-button" />
-                </a>
-                <a href="https://play.google.com/store/apps/details?id=in.beaconcha.mobile" target="_blank" class="no-highlight">
-                    <img src="img/android.png" class="badge-button" />
-                </a>
-            </div>
-            <div class="col-md-4 p-1 ">
-                <div id="carousel" class="carousel slide carousel-fade " data-ride="carousel">
-                    <ol class="carousel-indicators">
-                        <li data-target="#carousel" data-slide-to="0" class="active"></li>
-                        <li data-target="#carousel" data-slide-to="1"></li>
-                        <li data-target="#carousel" data-slide-to="2"></li>
-                        <li data-target="#carousel" data-slide-to="3"></li>
-                    </ol>
-                    <div class="carousel-inner">
-                        <div class="carousel-item active">
-                            <div class="row justify-content-center align-items-center">
-                                <img src="img/mobile/main.png" class="screenshot" />
-                            </div>
-                        </div>
-                        <div class="carousel-item">
-                            <div class="row justify-content-center align-items-center">
-                                <img src="img/mobile/validators.png" class="screenshot" />
-                            </div>
-                        </div>
-                        <div class="carousel-item">
-                            <div class="row justify-content-center align-items-center">
-                                <img src="img/mobile/settings.png" class="screenshot" />
-                            </div>
-                        </div>
-                        <div class="carousel-item">
-                            <div class="row justify-content-center align-items-center">
-                                <img src="img/mobile/setup.png" class="screenshot" />
-                            </div>
-                        </div>
-
-                    </div>
+          <div class="col-md-6 mb-5">
+            <h1 class="h6 font-weight-bold text-primary">Beaconchain Dashboard App</h1>
+            <h2 class="mb-4">Keeping the network secure is hard enough.<br />Let us help you with that.</h2>
+            <p>Easily check on your validators with our Beaconchain Dashboard app. Wherever you are, whenever you want. Now available for Android and iOS.</p>
+            <a href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121" target="_blank" class="no-highlight">
+              <img src="img/ios.png" class="badge-button" />
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=in.beaconcha.mobile" target="_blank" class="no-highlight">
+              <img src="img/android.png" class="badge-button" />
+            </a>
+          </div>
+          <div class="col-md-4 p-1 ">
+            <div id="carousel" class="carousel slide carousel-fade " data-ride="carousel">
+              <ol class="carousel-indicators">
+                <li data-target="#carousel" data-slide-to="0" class="active"></li>
+                <li data-target="#carousel" data-slide-to="1"></li>
+                <li data-target="#carousel" data-slide-to="2"></li>
+                <li data-target="#carousel" data-slide-to="3"></li>
+              </ol>
+              <div class="carousel-inner">
+                <div class="carousel-item active">
+                  <div class="row justify-content-center align-items-center">
+                    <img src="img/mobile/main.png" class="screenshot" />
+                  </div>
                 </div>
+                <div class="carousel-item">
+                  <div class="row justify-content-center align-items-center">
+                    <img src="img/mobile/validators.png" class="screenshot" />
+                  </div>
+                </div>
+                <div class="carousel-item">
+                  <div class="row justify-content-center align-items-center">
+                    <img src="img/mobile/settings.png" class="screenshot" />
+                  </div>
+                </div>
+                <div class="carousel-item">
+                  <div class="row justify-content-center align-items-center">
+                    <img src="img/mobile/setup.png" class="screenshot" />
+                  </div>
+                </div>
+              </div>
             </div>
+          </div>
         </div>
-</section>
-<div class="container mt-2">
-    <section class="my-5">
+      </div>
+    </section>
+    <div class="container mt-2">
+      <section class="my-5">
         <div class="row">
-            <div class="col-md-12">
-                <div class="row justify-content-center align-items-center">
-
-                    <div class="row justify-content-center align-items-stretch text-center">
-                        <div class="col-md-4 mb-3 mb-md-0 feature-entry">
-                            <div class="h1 feature-icon"><i class="fas fa-bell"></i></div>
-                            <div class="h5 text-muted feature-text-container">
-                                <span class="feature-text">
-                                    Receive instant mobile alerts on your validator states
-                                </span>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3 mb-md-0 feature-entry">
-                            <div class="h1 feature-icon"><i class="fas fa-server"></i></div>
-                            <div class="h5 text-muted feature-text-container">
-                                <span class="feature-text">
-                                    Keep track of the newest eth2 and eth1 client updates
-                                </span>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3 mb-md-0 feature-entry">
-                            <div class="h1 feature-icon"><i class="fas fa-users"></i></div>
-                            <div class="h5 text-muted feature-text-container">
-                                <span class="feature-text">
-                                    Support for up to one hundred validators
-                                </span>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3 mb-md-0 feature-entry">
-                            <div class="h1 feature-icon"><i class="fas fa-vial"></i></div>
-                            <div class="h5 text-muted feature-text-container">
-                                <span class="feature-text">
-                                    Compatible with ethereum 2 testnets
-                                </span>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3 mb-md-0 feature-entry">
-                            <div class="h1 feature-icon"><i class="fas fa-project-diagram"></i></div>
-                            <div class="h5 text-muted feature-text-container">
-                                <span class="feature-text">
-                                    Keeps track of the network and any finality issues
-                                </span>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3 mb-md-0 feature-entry">
-                            <div class="h1 feature-icon"><i class="fas fa-moon"></i></div>
-                            <div class="h5 text-muted feature-text-container">
-                                <span class="feature-text">
-                                    Switch between light and dark theme
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+          <div class="col-md-12">
+            <div class="row justify-content-center align-items-center">
+              <div class="row justify-content-center align-items-stretch text-center">
+                <div class="col-md-4 mb-3 mb-md-0 feature-entry">
+                  <div class="h1 feature-icon"><i class="fas fa-bell"></i></div>
+                  <div class="h5 text-muted feature-text-container">
+                    <span class="feature-text"> Receive instant mobile alerts on your validator states </span>
+                  </div>
                 </div>
+                <div class="col-md-4 mb-3 mb-md-0 feature-entry">
+                  <div class="h1 feature-icon"><i class="fas fa-server"></i></div>
+                  <div class="h5 text-muted feature-text-container">
+                    <span class="feature-text"> Keep track of the newest eth2 and eth1 client updates </span>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-3 mb-md-0 feature-entry">
+                  <div class="h1 feature-icon"><i class="fas fa-users"></i></div>
+                  <div class="h5 text-muted feature-text-container">
+                    <span class="feature-text"> Support for up to one hundred validators </span>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-3 mb-md-0 feature-entry">
+                  <div class="h1 feature-icon"><i class="fas fa-vial"></i></div>
+                  <div class="h5 text-muted feature-text-container">
+                    <span class="feature-text"> Compatible with ethereum 2 testnets </span>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-3 mb-md-0 feature-entry">
+                  <div class="h1 feature-icon"><i class="fas fa-project-diagram"></i></div>
+                  <div class="h5 text-muted feature-text-container">
+                    <span class="feature-text"> Keeps track of the network and any finality issues </span>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-3 mb-md-0 feature-entry">
+                  <div class="h1 feature-icon"><i class="fas fa-moon"></i></div>
+                  <div class="h5 text-muted feature-text-container">
+                    <span class="feature-text"> Switch between light and dark theme </span>
+                  </div>
+                </div>
+              </div>
             </div>
+          </div>
         </div>
-    </section>
-    <hr />
-    <br />
-    <section class="my-5">
+      </section>
+      <hr />
+      <br />
+      <section class="my-5">
         <div class="row">
-            <div class="col-md-12">
-                <div class="row justify-content-center align-items-center">
-
-                    <div class="row justify-content-center align-items-stretch text-center">
-
-                        <div class="col-md-4 mb-3 mb-md-0 spotlight-entry">
-                            <div class="h1 feature-icon">
-                                <img src="img/mobile/validators.png" class="screenshot-small zoom" />
-                            </div>
-                            <div class="h5 text-muted spotlight-text-container">
-                                <span class="spotlight-text">
-                                    Easily add your validators or search for any on the ethereum 2 network.
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4 mb-3 mb-md-0 spotlight-entry">
-                            <div class="h1 feature-icon">
-                                <img src="img/mobile/stats.png" class="screenshot-small zoom" />
-                            </div>
-                            <div class="h5 text-muted spotlight-text-container">
-                                <span class="spotlight-text">
-                                    Keep track on your income, block proposals and more.
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4 mb-3 mb-md-0 spotlight-entry">
-                            <div class="h1 feature-icon">
-                                <img src="img/mobile/pool.png" class="screenshot-small zoom" />
-                            </div>
-                            <div class="h5 text-muted spotlight-text-container">
-                                <span class="spotlight-text">
-                                    You will soon be able to track your staking pool earnings as well.
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+          <div class="col-md-12">
+            <div class="row justify-content-center align-items-center">
+              <div class="row justify-content-center align-items-stretch text-center">
+                <div class="col-md-4 mb-3 mb-md-0 spotlight-entry">
+                  <div class="h1 feature-icon">
+                    <img src="img/mobile/validators.png" class="screenshot-small zoom" />
+                  </div>
+                  <div class="h5 text-muted spotlight-text-container">
+                    <span class="spotlight-text"> Easily add your validators or search for any on the ethereum 2 network. </span>
+                  </div>
                 </div>
-    </section>
-    <br />
-    <hr />
-    <br />
-    <section class="my-5">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="row justify-content-center">
-                    <div class="col-md-12 col-lg-8 text-center">
-                        <h1 class="h4">You want your pool supported by the app?</h1>
-                        <p class="text-muted col-md-8 px-0 mx-auto">
-                            Reach out to us if you are interested in a partnership.
-                        </p>
-                        <form id="contact" action="/mobile" method="post">
-                            <div class="text-left">
-                                <div class="form-row">
-                                    <div class="form-group col-md-6">
-                                        <label for="inputName">Contact name (required)</label>
-                                        <input type="text" class="form-control" id="inputName"
-                                            placeholder="Ex.: Will Smith" required name="name">
-                                    </div>
-                                    <div class="form-group col-md-6">
-                                        <label for="inputEmail">Email (required)</label>
-                                        <input type="email" class="form-control" id="inputEmail"
-                                            placeholder="Ex.: office@company.com" required name="email">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="inputUrl">Official Website URL (required)</label>
-                                    <input type="text" class="form-control" id="inputUrl"
-                                        placeholder="Ex.: https://example.com/" required name="url">
-                                </div>
-                                <div class="form-group">
-                                    <label for="inputCompanyName">Company / Project name (required)</label>
-                                    <input type="text" class="form-control" id="inputCompanyName"
-                                        placeholder="Ex.: Chainlab" required name="company">
-                                </div>
-                                <div class="form-group">
-                                    <label for="inputAddress2">What can we do for you? (required)</label>
-                                    <textarea type="text" class="form-control" id="inputAdText" required
-                                        name="text"></textarea>
-                                </div>
-                            </div>
-                            <button data-sitekey="{{.RecaptchaKey}}" data-callback='onSubmit' data-action='submit' type="submit" class="g-recaptcha btn btn-primary text-center text-white">Send Message</button>
-                        </form>
-                    </div>
+
+                <div class="col-md-4 mb-3 mb-md-0 spotlight-entry">
+                  <div class="h1 feature-icon">
+                    <img src="img/mobile/stats.png" class="screenshot-small zoom" />
+                  </div>
+                  <div class="h5 text-muted spotlight-text-container">
+                    <span class="spotlight-text"> Keep track on your income, block proposals and more. </span>
+                  </div>
                 </div>
+
+                <div class="col-md-4 mb-3 mb-md-0 spotlight-entry">
+                  <div class="h1 feature-icon">
+                    <img src="img/mobile/pool.png" class="screenshot-small zoom" />
+                  </div>
+                  <div class="h5 text-muted spotlight-text-container">
+                    <span class="spotlight-text"> You will soon be able to track your staking pool earnings as well. </span>
+                  </div>
+                </div>
+              </div>
             </div>
+          </div>
         </div>
-    </section>
-</div>
-{{end}}
-{{end}}
+      </section>
+      <br />
+      <hr />
+      <br />
+      <section class="my-5">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="row justify-content-center">
+              <div class="col-md-12 col-lg-8 text-center">
+                <h1 class="h4">You want your pool supported by the app?</h1>
+                <p class="text-muted col-md-8 px-0 mx-auto">Reach out to us if you are interested in a partnership.</p>
+                <form id="contact" action="/mobile" method="post">
+                  <div class="text-left">
+                    <div class="form-row">
+                      <div class="form-group col-md-6">
+                        <label for="inputName">Contact name (required)</label>
+                        <input type="text" class="form-control" id="inputName" placeholder="Ex.: Will Smith" required name="name" />
+                      </div>
+                      <div class="form-group col-md-6">
+                        <label for="inputEmail">Email (required)</label>
+                        <input type="email" class="form-control" id="inputEmail" placeholder="Ex.: office@company.com" required name="email" />
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label for="inputUrl">Official Website URL (required)</label>
+                      <input type="text" class="form-control" id="inputUrl" placeholder="Ex.: https://example.com/" required name="url" />
+                    </div>
+                    <div class="form-group">
+                      <label for="inputCompanyName">Company / Project name (required)</label>
+                      <input type="text" class="form-control" id="inputCompanyName" placeholder="Ex.: Chainlab" required name="company" />
+                    </div>
+                    <div class="form-group">
+                      <label for="inputAddress2">What can we do for you? (required)</label>
+                      <textarea type="text" class="form-control" id="inputAdText" required name="text"></textarea>
+                    </div>
+                  </div>
+                  <button data-sitekey="{{ .RecaptchaKey }}" data-callback="onSubmit" data-action="submit" type="submit" class="g-recaptcha btn btn-primary text-center text-white">Send Message</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  {{ end }}
+{{ end }}

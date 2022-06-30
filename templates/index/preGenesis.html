@@ -2,7 +2,7 @@
   <div class="row mx-auto align-items-center">
     <div class="col-md-6">
       <h2 class="h3">{{ trLang .Lang "p1_title" }}</h2>
-      <p> {{ trLang .Lang "p1_text" }}</p>
+      <p>{{ trLang .Lang "p1_text" }}</p>
     </div>
     <div class="col-md-6 my-3">
       {{ template "depositProgress" .Data }}
@@ -13,11 +13,8 @@
       <h2 class="h3">{{ trLang .Lang "p2_title" }}</h2>
       <p style="text-overflow: ellipsis; overflow: hidden;">
         Genesis will occur once enough deposits have been made to the deposit contract
-        <a href="/validators/eth1deposits" class="text-truncate text-monospace">
-        {{.ChainConfig.DepositContractAddress}}</a>.
-        Each deposit is registered by the beacon chain after a block delay of <i>{{.ChainConfig.Eth1FollowDistance}}</i>
-        Ethereum 1.0 blocks. The earliest possible genesis time and the estimated genesis
-        time (according to the rate of deposits) can be seen on the right.
+        <a href="/validators/eth1deposits" class="text-truncate text-monospace"> {{ .ChainConfig.DepositContractAddress }}</a>. Each deposit is registered by the beacon chain after a block delay of <i>{{ .ChainConfig.Eth1FollowDistance }}</i>
+        Ethereum 1.0 blocks. The earliest possible genesis time and the estimated genesis time (according to the rate of deposits) can be seen on the right.
       </p>
     </div>
     <div class="col-md-6 my-3">
@@ -32,10 +29,10 @@
       </p>
     </div>
     <div style="max-height: 250px" class="col-md-6 my-3 d-flex flex-column justify-content-center">
-        {{ template "depositChart" .Data }}
+      {{ template "depositChart" .Data }}
     </div>
   </div>
   <div class="row mx-auto align-items-center justify-content-center">
     {{ template "depositDistributionChart" .Data }}
   </div>
-{{end}}
+{{ end }}

@@ -1,18 +1,18 @@
-{{ define "js"}}
-<script src="/js/requestInterval.js"></script>
-<script src="https://www.google.com/recaptcha/api.js" async></script>
-<script>
+{{ define "js" }}
+  <script src="/js/requestInterval.js"></script>
+  <script src="https://www.google.com/recaptcha/api.js" async></script>
+  <script>
     function onSubmit(token) {
-        var form = document.getElementById('contact')
-        if(form.reportValidity()) {
-            form.submit();
-        }
+      var form = document.getElementById("contact")
+      if (form.reportValidity()) {
+        form.submit()
+      }
     }
   </script>
-{{end}}
+{{ end }}
 
-{{ define "css"}}
-    <!-- <style>
+{{ define "css" }}
+  <!-- <style>
         @media (min-width: 1140px) {
             .max-lg-300 {
                 max-width: 300px;
@@ -57,842 +57,717 @@
                     }
                 }
     </style> -->
-{{end}}
+{{ end }}
 
-{{ define "content"}}
-    {{with .Data}}
-        {{if ne .FlashMessage ""}}
-            <div class="alert container mt-2 {{if contains .FlashMessage "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2"
-                 role="alert">
-                <div class="p-2">{{.FlashMessage | formatHTML}}</div>
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-        {{end}}
-        <section style="background: var(--bg-color-light)">
-            <div class="container">
-                <div style="padding-top: 2rem;" class="row justify-content-between align-items-center">
-                    <div class="col-md-6 mb-5">
-                        <h1 class="h6 font-weight-bold text-primary">Staking Services</h1>
-                        <h2 class="mb-4">Find the best Ethereum 2.0 staking services on beaconcha.in</h2>
-                        <a href="#stakingServices" class="btn btn-sm btn-outline-primary">View services</a>
-                    </div>
-                    <div class="col-md-5 p-1">
-                        <svg id="e9ecc617-883f-4dfc-9a55-ce5b125f3ffd" data-name="Layer 1"
-                             xmlns="http://www.w3.org/2000/svg"
-                             viewBox="0 0 983.54823 576.15723">
-                            <defs>
-                                <linearGradient id="ba860033-8b14-4705-9ef7-06625c8932b0" x1="-566.54523" y1="517.53213"
-                                                x2="-566.54523" y2="599.34427"
-                                                gradientTransform="translate(-265.63001 868.28) rotate(180)"
-                                                gradientUnits="userSpaceOnUse">
-                                    <stop offset="0" stop-color="gray" stop-opacity="0.25"/>
-                                    <stop offset="0.54" stop-color="gray" stop-opacity="0.12"/>
-                                    <stop offset="1" stop-color="gray" stop-opacity="0.1"/>
-                                </linearGradient>
-                            </defs>
-                            <rect y="559.81277" width="324.03261" height="2.24072" fill="#3f3d56"/>
-                            <path d="M312.75659,342.24513c.93745,3.00967,1.768,5.87955,2.46694,8.34649l-.43585.15624C314.24493,348.46183,313.55421,345.50149,312.75659,342.24513Zm-26.01812-73.26827-.13154.074.12336-.11514Z"
-                                  transform="translate(-108.22589 -161.92138)"
-                                  fill="url(#ba860033-8b14-4705-9ef7-06625c8932b0)"/>
-                            <path d="M254.84912,692.33757c-4.89279,1.5706-8.56851,31.65091-8.56851,31.65091l30.42566,7.516s21.339,3.14943,31.4782,0,9.7938-11.89065-4.72008-13.28859-24.83393-20.10562-24.83393-20.10562S259.7419,690.767,254.84912,692.33757Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#2f2e41"/>
-                            <path d="M219.14415,698.4556a18.32464,18.32464,0,0,1-1.18413,7.06371,61.72376,61.72376,0,0,0-3.059,22.90146q.0987,1.38969.222,2.911c1.05259,12.0634,30.23655,4.55565,32.1772,3.14948s-5.75621-36.02563-5.75621-36.02563S218.659,693.56286,219.14415,698.4556Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#2f2e41"/>
-                            <path d="M251.091,260.15255a.09008.09008,0,0,1,.01646.03292c.61674,1.513,23.53466,57.71008,19.39016,39.3313a11.24085,11.24085,0,0,1-.24669-1.661c-.35359-4.5145,1.77623-9.48132,5.20527-14.41521a71.05582,71.05582,0,0,1,7.26106-8.68365c1.32391-1.37325,2.69717-2.71363,4.08688-4.0129,3.81555-3.577,7.78735-6.84985,11.30683-9.57994,6.32361-4.93389,11.20816-8.06691,11.20816-8.06691s-44.32281-51.67431-41.18156-29.38136c.86348,6.1098,4.46517,12.20318,2.02292,17.86072a30.86734,30.86734,0,0,1-6.69366,9.56353,50.65075,50.65075,0,0,1-7.24459,5.94532c-1.11011.74828-2.11336,1.37325-2.92744,1.85021C251.938,259.73316,251.091,260.15255,251.091,260.15255Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#ffb9b9"/>
-                            <path d="M403.07143,326.79382s1.74331-.97033,4.37473-2.1298c7.738-3.37147,23.18929-8.30536,25.13818,5.27928,2.62318,18.22251-14.75234,16.12561-14.75234,16.12561a81.17786,81.17786,0,0,0-10.53386-3.19881,13.53136,13.53136,0,0,0-5.40261-.33716Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#ffb9b9"/>
-                            <path d="M400.4236,344.046h5.22991c3.04258-4.11158.71541-19.73556.71541-19.73556l-4.54742.82231Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#e6e6e6"/>
-                            <path d="M306.95928,370.42586l.87165,45.98385,5.75621,21.68445s2.82876,20.9855,6.29891,19.234,18.27182,3.23169,18.27182,3.23169l.699-7.7791L333.87359,407.06l-3.84843-22.81924s-2.18739-17.92649-3.84843-28.41921-15.55819-2.17914-15.55819-2.17914Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#2f2e41"/>
-                            <path d="M323.59465,347.61482c9.44839-2.64786,21.64334,0,21.64334,0l55.09512,1.217c9.83486-12.98437,3.01788-25.17929,3.01788-25.17929s-27.02126-1.06077-48.91952-4.33359-36.32165-19.53822-36.32165-19.53822Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#2f2e41"/>
-                            <path d="M268.13776,223.71661c-3.14125-22.293,41.18156,29.38132,41.18156,29.38132s-4.88456,3.133-11.20816,8.06691c-.58386.04111-1.16773.04111-1.768.04111-13.56,0-22.90974-8.48629-28.28766-19.9987C270.21819,236.08423,269.10808,230.54182,268.13776,223.71661Z"
-                                  transform="translate(-108.22589 -161.92138)" opacity="0.1" style="isolation:isolate"/>
-                            <path d="M264.40429,230.59708a30.29883,30.29883,0,1,1,.00009.14734Q264.40419,230.67076,264.40429,230.59708Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#ffb9b9"/>
-                            <path d="M249.463,360.813l1.64463-100.6596,17.57287,9.20171,14.57969,3.45375,3.69218-2.15446.26315-.15624.60027-.34538s.19735.42759.57564,1.2088c3.19058,6.7512,18.7159,39.76715,18.387,42.59592-.34536,3.14122,11.07644,42.74312,11.07644,42.74312h0l-5.50935,37.50662s10.4516,26.051,7.68863,35.672-78.12,2.96854-78.12,2.96854Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#e6e6e6"/>
-                            <path d="M278.8936,275.91716l5.85488,7.516.94569,2.19559a70.79415,70.79415,0,0,1,5.60819,24.42277v9.75265l1.22524,78.161,6.73467,12.014,1.22524-14.86745-2.7054-83.67057L294.10639,292.528l-2.00646-11.98114a53.02665,53.02665,0,0,1-2.80407-6.47162c-2.0064-5.15593-7.17056-3.758-7.17056-3.758Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#2f2e41"/>
-                            <path d="M253.12215,258.51615l.17266.41939,1.22524,3.00965,1.38148,3.36329a28.05717,28.05717,0,0,1,4.50632,3.56887c4.67075,4.19379,11.44662,10.93678,15.04836,14.56317,1.52126,1.5295,2.47518,2.49987,2.47518,2.49987,1.78441-1.58711,3.577-6.891,4.78588-11.18352.19735-.68253.37-1.34037.53447-1.94888.60851-2.32716.97856-4.00467.97856-4.00467-4.5803-1.6364-15.2704-12.088-20.76346-17.66331a50.65075,50.65075,0,0,1-7.24459,5.94532C255.90976,256.21368,253.12215,258.51615,253.12215,258.51615Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#e6e6e6"/>
-                            <path d="M291.36816,272.61146c3.429,2.09689,9.00431,4.827,15.18814,5.13947,0,0,13.3955,7.08835,15.8789,31.34665s12.97616,97.173,12.97616,97.173,9.34149,49.16624,2.763,54.27281l-7.34327-60.18526s-12.85279-34.75925-13.782-41.18976c-.82232-5.85488-11.04369-37.86761-12.83633-43.4758-.18093-.5263-.27138-.82232-.27138-.82232L293.72,285.96585l-5.90422-15.82134A32.0698,32.0698,0,0,0,291.36816,272.61146Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#2f2e41"/>
-                            <path d="M217.96,602.99305s10.31181-71.1796,7.516-80.78423,1.92424-80.58687,1.92424-80.58687l1.55419-13.31328.87165-7.50775.37005-3.14125,1.80087.551a265.6894,265.6894,0,0,0,53.27779,9.7691,40.63912,40.63912,0,0,0,11.92357-.95388c7.13769-1.62817,20.93616-3.62642,23.34554-5.33682,0,0,.82231,2.212,1.85021,5.83021,2.36827,8.36293,5.93714,24.34874,3.19059,37.96628l-4.202,27.53933s-1.65286,28.06562-7.08012,44.85728L309.5002,560.7836l-6.299,46.68285a279.587,279.587,0,0,0-6.73476,37.8265c-2.29425,21.16639-15.39377,56.27921-15.39377,56.27921s-27.84358,3.84843-28.6659-5.59174l9.6211-73.62185,8.91392-105.43723s-9.6622,65.78521-15.21283,79.95369c0,0-7.69686,80.75954-10.32005,93.20118s-4.36649,15.73089-4.36649,15.73089-16.26542,5.9536-23.60869-5.06544c0,0-2.09694-32.687-3.66754-44.405C212.1874,644.60218,217.96,602.99305,217.96,602.99305Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#2f2e41"/>
-                            <path d="M230.74711,443.68592l11.51241,5.6-13.72444,25.87827c-5.15593-4.81055-4.54743-23.954-4.54743-23.954Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#ffb9b9"/>
-                            <polygon
-                                    points="127.472 281.765 132.718 285.876 125.728 296.459 116.198 299.954 115.408 292.956 127.472 281.765"
-                                    fill="#e6e6e6"/>
-                            <g opacity="0.1">
-                                <path d="M320.55212,421.78766a.24908.24908,0,0,1-.04934-.12334,4.35894,4.35894,0,0,1-.46049.26315Z"
-                                      transform="translate(-108.22589 -161.92138)"/>
-                            </g>
-                            <path d="M190.90575,458.199c6.29074,7.34326,33.71493,8.659,33.71493,8.659l21.372-33.682,5.76444-9.07839s6.42228-4.45694,18.49386-24.52963,11.66042-35.53226,10.99435-47.07754-8.22315-44.72574-8.22315-44.72574a93.12961,93.12961,0,0,0-2.7712-9.90889c-2.62319-8.27249-6.59493-19.76849-9.84309-28.97838-.58386-1.66109-1.143-3.24815-1.67755-4.72831-.98674-2.81236,4.02936-13.5271,4.02936-13.5271-1.76795,3.54418-12.90213,9.37437-16.77525,11.81667-10.44336,6.57852-25.023,9.27569-25.023,9.27569-23.47709,3.41263-19.14348,27.67092-19.14348,27.67092s-.26314,94.29488,1.18414,105.57707S190.90575,458.199,190.90575,458.199Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#2f2e41"/>
-                            <path d="M202.83763,299.37786s-9.96646,43.28666-12.72119,70.03657,7.60641,43.79652,7.60641,43.79652l22.16141,49.18267c7.60641-1.95712,23.08239-18.09094,23.08239-18.09094l-22.20251-61.50919s8.23138-31.05884,13.37908-59.66719-8.49453-41.44468-8.49453-41.44468C202.82945,273.03085,202.83763,299.37786,202.83763,299.37786Z"
-                                  transform="translate(-108.22589 -161.92138)" opacity="0.1" style="isolation:isolate"/>
-                            <path d="M201.78509,299.37786s-9.96646,43.28666-12.72119,70.03657,7.60641,43.79652,7.60641,43.79652l22.20252,49.18267c7.60641-1.95712,23.08239-18.09094,23.08239-18.09094l-22.20251-61.50919s8.23961-31.05884,13.37085-59.66719-8.51917-41.44468-8.51917-41.44468C201.78514,273.03085,201.78509,299.37786,201.78509,299.37786Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#2f2e41"/>
-                            <path d="M245.58161,452.08178l-6.118,17.49063-6.817,9.34972s-5.10659,3.41263-6.38117-2.96854,15.994-30.34346,15.994-30.34346C244.98956,444.5329,245.58161,452.08178,245.58161,452.08178Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#2f2e41"/>
-                            <path d="M266.6694,246.99884s-31.65753-43.38254,8.20751-52.76255c0,0,11.32506-16.98759,25.24033-8.63235a43.60963,43.60963,0,0,0,22.53909,5.99422c6.74188,0,13.19064,2.63813,12.01814,13.19064-2.345,21.105-15.24252,17.58752-15.24252,17.58752s-34.97688-15.67089-36.14938,1.91662S266.6694,246.99884,266.6694,246.99884Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#2f2e41"/>
-                            <circle cx="531.30481" cy="6.81334" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="565.79385" cy="6.81334" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="600.28289" cy="6.81334" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="634.77193" cy="6.81334" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="669.26097" cy="6.81334" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="531.30481" cy="41.73529" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="565.79385" cy="41.73529" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="600.28289" cy="41.73529" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="634.77193" cy="41.73529" r="6.81334" fill="#6c63ff"/>
-                            <circle cx="669.26097" cy="41.73529" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="738.23905" cy="41.73529" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="531.30481" cy="76.65724" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="565.79385" cy="76.65724" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="600.28289" cy="76.65724" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="634.77193" cy="76.65724" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="669.26097" cy="76.65724" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="531.30481" cy="111.57918" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="565.79385" cy="111.57918" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="600.28289" cy="111.57918" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="634.77193" cy="111.57918" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="669.26097" cy="111.57918" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="703.75" cy="111.57918" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="738.23905" cy="111.57918" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="772.72809" cy="111.57918" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="807.21714" cy="111.57918" r="6.81335" fill="#e6e6e6"/>
-                            <circle cx="841.70618" cy="111.57918" r="6.81335" fill="#e6e6e6"/>
-                            <circle cx="669.26097" cy="146.50113" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="703.75" cy="146.50113" r="6.81334" fill="#6c63ff"/>
-                            <circle cx="738.23905" cy="146.50113" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="772.72809" cy="146.50113" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="807.21714" cy="146.50113" r="6.81335" fill="#e6e6e6"/>
-                            <circle cx="841.70618" cy="146.50113" r="6.81335" fill="#e6e6e6"/>
-                            <circle cx="669.26097" cy="181.42308" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="703.75" cy="181.42308" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="738.23905" cy="181.42308" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="772.72809" cy="181.42308" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="807.21714" cy="181.42308" r="6.81335" fill="#6c63ff"/>
-                            <circle cx="841.70618" cy="181.42308" r="6.81335" fill="#e6e6e6"/>
-                            <circle cx="669.26097" cy="216.34503" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="703.75" cy="216.34503" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="738.23905" cy="216.34503" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="772.72809" cy="216.34503" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="807.21714" cy="216.34503" r="6.81335" fill="#e6e6e6"/>
-                            <circle cx="841.70618" cy="216.34503" r="6.81335" fill="#e6e6e6"/>
-                            <circle cx="531.30481" cy="251.26698" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="565.79385" cy="251.26698" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="600.28289" cy="251.26698" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="634.77193" cy="251.26698" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="669.26097" cy="251.26698" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="703.75" cy="251.26698" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="738.23905" cy="251.26698" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="772.72809" cy="251.26698" r="6.81334" fill="#e6e6e6"/>
-                            <circle cx="807.21714" cy="251.26698" r="6.81335" fill="#e6e6e6"/>
-                            <circle cx="841.70618" cy="251.26698" r="6.81335" fill="#e6e6e6"/>
-                            <circle cx="639.5307" cy="448.11032" r="6.81335"
-                                    transform="matrix(0.00406, -0.99999, 0.99999, 0.00406, 80.59854, 923.89281)"
-                                    fill="#e6e6e6"/>
-                            <circle cx="565.79385" cy="286.18894" r="6.81335" fill="#e6e6e6"/>
-                            <circle cx="639.5307" cy="483.03225" r="6.81335"
-                                    transform="matrix(0.00406, -0.99999, 0.99999, 0.00406, 45.67689, 958.67279)"
-                                    fill="#e6e6e6"/>
-                            <circle cx="565.79385" cy="321.11087" r="6.81335" fill="#e6e6e6"/>
-                            <circle cx="634.77193" cy="321.11087" r="6.81335" fill="#e6e6e6"/>
-                            <path d="M1086.77411,242.3053H816.77363a5.00588,5.00588,0,0,1-5-5V170.32972a5.00588,5.00588,0,0,1,5-5h270.00048a5.00588,5.00588,0,0,1,5,5V237.3053A5.00588,5.00588,0,0,1,1086.77411,242.3053ZM816.77363,167.32972a3.00328,3.00328,0,0,0-3,3V237.3053a3.00328,3.00328,0,0,0,3,3h270.00048a3.00328,3.00328,0,0,0,3-3V170.32972a3.00328,3.00328,0,0,0-3-3Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#e6e6e6"/>
-                            <circle cx="743.54774" cy="41.89587" r="21" fill="#6c63ff"/>
-                            <path d="M900.27363,189.81725a3.5,3.5,0,0,0,0,7h93a3.5,3.5,0,0,0,0-7Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#e6e6e6"/>
-                            <path d="M900.27363,210.81725a3.5,3.5,0,0,0,0,7h165a3.5,3.5,0,0,0,0-7Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#e6e6e6"/>
-                            <path d="M739.77411,378.3053H469.77363a5.00588,5.00588,0,0,1-5-5V306.32972a5.00588,5.00588,0,0,1,5-5H739.77411a5.00588,5.00588,0,0,1,5,5V373.3053A5.00588,5.00588,0,0,1,739.77411,378.3053ZM469.77363,303.32972a3.00328,3.00328,0,0,0-3,3V373.3053a3.00328,3.00328,0,0,0,3,3H739.77411a3.00328,3.00328,0,0,0,3-3V306.32972a3.00328,3.00328,0,0,0-3-3Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#3f3d56"/>
-                            <circle cx="396.54774" cy="177.89587" r="21" fill="#6c63ff"/>
-                            <path d="M553.27363,325.81725a3.5,3.5,0,0,0,0,7h97a3.5,3.5,0,0,0,0-7Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#e6e6e6"/>
-                            <path d="M553.27363,346.81725a3.5,3.5,0,0,0,0,7h165a3.5,3.5,0,0,0,0-7Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#e6e6e6"/>
-                            <path d="M983.77411,525.3053H713.77363a5.00588,5.00588,0,0,1-5-5V453.32972a5.00588,5.00588,0,0,1,5-5H983.77411a5.00588,5.00588,0,0,1,5,5V520.3053A5.00588,5.00588,0,0,1,983.77411,525.3053ZM713.77363,450.32972a3.00328,3.00328,0,0,0-3,3V520.3053a3.00328,3.00328,0,0,0,3,3H983.77411a3.00328,3.00328,0,0,0,3-3V453.32972a3.00328,3.00328,0,0,0-3-3Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#e6e6e6"/>
-                            <circle cx="640.54774" cy="324.89587" r="21" fill="#6c63ff"/>
-                            <path d="M797.27363,472.81725a3.5,3.5,0,0,0,0,7h89a3.5,3.5,0,0,0,0-7Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#e6e6e6"/>
-                            <path d="M797.27363,493.81725a3.5,3.5,0,0,0,0,7h165a3.5,3.5,0,0,0,0-7Z"
-                                  transform="translate(-108.22589 -161.92138)" fill="#e6e6e6"/>
-                        </svg>
-                    </div>
-                </div>
-            </div>
-        </section>
-        {{if not .NoAds}} {{ template "bannerStakingServices" }} {{end}}
-        <div class="container mt-2">
-            <section class="my-5">
-                <div class="row">
-                    <div class="col-md-12">
-                        <h1 class="h2 mb-4 font-weight-bold text-primary text-center">Staking Services</h1>
-                        <div class="text-center">
-                            <div>Beaconcha.in has not vetted any of the Staking Services listed below!
-                            Please do your own research.</div>
-                            <br/>
-                            <div><b>Real-time staking pool <a href="/pools"> benchmarks</a>.</b></div>
-                            <br/>
-                        </div>
-                        <div class="table-responsive">
-                            <style>
-                                #stakingServices {
-
-                                }
-                            </style>
-                            <table class="table" id="stakingServices">
-                                <thead>
-                                <tr>
-                                    <th>Service</th>
-                                    <th>Validator key owner</th>
-                                    <th>Withdrawal key owner</th>
-                                    <th>Pool token</th>
-                                    <th>3rd Party Software</th>
-                                    <th>Min. Stake</th>
-                                    <th>Fee</th>
-                                    <th>Open Source</th>
-                                    <th>Social</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td data-column="Service"><a href="https://ethpool.org/">Ethpool</a> by beaconcha.in</td>
-                                        <td data-column="Validator key owner">User & Service</td>
-                                        <td data-column="Withdrawal key owner">User</td>
-                                        <td data-column="Pool token">No</td>
-                                        <td data-column="3rd Party Software">No</td>
-                                        <td data-column="Min. Stake">32 ETH</td>
-                                        <td data-column="Fee">Free</td>
-                                        <td data-column="Open Source">No</td>
-                                        <td data-column="Social"><a href="https://discord.io/ethermine  " target="_blank"><i
-                                                        class="fab fa-discord ml-1 mr-1"></i></a><a
-                                                    href="https://twitter.com/ethermine_org" target="_blank"><i
-                                                        class="fab fa-twitter ml-1 mr-1"></i></a><i
-                                                        class="fab fa-telegram ml-1 mr-1"></i><i
-                                                    class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                                    </tr>
-                                    <tr>
-                                        <td data-column="Service"><a href="https://www.rocketpool.net/">Rocket Pool (Validator)</a></td>
-                                        <td data-column="Validator key owner">User</td>
-                                        <td data-column="Withdrawal key owner">Smart Contract</td>
-                                        <td data-column="Pool token">Yes</td>
-                                        <td data-column="3rd Party Software">No</td>
-                                        <td data-column="Min. Stake">16 ETH</td>
-                                        <td data-column="Fee">Free</td>
-                                        <td data-column="Open Source">Yes</td>
-                                        <td data-column="Social"><a href="https://discordapp.com/invite/tCRG54c" target="_blank"><i
-                                                        class="fab fa-discord ml-1 mr-1"></i></a><a
-                                                    href="https://twitter.com/Rocket_Pool" target="_blank"><i
-                                                        class="fab fa-twitter ml-1 mr-1"></i></a><i
-                                                        class="fab fa-telegram ml-1 mr-1"></i><i
-                                                    class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                                    </tr>
-                                    <tr>
-                                        <td data-column="Service"><a href="https://www.rocketpool.net/">Rocket Pool (Pool)</a></td>
-                                        <td data-column="Validator key owner">User</td>
-                                        <td data-column="Withdrawal key owner">Smart Contract</td>
-                                        <td data-column="Pool token">Yes</td>
-                                        <td data-column="3rd Party Software">No</td>
-                                        <td data-column="Min. Stake">0.01 ETH</td>
-                                        <td data-column="Fee">15% of rewards</td>
-                                        <td data-column="Open Source"><a href="https://github.com/rocket-pool">Yes</a></td>
-                                        <td data-column="Social"><a href="https://discordapp.com/invite/tCRG54c" target="_blank"><i
-                                                        class="fab fa-discord ml-1 mr-1"></i></a><a
-                                                    href="https://twitter.com/Rocket_Pool" target="_blank"><i
-                                                        class="fab fa-twitter ml-1 mr-1"></i></a><i
-                                                        class="fab fa-telegram ml-1 mr-1"></i><i
-                                                    class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                                    </tr>
-                                <tr>
-                                    <td data-column="Service"><a
-                                                href="https://www.allnodes.com/eth2/staking">Allnodes</a></td>
-                                    <td data-column="Validator key owner">User & Service</td>
-                                    <td data-column="Withdrawal key owner">User</td>
-                                    <td data-column="Pool token">No</td>
-                                    <td data-column="3rd Party Software">No</td>
-                                    <td data-column="Min. Stake">32 ETH</td>
-                                    <td data-column="Fee">US$5/validator/month</td>
-                                    <td data-column="Open Source">No</td>
-                                    <td data-column="Social"><a href="https://discord.allnodes.com/" target="_blank"><i
-                                                    class="fab fa-discord ml-1 mr-1"></i></a><a
-                                                href="https://twitter.com/allnodes" target="_blank"><i
-                                                    class="fab fa-twitter ml-1 mr-1"></i></a><a
-                                                href="https://t.me/allnodes" target="_blank"><i
-                                                    class="fab fa-telegram ml-1 mr-1"></i></a><a
-                                                href="mailto:support@allnodes.com"><i
-                                                    class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://stkr.io">Ankr Staking</a></td>
-                                    <td data-column="Validator key owner">Service</td>
-                                    <td data-column="Withdrawal key owner">Service</td>
-                                    <td data-column="Pool token">Yes</td>
-                                    <td data-column="3rd Party Software">No</td>
-                                    <td data-column="Min. Stake">0.5 ETH</td>
-                                    <td data-column="Fee">15% of rewards</td>
-                                    <td data-column="Open Source">Yes</td>
-                                    <td data-column="Social"><a href="https://discord.gg/2BSdr2g" target="_blank"><i
-                                        class="fab fa-discord ml-1 mr-1"></i></a><a
-                                        href="https://twitter.com/ankr" target="_blank"><i
-                                            class="fab fa-twitter ml-1 mr-1"></i></a><a
-                                    href="https://t.me/ankrnetwork" target="_blank"><i
-                                        class="fab fa-telegram ml-1 mr-1"></i></a><i
-                                        class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://stakewise.io/app/pool">Stakewise Pool</a>
-                                    </td>
-                                    <td data-column="Validator key owner">Service</td>
-                                    <td data-column="Withdrawal key owner">Smart Contract</td>
-                                    <td data-column="Pool token">Yes</td>
-                                    <td data-column="3rd Party Software"> No</td>
-                                    <td data-column="Min. Stake">Any amount</td>
-                                    <td data-column="Fee">10% of rewards</td>
-                                    <td data-column="Open Source">Yes</td>
-                                    <td data-column="Social"><a href="https://discord.gg/8Zf7tKyXeZ" target="_blank"><i
-                                                    class="fab fa-discord ml-1 mr-1"></i></a><a
-                                                    href="https://twitter.com/stakewise_io" target="_blank"><i
-                                                        class="fab fa-twitter ml-1 mr-1"></i></a><a
-                                                href="https://t.me/stakewise_io" target="_blank"><i
-                                                    class="fab fa-telegram ml-1 mr-1"></i></a><a
-                                                href="mailto:kirill@stakewise.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-					</td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://stakewise.io/app/solo">Stakewise Solo</a>
-                                    </td>
-                                    <td data-column="Validator key owner">Service</td>
-                                    <td data-column="Withdrawal key owner">User</td>
-                                    <td data-column="Pool token">No</td>
-                                    <td data-column="3rd Party Software"> No</td>
-                                    <td data-column="Min. Stake">32 ETH</td>
-                                    <td data-column="Fee">US$10/validator/month</td>
-                                    <td data-column="Open Source">Yes</td>
-                                    <td data-column="Social"><a href="https://discord.gg/8Zf7tKyXeZ" target="_blank"><i
-                                                    class="fab fa-discord ml-1 mr-1"></i></a><a
-                                                    href="https://twitter.com/stakewise_io" target="_blank"><i
-                                                        class="fab fa-twitter ml-1 mr-1"></i></a><a
-                                                href="https://t.me/stakewise_io" target="_blank"><i
-                                                    class="fab fa-telegram ml-1 mr-1"></i></a><a
-                                                href="mailto:kirill@stakewise.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-					    </td>
-                                </tr>
-                               
-                                <tr>
-                                    <td data-column="Service"><a href="https://www.bloxstaking.com/">Bloxstaking</a>
-                                    </td>
-                                    <td data-column="Validator key owner">User</td>
-                                    <td data-column="Withdrawal key owner">User</td>
-                                    <td data-column="Pool token">No</td>
-                                    <td data-column="3rd Party Software">Yes</td>
-                                    <td data-column="Min. Stake">32 ETH</td>
-                                    <td data-column="Fee">Free</td>
-                                    <td data-column="Open Source">Yes</td>
-                                    <td data-column="Social"><a href="https://discord.gg/cvWkmDg" target="_blank"><i
-                                            class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/Blox_Staking" target="_blank"><i
-                                                class="fab fa-twitter ml-1 mr-1"></i></a><i
-                                            class="fab fa-telegram ml-1 mr-1"></i><a
-                                                href="mailto:contact@blox.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://stakingfacilities.com/">Staking
-                                            Facilities</a></td>
-                                    <td data-column="Validator key owner">?</td>
-                                    <td data-column="Withdrawal key owner">?</td>
-                                    <td data-column="Pool token">?</td>
-                                    <td data-column="3rd Party Software">?</td>
-                                    <td data-column="Min. Stake">?</td>
-                                    <td data-column="Fee">?</td>
-                                    <td data-column="Open Source">No</td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/StakingFac" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i><a href="https://t.me/stakingfacilities" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a></a><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://www.attestant.io/">Attestant</a></td>
-                                    <td data-column="Validator key owner">User & Service</td>
-                                    <td data-column="Withdrawal key owner"> User</td>
-                                    <td data-column="Pool token"> No</td>
-                                    <td data-column="3rd Party Software"> No</td>
-                                    <td data-column="Min. Stake">1000 ETH</td>
-                                    <td data-column="Fee">17.5% of rewards</td>
-                                    <td data-column="Open Source">Yes</td>
-                                    <td data-column="Social"><a href="https://invite.gg/attestant" target="_blank"><i
-                                                    class="fab fa-discord ml-1 mr-1"></i></a><a
-                                                href="https://twitter.com/attestantio" target="_blank"><i
-                                                    class="fab fa-twitter ml-1 mr-1"></i></a><a
-                                                href="https://t.me/attestant" target="_blank"><i
-                                                    class="fab fa-telegram ml-1 mr-1"></i></a><a
-                                                href="mailto:info@attestant.io"><i
-                                                    class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://www.allyoucanstake.de/our-services/">AllYouCanStake</a>
-                                    </td>
-                                    <td data-column="Validator key owner">?</td>
-                                    <td data-column="Withdrawal key owner">?</td>
-                                    <td data-column="Pool token"> ?</td>
-                                    <td data-column="3rd Party Software"> ?</td>
-                                    <td data-column="Min. Stake">Any amount</td>
-                                    <td data-column="Fee">?</td>
-                                    <td data-column="Open Source">No</td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i
-                                        class="fab fa-twitter ml-1 mr-1"></i><i
-                                                class="fab fa-telegram ml-1 mr-1"></i><i
-                                                class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://stake.fish/">stakefish</a></td>
-                                    <td data-column="Validator key owner">Service</td>
-                                    <td data-column="Withdrawal key owner">User</td>
-                                    <td data-column="Pool token">No</td>
-                                    <td data-column="3rd Party Software">No</td>
-                                    <td data-column="Min. Stake">0.1 ETH</td>
-                                    <td data-column="Fee">10% of rewards</td>
-                                    <td data-column="Open Source">No</td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/stakefish" target="_blank"><i
-                                                    class="fab fa-twitter ml-1 mr-1"></i></a><a
-                                                href="https://t.me/stakefish" target="_blank"><i
-                                                    class="fab fa-telegram ml-1 mr-1"></i></a><a
-                                                href="mailto:hi@stake.fish"><i
-                                                    class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://everstake.one/">Everstake</a></td>
-                                    <td data-column="Validator key owner">?</td>
-                                    <td data-column="Withdrawal key owner"> ?</td>
-                                    <td data-column="Pool token"> ?</td>
-                                    <td data-column="3rd Party Software"> ?</td>
-                                    <td data-column="Min. Stake">Any amount</td>
-                                    <td data-column="Fee">?</td>
-                                    <td data-column="Open Source">No</td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i
-                                        class="fab fa-twitter ml-1 mr-1"></i><i
-                                                class="fab fa-telegram ml-1 mr-1"></i><i
-                                                class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://staked.us/">StakedUs</a></td>
-                                    <td data-column="Validator key owner">Service</td>
-                                    <td data-column="Withdrawal key owner">User</td>
-                                    <td data-column="Pool token">No</td>
-                                    <td data-column="3rd Party Software">No</td>
-                                    <td data-column="Min. Stake">32 ETH</td>
-                                    <td data-column="Fee">US$5/validator/month</td>
-                                    <td data-column="Open Source">No</td>
-                                    <td data-column="Social"><a href="https://discord.gg/48sPdbm" target="_blank"><i
-                                                    class="fab fa-discord ml-1 mr-1"></i></a><a
-                                                href="https://twitter.com/staked_us" target="_blank"><i
-                                                    class="fab fa-twitter ml-1 mr-1"></i></a><a
-                                                href="https://t.me/staked_official" target="_blank"><i
-                                                    class="fab fa-telegram ml-1 mr-1"></i></a><a
-                                                href="mailto:staked@staked.us"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://dragonstake.io/">Dragonstake</a></td>
-                                    <td data-column="Validator key owner">?</td>
-                                    <td data-column="Withdrawal key owner">?</td>
-                                    <td data-column="Pool token"> ?</td>
-                                    <td data-column="3rd Party Software"> ?</td>
-                                    <td data-column="Min. Stake">Any amount</td>
-                                    <td data-column="Fee">?</td>
-                                    <td data-column="Open Source">No</td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i
-                                        class="fab fa-twitter ml-1 mr-1"></i><i
-                                                class="fab fa-telegram ml-1 mr-1"></i><i
-                                                class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://www.staked.tech/">StakedTech</a></td>
-                                    <td data-column="Validator key owner">User & Service</td>
-                                    <td data-column="Withdrawal key owner"> ?</td>
-                                    <td data-column="Pool token"> ?</td>
-                                    <td data-column="3rd Party Software"> ?</td>
-                                    <td data-column="Min. Stake">Any amount</td>
-                                    <td data-column="Fee">?</td>
-                                    <td data-column="Open Source">No</td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i
-                                        class="fab fa-twitter ml-1 mr-1"></i><i
-                                                class="fab fa-telegram ml-1 mr-1"></i><i
-                                                class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://p2p.org/">P2P.org</a></td>
-                                    <td data-column="Validator key owner">?</td>
-                                    <td data-column="Withdrawal key owner"> ?</td>
-                                    <td data-column="Pool token"> ?</td>
-                                    <td data-column="3rd Party Software"> ?</td>
-                                    <td data-column="Min. Stake">Any amount</td>
-                                    <td data-column="Fee">?</td>
-                                    <td data-column="Open Source">No</td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i
-                                        class="fab fa-twitter ml-1 mr-1"></i><i
-                                                class="fab fa-telegram ml-1 mr-1"></i><i
-                                                class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a    
-                                                href="https://www.bitcoinsuisse.com/staking/ethereum-2">Bitcoin
-                                            Suisse Exchange</a></td>
-                                    <td data-column="Validator key owner">Service</td>
-                                    <td data-column="Withdrawal key owner"> Service</td>
-                                    <td data-column="Pool token"> No</td>
-                                    <td data-column="3rd Party Software"> No</td>
-                                    <td data-column="Min. Stake">Any amount</td>
-                                    <td data-column="Fee">15% of rewards</td>
-                                    <td data-column="Open Source">No</td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i></a><a
-                                                href="https://twitter.com/bitcoinsuisseag" target="_blank"><i
-                                                    class="fab fa-twitter ml-1 mr-1"></i></a><a
-                                                href="https://t.me/bitcoinsuisse_announcements" target="_blank"><i
-                                                    class="fab fa-telegram ml-1 mr-1"></i></a><a
-                                                href="mailto:info@bitcoinsuisse.com"><i
-                                                    class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://www.binance.com/en/staking">Binance Exchange</a>
-                                    </td>
-                                    <td data-column="Validator key owner">Service</td>
-                                    <td data-column="Withdrawal key owner"> Service</td>
-                                    <td data-column="Pool token"> No</td>
-                                    <td data-column="3rd Party Software"> No</td>
-                                    <td data-column="Min. Stake">Any amount</td>
-                                    <td data-column="Fee">?</td>
-                                    <td data-column="Open Source">No</td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i
-                                        class="fab fa-twitter ml-1 mr-1"></i><i
-                                                class="fab fa-telegram ml-1 mr-1"></i><i
-                                                class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://midl.dev/ethereum/">MIDL.dev</a></td>
-                                    <td data-column="Validator key owner">Service</td>
-                                    <td data-column="Withdrawal key owner"> User</td>
-                                    <td data-column="Pool token"> No</td>
-                                    <td data-column="3rd Party Software"> No</td>
-                                    <td data-column="Min. Stake">Any amount</td>
-                                    <td data-column="Fee">US$45USD/validator/month</td>
-                                    <td data-column="Open Source">Yes</td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i></a><a
-                                                href="https://twitter.com/midl_dev" target="_blank"><i
-                                                    class="fab fa-twitter ml-1 mr-1"></i></a><i
-                                                class="fab fa-telegram ml-1 mr-1"></i></a><a
-                                                href="mailto:hello@midl.dev"></a><i
-                                                class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-                                </tr>
-                                <td data-column="Service"><a href="https://app.cream.finance/eth2">C.R.E.A.M.
-                                        Finance</a></td>
-                                <td data-column="Validator key owner">Service</td>
-                                <td data-column="Withdrawal key owner">Service</td>
-                                <td data-column="Pool token">Yes</td>
-                                <td data-column="3rd Party Software">No</td>
-                                <td data-column="Min. Stake">Any amount</td>
-                                <td data-column="Fee">8%</td>
-                                <td data-column="Open Source">Yes</td>
-                                <td data-column="Social"><a href="https://discord.com/invite/8Ms25mV" target="_blank"><i
-                                                class="fab fa-discord ml-1 mr-1"></i></a><a
-                                            href="https://twitter.com/CreamdotFinance" target="_blank"><i
-                                                class="fab fa-twitter ml-1 mr-1"></i></a><a
-                                            href="https://t.me/creamfinance" target="_blank"><i
-                                                class="fab fa-telegram ml-1 mr-1"></i></a><a
-                                            href="mailto:mkt@cream.finance"><i
-                                                class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://www.lido.fi">Lido Finance</a></td>
-                                    <td data-column="Validator key owner">Service</td>
-                                    <td data-column="Withdrawal key owner">Service</td>
-                                    <td data-column="Pool token">Yes</td>
-                                    <td data-column="3rd Party Software">No</td>
-                                    <td data-column="Min. Stake">Any amount</td>
-                                    <td data-column="Fee">10%</td>
-                                    <td data-column="Open Source"><a href="https://github.com/lidofinance">Yes</a></td>
-                                    <td data-column="Social"><a href="https://discord.com/invite/vgdPfhZ"
-                                                                target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a
-                                                href="https://twitter.com/lidofinance" target="_blank"><i
-                                                    class="fab fa-twitter ml-1 mr-1"></i></a><a
-                                                href="https://t.me/lidofinance" target="_blank"><i
-                                                    class="fab fa-telegram ml-1 mr-1"></i></a><a
-                                                href="mailto:info@lido.fi"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://guarda.com/">Guarda Wallet</a></td>
-                                    <td data-column="Validator key owner">Service</td>
-                                    <td data-column="Withdrawal key owner">Service</td>
-                                    <td data-column="Pool token">Yes</td>
-                                    <td data-column="3rd Party Software">No</td>
-                                    <td data-column="Min. Stake">0.1 ETH</td>
-                                    <td data-column="Fee">9.99% of rewards</td>
-                                    <td data-column="Open Source">No</td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i></a><a
-                                                href="https://twitter.com/GuardaWallet" target="_blank"><i
-                                                    class="fab fa-twitter ml-1 mr-1"></i></a><a
-                                                href="https://t.me/Guarda_community" target="_blank"><i
-                                                    class="fab fa-telegram ml-1 mr-1"></i></a><a
-                                                href="mailto:hello@guarda.com"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                                    </td>
-								</tr>
-								<tr>
-                                    <td data-column="Service"><a href="https://codefi.consensys.net/staking">Codefi Staking</a></td>
-                                    <td data-column="Validator key owner">?</td>
-                                    <td data-column="Withdrawal key owner"> ?</td>
-                                    <td data-column="Pool token"> ?</td>
-                                    <td data-column="3rd Party Software"> ?</td>
-                                    <td data-column="Min. Stake">Any amount</td>
-                                    <td data-column="Fee">?</td>
-                                    <td data-column="Open Source">No</td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i></a><a
-										href="https://twitter.com/ConsenSysCodefi" target="_blank"><i
-											class="fab fa-twitter ml-1 mr-1"></i></a><i
-											class="fab fa-telegram ml-1 mr-1"></i></a><i 
-											class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-								</tr>
-								<tr>
-                                    <td data-column="Service"><a href="https://www.stafi.io/">StaFi</a></td>
-                                    <td data-column="Validator key owner">?</td>
-                                    <td data-column="Withdrawal key owner"> ?</td>
-                                    <td data-column="Pool token"> ?</td>
-                                    <td data-column="3rd Party Software"> Yes</td>
-                                    <td data-column="Min. Stake">0.01 ETH</td>
-                                    <td data-column="Fee">20% of rewards</td>
-                                    <td data-column="Open Source">Yes</td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i></a><a
-										href="https://twitter.com/Stafi_Protocol" target="_blank"><i
-											class="fab fa-twitter ml-1 mr-1"></i></a><i
-											class="fab fa-telegram ml-1 mr-1"></i></a><i 
-											class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-								</tr>
-								<tr>
-									<td data-column="Service"><a href="https://atomicwallet.io">Atomic Wallet</a></td>
-									<td data-column="Validator key owner">?</td>
-									<td data-column="Withdrawal key owner">?</td>
-									<td data-column="Pool token">No</td>
-									<td data-column="3rd Party Software">No</td>
-									<td data-column="Min. Stake">Any amount</td>
-									<td data-column="Fee">?</td>
-									<td data-column="Open Source">No</td>
-									<td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/atomicwallet" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/AtomicWallet" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:support@atomicwallet.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-                                </tr>
-                                <tr>
-									<td data-column="Service"><a href="https://www.cybavo.com/eth2-staking/">Cybavo</a></td>
-									<td data-column="Validator key owner">Service & User</td>
-									<td data-column="Withdrawal key owner">User</td>
-									<td data-column="Pool token">No</td>
-									<td data-column="3rd Party Software">No</td>
-									<td data-column="Min. Stake">32 ETH</td>
-									<td data-column="Fee">10% of rewards</td>
-									<td data-column="Open Source">No</td>
-									<td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/cybavo" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-                                </tr>
-                                <tr>
-									<td data-column="Service"><a href="https://bifrost.finance/">Bitfrost</a></td>
-									<td data-column="Validator key owner">?</td>
-									<td data-column="Withdrawal key owner">?</td>
-									<td data-column="Pool token">?</td>
-									<td data-column="3rd Party Software">No</td>
-									<td data-column="Min. Stake">0.1</td>
-									<td data-column="Fee">15% of rewards</td>
-									<td data-column="Open Source">No</td>
-									<td data-column="Social"><a href="https://discord.com/invite/XjnjdKBNXj" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/bifrost_finance" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/bifrost_finance" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-                                </tr>
-                                <tr>
-									<td data-column="Service"><a href="https://www.kraken.com/en-us/features/staking-coins">Kraken Exchange</a></td>
-									<td data-column="Validator key owner">?</td>
-									<td data-column="Withdrawal key owner">?</td>
-									<td data-column="Pool token">?</td>
-									<td data-column="3rd Party Software">No</td>
-									<td data-column="Min. Stake">0.00001 ETH</td>
-									<td data-column="Fee">15% of rewards</td>
-									<td data-column="Open Source">No</td>
-									<td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/krakenfx" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-                                </tr>
-                                <tr>
-									<td data-column="Service"><a href="https://www.mycointainer.com/">MyContainer</a></td>
-									<td data-column="Validator key owner">?</td>
-									<td data-column="Withdrawal key owner">?</td>
-									<td data-column="Pool token">?</td>
-									<td data-column="3rd Party Software">No</td>
-									<td data-column="Min. Stake">0.1 ETH</td>
-									<td data-column="Fee">2.27% of rewards</td>
-									<td data-column="Open Source">No</td>
-									<td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/MyCointainerCom" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/mycointainer" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-								</tr>
-                                <tr>
-									<td data-column="Service"><a href="https://www.sharedstake.org/">SharedStake</a></td>
-									<td data-column="Validator key owner">Service</td>
-									<td data-column="Withdrawal key owner">Service</td>
-									<td data-column="Pool token">Yes</td>
-									<td data-column="3rd Party Software">No</td>
-									<td data-column="Min. Stake">Any amount</td>
-									<td data-column="Fee">5.315% of rewards</td>
-									<td data-column="Open Source"><a href="https://github.com/sharedstake" target="_blank">Yes</a></td>
-									<td data-column="Social"><a href="https://discord.com/invite/VezkjY9udC" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/SharedStake" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/SharedStakeClub" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:admin@sharedstake.org"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-								</tr>
-                                <tr>
-									<td data-column="Service"><a href="https://swissborg.com/">Swissborg</a></td>
-									<td data-column="Validator key owner">?</td>
-									<td data-column="Withdrawal key owner">?</td>
-									<td data-column="Pool token">?</td>
-									<td data-column="3rd Party Software">Yes</td>
-									<td data-column="Min. Stake">?</td>
-									<td data-column="Fee">1% of rewards</td>
-									<td data-column="Open Source">No</a></td>
-									<td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/swissborg" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-								</tr>
-                                <tr>
-									<td data-column="Service"><a href="https://abyss.finance/hosting">Abyss Finance</a></td>
-									<td data-column="Validator key owner">User & Service</td>
-									<td data-column="Withdrawal key owner">User</td>
-									<td data-column="Pool token">No</td>
-									<td data-column="3rd Party Software">No</td>
-									<td data-column="Min. Stake">32 ETH</td>
-									<td data-column="Fee">Free</td>
-									<td data-column="Open Source">No</a></td>
-									<td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/abyssfinance" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/abyssfinance" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:hello@abyss.finance" target="_blank"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-								</tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://token.im/">imToken & InfStones</a></td>
-                                    <td data-column="Validator key owner">Service</td>
-                                    <td data-column="Withdrawal key owner">User</td>
-                                    <td data-column="Pool token">No</td>
-                                    <td data-column="3rd Party Software">No</td>
-                                    <td data-column="Min. Stake">32 ETH</td>
-                                    <td data-column="Fee">US$100/validator</td>
-                                    <td data-column="Open Source">No</a></td>
-                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/imTokenOfficial" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="support@token.im" target="_blank"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
-                                </tr>
-                                <tr>
-									<td data-column="Service"><a href="https://consensys.net/codefi/staking/">Codefi Staking</a></td>
-									<td data-column="Validator key owner">?</td>
-									<td data-column="Withdrawal key owner">?</td>
-									<td data-column="Pool token">No</td>
-									<td data-column="3rd Party Software">No</td>
-									<td data-column="Min. Stake">32 ETH</td>
-									<td data-column="Fee">5% of rewards</td>
-									<td data-column="Open Source">No</a></td>
-									<td data-column="Social"><a href="https://discord.gg/YTcA2mxKCm" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/ConsenSysCodefi" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i></td> 
-								</tr>
-                                <tr>
-									<td data-column="Service"><a href="https://app.neukind.com/protocols">Neukind</a></td>
-									<td data-column="Validator key owner">?</td>
-									<td data-column="Withdrawal key owner">?</td>
-									<td data-column="Pool token">?</td>
-									<td data-column="3rd Party Software">?</td>
-									<td data-column="Min. Stake">32 ETH</td>
-									<td data-column="Fee">US$39/validator/month	</td>
-									<td data-column="Open Source">No</a></td>
-									<td data-column="Social"><a href="https://discord.com/invite/MetjNPSERu" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/neukindinc" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/neukind"><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i></td> 
-								</tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            <section class="my-5">
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="row justify-content-center">
-                            <div class="col-md-12 col-lg-10 text-center">
-                                <h1 class="h4 ">Request to add your Staking Service</h1>
-                                <p class="text-muted col-md-8 px-0 mx-auto">If you have a staking service and want it to
-                                    be listed above please fill out the form below or create a <a class=""
-                                                                                                  href="https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/templates/stakingServices.html">pull
-                                        request <i class="fab fa-github"></i></a></p>
-                                <form id="contact" action="/stakingServices" method="post">
-                                    <div class="text-left">
-                                        <div class="form-row">
-                                            <div class="form-group col-md-6">
-                                                <label for="name">Service Name (required)</label>
-                                                <input type="text" class="form-control" id="name"
-                                                       placeholder="Ex. Example Pool" required name="name">
-                                            </div>
-                                            <div class="form-group col-md-6">
-                                                <label for="url">Website URL (required)</label>
-                                                <input type="text" class="form-control" id="url"
-                                                       placeholder="Ex.: https://www.example.com" required name="url">
-                                            </div>
-                                        </div>
-                                        <div class="form-row">
-                                            <div class="form-group col-md-6">
-                                                <label for="Validator key owner">Validator key owner (required)</label>
-                                                <input type="text" class="form-control" id="Validator key owner"
-                                                       placeholder="Ex.:  User / Service / User & Service" required
-                                                       name="Validator key owner">
-                                            </div>
-                                            <div class="form-group col-md-6">
-                                                <label for="stake">Withdrawal key owner (required)</label>
-                                                <input type="text" class="form-control" id="Withdrawal key owner"
-                                                       placeholder="Ex.:  User / Service / User & Service" required
-                                                       name="Withdrawal key owner">
-                                            </div>
-                                        </div>
-                                        <div class="form-row">
-                                            <div class="form-group col-md-6">
-                                                <label for="Pool token">Pool token (required)</label>
-                                                <input type="text" class="form-control" id="Pool token"
-                                                       placeholder="Ex.:  Yes / No" required name="Pool token">
-                                            </div>
-                                            <div class="form-group col-md-6">
-                                                <label for="3rdPartySoftware">Install 3rd Party Software
-                                                    (required)</label>
-                                                <input type="text" class="form-control" id="3rdPartySoftware"
-                                                       placeholder="Ex.: Yes / No (User needs to run software)" required
-                                                       name="3rdPartySoftware">
-                                            </div>
-                                        </div>
-                                        <div class="form-row">
-                                            <div class="form-group col-md-6">
-                                                <label for="fee">Fee (required)</label>
-                                                <input type="text" class="form-control" id="fee" required name="fee"
-                                                       placeholder="Ex. 5%">
-                                            </div>
-
-                                            <div class="form-group col-md-6">
-                                                <label for="stake">Min Stake (required)</label>
-                                                <input type="text" class="form-control" id="stake"
-                                                       placeholder="Ex.: 32 ETH" required name="stake">
-                                            </div>
-                                        </div>
-                                        <div class="form-row">
-
-                                            <div class="form-group col-md-6">
-                                                <label for="open">Open Source (required)</label>
-                                                <input type="text" class="form-control" id="open" required name="open"
-                                                       placeholder="Ex. Yes, https://github.com/repo">
-                                            </div>
-                                            <div class="form-group col-md-6">
-                                                <label for="links">Social Links (required)</label>
-                                                <input type="text" class="form-control" id="links" required name="links"
-                                                       placeholder="Ex. https://discord.com/xyz, https://twitter.com/example....">
-                                            </div>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label for="inputQuestions">Comments & Questions</label>
-                                            <textarea class="form-control" id="inputQuestions"
-                                                      name="comments"></textarea>
-                                        </div>
-                                    </div>
-                                    <button data-sitekey="{{.RecaptchaKey}}" data-callback='onSubmit' data-action='submit' type="submit" class="g-recaptcha btn btn-primary text-center text-white">Send Request</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+{{ define "content" }}
+  {{ with .Data }}
+    {{ if ne .FlashMessage "" }}
+      <div class="alert container mt-2 {{ if contains .FlashMessage "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
+        <div class="p-2">{{ .FlashMessage | formatHTML }}</div>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    {{ end }}
+    <section style="background: var(--bg-color-light)">
+      <div class="container">
+        <div style="padding-top: 2rem;" class="row justify-content-between align-items-center">
+          <div class="col-md-6 mb-5">
+            <h1 class="h6 font-weight-bold text-primary">Staking Services</h1>
+            <h2 class="mb-4">Find the best Ethereum 2.0 staking services on beaconcha.in</h2>
+            <a href="#stakingServices" class="btn btn-sm btn-outline-primary">View services</a>
+          </div>
+          <div class="col-md-5 p-1">
+            <svg id="e9ecc617-883f-4dfc-9a55-ce5b125f3ffd" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 983.54823 576.15723">
+              <defs>
+                <linearGradient id="ba860033-8b14-4705-9ef7-06625c8932b0" x1="-566.54523" y1="517.53213" x2="-566.54523" y2="599.34427" gradientTransform="translate(-265.63001 868.28) rotate(180)" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="gray" stop-opacity="0.25" />
+                  <stop offset="0.54" stop-color="gray" stop-opacity="0.12" />
+                  <stop offset="1" stop-color="gray" stop-opacity="0.1" />
+                </linearGradient>
+              </defs>
+              <rect y="559.81277" width="324.03261" height="2.24072" fill="#3f3d56" />
+              <path d="M312.75659,342.24513c.93745,3.00967,1.768,5.87955,2.46694,8.34649l-.43585.15624C314.24493,348.46183,313.55421,345.50149,312.75659,342.24513Zm-26.01812-73.26827-.13154.074.12336-.11514Z" transform="translate(-108.22589 -161.92138)" fill="url(#ba860033-8b14-4705-9ef7-06625c8932b0)" />
+              <path d="M254.84912,692.33757c-4.89279,1.5706-8.56851,31.65091-8.56851,31.65091l30.42566,7.516s21.339,3.14943,31.4782,0,9.7938-11.89065-4.72008-13.28859-24.83393-20.10562-24.83393-20.10562S259.7419,690.767,254.84912,692.33757Z" transform="translate(-108.22589 -161.92138)" fill="#2f2e41" />
+              <path d="M219.14415,698.4556a18.32464,18.32464,0,0,1-1.18413,7.06371,61.72376,61.72376,0,0,0-3.059,22.90146q.0987,1.38969.222,2.911c1.05259,12.0634,30.23655,4.55565,32.1772,3.14948s-5.75621-36.02563-5.75621-36.02563S218.659,693.56286,219.14415,698.4556Z" transform="translate(-108.22589 -161.92138)" fill="#2f2e41" />
+              <path d="M251.091,260.15255a.09008.09008,0,0,1,.01646.03292c.61674,1.513,23.53466,57.71008,19.39016,39.3313a11.24085,11.24085,0,0,1-.24669-1.661c-.35359-4.5145,1.77623-9.48132,5.20527-14.41521a71.05582,71.05582,0,0,1,7.26106-8.68365c1.32391-1.37325,2.69717-2.71363,4.08688-4.0129,3.81555-3.577,7.78735-6.84985,11.30683-9.57994,6.32361-4.93389,11.20816-8.06691,11.20816-8.06691s-44.32281-51.67431-41.18156-29.38136c.86348,6.1098,4.46517,12.20318,2.02292,17.86072a30.86734,30.86734,0,0,1-6.69366,9.56353,50.65075,50.65075,0,0,1-7.24459,5.94532c-1.11011.74828-2.11336,1.37325-2.92744,1.85021C251.938,259.73316,251.091,260.15255,251.091,260.15255Z" transform="translate(-108.22589 -161.92138)" fill="#ffb9b9" />
+              <path d="M403.07143,326.79382s1.74331-.97033,4.37473-2.1298c7.738-3.37147,23.18929-8.30536,25.13818,5.27928,2.62318,18.22251-14.75234,16.12561-14.75234,16.12561a81.17786,81.17786,0,0,0-10.53386-3.19881,13.53136,13.53136,0,0,0-5.40261-.33716Z" transform="translate(-108.22589 -161.92138)" fill="#ffb9b9" />
+              <path d="M400.4236,344.046h5.22991c3.04258-4.11158.71541-19.73556.71541-19.73556l-4.54742.82231Z" transform="translate(-108.22589 -161.92138)" fill="#e6e6e6" />
+              <path d="M306.95928,370.42586l.87165,45.98385,5.75621,21.68445s2.82876,20.9855,6.29891,19.234,18.27182,3.23169,18.27182,3.23169l.699-7.7791L333.87359,407.06l-3.84843-22.81924s-2.18739-17.92649-3.84843-28.41921-15.55819-2.17914-15.55819-2.17914Z" transform="translate(-108.22589 -161.92138)" fill="#2f2e41" />
+              <path d="M323.59465,347.61482c9.44839-2.64786,21.64334,0,21.64334,0l55.09512,1.217c9.83486-12.98437,3.01788-25.17929,3.01788-25.17929s-27.02126-1.06077-48.91952-4.33359-36.32165-19.53822-36.32165-19.53822Z" transform="translate(-108.22589 -161.92138)" fill="#2f2e41" />
+              <path d="M268.13776,223.71661c-3.14125-22.293,41.18156,29.38132,41.18156,29.38132s-4.88456,3.133-11.20816,8.06691c-.58386.04111-1.16773.04111-1.768.04111-13.56,0-22.90974-8.48629-28.28766-19.9987C270.21819,236.08423,269.10808,230.54182,268.13776,223.71661Z" transform="translate(-108.22589 -161.92138)" opacity="0.1" style="isolation:isolate" />
+              <path d="M264.40429,230.59708a30.29883,30.29883,0,1,1,.00009.14734Q264.40419,230.67076,264.40429,230.59708Z" transform="translate(-108.22589 -161.92138)" fill="#ffb9b9" />
+              <path d="M249.463,360.813l1.64463-100.6596,17.57287,9.20171,14.57969,3.45375,3.69218-2.15446.26315-.15624.60027-.34538s.19735.42759.57564,1.2088c3.19058,6.7512,18.7159,39.76715,18.387,42.59592-.34536,3.14122,11.07644,42.74312,11.07644,42.74312h0l-5.50935,37.50662s10.4516,26.051,7.68863,35.672-78.12,2.96854-78.12,2.96854Z" transform="translate(-108.22589 -161.92138)" fill="#e6e6e6" />
+              <path d="M278.8936,275.91716l5.85488,7.516.94569,2.19559a70.79415,70.79415,0,0,1,5.60819,24.42277v9.75265l1.22524,78.161,6.73467,12.014,1.22524-14.86745-2.7054-83.67057L294.10639,292.528l-2.00646-11.98114a53.02665,53.02665,0,0,1-2.80407-6.47162c-2.0064-5.15593-7.17056-3.758-7.17056-3.758Z" transform="translate(-108.22589 -161.92138)" fill="#2f2e41" />
+              <path d="M253.12215,258.51615l.17266.41939,1.22524,3.00965,1.38148,3.36329a28.05717,28.05717,0,0,1,4.50632,3.56887c4.67075,4.19379,11.44662,10.93678,15.04836,14.56317,1.52126,1.5295,2.47518,2.49987,2.47518,2.49987,1.78441-1.58711,3.577-6.891,4.78588-11.18352.19735-.68253.37-1.34037.53447-1.94888.60851-2.32716.97856-4.00467.97856-4.00467-4.5803-1.6364-15.2704-12.088-20.76346-17.66331a50.65075,50.65075,0,0,1-7.24459,5.94532C255.90976,256.21368,253.12215,258.51615,253.12215,258.51615Z" transform="translate(-108.22589 -161.92138)" fill="#e6e6e6" />
+              <path d="M291.36816,272.61146c3.429,2.09689,9.00431,4.827,15.18814,5.13947,0,0,13.3955,7.08835,15.8789,31.34665s12.97616,97.173,12.97616,97.173,9.34149,49.16624,2.763,54.27281l-7.34327-60.18526s-12.85279-34.75925-13.782-41.18976c-.82232-5.85488-11.04369-37.86761-12.83633-43.4758-.18093-.5263-.27138-.82232-.27138-.82232L293.72,285.96585l-5.90422-15.82134A32.0698,32.0698,0,0,0,291.36816,272.61146Z" transform="translate(-108.22589 -161.92138)" fill="#2f2e41" />
+              <path
+                d="M217.96,602.99305s10.31181-71.1796,7.516-80.78423,1.92424-80.58687,1.92424-80.58687l1.55419-13.31328.87165-7.50775.37005-3.14125,1.80087.551a265.6894,265.6894,0,0,0,53.27779,9.7691,40.63912,40.63912,0,0,0,11.92357-.95388c7.13769-1.62817,20.93616-3.62642,23.34554-5.33682,0,0,.82231,2.212,1.85021,5.83021,2.36827,8.36293,5.93714,24.34874,3.19059,37.96628l-4.202,27.53933s-1.65286,28.06562-7.08012,44.85728L309.5002,560.7836l-6.299,46.68285a279.587,279.587,0,0,0-6.73476,37.8265c-2.29425,21.16639-15.39377,56.27921-15.39377,56.27921s-27.84358,3.84843-28.6659-5.59174l9.6211-73.62185,8.91392-105.43723s-9.6622,65.78521-15.21283,79.95369c0,0-7.69686,80.75954-10.32005,93.20118s-4.36649,15.73089-4.36649,15.73089-16.26542,5.9536-23.60869-5.06544c0,0-2.09694-32.687-3.66754-44.405C212.1874,644.60218,217.96,602.99305,217.96,602.99305Z"
+                transform="translate(-108.22589 -161.92138)"
+                fill="#2f2e41" />
+              <path d="M230.74711,443.68592l11.51241,5.6-13.72444,25.87827c-5.15593-4.81055-4.54743-23.954-4.54743-23.954Z" transform="translate(-108.22589 -161.92138)" fill="#ffb9b9" />
+              <polygon points="127.472 281.765 132.718 285.876 125.728 296.459 116.198 299.954 115.408 292.956 127.472 281.765" fill="#e6e6e6" />
+              <g opacity="0.1">
+                <path d="M320.55212,421.78766a.24908.24908,0,0,1-.04934-.12334,4.35894,4.35894,0,0,1-.46049.26315Z" transform="translate(-108.22589 -161.92138)" />
+              </g>
+              <path d="M190.90575,458.199c6.29074,7.34326,33.71493,8.659,33.71493,8.659l21.372-33.682,5.76444-9.07839s6.42228-4.45694,18.49386-24.52963,11.66042-35.53226,10.99435-47.07754-8.22315-44.72574-8.22315-44.72574a93.12961,93.12961,0,0,0-2.7712-9.90889c-2.62319-8.27249-6.59493-19.76849-9.84309-28.97838-.58386-1.66109-1.143-3.24815-1.67755-4.72831-.98674-2.81236,4.02936-13.5271,4.02936-13.5271-1.76795,3.54418-12.90213,9.37437-16.77525,11.81667-10.44336,6.57852-25.023,9.27569-25.023,9.27569-23.47709,3.41263-19.14348,27.67092-19.14348,27.67092s-.26314,94.29488,1.18414,105.57707S190.90575,458.199,190.90575,458.199Z" transform="translate(-108.22589 -161.92138)" fill="#2f2e41" />
+              <path d="M202.83763,299.37786s-9.96646,43.28666-12.72119,70.03657,7.60641,43.79652,7.60641,43.79652l22.16141,49.18267c7.60641-1.95712,23.08239-18.09094,23.08239-18.09094l-22.20251-61.50919s8.23138-31.05884,13.37908-59.66719-8.49453-41.44468-8.49453-41.44468C202.82945,273.03085,202.83763,299.37786,202.83763,299.37786Z" transform="translate(-108.22589 -161.92138)" opacity="0.1" style="isolation:isolate" />
+              <path d="M201.78509,299.37786s-9.96646,43.28666-12.72119,70.03657,7.60641,43.79652,7.60641,43.79652l22.20252,49.18267c7.60641-1.95712,23.08239-18.09094,23.08239-18.09094l-22.20251-61.50919s8.23961-31.05884,13.37085-59.66719-8.51917-41.44468-8.51917-41.44468C201.78514,273.03085,201.78509,299.37786,201.78509,299.37786Z" transform="translate(-108.22589 -161.92138)" fill="#2f2e41" />
+              <path d="M245.58161,452.08178l-6.118,17.49063-6.817,9.34972s-5.10659,3.41263-6.38117-2.96854,15.994-30.34346,15.994-30.34346C244.98956,444.5329,245.58161,452.08178,245.58161,452.08178Z" transform="translate(-108.22589 -161.92138)" fill="#2f2e41" />
+              <path d="M266.6694,246.99884s-31.65753-43.38254,8.20751-52.76255c0,0,11.32506-16.98759,25.24033-8.63235a43.60963,43.60963,0,0,0,22.53909,5.99422c6.74188,0,13.19064,2.63813,12.01814,13.19064-2.345,21.105-15.24252,17.58752-15.24252,17.58752s-34.97688-15.67089-36.14938,1.91662S266.6694,246.99884,266.6694,246.99884Z" transform="translate(-108.22589 -161.92138)" fill="#2f2e41" />
+              <circle cx="531.30481" cy="6.81334" r="6.81334" fill="#e6e6e6" />
+              <circle cx="565.79385" cy="6.81334" r="6.81334" fill="#e6e6e6" />
+              <circle cx="600.28289" cy="6.81334" r="6.81334" fill="#e6e6e6" />
+              <circle cx="634.77193" cy="6.81334" r="6.81334" fill="#e6e6e6" />
+              <circle cx="669.26097" cy="6.81334" r="6.81334" fill="#e6e6e6" />
+              <circle cx="531.30481" cy="41.73529" r="6.81334" fill="#e6e6e6" />
+              <circle cx="565.79385" cy="41.73529" r="6.81334" fill="#e6e6e6" />
+              <circle cx="600.28289" cy="41.73529" r="6.81334" fill="#e6e6e6" />
+              <circle cx="634.77193" cy="41.73529" r="6.81334" fill="#6c63ff" />
+              <circle cx="669.26097" cy="41.73529" r="6.81334" fill="#e6e6e6" />
+              <circle cx="738.23905" cy="41.73529" r="6.81334" fill="#e6e6e6" />
+              <circle cx="531.30481" cy="76.65724" r="6.81334" fill="#e6e6e6" />
+              <circle cx="565.79385" cy="76.65724" r="6.81334" fill="#e6e6e6" />
+              <circle cx="600.28289" cy="76.65724" r="6.81334" fill="#e6e6e6" />
+              <circle cx="634.77193" cy="76.65724" r="6.81334" fill="#e6e6e6" />
+              <circle cx="669.26097" cy="76.65724" r="6.81334" fill="#e6e6e6" />
+              <circle cx="531.30481" cy="111.57918" r="6.81334" fill="#e6e6e6" />
+              <circle cx="565.79385" cy="111.57918" r="6.81334" fill="#e6e6e6" />
+              <circle cx="600.28289" cy="111.57918" r="6.81334" fill="#e6e6e6" />
+              <circle cx="634.77193" cy="111.57918" r="6.81334" fill="#e6e6e6" />
+              <circle cx="669.26097" cy="111.57918" r="6.81334" fill="#e6e6e6" />
+              <circle cx="703.75" cy="111.57918" r="6.81334" fill="#e6e6e6" />
+              <circle cx="738.23905" cy="111.57918" r="6.81334" fill="#e6e6e6" />
+              <circle cx="772.72809" cy="111.57918" r="6.81334" fill="#e6e6e6" />
+              <circle cx="807.21714" cy="111.57918" r="6.81335" fill="#e6e6e6" />
+              <circle cx="841.70618" cy="111.57918" r="6.81335" fill="#e6e6e6" />
+              <circle cx="669.26097" cy="146.50113" r="6.81334" fill="#e6e6e6" />
+              <circle cx="703.75" cy="146.50113" r="6.81334" fill="#6c63ff" />
+              <circle cx="738.23905" cy="146.50113" r="6.81334" fill="#e6e6e6" />
+              <circle cx="772.72809" cy="146.50113" r="6.81334" fill="#e6e6e6" />
+              <circle cx="807.21714" cy="146.50113" r="6.81335" fill="#e6e6e6" />
+              <circle cx="841.70618" cy="146.50113" r="6.81335" fill="#e6e6e6" />
+              <circle cx="669.26097" cy="181.42308" r="6.81334" fill="#e6e6e6" />
+              <circle cx="703.75" cy="181.42308" r="6.81334" fill="#e6e6e6" />
+              <circle cx="738.23905" cy="181.42308" r="6.81334" fill="#e6e6e6" />
+              <circle cx="772.72809" cy="181.42308" r="6.81334" fill="#e6e6e6" />
+              <circle cx="807.21714" cy="181.42308" r="6.81335" fill="#6c63ff" />
+              <circle cx="841.70618" cy="181.42308" r="6.81335" fill="#e6e6e6" />
+              <circle cx="669.26097" cy="216.34503" r="6.81334" fill="#e6e6e6" />
+              <circle cx="703.75" cy="216.34503" r="6.81334" fill="#e6e6e6" />
+              <circle cx="738.23905" cy="216.34503" r="6.81334" fill="#e6e6e6" />
+              <circle cx="772.72809" cy="216.34503" r="6.81334" fill="#e6e6e6" />
+              <circle cx="807.21714" cy="216.34503" r="6.81335" fill="#e6e6e6" />
+              <circle cx="841.70618" cy="216.34503" r="6.81335" fill="#e6e6e6" />
+              <circle cx="531.30481" cy="251.26698" r="6.81334" fill="#e6e6e6" />
+              <circle cx="565.79385" cy="251.26698" r="6.81334" fill="#e6e6e6" />
+              <circle cx="600.28289" cy="251.26698" r="6.81334" fill="#e6e6e6" />
+              <circle cx="634.77193" cy="251.26698" r="6.81334" fill="#e6e6e6" />
+              <circle cx="669.26097" cy="251.26698" r="6.81334" fill="#e6e6e6" />
+              <circle cx="703.75" cy="251.26698" r="6.81334" fill="#e6e6e6" />
+              <circle cx="738.23905" cy="251.26698" r="6.81334" fill="#e6e6e6" />
+              <circle cx="772.72809" cy="251.26698" r="6.81334" fill="#e6e6e6" />
+              <circle cx="807.21714" cy="251.26698" r="6.81335" fill="#e6e6e6" />
+              <circle cx="841.70618" cy="251.26698" r="6.81335" fill="#e6e6e6" />
+              <circle cx="639.5307" cy="448.11032" r="6.81335" transform="matrix(0.00406, -0.99999, 0.99999, 0.00406, 80.59854, 923.89281)" fill="#e6e6e6" />
+              <circle cx="565.79385" cy="286.18894" r="6.81335" fill="#e6e6e6" />
+              <circle cx="639.5307" cy="483.03225" r="6.81335" transform="matrix(0.00406, -0.99999, 0.99999, 0.00406, 45.67689, 958.67279)" fill="#e6e6e6" />
+              <circle cx="565.79385" cy="321.11087" r="6.81335" fill="#e6e6e6" />
+              <circle cx="634.77193" cy="321.11087" r="6.81335" fill="#e6e6e6" />
+              <path d="M1086.77411,242.3053H816.77363a5.00588,5.00588,0,0,1-5-5V170.32972a5.00588,5.00588,0,0,1,5-5h270.00048a5.00588,5.00588,0,0,1,5,5V237.3053A5.00588,5.00588,0,0,1,1086.77411,242.3053ZM816.77363,167.32972a3.00328,3.00328,0,0,0-3,3V237.3053a3.00328,3.00328,0,0,0,3,3h270.00048a3.00328,3.00328,0,0,0,3-3V170.32972a3.00328,3.00328,0,0,0-3-3Z" transform="translate(-108.22589 -161.92138)" fill="#e6e6e6" />
+              <circle cx="743.54774" cy="41.89587" r="21" fill="#6c63ff" />
+              <path d="M900.27363,189.81725a3.5,3.5,0,0,0,0,7h93a3.5,3.5,0,0,0,0-7Z" transform="translate(-108.22589 -161.92138)" fill="#e6e6e6" />
+              <path d="M900.27363,210.81725a3.5,3.5,0,0,0,0,7h165a3.5,3.5,0,0,0,0-7Z" transform="translate(-108.22589 -161.92138)" fill="#e6e6e6" />
+              <path d="M739.77411,378.3053H469.77363a5.00588,5.00588,0,0,1-5-5V306.32972a5.00588,5.00588,0,0,1,5-5H739.77411a5.00588,5.00588,0,0,1,5,5V373.3053A5.00588,5.00588,0,0,1,739.77411,378.3053ZM469.77363,303.32972a3.00328,3.00328,0,0,0-3,3V373.3053a3.00328,3.00328,0,0,0,3,3H739.77411a3.00328,3.00328,0,0,0,3-3V306.32972a3.00328,3.00328,0,0,0-3-3Z" transform="translate(-108.22589 -161.92138)" fill="#3f3d56" />
+              <circle cx="396.54774" cy="177.89587" r="21" fill="#6c63ff" />
+              <path d="M553.27363,325.81725a3.5,3.5,0,0,0,0,7h97a3.5,3.5,0,0,0,0-7Z" transform="translate(-108.22589 -161.92138)" fill="#e6e6e6" />
+              <path d="M553.27363,346.81725a3.5,3.5,0,0,0,0,7h165a3.5,3.5,0,0,0,0-7Z" transform="translate(-108.22589 -161.92138)" fill="#e6e6e6" />
+              <path d="M983.77411,525.3053H713.77363a5.00588,5.00588,0,0,1-5-5V453.32972a5.00588,5.00588,0,0,1,5-5H983.77411a5.00588,5.00588,0,0,1,5,5V520.3053A5.00588,5.00588,0,0,1,983.77411,525.3053ZM713.77363,450.32972a3.00328,3.00328,0,0,0-3,3V520.3053a3.00328,3.00328,0,0,0,3,3H983.77411a3.00328,3.00328,0,0,0,3-3V453.32972a3.00328,3.00328,0,0,0-3-3Z" transform="translate(-108.22589 -161.92138)" fill="#e6e6e6" />
+              <circle cx="640.54774" cy="324.89587" r="21" fill="#6c63ff" />
+              <path d="M797.27363,472.81725a3.5,3.5,0,0,0,0,7h89a3.5,3.5,0,0,0,0-7Z" transform="translate(-108.22589 -161.92138)" fill="#e6e6e6" />
+              <path d="M797.27363,493.81725a3.5,3.5,0,0,0,0,7h165a3.5,3.5,0,0,0,0-7Z" transform="translate(-108.22589 -161.92138)" fill="#e6e6e6" />
+            </svg>
+          </div>
         </div>
-    {{end}}
-{{end}}
+      </div>
+    </section>
+    {{ if not .NoAds }}{{ template "bannerStakingServices" }}{{ end }}
+    <div class="container mt-2">
+      <section class="my-5">
+        <div class="row">
+          <div class="col-md-12">
+            <h1 class="h2 mb-4 font-weight-bold text-primary text-center">Staking Services</h1>
+            <div class="text-center">
+              <div>Beaconcha.in has not vetted any of the Staking Services listed below! Please do your own research.</div>
+              <br />
+              <div>
+                <b>Real-time staking pool <a href="/pools"> benchmarks</a>.</b>
+              </div>
+              <br />
+            </div>
+            <div class="table-responsive">
+              <style>
+                #stakingServices {
+                }
+              </style>
+              <table class="table" id="stakingServices">
+                <thead>
+                  <tr>
+                    <th>Service</th>
+                    <th>Validator key owner</th>
+                    <th>Withdrawal key owner</th>
+                    <th>Pool token</th>
+                    <th>3rd Party Software</th>
+                    <th>Min. Stake</th>
+                    <th>Fee</th>
+                    <th>Open Source</th>
+                    <th>Social</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td data-column="Service"><a href="https://ethpool.org/">Ethpool</a> by beaconcha.in</td>
+                    <td data-column="Validator key owner">User & Service</td>
+                    <td data-column="Withdrawal key owner">User</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">32 ETH</td>
+                    <td data-column="Fee">Free</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <a href="https://discord.io/ethermine  " target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/ethermine_org" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://www.rocketpool.net/">Rocket Pool (Validator)</a></td>
+                    <td data-column="Validator key owner">User</td>
+                    <td data-column="Withdrawal key owner">Smart Contract</td>
+                    <td data-column="Pool token">Yes</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">16 ETH</td>
+                    <td data-column="Fee">Free</td>
+                    <td data-column="Open Source">Yes</td>
+                    <td data-column="Social">
+                      <a href="https://discordapp.com/invite/tCRG54c" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/Rocket_Pool" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://www.rocketpool.net/">Rocket Pool (Pool)</a></td>
+                    <td data-column="Validator key owner">User</td>
+                    <td data-column="Withdrawal key owner">Smart Contract</td>
+                    <td data-column="Pool token">Yes</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">0.01 ETH</td>
+                    <td data-column="Fee">15% of rewards</td>
+                    <td data-column="Open Source"><a href="https://github.com/rocket-pool">Yes</a></td>
+                    <td data-column="Social">
+                      <a href="https://discordapp.com/invite/tCRG54c" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/Rocket_Pool" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://www.allnodes.com/eth2/staking">Allnodes</a></td>
+                    <td data-column="Validator key owner">User & Service</td>
+                    <td data-column="Withdrawal key owner">User</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">32 ETH</td>
+                    <td data-column="Fee">US$5/validator/month</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <a href="https://discord.allnodes.com/" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/allnodes" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/allnodes" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:support@allnodes.com"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://stkr.io">Ankr Staking</a></td>
+                    <td data-column="Validator key owner">Service</td>
+                    <td data-column="Withdrawal key owner">Service</td>
+                    <td data-column="Pool token">Yes</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">0.5 ETH</td>
+                    <td data-column="Fee">15% of rewards</td>
+                    <td data-column="Open Source">Yes</td>
+                    <td data-column="Social">
+                      <a href="https://discord.gg/2BSdr2g" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/ankr" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/ankrnetwork" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://stakewise.io/app/pool">Stakewise Pool</a></td>
+                    <td data-column="Validator key owner">Service</td>
+                    <td data-column="Withdrawal key owner">Smart Contract</td>
+                    <td data-column="Pool token">Yes</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">10% of rewards</td>
+                    <td data-column="Open Source">Yes</td>
+                    <td data-column="Social">
+                      <a href="https://discord.gg/8Zf7tKyXeZ" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/stakewise_io" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/stakewise_io" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:kirill@stakewise.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://stakewise.io/app/solo">Stakewise Solo</a></td>
+                    <td data-column="Validator key owner">Service</td>
+                    <td data-column="Withdrawal key owner">User</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">32 ETH</td>
+                    <td data-column="Fee">US$10/validator/month</td>
+                    <td data-column="Open Source">Yes</td>
+                    <td data-column="Social">
+                      <a href="https://discord.gg/8Zf7tKyXeZ" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/stakewise_io" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/stakewise_io" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:kirill@stakewise.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td data-column="Service"><a href="https://www.bloxstaking.com/">Bloxstaking</a></td>
+                    <td data-column="Validator key owner">User</td>
+                    <td data-column="Withdrawal key owner">User</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">Yes</td>
+                    <td data-column="Min. Stake">32 ETH</td>
+                    <td data-column="Fee">Free</td>
+                    <td data-column="Open Source">Yes</td>
+                    <td data-column="Social">
+                      <a href="https://discord.gg/cvWkmDg" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/Blox_Staking" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><a href="mailto:contact@blox.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://stakingfacilities.com/">Staking Facilities</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">?</td>
+                    <td data-column="3rd Party Software">?</td>
+                    <td data-column="Min. Stake">?</td>
+                    <td data-column="Fee">?</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i
+                      ><a href="https://twitter.com/StakingFac" target="_blank"
+                        ><i class="fab fa-twitter ml-1 mr-1"></i><a href="https://t.me/stakingfacilities" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a></a
+                      ><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://www.attestant.io/">Attestant</a></td>
+                    <td data-column="Validator key owner">User & Service</td>
+                    <td data-column="Withdrawal key owner">User</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">1000 ETH</td>
+                    <td data-column="Fee">17.5% of rewards</td>
+                    <td data-column="Open Source">Yes</td>
+                    <td data-column="Social">
+                      <a href="https://invite.gg/attestant" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/attestantio" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/attestant" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:info@attestant.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://www.allyoucanstake.de/our-services/">AllYouCanStake</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">?</td>
+                    <td data-column="3rd Party Software">?</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">?</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i class="fab fa-twitter ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://stake.fish/">stakefish</a></td>
+                    <td data-column="Validator key owner">Service</td>
+                    <td data-column="Withdrawal key owner">User</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">0.1 ETH</td>
+                    <td data-column="Fee">10% of rewards</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/stakefish" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/stakefish" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:hi@stake.fish"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://everstake.one/">Everstake</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">?</td>
+                    <td data-column="3rd Party Software">?</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">?</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i class="fab fa-twitter ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://staked.us/">StakedUs</a></td>
+                    <td data-column="Validator key owner">Service</td>
+                    <td data-column="Withdrawal key owner">User</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">32 ETH</td>
+                    <td data-column="Fee">US$5/validator/month</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <a href="https://discord.gg/48sPdbm" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/staked_us" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/staked_official" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:staked@staked.us"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://dragonstake.io/">Dragonstake</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">?</td>
+                    <td data-column="3rd Party Software">?</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">?</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i class="fab fa-twitter ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://www.staked.tech/">StakedTech</a></td>
+                    <td data-column="Validator key owner">User & Service</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">?</td>
+                    <td data-column="3rd Party Software">?</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">?</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i class="fab fa-twitter ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://p2p.org/">P2P.org</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">?</td>
+                    <td data-column="3rd Party Software">?</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">?</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i class="fab fa-twitter ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://www.bitcoinsuisse.com/staking/ethereum-2">Bitcoin Suisse Exchange</a></td>
+                    <td data-column="Validator key owner">Service</td>
+                    <td data-column="Withdrawal key owner">Service</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">15% of rewards</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/bitcoinsuisseag" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/bitcoinsuisse_announcements" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:info@bitcoinsuisse.com"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://www.binance.com/en/staking">Binance Exchange</a></td>
+                    <td data-column="Validator key owner">Service</td>
+                    <td data-column="Withdrawal key owner">Service</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">?</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i class="fab fa-twitter ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://midl.dev/ethereum/">MIDL.dev</a></td>
+                    <td data-column="Validator key owner">Service</td>
+                    <td data-column="Withdrawal key owner">User</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">US$45USD/validator/month</td>
+                    <td data-column="Open Source">Yes</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/midl_dev" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><a href="mailto:hello@midl.dev"></a><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://app.cream.finance/eth2">C.R.E.A.M. Finance</a></td>
+                    <td data-column="Validator key owner">Service</td>
+                    <td data-column="Withdrawal key owner">Service</td>
+                    <td data-column="Pool token">Yes</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">8%</td>
+                    <td data-column="Open Source">Yes</td>
+                    <td data-column="Social">
+                      <a href="https://discord.com/invite/8Ms25mV" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/CreamdotFinance" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/creamfinance" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:mkt@cream.finance"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://www.lido.fi">Lido Finance</a></td>
+                    <td data-column="Validator key owner">Service</td>
+                    <td data-column="Withdrawal key owner">Service</td>
+                    <td data-column="Pool token">Yes</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">10%</td>
+                    <td data-column="Open Source"><a href="https://github.com/lidofinance">Yes</a></td>
+                    <td data-column="Social">
+                      <a href="https://discord.com/invite/vgdPfhZ" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/lidofinance" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/lidofinance" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:info@lido.fi"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://guarda.com/">Guarda Wallet</a></td>
+                    <td data-column="Validator key owner">Service</td>
+                    <td data-column="Withdrawal key owner">Service</td>
+                    <td data-column="Pool token">Yes</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">0.1 ETH</td>
+                    <td data-column="Fee">9.99% of rewards</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/GuardaWallet" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/Guarda_community" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:hello@guarda.com"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://codefi.consensys.net/staking">Codefi Staking</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">?</td>
+                    <td data-column="3rd Party Software">?</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">?</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/ConsenSysCodefi" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td data-column="Service"><a href="https://www.stafi.io/">StaFi</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">?</td>
+                    <td data-column="3rd Party Software">Yes</td>
+                    <td data-column="Min. Stake">0.01 ETH</td>
+                    <td data-column="Fee">20% of rewards</td>
+                    <td data-column="Open Source">Yes</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/Stafi_Protocol" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td data-column="Service"><a href="https://atomicwallet.io">Atomic Wallet</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">?</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/atomicwallet" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/AtomicWallet" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:support@atomicwallet.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://www.cybavo.com/eth2-staking/">Cybavo</a></td>
+                    <td data-column="Validator key owner">Service & User</td>
+                    <td data-column="Withdrawal key owner">User</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">32 ETH</td>
+                    <td data-column="Fee">10% of rewards</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/cybavo" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://bifrost.finance/">Bitfrost</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">?</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">0.1</td>
+                    <td data-column="Fee">15% of rewards</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <a href="https://discord.com/invite/XjnjdKBNXj" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/bifrost_finance" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/bifrost_finance" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://www.kraken.com/en-us/features/staking-coins">Kraken Exchange</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">?</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">0.00001 ETH</td>
+                    <td data-column="Fee">15% of rewards</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/krakenfx" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://www.mycointainer.com/">MyContainer</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">?</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">0.1 ETH</td>
+                    <td data-column="Fee">2.27% of rewards</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/MyCointainerCom" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/mycointainer" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://www.sharedstake.org/">SharedStake</a></td>
+                    <td data-column="Validator key owner">Service</td>
+                    <td data-column="Withdrawal key owner">Service</td>
+                    <td data-column="Pool token">Yes</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">Any amount</td>
+                    <td data-column="Fee">5.315% of rewards</td>
+                    <td data-column="Open Source"><a href="https://github.com/sharedstake" target="_blank">Yes</a></td>
+                    <td data-column="Social">
+                      <a href="https://discord.com/invite/VezkjY9udC" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/SharedStake" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/SharedStakeClub" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:admin@sharedstake.org"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://swissborg.com/">Swissborg</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">?</td>
+                    <td data-column="3rd Party Software">Yes</td>
+                    <td data-column="Min. Stake">?</td>
+                    <td data-column="Fee">1% of rewards</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/swissborg" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://abyss.finance/hosting">Abyss Finance</a></td>
+                    <td data-column="Validator key owner">User & Service</td>
+                    <td data-column="Withdrawal key owner">User</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">32 ETH</td>
+                    <td data-column="Fee">Free</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/abyssfinance" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/abyssfinance" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:hello@abyss.finance" target="_blank"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://token.im/">imToken & InfStones</a></td>
+                    <td data-column="Validator key owner">Service</td>
+                    <td data-column="Withdrawal key owner">User</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">32 ETH</td>
+                    <td data-column="Fee">US$100/validator</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/imTokenOfficial" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><a href="support@token.im" target="_blank"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://consensys.net/codefi/staking/">Codefi Staking</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">No</td>
+                    <td data-column="3rd Party Software">No</td>
+                    <td data-column="Min. Stake">32 ETH</td>
+                    <td data-column="Fee">5% of rewards</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <a href="https://discord.gg/YTcA2mxKCm" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/ConsenSysCodefi" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-column="Service"><a href="https://app.neukind.com/protocols">Neukind</a></td>
+                    <td data-column="Validator key owner">?</td>
+                    <td data-column="Withdrawal key owner">?</td>
+                    <td data-column="Pool token">?</td>
+                    <td data-column="3rd Party Software">?</td>
+                    <td data-column="Min. Stake">32 ETH</td>
+                    <td data-column="Fee">US$39/validator/month</td>
+                    <td data-column="Open Source">No</td>
+                    <td data-column="Social">
+                      <a href="https://discord.com/invite/MetjNPSERu" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/neukindinc" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/neukind"><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="my-5">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="row justify-content-center">
+              <div class="col-md-12 col-lg-10 text-center">
+                <h1 class="h4 ">Request to add your Staking Service</h1>
+                <p class="text-muted col-md-8 px-0 mx-auto">
+                  If you have a staking service and want it to be listed above please fill out the form below or create a <a class="" href="https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/templates/stakingServices.html">pull request <i class="fab fa-github"></i></a>
+                </p>
+                <form id="contact" action="/stakingServices" method="post">
+                  <div class="text-left">
+                    <div class="form-row">
+                      <div class="form-group col-md-6">
+                        <label for="name">Service Name (required)</label>
+                        <input type="text" class="form-control" id="name" placeholder="Ex. Example Pool" required name="name" />
+                      </div>
+                      <div class="form-group col-md-6">
+                        <label for="url">Website URL (required)</label>
+                        <input type="text" class="form-control" id="url" placeholder="Ex.: https://www.example.com" required name="url" />
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="form-group col-md-6">
+                        <label for="Validator key owner">Validator key owner (required)</label>
+                        <input type="text" class="form-control" id="Validator key owner" placeholder="Ex.:  User / Service / User & Service" required name="Validator key owner" />
+                      </div>
+                      <div class="form-group col-md-6">
+                        <label for="stake">Withdrawal key owner (required)</label>
+                        <input type="text" class="form-control" id="Withdrawal key owner" placeholder="Ex.:  User / Service / User & Service" required name="Withdrawal key owner" />
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="form-group col-md-6">
+                        <label for="Pool token">Pool token (required)</label>
+                        <input type="text" class="form-control" id="Pool token" placeholder="Ex.:  Yes / No" required name="Pool token" />
+                      </div>
+                      <div class="form-group col-md-6">
+                        <label for="3rdPartySoftware">Install 3rd Party Software (required)</label>
+                        <input type="text" class="form-control" id="3rdPartySoftware" placeholder="Ex.: Yes / No (User needs to run software)" required name="3rdPartySoftware" />
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="form-group col-md-6">
+                        <label for="fee">Fee (required)</label>
+                        <input type="text" class="form-control" id="fee" required name="fee" placeholder="Ex. 5%" />
+                      </div>
+
+                      <div class="form-group col-md-6">
+                        <label for="stake">Min Stake (required)</label>
+                        <input type="text" class="form-control" id="stake" placeholder="Ex.: 32 ETH" required name="stake" />
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="form-group col-md-6">
+                        <label for="open">Open Source (required)</label>
+                        <input type="text" class="form-control" id="open" required name="open" placeholder="Ex. Yes, https://github.com/repo" />
+                      </div>
+                      <div class="form-group col-md-6">
+                        <label for="links">Social Links (required)</label>
+                        <input type="text" class="form-control" id="links" required name="links" placeholder="Ex. https://discord.com/xyz, https://twitter.com/example...." />
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="inputQuestions">Comments & Questions</label>
+                      <textarea class="form-control" id="inputQuestions" name="comments"></textarea>
+                    </div>
+                  </div>
+                  <button data-sitekey="{{ .RecaptchaKey }}" data-callback="onSubmit" data-action="submit" type="submit" class="g-recaptcha btn btn-primary text-center text-white">Send Request</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  {{ end }}
+{{ end }}

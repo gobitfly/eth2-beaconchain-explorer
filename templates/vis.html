@@ -1,417 +1,413 @@
-{{ define "js"}}
-    <script src="//d3js.org/d3.v4.min.js"></script>
+{{ define "js" }}
+  <script src="//d3js.org/d3.v4.min.js"></script>
 
-    <script type="text/javascript">
-        // Chart code from https://github.com/holiman/fork.ethstats.net with approval by the author
-        var colors = {
-            'Hard fork': '#7570b3',
-            'Non-fork': '#d95f02',
-            Legacy: '#1b9e77',
-            fork: '#7570b3'
+  <script type="text/javascript">
+    // Chart code from https://github.com/holiman/fork.ethstats.net with approval by the author
+    var colors = {
+      "Hard fork": "#7570b3",
+      "Non-fork": "#d95f02",
+      Legacy: "#1b9e77",
+      fork: "#7570b3",
+    }
+    var pixelsPerSecond = 8
+    var nodeWidth = 100
+    var nodeHeight = 30
+
+    function findSubgraphs(nodes) {
+      var subgraphs = []
+      var subgraphMap = {}
+      //   var totalNodes = 0;
+      var nextSubgraph = 0
+
+      for (var i = 0; i < nodes.length; i++) {
+        if (subgraphMap[nodes[i].block.hash] == undefined) {
+          var frontier = [nodes[i]]
+          var subgraph = []
+          subgraphs[nextSubgraph++] = subgraph
+
+          while (frontier.length != 0) {
+            var node = frontier.pop()
+            if (subgraphMap[node.block.hash] != undefined) continue
+            subgraphMap[node.block.hash] = node
+            subgraph.push(node)
+            for (let j = 0; j < node.parents.length; j++) frontier.push(node.parents[j])
+            for (let j = 0; j < node.children.length; j++) frontier.push(node.children[j])
+          }
         }
-        var pixelsPerSecond = 8
-        var nodeWidth = 100
-        var nodeHeight = 30
+      }
 
-        function findSubgraphs(nodes) {
-            var subgraphs = []
-            var subgraphMap = {}
-            var totalNodes = 0
-            var nextSubgraph = 0
-
-            for (var i = 0; i < nodes.length; i++) {
-                if (subgraphMap[nodes[i].block.hash] == undefined) {
-                    var frontier = [nodes[i]]
-                    var subgraph = []
-                    subgraphs[nextSubgraph++] = subgraph
-
-                    while (frontier.length != 0) {
-                        var node = frontier.pop()
-                        if (subgraphMap[node.block.hash] != undefined) continue
-                        subgraphMap[node.block.hash] = node
-                        subgraph.push(node)
-                        for (var j = 0; j < node.parents.length; j++) frontier.push(node.parents[j])
-                        for (var j = 0; j < node.children.length; j++) frontier.push(node.children[j])
-                    }
-                }
-            }
-
-            for (var i = 0; i < subgraphs.length; i++)
-                subgraphs[i].sort(function (a, b) {
-                    return a.block.timestamp - b.block.timestamp
-                })
-            return subgraphs
-        }
-
-        function layoutNodes(nodes, mincol, latest) {
-            var columns = []
-
-            for (var i = 0; i < nodes.length; i++) {
-                var node = nodes[i]
-                node.y = (latest - node.block.timestamp) * pixelsPerSecond
-                for (var j = 0; j < columns.length; j++) {
-                    if (j == 0 && !node.canonical) continue
-                    if (columns[j] < node.y) continue
-                    if (
-                        node.siblings
-                            .map(function (n) {
-                                return n.x == j * nodeWidth
-                            })
-                            .reduce(function (a, b) {
-                                return a | b
-                            }, false)
-                    )
-                        continue
-                    node.x = (j + mincol) * nodeWidth
-                    columns[j] = node.y - nodeHeight
-                    break
-                }
-                if (node.x == undefined) {
-                    node.x = (columns.length + mincol) * nodeWidth
-                    columns.push(node.y + nodeHeight)
-                }
-            }
-            return mincol + columns.length
-        }
-
-        function layoutSubgraph(nodes, mincol, latest) {
-            // Populate siblings and find roots
-            var canonical = {} // Traces the canonical chain
-            for (var i = nodes.length - 1; i >= 0; i--) {
-                var node = nodes[i]
-
-                if (node.children.length == 0 || canonical[node.block.hash] != undefined) {
-                    node.canonical = true
-                    if (node.parents.length > 0) canonical[node.parents[0].block.hash] = true
-                }
-
-                for (var j = 0; j < node.parents.length; j++) {
-                    for (var k = 0; k < node.parents[j].children.length; k++) {
-                        if (node.parents[j].children[k] != node) node.siblings.push(node.parents[j].children[k])
-                    }
-                }
-
-                for (var j = 0; j < node.children.length; j++) {
-                    for (var k = 0; k < node.children[j].parents.length; k++) {
-                        if (node.children[j].parents[k] != node) node.siblings.push(node.children[j].parents[k])
-                    }
-                }
-            }
-
-            // Lay out the physical graph
-            return layoutNodes(nodes, mincol, latest)
-        }
-
-        function buildGraph(blocks) {
-            var earliest = undefined
-
-            // Build a map of new node objects
-            var nodeMap = {}
-            for (var hash in blocks) {
-                var block = blocks[hash]
-                var node = {
-                    block: block,
-                    parents: [],
-                    children: [],
-                    siblings: [],
-                    canonical: false
-                }
-                nodeMap[block.hash] = node
-            }
-
-            // Generate node and edge lists, and populate parents and children
-            var nodes = []
-            var edges = []
-            for (var hash in nodeMap) {
-                var node = nodeMap[hash]
-
-                for (var i = 0; i < node.block.parents.length; i++) {
-                    var parentNode = nodeMap[node.block.parents[i]]
-                    if (parentNode != undefined) {
-                        node.parents.push(parentNode)
-                        edges.push([parentNode, node])
-                        parentNode.children.push(node)
-                    }
-                }
-
-                nodes.push(node)
-            }
-
-            var latest = nodes
-                .map(function (n) {
-                    return n.block.timestamp
-                })
-                .reduce(function (a, b) {
-                    return Math.max(a, b)
-                }, 0)
-
-            var subgraphs = findSubgraphs(nodes)
-            subgraphs.sort(function (a, b) {
-                function totalDifficulty(nodes) {
-                    return nodes
-                        .map(function (a) {
-                            return a.block.difficulty
-                        })
-                        .reduce(function (a, b) {
-                            return a + b
-                        }, 0)
-                }
-
-                return totalDifficulty(b) - totalDifficulty(a)
-            })
-
-            var mincol = 0
-            for (var i = 0; i < subgraphs.length; i++) {
-                mincol = layoutSubgraph(subgraphs[i], mincol, latest)
-            }
-
-            drawGraph(nodes, edges)
-        }
-
-        function drawGraph(nodes, edges) {
-            var svg = d3.select('#vis'),
-                g = svg.select('#root')
-
-            var xmax = Math.max.apply(
-                null,
-                nodes.map(function (d) {
-                    return d.x
-                })
-            )
-            var ymax = Math.max.apply(
-                null,
-                nodes.map(function (d) {
-                    return d.y
-                })
-            )
-
-            svg.attr('height', ymax + nodeHeight * 2)
-            svg.attr('width', xmax + nodeWidth + 160)
-
-            var nodeset = g.selectAll('.node').data(nodes, function (d) {
-                return d.block.hash
-            })
-            var t = nodeset
-                .transition()
-                .attr('class', function (d) {
-                    return 'node' + (d.canonical ? ' canonical-node' : ' uncle-node')
-                })
-                .attr('transform', function (d) {
-                    return 'translate(' + d.x + ', ' + d.y + ')'
-                })
-
-            var node = nodeset
-                .enter()
-                .append('g')
-                .attr('class', function (d) {
-                    return 'node' + (d.canonical ? ' canonical-node' : ' uncle-node')
-                })
-                .attr('transform', function (d) {
-                    return 'translate(' + d.x + ', ' + d.y + ')'
-                })
-            node.append('circle').attr('r', 2.5)
-            node
-                .append('text')
-                .attr('class', 'nodehash')
-                .attr('dy', 13)
-                .attr('x', 8)
-                .style('text-anchor', 'start')
-                .html(function (d) {
-                    if (d.block.hash.length < 64) {
-                        return 'Missed by <a href="/validator/' + d.block.proposer + '">#' + d.block.proposer + '</a>'
-                    } else {
-                        return '<a href="/block/' + d.block.hash + '">' + d.block.hash.substring(0, 10) + '</a> by validator <a href="/validator/' + d.block.proposer + '">#' + d.block.proposer + '</a>'
-                    }
-                })
-            node
-                .append('text')
-                .attr('class', 'nodenum')
-                .attr('dy', -3)
-                .attr('x', 8)
-                .style('text-anchor', 'start')
-                .html(function (d) {
-                    return '<a href="/block/' + d.block.number + '">' + d.block.number + '</a>'
-                })
-            nodeset.exit().remove()
-
-            var link = g.selectAll('.link').data(edges, function (d) {
-                return [d[0].block.hash, d[1].block.hash]
-            })
-            link
-                .transition(t)
-                .attr('class', function (d) {
-                    return 'link' + (d[0].canonical && d[1].canonical ? ' canonical-link' : ' uncle-link')
-                })
-                .attr('d', function (d) {
-                    var fromNode = d[0],
-                        toNode = d[1]
-
-                    return 'M' + toNode.x + ',' + toNode.y + 'C' + toNode.x + ',' + (toNode.y + 15) + ' ' + fromNode.x + ',' + (fromNode.y - 15) + ' ' + fromNode.x + ',' + fromNode.y
-                })
-            link
-                .enter()
-                .append('path')
-                .attr('class', function (d) {
-                    return 'link' + (d[0].canonical && d[1].canonical ? ' canonical-link' : ' uncle-link')
-                })
-                .attr('d', function (d) {
-                    var fromNode = d[0],
-                        toNode = d[1]
-
-                    return 'M' + toNode.x + ',' + toNode.y + 'C' + toNode.x + ',' + (toNode.y + 15) + ' ' + fromNode.x + ',' + (fromNode.y - 15) + ' ' + fromNode.x + ',' + fromNode.y
-                })
-            link.exit().remove()
-
-            var earliest = Math.min.apply(
-                null,
-                nodes.map(function (n) {
-                    return n.block.timestamp
-                })
-            )
-            var latest = Math.max.apply(
-                null,
-                nodes.map(function (n) {
-                    return n.block.timestamp
-                })
-            )
-            var timeScale = d3
-                .scaleTime()
-                .domain([new Date(latest * 1000), new Date(earliest * 1000)])
-                .range([0, ymax])
-            var timeAxis = d3
-                .axisLeft(timeScale)
-                .ticks(d3.timeMinute.every(1))
-                .tickFormat(d3.timeFormat('%H:%M'))
-            var axisG = svg.select('#axis')
-            axisG.enter().call(timeAxis)
-            axisG.transition().call(timeAxis)
-        }
-
-        var allBlocks = {}
-        var lastTimestamp = 0
-
-        function processData(response) {
-            for (var i = 0; i < response.length; i++) {
-                var node = response[i]
-                allBlocks[node.hash] = node
-                lastTimestamp = Math.max(lastTimestamp, node.timestamp)
-            }
-
-            buildGraph(allBlocks)
-        }
-
-        function loadData() {
-            if (lastTimestamp != 0) {
-                $.ajax({url: '/vis/blocks', data: {since: lastTimestamp - 30}, dataType: 'json'}).done(processData)
-            } else {
-                $.ajax({url: '/vis/blocks', dataType: 'json'}).done(processData)
-            }
-        }
-
-        $(document).ready(function () {
-            loadData()
-
-            var intervalId = window.setInterval(loadData, 10000)
-            $(window).blur(function () {
-                if (intervalId != undefined) {
-                    window.clearInterval(intervalId)
-                    intervalId = undefined
-                }
-            })
-            $(window).focus(function () {
-                if (intervalId == undefined) {
-                    loadData()
-                    intervalId = window.setInterval(loadData, 10000)
-                }
-            })
+      for (let i = 0; i < subgraphs.length; i++)
+        subgraphs[i].sort(function (a, b) {
+          return a.block.timestamp - b.block.timestamp
         })
-    </script>
-{{end}} {{ define "css"}}
-    <style>
-        .domain {
-            stroke: var(--font-color);
+      return subgraphs
+    }
+
+    function layoutNodes(nodes, mincol, latest) {
+      var columns = []
+
+      for (var i = 0; i < nodes.length; i++) {
+        var node = nodes[i]
+        node.y = (latest - node.block.timestamp) * pixelsPerSecond
+        for (var j = 0; j < columns.length; j++) {
+          if (j == 0 && !node.canonical) continue
+          if (columns[j] < node.y) continue
+          if (
+            node.siblings
+              .map(function (n) {
+                return n.x == j * nodeWidth
+              })
+              .reduce(function (a, b) {
+                return a | b
+              }, false)
+          )
+            continue
+          node.x = (j + mincol) * nodeWidth
+          columns[j] = node.y - nodeHeight
+          break
+        }
+        if (node.x == undefined) {
+          node.x = (columns.length + mincol) * nodeWidth
+          columns.push(node.y + nodeHeight)
+        }
+      }
+      return mincol + columns.length
+    }
+
+    function layoutSubgraph(nodes, mincol, latest) {
+      // Populate siblings and find roots
+      var canonical = {} // Traces the canonical chain
+      for (var i = nodes.length - 1; i >= 0; i--) {
+        var node = nodes[i]
+
+        if (node.children.length == 0 || canonical[node.block.hash] != undefined) {
+          node.canonical = true
+          if (node.parents.length > 0) canonical[node.parents[0].block.hash] = true
         }
 
-        .tick line {
-            stroke: var(--font-color);
+        for (var j = 0; j < node.parents.length; j++) {
+          for (var k = 0; k < node.parents[j].children.length; k++) {
+            if (node.parents[j].children[k] != node) node.siblings.push(node.parents[j].children[k])
+          }
         }
 
-        .tick text {
-            fill: var(--font-color);
+        for (let j = 0; j < node.children.length; j++) {
+          for (let k = 0; k < node.children[j].parents.length; k++) {
+            if (node.children[j].parents[k] != node) node.siblings.push(node.children[j].parents[k])
+          }
+        }
+      }
+
+      // Lay out the physical graph
+      return layoutNodes(nodes, mincol, latest)
+    }
+
+    function buildGraph(blocks) {
+      //   var earliest = undefined;
+
+      // Build a map of new node objects
+      var nodeMap = {}
+      for (let hash in blocks) {
+        let block = blocks[hash]
+        let node = {
+          block: block,
+          parents: [],
+          children: [],
+          siblings: [],
+          canonical: false,
+        }
+        nodeMap[block.hash] = node
+      }
+
+      // Generate node and edge lists, and populate parents and children
+      let nodes = []
+      let edges = []
+      for (let hash in nodeMap) {
+        let node = nodeMap[hash]
+
+        for (let i = 0; i < node.block.parents.length; i++) {
+          let parentNode = nodeMap[node.block.parents[i]]
+          if (parentNode != undefined) {
+            node.parents.push(parentNode)
+            edges.push([parentNode, node])
+            parentNode.children.push(node)
+          }
         }
 
-        .canonical-node circle {
-            fill: var(--body-color);
+        nodes.push(node)
+      }
+
+      var latest = nodes
+        .map(function (n) {
+          return n.block.timestamp
+        })
+        .reduce(function (a, b) {
+          return Math.max(a, b)
+        }, 0)
+
+      var subgraphs = findSubgraphs(nodes)
+      subgraphs.sort(function (a, b) {
+        function totalDifficulty(nodes) {
+          return nodes
+            .map(function (a) {
+              return a.block.difficulty
+            })
+            .reduce(function (a, b) {
+              return a + b
+            }, 0)
         }
 
-        .canonical-node text {
-            fill: var(--body-color);
-        }
+        return totalDifficulty(b) - totalDifficulty(a)
+      })
 
-        .uncle-node circle {
-            fill: var(--dark);
-        }
+      var mincol = 0
+      for (var i = 0; i < subgraphs.length; i++) {
+        mincol = layoutSubgraph(subgraphs[i], mincol, latest)
+      }
 
-        .uncle-node text {
-            fill: var(--dark);
-        }
+      drawGraph(nodes, edges)
+    }
 
-        .link {
-            fill: none;
-            stroke-opacity: 0.4;
-            stroke-width: 1.5px;
-        }
+    function drawGraph(nodes, edges) {
+      var svg = d3.select("#vis"),
+        g = svg.select("#root")
 
-        .canonical-link {
-            stroke: var(--body-color);
-        }
+      var xmax = Math.max.apply(
+        null,
+        nodes.map(function (d) {
+          return d.x
+        })
+      )
+      var ymax = Math.max.apply(
+        null,
+        nodes.map(function (d) {
+          return d.y
+        })
+      )
 
-        .uncle-link {
-            stroke: var(--dark);
-        }
+      svg.attr("height", ymax + nodeHeight * 2)
+      svg.attr("width", xmax + nodeWidth + 160)
 
-        .nodehash {
-            font-size: 10px;
-        }
+      var nodeset = g.selectAll(".node").data(nodes, function (d) {
+        return d.block.hash
+      })
+      var t = nodeset
+        .transition()
+        .attr("class", function (d) {
+          return "node" + (d.canonical ? " canonical-node" : " uncle-node")
+        })
+        .attr("transform", function (d) {
+          return "translate(" + d.x + ", " + d.y + ")"
+        })
 
-        .nodehash a {
-            fill: var(--link-color);
-        }
+      var node = nodeset
+        .enter()
+        .append("g")
+        .attr("class", function (d) {
+          return "node" + (d.canonical ? " canonical-node" : " uncle-node")
+        })
+        .attr("transform", function (d) {
+          return "translate(" + d.x + ", " + d.y + ")"
+        })
+      node.append("circle").attr("r", 2.5)
+      node
+        .append("text")
+        .attr("class", "nodehash")
+        .attr("dy", 13)
+        .attr("x", 8)
+        .style("text-anchor", "start")
+        .html(function (d) {
+          if (d.block.hash.length < 64) {
+            return 'Missed by <a href="/validator/' + d.block.proposer + '">#' + d.block.proposer + "</a>"
+          } else {
+            return '<a href="/block/' + d.block.hash + '">' + d.block.hash.substring(0, 10) + '</a> by validator <a href="/validator/' + d.block.proposer + '">#' + d.block.proposer + "</a>"
+          }
+        })
+      node
+        .append("text")
+        .attr("class", "nodenum")
+        .attr("dy", -3)
+        .attr("x", 8)
+        .style("text-anchor", "start")
+        .html(function (d) {
+          return '<a href="/block/' + d.block.number + '">' + d.block.number + "</a>"
+        })
+      nodeset.exit().remove()
 
-        .nodehash a:hover {
-            fill: var(--link-hover-color);
-        }
+      var link = g.selectAll(".link").data(edges, function (d) {
+        return [d[0].block.hash, d[1].block.hash]
+      })
+      link
+        .transition(t)
+        .attr("class", function (d) {
+          return "link" + (d[0].canonical && d[1].canonical ? " canonical-link" : " uncle-link")
+        })
+        .attr("d", function (d) {
+          var fromNode = d[0],
+            toNode = d[1]
 
-        #axis text {
-            font-size: 12px;
-        }
-    </style>
+          return "M" + toNode.x + "," + toNode.y + "C" + toNode.x + "," + (toNode.y + 15) + " " + fromNode.x + "," + (fromNode.y - 15) + " " + fromNode.x + "," + fromNode.y
+        })
+      link
+        .enter()
+        .append("path")
+        .attr("class", function (d) {
+          return "link" + (d[0].canonical && d[1].canonical ? " canonical-link" : " uncle-link")
+        })
+        .attr("d", function (d) {
+          var fromNode = d[0],
+            toNode = d[1]
 
-{{end}}
-{{ define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-            <div class="my-3">
-                <div class="d-md-flex py-2 justify-content-md-between">
-                    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-project-diagram"></i> Eth2 Blockchain Visualization
-                    </h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Visualization</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-            <small>By <a href="https://www.beaconcha.in">beaconcha.in</a></small>
-            <div class="row">
-                <div class="col-md-12 text-center">
-                    <svg id="vis" width="800" height="1650">
-                        <g transform="translate(80, 40)" id="root"></g>
-                        <g transform="translate(60, 40)" id="axis"></g>
-                    </svg>
-                </div>
-            </div>
+          return "M" + toNode.x + "," + toNode.y + "C" + toNode.x + "," + (toNode.y + 15) + " " + fromNode.x + "," + (fromNode.y - 15) + " " + fromNode.x + "," + fromNode.y
+        })
+      link.exit().remove()
+
+      var earliest = Math.min.apply(
+        null,
+        nodes.map(function (n) {
+          return n.block.timestamp
+        })
+      )
+      var latest = Math.max.apply(
+        null,
+        nodes.map(function (n) {
+          return n.block.timestamp
+        })
+      )
+      var timeScale = d3
+        .scaleTime()
+        .domain([new Date(latest * 1000), new Date(earliest * 1000)])
+        .range([0, ymax])
+      var timeAxis = d3.axisLeft(timeScale).ticks(d3.timeMinute.every(1)).tickFormat(d3.timeFormat("%H:%M"))
+      var axisG = svg.select("#axis")
+      axisG.enter().call(timeAxis)
+      axisG.transition().call(timeAxis)
+    }
+
+    var allBlocks = {}
+    var lastTimestamp = 0
+
+    function processData(response) {
+      for (var i = 0; i < response.length; i++) {
+        var node = response[i]
+        allBlocks[node.hash] = node
+        lastTimestamp = Math.max(lastTimestamp, node.timestamp)
+      }
+
+      buildGraph(allBlocks)
+    }
+
+    function loadData() {
+      if (lastTimestamp != 0) {
+        $.ajax({ url: "/vis/blocks", data: { since: lastTimestamp - 30 }, dataType: "json" }).done(processData)
+      } else {
+        $.ajax({ url: "/vis/blocks", dataType: "json" }).done(processData)
+      }
+    }
+
+    $(document).ready(function () {
+      loadData()
+
+      var intervalId = window.setInterval(loadData, 10000)
+      $(window).blur(function () {
+        if (intervalId != undefined) {
+          window.clearInterval(intervalId)
+          intervalId = undefined
+        }
+      })
+      $(window).focus(function () {
+        if (intervalId == undefined) {
+          loadData()
+          intervalId = window.setInterval(loadData, 10000)
+        }
+      })
+    })
+  </script>
+{{ end }}
+{{ define "css" }}
+  <style>
+    .domain {
+      stroke: var(--font-color);
+    }
+
+    .tick line {
+      stroke: var(--font-color);
+    }
+
+    .tick text {
+      fill: var(--font-color);
+    }
+
+    .canonical-node circle {
+      fill: var(--body-color);
+    }
+
+    .canonical-node text {
+      fill: var(--body-color);
+    }
+
+    .uncle-node circle {
+      fill: var(--dark);
+    }
+
+    .uncle-node text {
+      fill: var(--dark);
+    }
+
+    .link {
+      fill: none;
+      stroke-opacity: 0.4;
+      stroke-width: 1.5px;
+    }
+
+    .canonical-link {
+      stroke: var(--body-color);
+    }
+
+    .uncle-link {
+      stroke: var(--dark);
+    }
+
+    .nodehash {
+      font-size: 10px;
+    }
+
+    .nodehash a {
+      fill: var(--link-color);
+    }
+
+    .nodehash a:hover {
+      fill: var(--link-hover-color);
+    }
+
+    #axis text {
+      font-size: 12px;
+    }
+  </style>
+{{ end }}
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-project-diagram"></i> Eth2 Blockchain Visualization</h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Visualization</li>
+            </ol>
+          </nav>
         </div>
-    {{end}}
-{{end}}
+      </div>
+      <small>By <a href="https://www.beaconcha.in">beaconcha.in</a></small>
+      <div class="row">
+        <div class="col-md-12 text-center">
+          <svg id="vis" width="800" height="1650">
+            <g transform="translate(80, 40)" id="root"></g>
+            <g transform="translate(60, 40)" id="axis"></g>
+          </svg>
+        </div>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

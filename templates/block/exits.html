@@ -1,17 +1,17 @@
-{{define "block_exits"}}
-<div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
-  {{range $i, $exit := .VoluntaryExits}}
-  <div class="row border-bottom p-1 mx-0">
-    <div class="col-md-12 text-center"><b>Exit {{$i}}</b></div>
+{{ define "block_exits" }}
+  <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
+    {{ range $i, $exit := .VoluntaryExits }}
+      <div class="row border-bottom p-1 mx-0">
+        <div class="col-md-12 text-center"><b>Exit {{ $i }}</b></div>
+      </div>
+      <div class="row border-bottom p-1 mx-0">
+        <div class="col-md-2">Validator:</div>
+        <div class="col-md-10">{{ formatValidator $exit.ValidatorIndex }}</div>
+      </div>
+      <div class="row p-1 mx-0">
+        <div class="col-md-2">Signature:</div>
+        <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" $exit.Signature }}</div>
+      </div>
+    {{ end }}
   </div>
-  <div class="row border-bottom p-1 mx-0">
-    <div class="col-md-2">Validator:</div>
-    <div class="col-md-10">{{formatValidator $exit.ValidatorIndex}}</div>
-  </div>
-  <div class="row p-1 mx-0">
-    <div class="col-md-2">Signature:</div>
-    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" $exit.Signature}}</div>
-  </div>
-  {{end}}
-</div>
-{{end}}
+{{ end }}
