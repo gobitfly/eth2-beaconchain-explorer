@@ -36,7 +36,7 @@
         "no-empty-pattern": "error",
         "no-ex-assign": "error",
         "no-extra-boolean-cast": "error",
-        "no-extra-semi": "error",
+        "no-extra-semi": "off",
         "no-fallthrough": "error",
         "no-func-assign": "error",
         "no-global-assign": "error",

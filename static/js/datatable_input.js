@@ -1,4 +1,4 @@
-(function ($) {
+;(function ($) {
   function calcDisableClasses(oSettings) {
     var start = oSettings._iDisplayStart
     var length = oSettings._iDisplayLength
