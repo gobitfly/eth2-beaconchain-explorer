@@ -1736,6 +1736,10 @@ func (n *ethClientNotification) GetInfo(includeUrl bool) string {
 			url = "https://github.com/status-im/nimbus-eth2/releases"
 		case "Lighthouse":
 			url = "https://github.com/sigp/lighthouse/releases"
+		case "Erigon":
+			url = "https://github.com/ledgerwatch/erigon/releases"
+		case "Rocketpool":
+			url = "https://github.com/rocket-pool/smartnode-install/releases"
 		default:
 			url = "https://beaconcha.in/ethClients"
 		}
@@ -1770,6 +1774,10 @@ func (n *ethClientNotification) GetInfoMarkdown() string {
 		url = "https://github.com/status-im/nimbus-eth2/releases"
 	case "Lighthouse":
 		url = "https://github.com/sigp/lighthouse/releases"
+	case "Erigon":
+		url = "https://github.com/ledgerwatch/erigon/releases"
+	case "Rocketpool":
+		url = "https://github.com/rocket-pool/smartnode-install/releases"
 	default:
 		url = "https://beaconcha.in/ethClients"
 	}

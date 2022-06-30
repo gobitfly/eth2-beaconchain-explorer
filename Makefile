@@ -21,7 +21,7 @@ explorer:
 	cp -r static/ bin/static
 	cp -r locales/ bin/
 	cp -r config/ bin/config
-	go install github.com/swaggo/swag/cmd/swag@v1.7.4 && swag init --parseDependency --parseInternal --parseDepth 1 -g handlers/api.go
+	go install github.com/swaggo/swag/cmd/swag@v1.8.3 && swag init --exclude bin,_gitignore,.vscode,.idea --parseDepth 1 -g ./handlers/api.go
 	go build --ldflags=${LDFLAGS} -o bin/explorer cmd/explorer/main.go
 
 chartshotter:
