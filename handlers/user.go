@@ -2576,6 +2576,8 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 
 	pageData.Events = events
 
+	pageData.Flashes = utils.GetFlashes(w, r, authSessionName)
+
 	data.Data = pageData
 
 	err = webhookTemplate.ExecuteTemplate(w, "layout", data)
