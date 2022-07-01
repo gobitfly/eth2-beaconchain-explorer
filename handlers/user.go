@@ -2457,17 +2457,17 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 		events := make([]types.WebhookPageEvent, 0, 7)
 
 		events = append(events, types.WebhookPageEvent{
-			EventLabel: "Missed Attestations",
+			EventLabel: "Attestation Missed",
 			EventName:  types.ValidatorMissedAttestationEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorMissedAttestationEventName)),
 		})
 		events = append(events, types.WebhookPageEvent{
-			EventLabel: "Missed Proposals",
+			EventLabel: "Proposal Missed",
 			EventName:  types.ValidatorMissedProposalEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorMissedProposalEventName)),
 		})
 		events = append(events, types.WebhookPageEvent{
-			EventLabel: "Submitted Proposals",
+			EventLabel: "Proposal Submitted",
 			EventName:  types.ValidatorExecutedProposalEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorExecutedProposalEventName)),
 		})
@@ -2475,6 +2475,11 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 			EventLabel: "Slashed",
 			EventName:  types.ValidatorGotSlashedEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorGotSlashedEventName)),
+		})
+		events = append(events, types.WebhookPageEvent{
+			EventLabel: "Sync Commitee Soon",
+			EventName:  types.SyncCommitteeSoon,
+			Active:     utils.ElementExists(wh.EventNames, string(types.SyncCommitteeSoon)),
 		})
 		events = append(events, types.WebhookPageEvent{
 			EventLabel: "Machine Offline",
@@ -2546,20 +2551,24 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 	events := make([]types.WebhookPageEvent, 0, 7)
 
 	events = append(events, types.WebhookPageEvent{
-		EventLabel: "Missed Attestations",
+		EventLabel: "Attestation Missed",
 		EventName:  types.ValidatorMissedAttestationEventName,
 	})
 	events = append(events, types.WebhookPageEvent{
-		EventLabel: "Missed Proposals",
+		EventLabel: "Proposal Missed",
 		EventName:  types.ValidatorMissedProposalEventName,
 	})
 	events = append(events, types.WebhookPageEvent{
-		EventLabel: "Submitted Proposals",
+		EventLabel: "Proposal Submitted",
 		EventName:  types.ValidatorExecutedProposalEventName,
 	})
 	events = append(events, types.WebhookPageEvent{
-		EventLabel: "Slashed",
+		EventLabel: "Got Slashed",
 		EventName:  types.ValidatorGotSlashedEventName,
+	})
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Sync Commitee Soon",
+		EventName:  types.SyncCommitteeSoon,
 	})
 	events = append(events, types.WebhookPageEvent{
 		EventLabel: "Machine Offline",
@@ -2611,6 +2620,7 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	validatorProposalMissed := "on" == r.FormValue(string(types.ValidatorMissedProposalEventName))
 	validatorProposalSubmitted := "on" == r.FormValue(string(types.ValidatorExecutedProposalEventName))
 	validatorGotSlashed := "on" == r.FormValue(string(types.ValidatorGotSlashedEventName))
+	validatorSyncCommiteeSoon := "on" == r.FormValue(string(types.SyncCommitteeSoon))
 	monitoringMachineOffline := "on" == r.FormValue(string(types.MonitoringMachineOfflineEventName))
 	monitoringHddAlmostfull := "on" == r.FormValue(string(types.MonitoringMachineDiskAlmostFullEventName))
 	monitoringCpuLoad := "on" == r.FormValue(string(types.MonitoringMachineCpuLoadEventName))
@@ -2628,6 +2638,7 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	events[string(types.ValidatorMissedProposalEventName)] = validatorProposalMissed
 	events[string(types.ValidatorExecutedProposalEventName)] = validatorProposalSubmitted
 	events[string(types.ValidatorGotSlashedEventName)] = validatorGotSlashed
+	events[string(types.SyncCommitteeSoon)] = validatorSyncCommiteeSoon
 	events[string(types.MonitoringMachineOfflineEventName)] = monitoringMachineOffline
 	events[string(types.MonitoringMachineDiskAlmostFullEventName)] = monitoringHddAlmostfull
 	events[string(types.MonitoringMachineCpuLoadEventName)] = monitoringCpuLoad
