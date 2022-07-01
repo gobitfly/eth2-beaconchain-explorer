@@ -274,47 +274,6 @@ func AddSubscription(userID uint64, network string, eventName types.EventName, e
 	return err
 }
 
-func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
-
-	var subscriptions []*types.Subscription
-	query := `
-		SELECT
-			id,
-			user_id,
-			event_name,
-			event_filter,
-			last_sent_ts,
-			last_sent_epoch,
-			created_ts,
-			created_epoch,
-			event_threshold,
-			ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash 
-		FROM users_subscriptions
-		WHERE user_id = $1 AND event_name LIKE $2
-	`
-
-	if utils.GetNetwork() == "mainnet" {
-		query = `
-			SELECT 
-				id,
-				user_id,
-				event_name,
-				event_filter,
-				last_sent_ts,
-				last_sent_epoch,
-				created_ts,
-				created_epoch,
-				event_threshold,
-				ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash
-			FROM users_subscriptions
-			WHERE user_id = $1 AND (event_name LIKE $2 OR event_name LIKE 'monitoring_%')
-		`
-	}
-
-	err := FrontendWriterDB.Select(&subscriptions, query, userId, utils.GetNetwork()+":"+"monitoring_"+"%")
-	return subscriptions, err
-}
-
 // DeleteSubscription removes a subscription from the database.
 func DeleteSubscription(userID uint64, network string, eventName types.EventName, eventFilter string) error {
 	name := string(eventName)
