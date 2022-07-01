@@ -2691,7 +2691,7 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 
 	if webhookCount >= allowed {
 		http.Error(w, "Too man webhooks exist already", 400)
-		utils.SetFlash(w, r, authSessionName, "Error: we could not add another webhook, you've already reached the maximum allowed, which.")
+		utils.SetFlash(w, r, authSessionName, "Error: We could not add another webhook, you've already reached the maximum allowed, which.")
 		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
@@ -2701,7 +2701,7 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	urlParsed, err := url.Parse(urlForm)
 	if err != nil {
 		logger.WithError(err).Errorf("could not parse url: %v", urlForm)
-		utils.SetFlash(w, r, authSessionName, "Error: the URL you have provided is invalid.")
+		utils.SetFlash(w, r, authSessionName, "Error: The URL provided is invalid.")
 		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
