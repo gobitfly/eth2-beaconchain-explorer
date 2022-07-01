@@ -2765,6 +2765,7 @@ func UsersEditWebhook(w http.ResponseWriter, r *http.Request) {
 	validatorProposalMissed := "on" == r.FormValue(string(types.ValidatorMissedProposalEventName))
 	validatorProposalSubmitted := "on" == r.FormValue(string(types.ValidatorExecutedProposalEventName))
 	validatorGotSlashed := "on" == r.FormValue(string(types.ValidatorGotSlashedEventName))
+	validatorSyncCommiteeSoon := "on" == r.FormValue(string(types.SyncCommitteeSoon))
 	monitoringMachineOffline := "on" == r.FormValue(string(types.MonitoringMachineOfflineEventName))
 	monitoringHddAlmostfull := "on" == r.FormValue(string(types.MonitoringMachineDiskAlmostFullEventName))
 	monitoringCpuLoad := "on" == r.FormValue(string(types.MonitoringMachineCpuLoadEventName))
@@ -2782,6 +2783,7 @@ func UsersEditWebhook(w http.ResponseWriter, r *http.Request) {
 	events[string(types.ValidatorMissedProposalEventName)] = validatorProposalMissed
 	events[string(types.ValidatorExecutedProposalEventName)] = validatorProposalSubmitted
 	events[string(types.ValidatorGotSlashedEventName)] = validatorGotSlashed
+	events[string(types.SyncCommitteeSoon)] = validatorSyncCommiteeSoon
 	events[string(types.MonitoringMachineOfflineEventName)] = monitoringMachineOffline
 	events[string(types.MonitoringMachineDiskAlmostFullEventName)] = monitoringHddAlmostfull
 	events[string(types.MonitoringMachineCpuLoadEventName)] = monitoringCpuLoad
