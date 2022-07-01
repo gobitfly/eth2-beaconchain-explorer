@@ -2593,14 +2593,15 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		logger.WithError(err).Errorf("error parsing form")
-		http.Error(w, "Internal server error", 503)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding your webhook, please try again in a bit.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
 
 	// const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed', 'validator_synccommittee_soon']
 	// const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
 
-	url := r.FormValue("url")
+	urlForm := r.FormValue("url")
 
 	destination := "webhook"
 
@@ -2643,7 +2644,8 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	tx, err := db.FrontendWriterDB.BeginTxx(ctx, &sql.TxOptions{})
 	if err != nil {
 		logger.WithError(err).Errorf("error beginning transaction")
-		http.Error(w, "Internal server error", 503)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding your webhook, please try again in a bit.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
 	defer tx.Rollback()
@@ -2652,7 +2654,8 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	err = tx.Get(&webhookCount, `SELECT count(*) from users_webhooks where user_id = $1`, user.UserID)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting webhook count")
-		http.Error(w, "Internal server error", 503)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding your webhook, please try again in a bit.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
 
@@ -2662,7 +2665,8 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	err = tx.Get(&activeAPP, `SELECT count(*) from users_app_subscriptions where active = 't' and user_id = $1;`, user.UserID)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting app subscription count")
-		http.Error(w, "Internal server error", 503)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding your webhook, please try again in a bit.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
 
@@ -2674,7 +2678,8 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	err = db.FrontendWriterDB.GetContext(ctx, &activeAPI, `SELECT count(*) from users_stripe_subscriptions us join users u on u.stripe_customer_id = us.customer_id where active = 't' and u.id = $1;`, user.UserID)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting api subscription count")
-		http.Error(w, "Internal server error", 503)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding your webhook, please try again in a bit.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
 
@@ -2684,20 +2689,37 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 
 	if webhookCount >= allowed {
 		http.Error(w, "Too man webhooks exist already", 400)
+		utils.SetFlash(w, r, authSessionName, "Error: we could not add another webhook, you've already reached the maximum allowed, which.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
 
-	_, err = tx.Exec(`INSERT INTO users_webhooks (user_id, url, event_names, destination) VALUES ($1, $2, $3, $4)`, user.UserID, url, pq.StringArray(eventNames), destination)
+	urlValid := ""
+
+	urlParsed, err := url.Parse(urlForm)
+	if err != nil {
+		logger.WithError(err).Errorf("could not parse url: %v", urlForm)
+		utils.SetFlash(w, r, authSessionName, "Error: the URL you have provided is invalid.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
+		return
+	}
+
+	if urlParsed != nil {
+		urlValid = urlForm
+	}
+
+	_, err = tx.Exec(`INSERT INTO users_webhooks (user_id, url, event_names, destination) VALUES ($1, $2, $3, $4)`, user.UserID, urlValid, pq.StringArray(eventNames), destination)
 	if err != nil {
 		logger.WithError(err).Errorf("error inserting a new webhook for user")
-		http.Error(w, "Internal server error", 503)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding your webhook, please try again in a bit.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		logger.WithError(err).Errorf("error for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
@@ -2710,7 +2732,8 @@ func UsersEditWebhook(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		logger.WithError(err).Errorf("error parsing form")
-		http.Error(w, "Internal server error", 503)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong editing your webhook, please try again in a bit.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
 
@@ -2721,7 +2744,7 @@ func UsersEditWebhook(w http.ResponseWriter, r *http.Request) {
 	// const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed', 'validator_synccommittee_soon']
 	// const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
 
-	url := r.FormValue("url")
+	urlForm := r.FormValue("url")
 
 	destination := "webhook"
 
@@ -2764,22 +2787,39 @@ func UsersEditWebhook(w http.ResponseWriter, r *http.Request) {
 	tx, err := db.FrontendWriterDB.BeginTxx(ctx, &sql.TxOptions{})
 	if err != nil {
 		logger.WithError(err).Errorf("error beginning transaction")
-		http.Error(w, "Internal server error", 503)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong editing your webhook, please try again in a bit.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec(`UPDATE users_webhooks set url = $1, event_names = $2, destination = $3 where user_id = $4 and id = $5`, url, pq.StringArray(eventNames), destination, user.UserID, webhookID)
+	urlValid := ""
+
+	urlParsed, err := url.Parse(urlForm)
+	if err != nil {
+		logger.WithError(err).Errorf("could not parse url: %v", urlForm)
+		utils.SetFlash(w, r, authSessionName, "Error: the URL you have provided is invalid.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
+		return
+	}
+
+	if urlParsed != nil {
+		urlValid = urlForm
+	}
+
+	_, err = tx.Exec(`UPDATE users_webhooks set url = $1, event_names = $2, destination = $3 where user_id = $4 and id = $5`, urlValid, pq.StringArray(eventNames), destination, user.UserID, webhookID)
 	if err != nil {
 		logger.WithError(err).Errorf("error update webhook for user")
-		http.Error(w, "Internal server error", 503)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong editing your webhook, please try again in a bit.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		logger.WithError(err).Errorf("error for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong editing your webhook, please try again in a bit.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)

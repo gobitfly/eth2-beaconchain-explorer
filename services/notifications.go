@@ -902,6 +902,18 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 								},
 							}
 						}
+						// reset Retries
+						if w.Retries > 5 && w.LastSent.Valid && w.LastSent.Time.Add(time.Hour).Before(time.Now()) {
+							_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, w.ID)
+							if err != nil {
+								logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
+								continue
+							}
+						} else if w.Retries > 5 && !w.LastSent.Valid {
+							logger.Error("error webhook has more than 5 retries and does not hav a valid last_sent timestamp")
+							continue
+						}
+
 						_, err = useDB.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES (now(), $1, $2);`, channel, content)
 						if err != nil {
 							logger.WithError(err).Errorf("error inserting into webhooks_queue")
@@ -932,24 +944,23 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 
 	logger.Infof("processing %v webhook notifications", len(notificationQueueItem))
 
-	now := time.Now()
+	// now := time.Now()
 	for _, n := range notificationQueueItem {
-		// rate limit for 24 hours after 5 retries
+		// do not retry after 5 attempts
 		if n.Content.Webhook.Retries > 5 {
-			// reset retries after 24 hours
-			if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
-				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
-				if err != nil {
-					logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
-					continue
-				}
-			} else {
-				_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
-				if err != nil {
-					return fmt.Errorf("error deleting from notification queue: %w", err)
-				}
-				continue
+			// if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
+			// 	_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
+			// 	if err != nil {
+			// 		logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
+			// 		continue
+			// 	}
+			// } else {
+			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
+			if err != nil {
+				return fmt.Errorf("error deleting from notification queue: %w", err)
 			}
+			continue
+			// }
 		}
 
 		reqBody := new(bytes.Buffer)
@@ -959,43 +970,57 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 			logger.WithError(err).Errorf("error marschalling webhook event")
 		}
 
-		resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
+		_, err = url.Parse(n.Content.Webhook.Url)
 		if err != nil {
-			logger.WithError(err).Errorf("error sending request")
+			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
+			if err != nil {
+				return fmt.Errorf("error deleting from notification queue: %w", err)
+			}
+			continue
 		}
 
-		if resp != nil && resp.StatusCode < 400 {
-			_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
+		go func(n types.TransitWebhook) {
+			if n.Content.Webhook.Retries > 0 {
+				time.Sleep(time.Duration(n.Content.Webhook.Retries) * time.Second)
+			}
+			resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
 			if err != nil {
-				logger.WithError(err).Errorf("error updating notification_queue table")
-				continue
+				logger.WithError(err).Errorf("error sending request")
 			}
 
-			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
-			if err != nil {
-				logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
-				continue
-			}
-		} else {
-
-			var errResp types.ErrorResponse
-
-			if resp != nil {
-				b, err := io.ReadAll(resp.Body)
+			if resp != nil && resp.StatusCode < 400 {
+				_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
 				if err != nil {
-					logger.WithError(err).Error("error reading body")
+					logger.WithError(err).Errorf("error updating notification_queue table")
+					return
 				}
 
-				errResp.Status = resp.Status
-				errResp.Body = string(b)
-			}
+				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
+				if err != nil {
+					logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
+					return
+				}
+			} else {
+				var errResp types.ErrorResponse
 
-			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content, errResp)
-			if err != nil {
-				logger.WithError(err).Errorf("error updating users_webhooks table; increasing retries")
-				continue
+				if resp != nil {
+					b, err := io.ReadAll(resp.Body)
+					if err != nil {
+						logger.WithError(err).Error("error reading body")
+					}
+
+					errResp.Status = resp.Status
+					errResp.Body = string(b)
+				}
+
+				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content, errResp)
+				if err != nil {
+					logger.WithError(err).Errorf("error updating users_webhooks table; increasing retries")
+					return
+				}
 			}
-		}
+		}(n)
+
 	}
 	return nil
 }
@@ -1016,25 +1041,24 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 	client := &http.Client{Timeout: time.Second * 30}
 
 	logger.Infof("processing %v discord webhook notifications", len(notificationQueueItem))
-	now := time.Now()
+	// now := time.Now()
 	for _, n := range notificationQueueItem {
 
-		// rate limit for 24 hours after 5 retries
+		// rate limit for 1 hour after 5 retries
 		if n.Content.Webhook.Retries > 5 {
-			// reset retries after 24 hours
-			if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
-				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
-				if err != nil {
-					logger.WithError(err).Errorf("error updating users_webhooks table; resetting retries")
-					continue
-				}
-			} else {
-				_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
-				if err != nil {
-					return fmt.Errorf("error deleting from notification queue: %w", err)
-				}
-				continue
+			// if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
+			// 	_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
+			// 	if err != nil {
+			// 		logger.WithError(err).Errorf("error updating users_webhooks table; resetting retries")
+			// 		continue
+			// 	}
+			// } else {
+			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
+			if err != nil {
+				return fmt.Errorf("error deleting from notification queue: %w", err)
 			}
+			continue
+			// }
 		}
 
 		reqBody := new(bytes.Buffer)
@@ -1042,41 +1066,57 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 		if err != nil {
 			logger.WithError(err).Errorf("error marschalling webhook event")
 		}
-		resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
+
+		_, err = url.Parse(n.Content.Webhook.Url)
 		if err != nil {
-			logger.WithError(err).Errorf("error sending request")
+			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
+			if err != nil {
+				return fmt.Errorf("error deleting from notification queue: %w", err)
+			}
+			continue
 		}
 
-		if resp != nil && resp.StatusCode < 400 {
-			_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
-			if err != nil {
-				logger.WithError(err).Errorf("error updating notification_queue table")
-				continue
+		go func(n types.TransitDiscord) {
+			if n.Content.Webhook.Retries > 0 {
+				time.Sleep(time.Duration(n.Content.Webhook.Retries) * time.Second)
 			}
-			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
-			if err != nil {
-				logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
-				continue
-			}
-		} else {
-			var errResp types.ErrorResponse
 
-			if resp != nil {
-				b, err := io.ReadAll(resp.Body)
+			resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
+			if err != nil {
+				logger.WithError(err).Errorf("error sending request")
+			}
+			if resp != nil && resp.StatusCode < 400 {
+				_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
 				if err != nil {
-					logger.WithError(err).Error("error reading body")
+					logger.WithError(err).Errorf("error updating notification_queue table")
+					return
+				}
+				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
+				if err != nil {
+					logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
+					return
+				}
+			} else {
+				var errResp types.ErrorResponse
+
+				if resp != nil {
+					b, err := io.ReadAll(resp.Body)
+					if err != nil {
+						logger.WithError(err).Error("error reading body")
+					} else {
+						errResp.Body = string(b)
+					}
+					errResp.Status = resp.Status
 				}
 
-				errResp.Status = resp.Status
-				errResp.Body = string(b)
+				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content.DiscordRequest, errResp)
+				if err != nil {
+					logger.WithError(err).Errorf("error updating users_webhooks table; increasing retries")
+					return
+				}
 			}
+		}(n)
 
-			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content.DiscordRequest, errResp)
-			if err != nil {
-				logger.WithError(err).Errorf("error updating users_webhooks table; increasing retries")
-				continue
-			}
-		}
 	}
 	return nil
 }
