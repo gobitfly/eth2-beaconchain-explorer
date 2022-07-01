@@ -1878,7 +1878,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 			// rocketpool thresholds are free
 		}
 		network := utils.GetNetwork()
-		if eventName == types.EthClientUpdateEventName {
+		if eventName == types.EthClientUpdateEventName || strings.HasPrefix(string(eventName), "monitoring_") {
 			network = ""
 		}
 
@@ -2069,9 +2069,12 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 				}
 			}
 		} else {
-
+			network := utils.GetNetwork()
+			if eventName == types.EthClientUpdateEventName || strings.HasPrefix(string(eventName), "monitoring_") {
+				network = ""
+			}
 			// filtered one only
-			err = db.DeleteSubscription(user.UserID, utils.GetNetwork(), eventName, filter)
+			err = db.DeleteSubscription(user.UserID, network, eventName, filter)
 			if err != nil {
 				logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -2142,8 +2145,12 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
+		network := utils.GetNetwork()
+		if eventName == types.EthClientUpdateEventName || strings.HasPrefix(string(eventName), "monitoring_") {
+			network = ""
+		}
 		// filtered one only
-		err = db.DeleteSubscription(user.UserID, utils.GetNetwork(), eventName, filter)
+		err = db.DeleteSubscription(user.UserID, network, eventName, filter)
 		if err != nil {
 			logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
