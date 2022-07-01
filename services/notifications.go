@@ -910,15 +910,18 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 								continue
 							}
 						} else if w.Retries > 5 && !w.LastSent.Valid {
-							logger.Error("error webhook has more than 5 retries and does not hav a valid last_sent timestamp")
+							logger.Error("error webhook has more than 5 retries and does not have a valid last_sent timestamp")
 							continue
 						}
 
-						_, err = useDB.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES (now(), $1, $2);`, channel, content)
-						if err != nil {
-							logger.WithError(err).Errorf("error inserting into webhooks_queue")
-							continue
+						if w.Retries <= 5 {
+							_, err = useDB.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES (now(), $1, $2);`, channel, content)
+							if err != nil {
+								logger.WithError(err).Errorf("error inserting into webhooks_queue")
+								continue
+							}
 						}
+
 					}
 				}
 			}
