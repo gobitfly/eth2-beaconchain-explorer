@@ -1,39 +1,37 @@
-{{ define "js"}}
-{{end}}
+{{ define "js" }}
+{{ end }}
 
-{{ define "css"}}
-{{end}}
+{{ define "css" }}
+{{ end }}
 
-{{ define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-            <div class="row my-3">
-                <div class="col-lg-6 col-sm-8 col-xl-5 mx-auto">
-                    <h1 class="h2">Resend Email Confirmation</h1>
-                    <p>Enter your email and we will send you another validation link.</p>
-                    {{if .Flashes}}
-                        {{range $i, $flash := .Flashes}}
-                            <div class="alert {{if contains $flash "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2"
-                                 role="alert">
-                                <div class="p-2">{{$flash | formatHTML}}</div>
-                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                        {{end}}
-                    {{end}}
-                    <form action="/resend" method="post">
-                        {{.CsrfField}}
-                        <div class="form-group">
-                            <label for="email">Email</label>
-                            <input type="text" class="form-control" id="email" name="email" inputmode="email"
-                                   maxlength="100" required autofocus>
-                        </div>
-                        <button type="submit" class="btn btn-primary float-right">Send</button>
-                    </form>
-                    <a href="/login"><i class="fas fa-chevron-left"></i> back to login</a>
-                </div>
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="row my-3">
+        <div class="col-lg-6 col-sm-8 col-xl-5 mx-auto">
+          <h1 class="h2">Resend Email Confirmation</h1>
+          <p>Enter your email and we will send you another validation link.</p>
+          {{ if .Flashes }}
+            {{ range $i, $flash := .Flashes }}
+              <div class="alert {{ if contains $flash "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
+                <div class="p-2">{{ $flash | formatHTML }}</div>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+            {{ end }}
+          {{ end }}
+          <form action="/resend" method="post">
+            {{ .CsrfField }}
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="text" class="form-control" id="email" name="email" inputmode="email" maxlength="100" required autofocus />
             </div>
+            <button type="submit" class="btn btn-primary float-right">Send</button>
+          </form>
+          <a href="/login"><i class="fas fa-chevron-left"></i> back to login</a>
         </div>
-    {{end}}
-{{end}}
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

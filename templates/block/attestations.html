@@ -1,54 +1,51 @@
 {{ define "block_attestations" }}
-{{range $i, $attestation := .Attestations}}
-			<div class="card my-2">
-				<div class="card-body px-0 py-1">
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-12 text-center"><b>Attestation {{$i}}</b></div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Slot number to which the validator is attesting">Slot:</span></div>
-						<div class="col-md-10"><a href="/block/{{$attestation.Slot}}">{{$attestation.Slot}}</a>
-						</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="An identifier for a specific committee during a slot">Committee Index:</span></div>
-						<div class="col-md-10">{{$attestation.CommitteeIndex}}</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the aggregated attestation of all participating validators in this attestation">Aggregation Bits:</span></div>
-						<div class="col-md-10">{{formatBitlist $attestation.AggregationBits}}</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Validators who have submitted their attestation and have been included by the block proposer">Validators:</span></div>
-						<div class="col-md-10">
-							{{range $validator := $attestation.Validators}}
-							{{formatValidatorInt64 $validator}}
-							{{end}}
-						</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Points to the block to which validators are attesting">Beacon Block Root:</span></div>
-						<div class="col-md-10 text-monospace text-break"><a href="/block/{{printf "%x" $attestation.BeaconBlockRoot}}">0x{{printf "%x" $attestation.BeaconBlockRoot}}</a>
-						</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Points to the latest justified epoch">Source:</span></div>
-						<div class="col-md-10">Epoch <a href="/epoch/{{$attestation.SourceEpoch}}">{{$attestation.SourceEpoch}}</a>
-							(<span class="text-monospace text-break"><a href="{{printf "%x" $attestation.SourceRoot}}">0x{{printf "%x" $attestation.SourceRoot}}</a>)</span>
-						</div>
-					</div>
-					<div class="row border-bottom p-1 mx-0">
-						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Points to the latest epoch boundary">Target:</span></div>
-						<div class="col-md-10">Epoch <a href="/epoch/{{$attestation.TargetEpoch}}">{{$attestation.TargetEpoch}}</a>
-							(<span class="text-monospace text-break"><a href="{{printf "%x" $attestation.TargetRoot}}">0x{{printf "%x" $attestation.TargetRoot}}</a>)</span>
-						</div>
-					</div>
-					<div class="row p-1 mx-0">
-						<div class="col-md-2">Signature:</div>
-						<div class="col-md-10 text-monospace text-break">
-							0x{{printf "%x" $attestation.Signature}}</div>
-					</div>
-				</div>
-			</div>
-			{{end}}
-{{end}}
+  {{ range $i, $attestation := .Attestations }}
+    <div class="card my-2">
+      <div class="card-body px-0 py-1">
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-12 text-center"><b>Attestation {{ $i }}</b></div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Slot number to which the validator is attesting">Slot:</span></div>
+          <div class="col-md-10"><a href="/block/{{ $attestation.Slot }}">{{ $attestation.Slot }}</a></div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="An identifier for a specific committee during a slot">Committee Index:</span></div>
+          <div class="col-md-10">{{ $attestation.CommitteeIndex }}</div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the aggregated attestation of all participating validators in this attestation">Aggregation Bits:</span></div>
+          <div class="col-md-10">{{ formatBitlist $attestation.AggregationBits }}</div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Validators who have submitted their attestation and have been included by the block proposer">Validators:</span></div>
+          <div class="col-md-10">
+            {{ range $validator := $attestation.Validators }}
+              {{ formatValidatorInt64 $validator }}
+            {{ end }}
+          </div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Points to the block to which validators are attesting">Beacon Block Root:</span></div>
+          <div class="col-md-10 text-monospace text-break"><a href="/block/{{ printf "%x" $attestation.BeaconBlockRoot }}">0x{{ printf "%x" $attestation.BeaconBlockRoot }}</a></div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Points to the latest justified epoch">Source:</span></div>
+          <div class="col-md-10">
+            Epoch <a href="/epoch/{{ $attestation.SourceEpoch }}">{{ $attestation.SourceEpoch }}</a> (<span class="text-monospace text-break"><a href="{{ printf "%x" $attestation.SourceRoot }}">0x{{ printf "%x" $attestation.SourceRoot }}</a>)</span>
+          </div>
+        </div>
+        <div class="row border-bottom p-1 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Points to the latest epoch boundary">Target:</span></div>
+          <div class="col-md-10">
+            Epoch <a href="/epoch/{{ $attestation.TargetEpoch }}">{{ $attestation.TargetEpoch }}</a> (<span class="text-monospace text-break"><a href="{{ printf "%x" $attestation.TargetRoot }}">0x{{ printf "%x" $attestation.TargetRoot }}</a>)</span>
+          </div>
+        </div>
+        <div class="row p-1 mx-0">
+          <div class="col-md-2">Signature:</div>
+          <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" $attestation.Signature }}</div>
+        </div>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

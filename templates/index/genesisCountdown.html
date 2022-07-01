@@ -2,7 +2,7 @@
 <script>
 	function setTime(days, hour, min, second) {
 		if (second < 10) {
-			second = '0'+ second 
+			second = '0'+ second
 		}
 		if (min < 10) {
 			min = '0' + min
@@ -47,54 +47,55 @@
 					hour = 24
 					days -= 1
 				}
-	
+
 				if (seconds === 0 && min === 0 && hour > 0) {
 					min = 60
 					hour -= 1
 				}
-	
+
 				if (seconds === 0 && min > 0) {
 					seconds = 60
 					min -= 1
 				}
 
 				seconds -= 1
-				
+
 				setTime(days, hour, min, seconds)
 			}, 1000)
 		}
 	})
 </script>
-<div class="position-relative">
-	{{template "rocket"}}
-	<div id="countdown" class="d-flex flex-column justify-content-center">
-		<h6 class="d-flex justify-content-between">
-			<span id="estimated">
-				Estimated {{if gt .ValidatorsRemaining 0.0}}between:{{end}}
-			</span>
-			{{if gt .NetworkStartTs 0}}
-				<small id="networkStart" data-toggle="tooltip" title="Genesis Time" class="text-muted d-none" aria-ethereum-date-format="ff" aria-ethereum-date="{{.NetworkStartTs}}"></small>
-			{{end}}
-		</h6>
-		<div class="align-self-center text-center">
-			{{if eq .NetworkStartTs 0 }}
-			<div>
-				<strong>Waiting on min genesis time announcement</strong>
-			</div>
-			{{else}}
-			{{if gt .ValidatorsRemaining 0.0}}
-			<div id="minGenesis">
-				<strong data-toggle="tooltip" title="Earliest possible Genesis Time." class="" aria-ethereum-date-format="ff" aria-ethereum-date="{{.MinGenesisTime}}"></strong>
-			</div>
-			<div id="minGenesisAnd"><span>and</span></div>
-			{{end}}
-			<div>
-				<strong id="clock">
-				<span data-toggle="tooltip" title="Estimated Genesis Time. This time may vary until the deposit threshold is reached."><span aria-ethereum-date-format="ff" aria-ethereum-date="{{.NetworkStartTs}}"></span> ({{.NetworkStartTs | formatTsWithoutTooltip}})</span>
-				</strong>
-			</div>
-			{{end}}
-		</div>
-	</div>
-</div>
-{{end}}
+  <div class="position-relative">
+    {{ template "rocket" }}
+    <div id="countdown" class="d-flex flex-column justify-content-center">
+      <h6 class="d-flex justify-content-between">
+        <span id="estimated">
+          Estimated
+          {{ if gt .ValidatorsRemaining 0.0 }}between:{{ end }}
+        </span>
+        {{ if gt .NetworkStartTs 0 }}
+          <small id="networkStart" data-toggle="tooltip" title="Genesis Time" class="text-muted d-none" aria-ethereum-date-format="ff" aria-ethereum-date="{{ .NetworkStartTs }}"></small>
+        {{ end }}
+      </h6>
+      <div class="align-self-center text-center">
+        {{ if eq .NetworkStartTs 0 }}
+          <div>
+            <strong>Waiting on min genesis time announcement</strong>
+          </div>
+        {{ else }}
+          {{ if gt .ValidatorsRemaining 0.0 }}
+            <div id="minGenesis">
+              <strong data-toggle="tooltip" title="Earliest possible Genesis Time." class="" aria-ethereum-date-format="ff" aria-ethereum-date="{{ .MinGenesisTime }}"></strong>
+            </div>
+            <div id="minGenesisAnd"><span>and</span></div>
+          {{ end }}
+          <div>
+            <strong id="clock">
+              <span data-toggle="tooltip" title="Estimated Genesis Time. This time may vary until the deposit threshold is reached."><span aria-ethereum-date-format="ff" aria-ethereum-date="{{ .NetworkStartTs }}"></span> ({{ .NetworkStartTs | formatTsWithoutTooltip }})</span>
+            </strong>
+          </div>
+        {{ end }}
+      </div>
+    </div>
+  </div>
+{{ end }}

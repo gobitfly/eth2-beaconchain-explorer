@@ -1,19 +1,18 @@
-{{ define "js"}}
-    <script src="/js/highcharts/highstock.min.js"></script>
-    <script src="/js/highcharts/exporting.min.js"></script>
-    <script src="/js/highcharts/offline-exporting.min.js"></script>
-    <script src="/js/vue.min.js"></script>
-    <script src="/js/highcharts/highcharts-vue.min.js"></script>
-    <script src="/js/highcharts/highcharts-global-options.js"></script>
-    <script src="/js/requestInterval.js"></script>
+{{ define "js" }}
+  <script src="/js/highcharts/highstock.min.js"></script>
+  <script src="/js/highcharts/exporting.min.js"></script>
+  <script src="/js/highcharts/offline-exporting.min.js"></script>
+  <script src="/js/vue.min.js"></script>
+  <script src="/js/highcharts/highcharts-vue.min.js"></script>
+  <script src="/js/highcharts/highcharts-global-options.js"></script>
+  <script src="/js/requestInterval.js"></script>
 
-    <!-- <script type="text/javascript" src="js/slick.min.js"></script> -->
-    <!-- <script type="text/javascript" src="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script> -->
+  <!-- <script type="text/javascript" src="js/slick.min.js"></script> -->
+  <!-- <script type="text/javascript" src="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script> -->
 
-
-    {{ if .GenesisPeriod }}
-        <script src="/js/d3.min.js"></script>
-    {{ end }}
+  {{ if .GenesisPeriod }}
+    <script src="/js/d3.min.js"></script>
+  {{ end }}
     <script>
         var app = new Vue({
             el: '#app',
@@ -187,195 +186,196 @@
             }
         })
 </script>
-{{end}}
+{{ end }}
 
-{{ define "css"}}
+{{ define "css" }}
 
-    <!-- <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css"/>
+  <!-- <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css"/>
     <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css"/> -->
 
-    {{ if .GenesisPeriod }}
-        <link rel="stylesheet" href="/css/checklist.css">
-        <link rel="stylesheet" href="/css/rocket.css">
-    {{end}}
-    
-    <style>
-        .hero-container {
-            position: relative;
-            min-height: 250px;
-            width: 100%;
-            display: flex;
-            flex-direction: row-reverse;
-            align-items: center;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 1rem;
-            margin-top: 1rem;
-        }
+  {{ if .GenesisPeriod }}
+    <link rel="stylesheet" href="/css/checklist.css" />
+    <link rel="stylesheet" href="/css/rocket.css" />
+  {{ end }}
 
-        .hero-image {
-            overflow: hidden;
-            flex: 1;
-            max-width: 500px;
-            min-width: 320px;
-            max-height: 400px;
-            min-height: 200px;
-            position: relative;
-        }
 
-        .hero-image svg {
-            overflow: hidden;
-            width: inherit;
-            height: inherit;
-        }
+  <style>
+    .hero-container {
+      position: relative;
+      min-height: 250px;
+      width: 100%;
+      display: flex;
+      flex-direction: row-reverse;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      margin-top: 1rem;
+    }
 
-        .hero-text {
-            font-size: 2rem;
-            flex: 1;
-            min-width: 305px;
-            max-width: 500px;
-            position: relative;
-        }
+    .hero-image {
+      overflow: hidden;
+      flex: 1;
+      max-width: 500px;
+      min-width: 320px;
+      max-height: 400px;
+      min-height: 200px;
+      position: relative;
+    }
 
-        .hero-text-background {
-            position: absolute;
-            width: 100%;
-            height: 98%;
-            /* bottom: -40%; */
-            /* transform: scale(.5) translateY(20%); */
-            border-radius: 65% 35% 70% 30% / 50% 50% 50% 50%;
-            background-image: var(--linear-gradient);
-            box-shadow: 5px 15px 30px var(--shadow-light);
-            z-index: -50;
-            -webkit-animation: slide-bottom 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
-            animation: slide-bottom 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
-            opacity: .6;
-        }
+    .hero-image svg {
+      overflow: hidden;
+      width: inherit;
+      height: inherit;
+    }
 
-        /* ----------------------------------------------
+    .hero-text {
+      font-size: 2rem;
+      flex: 1;
+      min-width: 305px;
+      max-width: 500px;
+      position: relative;
+    }
+
+    .hero-text-background {
+      position: absolute;
+      width: 100%;
+      height: 98%;
+      /* bottom: -40%; */
+      /* transform: scale(.5) translateY(20%); */
+      border-radius: 65% 35% 70% 30% / 50% 50% 50% 50%;
+      background-image: var(--linear-gradient);
+      box-shadow: 5px 15px 30px var(--shadow-light);
+      z-index: -50;
+      -webkit-animation: slide-bottom 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+      animation: slide-bottom 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+      opacity: 0.6;
+    }
+
+    /* ----------------------------------------------
              * Generated by Animista on 2020-5-27 13:15:6
              * Licensed under FreeBSD License.
              * See http://animista.net/license for more info.
              * w: http://animista.net, t: @cssanimista
              * ---------------------------------------------- */
-        @-webkit-keyframes slide-bottom {
-            0% {
-                -webkit-transform: translateY(0);
-                transform: translateY(0);
-            }
+    @-webkit-keyframes slide-bottom {
+      0% {
+        -webkit-transform: translateY(0);
+        transform: translateY(0);
+      }
 
-            100% {
-                -webkit-transform: scale(1) translateY(25%);
-                transform: scale(1) translateY(25%);
-            }
-        }
+      100% {
+        -webkit-transform: scale(1) translateY(25%);
+        transform: scale(1) translateY(25%);
+      }
+    }
 
-        @keyframes slide-bottom {
-            0% {
-                -webkit-transform: translateY(0);
-                transform: translateY(0);
-            }
+    @keyframes slide-bottom {
+      0% {
+        -webkit-transform: translateY(0);
+        transform: translateY(0);
+      }
 
-            100% {
-                -webkit-transform: scale(1) translateY(25%);
-                transform: scale(1) translateY(25%);
-            }
-        }
+      100% {
+        -webkit-transform: scale(1) translateY(25%);
+        transform: scale(1) translateY(25%);
+      }
+    }
 
+    @media (max-width: 1140px) {
+      .hero-text-background {
+        animation: none;
+        transform: scale(1) translateY(1.5rem);
+        height: calc(100% - 1.5rem);
+        border-radius: 0.5rem;
+        opacity: 0.8;
+      }
 
-        @media (max-width: 1140px) {
-            .hero-text-background {
-                animation: none;
-                transform: scale(1) translateY(1.5rem);
-                height: calc(100% - 1.5rem);
-                border-radius: .5rem;
-                opacity: .8
-            }
+      .hero-container {
+        margin-bottom: 50px;
+      }
+    }
 
-            .hero-container {
-                margin-bottom: 50px;
-            }
-        }
+    @media (max-width: 960px) {
+      .hero-image {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+      }
 
-        @media (max-width: 960px) {
-            .hero-image {
-                position: absolute;
-                width: 100%;
-                height: 100%;
-            }
+      .hero-container {
+        flex-wrap: nowrap;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
 
-            .hero-container {
-                flex-wrap: nowrap;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-            }
+      .hero-text {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+      }
 
-            .hero-text {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                flex-direction: column;
-            }
+      .hero-image svg {
+        opacity: 0.2;
+      }
 
-            .hero-image svg {
-                opacity: 0.2;
-            }
+      .hero-text-background {
+        transform: scale(1) translateY(10%);
+        animation: none;
+        opacity: 0.1;
+      }
+    }
 
-            .hero-text-background {
-                transform: scale(1) translateY(10%);
-                animation: none;
-                opacity: .1;
-            }
-        }
+    @media (max-width: 960px) {
+      .index-stats {
+        font-size: 0.9rem;
+      }
 
-        @media (max-width: 960px) {
-            .index-stats {
-                font-size: .9rem;
-            }
+      .index-stats h5,
+      .card-title {
+        font-size: 1rem !important;
+      }
+    }
 
-            .index-stats h5, .card-title {
-                font-size: 1rem !important;
-            }
-        }
+    [v-cloak] {
+      visibility: hidden;
+    }
 
-        [v-cloak] {
-            visibility: hidden;
-        }
+    .responsive-border-right {
+      border-right-color: rgb(222, 226, 230);
+      border-right-style: solid;
+      border-right-width: 1px;
+    }
 
-        .responsive-border-right {
-            border-right-color: rgb(222, 226, 230);
-            border-right-style: solid;
-            border-right-width: 1px;
-        }
+    @media (max-width: 767px) {
+      .responsive-border-right-l {
+        border: hidden;
+      }
+    }
+  </style>
+{{ end }}
 
-        @media (max-width: 767px) {
-            .responsive-border-right-l {
-                border: hidden;
-            }
-        }
-    </style>
-{{end}}
-
-{{ define "content"}}
-        <div class="container mt-2">
-            <div id="app" v-cloak>
-                {{with .Data}}
-                    {{if and (and (not .ShowSyncingMessage) .Genesis) (not .GenesisPeriod)}}
-                        {{ template "participationWarning" .}}
-                    {{end}}
-                    {{ template "hero" . }}
-                {{end}}
-                {{if not .NoAds}} {{template "banner"}} {{end}}
-                {{with .Data}}
-                    {{ if and (not .Genesis) (not .GenesisPeriod) }}
-                        {{ template "preGenesis" $}}
-                    {{ else if .GenesisPeriod}}
-                        {{template "genesis" .}}
-                    {{else}}
-                        {{template "postGenesis" .}}
-                    {{end}}
-                {{end}}
-            </div>
-        </div>
-{{end}}
+{{ define "content" }}
+  <div class="container mt-2">
+    <div id="app" v-cloak>
+      {{ with .Data }}
+        {{ if and (and (not .ShowSyncingMessage) .Genesis) (not .GenesisPeriod) }}
+          {{ template "participationWarning" . }}
+        {{ end }}
+        {{ template "hero" . }}
+      {{ end }}
+      {{ if not .NoAds }}{{ template "banner" }}{{ end }}
+      {{ with .Data }}
+        {{ if and (not .Genesis) (not .GenesisPeriod) }}
+          {{ template "preGenesis" $ }}
+        {{ else if .GenesisPeriod }}
+          {{ template "genesis" . }}
+        {{ else }}
+          {{ template "postGenesis" . }}
+        {{ end }}
+      {{ end }}
+    </div>
+  </div>
+{{ end }}

@@ -19,5 +19,5 @@ docker-compose-private.yml
 static/bundle/css
 static/bundle/js
 docs
-
+node_modules
 .vscode

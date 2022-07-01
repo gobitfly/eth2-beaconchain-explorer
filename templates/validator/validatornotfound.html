@@ -1,32 +1,30 @@
-{{ define "js"}}
-{{end}}
+{{ define "js" }}
+{{ end }}
 
-{{ define "css"}}
-{{end}}
+{{ define "css" }}
+{{ end }}
 
-{{ define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-            <div class="my-3">
-                <div class="d-md-flex py-2 justify-content-md-between">
-                    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-thumbs-up mr-2"></i>Validator not found</h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                            <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Validator details</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-1">Sorry, but we could not find the validator you are looking for.</div>
-                    <div class="d-1">Stay calm, depending on the gas price of the transaction, <a
-                                href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">it may still be in
-                            the mempool.</a></div>
-                </div>
-            </div>
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-thumbs-up mr-2"></i>Validator not found</h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+              <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Validator details</li>
+            </ol>
+          </nav>
         </div>
-    {{end}}
-{{end}}
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="d-1">Sorry, but we could not find the validator you are looking for.</div>
+          <div class="d-1">Stay calm, depending on the gas price of the transaction, <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">it may still be in the mempool.</a></div>
+        </div>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

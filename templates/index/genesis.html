@@ -1,66 +1,67 @@
 {{ define "genesis" }}
-<div class="row pt-3">
-  <div class="col-lg-5 my-2">{{ template "depositProgress" .}}</div>
-  <div class="col-lg-2 my-2"></div>
-  <div class="col-lg-5 my-2">{{ template "genesisCountdown" .}}</div>
-</div>
-<div style="position:relative" class="card mt-3 index-stats">
-  <div class="card-header pt-3">
-    <div class="row">
-      {{ template "networkStats" }}
-    </div>
+  <div class="row pt-3">
+    <div class="col-lg-5 my-2">{{ template "depositProgress" . }}</div>
+    <div class="col-lg-2 my-2"></div>
+    <div class="col-lg-5 my-2">{{ template "genesisCountdown" . }}</div>
   </div>
-  <div class="card-body">
-    <div class="row">
-      <div class="col-lg-12">
-        <div id="checklist"></div>
-        <h5 class="my-3">Genesis Checklist</h5>
-        <div class="checklists d-flex justify-content-center flex-wrap">
-          <div class="d-flex justify-content-around flex-wrap">
-            <div class="checklist">
-              <h6 class="{{if eq .CurrentEpoch 0}}text-primary{{end}}">Epoch 0</h6>
-              <div class="genesis-checklist">
-                <input id="01" type="checkbox" name="r" value="1" disabled>
-                <label for="01">First Block Proposed</label>
-                <input id="02" type="checkbox" name="r" value="2" disabled>
-                <label for="02">Participation > 2/3</label>
+  <div style="position:relative" class="card mt-3 index-stats">
+    <div class="card-header pt-3">
+      <div class="row">
+        {{ template "networkStats" }}
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-lg-12">
+          <div id="checklist"></div>
+          <h5 class="my-3">Genesis Checklist</h5>
+          <div class="checklists d-flex justify-content-center flex-wrap">
+            <div class="d-flex justify-content-around flex-wrap">
+              <div class="checklist">
+                <h6 class="{{ if eq .CurrentEpoch 0 }}text-primary{{ end }}">Epoch 0</h6>
+                <div class="genesis-checklist">
+                  <input id="01" type="checkbox" name="r" value="1" disabled />
+                  <label for="01">First Block Proposed</label>
+                  <input id="02" type="checkbox" name="r" value="2" disabled />
+                  <label for="02">Participation > 2/3</label>
+                </div>
+              </div>
+              <div class="checklist">
+                <h6 class="{{ if eq .CurrentEpoch 1 }}text-primary{{ end }}">Epoch 1</h6>
+                <div class="genesis-checklist">
+                  <input id="03" type="checkbox" name="r" value="3" disabled />
+                  <label for="03">First Block Proposed</label>
+                  <input id="04" type="checkbox" name="r" value="4" disabled />
+                  <label for="04">Participation > 2/3</label>
+                </div>
               </div>
             </div>
-            <div class="checklist">
-              <h6 class="{{if eq .CurrentEpoch 1}}text-primary{{end}}">Epoch 1</h6>
-              <div class="genesis-checklist">
-                <input id="03" type="checkbox" name="r" value="3" disabled>
-                <label for="03">First Block Proposed</label>
-                <input id="04" type="checkbox" name="r" value="4" disabled>
-                <label for="04">Participation > 2/3</label>
-              </div>
-            </div>
-          </div>
-          <div class="d-flex justify-content-around flex-wrap">
-            <div class="checklist">
-              <h6 class="{{if eq .CurrentEpoch 2}}text-primary{{end}}">Epoch 2</h6>
-              <div class="genesis-checklist">
-                <!-- <input id="05" type="checkbox" name="r" value="5">
+            <div class="d-flex justify-content-around flex-wrap">
+              <div class="checklist">
+                <h6 class="{{ if eq .CurrentEpoch 2 }}text-primary{{ end }}">Epoch 2</h6>
+                <div class="genesis-checklist">
+                  <!-- <input id="05" type="checkbox" name="r" value="5">
                   <label for="05">First Block Proposed</label> -->
-                <input id="06" type="checkbox" name="r" value="6" disabled>
-                <label for="06">Participation > 2/3</label>
-                <!-- <input id="07" type="checkbox" name="r" value="7" disabled>
+                  <input id="06" type="checkbox" name="r" value="6" disabled />
+                  <label for="06">Participation > 2/3</label>
+                  <!-- <input id="07" type="checkbox" name="r" value="7" disabled>
                 <label for="07">Epoch 1 finalized</label> -->
-                <input id="08" type="checkbox" name="r" value="8" disabled>
-                <label for="08">Epoch 2 justified</label>
+                  <input id="08" type="checkbox" name="r" value="8" disabled />
+                  <label for="08">Epoch 2 justified</label>
+                </div>
               </div>
-            </div>
-            <div class="checklist">
-              <h6 class="{{if eq .CurrentEpoch 3}}text-primary{{end}}">Epoch 3</h6>
-              <div class="genesis-checklist">
-                <!-- <input id="09" type="checkbox" name="r" value="9">
+              <div class="checklist">
+                <h6 class="{{ if eq .CurrentEpoch 3 }}text-primary{{ end }}">Epoch 3</h6>
+                <div class="genesis-checklist">
+                  <!-- <input id="09" type="checkbox" name="r" value="9">
                   <label for="09">First Block Proposed</label> -->
-                <input id="10" type="checkbox" name="r" value="10" disabled>
-                <label for="10">Participation > 2/3</label>
-                <input id="11" type="checkbox" name="r" value="11" disabled>
-                <label for="11">Epoch 1 finalized</label>
-                <input id="12" type="checkbox" name="r" value="12" disabled>
-                <label for="12">Epoch 3 justified</label>
+                  <input id="10" type="checkbox" name="r" value="10" disabled />
+                  <label for="10">Participation > 2/3</label>
+                  <input id="11" type="checkbox" name="r" value="11" disabled />
+                  <label for="11">Epoch 1 finalized</label>
+                  <input id="12" type="checkbox" name="r" value="12" disabled />
+                  <label for="12">Epoch 3 justified</label>
+                </div>
               </div>
             </div>
           </div>
@@ -68,406 +69,394 @@
       </div>
     </div>
   </div>
-</div>
-<div class="row">
-  <div class="col-lg-6 mt-3 pr-lg-2">
-    {{template "recentEpochs"}}
+  <div class="row">
+    <div class="col-lg-6 mt-3 pr-lg-2">
+      {{ template "recentEpochs" }}
+    </div>
+    <div class="col-lg-6 mt-3 pl-lg-2">
+      {{ template "recentBlocks" }}
+    </div>
   </div>
-  <div class="col-lg-6 mt-3 pl-lg-2">
-    {{ template "recentBlocks"}}
-  </div>
-</div>
-<script>
-  var defaultEpoch = '{ "epoch": 0, "finalized": false, "justified": false, "previousjustified": false, "participation": 0, "slots": [{ "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }] }'
-  // set the default
+  <script>
+    var defaultEpoch =
+      '{ "epoch": 0, "finalized": false, "justified": false, "previousjustified": false, "participation": 0, "slots": [{ "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }] }'
+    // set the default
 
-  var epoch0 = JSON.parse(defaultEpoch)
-  var epoch1 = JSON.parse(defaultEpoch)
-  var epoch2 = JSON.parse(defaultEpoch)
-  var epoch3 = JSON.parse(defaultEpoch)
+    var epoch0 = JSON.parse(defaultEpoch)
+    var epoch1 = JSON.parse(defaultEpoch)
+    var epoch2 = JSON.parse(defaultEpoch)
+    var epoch3 = JSON.parse(defaultEpoch)
 
+    var epochs = [epoch0, epoch1, epoch2, epoch3]
+    epochs[1].epoch = 1
+    epochs[2].epoch = 2
+    epochs[3].epoch = 3
 
-  var epochs = [epoch0, epoch1, epoch2, epoch3]
-  epochs[1].epoch = 1
-  epochs[2].epoch = 2
-  epochs[3].epoch = 3
+    // epochs[0].participation = 65.9
+    // epochs[0].slots[0].status = "proposed"
+    // epochs[1].slots[0].status = "missed"
+    // epochs[0].slots[1].active = true
 
-  // epochs[0].participation = 65.9
-  // epochs[0].slots[0].status = "proposed"
-  // epochs[1].slots[0].status = "missed"
-  // epochs[0].slots[1].active = true
-  
+    document.addEventListener("DOMContentLoaded", function () {
+      /// Chat Dimensions
+      var margin = { top: 20, right: 30, bottom: 0, left: 30 }
+      var width = document.getElementById("checklist").clientWidth
+      var height = 100 + margin.top + margin.bottom + epochs.length * 50
 
+      var reveal = (path) =>
+        path
+          .transition()
+          .duration(750)
+          .ease(d3.easeLinear)
+          .attrTween("width", function () {
+            var width = this.width.baseVal.value
+            return d3.interpolate(0, width)
+          })
 
-  document.addEventListener('DOMContentLoaded', function () {
+      roma = ["#ff3333", "#cc3333", "#33cc33"]
 
-    /// Chat Dimensions
-    var margin = { top: 20, right: 30, bottom: 0, left: 30 }
-    var width = document.getElementById('checklist').clientWidth
-    var height = 100 + margin.top + margin.bottom + epochs.length * 50
+      // define a color interpolation that turnes green over 66%
+      var color = d3.scaleSequential().domain([0, 99]).interpolator(d3.interpolateDiscrete(roma))
 
+      var colorProposed = d3.scaleSequential().domain([0, 12]).interpolator(d3.interpolateRgb("rgba(100, 200, 100, 1)", "rgba(100, 200, 100, 0.3)"))
 
+      // Chart Svg
+      var svg = d3.select("#checklist").append("svg").attr("viewBox", [0, 0, width, height]).attr("style", `max-width: ${width}px; font: 10px sans-serif;`)
 
-    var reveal = path => path.transition()
-      .duration(750)
-      .ease(d3.easeLinear)
-      .attrTween("width", function () {
-        var width = this.width.baseVal.value
-        return d3.interpolate(0, width);
-      })
+      // Define X axis
+      var x = d3
+        .scaleLinear()
+        .domain([0, 32])
+        .range([margin.left, width - margin.right])
+        .interpolate(d3.interpolateRound)
 
-    roma = [
-      "#ff3333",
-      "#cc3333",
-      "#33cc33",
-    ]
+      var participationX = d3
+        .scaleLinear()
+        .domain([0, 100])
+        .range([margin.left, width - margin.right])
+        .interpolate(d3.interpolateRound)
+      // define Y axis
+      var y = d3
+        .scaleBand()
+        .domain(epochs.map((d) => d.epoch))
+        .range([margin.top, height - margin.bottom])
+        .padding(0.1)
 
-    // define a color interpolation that turnes green over 66%
-    var color = d3.scaleSequential()
-      .domain([0, 99])
-      .interpolator(d3.interpolateDiscrete(roma))
+      var gx = svg
+        .append("g")
+        .attr("transform", `translate(0,${margin.top})`)
+        .call(d3.axisTop(x))
+        .call((g) => g.select(".domain").remove())
 
-    var colorProposed = d3.scaleSequential()
-      .domain([0, 12])
-      .interpolator(d3.interpolateRgb("rgba(100, 200, 100, 1)", "rgba(100, 200, 100, 0.3)"))
+      var gy = svg
+        .append("g")
+        .attr("transform", `translate(${margin.left}, 0)`)
+        .call(d3.axisLeft(y))
+        .call((g) => g.selectAll("line").remove())
+        .call((g) => g.select(".domain").remove())
 
-    // Chart Svg
-    var svg = d3.select("#checklist").append("svg")
-      .attr("viewBox", [0, 0, width, height])
-      .attr("style", `max-width: ${ width }px; font: 10px sans-serif;`)
+      var yAxis = (g, x) =>
+        g
+          .attr("transform", `translate(${margin.left}, 0)`)
+          .call(d3.axisLeft(x))
+          .call((g) => g.selectAll("line").remove())
+          .call((g) => g.select(".domain").remove())
 
-    // Define X axis
-    var x = d3.scaleLinear()
-      .domain([0, 32])
-      .range([margin.left, width - margin.right])
-      .interpolate(d3.interpolateRound)
-
-    var participationX = d3.scaleLinear()
-      .domain([0, 100])
-      .range([margin.left, width - margin.right])
-      .interpolate(d3.interpolateRound)
-    // define Y axis
-    var y = d3.scaleBand()
-      .domain(epochs.map(d => d.epoch))
-      .range([margin.top, height - margin.bottom])
-      .padding(0.1)
-
-    var gx = svg.append("g")
-      .attr("transform", `translate(0,${ margin.top })`)
-      .call(d3.axisTop(x))
-      .call(g => g.select(".domain").remove())
-
-    var gy = svg.append("g")
-      .attr("transform", `translate(${ margin.left }, 0)`)
-      .call(d3.axisLeft(y))
-      .call(g => g.selectAll('line').remove())
-      .call(g => g.select(".domain").remove())
-
-    var yAxis = (g, x) => g
-      .attr("transform", `translate(${ margin.left }, 0)`)
-      .call(d3.axisLeft(x))
-      .call(g => g.selectAll('line').remove())
-      .call(g => g.select(".domain").remove())
-
-
-
-    var bars = svg.append("g")
-      .selectAll("rect")
-      .data(epochs, d => d)
-      .join(
-        enter => enter.append("rect"),
-        update => update,
-        exit => exit.remove()
-      )
-      // .call(reveal)
-      .attr("id", ({ epoch, participation }) => epoch)
-      .attr("fill", ({ participation }) => color(participation))
-      .attr("y", ({ epoch }) => y(epoch) + (y.bandwidth() / 2) + ((width - margin.right - margin.left) / 48))
-      .attr("x", x(0))
-      .attr("width", ({ participation }) => participationX(participation) - participationX(0))
-      .attr("height", "10")
-      .attr('data-original-title', (d, i) => `epoch ${ i } participation ${ d.participation }%`)
-      .attr('data-toggle', "tooltip")
-
-    var barLabels = svg.append('g')
-      .attr('text-anchor', "end")
-      .attr("transform", `translate(6, 5)`)
-      .selectAll('text')
-      .data(epochs, d => d)
-      .join('text')
-      .attr('fill', d => `${ d3.lab(color(d.participation)).l < 60 ? "white" : "black" }`)
-      .attr('y', d => y(d.epoch) + (y.bandwidth() / 2) + ((width - margin.right - margin.left) / 48))
-      .attr('x', d => participationX(d.participation) - x(0))
-      .attr('dy', '0.35em')
-      .attr('style', 'font-size: .7rem')
-      .text((d) => {
-        if (d.participation) {
-          var txt = d.justified ? (d.finalized ? 'finalized' : 'justified') : '' 
-          return txt + ' ' + d.participation + '%'
-        } else {
-          return ''
-        }
-      })
-
-
-    var heatmaps = svg.append("g")
-      .attr("text-anchor", "middle")
-      .selectAll("g")
-      .data(epochs, d => d.epoch)
-      .join('g')
-      .attr("transform", ({ epoch }) => `translate(0, ${ y(epoch) })`)
-
-
-    var slots = heatmaps.selectAll('g rect')
-      .data(d => d.slots)
-      .join('rect')
-
-    slots
-      .attr('x', (d, i) => x(i))
-      .attr('y', (d, i) => (y.bandwidth() / 2) - 7.5)
-      .attr('class', (s, i) => {
-        if (s.active) {
-          return 'active-slot'
-        } else {
-          return ""
-        }
-      })
-      .attr("data-original-title", (s, i) => {
-        if (s.active) {
-          return `current slot`
-        }
-        if (s.status === "proposed" && s.delay) {
-          return `slot: ${ i } proposed in ${ s.delay }s`
-        } else if (s.status === "proposed") {
-          return `slot: ${ i } status: ${ s.status }`
-        }
-        if (s.status !== "scheduled") {
-          return `slot: ${ i } status: ${ s.status }`
-        } else {
-          return `slot: ${ i }`
-        }
-      })
-      // .attr("data-toggle", (s, i) => s.status !== "scheduled" || s.active ? "tooltip" : "")
-      .attr("data-toggle", (s, i) => "tooltip")
-      .attr('stroke-width', '.5')
-      .attr('stroke', (d) => d.active ? 'var(--body-color)' : 'transparent')
-      .attr('width', d => (width - margin.right - margin.left) / 48)
-      .attr('height', d => (width - margin.right - margin.left) / 48)
-      .attr("rx", "1")
-      .attr("ry", "1")
-      .attr("fill", (d) => {
-        if (d.status === "missed") {
-          return "rgba(200,100,100,0.8)"
-        } else if (d.status === "proposed") {
-          if (d.delay) {
-            return colorProposed(d.delay)
-          } else {
-            return colorProposed(1)
-          }
-        } else if (d.status === "orphaned") {
-          return "rgba(100,100, 200, 0.8)"
-        } else if (d.status === "genesis") {
-          return "rgba(119, 110, 255, 0.8)"
-        } else {
-          return "rgba(100,100,100, 0.5)"
-        }
-      })
-
-
-    var chart = Object.assign(svg.node(), {
-      update(newData) {
-        var t = svg.transition().duration(550)
-
-
-        // svg = svg.attr('viewBox', `0 0 ${ width } ${ height }`)
-        // y = y.domain(newData.map(d => d.epoch)).range([margin.top, height - margin.bottom])
-        // gy.transition(t)
-        //   .call(yAxis, y)
-
-        bars = bars
-        .data(newData, d => d.epoch)
+      var bars = svg
+        .append("g")
+        .selectAll("rect")
+        .data(epochs, (d) => d)
         .join(
-          enter => enter.append("rect"),
-          update => update,
-          exit => exit.remove()
+          (enter) => enter.append("rect"),
+          (update) => update,
+          (exit) => exit.remove()
         )
-        .call(bar => bar.transition(t)
-          .attr("width", ({ participation }) => participationX(participation) - participationX(0))
-          .attr("fill", ({ participation }) => color(participation))
-          )
-          .attr('data-original-title', (d, i) => `epoch ${ i } participation ${ d.participation }%`)
+        // .call(reveal)
+        .attr("id", ({ epoch, participation }) => epoch)
+        .attr("fill", ({ participation }) => color(participation))
+        .attr("y", ({ epoch }) => y(epoch) + y.bandwidth() / 2 + (width - margin.right - margin.left) / 48)
+        .attr("x", x(0))
+        .attr("width", ({ participation }) => participationX(participation) - participationX(0))
+        .attr("height", "10")
+        .attr("data-original-title", (d, i) => `epoch ${i} participation ${d.participation}%`)
+        .attr("data-toggle", "tooltip")
 
-
-        barLabels = barLabels
-        .data(newData, d => d.epoch)
-        .join('text')
-        .attr('fill', d => `${ d3.lab(color(d.participation)).l < 60 ? "white" : "black" }`)
-        .attr('x', d => participationX(d.participation) - x(0))
+      var barLabels = svg
+        .append("g")
+        .attr("text-anchor", "end")
+        .attr("transform", `translate(6, 5)`)
+        .selectAll("text")
+        .data(epochs, (d) => d)
+        .join("text")
+        .attr("fill", (d) => `${d3.lab(color(d.participation)).l < 60 ? "white" : "black"}`)
+        .attr("y", (d) => y(d.epoch) + y.bandwidth() / 2 + (width - margin.right - margin.left) / 48)
+        .attr("x", (d) => participationX(d.participation) - x(0))
+        .attr("dy", "0.35em")
+        .attr("style", "font-size: .7rem")
         .text((d) => {
           if (d.participation) {
-            var txt = d.justified ? (d.finalized ? 'finalized' : 'justified') : '' 
-            return txt + ' ' + d.participation + '%'
+            var txt = d.justified ? (d.finalized ? "finalized" : "justified") : ""
+            return txt + " " + d.participation + "%"
           } else {
-            return ''
+            return ""
           }
+        })
+
+      var heatmaps = svg
+        .append("g")
+        .attr("text-anchor", "middle")
+        .selectAll("g")
+        .data(epochs, (d) => d.epoch)
+        .join("g")
+        .attr("transform", ({ epoch }) => `translate(0, ${y(epoch)})`)
+
+      var slots = heatmaps
+        .selectAll("g rect")
+        .data((d) => d.slots)
+        .join("rect")
+
+      slots
+        .attr("x", (d, i) => x(i))
+        .attr("y", (d, i) => y.bandwidth() / 2 - 7.5)
+        .attr("class", (s, i) => {
+          if (s.active) {
+            return "active-slot"
+          } else {
+            return ""
+          }
+        })
+        .attr("data-original-title", (s, i) => {
+          if (s.active) {
+            return `current slot`
+          }
+          if (s.status === "proposed" && s.delay) {
+            return `slot: ${i} proposed in ${s.delay}s`
+          } else if (s.status === "proposed") {
+            return `slot: ${i} status: ${s.status}`
+          }
+          if (s.status !== "scheduled") {
+            return `slot: ${i} status: ${s.status}`
+          } else {
+            return `slot: ${i}`
+          }
+        })
+        // .attr("data-toggle", (s, i) => s.status !== "scheduled" || s.active ? "tooltip" : "")
+        .attr("data-toggle", (s, i) => "tooltip")
+        .attr("stroke-width", ".5")
+        .attr("stroke", (d) => (d.active ? "var(--body-color)" : "transparent"))
+        .attr("width", (d) => (width - margin.right - margin.left) / 48)
+        .attr("height", (d) => (width - margin.right - margin.left) / 48)
+        .attr("rx", "1")
+        .attr("ry", "1")
+        .attr("fill", (d) => {
+          if (d.status === "missed") {
+            return "rgba(200,100,100,0.8)"
+          } else if (d.status === "proposed") {
+            if (d.delay) {
+              return colorProposed(d.delay)
+            } else {
+              return colorProposed(1)
+            }
+          } else if (d.status === "orphaned") {
+            return "rgba(100,100, 200, 0.8)"
+          } else if (d.status === "genesis") {
+            return "rgba(119, 110, 255, 0.8)"
+          } else {
+            return "rgba(100,100,100, 0.5)"
+          }
+        })
+
+      var chart = Object.assign(svg.node(), {
+        update(newData) {
+          var t = svg.transition().duration(550)
+
+          // svg = svg.attr('viewBox', `0 0 ${ width } ${ height }`)
+          // y = y.domain(newData.map(d => d.epoch)).range([margin.top, height - margin.bottom])
+          // gy.transition(t)
+          //   .call(yAxis, y)
+
+          bars = bars
+            .data(newData, (d) => d.epoch)
+            .join(
+              (enter) => enter.append("rect"),
+              (update) => update,
+              (exit) => exit.remove()
+            )
+            .call((bar) =>
+              bar
+                .transition(t)
+                .attr("width", ({ participation }) => participationX(participation) - participationX(0))
+                .attr("fill", ({ participation }) => color(participation))
+            )
+            .attr("data-original-title", (d, i) => `epoch ${i} participation ${d.participation}%`)
+
+          barLabels = barLabels
+            .data(newData, (d) => d.epoch)
+            .join("text")
+            .attr("fill", (d) => `${d3.lab(color(d.participation)).l < 60 ? "white" : "black"}`)
+            .attr("x", (d) => participationX(d.participation) - x(0))
+            .text((d) => {
+              if (d.participation) {
+                var txt = d.justified ? (d.finalized ? "finalized" : "justified") : ""
+                return txt + " " + d.participation + "%"
+              } else {
+                return ""
+              }
+            })
+          heatmaps = heatmaps
+            .data(epochs, (d) => d.epoch)
+            .join("g")
+            .attr("transform", ({ epoch }) => `translate(0, ${y(epoch)})`)
+
+          slots = slots
+            .data((d) => d.slots)
+            .join(
+              (enter) => enter.append("rect"),
+              (update) => {
+                // var t = svg.transition().duration(550)
+
+                return update.call((rect) =>
+                  rect //.transition(t)
+                    .attr("stroke", (d) => (d.active ? "var(--body-color)" : "transparent"))
+                    .attr("fill", (d) => {
+                      if (d.status === "missed") {
+                        return "rgba(200,100,100,0.8)"
+                      } else if (d.status === "proposed") {
+                        if (d.delay) {
+                          return colorProposed(d.delay)
+                        } else {
+                          return colorProposed(1)
+                        }
+                      } else if (d.status === "orphaned") {
+                        return "rgba(100,100, 200, 0.8)"
+                      } else if (d.status === "genesis") {
+                        return "rgba(196, 174, 77, 0.8)"
+                      } else {
+                        return "rgba(100,100,100, 0.5)"
+                      }
+                    })
+                )
+              },
+              (exit) => exit.remove()
+            )
+            .attr("class", (s, i) => {
+              if (s.active) {
+                return "active-slot"
+              } else {
+                return ""
+              }
+            })
+            .attr("data-original-title", (s, i) => {
+              if (s.active) {
+                return `current slot`
+              }
+              if (s.status === "proposed" && s.delay) {
+                return `slot: ${i} proposed in ${s.delay}s`
+              } else if (s.status === "proposed") {
+                return `slot: ${i} status: ${s.status}`
+              }
+              if (s.status !== "scheduled") {
+                return `slot: ${i} status: ${s.status}`
+              } else {
+                return `slot: ${i}`
+              }
+            })
+        },
       })
-        heatmaps = heatmaps
-          .data(epochs, d => d.epoch)
-          .join('g')
-          .attr("transform", ({ epoch }) => `translate(0, ${ y(epoch) })`)
-        
-        slots = slots
-          .data(d => d.slots)
-          .join(
-            enter => enter.append('rect'),
-            update => {
-              // var t = svg.transition().duration(550)
 
-              return update
-              .call(rect => rect //.transition(t)
-                .attr('stroke', (d) => d.active ? 'var(--body-color)' : 'transparent')
-                .attr("fill", (d) => {
-                  if (d.status === "missed") {
-                    return "rgba(200,100,100,0.8)"
-                  } else if (d.status === "proposed") {
-                    if (d.delay) {
-                      return colorProposed(d.delay)
-                    } else {
-                      return colorProposed(1)
-                    }
-                  } else if (d.status === "orphaned") {
-                    return "rgba(100,100, 200, 0.8)"
-                  } else if (d.status === "genesis") {
-                    return "rgba(196, 174, 77, 0.8)"
-                  } else {
-                    return "rgba(100,100,100, 0.5)"
-                  }
-                })
-              )
-            },
-            exit => exit.remove(),
-          )
-          .attr('class', (s, i) => {
-            if (s.active) {
-              return 'active-slot'
-            } else {
-              return ""
-            }
-          })
-          .attr("data-original-title", (s, i) => {
-            if (s.active) {
-              return `current slot`
-            }
-            if (s.status === "proposed" && s.delay) {
-              return `slot: ${ i } proposed in ${ s.delay }s`
-            } else if (s.status === "proposed") {
-              return `slot: ${ i } status: ${ s.status }`
-            }
-            if (s.status !== "scheduled") {
-              return `slot: ${ i } status: ${ s.status }`
-            } else {
-              return `slot: ${ i }`
-            }
-          })
-      }
-    })
+      function fetchMetrics() {
+        fetch("/launchMetrics")
+          .then((res) => res.json())
+          .then((data) => {
+            data = data.Epochs
+            var participationInputs = ["02", "04", "06", "10"]
+            var firstProposed = ["01", "03", null, null]
+            var finalized = [null, null, "11", null]
+            var justified = [null, null, "08", "12"]
 
-    function fetchMetrics() {
-      fetch('/launchMetrics').then(res => res.json()).then(data => {
-        data = data.Epochs
-        var participationInputs = ["02", "04", "06", "10"]
-        var firstProposed = ["01", "03", null, null]
-        var finalized = [null, null, '11', null]
-        var justified = [null, null, '08', '12']
-
-        for (var i = 0; i < data.length; i++) {
-          if(i > 3) {
-            break
-          }
-          
-          if(finalized[i] && i > 0 && data[i - 1].finalized) {
-            document.getElementById(finalized[i]).checked = true
-          }
-          
-          if(justified[i] && data[i].justified) {
-            document.getElementById(justified[i]).checked = true
-          }
-
-          if (data[i].participation <= 1) {
-            data[i].participation = Math.round(data[i].participation * 10000) / 100
-          }
-
-          if(data[i].participation >= 66.666) {
-            document.getElementById(participationInputs[i]).checked = true
-          }
-          var slots = data[i].slots
-          for(var j = 0; j < slots.length; j++) {
-            if (i === 0 && j === 0) {
-              continue
-            }
-            if(slots[j].status === "proposed") {
-              if(firstProposed[i]) {
-                document.getElementById(firstProposed[i]).checked = true
-                var el = document.querySelector("[for='"+firstProposed[i]+"']")
-                el.innerHTML = "First block proposed in Slot " + j 
+            for (var i = 0; i < data.length; i++) {
+              if (i > 3) {
                 break
               }
+
+              if (finalized[i] && i > 0 && data[i - 1].finalized) {
+                document.getElementById(finalized[i]).checked = true
+              }
+
+              if (justified[i] && data[i].justified) {
+                document.getElementById(justified[i]).checked = true
+              }
+
+              if (data[i].participation <= 1) {
+                data[i].participation = Math.round(data[i].participation * 10000) / 100
+              }
+
+              if (data[i].participation >= 66.666) {
+                document.getElementById(participationInputs[i]).checked = true
+              }
+              var slots = data[i].slots
+              for (var j = 0; j < slots.length; j++) {
+                if (i === 0 && j === 0) {
+                  continue
+                }
+                if (slots[j].status === "proposed") {
+                  if (firstProposed[i]) {
+                    document.getElementById(firstProposed[i]).checked = true
+                    var el = document.querySelector("[for='" + firstProposed[i] + "']")
+                    el.innerHTML = "First block proposed in Slot " + j
+                    break
+                  }
+                }
+              }
+
+              for (let k = 0; k < slots.length; k++) {
+                var slot = slots[k]
+                epochs[i].slots[k] = data[i].slots[k]
+              }
+              epochs[i].participation = data[i].participation
+              epochs[i].finalized = data[i].finalized
+              epochs[i].justified = data[i].justified
+              epochs[i].previousjustified = data[i].previousjustified
+              epochs[i].epoch = data[i].epoch
             }
-          }
+            console.log(epochs)
+            chart.update(epochs)
+          })
+      }
 
+      fetchMetrics()
+      setInterval(fetchMetrics, 6000)
 
-          for (let k = 0; k < slots.length; k++) {
-            var slot = slots[k];
-            epochs[i].slots[k] = data[i].slots[k]
-          }
-          epochs[i].participation = data[i].participation
-          epochs[i].finalized = data[i].finalized
-          epochs[i].justified = data[i].justified
-          epochs[i].previousjustified = data[i].previousjustified
-          epochs[i].epoch = data[i].epoch
+      //   setTimeout(function() {
+      //     console.log('first update')
+      //     epochs[0].slots[1].status = 'proposed'
+      //     epochs[0].justified = true
+      //     epochs[0].slots[1].active = false
+      //     epochs[0].slots[2].active = true
 
-        }
-        console.log(epochs)
-        chart.update(epochs)
-      })
-    }
+      //     epochs[0].participation = 66
+      //     chart.update(epochs)
+      //   }, 2000)
 
-    fetchMetrics()
-    setInterval(fetchMetrics, 6000)
+      //   setTimeout(function() {
+      //     console.log('second update')
+      //     epochs[0].finalized = true
+      //     epochs[0].slots[2].status = 'missed'
+      //     epochs[0].slots[2].active = false
+      //     epochs[0].slots[3].active = true
 
-  //   setTimeout(function() {
-  //     console.log('first update')
-  //     epochs[0].slots[1].status = 'proposed'
-  //     epochs[0].justified = true
-  //     epochs[0].slots[1].active = false
-  //     epochs[0].slots[2].active = true
+      //     epochs[0].participation = 67
+      //     chart.update(epochs)
+      //   }, 4000)
+      //   setTimeout(function() {
+      //     console.log('second update')
+      //     epochs[0].slots[3].status = 'orphaned'
+      //     epochs[0].slots[3].active = false
+      //     epochs[0].slots[4].active = true
 
-  //     epochs[0].participation = 66
-  //     chart.update(epochs)
-  //   }, 2000)
-    
-  //   setTimeout(function() {
-  //     console.log('second update')
-  //     epochs[0].finalized = true
-  //     epochs[0].slots[2].status = 'missed'
-  //     epochs[0].slots[2].active = false
-  //     epochs[0].slots[3].active = true
-
-  //     epochs[0].participation = 67
-  //     chart.update(epochs)
-  //   }, 4000)
-  //   setTimeout(function() {
-  //     console.log('second update')
-  //     epochs[0].slots[3].status = 'orphaned'
-  //     epochs[0].slots[3].active = false
-  //     epochs[0].slots[4].active = true
-
-  //     epochs[0].participation = 80
-  //     chart.update(epochs)
-  //   }, 6000)
-
-  })
-
-
-</script>
-{{end}}
+      //     epochs[0].participation = 80
+      //     chart.update(epochs)
+      //   }, 6000)
+    })
+  </script>
+{{ end }}

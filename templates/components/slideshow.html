@@ -1,22 +1,21 @@
 {{ define "slideshow" }}
-<script>
-  window.addEventListener('load', function() {
-    console.log('document loaded')
-    $("#slideshow").slick({
-      dots: true,
-      centerMode: true,
-      centerPadding: '192px',
-      infinite: true,
-      // speed: 300,
-      slideToShow: 1,
-      // slideToScroll: 1,
-      // responsive: [],
-      autoplay: true,
-      autoplaySpeed: 2000,
+  <script>
+    window.addEventListener("load", function () {
+      console.log("document loaded")
+      $("#slideshow").slick({
+        dots: true,
+        centerMode: true,
+        centerPadding: "192px",
+        infinite: true,
+        // speed: 300,
+        slideToShow: 1,
+        // slideToScroll: 1,
+        // responsive: [],
+        autoplay: true,
+        autoplaySpeed: 2000,
+      })
     })
-  })
-</script>
-
+  </script>
 
   <!-- <div>
     <img src="partners/bloxBannerMobile.png" alt="">
@@ -27,18 +26,17 @@
   <div>
     <img src="partners/bloxBannerMobile.png" alt="">
   </div> -->
-<div class="ad d-flex justify-content-center my-3 pb-1 pt-3">
-  <div style="width: 724px;" id="slideshow">
-    <div>
-      <img class="mx-auto" src="/partners/bloxBannerMobile.png" alt="">
-    </div>
-    <div>
-      <img class="mx-auto" src="/partners/bloxBannerMobile.png" alt="">
-    </div>
-    <div>
-      <img class="mx-auto" src="/partners/bloxBannerMobile.png" alt="">
+  <div class="ad d-flex justify-content-center my-3 pb-1 pt-3">
+    <div style="width: 724px;" id="slideshow">
+      <div>
+        <img class="mx-auto" src="/partners/bloxBannerMobile.png" alt="" />
+      </div>
+      <div>
+        <img class="mx-auto" src="/partners/bloxBannerMobile.png" alt="" />
+      </div>
+      <div>
+        <img class="mx-auto" src="/partners/bloxBannerMobile.png" alt="" />
+      </div>
     </div>
   </div>
-</div>
-
-{{end}}
+{{ end }}

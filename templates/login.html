@@ -1,76 +1,72 @@
-{{ define "js"}}
-{{end}}
-
-{{ define "css"}}
-{{end}}
 {{ define "js" }}
-<script>
-    var params = new URLSearchParams(window.location.search)
-    var emailParam = params.get('email')
-    var emailInput = document.getElementById('email')
+{{ end }}
 
-    if(emailParam && emailParam.length && emailInput && !emailInput.value) {
-        emailInput.value = emailParam
+{{ define "css" }}
+{{ end }}
+{{ define "js" }}
+  <script>
+    var params = new URLSearchParams(window.location.search)
+    var emailParam = params.get("email")
+    var emailInput = document.getElementById("email")
+
+    if (emailParam && emailParam.length && emailInput && !emailInput.value) {
+      emailInput.value = emailParam
     }
 
-    var forgotPWLink = document.getElementById('forgotPasswordLink')
-    emailInput.addEventListener('input', function(ev) {
-        if(ev.target.value && ev.target.value.length) {
-            updateEmailLink(ev.target.value)
-        }
+    var forgotPWLink = document.getElementById("forgotPasswordLink")
+    emailInput.addEventListener("input", function (ev) {
+      if (ev.target.value && ev.target.value.length) {
+        updateEmailLink(ev.target.value)
+      }
     })
-    if(emailInput && emailInput.value && emailInput.value.length) {
-        updateEmailLink(emailInput.value)
+    if (emailInput && emailInput.value && emailInput.value.length) {
+      updateEmailLink(emailInput.value)
     }
     function updateEmailLink(value) {
-        if(value && value.length) {
-            forgotPWLink.setAttribute('href', '/requestReset?email='+ encodeURI(value))
-        } else {
-            forgotPWLink.setAttribute('href', '/requestReset')
-        }
+      if (value && value.length) {
+        forgotPWLink.setAttribute("href", "/requestReset?email=" + encodeURI(value))
+      } else {
+        forgotPWLink.setAttribute("href", "/requestReset")
+      }
     }
-</script>
-{{end}}
+  </script>
+{{ end }}
 
-{{ define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-            <div class="row my-3">
-                <div class="col-lg-6 col-sm-8 col-xl-5 mx-auto">
-                    <h1 class="h2">Sign in to <i>beaconcha.in</i></h1>
-                    <p>Manage and track the progress of your validator.</p>
-                    {{if .Flashes}}
-                        {{range $i, $flash := .Flashes}}
-                            <div class="alert {{if contains $flash "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2"
-                                 role="alert">
-                                <div class="p-2">{{$flash | formatHTML}}</div>
-                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                        {{end}}
-                    {{end}}
-                    <form action="/login" method="POST">
-                        {{.CsrfField}}
-                        <div class="form-group">
-                            <label for="email">Email address</label>
-                            <input tabindex="1" required inputmode="email" type="text" maxlength="100" class="form-control"
-                                   autocomplete="email" id="email" name="email" autofocus>
-                        </div>
-                        <div class="form-group">
-                            <label class="d-flex justify-content-between align-items-center" for="password">
-                                <span>Password</span>
-                                <a id="forgotPasswordLink" tabindex="5" href="/requestReset">Forgot Password?</a>
-                            </label>
-                            <input tabindex="2" required type="password" maxlength="256" class="form-control"
-                                   autocomplete="current-password" id="password" name="password">
-                        </div>
-                        <button tabindex="3" type="submit" class="btn btn-primary float-right">Login</button>
-                    </form>
-                    <span style="font-size: 90%;" class="text-muted">Don't have an account? </span><a tabindex="4" href="/register">Sign
-                        up</a>
-                </div>
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="row my-3">
+        <div class="col-lg-6 col-sm-8 col-xl-5 mx-auto">
+          <h1 class="h2">Sign in to <i>beaconcha.in</i></h1>
+          <p>Manage and track the progress of your validator.</p>
+          {{ if .Flashes }}
+            {{ range $i, $flash := .Flashes }}
+              <div class="alert {{ if contains $flash "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
+                <div class="p-2">{{ $flash | formatHTML }}</div>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+            {{ end }}
+          {{ end }}
+          <form action="/login" method="POST">
+            {{ .CsrfField }}
+            <div class="form-group">
+              <label for="email">Email address</label>
+              <input tabindex="1" required inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email" autofocus />
             </div>
+            <div class="form-group">
+              <label class="d-flex justify-content-between align-items-center" for="password">
+                <span>Password</span>
+                <a id="forgotPasswordLink" tabindex="5" href="/requestReset">Forgot Password?</a>
+              </label>
+              <input tabindex="2" required type="password" maxlength="256" class="form-control" autocomplete="current-password" id="password" name="password" />
+            </div>
+            <button tabindex="3" type="submit" class="btn btn-primary float-right">Login</button>
+          </form>
+          <span style="font-size: 90%;" class="text-muted">Don't have an account? </span><a tabindex="4" href="/register">Sign up</a>
         </div>
-    {{end}}
-{{end}}
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

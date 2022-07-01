@@ -1,1087 +1,1066 @@
 {{ define "js" }}
-    <script src="/js/highcharts/highstock.min.js"></script>
-    <script src="/js/highcharts/annotations.min.js"></script>
-    <script src="/js/highcharts/highcharts-global-options.js"></script>
-    <script>
-        // share
-        var left = (screen.width - 570) / 2;
-        var top = (screen.height - 570) / 2;
-        var windowParams = "menubar=no,toolbar=no,status=no,width=570,height=570,top=" + top + ",left=" + left;
-        document.addEventListener('DOMContentLoaded', function () {
-            document.getElementById('twitter-share').addEventListener('click', function (e) {
-                e.preventDefault()
-                window.open('https://twitter.com/share?url=' + encodeURIComponent(window.location.href) + '&text=Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!&hashtag=ethereum&related=@etherchain_org', "NewWindow", windowParams)
-            }, false)
-            document.getElementById('facebook-share').addEventListener('click', function (e) {
-                e.preventDefault()
-                window.open('https://facebook.com/sharer/sharer.php?u=' + encodeURIComponent(window.location.href) + '&t=Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!', "NewWindow", windowParams)
-            }, false)
-            document.getElementById('linkedin-share').addEventListener('click', function (e) {
-                e.preventDefault()
-                window.open('https://linkedin.com/shareArticle?mini=true&url=' + encodeURIComponent(window.location.href) + '&title=' + encodeURIComponent("Beaconcha.in Staking Calculator") + '&summary=' + encodeURIComponent("Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!" + '&source=' + encodeURIComponent("https://beaconcha.in")), "NewWindow", windowParams)
-            }, false)
+  <script src="/js/highcharts/highstock.min.js"></script>
+  <script src="/js/highcharts/annotations.min.js"></script>
+  <script src="/js/highcharts/highcharts-global-options.js"></script>
+  <script>
+    // share
+    var left = (screen.width - 570) / 2
+    var topScreen = (screen.height - 570) / 2
+    var windowParams = "menubar=no,toolbar=no,status=no,width=570,height=570,top=" + topScreen + ",left=" + left
+    document.addEventListener("DOMContentLoaded", function () {
+      document.getElementById("twitter-share").addEventListener(
+        "click",
+        function (e) {
+          e.preventDefault()
+          window.open("https://twitter.com/share?url=" + encodeURIComponent(window.location.href) + "&text=Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!&hashtag=ethereum&related=@etherchain_org", "NewWindow", windowParams)
+        },
+        false
+      )
+      document.getElementById("facebook-share").addEventListener(
+        "click",
+        function (e) {
+          e.preventDefault()
+          window.open("https://facebook.com/sharer/sharer.php?u=" + encodeURIComponent(window.location.href) + "&t=Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!", "NewWindow", windowParams)
+        },
+        false
+      )
+      document.getElementById("linkedin-share").addEventListener(
+        "click",
+        function (e) {
+          e.preventDefault()
+          window.open("https://linkedin.com/shareArticle?mini=true&url=" + encodeURIComponent(window.location.href) + "&title=" + encodeURIComponent("Beaconcha.in Staking Calculator") + "&summary=" + encodeURIComponent("Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!" + "&source=" + encodeURIComponent("https://beaconcha.in")), "NewWindow", windowParams)
+        },
+        false
+      )
+    })
+
+    function formatNumberSpacing(str) {
+      var result = ""
+      var floor = ""
+      var remainder = ""
+      var negative = str[0] === "-"
+      if (negative) {
+        str = str.slice(1)
+      }
+      for (var i = 0; i < str.length; i++) {
+        var element = str[i]
+        if (element === ".") {
+          floor = str.slice(0, i)
+          remainder = str.slice(i)
+        }
+      }
+      if (floor === "") {
+        floor = str
+      }
+      if (floor.length > 3) {
+        let count = 1
+        for (let i = floor.length - 1; i >= 0; i--) {
+          count += 1
+          let element = floor[i]
+          result = element + result
+          if (count % 4 === 0) {
+            if (i !== 0) {
+              result = " " + result
+            }
+          }
+        }
+        return negative ? "-" + result + remainder : result + remainder
+      }
+      return negative ? "-" + floor + remainder : floor + remainder
+    }
+
+    class Calculator {
+      constructor() {
+        var self = this
+
+        this.config = {}
+
+        this.config.secondsPerSlot = 12
+        this.config.slotsPerEpoch = 32
+        this.config.secondsPerEpoch = this.config.secondsPerSlot * this.config.slotsPerEpoch
+        this.config.epochsPerDay = (3600 * 24) / this.config.secondsPerEpoch
+        this.config.minNetworkStake = 32e9 * 16387
+        this.config.minValidatorStake = 32e9
+        this.config.symbols = {
+          USD: "$",
+          EUR: "€",
+          BTC: "₿",
+          AUD: "$",
+          CAD: "$",
+          CNY: "¥",
+          CZK: "Kč",
+          GBP: "£",
+          JPY: "¥",
+          RUB: "₽",
+        }
+        this.config.rates = {
+          AUD: 322.14,
+          BTC: 0.02517,
+          CAD: 291.42,
+          CNY: 1461.28,
+          CZK: 5253.99,
+          EUR: 193,
+          GBP: 168.84,
+          JPY: 22296.04,
+          RUB: 15277.44,
+          USD: 208.96,
+        }
+        this.config.totalEthSupply = 115113251499000000
+        this.config.showCosts = false
+
+        // the param key, encoding function, decoding function, include in url params bool, update element function
+        this.config.urlParams = [
+          [
+            "stake",
+            function (v) {
+              return v / 1e9
+            },
+            function (v) {
+              return parseFloat(v) * 1e9
+            },
+            true,
+            function (value) {
+              document.getElementById("staking-variable-yourStake").setAttribute("value", value)
+            },
+          ],
+          [
+            "currency",
+            function (v) {
+              return v
+            },
+            function (v) {
+              return v
+            },
+            true,
+            function (currency) {
+              document.getElementById("selectedCurrency").innerText = currency
+              document.getElementById("staking-variable-price").setAttribute("value", self.config.rates[currency])
+            },
+          ],
+          [
+            "price",
+            function (v) {
+              return v
+            },
+            function (v) {
+              return v
+            },
+            false,
+            function (value) {
+              document.getElementById("staking-variable-price").setAttribute("value", value)
+            },
+          ],
+          [
+            "priceChangePerMonth",
+            function (v) {
+              return v * 100
+            },
+            function (v) {
+              return parseFloat(v) / 100
+            },
+            true,
+            function (value) {
+              document.getElementById("staking-variable-priceChangePerMonth").setAttribute("value", value)
+            },
+          ],
+          [
+            "initialCosts",
+            function (v) {
+              return v
+            },
+            function (v) {
+              return v
+            },
+            true,
+            function (value) {
+              document.getElementById("staking-variable-initialCosts").setAttribute("value", value)
+            },
+          ],
+          [
+            "monthlyCosts",
+            function (v) {
+              return v
+            },
+            function (v) {
+              return v
+            },
+            true,
+            function (value) {
+              document.getElementById("staking-variable-monthlyCosts").setAttribute("value", value)
+            },
+          ],
+          [
+            "stakingFee",
+            function (v) {
+              return v * 100
+            },
+            function (v) {
+              return parseFloat(v) / 100
+            },
+            true,
+            function (value) {
+              document.getElementById("staking-variable-stakingFee").setAttribute("value", value)
+            },
+          ],
+          [
+            "reinvest",
+            function (v) {
+              return v
+            },
+            function (v) {
+              return v
+            },
+            true,
+            function (value) {
+              document.getElementById("staking-variable-reinvest").checked = value === "true"
+            },
+          ],
+          [
+            "networkStake",
+            function (v) {
+              return v / 1e9
+            },
+            function (v) {
+              return parseFloat(v) * 1e9
+            },
+            true,
+            function (value) {
+              document.getElementById("staking-variable-totalStake").setAttribute("value", value)
+              document.getElementById("staking-variable-totalStake-slider").setAttribute("value", value)
+            },
+          ],
+          // ["networkStakePercent", function(v) { return v * 100 }, function(v) {return parseFloat(v) / 100}, true, function(value){ document.getElementById('staking-variable-totalStakeMonthlyChange').setAttribute('value', value) }],
+          [
+            "networkOnlineProbability",
+            function (v) {
+              return v * 100
+            },
+            function (v) {
+              return parseFloat(v) / 100
+            },
+            true,
+            function (value) {
+              document.getElementById("staking-variable-onlineProbability").setAttribute("value", value)
+              document.getElementById("staking-variable-onlineProbability-slider").setAttribute("value", value)
+            },
+          ],
+          [
+            "totalStakeMonthlyChange",
+            function (v) {
+              return v * 100
+            },
+            function (v) {
+              return parseFloat(v) / 100
+            },
+            true,
+            function (value) {
+              document.getElementById("staking-variable-totalStakeMonthlyChange").setAttribute("value", value)
+            },
+          ],
+        ]
+
+        this.params = {}
+        // this.params.url = {}
+
+        this.params.stake = 0
+        this.params.currency = "USD"
+        this.params.price = 0
+        this.params.priceChangePerMonth = 0
+        this.params.initialCosts = 0
+        this.params.monthlyCosts = 0
+
+        this.params.stakingFee = 0
+        this.params.reinvest = false
+        this.params.networkStake = 0
+        this.params.networkStakePercent = this.config.minNetworkStake / this.config.totalEthSupply
+        this.params.networkOnlineProbability = 0
+        this.params.totalStakeMonthlyChange = 0
+
+        this.result = {}
+
+        this.result.priceChartData = []
+        this.result.incomeDollarChartData = []
+        this.result.incomeEthChartData = []
+        this.result.costsDollarChartData = []
+        this.result.costsEthChartData = []
+        this.result.profitDollarChartData = []
+        this.result.profitEthChartData = []
+        this.result.breakEvenPoint = null
+        this.result.start = null
+        this.result.numberOfPossibleValidators = "0"
+
+        this.fetchStats().then(() => {
+          this.readUrlSearchParams()
+          this.run()
         })
 
+        $(".staking-variable").on("input", () => {
+          self.run()
+          this.setUrlParams()
+        })
 
-        function formatNumberSpacing(str) {
-            var result = ''
-            var floor = ''
-            var remainder = ''
-            var negative = str[0] === '-'
-            if (negative) {
-                str = str.slice(1)
-            }
-            for (var i = 0; i < str.length; i++) {
-                var element = str[i];
-                if (element === '.') {
-                    floor = str.slice(0, i)
-                    remainder = str.slice(i)
+        document.getElementById("staking-variable-totalStake-slider").oninput = function () {
+          document.getElementById("staking-variable-totalStake-percentage").innerText = `${(((this.value * 1e9) / self.config.totalEthSupply) * 100).toFixed(2)} %`
+          document.getElementById("staking-variable-totalStake").value = this.value
+        }
+        document.getElementById("staking-variable-totalStake-slider").onchange = () => {
+          self.run()
+          this.setUrlParams()
+        }
+        document.getElementById("staking-variable-totalStake").addEventListener("input", function () {
+          document.getElementById("staking-variable-totalStake-slider").value = this.value
+        })
+
+        document.getElementById("staking-variable-onlineProbability-slider").oninput = function () {
+          document.getElementById("staking-variable-onlineProbability").value = this.value
+        }
+        document.getElementById("staking-variable-onlineProbability-slider").onchange = () => {
+          self.run()
+          this.setUrlParams()
+        }
+        document.getElementById("staking-variable-onlineProbability").addEventListener("input", function () {
+          document.getElementById("staking-variable-onlineProbability-slider").value = this.value
+        })
+        document.getElementById("staking-variable-totalStakeMonthlyChange-slider").oninput = function () {
+          document.getElementById("staking-variable-totalStakeMonthlyChange").value = this.value
+        }
+        document.getElementById("staking-variable-totalStakeMonthlyChange-slider").onchange = () => {
+          self.run()
+          this.setUrlParams()
+        }
+        document.getElementById("staking-variable-totalStakeMonthlyChange").addEventListener("input", function () {
+          document.getElementById("staking-variable-totalStakeMonthlyChange-slider").value = this.value
+        })
+      }
+
+      setUrlParams() {
+        var newUrl = window.location.pathname + "?"
+        var urlParams = this.config.urlParams
+        for (var i = 0; i < urlParams.length; i++) {
+          var key = urlParams[i][0]
+          var encode = urlParams[i][1]
+          var use = urlParams[i][3]
+          if (!use) {
+            continue
+          }
+          if (newUrl.length && newUrl[newUrl.length - 1] !== "&" && newUrl[newUrl.length - 1] !== "?") {
+            newUrl += "&"
+          }
+          var value = encode(this.params[key])
+          newUrl += key + "=" + value
+        }
+        window.history.replaceState(null, "Calculator", newUrl)
+        document.getElementById("copy-button").setAttribute("data-clipboard-text", window.location.href)
+      }
+
+      readUrlSearchParams() {
+        var usp = new URLSearchParams(window.location.search)
+        for (var i = 0; i < this.config.urlParams.length; i++) {
+          var element = this.config.urlParams[i]
+          var decode = element[2]
+          var key = element[0]
+          var render = element[4]
+          if (usp.get(key)) {
+            // decode param
+            var value = usp.get(element[0])
+            // update input
+            render(value)
+            // set param value
+            this.params[key] = decode(value)
+          }
+        }
+      }
+
+      setCurrency(currency) {
+        document.getElementById("selectedCurrency").innerText = currency
+        this.params.currency = currency
+        document.getElementById("staking-variable-price").setAttribute("value", this.config.rates[currency])
+        this.run()
+        this.setUrlParams()
+      }
+
+      fetchStats() {
+        return new Promise((resolve, reject) => {
+          var count = 0
+          fetch("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
+            .then((res) => res.json())
+            .then((data) => {
+              console.log("success", data)
+              if (data && data.result) {
+                try {
+                  data.result = parseFloat(data.result)
+                  console.log("parsed", data.result)
+                } catch (e) {
+                  console.err("could not pare eth supply", e)
                 }
-            }
-            if (floor === '') {
-                floor = str
-            }
-            if (floor.length > 3) {
-                var count = 1
-                for (var i = floor.length - 1; i >= 0; i--) {
-                    count += 1
-                    var element = floor[i];
-                    result = element + result
-                    if (count % 4 === 0) {
-                        if (i !== 0) {
-                            result = ' ' + result
-                        }
-                    }
-                }
-                return negative ? '-' + result + remainder : result + remainder
-            } else {
-                return negative ? '-' + floor + remainder : floor + remainder
-            }
-            return negative ? '-' + str : str
+              }
+              if (data && data.result && data.result > this.config.totalEthSupply) {
+                console.log("updating totalsuplly")
+                this.config.totalEthSupply = data.result / 1e9
+              }
+              var ethSupply = this.config.totalEthSupply / 1e9
+              document.getElementById("staking-variable-totalStake").setAttribute("max", ethSupply)
+              if (document.getElementById("staking-variable-totalStake").getAttribute("value") === "0") {
+                document.getElementById("staking-variable-totalStake").setAttribute("value", ethSupply * 0.01)
+              }
+              document.getElementById("staking-variable-totalStake-slider").setAttribute("max", ethSupply)
+              document.getElementById("staking-variable-totalStake-slider").setAttribute("step", ethSupply * 0.0025)
+              count += 1
+              if (count == 2) {
+                resolve()
+              }
+            })
+            .catch((err) => {
+              console.error(err)
+              var ethSupply = this.config.totalEthSupply / 1e9
+              document.getElementById("staking-variable-totalStake").setAttribute("max", ethSupply)
+              document.getElementById("staking-variable-totalStake").setAttribute("value", ethSupply * 0.01)
+              document.getElementById("staking-variable-totalStake-slider").setAttribute("max", ethSupply)
+              document.getElementById("staking-variable-totalStake-slider").setAttribute("step", ethSupply * 0.0025)
+              count += 1
+              if (count == 2) {
+                resolve()
+              }
+              // reject(err)
+            })
+
+          fetch("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=BTC,USD,EUR,GBP,JPY,RUB,CNY,AUD,CAD,CZK")
+            .then((res) => res.json())
+            .then((data) => {
+              this.config.rates = data
+              document.getElementById("staking-variable-price").setAttribute("value", this.config.rates["USD"])
+              count += 1
+              if (count == 2) {
+                resolve()
+              }
+            })
+            .catch((err) => {
+              reject(err)
+            })
+        })
+      }
+
+      run() {
+        // var t0 = Date.now()
+        this.readParams()
+        // var t1 = Date.now()
+        this.calculate()
+        // var t2 = Date.now()
+        this.renderResult()
+        // var t3 = Date.now()
+        // 		console.log(`readParams  : ${t1-t0}ms
+        // calculate   : ${t2-t1}ms
+        // renderResult: ${t3-t2}ms
+        // `)
+        // 		console.log(this.params)
+      }
+
+      readParams() {
+        var p = this.params
+        p.networkStake = parseFloat(document.getElementById("staking-variable-totalStake").value) * 1e9
+        p.networkOnlineProbability = parseInt(document.getElementById("staking-variable-onlineProbability").value) / 100
+        p.price = parseFloat(document.getElementById("staking-variable-price").value)
+        p.priceChangePerMonth = parseInt(document.getElementById("staking-variable-priceChangePerMonth").value) / 100
+        p.totalStakeMonthlyChange = parseInt(document.getElementById("staking-variable-totalStakeMonthlyChange").value) / 100
+
+        p.stake = parseFloat(document.getElementById("staking-variable-yourStake").value) * 1e9
+
+        p.initialCosts = parseFloat(document.getElementById("staking-variable-initialCosts").value)
+        p.monthlyCosts = parseFloat(document.getElementById("staking-variable-monthlyCosts").value)
+
+        // p.stakeWithPool = document.getElementById("staking-variable-pool").checked
+        p.stakingFee = parseInt(document.getElementById("staking-variable-stakingFee").value) / 100
+        p.reinvest = document.getElementById("staking-variable-reinvest").checked
+
+        if (isNaN(p.stake) || p.stake < 1e-9) {
+          p.stake = 1 / 1e9
+          document.getElementById("staking-variable-yourStake-validation").style.display = "initial"
+        } else {
+          document.getElementById("staking-variable-yourStake-validation").style.display = "none"
+        }
+        if (isNaN(p.networkStake) || p.networkStake < 32 * 16387 * 1e9) {
+          p.networkStake = 32 * 16387 * 1e9
+          document.getElementById("staking-variable-totalStake-validation").style.display = "initial"
+        } else {
+          document.getElementById("staking-variable-totalStake-validation").style.display = "none"
+        }
+        if (isNaN(p.networkOnlineProbability) || p.networkOnlineProbability > 1.0 || p.networkOnlineProbability < 0.01) {
+          document.getElementById("staking-variable-onlineProbability-validation").style.display = "initial"
+        } else {
+          document.getElementById("staking-variable-onlineProbability-validation").style.display = "none"
+        }
+        if (isNaN(p.networkOnlineProbability) || p.networkOnlineProbability < 0.01) {
+          p.networkOnlineProbability = 0.01
+        }
+        if (isNaN(p.networkOnlineProbability) || p.networkOnlineProbability > 1.0) {
+          p.networkOnlineProbability = 1.0
+        }
+        if (isNaN(p.price) || p.price < 0) {
+          p.price = 0
+          document.getElementById("staking-variable-price-validation").style.display = "initial"
+        } else {
+          document.getElementById("staking-variable-price-validation").style.display = "none"
+        }
+        if (isNaN(p.priceChangePerMonth)) {
+          p.priceChangePerMonth = 0
+          document.getElementById("staking-variable-priceChangePerMonth-validation").style.display = "initial"
+        } else {
+          document.getElementById("staking-variable-priceChangePerMonth-validation").style.display = "none"
+        }
+        if (isNaN(p.totalStakeMonthlyChange) || p.totalStakeMonthlyChange < -100 || p.totalStakeMonthlyChange > 100) {
+          if (p.totalStakeMonthlyChange > 100) {
+            p.totalStakeMonthlyChange = 100
+          } else if (p.totalStakeMonthlyChange < -100) {
+            p.totalStakeMonthlyChange = -100
+          } else {
+            p.totalStakeMonthlyChange = 0
+          }
+          document.getElementById("staking-variable-totalStakeMonthlyChange-validation").style.display = "initial"
+        } else {
+          document.getElementById("staking-variable-totalStakeMonthlyChange-validation").style.display = "none"
         }
 
-
-        class Calculator {
-            constructor() {
-                var self = this
-
-                this.config = {}
-
-                this.config.secondsPerSlot = 12
-                this.config.slotsPerEpoch = 32
-                this.config.secondsPerEpoch = this.config.secondsPerSlot * this.config.slotsPerEpoch
-                this.config.epochsPerDay = 3600 * 24 / this.config.secondsPerEpoch
-                this.config.minNetworkStake = 32e9 * 16387
-                this.config.minValidatorStake = 32e9
-                this.config.symbols = {
-                    'USD': '$',
-                    'EUR': '€',
-                    'BTC': '₿',
-                    'AUD': '$',
-                    'CAD': '$',
-                    'CNY': '¥',
-                    'CZK': 'Kč',
-                    'GBP': '£',
-                    'JPY': '¥',
-                    'RUB': '₽',
-                }
-                this.config.rates = {
-                    AUD: 322.14,
-                    BTC: 0.02517,
-                    CAD: 291.42,
-                    CNY: 1461.28,
-                    CZK: 5253.99,
-                    EUR: 193,
-                    GBP: 168.84,
-                    JPY: 22296.04,
-                    RUB: 15277.44,
-                    USD: 208.96,
-                }
-                this.config.totalEthSupply = 115113251499000000
-                this.config.showCosts = false
-
-                // the param key, encoding function, decoding function, include in url params bool, update element function
-                this.config.urlParams = [
-                    ["stake", function (v) {
-                        return v / 1e9
-                    }, function (v) {
-                        return parseFloat(v) * 1e9
-                    }, true, function (value) {
-                        document.getElementById('staking-variable-yourStake').setAttribute('value', value)
-                    }],
-                    ["currency", function (v) {
-                        return v
-                    }, function (v) {
-                        return v
-                    }, true, function (currency) {
-                        document.getElementById('selectedCurrency').innerText = currency
-                        document.getElementById('staking-variable-price').setAttribute('value', self.config.rates[currency])
-                    }],
-                    ["price", function (v) {
-                        return v
-                    }, function (v) {
-                        return v
-                    }, false, function (value) {
-                        document.getElementById('staking-variable-price').setAttribute('value', value)
-                    }],
-                    ["priceChangePerMonth", function (v) {
-                        return v * 100
-                    }, function (v) {
-                        return parseFloat(v) / 100
-                    }, true, function (value) {
-                        document.getElementById('staking-variable-priceChangePerMonth').setAttribute('value', value)
-                    }],
-                    ["initialCosts", function (v) {
-                        return v
-                    }, function (v) {
-                        return v
-                    }, true, function (value) {
-                        document.getElementById('staking-variable-initialCosts').setAttribute('value', value)
-                    }],
-                    ["monthlyCosts", function (v) {
-                        return v
-                    }, function (v) {
-                        return v
-                    }, true, function (value) {
-                        document.getElementById('staking-variable-monthlyCosts').setAttribute('value', value)
-                    }],
-                    ["stakingFee", function (v) {
-                        return v * 100
-                    }, function (v) {
-                        return parseFloat(v) / 100
-                    }, true, function (value) {
-                        document.getElementById('staking-variable-stakingFee').setAttribute('value', value)
-                    }],
-                    ["reinvest", function (v) {
-                        return v
-                    }, function (v) {
-                        return v
-                    }, true, function (value) {
-                        document.getElementById('staking-variable-reinvest').checked = value === 'true'
-                    }],
-                    ["networkStake", function (v) {
-                        return v / 1e9
-                    }, function (v) {
-                        return parseFloat(v) * 1e9
-                    }, true, function (value) {
-                        document.getElementById('staking-variable-totalStake').setAttribute('value', value);
-                        document.getElementById('staking-variable-totalStake-slider').setAttribute('value', value)
-                    }],
-                    // ["networkStakePercent", function(v) { return v * 100 }, function(v) {return parseFloat(v) / 100}, true, function(value){ document.getElementById('staking-variable-totalStakeMonthlyChange').setAttribute('value', value) }],
-                    ["networkOnlineProbability", function (v) {
-                        return v * 100
-                    }, function (v) {
-                        return parseFloat(v) / 100
-                    }, true, function (value) {
-                        document.getElementById('staking-variable-onlineProbability').setAttribute('value', value);
-                        document.getElementById('staking-variable-onlineProbability-slider').setAttribute('value', value)
-                    }],
-                    ["totalStakeMonthlyChange", function (v) {
-                        return v * 100
-                    }, function (v) {
-                        return parseFloat(v) / 100
-                    }, true, function (value) {
-                        document.getElementById('staking-variable-totalStakeMonthlyChange').setAttribute('value', value)
-                    }],
-                ]
-
-
-                this.params = {}
-                // this.params.url = {}
-
-                this.params.stake = 0
-                this.params.currency = "USD"
-                this.params.price = 0
-                this.params.priceChangePerMonth = 0
-                this.params.initialCosts = 0
-                this.params.monthlyCosts = 0
-
-
-                this.params.stakingFee = 0
-                this.params.reinvest = false
-                this.params.networkStake = 0
-                this.params.networkStakePercent = this.config.minNetworkStake / this.config.totalEthSupply
-                this.params.networkOnlineProbability = 0
-                this.params.totalStakeMonthlyChange = 0
-
-                this.result = {}
-
-                this.result.priceChartData = []
-                this.result.incomeDollarChartData = []
-                this.result.incomeEthChartData = []
-                this.result.costsDollarChartData = []
-                this.result.costsEthChartData = []
-                this.result.profitDollarChartData = []
-                this.result.profitEthChartData = []
-                this.result.breakEvenPoint = null
-                this.result.start = null
-                this.result.numberOfPossibleValidators = '0'
-
-                this.fetchStats().then(() => {
-                    this.readUrlSearchParams()
-                    this.run()
-                })
-
-                $('.staking-variable').on('input', () => {
-                    self.run()
-                    this.setUrlParams()
-                })
-
-                document.getElementById('staking-variable-totalStake-slider').oninput = function () {
-                    document.getElementById('staking-variable-totalStake-percentage').innerText = `${((this.value * 1e9 / self.config.totalEthSupply) * 100).toFixed(2)} %`
-                    document.getElementById('staking-variable-totalStake').value = this.value
-                }
-                document.getElementById('staking-variable-totalStake-slider').onchange = () => {
-                    self.run()
-                    this.setUrlParams()
-                }
-                document.getElementById('staking-variable-totalStake').addEventListener('input', function () {
-                    document.getElementById('staking-variable-totalStake-slider').value = this.value
-                })
-
-                document.getElementById('staking-variable-onlineProbability-slider').oninput = function () {
-                    document.getElementById('staking-variable-onlineProbability').value = this.value
-                }
-                document.getElementById('staking-variable-onlineProbability-slider').onchange = () => {
-                    self.run()
-                    this.setUrlParams()
-                }
-                document.getElementById('staking-variable-onlineProbability').addEventListener('input', function () {
-                    document.getElementById('staking-variable-onlineProbability-slider').value = this.value
-                })
-                document.getElementById('staking-variable-totalStakeMonthlyChange-slider').oninput = function () {
-                    document.getElementById('staking-variable-totalStakeMonthlyChange').value = this.value
-                }
-                document.getElementById('staking-variable-totalStakeMonthlyChange-slider').onchange = () => {
-                    self.run()
-                    this.setUrlParams()
-                }
-                document.getElementById('staking-variable-totalStakeMonthlyChange').addEventListener('input', function () {
-                    document.getElementById('staking-variable-totalStakeMonthlyChange-slider').value = this.value
-                })
-            }
-
-            setUrlParams() {
-                var newUrl = window.location.pathname + "?"
-                var urlParams = this.config.urlParams
-                for (var i = 0; i < urlParams.length; i++) {
-                    var key = urlParams[i][0];
-                    var encode = urlParams[i][1];
-                    var use = urlParams[i][3];
-                    if (!use) {
-                        continue
-                    }
-                    if (newUrl.length && newUrl[newUrl.length - 1] !== '&' && newUrl[newUrl.length - 1] !== '?') {
-                        newUrl += '&'
-                    }
-                    var value = encode(this.params[key])
-                    newUrl += key + '=' + value
-                }
-                window.history.replaceState(null, 'Calculator', newUrl)
-                document.getElementById('copy-button').setAttribute('data-clipboard-text', window.location.href)
-            }
-
-            readUrlSearchParams() {
-                var usp = new URLSearchParams(window.location.search)
-                for (var i = 0; i < this.config.urlParams.length; i++) {
-                    var element = this.config.urlParams[i];
-                    var decode = element[2]
-                    var key = element[0]
-                    var render = element[4]
-                    if (usp.get(key)) {
-                        // decode param
-                        var value = usp.get(element[0])
-                        // update input
-                        render(value)
-                        // set param value
-                        this.params[key] = decode(value)
-                    }
-                }
-            }
-
-            setCurrency(currency) {
-                document.getElementById('selectedCurrency').innerText = currency
-                this.params.currency = currency
-                document.getElementById('staking-variable-price').setAttribute('value', this.config.rates[currency])
-                this.run()
-                this.setUrlParams()
-            }
-
-            fetchStats() {
-                return new Promise((resolve, reject) => {
-                    var count = 0
-                    fetch("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
-                        .then(res => res.json())
-                        .then(data => {
-                            console.log('success', data)
-                            if (data && data.result) {
-                                try {
-                                    data.result = parseFloat(data.result)
-                                    console.log('parsed', data.result)
-                                } catch (e) {
-                                    console.err('could not pare eth supply', e)
-                                }
-                            }
-                            if (data && data.result && data.result > this.config.totalEthSupply) {
-                                console.log('updating totalsuplly')
-                                this.config.totalEthSupply = data.result / 1e9
-                            }
-                            var ethSupply = this.config.totalEthSupply / 1e9
-                            document.getElementById('staking-variable-totalStake').setAttribute('max', ethSupply)
-                            if (document.getElementById('staking-variable-totalStake').getAttribute('value') === "0") {
-                                document.getElementById('staking-variable-totalStake').setAttribute('value', (ethSupply) * 0.01)
-                            }
-                            document.getElementById('staking-variable-totalStake-slider').setAttribute('max', ethSupply)
-                            document.getElementById('staking-variable-totalStake-slider').setAttribute('step', (ethSupply) * 0.0025)
-                            count += 1
-                            if (count == 2) {
-                                resolve()
-                            }
-
-                        }).catch(err => {
-                            console.error(err)
-                            var ethSupply = this.config.totalEthSupply / 1e9
-                            document.getElementById('staking-variable-totalStake').setAttribute('max', ethSupply)
-                            document.getElementById('staking-variable-totalStake').setAttribute('value', (ethSupply) * 0.01)
-                            document.getElementById('staking-variable-totalStake-slider').setAttribute('max', ethSupply)
-                            document.getElementById('staking-variable-totalStake-slider').setAttribute('step', (ethSupply) * 0.0025)
-                            count += 1
-                            if (count == 2) {
-                                resolve()
-                            }
-                            // reject(err)
-                        })
-
-                    fetch("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=BTC,USD,EUR,GBP,JPY,RUB,CNY,AUD,CAD,CZK")
-                        .then(res => res.json())
-                        .then(data => {
-                            this.config.rates = data
-                            document.getElementById('staking-variable-price').setAttribute('value', this.config.rates["USD"])
-                            count += 1
-                            if (count == 2) {
-                                resolve()
-                            }
-                        }).catch(err => {
-                        reject(err)
-                    })
-                })
-            }
-
-            run() {
-                var t0 = Date.now()
-                this.readParams()
-                var t1 = Date.now()
-                this.calculate()
-                var t2 = Date.now()
-                this.renderResult()
-                var t3 = Date.now()
-// 		console.log(`readParams  : ${t1-t0}ms
-// calculate   : ${t2-t1}ms
-// renderResult: ${t3-t2}ms
-// `)
-// 		console.log(this.params)
-            }
-
-            readParams() {
-
-                var p = this.params
-                p.networkStake = parseFloat(document.getElementById('staking-variable-totalStake').value) * 1e9
-                p.networkOnlineProbability = parseInt(document.getElementById('staking-variable-onlineProbability').value) / 100
-                p.price = parseFloat(document.getElementById('staking-variable-price').value)
-                p.priceChangePerMonth = parseInt(document.getElementById('staking-variable-priceChangePerMonth').value) / 100
-                p.totalStakeMonthlyChange = parseInt(document.getElementById('staking-variable-totalStakeMonthlyChange').value) / 100
-
-                p.stake = parseFloat(document.getElementById('staking-variable-yourStake').value) * 1e9
-
-                p.initialCosts = parseFloat(document.getElementById('staking-variable-initialCosts').value)
-                p.monthlyCosts = parseFloat(document.getElementById('staking-variable-monthlyCosts').value)
-
-
-                // p.stakeWithPool = document.getElementById("staking-variable-pool").checked
-                p.stakingFee = parseInt(document.getElementById('staking-variable-stakingFee').value) / 100
-                p.reinvest = document.getElementById('staking-variable-reinvest').checked
-
-
-                if (isNaN(p.stake) || p.stake < 1e-9) {
-                    p.stake = 1 / 1e9
-                    document.getElementById('staking-variable-yourStake-validation').style.display = "initial"
-                } else {
-                    document.getElementById('staking-variable-yourStake-validation').style.display = "none"
-                }
-                if (isNaN(p.networkStake) || p.networkStake < 32 * 16387 * 1e9) {
-                    p.networkStake = 32 * 16387 * 1e9
-                    document.getElementById('staking-variable-totalStake-validation').style.display = "initial"
-                } else {
-                    document.getElementById('staking-variable-totalStake-validation').style.display = "none"
-                }
-                if (isNaN(p.networkOnlineProbability) || p.networkOnlineProbability > 1.00 || p.networkOnlineProbability < .01) {
-                    document.getElementById('staking-variable-onlineProbability-validation').style.display = "initial"
-                } else {
-                    document.getElementById('staking-variable-onlineProbability-validation').style.display = "none"
-                }
-                if (isNaN(p.networkOnlineProbability) || p.networkOnlineProbability < .01) {
-                    p.networkOnlineProbability = .01
-                }
-                if (isNaN(p.networkOnlineProbability) || p.networkOnlineProbability > 1.00) {
-                    p.networkOnlineProbability = 1.00
-                }
-                if (isNaN(p.price) || p.price < 0) {
-                    p.price = 0
-                    document.getElementById('staking-variable-price-validation').style.display = "initial"
-                } else {
-                    document.getElementById('staking-variable-price-validation').style.display = "none"
-                }
-                if (isNaN(p.priceChangePerMonth)) {
-                    p.priceChangePerMonth = 0
-                    document.getElementById('staking-variable-priceChangePerMonth-validation').style.display = "initial"
-                } else {
-                    document.getElementById('staking-variable-priceChangePerMonth-validation').style.display = "none"
-                }
-                if (isNaN(p.totalStakeMonthlyChange) || p.totalStakeMonthlyChange < -100 || p.totalStakeMonthlyChange > 100) {
-                    if (p.totalStakeMonthlyChange > 100) {
-                        p.totalStakeMonthlyChange = 100
-                    } else if (p.totalStakeMonthlyChange < -100) {
-                        p.totalStakeMonthlyChange = -100
-                    } else {
-                        p.totalStakeMonthlyChange = 0
-                    }
-                    document.getElementById('staking-variable-totalStakeMonthlyChange-validation').style.display = "initial"
-                } else {
-                    document.getElementById('staking-variable-totalStakeMonthlyChange-validation').style.display = "none"
-                }
-
-                if (isNaN(p.initialCosts) || p.initialCosts < 0) {
-                    p.initialCosts = 0
-                    document.getElementById('staking-variable-initialCosts-validation').style.display = "initial"
-                } else {
-                    document.getElementById('staking-variable-initialCosts-validation').style.display = "none"
-                }
-                if (isNaN(p.monthlyCosts) || p.monthlyCosts < 0) {
-                    p.monthlyCosts = 0
-                    document.getElementById('staking-variable-monthlyCosts-validation').style.display = "initial"
-                } else {
-                    document.getElementById('staking-variable-monthlyCosts-validation').style.display = "none"
-                }
-                if (isNaN(p.stakingFee) || p.stakingFee < 0 || p.stakingFee > 1) {
-                    document.getElementById('staking-variable-stakingFee-validation').style.display = "initial"
-                } else {
-                    document.getElementById('staking-variable-stakingFee-validation').style.display = "none"
-                }
-                if (isNaN(p.stakingFee) || p.stakingFee < 0) {
-                    p.stakingFee = 0
-                }
-                if (p.stakingFee > 1) {
-                    p.stakingFee = 1
-                }
-                p.networkStakePercent = p.networkStake / this.config.totalEthSupply
-            }
-
-            calculate() {
-                // this calculation is only a rough estimation, it calculates the total
-                // network issuance based ond total staked ether and online-probability
-                // of the network.
-                this.result.priceChartData = []
-                this.result.networkIssuanceChartData = []
-                this.result.incomeChartData = []
-                this.result.incomeDollarChartData = []
-                this.result.incomeEthChartData = []
-                this.result.costsDollarChartData = []
-                this.result.costsEthChartData = []
-                this.result.profitDollarChartData = []
-                this.result.profitEthChartData = []
-                this.result.breakEvenPoint = null
-                this.result.numberOfPossibleValidators = Math.floor((this.params.stake / (32 * 1e9))).toFixed(0) || '0'
-
-                var price = this.params.price
-                var costs = this.params.initialCosts //+ this.params.stake * price / 1e9
-
-
-                var epochsPerDay = 3600 * 24 / this.config.secondsPerEpoch
-                var epochsPerMonth = epochsPerDay * 31
-                var epochsPerYear = epochsPerDay * 365
-
-
-                var costsPerEpoch = this.params.monthlyCosts / epochsPerMonth
-
-                var priceChangePerEpoch = this.params.priceChangePerMonth / epochsPerMonth
-                var onlineProbability = this.params.networkOnlineProbability
-                var totalStake = this.params.networkStake
-                var valStake = 32e9
-                var baseRewardFactor = 64
-                var baseRewardsPerEpoch = 4
-                var baseReward = valStake * baseRewardFactor / (baseRewardsPerEpoch * Math.sqrt(totalStake))
-
-                var now = Date.now()
-                var yourStake = this.params.stake
-                var incomeGwei = this.params.stake
-                var incomeDollar = incomeGwei * price / 1e9
-                var incomeAll = 0
-
-                this.result.start = now
-
-                this.fillChartData(now, incomeDollar, costs, price)
-                // this.fillEarningChartData(now, incomeDollar, costs, price)
-
-                for (var i = 0; i < epochsPerYear; i++) {
-                    var threshold = Math.max(4, Math.floor((totalStake / valStake | 0) / Math.pow(2, 16)))
-                    var maxStakeGrowth = threshold * valStake
-
-
-                    var churn = maxStakeGrowth * this.params.totalStakeMonthlyChange
-                    totalStake += churn
-
-
-                    baseReward = valStake * baseRewardFactor / (baseRewardsPerEpoch * Math.sqrt(totalStake))
-
-                    var allVal = (totalStake / valStake) | 0
-
-
-                    var onlineVal = (allVal * onlineProbability) | 0
-                    var offlineVal = allVal - onlineVal
-
-                    var ffgRewards = 3 * baseReward * onlineVal * valStake / totalStake
-                    var ffgPenalties = 3 * baseReward
-                    var propIncentives = 1 / 8 * baseReward * onlineVal / 32
-                    var attIncentives = 7 / 8 * baseReward * 1 / 1
-
-                    var totalRewards = 0
-                    totalRewards += ffgRewards * onlineVal
-                    totalRewards += propIncentives * 32
-                    totalRewards += attIncentives * onlineVal
-                    totalRewards -= ffgPenalties * offlineVal
-                    var valRewards = totalRewards / allVal
-
-                    incomeAll += totalRewards
-                    price = price * (1 + priceChangePerEpoch)
-                    if (this.params.stakingFee > 0) {
-                        costs += (valRewards * (yourStake / valStake) * this.params.stakingFee) * price / 1e9
-                        incomeGwei += valRewards * (yourStake / valStake) * (1 - this.params.stakingFee)
-                        if (this.params.reinvest)
-                            yourStake += valRewards * (yourStake / valStake) * (1 - this.params.stakingFee)
-                    } else {
-                        incomeGwei += valRewards * (yourStake / valStake)
-                    }
-                    costs += costsPerEpoch
-                    var day = (i + 1) / epochsPerDay | 0
-                    if (day > this.result.incomeDollarChartData.length - 1) {
-                        var t = now + (i + 1) * 12 * 32 * 1000
-                        this.fillChartData(t, incomeGwei * price / 1e9, costs, price)
-                        this.result.networkIssuanceChartData.push([t, 100 * incomeAll / totalStake])
-                    }
-                }
-            }
-
-            fillChartData(t, incomeDollar, costsDollar, price) {
-                // t, incomeDollar / price, incomeDollar, costsDollar
-                var income = incomeDollar - this.params.stake * price / 1e9
-                this.result.incomeChartData.push({
-                    x: t,
-                    y: incomeDollar / price,
-                    income: incomeDollar,
-                    cost: costsDollar
-                })
-
-                this.result.incomeDollarChartData.push([t, income])
-                this.result.incomeEthChartData.push([t, incomeDollar / price])
-                this.result.costsDollarChartData.push([t, costsDollar])
-                this.result.costsEthChartData.push([t, costsDollar / price])
-                this.result.profitDollarChartData.push([t, income - costsDollar])
-
-                this.result.profitEthChartData.push([t, (incomeDollar - costsDollar) / price])
-                // this.result.stakeFeeChartData.push([t, ])
-
-                if (!this.result.breakEvenPoint && this.result.profitDollarChartData.length > 1) {
-                    var pdcd = this.result.profitDollarChartData
-                    var prevProfit = pdcd[pdcd.length - 2][1]
-                    var currProfit = pdcd[pdcd.length - 1][1]
-                    if (prevProfit < 0 && currProfit >= 0) {
-                        this.result.breakEvenPoint = t
-                    }
-                }
-            }
-
-            renderResult() {
-                var symbol = this.config.symbols[this.params.currency]
-                var currency = this.params.currency
-                $('.currency-key').each(function (i, el) {
-                    $(this).text(currency)
-                })
-
-                document.getElementById('staking-variable-totalStake-percentage').innerText = `${(this.params.networkStakePercent * 100).toFixed(2)} %`
-
-                document.getElementById('stake1d').innerHTML = `${this.result.incomeChartData[1].y.toFixed(4)} ETH (${symbol}${formatNumberSpacing(this.result.incomeChartData[1].income.toFixed(2))})`
-                document.getElementById('stake7d').innerHTML = `${this.result.incomeChartData[7].y.toFixed(4)} ETH (${symbol}${formatNumberSpacing(this.result.incomeChartData[7].income.toFixed(2))})`
-                document.getElementById('stake31d').innerHTML = `${this.result.incomeChartData[31].y.toFixed(4)} ETH (${symbol}${formatNumberSpacing(this.result.incomeChartData[31].income.toFixed(2))})`
-                document.getElementById('stake365d').innerHTML = `${this.result.incomeChartData[365].y.toFixed(4)} ETH (${symbol}${formatNumberSpacing(this.result.incomeChartData[365].income.toFixed(2))})`
-
-                document.getElementById('stakeChange1d').innerHTML = `${(this.result.incomeChartData[1].y - this.params.stake / 1e9).toFixed(4)} ETH (${symbol}${formatNumberSpacing((this.result.incomeChartData[1].income - this.params.stake / 1e9 * this.params.price).toFixed(2))})`
-                document.getElementById('stakeChange7d').innerHTML = `${(this.result.incomeChartData[7].y - this.params.stake / 1e9).toFixed(4)} ETH (${symbol}${formatNumberSpacing((this.result.incomeChartData[7].income - this.params.stake / 1e9 * this.params.price).toFixed(2))})`
-                document.getElementById('stakeChange31d').innerHTML = `${(this.result.incomeChartData[31].y - this.params.stake / 1e9).toFixed(4)} ETH (${symbol}${formatNumberSpacing((this.result.incomeChartData[31].income - this.params.stake / 1e9 * this.params.price).toFixed(2))})`
-                document.getElementById('stakeChange365d').innerHTML = `${(this.result.incomeChartData[365].y - this.params.stake / 1e9).toFixed(4)} ETH (${symbol}${formatNumberSpacing((this.result.incomeChartData[365].income - this.params.stake / 1e9 * this.params.price).toFixed(2))})`
-
-                document.getElementById('return1d').innerHTML = `${symbol}${formatNumberSpacing(this.result.profitDollarChartData[1][1].toFixed(2))}`
-                document.getElementById('return7d').innerHTML = `${symbol}${formatNumberSpacing(this.result.profitDollarChartData[7][1].toFixed(2))}`
-                document.getElementById('return31d').innerHTML = `${symbol}${formatNumberSpacing(this.result.profitDollarChartData[31][1].toFixed(2))}`
-                document.getElementById('return365d').innerHTML = `${symbol}${formatNumberSpacing(this.result.profitDollarChartData[365][1].toFixed(2))}`
-
-
-                document.getElementById('roi1d').innerText = `${(this.result.profitDollarChartData[1][1] / (this.params.stake * this.params.price / 1e9) * 100).toFixed(2)} %`
-                document.getElementById('roi7d').innerText = `${(this.result.profitDollarChartData[7][1] / (this.params.stake * this.params.price / 1e9) * 100).toFixed(2)} %`
-                document.getElementById('roi31d').innerText = `${(this.result.profitDollarChartData[31][1] / (this.params.stake * this.params.price / 1e9) * 100).toFixed(2)} %`
-                document.getElementById('roi365d').innerText = `${(this.result.profitDollarChartData[365][1] / (this.params.stake * this.params.price / 1e9) * 100).toFixed(2)} %`
-
-                if (this.result.numberOfPossibleValidators === '1') {
-                    document.getElementById('validator-count').innerText = this.result.numberOfPossibleValidators + ' validator'
-                } else {
-                    document.getElementById('validator-count').innerText = this.result.numberOfPossibleValidators + ' validators'
-                }
-
-
-                var stakeOptions = {
-                    title: {
-                        text: "Stake Growth"
-                    },
-                    series: [],
-                    tooltip: {
-                        shared: true,
-                        split: false,
-                    },
-                    yAxis: [{
-                        title: {
-                            text: 'Stake in ETH',
-                        },
-                        offset: 30
-                    }],
-                    legend: {enabled: true},
-                    navigator: {enabled: false},
-                    rangeSelector: {enabled: false},
-                    scrollbar: {enabled: false},
-
-                }
-                stakeOptions.series.push({
-                    name: 'Stake',
-                    color: 'var(--blue, blue)',
-                    data: this.result.incomeChartData,
-                    tooltip: {
-                        pointFormatter: function () {
-                            return `<span style="color:${this.color}">●</span> ${this.series.name} <b>${this.y.toFixed(3)} ETH </b>(${symbol}${formatNumberSpacing(this.options.income.toFixed(2))})<br>`
-                        }
-                    }
-                })
-
-
-                var chartStake = Highcharts.stockChart('stakeChart', stakeOptions)
-
-                var breakOptions = {
-                    title: {
-                        text: "Earnings Analysis"
-                    },
-                    series: [],
-                    yAxis: [
-                        {
-                            title: {text: `Earnings / Costs in ${this.params.currency}`},
-                            offset: 30
-
-                        }],
-                    legend: {enabled: true},
-                    navigator: {enabled: false},
-                    rangeSelector: {enabled: false},
-                    scrollbar: {enabled: false},
-                    tooltip: {
-                        shared: true,
-                        split: false,
-                        pointFormatter: function () {
-                            return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${symbol}${formatNumberSpacing(this.y.toFixed(2))}</b><br/>`
-                        }
-                    }
-                }
-
-                breakOptions.series.push({
-                    name: 'Income',
-                    data: this.result.incomeDollarChartData,
-                    color: 'var(--blue, blue)'
-                })
-                if (this.params.stakingFee || this.params.initialCosts || this.params.monthlyCosts) {
-                    breakOptions.series.push({
-                        name: 'Cost',
-                        data: this.result.costsDollarChartData,
-                        color: 'var(--orange, orange)'
-                    })
-                    breakOptions.series.push({
-                        name: 'Net Return',
-                        data: this.result.profitDollarChartData,
-                        color: 'var(--green, green)'
-                    })
-                }
-                if (this.result.breakEvenPoint) {
-                    var durMs = this.result.breakEvenPoint - this.result.start
-                    var durDays = durMs / 1000 / 3600 / 24 | 0
-                    var annotations = [{
-                        id: 'breakEvenPoint',
-                        labels: [{
-                            point: {
-                                x: this.result.breakEvenPoint,
-                                y: 0,
-                                xAxis: 0,
-                                yAxis: 0,
-                            },
-                            text: "Break-even-point after " + durDays + " days",
-                        }],
-                        labelOptions: {
-                            shape: 'connector',
-                            borderColor: 'var(--font-color)',
-                            style: {
-                                color: 'var(--font-color)'
-                            },
-                        },
-                    }]
-                    breakOptions.annotations = annotations
-                }
-                var chartBreakEven = Highcharts.stockChart('breakEvenChart', breakOptions)
-            }
+        if (isNaN(p.initialCosts) || p.initialCosts < 0) {
+          p.initialCosts = 0
+          document.getElementById("staking-variable-initialCosts-validation").style.display = "initial"
+        } else {
+          document.getElementById("staking-variable-initialCosts-validation").style.display = "none"
+        }
+        if (isNaN(p.monthlyCosts) || p.monthlyCosts < 0) {
+          p.monthlyCosts = 0
+          document.getElementById("staking-variable-monthlyCosts-validation").style.display = "initial"
+        } else {
+          document.getElementById("staking-variable-monthlyCosts-validation").style.display = "none"
+        }
+        if (isNaN(p.stakingFee) || p.stakingFee < 0 || p.stakingFee > 1) {
+          document.getElementById("staking-variable-stakingFee-validation").style.display = "initial"
+        } else {
+          document.getElementById("staking-variable-stakingFee-validation").style.display = "none"
+        }
+        if (isNaN(p.stakingFee) || p.stakingFee < 0) {
+          p.stakingFee = 0
+        }
+        if (p.stakingFee > 1) {
+          p.stakingFee = 1
+        }
+        p.networkStakePercent = p.networkStake / this.config.totalEthSupply
+      }
+
+      calculate() {
+        // this calculation is only a rough estimation, it calculates the total
+        // network issuance based ond total staked ether and online-probability
+        // of the network.
+        this.result.priceChartData = []
+        this.result.networkIssuanceChartData = []
+        this.result.incomeChartData = []
+        this.result.incomeDollarChartData = []
+        this.result.incomeEthChartData = []
+        this.result.costsDollarChartData = []
+        this.result.costsEthChartData = []
+        this.result.profitDollarChartData = []
+        this.result.profitEthChartData = []
+        this.result.breakEvenPoint = null
+        this.result.numberOfPossibleValidators = Math.floor(this.params.stake / (32 * 1e9)).toFixed(0) || "0"
+
+        var price = this.params.price
+        var costs = this.params.initialCosts //+ this.params.stake * price / 1e9
+
+        var epochsPerDay = (3600 * 24) / this.config.secondsPerEpoch
+        var epochsPerMonth = epochsPerDay * 31
+        var epochsPerYear = epochsPerDay * 365
+
+        var costsPerEpoch = this.params.monthlyCosts / epochsPerMonth
+
+        var priceChangePerEpoch = this.params.priceChangePerMonth / epochsPerMonth
+        var onlineProbability = this.params.networkOnlineProbability
+        var totalStake = this.params.networkStake
+        var valStake = 32e9
+        var baseRewardFactor = 64
+        var baseRewardsPerEpoch = 4
+        var baseReward = (valStake * baseRewardFactor) / (baseRewardsPerEpoch * Math.sqrt(totalStake))
+
+        var now = Date.now()
+        var yourStake = this.params.stake
+        var incomeGwei = this.params.stake
+        var incomeDollar = (incomeGwei * price) / 1e9
+        var incomeAll = 0
+
+        this.result.start = now
+
+        this.fillChartData(now, incomeDollar, costs, price)
+        // this.fillEarningChartData(now, incomeDollar, costs, price)
+
+        for (var i = 0; i < epochsPerYear; i++) {
+          var threshold = Math.max(4, Math.floor(((totalStake / valStake) | 0) / Math.pow(2, 16)))
+          var maxStakeGrowth = threshold * valStake
+
+          var churn = maxStakeGrowth * this.params.totalStakeMonthlyChange
+          totalStake += churn
+
+          baseReward = (valStake * baseRewardFactor) / (baseRewardsPerEpoch * Math.sqrt(totalStake))
+
+          var allVal = (totalStake / valStake) | 0
+
+          var onlineVal = (allVal * onlineProbability) | 0
+          var offlineVal = allVal - onlineVal
+
+          var ffgRewards = (3 * baseReward * onlineVal * valStake) / totalStake
+          var ffgPenalties = 3 * baseReward
+          var propIncentives = ((1 / 8) * baseReward * onlineVal) / 32
+          var attIncentives = ((7 / 8) * baseReward * 1) / 1
+
+          var totalRewards = 0
+          totalRewards += ffgRewards * onlineVal
+          totalRewards += propIncentives * 32
+          totalRewards += attIncentives * onlineVal
+          totalRewards -= ffgPenalties * offlineVal
+          var valRewards = totalRewards / allVal
+
+          incomeAll += totalRewards
+          price = price * (1 + priceChangePerEpoch)
+          if (this.params.stakingFee > 0) {
+            costs += (valRewards * (yourStake / valStake) * this.params.stakingFee * price) / 1e9
+            incomeGwei += valRewards * (yourStake / valStake) * (1 - this.params.stakingFee)
+            if (this.params.reinvest) yourStake += valRewards * (yourStake / valStake) * (1 - this.params.stakingFee)
+          } else {
+            incomeGwei += valRewards * (yourStake / valStake)
+          }
+          costs += costsPerEpoch
+          var day = ((i + 1) / epochsPerDay) | 0
+          if (day > this.result.incomeDollarChartData.length - 1) {
+            var t = now + (i + 1) * 12 * 32 * 1000
+            this.fillChartData(t, (incomeGwei * price) / 1e9, costs, price)
+            this.result.networkIssuanceChartData.push([t, (100 * incomeAll) / totalStake])
+          }
+        }
+      }
+
+      fillChartData(t, incomeDollar, costsDollar, price) {
+        // t, incomeDollar / price, incomeDollar, costsDollar
+        var income = incomeDollar - (this.params.stake * price) / 1e9
+        this.result.incomeChartData.push({
+          x: t,
+          y: incomeDollar / price,
+          income: incomeDollar,
+          cost: costsDollar,
+        })
+
+        this.result.incomeDollarChartData.push([t, income])
+        this.result.incomeEthChartData.push([t, incomeDollar / price])
+        this.result.costsDollarChartData.push([t, costsDollar])
+        this.result.costsEthChartData.push([t, costsDollar / price])
+        this.result.profitDollarChartData.push([t, income - costsDollar])
+
+        this.result.profitEthChartData.push([t, (incomeDollar - costsDollar) / price])
+        // this.result.stakeFeeChartData.push([t, ])
+
+        if (!this.result.breakEvenPoint && this.result.profitDollarChartData.length > 1) {
+          var pdcd = this.result.profitDollarChartData
+          var prevProfit = pdcd[pdcd.length - 2][1]
+          var currProfit = pdcd[pdcd.length - 1][1]
+          if (prevProfit < 0 && currProfit >= 0) {
+            this.result.breakEvenPoint = t
+          }
+        }
+      }
+
+      renderResult() {
+        var symbol = this.config.symbols[this.params.currency]
+        var currency = this.params.currency
+        $(".currency-key").each(function (i, el) {
+          $(this).text(currency)
+        })
+
+        document.getElementById("staking-variable-totalStake-percentage").innerText = `${(this.params.networkStakePercent * 100).toFixed(2)} %`
+
+        document.getElementById("stake1d").innerHTML = `${this.result.incomeChartData[1].y.toFixed(4)} ETH (${symbol}${formatNumberSpacing(this.result.incomeChartData[1].income.toFixed(2))})`
+        document.getElementById("stake7d").innerHTML = `${this.result.incomeChartData[7].y.toFixed(4)} ETH (${symbol}${formatNumberSpacing(this.result.incomeChartData[7].income.toFixed(2))})`
+        document.getElementById("stake31d").innerHTML = `${this.result.incomeChartData[31].y.toFixed(4)} ETH (${symbol}${formatNumberSpacing(this.result.incomeChartData[31].income.toFixed(2))})`
+        document.getElementById("stake365d").innerHTML = `${this.result.incomeChartData[365].y.toFixed(4)} ETH (${symbol}${formatNumberSpacing(this.result.incomeChartData[365].income.toFixed(2))})`
+
+        document.getElementById("stakeChange1d").innerHTML = `${(this.result.incomeChartData[1].y - this.params.stake / 1e9).toFixed(4)} ETH (${symbol}${formatNumberSpacing((this.result.incomeChartData[1].income - (this.params.stake / 1e9) * this.params.price).toFixed(2))})`
+        document.getElementById("stakeChange7d").innerHTML = `${(this.result.incomeChartData[7].y - this.params.stake / 1e9).toFixed(4)} ETH (${symbol}${formatNumberSpacing((this.result.incomeChartData[7].income - (this.params.stake / 1e9) * this.params.price).toFixed(2))})`
+        document.getElementById("stakeChange31d").innerHTML = `${(this.result.incomeChartData[31].y - this.params.stake / 1e9).toFixed(4)} ETH (${symbol}${formatNumberSpacing((this.result.incomeChartData[31].income - (this.params.stake / 1e9) * this.params.price).toFixed(2))})`
+        document.getElementById("stakeChange365d").innerHTML = `${(this.result.incomeChartData[365].y - this.params.stake / 1e9).toFixed(4)} ETH (${symbol}${formatNumberSpacing((this.result.incomeChartData[365].income - (this.params.stake / 1e9) * this.params.price).toFixed(2))})`
+
+        document.getElementById("return1d").innerHTML = `${symbol}${formatNumberSpacing(this.result.profitDollarChartData[1][1].toFixed(2))}`
+        document.getElementById("return7d").innerHTML = `${symbol}${formatNumberSpacing(this.result.profitDollarChartData[7][1].toFixed(2))}`
+        document.getElementById("return31d").innerHTML = `${symbol}${formatNumberSpacing(this.result.profitDollarChartData[31][1].toFixed(2))}`
+        document.getElementById("return365d").innerHTML = `${symbol}${formatNumberSpacing(this.result.profitDollarChartData[365][1].toFixed(2))}`
+
+        document.getElementById("roi1d").innerText = `${((this.result.profitDollarChartData[1][1] / ((this.params.stake * this.params.price) / 1e9)) * 100).toFixed(2)} %`
+        document.getElementById("roi7d").innerText = `${((this.result.profitDollarChartData[7][1] / ((this.params.stake * this.params.price) / 1e9)) * 100).toFixed(2)} %`
+        document.getElementById("roi31d").innerText = `${((this.result.profitDollarChartData[31][1] / ((this.params.stake * this.params.price) / 1e9)) * 100).toFixed(2)} %`
+        document.getElementById("roi365d").innerText = `${((this.result.profitDollarChartData[365][1] / ((this.params.stake * this.params.price) / 1e9)) * 100).toFixed(2)} %`
+
+        if (this.result.numberOfPossibleValidators === "1") {
+          document.getElementById("validator-count").innerText = this.result.numberOfPossibleValidators + " validator"
+        } else {
+          document.getElementById("validator-count").innerText = this.result.numberOfPossibleValidators + " validators"
         }
 
-        var c = new Calculator()
+        var stakeOptions = {
+          title: {
+            text: "Stake Growth",
+          },
+          series: [],
+          tooltip: {
+            shared: true,
+            split: false,
+          },
+          yAxis: [
+            {
+              title: {
+                text: "Stake in ETH",
+              },
+              offset: 30,
+            },
+          ],
+          legend: { enabled: true },
+          navigator: { enabled: false },
+          rangeSelector: { enabled: false },
+          scrollbar: { enabled: false },
+        }
+        stakeOptions.series.push({
+          name: "Stake",
+          color: "var(--blue, blue)",
+          data: this.result.incomeChartData,
+          tooltip: {
+            pointFormatter: function () {
+              return `<span style="color:${this.color}">●</span> ${this.series.name} <b>${this.y.toFixed(3)} ETH </b>(${symbol}${formatNumberSpacing(this.options.income.toFixed(2))})<br>`
+            },
+          },
+        })
 
-    </script>
+        Highcharts.stockChart("stakeChart", stakeOptions)
+
+        var breakOptions = {
+          title: {
+            text: "Earnings Analysis",
+          },
+          series: [],
+          yAxis: [
+            {
+              title: { text: `Earnings / Costs in ${this.params.currency}` },
+              offset: 30,
+            },
+          ],
+          legend: { enabled: true },
+          navigator: { enabled: false },
+          rangeSelector: { enabled: false },
+          scrollbar: { enabled: false },
+          tooltip: {
+            shared: true,
+            split: false,
+            pointFormatter: function () {
+              return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${symbol}${formatNumberSpacing(this.y.toFixed(2))}</b><br/>`
+            },
+          },
+        }
+
+        breakOptions.series.push({
+          name: "Income",
+          data: this.result.incomeDollarChartData,
+          color: "var(--blue, blue)",
+        })
+        if (this.params.stakingFee || this.params.initialCosts || this.params.monthlyCosts) {
+          breakOptions.series.push({
+            name: "Cost",
+            data: this.result.costsDollarChartData,
+            color: "var(--orange, orange)",
+          })
+          breakOptions.series.push({
+            name: "Net Return",
+            data: this.result.profitDollarChartData,
+            color: "var(--green, green)",
+          })
+        }
+        if (this.result.breakEvenPoint) {
+          var durMs = this.result.breakEvenPoint - this.result.start
+          var durDays = (durMs / 1000 / 3600 / 24) | 0
+          var annotations = [
+            {
+              id: "breakEvenPoint",
+              labels: [
+                {
+                  point: {
+                    x: this.result.breakEvenPoint,
+                    y: 0,
+                    xAxis: 0,
+                    yAxis: 0,
+                  },
+                  text: "Break-even-point after " + durDays + " days",
+                },
+              ],
+              labelOptions: {
+                shape: "connector",
+                borderColor: "var(--font-color)",
+                style: {
+                  color: "var(--font-color)",
+                },
+              },
+            },
+          ]
+          breakOptions.annotations = annotations
+        }
+        Highcharts.stockChart("breakEvenChart", breakOptions)
+      }
+    }
+
+    var c = new Calculator()
+  </script>
 {{ end }}
 
 {{ define "css" }}
-    <style>
-        td, th {
-            vertical-align: middle;
-        }
+  <style>
+    td,
+    th {
+      vertical-align: middle;
+    }
 
-        .currency-switch {
-            cursor: pointer
-        }
+    .currency-switch {
+      cursor: pointer;
+    }
 
-        .currency-switch:hover {
-            color: var(--primary)
-        }
+    .currency-switch:hover {
+      color: var(--primary);
+    }
 
-        .accordion .card-header {
-            cursor: pointer;
-        }
+    .accordion .card-header {
+      cursor: pointer;
+    }
 
-        .accordion .fas {
-            transform: rotate(0deg);
-            transition: transform .2s linear;
-        }
+    .accordion .fas {
+      transform: rotate(0deg);
+      transition: transform 0.2s linear;
+    }
 
-        .accordion div[aria-expanded='true'] .fas {
-            transform: rotate(-180deg);
-        }
+    .accordion div[aria-expanded="true"] .fas {
+      transform: rotate(-180deg);
+    }
 
-        .stake {
+    .stake {
+    }
 
-        }
+    .variables {
+    }
 
-        .variables {
+    .input-validation {
+      display: none;
+      font-size: 0.9rem;
+      color: var(--warning, orange);
+    }
 
-        }
+    .setting {
+      margin: 1rem 0;
+    }
 
-        .input-validation {
-            display: none;
-            font-size: 0.9rem;
-            color: var(--warning, orange);
-        }
+    .settings .setting:first-child {
+      margin-top: 0;
+    }
 
-        .setting {
-            margin: 1rem 0;
-        }
-
-        .settings .setting:first-child {
-            margin-top: 0;
-        }
-
-        .settings .setting:last-child {
-            margin-bottom: 0;
-        }
-    </style>
+    .settings .setting:last-child {
+      margin-bottom: 0;
+    }
+  </style>
 {{ end }}
 
 {{ define "content" }}
-    {{with .Data}}
-        <div class="container mt-2">
-            <div class="my-3">
-                <div class="d-md-flex py-2 justify-content-md-between">
-                    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-calculator mr-1"></i> Staking Calculator</h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Staking Calculator</li>
-                        </ol>
-                    </nav>
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-calculator mr-1"></i> Staking Calculator</h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Staking Calculator</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+
+      <div class="row my-3">
+        <div class="col-xl-4 col-md-5 col-sm-12 py-3 variables">
+          <div class="stake">
+            <h5 class="mb-0">Your Ethereum Stake <span id="yourStake-currency">ETH</span> <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="This value represents the amount of ETH you want to use for stacking. If you are not staking on a pool it must be a multiple of 32, since validators can only join the network with a minimum of 32 ETH."></i></h5>
+            <div class="justify-content-between d-flex p-3 pb-0 align-content-center">
+              <input id="staking-variable-yourStake" class="staking-variable form-control col-6" type="text" value="32" />
+              <h5 class="mb-0 mt-1" id="validator-count col-6"><span id="validator-count">0</span> <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="The total number of validators that can be added to the network with your stake. A minimum of 32 ethereum is needed for a validator to participate in the network. Ignore this value when you are staking over a pool."></i></h5>
+            </div>
+            <div class="p-3 pt-0">
+              <span id="staking-variable-yourStake-validation" class="input-validation">Your ethereum stake must be greater than 0</span>
+            </div>
+          </div>
+          <div class="accordion" id="calculator-accordion">
+            <div class="card">
+              <div class="card-header" role="button" id="economic-heading" data-toggle="collapse" data-target="#economic-parameters" aria-expanded="false" aria-controls="economic-parameters">Economic Parameters <i class="fas fa-caret-down float-right"></i></div>
+              <div id="economic-parameters" class="collapse" aria-labelledby="network-heading" data-target="#economic-heading">
+                <div class="p-3 settings">
+                  <div class="setting">
+                    <h6>Select Currency</h6>
+                    <div class="dropdown mb-1 currency-dropdown">
+                      <button class="form-control w-100 text-left dropdown-toggle" data-toggle="dropdown" id="currencyDropdown" aria-haspopup="true" aria-expanded="false">
+                        <div style="width: 95%; display: inline-block">
+                          <span id="selectedCurrency">USD</span>
+                        </div>
+                      </button>
+                      <div style="max-height:150px; overflow:scroll;" class="dropdown-menu w-100 text-left" aria-labelledby="currencyDropdown">
+                        <button onclick="c.setCurrency('USD')" type="button" class="dropdown-item">USD</button>
+                        <button onclick="c.setCurrency('EUR')" type="button" class="dropdown-item">EUR</button>
+                        <button onclick="c.setCurrency('GBP')" type="button" class="dropdown-item">GBP</button>
+                        <button onclick="c.setCurrency('BTC')" type="button" class="dropdown-item">BTC</button>
+                        <button onclick="c.setCurrency('AUD')" type="button" class="dropdown-item">AUD</button>
+                        <button onclick="c.setCurrency('CAD')" type="button" class="dropdown-item">CAD</button>
+                        <button onclick="c.setCurrency('CNY')" type="button" class="dropdown-item">CNY</button>
+                        <button onclick="c.setCurrency('CZK')" type="button" class="dropdown-item">CZK</button>
+                        <button onclick="c.setCurrency('GBP')" type="button" class="dropdown-item">GBP</button>
+                        <button onclick="c.setCurrency('JPY')" type="button" class="dropdown-item">JPY</button>
+                        <button onclick="c.setCurrency('RUB')" type="button" class="dropdown-item">RUB</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="setting">
+                    <h6>ETH price in <span class="currency-key">USD</span></h6>
+                    <input id="staking-variable-price" class="staking-variable form-control" type="text" value="209.46" />
+                    <span id="staking-variable-price-validation" class="input-validation">Ethereum price must be greater than 0</span>
+                  </div>
+                  <div class="setting">
+                    <h6>Monthly price change in %</h6>
+                    <input id="staking-variable-priceChangePerMonth" class="staking-variable form-control" type="text" value="0" />
+                    <span id="staking-variable-priceChangePerMonth-validation" class="input-validation">Ethereum price change must be a percentage greater or equal to 0</span>
+                  </div>
+                  <div class="setting">
+                    <h6>Initial one-time-costs in <span class="currency-key">USD</span></h6>
+                    <input id="staking-variable-initialCosts" class="staking-variable form-control noPool" type="text" value="0" />
+                    <span id="staking-variable-initialCosts-validation" class="input-validation">Initial costs must be greater or equal to 0</span>
+                  </div>
+                  <div class="setting">
+                    <h6>Monthly costs in <span class="currency-key">USD</span></h6>
+                    <input id="staking-variable-monthlyCosts" class="staking-variable form-control noPool" type="text" value="0" />
+                    <span id="staking-variable-monthlyCosts-validation" class="input-validation">Monthly costs must be greater or equal to 0</span>
+                  </div>
                 </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header" role="button" id="pool-heading" data-toggle="collapse" data-target="#pool-parameters" aria-expanded="false" aria-controls="pool-parameters">Staking Pool Parameters <i class="fas fa-caret-down float-right"></i></div>
+              <div id="pool-parameters" class="collapse" aria-labelledby="pool-heading" data-target="#pool-heading">
+                <div class="p-3 settings">
+                  <div class="setting">
+                    <h6>Staking fee % <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="If you are staking on a pool enter the fee of the pool here. If you are not staking on a pool, just set it to 0."></i></h6>
+                    <input id="staking-variable-stakingFee" class="staking-variable form-control pool" type="text" value="0" />
+                    <span id="staking-variable-stakingFee-validation" class="input-validation">Staking fee must be between 0 and 100</span>
+                  </div>
+                  <div class="setting mb-2">
+                    <h6>Reinvest gains <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Setting this field will add your staking-income to your initial stake after each epoch. This will only work if you are staking on a pool."></i></h6>
+                    <div class="form-group form-check pb-1">
+                      <input style="width: 1rem; height:1rem;" id="staking-variable-reinvest" class="staking-variable form-check-input pool" type="checkbox" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-
-            <div class="row my-3">
-                <div class="col-xl-4 col-md-5 col-sm-12 py-3 variables">
-                    <div class="stake">
-                        <h5 class="mb-0">Your Ethereum Stake <span id="yourStake-currency">ETH</span> <i
-                                    class="fas fa-info-circle fa-sm" data-toggle="tooltip"
-                                    title="This value represents the amount of ETH you want to use for stacking. If you are not staking on a pool it must be a multiple of 32, since validators can only join the network with a minimum of 32 ETH."></i>
-                        </h5>
-                        <div class="justify-content-between d-flex p-3 pb-0 align-content-center">
-                            <input id="staking-variable-yourStake" class="staking-variable form-control col-6"
-                                   type="text" value=32>
-                            <h5 class="mb-0 mt-1" id="validator-count col-6"><span id="validator-count">0</span> <i
-                                        class="fas fa-info-circle fa-sm" data-toggle="tooltip"
-                                        title="The total number of validators that can be added to the network with your stake. A minimum of 32 ethereum is needed for a validator to participate in the network. Ignore this value when you are staking over a pool."></i>
-                            </h5>
-                        </div>
-                        <div class="p-3 pt-0">
-                            <span id="staking-variable-yourStake-validation" class="input-validation">Your ethereum stake must be greater than 0</span>
-                        </div>
+            <div class="card">
+              <div class="card-header" role="button" id="network-heading" data-toggle="collapse" data-target="#network-parameters" aria-expanded="false" aria-controls="network-parameters">Network Parameters <i class="fas fa-caret-down float-right"></i></div>
+              <div id="network-parameters" class="collapse" aria-labelledby="network-heading" data-target="#network-heading">
+                <div class="p-3 settings">
+                  <div class="setting">
+                    <div class="d-flex justify-content-between">
+                      <h6 width="50%">
+                        Total staked ether <span id="totalStake-currency">ETH</span>
+                        <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Total staked ether is the sum of effective balances of all active validators attesting in the network."></i>
+                      </h6>
+                      <span id="staking-variable-totalStake-percentage"></span>
                     </div>
-                    <div class="accordion" id="calculator-accordion">
-                        <div class="card">
-                            <div class="card-header" role="button" id="economic-heading" data-toggle="collapse"
-                                 data-target="#economic-parameters" aria-expanded="false"
-                                 aria-controls="economic-parameters">
-                                Economic Parameters <i class="fas fa-caret-down float-right"></i>
-                            </div>
-                            <div id="economic-parameters" class="collapse" aria-labelledby="network-heading"
-                                 data-target="#economic-heading">
-                                <div class="p-3 settings">
-                                    <div class="setting">
-                                        <h6>Select Currency</h6>
-                                        <div class="dropdown mb-1 currency-dropdown">
-                                            <button class="form-control w-100 text-left dropdown-toggle"
-                                                    data-toggle="dropdown" id="currencyDropdown" aria-haspopup="true"
-                                                    aria-expanded="false">
-                                                <div style="width: 95%; display: inline-block">
-                                                    <span id="selectedCurrency">USD</span>
-                                                </div>
-                                            </button>
-                                            <div style="max-height:150px; overflow:scroll;"
-                                                 class="dropdown-menu w-100 text-left"
-                                                 aria-labelledby="currencyDropdown">
-                                                <button onclick="c.setCurrency('USD')" type="button"
-                                                        class="dropdown-item">USD
-                                                </button>
-                                                <button onclick="c.setCurrency('EUR')" type="button"
-                                                        class="dropdown-item">EUR
-                                                </button>
-                                                <button onclick="c.setCurrency('GBP')" type="button"
-                                                        class="dropdown-item">GBP
-                                                </button>
-                                                <button onclick="c.setCurrency('BTC')" type="button"
-                                                        class="dropdown-item">BTC
-                                                </button>
-                                                <button onclick="c.setCurrency('AUD')" type="button"
-                                                        class="dropdown-item">AUD
-                                                </button>
-                                                <button onclick="c.setCurrency('CAD')" type="button"
-                                                        class="dropdown-item">CAD
-                                                </button>
-                                                <button onclick="c.setCurrency('CNY')" type="button"
-                                                        class="dropdown-item">CNY
-                                                </button>
-                                                <button onclick="c.setCurrency('CZK')" type="button"
-                                                        class="dropdown-item">CZK
-                                                </button>
-                                                <button onclick="c.setCurrency('GBP')" type="button"
-                                                        class="dropdown-item">GBP
-                                                </button>
-                                                <button onclick="c.setCurrency('JPY')" type="button"
-                                                        class="dropdown-item">JPY
-                                                </button>
-                                                <button onclick="c.setCurrency('RUB')" type="button"
-                                                        class="dropdown-item">RUB
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="setting">
-                                        <h6>ETH price in <span class="currency-key">USD</span></h6>
-                                        <input id="staking-variable-price" class="staking-variable form-control"
-                                               type="text" value=209.46>
-                                        <span id="staking-variable-price-validation" class="input-validation">Ethereum price must be greater than 0</span>
-                                    </div>
-                                    <div class="setting">
-                                        <h6>Monthly price change in %</h6>
-                                        <input id="staking-variable-priceChangePerMonth"
-                                               class="staking-variable form-control" type="text" value=0>
-                                        <span id="staking-variable-priceChangePerMonth-validation"
-                                              class="input-validation">Ethereum price change must be a percentage greater or equal to 0</span>
-                                    </div>
-                                    <div class="setting">
-                                        <h6>Initial one-time-costs in <span class="currency-key">USD</span></h6>
-                                        <input id="staking-variable-initialCosts"
-                                               class="staking-variable form-control noPool" type="text" value=0>
-                                        <span id="staking-variable-initialCosts-validation" class="input-validation">Initial costs must be greater or equal to 0</span>
-                                    </div>
-                                    <div class="setting">
-                                        <h6>Monthly costs in <span class="currency-key">USD</span></h6>
-                                        <input id="staking-variable-monthlyCosts"
-                                               class="staking-variable form-control noPool" type="text" value=0>
-                                        <span id="staking-variable-monthlyCosts-validation" class="input-validation">Monthly costs must be greater or equal to 0</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <div class="card-header" role="button" id="pool-heading" data-toggle="collapse"
-                                 data-target="#pool-parameters" aria-expanded="false" aria-controls="pool-parameters">
-                                Staking Pool Parameters <i class="fas fa-caret-down float-right"></i>
-                            </div>
-                            <div id="pool-parameters" class="collapse" aria-labelledby="pool-heading"
-                                 data-target="#pool-heading">
-                                <div class="p-3 settings">
-                                    <div class="setting">
-                                        <h6>Staking fee % <i class="fas fa-info-circle fa-sm" data-toggle="tooltip"
-                                                             title="If you are staking on a pool enter the fee of the pool here. If you are not staking on a pool, just set it to 0."></i>
-                                        </h6>
-                                        <input id="staking-variable-stakingFee"
-                                               class="staking-variable form-control pool" type="text" value=0>
-                                        <span id="staking-variable-stakingFee-validation" class="input-validation">Staking fee must be between 0 and 100</span>
-                                    </div>
-                                    <div class="setting mb-2">
-                                        <h6>Reinvest gains <i class="fas fa-info-circle fa-sm" data-toggle="tooltip"
-                                                              title="Setting this field will add your staking-income to your initial stake after each epoch. This will only work if you are staking on a pool."></i>
-                                        </h6>
-                                        <div class="form-group form-check pb-1">
-                                            <input style="width: 1rem; height:1rem;" id="staking-variable-reinvest"
-                                                   class="staking-variable form-check-input pool" type="checkbox">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-header" role="button" id="network-heading" data-toggle="collapse"
-                                 data-target="#network-parameters" aria-expanded="false"
-                                 aria-controls="network-parameters">
-                                Network Parameters <i class="fas fa-caret-down float-right"></i>
-                            </div>
-                            <div id="network-parameters" class="collapse" aria-labelledby="network-heading"
-                                 data-target="#network-heading">
-                                <div class="p-3 settings">
-                                    <div class="setting">
-                                        <div class="d-flex justify-content-between">
-                                            <h6 width="50%">Total staked ether <span id="totalStake-currency">ETH</span>
-                                                <i class="fas fa-info-circle fa-sm" data-toggle="tooltip"
-                                                   title="Total staked ether is the sum of effective balances of all active validators attesting in the network."></i>
-                                            </h6>
-                                            <span id="staking-variable-totalStake-percentage"></span>
-                                        </div>
-                                        <input id="staking-variable-totalStake" class="staking-variable form-control"
-                                               type="text" value={{.TotalStaked}}>
-                                        <input id="staking-variable-totalStake-slider" class="form-control" type="range"
-                                               value=1100000 min=0 max=100e6>
-                                        <span id="staking-variable-totalStake-validation" class="input-validation">Total stake must be greater or equal to 524384 (minimum stake required)</span>
-                                    </div>
-                                    <div class="setting">
-                                        <h6>Churn rate % <i class="fas fa-info-circle fa-sm" data-toggle="tooltip"
-                                                            title="The churn rate indicates how many validators join or leave the network. A positive value would indicate a net increase in the number of staking validators."></i>
-                                        </h6>
-                                        <input id="staking-variable-totalStakeMonthlyChange"
-                                               class="staking-variable form-control" type="text" value=0>
-                                        <input id="staking-variable-totalStakeMonthlyChange-slider" class="form-control"
-                                               type="range" value=0 min=-100 max=100>
-                                        <span id="staking-variable-totalStakeMonthlyChange-validation"
-                                              class="input-validation">The churn rate must be percentage between -100 and 100</span>
-                                    </div>
-                                    <div class="setting">
-                                        <h6>Online probability % <i class="fas fa-info-circle fa-sm"
-                                                                    data-toggle="tooltip"
-                                                                    title="Online probability is the average probability of all active validators to be online and to fulfill their duties."></i>
-                                        </h6>
-                                        <input id="staking-variable-onlineProbability"
-                                               class="staking-variable form-control" type="text" value=90>
-                                        <input id="staking-variable-onlineProbability-slider" class="form-control"
-                                               type="range" value=90 min=1 max=100>
-                                        <span id="staking-variable-onlineProbability-validation"
-                                              class="input-validation">Online probability must be a percentage between 1 and 100</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <input id="staking-variable-totalStake" class="staking-variable form-control" type="text" value="{{ .TotalStaked }}" />
+                    <input id="staking-variable-totalStake-slider" class="form-control" type="range" value="1100000" min="0" max="100e6" />
+                    <span id="staking-variable-totalStake-validation" class="input-validation">Total stake must be greater or equal to 524384 (minimum stake required)</span>
+                  </div>
+                  <div class="setting">
+                    <h6>Churn rate % <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="The churn rate indicates how many validators join or leave the network. A positive value would indicate a net increase in the number of staking validators."></i></h6>
+                    <input id="staking-variable-totalStakeMonthlyChange" class="staking-variable form-control" type="text" value="0" />
+                    <input id="staking-variable-totalStakeMonthlyChange-slider" class="form-control" type="range" value="0" min="-100" max="100" />
+                    <span id="staking-variable-totalStakeMonthlyChange-validation" class="input-validation">The churn rate must be percentage between -100 and 100</span>
+                  </div>
+                  <div class="setting">
+                    <h6>Online probability % <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Online probability is the average probability of all active validators to be online and to fulfill their duties."></i></h6>
+                    <input id="staking-variable-onlineProbability" class="staking-variable form-control" type="text" value="90" />
+                    <input id="staking-variable-onlineProbability-slider" class="form-control" type="range" value="90" min="1" max="100" />
+                    <span id="staking-variable-onlineProbability-validation" class="input-validation">Online probability must be a percentage between 1 and 100</span>
+                  </div>
                 </div>
-                <div class="col-md-7 col-sm-12">
-                    <h5 class="my-3 px-0 col-10">Estimated Rewards</h5>
-                    <div style="height: calc(54px - 1rem);"
-                         class="my-3 px-0 col-10 d-flex justif-content-center align-items-center">
-                        <button style="width:38px; height:28px;" data-toggle="tooltip"
-                                data-original-title="Copy Link to Configuration" id="copy-button"
-                                data-clipboard-text="https://beaconcha.in/calculator" type="button"
-                                class="d-flex justify-content-center align-items-center btn btn-primary btn-sm m-1">
-                            <i class="fa fa-copy"></i>
-                        </button>
-                        <button id="twitter-share" style="width:38px; height:28px;color:#fff;background-color:#1DA1F2"
-                                type="button" class="d-flex justify-content-center align-items-center btn btn-sm m-1">
-                            <i class="fab fa-twitter"></i>
-                        </button>
-                        <button id="facebook-share" style="width:38px; height:28px;background-color:#4267B2;color:#fff"
-                                type="button" class="d-flex justify-content-center align-items-center btn btn-sm m-1">
-                            <i class="fab fa-facebook-f"></i>
-                        </button>
-                        <button id="linkedin-share" style="width:38px; height:28px;background-color:#2867B2;color:#fff"
-                                type="button" class="d-flex justify-content-center align-items-center btn btn-sm m-1">
-                            <i class="fab fa-linkedin-in"></i>
-                        </button>
-                    </div>
-                    <div id="stakeChart" class="card my-3"></div>
-                    <div id="breakEvenChart" class="card my-3"></div>
-                    <div class="card my-3 table-responsive">
-                        <table class="table p-0">
-                            <tbody>
-                            <tr>
-                                <th>Duration</th>
-                                <th>ETH Stake</th>
-                                <th>ETH Reward</th>
-                                <th>Return</th>
-                                <th>Return in %</th>
-                            </tr>
-                            <tr>
-                                <th>Day</th>
-                                <td id="stake1d"></td>
-                                <td id="stakeChange1d"></td>
-                                <td id="return1d"></td>
-                                <td id="roi1d"></td>
-                            </tr>
-                            <tr>
-                                <th>Week</th>
-                                <td id="stake7d"></td>
-                                <td id="stakeChange7d"></td>
-                                <td id="return7d"></td>
-                                <td id="roi7d"></td>
-                            </tr>
-                            <tr>
-                                <th>Month</th>
-                                <td id="stake31d"></td>
-                                <td id="stakeChange31d"></td>
-                                <td id="return31d"></td>
-                                <td id="roi31d"></td>
-                            </tr>
-                            <tr>
-                                <th>Year</th>
-                                <td id="stake365d"></td>
-                                <td id="stakeChange365d"></td>
-                                <td id="return365d"></td>
-                                <td id="roi365d"></td>
-                            </tr>
-                            </tbody>
-                            <div id="breakEvenPointHolder" style="display:none">
-                                The break-even-point is reached after <span id="breakEvenPoint">10</span> days
-                            </div>
-                        </table>
-                    </div>
-                    <div class="d-flex justify-content-between py-2">
-                        <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-                    </div>
-                </div>
+              </div>
             </div>
+          </div>
         </div>
+        <div class="col-md-7 col-sm-12">
+          <h5 class="my-3 px-0 col-10">Estimated Rewards</h5>
+          <div style="height: calc(54px - 1rem);" class="my-3 px-0 col-10 d-flex justif-content-center align-items-center">
+            <button style="width:38px; height:28px;" data-toggle="tooltip" data-original-title="Copy Link to Configuration" id="copy-button" data-clipboard-text="https://beaconcha.in/calculator" type="button" class="d-flex justify-content-center align-items-center btn btn-primary btn-sm m-1">
+              <i class="fa fa-copy"></i>
+            </button>
+            <button id="twitter-share" style="width:38px; height:28px;color:#fff;background-color:#1DA1F2" type="button" class="d-flex justify-content-center align-items-center btn btn-sm m-1">
+              <i class="fab fa-twitter"></i>
+            </button>
+            <button id="facebook-share" style="width:38px; height:28px;background-color:#4267B2;color:#fff" type="button" class="d-flex justify-content-center align-items-center btn btn-sm m-1">
+              <i class="fab fa-facebook-f"></i>
+            </button>
+            <button id="linkedin-share" style="width:38px; height:28px;background-color:#2867B2;color:#fff" type="button" class="d-flex justify-content-center align-items-center btn btn-sm m-1">
+              <i class="fab fa-linkedin-in"></i>
+            </button>
+          </div>
+          <div id="stakeChart" class="card my-3"></div>
+          <div id="breakEvenChart" class="card my-3"></div>
+          <div class="card my-3 table-responsive">
+            <table class="table p-0">
+              <tbody>
+                <tr>
+                  <th>Duration</th>
+                  <th>ETH Stake</th>
+                  <th>ETH Reward</th>
+                  <th>Return</th>
+                  <th>Return in %</th>
+                </tr>
+                <tr>
+                  <th>Day</th>
+                  <td id="stake1d"></td>
+                  <td id="stakeChange1d"></td>
+                  <td id="return1d"></td>
+                  <td id="roi1d"></td>
+                </tr>
+                <tr>
+                  <th>Week</th>
+                  <td id="stake7d"></td>
+                  <td id="stakeChange7d"></td>
+                  <td id="return7d"></td>
+                  <td id="roi7d"></td>
+                </tr>
+                <tr>
+                  <th>Month</th>
+                  <td id="stake31d"></td>
+                  <td id="stakeChange31d"></td>
+                  <td id="return31d"></td>
+                  <td id="roi31d"></td>
+                </tr>
+                <tr>
+                  <th>Year</th>
+                  <td id="stake365d"></td>
+                  <td id="stakeChange365d"></td>
+                  <td id="return365d"></td>
+                  <td id="roi365d"></td>
+                </tr>
+              </tbody>
+              <div id="breakEvenPointHolder" style="display:none">The break-even-point is reached after <span id="breakEvenPoint">10</span> days</div>
+            </table>
+          </div>
+          <div class="d-flex justify-content-between py-2">
+            <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+          </div>
         </div>
-        </div>
-        </div>
-        <div id="fb-root"></div>
-        </div>
-    {{ end }}
+      </div>
+    </div>
+    <div id="fb-root"></div>
+  {{ end }}
 {{ end }}

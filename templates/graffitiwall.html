@@ -1,4 +1,4 @@
-{{ define "js"}}
+{{ define "js" }}
     <script type="text/javascript">
         var c = document.getElementById("graffitiwall");
         var ctx = c.getContext("2d");
@@ -23,84 +23,80 @@
             })
         }
     </script>
-{{end}}
+{{ end }}
 
-{{ define "css"}}
-{{end}}
+{{ define "css" }}
+{{ end }}
 
-{{ define "content"}}
-    <div class="container mt-2">
-        <div class="my-3">
-            <div class="d-md-flex py-2 justify-content-md-between">
-                <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-paint-brush"></i> The Graffitiwall - Draw your stake!
-                </h1>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                        <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Graffitiwall</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-md-12">
-                <div class="accordion">
-                    <div class="card">
-                        <div class="card-header">
-                            <h2 class="h6">
-                                <a data-toggle="collapse" href="#collapse1">Want to participate?</a>
-                            </h2>
-                        </div>
-                        <div id="collapse1" class="collapse">
-                            <div class="card-body">
-                                In order to draw on the graffitiwall you will need to adjust the graffiti value your validator
-                                assigns to each proposed block.<br>
-                                There are 2 different formats you can use:
-                                <ul>
-                                    <li>
-                                        The simple one: <code>graffitiwall:<b>x</b>:<b>y</b>:<b>#cccccc</b></code>
-                                        <ul>
-                                            <li>
-                                                <code><b>x</b></code> and <code><b>y</b></code> are the coordinates of the pixel you want to draw.
-                                                These coordinates need to be within 0 and 999.
-                                            </li>
-                                            <li>
-                                                <code><b>cccccc</b></code> is the hexadecimal representation of the color you want to draw.
-                                            </li>
-                                            <li>
-                                                <b>Example:</b>
-                                                <code>graffitiwall:<b>50</b>:<b>60</b>:<b>#efefef</b></code> will draw a pixel at position x=50, y=60 with the color #efefef.
-                                            </li>
-                                        </ul>
-                                    </li>
-                                    <li>
-                                        The compact one: <code>gw:<b>xxxyyycccccc</b></code>
-                                        <ul>
-                                            <li>
-                                                This version is small enough for you to add your own message next to it.<br>
-                                                Some valid examples: <code>RP-N v1.0.0 (<b>gw:050060efefef</b>)</code> or <code><b>gw:050060efefef</b> | Hello World!</code>
-                                            </li>
-                                            <li>
-                                                Coordinates have to be padded with leading zeros to make sure they are always 3 digits long.
-                                            </li>
-                                            <li>
-                                                <b>Example:</b>
-                                                <code>gw:<b>050</b><b>060</b><b>efefef</b></code> will draw a pixel at position x=50, y=60 with the color #efefef.
-                                            </li>
-                                        </ul>
-                                    </li>
-                                </ul>
-                                Pixels can be overwritten and only the most recent value will be shown. The total canvas size is 1000x1000 pixels.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div><br>
-        <div class="row">
-            <div class="col-md-12 text-center">
-                <canvas id="graffitiwall" width="1000" height="1050" style="image-rendering:pixelated;"></canvas>
-            </div>
-        </div>
+{{ define "content" }}
+  <div class="container mt-2">
+    <div class="my-3">
+      <div class="d-md-flex py-2 justify-content-md-between">
+        <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-paint-brush"></i> The Graffitiwall - Draw your stake!</h1>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Graffitiwall</li>
+          </ol>
+        </nav>
+      </div>
     </div>
-{{end}}
+    <div class="row">
+      <div class="col-md-12">
+        <div class="accordion">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="h6">
+                <a data-toggle="collapse" href="#collapse1">Want to participate?</a>
+              </h2>
+            </div>
+            <div id="collapse1" class="collapse">
+              <div class="card-body">
+                In order to draw on the graffitiwall you will need to adjust the graffiti value your validator assigns to each proposed block.<br />
+                There are 2 different formats you can use:
+                <ul>
+                  <li>
+                    The simple one: <code>graffitiwall:<b>x</b>:<b>y</b>:<b>#cccccc</b></code>
+                    <ul>
+                      <li>
+                        <code><b>x</b></code> and <code><b>y</b></code> are the coordinates of the pixel you want to draw. These coordinates need to be within 0 and 999.
+                      </li>
+                      <li>
+                        <code><b>cccccc</b></code> is the hexadecimal representation of the color you want to draw.
+                      </li>
+                      <li>
+                        <b>Example:</b>
+                        <code>graffitiwall:<b>50</b>:<b>60</b>:<b>#efefef</b></code> will draw a pixel at position x=50, y=60 with the color #efefef.
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    The compact one: <code>gw:<b>xxxyyycccccc</b></code>
+                    <ul>
+                      <li>
+                        This version is small enough for you to add your own message next to it.<br />
+                        Some valid examples: <code>RP-N v1.0.0 (<b>gw:050060efefef</b>)</code> or <code><b>gw:050060efefef</b> | Hello World!</code>
+                      </li>
+                      <li>Coordinates have to be padded with leading zeros to make sure they are always 3 digits long.</li>
+                      <li>
+                        <b>Example:</b>
+                        <code>gw:<b>050</b><b>060</b><b>efefef</b></code> will draw a pixel at position x=50, y=60 with the color #efefef.
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+                Pixels can be overwritten and only the most recent value will be shown. The total canvas size is 1000x1000 pixels.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <br />
+    <div class="row">
+      <div class="col-md-12 text-center">
+        <canvas id="graffitiwall" width="1000" height="1050" style="image-rendering:pixelated;"></canvas>
+      </div>
+    </div>
+  </div>
+{{ end }}

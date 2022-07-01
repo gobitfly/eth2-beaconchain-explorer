@@ -1,120 +1,89 @@
 {{ define "validatorBookmarkModal" }}
-<div class="modal fade" id="bookmark-validator-modal" tabindex="-1" role="dialog"
-    aria-labelledby="bookmark-validator-modal-label" aria-hidden="true">
-    <form action="{{printf "%#x" .PublicKey}}/add" method="post">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="bookmarkModalLabel">Add to Watchlist</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <p>Additionally to adding this validator to your watch list you can optionally subscribe to events
-                        and receive email notifications.</p>
-                    <div class="form-group">
-                        <div class="form-check">
-                            <input class="form-check-input" id="balance_decreases" type="checkbox"
-                                name="balance_decreases">
-                            <label class="form-check-label" for="balance_decreases">
-                                balance decreases
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" id="validator_slashed" type="checkbox"
-                                name="validator_slashed">
-                            <label class="form-check-label" for="validator_slashed">
-                                validator slashed
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" id="validator_proposal_missed" type="checkbox"
-                                name="validator_proposal_missed">
-                            <label class="form-check-label" for="validator_proposal_missed">
-                                missed proposals
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" id="validator_proposal_submitted" type="checkbox"
-                                name="validator_proposal_submitted">
-                            <label class="form-check-label" for="validator_proposal_submitted">
-                                submitted proposals
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" id="validator_attestation_missed" type="checkbox"
-                                name="validator_attestation_missed">
-                            <label class="form-check-label" for="validator_attestation_missed">
-                                missed attestations
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" id="validator_synccommittee_soon" type="checkbox"
-                                name="validator_synccommittee_soon">
-                            <label class="form-check-label" for="validator_synccommittee_soon">
-                                sync committee
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Add To Watchlist</button>
-                </div>
+  <div class="modal fade" id="bookmark-validator-modal" tabindex="-1" role="dialog" aria-labelledby="bookmark-validator-modal-label" aria-hidden="true">
+    <form action="{{ printf "%#x" .PublicKey }}/add" method="post">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="bookmarkModalLabel">Add to Watchlist</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Additionally to adding this validator to your watch list you can optionally subscribe to events and receive email notifications.</p>
+            <div class="form-group">
+              <div class="form-check">
+                <input class="form-check-input" id="balance_decreases" type="checkbox" name="balance_decreases" />
+                <label class="form-check-label" for="balance_decreases"> balance decreases </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" id="validator_slashed" type="checkbox" name="validator_slashed" />
+                <label class="form-check-label" for="validator_slashed"> validator slashed </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" id="validator_proposal_missed" type="checkbox" name="validator_proposal_missed" />
+                <label class="form-check-label" for="validator_proposal_missed"> missed proposals </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" id="validator_proposal_submitted" type="checkbox" name="validator_proposal_submitted" />
+                <label class="form-check-label" for="validator_proposal_submitted"> submitted proposals </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" id="validator_attestation_missed" type="checkbox" name="validator_attestation_missed" />
+                <label class="form-check-label" for="validator_attestation_missed"> missed attestations </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" id="validator_synccommittee_soon" type="checkbox" name="validator_synccommittee_soon" />
+                <label class="form-check-label" for="validator_synccommittee_soon"> sync committee </label>
+              </div>
             </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary">Add To Watchlist</button>
+          </div>
         </div>
+      </div>
     </form>
-</div>
-{{end}}
+  </div>
+{{ end }}
 
-{{ define "validatorEditModal"}}
-<div class="modal fade" id="edit-validator-modal" tabindex="-1" role="dialog"
-    aria-labelledby="edit-validator-modal-label" aria-hidden="true">
-    <form action="0x{{printf "%x" .PublicKey}}/save" method="post">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Edit validator details</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <p>In order to save any validator details you will need to provide a signed message of the eth1
-                        account that sent the first valid deposit ({{formatEth1Address .Eth1DepositAddress}}) for
-                        verification. Currently we support signatures generated with <a target="_blank"
-                            href="https://www.mycrypto.com/sign-and-verify-message/sign">MyCrypto</a> and <a
-                            target="_blank"
-                            href="https://www.myetherwallet.com/interface/sign-message">MyEtherWallet</a>.</p>
-                    <p>The signature text MUST CONTAIN the string <b>beaconcha.in</b>.</p>
-                    <input type="hidden" value="0x{{printf "%x" .PublicKey}}" name="pubkey">
-                    <div class="form-group">
-                        <label for="input-name">Custom name or twitter handle</label>
-                        <input class="form-control" id="input-name" type="text" maxlength="40" name="name">
-                    </div>
-                    <div class="form-group">
-                        <div class="form-check">
-                            <input class="form-check-input" id="input-apply-to-all" type="checkbox" name="apply-to-all">
-                            <label class="form-check-label" for="input-apply-to-all">
-                                Apply this name to all validators created by the address
-                                {{formatEth1Address .Eth1DepositAddress}}?
-                            </label>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="input-signature">Signature</label>
-                        <textarea class="form-control" id="input-signature" rows='7' required
-                            placeholder="{'address': '...', 'msg': '...', 'sig': '...', 'version': '2'}'"
-                            name="signature"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save changes</button>
-                </div>
+{{ define "validatorEditModal" }}
+  <div class="modal fade" id="edit-validator-modal" tabindex="-1" role="dialog" aria-labelledby="edit-validator-modal-label" aria-hidden="true">
+    <form action="0x{{ printf "%x" .PublicKey }}/save" method="post">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Edit validator details</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>In order to save any validator details you will need to provide a signed message of the eth1 account that sent the first valid deposit ({{ formatEth1Address .Eth1DepositAddress }}) for verification. Currently we support signatures generated with <a target="_blank" href="https://www.mycrypto.com/sign-and-verify-message/sign">MyCrypto</a> and <a target="_blank" href="https://www.myetherwallet.com/interface/sign-message">MyEtherWallet</a>.</p>
+            <p>The signature text MUST CONTAIN the string <b>beaconcha.in</b>.</p>
+            <input type="hidden" value="0x{{ printf "%x" .PublicKey }}" name="pubkey" />
+            <div class="form-group">
+              <label for="input-name">Custom name or twitter handle</label>
+              <input class="form-control" id="input-name" type="text" maxlength="40" name="name" />
             </div>
+            <div class="form-group">
+              <div class="form-check">
+                <input class="form-check-input" id="input-apply-to-all" type="checkbox" name="apply-to-all" />
+                <label class="form-check-label" for="input-apply-to-all"> Apply this name to all validators created by the address {{ formatEth1Address .Eth1DepositAddress }}? </label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="input-signature">Signature</label>
+              <textarea class="form-control" id="input-signature" rows="7" required placeholder="{'address': '...', 'msg': '...', 'sig': '...', 'version': '2'}'" name="signature"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary">Save changes</button>
+          </div>
         </div>
+      </div>
     </form>
-</div>
-{{end}}
+  </div>
+{{ end }}

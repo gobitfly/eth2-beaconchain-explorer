@@ -1,24 +1,23 @@
-{{define "js"}}
-{{end}}
+{{ define "js" }}
+{{ end }}
 
-{{define "css"}}
-{{end}}
+{{ define "css" }}
+{{ end }}
 
-{{define "content"}}
-    {{with .Data}}
-        <div class="togethere-background"></div>
-        <div class="sr-root">
-            <div class="sr-main">
-                <header class="sr-header">
-                    <div class="sr-header__logo"></div>
-                </header>
-                <div class="sr-payment-summary completed-view">
-                    <h1>Your payment was canceled</h1>
-                    <button onclick="window.location.href = '/pricing';">Restart demo</button>
-                </div>
-            </div>
-            <div class="sr-content">
-            </div>
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="togethere-background"></div>
+    <div class="sr-root">
+      <div class="sr-main">
+        <header class="sr-header">
+          <div class="sr-header__logo"></div>
+        </header>
+        <div class="sr-payment-summary completed-view">
+          <h1>Your payment was canceled</h1>
+          <button onclick="window.location.href = '/pricing';">Restart demo</button>
         </div>
-    {{end}}
-{{end}}
+      </div>
+      <div class="sr-content"></div>
+    </div>
+  {{ end }}
+{{ end }}

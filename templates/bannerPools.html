@@ -1,46 +1,42 @@
 {{ define "bannerPoolsServices" }}
-<div id="r-banner" class=" my-2 pb-1 ad d-flex justify-content-center">
-  <div class="position-relative" style="width:fit-content">
-    <div id="revive-banner">
+  <div id="r-banner" class=" my-2 pb-1 ad d-flex justify-content-center">
+    <div class="position-relative" style="width:fit-content">
+      <div id="revive-banner"></div>
     </div>
-  </div>
 
-  <script>
-      
-    window.addEventListener('load', function() {
-      if(window.innerWidth < 1140) {
-        $("#revive-banner").append('<ins ref="ins" data-revive-zoneid="13" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>')  
-      } else {
-        $("#revive-banner").append('<ins ref="ins" data-revive-zoneid="12" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>')  
-      }
-      function refreshAd(refresh) {
-        refresh = !!refresh
-        if(document.hasFocus() || refresh) {
-          $("#revive-banner").find('ins').removeAttr('data-revive-loaded');
-          $("#revive-banner").find('ins').removeAttr('data-revive-seq');
-          reviveAsync["5b200397ccf8a9353bf44ef99b45268c"].refresh();
+    <script>
+      window.addEventListener("load", function () {
+        if (window.innerWidth < 1140) {
+          $("#revive-banner").append('<ins ref="ins" data-revive-zoneid="13" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>')
+        } else {
+          $("#revive-banner").append('<ins ref="ins" data-revive-zoneid="12" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>')
         }
-      }
-      window.requestInterval(refreshAd, 6000)
-      if (!$("#revive-banner").find('ins').children('a')) {
-        $("#revive-banner").find('span').remove()
-      }
-
-
-      window.addEventListener('resize',  function(e) {
-        var id = $("#revive-banner").find('ins').attr('data-revive-zoneid')
-        if(e.target.innerWidth < 1140 && id === "12") {
-          // change to mobile
-          $("#revive-banner").find('ins').attr('data-revive-zoneid', "13")
-          refreshAd(true)
-        } else if(e.target.innerWidth >= 1140 && id === "13") {
-          // change to desktop
-          $("#revive-banner").find('ins').attr('data-revive-zoneid', "12")
-          refreshAd(true)
+        function refreshAd(refresh) {
+          refresh = !!refresh
+          if (document.hasFocus() || refresh) {
+            $("#revive-banner").find("ins").removeAttr("data-revive-loaded")
+            $("#revive-banner").find("ins").removeAttr("data-revive-seq")
+            reviveAsync["5b200397ccf8a9353bf44ef99b45268c"].refresh()
+          }
         }
+        window.requestInterval(refreshAd, 6000)
+        if (!$("#revive-banner").find("ins").children("a")) {
+          $("#revive-banner").find("span").remove()
+        }
+
+        window.addEventListener("resize", function (e) {
+          var id = $("#revive-banner").find("ins").attr("data-revive-zoneid")
+          if (e.target.innerWidth < 1140 && id === "12") {
+            // change to mobile
+            $("#revive-banner").find("ins").attr("data-revive-zoneid", "13")
+            refreshAd(true)
+          } else if (e.target.innerWidth >= 1140 && id === "13") {
+            // change to desktop
+            $("#revive-banner").find("ins").attr("data-revive-zoneid", "12")
+            refreshAd(true)
+          }
+        })
       })
-    })
-  </script>
-</div>
-{{end}}
-
+    </script>
+  </div>
+{{ end }}

@@ -1,540 +1,443 @@
-{{ define "js"}}
+{{ define "js" }}
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/bootstrap4-toggle.min.js"></script>
+  {{ .CsrfField }}
+  <script>
+    var events = {
+      //<span class="d-flex align-item-center"><input class="mr-2" checked data-target="validator_balance_decreased" type="checkbox"> <span style="height: 1rem;" class="mb-1">balance decreases</span></span>
+      // validator_balance_decreased: 'balance decreases',
+      validator_attestation_missed: "attestations missed",
+      validator_got_slashed: "validator slashed",
+      validator_proposal_missed: "proposals missed",
+      validator_proposal_submitted: "proposals submitted",
+      eth_client_update: "eth client update",
+      user_tax_report: "monthly report",
+      monitoring_machine_offline: "machine offline",
+      monitoring_hdd_almostfull: "machine disk full",
+      monitoring_cpu_load: "machine cpu load",
+      network_liveness_increased: "network liveness",
+      validator_synccommittee_soon: "sync committee",
+    }
+    var evetnsArr = [
+      // ['validator_balance_decreased', 'balance decreases'],
+      ["validator_got_slashed", "validator slashed"],
+      ["validator_proposal_submitted", "proposals submitted"],
+      ["validator_proposal_missed", "proposals missed"],
+      ["validator_attestation_missed", "attestations missed"],
+      ["validator_synccommittee_soon", "sync committee"],
+    ]
 
-    <script type="text/javascript" src="/js/datatables.min.js"></script>
-    <script type="text/javascript" src="/js/bootstrap4-toggle.min.js"></script>
-    {{ .CsrfField }}
-    <script>
-        var events = {
-            //<span class="d-flex align-item-center"><input class="mr-2" checked data-target="validator_balance_decreased" type="checkbox"> <span style="height: 1rem;" class="mb-1">balance decreases</span></span>
-            // validator_balance_decreased: 'balance decreases',
-            validator_attestation_missed: 'attestations missed',
-            validator_got_slashed: 'validator slashed',
-            validator_proposal_missed: 'proposals missed',
-            validator_proposal_submitted: 'proposals submitted',
-            eth_client_update: 'eth client update',
-            user_tax_report: 'monthly report',
-            monitoring_machine_offline: 'machine offline',
-            monitoring_hdd_almostfull: 'machine disk full',
-            monitoring_cpu_load: 'machine cpu load',
-            network_liveness_increased: 'network liveness',
-            validator_synccommittee_soon: 'sync committee',
+    function createCheckbox(filter, event, checked, text) {
+      return '<span class="d-flex" style="margin:8px;"><div class="mr-2 spinner-border d-none spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div><input id="' + event + filter + '" onchange="ToggleEvent(this)" data-filter="' + filter + '" data-event="' + event + '" class="mr-2" ' + checked + ' data-target="validator_balance_decreased" type="checkbox" data-toggle="toggle" data-on="&shy;" data-off="&shy;" data-size="xs"> <span style="height: 1rem;margin-left: 7px;" class="mb-1">' + text + "</span></span>"
+    }
 
-        }
-        var evetnsArr = [
-            // ['validator_balance_decreased', 'balance decreases'],
-            ['validator_got_slashed', 'validator slashed'],
-            ['validator_proposal_submitted', 'proposals submitted'],
-            ['validator_proposal_missed', 'proposals missed'],
-            ['validator_attestation_missed', 'attestations missed'],
-            ['validator_synccommittee_soon', 'sync committee'],
-        ]
+    var debounceTimeouts = {}
 
-        function createCheckbox(filter, event, checked, text) {
-            return '<span class="d-flex" style="margin:8px;"><div class="mr-2 spinner-border d-none spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div><input id="'+event+filter+'" onchange="ToggleEvent(this)" data-filter="' + filter + '" data-event="' + event + '" class="mr-2" ' + checked + ' data-target="validator_balance_decreased" type="checkbox" data-toggle="toggle" data-on="&shy;" data-off="&shy;" data-size="xs"> <span style="height: 1rem;margin-left: 7px;" class="mb-1">' + text + '</span></span>'
-        }
+    function ToggleEvent(box) {
+      box.classList.add("d-none")
+      if (box.previousSibling) box.previousSibling.classList.remove("d-none")
 
-        var debounceTimeouts = {}
+      if (debounceTimeouts[box.id]) {
+        clearTimeout(debounceTimeouts[box.id])
+        debounceTimeouts[box.id] = null
+      } else {
+        debounceTimeouts[box.id] = setTimeout(function () {
+          var filter = box.getAttribute("data-filter")
+          var event = box.getAttribute("data-event")
+          filter = encodeURI(filter)
+          event = encodeURI(event)
 
-        function ToggleEvent(box) {
-            box.classList.add('d-none')
-            if(box.previousSibling) box.previousSibling.classList.remove('d-none')
+          let csrfToken = document.getElementsByName("CsrfField")[0].value
 
-
-            if (debounceTimeouts[box.id]) {
-                clearTimeout(debounceTimeouts[box.id])
-                debounceTimeouts[box.id] = null
-            } else {
-                debounceTimeouts[box.id] = setTimeout(function () {
-
-                    var filter = box.getAttribute('data-filter')
-                    var event = box.getAttribute('data-event')
-                    filter = encodeURI(filter)
-                    event = encodeURI(event)
-
-                    let csrfToken = document.getElementsByName("CsrfField")[0].value
-
-                    debounceTimeouts[box.id] = null
-                    if (box.checked) {
-                        // subscribe
-                        fetch('/user/notifications/subscribe?filter=' + filter + '&event=' + event, {
-                            method: 'POST',
-                            headers: {"X-CSRF-Token": csrfToken},
-                            credentials: 'include'
-                        }).then(function (response) {
-                            box.classList.remove('d-none')
-                            if(box.previousSibling) box.previousSibling.classList.add('d-none')
-
-                            if (response.status === 200) {
-                                $('#subscriptions').DataTable().ajax.reload()
-                            } else {
-                                box.checked = false
-                                console.log('unexpected status', response.status)
-                            }
-                        }).catch(function (err) {
-                            box.classList.remove('d-none')
-                            if(box.previousSibling) box.previousSibling.classList.add('d-none')
-
-                            console.log(err)
-                            box.checked = false
-                        })
-                    } else {
-                        // unsubscribe
-                        fetch('/user/notifications/unsubscribe?filter=' + filter + '&event=' + event, {
-                            method: 'POST',
-                            headers: {"X-CSRF-Token": csrfToken},
-                            credentials: 'include'
-                        }).then(function (response) {
-                            box.classList.remove('d-none')
-                            if(box.previousSibling) box.previousSibling.classList.add('d-none')
-
-                            if (response.status === 200) {
-                                $('#subscriptions').DataTable().ajax.reload()
-                            } else {
-                                box.checked = true
-                                console.log('unexpected status', response.status)
-                            }
-                        }).catch(function (err) {
-                            box.classList.remove('d-none')
-                            if(box.previousSibling) box.previousSibling.classList.add('d-none')
-
-                            console.log(err)
-                            box.checked = true
-                        })
-                    }
-                }, 300)
-            }
-        }
-
-        // function editRow(row) {
-        // 	console.log('editing row:', row)
-        // 	var rows = document.getElementById('notifications').querySelectorAll('tbody tr')
-        // 	rows[row].querySelector('input[type="checkbox"').toggleAttribute('disabled')
-        // 	var edit = rows[row].querySelector('i.fas.fa-edit')
-        // 	var initalValue
-        // 	if (edit) {
-        // 		edit.classList.remove('fa-edit')
-        // 		edit.classList.add('fa-save')
-        // 		initalValue = rows[row].querySelector('input[type="checkbox"]').checked
-        // 	} else {
-        // 		var save = rows[row].querySelector('i.fas.fa-save')
-        // 		save.classList.remove('fa-save')
-        // 		save.classList.add('fa-edit')
-        // 		var value = rows[row].querySelector('input[type="checkbox"]').checked
-        // 		console.log('value', value)
-
-        // 		if (initalValue !== value) {
-        // 			// fetch()
-        // 		}
-        // 	}
-        // }
-
-        $(document).ready(function () {
-            $('#notifications').DataTable({
-                processing: true,
-                serverSide: true,
-                ordering: false,
-                searching: false,
-                ajax: '/user/notifications/data',
-                pagingType: 'full',
-                language: {
-                    searchPlaceholder: 'Search by Validator Id',
-                    search: ''
-                },
-                columnDefs: [
-                    {
-                        targets: 2,
-                        data: '2',
-                        render: function (data, type, row, meta) {
-                            if (data === '0.00 ETH') {
-                                return 'pending'
-                            }
-                            return data
-                        }
-                    },
-                    {
-                        targets: 3,
-                        data: '3',
-                        // width: '70%',
-                        render: function (data, type, row, meta) {
-                            // var subscriptions = data.split(',')
-                            var checked = ''
-                            if (row.length) {
-                                var address = (/0x[0-9a-fA-F]{96}/).exec(row[1])
-                                if (address.length) {
-                                    // data.map(function (event) {
-                                    //     console.log('event', event)
-                                    //     if (event === 'validator_balance_decreased') {
-                                    //         checked = 'checked'
-                                    //     }
-                                    // })
-                                    var checkboxes = evetnsArr.map(function (event) {
-                                        var type = event[0]
-                                        var text = event[1]
-                                        checked = ''
-                                        data.map(function (checkedEvent) {
-                                            if (checkedEvent === type) {
-                                                checked = 'checked'
-                                            }
-                                        })
-                                        $(function() {
-                                            $('input[type=checkbox][data-toggle^=toggle]').bootstrapToggle()
-                                        })
-                                        return createCheckbox(address, type, checked, text)
-                                    })
-                                    return checkboxes.reduce(function (acc, curr) {
-                                        return acc += '<span class="mx-1">' + curr + '</span>'
-                                    }, '')
-                                } else {
-                                    console.error('address not found to create checkbox', row[0])
-                                }
-                            }
-                            return data
-                        }
-                    },
-                ],
-                preDrawCallback: function () {
-                    // this does not always work.. not sure how to solve the staying tooltip
-                    try {
-                        $('#notifications').find('[data-toggle="tooltip"]').tooltip('dispose')
-                    } catch (e) {
-                    }
-                },
-                drawCallback: function (settings) {
-                    formatTimestamps()
-                },
+          debounceTimeouts[box.id] = null
+          if (box.checked) {
+            // subscribe
+            fetch("/user/notifications/subscribe?filter=" + filter + "&event=" + event, {
+              method: "POST",
+              headers: { "X-CSRF-Token": csrfToken },
+              credentials: "include",
             })
-            $('#subscriptions').on('xhr.dt', function (e, settings, json, xhr) {
-                if (json.data && json.data.length) {
-                    document.getElementById('subscription-placeholder').classList.add('d-none')
-                    document.getElementById('subscriptions-container').classList.remove('d-none')
+              .then(function (response) {
+                box.classList.remove("d-none")
+                if (box.previousSibling) box.previousSibling.classList.add("d-none")
+
+                if (response.status === 200) {
+                  $("#subscriptions").DataTable().ajax.reload()
                 } else {
-                    document.getElementById('subscription-placeholder').classList.remove('d-none')
-                    document.getElementById('subscriptions-container').classList.add('d-none')
+                  box.checked = false
+                  console.log("unexpected status", response.status)
                 }
-            }).DataTable({
-                processing: true,
-                serverSide: true,
-                ordering: false,
-                searching: false,
-                ajax: {
-                    url: '/user/subscriptions/data',
-                },
-                pagingType: 'full',
-                language: {
-                    searchPlaceholder: 'Search by subscription',
-                    search: ''
-                },
-                columnDefs: [{
-                    targets: 1,
-                    data: '1',
-                    render: function (data, type, row, meta) {
-                        return events[data] ? events[data] : ''
-                    }
-                }],
-                drawCallback: function (settings) {
-                    formatTimestamps()
-                },
+              })
+              .catch(function (err) {
+                box.classList.remove("d-none")
+                if (box.previousSibling) box.previousSibling.classList.add("d-none")
+
+                console.log(err)
+                box.checked = false
+              })
+          } else {
+            // unsubscribe
+            fetch("/user/notifications/unsubscribe?filter=" + filter + "&event=" + event, {
+              method: "POST",
+              headers: { "X-CSRF-Token": csrfToken },
+              credentials: "include",
             })
+              .then(function (response) {
+                box.classList.remove("d-none")
+                if (box.previousSibling) box.previousSibling.classList.add("d-none")
+
+                if (response.status === 200) {
+                  $("#subscriptions").DataTable().ajax.reload()
+                } else {
+                  box.checked = true
+                  console.log("unexpected status", response.status)
+                }
+              })
+              .catch(function (err) {
+                box.classList.remove("d-none")
+                if (box.previousSibling) box.previousSibling.classList.add("d-none")
+
+                console.log(err)
+                box.checked = true
+              })
+          }
+        }, 300)
+      }
+    }
+
+    // function editRow(row) {
+    // 	console.log('editing row:', row)
+    // 	var rows = document.getElementById('notifications').querySelectorAll('tbody tr')
+    // 	rows[row].querySelector('input[type="checkbox"').toggleAttribute('disabled')
+    // 	var edit = rows[row].querySelector('i.fas.fa-edit')
+    // 	var initalValue
+    // 	if (edit) {
+    // 		edit.classList.remove('fa-edit')
+    // 		edit.classList.add('fa-save')
+    // 		initalValue = rows[row].querySelector('input[type="checkbox"]').checked
+    // 	} else {
+    // 		var save = rows[row].querySelector('i.fas.fa-save')
+    // 		save.classList.remove('fa-save')
+    // 		save.classList.add('fa-edit')
+    // 		var value = rows[row].querySelector('input[type="checkbox"]').checked
+    // 		console.log('value', value)
+
+    // 		if (initalValue !== value) {
+    // 			// fetch()
+    // 		}
+    // 	}
+    // }
+
+    $(document).ready(function () {
+      $("#notifications").DataTable({
+        processing: true,
+        serverSide: true,
+        ordering: false,
+        searching: false,
+        ajax: "/user/notifications/data",
+        pagingType: "full",
+        language: {
+          searchPlaceholder: "Search by Validator Id",
+          search: "",
+        },
+        columnDefs: [
+          {
+            targets: 2,
+            data: "2",
+            render: function (data, type, row, meta) {
+              if (data === "0.00 ETH") {
+                return "pending"
+              }
+              return data
+            },
+          },
+          {
+            targets: 3,
+            data: "3",
+            // width: '70%',
+            render: function (data, type, row, meta) {
+              // var subscriptions = data.split(',')
+              var checked = ""
+              if (row.length) {
+                var address = /0x[0-9a-fA-F]{96}/.exec(row[1])
+                if (address.length) {
+                  // data.map(function (event) {
+                  //     console.log('event', event)
+                  //     if (event === 'validator_balance_decreased') {
+                  //         checked = 'checked'
+                  //     }
+                  // })
+                  var checkboxes = evetnsArr.map(function (event) {
+                    var type = event[0]
+                    var text = event[1]
+                    checked = ""
+                    data.map(function (checkedEvent) {
+                      if (checkedEvent === type) {
+                        checked = "checked"
+                      }
+                    })
+                    $(function () {
+                      $("input[type=checkbox][data-toggle^=toggle]").bootstrapToggle()
+                    })
+                    return createCheckbox(address, type, checked, text)
+                  })
+                  return checkboxes.reduce(function (acc, curr) {
+                    return (acc += '<span class="mx-1">' + curr + "</span>")
+                  }, "")
+                } else {
+                  console.error("address not found to create checkbox", row[0])
+                }
+              }
+              return data
+            },
+          },
+        ],
+        preDrawCallback: function () {
+          // this does not always work.. not sure how to solve the staying tooltip
+          try {
+            $("#notifications").find('[data-toggle="tooltip"]').tooltip("dispose")
+          } catch (e) {}
+        },
+        drawCallback: function (settings) {
+          formatTimestamps()
+        },
+      })
+      $("#subscriptions")
+        .on("xhr.dt", function (e, settings, json, xhr) {
+          if (json.data && json.data.length) {
+            document.getElementById("subscription-placeholder").classList.add("d-none")
+            document.getElementById("subscriptions-container").classList.remove("d-none")
+          } else {
+            document.getElementById("subscription-placeholder").classList.remove("d-none")
+            document.getElementById("subscriptions-container").classList.add("d-none")
+          }
         })
-    </script>
-{{end}} {{ define "css"}}
-    <link rel="stylesheet" type="text/css" href="/css/bootstrap4-toggle.min.css"/>
-    <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
-    <style>
-        input[type="checkbox"] {
-            width: 1rem;
-            height: 1rem;
-        }
+        .DataTable({
+          processing: true,
+          serverSide: true,
+          ordering: false,
+          searching: false,
+          ajax: {
+            url: "/user/subscriptions/data",
+          },
+          pagingType: "full",
+          language: {
+            searchPlaceholder: "Search by subscription",
+            search: "",
+          },
+          columnDefs: [
+            {
+              targets: 1,
+              data: "1",
+              render: function (data, type, row, meta) {
+                return events[data] ? events[data] : ""
+              },
+            },
+          ],
+          drawCallback: function (settings) {
+            formatTimestamps()
+          },
+        })
+    })
+  </script>
+{{ end }}
+{{ define "css" }}
+  <link rel="stylesheet" type="text/css" href="/css/bootstrap4-toggle.min.css" />
+  <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
+  <style>
+    input[type="checkbox"] {
+      width: 1rem;
+      height: 1rem;
+    }
 
-        #notifications > tbody > tr > td:nth-child(4) {
-            display: flex;
-            flex-wrap: wrap;
-            flex-direction: row;
-            justify-content: flex-start;
-            align-items: left;
-        }
+    #notifications > tbody > tr > td:nth-child(4) {
+      display: flex;
+      flex-wrap: wrap;
+      flex-direction: row;
+      justify-content: flex-start;
+      align-items: left;
+    }
 
-        #notifications > tbody > tr > td:nth-child(4) > span {
-            flex: 1 1 200px;
-            max-width: 210px;
-        }
-    </style>
-
-{{end}}
-{{ define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-            <div class="my-3">
-                <div class="d-md-flex py-2 justify-content-md-between">
-                    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-envelope-open-text mr-2"></i></i>Notifications</h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Notifications</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-
-            <div class="d-flex mt-3 justify-content-between">
-                <h2 class="h4">Validator Watchlist </h2>
-                <a href="{{.DashboardLink}}" class="btn btn-sm btn-outline-primary h2">
-                    <span>View in Dashboard</span>
-                </a>
-            </div>
-            <div class="card mb-3">
-                <div class="card-body px-0 py-2">
-                    {{ if gt .CountWatchlist 0 }}
-                        <div class="table-responsive pt-2">
-                            <table class="table" id="notifications">
-                                <thead>
-                                <tr>
-                                    <th>Index</th>
-                                    <th>Public Key</th>
-                                    <th>Balance</th>
-                                    <th>Notify me when</th>
-                                    <!-- <th>Action</th> -->
-                                </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    {{else}}
-                        <div class="row px-4 py-3 justify-content-around align-items-center">
-                            <div style="flex: 1 1 15rem; max-width: 30rem" class="col-6-md mx-3">
-                                <p>
-                                    There are currently no validators in your watchlist. You can add validators to your
-                                    watchlist by clicking the bookmark <i class="far fa-bookmark"></i> symbol. The
-                                    symbol can be found on the <a href="/dashboard">Dashboard</a> page or on a validator
-                                    page.
-                                </p>
-                            </div>
-                            <div style="flex: 2 1 15rem; max-width: 20rem;" class="col-6-md mx-3">
-                                <svg style="width: 100%; height: auto; opacity: .8;"
-                                     id="bb97989e-6518-4177-8ad0-b3a48a9375a0" data-name="Layer 1"
-                                     xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760.5195 442.07813">
-                                    <path
-                                            d="M592.10207,568.124a6.48129,6.48129,0,0,1-4.67847-1.98291L577.17311,555.522a6.50772,6.50772,0,0,1,.16236-9.1914l57.51538-54.84912a10.78683,10.78683,0,0,1,15.15381.31347l4.38256,4.54a10.62951,10.62951,0,0,1,2.99952,7.61963,10.767,10.767,0,0,1-3.31373,7.55371l-57.46069,54.79736A6.47377,6.47377,0,0,1,592.10207,568.124Z"
-                                            transform="translate(-219.74025 -228.96094)" fill="#6c63ff"/>
-                                    <path
-                                            d="M733.37917,568.124a6.47971,6.47971,0,0,1-4.51319-1.82031L671.40749,511.5083a10.767,10.767,0,0,1-3.31372-7.55371,10.62946,10.62946,0,0,1,2.99951-7.61963l4.38281-4.54a10.78577,10.78577,0,0,1,15.15357-.31347l57.51318,54.84716a6.50818,6.50818,0,0,1,.16455,9.19336l-.35962-.34717.35962.34717L738.0569,566.14111A6.48079,6.48079,0,0,1,733.37917,568.124Z"
-                                            transform="translate(-219.74025 -228.96094)" fill="#6c63ff"/>
-                                    <path d="M435.74025,595.94982h-216V548.40311a6.6911,6.6911,0,0,1,3.13094-5.68372l101.27472-64.04155a6.75559,6.75559,0,0,1,7.18868,0l101.27482,64.04155a6.69121,6.69121,0,0,1,3.13084,5.68372Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#ccc"/>
-                                    <polygon points="702 405 330 405 330 403 700 403 700 254 702 254 702 405"
-                                             fill="#3f3d56"/>
-                                    <polygon points="96 195 94 195 94 44 500 44 500 46 96 46 96 195" fill="#3f3d56"/>
-                                    <path d="M401.32267,599.11465H254.15783a6.73286,6.73286,0,0,1-6.72527-6.72527V496.65311a6.73286,6.73286,0,0,1,6.72527-6.72527H401.32267a6.73279,6.73279,0,0,1,6.72527,6.72527v95.73627A6.73279,6.73279,0,0,1,401.32267,599.11465Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#e6e6e6"/>
-                                    <path d="M307.16882,512.08168H263.65234a4.35165,4.35165,0,1,1,0-8.70329h43.51648a4.35165,4.35165,0,1,1,0,8.70329Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#fff"/>
-                                    <path d="M390.64135,534.23553H264.04794a4.74725,4.74725,0,0,1,0-9.49451H390.64135a4.74726,4.74726,0,0,1,0,9.49451Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#fff"/>
-                                    <path d="M390.64135,550.85091H264.04794a4.74725,4.74725,0,1,1,0-9.4945H390.64135a4.74725,4.74725,0,1,1,0,9.4945Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#fff"/>
-                                    <path d="M390.64135,567.4663H264.04794a4.74725,4.74725,0,0,1,0-9.49451H390.64135a4.74726,4.74726,0,0,1,0,9.49451Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#fff"/>
-                                    <path d="M429.015,649.752H226.46553a6.73286,6.73286,0,0,1-6.72528-6.72527v-87.033a6.73286,6.73286,0,0,1,6.72528-6.72527l.15376.03129,89.117,37.59633a31.0641,31.0641,0,0,0,24.00786,0L428.935,549.2685h.08a6.73279,6.73279,0,0,1,6.72527,6.72527v87.033A6.73279,6.73279,0,0,1,429.015,649.752Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#ccc"/>
-                                    <path d="M926.81441,341.22161H836.51778a6.9224,6.9224,0,0,1-6.91461-6.91461V235.87554a6.9224,6.9224,0,0,1,6.91461-6.9146h90.29663a6.92234,6.92234,0,0,1,6.91461,6.9146V334.307A6.92234,6.92234,0,0,1,926.81441,341.22161Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#e6e6e6"/>
-                                    <path d="M891.02115,251.73847H846.27958a4.47416,4.47416,0,1,1,0-8.94832h44.74157a4.47416,4.47416,0,0,1,0,8.94832Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#fff"/>
-                                    <path d="M915.83239,274.516H846.68632a4.8809,4.8809,0,1,1,0-9.76179h69.14607a4.8809,4.8809,0,0,1,0,9.76179Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#fff"/>
-                                    <path d="M915.83239,291.59914H846.68632a4.8809,4.8809,0,0,1,0-9.7618h69.14607a4.8809,4.8809,0,0,1,0,9.7618Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#fff"/>
-                                    <path d="M915.83239,308.68229H846.68632a4.8809,4.8809,0,1,1,0-9.7618h69.14607a4.8809,4.8809,0,0,1,0,9.7618Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#fff"/>
-                                    <path d="M935.04119,372.50579l-84.11634-32.83174a6.9224,6.9224,0,0,1-3.9272-8.95548l35.78955-91.69439a6.92242,6.92242,0,0,1,8.95549-3.9272L975.859,267.92872a6.92235,6.92235,0,0,1,3.9272,8.95549l-35.78955,91.69438A6.92234,6.92234,0,0,1,935.04119,372.50579Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#e6e6e6"/>
-                                    <path d="M934.23373,276.13288l-41.67926-16.268a4.47416,4.47416,0,0,1,3.25359-8.33586l41.67927,16.268a4.47416,4.47416,0,0,1-3.2536,8.33586Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#fff"/>
-                                    <path d="M949.0649,306.37274l-64.41341-25.14142a4.8809,4.8809,0,0,1,3.54937-9.09366l64.41342,25.14143a4.8809,4.8809,0,1,1-3.54938,9.09365Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#fff"/>
-                                    <path d="M942.85349,322.28665l-64.41341-25.14143a4.88089,4.88089,0,1,1,3.54937-9.09365L946.40287,313.193a4.8809,4.8809,0,0,1-3.54938,9.09366Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#fff"/>
-                                    <path d="M936.64208,338.20055l-64.41341-25.14142a4.8809,4.8809,0,0,1,3.54937-9.09366l64.41342,25.14142a4.8809,4.8809,0,0,1-3.54938,9.09366Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#fff"/>
-                                    <path d="M961.79418,308.27554h-97.3157l-15.47167-24.61387a6.5076,6.5076,0,0,0-5.50968-3.04455h-23.249a6.50777,6.50777,0,0,0-6.50787,6.50786V403.45307a6.50778,6.50778,0,0,0,6.50787,6.50787H961.79418a6.50778,6.50778,0,0,0,6.50787-6.50787V314.78341A6.50778,6.50778,0,0,0,961.79418,308.27554Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#ccc"/>
-                                    <path d="M415.43462,358.15443h59a6,6,0,0,1,6,6v26.24972a35.5,35.5,0,0,1-35.5,35.5h-.00007a35.5,35.5,0,0,1-35.5-35.5V364.15443a6,6,0,0,1,6-6Z"
-                                          fill="#2f2e41"/>
-                                    <path d="M698.20607,634.0625h-67.0625a6.50737,6.50737,0,0,1-6.5-6.5V518.61816a40.03125,40.03125,0,0,1,80.0625,0V627.5625A6.50737,6.50737,0,0,1,698.20607,634.0625Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#2f2e41"/>
-                                    <circle cx="444.54279" cy="187.30874" r="53.51916" fill="#6c63ff"/>
-                                    <path
-                                            d="M670.52126,434.13867c-3.3064-.09228-7.42139-.208-10.5896-2.52246a8.13329,8.13329,0,0,1-3.2002-6.07275,5.4706,5.4706,0,0,1,1.86035-4.49268c1.65552-1.39844,4.07276-1.728,6.67823-.96142l-2.69922-19.72608,1.98144-.27148,3.17334,23.19043-1.65454-.75928c-1.91846-.87988-4.55176-1.32715-6.18823.05518a3.51354,3.51354,0,0,0-1.15259,2.89453,6.1469,6.1469,0,0,0,2.38111,4.52832c2.46557,1.80175,5.7456,2.03418,9.46606,2.13867Z"
-                                            transform="translate(-219.74025 -228.96094)" fill="#2f2e41"/>
-                                    <rect x="422.25977" y="173.10352" width="10.77173" height="2" fill="#2f2e41"/>
-                                    <rect x="456.25977" y="173.10352" width="10.77173" height="2" fill="#2f2e41"/>
-                                    <path d="M716.83327,671.03906a6.53407,6.53407,0,0,1-1.48633-.17187L595.53859,642.96631a6.49967,6.49967,0,0,1-4.85669-7.80469l3.34766-14.375a6.50026,6.50026,0,0,1,7.80517-4.856l119.80835,27.90088a6.49984,6.49984,0,0,1,4.8562,7.80469l-3.34765,14.37451a6.50623,6.50623,0,0,1-6.31836,5.02832Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#2f2e41"/>
-                                    <path d="M610.54836,665.16357a6.51057,6.51057,0,0,1-6.44165-5.66113L602.2,644.8667a6.50769,6.50769,0,0,1,5.60571-7.28516l121.9834-15.89209a6.5,6.5,0,0,1,7.2854,5.60547l1.90674,14.63623a6.49978,6.49978,0,0,1-5.606,7.28467L611.39211,665.1084A6.501,6.501,0,0,1,610.54836,665.16357Z"
-                                          transform="translate(-219.74025 -228.96094)" fill="#2f2e41"/>
-                                    <path
-                                            d="M628.92731,374.44686c-8.67422-.98915-15.39221-9.30024-16.13009-17.733-.87782-10.03212,4.96459-19.56033,12.97992-25.18991,8.3822-5.88725,18.82561-8.34577,28.93007-8.887a79.5095,79.5095,0,0,1,54.34812,17.9136c7.57144,6.28846,14.64266,14.29886,17.3227,23.97443,2.3275,8.40282.4335,17.92213-6.32473,23.80721a15.97619,15.97619,0,0,1-12.26,3.77473c-5.24388-.5445-10.08222-3.30177-14.27039-6.3469-8.14685-5.92341-14.835-14.17529-24.76048-17.27067-7.27772-2.26964-16.722-.27185-21.16941,6.30949a11.97911,11.97911,0,0,0-1.91259,5.01866,1.55341,1.55341,0,0,0,1.04766,1.84518,1.50932,1.50932,0,0,0,1.84518-1.04766c1.16758-8.28938,11.36014-11.38252,18.51255-9.48949,10.42855,2.76013,17.42913,12.06611,25.98534,17.97854,4.4985,3.10852,9.615,5.59407,15.13243,6.04a18.79084,18.79084,0,0,0,13.20328-4.05609c7.30959-5.77189,10.105-15.69938,8.48864-24.63744-1.87174-10.3504-8.83825-19.22131-16.482-26.08923a82.44684,82.44684,0,0,0-56.344-20.81437c-10.57358.24286-21.6061,2.42565-30.71519,8.01422-8.83577,5.42088-15.66506,14.49-16.55765,25.03193-.78566,9.27894,4.19268,18.98422,12.73842,23.04935a19.949,19.949,0,0,0,6.39215,1.80435c1.91494.21836,1.89934-2.78342,0-3Z"
-                                            transform="translate(-219.74025 -228.96094)" fill="#2f2e41"/>
-                                    <circle cx="444.96343" cy="342.27077" r="34.03658" fill="#e6e6e6"/>
-                                    <polygon
-                                            points="442.126 357.321 431.324 343.43 437.606 338.544 442.72 345.12 460 326.881 465.778 332.355 442.126 357.321"
-                                            fill="#6c63ff"/>
-                                    <path
-                                            d="M703.07741,593.11035a6.61268,6.61268,0,0,1-.67871-.03515,6.45735,6.45735,0,0,1-4.37647-2.36524l-9.31079-11.45264a6.50045,6.50045,0,0,1,.94312-9.144l32.9458-27.55615a6.50934,6.50934,0,0,1,9.14941.93848l9.31055,11.45214a6.50046,6.50046,0,0,1-.94312,9.144l-32.9458,27.55664A6.45853,6.45853,0,0,1,703.07741,593.11035Z"
-                                            transform="translate(-219.74025 -228.96094)" fill="#6c63ff"/>
-                                    <path
-                                            d="M622.40285,593.11035a6.4514,6.4514,0,0,1-4.08838-1.457l-32.95654-27.56641a6.49977,6.49977,0,0,1-.93775-9.13916l9.31055-11.45214a6.50845,6.50845,0,0,1,9.144-.94336l32.95655,27.56591a6.49978,6.49978,0,0,1,.93774,9.13916L627.45827,590.71a6.45735,6.45735,0,0,1-4.37647,2.36524A6.62084,6.62084,0,0,1,622.40285,593.11035Z"
-                                            transform="translate(-219.74025 -228.96094)" fill="#6c63ff"/>
-                                </svg>
-                            </div>
-                        </div>
-
-                    {{end}}
-                </div>
-            </div>
-
-            <h2 class="h4 mt-3">Subscriptions</h2>
-            <div class="card mb-3">
-                <div class="card-body px-0 py-2">
-                    <div class="table-responsive pt-2 d-none" id="subscriptions-container">
-                        <table class="table" id="subscriptions">
-                            <thead>
-                            <tr>
-                                <th>Subject</th>
-                                <th>Event</th>
-                                <th>Created</th>
-                                <th>Last Sent</th>
-                                <!-- <th>Action</th> -->
-                            </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                    <div id="subscription-placeholder" class="row px-4 py-3 justify-content-around align-items-center">
-                        <div style="flex: 1 1 15rem; max-width: 30rem" class="col-6-md mx-3">
-                            <p>
-                                You currently don't have any email notifications. You can toggle notifications from the
-                                table above.
-                            </p>
-                        </div>
-                        <div style="flex: 2 1 15rem; max-width: 20rem;" class="col-6-md mx-3">
-                            <svg style="width: 100%; height: auto; opacity: .8;"
-                                 id="060e19aa-3f7d-4f07-aa7e-820f8d371f55" data-name="Layer 1"
-                                 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-                                 viewBox="0 0 870.71 691.21">
-                                <defs>
-                                    <linearGradient id="96d5bb21-1965-4d3e-ab37-1bcc7be514e6" x1="309.27" y1="560.72"
-                                                    x2="309.27" y2="406.06"
-                                                    gradientTransform="matrix(-1, 0, 0, 1, 616.6, 82.28)"
-                                                    gradientUnits="userSpaceOnUse">
-                                        <stop offset="0" stop-color="gray" stop-opacity="0.25"/>
-                                        <stop offset="0.54" stop-color="gray" stop-opacity="0.12"/>
-                                        <stop offset="1" stop-color="gray" stop-opacity="0.1"/>
-                                    </linearGradient>
-                                    <linearGradient id="3608cfbe-4e57-42c8-8a3e-2b99e6b6c6a0" x1="-175.29" y1="157.73"
-                                                    x2="-175.29" y2="3.07"
-                                                    gradientTransform="matrix(0, -1, -1, 0, 970.73, 29.07)"
-                                                    xlink:href="#96d5bb21-1965-4d3e-ab37-1bcc7be514e6"/>
-                                    <linearGradient id="f4d6b150-3892-4d6f-bed9-22612cc59583" x1="-246.29" y1="456.25"
-                                                    x2="-246.29" y2="301.59"
-                                                    gradientTransform="matrix(0, -1, -1, 0, 1293.26, 304.09)"
-                                                    xlink:href="#96d5bb21-1965-4d3e-ab37-1bcc7be514e6"/>
-                                    <linearGradient id="675c2575-69c8-4c08-9859-0530d9a94ad2" x1="60" y1="226.17"
-                                                    x2="60" y2="71.51"
-                                                    gradientTransform="matrix(-1, 0, 0, 1, 436.24, 71.59)"
-                                                    xlink:href="#96d5bb21-1965-4d3e-ab37-1bcc7be514e6"/>
-                                    <linearGradient id="245258be-8ef2-4163-b815-3fbd211fc334" x1="435.66" y1="691.21"
-                                                    x2="435.66" y2="9.21" gradientTransform="matrix(1, 0, 0, 1, 0, 0)"
-                                                    xlink:href="#96d5bb21-1965-4d3e-ab37-1bcc7be514e6"/>
-                                    <linearGradient id="afb36fd3-f298-4117-ba9e-9f0c6a4eccfc" x1="435.66" y1="544.71"
-                                                    x2="435.66" y2="69.59" gradientTransform="matrix(1, 0, 0, 1, 0, 0)"
-                                                    xlink:href="#96d5bb21-1965-4d3e-ab37-1bcc7be514e6"/>
-                                    <linearGradient id="9b46ec67-d0ea-45ff-80f1-fe3db7b86030" x1="600.3" y1="786.69"
-                                                    x2="600.3" y2="565.96" gradientTransform="matrix(1, 0, 0, 1, 0, 0)"
-                                                    xlink:href="#96d5bb21-1965-4d3e-ab37-1bcc7be514e6"/>
-                                </defs>
-                                <rect x="181.5" y="488.34" width="251.66" height="154.66"
-                                      transform="translate(-313.48 7.02) rotate(-16.6)"
-                                      fill="url(#96d5bb21-1965-4d3e-ab37-1bcc7be514e6)"/>
-                                <rect x="184.26" y="492.57" width="243.13" height="144.34"
-                                      transform="translate(-313.28 6.55) rotate(-16.6)" fill="#fff"/>
-                                <g opacity="0.6">
-                                    <rect x="184.56" y="532.96" width="30.93" height="22.89"
-                                          transform="translate(382.63 904.55) rotate(163.4)" fill="#f55f44"/>
-                                    <rect x="221.97" y="570.99" width="118.78" height="7.42"
-                                          transform="translate(550.57 940.64) rotate(163.4)" fill="#f55f44"/>
-                                    <rect x="258.42" y="584.23" width="86.61" height="4.95"
-                                          transform="translate(593.88 958.32) rotate(163.4)" fill="#f55f44"/>
-                                </g>
-                                <rect x="812.99" y="78.53" width="154.66" height="251.66"
-                                      transform="translate(354.91 934.8) rotate(-78.98)"
-                                      fill="url(#3608cfbe-4e57-42c8-8a3e-2b99e6b6c6a0)"/>
-                                <rect x="817.25" y="81.28" width="144.34" height="243.13"
-                                      transform="translate(355.66 932.7) rotate(-78.98)" fill="#fff"/>
-                                <g opacity="0.6">
-                                    <rect x="789.65" y="124.32" width="30.93" height="22.89"
-                                          transform="translate(1404.78 318.52) rotate(-168.98)" fill="#f55f44"/>
-                                    <rect x="803.74" y="196.61" width="118.78" height="7.42"
-                                          transform="translate(1507.41 457.54) rotate(-168.98)" fill="#f55f44"/>
-                                    <rect x="832.3" y="217.92" width="86.61" height="4.95"
-                                          transform="translate(1528.3 499.71) rotate(-168.98)" fill="#f55f44"/>
-                                </g>
-                                <rect x="837.01" y="424.55" width="154.66" height="251.66"
-                                      transform="translate(-308.14 304.89) rotate(-23.45)"
-                                      fill="url(#f4d6b150-3892-4d6f-bed9-22612cc59583)"/>
-                                <rect x="842.9" y="427.21" width="144.34" height="243.13"
-                                      transform="translate(-307.45 305.05) rotate(-23.45)" fill="#fff"/>
-                                <g opacity="0.6">
-                                    <rect x="907.2" y="429.86" width="30.93" height="22.89"
-                                          transform="translate(720.31 1358.98) rotate(-113.45)" fill="#47e6b1"/>
-                                    <rect x="842.89" y="521.96" width="118.78" height="7.42"
-                                          transform="translate(614.41 1458.22) rotate(-113.45)" fill="#47e6b1"/>
-                                    <rect x="849.48" y="544.85" width="86.61" height="4.95"
-                                          transform="translate(581.28 1479.77) rotate(-113.45)" fill="#47e6b1"/>
-                                </g>
-                                <rect x="250.41" y="143.1" width="251.66" height="154.66"
-                                      transform="translate(-216.69 34.06) rotate(-19.53)"
-                                      fill="url(#675c2575-69c8-4c08-9859-0530d9a94ad2)"/>
-                                <rect x="253.13" y="147.42" width="243.13" height="144.34"
-                                      transform="translate(-216.5 33.5) rotate(-19.53)" fill="#fff"/>
-                                <g opacity="0.6">
-                                    <rect x="252.52" y="193.23" width="30.93" height="22.89"
-                                          transform="translate(424.33 203.59) rotate(160.47)" fill="#6c63ff"/>
-                                    <rect x="291.38" y="227.07" width="118.78" height="7.42"
-                                          transform="translate(593.86 226.63) rotate(160.47)" fill="#6c63ff"/>
-                                    <rect x="328.41" y="239.26" width="86.61" height="4.95"
-                                          transform="translate(638.21 240.89) rotate(160.47)" fill="#6c63ff"/>
-                                </g>
-                                <polygon
-                                        points="435.66 9.21 142.66 285.04 142.66 691.21 728.65 691.21 728.65 285.04 435.66 9.21"
-                                        fill="url(#245258be-8ef2-4163-b815-3fbd211fc334)"/>
-                                <polygon
-                                        points="725.68 682.3 145.63 682.3 145.63 284.38 435.66 14.16 725.68 284.38 725.68 682.3"
-                                        fill="#fff"/>
-                                <rect x="233.73" y="69.59" width="403.85" height="475.12"
-                                      fill="url(#afb36fd3-f298-4117-ba9e-9f0c6a4eccfc)"/>
-                                <rect x="238.83" y="73.55" width="393.65" height="471.16" fill="#fff"/>
-                                <polygon points="145.63 284.38 435.66 483.34 145.63 682.3 145.63 284.38"
-                                         fill="#f5f5f5"/>
-                                <polygon points="725.68 284.38 435.66 483.34 725.68 682.3 725.68 284.38"
-                                         fill="#f5f5f5"/>
-                                <path d="M310.28,786.69,588.92,569.9a18.39,18.39,0,0,1,22.75,0L890.33,786.69Z"
-                                      transform="translate(-164.65 -104.4)"
-                                      fill="url(#9b46ec67-d0ea-45ff-80f1-fe3db7b86030)"/>
-                                <path d="M310.28,786.69,588.92,579.37a19.06,19.06,0,0,1,22.75,0L890.33,786.69Z"
-                                      transform="translate(-164.65 -104.4)" fill="#fff"/>
-                                <rect x="298.56" y="164.61" width="82.16" height="13.86" fill="#47e6b1"/>
-                                <rect x="298.56" y="201.24" width="274.19" height="13.86" fill="#f5f5f5"/>
-                                <rect x="298.56" y="224.99" width="274.19" height="13.86" fill="#f5f5f5"/>
-                                <rect x="298.56" y="248.75" width="274.19" height="13.86" fill="#f5f5f5"/>
-                                <rect x="298.56" y="272.5" width="274.19" height="13.86" fill="#f5f5f5"/>
-                                <rect x="298.56" y="296.26" width="124.72" height="13.86" fill="#f5f5f5"/>
-                                <rect x="448.03" y="296.26" width="124.72" height="13.86" fill="#6c63ff"/>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    #notifications > tbody > tr > td:nth-child(4) > span {
+      flex: 1 1 200px;
+      max-width: 210px;
+    }
+  </style>
+{{ end }}
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-envelope-open-text mr-2"></i>Notifications</h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Notifications</li>
+            </ol>
+          </nav>
         </div>
-    {{end}}
-{{end}}
+      </div>
+
+      <div class="d-flex mt-3 justify-content-between">
+        <h2 class="h4">Validator Watchlist</h2>
+        <a href="{{ .DashboardLink }}" class="btn btn-sm btn-outline-primary h2">
+          <span>View in Dashboard</span>
+        </a>
+      </div>
+      <div class="card mb-3">
+        <div class="card-body px-0 py-2">
+          {{ if gt .CountWatchlist 0 }}
+            <div class="table-responsive pt-2">
+              <table class="table" id="notifications">
+                <thead>
+                  <tr>
+                    <th>Index</th>
+                    <th>Public Key</th>
+                    <th>Balance</th>
+                    <th>Notify me when</th>
+                    <!-- <th>Action</th> -->
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          {{ else }}
+            <div class="row px-4 py-3 justify-content-around align-items-center">
+              <div style="flex: 1 1 15rem; max-width: 30rem" class="col-6-md mx-3">
+                <p>There are currently no validators in your watchlist. You can add validators to your watchlist by clicking the bookmark <i class="far fa-bookmark"></i> symbol. The symbol can be found on the <a href="/dashboard">Dashboard</a> page or on a validator page.</p>
+              </div>
+              <div style="flex: 2 1 15rem; max-width: 20rem;" class="col-6-md mx-3">
+                <svg style="width: 100%; height: auto; opacity: .8;" id="bb97989e-6518-4177-8ad0-b3a48a9375a0" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760.5195 442.07813">
+                  <path d="M592.10207,568.124a6.48129,6.48129,0,0,1-4.67847-1.98291L577.17311,555.522a6.50772,6.50772,0,0,1,.16236-9.1914l57.51538-54.84912a10.78683,10.78683,0,0,1,15.15381.31347l4.38256,4.54a10.62951,10.62951,0,0,1,2.99952,7.61963,10.767,10.767,0,0,1-3.31373,7.55371l-57.46069,54.79736A6.47377,6.47377,0,0,1,592.10207,568.124Z" transform="translate(-219.74025 -228.96094)" fill="#6c63ff" />
+                  <path d="M733.37917,568.124a6.47971,6.47971,0,0,1-4.51319-1.82031L671.40749,511.5083a10.767,10.767,0,0,1-3.31372-7.55371,10.62946,10.62946,0,0,1,2.99951-7.61963l4.38281-4.54a10.78577,10.78577,0,0,1,15.15357-.31347l57.51318,54.84716a6.50818,6.50818,0,0,1,.16455,9.19336l-.35962-.34717.35962.34717L738.0569,566.14111A6.48079,6.48079,0,0,1,733.37917,568.124Z" transform="translate(-219.74025 -228.96094)" fill="#6c63ff" />
+                  <path d="M435.74025,595.94982h-216V548.40311a6.6911,6.6911,0,0,1,3.13094-5.68372l101.27472-64.04155a6.75559,6.75559,0,0,1,7.18868,0l101.27482,64.04155a6.69121,6.69121,0,0,1,3.13084,5.68372Z" transform="translate(-219.74025 -228.96094)" fill="#ccc" />
+                  <polygon points="702 405 330 405 330 403 700 403 700 254 702 254 702 405" fill="#3f3d56" />
+                  <polygon points="96 195 94 195 94 44 500 44 500 46 96 46 96 195" fill="#3f3d56" />
+                  <path d="M401.32267,599.11465H254.15783a6.73286,6.73286,0,0,1-6.72527-6.72527V496.65311a6.73286,6.73286,0,0,1,6.72527-6.72527H401.32267a6.73279,6.73279,0,0,1,6.72527,6.72527v95.73627A6.73279,6.73279,0,0,1,401.32267,599.11465Z" transform="translate(-219.74025 -228.96094)" fill="#e6e6e6" />
+                  <path d="M307.16882,512.08168H263.65234a4.35165,4.35165,0,1,1,0-8.70329h43.51648a4.35165,4.35165,0,1,1,0,8.70329Z" transform="translate(-219.74025 -228.96094)" fill="#fff" />
+                  <path d="M390.64135,534.23553H264.04794a4.74725,4.74725,0,0,1,0-9.49451H390.64135a4.74726,4.74726,0,0,1,0,9.49451Z" transform="translate(-219.74025 -228.96094)" fill="#fff" />
+                  <path d="M390.64135,550.85091H264.04794a4.74725,4.74725,0,1,1,0-9.4945H390.64135a4.74725,4.74725,0,1,1,0,9.4945Z" transform="translate(-219.74025 -228.96094)" fill="#fff" />
+                  <path d="M390.64135,567.4663H264.04794a4.74725,4.74725,0,0,1,0-9.49451H390.64135a4.74726,4.74726,0,0,1,0,9.49451Z" transform="translate(-219.74025 -228.96094)" fill="#fff" />
+                  <path d="M429.015,649.752H226.46553a6.73286,6.73286,0,0,1-6.72528-6.72527v-87.033a6.73286,6.73286,0,0,1,6.72528-6.72527l.15376.03129,89.117,37.59633a31.0641,31.0641,0,0,0,24.00786,0L428.935,549.2685h.08a6.73279,6.73279,0,0,1,6.72527,6.72527v87.033A6.73279,6.73279,0,0,1,429.015,649.752Z" transform="translate(-219.74025 -228.96094)" fill="#ccc" />
+                  <path d="M926.81441,341.22161H836.51778a6.9224,6.9224,0,0,1-6.91461-6.91461V235.87554a6.9224,6.9224,0,0,1,6.91461-6.9146h90.29663a6.92234,6.92234,0,0,1,6.91461,6.9146V334.307A6.92234,6.92234,0,0,1,926.81441,341.22161Z" transform="translate(-219.74025 -228.96094)" fill="#e6e6e6" />
+                  <path d="M891.02115,251.73847H846.27958a4.47416,4.47416,0,1,1,0-8.94832h44.74157a4.47416,4.47416,0,0,1,0,8.94832Z" transform="translate(-219.74025 -228.96094)" fill="#fff" />
+                  <path d="M915.83239,274.516H846.68632a4.8809,4.8809,0,1,1,0-9.76179h69.14607a4.8809,4.8809,0,0,1,0,9.76179Z" transform="translate(-219.74025 -228.96094)" fill="#fff" />
+                  <path d="M915.83239,291.59914H846.68632a4.8809,4.8809,0,0,1,0-9.7618h69.14607a4.8809,4.8809,0,0,1,0,9.7618Z" transform="translate(-219.74025 -228.96094)" fill="#fff" />
+                  <path d="M915.83239,308.68229H846.68632a4.8809,4.8809,0,1,1,0-9.7618h69.14607a4.8809,4.8809,0,0,1,0,9.7618Z" transform="translate(-219.74025 -228.96094)" fill="#fff" />
+                  <path d="M935.04119,372.50579l-84.11634-32.83174a6.9224,6.9224,0,0,1-3.9272-8.95548l35.78955-91.69439a6.92242,6.92242,0,0,1,8.95549-3.9272L975.859,267.92872a6.92235,6.92235,0,0,1,3.9272,8.95549l-35.78955,91.69438A6.92234,6.92234,0,0,1,935.04119,372.50579Z" transform="translate(-219.74025 -228.96094)" fill="#e6e6e6" />
+                  <path d="M934.23373,276.13288l-41.67926-16.268a4.47416,4.47416,0,0,1,3.25359-8.33586l41.67927,16.268a4.47416,4.47416,0,0,1-3.2536,8.33586Z" transform="translate(-219.74025 -228.96094)" fill="#fff" />
+                  <path d="M949.0649,306.37274l-64.41341-25.14142a4.8809,4.8809,0,0,1,3.54937-9.09366l64.41342,25.14143a4.8809,4.8809,0,1,1-3.54938,9.09365Z" transform="translate(-219.74025 -228.96094)" fill="#fff" />
+                  <path d="M942.85349,322.28665l-64.41341-25.14143a4.88089,4.88089,0,1,1,3.54937-9.09365L946.40287,313.193a4.8809,4.8809,0,0,1-3.54938,9.09366Z" transform="translate(-219.74025 -228.96094)" fill="#fff" />
+                  <path d="M936.64208,338.20055l-64.41341-25.14142a4.8809,4.8809,0,0,1,3.54937-9.09366l64.41342,25.14142a4.8809,4.8809,0,0,1-3.54938,9.09366Z" transform="translate(-219.74025 -228.96094)" fill="#fff" />
+                  <path d="M961.79418,308.27554h-97.3157l-15.47167-24.61387a6.5076,6.5076,0,0,0-5.50968-3.04455h-23.249a6.50777,6.50777,0,0,0-6.50787,6.50786V403.45307a6.50778,6.50778,0,0,0,6.50787,6.50787H961.79418a6.50778,6.50778,0,0,0,6.50787-6.50787V314.78341A6.50778,6.50778,0,0,0,961.79418,308.27554Z" transform="translate(-219.74025 -228.96094)" fill="#ccc" />
+                  <path d="M415.43462,358.15443h59a6,6,0,0,1,6,6v26.24972a35.5,35.5,0,0,1-35.5,35.5h-.00007a35.5,35.5,0,0,1-35.5-35.5V364.15443a6,6,0,0,1,6-6Z" fill="#2f2e41" />
+                  <path d="M698.20607,634.0625h-67.0625a6.50737,6.50737,0,0,1-6.5-6.5V518.61816a40.03125,40.03125,0,0,1,80.0625,0V627.5625A6.50737,6.50737,0,0,1,698.20607,634.0625Z" transform="translate(-219.74025 -228.96094)" fill="#2f2e41" />
+                  <circle cx="444.54279" cy="187.30874" r="53.51916" fill="#6c63ff" />
+                  <path d="M670.52126,434.13867c-3.3064-.09228-7.42139-.208-10.5896-2.52246a8.13329,8.13329,0,0,1-3.2002-6.07275,5.4706,5.4706,0,0,1,1.86035-4.49268c1.65552-1.39844,4.07276-1.728,6.67823-.96142l-2.69922-19.72608,1.98144-.27148,3.17334,23.19043-1.65454-.75928c-1.91846-.87988-4.55176-1.32715-6.18823.05518a3.51354,3.51354,0,0,0-1.15259,2.89453,6.1469,6.1469,0,0,0,2.38111,4.52832c2.46557,1.80175,5.7456,2.03418,9.46606,2.13867Z" transform="translate(-219.74025 -228.96094)" fill="#2f2e41" />
+                  <rect x="422.25977" y="173.10352" width="10.77173" height="2" fill="#2f2e41" />
+                  <rect x="456.25977" y="173.10352" width="10.77173" height="2" fill="#2f2e41" />
+                  <path d="M716.83327,671.03906a6.53407,6.53407,0,0,1-1.48633-.17187L595.53859,642.96631a6.49967,6.49967,0,0,1-4.85669-7.80469l3.34766-14.375a6.50026,6.50026,0,0,1,7.80517-4.856l119.80835,27.90088a6.49984,6.49984,0,0,1,4.8562,7.80469l-3.34765,14.37451a6.50623,6.50623,0,0,1-6.31836,5.02832Z" transform="translate(-219.74025 -228.96094)" fill="#2f2e41" />
+                  <path d="M610.54836,665.16357a6.51057,6.51057,0,0,1-6.44165-5.66113L602.2,644.8667a6.50769,6.50769,0,0,1,5.60571-7.28516l121.9834-15.89209a6.5,6.5,0,0,1,7.2854,5.60547l1.90674,14.63623a6.49978,6.49978,0,0,1-5.606,7.28467L611.39211,665.1084A6.501,6.501,0,0,1,610.54836,665.16357Z" transform="translate(-219.74025 -228.96094)" fill="#2f2e41" />
+                  <path
+                    d="M628.92731,374.44686c-8.67422-.98915-15.39221-9.30024-16.13009-17.733-.87782-10.03212,4.96459-19.56033,12.97992-25.18991,8.3822-5.88725,18.82561-8.34577,28.93007-8.887a79.5095,79.5095,0,0,1,54.34812,17.9136c7.57144,6.28846,14.64266,14.29886,17.3227,23.97443,2.3275,8.40282.4335,17.92213-6.32473,23.80721a15.97619,15.97619,0,0,1-12.26,3.77473c-5.24388-.5445-10.08222-3.30177-14.27039-6.3469-8.14685-5.92341-14.835-14.17529-24.76048-17.27067-7.27772-2.26964-16.722-.27185-21.16941,6.30949a11.97911,11.97911,0,0,0-1.91259,5.01866,1.55341,1.55341,0,0,0,1.04766,1.84518,1.50932,1.50932,0,0,0,1.84518-1.04766c1.16758-8.28938,11.36014-11.38252,18.51255-9.48949,10.42855,2.76013,17.42913,12.06611,25.98534,17.97854,4.4985,3.10852,9.615,5.59407,15.13243,6.04a18.79084,18.79084,0,0,0,13.20328-4.05609c7.30959-5.77189,10.105-15.69938,8.48864-24.63744-1.87174-10.3504-8.83825-19.22131-16.482-26.08923a82.44684,82.44684,0,0,0-56.344-20.81437c-10.57358.24286-21.6061,2.42565-30.71519,8.01422-8.83577,5.42088-15.66506,14.49-16.55765,25.03193-.78566,9.27894,4.19268,18.98422,12.73842,23.04935a19.949,19.949,0,0,0,6.39215,1.80435c1.91494.21836,1.89934-2.78342,0-3Z"
+                    transform="translate(-219.74025 -228.96094)"
+                    fill="#2f2e41" />
+                  <circle cx="444.96343" cy="342.27077" r="34.03658" fill="#e6e6e6" />
+                  <polygon points="442.126 357.321 431.324 343.43 437.606 338.544 442.72 345.12 460 326.881 465.778 332.355 442.126 357.321" fill="#6c63ff" />
+                  <path d="M703.07741,593.11035a6.61268,6.61268,0,0,1-.67871-.03515,6.45735,6.45735,0,0,1-4.37647-2.36524l-9.31079-11.45264a6.50045,6.50045,0,0,1,.94312-9.144l32.9458-27.55615a6.50934,6.50934,0,0,1,9.14941.93848l9.31055,11.45214a6.50046,6.50046,0,0,1-.94312,9.144l-32.9458,27.55664A6.45853,6.45853,0,0,1,703.07741,593.11035Z" transform="translate(-219.74025 -228.96094)" fill="#6c63ff" />
+                  <path d="M622.40285,593.11035a6.4514,6.4514,0,0,1-4.08838-1.457l-32.95654-27.56641a6.49977,6.49977,0,0,1-.93775-9.13916l9.31055-11.45214a6.50845,6.50845,0,0,1,9.144-.94336l32.95655,27.56591a6.49978,6.49978,0,0,1,.93774,9.13916L627.45827,590.71a6.45735,6.45735,0,0,1-4.37647,2.36524A6.62084,6.62084,0,0,1,622.40285,593.11035Z" transform="translate(-219.74025 -228.96094)" fill="#6c63ff" />
+                </svg>
+              </div>
+            </div>
+          {{ end }}
+        </div>
+      </div>
+
+      <h2 class="h4 mt-3">Subscriptions</h2>
+      <div class="card mb-3">
+        <div class="card-body px-0 py-2">
+          <div class="table-responsive pt-2 d-none" id="subscriptions-container">
+            <table class="table" id="subscriptions">
+              <thead>
+                <tr>
+                  <th>Subject</th>
+                  <th>Event</th>
+                  <th>Created</th>
+                  <th>Last Sent</th>
+                  <!-- <th>Action</th> -->
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="subscription-placeholder" class="row px-4 py-3 justify-content-around align-items-center">
+            <div style="flex: 1 1 15rem; max-width: 30rem" class="col-6-md mx-3">
+              <p>You currently don't have any email notifications. You can toggle notifications from the table above.</p>
+            </div>
+            <div style="flex: 2 1 15rem; max-width: 20rem;" class="col-6-md mx-3">
+              <svg style="width: 100%; height: auto; opacity: .8;" id="060e19aa-3f7d-4f07-aa7e-820f8d371f55" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 870.71 691.21">
+                <defs>
+                  <linearGradient id="96d5bb21-1965-4d3e-ab37-1bcc7be514e6" x1="309.27" y1="560.72" x2="309.27" y2="406.06" gradientTransform="matrix(-1, 0, 0, 1, 616.6, 82.28)" gradientUnits="userSpaceOnUse">
+                    <stop offset="0" stop-color="gray" stop-opacity="0.25" />
+                    <stop offset="0.54" stop-color="gray" stop-opacity="0.12" />
+                    <stop offset="1" stop-color="gray" stop-opacity="0.1" />
+                  </linearGradient>
+                  <linearGradient id="3608cfbe-4e57-42c8-8a3e-2b99e6b6c6a0" x1="-175.29" y1="157.73" x2="-175.29" y2="3.07" gradientTransform="matrix(0, -1, -1, 0, 970.73, 29.07)" xlink:href="#96d5bb21-1965-4d3e-ab37-1bcc7be514e6" />
+                  <linearGradient id="f4d6b150-3892-4d6f-bed9-22612cc59583" x1="-246.29" y1="456.25" x2="-246.29" y2="301.59" gradientTransform="matrix(0, -1, -1, 0, 1293.26, 304.09)" xlink:href="#96d5bb21-1965-4d3e-ab37-1bcc7be514e6" />
+                  <linearGradient id="675c2575-69c8-4c08-9859-0530d9a94ad2" x1="60" y1="226.17" x2="60" y2="71.51" gradientTransform="matrix(-1, 0, 0, 1, 436.24, 71.59)" xlink:href="#96d5bb21-1965-4d3e-ab37-1bcc7be514e6" />
+                  <linearGradient id="245258be-8ef2-4163-b815-3fbd211fc334" x1="435.66" y1="691.21" x2="435.66" y2="9.21" gradientTransform="matrix(1, 0, 0, 1, 0, 0)" xlink:href="#96d5bb21-1965-4d3e-ab37-1bcc7be514e6" />
+                  <linearGradient id="afb36fd3-f298-4117-ba9e-9f0c6a4eccfc" x1="435.66" y1="544.71" x2="435.66" y2="69.59" gradientTransform="matrix(1, 0, 0, 1, 0, 0)" xlink:href="#96d5bb21-1965-4d3e-ab37-1bcc7be514e6" />
+                  <linearGradient id="9b46ec67-d0ea-45ff-80f1-fe3db7b86030" x1="600.3" y1="786.69" x2="600.3" y2="565.96" gradientTransform="matrix(1, 0, 0, 1, 0, 0)" xlink:href="#96d5bb21-1965-4d3e-ab37-1bcc7be514e6" />
+                </defs>
+                <rect x="181.5" y="488.34" width="251.66" height="154.66" transform="translate(-313.48 7.02) rotate(-16.6)" fill="url(#96d5bb21-1965-4d3e-ab37-1bcc7be514e6)" />
+                <rect x="184.26" y="492.57" width="243.13" height="144.34" transform="translate(-313.28 6.55) rotate(-16.6)" fill="#fff" />
+                <g opacity="0.6">
+                  <rect x="184.56" y="532.96" width="30.93" height="22.89" transform="translate(382.63 904.55) rotate(163.4)" fill="#f55f44" />
+                  <rect x="221.97" y="570.99" width="118.78" height="7.42" transform="translate(550.57 940.64) rotate(163.4)" fill="#f55f44" />
+                  <rect x="258.42" y="584.23" width="86.61" height="4.95" transform="translate(593.88 958.32) rotate(163.4)" fill="#f55f44" />
+                </g>
+                <rect x="812.99" y="78.53" width="154.66" height="251.66" transform="translate(354.91 934.8) rotate(-78.98)" fill="url(#3608cfbe-4e57-42c8-8a3e-2b99e6b6c6a0)" />
+                <rect x="817.25" y="81.28" width="144.34" height="243.13" transform="translate(355.66 932.7) rotate(-78.98)" fill="#fff" />
+                <g opacity="0.6">
+                  <rect x="789.65" y="124.32" width="30.93" height="22.89" transform="translate(1404.78 318.52) rotate(-168.98)" fill="#f55f44" />
+                  <rect x="803.74" y="196.61" width="118.78" height="7.42" transform="translate(1507.41 457.54) rotate(-168.98)" fill="#f55f44" />
+                  <rect x="832.3" y="217.92" width="86.61" height="4.95" transform="translate(1528.3 499.71) rotate(-168.98)" fill="#f55f44" />
+                </g>
+                <rect x="837.01" y="424.55" width="154.66" height="251.66" transform="translate(-308.14 304.89) rotate(-23.45)" fill="url(#f4d6b150-3892-4d6f-bed9-22612cc59583)" />
+                <rect x="842.9" y="427.21" width="144.34" height="243.13" transform="translate(-307.45 305.05) rotate(-23.45)" fill="#fff" />
+                <g opacity="0.6">
+                  <rect x="907.2" y="429.86" width="30.93" height="22.89" transform="translate(720.31 1358.98) rotate(-113.45)" fill="#47e6b1" />
+                  <rect x="842.89" y="521.96" width="118.78" height="7.42" transform="translate(614.41 1458.22) rotate(-113.45)" fill="#47e6b1" />
+                  <rect x="849.48" y="544.85" width="86.61" height="4.95" transform="translate(581.28 1479.77) rotate(-113.45)" fill="#47e6b1" />
+                </g>
+                <rect x="250.41" y="143.1" width="251.66" height="154.66" transform="translate(-216.69 34.06) rotate(-19.53)" fill="url(#675c2575-69c8-4c08-9859-0530d9a94ad2)" />
+                <rect x="253.13" y="147.42" width="243.13" height="144.34" transform="translate(-216.5 33.5) rotate(-19.53)" fill="#fff" />
+                <g opacity="0.6">
+                  <rect x="252.52" y="193.23" width="30.93" height="22.89" transform="translate(424.33 203.59) rotate(160.47)" fill="#6c63ff" />
+                  <rect x="291.38" y="227.07" width="118.78" height="7.42" transform="translate(593.86 226.63) rotate(160.47)" fill="#6c63ff" />
+                  <rect x="328.41" y="239.26" width="86.61" height="4.95" transform="translate(638.21 240.89) rotate(160.47)" fill="#6c63ff" />
+                </g>
+                <polygon points="435.66 9.21 142.66 285.04 142.66 691.21 728.65 691.21 728.65 285.04 435.66 9.21" fill="url(#245258be-8ef2-4163-b815-3fbd211fc334)" />
+                <polygon points="725.68 682.3 145.63 682.3 145.63 284.38 435.66 14.16 725.68 284.38 725.68 682.3" fill="#fff" />
+                <rect x="233.73" y="69.59" width="403.85" height="475.12" fill="url(#afb36fd3-f298-4117-ba9e-9f0c6a4eccfc)" />
+                <rect x="238.83" y="73.55" width="393.65" height="471.16" fill="#fff" />
+                <polygon points="145.63 284.38 435.66 483.34 145.63 682.3 145.63 284.38" fill="#f5f5f5" />
+                <polygon points="725.68 284.38 435.66 483.34 725.68 682.3 725.68 284.38" fill="#f5f5f5" />
+                <path d="M310.28,786.69,588.92,569.9a18.39,18.39,0,0,1,22.75,0L890.33,786.69Z" transform="translate(-164.65 -104.4)" fill="url(#9b46ec67-d0ea-45ff-80f1-fe3db7b86030)" />
+                <path d="M310.28,786.69,588.92,579.37a19.06,19.06,0,0,1,22.75,0L890.33,786.69Z" transform="translate(-164.65 -104.4)" fill="#fff" />
+                <rect x="298.56" y="164.61" width="82.16" height="13.86" fill="#47e6b1" />
+                <rect x="298.56" y="201.24" width="274.19" height="13.86" fill="#f5f5f5" />
+                <rect x="298.56" y="224.99" width="274.19" height="13.86" fill="#f5f5f5" />
+                <rect x="298.56" y="248.75" width="274.19" height="13.86" fill="#f5f5f5" />
+                <rect x="298.56" y="272.5" width="274.19" height="13.86" fill="#f5f5f5" />
+                <rect x="298.56" y="296.26" width="124.72" height="13.86" fill="#f5f5f5" />
+                <rect x="448.03" y="296.26" width="124.72" height="13.86" fill="#6c63ff" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

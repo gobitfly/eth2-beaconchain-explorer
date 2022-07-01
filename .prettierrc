@@ -1,0 +1,16 @@
+{
+    "goTemplateBracketSpacing": true,
+    "overrides": [
+        {
+          "files": ["*.html"],
+          "options": {
+            "parser": "go-template"
+          }
+        }
+      ],
+      "printWidth": 800,
+      "htmlWhitespaceSensitivity": "css",
+      "bracketSameLine": true,
+      "trailingComma": "es5",
+      "semi": false
+} 
