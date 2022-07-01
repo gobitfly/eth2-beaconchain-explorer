@@ -2441,9 +2441,13 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	webhookRows := make([]types.UserWebhookRow, 0)
-
 	for _, wh := range webhooks {
-		url, _ := r.URL.Parse(wh.Url)
+
+		url, err := r.URL.Parse(wh.Url)
+		if err != nil {
+			logger.WithError(err).Error("error parsing URL for webhook")
+			wh.Url = "Invalid URL"
+		}
 		// events := template.HTML{}
 
 		// for _, ev := range wh.EventNames {
@@ -2513,11 +2517,18 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 			whErr.ContentResponse = template.HTML(fmt.Sprintf(`<pre><code>%v</code></pre>`, wh.Response.String))
 		}
 
+		hostname := ""
+		if url != nil {
+			hostname = url.Hostname()
+		} else {
+			hostname = wh.Url
+		}
+
 		webhookRows = append(webhookRows, types.UserWebhookRow{
 			ID:           wh.ID,
 			Retries:      template.HTML(fmt.Sprintf("%d", wh.Retries)),
 			UrlFull:      wh.Url,
-			Url:          template.HTML(fmt.Sprintf(`<span>%v</span><span style="margin-left: .5rem;">%v</span>`, url.Hostname(), utils.CopyButton(wh.Url))),
+			Url:          template.HTML(fmt.Sprintf(`<span>%v</span><span style="margin-left: .5rem;">%v</span>`, hostname, utils.CopyButton(wh.Url))),
 			LastSent:     ls,
 			Events:       events,
 			Discord:      isDiscord,
