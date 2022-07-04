@@ -54,7 +54,7 @@ var (
 	NotificationsQueued = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "notifications_queued",
 		Help: "Counter of notification event type that gets collected",
-	}, []string{"channel"})
+	}, []string{"channel", "event_type"})
 	NotificationsSent = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "notifications_sent",
 		Help: "Counter of notifications sent with the channel and notification type in the label",
