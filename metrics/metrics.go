@@ -47,6 +47,18 @@ var (
 		Name: "errors",
 		Help: "Counter of errors with name in labels",
 	}, []string{"name"})
+	NotificationsCollected = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "notifications_collected",
+		Help: "Counter of notification event type that gets collected",
+	}, []string{"event_type"})
+	NotificationsQueued = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "notifications_queued",
+		Help: "Counter of notification channel and event type that gets queued",
+	}, []string{"channel", "event_type"})
+	NotificationsSent = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "notifications_sent",
+		Help: "Counter of notifications sent with the channel and notification type in the label",
+	}, []string{"channel", "status"})
 )
 
 var logger = logrus.New().WithField("module", "metrics")
