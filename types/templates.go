@@ -1257,6 +1257,7 @@ type WebhookPageData struct {
 	CsrfField    template.HTML
 	Allowed      uint64
 	WebhookCount uint64
+	Flashes      []interface{}
 }
 
 type WebhookPageEvent struct {
