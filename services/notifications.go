@@ -477,8 +477,9 @@ func queuePushNotification(notificationsByUserID map[uint64]map[types.EventName]
 
 		go func(userTokens []string, userNotifications map[types.EventName][]types.Notification) {
 			var batch []*messaging.Message
-			for _, ns := range userNotifications {
+			for event, ns := range userNotifications {
 				for _, n := range ns {
+					added := false
 					for _, userToken := range userTokens {
 						notification := new(messaging.Notification)
 						notification.Title = fmt.Sprintf("%s%s", getNetwork(), n.GetTitle())
@@ -486,6 +487,7 @@ func queuePushNotification(notificationsByUserID map[uint64]map[types.EventName]
 						if notification.Body == "" {
 							continue
 						}
+						added = true
 
 						message := new(messaging.Message)
 						message.Notification = notification
@@ -497,6 +499,9 @@ func queuePushNotification(notificationsByUserID map[uint64]map[types.EventName]
 						message.APNS.Payload.Aps.Sound = "default"
 
 						batch = append(batch, message)
+					}
+					if added {
+						metrics.NotificationsQueued.WithLabelValues("push", string(event)).Inc()
 					}
 				}
 			}
@@ -554,6 +559,8 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 		if err != nil {
 			metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
 			logger.WithError(err).Error("error sending firebase batch job")
+		} else {
+			metrics.NotificationsSent.WithLabelValues("push").Add(float64(len(n.Content.Messages)))
 		}
 
 		_, err = tx.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
@@ -676,6 +683,7 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 						attachments = append(attachments, *att)
 					}
 
+					metrics.NotificationsQueued.WithLabelValues("email", string(event)).Inc()
 				}
 				if event == "validator_balance_decreased" {
 					msg.Body += template.HTML("<br>You will not receive any further balance decrease mails for these validators until the balance of a validator is increasing again.<br>")
@@ -751,7 +759,10 @@ func sendEmailNotifications(useDb *sqlx.DB) error {
 				// 		return fmt.Errorf("error committing transaction")
 				// 	}
 				// 	continue
-			} //else {
+			} else {
+				metrics.NotificationsSent.WithLabelValues("email").Inc()
+			}
+			//else {
 			// 	tx.Rollback()
 			// 	return fmt.Errorf("error sending notification-email: %w", err)
 			// }
@@ -919,6 +930,8 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 							if err != nil {
 								logger.WithError(err).Errorf("error inserting into webhooks_queue")
 								continue
+							} else {
+								metrics.NotificationsQueued.WithLabelValues(channel, string(event)).Inc()
 							}
 						}
 
@@ -989,6 +1002,8 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 			resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
 			if err != nil {
 				logger.WithError(err).Errorf("error sending request")
+			} else {
+				metrics.NotificationsSent.WithLabelValues("webhook", resp.Status).Inc()
 			}
 
 			if resp != nil && resp.StatusCode < 400 {
@@ -1087,6 +1102,8 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 			resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
 			if err != nil {
 				logger.WithError(err).Errorf("error sending request")
+			} else {
+				metrics.NotificationsSent.WithLabelValues("webhook_discord", resp.Status).Inc()
 			}
 			if resp != nil && resp.StatusCode < 400 {
 				_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
@@ -1243,6 +1260,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
 		}
 		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
+		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil
@@ -1329,6 +1347,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 				notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
 			}
 			notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 
@@ -1515,6 +1534,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 				continue
 			}
 			notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 
@@ -1723,6 +1743,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
 		}
 		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
+		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil
@@ -1873,6 +1894,7 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 			}
 			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 	return nil
@@ -2023,6 +2045,7 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 		}
 		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil
@@ -2225,6 +2248,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 			}
 			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 
@@ -2326,6 +2350,7 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 			}
 			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 
@@ -2467,6 +2492,7 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 			}
 			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 
@@ -2520,6 +2546,7 @@ func collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID map[ui
 				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 			}
 			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 
@@ -2618,6 +2645,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 			notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
 		}
 		notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
+		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil
@@ -2728,6 +2756,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 		}
 		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil
