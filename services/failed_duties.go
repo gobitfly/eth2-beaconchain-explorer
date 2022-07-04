@@ -59,7 +59,7 @@ func exportFailedDuties(epoch uint64) error {
 	_, err = tx.Exec(`
 insert into validator_failed_duties (validatorindex, slot, duty)
 (
-	select validatorindex, attesterslot, 3 from attestation_assignments_p where week = $1/1575 and epoch = $1 and status = 0
+	select validatorindex, attesterslot, 4 from attestation_assignments_p where week = $1/1575 and epoch = $1 and status = 0
 )
 on conflict (validatorindex, slot, duty) do nothing`, epoch)
 	if err != nil {
@@ -69,7 +69,7 @@ on conflict (validatorindex, slot, duty) do nothing`, epoch)
 	_, err = tx.Exec(`
 insert into validator_failed_duties (validatorindex, slot, duty)
 (
-	select proposer, slot, 4 from blocks where slot >= $1*32 and slot < ($1+1)*32 and status = '2'
+	select proposer, slot, 5 from blocks where slot >= $1*32 and slot < ($1+1)*32 and status = '2'
 )
 on conflict (validatorindex, slot, duty) do nothing`, epoch)
 	if err != nil {
@@ -79,7 +79,7 @@ on conflict (validatorindex, slot, duty) do nothing`, epoch)
 	_, err = tx.Exec(`
 insert into validator_failed_duties (validatorindex, slot, duty)
 (
-	select validatorindex, slot, 5 from sync_assignments_p where week = $1/1575 and slot >= $1*32 and slot < ($1+1)*32 and status = 2
+	select validatorindex, slot, 6 from sync_assignments_p where week = $1/1575 and slot >= $1*32 and slot < ($1+1)*32 and status = 2
 )
 on conflict (validatorindex, slot, duty) do nothing`, epoch)
 	if err != nil {

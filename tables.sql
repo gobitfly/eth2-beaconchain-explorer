@@ -967,12 +967,15 @@ create table rocketpool_network_stats
 /*
 encoding for validator_failed_duties.duty:
 
-source target head proposal sync                                     
-x                                   1  
-x      x                            2         
-x      x      x                     3                
-                   x                4
-                            x       5
+attestation
+-------------------------
+source target head missed proposal sync                                     
+x                                          1  
+x      x                                   2         
+x      x      x                            3
+                   x                       4
+                          x                5
+                                   x       6
 */
 drop table if exists validator_failed_duties;
 create table validator_failed_duties(
