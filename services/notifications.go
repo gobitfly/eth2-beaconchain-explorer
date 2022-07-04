@@ -560,7 +560,7 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 			metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
 			logger.WithError(err).Error("error sending firebase batch job")
 		} else {
-			metrics.NotificationsSent.WithLabelValues("push").Add(float64(len(n.Content.Messages)))
+			metrics.NotificationsSent.WithLabelValues("push", "200").Add(float64(len(n.Content.Messages)))
 		}
 
 		_, err = tx.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
@@ -760,7 +760,7 @@ func sendEmailNotifications(useDb *sqlx.DB) error {
 				// 	}
 				// 	continue
 			} else {
-				metrics.NotificationsSent.WithLabelValues("email").Inc()
+				metrics.NotificationsSent.WithLabelValues("email", "200").Inc()
 			}
 			//else {
 			// 	tx.Rollback()
