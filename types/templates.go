@@ -57,6 +57,7 @@ type PageData struct {
 	ChainConfig           ChainConfig
 	Lang                  string
 	NoAds                 bool
+	Debug                 bool
 }
 
 // Meta is a struct to hold metadata about the page

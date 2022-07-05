@@ -65,6 +65,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		ChainConfig:           utils.Config.Chain.Config,
 		Lang:                  "en-US",
 		NoAds:                 user.Authenticated && user.Subscription != "",
+		Debug:                 utils.Config.Frontend.Debug,
 	}
 	data.EthPrice = price.GetEthPrice(data.Currency)
 	data.ExchangeRate = price.GetEthPrice(data.Currency)
