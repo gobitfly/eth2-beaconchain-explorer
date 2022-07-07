@@ -140,11 +140,6 @@
     </head>
     <header></header>
     <body ontouchstart="">
-      {{ if .Debug }}
-      <div class="position-fixed" style="z-index: 9999; background: var(--bg-color); bottom: 5px; right: 5px;">
-        <button class="btn btn-outline-primary" data-toggle="modal" data-target="#debug-modal">View Data</button>
-      </div>
-      {{ end }}
       <noscript>
         <strong>We're sorry but beaconcha.in doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
       </noscript>
@@ -972,48 +967,10 @@
       {{ end }}
       {{ if not .NoAds }}<script type="text/javascript" async src="/js/revive.min.js"></script>{{ end }}
       {{ if .Debug }}
-      <style>
-           .custom-remove-modal {
-              position: relative;
-              min-width: 280px;
-              padding: 2rem 4rem 3rem;
-            }
-            .custom-remove-modal-close {
-              position: relative;
-              top: -1rem;
-              right: -2.5rem;
-            }
-            .custom-remove-modal-close button:hover {
-              color: var(--dark);
-            }
-            .custom-background-color {
-              background-color: var(--bg-color);
-            }
-      </style>
-       <link rel="stylesheet" href="/highlight/styles/base16/dracula.min.css" />
-        <div class="modal fade" id="debug-modal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
-          <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 80% !important">
-            <div class="modal-content custom-background-color custom-remove-modal row mx-0">
-              <div class="mb-4 custom-remove-modal-close">
-                <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-              </div>
-              <div class="w-100 mb-2 heading-l2 text-center h4">Data Object Content</div>
-              <div class="w-100 my-3">
-                <pre><code contenteditable="true" id="debug-code">{{.}}</code></pre>
-              </div>
-            </div>
-          </div>
-        </div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.min.js" integrity="sha512-O9SYDgWAM3bEzit1z6mkFd+dxKUplO/oB8UwYGAkg2Zy/WzDUQ2mYA/ysk3c0CxiXAN4u8T9JeZ0Ahk2Jj/33Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        <script src="/js/debug.js"></script>
         <script>
-          const debugCode = document.getElementById("debug-code")
-          const data = {{ .Data }}
-          console.log('data', data)
-
-          debugCode.innerHTML = JSON.stringify(data, "  ", 2)
-        </script>
-        <script src="/highlight/highlight.min.js"></script>
-        <script>
-          hljs.highlightAll()
+          GoDebug.initialize({{.Data}})
         </script>
       {{ end }}
     </body>
