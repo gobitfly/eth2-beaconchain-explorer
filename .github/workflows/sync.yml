@@ -1,0 +1,21 @@
+name: Sync Fork
+
+on:
+  workflow_dispatch:
+  schedule:
+  - cron: "0 0 * * *"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Sync and merge upstream repository with your current repository
+        uses: dabreadman/sync-upstream-repo@v1.3.0
+        with:
+          upstream_repo: https://github.com/gobitfly/eth2-beaconchain-explorer
+          upstream_branch: master
+          downstream_branch: master
+          token: ${{ secrets.GH_TOKEN }}
