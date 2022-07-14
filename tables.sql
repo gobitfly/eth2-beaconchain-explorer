@@ -893,7 +893,7 @@ create table rocketpool_nodes
     rpl_stake numeric not null,
     min_rpl_stake numeric not null,
     max_rpl_stake numeric not null,
-
+    rpl_cumulative_rewards numeric not null,
     primary key(rocketpool_storage_address, address)
 );
 
@@ -921,6 +921,19 @@ create table rocketpool_dao_proposals
     state text not null,
 
     primary key(rocketpool_storage_address, id)
+);
+
+drop table if exists rocketpool_dao_proposals_member_votes;
+create table rocketpool_dao_proposals_member_votes
+(
+    rocketpool_storage_address bytea not null,
+
+    id int not null,
+    member_address bytea not null,
+    voted boolean not null,
+    supported boolean not null,
+
+    primary key(rocketpool_storage_address, id, member_address)
 );
 
 drop table if exists rocketpool_dao_members;
