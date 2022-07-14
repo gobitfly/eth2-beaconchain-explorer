@@ -36,10 +36,15 @@ var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateF
 	"templates/block/exits.html",
 	"templates/block/overview.html",
 ))
+var blockFutureTemplate = template.Must(template.New("blockFuture").Funcs(utils.GetTemplateFuncs()).ParseFiles(
+	"templates/layout.html",
+	"templates/block/blockFuture.html",
+))
 var blockNotFoundTemplate = template.Must(template.New("blocknotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocknotfound.html"))
 
 // Block will return the data for a block
 func Block(w http.ResponseWriter, r *http.Request) {
+	const MaxSlotValue = 137438953503 // we only render a page for blocks up to this slot
 	w.Header().Set("Content-Type", "text/html")
 
 	vars := mux.Vars(r)
@@ -139,16 +144,38 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 	blockPageData.Slot = uint64(blockSlot)
 	if err != nil {
+		//Slot not in database -> Show future block
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/block/" + slotOrHash
-		logger.Errorf("error retrieving blockPageData: %v", err)
-		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
+		if blockPageData.Slot > MaxSlotValue {
+			logger.Errorf("error retrieving blockPageData: %v", err)
+			err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+
+			if err != nil {
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		blockPageData = types.BlockPageData{
+			Slot:         blockPageData.Slot,
+			Epoch:        utils.EpochOfSlot(blockPageData.Slot),
+			Ts:           utils.SlotToTime(blockPageData.Slot),
+			NextSlot:     blockPageData.Slot + 1,
+			PreviousSlot: blockPageData.Slot - 1,
+			Status:       4,
+		}
+		data.Data = blockPageData
+
+		err = blockFutureTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
 			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
 		return
 	}
 
