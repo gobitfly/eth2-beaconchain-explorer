@@ -477,8 +477,9 @@ func queuePushNotification(notificationsByUserID map[uint64]map[types.EventName]
 
 		go func(userTokens []string, userNotifications map[types.EventName][]types.Notification) {
 			var batch []*messaging.Message
-			for _, ns := range userNotifications {
+			for event, ns := range userNotifications {
 				for _, n := range ns {
+					added := false
 					for _, userToken := range userTokens {
 						notification := new(messaging.Notification)
 						notification.Title = fmt.Sprintf("%s%s", getNetwork(), n.GetTitle())
@@ -486,6 +487,7 @@ func queuePushNotification(notificationsByUserID map[uint64]map[types.EventName]
 						if notification.Body == "" {
 							continue
 						}
+						added = true
 
 						message := new(messaging.Message)
 						message.Notification = notification
@@ -497,6 +499,9 @@ func queuePushNotification(notificationsByUserID map[uint64]map[types.EventName]
 						message.APNS.Payload.Aps.Sound = "default"
 
 						batch = append(batch, message)
+					}
+					if added {
+						metrics.NotificationsQueued.WithLabelValues("push", string(event)).Inc()
 					}
 				}
 			}
@@ -554,6 +559,8 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 		if err != nil {
 			metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
 			logger.WithError(err).Error("error sending firebase batch job")
+		} else {
+			metrics.NotificationsSent.WithLabelValues("push", "200").Add(float64(len(n.Content.Messages)))
 		}
 
 		_, err = tx.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
@@ -676,6 +683,7 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 						attachments = append(attachments, *att)
 					}
 
+					metrics.NotificationsQueued.WithLabelValues("email", string(event)).Inc()
 				}
 				if event == "validator_balance_decreased" {
 					msg.Body += template.HTML("<br>You will not receive any further balance decrease mails for these validators until the balance of a validator is increasing again.<br>")
@@ -751,7 +759,10 @@ func sendEmailNotifications(useDb *sqlx.DB) error {
 				// 		return fmt.Errorf("error committing transaction")
 				// 	}
 				// 	continue
-			} //else {
+			} else {
+				metrics.NotificationsSent.WithLabelValues("email", "200").Inc()
+			}
+			//else {
 			// 	tx.Rollback()
 			// 	return fmt.Errorf("error sending notification-email: %w", err)
 			// }
@@ -902,11 +913,28 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 								},
 							}
 						}
-						_, err = useDB.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES (now(), $1, $2);`, channel, content)
-						if err != nil {
-							logger.WithError(err).Errorf("error inserting into webhooks_queue")
+						// reset Retries
+						if w.Retries > 5 && w.LastSent.Valid && w.LastSent.Time.Add(time.Hour).Before(time.Now()) {
+							_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, w.ID)
+							if err != nil {
+								logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
+								continue
+							}
+						} else if w.Retries > 5 && !w.LastSent.Valid {
+							logger.Error("error webhook has more than 5 retries and does not have a valid last_sent timestamp")
 							continue
 						}
+
+						if w.Retries <= 5 {
+							_, err = useDB.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES (now(), $1, $2);`, channel, content)
+							if err != nil {
+								logger.WithError(err).Errorf("error inserting into webhooks_queue")
+								continue
+							} else {
+								metrics.NotificationsQueued.WithLabelValues(channel, string(event)).Inc()
+							}
+						}
+
 					}
 				}
 			}
@@ -932,24 +960,23 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 
 	logger.Infof("processing %v webhook notifications", len(notificationQueueItem))
 
-	now := time.Now()
+	// now := time.Now()
 	for _, n := range notificationQueueItem {
-		// rate limit for 24 hours after 5 retries
+		// do not retry after 5 attempts
 		if n.Content.Webhook.Retries > 5 {
-			// reset retries after 24 hours
-			if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
-				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
-				if err != nil {
-					logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
-					continue
-				}
-			} else {
-				_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
-				if err != nil {
-					return fmt.Errorf("error deleting from notification queue: %w", err)
-				}
-				continue
+			// if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
+			// 	_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
+			// 	if err != nil {
+			// 		logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
+			// 		continue
+			// 	}
+			// } else {
+			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
+			if err != nil {
+				return fmt.Errorf("error deleting from notification queue: %w", err)
 			}
+			continue
+			// }
 		}
 
 		reqBody := new(bytes.Buffer)
@@ -959,43 +986,59 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 			logger.WithError(err).Errorf("error marschalling webhook event")
 		}
 
-		resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
+		_, err = url.Parse(n.Content.Webhook.Url)
 		if err != nil {
-			logger.WithError(err).Errorf("error sending request")
+			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
+			if err != nil {
+				return fmt.Errorf("error deleting from notification queue: %w", err)
+			}
+			continue
 		}
 
-		if resp != nil && resp.StatusCode < 400 {
-			_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
+		go func(n types.TransitWebhook) {
+			if n.Content.Webhook.Retries > 0 {
+				time.Sleep(time.Duration(n.Content.Webhook.Retries) * time.Second)
+			}
+			resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
 			if err != nil {
-				logger.WithError(err).Errorf("error updating notification_queue table")
-				continue
+				logger.WithError(err).Errorf("error sending request")
+			} else {
+				metrics.NotificationsSent.WithLabelValues("webhook", resp.Status).Inc()
 			}
 
-			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
-			if err != nil {
-				logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
-				continue
-			}
-		} else {
-
-			var errResp types.ErrorResponse
-
-			if resp != nil {
-				b, err := io.ReadAll(resp.Body)
+			if resp != nil && resp.StatusCode < 400 {
+				_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
 				if err != nil {
-					logger.WithError(err).Error("error reading body")
+					logger.WithError(err).Errorf("error updating notification_queue table")
+					return
 				}
 
-				errResp.Status = resp.Status
-				errResp.Body = string(b)
-			}
+				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
+				if err != nil {
+					logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
+					return
+				}
+			} else {
+				var errResp types.ErrorResponse
 
-			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content, errResp)
-			if err != nil {
-				logger.WithError(err).Errorf("error updating users_webhooks table; increasing retries")
-				continue
+				if resp != nil {
+					b, err := io.ReadAll(resp.Body)
+					if err != nil {
+						logger.WithError(err).Error("error reading body")
+					}
+
+					errResp.Status = resp.Status
+					errResp.Body = string(b)
+				}
+
+				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content, errResp)
+				if err != nil {
+					logger.WithError(err).Errorf("error updating users_webhooks table; increasing retries")
+					return
+				}
 			}
-		}
+		}(n)
+
 	}
 	return nil
 }
@@ -1016,25 +1059,24 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 	client := &http.Client{Timeout: time.Second * 30}
 
 	logger.Infof("processing %v discord webhook notifications", len(notificationQueueItem))
-	now := time.Now()
+	// now := time.Now()
 	for _, n := range notificationQueueItem {
 
-		// rate limit for 24 hours after 5 retries
+		// rate limit for 1 hour after 5 retries
 		if n.Content.Webhook.Retries > 5 {
-			// reset retries after 24 hours
-			if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
-				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
-				if err != nil {
-					logger.WithError(err).Errorf("error updating users_webhooks table; resetting retries")
-					continue
-				}
-			} else {
-				_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
-				if err != nil {
-					return fmt.Errorf("error deleting from notification queue: %w", err)
-				}
-				continue
+			// if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
+			// 	_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
+			// 	if err != nil {
+			// 		logger.WithError(err).Errorf("error updating users_webhooks table; resetting retries")
+			// 		continue
+			// 	}
+			// } else {
+			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
+			if err != nil {
+				return fmt.Errorf("error deleting from notification queue: %w", err)
 			}
+			continue
+			// }
 		}
 
 		reqBody := new(bytes.Buffer)
@@ -1042,41 +1084,59 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 		if err != nil {
 			logger.WithError(err).Errorf("error marschalling webhook event")
 		}
-		resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
+
+		_, err = url.Parse(n.Content.Webhook.Url)
 		if err != nil {
-			logger.WithError(err).Errorf("error sending request")
+			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
+			if err != nil {
+				return fmt.Errorf("error deleting from notification queue: %w", err)
+			}
+			continue
 		}
 
-		if resp != nil && resp.StatusCode < 400 {
-			_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
-			if err != nil {
-				logger.WithError(err).Errorf("error updating notification_queue table")
-				continue
+		go func(n types.TransitDiscord) {
+			if n.Content.Webhook.Retries > 0 {
+				time.Sleep(time.Duration(n.Content.Webhook.Retries) * time.Second)
 			}
-			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
-			if err != nil {
-				logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
-				continue
-			}
-		} else {
-			var errResp types.ErrorResponse
 
-			if resp != nil {
-				b, err := io.ReadAll(resp.Body)
+			resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
+			if err != nil {
+				logger.WithError(err).Errorf("error sending request")
+			} else {
+				metrics.NotificationsSent.WithLabelValues("webhook_discord", resp.Status).Inc()
+			}
+			if resp != nil && resp.StatusCode < 400 {
+				_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
 				if err != nil {
-					logger.WithError(err).Error("error reading body")
+					logger.WithError(err).Errorf("error updating notification_queue table")
+					return
+				}
+				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
+				if err != nil {
+					logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
+					return
+				}
+			} else {
+				var errResp types.ErrorResponse
+
+				if resp != nil {
+					b, err := io.ReadAll(resp.Body)
+					if err != nil {
+						logger.WithError(err).Error("error reading body")
+					} else {
+						errResp.Body = string(b)
+					}
+					errResp.Status = resp.Status
 				}
 
-				errResp.Status = resp.Status
-				errResp.Body = string(b)
+				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content.DiscordRequest, errResp)
+				if err != nil {
+					logger.WithError(err).Errorf("error updating users_webhooks table; increasing retries")
+					return
+				}
 			}
+		}(n)
 
-			_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content.DiscordRequest, errResp)
-			if err != nil {
-				logger.WithError(err).Errorf("error updating users_webhooks table; increasing retries")
-				continue
-			}
-		}
 	}
 	return nil
 }
@@ -1200,6 +1260,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
 		}
 		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
+		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil
@@ -1286,6 +1347,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 				notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
 			}
 			notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 
@@ -1472,6 +1534,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 				continue
 			}
 			notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 
@@ -1680,6 +1743,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
 		}
 		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
+		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil
@@ -1830,6 +1894,7 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 			}
 			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 	return nil
@@ -1980,6 +2045,7 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 		}
 		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil
@@ -2182,6 +2248,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 			}
 			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 
@@ -2283,6 +2350,7 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 			}
 			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 
@@ -2424,6 +2492,7 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 			}
 			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 
@@ -2477,6 +2546,7 @@ func collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID map[ui
 				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 			}
 			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
 
@@ -2575,6 +2645,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 			notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
 		}
 		notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
+		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil
@@ -2685,6 +2756,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 		}
 		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil

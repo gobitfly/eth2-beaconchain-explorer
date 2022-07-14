@@ -172,7 +172,7 @@
               <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Timestamp">Timestamp:</span></div>
                 <div class="col-md-5 text-monospace text-break">{{ .ExecTimestamp.Int64 }}</div>
-                <div class="col-md-5"><span aria-ethereum-date="{{ .ExecTimestamp }}">{{ .ExecTime }}</span> (<span aria-ethereum-date="{{ .ExecTimestamp }}" aria-ethereum-date-format="FROMNOW"></span>)</div>
+                <div class="col-md-5"><span aria-ethereum-date="{{ .ExecTimestamp.Int64 }}">{{ .ExecTime }}</span> (<span aria-ethereum-date="{{ .ExecTimestamp.Int64 }}" aria-ethereum-date-format="FROMNOW"></span>)</div>
               </div>
 
               <div class="row p-1">
