@@ -930,8 +930,8 @@ create table rocketpool_dao_proposals_member_votes
 
     id int not null,
     member_address bytea not null,
-    voted boolean not null,
-    supported boolean not null,
+    voted       boolean not null,
+    supported   boolean not null,
 
     primary key(rocketpool_storage_address, id, member_address)
 );

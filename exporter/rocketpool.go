@@ -670,8 +670,8 @@ func (rp *RocketpoolExporter) SaveDAOProposalsMemberVotes() error {
 			valueStrings = append(valueStrings, fmt.Sprintf(valueStringsTpl, valueStringsArgs...))
 			valueArgs = append(valueArgs, rp.API.RocketStorageContract.Address.Bytes())
 			valueArgs = append(valueArgs, d.ProposalID)
-			valueArgs = append(valueArgs, d.Voted)
 			valueArgs = append(valueArgs, d.Address)
+			valueArgs = append(valueArgs, d.Voted)
 			valueArgs = append(valueArgs, d.Supported)
 		}
 
