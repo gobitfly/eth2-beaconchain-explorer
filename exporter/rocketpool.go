@@ -669,10 +669,10 @@ func (rp *RocketpoolExporter) SaveDAOProposalsMemberVotes() error {
 		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Debugf("saved rocketpool-dao-proposals-member-votes")
 	}(t0)
 
-	data := []*RocketpoolDAOProposalMemberVotes{}
+	data := []RocketpoolDAOProposalMemberVotes{}
 	for _, val := range rp.DAOProposalsByID {
 		for _, vote := range val.MemberVotes {
-			data = append(data, &vote)
+			data = append(data, vote)
 		}
 	}
 
@@ -712,7 +712,7 @@ func (rp *RocketpoolExporter) SaveDAOProposalsMemberVotes() error {
 			valueArgs = append(valueArgs, d.Supported)
 		}
 
-		stmt := fmt.Sprintf(`insert into rocketpool_dao_proposals_member_votes (rocketpool_storage_address, id, member_address, voted, supported) values %s on conflict (rocketpool_storage_address, id, member_address) do nothing`, strings.Join(valueStrings, ","))
+		stmt := fmt.Sprintf(`insert into rocketpool_dao_proposals_member_votes (rocketpool_storage_address, id, member_address, voted, supported) values %s on conflict (rocketpool_storage_address, id, member_address) do update set voted = excluded.voted, supported = excluded.supported`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return fmt.Errorf("error inserting into rocketpool_dao_proposals_member_votes: %w", err)
