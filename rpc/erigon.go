@@ -331,7 +331,7 @@ func (client *ErigonClient) GetBlock(number uint64) (*types.Eth1BlockContainer, 
 	return c, timings, nil
 }
 
-func (client *ErigonClient) LatestEth1BlockNumber() (uint64, error) {
+func (client *ErigonClient) GetLatestEth1BlockNumber() (uint64, error) {
 	latestBlock, err := client.ethClient.BlockByNumber(context.Background(), nil)
 	if err != nil {
 		return 0, fmt.Errorf("error getting latest block: %v", err)
