@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 	"time"
 
 	"eth2-exporter/db"
@@ -24,6 +25,7 @@ import (
 	"github.com/rocket-pool/rocketpool-go/rocketpool"
 	"github.com/rocket-pool/rocketpool-go/tokens"
 	rpTypes "github.com/rocket-pool/rocketpool-go/types"
+	"github.com/rocket-pool/rocketpool-go/utils/eth"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -68,6 +70,7 @@ type RocketpoolExporter struct {
 	NodesByAddress      map[string]*RocketpoolNode
 	DAOProposalsByID    map[uint64]*RocketpoolDAOProposal
 	DAOMembersByAddress map[string]*RocketpoolDAOMember
+	NodeRPLCumulative   map[string]*big.Int
 	NetworkStats        RocketpoolNetworkStats
 }
 
@@ -165,7 +168,7 @@ func (rp *RocketpoolExporter) Run() error {
 	for {
 		t0 := time.Now()
 		var err error
-		err = rp.Update()
+		err = rp.Update(count)
 		if err != nil {
 			logger.WithError(err).Errorf("error updating rocketpool-data")
 			time.Sleep(errorInterval)
@@ -184,10 +187,10 @@ func (rp *RocketpoolExporter) Run() error {
 	}
 }
 
-func (rp *RocketpoolExporter) Update() error {
+func (rp *RocketpoolExporter) Update(count int64) error {
 	var wg errgroup.Group
 	wg.Go(func() error { return rp.UpdateMinipools() })
-	wg.Go(func() error { return rp.UpdateNodes() })
+	wg.Go(func() error { return rp.UpdateNodes(count%4 == 0) })
 	wg.Go(func() error { return rp.UpdateDAOProposals() })
 	wg.Go(func() error { return rp.UpdateDAOMembers() })
 	wg.Go(func() error { return rp.UpdateNetworkStats() })
@@ -258,7 +261,7 @@ func (rp *RocketpoolExporter) UpdateMinipools() error {
 	return nil
 }
 
-func (rp *RocketpoolExporter) UpdateNodes() error {
+func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 	t0 := time.Now()
 	defer func(t0 time.Time) {
 		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Infof("updated rocketpool-nodes")
@@ -283,6 +286,21 @@ func (rp *RocketpoolExporter) UpdateNodes() error {
 		}
 		rp.NodesByAddress[addrHex] = node
 	}
+
+	if includeCumulativeRpl {
+		rp.NodeRPLCumulative, err = CalculateLifetimeNodeRewardsAll(rp.API, nil)
+		if err != nil {
+			return err
+		}
+
+		for addrHex, amount := range rp.NodeRPLCumulative {
+			if node, exists := rp.NodesByAddress[addrHex]; exists {
+				node.RPLCumulativeRewards = amount
+			}
+		}
+
+	}
+
 	return nil
 }
 
@@ -336,6 +354,11 @@ func (rp *RocketpoolExporter) UpdateDAOMembers() error {
 }
 
 func (rp *RocketpoolExporter) UpdateNetworkStats() error {
+	t0 := time.Now()
+	defer func(t0 time.Time) {
+		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Infof("updated rocketpool-network-stats")
+	}(t0)
+
 	price, err := network.GetRPLPrice(rp.API, nil)
 	if err != nil {
 		return err
@@ -505,7 +528,11 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 	}
 	defer tx.Rollback()
 
-	nArgs := 7
+	doUpdateComulative := len(rp.NodeRPLCumulative) > 0
+	nArgs := 6
+	if doUpdateComulative {
+		nArgs++
+	}
 	valueStringsArr := make([]string, nArgs)
 	for i := range valueStringsArr {
 		valueStringsArr[i] = "$%d"
@@ -513,6 +540,7 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 	valueStringsTpl := "(" + strings.Join(valueStringsArr, ",") + ")"
 	valueStringsArgs := make([]interface{}, nArgs)
 
+	var stmt string
 	batchSize := 1000
 	for b := 0; b < len(data); b += batchSize {
 		start := b
@@ -534,10 +562,18 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 			valueArgs = append(valueArgs, d.RPLStake.String())
 			valueArgs = append(valueArgs, d.MinRPLStake.String())
 			valueArgs = append(valueArgs, d.MaxRPLStake.String())
-			valueArgs = append(valueArgs, d.RPLCumulativeRewards.String())
+			if doUpdateComulative {
+				valueArgs = append(valueArgs, d.RPLCumulativeRewards.String())
+			}
 
 		}
-		stmt := fmt.Sprintf(`insert into rocketpool_nodes (rocketpool_storage_address, address, timezone_location, rpl_stake, min_rpl_stake, max_rpl_stake, rpl_cumulative_rewards) values %s on conflict (rocketpool_storage_address, address) do update set rpl_stake = excluded.rpl_stake, min_rpl_stake = excluded.min_rpl_stake, max_rpl_stake = excluded.max_rpl_stake, rpl_cumulative_rewards = excluded.rpl_cumulative_rewards`, strings.Join(valueStrings, ","))
+
+		if doUpdateComulative {
+			stmt = fmt.Sprintf(`insert into rocketpool_nodes (rocketpool_storage_address, address, timezone_location, rpl_stake, min_rpl_stake, max_rpl_stake, rpl_cumulative_rewards) values %s on conflict (rocketpool_storage_address, address) do update set rpl_stake = excluded.rpl_stake, min_rpl_stake = excluded.min_rpl_stake, max_rpl_stake = excluded.max_rpl_stake, rpl_cumulative_rewards = excluded.rpl_cumulative_rewards`, strings.Join(valueStrings, ","))
+		} else {
+			stmt = fmt.Sprintf(`insert into rocketpool_nodes (rocketpool_storage_address, address, timezone_location, rpl_stake, min_rpl_stake, max_rpl_stake) values %s on conflict (rocketpool_storage_address, address) do update set rpl_stake = excluded.rpl_stake, min_rpl_stake = excluded.min_rpl_stake, max_rpl_stake = excluded.max_rpl_stake`, strings.Join(valueStrings, ","))
+		}
+
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return fmt.Errorf("error inserting into rocketpool_nodes: %w", err)
@@ -675,7 +711,7 @@ func (rp *RocketpoolExporter) SaveDAOProposalsMemberVotes() error {
 			valueArgs = append(valueArgs, d.Supported)
 		}
 
-		stmt := fmt.Sprintf(`insert into rocketpool_dao_proposals_member_votes (rocketpool_storage_address, id, member_address, voted, supported) values %s on conflict (rocketpool_storage_address, id, member_address) do update set voted = excluded.voted, supported = excluded.supported`, strings.Join(valueStrings, ","))
+		stmt := fmt.Sprintf(`insert into rocketpool_dao_proposals_member_votes (rocketpool_storage_address, id, member_address, voted, supported) values %s on conflict (rocketpool_storage_address, id, member_address) do nothing`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return fmt.Errorf("error inserting into rocketpool_dao_proposals_member_votes: %w", err)
@@ -935,16 +971,73 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool) error {
 		return err
 	}
 
-	cumulativeRewards, err := rewards.CalculateLifetimeNodeRewards(rp, common.BytesToAddress(this.Address), nil)
-	if err != nil {
-		return err
-	}
-
 	this.RPLStake = stake
 	this.MinRPLStake = minStake
 	this.MaxRPLStake = maxStake
-	this.RPLCumulativeRewards = cumulativeRewards
+	this.RPLCumulativeRewards = big.NewInt(0)
+
 	return nil
+}
+
+func CalculateLifetimeNodeRewardsAll(rp *rocketpool.RocketPool, intervalSize *big.Int) (map[string]*big.Int, error) {
+	// Get contracts
+	rocketRewardsPool, err := getRocketRewardsPool(rp)
+	if err != nil {
+		return nil, err
+	}
+	rocketClaimNode, err := getRocketClaimNode(rp)
+	if err != nil {
+		return nil, err
+	}
+	// Construct a filter query for relevant logs
+	addressFilter := []common.Address{*rocketRewardsPool.Address}
+	// RPLTokensClaimed(address clamingContract, address claimingAddress, uint256 amount, uint256 time)
+	topicFilter := [][]common.Hash{{rocketRewardsPool.ABI.Events["RPLTokensClaimed"].ID}, {rocketClaimNode.Address.Hash()}}
+
+	// Get the event logs
+	logs, err := eth.GetLogs(rp, addressFilter, topicFilter, intervalSize, nil, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Iterate over the logs and sum the amount
+	sumMap := make(map[string]*big.Int)
+	for _, log := range logs {
+		values := make(map[string]interface{})
+		// Decode the event
+		if rocketRewardsPool.ABI.Events["RPLTokensClaimed"].Inputs.UnpackIntoMap(values, log.Data) != nil {
+			return nil, err
+		}
+		// Add the amount argument to our sum
+		amount := values["amount"].(*big.Int)
+		claimAddress := values["claimingAddress"].(*common.Hash)
+		sum, ok := sumMap[claimAddress.Hex()]
+		if !ok {
+			sum = big.NewInt(0)
+		}
+		sumMap[claimAddress.Hex()] = sum.Add(sum, amount)
+
+	}
+	// Return the result
+	return sumMap, nil
+}
+
+// Get contracts
+var rocketRewardsPoolLock sync.Mutex
+
+func getRocketRewardsPool(rp *rocketpool.RocketPool) (*rocketpool.Contract, error) {
+	rocketRewardsPoolLock.Lock()
+	defer rocketRewardsPoolLock.Unlock()
+	return rp.GetContract("rocketRewardsPool")
+}
+
+// Get contracts
+var rocketClaimNodeLock sync.Mutex
+
+func getRocketClaimNode(rp *rocketpool.RocketPool) (*rocketpool.Contract, error) {
+	rocketClaimNodeLock.Lock()
+	defer rocketClaimNodeLock.Unlock()
+	return rp.GetContract("rocketClaimNode")
 }
 
 type RocketpoolDAOProposalMemberVotes struct {
@@ -1025,7 +1118,7 @@ func (this *RocketpoolDAOProposal) Update(rp *rocketpool.RocketPool) error {
 		}
 
 		this.MemberVotes = append(this.MemberVotes, RocketpoolDAOProposalMemberVotes{
-			ProposalID: pd.ID,
+			ProposalID: this.ID,
 			Address:    m.Address.Bytes(),
 			Voted:      memberVoted,
 			Supported:  memberSupported,
