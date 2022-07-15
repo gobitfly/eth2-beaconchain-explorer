@@ -298,7 +298,8 @@ func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 				node.RPLCumulativeRewards = amount
 			}
 		}
-
+	} else {
+		rp.NodeRPLCumulative = nil
 	}
 
 	return nil
@@ -1010,7 +1011,7 @@ func CalculateLifetimeNodeRewardsAll(rp *rocketpool.RocketPool, intervalSize *bi
 		}
 		// Add the amount argument to our sum
 		amount := values["amount"].(*big.Int)
-		claimAddress := values["claimingAddress"].(*common.Hash)
+		claimAddress := common.BytesToAddress(log.Topics[2].Bytes())
 		sum, ok := sumMap[claimAddress.Hex()]
 		if !ok {
 			sum = big.NewInt(0)
