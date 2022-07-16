@@ -13,7 +13,8 @@ message Eth1BlockContainer {
     repeated Eth1Header uncles = 5;
     repeated ERC20Transfer erc20_transfers = 6;
     repeated ERC721Transfer erc721_transfers = 7;
-    map<string, Eth1InternalTransactionList> internal_transactions = 8;
+    repeated ERC1155Transfer erc1155_transfers = 8;
+    map<string, Eth1InternalTransactionList> internal_transactions = 9;
 }
 
 message Eth1Header {
@@ -124,4 +125,13 @@ message ERC721Transfer {
     bytes to = 3;
     bytes token_id = 4;
     bytes tx_hash = 5;
+}
+
+message ERC1155Transfer {
+    bytes token_address = 1;
+    bytes from = 2;
+    bytes to = 3;
+    bytes token_id = 4;
+    bytes value = 5;
+    bytes tx_hash = 6;
 }

@@ -288,7 +288,7 @@ func (client *ErigonClient) GetBlock(number uint64) (*types.Eth1BlockContainer, 
 				c.Erc20Transfers = append(c.Erc20Transfers, pbErc20Transfer)
 			}
 
-			if len(l.Topics) > 2 && l.Topics[0] == utils.Erc20TransferEventHash && len(l.Topics) == 4 { // ERC721 token transfer event
+			if l.Topics[0] == utils.Erc20TransferEventHash && len(l.Topics) == 4 { // ERC721 token transfer event
 				pbErc721Transfer := &types.ERC721Transfer{
 					TokenAddress: l.Address[:],
 					From:         l.Topics[1][:],
@@ -297,6 +297,18 @@ func (client *ErigonClient) GetBlock(number uint64) (*types.Eth1BlockContainer, 
 					TxHash:       r.TxHash[:],
 				}
 				c.Erc721Transfers = append(c.Erc721Transfers, pbErc721Transfer)
+			}
+
+			if l.Topics[0] == utils.Erc1155TransferSingleEventHash && len(l.Topics) == 4 && len(l.Data) == 64 { // ERC1155 token transfer event
+				pbErc1155Transfer := &types.ERC1155Transfer{
+					TokenAddress: l.Address[:],
+					From:         l.Topics[2][:],
+					To:           l.Topics[3][:],
+					TokenId:      l.Data[:32],
+					Value:        l.Data[32:],
+					TxHash:       r.TxHash[:],
+				}
+				c.Erc1155Transfers = append(c.Erc1155Transfers, pbErc1155Transfer)
 			}
 		}
 
