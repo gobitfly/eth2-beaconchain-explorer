@@ -143,10 +143,12 @@
             </div>
           </a>
         {{ else }}
-          <div class="epoch__next">
-            <img src="/img/apps.png" alt="" />
-            <span class="epoch__next-loading">&nbsp;</span>
-          </div>
+          <a href="/epoch/{{ addUI64 .Epoch 1 }}">
+            <div class="epoch__next">
+              <img src="/img/apps.png" alt="" />
+              <span class="epoch__next-loading">&nbsp;</span>
+            </div>
+          </a>
         {{ end }}
       </div>
       <div class="card">
