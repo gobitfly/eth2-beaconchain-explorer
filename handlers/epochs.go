@@ -22,6 +22,10 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "epochs", "/epochs", "Epochs")
 	data.HeaderAd = true
 
+	if utils.Config.Frontend.Debug {
+		epochsTemplate = template.Must(template.New("epochs").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epochs.html"))
+	}
+
 	err := epochsTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
