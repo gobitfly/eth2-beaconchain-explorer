@@ -350,6 +350,7 @@ type RocketpoolValidatorPageData struct {
 	NodeRPLStake         *string    `db:"node_rpl_stake"`
 	NodeMinRPLStake      *string    `db:"node_min_rpl_stake"`
 	NodeMaxRPLStake      *string    `db:"node_max_rpl_stake"`
+	CumulativeRPL        *string    `db:"rpl_cumulative_rewards"`
 }
 
 type ValidatorStatsTablePageData struct {
@@ -1192,6 +1193,7 @@ type RocketpoolPageDataNode struct {
 	RPLStake                 string `db:"rpl_stake"`
 	MinRPLStake              string `db:"min_rpl_stake"`
 	MaxRPLStake              string `db:"max_rpl_stake"`
+	CumulativeRPL            string `db:"rpl_cumulative_rewards"`
 }
 
 type RocketpoolPageDataDAOProposal struct {
@@ -1214,6 +1216,14 @@ type RocketpoolPageDataDAOProposal struct {
 	IsExecuted               bool      `db:"is_executed"`
 	Payload                  []byte    `db:"payload"`
 	State                    string    `db:"state"`
+	MemberVotesJSON          []byte    `db:"member_votes"`
+}
+
+type RocketpoolPageDataDAOProposalMemberVotes struct {
+	Address   string `json:"member_address"`
+	Name      string `json:"name"`
+	Voted     bool   `json:"voted"`
+	Supported bool   `json:"supported"`
 }
 
 type RocketpoolPageDataDAOMember struct {
