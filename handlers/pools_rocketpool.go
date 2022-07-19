@@ -332,7 +332,27 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 	var dbResult []types.RocketpoolPageDataDAOProposal
 	if search == "" {
 		err = db.ReaderDb.Select(&dbResult, fmt.Sprintf(`
-			select rocketpool_dao_proposals.*, cnt.total_count, jsonb_agg(t) as member_votes 
+			select 
+				rocketpool_storage_address,
+				rocketpool_dao_proposals.id,
+				dao,
+				proposer_address,
+				message,
+				created_time,
+				start_time,
+				end_time,
+				expiry_time,
+				votes_required,
+				votes_for,
+				votes_against,
+				member_voted,
+				member_supported,
+				is_cancelled,
+				is_executed,
+				payload,
+				state,
+				cnt.total_count, 
+				jsonb_agg(t) as member_votes 
 			from rocketpool_dao_proposals
 			left join (select count(*) from rocketpool_dao_proposals) cnt(total_count) ON true 
 			left join (
@@ -358,7 +378,24 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 				union select id from rocketpool_dao_proposals where encode(proposer_address::bytea,'hex') like $4
 			)
 			select 
-				rocketpool_dao_proposals.*, 
+				rocketpool_storage_address,
+				rocketpool_dao_proposals.id,
+				dao,
+				proposer_address,
+				message,
+				created_time,
+				start_time,
+				end_time,
+				expiry_time,
+				votes_required,
+				votes_for,
+				votes_against,
+				member_voted,
+				member_supported,
+				is_cancelled,
+				is_executed,
+				payload,
+				state,
 				jsonb_agg(t) as member_votes,
 				cnt.total_count
 			from rocketpool_dao_proposals
