@@ -116,6 +116,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"sub":                                     func(i, j int) int { return i - j },
 		"add":                                     func(i, j int) int { return i + j },
 		"addI64":                                  func(i, j int64) int64 { return i + j },
+		"addUI64":                                 func(i, j uint64) uint64 { return i + j },
 		"mul":                                     func(i, j float64) float64 { return i * j },
 		"div":                                     func(i, j float64) float64 { return i / j },
 		"divInt":                                  func(i, j int) float64 { return float64(i) / float64(j) },

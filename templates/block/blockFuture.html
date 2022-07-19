@@ -1,0 +1,66 @@
+{{ define "js" }}
+{{ end }}
+
+{{ define "css" }}
+  <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="d-md-flex py-2 justify-content-md-between">
+        <h1 class="h4 my-3 mb-md-0">
+          <a href="/block/{{ .PreviousSlot }}"><i class="fa fa-chevron-left"></i></a>
+          <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block at Slot {{ formatAddCommas .Slot }}</span>
+          <a href="/block/{{ .NextSlot }}"><i class="fa fa-chevron-right"></i></a>
+        </h1>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
+            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+            <li class="breadcrumb-item"><a href="/blocks" title="Blocks">Blocks</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Block details</li>
+          </ol>
+        </nav>
+      </div>
+      <ul style="margin-bottom: -1px;" class="nav nav-tabs justify-content-start" id="tab" role="tablist">
+        <li class="nav-item">
+          <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true">Overview</a>
+        </li>
+      </ul>
+      <style>
+        .block-card {
+          border-top-left-radius: 0;
+          border-top-right-radius: 0;
+        }
+      </style>
+      <div class="tab-content" id="tabContent">
+        <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+          <div class="card block-card">
+            <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the number of 32 slots">Epoch:</span></div>
+                <div class="col-md-10"><a href="/epoch/{{ .Epoch }}">{{ formatAddCommas .Epoch }} </a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Epoch }}"></i></div>
+              </div>
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="A slot is a chance for a block to be added to the Beacon Chain and shards">Slot:</span></div>
+                <div class="col-md-10"><b>{{ formatAddCommas .Slot }} </b><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Slot }}"></i></div>
+              </div>
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-2">Time:</div>
+                <div class="col-md-7"><span aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW">{{ .Ts }}</span> (<span id="timestamp" aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="LOCAL">{{ .Ts }}</span>) <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" onclick="copyTs()"></i></div>
+                <div class="col-md-3 text-right">
+                  <div id="unixTs" hidden>{{ .Ts.Unix }}</div>
+                  <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                    <label class="btn btn-light text-dark active btn-sm" onclick="setTs()"> <input type="radio" name="options" id="optionTs" /> Timestamp </label>
+                    <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setUtc()"> <input type="radio" name="options" id="optionUtc" /> UTC </label>
+                    <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setLocal()"> <input type="radio" name="options" id="optionLocal" checked /> Local </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}
