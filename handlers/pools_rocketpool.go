@@ -200,6 +200,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 		"2": "rpl_stake",
 		"3": "min_rpl_stake",
 		"4": "max_rpl_stake",
+		"5": "rpl_cumulative_rewards",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -259,6 +260,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 		entry = append(entry, row.RPLStake)
 		entry = append(entry, row.MinRPLStake)
 		entry = append(entry, row.MaxRPLStake)
+		entry = append(entry, row.CumulativeRPL)
 		tableData = append(tableData, entry)
 	}
 
@@ -330,9 +332,34 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 	var dbResult []types.RocketpoolPageDataDAOProposal
 	if search == "" {
 		err = db.ReaderDb.Select(&dbResult, fmt.Sprintf(`
-			select rocketpool_dao_proposals.*, cnt.total_count
+			select 
+				rocketpool_storage_address,
+				rocketpool_dao_proposals.id,
+				dao,
+				proposer_address,
+				message,
+				created_time,
+				start_time,
+				end_time,
+				expiry_time,
+				votes_required,
+				votes_for,
+				votes_against,
+				member_voted,
+				member_supported,
+				is_cancelled,
+				is_executed,
+				payload,
+				state,
+				cnt.total_count, 
+				jsonb_agg(t) as member_votes 
 			from rocketpool_dao_proposals
-			left join (select count(*) from rocketpool_dao_proposals) cnt(total_count) ON true
+			left join (select count(*) from rocketpool_dao_proposals) cnt(total_count) ON true 
+			left join (
+				SELECT rocketpool_dao_proposals_member_votes.id, encode(member_address::bytea, 'hex') as member_address, voted, supported,rocketpool_dao_members.id as name FROM rocketpool_dao_proposals_member_votes 
+				LEFT JOIN rocketpool_dao_members ON member_address = address
+			) t ON t.id = rocketpool_dao_proposals.id
+			group by rocketpool_dao_proposals.rocketpool_storage_address, rocketpool_dao_proposals.id, cnt.total_count
 			order by %s %s
 			limit $1
 			offset $2`, orderBy, orderDir), length, start)
@@ -351,11 +378,34 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 				union select id from rocketpool_dao_proposals where encode(proposer_address::bytea,'hex') like $4
 			)
 			select 
-				rocketpool_dao_proposals.*, 
+				rocketpool_storage_address,
+				rocketpool_dao_proposals.id,
+				dao,
+				proposer_address,
+				message,
+				created_time,
+				start_time,
+				end_time,
+				expiry_time,
+				votes_required,
+				votes_for,
+				votes_against,
+				member_voted,
+				member_supported,
+				is_cancelled,
+				is_executed,
+				payload,
+				state,
+				jsonb_agg(t) as member_votes,
 				cnt.total_count
 			from rocketpool_dao_proposals
 			inner join matched_proposals on matched_proposals.id = rocketpool_dao_proposals.id
 			left join (select count(*) from matched_proposals) cnt(total_count) ON true
+			left join (
+				SELECT rocketpool_dao_proposals_member_votes.id, encode(member_address::bytea, 'hex') as member_address, voted, supported,rocketpool_dao_members.id as name FROM rocketpool_dao_proposals_member_votes 
+				LEFT JOIN rocketpool_dao_members ON member_address = address
+			) t ON t.id = rocketpool_dao_proposals.id
+			group by rocketpool_dao_proposals.rocketpool_storage_address, rocketpool_dao_proposals.id, cnt.total_count
 			order by %s %s
 			limit $1
 			offset $2`, orderBy, orderDir), length, start, search, search+"%", "%"+search+"%")
@@ -399,6 +449,7 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 		}
 
 		entry = append(entry, row.State)
+		entry = append(entry, formatVoteTable(row.MemberVotesJSON))
 		tableData = append(tableData, entry)
 	}
 
@@ -415,6 +466,30 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+}
+
+func formatVoteTable(votes []byte) template.HTML {
+	var arr []types.RocketpoolPageDataDAOProposalMemberVotes
+	err := json.Unmarshal(votes, &arr)
+	if err != nil {
+		logger.Warnf("can not parse rocketpool dao proposal member json %v", err)
+		return template.HTML("")
+	}
+
+	result := `<table style="margin-top: 12px;"><thead><tr><th>Member Name</th><th>Member Address</th><th>Vote</th></tr></thead><tbody>`
+
+	for _, vote := range arr {
+		if vote.Voted {
+			voted := `👎 <strong style="color: #f82e2e;">nay</strong>`
+			if vote.Supported {
+				voted = `👍 <strong style="color: #2d7533;">yea</strong>`
+			}
+			result += fmt.Sprintf("<tr><td>%v</td><td>0x%v</td><td>%v</td></tr>", vote.Name, vote.Address, voted)
+		}
+
+	}
+	result += "</tbody></table>"
+	return template.HTML(result)
 }
 
 func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {

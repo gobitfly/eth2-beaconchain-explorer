@@ -639,7 +639,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			rpln.timezone_location AS node_timezone_location,
 			rpln.rpl_stake         AS node_rpl_stake,
 			rpln.max_rpl_stake     AS node_max_rpl_stake,
-			rpln.min_rpl_stake     AS node_min_rpl_stake
+			rpln.min_rpl_stake     AS node_min_rpl_stake,
+			rpln.rpl_cumulative_rewards     AS rpl_cumulative_rewards 
 		FROM validators
 		LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
 		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
