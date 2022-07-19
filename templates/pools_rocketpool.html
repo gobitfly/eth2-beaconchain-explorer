@@ -150,6 +150,15 @@
             return `${data} RPL`
           },
         },
+        {
+          targets: 5,
+          render: function (data, type, row, meta) {
+            if (parseInt(data) !== 0) {
+              return `${(parseInt(data) / 10 ** 18).toFixed(2)} RPL`
+            }
+            return `${data} RPL`
+          },
+        },
       ],
       initComplete: function (settings, json) {
         $("#nodes .first-col a").on("click", function (e) {
@@ -255,6 +264,7 @@
           next: '<i class="fas fa-chevron-right"></i>',
         },
       },
+      order: [[0, "desc"]],
       paging: true,
       pagingType: "input",
       processing: true,
@@ -377,6 +387,15 @@
             return `<span class="badge badge-pill badge-info badge-custom text-white">${data}</span>`
           },
         },
+        {
+          targets: 17,
+          render: function (data, type, row, meta) {
+            if (data) {
+              return data
+            }
+            return ""
+          },
+        },
       ],
       preDrawCallback: function () {
         try {
@@ -398,15 +417,18 @@
       font-size: 12px;
       font-weight: 500;
     }
+
     #slashings td:first-child {
       white-space: break-spaces;
     }
+
     #minipools_wrapper div.dataTables_paginate ul li,
     #nodes_wrapper div.dataTables_paginate ul li,
     #dao_members_wrapper div.dataTables_paginate ul li,
     #dao_proposals_wrapper div.dataTables_paginate ul li {
       background-color: var(--bg-color);
     }
+
     div.dataTables_filter {
       margin-top: 2.5px;
       margin-right: 3px;
@@ -464,6 +486,7 @@
                 <th scope="col" class="h6 border-bottom-0">RPL Stake</th>
                 <th scope="col" class="h6 border-bottom-0">Min RPL Stake</th>
                 <th scope="col" class="h6 border-bottom-0">Max RPL Stake</th>
+                <th scope="col" class="h6 border-bottom-0">Total Claimed</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -512,6 +535,7 @@
                 <th scope="col" class="h6 border-bottom-0">Is Executed</th>
                 <th scope="col" class="h6 border-bottom-0">Payload</th>
                 <th scope="col" class="h6 border-bottom-0">State</th>
+                <th scope="col" class="h6 border-bottom-0">Member Votes</th>
               </tr>
             </thead>
             <tbody></tbody>
