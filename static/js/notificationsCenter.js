@@ -955,6 +955,7 @@ $(function () {
 
 // Sets a hidden input with the selected validators
 $('#RemoveSelectedValidatorsModal').on('show.bs.modal', function (event) {
+  $('#RemoveSelectedValidatorsModal button[type="submit"]').prop("disabled", false)
   let rowsSelected = $("#validators-notifications").DataTable().rows(".selected").data()
   if (rowsSelected && rowsSelected.length) {
     let valis = rowsSelected.map(row => row.Pubkey).join(',')
@@ -966,5 +967,6 @@ $('#RemoveSelectedValidatorsModal').on('show.bs.modal', function (event) {
     }
   } else {
     document.getElementById('RemoveSelectedValidatorsModal-modaltext').innerHTML = `No validators selected.`
+    $('#RemoveSelectedValidatorsModal button[type="submit"]').prop("disabled", true)
   }
 })
