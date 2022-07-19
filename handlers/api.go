@@ -689,6 +689,7 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 			rpln.rpl_stake         AS node_rpl_stake,
 			rpln.max_rpl_stake     AS node_max_rpl_stake,
 			rpln.min_rpl_stake     AS node_min_rpl_stake,
+			rpln.rpl_cumulative_rewards     AS rpl_cumulative_rewards,
 			validators.validatorindex AS index 
 		FROM rocketpool_minipools rplm 
 		LEFT JOIN validators validators ON rplm.pubkey = validators.pubkey 

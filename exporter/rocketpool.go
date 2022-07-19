@@ -292,14 +292,12 @@ func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 		if err != nil {
 			return err
 		}
+	}
 
-		for addrHex, amount := range rp.NodeRPLCumulative {
-			if node, exists := rp.NodesByAddress[addrHex]; exists {
-				node.RPLCumulativeRewards = amount
-			}
+	for addrHex, amount := range rp.NodeRPLCumulative {
+		if node, exists := rp.NodesByAddress[addrHex]; exists {
+			node.RPLCumulativeRewards = amount
 		}
-	} else {
-		rp.NodeRPLCumulative = nil
 	}
 
 	return nil
@@ -529,11 +527,8 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 	}
 	defer tx.Rollback()
 
-	doUpdateComulative := len(rp.NodeRPLCumulative) > 0
-	nArgs := 6
-	if doUpdateComulative {
-		nArgs++
-	}
+	nArgs := 7
+
 	valueStringsArr := make([]string, nArgs)
 	for i := range valueStringsArr {
 		valueStringsArr[i] = "$%d"
@@ -563,17 +558,11 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 			valueArgs = append(valueArgs, d.RPLStake.String())
 			valueArgs = append(valueArgs, d.MinRPLStake.String())
 			valueArgs = append(valueArgs, d.MaxRPLStake.String())
-			if doUpdateComulative {
-				valueArgs = append(valueArgs, d.RPLCumulativeRewards.String())
-			}
+			valueArgs = append(valueArgs, d.RPLCumulativeRewards.String())
 
 		}
 
-		if doUpdateComulative {
-			stmt = fmt.Sprintf(`insert into rocketpool_nodes (rocketpool_storage_address, address, timezone_location, rpl_stake, min_rpl_stake, max_rpl_stake, rpl_cumulative_rewards) values %s on conflict (rocketpool_storage_address, address) do update set rpl_stake = excluded.rpl_stake, min_rpl_stake = excluded.min_rpl_stake, max_rpl_stake = excluded.max_rpl_stake, rpl_cumulative_rewards = excluded.rpl_cumulative_rewards`, strings.Join(valueStrings, ","))
-		} else {
-			stmt = fmt.Sprintf(`insert into rocketpool_nodes (rocketpool_storage_address, address, timezone_location, rpl_stake, min_rpl_stake, max_rpl_stake) values %s on conflict (rocketpool_storage_address, address) do update set rpl_stake = excluded.rpl_stake, min_rpl_stake = excluded.min_rpl_stake, max_rpl_stake = excluded.max_rpl_stake`, strings.Join(valueStrings, ","))
-		}
+		stmt = fmt.Sprintf(`insert into rocketpool_nodes (rocketpool_storage_address, address, timezone_location, rpl_stake, min_rpl_stake, max_rpl_stake, rpl_cumulative_rewards) values %s on conflict (rocketpool_storage_address, address) do update set rpl_stake = excluded.rpl_stake, min_rpl_stake = excluded.min_rpl_stake, max_rpl_stake = excluded.max_rpl_stake, rpl_cumulative_rewards = excluded.rpl_cumulative_rewards`, strings.Join(valueStrings, ","))
 
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {

@@ -248,6 +248,10 @@
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node Max RPL Stake</div>
                     <div>{{ formatRPL .Rocketpool.NodeMaxRPLStake }}</div>
                   </div>
+                  <div class="w-75 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node Cumulative RPL Claimed</div>
+                    <div>{{ formatRPL .Rocketpool.CumulativeRPL }}</div>
+                  </div>
                 </div>
               {{ end }}
             </div>

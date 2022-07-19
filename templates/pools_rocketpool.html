@@ -255,6 +255,7 @@
           next: '<i class="fas fa-chevron-right"></i>',
         },
       },
+      order: [[0, 'desc']],
       paging: true,
       pagingType: "input",
       processing: true,
@@ -376,6 +377,15 @@
             }
             return `<span class="badge badge-pill badge-info badge-custom text-white">${data}</span>`
           },
+        },
+        {
+          targets: 17,
+          render: function (data, type, row, meta) {
+            if(data){
+              return data
+            }
+            return ''
+          }
         },
       ],
       preDrawCallback: function () {
@@ -512,6 +522,7 @@
                 <th scope="col" class="h6 border-bottom-0">Is Executed</th>
                 <th scope="col" class="h6 border-bottom-0">Payload</th>
                 <th scope="col" class="h6 border-bottom-0">State</th>
+                <th scope="col" class="h6 border-bottom-0">Member Votes</th>
               </tr>
             </thead>
             <tbody></tbody>
