@@ -562,7 +562,15 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 
 		}
 
-		stmt = fmt.Sprintf(`insert into rocketpool_nodes (rocketpool_storage_address, address, timezone_location, rpl_stake, min_rpl_stake, max_rpl_stake, rpl_cumulative_rewards) values %s on conflict (rocketpool_storage_address, address) do update set rpl_stake = excluded.rpl_stake, min_rpl_stake = excluded.min_rpl_stake, max_rpl_stake = excluded.max_rpl_stake, rpl_cumulative_rewards = excluded.rpl_cumulative_rewards`, strings.Join(valueStrings, ","))
+		stmt = fmt.Sprintf(`
+			insert into rocketpool_nodes (rocketpool_storage_address, address, timezone_location, rpl_stake, min_rpl_stake, max_rpl_stake, rpl_cumulative_rewards) 
+			values %s 
+			on conflict (rocketpool_storage_address, address) do update set 
+				rpl_stake = excluded.rpl_stake, 
+				min_rpl_stake = excluded.min_rpl_stake, 
+				max_rpl_stake = excluded.max_rpl_stake, 
+				rpl_cumulative_rewards = excluded.rpl_cumulative_rewards
+		`, strings.Join(valueStrings, ","))
 
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
@@ -701,7 +709,12 @@ func (rp *RocketpoolExporter) SaveDAOProposalsMemberVotes() error {
 			valueArgs = append(valueArgs, d.Supported)
 		}
 
-		stmt := fmt.Sprintf(`insert into rocketpool_dao_proposals_member_votes (rocketpool_storage_address, id, member_address, voted, supported) values %s on conflict (rocketpool_storage_address, id, member_address) do update set voted = excluded.voted, supported = excluded.supported`, strings.Join(valueStrings, ","))
+		stmt := fmt.Sprintf(`
+			insert into rocketpool_dao_proposals_member_votes (rocketpool_storage_address, id, member_address, voted, supported) 
+			values %s 
+			on conflict (rocketpool_storage_address, id, member_address) do update 
+				set voted = excluded.voted, 
+				supported = excluded.supported`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return fmt.Errorf("error inserting into rocketpool_dao_proposals_member_votes: %w", err)
