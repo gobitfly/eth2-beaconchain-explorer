@@ -200,6 +200,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 		"2": "rpl_stake",
 		"3": "min_rpl_stake",
 		"4": "max_rpl_stake",
+		"5": "rpl_cumulative_rewards",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -259,6 +260,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 		entry = append(entry, row.RPLStake)
 		entry = append(entry, row.MinRPLStake)
 		entry = append(entry, row.MaxRPLStake)
+		entry = append(entry, row.CumulativeRPL)
 		tableData = append(tableData, entry)
 	}
 

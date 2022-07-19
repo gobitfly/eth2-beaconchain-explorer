@@ -150,6 +150,15 @@
             return `${data} RPL`
           },
         },
+        {
+          targets: 5,
+          render: function (data, type, row, meta) {
+            if (parseInt(data) !== 0) {
+              return `${(parseInt(data) / 10 ** 18).toFixed(2)} RPL`
+            }
+            return `${data} RPL`
+          },
+        },
       ],
       initComplete: function (settings, json) {
         $("#nodes .first-col a").on("click", function (e) {
@@ -474,6 +483,7 @@
                 <th scope="col" class="h6 border-bottom-0">RPL Stake</th>
                 <th scope="col" class="h6 border-bottom-0">Min RPL Stake</th>
                 <th scope="col" class="h6 border-bottom-0">Max RPL Stake</th>
+                <th scope="col" class="h6 border-bottom-0">Total Claimed</th>
               </tr>
             </thead>
             <tbody></tbody>
