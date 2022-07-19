@@ -335,7 +335,10 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 			select rocketpool_dao_proposals.*, cnt.total_count, jsonb_agg(t) as member_votes 
 			from rocketpool_dao_proposals
 			left join (select count(*) from rocketpool_dao_proposals) cnt(total_count) ON true 
-			left join (SELECT rocketpool_dao_proposals_member_votes.id, encode(member_address::bytea, 'hex') as member_address, voted, supported,rocketpool_dao_members.id as name FROM rocketpool_dao_proposals_member_votes LEFT JOIN rocketpool_dao_members ON member_address = address) t ON t.id = rocketpool_dao_proposals.id
+			left join (
+				SELECT rocketpool_dao_proposals_member_votes.id, encode(member_address::bytea, 'hex') as member_address, voted, supported,rocketpool_dao_members.id as name FROM rocketpool_dao_proposals_member_votes 
+				LEFT JOIN rocketpool_dao_members ON member_address = address
+			) t ON t.id = rocketpool_dao_proposals.id
 			group by rocketpool_dao_proposals.rocketpool_storage_address, rocketpool_dao_proposals.id, cnt.total_count
 			order by %s %s
 			limit $1
@@ -361,7 +364,10 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 			from rocketpool_dao_proposals
 			inner join matched_proposals on matched_proposals.id = rocketpool_dao_proposals.id
 			left join (select count(*) from matched_proposals) cnt(total_count) ON true
-			left join (SELECT rocketpool_dao_proposals_member_votes.id, encode(member_address::bytea, 'hex') as member_address, voted, supported,rocketpool_dao_members.id as name FROM rocketpool_dao_proposals_member_votes LEFT JOIN rocketpool_dao_members ON member_address = address) t ON t.id = rocketpool_dao_proposals.id
+			left join (
+				SELECT rocketpool_dao_proposals_member_votes.id, encode(member_address::bytea, 'hex') as member_address, voted, supported,rocketpool_dao_members.id as name FROM rocketpool_dao_proposals_member_votes 
+				LEFT JOIN rocketpool_dao_members ON member_address = address
+			) t ON t.id = rocketpool_dao_proposals.id
 			group by rocketpool_dao_proposals.rocketpool_storage_address, rocketpool_dao_proposals.id, cnt.total_count
 			order by %s %s
 			limit $1
