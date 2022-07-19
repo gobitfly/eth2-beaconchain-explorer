@@ -28,9 +28,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var notificationCenterParts []string = []string{"templates/layout.html", "templates/user/notificationsCenter.html", "templates/modals.html"}
+
 var userTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/settings.html"))
 var notificationTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/notifications.html"))
-var notificationsCenterTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/notificationsCenter.html"))
+var notificationsCenterTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles(notificationCenterParts...))
 var authorizeTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/authorize.html"))
 
 func UserAuthMiddleware(next http.Handler) http.Handler {
@@ -903,7 +905,31 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	userNotificationsCenterData.NotificationChannels = notificationChannels
+	events := make([]types.EventNameCheckbox, 0)
+
+	for desc, name := range types.AddWatchlistEvents {
+		events = append(events, types.EventNameCheckbox{
+			EventLabel: desc,
+			EventName:  name,
+			Active:     false,
+		})
+	}
+
+	userNotificationsCenterData.ManageNotificationModal = types.ManageNotificationModal{
+		CsrfField: csrf.TemplateField(r),
+		Events:    events,
+	}
+
+	userNotificationsCenterData.AddValidatorWatchlistModal = types.AddValidatorWatchlistModal{
+		CsrfField: csrf.TemplateField(r),
+		Events:    events,
+	}
+
+	userNotificationsCenterData.NotificationChannelsModal = types.NotificationChannelsModal{
+		CsrfField:            csrf.TemplateField(r),
+		NotificationChannels: notificationChannels,
+	}
+
 	userNotificationsCenterData.DashboardLink = link
 	userNotificationsCenterData.Metrics = metricsMonth
 	userNotificationsCenterData.Validators = validatorTableData
@@ -912,6 +938,11 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	userNotificationsCenterData.Machines = machines
 	data.Data = userNotificationsCenterData
 	data.User = user
+
+	if data.Debug {
+		notificationsCenterTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles(notificationCenterParts...))
+		data.DebugTemplates = notificationCenterParts
+	}
 
 	err = notificationsCenterTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -2454,44 +2485,44 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 
 		// }
 
-		events := make([]types.WebhookPageEvent, 0, 7)
+		events := make([]types.EventNameCheckbox, 0, 7)
 
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Attestation Missed",
 			EventName:  types.ValidatorMissedAttestationEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorMissedAttestationEventName)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Proposal Missed",
 			EventName:  types.ValidatorMissedProposalEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorMissedProposalEventName)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Proposal Submitted",
 			EventName:  types.ValidatorExecutedProposalEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorExecutedProposalEventName)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Slashed",
 			EventName:  types.ValidatorGotSlashedEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorGotSlashedEventName)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Sync Commitee Soon",
 			EventName:  types.SyncCommitteeSoon,
 			Active:     utils.ElementExists(wh.EventNames, string(types.SyncCommitteeSoon)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Machine Offline",
 			EventName:  types.MonitoringMachineOfflineEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.MonitoringMachineOfflineEventName)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Machine Disk Full",
 			EventName:  types.MonitoringMachineDiskAlmostFullEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.MonitoringMachineDiskAlmostFullEventName)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Machine CPU",
 			EventName:  types.MonitoringMachineCpuLoadEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.MonitoringMachineCpuLoadEventName)),
@@ -2533,7 +2564,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 			ID:           wh.ID,
 			Retries:      template.HTML(fmt.Sprintf("%d", wh.Retries)),
 			UrlFull:      wh.Url,
-			Url:          template.HTML(fmt.Sprintf(`<span>%v</span><span style="margin-left: .5rem;">%v</span>`, hostname, utils.CopyButton(wh.Url))),
+			Url:          template.HTML(fmt.Sprintf(`<span>%v</span><span style="margin-left: .5rem;">%v</span>`, hostname, utils.CopyButtonText(wh.Url))),
 			LastSent:     ls,
 			Events:       events,
 			Discord:      isDiscord,
@@ -2548,37 +2579,37 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 
 	// logger.Infof("events: %+v", webhooks)
 
-	events := make([]types.WebhookPageEvent, 0, 7)
+	events := make([]types.EventNameCheckbox, 0, 7)
 
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Attestation Missed",
 		EventName:  types.ValidatorMissedAttestationEventName,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Proposal Missed",
 		EventName:  types.ValidatorMissedProposalEventName,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Proposal Submitted",
 		EventName:  types.ValidatorExecutedProposalEventName,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Got Slashed",
 		EventName:  types.ValidatorGotSlashedEventName,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Sync Commitee Soon",
 		EventName:  types.SyncCommitteeSoon,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Machine Offline",
 		EventName:  types.MonitoringMachineOfflineEventName,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Machine Disk Full",
 		EventName:  types.MonitoringMachineDiskAlmostFullEventName,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Machine CPU",
 		EventName:  types.MonitoringMachineCpuLoadEventName,
 	})

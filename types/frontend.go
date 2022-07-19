@@ -126,6 +126,15 @@ var EventNames = []EventName{
 	SyncCommitteeSoon,
 }
 
+var AddWatchlistEvents = map[string]EventName{
+	"Attestations missed":   ValidatorMissedAttestationEventName,
+	"Proposals missed":      ValidatorMissedProposalEventName,
+	"Proposals submitted":   ValidatorExecutedProposalEventName,
+	"Validator got slashed": ValidatorGotSlashedEventName,
+	// "Validator did slash":   ValidatorDidSlashEventName,
+	"Sync committee": SyncCommitteeSoon,
+}
+
 func GetDisplayableEventName(event EventName) string {
 	return strings.Title(strings.ReplaceAll(string(event), "_", " "))
 }

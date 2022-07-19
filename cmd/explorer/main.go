@@ -376,13 +376,18 @@ func main() {
 			authRouter.HandleFunc("/notifications/channels", handlers.UsersNotificationChannels).Methods("POST")
 			authRouter.HandleFunc("/notifications/data", handlers.UserNotificationsData).Methods("GET")
 			authRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST")
+			authRouter.HandleFunc("/watchlist/add", handlers.UsersModalAddValidator).Methods("POST")
+			authRouter.HandleFunc("/watchlist/remove", handlers.UserModalRemoveSelectedValidator).Methods("POST")
+			authRouter.HandleFunc("/watchlist/update", handlers.UserModalManageNotificationModal).Methods("POST")
 			authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications/bundled/subscribe", handlers.MultipleUsersNotificationsSubscribeWeb).Methods("POST", "OPTIONS")
+
 			authRouter.HandleFunc("/notifications-center", handlers.UserNotificationsCenter).Methods("GET")
 			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications-center/validatorsub", handlers.AddValidatorsAndSubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications-center/updatesubs", handlers.UserUpdateSubscriptions).Methods("POST")
 			// authRouter.HandleFunc("/notifications-center/monitoring/updatesubs", handlers.UserUpdateMonitoringSubscriptions).Methods("POST")
+
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
 			authRouter.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
@@ -403,6 +408,10 @@ func main() {
 			authRouter.Use(handlers.UserAuthMiddleware)
 			authRouter.Use(csrfHandler)
 
+			if utils.Config.Frontend.Debug {
+				templatesHandler := http.FileServer(http.Dir("templates"))
+				router.PathPrefix("/templates").Handler(http.StripPrefix("/templates/", templatesHandler))
+			}
 			legalFs := http.FileServer(http.Dir(utils.Config.Frontend.LegalDir))
 			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", legalFs))
 			router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
@@ -467,9 +476,9 @@ func main() {
 		services.InitGitCoinFeed()
 	}
 
-	if utils.Config.Frontend.PoolsUpdater.Enabled {
-		// services.InitPools() // making sure the website is available before updating
-	}
+	// if utils.Config.Frontend.PoolsUpdater.Enabled {
+	// services.InitPools() // making sure the website is available before updating
+	// }
 
 	utils.WaitForCtrlC()
 

@@ -96,43 +96,43 @@
                 switch (getCookie('currency')) {
                     case 'AUD':
                         document.getElementById('currentCurrencySymbol').textContent = 'A$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.AudTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .AudRoundPrice}}
+                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.AudTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.AudRoundPrice}}
                         break
 	                case 'CAD':
                         document.getElementById('currentCurrencySymbol').textContent = 'C$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.CadTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .CadRoundPrice}}
+                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CadTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.CadRoundPrice}}
 		                break
 	                case 'CNY':
                         document.getElementById('currentCurrencySymbol').textContent = '¥'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.CnyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .CnyRoundPrice}}
+                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CnyTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.CnyRoundPrice}}
 		                break
 	                case 'EUR':
                         document.getElementById('currentCurrencySymbol').textContent = '€'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.EurTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .EurRoundPrice}}
+                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.EurTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.EurRoundPrice}}
 		                break
 	                case 'GBP':
                         document.getElementById('currentCurrencySymbol').textContent = '£'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.GbpTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .GbpRoundPrice}}
+                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.GbpTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.GbpRoundPrice}}
 		                break
 	                case 'JPY':
                         document.getElementById('currentCurrencySymbol').textContent = '¥'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.JpyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .JpyRoundPrice}}
+                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.JpyTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.JpyRoundPrice}}
 		                break
 	                case 'RUB':
                         document.getElementById('currentCurrencySymbol').textContent = '₽'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.RubTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .RubRoundPrice}}
+                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.RubTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.RubRoundPrice}}
 		                break
                     default:
                         document.getElementById('currentCurrencySymbol').textContent = '$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.UsdTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .UsdRoundPrice}}
+                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.UsdTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.UsdRoundPrice}}
 		                break
                 }
             })
@@ -173,8 +173,8 @@
                 </div>
                 <div class="info-item-body">
                   <a id="banner-eth-price-data">
-                    <span id="currentCurrencySymbol" class="currency-symbol">{{ .CurrentSymbol }}</span>
-                    <span id="initialPrice">{{ .CurrentPriceFormatted }}</span>
+                    <span id="currentCurrencySymbol" class="currency-symbol">{{ .Rates.CurrentSymbol }}</span>
+                    <span id="initialPrice">{{ .Rates.CurrentPriceFormatted }}</span>
                     <span id="currentKFormattedPrice" class="k-formatted-price"></span>
                     <span id="currentCurencyPrice" class="price"></span>
                   </a>
@@ -216,9 +216,9 @@
             <div class="dropdown">
               <a class="btn btn-transparent btn-sm dropdown-toggle currency-dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                 <div id="currencyFlagDropdown">
-                  <img class="currency-flag-dropdown-image" src="/img/{{ .Currency }}.svg" />
+                  <img class="currency-flag-dropdown-image" src="/img/{{ .Rates.Currency }}.svg" />
                 </div>
-                <div id="currencyDropdown">{{ .Currency }}</div>
+                <div id="currencyDropdown">{{ .Rates.Currency }}</div>
               </a>
               <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
                 <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('ETH')">
@@ -664,7 +664,7 @@
                         <span class="nav-icon"><i class="fas fa-external-link-alt"></i></span>
                         <span class="nav-text ml-3">Knowledge Base</span>
                       </a>
-                      <a class="dropdown-item" href="/user/notifications-center">
+                      <a class="dropdown-item" href="/user/notifications">
                         <span class="nav-icon"><i class="fas fa-bell"></i></span>
                         <span class="nav-text ml-3">Notifications</span>
                       </a>
@@ -845,8 +845,8 @@
       <script src="/js/layout.js"></script>
       <script src="/js/banner.js"></script>
         <script>
-            var currency = {{.Currency}}
-            var exchangeRate = {{.ExchangeRate}}
+            var currency = {{.Rates.Currency}}
+            var exchangeRate = {{.Rates.ExchangeRate}}
 
             function slotToTime(slot) {
                 var gts = {{.ChainGenesisTimestamp}}
@@ -970,7 +970,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.min.js" integrity="sha512-O9SYDgWAM3bEzit1z6mkFd+dxKUplO/oB8UwYGAkg2Zy/WzDUQ2mYA/ysk3c0CxiXAN4u8T9JeZ0Ahk2Jj/33Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <script src="/js/debug.js"></script>
         <script>
-          GoDebug.initialize({{.Data}})
+          GoDebug.initialize({{ . }})
         </script>
       {{ end }}
     </body>

@@ -195,8 +195,8 @@
             <div class="col-md-3">Voting Participation:</div>
             <div class="col-md-9">
               <div>
-                {{ formatBalance .VotedEther $.Currency }} of
-                {{ formatBalance .EligibleEther $.Currency }}
+                {{ formatBalance .VotedEther $.Rates.Currency }} of
+                {{ formatBalance .EligibleEther $.Rates.Currency }}
                 <small class="text-muted ml-1"
                   >({{ formatPercentageWithPrecision .GlobalParticipationRate 1 }}
                   %)</small
@@ -222,7 +222,7 @@
           </div>
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-3">Avg. Validator Balance:</div>
-            <div class="col-md-9">{{ formatBalance .AverageValidatorBalance $.Currency }}</div>
+            <div class="col-md-9">{{ formatBalance .AverageValidatorBalance $.Rates.Currency }}</div>
           </div>
           <div class="row p-3 mx-0 collapsed">
             <div style="position:relative" class="col-md-3">Slots:</div>

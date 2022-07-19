@@ -28,6 +28,18 @@ type PageData struct {
 	FinalizationDelay     uint64
 	Mainnet               bool
 	DepositContract       string
+	Rates                 PageRates
+	InfoBanner            *template.HTML
+	ClientsUpdated        bool
+	// IsUserClientUpdated   func(uint64) bool
+	ChainConfig    ChainConfig
+	Lang           string
+	NoAds          bool
+	Debug          bool
+	DebugTemplates []string
+}
+
+type PageRates struct {
 	EthPrice              float64
 	EthRoundPrice         uint64
 	EthTruncPrice         string
@@ -51,13 +63,6 @@ type PageData struct {
 	CurrentPriceFormatted string
 	CurrentSymbol         string
 	ExchangeRate          float64
-	InfoBanner            *template.HTML
-	ClientsUpdated        bool
-	IsUserClientUpdated   func(uint64) bool
-	ChainConfig           ChainConfig
-	Lang                  string
-	NoAds                 bool
-	Debug                 bool
 }
 
 // Meta is a struct to hold metadata about the page
@@ -1069,14 +1074,21 @@ type UserNotificationsPageData struct {
 
 type UserNotificationsCenterPageData struct {
 	AuthData
-	Metrics                 interface{}                          `json:"metrics"`
-	Validators              []UserValidatorNotificationTableData `json:"validators"`
-	Network                 interface{}                          `json:"network"`
-	MonitoringSubscriptions []Subscription                       `json:"monitoring_subscriptions"`
-	Machines                []string
-	DashboardLink           string `json:"dashboardLink"`
-	NotificationChannels    []UserNotificationChannels
+	Metrics                    interface{}                          `json:"metrics"`
+	Validators                 []UserValidatorNotificationTableData `json:"validators"`
+	Network                    interface{}                          `json:"network"`
+	MonitoringSubscriptions    []Subscription                       `json:"monitoring_subscriptions"`
+	Machines                   []string
+	DashboardLink              string `json:"dashboardLink"`
+	NotificationChannelsModal  NotificationChannelsModal
+	AddValidatorWatchlistModal AddValidatorWatchlistModal
+	ManageNotificationModal    ManageNotificationModal
 	// Subscriptions []*Subscription
+}
+
+type NotificationChannelsModal struct {
+	CsrfField            template.HTML
+	NotificationChannels []UserNotificationChannels
 }
 
 type UserNotificationChannels struct {
@@ -1239,7 +1251,7 @@ type UserWebhookRow struct {
 	WebhookError UserWebhookRowError
 	Response     *http.Response          `db:"response" json:"response"`
 	Request      *map[string]interface{} `db:"request" json:"request"`
-	Events       []WebhookPageEvent      `db:"event_names" json:"-"`
+	Events       []EventNameCheckbox     `db:"event_names" json:"-"`
 	Discord      bool
 	CsrfField    template.HTML
 }
@@ -1254,14 +1266,14 @@ type UserWebhookRowError struct {
 type WebhookPageData struct {
 	WebhookRows  []UserWebhookRow
 	Webhooks     []UserWebhook
-	Events       []WebhookPageEvent
+	Events       []EventNameCheckbox
 	CsrfField    template.HTML
 	Allowed      uint64
 	WebhookCount uint64
 	Flashes      []interface{}
 }
 
-type WebhookPageEvent struct {
+type EventNameCheckbox struct {
 	EventLabel string
 	EventName
 	Active bool
@@ -1278,4 +1290,17 @@ type PoolInfo struct {
 	AvgPerformance31d int64  `db:"avg_performance_31d"`
 	AvgPerformance7d  int64  `db:"avg_performance_7d"`
 	AvgPerformance1d  int64  `db:"avg_performance_1d"`
+}
+
+type AddValidatorWatchlistModal struct {
+	CsrfField       template.HTML
+	ValidatorIndex  int64
+	ValidatorPubkey string
+	Events          []EventNameCheckbox
+}
+type ManageNotificationModal struct {
+	CsrfField       template.HTML
+	ValidatorIndex  int64
+	ValidatorPubkey string
+	Events          []EventNameCheckbox
 }

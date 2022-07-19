@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFiles(
+var indexTemplateFiles = []string{
 	"templates/layout.html",
 	"templates/index/index.html",
 	"templates/index/depositProgress.html",
@@ -29,6 +29,10 @@ var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateF
 	"templates/svg/professor.html",
 	"templates/svg/timeline.html",
 	"templates/components/rocket.html",
+}
+
+var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFiles(
+	indexTemplateFiles...,
 ))
 
 // Index will return the main "index" page using a go template
@@ -36,6 +40,11 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "index", "", "Index")
 	data.Data = services.LatestIndexPageData()
+
+	if data.Debug {
+		indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFiles(indexTemplateFiles...))
+		data.DebugTemplates = indexTemplateFiles
+	}
 
 	data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
 	data.Data.(*types.IndexPageData).Countdown = utils.Config.Frontend.Countdown

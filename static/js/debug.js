@@ -25,7 +25,6 @@
     
     
             button.innerHTML = "View Data"
-            console.log('creating debug button')
         
             button.addEventListener('click', function() {
                 const dialog = document.getElementById("dialog-debug-modal")
@@ -58,14 +57,17 @@
         
            const render = document.createElement('button')
            render.innerHTML = "render"
+           render.style.display = 'none'
            render.style.margin = ".5rem"
+           render.id = 'debug-render'
+           render.setAttribute('disabled', true)
            render.addEventListener('click', () => {
             dialog.close()
            })
         
            
            buttonContainer.appendChild(close)
-        //    buttonContainer.appendChild(render)
+           buttonContainer.appendChild(render)
         
            const editorContainer = document.createElement('div')
            editorContainer.style.width = "800px"
@@ -121,47 +123,71 @@
                     document.getElementById('debug-view-button').addEventListener('click', () => {
                         editor.layout()
                     })
+
+                    // let render = document.getElementById('debug-render')
+                    // if (render) {
+                    //     render.addEventListener('click', () => {
+                    //         let data = editor.getValue()
+                    //         renderNewTemplate(data) 
+                    //     })
+                    //     render.removeAttribute('disabled')
+                    // }
                 });
         }
         
         
         _godebug.initWasmGO = function () {
             let go = new Go();
-        
             WebAssembly.instantiateStreaming(fetch("/js/main.wasm"), go.importObject).then((result) => {
                 go.run(result.instance);
             });
         }
         
-        // function renderNewTemplate(templates) {
-        //     fetch("/public/asdf.html")
-        //     .then(data => data.text())
-        //     .then(text => {
-        //         try {
-        //             let tmpl = renderTemplate(text, JSON.stringify({ Data: { Title: "friendly world" }}))
-        //             console.log('templ rendered: ', tmpl)
-        //             var parser = new DOMParser();
-        //             var htmlDoc = parser.parseFromString(tmpl, 'text/html');
-        //             // console.log('SCRIPTS',htmlDoc.scripts)
-        //             document.documentElement.replaceWith(htmlDoc.documentElement)
-        //             for (let script of Array.from(document.scripts)) {
-                        
-        //                 let ns = document.createElement('script')
-        //                 if (script.src) {
-        //                     continue
-        //                 }
-        //                 console.log('executing script: ', script)
-        //                 ns.innerHTML = "(function scope(){" + script.innerHTML + "})()"
-        //                 document.body.appendChild(ns)
-        //             }
-        //         } catch(err) {
-        //             console.error("err parsing text",err)
-        //         }
-        //     })
-        // }
+        async function renderNewTemplate(data) {
+            console.log('tempalte data', data)
+            
+            let templates = JSON.parse(data).DebugTemplates
+            console.log('rendering templates', templates)
+
+            const tmplRequests = []
+            for (let i = 0; i < templates.length; i++) {
+                tmplRequests.push(fetch("/" + templates[i]))
+            }
+
+            const results = await Promise.all(tmplRequests)
+
+            const tmplResults = []
+            for (let i = 0; i < results.length; i++) {
+                tmplResults.push((await  results[i].text()))
+            }
+
+            console.log('results:', tmplRequests)
+
+            try {
+                // data JSON.stringify({ Data: { Title: "friendly world" }})
+                let tmpl = renderTemplate(tmplResults.join('\n'), data)
+                console.log('templ rendered: ', tmpl)
+                var parser = new DOMParser();
+                var htmlDoc = parser.parseFromString(tmpl, 'text/html');
+                // console.log('SCRIPTS',htmlDoc.scripts)
+                document.documentElement.replaceWith(htmlDoc.documentElement)
+                for (let script of Array.from(document.scripts)) {
+                    let ns = document.createElement('script')
+                    if (script.src) {
+                        continue
+                    }
+                    console.log('executing script: ', script)
+                    ns.innerHTML = "(function scope(){" + script.innerHTML + "})()"
+                    document.body.appendChild(ns)
+                }
+            } catch(err) {
+                console.error("err parsing text",err)
+            }
+        }
         
         _godebug.initialize = function (data) {
-            // document.body.appendChild(createWasmExec())
+            // document.body.appendChild(this.createWasmExec())
+
             if (typeof window.require != 'function') {
                 console.error("the debug library requires the monaco-editor loader library")
                 return
@@ -170,8 +196,13 @@
             document.body.appendChild(this.createDebugModal())
             // console.log('rendering editor content: ', data)
             this.renderEditorContent(data)
+            // window.addEventListener('load', () => {
+            //     console.log('page loaded')
+            //     this.initWasmGO()
+            // })
         }
 
+        
         return _godebug
     }
 

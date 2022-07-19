@@ -300,7 +300,7 @@
                 <td>{{ formatEth1TxHash $deposit.TxHash }}</td>
                 <td>{{ formatEth1Block $deposit.BlockNumber }}</td>
                 <td>{{ formatTimestamp $deposit.BlockTs }}</td>
-                <td>{{ formatDepositAmount $deposit.Amount $.Currency }}</td>
+                <td>{{ formatDepositAmount $deposit.Amount $.Rates.Currency }}</td>
                 <td><span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">{{ $deposit.ValidSignature }}</span></td>
               </tr>
             {{ end }}
@@ -448,7 +448,7 @@
                   <td>{{ epochOfSlot $deposit.BlockSlot | formatEpoch }}</td>
                   <td>{{ formatBlockSlot $deposit.BlockSlot }}</td>
                   <td>{{ formatSlotToTimestamp $deposit.BlockSlot }}</td>
-                  <td>{{ formatDepositAmount $deposit.Amount $.Currency }}</td>
+                  <td>{{ formatDepositAmount $deposit.Amount $.Rates.Currency }}</td>
                   <!-- <td>{{ formatHash $deposit.Proof }}</td> -->
                   <td>
                     {{ formatHash $deposit.Withdrawalcredentials }}
@@ -526,15 +526,15 @@
       <tbody>
         <tr>
           <th scope="row">Day</th>
-          <td>{{ formatIncome .Income1d $.Currency }}</td>
+          <td>{{ formatIncome .Income1d $.Rates.Currency }}</td>
         </tr>
         <tr>
           <th scope="row">Week</th>
-          <td>{{ formatIncome .Income7d $.Currency }}</td>
+          <td>{{ formatIncome .Income7d $.Rates.Currency }}</td>
         </tr>
         <tr>
           <th scope="row">Month</th>
-          <td>{{ formatIncome .Income31d $.Currency }}</td>
+          <td>{{ formatIncome .Income31d $.Rates.Currency }}</td>
         </tr>
         <tr>
           <th scope="row">
