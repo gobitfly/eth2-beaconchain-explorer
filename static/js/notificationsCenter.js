@@ -430,10 +430,10 @@ function loadValidatorsData(data) {
       // click event to validators table edit button
       $("#validators-notifications #edit-validator-events").on("click", function (e) {
         let row = $(this).parent().parent().parent()
-        $("#ManageNotificationModal").attr("rowId", '')
-        $("#ManageNotificationModal").attr("subscriptions", '')
+        $("#ManageNotificationModal").attr("rowId", "")
+        $("#ManageNotificationModal").attr("subscriptions", "")
         $("#ManageNotificationModal").attr("rowId", row.attr("id"))
-        $("#ManageNotificationModal").attr("subscriptions", row.find('div[subscriptions]').attr("subscriptions"))
+        $("#ManageNotificationModal").attr("subscriptions", row.find("div[subscriptions]").attr("subscriptions"))
       })
 
       // click event to remove button
@@ -593,9 +593,9 @@ function loadValidatorsData(data) {
     },
   })
 
-  document.addEventListener('click', function(e) {
+  document.addEventListener("click", function (e) {
     let isWatchlistParent = false
-    let limit = 0;
+    let limit = 0
     let tgt = e.target
     while (tgt) {
       if ($("#watchlist-container").is(tgt) || (tgt.classList && tgt.classList.contains("modal"))) {
@@ -610,32 +610,29 @@ function loadValidatorsData(data) {
     }
     if (!isWatchlistParent) {
       $("#validators-notifications").DataTable().rows().deselect()
-      document.getElementById('remove-selected-btn').setAttribute('disabled', true)
-      document.getElementById('manage-notifications-btn').setAttribute('disabled', true)
-      document.getElementById('selectAll-notifications-btn').removeAttribute('disabled')
+      document.getElementById("remove-selected-btn").setAttribute("disabled", true)
+      document.getElementById("manage-notifications-btn").setAttribute("disabled", true)
+      document.getElementById("selectAll-notifications-btn").removeAttribute("disabled")
     }
   })
 
-
-  $('#selectAll-notifications-btn').on('click', () => {
-     $("#validators-notifications").DataTable().rows().select()
+  $("#selectAll-notifications-btn").on("click", () => {
+    $("#validators-notifications").DataTable().rows().select()
   })
-
-
 
   validatorsTable.on("select.dt", function (e, dt, type, indexes) {
-    if(indexes && indexes.length) {
-      document.getElementById('remove-selected-btn').removeAttribute('disabled')
-      document.getElementById('manage-notifications-btn').removeAttribute('disabled')
-      document.getElementById('selectAll-notifications-btn').setAttribute('disabled', true)
+    if (indexes && indexes.length) {
+      document.getElementById("remove-selected-btn").removeAttribute("disabled")
+      document.getElementById("manage-notifications-btn").removeAttribute("disabled")
+      document.getElementById("selectAll-notifications-btn").setAttribute("disabled", true)
     }
   })
-  
+
   validatorsTable.on("deselect.dt", function (e, dt, type, indexes) {
     if (indexes && indexes.length <= 1) {
-      document.getElementById('remove-selected-btn').setAttribute('disabled', true)
-      document.getElementById('manage-notifications-btn').setAttribute('disabled', true)
-      document.getElementById('selectAll-notifications-btn').removeAttribute('disabled')
+      document.getElementById("remove-selected-btn").setAttribute("disabled", true)
+      document.getElementById("manage-notifications-btn").setAttribute("disabled", true)
+      document.getElementById("selectAll-notifications-btn").removeAttribute("disabled")
     }
   })
 
@@ -738,7 +735,7 @@ $(function () {
         })
       }
     } else {
-      if (tablename === "validators") { 
+      if (tablename === "validators") {
         $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Removing...</span></div>')
         let pubkeys = []
         for (let item of DATA) {
@@ -780,60 +777,56 @@ $(function () {
     }
   })
 
-
-
   // on modal open after click event to validators table edit button
   $("#ManageNotificationModal").on("show.bs.modal", function (e) {
     $("#ManageNotificationModal-form-content").show()
-    $("#ManageNotificationModal button[type='submit']").prop('disabled', false)
-    $("#ManageNotificationModal").find('input[type="checkbox"]').each(function() {
-      $(this).prop('checked', false)
-    })
+    $("#ManageNotificationModal button[type='submit']").prop("disabled", false)
+    $("#ManageNotificationModal")
+      .find('input[type="checkbox"]')
+      .each(function () {
+        $(this).prop("checked", false)
+      })
 
-    
-    let rowID = $(this).attr('rowid')
+    let rowID = $(this).attr("rowid")
     if (rowID) {
-      let inputs = document.querySelectorAll('#ManageNotificationModal input[type="checkbox"]') 
+      let inputs = document.querySelectorAll('#ManageNotificationModal input[type="checkbox"]')
       let activeCount = 0
-      let subscriptions = $(this).attr('subscriptions')
-      document.getElementById('ManageNotificationModal-validators').value = rowID
+      let subscriptions = $(this).attr("subscriptions")
+      document.getElementById("ManageNotificationModal-validators").value = rowID
       if (subscriptions) {
-        subscriptions = subscriptions.split(',')  
+        subscriptions = subscriptions.split(",")
         for (let i = 0; i < subscriptions.length; i++) {
-          let sub = subscriptions[i];
-          $("#watchlist-selected-" + sub).prop('checked', true)
+          let sub = subscriptions[i]
+          $("#watchlist-selected-" + sub).prop("checked", true)
           activeCount += 1
         }
       }
 
-      if (activeCount == (inputs.length - 1)) {
-        $('#ManageNotificationModal-all').prop('checked', true)
+      if (activeCount == inputs.length - 1) {
+        $("#ManageNotificationModal-all").prop("checked", true)
       }
-
     } else {
       let rowsSelected = $("#validators-notifications").DataTable().rows(".selected").data()
       if (rowsSelected && rowsSelected.length) {
-        let valis = rowsSelected.map(row => row.Pubkey).join(',')
-        document.getElementById('ManageNotificationModal-validators').value = valis
+        let valis = rowsSelected.map((row) => row.Pubkey).join(",")
+        document.getElementById("ManageNotificationModal-validators").value = valis
         if (rowsSelected.length === 1) {
-          document.getElementById('ManageNotificationModal-subtitle').innerHTML = `You've selected one validator from your watchlist`
+          document.getElementById("ManageNotificationModal-subtitle").innerHTML = `You've selected one validator from your watchlist`
         } else {
-          document.getElementById('ManageNotificationModal-subtitle').innerHTML = `You've selected ${rowsSelected.length} validators from your watchlist`
+          document.getElementById("ManageNotificationModal-subtitle").innerHTML = `You've selected ${rowsSelected.length} validators from your watchlist`
         }
       } else {
-        document.getElementById('ManageNotificationModal-subtitle').innerHTML = `No validators selected.`
+        document.getElementById("ManageNotificationModal-subtitle").innerHTML = `No validators selected.`
         $("#ManageNotificationModal-form-content").hide()
-        $("#ManageNotificationModal button[type='submit']").prop('disabled', true)
+        $("#ManageNotificationModal button[type='submit']").prop("disabled", true)
       }
     }
-
   })
 
   $("#ManageNotificationModal").on("hide.bs.modal", function (e) {
-    $(this).removeAttr('rowid')
-    $(this).removeAttr('subscriptions')
+    $(this).removeAttr("rowid")
+    $(this).removeAttr("subscriptions")
   })
-
 
   // select/deselect notification checkboxes for all events
   for (let event of $("#validator_all_events :input")) {
@@ -966,22 +959,20 @@ $(function () {
   })
 })
 
-
-
 // Sets a hidden input with the selected validators
-$('#RemoveSelectedValidatorsModal').on('show.bs.modal', function (event) {
+$("#RemoveSelectedValidatorsModal").on("show.bs.modal", function (event) {
   $('#RemoveSelectedValidatorsModal button[type="submit"]').prop("disabled", false)
   let rowsSelected = $("#validators-notifications").DataTable().rows(".selected").data()
   if (rowsSelected && rowsSelected.length) {
-    let valis = rowsSelected.map(row => row.Pubkey).join(',')
-    document.getElementById('RemoveSelectedValidatorsModal-input').value = valis
+    let valis = rowsSelected.map((row) => row.Pubkey).join(",")
+    document.getElementById("RemoveSelectedValidatorsModal-input").value = valis
     if (rowsSelected.length === 1) {
-      document.getElementById('RemoveSelectedValidatorsModal-modaltext').innerHTML = `You've selected one validator to remove from your watchlist`
+      document.getElementById("RemoveSelectedValidatorsModal-modaltext").innerHTML = `You've selected one validator to remove from your watchlist`
     } else {
-      document.getElementById('RemoveSelectedValidatorsModal-modaltext').innerHTML = `You've selected ${rowsSelected.length} validators to remove from your watchlist`
+      document.getElementById("RemoveSelectedValidatorsModal-modaltext").innerHTML = `You've selected ${rowsSelected.length} validators to remove from your watchlist`
     }
   } else {
-    document.getElementById('RemoveSelectedValidatorsModal-modaltext').innerHTML = `No validators selected.`
+    document.getElementById("RemoveSelectedValidatorsModal-modaltext").innerHTML = `No validators selected.`
     $('#RemoveSelectedValidatorsModal button[type="submit"]').prop("disabled", true)
   }
 })
