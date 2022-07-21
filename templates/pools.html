@@ -339,9 +339,9 @@
                   <tr>
                     <td>{{ .Name }}</td>
                     <td>{{ .Count }}</td>
-                    <td>{{ formatBalanceChange .AvgPerformance31d $.Currency }}</td>
-                    <td>{{ formatBalanceChange .AvgPerformance7d $.Currency }}</td>
-                    <td>{{ formatBalanceChange .AvgPerformance1d $.Currency }}</td>
+                    <td>{{ formatBalanceChange .AvgPerformance31d $.Rates.Currency }}</td>
+                    <td>{{ formatBalanceChange .AvgPerformance7d $.Rates.Currency }}</td>
+                    <td>{{ formatBalanceChange .AvgPerformance1d $.Rates.Currency }}</td>
                   </tr>
                 {{ end }}
               </tbody>

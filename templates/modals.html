@@ -1,0 +1,221 @@
+<!-- Add Validator Watchlist is a modal that allows a user to add a validator to his watchlist and subscribe to events  -->
+<!-- This modal expects a list of events that a user can subscribe to -->
+<!-- expects struct types.AddValidatorWatchlistModal -->
+{{ define "AddValidatorWatchlistModal" }}
+  <div class="modal fade custom-modal" id="AddValidatorWatchlistModal" data-backdrop="static" data-keyboard="true" tabindex="-1" role="dialog" aria-labelledby="addValidatorLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
+      <div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
+        <form id="add-validator-watchlist-form" method="post" action="/user/watchlist/add">
+          {{ .CsrfField }}
+          <div class="mb-1 mb-sm-4 custom-remove-modal-close">
+            <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          </div>
+          <div class="col-sm-12 d-flex flex-column align-items-center justify-content-center mb-3 mb-sm-5 px-0 h6">
+            <div class="w-100 heading-l2 text-center">
+              Add Validator
+              <span class="d-block mt-3 heading-l4 text-left">Enter the index or pubkey of a validator to add it to your watchlist and (optionally) subscribe to receive email notifications.</span>
+            </div>
+            <div id="add-validator-search-container" class="w-100 mb-sm-3">
+              <div class="my-3">
+                <input id="add-validator-input" class="form-control validator-typeahead" type="text" autocomplete="off" spellcheck="false" placeholder="Search validator..." aria-label="Search validator" name="validator" required />
+              </div>
+              <div class="d-flex align-items-center justify-content-end w-100 my-2"></div>
+              {{ range $i, $event := .Events }}
+                <div class="input-group my-1">
+                  <div class="form-check form-check-inline w-100">
+                    <label for="watchlist_{{ $event.EventName }}" class="form-check-label mr-auto font-weight-normal py-2">{{ $event.EventLabel }}</label>
+                    <input {{ if $event.Active }}checked{{ end }} name="{{ $event.EventName }}" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="watchlist_{{ $event.EventName }}" />
+                  </div>
+                </div>
+              {{ end }}
+              <hr class="my-3" />
+              <div class="input-group">
+                <div class="form-check form-check-inline w-100">
+                  <label for="AddValidatorWatchlistModal-all" class="form-check-label mr-auto font-weight-normal py-2">All events</label>
+                  <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="AddValidatorWatchlistModal-all" name="all" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12 d-flex align-items-center justify-content-between mt-auto mt-sm-1 px-0">
+            <button class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-primary btn-sm w-50 ml-sm-3 text-white">Add Validator</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script>
+    document.getElementById("AddValidatorWatchlistModal-all").addEventListener("change", function (event) {
+      document.querySelectorAll('#AddValidatorWatchlistModal input[type="checkbox"]').forEach((el) => {
+        if (el.checked !== event.target.checked) {
+          el.checked = event.target.checked
+        }
+      })
+    })
+  </script>
+{{ end }}
+
+{{ define "NotificationChannelModal" }}
+  <!-- Notification Channel Modal -->
+  <div class="modal fade custom-modal" id="NotificationChannelModal" data-backdrop="static" data-keyboard="true" tabindex="-1" role="dialog" aria-labelledby="addValidatorLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
+      <div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
+        <form method="post" action="/user/notifications/channels">
+          {{ .CsrfField }}
+          <div class="mb-1 mb-sm-4 custom-remove-modal-close">
+            <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          </div>
+          <div class="col-sm-12 d-flex flex-column align-items-center justify-content-center mb-3 mb-sm-5 px-0 h6">
+            <div class="w-100 heading-l2 text-center">
+              Notification Channels
+              <span class="d-block mt-3 heading-l4 text-left">Global setting to toggle the channels over which you would like to receive notifications. By default all channels are active.</span>
+            </div>
+            <div class="w-100 my-3">
+              {{ range $i, $ch := .NotificationChannels }}
+                <div class="form-check form-check-inline w-100 my-2 py-1">
+                  <label class="form-check-label w-100 font-weight-normal" for="channel-{{ $ch.Channel }}">{{ $ch.Channel | formatNotificationChannel }}</label>
+                  <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="channel-{{ $ch.Channel }}" name="{{ $ch.Channel }}" {{ if $ch.Active }}checked{{ end }} />
+                </div>
+              {{ end }}
+            </div>
+          </div>
+          <div class="col-sm-12 d-flex align-items-center justify-content-between mt-auto mt-sm-1 px-0">
+            <button class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
+            <button id="update-notification-channels" class="btn btn-primary btn-primary btn-sm w-50 ml-sm-3 text-white">Update</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{{ end }}
+
+{{ define "RemoveSelectedValidatorsModal" }}
+  <div class="modal fade" id="RemoveSelectedValidatorsModal" tabindex="-1" role="dialog" aria-labelledby="remove-selected-btn" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content row mx-0 custom-background-color custom-remove-modal">
+        <form id="RemoveSelectedValidatorsModal-form" method="post" action="/user/watchlist/remove">
+          {{ .CsrfField }}
+          <input id="RemoveSelectedValidatorsModal-input" name="validators" type="text" hidden />
+          <div class="mb-4 custom-remove-modal-close">
+            <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          </div>
+          <div class="w-100 mb-2 heading-l2 text-center">Confirm Removal</div>
+          <div class="col-12 d-flex align-items-center mb-5 px-0 h6">
+            <span class="text-center font-weight-normal" id="RemoveSelectedValidatorsModal-modaltext"></span>
+          </div>
+          <div class="col-12 d-flex align-items-center justify-content-between px-0">
+            <button class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-danger btn-sm w-50 ml-sm-3 text-white">Remove</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{{ end }}
+
+
+<!-- Manage notifications modal -->
+{{ define "ManageNotificationModal" }}
+  <div class="modal fade custom-modal" id="ManageNotificationModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="manageNotificationsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
+      <div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
+        <div class="mb-1 mb-sm-4 custom-remove-modal-close">
+          <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <form id="ManageNotificationModal-form" method="post" action="/user/watchlist/update">
+          {{ .CsrfField }}
+          <div class="col-sm-12 d-flex flex-column align-items-center justify-content-center mb-0 mb-sm-4 px-0 h6">
+            <div class="w-100 heading-l2 text-center">
+              Manage Selected
+              <span class="d-block mt-3 heading-l4 text-left">Update the events your selected validators are subscribed to.</span>
+              <span id="ManageNotificationModal-subtitle" class="d-block mt-3 heading-l4 text-left"></span>
+            </div>
+            <div id="ManageNotificationModal-form-content" class="w-100 my-4">
+              <input id="ManageNotificationModal-validators" type="hidden" name="validators" />
+              <div class="d-flex align-items-center justify-content-end w-100 my-2"></div>
+              {{ range $i, $event := .Events }}
+                <div class="input-group my-1">
+                  <div class="form-check form-check-inline w-100">
+                    <label for="watchlist-selected-{{ $event.EventName }}" class="form-check-label mr-auto font-weight-normal py-2">{{ $event.EventLabel }}</label>
+                    <input {{ if $event.Active }}checked{{ end }} name="{{ $event.EventName }}" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="watchlist-selected-{{ $event.EventName }}" />
+                  </div>
+                </div>
+              {{ end }}
+              <hr class="my-3" />
+              <div class="input-group my-1">
+                <div class="form-check form-check-inline w-100 my-2" id="manage_all_events">
+                  <label for="ManageNotificationModal-all" class="form-check-label mr-auto font-weight-normal">All events</label>
+                  <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="ManageNotificationModal-all" name="all" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-12 d-flex align-items-center justify-content-between mt-auto mt-sm-1 px-0">
+            <button class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-primary btn-sm w-50 ml-sm-3 text-white">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script>
+    document.getElementById("ManageNotificationModal-all").addEventListener("change", function (event) {
+      document.querySelectorAll('#ManageNotificationModal input[type="checkbox"]').forEach((el) => {
+        if (el.checked !== event.target.checked) {
+          el.checked = event.target.checked
+        }
+      })
+    })
+  </script>
+{{ end }}
+
+{{ define "NetworkEventModal" }}
+  <!-- Add Network events modal -->
+  <div class="modal fade custom-modal" id="NetworkEventModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addNetworkEventLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
+      <div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
+        <div class="mb-1 mb-sm-4 custom-remove-modal-close">
+          <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <form id="NetworkEventModal-form" method="post" action="/user/notifications/network/update">
+          {{ .CsrfField }}
+          <div class="col-sm-12 d-flex flex-column align-items-center justify-content-center mb-3 mb-sm-5 px-0 h6">
+            <div class="w-100 heading-l2 text-center">
+              Network Notifications
+              <span class="d-block mt-3 heading-l4 text-left">Select events to receive email notifications about or turn notifications off</span>
+            </div>
+            <div class="w-100 my-3">
+              {{ range $i, $event := .Events }}
+                <div class="input-group my-1">
+                  <div class="form-check form-check-inline w-100">
+                    <label for="watchlist-selected-{{ $event.EventName }}" class="form-check-label mr-auto font-weight-normal py-2">{{ $event.EventLabel }}</label>
+                    <input {{ if $event.Active }}checked{{ end }} name="{{ $event.EventName }}" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="watchlist-selected-{{ $event.EventName }}" />
+                  </div>
+                </div>
+              {{ end }}
+            </div>
+          </div>
+          <div class="col-sm-12 d-flex align-items-center justify-content-between mt-auto mt-sm-1 px-0">
+            <button class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-primary btn-sm w-50 ml-sm-3 text-white">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{{ end }}
+
+
+<!-- <div class="form-check form-check-inline w-100 my-2">
+              <label class="form-check-label mr-auto font-weight-normal" for="finalityIssues">Finality issues</label>
+              <input class="form-check-input checkbox-custom-size" type="checkbox" id="finalityIssues" value="" event="network_liveness_increased" {{ if .Network.IsSubscribed }}checked="true"{{ end }} />
+            </div>
+            <div class="form-check form-check-inline w-100 my-2">
+              <label class="form-check-label mr-auto font-weight-normal" for="finalityIssues">Finality issues</label>
+              <input class="form-check-input checkbox-custom-size" type="checkbox" id="finalityIssues" value="" event="network_liveness_increased" {{ if .Network.IsSubscribed }}checked="true"{{ end }} />
+            </div> -->
+<!-- <div class="form-check form-check-inline w-100 my-2">
+            <label class="form-check-label mr-auto font-weight-normal" for="participationIssues">Participation issues</label>
+            <input class="form-check-input checkbox-custom-size" type="checkbox" id="participationIssues" value="" event="network_participation_decreased" {{ if .Network.IsSubscribed }}checked="true"{{ end }}>
+          </div> -->

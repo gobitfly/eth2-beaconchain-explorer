@@ -8,6 +8,7 @@
   <script>
     $("#stats-table").DataTable({
       pageLength: 400,
+      stateSave: true,
       lengthChange: false,
       dom: "Bfrtip",
       buttons: ["copyHtml5", "excelHtml5", "csvHtml5", "pdfHtml5"],
@@ -72,9 +73,9 @@
           {{ range .Rows }}
             <tr>
               <td data-order="{{ .Day }}">{{ (dayToTime .Day).Format "02 Jan 2006" }}</td>
-              <td>{{ formatIncome .Income $.Currency }}</td>
-              <td>{{ formatBalanceSql .StartBalance $.Currency }}</td>
-              <td>{{ formatBalanceSql .EndBalance $.Currency }}</td>
+              <td>{{ formatIncome .Income $.Rates.Currency }}</td>
+              <td>{{ formatBalanceSql .StartBalance $.Rates.Currency }}</td>
+              <td>{{ formatBalanceSql .EndBalance $.Rates.Currency }}</td>
               <td>{{ formatSqlInt64 .MissedAttestations }}</td>
               <td>{{ formatSqlInt64 .OrphanedAttestations }}</td>
               <td>{{ formatSqlInt64 .ProposedBlocks }}</td>
@@ -83,7 +84,7 @@
               <td>{{ formatSqlInt64 .AttesterSlashings }}</td>
               <td>{{ formatSqlInt64 .ProposerSlashings }}</td>
               <td>{{ formatSqlInt64 .Deposits }}</td>
-              <td>{{ formatIncomeSql .DepositsAmount $.Currency }}</td>
+              <td>{{ formatIncomeSql .DepositsAmount $.Rates.Currency }}</td>
             </tr>
           {{ end }}
         </tbod>

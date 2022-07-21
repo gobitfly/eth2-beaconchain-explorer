@@ -2,14 +2,18 @@
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
   <script>
+    console.log({{.}})
     $(document).ready(function () {
       $("#epochs").DataTable({
         processing: true,
         serverSide: true,
         ordering: false,
         searching: true,
+        deferLoading: {{.RecordsTotal}},
         ajax: "/epochs/data",
         pagingType: "input",
+        stateSave: true,
+        stateDuration: true,
         pageLength: 50,
         language: {
           searchPlaceholder: "Search by Epoch Number",
@@ -19,6 +23,7 @@
             next: '<i class="fas fa-chevron-right"></i>',
           },
         },
+        data: {{ .Data }},
         preDrawCallback: function () {
           // this does not always work.. not sure how to solve the staying tooltip
           try {
@@ -26,12 +31,13 @@
           } catch (e) {
             console.error(e)
           }
+          document.getElementById('header-placeholder').style.display = 'none'
         },
         drawCallback: function (settings) {
           formatTimestamps()
         },
       })
-      $("div.toolbar").html("<b>Custom tool bar! Text/images etc.</b>")
+      // $("div.toolbar").html("<b>Custom tool bar! Text/images etc.</b>")
     })
   </script>
 {{ end }}
@@ -50,7 +56,8 @@
           </ol>
         </nav>
       </div>
-      <div class="card">
+      <div class="card mt-2">
+        <div id="header-placeholder" style="height:45px;"></div>
         <div class="card-body px-0 py-3">
           <div class="table-responsive px-0 py-1">
             <table class="table" id="epochs">

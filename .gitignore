@@ -21,3 +21,5 @@ static/bundle/js
 docs
 node_modules
 .vscode
+webassembly
+static/monaco-editor

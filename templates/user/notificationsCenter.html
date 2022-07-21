@@ -19,6 +19,16 @@
 {{ define "content" }}
   {{ with .Data }}
     <div class="container-fluid container-xl container-min-width container-custom">
+      {{ if .Flashes }}
+        {{ range $i, $flash := .Flashes }}
+          <div class="alert {{ if contains $flash "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
+            <div class="p-2">{{ $flash | formatHTML }}</div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+        {{ end }}
+      {{ end }}
       <div class="d-flex flex-column flex-sm-row align-items-start justify-content-center align-items-sm-center justify-content-sm-between ml-1 my-2">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb font-size-1 mb-0 breadcrumb-custom">
@@ -33,7 +43,7 @@
           <h1 class="heading text-nowrap">Notifications Center</h1>
           <h2 class="heading-l3 text-muted font-weight-light">Manage the notifications you want to receive</h2>
         </div>
-        <button class="btn btn-dark text-white mx-0 my-2 mr-md-3" data-toggle="modal" data-target="#manage-notification-channels">
+        <button class="btn btn-dark text-white mx-0 my-2 mr-md-3" data-toggle="modal" data-target="#NotificationChannelModal">
           <span class="text-nowrap">Notification Channels</span>
         </button>
       </div>
@@ -143,12 +153,12 @@
             <div>
               <h2 class="heading-l2">Network</h2>
             </div>
-            <button class="btn btn-primary ml-sm-3 text-white" data-toggle="modal" data-target="#addNetworkEventModal">
+            <button class="btn btn-primary ml-sm-3 text-white" data-toggle="modal" data-target="#NetworkEventModal">
               <span class="text-nowrap d-none d-sm-inline">Add network event</span>
               <span class="text-nowrap d-sm-none">Add</span>
             </button>
           </div>
-          {{ if eq (len .Network.Events_ts) 0 }}
+          {{ if not .Network }}
             <div class="ml-3 mx-sm-auto text-sm-center text-empty-section">
               <h3 class="mt-5 heading-l2">No network notifications yet</h3>
               <h4 class="mt-2 heading-l3">Subscribe to events to receive notifications</h4>
@@ -172,30 +182,43 @@
           {{ end }}
         </div>
       </div>
-      <div class="mx-0 my-3 p-1 shadow-sm border container-min-width validators-container-min-height custom-border-radius custom-background-color">
-        <div class="row d-flex flex-lg-nowrap align-items-center mx-3 mt-3 py-2">
+      <div id="watchlist-container" class="mx-0 my-3 p-1 shadow-sm border container-min-width validators-container-min-height custom-border-radius custom-background-color">
+        <div class="row d-flex flex-lg-nowrap align-items-center mx-2 mt-3 py-2">
           <div class="col-12 col-md-3 d-flex justify-content-start px-0">
             <h2 class="heading-l2 mb-2 mb-md-0">Validators</h2>
           </div>
           <div class="col-12 col-md-9 d-flex justify-content-start justify-content-sm-end px-0">
-            <button hidden class="btn btn-dark text-white mx-1" id="manage-notifications-btn" data-toggle="modal" data-target="#manageNotificationsModal" title="Manage notifications for the selected validator(s)">
-              <i class="fas fa-cog d-inline-block d-sm-none"></i>
-              <span class="d-none d-sm-inline text-nowrap">Manage notifications</span>
-            </button>
-            <!-- <button hidden class="btn btn-danger mx-3 text-white" id="remove-all-btn" data-toggle="modal" data-target="#confirmRemoveModal" title="Remove all validators from list" data-modaltext="Are you sure you want to remove all validators from your list?">
-						<i class="fas fa-times d-inline d-sm-none"></i>
-						<span class="d-none d-sm-inline text-nowrap">Remove all</span>
-					</button> -->
-
-            <a href="{{ .DashboardLink }}" hidden class="btn btn-dark text-white mx-1" id="view-dashboard" title="View your validator(s) in the beaconchain Dashboard">
-              <i class="fas fa-chart-pie d-inline-block d-sm-none"></i>
-              <span class="d-none d-sm-inline text-nowrap">View in Dashboard</span>
-            </a>
-
-            <button class="btn btn-primary text-white mx-1" data-toggle="modal" data-target="#addValidatorModal">
-              <i class="fas fa-plus" id="add-validator-btn-icon" hidden></i>
+            <button class="btn btn-primary text-white mx-1" data-toggle="modal" data-target="#AddValidatorWatchlistModal">
+              <i style="width: 1rem;" class="fas fa-plus mr-2 text-center d-inline-block" id="add-validator-btn-icon"></i>
               <span class="text-nowrap" id="add-validator-btn-text">Add validator</span>
             </button>
+            <div class="dropdown">
+              <button data-toggle="dropdown" aria-expanded="false" class="dropdown-toggle btn btn-dark text-white mx-1" type="button" id="validatorTableDropdown">More</button>
+              <div class="dropdown-menu dropdown-menu-right">
+                <a class="dropdown-item py-2 cursor-pointer" href="{{ .DashboardLink }}" id="view-dashboard" title="View your validator(s) in the beaconchain Dashboard">
+                  <i style="width: 1rem;" class="fas fa-chart-pie d-inline-block mr-2 text-center"></i>
+                  <span class="d-inline text-nowrap">View Stats</span>
+                </a>
+                <a id="selectAll-notifications-btn" class="dropdown-item py-2 cursor-pointer">
+                  <span class="" title="Select all of your validator(s) in your watchlist">
+                    <i style="width: 1rem;" class="fas fa-hand-pointer d-inline-block mr-2 text-center"></i>
+                    <span class="d-inline text-nowrap">Select All</span>
+                  </span>
+                </a>
+                <a id="manage-notifications-btn" class="dropdown-item py-2 cursor-pointer">
+                  <span class="" data-toggle="modal" data-target="#ManageNotificationModal" title="Manage notifications for the selected validator(s)">
+                    <i style="width: 1rem;" class="fas fa-cog d-inline-block mr-2 text-center"></i>
+                    <span class="text-nowrap">Manage Selected</span>
+                  </span>
+                </a>
+                <a id="remove-selected-btn" class="dropdown-item py-2 cursor-pointer">
+                  <span class="w-100 " data-toggle="modal" data-target="#RemoveSelectedValidatorsModal" title="Remove selected validators from your watchlist">
+                    <i style="width: 1rem;" class="fas fa-times d-inline-block mr-2 text-center"></i>
+                    <span class="d-inline text-nowrap">Remove Selected</span>
+                  </span>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
         {{ if eq (len .Validators) 0 }}
@@ -204,7 +227,7 @@
             <h4 class="mt-2 heading-l3">Start adding Validators and subscribe to events to receive notifications</h4>
           </div>
         {{ else }}
-          <div class="mx-3 mb-3 pb-1 heading-l4">Hold down <kbd>Ctrl</kbd> to select multiple rows in the table</div>
+          <div class="mx-2 mb-3 pb-1 heading-l4">Hold down <kbd>Ctrl</kbd> to select multiple rows in the table</div>
           <div style="margin: 0 -.25rem !important; overflow-x: auto;" class="px-0 py-3">
             <table class="table table-borderless table-hover" id="validators-notifications">
               <thead class="custom-table-head">
@@ -238,7 +261,7 @@
             <span class="text-left font-weight-normal" id="modaltext"></span>
           </div>
           <div class="col-12 d-flex align-items-center justify-content-between px-0">
-            <button id="cancel-button" class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
+            <button class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
             <button id="remove-button" class="btn btn-primary btn-danger btn-sm w-50 ml-sm-3 text-white">Remove</button>
           </div>
         </div>
@@ -300,206 +323,17 @@
             </div>
           </div>
           <div class="col-sm-12 d-flex align-items-center justify-content-between mt-auto mt-sm-1 px-0">
-            <button id="cancel-button" class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
+            <button class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
             <button id="add-monitoring-event" class="btn btn-primary btn-primary btn-sm w-50 ml-sm-3 text-white">Save</button>
           </div>
         </div>
       </div>
     </div>
-    <!-- Add Network events modal -->
-    <div class="modal fade custom-modal" id="addNetworkEventModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addNetworkEventLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
-        <div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
-          <div class="mb-1 mb-sm-4 custom-remove-modal-close">
-            <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-          </div>
-          <div class="col-sm-12 d-flex flex-column align-items-center justify-content-center mb-3 mb-sm-5 px-0 h6">
-            <div class="w-100 heading-l2 text-center">
-              Network Notifications
-              <span class="d-block mt-3 heading-l4 text-left">Select events to receive email notifications about or turn notifications off</span>
-            </div>
-            <div class="w-100 my-3">
-              <div class="form-check form-check-inline w-100 my-2">
-                <label class="form-check-label mr-auto font-weight-normal" for="finalityIssues">Finality issues</label>
-                <input class="form-check-input checkbox-custom-size" type="checkbox" id="finalityIssues" value="" event="network_liveness_increased" {{ if .Network.IsSubscribed }}checked="true"{{ end }} />
-              </div>
-              <!-- <div class="form-check form-check-inline w-100 my-2">
-							<label class="form-check-label mr-auto font-weight-normal" for="participationIssues">Participation issues</label>
-							<input class="form-check-input checkbox-custom-size" type="checkbox" id="participationIssues" value="" event="network_participation_decreased" {{ if .Network.IsSubscribed }}checked="true"{{ end }}>
-						</div> -->
-            </div>
-          </div>
-          <div class="col-sm-12 d-flex align-items-center justify-content-between mt-auto mt-sm-1 px-0">
-            <button id="cancel-button" class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
-            <button id="add-network-subscription" class="btn btn-primary btn-primary btn-sm w-50 ml-sm-3 text-white">Save</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Manage notifications modal -->
-    <div class="modal fade custom-modal" id="manageNotificationsModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="manageNotificationsLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
-        <div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
-          <div class="mb-1 mb-sm-4 custom-remove-modal-close">
-            <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-          </div>
-          <div class="col-sm-12 d-flex flex-column align-items-center justify-content-center mb-0 mb-sm-4 px-0 h6">
-            <div class="w-100 heading-l2 text-center">
-              Manage Notifications
-              <span class="d-none d-sm-block mt-3 heading-l4 text-left">Select events to receive email notifications about or turn notifications off for the validators in your watchlist</span>
-            </div>
-            <div class="w-100 my-4">
-              <span class="d-block mb-1 heading-l4 font-weight-normal text-left">Selected Validators:</span>
-              <div id="selected-validators-events-container" class="w-100 mb-4 custom-container scrollbar"></div>
-              <div class="d-flex align-items-center justify-content-end w-100 my-2">
-                <!-- <div class="mr-2">Push</div>
-							<div><i class="fas fa-envelope fa-lg"></i></div>
-							<div class="mr-2">Web</div> -->
-              </div>
-              <div class="form-check form-check-inline w-100 my-2" id="manage_validator_attestation_missed">
-                <label class="form-check-label mr-auto font-weight-normal" for="manage-attestation-missed">Attestations missed</label>
-                <!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-                <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="" />
-                <!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-              </div>
-              <div class="form-check form-check-inline w-100 my-2" id="manage_validator_proposal_missed">
-                <label class="form-check-label mr-auto font-weight-normal">Proposals missed</label>
-                <!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-                <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="" />
-                <!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-              </div>
-              <div class="form-check form-check-inline w-100 my-2" id="manage_validator_proposal_submitted">
-                <label class="form-check-label mr-auto font-weight-normal">Proposals submitted</label>
-                <!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-                <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="" />
-                <!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-              </div>
-              <div class="form-check form-check-inline w-100 my-2" id="manage_validator_got_slashed">
-                <label class="form-check-label mr-auto font-weight-normal">Validator slashed</label>
-                <!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-                <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="" />
-                <!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-              </div>
-              <div class="form-check form-check-inline w-100 my-2" id="manage_validator_synccommittee_soon">
-                <label class="form-check-label mr-auto font-weight-normal">Sync Committee</label>
-                <!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-                <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="" />
-                <!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-              </div>
-              <hr class="my-3" />
-              <div class="form-check form-check-inline w-100 my-2" id="manage_all_events">
-                <label class="form-check-label mr-auto font-weight-normal">All events</label>
-                <!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-                <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="" />
-                <!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-              </div>
-            </div>
-          </div>
-          <div class="col-sm-12 d-flex align-items-center justify-content-between mt-auto mt-sm-1 px-0">
-            <button id="cancel-button" class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
-            <button id="update-subs-button" class="btn btn-primary btn-primary btn-sm w-50 ml-sm-3 text-white">Save</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Add Validator modal -->
-    <div class="modal fade custom-modal" id="addValidatorModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addValidatorLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
-        <div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
-          <div class="mb-1 mb-sm-4 custom-remove-modal-close">
-            <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-          </div>
-          <div class="col-sm-12 d-flex flex-column align-items-center justify-content-center mb-3 mb-sm-5 px-0 h6">
-            <div class="w-100 heading-l2 text-center">
-              Add Validator
-              <span class="d-block mt-3 heading-l4 text-left">Add validators to your watchlist and select events to receive email notifications about</span>
-            </div>
-            <div id="add-validator-search-container" class="w-100 mb-sm-3">
-              <div class="my-3">
-                <input id="add-validator-input" class="form-control validator-typeahead" type="text" autocomplete="off" spellcheck="false" placeholder="Search validator..." aria-label="Search validator" />
-              </div>
-              <div class="d-flex align-items-center justify-content-end w-100 my-2">
-                <!-- <div class="mr-2">Push</div>
-							<div><i class="fas fa-envelope fa-lg"></i></div>
-							<div class="mr-2">Web</div> -->
-              </div>
-              <div class="form-check form-check-inline w-100 my-2" id="validator_attestation_missed">
-                <label class="form-check-label mr-auto font-weight-normal">Attestations missed</label>
-                <!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-                <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="" />
-                <!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-              </div>
-              <div class="form-check form-check-inline w-100 my-2" id="validator_proposal_missed">
-                <label class="form-check-label mr-auto font-weight-normal">Proposals missed</label>
-                <!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-                <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="" />
-                <!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-              </div>
-              <div class="form-check form-check-inline w-100 my-2" id="validator_proposal_submitted">
-                <label class="form-check-label mr-auto font-weight-normal">Proposals submitted</label>
-                <!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-                <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="" />
-                <!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-              </div>
-              <div class="form-check form-check-inline w-100 my-2" id="validator_got_slashed">
-                <label class="form-check-label mr-auto font-weight-normal">Validator slashed</label>
-                <!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-                <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="" />
-                <!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-              </div>
-              <div class="form-check form-check-inline w-100 my-2" id="validator_synccommittee_soon">
-                <label class="form-check-label mr-auto font-weight-normal">Sync Committee</label>
-                <!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-                <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="" />
-                <!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-              </div>
-              <hr class="my-3" />
-              <div class="form-check form-check-inline w-100 my-2" id="validator_all_events">
-                <label class="form-check-label mr-auto font-weight-normal">All events</label>
-                <!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-                <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="" />
-                <!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-              </div>
-            </div>
-          </div>
-          <div class="col-sm-12 d-flex align-items-center justify-content-between mt-auto mt-sm-1 px-0">
-            <button id="cancel-button" class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
-            <button id="add-validator-button" class="btn btn-primary btn-primary btn-sm w-50 ml-sm-3 text-white">Add Validator</button>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Notification Channel Modal -->
-    <div class="modal fade custom-modal" id="manage-notification-channels" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addValidatorLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
-        <div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
-          <form method="post" action="/user/notifications/channels">
-            {{ .CsrfField }}
-            <div class="mb-1 mb-sm-4 custom-remove-modal-close">
-              <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-            </div>
-            <div class="col-sm-12 d-flex flex-column align-items-center justify-content-center mb-3 mb-sm-5 px-0 h6">
-              <div class="w-100 heading-l2 text-center">
-                Notification Channels
-                <span class="d-block mt-3 heading-l4 text-left">Global setting to toggle the channels over which you would like to receive notifications. By default all channels are active.</span>
-              </div>
-              <div class="w-100 my-3">
-                {{ range $i, $ch := .NotificationChannels }}
-                  <div class="form-check form-check-inline w-100 my-2 py-1">
-                    <label class="form-check-label w-100 font-weight-normal" for="channel-{{ $ch.Channel }}">{{ $ch.Channel | formatNotificationChannel }}</label>
-                    <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="channel-{{ $ch.Channel }}" name="{{ $ch.Channel }}" {{ if $ch.Active }}checked{{ end }} />
-                  </div>
-                {{ end }}
-              </div>
-            </div>
-            <div class="col-sm-12 d-flex align-items-center justify-content-between mt-auto mt-sm-1 px-0">
-              <button class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
-              <button id="update-notification-channels" class="btn btn-primary btn-primary btn-sm w-50 ml-sm-3 text-white">Update</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+    {{ template "AddValidatorWatchlistModal" .AddValidatorWatchlistModal }}
+    {{ template "NotificationChannelModal" .NotificationChannelsModal }}
+    {{ template "RemoveSelectedValidatorsModal" . }}
+    {{ template "ManageNotificationModal" .ManageNotificationModal }}
+    {{ template "NetworkEventModal" .NetworkEventModal }}
   {{ end }}
 {{ end }}

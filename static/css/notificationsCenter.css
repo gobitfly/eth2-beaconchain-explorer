@@ -220,7 +220,7 @@ div.dataTables_scrollBody table {
 }
 
 #validators-notifications_wrapper .row:first-child > div.col-sm-12 {
-  padding: 0 1rem;
+  padding: 0 0.75rem;
 }
 
 #validators-notifications_paginate {
@@ -325,26 +325,26 @@ div.dataTables_scrollBody table {
 .twitter-typeahead {
   width: 100%;
 }
-#add-validator-search-container .tt-open {
+#AddValidatorWatchlistModal .tt-open {
   background-color: var(--dark);
   scrollbar-color: var(--light);
   scrollbar-width: thin;
 }
-#add-validator-search-container .tt-open::-webkit-scrollbar {
+#AddValidatorWatchlistModal .tt-open::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
-#add-validator-search-container .tt-open::-webkit-scrollbar-thumb {
+#AddValidatorWatchlistModal .tt-open::-webkit-scrollbar-thumb {
   background-color: var(--dark);
   border-radius: 10px;
   color: var(--light);
 }
-#add-validator-search-container .tt-suggestion .tt-cursor,
-#add-validator-search-container .tt-suggestion:hover {
+#AddValidatorWatchlistModal .tt-suggestion.tt-cursor,
+#AddValidatorWatchlistModal .tt-suggestion:hover {
   background-color: var(--primary);
   cursor: pointer;
 }
-#add-validator-search-container .tt-menu {
+#AddValidatorWatchlistModal .tt-menu {
   width: 100%;
   max-height: 19rem;
   margin-top: 4px;
@@ -357,7 +357,7 @@ div.dataTables_scrollBody table {
   overflow-y: auto;
   cursor: pointer;
 }
-#add-validator-search-container .tt-suggestion {
+#AddValidatorWatchlistModal .tt-suggestion {
   line-height: 34px;
   margin: 0;
   padding-left: 1rem;
