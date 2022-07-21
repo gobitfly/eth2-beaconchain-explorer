@@ -28,9 +28,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var notificationCenterParts []string = []string{"templates/layout.html", "templates/user/notificationsCenter.html", "templates/modals.html"}
+
 var userTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/settings.html"))
 var notificationTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/notifications.html"))
-var notificationsCenterTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/notificationsCenter.html"))
+var notificationsCenterTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles(notificationCenterParts...))
 var authorizeTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/authorize.html"))
 
 func UserAuthMiddleware(next http.Handler) http.Handler {
@@ -403,25 +405,15 @@ func getUserNetworkEvents(userId uint64) (interface{}, error) {
 		Events_ts    []result
 	}{Events_ts: []result{}}
 
-	c := 0
-	err := db.FrontendWriterDB.Get(&c, `
-		SELECT count(user_id)                 
-		FROM users_subscriptions      
-		WHERE user_id=$1 AND event_name=$2;
-	`, userId, strings.ToLower(utils.GetNetwork())+":"+string(types.NetworkLivenessIncreasedEventName))
+	net.IsSubscribed = true
+	n := []uint64{}
+	err := db.ReaderDb.Select(&n, `select extract( epoch from ts)::Int as ts from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '1 year';`)
 
-	if c > 0 {
-		net.IsSubscribed = true
-		n := []uint64{}
-		err = db.WriterDb.Select(&n, `select extract( epoch from ts)::Int as ts from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '1 year';`)
-
-		resp := []result{}
-		for _, item := range n {
-			resp = append(resp, result{Notification: "Finality issue", Network: utils.Config.Chain.Config.ConfigName, Timestamp: item * 1000})
-		}
-		net.Events_ts = resp
-
+	resp := []result{}
+	for _, item := range n {
+		resp = append(resp, result{Notification: "Finality issue", Network: utils.Config.Chain.Config.ConfigName, Timestamp: item * 1000})
 	}
+	net.Events_ts = resp
 
 	return net, err
 }
@@ -765,6 +757,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	link = link[:len(link)-1]
 
 	monitoringSubscriptions := make([]types.Subscription, 0)
+	networkSubscriptions := make([]types.Subscription, 0)
 
 	type metrics struct {
 		Validators         uint64
@@ -780,6 +773,8 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		Subscriptions: uint64(len(subscriptions)),
 	}
 
+	var networkData interface{}
+
 	for _, sub := range subscriptions {
 		monthAgo := time.Now().Add(time.Hour * 24 * 31 * -1)
 		if sub.LastSent != nil && sub.LastSent.After(monthAgo) {
@@ -793,6 +788,19 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 				metricsMonth.ProposalsMissed += 1
 			}
 		}
+		event := strings.TrimPrefix(sub.EventName, utils.GetNetwork()+":")
+		if strings.HasPrefix(event, "network_") {
+			networkSubscriptions = append(networkSubscriptions, sub)
+			if event == string(types.NetworkLivenessIncreasedEventName) {
+				networkData, err = getUserNetworkEvents(user.UserID)
+				if err != nil {
+					logger.Errorf("error retrieving network data for users: %v ", user.UserID, err)
+					http.Error(w, "Internal server error", 503)
+					return
+				}
+			}
+		}
+
 		val, ok := validatorMap[sub.EventFilter]
 		if !ok {
 			if (utils.GetNetwork() == "mainnet" && strings.HasPrefix(string(sub.EventName), "monitoring_")) || strings.HasPrefix(string(sub.EventName), utils.GetNetwork()+":"+"monitoring_") {
@@ -835,13 +843,6 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	machines, err := db.GetStatsMachine(user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving user machines: %v ", user.UserID, err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	networkData, err := getUserNetworkEvents(user.UserID)
-	if err != nil {
-		logger.Errorf("error retrieving network data for users: %v ", user.UserID, err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -903,7 +904,51 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	userNotificationsCenterData.NotificationChannels = notificationChannels
+	events := make([]types.EventNameCheckbox, 0)
+	for _, ev := range types.AddWatchlistEvents {
+		events = append(events, types.EventNameCheckbox{
+			EventLabel: ev.Desc,
+			EventName:  ev.Event,
+			Active:     false,
+		})
+	}
+
+	networkEvents := make([]types.EventNameCheckbox, 0)
+	for _, ev := range types.NetworkNotificationEvents {
+		networkEvents = append(networkEvents, types.EventNameCheckbox{
+			EventLabel: ev.Desc,
+			EventName:  ev.Event,
+			Active:     false,
+		})
+	}
+
+	for i, nEvent := range networkEvents {
+		for _, nSub := range networkSubscriptions {
+			if nSub.EventName == utils.GetNetwork()+":"+string(nEvent.EventName) {
+				networkEvents[i].Active = true
+			}
+		}
+	}
+
+	userNotificationsCenterData.ManageNotificationModal = types.ManageNotificationModal{
+		CsrfField: csrf.TemplateField(r),
+		Events:    events,
+	}
+
+	userNotificationsCenterData.AddValidatorWatchlistModal = types.AddValidatorWatchlistModal{
+		CsrfField: csrf.TemplateField(r),
+		Events:    events,
+	}
+
+	userNotificationsCenterData.NotificationChannelsModal = types.NotificationChannelsModal{
+		CsrfField:            csrf.TemplateField(r),
+		NotificationChannels: notificationChannels,
+	}
+	userNotificationsCenterData.NetworkEventModal = types.NetworkEventModal{
+		CsrfField: csrf.TemplateField(r),
+		Events:    networkEvents,
+	}
+
 	userNotificationsCenterData.DashboardLink = link
 	userNotificationsCenterData.Metrics = metricsMonth
 	userNotificationsCenterData.Validators = validatorTableData
@@ -912,6 +957,11 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	userNotificationsCenterData.Machines = machines
 	data.Data = userNotificationsCenterData
 	data.User = user
+
+	if data.Debug {
+		notificationsCenterTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles(notificationCenterParts...))
+		data.DebugTemplates = notificationCenterParts
+	}
 
 	err = notificationsCenterTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -2454,44 +2504,44 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 
 		// }
 
-		events := make([]types.WebhookPageEvent, 0, 7)
+		events := make([]types.EventNameCheckbox, 0, 7)
 
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Attestation Missed",
 			EventName:  types.ValidatorMissedAttestationEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorMissedAttestationEventName)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Proposal Missed",
 			EventName:  types.ValidatorMissedProposalEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorMissedProposalEventName)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Proposal Submitted",
 			EventName:  types.ValidatorExecutedProposalEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorExecutedProposalEventName)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Slashed",
 			EventName:  types.ValidatorGotSlashedEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorGotSlashedEventName)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Sync Commitee Soon",
 			EventName:  types.SyncCommitteeSoon,
 			Active:     utils.ElementExists(wh.EventNames, string(types.SyncCommitteeSoon)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Machine Offline",
 			EventName:  types.MonitoringMachineOfflineEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.MonitoringMachineOfflineEventName)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Machine Disk Full",
 			EventName:  types.MonitoringMachineDiskAlmostFullEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.MonitoringMachineDiskAlmostFullEventName)),
 		})
-		events = append(events, types.WebhookPageEvent{
+		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Machine CPU",
 			EventName:  types.MonitoringMachineCpuLoadEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.MonitoringMachineCpuLoadEventName)),
@@ -2533,7 +2583,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 			ID:           wh.ID,
 			Retries:      template.HTML(fmt.Sprintf("%d", wh.Retries)),
 			UrlFull:      wh.Url,
-			Url:          template.HTML(fmt.Sprintf(`<span>%v</span><span style="margin-left: .5rem;">%v</span>`, hostname, utils.CopyButton(wh.Url))),
+			Url:          template.HTML(fmt.Sprintf(`<span>%v</span><span style="margin-left: .5rem;">%v</span>`, hostname, utils.CopyButtonText(wh.Url))),
 			LastSent:     ls,
 			Events:       events,
 			Discord:      isDiscord,
@@ -2548,37 +2598,37 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 
 	// logger.Infof("events: %+v", webhooks)
 
-	events := make([]types.WebhookPageEvent, 0, 7)
+	events := make([]types.EventNameCheckbox, 0, 7)
 
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Attestation Missed",
 		EventName:  types.ValidatorMissedAttestationEventName,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Proposal Missed",
 		EventName:  types.ValidatorMissedProposalEventName,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Proposal Submitted",
 		EventName:  types.ValidatorExecutedProposalEventName,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Got Slashed",
 		EventName:  types.ValidatorGotSlashedEventName,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Sync Commitee Soon",
 		EventName:  types.SyncCommitteeSoon,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Machine Offline",
 		EventName:  types.MonitoringMachineOfflineEventName,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Machine Disk Full",
 		EventName:  types.MonitoringMachineDiskAlmostFullEventName,
 	})
-	events = append(events, types.WebhookPageEvent{
+	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Machine CPU",
 		EventName:  types.MonitoringMachineCpuLoadEventName,
 	})

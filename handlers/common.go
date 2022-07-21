@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/price"
@@ -10,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/lib/pq"
@@ -228,4 +230,20 @@ func GetTruncCurrentPriceFormatted(r *http.Request) string {
 	price := GetCurrentPrice(r)
 	symbol := GetCurrencySymbol(r)
 	return fmt.Sprintf("%s %s", symbol, utils.KFormatterEthPrice(price))
+}
+
+// GetValidatorIndexFrom gets the validator index from users input
+func GetValidatorIndexFrom(userInput string) (pubKey []byte, validatorIndex uint64, err error) {
+	validatorIndex, err = strconv.ParseUint(userInput, 10, 64)
+	if err == nil {
+		pubKey, err = db.GetValidatorPublicKey(validatorIndex)
+		return
+	}
+
+	pubKey, err = hex.DecodeString(strings.Replace(userInput, "0x", "", -1))
+	if err == nil {
+		validatorIndex, err = db.GetValidatorIndex(pubKey)
+		return
+	}
+	return
 }

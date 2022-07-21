@@ -61,6 +61,7 @@
         processing: true,
         serverSide: true,
         ordering: false,
+        stateSave: true,
         searching: true,
         ajax: window.location.pathname + "/votes",
         pageLength: 10,
@@ -146,7 +147,9 @@
             <a href="/block/{{ .PreviousSlot }}"><i class="fa fa-chevron-left"></i></a>
           {{ end }}
           <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block at Slot {{ formatAddCommas .Slot }}</span>
-          <a href="/block/{{ addUI64 .Slot 1 }}"><i class="fa fa-chevron-right"></i></a>
+          {{ if gt .NextSlot 0 }}
+            <a href="/block/{{ .NextSlot }}"><i class="fa fa-chevron-right"></i></a>
+          {{ end }}
         </h1>
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">

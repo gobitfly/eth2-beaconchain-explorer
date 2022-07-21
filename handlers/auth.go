@@ -246,7 +246,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Index(w, r)
-	http.Redirect(w, r, "/user/notifications-center", http.StatusSeeOther)
+	http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 }
 
 // Logout handles ending the user session.
