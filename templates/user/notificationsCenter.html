@@ -20,7 +20,7 @@
   {{ with .Data }}
     <div class="container-fluid container-xl container-min-width container-custom">
       {{ if .Flashes }}
-      {{ range $i, $flash := .Flashes }}
+        {{ range $i, $flash := .Flashes }}
           <div class="alert {{ if contains $flash "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
             <div class="p-2">{{ $flash | formatHTML }}</div>
             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
@@ -217,7 +217,7 @@
                     <span class="d-inline text-nowrap">Remove Selected</span>
                   </span>
                 </a>
-            </div>
+              </div>
             </div>
           </div>
         </div>
@@ -330,15 +330,10 @@
       </div>
     </div>
 
-
-
-
-    {{ template "AddValidatorWatchlistModal" .AddValidatorWatchlistModal}}
-    {{ template "NotificationChannelModal" .NotificationChannelsModal}}
+    {{ template "AddValidatorWatchlistModal" .AddValidatorWatchlistModal }}
+    {{ template "NotificationChannelModal" .NotificationChannelsModal }}
     {{ template "RemoveSelectedValidatorsModal" . }}
     {{ template "ManageNotificationModal" .ManageNotificationModal }}
     {{ template "NetworkEventModal" .NetworkEventModal }}
-
-
   {{ end }}
 {{ end }}
