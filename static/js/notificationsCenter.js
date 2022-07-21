@@ -663,14 +663,14 @@ function loadValidatorsData(data) {
   // }
 }
 
-function remove_item_from_event_container(pubkey) {
-  for (let item of $('#selected-validators-events-container').find('span')) {
-    if (pubkey === $(item).attr('pk')) {
-      $(item).remove()
-      return
-    }
-  }
-}
+// function remove_item_from_event_container(pubkey) {
+//   for (let item of $('#selected-validators-events-container').find('span')) {
+//     if (pubkey === $(item).attr('pk')) {
+//       $(item).remove()
+//       return
+//     }
+//   }
+// }
 
 $(function () {
   if (document.getElementsByName("CsrfField")[0] !== undefined) {

@@ -17,10 +17,13 @@ import (
 )
 
 var epochTemplate = template.Must(template.New("epoch").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epoch.html"))
+var epochFutureTemplate = template.Must(template.New("epochFuture").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epochFuture.html"))
 var epochNotFoundTemplate = template.Must(template.New("epochnotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epochnotfound.html"))
 
 // Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
+	const MaxEpochValue = 4294967296 // we only render a page for epochs up to this value
+
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	epochString := strings.Replace(vars["epoch"], "0x", "", -1)
@@ -67,14 +70,48 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		FROM epochs 
 		WHERE epoch = $1`, epoch)
 	if err != nil {
-		//logger.Errorf("error getting epoch data: %v", err)
-		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+		//Epoch not in database -> Show future epoch
+		if epoch > MaxEpochValue {
+			err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			if err != nil {
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
 			return
 		}
+
+		//Create placeholder structs
+		blocks := make([]*types.IndexPageDataBlocks, 32)
+		for i := range blocks {
+			slot := uint64(i) + epoch*32
+			block := types.IndexPageDataBlocks{
+				Epoch:  epoch,
+				Slot:   slot,
+				Ts:     utils.SlotToTime(slot),
+				Status: 4,
+			}
+			blocks[31-i] = &block
+		}
+		epochPageData = types.EpochPageData{
+			Epoch:         epoch,
+			BlocksCount:   32,
+			PreviousEpoch: epoch - 1,
+			NextEpoch:     epoch + 1,
+			Ts:            utils.EpochToTime(epoch),
+			Blocks:        blocks,
+		}
+
+		//Render template
+		data.Data = epochPageData
+		err = epochFutureTemplate.ExecuteTemplate(w, "layout", data)
+		if err != nil {
+			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			return
+		}
+
 		return
 	}
 
