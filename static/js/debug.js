@@ -136,47 +136,47 @@
       })
     }
 
-    async function renderNewTemplate(data) {
-      console.log("tempalte data", data)
+    // async function renderNewTemplate(data) {
+    //   console.log("tempalte data", data)
 
-      let templates = JSON.parse(data).DebugTemplates
-      console.log("rendering templates", templates)
+    //   let templates = JSON.parse(data).DebugTemplates
+    //   console.log("rendering templates", templates)
 
-      const tmplRequests = []
-      for (let i = 0; i < templates.length; i++) {
-        tmplRequests.push(fetch("/" + templates[i]))
-      }
+    //   const tmplRequests = []
+    //   for (let i = 0; i < templates.length; i++) {
+    //     tmplRequests.push(fetch("/" + templates[i]))
+    //   }
 
-      const results = await Promise.all(tmplRequests)
+    //   const results = await Promise.all(tmplRequests)
 
-      const tmplResults = []
-      for (let i = 0; i < results.length; i++) {
-        tmplResults.push(await results[i].text())
-      }
+    //   const tmplResults = []
+    //   for (let i = 0; i < results.length; i++) {
+    //     tmplResults.push(await results[i].text())
+    //   }
 
-      console.log("results:", tmplRequests)
+    //   console.log("results:", tmplRequests)
 
-      try {
-        // data JSON.stringify({ Data: { Title: "friendly world" }})
-        let tmpl = renderTemplate(tmplResults.join("\n"), data)
-        console.log("templ rendered: ", tmpl)
-        var parser = new DOMParser()
-        var htmlDoc = parser.parseFromString(tmpl, "text/html")
-        // console.log('SCRIPTS',htmlDoc.scripts)
-        document.documentElement.replaceWith(htmlDoc.documentElement)
-        for (let script of Array.from(document.scripts)) {
-          let ns = document.createElement("script")
-          if (script.src) {
-            continue
-          }
-          console.log("executing script: ", script)
-          ns.innerHTML = "(function scope(){" + script.innerHTML + "})()"
-          document.body.appendChild(ns)
-        }
-      } catch (err) {
-        console.error("err parsing text", err)
-      }
-    }
+    //   try {
+    //     // data JSON.stringify({ Data: { Title: "friendly world" }})
+    //     let tmpl = renderTemplate(tmplResults.join("\n"), data)
+    //     console.log("templ rendered: ", tmpl)
+    //     var parser = new DOMParser()
+    //     var htmlDoc = parser.parseFromString(tmpl, "text/html")
+    //     // console.log('SCRIPTS',htmlDoc.scripts)
+    //     document.documentElement.replaceWith(htmlDoc.documentElement)
+    //     for (let script of Array.from(document.scripts)) {
+    //       let ns = document.createElement("script")
+    //       if (script.src) {
+    //         continue
+    //       }
+    //       console.log("executing script: ", script)
+    //       ns.innerHTML = "(function scope(){" + script.innerHTML + "})()"
+    //       document.body.appendChild(ns)
+    //     }
+    //   } catch (err) {
+    //     console.error("err parsing text", err)
+    //   }
+    // }
 
     _godebug.initialize = function (data) {
       // document.body.appendChild(this.createWasmExec())
