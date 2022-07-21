@@ -1083,6 +1083,7 @@ type UserNotificationsCenterPageData struct {
 	NotificationChannelsModal  NotificationChannelsModal
 	AddValidatorWatchlistModal AddValidatorWatchlistModal
 	ManageNotificationModal    ManageNotificationModal
+	NetworkEventModal          NetworkEventModal
 	// Subscriptions []*Subscription
 }
 
@@ -1299,6 +1300,13 @@ type AddValidatorWatchlistModal struct {
 	Events          []EventNameCheckbox
 }
 type ManageNotificationModal struct {
+	CsrfField       template.HTML
+	ValidatorIndex  int64
+	ValidatorPubkey string
+	Events          []EventNameCheckbox
+}
+
+type NetworkEventModal struct {
 	CsrfField       template.HTML
 	ValidatorIndex  int64
 	ValidatorPubkey string

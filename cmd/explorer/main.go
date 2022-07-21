@@ -376,6 +376,7 @@ func main() {
 			authRouter.HandleFunc("/notifications/channels", handlers.UsersNotificationChannels).Methods("POST")
 			authRouter.HandleFunc("/notifications/data", handlers.UserNotificationsData).Methods("GET")
 			authRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST")
+			authRouter.HandleFunc("/notifications/network/update", handlers.UserModalAddNetworkEvent).Methods("POST")
 			authRouter.HandleFunc("/watchlist/add", handlers.UsersModalAddValidator).Methods("POST")
 			authRouter.HandleFunc("/watchlist/remove", handlers.UserModalRemoveSelectedValidator).Methods("POST")
 			authRouter.HandleFunc("/watchlist/update", handlers.UserModalManageNotificationModal).Methods("POST")

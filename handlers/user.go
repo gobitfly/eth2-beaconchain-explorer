@@ -405,25 +405,15 @@ func getUserNetworkEvents(userId uint64) (interface{}, error) {
 		Events_ts    []result
 	}{Events_ts: []result{}}
 
-	c := 0
-	err := db.FrontendWriterDB.Get(&c, `
-		SELECT count(user_id)                 
-		FROM users_subscriptions      
-		WHERE user_id=$1 AND event_name=$2;
-	`, userId, strings.ToLower(utils.GetNetwork())+":"+string(types.NetworkLivenessIncreasedEventName))
+	net.IsSubscribed = true
+	n := []uint64{}
+	err := db.ReaderDb.Select(&n, `select extract( epoch from ts)::Int as ts from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '1 year';`)
 
-	if c > 0 {
-		net.IsSubscribed = true
-		n := []uint64{}
-		err = db.WriterDb.Select(&n, `select extract( epoch from ts)::Int as ts from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '1 year';`)
-
-		resp := []result{}
-		for _, item := range n {
-			resp = append(resp, result{Notification: "Finality issue", Network: utils.Config.Chain.Config.ConfigName, Timestamp: item * 1000})
-		}
-		net.Events_ts = resp
-
+	resp := []result{}
+	for _, item := range n {
+		resp = append(resp, result{Notification: "Finality issue", Network: utils.Config.Chain.Config.ConfigName, Timestamp: item * 1000})
 	}
+	net.Events_ts = resp
 
 	return net, err
 }
@@ -767,6 +757,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	link = link[:len(link)-1]
 
 	monitoringSubscriptions := make([]types.Subscription, 0)
+	networkSubscriptions := make([]types.Subscription, 0)
 
 	type metrics struct {
 		Validators         uint64
@@ -782,6 +773,8 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		Subscriptions: uint64(len(subscriptions)),
 	}
 
+	var networkData interface{}
+
 	for _, sub := range subscriptions {
 		monthAgo := time.Now().Add(time.Hour * 24 * 31 * -1)
 		if sub.LastSent != nil && sub.LastSent.After(monthAgo) {
@@ -795,6 +788,19 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 				metricsMonth.ProposalsMissed += 1
 			}
 		}
+		event := strings.TrimPrefix(sub.EventName, utils.GetNetwork()+":")
+		if strings.HasPrefix(event, "network_") {
+			networkSubscriptions = append(networkSubscriptions, sub)
+			if event == string(types.NetworkLivenessIncreasedEventName) {
+				networkData, err = getUserNetworkEvents(user.UserID)
+				if err != nil {
+					logger.Errorf("error retrieving network data for users: %v ", user.UserID, err)
+					http.Error(w, "Internal server error", 503)
+					return
+				}
+			}
+		}
+
 		val, ok := validatorMap[sub.EventFilter]
 		if !ok {
 			if (utils.GetNetwork() == "mainnet" && strings.HasPrefix(string(sub.EventName), "monitoring_")) || strings.HasPrefix(string(sub.EventName), utils.GetNetwork()+":"+"monitoring_") {
@@ -837,13 +843,6 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	machines, err := db.GetStatsMachine(user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving user machines: %v ", user.UserID, err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	networkData, err := getUserNetworkEvents(user.UserID)
-	if err != nil {
-		logger.Errorf("error retrieving network data for users: %v ", user.UserID, err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -906,13 +905,29 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	events := make([]types.EventNameCheckbox, 0)
-
-	for desc, name := range types.AddWatchlistEvents {
+	for _, ev := range types.AddWatchlistEvents {
 		events = append(events, types.EventNameCheckbox{
-			EventLabel: desc,
-			EventName:  name,
+			EventLabel: ev.Desc,
+			EventName:  ev.Event,
 			Active:     false,
 		})
+	}
+
+	networkEvents := make([]types.EventNameCheckbox, 0)
+	for _, ev := range types.NetworkNotificationEvents {
+		networkEvents = append(networkEvents, types.EventNameCheckbox{
+			EventLabel: ev.Desc,
+			EventName:  ev.Event,
+			Active:     false,
+		})
+	}
+
+	for i, nEvent := range networkEvents {
+		for _, nSub := range networkSubscriptions {
+			if nSub.EventName == utils.GetNetwork()+":"+string(nEvent.EventName) {
+				networkEvents[i].Active = true
+			}
+		}
 	}
 
 	userNotificationsCenterData.ManageNotificationModal = types.ManageNotificationModal{
@@ -928,6 +943,10 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	userNotificationsCenterData.NotificationChannelsModal = types.NotificationChannelsModal{
 		CsrfField:            csrf.TemplateField(r),
 		NotificationChannels: notificationChannels,
+	}
+	userNotificationsCenterData.NetworkEventModal = types.NetworkEventModal{
+		CsrfField: csrf.TemplateField(r),
+		Events:    networkEvents,
 	}
 
 	userNotificationsCenterData.DashboardLink = link

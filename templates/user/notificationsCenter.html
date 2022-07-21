@@ -153,12 +153,12 @@
             <div>
               <h2 class="heading-l2">Network</h2>
             </div>
-            <button class="btn btn-primary ml-sm-3 text-white" data-toggle="modal" data-target="#addNetworkEventModal">
+            <button class="btn btn-primary ml-sm-3 text-white" data-toggle="modal" data-target="#NetworkEventModal">
               <span class="text-nowrap d-none d-sm-inline">Add network event</span>
               <span class="text-nowrap d-sm-none">Add</span>
             </button>
           </div>
-          {{ if eq (len .Network.Events_ts) 0 }}
+          {{ if not .Network }}
             <div class="ml-3 mx-sm-auto text-sm-center text-empty-section">
               <h3 class="mt-5 heading-l2">No network notifications yet</h3>
               <h4 class="mt-2 heading-l3">Subscribe to events to receive notifications</h4>
@@ -329,36 +329,6 @@
         </div>
       </div>
     </div>
-    <!-- Add Network events modal -->
-    <div class="modal fade custom-modal" id="addNetworkEventModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addNetworkEventLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
-        <div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
-          <div class="mb-1 mb-sm-4 custom-remove-modal-close">
-            <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-          </div>
-          <div class="col-sm-12 d-flex flex-column align-items-center justify-content-center mb-3 mb-sm-5 px-0 h6">
-            <div class="w-100 heading-l2 text-center">
-              Network Notifications
-              <span class="d-block mt-3 heading-l4 text-left">Select events to receive email notifications about or turn notifications off</span>
-            </div>
-            <div class="w-100 my-3">
-              <div class="form-check form-check-inline w-100 my-2">
-                <label class="form-check-label mr-auto font-weight-normal" for="finalityIssues">Finality issues</label>
-                <input class="form-check-input checkbox-custom-size" type="checkbox" id="finalityIssues" value="" event="network_liveness_increased" {{ if .Network.IsSubscribed }}checked="true"{{ end }} />
-              </div>
-              <!-- <div class="form-check form-check-inline w-100 my-2">
-							<label class="form-check-label mr-auto font-weight-normal" for="participationIssues">Participation issues</label>
-							<input class="form-check-input checkbox-custom-size" type="checkbox" id="participationIssues" value="" event="network_participation_decreased" {{ if .Network.IsSubscribed }}checked="true"{{ end }}>
-						</div> -->
-            </div>
-          </div>
-          <div class="col-sm-12 d-flex align-items-center justify-content-between mt-auto mt-sm-1 px-0">
-            <button class="btn btn-dark btn-sm w-50 mr-2 mr-sm-3 text-white" data-dismiss="modal">Cancel</button>
-            <button id="add-network-subscription" class="btn btn-primary btn-primary btn-sm w-50 ml-sm-3 text-white">Save</button>
-          </div>
-        </div>
-      </div>
-    </div>
 
 
 
@@ -367,6 +337,7 @@
     {{ template "NotificationChannelModal" .NotificationChannelsModal}}
     {{ template "RemoveSelectedValidatorsModal" . }}
     {{ template "ManageNotificationModal" .ManageNotificationModal }}
+    {{ template "NetworkEventModal" .NetworkEventModal }}
 
 
   {{ end }}

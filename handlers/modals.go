@@ -34,15 +34,12 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 		return
 	}
-	events := make(map[types.EventName]bool, 0)
 
-	events[types.ValidatorMissedAttestationEventName] = "on" == r.FormValue(string(types.ValidatorMissedAttestationEventName))
-	events[types.ValidatorMissedProposalEventName] = "on" == r.FormValue(string(types.ValidatorMissedProposalEventName))
-	events[types.ValidatorExecutedProposalEventName] = "on" == r.FormValue(string(types.ValidatorExecutedProposalEventName))
-	events[types.ValidatorGotSlashedEventName] = "on" == r.FormValue(string(types.ValidatorGotSlashedEventName))
-	events[types.SyncCommitteeSoon] = "on" == r.FormValue(string(types.SyncCommitteeSoon))
-
-	all := "on" == r.FormValue("all")
+	// events[types.ValidatorMissedAttestationEventName] = "on" == r.FormValue(string(types.ValidatorMissedAttestationEventName))
+	// events[types.ValidatorMissedProposalEventName] = "on" == r.FormValue(string(types.ValidatorMissedProposalEventName))
+	// events[types.ValidatorExecutedProposalEventName] = "on" == r.FormValue(string(types.ValidatorExecutedProposalEventName))
+	// events[types.ValidatorGotSlashedEventName] = "on" == r.FormValue(string(types.ValidatorGotSlashedEventName))
+	// events[types.SyncCommitteeSoon] = "on" == r.FormValue(string(types.SyncCommitteeSoon))
 
 	err = db.AddToWatchlist([]db.WatchlistEntry{{UserId: user.UserID, Validator_publickey: hex.EncodeToString(pubkey)}}, utils.GetNetwork())
 	if err != nil {
@@ -52,12 +49,48 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for eventName, active := range events {
-		if active || all {
-			err := db.AddSubscription(user.UserID, utils.GetNetwork(), eventName, hex.EncodeToString(pubkey), 0)
+	for _, ev := range types.AddWatchlistEvents {
+		if r.FormValue(string(ev.Event)) == "on" || r.FormValue("all") == "on" {
+			err := db.AddSubscription(user.UserID, utils.GetNetwork(), ev.Event, hex.EncodeToString(pubkey), 0)
 			if err != nil {
 				logger.WithError(err).Error("error adding subscription for user: %v", user.UserID)
 				utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding your validator to the watchlist, please try again in a bit.")
+				http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
+				return
+			}
+		}
+	}
+
+	http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
+}
+
+// UserModalAddNetworkEvent subscribes the user for a network notification
+func UserModalAddNetworkEvent(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(r)
+
+	err := r.ParseForm()
+	if err != nil {
+		logger.WithError(err).Errorf("error parsing form")
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating your network subscriptions, please try again in a bit.")
+		http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
+		return
+	}
+
+	for _, ev := range types.NetworkNotificationEvents {
+		if r.FormValue(string(ev.Event)) == "on" || r.FormValue("all") == "on" {
+			err := db.AddSubscription(user.UserID, utils.GetNetwork(), ev.Event, string(ev.Event), 0)
+			if err != nil {
+				logger.WithError(err).Error("error adding subscription for user: %v", user.UserID)
+				utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding a network subscription, please try again in a bit.")
+				http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
+				return
+			}
+		} else {
+			err := db.DeleteSubscription(user.UserID, utils.GetNetwork(), ev.Event, string(ev.Event))
+			if err != nil {
+				logger.WithError(err).Error("error adding subscription for user: %v", user.UserID)
+				utils.SetFlash(w, r, authSessionName, "Error: Something went wrong deleting a network subscription, please try again in a bit.")
 				http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 				return
 			}

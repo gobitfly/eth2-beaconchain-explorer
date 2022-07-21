@@ -780,6 +780,8 @@ $(function () {
     }
   })
 
+
+
   // on modal open after click event to validators table edit button
   $("#ManageNotificationModal").on("show.bs.modal", function (e) {
     $("#ManageNotificationModal-form-content").show()
@@ -788,8 +790,11 @@ $(function () {
       $(this).prop('checked', false)
     })
 
+    
     let rowID = $(this).attr('rowid')
     if (rowID) {
+      let inputs = document.querySelectorAll('#ManageNotificationModal input[type="checkbox"]') 
+      let activeCount = 0
       let subscriptions = $(this).attr('subscriptions')
       document.getElementById('ManageNotificationModal-validators').value = rowID
       if (subscriptions) {
@@ -797,7 +802,12 @@ $(function () {
         for (let i = 0; i < subscriptions.length; i++) {
           let sub = subscriptions[i];
           $("#watchlist-selected-" + sub).prop('checked', true)
+          activeCount += 1
         }
+      }
+
+      if (activeCount == (inputs.length - 1)) {
+        $('#ManageNotificationModal-all').prop('checked', true)
       }
 
     } else {
@@ -925,11 +935,11 @@ $(function () {
         body: "",
       }).then((res) => {
         if (res.status == 200) {
-          $("#addNetworkEventModal").modal("hide")
+          $("#NetworkEventModal").modal("hide")
           window.location.reload()
         } else {
           alert("Error updating network subscriptions")
-          $("#addNetworkEventModal").modal("hide")
+          $("#NetworkEventModal").modal("hide")
           window.location.reload()
         }
         $(this).html("Save")
@@ -943,11 +953,11 @@ $(function () {
         body: "",
       }).then((res) => {
         if (res.status == 200) {
-          $("#addNetworkEventModal").modal("hide")
+          $("#NetworkEventModal").modal("hide")
           window.location.reload()
         } else {
           alert("Error updating network subscriptions")
-          $("#addNetworkEventModal").modal("hide")
+          $("#NetworkEventModal").modal("hide")
           window.location.reload()
         }
         $(this).html("Save")
@@ -955,6 +965,8 @@ $(function () {
     }
   })
 })
+
+
 
 // Sets a hidden input with the selected validators
 $('#RemoveSelectedValidatorsModal').on('show.bs.modal', function (event) {

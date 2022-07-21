@@ -2,15 +2,18 @@
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
   <script>
+    console.log({{.}})
     $(document).ready(function () {
       $("#epochs").DataTable({
         processing: true,
         serverSide: true,
         ordering: false,
         searching: true,
+        deferLoading: {{.RecordsTotal}},
         ajax: "/epochs/data",
         pagingType: "input",
         stateSave: true,
+        stateDuration: true,
         pageLength: 50,
         language: {
           searchPlaceholder: "Search by Epoch Number",
@@ -20,6 +23,7 @@
             next: '<i class="fas fa-chevron-right"></i>',
           },          
         },
+        data: {{ .Data }},
         preDrawCallback: function () {
           // this does not always work.. not sure how to solve the staying tooltip
           try {
