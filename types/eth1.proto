@@ -5,19 +5,7 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "./types";
 
-message Eth1BlockContainer {
-    Eth1Header header = 1;
-    map<string, Eth1Transaction> transactions = 2;
-    map<string, Eth1TransactionReceipt> receipts = 3;
-    map<string, Eth1Log> logs = 4;
-    repeated Eth1Header uncles = 5;
-    repeated ERC20Transfer erc20_transfers = 6;
-    repeated ERC721Transfer erc721_transfers = 7;
-    repeated ERC1155Transfer erc1155_transfers = 8;
-    map<string, Eth1InternalTransactionList> internal_transactions = 9;
-}
-
-message Eth1Header {
+message Eth1Block {
     bytes hash = 1;
     bytes parent_hash = 2;
     bytes uncle_hash = 3;
@@ -32,18 +20,10 @@ message Eth1Header {
     google.protobuf.Timestamp time = 12;
     bytes extra = 13;
     bytes mix_digest = 14;
-    repeated bytes transaction_hashes = 15;
-    repeated bytes uncle_hashes = 16;
     bytes bloom = 17;
     bytes base_fee = 18;
-    uint64 tx_count = 19;
-    uint64 uncles_count = 20;
-    bytes mining_reward = 21;
-    bytes base_block_reward = 22;
-    bytes uncle_inclusion_reward = 23;
-    bytes total_fee = 24;
-    bytes miner_min_gas_price = 25;
-    bytes mev_reward = 26;
+    repeated Eth1Block uncles = 20;
+    repeated Eth1Transaction transactions = 21;
 }
 
 message Eth1Transaction {
@@ -68,70 +48,32 @@ message Eth1Transaction {
     repeated AccessList access_list = 15;
 
     bytes hash = 16;
-    google.protobuf.Timestamp time = 17;
-    uint64 index = 18;
-}
 
-message Eth1InternalTransaction {
-    bytes hash = 1;
-    uint64 block = 2;
-    repeated int64 index = 3;
-    google.protobuf.Timestamp time = 4;
-    string type = 5;
-    bytes from = 6;
-    bytes to = 7;
-    bytes value = 8;
-    bytes input = 9;
-    bytes output = 10;
-    repeated Eth1InternalTransaction calls = 11;
-}
+    // Receipt fields
+    bytes contract_address = 17;
+    uint64 commulative_gas_used = 18;
+    uint64 gas_used = 19;
+    bytes logs_bloom = 20;
+    uint64 status = 21;
+    string error_msg = 22;
+    repeated Eth1Log logs = 23;
 
-message Eth1InternalTransactionList {
-    repeated Eth1InternalTransaction list = 1;
-}
-
-message Eth1TransactionReceipt {
-    bytes block_hash = 1;
-    uint64 block_number = 2;
-    bytes contract_address = 3;
-    uint64 commulative_gas_used = 4;
-    uint64 gas_used = 5;
-    bytes logs_bloom = 6;
-    uint64 status = 7;
-    uint64 transaction_index = 8;
+    // Internal transactions
+    repeated Eth1InternalTransaction itx = 24;
 }
 
 message Eth1Log {
     bytes address = 1;
-    bytes data = 4;
-    uint64 log_index = 5;
-    bool removed = 6;
-    repeated bytes topics = 7;
-    bytes transaction_hash = 8;
-    bytes transaction_index = 9;
+    bytes data = 2;
+    bool removed = 3;
+    repeated bytes topics = 4;
 }
 
-message ERC20Transfer {
-    bytes token_address = 1;
+message Eth1InternalTransaction {
+    string type = 1;
     bytes from = 2;
     bytes to = 3;
     bytes value = 4;
-    bytes tx_hash = 5;
-}
-
-message ERC721Transfer {
-    bytes token_address = 1;
-    bytes from = 2;
-    bytes to = 3;
-    bytes token_id = 4;
-    bytes tx_hash = 5;
-}
-
-message ERC1155Transfer {
-    bytes token_address = 1;
-    bytes from = 2;
-    bytes to = 3;
-    bytes token_id = 4;
-    bytes value = 5;
-    bytes tx_hash = 6;
+    string error_msg = 5;
+    string path = 6;
 }

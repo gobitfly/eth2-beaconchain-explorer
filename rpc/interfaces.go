@@ -21,7 +21,7 @@ type Client interface {
 }
 
 type Eth1Client interface {
-	GetBlock(number uint64) (*types.Eth1BlockContainer, *types.GetBlockTimings, error)
+	GetBlock(number uint64) (*types.Eth1Block, *types.GetBlockTimings, error)
 	GetLatestEth1BlockNumber() (uint64, error)
 	Close()
 }

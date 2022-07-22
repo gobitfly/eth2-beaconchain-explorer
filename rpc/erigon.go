@@ -3,16 +3,17 @@ package rpc
 import (
 	"context"
 	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	geth_rpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -50,7 +51,7 @@ func (client *ErigonClient) Close() {
 	client.ethClient.Close()
 }
 
-func (client *ErigonClient) GetBlock(number uint64) (*types.Eth1BlockContainer, *types.GetBlockTimings, error) {
+func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.GetBlockTimings, error) {
 	start := time.Now()
 	timings := &types.GetBlockTimings{}
 
@@ -63,44 +64,32 @@ func (client *ErigonClient) GetBlock(number uint64) (*types.Eth1BlockContainer, 
 	timings.Headers = time.Since(start)
 	start = time.Now()
 
-	// initialize fields for block reward calculation
-	reward := new(big.Int).Set(utils.Eth1BlockReward(block.NumberU64()))
-	tempReward := new(big.Int)
-	uncleInclusionReward := new(big.Int)
+	c := &types.Eth1Block{
+		Hash:         block.Hash().Bytes(),
+		ParentHash:   block.ParentHash().Bytes(),
+		UncleHash:    block.UncleHash().Bytes(),
+		Coinbase:     block.Coinbase().Bytes(),
+		Root:         block.Root().Bytes(),
+		TxHash:       block.TxHash().Bytes(),
+		ReceiptHash:  block.ReceiptHash().Bytes(),
+		Difficulty:   block.Difficulty().Bytes(),
+		Number:       block.NumberU64(),
+		GasLimit:     block.GasLimit(),
+		GasUsed:      block.GasUsed(),
+		Time:         timestamppb.New(time.Unix(int64(block.Time()), 0)),
+		Extra:        block.Extra(),
+		MixDigest:    block.MixDigest().Bytes(),
+		Bloom:        block.Bloom().Bytes(),
+		Uncles:       []*types.Eth1Block{},
+		Transactions: []*types.Eth1Transaction{},
+	}
 
-	c := &types.Eth1BlockContainer{
-		Header: &types.Eth1Header{
-			Hash:              block.Hash().Bytes(),
-			ParentHash:        block.ParentHash().Bytes(),
-			UncleHash:         block.UncleHash().Bytes(),
-			Coinbase:          block.Coinbase().Bytes(),
-			Root:              block.Root().Bytes(),
-			TxHash:            block.TxHash().Bytes(),
-			ReceiptHash:       block.ReceiptHash().Bytes(),
-			Difficulty:        block.Difficulty().Bytes(),
-			Number:            block.NumberU64(),
-			GasLimit:          block.GasLimit(),
-			GasUsed:           block.GasUsed(),
-			Time:              timestamppb.New(time.Unix(int64(block.Time()), 0)),
-			Extra:             block.Extra(),
-			MixDigest:         block.MixDigest().Bytes(),
-			TransactionHashes: make([][]byte, 0, len(block.Transactions())), // TODO: Populate tx hashes
-			UncleHashes:       make([][]byte, 0, len(block.Uncles())),
-			Bloom:             block.Bloom().Bytes(),
-			TxCount:           uint64(len(block.Transactions())),
-			UnclesCount:       uint64(len(block.Uncles())),
-		},
-		Transactions:         map[string]*types.Eth1Transaction{},
-		Receipts:             map[string]*types.Eth1TransactionReceipt{},
-		Logs:                 map[string]*types.Eth1Log{},
-		Uncles:               make([]*types.Eth1Header, 0, len(block.Uncles())),
-		Erc20Transfers:       make([]*types.ERC20Transfer, 0, 1000),
-		Erc721Transfers:      make([]*types.ERC721Transfer, 0, 1000),
-		InternalTransactions: map[string]*types.Eth1InternalTransactionList{},
+	if block.BaseFee() != nil {
+		c.BaseFee = block.BaseFee().Bytes()
 	}
 
 	for _, uncle := range block.Uncles() {
-		pbUncle := &types.Eth1Header{
+		pbUncle := &types.Eth1Block{
 			Hash:        uncle.Hash().Bytes(),
 			ParentHash:  uncle.ParentHash.Bytes(),
 			UncleHash:   uncle.UncleHash.Bytes(),
@@ -118,35 +107,15 @@ func (client *ErigonClient) GetBlock(number uint64) (*types.Eth1BlockContainer, 
 			Bloom:       uncle.Bloom.Bytes(),
 		}
 
-		// Add the uncle inclusion reward to the block reward
-		tempReward.Add(big.NewInt(uncle.Number.Int64()), big.NewInt(8))
-		tempReward.Sub(tempReward, big.NewInt(block.Number().Int64()))
-		tempReward.Mul(tempReward, utils.Eth1BlockReward(block.Number().Uint64()))
-		tempReward.Div(tempReward, big.NewInt(8))
-
-		pbUncle.MiningReward = tempReward.Bytes()
-		pbUncle.BaseBlockReward = pbUncle.MiningReward
-		pbUncle.UncleInclusionReward = big.NewInt(0).Bytes()
-		pbUncle.TotalFee = big.NewInt(0).Bytes()
-
 		c.Uncles = append(c.Uncles, pbUncle)
-
-		tempReward.Div(utils.Eth1BlockReward(block.Number().Uint64()), big.NewInt(32))
-		uncleInclusionReward.Add(uncleInclusionReward, tempReward)
-		reward.Add(reward, tempReward)
-
-		pbUncle.MinerMinGasPrice = big.NewInt(0).Bytes()
 	}
-
-	totalFee := new(big.Int)
 
 	receipts := make([]*geth_types.Receipt, len(block.Transactions()))
 	reqs := make([]rpc.BatchElem, len(block.Transactions()))
 
 	txs := block.Transactions()
 
-	for i, tx := range txs {
-		c.Header.TransactionHashes = append(c.Header.TransactionHashes, tx.Hash().Bytes())
+	for _, tx := range txs {
 
 		msg, err := tx.AsMessage(geth_types.NewLondonSigner(tx.ChainId()), big.NewInt(1))
 		if err != nil {
@@ -162,17 +131,17 @@ func (client *ErigonClient) GetBlock(number uint64) (*types.Eth1BlockContainer, 
 			Gas:                  tx.Gas(),
 			Value:                tx.Value().Bytes(),
 			Data:                 tx.Data(),
+			From:                 msg.From().Bytes(),
 			ChainId:              tx.ChainId().Bytes(),
 			AccessList:           []*types.Eth1Transaction_AccessList{},
-			From:                 msg.From().Bytes(),
-			Time:                 timestamppb.New(time.Unix(int64(block.Time()), 0)),
-			Index:                uint64(i),
+			Hash:                 []byte{},
+			Itx:                  []*types.Eth1InternalTransaction{},
 		}
 
 		if tx.To() != nil {
 			pbTx.To = tx.To().Bytes()
 		}
-		c.Transactions[utils.StripPrefix(tx.Hash().String())] = pbTx
+		c.Transactions = append(c.Transactions, pbTx)
 
 	}
 
@@ -187,43 +156,46 @@ func (client *ErigonClient) GetBlock(number uint64) (*types.Eth1BlockContainer, 
 
 		timings.Traces = time.Since(start)
 
+		// logrus.Infof("retrieved %v traces for %v txs", len(traces), len(c.Transactions))
 		for _, trace := range traces {
-			txHash := trace.TransactionHash
+			if trace.Type == "reward" {
+				continue
+			}
+
+			if trace.TransactionHash == "" {
+				continue
+			}
+
+			if trace.Error == "" {
+				c.Transactions[trace.TransactionPosition].Status = 1
+			} else {
+				c.Transactions[trace.TransactionPosition].Status = 0
+				c.Transactions[trace.TransactionPosition].ErrorMsg = trace.Error
+			}
+
 			tracePb := &types.Eth1InternalTransaction{
-				Hash:  common.FromHex(txHash),
-				Block: block.NumberU64(),
-				Index: trace.TraceAddress,
-				Time:  timestamppb.New(time.Unix(int64(block.Time()), 0)),
-				Type:  trace.Type,
+				Type: trace.Type,
+				Path: fmt.Sprint(trace.TraceAddress),
 			}
 
 			if trace.Type == "create" {
 				tracePb.From = common.FromHex(trace.Action.From)
 				tracePb.To = common.FromHex(trace.Result.Address)
 				tracePb.Value = common.FromHex(trace.Action.Value)
-				tracePb.Input = common.FromHex(trace.Action.Init)
-				tracePb.Output = common.FromHex(trace.Result.Code)
 			} else if trace.Type == "suicide" {
 				tracePb.From = common.FromHex(trace.Action.Address)
 				tracePb.To = common.FromHex(trace.Action.RefundAddress)
 				tracePb.Value = common.FromHex(trace.Action.Balance)
-				tracePb.Input = []byte{}
-				tracePb.Output = []byte{}
-			} else {
+			} else if trace.Type == "call" || trace.Type == "delegatecall" {
 				tracePb.From = common.FromHex(trace.Action.From)
 				tracePb.To = common.FromHex(trace.Action.To)
 				tracePb.Value = common.FromHex(trace.Action.Value)
-				tracePb.Input = common.FromHex(trace.Action.Input)
-				tracePb.Output = common.FromHex(trace.Result.Output)
+			} else {
+				spew.Dump(trace)
+				logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionHash)
 			}
 
-			if c.InternalTransactions[txHash] == nil {
-				c.InternalTransactions[txHash] = &types.Eth1InternalTransactionList{
-					List: make([]*types.Eth1InternalTransaction, 0, 10),
-				}
-			}
-
-			c.InternalTransactions[txHash].List = append(c.InternalTransactions[txHash].List, tracePb)
+			c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
 		}
 		return nil
 	})
@@ -253,16 +225,11 @@ func (client *ErigonClient) GetBlock(number uint64) (*types.Eth1BlockContainer, 
 		}
 
 		r := receipts[i]
-		c.Receipts[utils.StripPrefix(r.TxHash.String())] = &types.Eth1TransactionReceipt{
-			BlockHash:          r.BlockHash.Bytes(),
-			BlockNumber:        r.BlockNumber.Uint64(),
-			ContractAddress:    r.ContractAddress[:],
-			CommulativeGasUsed: r.CumulativeGasUsed,
-			GasUsed:            r.GasUsed,
-			LogsBloom:          r.Bloom.Bytes(),
-			Status:             r.Status,
-			TransactionIndex:   uint64(r.TransactionIndex),
-		}
+		c.Transactions[i].ContractAddress = r.ContractAddress[:]
+		c.Transactions[i].CommulativeGasUsed = r.CumulativeGasUsed
+		c.Transactions[i].GasUsed = r.GasUsed
+		c.Transactions[i].LogsBloom = r.Bloom[:]
+		c.Transactions[i].Logs = make([]*types.Eth1Log, 0, len(r.Logs))
 
 		for _, l := range r.Logs {
 			pbLog := &types.Eth1Log{
@@ -275,65 +242,8 @@ func (client *ErigonClient) GetBlock(number uint64) (*types.Eth1BlockContainer, 
 			for _, t := range l.Topics {
 				pbLog.Topics = append(pbLog.Topics, t.Bytes())
 			}
-			c.Logs[fmt.Sprintf("%v#%010d", utils.StripPrefix(r.TxHash.String()), l.Index)] = pbLog
-
-			if len(l.Topics) > 2 && l.Topics[0] == utils.Erc20TransferEventHash && len(l.Topics) == 3 { // ERC20 token transfer event
-				pbErc20Transfer := &types.ERC20Transfer{
-					TokenAddress: l.Address[:],
-					From:         l.Topics[1][:],
-					To:           l.Topics[2][:],
-					Value:        l.Data,
-					TxHash:       r.TxHash[:],
-				}
-				c.Erc20Transfers = append(c.Erc20Transfers, pbErc20Transfer)
-			}
-
-			if l.Topics[0] == utils.Erc20TransferEventHash && len(l.Topics) == 4 { // ERC721 token transfer event
-				pbErc721Transfer := &types.ERC721Transfer{
-					TokenAddress: l.Address[:],
-					From:         l.Topics[1][:],
-					To:           l.Topics[2][:],
-					TokenId:      l.Topics[3][:],
-					TxHash:       r.TxHash[:],
-				}
-				c.Erc721Transfers = append(c.Erc721Transfers, pbErc721Transfer)
-			}
-
-			if l.Topics[0] == utils.Erc1155TransferSingleEventHash && len(l.Topics) == 4 && len(l.Data) == 64 { // ERC1155 token transfer event
-				pbErc1155Transfer := &types.ERC1155Transfer{
-					TokenAddress: l.Address[:],
-					From:         l.Topics[2][:],
-					To:           l.Topics[3][:],
-					TokenId:      l.Data[:32],
-					Value:        l.Data[32:],
-					TxHash:       r.TxHash[:],
-				}
-				c.Erc1155Transfers = append(c.Erc1155Transfers, pbErc1155Transfer)
-			}
+			c.Transactions[i].Logs = append(c.Transactions[i].Logs, pbLog)
 		}
-
-		fees := big.NewInt(int64(r.GasUsed))
-		if block.NumberU64() >= 12965000 {
-			minerTip := new(big.Int).Sub(new(big.Int).SetBytes(c.Transactions[utils.StripPrefix(r.TxHash.String())].GasPrice), block.BaseFee())
-			fees.Mul(fees, minerTip)
-		} else {
-			fees.Mul(fees, new(big.Int).SetBytes(c.Transactions[utils.StripPrefix(r.TxHash.String())].GasPrice))
-		}
-		reward.Add(reward, fees)
-		totalFee.Add(totalFee, fees)
-	}
-
-	if len(txs) > 0 {
-		c.Header.MinerMinGasPrice = txs[len(txs)-1].GasPrice().Bytes()
-	} else {
-		c.Header.MinerMinGasPrice = big.NewInt(0).Bytes()
-	}
-
-	c.Header.MiningReward = reward.Bytes()
-	c.Header.BaseBlockReward = new(big.Int).Set(utils.Eth1BlockReward(block.NumberU64())).Bytes()
-
-	if block.BaseFee() != nil {
-		c.Header.BaseFee = block.BaseFee().Bytes()
 	}
 
 	if err := g.Wait(); err != nil {
@@ -402,6 +312,8 @@ type ParityTraceResult struct {
 		Address       string `json:"address"`
 		Balance       string `json:"balance"`
 		RefundAddress string `json:"refundAddress"`
+		Author        string `json:"author"`
+		RewardType    string `json:"rewardType"`
 	} `json:"action"`
 	BlockHash   string `json:"blockHash"`
 	BlockNumber int    `json:"blockNumber"`
