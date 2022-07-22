@@ -247,3 +247,66 @@ func GetValidatorIndexFrom(userInput string) (pubKey []byte, validatorIndex uint
 	}
 	return
 }
+
+func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	user, session, err := getUserSession(r)
+	if err != nil {
+		logger.Errorf("error retrieving session: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	response := &types.ApiResponse{}
+	response.Status = "ERROR"
+
+	defer json.NewEncoder(w).Encode(response)
+
+	settings := types.DataTableSaveState{}
+	err = json.NewDecoder(r.Body).Decode(&settings)
+	if err != nil {
+		logger.Errorf("error saving data table state could not parse body: %v", err)
+		response.Status = "error saving table state"
+		return
+	}
+
+	key := settings.Key
+	if len(key) == 0 {
+		logger.Errorf("no key provided")
+		response.Status = "error saving table state"
+		return
+	}
+
+	if !user.Authenticated {
+		dataTableStatePrefix := "datatable:state:" + utils.GetNetwork() + ":"
+		key = dataTableStatePrefix + key
+		count := 0
+		for k, _ := range session.Values {
+			k, ok := k.(string)
+			if ok && strings.HasPrefix(k, dataTableStatePrefix) {
+				count += 1
+			}
+		}
+		if count > 50 {
+			_, ok := session.Values[key]
+			if !ok {
+				logger.Errorf("error maximum number of datatable states stored in session")
+				return
+			}
+		}
+		session.Values[key] = settings
+		session.Save(r, w)
+
+	} else {
+		err = db.SaveDataTableState(user.UserID, "", settings)
+		if err != nil {
+			logger.Errorf("error saving data table state could save values to db: %v", err)
+			response.Status = "error saving table state"
+			return
+		}
+	}
+
+	response.Status = "OK"
+	response.Data = ""
+}

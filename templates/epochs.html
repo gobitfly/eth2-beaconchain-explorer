@@ -13,6 +13,28 @@
         ajax: "/epochs/data",
         pagingType: "input",
         stateSave: true,
+        stateSaveCallback: function (settings, data) {
+
+          console.log('settings', settings)
+          console.log('data', data)
+
+          data.search.search = ""
+          data.order = []
+          data.key = `DataTables_${settings.sTableId}_${window.location.pathname}`
+
+          fetch('/tables/state', {
+            method: "POST",
+            body: JSON.stringify(data),
+          })
+          .then(res => res.json)
+          .then(({ status, data}) => { 
+            if (status !== "OK") {
+              console.error("error updating table state, err:", data, "status: ", status)
+            }
+          }).catch(err => {
+            console.error("error updating table state, err: ", err)
+          })
+        },
         stateDuration: true,
         pageLength: 50,
         language: {

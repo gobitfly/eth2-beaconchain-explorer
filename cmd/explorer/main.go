@@ -309,6 +309,8 @@ func main() {
 			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
 
+			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
+
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 			router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("POST")
 
