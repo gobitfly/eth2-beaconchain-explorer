@@ -418,6 +418,7 @@ function loadValidatorsData(data) {
     select: {
       items: "row",
       toggleable: true,
+      // blurable: true,
     },
     fixedHeader: true,
     data: data,
@@ -598,7 +599,7 @@ function loadValidatorsData(data) {
     let limit = 0
     let tgt = e.target
     while (tgt) {
-      if ($("#watchlist-container").is(tgt) || (tgt.classList && tgt.classList.contains("modal"))) {
+      if ($("#watchlist-container").is(tgt) || (tgt.classList && tgt.classList.contains("modal")) || tgt.classList.contains("page-link")) {
         isWatchlistParent = true
         break
       }
@@ -610,9 +611,6 @@ function loadValidatorsData(data) {
     }
     if (!isWatchlistParent) {
       $("#validators-notifications").DataTable().rows().deselect()
-      document.getElementById("remove-selected-btn").setAttribute("disabled", true)
-      document.getElementById("manage-notifications-btn").setAttribute("disabled", true)
-      document.getElementById("selectAll-notifications-btn").removeAttribute("disabled")
     }
   })
 
@@ -620,21 +618,21 @@ function loadValidatorsData(data) {
     $("#validators-notifications").DataTable().rows().select()
   })
 
-  validatorsTable.on("select.dt", function (e, dt, type, indexes) {
-    if (indexes && indexes.length) {
-      document.getElementById("remove-selected-btn").removeAttribute("disabled")
-      document.getElementById("manage-notifications-btn").removeAttribute("disabled")
-      document.getElementById("selectAll-notifications-btn").setAttribute("disabled", true)
-    }
-  })
+  // validatorsTable.on("select.dt", function (e, dt, type, indexes) {
+  //   if (indexes && indexes.length) {
+  //     document.getElementById("remove-selected-btn").removeAttribute("disabled")
+  //     document.getElementById("manage-notifications-btn").removeAttribute("disabled")
+  //     document.getElementById("selectAll-notifications-btn").setAttribute("disabled", true)
+  //   }
+  // })
 
-  validatorsTable.on("deselect.dt", function (e, dt, type, indexes) {
-    if (indexes && indexes.length <= 1) {
-      document.getElementById("remove-selected-btn").setAttribute("disabled", true)
-      document.getElementById("manage-notifications-btn").setAttribute("disabled", true)
-      document.getElementById("selectAll-notifications-btn").removeAttribute("disabled")
-    }
-  })
+  // validatorsTable.on("deselect.dt", function (e, dt, type, indexes) {
+  //   if (indexes && indexes.length <= 1) {
+  //     document.getElementById("remove-selected-btn").setAttribute("disabled", true)
+  //     document.getElementById("manage-notifications-btn").setAttribute("disabled", true)
+  //     document.getElementById("selectAll-notifications-btn").removeAttribute("disabled")
+  //   }
+  // })
 
   // show manage-notifications button and remove-all button only if there is data in the validator table
   // if (DATA.length !== 0) {
