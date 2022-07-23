@@ -37,7 +37,6 @@ func main() {
 
 	startTs := time.Now()
 	lastTickTs := time.Now()
-	lastTickBlock := int64(0)
 
 	processedBlocks := int64(0)
 
@@ -57,13 +56,13 @@ func main() {
 			if err != nil {
 				return err
 			}
-			atomic.AddInt64(&processedBlocks, 1)
-			if i%100 == 0 {
+			current := atomic.AddInt64(&processedBlocks, 1)
+			if current%100 == 0 {
 				logrus.Infof("retrieved & saved block %v (0x%x) in %v (header: %v, receipts: %v, traces: %v, db: %v)", bc.Number, bc.Hash, time.Since(blockStartTs), timings.Headers, timings.Receipts, timings.Traces, time.Since(dbStart))
-				logrus.Infof("processed %v blocks in %v (%.1f blocks / sec)", processedBlocks, time.Since(startTs), float64((processedBlocks-lastTickBlock))/time.Since(lastTickTs).Seconds())
+				logrus.Infof("processed %v blocks in %v (%.1f blocks / sec)", current, time.Since(startTs), float64((current))/time.Since(lastTickTs).Seconds())
 
 				lastTickTs = time.Now()
-				lastTickBlock = i
+				atomic.StoreInt64(&processedBlocks, 0)
 			}
 			return nil
 		})
