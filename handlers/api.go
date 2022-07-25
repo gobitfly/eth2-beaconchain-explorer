@@ -117,6 +117,42 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK. Last epoch is from %v ago", time.Since(utils.EpochToTime(lastEpoch)))
 }
 
+// ApiEthStoreDay godoc
+// @Summary Get ETH.STORE reference rate for a specific day
+// @Tags ETH.STORE
+// @Produce json
+// @Param day path string true "Get ETH.STORE reference rate for a specific day"
+// @Success 200 {object} string
+// @Router /api/v1/ethstore/{day} [get]
+func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	day, err := strconv.ParseInt(vars["day"], 10, 64)
+	if err != nil && vars["day"] != "latest" {
+		sendErrorResponse(j, r.URL.String(), "invalid day provided")
+		return
+	}
+
+	if vars["day"] == "latest" {
+		day = (int64(services.LatestFinalizedEpoch()) / 225) - 1
+	}
+
+	rows, err := db.ReaderDb.Query(`
+			SELECT eth_store_stats.*
+			FROM eth_store_stats 
+			WHERE day = $1`, day)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
 // ApiEpoch godoc
 // @Summary Get epoch by number
 // @Tags Epoch
