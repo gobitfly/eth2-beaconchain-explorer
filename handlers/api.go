@@ -118,10 +118,10 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiEthStoreDay godoc
-// @Summary Get ETH.STORE reference rate for a specific day
+// @Summary Get ETH.STORE reference rate for a specified day by day number or the latest day
 // @Tags ETH.STORE
 // @Produce json
-// @Param day path string true "Get ETH.STORE reference rate for a specific day"
+// @Param day path string true "day number (since genesis) or the string latest"
 // @Success 200 {object} string
 // @Router /api/v1/ethstore/{day} [get]
 func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
