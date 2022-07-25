@@ -2,6 +2,7 @@ package types
 
 import (
 	"html/template"
+	"time"
 )
 
 // Config is a struct to hold the configuration data
@@ -158,7 +159,8 @@ type Config struct {
 		StorageContractFirstBlock uint64 `yaml:"storageContractFirstBlock" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_FIRST_BLOCK"`
 	} `yaml:"rocketpoolExporter"`
 	EthStoreExporter struct {
-		Enabled bool `yaml:"enabled" envconfig:"ETHSTORE_EXPORTER_ENABLED"`
+		Enabled bool          `yaml:"enabled" envconfig:"ETHSTORE_EXPORTER_ENABLED"`
+		Sleep   time.Duration `yaml:"sleep" envconfig:"ETHSTORE_EXPORTER_SLEEP"`
 	} `yaml:"ethStoreExporter"`
 }
 
