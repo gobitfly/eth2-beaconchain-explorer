@@ -81,7 +81,7 @@ OUTER:
 				SELECT COUNT(*)
 				FROM eth_store_stats`)
 		if err != nil {
-			logger.WithError(err).Error("error retreiving db data")
+			logger.WithError(err).Error("error retreiving eth.store days count from db")
 			time.Sleep(ese.ErrorInterval)
 			continue
 		}
@@ -101,7 +101,7 @@ OUTER:
 						SELECT day 
 						FROM eth_store_stats`)
 				if err != nil {
-					logger.WithError(err).Error("error retreiving db data")
+					logger.WithError(err).Error("error retreiving eth.store days from db")
 					time.Sleep(ese.ErrorInterval)
 					continue
 				}
@@ -115,7 +115,7 @@ OUTER:
 				if v {
 					err = ese.ExportDay(strconv.FormatUint(k, 10))
 					if err != nil {
-						logger.WithError(err).Errorf("error exporting day $d into database", k)
+						logger.WithError(err).Errorf("error exporting eth.store day $d into database", k)
 						time.Sleep(ese.ErrorInterval)
 						continue OUTER
 					}
