@@ -157,6 +157,9 @@ type Config struct {
 		StorageContractAddress    string `yaml:"storageContractAddress" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_ADDRESS"`
 		StorageContractFirstBlock uint64 `yaml:"storageContractFirstBlock" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_FIRST_BLOCK"`
 	} `yaml:"rocketpoolExporter"`
+	EthStoreExporter struct {
+		Enabled bool `yaml:"enabled" envconfig:"ETHSTORE_EXPORTER_ENABLED"`
+	}
 }
 
 type DatabaseConfig struct {
