@@ -42,18 +42,19 @@ func ethStoreExporter() {
 
 }
 
-func (ese *EthStoreExporter) ExportDay(tx *sqlx.Tx, day string) error {
+func (ese *EthStoreExporter) ExportDay(day string) error {
 	ethStoreDay, err := ese.getStoreDay(day)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`
+	_, err = ese.DB.Exec(`
 		INSERT INTO eth_store_stats (day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum)
 		VALUES ($1, $2, $3, $4, $5)`,
 		ethStoreDay.Day, ethStoreDay.EffectiveBalance, ethStoreDay.StartBalance, ethStoreDay.EndBalance, ethStoreDay.DepositsSum)
 	if err != nil {
 		return err
 	}
+	logger.Infof("exported eth.store day %s into db", day)
 	return nil
 }
 
@@ -64,23 +65,24 @@ func (ese *EthStoreExporter) getStoreDay(day string) (*ethstore.Day, error) {
 func (ese *EthStoreExporter) Run() {
 	t := time.NewTicker(ese.UpdateInverval)
 	defer t.Stop()
-	for ; true; <-t.C {
+OUTER:
+	for {
 		// get latest eth.store day
 		latest, err := ese.getStoreDay("latest")
 		if err != nil {
 			logger.WithError(err).Errorf("error retreiving eth.store data")
-			t.Reset(ese.ErrorInterval)
+			time.Sleep(ese.ErrorInterval)
 			continue
 		}
 
 		// count rows of eth.store days in db
 		var ethStoreDayCount uint64
 		err = db.WriterDb.Get(&ethStoreDayCount, `
-			SELECT COUNT(*) 
-			FROM eth_store_stats`)
+				SELECT COUNT(*)
+				FROM eth_store_stats`)
 		if err != nil {
 			logger.WithError(err).Error("error retreiving db data")
-			t.Reset(ese.ErrorInterval)
+			time.Sleep(ese.ErrorInterval)
 			continue
 		}
 
@@ -92,25 +94,15 @@ func (ese *EthStoreExporter) Run() {
 				daysToExport[i] = true
 			}
 
-			//init db txs
-			tx, err := ese.DB.Beginx()
-			if err != nil {
-				logger.WithError(err).Errorf("error starting db transactions")
-				t.Reset(ese.ErrorInterval)
-				continue
-			}
-			defer tx.Rollback()
-
 			// set every existing day in db to false in export map
 			if ethStoreDayCount > 0 {
 				var ethStoreDays []EthStoreDay
-				err = tx.Select(&ethStoreDays, `
-					SELECT day 
-					FROM eth_store_stats 
-					ORDER BY day DESC`)
+				err = ese.DB.Select(&ethStoreDays, `
+						SELECT day 
+						FROM eth_store_stats`)
 				if err != nil {
 					logger.WithError(err).Error("error retreiving db data")
-					t.Reset(ese.ErrorInterval)
+					time.Sleep(ese.ErrorInterval)
 					continue
 				}
 				for _, ethStoreDay := range ethStoreDays {
@@ -121,16 +113,15 @@ func (ese *EthStoreExporter) Run() {
 			// export missing days
 			for k, v := range daysToExport {
 				if v {
-					err = ese.ExportDay(tx, strconv.FormatUint(k, 10))
+					err = ese.ExportDay(strconv.FormatUint(k, 10))
 					if err != nil {
 						logger.WithError(err).Errorf("error exporting day $d into database", k)
-						t.Reset(ese.ErrorInterval)
-						continue
+						time.Sleep(ese.ErrorInterval)
+						continue OUTER
 					}
 				}
 			}
-			tx.Commit()
-			logger.Infof("exported missing eth.store days")
 		}
+		<-t.C
 	}
 }
