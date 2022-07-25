@@ -118,10 +118,13 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiEthStoreDay godoc
-// @Summary Get ETH.STORE reference rate for a specified day by day number or the latest day
+// @Summary Get ETH.STORE reference rate for a specified beaconchain-day or the latest day
 // @Tags ETH.STORE
+// @Description ETH.STORE represents the average financial return validators on the Ethereum network have achieved in a 24-hour period.
+// @Description For each 24-hour period the datapoint is denoted by the number of days that have passed since genesis for that period (= beaconchain-day)
+// @Description See https://github.com/gobitfly/eth.store for further information.
 // @Produce json
-// @Param day path string true "day number (since genesis) or the string latest"
+// @Param day path string true "The beaconchain-day (periods of 225 epochs) to get the the ETH.STORE for. Must be a number or the string 'latest'."
 // @Success 200 {object} string
 // @Router /api/v1/ethstore/{day} [get]
 func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {

@@ -159,7 +159,7 @@ type Config struct {
 	} `yaml:"rocketpoolExporter"`
 	EthStoreExporter struct {
 		Enabled bool `yaml:"enabled" envconfig:"ETHSTORE_EXPORTER_ENABLED"`
-	}
+	} `yaml:"ethStoreExporter"`
 }
 
 type DatabaseConfig struct {
