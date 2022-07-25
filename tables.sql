@@ -974,3 +974,17 @@ create table rocketpool_network_stats
 
     primary key(id)
 );
+
+
+drop table if exists eth_store_stats;
+create table eth_store_stats
+(
+    day			int	not null,
+    effective_balances_sum	bigint	not null,
+    start_balances_sum		bigint	not null,
+    end_balances_sum		bigint	not null,
+    deposits_sum		bigint	not null,
+    
+    primary key(day)
+    
+);
