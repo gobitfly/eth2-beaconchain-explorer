@@ -115,7 +115,7 @@ OUTER:
 				if v {
 					err = ese.ExportDay(strconv.FormatUint(k, 10))
 					if err != nil {
-						logger.WithError(err).Errorf("error exporting eth.store day $d into database", k)
+						logger.WithError(err).Errorf("error exporting eth.store day %d into database", k)
 						time.Sleep(ese.ErrorInterval)
 						continue OUTER
 					}
