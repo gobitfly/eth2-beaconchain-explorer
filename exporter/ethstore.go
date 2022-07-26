@@ -18,6 +18,7 @@ type EthStoreExporter struct {
 	NodePort       string
 	UpdateInverval time.Duration
 	ErrorInterval  time.Duration
+	Sleep          time.Duration
 }
 
 type EthStoreDay struct {
@@ -30,12 +31,14 @@ type EthStoreDay struct {
 
 // start exporting of eth.store into db
 func ethStoreExporter() {
+	logger.Info("starting eth.store exporter")
 	ese := &EthStoreExporter{
 		DB:             db.WriterDb,
 		NodeHost:       utils.Config.Indexer.Node.Host,
 		NodePort:       utils.Config.Indexer.Node.Port,
 		UpdateInverval: time.Minute,
 		ErrorInterval:  time.Second * 10,
+		Sleep:          utils.Config.EthStoreExporter.Sleep,
 	}
 
 	ese.Run()
@@ -77,7 +80,7 @@ OUTER:
 
 		// count rows of eth.store days in db
 		var ethStoreDayCount uint64
-		err = db.WriterDb.Get(&ethStoreDayCount, `
+		err = ese.DB.Get(&ethStoreDayCount, `
 				SELECT COUNT(*)
 				FROM eth_store_stats`)
 		if err != nil {
@@ -119,6 +122,10 @@ OUTER:
 						time.Sleep(ese.ErrorInterval)
 						continue OUTER
 					}
+				}
+				if ethStoreDayCount < latest.Day {
+					// more than 1 day is being exported, sleep for duration specified in config
+					time.Sleep(ese.Sleep)
 				}
 			}
 		}
