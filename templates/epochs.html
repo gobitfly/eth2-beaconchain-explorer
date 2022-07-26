@@ -46,7 +46,6 @@
             next: '<i class="fas fa-chevron-right"></i>',
           },
         },
-        data: {{ .Data }},
         preDrawCallback: function () {
           // this does not always work.. not sure how to solve the staying tooltip
           try {
@@ -87,7 +86,7 @@
               <thead>
                 <tr>
                   <th>Epoch</th>
-                  <th>Time</th>
+                  <th style="min-width: 125px">Time</th>
                   <th>Attestations</th>
                   <th>Deposits</th>
                   <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
@@ -96,7 +95,15 @@
                   <th>Voted</th>
                 </tr>
               </thead>
-              <tbody></tbody>
+              <tbody>
+                {{ range $i, $row := .Data }}
+                  <tr>
+                    {{ range $j, $col := $row }}
+                      <td>{{ $col }}</td>
+                    {{end}}
+                  </tr>
+                {{ end }}
+              </tbody>
             </table>
           </div>
         </div>
