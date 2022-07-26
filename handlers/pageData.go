@@ -69,6 +69,19 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		NoAds:           user.Authenticated && user.Subscription != "",
 		Debug:           utils.Config.Frontend.Debug,
 	}
+
+	if utils.Config.Frontend.Debug {
+		_, session, err := getUserSession(r)
+		if err != nil {
+			logger.WithError(err).Error("error getting user session")
+		}
+		jsn := make(map[string]interface{})
+		// convert map[interface{}]interface{} -> map[string]interface{}
+		for sessionKey, sessionValue := range session.Values {
+			jsn[fmt.Sprintf("%v", sessionKey)] = sessionValue
+		}
+		data.DebugSession = jsn
+	}
 	data.Rates.EthPrice = price.GetEthPrice(data.Rates.Currency)
 	data.Rates.ExchangeRate = price.GetEthPrice(data.Rates.Currency)
 	data.Rates.EthRoundPrice = price.GetEthRoundPrice(data.Rates.EthPrice)

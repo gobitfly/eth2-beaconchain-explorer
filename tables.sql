@@ -498,6 +498,16 @@ create table users
     primary key (id, email)
 );
 
+drop table if exists users_datatable;
+create table users_datatable
+(
+    user_id        int                         not null,
+    key            character varying(256)      not null unique,
+    state          jsonb                       not null,
+    updated_at     timestamp without time zone not null default 'now()',
+    primary key (user_id, key) 
+);
+
 drop table if exists users_stripe_subscriptions;
 create table users_stripe_subscriptions
 (
