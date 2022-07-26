@@ -153,13 +153,13 @@
               </thead>
               <tbody>
                 {{ range $i, $row := .Data }}
-                <tr>
-                  {{ range $j, $col := $row }}
-                    <td>{{ $col }}</td>
-                  {{ end }}
-                </tr>
-              {{ end }}
-            </tbody>
+                  <tr>
+                    {{ range $j, $col := $row }}
+                      <td>{{ $col }}</td>
+                    {{ end }}
+                  </tr>
+                {{ end }}
+              </tbody>
             </table>
           </div>
         </div>
