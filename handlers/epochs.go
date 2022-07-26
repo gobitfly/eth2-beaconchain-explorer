@@ -33,18 +33,9 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Error("error getting user session")
 	}
 
-	var state *types.DataTableSaveState
-	if user.Authenticated {
-		state, err = db.GetDataTablesState(user.UserID, "epochs")
-		if err != nil {
-			logger.WithError(err).Errorf("error getting datatable state for user: %v", user.UserID)
-		}
-	} else {
-		stateRaw, ok := session.Values["table:state:"+utils.GetNetwork()+":epochs"].(types.DataTableSaveState)
-		if !ok {
-			logger.Error("error parsing datatable state")
-		}
-		state = &stateRaw
+	state, err := GetDataTableState(user, session, "epochs")
+	if err != nil {
+		logger.WithError(err).Error("error getting stored table state")
 	}
 	length := uint64(50)
 	start := uint64(0)
@@ -53,10 +44,10 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 
 	// set start and end epoch from saved state
 	if state != nil && state.Length != 0 {
-		length = uint64(state.Length)
-		start = uint64(state.Start)
-		startEpoch = epochsCount - uint64(state.Start)
-		endEpoch = epochsCount - uint64(state.Start) - uint64(state.Length) + 1
+		length = state.Length
+		start = state.Start
+		startEpoch = epochsCount - state.Start
+		endEpoch = epochsCount - state.Start - state.Length + 1
 	} else {
 		startEpoch = epochsCount
 		endEpoch = epochsCount - 50 + 1

@@ -15,12 +15,9 @@
         stateSave: true,
         stateSaveCallback: function (settings, data) {
 
-          // console.log('settings', settings)
-          // console.log('data', data)
           data.search.search = ""
           data.order = []
           data.columns = []
-          // data.key = `DataTables_${settings.sTableId}_${window.location.pathname}`
           data.key = `${settings.sTableId}`
           fetch('/tables/state', {
             method: "POST",
@@ -54,6 +51,8 @@
             console.error(e)
           }
           document.getElementById('header-placeholder').style.display = 'none'
+          document.getElementById('footer-placeholder').style.display = 'none'
+
         },
         drawCallback: function (settings) {
           formatTimestamps()
@@ -107,6 +106,7 @@
             </table>
           </div>
         </div>
+        <div id="footer-placeholder" style="height:71px;"></div>
       </div>
       <div class="d-flex justify-content-between py-2">
         <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>

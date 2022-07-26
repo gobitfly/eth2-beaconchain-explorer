@@ -1330,9 +1330,9 @@ type NetworkEventModal struct {
 
 type DataTableSaveState struct {
 	Key     string                      `json:"key"`
-	Time    int64                       `json:"time"`   // Time stamp of when the object was created
-	Start   int64                       `json:"start"`  // Display start point
-	Length  int64                       `json:"length"` // Page length
+	Time    uint64                      `json:"time"`   // Time stamp of when the object was created
+	Start   uint64                      `json:"start"`  // Display start point
+	Length  uint64                      `json:"length"` // Page length
 	Order   [][]string                  `json:"order"`  // 2D array of column ordering information (see `order` option)
 	Search  DataTableSaveStateSearch    `json:"search"`
 	Columns []DataTableSaveStateColumns `json:"columns"`

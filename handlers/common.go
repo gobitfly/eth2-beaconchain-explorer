@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gorilla/sessions"
 	"github.com/lib/pq"
 )
 
@@ -313,4 +314,21 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 
 	response.Status = "OK"
 	response.Data = ""
+}
+
+func GetDataTableState(user *types.User, session *sessions.Session, tableKey string) (*types.DataTableSaveState, error) {
+	if user.Authenticated {
+		state, err := db.GetDataTablesState(user.UserID, tableKey)
+		if err != nil {
+			return nil, err
+		}
+		return state, nil
+	}
+
+	stateRaw, ok := session.Values["table:state:"+utils.GetNetwork()+":"+tableKey].(types.DataTableSaveState)
+	if !ok {
+		return nil, fmt.Errorf("error parsing session value into type DataTableSaveState")
+	}
+	return &stateRaw, nil
+
 }

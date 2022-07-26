@@ -80,12 +80,6 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		for sessionKey, sessionValue := range session.Values {
 			jsn[fmt.Sprintf("%v", sessionKey)] = sessionValue
 		}
-
-		// jsn, err := json.Marshal(session.Values)
-		// if err != nil {
-		// 	logger.WithError(err).Error("session.values: %+v", session.Values)
-
-		// }
 		data.DebugSession = jsn
 	}
 	data.Rates.EthPrice = price.GetEthPrice(data.Rates.Currency)
