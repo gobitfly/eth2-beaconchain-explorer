@@ -2,6 +2,7 @@ package types
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/pkg/errors"
 )
 
 // PageData is a struct to hold web page data
@@ -37,6 +39,7 @@ type PageData struct {
 	NoAds          bool
 	Debug          bool
 	DebugTemplates []string
+	DebugSession   map[string]interface{}
 }
 
 type PageRates struct {
@@ -710,6 +713,8 @@ type DataTableResponse struct {
 	RecordsTotal    uint64          `json:"recordsTotal"`
 	RecordsFiltered uint64          `json:"recordsFiltered"`
 	Data            [][]interface{} `json:"data"`
+	PageLength      uint64          `json:"pageLength"`
+	DisplayStart    uint64          `json:"displayStart"`
 }
 
 // EpochsPageData is a struct to hold epoch data for the epochs page
@@ -1321,4 +1326,42 @@ type NetworkEventModal struct {
 	ValidatorIndex  int64
 	ValidatorPubkey string
 	Events          []EventNameCheckbox
+}
+
+type DataTableSaveState struct {
+	Key     string                      `json:"key"`
+	Time    uint64                      `json:"time"`   // Time stamp of when the object was created
+	Start   uint64                      `json:"start"`  // Display start point
+	Length  uint64                      `json:"length"` // Page length
+	Order   [][]string                  `json:"order"`  // 2D array of column ordering information (see `order` option)
+	Search  DataTableSaveStateSearch    `json:"search"`
+	Columns []DataTableSaveStateColumns `json:"columns"`
+}
+
+func (e *DataTableSaveState) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &e)
+}
+
+func (a DataTableSaveState) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+type DataTableSaveStateOrder struct {
+}
+
+type DataTableSaveStateSearch struct {
+	Search          string `json:"search"`          // Search term
+	Regex           bool   `json:"regex"`           // Indicate if the search term should be treated as regex or not
+	Smart           bool   `json:"smart"`           // Flag to enable DataTables smart search
+	CaseInsensitive bool   `json:"caseInsensitive"` // Case insensitive flag
+}
+
+type DataTableSaveStateColumns struct {
+	Visible bool                     `json:"visible"`
+	Search  DataTableSaveStateSearch `json:"search"`
 }

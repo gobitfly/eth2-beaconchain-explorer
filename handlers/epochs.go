@@ -28,8 +28,38 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 
 	epochsCount := services.LatestEpoch()
 
-	startEpoch := epochsCount - 0
-	endEpoch := epochsCount - 0 - 50 + 1
+	user, session, err := getUserSession(r)
+	if err != nil {
+		logger.WithError(err).Error("error getting user session")
+	}
+
+	state, err := GetDataTableState(user, session, "epochs")
+	if err != nil {
+		logger.WithError(err).Error("error getting stored table state")
+	}
+	length := uint64(50)
+	start := uint64(0)
+	var startEpoch uint64
+	var endEpoch uint64
+
+	// set start and end epoch from saved state
+	if state != nil && state.Length != 0 {
+		length = state.Length
+		start = state.Start
+		startEpoch = epochsCount - state.Start
+		endEpoch = epochsCount - state.Start - state.Length + 1
+	} else {
+		startEpoch = epochsCount
+		endEpoch = epochsCount - 50 + 1
+	}
+
+	if length < 10 {
+		length = 10
+	}
+
+	if length > 100 {
+		length = 100
+	}
 
 	if startEpoch > 9223372036854775807 {
 		startEpoch = epochsCount
@@ -38,7 +68,10 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		endEpoch = 0
 	}
 
-	err := db.ReaderDb.Select(&epochs, `
+	// logger.Infof("state: %+v", state)
+	// logger.Infof("start: %v end: %v", startEpoch, endEpoch)
+
+	err = db.ReaderDb.Select(&epochs, `
 	SELECT epoch, 
 		blockscount, 
 		proposerslashingscount, 
@@ -81,6 +114,8 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		RecordsTotal:    epochsCount,
 		RecordsFiltered: epochsCount,
 		Data:            tableData,
+		PageLength:      length,
+		DisplayStart:    start,
 	}
 
 	if utils.Config.Frontend.Debug {
