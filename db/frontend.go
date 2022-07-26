@@ -836,7 +836,7 @@ func SaveDataTableState(user uint64, key string, state types.DataTableSaveState)
 
 	// check how many table states are stored
 	count := 0
-	err := FrontendReaderDB.SelectContext(ctx, &count, `
+	err := FrontendReaderDB.GetContext(ctx, &count, `
 		SELECT count(*)
 		FROM users_datatable
 		WHERE user_id = $1
@@ -857,7 +857,6 @@ func SaveDataTableState(user uint64, key string, state types.DataTableSaveState)
 			return err
 		}
 	}
-
 	// append network prefix
 	key = utils.GetNetwork() + ":" + key
 
@@ -865,7 +864,7 @@ func SaveDataTableState(user uint64, key string, state types.DataTableSaveState)
 		INSERT INTO 
 			users_datatable (user_id, key, state) 
 		VALUES ($1, $2, $3) 
-		ON CONFLICT DO UPDATE SET state = $3, updated_at = now()
+		ON CONFLICT (user_id, key) DO UPDATE SET state = $3, updated_at = now()
 	`, user, key, state)
 
 	return err
@@ -873,7 +872,7 @@ func SaveDataTableState(user uint64, key string, state types.DataTableSaveState)
 
 // GetDataTablesState retrieves the state for a given user and table
 func GetDataTablesState(user uint64, key string) (*types.DataTableSaveState, error) {
-	state := new(types.DataTableSaveState)
+	var state types.DataTableSaveState
 
 	// append network prefix
 	key = utils.GetNetwork() + ":" + key
@@ -881,11 +880,11 @@ func GetDataTablesState(user uint64, key string) (*types.DataTableSaveState, err
 	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
 	defer done()
 
-	err := FrontendReaderDB.SelectContext(ctx, &state, `
+	err := FrontendReaderDB.GetContext(ctx, &state, `
 		SELECT state 
 		FROM users_datatable
 		WHERE user_id = $1 and key = $2
 	`, user, key)
 
-	return state, err
+	return &state, err
 }

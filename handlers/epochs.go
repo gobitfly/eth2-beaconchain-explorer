@@ -28,9 +28,6 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 
 	epochsCount := services.LatestEpoch()
 
-	startEpoch := epochsCount - 0
-	endEpoch := epochsCount - 0 - 50 + 1
-
 	user, session, err := getUserSession(r)
 	if err != nil {
 		logger.WithError(err).Error("error getting user session")
@@ -51,12 +48,18 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 	}
 	length := uint64(50)
 	start := uint64(0)
+	var startEpoch uint64
+	var endEpoch uint64
+
 	// set start and end epoch from saved state
-	if state != nil {
+	if state != nil && state.Length != 0 {
 		length = uint64(state.Length)
 		start = uint64(state.Start)
 		startEpoch = epochsCount - uint64(state.Start)
 		endEpoch = epochsCount - uint64(state.Start) - uint64(state.Length) + 1
+	} else {
+		startEpoch = epochsCount
+		endEpoch = epochsCount - 50 + 1
 	}
 
 	if length < 10 {

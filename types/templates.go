@@ -2,6 +2,7 @@ package types
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/pkg/errors"
 )
 
 // PageData is a struct to hold web page data
@@ -1334,6 +1336,19 @@ type DataTableSaveState struct {
 	Order   [][]string                  `json:"order"`  // 2D array of column ordering information (see `order` option)
 	Search  DataTableSaveStateSearch    `json:"search"`
 	Columns []DataTableSaveStateColumns `json:"columns"`
+}
+
+func (e *DataTableSaveState) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &e)
+}
+
+func (a DataTableSaveState) Value() (driver.Value, error) {
+	return json.Marshal(a)
 }
 
 type DataTableSaveStateOrder struct {

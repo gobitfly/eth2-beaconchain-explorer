@@ -303,7 +303,7 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
-		err = db.SaveDataTableState(user.UserID, "", settings)
+		err = db.SaveDataTableState(user.UserID, settings.Key, settings)
 		if err != nil {
 			logger.Errorf("error saving data table state could save values to db: %v", err)
 			response.Status = "error saving table state"

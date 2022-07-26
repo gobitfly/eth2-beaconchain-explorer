@@ -231,9 +231,12 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		if ok && strings.HasPrefix(k, dataTableStatePrefix) {
 			state, ok := state.(types.DataTableSaveState)
 			if ok {
-				err := db.SaveDataTableState(user.ID, strings.TrimPrefix(k, dataTableStatePrefix), state)
-				if err != nil {
-					logger.WithError(err).Error("error saving datatable state from session")
+				trimK := strings.TrimPrefix(k, dataTableStatePrefix)
+				if len(trimK) > 0 {
+					err := db.SaveDataTableState(user.ID, trimK, state)
+					if err != nil {
+						logger.WithError(err).Error("error saving datatable state from session")
+					}
 				}
 			} else {
 				logger.Error("error could not parse datatable state from session, state: %+v", state)
