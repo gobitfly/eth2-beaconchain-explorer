@@ -224,7 +224,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	session.Values["subscription"] = user.ProductID
 
 	// save datatable state settings from anon session
-	dataTableStatePrefix := "datatable:state:" + utils.GetNetwork() + ":"
+	dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
 
 	for k, state := range session.Values {
 		k, ok := k.(string)
@@ -233,7 +233,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 			if ok {
 				err := db.SaveDataTableState(user.ID, strings.TrimPrefix(k, dataTableStatePrefix), state)
 				if err != nil {
-					logger.WithError(err).Error("error saving data table state from session")
+					logger.WithError(err).Error("error saving datatable state from session")
 				}
 			} else {
 				logger.Error("error could not parse datatable state from session, state: %+v", state)

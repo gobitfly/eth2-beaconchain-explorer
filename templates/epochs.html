@@ -2,7 +2,7 @@
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
   <script>
-    console.log({{.}})
+    console.log('data: ',{{.}})
     $(document).ready(function () {
       $("#epochs").DataTable({
         processing: true,
@@ -15,19 +15,19 @@
         stateSave: true,
         stateSaveCallback: function (settings, data) {
 
-          console.log('settings', settings)
-          console.log('data', data)
-
+          // console.log('settings', settings)
+          // console.log('data', data)
           data.search.search = ""
           data.order = []
-          data.key = `DataTables_${settings.sTableId}_${window.location.pathname}`
-
+          data.columns = []
+          // data.key = `DataTables_${settings.sTableId}_${window.location.pathname}`
+          data.key = `${settings.sTableId}`
           fetch('/tables/state', {
             method: "POST",
             body: JSON.stringify(data),
           })
-          .then(res => res.json)
-          .then(({ status, data}) => { 
+          .then(res => res.json())
+          .then(({ status, data }) => {
             if (status !== "OK") {
               console.error("error updating table state, err:", data, "status: ", status)
             }
@@ -36,7 +36,8 @@
           })
         },
         stateDuration: true,
-        pageLength: 50,
+        pageLength: {{.PageLength}},
+        displayStart: {{.DisplayStart}},
         language: {
           searchPlaceholder: "Search by Epoch Number",
           search: "",

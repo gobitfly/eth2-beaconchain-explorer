@@ -37,6 +37,7 @@ type PageData struct {
 	NoAds          bool
 	Debug          bool
 	DebugTemplates []string
+	DebugSession   map[string]interface{}
 }
 
 type PageRates struct {
@@ -710,6 +711,8 @@ type DataTableResponse struct {
 	RecordsTotal    uint64          `json:"recordsTotal"`
 	RecordsFiltered uint64          `json:"recordsFiltered"`
 	Data            [][]interface{} `json:"data"`
+	PageLength      uint64          `json:"pageLength"`
+	DisplayStart    uint64          `json:"displayStart"`
 }
 
 // EpochsPageData is a struct to hold epoch data for the epochs page
@@ -1324,13 +1327,13 @@ type NetworkEventModal struct {
 }
 
 type DataTableSaveState struct {
-	Key     string                    `json:"key"`
-	Time    int64                     `json:"time"`   // Time stamp of when the object was created
-	Start   int64                     `json:"start"`  // Display start point
-	Length  int64                     `json:"length"` // Page length
-	Order   [][]string                `json:"order"`  // 2D array of column ordering information (see `order` option)
-	Search  DataTableSaveStateSearch  `json:"search"`
-	Columns DataTableSaveStateColumns `json:"columns"`
+	Key     string                      `json:"key"`
+	Time    int64                       `json:"time"`   // Time stamp of when the object was created
+	Start   int64                       `json:"start"`  // Display start point
+	Length  int64                       `json:"length"` // Page length
+	Order   [][]string                  `json:"order"`  // 2D array of column ordering information (see `order` option)
+	Search  DataTableSaveStateSearch    `json:"search"`
+	Columns []DataTableSaveStateColumns `json:"columns"`
 }
 
 type DataTableSaveStateOrder struct {

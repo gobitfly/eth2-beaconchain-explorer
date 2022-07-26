@@ -279,7 +279,7 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !user.Authenticated {
-		dataTableStatePrefix := "datatable:state:" + utils.GetNetwork() + ":"
+		dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
 		key = dataTableStatePrefix + key
 		count := 0
 		for k, _ := range session.Values {
@@ -296,7 +296,11 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		session.Values[key] = settings
-		session.Save(r, w)
+
+		err := session.Save(r, w)
+		if err != nil {
+			logger.WithError(err).Errorf("error updating session with key: %v and value: %v", key, settings)
+		}
 
 	} else {
 		err = db.SaveDataTableState(user.UserID, "", settings)

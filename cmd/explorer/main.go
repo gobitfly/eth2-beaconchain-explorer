@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/gob"
 	"encoding/hex"
 	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
@@ -42,6 +43,10 @@ func initStripe(http *mux.Router) error {
 	http.HandleFunc("/stripe/create-checkout-session", handlers.StripeCreateCheckoutSession).Methods("POST")
 	http.HandleFunc("/stripe/customer-portal", handlers.StripeCustomerPortal).Methods("POST")
 	return nil
+}
+
+func init() {
+	gob.Register(types.DataTableSaveState{})
 }
 
 func main() {
