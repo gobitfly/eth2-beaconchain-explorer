@@ -47,7 +47,7 @@ func checkSubscriptions() {
 			if err != nil {
 				// error might indicate a connection problem, ignore validation response
 				// for this iteration
-				logger.Errorf("subscription verification failed in service for [%v]: %w", receipt.ID, err)
+				logger.Warnf("subscription verification failed in service for [%v]: %w", receipt.ID, err)
 				continue
 			}
 

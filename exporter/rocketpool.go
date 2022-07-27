@@ -190,7 +190,7 @@ func (rp *RocketpoolExporter) Run() error {
 func (rp *RocketpoolExporter) Update(count int64) error {
 	var wg errgroup.Group
 	wg.Go(func() error { return rp.UpdateMinipools() })
-	wg.Go(func() error { return rp.UpdateNodes(count%4 == 0) })
+	wg.Go(func() error { return rp.UpdateNodes(count%12 == 0) })
 	wg.Go(func() error { return rp.UpdateDAOProposals() })
 	wg.Go(func() error { return rp.UpdateDAOMembers() })
 	wg.Go(func() error { return rp.UpdateNetworkStats() })
@@ -288,7 +288,7 @@ func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 	}
 
 	if includeCumulativeRpl {
-		rp.NodeRPLCumulative, err = CalculateLifetimeNodeRewardsAll(rp.API, nil)
+		rp.NodeRPLCumulative, err = CalculateLifetimeNodeRewardsAll(rp.API, big.NewInt(60000))
 		if err != nil {
 			return err
 		}
@@ -1000,7 +1000,7 @@ func CalculateLifetimeNodeRewardsAll(rp *rocketpool.RocketPool, intervalSize *bi
 	// Get the event logs
 	logs, err := eth.GetLogs(rp, addressFilter, topicFilter, intervalSize, nil, nil, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can not load lifetime rewards: $1", err)
 	}
 
 	// Iterate over the logs and sum the amount
