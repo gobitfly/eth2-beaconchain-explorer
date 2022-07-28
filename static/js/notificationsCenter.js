@@ -599,7 +599,7 @@ function loadValidatorsData(data) {
     let limit = 0
     let tgt = e.target
     while (tgt) {
-      if ($("#watchlist-container").is(tgt) || (tgt.classList && tgt.classList.contains("modal")) || tgt.classList.contains("page-link")) {
+      if ($("#watchlist-container").is(tgt) || (tgt.classList && tgt.classList.contains("modal")) || (tgt.classList && tgt.classList.contains("page-link"))) {
         isWatchlistParent = true
         break
       }
