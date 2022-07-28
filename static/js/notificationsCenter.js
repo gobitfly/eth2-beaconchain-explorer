@@ -627,7 +627,9 @@ $(document).ready(function () {
 
   loadValidatorsData(DATA)
   loadMonitoringData(MONITORING)
-  loadNetworkData(NET.Events_ts)
+  if (NET && Net.Events_ts) {
+    loadNetworkData(NET.Events_ts)
+  }
 
   $(document).on("click", function (e) {
     // remove selected class from rows on click outside
