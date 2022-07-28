@@ -677,7 +677,9 @@ $(function () {
 
   loadValidatorsData(DATA)
   loadMonitoringData(MONITORING)
-  loadNetworkData(NET.Events_ts)
+  if (NET && Net.Events_ts) {
+    loadNetworkData(NET.Events_ts)
+  }
 
   // $('#remove-all-btn').on('click', function (e) {
   //   $('#modaltext').text($(this).data('modaltext'))
