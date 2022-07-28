@@ -324,11 +324,13 @@ func GetDataTableState(user *types.User, session *sessions.Session, tableKey str
 		}
 		return state, nil
 	}
-
-	stateRaw, ok := session.Values["table:state:"+utils.GetNetwork()+":"+tableKey].(types.DataTableSaveState)
+	stateRaw, exists := session.Values["table:state:"+utils.GetNetwork()+":"+tableKey]
+	if !exists {
+		return nil, nil
+	}
+	state, ok := stateRaw.(types.DataTableSaveState)
 	if !ok {
 		return nil, fmt.Errorf("error parsing session value into type DataTableSaveState")
 	}
-	return &stateRaw, nil
-
+	return &state, nil
 }
