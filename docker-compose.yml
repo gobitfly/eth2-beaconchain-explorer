@@ -53,7 +53,7 @@ services:
                 # condition: service_healthy
 
     go:
-        image: golang:1.15
+        image: golang:1.16
         container_name: golang 
         restart: always
         volumes:
