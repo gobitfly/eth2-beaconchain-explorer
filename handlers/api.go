@@ -1644,7 +1644,7 @@ func GetMobileWidgetStats(j *json.Encoder, r *http.Request, indexOrPubkey string
 	}
 
 	g, _ := errgroup.WithContext(context.Background())
-	var rocketpoolStats []interface{}
+	var rocketpoolStats []any
 	var efficiencyRows *sql.Rows
 	var validatorRows *sql.Rows
 
@@ -1711,7 +1711,7 @@ func GetMobileWidgetStats(j *json.Encoder, r *http.Request, indexOrPubkey string
 		RocketpoolStats: rocketpoolStats,
 	}
 
-	sendOKResponse(j, r.URL.String(), []interface{}{data})
+	sendOKResponse(j, r.URL.String(), []any{data})
 }
 
 // MobileDeviceSettings godoc

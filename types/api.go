@@ -76,10 +76,10 @@ type StatsDataStruct struct {
 }
 
 type WidgetResponse struct {
-	Eff             interface{} `json:"efficiency"`
-	Validator       interface{} `json:"validator"`
-	Epoch           int64       `json:"epoch"`
-	RocketpoolStats interface{} `json:"rocketpool_network_stats"`
+	Eff             any   `json:"efficiency"`
+	Validator       any   `json:"validator"`
+	Epoch           int64 `json:"epoch"`
+	RocketpoolStats any   `json:"rocketpool_network_stats"`
 }
 
 type UsersNotificationsRequest struct {
