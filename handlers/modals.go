@@ -32,8 +32,6 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 		validators = strings.Split(validatorForm, ",")
 	}
 
-	logger.Infof("validators %+v", validators)
-
 	for _, val := range validators {
 		pubkey, _, err := GetValidatorIndexFrom(val)
 		if err != nil {
