@@ -20,7 +20,7 @@ function create_typeahead(input_container) {
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
     identify: function (obj) {
-      return obj.validator_indices.join(',')
+      return obj.validator_indices.join(",")
     },
     remote: {
       url: "/search/indexed_validators_by_name/%QUERY",
@@ -72,8 +72,8 @@ function create_typeahead(input_container) {
       limit: 5,
       name: "name",
       source: bhName,
-      display: function(data) {
-        return data && data.validator_indices && data.validator_indices.length ? data.validator_indices.join(',') : ''
+      display: function (data) {
+        return data && data.validator_indices && data.validator_indices.length ? data.validator_indices.join(",") : ""
       },
       templates: {
         header: '<h5 class="font-weight-bold ml-3">Validators by Name</h5>',
@@ -87,8 +87,8 @@ function create_typeahead(input_container) {
       limit: 5,
       name: "addresses",
       source: bhEth1Addresses,
-      display: function(data) {
-        return data && data.validator_indices && data.validator_indices.length ? data.validator_indices.join(',') : ''
+      display: function (data) {
+        return data && data.validator_indices && data.validator_indices.length ? data.validator_indices.join(",") : ""
       },
       templates: {
         header: '<h5 class="font-weight-bold ml-3">ETH1 Address</h5>',
@@ -102,8 +102,8 @@ function create_typeahead(input_container) {
       limit: 5,
       name: "graffiti",
       source: bhGraffiti,
-      display: function(data) {
-        return data && data.validator_indices && data.validator_indices.length ? data.validator_indices.join(',') : ''
+      display: function (data) {
+        return data && data.validator_indices && data.validator_indices.length ? data.validator_indices.join(",") : ""
       },
       templates: {
         header: '<h5 class="font-weight-bold ml-3">Graffiti</h5>',
@@ -112,7 +112,7 @@ function create_typeahead(input_container) {
           return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.graffiti}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
         },
       },
-    },
+    }
   )
   $(input_container).on("focus", function (e) {
     if (e.target.value !== "") {
@@ -123,14 +123,14 @@ function create_typeahead(input_container) {
     $(".tt-suggestion").first().addClass("tt-cursor")
   })
   // $(input_container).on("typeahead:select", function (e, sug) {
-    
+
   //   // console.log('sug: ', sug.validator_indices, sug.validator_indices.length)
   //   // $(input_container).val('asdf')
   //   console.log('typeahead select', e, sug)
 
   //   if (sug.validator_indices && sug.validator_indices.length) {
   //     $(input_container).val(sug.validator_indices.join(','))
-  //   } 
+  //   }
   //   // else {
   //     // $(input_container).val(sug.index)
   //     // $(input_container).attr("pk", sug.pubkey)
@@ -548,7 +548,7 @@ function loadValidatorsData(data) {
             let notifications = ""
             let hasItems = false
             let events = []
-            row.Notification = row.Notification.sort((a, b) => a.Notification > b.Notification ? 1 : -1)
+            row.Notification = row.Notification.sort((a, b) => (a.Notification > b.Notification ? 1 : -1))
 
             for (let i = 0; i < row.Notification.length; i++) {
               let n = row.Notification[i].Notification.split(":")
@@ -748,7 +748,7 @@ $(function () {
 
   loadValidatorsData(DATA)
   loadMonitoringData(MONITORING)
-  if (typeof NET !== 'undefined' && NET.Events_ts) {
+  if (typeof NET !== "undefined" && NET.Events_ts) {
     loadNetworkData(NET.Events_ts)
   }
 
