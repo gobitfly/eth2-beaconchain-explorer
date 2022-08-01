@@ -1604,13 +1604,30 @@ func GetUserPremiumByPackage(pkg string) PremiumUser {
 	return result
 }
 
-func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request) {
+func GetMobileWidgetStatsPost(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+	decoder := json.NewDecoder(r.Body)
 
+	var parsedBody types.DashboardRequest
+	err := decoder.Decode(&parsedBody)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not read body")
+		return
+	}
+
+	GetMobileWidgetStats(j, r, parsedBody.IndicesOrPubKey)
+}
+
+func GetMobileWidgetStatsGet(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	GetMobileWidgetStats(j, r, vars["indexOrPubkey"])
+}
 
-	epoch := int64(services.LatestEpoch()) - 100
+func GetMobileWidgetStats(j *json.Encoder, r *http.Request, indexOrPubkey string) {
+	epoch := int64(services.LatestEpoch())
 	if epoch < 0 {
 		epoch = 0
 	}
@@ -1620,33 +1637,62 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], prime.MaxValidators)
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(indexOrPubkey, prime.MaxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.ReaderDb.Query(
-		"SELECT pubkey, effectivebalance, slashed, activationeligibilityepoch, "+
-			"activationepoch, exitepoch, lastattestationslot, status, validator_performance.* FROM validators "+
-			"LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex "+
-			" WHERE validator_performance.validatorindex = ANY($1) OR pubkey = ANY($2) ORDER BY validator_performance.validatorindex",
-		pq.Array(queryIndices), queryPubkeys,
-	)
+	g, _ := errgroup.WithContext(context.Background())
+	var rocketpoolStats []any
+	var efficiencyRows *sql.Rows
+	var validatorRows *sql.Rows
+
+	g.Go(func() error {
+		validatorRows, err = db.ReaderDb.Query(
+			`SELECT 
+					validators.pubkey, 
+					effectivebalance, 
+					slashed, 
+					activationeligibilityepoch, 
+					activationepoch, 
+					exitepoch, 
+					lastattestationslot, 
+					validators.status, 
+					validator_performance.*,
+					TRUNC(rplm.node_fee::decimal, 10)::float  AS minipool_node_fee  
+				FROM validators 
+				LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex 
+				LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
+				WHERE validator_performance.validatorindex = ANY($1) OR validators.pubkey = ANY($2) ORDER BY validator_performance.validatorindex`,
+			pq.Array(queryIndices), queryPubkeys,
+		)
+		return err
+	})
+
+	g.Go(func() error {
+		efficiencyRows, err = getAttestationEfficiencyQuery(epoch-100, queryIndices, queryPubkeys)
+		return err
+	})
+
+	g.Go(func() error {
+		rocketpoolStats, err = getRocketpoolStats()
+		return err
+	})
+
+	err = g.Wait()
+	if validatorRows != nil {
+		defer validatorRows.Close()
+	}
+	if efficiencyRows != nil {
+		defer efficiencyRows.Close()
+	}
 	if err != nil {
-		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
-	defer rows.Close()
 
-	efficiencyRows, err := getAttestationEfficiencyQuery(epoch, queryIndices, queryPubkeys)
-	if err != nil {
-		sendErrorResponse(j, r.URL.String(), "could not retrieve efficiency db results")
-		return
-	}
-	defer efficiencyRows.Close()
-
-	generalData, err := utils.SqlRowsToJSON(rows)
+	generalData, err := utils.SqlRowsToJSON(validatorRows)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not parse db results")
 		return
@@ -1659,12 +1705,13 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &types.WidgetResponse{
-		Eff:       efficiencyData,
-		Validator: generalData,
-		Epoch:     epoch,
+		Eff:             efficiencyData,
+		Validator:       generalData,
+		Epoch:           epoch,
+		RocketpoolStats: rocketpoolStats,
 	}
 
-	sendOKResponse(j, r.URL.String(), []interface{}{data})
+	sendOKResponse(j, r.URL.String(), []any{data})
 }
 
 // MobileDeviceSettings godoc
