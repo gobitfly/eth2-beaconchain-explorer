@@ -18,19 +18,18 @@ import (
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
-	"github.com/prysmaticlabs/prysm/beacon-chain/core/helpers"
-	contracts "github.com/prysmaticlabs/prysm/contracts/deposit-contract"
-	ethpb "github.com/prysmaticlabs/prysm/proto/prysm/v1alpha1"
-	"github.com/prysmaticlabs/prysm/shared/bytesutil"
-	"github.com/prysmaticlabs/prysm/shared/depositutil"
-	"github.com/prysmaticlabs/prysm/shared/hashutil"
-	"github.com/prysmaticlabs/prysm/shared/params"
+	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
+	"github.com/prysmaticlabs/prysm/v3/config/params"
+	"github.com/prysmaticlabs/prysm/v3/contracts/deposit"
+	"github.com/prysmaticlabs/prysm/v3/crypto/hash"
+	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
+	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 	"github.com/sirupsen/logrus"
 )
 
 var eth1LookBack = uint64(100)
 var eth1MaxFetch = uint64(1000)
-var eth1DepositEventSignature = hashutil.HashKeccak256([]byte("DepositEvent(bytes,bytes,bytes,bytes,bytes)"))
+var eth1DepositEventSignature = hash.HashKeccak256([]byte("DepositEvent(bytes,bytes,bytes,bytes,bytes)"))
 var eth1DepositContractFirstBlock uint64
 var eth1DepositContractAddress common.Address
 var eth1Client *ethclient.Client
@@ -165,34 +164,34 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 	if err != nil {
 		return nil, err
 	}
-	domain, err := helpers.ComputeDomain(
+	domain, err := signing.ComputeDomain(
 		cfg.DomainDeposit,
 		genForkVersion,
 		cfg.ZeroHash[:],
 	)
 	if utils.Config.Chain.Config.ConfigName == "zinken" {
-		domain, err = helpers.ComputeDomain(
+		domain, err = signing.ComputeDomain(
 			cfg.DomainDeposit,
 			[]byte{0x00, 0x00, 0x00, 0x03},
 			cfg.ZeroHash[:],
 		)
 	}
 	if utils.Config.Chain.Config.ConfigName == "toledo" {
-		domain, err = helpers.ComputeDomain(
+		domain, err = signing.ComputeDomain(
 			cfg.DomainDeposit,
 			[]byte{0x00, 0x70, 0x1E, 0xD0},
 			cfg.ZeroHash[:],
 		)
 	}
 	if utils.Config.Chain.Config.ConfigName == "pyrmont" {
-		domain, err = helpers.ComputeDomain(
+		domain, err = signing.ComputeDomain(
 			cfg.DomainDeposit,
 			[]byte{0x00, 0x00, 0x20, 0x09},
 			cfg.ZeroHash[:],
 		)
 	}
 	if utils.Config.Chain.Config.ConfigName == "prater" {
-		domain, err = helpers.ComputeDomain(
+		domain, err = signing.ComputeDomain(
 			cfg.DomainDeposit,
 			[]byte{0x00, 0x00, 0x10, 0x20},
 			cfg.ZeroHash[:],
@@ -206,11 +205,11 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 		if depositLog.Topics[0] != eth1DepositEventSignature {
 			continue
 		}
-		pubkey, withdrawalCredentials, amount, signature, merkletreeIndex, err := contracts.UnpackDepositLogData(depositLog.Data)
+		pubkey, withdrawalCredentials, amount, signature, merkletreeIndex, err := deposit.UnpackDepositLogData(depositLog.Data)
 		if err != nil {
 			return depositsToSave, fmt.Errorf("error unpacking eth1-deposit-log: %x: %w", depositLog.Data, err)
 		}
-		err = depositutil.VerifyDepositSignature(&ethpb.Deposit_Data{
+		err = deposit.VerifyDepositSignature(&ethpb.Deposit_Data{
 			PublicKey:             pubkey,
 			WithdrawalCredentials: withdrawalCredentials,
 			Amount:                bytesutil.FromBytes8(amount),

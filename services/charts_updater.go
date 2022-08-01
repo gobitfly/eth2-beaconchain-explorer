@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/prysmaticlabs/prysm/shared/mathutil"
+	"github.com/prysmaticlabs/prysm/v3/math"
 	"github.com/shopspring/decimal"
 )
 
@@ -908,7 +908,7 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 		if row.Eligibleether == 0 {
 			continue
 		}
-		baseReward := maxEffectiveBalance * baseRewardFactor / mathutil.IntegerSquareRoot(row.Eligibleether) / baseRewardPerEpoch
+		baseReward := maxEffectiveBalance * baseRewardFactor / math.IntegerSquareRoot(row.Eligibleether) / baseRewardPerEpoch
 		// Micro-incentives for matching FFG source, FFG target, and head
 		rewardPerEpoch := int64(3 * baseReward * row.Votedether / row.Eligibleether)
 		// Proposer and inclusion delay micro-rewards

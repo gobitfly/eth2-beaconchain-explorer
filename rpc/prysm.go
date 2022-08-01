@@ -12,13 +12,13 @@ import (
 	gtypes "github.com/ethereum/go-ethereum/core/types"
 
 	lru "github.com/hashicorp/golang-lru"
-	ethpb "github.com/prysmaticlabs/prysm/proto/prysm/v1alpha1"
+	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 
 	"github.com/prysmaticlabs/go-bitfield"
 	"google.golang.org/grpc"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	eth2types "github.com/prysmaticlabs/eth2-types"
+	eth2types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
 )
 
 // PrysmClient holds information about the Prysm Client
@@ -153,8 +153,8 @@ func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 	}
 
 	return &types.ValidatorQueue{
-		Activating: uint64(len(validators.ActivationPublicKeys)),
-		Exititing:  uint64(len(validators.ExitPublicKeys)),
+		Activating: uint64(len(validators.GetActivationValidatorIndices())),
+		Exititing:  uint64(len(validators.GetExitValidatorIndices())),
 	}, nil
 }
 
@@ -230,25 +230,25 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 
 	// Retrieve the validator balances for the requested epoch
 	start := time.Now()
-	validatorBalances, err := pc.getBalancesForEpoch(int64(epoch))
+	validatorBalances, _ := pc.getBalancesForEpoch(int64(epoch))
 	logger.Printf("retrieved data for %v validator balances for epoch %v took %v", len(validatorBalances), epoch, time.Since(start))
 
 	// Retrieve the validator balances for the n-1d epoch
 	start = time.Now()
 	epoch1d := int64(epoch) - 225
-	validatorBalances1d, err := pc.getBalancesForEpoch(epoch1d)
+	validatorBalances1d, _ := pc.getBalancesForEpoch(epoch1d)
 	logger.Printf("retrieved data for %v validator balances for 1d epoch %v took %v", len(validatorBalances), epoch1d, time.Since(start))
 
 	// Retrieve the validator balances for the n-7d epoch
 	start = time.Now()
 	epoch7d := int64(epoch) - 225*7
-	validatorBalances7d, err := pc.getBalancesForEpoch(epoch7d)
+	validatorBalances7d, _ := pc.getBalancesForEpoch(epoch7d)
 	logger.Printf("retrieved data for %v validator balances for 7d epoch %v took %v", len(validatorBalances), epoch7d, time.Since(start))
 
 	// Retrieve the validator balances for the n-7d epoch
 	start = time.Now()
 	epoch31d := int64(epoch) - 225*31
-	validatorBalances31d, err := pc.getBalancesForEpoch(epoch31d)
+	validatorBalances31d, _ := pc.getBalancesForEpoch(epoch31d)
 	logger.Printf("retrieved data for %v validator balances for 31d epoch %v took %v", len(validatorBalances), epoch31d, time.Since(start))
 
 	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
@@ -423,7 +423,7 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 	}
 
 	// blocksResponse, err := pc.client.ListBlocks(context.Background(), blocksRequest)
-	blocksResponse, err := pc.client.ListBlocksAltair(context.Background(), blocksRequest)
+	blocksResponse, err := pc.client.ListBeaconBlocks(context.Background(), blocksRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -462,7 +462,7 @@ func (pc *PrysmClient) GetBlockStatusByEpoch(epoch uint64) ([]*types.CanonBlock,
 
 	blocksRequest := &ethpb.ListBlocksRequest{PageSize: utils.Config.Indexer.Node.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Epoch{Epoch: eth2types.Epoch(epoch)}}
 
-	blocksResponse, err := pc.client.ListBlocks(context.Background(), blocksRequest)
+	blocksResponse, err := pc.client.ListBeaconBlocks(context.Background(), blocksRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -472,9 +472,17 @@ func (pc *PrysmClient) GetBlockStatusByEpoch(epoch uint64) ([]*types.CanonBlock,
 	}
 
 	for _, block := range blocksResponse.BlockContainers {
+		var slot eth2types.Slot = 0
+
+		if altairBlock := block.GetAltairBlock(); altairBlock != nil {
+			slot = altairBlock.Block.GetSlot()
+		} else {
+			slot = block.GetPhase0Block().GetBlock().GetSlot()
+		}
+
 		blocks = append(blocks, &types.CanonBlock{
 			BlockRoot: block.BlockRoot,
-			Slot:      uint64(block.Block.Block.Slot),
+			Slot:      uint64(slot),
 			Canonical: block.Canonical,
 		})
 	}
@@ -482,7 +490,7 @@ func (pc *PrysmClient) GetBlockStatusByEpoch(epoch uint64) ([]*types.CanonBlock,
 	return blocks, nil
 }
 
-func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainerAltair) (*types.Block, error) {
+func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainer) (*types.Block, error) {
 	phase0Block := block.GetPhase0Block()
 	if phase0Block != nil {
 		return pc.parsePhase0Block(block)
@@ -495,7 +503,7 @@ func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainerAltair) (*
 	return nil, fmt.Errorf("block is neither phase0 nor altair")
 }
 
-func (pc *PrysmClient) parsePhase0Block(block *ethpb.BeaconBlockContainerAltair) (*types.Block, error) {
+func (pc *PrysmClient) parsePhase0Block(block *ethpb.BeaconBlockContainer) (*types.Block, error) {
 	blk := block.GetPhase0Block()
 	if blk == nil {
 		return nil, fmt.Errorf("failed getting phase0 block")
@@ -641,7 +649,7 @@ func (pc *PrysmClient) parsePhase0Block(block *ethpb.BeaconBlockContainerAltair)
 	return b, nil
 }
 
-func (pc *PrysmClient) parseAltairBlock(block *ethpb.BeaconBlockContainerAltair) (*types.Block, error) {
+func (pc *PrysmClient) parseAltairBlock(block *ethpb.BeaconBlockContainer) (*types.Block, error) {
 	blk := block.GetAltairBlock()
 	if blk == nil {
 		return nil, fmt.Errorf("failed getting altair block")
@@ -1015,9 +1023,9 @@ func (pc *PrysmClient) GetValidatorParticipation(epoch uint64) (*types.Validator
 	}
 	return &types.ValidatorParticipation{
 		Epoch:                   epoch,
-		GlobalParticipationRate: epochParticipationStatistics.Participation.GlobalParticipationRate,
-		VotedEther:              epochParticipationStatistics.Participation.VotedEther,
-		EligibleEther:           epochParticipationStatistics.Participation.EligibleEther,
+		GlobalParticipationRate: float32(epochParticipationStatistics.Participation.PreviousEpochTargetAttestingGwei) / float32(epochParticipationStatistics.Participation.PreviousEpochActiveGwei),
+		VotedEther:              epochParticipationStatistics.Participation.PreviousEpochTargetAttestingGwei,
+		EligibleEther:           epochParticipationStatistics.Participation.PreviousEpochActiveGwei,
 	}, nil
 }
 
