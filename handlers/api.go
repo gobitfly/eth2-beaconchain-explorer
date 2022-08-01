@@ -1607,14 +1607,10 @@ func GetUserPremiumByPackage(pkg string) PremiumUser {
 func GetMobileWidgetStatsPost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	j := json.NewEncoder(w)
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		sendErrorResponse(j, r.URL.String(), "could not read body")
-		return
-	}
+	decoder := json.NewDecoder(r.Body)
 
 	var parsedBody types.DashboardRequest
-	err = json.Unmarshal(body, &parsedBody)
+	err := decoder.Decode(&parsedBody)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not read body")
 		return
