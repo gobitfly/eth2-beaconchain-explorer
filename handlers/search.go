@@ -41,7 +41,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/block/"+search, 301)
 	} else if len(search) == 96 {
 		http.Redirect(w, r, "/validator/"+search, 301)
-	} else if utils.IsValidEth1Address(search) {
+	} else if utils.IsValidEth1Address(search) || utils.IsValidEnsDomain(search) {
 		http.Redirect(w, r, "/validators/eth1deposits?q="+search, 301)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
@@ -64,6 +64,14 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	searchType := vars["type"]
 	search := vars["search"]
+
+	if strings.Contains(searchType, "eth1_addresses") {
+		address, err := utils.ResolveEnsDomain(search)
+		if err == nil {
+			search = address
+		}
+	}
+
 	search = strings.Replace(search, "0x", "", -1)
 	search = strings.Replace(search, "0X", "", -1)
 	var err error
