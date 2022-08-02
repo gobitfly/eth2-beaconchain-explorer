@@ -56,6 +56,12 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	search := q.Get("search[value]")
+
+	address, err := utils.ResolveEnsDomain(search)
+	if err == nil {
+		search = address
+	}
+
 	search = strings.Replace(search, "0x", "", -1)
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
@@ -168,6 +174,12 @@ func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	search := q.Get("search[value]")
+
+	address, err := utils.ResolveEnsDomain(search)
+	if err == nil {
+		search = address
+	}
+
 	search = strings.Replace(search, "0x", "", -1)
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
