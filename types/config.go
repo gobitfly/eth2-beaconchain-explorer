@@ -159,9 +159,17 @@ type Config struct {
 		StorageContractFirstBlock uint64 `yaml:"storageContractFirstBlock" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_FIRST_BLOCK"`
 	} `yaml:"rocketpoolExporter"`
 	EthStoreExporter struct {
-		Enabled bool          `yaml:"enabled" envconfig:"ETHSTORE_EXPORTER_ENABLED"`
-		Sleep   time.Duration `yaml:"sleep" envconfig:"ETHSTORE_EXPORTER_SLEEP"`
+		Enabled        bool          `yaml:"enabled" envconfig:"ETHSTORE_EXPORTER_ENABLED"`
+		UpdateInterval time.Duration `yaml:"updateInterval" envconfig:"ETHSTORE_EXPORTER_UPDATE_INTERVAL"`
+		ErrorInterval  time.Duration `yaml:"errorInterval" envconfig:"ETHSTORE_EXPORTER_ERROR_INTERVAL"`
+		Sleep          time.Duration `yaml:"sleep" envconfig:"ETHSTORE_EXPORTER_SLEEP"`
 	} `yaml:"ethStoreExporter"`
+	HistoricalPoolPerformanceExporter struct {
+		Enabled        bool          `yaml:"enabled" envconfig:"HISTORICAL_POOL_PERFORMANCE_EXPORTER_ENABLED"`
+		UpdateInterval time.Duration `yaml:"updateInterval" envconfig:"HISTORICAL_POOL_PERFORMANCE_EXPORTER_UPDATE_INTERVAL"`
+		ErrorInterval  time.Duration `yaml:"errorInterval" envconfig:"HISTORICAL_POOL_PERFORMANCE_EXPORTER_ERROR_INTERVAL"`
+		Sleep          time.Duration `yaml:"sleep" envconfig:"HISTORICAL_POOL_PERFORMANCE_EXPORTER_SLEEP"`
+	} `yaml:"historicalPoolPerformanceExporter"`
 }
 
 type DatabaseConfig struct {

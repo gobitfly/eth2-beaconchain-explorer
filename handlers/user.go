@@ -992,15 +992,15 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	// 	http.Error(w, "Internal server error", 503)
 	// 	return
 	// }
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	if length > 100 {
-		length = 100
-	}
+	// length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	// if err != nil {
+	// 	logger.Errorf("error converting datatables length parameter from string to int: %v", err)
+	// 	http.Error(w, "Internal server error", 503)
+	// 	return
+	// }
+	// if length > 100 {
+	// 	length = 100
+	// }
 
 	user := getUser(r)
 
@@ -1017,7 +1017,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 			validators.validatorindex as index,
 			users_validators_tags.validator_publickey as publickey,
 			COALESCE (MAX(validators.balance), 0) as balance,
-			ARRAY_REMOVE(ARRAY_AGG(users_subscriptions.event_name), NULL) as events
+			ARRAY_REMOVE(ARRAY_AGG(users_subscriptions.event_name order by users_subscriptions.event_name asc), NULL) as events
 		FROM users_validators_tags
 		LEFT JOIN users_subscriptions
 			ON users_validators_tags.user_id = users_subscriptions.user_id
@@ -1039,6 +1039,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		if entry.Index != nil {
 			index = utils.FormatValidator(*entry.Index)
 		}
+
 		tableData = append(tableData, []interface{}{
 			index,
 			utils.FormatPublicKey(entry.Publickey),

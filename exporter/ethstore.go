@@ -36,9 +36,18 @@ func ethStoreExporter() {
 		DB:             db.WriterDb,
 		NodeHost:       utils.Config.Indexer.Node.Host,
 		NodePort:       utils.Config.Indexer.Node.Port,
-		UpdateInverval: time.Minute,
-		ErrorInterval:  time.Second * 10,
+		UpdateInverval: utils.Config.EthStoreExporter.UpdateInterval,
+		ErrorInterval:  utils.Config.EthStoreExporter.ErrorInterval,
 		Sleep:          utils.Config.EthStoreExporter.Sleep,
+	}
+	if ese.UpdateInverval == 0 {
+		ese.UpdateInverval = time.Minute
+	}
+	if ese.ErrorInterval == 0 {
+		ese.ErrorInterval = time.Second * 10
+	}
+	if ese.Sleep == 0 {
+		ese.Sleep = time.Minute
 	}
 
 	ese.Run()
@@ -57,7 +66,6 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 	if err != nil {
 		return err
 	}
-	logger.Infof("exported eth.store day %s into db", day)
 	return nil
 }
 
@@ -68,12 +76,12 @@ func (ese *EthStoreExporter) getStoreDay(day string) (*ethstore.Day, error) {
 func (ese *EthStoreExporter) Run() {
 	t := time.NewTicker(ese.UpdateInverval)
 	defer t.Stop()
-OUTER:
+DBCHECK:
 	for {
 		// get latest eth.store day
 		latest, err := ese.getStoreDay("latest")
 		if err != nil {
-			logger.WithError(err).Errorf("error retreiving eth.store data")
+			logger.WithError(err).Errorf("error retrieving eth.store data")
 			time.Sleep(ese.ErrorInterval)
 			continue
 		}
@@ -84,7 +92,7 @@ OUTER:
 				SELECT COUNT(*)
 				FROM eth_store_stats`)
 		if err != nil {
-			logger.WithError(err).Error("error retreiving eth.store days count from db")
+			logger.WithError(err).Error("error retrieving eth.store days count from db")
 			time.Sleep(ese.ErrorInterval)
 			continue
 		}
@@ -104,7 +112,7 @@ OUTER:
 						SELECT day 
 						FROM eth_store_stats`)
 				if err != nil {
-					logger.WithError(err).Error("error retreiving eth.store days from db")
+					logger.WithError(err).Error("error retrieving eth.store days from db")
 					time.Sleep(ese.ErrorInterval)
 					continue
 				}
@@ -114,18 +122,19 @@ OUTER:
 			}
 
 			// export missing days
-			for k, v := range daysToExport {
-				if v {
-					err = ese.ExportDay(strconv.FormatUint(k, 10))
+			for dayToExport, shouldExport := range daysToExport {
+				if shouldExport {
+					err = ese.ExportDay(strconv.FormatUint(dayToExport, 10))
 					if err != nil {
-						logger.WithError(err).Errorf("error exporting eth.store day %d into database", k)
+						logger.WithError(err).Errorf("error exporting eth.store day %d into database", dayToExport)
 						time.Sleep(ese.ErrorInterval)
-						continue OUTER
+						continue DBCHECK
 					}
-				}
-				if ethStoreDayCount < latest.Day {
-					// more than 1 day is being exported, sleep for duration specified in config
-					time.Sleep(ese.Sleep)
+					logger.Infof("exported eth.store day %s into db", dayToExport)
+					if ethStoreDayCount < latest.Day {
+						// more than 1 day is being exported, sleep for duration specified in config
+						time.Sleep(ese.Sleep)
+					}
 				}
 			}
 		}
