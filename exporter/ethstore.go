@@ -47,7 +47,7 @@ func ethStoreExporter() {
 		ese.ErrorInterval = time.Second * 10
 	}
 	if ese.Sleep == 0 {
-		ese.Sleep = time.Second * 10
+		ese.Sleep = time.Minute
 	}
 
 	ese.Run()
