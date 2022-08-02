@@ -36,9 +36,18 @@ func ethStoreExporter() {
 		DB:             db.WriterDb,
 		NodeHost:       utils.Config.Indexer.Node.Host,
 		NodePort:       utils.Config.Indexer.Node.Port,
-		UpdateInverval: time.Minute,
-		ErrorInterval:  time.Second * 10,
+		UpdateInverval: utils.Config.EthStoreExporter.UpdateInterval,
+		ErrorInterval:  utils.Config.EthStoreExporter.ErrorInterval,
 		Sleep:          utils.Config.EthStoreExporter.Sleep,
+	}
+	if ese.UpdateInverval == 0 {
+		ese.UpdateInverval = time.Minute
+	}
+	if ese.ErrorInterval == 0 {
+		ese.ErrorInterval = time.Second * 10
+	}
+	if ese.Sleep == 0 {
+		ese.Sleep = time.Second * 10
 	}
 
 	ese.Run()
