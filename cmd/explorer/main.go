@@ -196,6 +196,7 @@ func main() {
 		apiV1Router.HandleFunc("/rocketpool/validator/{indexOrPubkey}", handlers.ApiRocketpoolValidators).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/ethstore/{day}", handlers.ApiEthStoreDay).Methods("GET", "OPTIONS")
 
+		apiV1Router.HandleFunc("/ens/domain_lookup/{domain}", handlers.ResolveEnsDomain).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/widget", handlers.GetMobileWidgetStatsGet).Methods("GET")
 		apiV1Router.HandleFunc("/dashboard/widget", handlers.GetMobileWidgetStatsPost).Methods("POST")
 		apiV1Router.Use(utils.CORSMiddleware)

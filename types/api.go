@@ -95,6 +95,11 @@ type DashboardRequest struct {
 	IndicesOrPubKey string `json:"indicesOrPubkey"`
 }
 
+type EnsResolveDomainResponse struct {
+	Address string `json:"address"`
+	Domain  string `json:"domain"`
+}
+
 type DiscordEmbed struct {
 	Color       string              `json:"color,omitempty"`
 	Description string              `json:"description,omitempty"`
