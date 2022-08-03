@@ -34,11 +34,17 @@ func ethStoreExporter() {
 	logger.Info("starting eth.store exporter")
 	ese := &EthStoreExporter{
 		DB:             db.WriterDb,
-		NodeHost:       utils.Config.Indexer.Node.Host,
-		NodePort:       utils.Config.Indexer.Node.Port,
+		NodeHost:       utils.Config.EthStoreExporter.Node.Host,
+		NodePort:       utils.Config.EthStoreExporter.Node.Port,
 		UpdateInverval: utils.Config.EthStoreExporter.UpdateInterval,
 		ErrorInterval:  utils.Config.EthStoreExporter.ErrorInterval,
 		Sleep:          utils.Config.EthStoreExporter.Sleep,
+	}
+	if len(ese.NodeHost) == 0 {
+		ese.NodeHost = utils.Config.Indexer.Node.Host
+	}
+	if len(ese.NodePort) == 0 {
+		ese.NodePort = utils.Config.Indexer.Node.Port
 	}
 	if ese.UpdateInverval == 0 {
 		ese.UpdateInverval = time.Minute
@@ -130,7 +136,7 @@ DBCHECK:
 						time.Sleep(ese.ErrorInterval)
 						continue DBCHECK
 					}
-					logger.Infof("exported eth.store day %s into db", dayToExport)
+					logger.Infof("exported eth.store day %d into db", dayToExport)
 					if ethStoreDayCount < latest.Day {
 						// more than 1 day is being exported, sleep for duration specified in config
 						time.Sleep(ese.Sleep)
