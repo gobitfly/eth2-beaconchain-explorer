@@ -838,7 +838,7 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 	}
 
 	var res *types.ValidatorParticipation
-	if epoch < LighthouseLatestHeadEpoch-1 {
+	if epoch < request_epoch {
 		// we requested the next epoch, so we have to use the previous value for everything here
 		res = &types.ValidatorParticipation{
 			Epoch:                   epoch,
