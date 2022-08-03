@@ -47,7 +47,6 @@ type EpochData struct {
 // ValidatorParticipation is a struct to hold validator participation data
 type ValidatorParticipation struct {
 	Epoch                   uint64
-	Finalized               bool
 	GlobalParticipationRate float32
 	VotedEther              uint64
 	EligibleEther           uint64

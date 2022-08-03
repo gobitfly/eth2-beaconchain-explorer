@@ -400,6 +400,11 @@ func doFullCheck(client rpc.Client) {
 	if err != nil {
 		logger.Errorf("error updating epoch stratus: %v", err)
 	}
+	// set the finalized epoch to finalized
+	err = db.UpdateEpochFinalization(head.FinalizedEpoch)
+	if err != nil {
+		logger.Errorf("error updating finalization of epochs: %v", err)
+	}
 
 	logger.Infof("exporting validation queue")
 	err = exportValidatorQueue(client)
@@ -514,7 +519,7 @@ func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
 		if err != nil {
 			logger.Printf("error retrieving epoch participation statistics: %v", err)
 		} else {
-			logger.Printf("updating epoch %v with status finalized = %v", epoch, epochParticipationStats.Finalized)
+			logger.Printf("updating epoch %v with participation rate %v", epoch, epochParticipationStats.GlobalParticipationRate)
 			err := db.UpdateEpochStatus(epochParticipationStats)
 
 			if err != nil {
@@ -522,7 +527,7 @@ func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
 			}
 		}
 	}
-	return db.UpdateEpochFinalization()
+	return nil
 }
 
 func performanceDataUpdater() {
