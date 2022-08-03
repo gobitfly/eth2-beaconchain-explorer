@@ -12,7 +12,9 @@ import (
 
 var poolsServicesTemplate = template.Must(template.New("poolsServices").Funcs(utils.GetTemplateFuncs()).ParseFiles(
 	"templates/layout.html",
-	"templates/pools.html",
+	"templates/pools/pools.html",
+	"templates/pools/loadingSvg.html",
+	"templates/pools/distributionChart.html",
 	"templates/bannerPools.html"))
 
 func Pools(w http.ResponseWriter, r *http.Request) {

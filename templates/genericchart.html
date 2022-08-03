@@ -7,12 +7,12 @@
   <script src="/js/highcharts/drilldown.min.js"></script>
 
     <script>
+        // source: https://stackoverflow.com/questions/63343645/overriding-log-scale-with-highcharts-export-server/63375446#63375446
         (function (H) {
             H.addEvent(H.Axis, 'afterInit', function () {
                 const logarithmic = this.logarithmic;
 
                 if (logarithmic && this.options.custom.allowNegativeLog) {
-
                     // Avoid errors on negative numbers on a log axis
                     this.positiveValuesOnly = false;
 
@@ -79,7 +79,12 @@
                 custom: {
                   allowNegativeLog: true,
                 },
+                {{ else}}
+                custom: {
+                  allowNegativeLog: false,
+                },
                 {{ end }}
+
                 title: {text: {{.YAxisTitle}} },
                 opposite: false
             }],
@@ -145,6 +150,10 @@
                 type: 'logarithmic',
                 custom: {
                   allowNegativeLog: true,
+                },
+                {{ else}}
+                custom: {
+                  allowNegativeLog: false,
                 },
                 {{ end }}
                 title: {
