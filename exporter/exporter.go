@@ -400,7 +400,7 @@ func doFullCheck(client rpc.Client) {
 	if err != nil {
 		logger.Errorf("error updating epoch stratus: %v", err)
 	}
-	// set the finalized epoch to finalized
+	// set all finalized epochs to finalized
 	err = db.UpdateEpochFinalization(head.FinalizedEpoch)
 	if err != nil {
 		logger.Errorf("error updating finalization of epochs: %v", err)
