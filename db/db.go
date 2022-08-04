@@ -945,6 +945,7 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 		thresholdSlot = 0
 	}
 
+	latestEpoch := latestBlock / 32
 	farFutureEpoch := uint64(18446744073709551615)
 	maxSqlNumber := uint64(9223372036854775807)
 
@@ -1042,7 +1043,7 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline' 
 					ELSE 'active_online'
 					END`,
-			latestBlock, thresholdSlot, strings.Join(valueStrings, ","))
+			latestEpoch, thresholdSlot, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err
