@@ -796,7 +796,6 @@ func SaveEpoch(data *types.EpochData) error {
 			validatorscount         = excluded.validatorscount,
 			averagevalidatorbalance = excluded.averagevalidatorbalance,
 			totalvalidatorbalance   = excluded.totalvalidatorbalance,
-			finalized               = excluded.finalized,
 			eligibleether           = excluded.eligibleether,
 			globalparticipationrate = excluded.globalparticipationrate,
 			votedether              = excluded.votedether`,
@@ -810,7 +809,7 @@ func SaveEpoch(data *types.EpochData) error {
 		validatorsCount,
 		validatorBalanceAverage.Uint64(),
 		validatorBalanceSum.Uint64(),
-		data.EpochParticipationStats.Finalized,
+		false,
 		data.EpochParticipationStats.EligibleEther,
 		data.EpochParticipationStats.GlobalParticipationRate,
 		data.EpochParticipationStats.VotedEther)
@@ -1579,19 +1578,18 @@ func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
 
 	_, err := WriterDb.Exec(`
 		UPDATE epochs SET
-			finalized = $1,
-			eligibleether = $2,
-			globalparticipationrate = $3,
-			votedether = $4
-		WHERE epoch = $5`,
-		stats.Finalized, stats.EligibleEther, stats.GlobalParticipationRate, stats.VotedEther, stats.Epoch)
+			eligibleether = $1,
+			globalparticipationrate = $2,
+			votedether = $3
+		WHERE epoch = $4`,
+		stats.EligibleEther, stats.GlobalParticipationRate, stats.VotedEther, stats.Epoch)
 
 	return err
 }
 
 // UpdateEpochFinalization will update finalized-flag of all epochs before the last finalized epoch
-func UpdateEpochFinalization() error {
-	_, err := WriterDb.Exec(`UPDATE epochs SET finalized = true WHERE epoch < (SELECT MAX(epoch) FROM epochs WHERE finalized = true)`)
+func UpdateEpochFinalization(finality_epoch uint64) error {
+	_, err := WriterDb.Exec(`UPDATE epochs SET finalized = true WHERE epoch <= $1`, finality_epoch)
 	return err
 }
 
