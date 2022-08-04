@@ -748,6 +748,7 @@ $(function () {
 
   loadValidatorsData(DATA)
   loadMonitoringData(MONITORING)
+
   if (typeof NET !== "undefined" && NET.Events_ts) {
     loadNetworkData(NET.Events_ts)
   }
