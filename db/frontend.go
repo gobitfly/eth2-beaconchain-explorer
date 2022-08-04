@@ -286,6 +286,16 @@ func DeleteSubscription(userID uint64, network string, eventName types.EventName
 	return err
 }
 
+func DeleteAllSubscription(userID uint64, network string, eventName types.EventName) error {
+	name := string(eventName)
+	if network != "" && !types.IsUserIndexed(eventName) {
+		name = strings.ToLower(network) + ":" + string(eventName)
+	}
+
+	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2", userID, name)
+	return err
+}
+
 func InsertMobileSubscription(tx *sql.Tx, userID uint64, paymentDetails types.MobileSubscription, store, receipt string, expiration int64, rejectReson string, extSubscriptionId string) error {
 	now := time.Now()
 	nowTs := now.Unix()
