@@ -153,7 +153,7 @@ func GetValidatorChurnLimit() (uint64, error) {
 
 	adaptable := uint64(0)
 	if *count > 0 {
-		adaptable = utils.Config.Chain.Config.ChurnLimitQuotient / *count
+		adaptable = *count / utils.Config.Chain.Config.ChurnLimitQuotient
 	}
 
 	if min > adaptable {
