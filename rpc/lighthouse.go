@@ -23,7 +23,7 @@ import (
 )
 
 // LighthouseLatestHeadEpoch is used to cache the latest head epoch for participation requests
-var LighthouseLatestHeadEpoch uint64 = 0
+var LighthouseLatestHeadEpoch int64 = 0
 
 // LighthouseClient holds the Lighthouse client info
 type LighthouseClient struct {
