@@ -797,7 +797,7 @@ func syncCommitteeParticipation(bits []byte) float64 {
 
 // GetValidatorParticipation will get the validator participation from the Lighthouse RPC api
 func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.ValidatorParticipation, error) {
-	if epoch >= LighthouseLatestHeadEpoch-1 {
+	if LighthouseLatestHeadEpoch == 0 || epoch >= LighthouseLatestHeadEpoch-1 {
 		// update LighthouseLatestHeadEpoch to make sure we are continuing with the latest data
 		// we need to check when epoch = head and epoch head - 1 so our following logic acts correctly when we are close to the head
 		head, err := lc.GetChainHead()
