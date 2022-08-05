@@ -26,6 +26,7 @@ message Eth1Block {
     repeated Eth1Transaction transactions = 21;
 }
 
+
 message Eth1Transaction {
     uint32 type = 1;
     uint64 nonce = 2;
@@ -77,3 +78,34 @@ message Eth1InternalTransaction {
     string error_msg = 5;
     string path = 6;
 }
+
+message Eth1BlockIndexed {
+    bytes hash = 1;
+    bytes parent_hash = 2;
+    bytes uncle_hash = 3;
+    bytes coinbase = 4;
+    bytes root = 5;
+    bytes tx_hash = 6;
+    bytes receipt_hash = 7;
+    bytes difficulty = 8;
+    uint64 number = 9;
+    uint64 gas_limit = 10;
+    uint64 gas_used = 11;
+    google.protobuf.Timestamp time = 12;
+    bytes extra = 13;
+    bytes mix_digest = 14;
+    bytes bloom = 17;
+    bytes base_fee = 18;
+    uint64 uncle_count = 19;
+    uint64 transaction_count = 20;
+    bytes mev = 21;
+    bytes lowest_gas_price = 22;
+    bytes highest_gas_price = 23;
+    uint64 duration = 24;
+    bytes tx_reward = 25;
+    bytes uncle_reward = 26;
+    bytes base_fee_change = 27;
+    bytes block_utilization_change = 28;
+}
+
+

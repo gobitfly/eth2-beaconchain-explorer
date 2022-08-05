@@ -87,6 +87,15 @@ func main() {
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
 
+	// if utils.Config.Frontend.Bigtable.Enabled {
+	bt, err := db.NewBigtable("etherchain", "etherchain", "1")
+	if err != nil {
+		logrus.Fatalf("error connecting to bigtable: %v", err)
+	}
+	defer bt.Close()
+	db.BigtableClient = bt
+	// }
+
 	if utils.Config.Metrics.Enabled {
 		go metrics.MonitorDB(db.WriterDb)
 		DBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.WriterDatabase.Username, cfg.WriterDatabase.Password, cfg.WriterDatabase.Host, cfg.WriterDatabase.Port, cfg.WriterDatabase.Name)
@@ -253,6 +262,9 @@ func main() {
 			router.HandleFunc("/block/{slotOrHash}/votes", handlers.BlockVoteData).Methods("GET")
 			router.HandleFunc("/blocks", handlers.Blocks).Methods("GET")
 			router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
+			router.HandleFunc("/execution/blocks", handlers.Eth1Blocks).Methods("GET")
+			router.HandleFunc("/execution/blocks/data", handlers.Eth1BlocksData).Methods("GET")
+
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 			router.HandleFunc("/charts", handlers.Charts).Methods("GET")
 			router.HandleFunc("/charts/{chart}", handlers.Chart).Methods("GET")

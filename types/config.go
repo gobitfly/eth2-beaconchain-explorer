@@ -54,6 +54,7 @@ type Config struct {
 		} `yaml:"pubkeyTagsExporter"`
 	} `yaml:"indexer"`
 	Frontend struct {
+		Debug                          bool   `yaml:"debug" envconfig:"FRONTEND_DEBUG"`
 		BeaconchainETHPoolBridgeSecret string `yaml:"beaconchainETHPoolBridgeSecret" envconfig:"FRONTEND_BEACONCHAIN_ETHPOOL_BRIDGE_SECRET"`
 		Kong                           string `yaml:"kong" envconfig:"FRONTEND_KONG"`
 		OnlyAPI                        bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`

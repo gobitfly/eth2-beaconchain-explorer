@@ -10,6 +10,7 @@ import (
 	"html"
 	"html/template"
 	"math"
+	"math/big"
 	"net/url"
 	"strconv"
 	"strings"
@@ -382,12 +383,9 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 		trunc = trunc_opt[0]
 	}
 
-	// if len(hash) > 6 {
-	// 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x…%x</span>", hash[:3], hash[len(hash)-3:]))
-	// }
 	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
 	if len(hash) > 3 && trunc {
-		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…</span>", hash[:3]))
+		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…%x</span>", hash[:2], hash[len(hash)-2:]))
 	}
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
 }
@@ -871,4 +869,18 @@ func FormatNotificationChannel(ch types.NotificationChannel) string {
 		return ""
 	}
 	return label
+}
+
+func FormatBlockReward(blockNumber int64) template.HTML {
+	reward := new(big.Int)
+
+	if blockNumber < 4370000 {
+		reward = big.NewInt(5e+18)
+	} else if blockNumber < 7280000 {
+		reward = big.NewInt(3e+18)
+	} else {
+		reward = big.NewInt(2e+18)
+	}
+
+	return FormatAmount(float64(reward.Int64()), "ETH", 5)
 }

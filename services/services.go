@@ -38,6 +38,7 @@ func Init() {
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
+	go initExecutionLayerServices()
 
 	if utils.Config.Frontend.OnlyAPI {
 		ready.Done()

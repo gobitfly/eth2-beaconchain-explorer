@@ -11,6 +11,7 @@ require (
 	github.com/chromedp/cdproto v0.0.0-20200709115526-d1f6fc58448b
 	github.com/chromedp/chromedp v0.5.3
 	github.com/davecgh/go-spew v1.1.1
+	github.com/dustin/go-humanize v1.0.0
 	github.com/ethereum/go-ethereum v1.10.8
 	github.com/evanw/esbuild v0.8.23
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -27,7 +28,7 @@ require (
 	github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5
 	github.com/kataras/i18n v0.0.5
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/lib/pq v1.2.0
+	github.com/lib/pq v1.10.6
 	github.com/mailgun/mailgun-go/v4 v4.1.3
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mssola/user_agent v0.5.2
@@ -40,6 +41,7 @@ require (
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20210809151128-385d8c5e3fb7
 	github.com/prysmaticlabs/prysm v1.4.2-0.20210816195537-4db77ce69181
 	github.com/rocket-pool/rocketpool-go v1.0.1
+	github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stripe/stripe-go/v72 v72.50.0
 	github.com/swaggo/http-swagger v1.3.0
@@ -50,9 +52,9 @@ require (
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
 	golang.org/x/text v0.3.7
 	google.golang.org/api v0.85.0
-	google.golang.org/genproto v0.0.0-20220617124728-180714bec0ad
-	google.golang.org/grpc v1.47.0
-	google.golang.org/protobuf v1.28.0
+	google.golang.org/genproto v0.0.0-20220801145646-83ce21fca29f
+	google.golang.org/grpc v1.48.0
+	google.golang.org/protobuf v1.28.1
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
 
@@ -75,7 +77,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
-	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/envoyproxy/go-control-plane v0.10.2-0.20220325020618-49ff273808a1 // indirect
 	github.com/envoyproxy/protoc-gen-validate v0.1.0 // indirect
@@ -88,7 +89,7 @@ require (
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/spec v0.20.6 // indirect
 	github.com/go-openapi/swag v0.21.1 // indirect
-	github.com/go-sql-driver/mysql v1.5.0 // indirect
+	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gobwas/httphead v0.0.0-20180130184737-2c6c146eadee // indirect
 	github.com/gobwas/pool v0.2.0 // indirect
@@ -96,10 +97,10 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/snappy v0.0.3 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/uuid v1.2.0 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.1.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.4.0 // indirect
 	github.com/googleapis/go-type-adapters v1.0.0 // indirect
@@ -152,9 +153,9 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/urfave/cli/v2 v2.3.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect
+	golang.org/x/net v0.0.0-20220728211354-c7608f3a8462 // indirect
 	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb // indirect
-	golang.org/x/sys v0.0.0-20220627191245-f75cf1eec38b // indirect
+	golang.org/x/sys v0.0.0-20220731174439-a90be440212d // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
 	golang.org/x/tools v0.1.11 // indirect
