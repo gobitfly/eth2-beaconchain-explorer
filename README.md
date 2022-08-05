@@ -5,6 +5,7 @@ The explorer provides a comprehensive and easy to use interface for the upcoming
 [![Badge](https://github.com/gobitfly/eth2-beaconchain-explorer/workflows/Build/badge.svg)](https://github.com/gobitfly/eth2-beaconchain-explorer/actions?query=workflow%3A%22Build+%26+Publish+Docker+images%22)
 [![Gitter](https://img.shields.io/gitter/room/gobitfly/eth2-beaconchain-explorer?color=%2334D058)](https://gitter.im/gobitfly/beaconchain-explorer?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gobitfly/eth2-beaconchain-explorer)](https://goreportcard.com/report/github.com/gobitfly/eth2-beaconchain-explorer)
+[![GitPOAP Badge](https://public-api.gitpoap.io/v1/repo/gobitfly/eth2-beaconchain-explorer/badge)](https://www.gitpoap.io/gh/gobitfly/eth2-beaconchain-explorer)
 
 ## About
 

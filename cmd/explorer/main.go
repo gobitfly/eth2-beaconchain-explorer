@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/gob"
 	"encoding/hex"
 	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
@@ -42,6 +43,10 @@ func initStripe(http *mux.Router) error {
 	http.HandleFunc("/stripe/create-checkout-session", handlers.StripeCreateCheckoutSession).Methods("POST")
 	http.HandleFunc("/stripe/customer-portal", handlers.StripeCustomerPortal).Methods("POST")
 	return nil
+}
+
+func init() {
+	gob.Register(types.DataTableSaveState{})
 }
 
 func main() {
@@ -198,8 +203,10 @@ func main() {
 		apiV1Router.HandleFunc("/app/dashboard", handlers.ApiDashboard).Methods("POST", "OPTIONS")
 		apiV1Router.HandleFunc("/rocketpool/stats", handlers.ApiRocketpoolStats).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/rocketpool/validator/{indexOrPubkey}", handlers.ApiRocketpoolValidators).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/ethstore/{day}", handlers.ApiEthStoreDay).Methods("GET", "OPTIONS")
 
-		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/widget", handlers.GetMobileWidgetStats).Methods("GET")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/widget", handlers.GetMobileWidgetStatsGet).Methods("GET")
+		apiV1Router.HandleFunc("/dashboard/widget", handlers.GetMobileWidgetStatsPost).Methods("POST")
 		apiV1Router.Use(utils.CORSMiddleware)
 
 		apiV1AuthRouter := apiV1Router.PathPrefix("/user").Subrouter()
@@ -321,6 +328,8 @@ func main() {
 			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
 
+			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
+
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 			router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("POST")
 
@@ -388,13 +397,19 @@ func main() {
 			authRouter.HandleFunc("/notifications/channels", handlers.UsersNotificationChannels).Methods("POST")
 			authRouter.HandleFunc("/notifications/data", handlers.UserNotificationsData).Methods("GET")
 			authRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST")
+			authRouter.HandleFunc("/notifications/network/update", handlers.UserModalAddNetworkEvent).Methods("POST")
+			authRouter.HandleFunc("/watchlist/add", handlers.UsersModalAddValidator).Methods("POST")
+			authRouter.HandleFunc("/watchlist/remove", handlers.UserModalRemoveSelectedValidator).Methods("POST")
+			authRouter.HandleFunc("/watchlist/update", handlers.UserModalManageNotificationModal).Methods("POST")
 			authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications/bundled/subscribe", handlers.MultipleUsersNotificationsSubscribeWeb).Methods("POST", "OPTIONS")
+
 			authRouter.HandleFunc("/notifications-center", handlers.UserNotificationsCenter).Methods("GET")
 			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications-center/validatorsub", handlers.AddValidatorsAndSubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications-center/updatesubs", handlers.UserUpdateSubscriptions).Methods("POST")
 			// authRouter.HandleFunc("/notifications-center/monitoring/updatesubs", handlers.UserUpdateMonitoringSubscriptions).Methods("POST")
+
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
 			authRouter.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
@@ -415,6 +430,10 @@ func main() {
 			authRouter.Use(handlers.UserAuthMiddleware)
 			authRouter.Use(csrfHandler)
 
+			if utils.Config.Frontend.Debug {
+				templatesHandler := http.FileServer(http.Dir("templates"))
+				router.PathPrefix("/templates").Handler(http.StripPrefix("/templates/", templatesHandler))
+			}
 			legalFs := http.FileServer(http.Dir(utils.Config.Frontend.LegalDir))
 			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", legalFs))
 			router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
@@ -479,9 +498,9 @@ func main() {
 		services.InitGitCoinFeed()
 	}
 
-	if utils.Config.Frontend.PoolsUpdater.Enabled {
-		// services.InitPools() // making sure the website is available before updating
-	}
+	// if utils.Config.Frontend.PoolsUpdater.Enabled {
+	// services.InitPools() // making sure the website is available before updating
+	// }
 
 	utils.WaitForCtrlC()
 

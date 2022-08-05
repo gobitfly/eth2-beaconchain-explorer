@@ -2,6 +2,7 @@ package types
 
 import (
 	"html/template"
+	"time"
 )
 
 // Config is a struct to hold the configuration data
@@ -64,7 +65,8 @@ type Config struct {
 		RecaptchaSiteKey               string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`
 		RecaptchaSecretKey             string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
 		Enabled                        bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
-		// Imprint is deprecated place imprint file into the legal directory
+		Debug                          bool   `yaml:"debug" envconfig:"FRONTEND_DEBUG"`
+		// Imprint is deprdecated place imprint file into the legal directory
 		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
 		LegalDir     string `yaml:"legalDir" envconfig:"FRONTEND_LEGAL"`
 		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
@@ -157,6 +159,18 @@ type Config struct {
 		StorageContractAddress    string `yaml:"storageContractAddress" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_ADDRESS"`
 		StorageContractFirstBlock uint64 `yaml:"storageContractFirstBlock" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_FIRST_BLOCK"`
 	} `yaml:"rocketpoolExporter"`
+	EthStoreExporter struct {
+		Enabled        bool          `yaml:"enabled" envconfig:"ETHSTORE_EXPORTER_ENABLED"`
+		UpdateInterval time.Duration `yaml:"updateInterval" envconfig:"ETHSTORE_EXPORTER_UPDATE_INTERVAL"`
+		ErrorInterval  time.Duration `yaml:"errorInterval" envconfig:"ETHSTORE_EXPORTER_ERROR_INTERVAL"`
+		Sleep          time.Duration `yaml:"sleep" envconfig:"ETHSTORE_EXPORTER_SLEEP"`
+	} `yaml:"ethStoreExporter"`
+	HistoricalPoolPerformanceExporter struct {
+		Enabled        bool          `yaml:"enabled" envconfig:"HISTORICAL_POOL_PERFORMANCE_EXPORTER_ENABLED"`
+		UpdateInterval time.Duration `yaml:"updateInterval" envconfig:"HISTORICAL_POOL_PERFORMANCE_EXPORTER_UPDATE_INTERVAL"`
+		ErrorInterval  time.Duration `yaml:"errorInterval" envconfig:"HISTORICAL_POOL_PERFORMANCE_EXPORTER_ERROR_INTERVAL"`
+		Sleep          time.Duration `yaml:"sleep" envconfig:"HISTORICAL_POOL_PERFORMANCE_EXPORTER_SLEEP"`
+	} `yaml:"historicalPoolPerformanceExporter"`
 }
 
 type DatabaseConfig struct {

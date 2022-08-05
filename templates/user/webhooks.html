@@ -111,7 +111,7 @@
                       <td>
                         {{ $row.Retries }}
                         {{ if ne $row.Retries "0" }}
-                          <span class="ml-2 cursor-pointer" id="webhook-retries-{{ $i }}" data-toggle="modal" data-target="#debug-modal-{{ $row.ID }}">
+                          <span class="ml-2 cursor-pointer" id="webhook-retries-{{ $i }}" data-toggle="modal" data-target="#webhook-debug-modal-{{ $row.ID }}">
                             <i class="fas fa-question"></i>
                           </span>
                         {{ end }}
@@ -142,7 +142,7 @@
       {{ range $i, $row := .WebhookRows }}
         {{ template "ConfirmRemoveModal" $row }}
         {{ template "EditModalWebhook" $row }}
-        {{ template "DebugModal" $row }}
+        {{ template "WebhookDebugModal" $row }}
       {{ end }}
     </div>
   {{ end }}
@@ -262,8 +262,8 @@
   </div>
 {{ end }}
 
-{{ define "DebugModal" }}
-  <div class="modal fade" id="debug-modal-{{ .ID }}" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
+{{ define "WebhookDebugModal" }}
+  <div class="modal fade" id="webhook-debug-modal-{{ .ID }}" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 80% !important">
       <div class="modal-content custom-background-color custom-remove-modal row mx-0">
         <div class="mb-4 custom-remove-modal-close">

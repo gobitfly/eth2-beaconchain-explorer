@@ -222,6 +222,28 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	session.Values["authenticated"] = true
 	session.Values["user_id"] = user.ID
 	session.Values["subscription"] = user.ProductID
+
+	// save datatable state settings from anon session
+	dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
+
+	for k, state := range session.Values {
+		k, ok := k.(string)
+		if ok && strings.HasPrefix(k, dataTableStatePrefix) {
+			state, ok := state.(types.DataTableSaveState)
+			if ok {
+				trimK := strings.TrimPrefix(k, dataTableStatePrefix)
+				if len(trimK) > 0 {
+					err := db.SaveDataTableState(user.ID, trimK, state)
+					if err != nil {
+						logger.WithError(err).Error("error saving datatable state from session")
+					}
+				}
+			} else {
+				logger.Error("error could not parse datatable state from session, state: %+v", state)
+			}
+			delete(session.Values, k)
+		}
+	}
 	// session.AddFlash("Successfully logged in")
 
 	session.Save(r, w)
@@ -246,7 +268,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Index(w, r)
-	http.Redirect(w, r, "/user/notifications-center", http.StatusSeeOther)
+	http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 }
 
 // Logout handles ending the user session.

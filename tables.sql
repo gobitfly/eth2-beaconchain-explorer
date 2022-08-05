@@ -498,6 +498,16 @@ create table users
     primary key (id, email)
 );
 
+drop table if exists users_datatable;
+create table users_datatable
+(
+    user_id        int                         not null,
+    key            character varying(256)      not null,
+    state          jsonb                       not null,
+    updated_at     timestamp without time zone not null default 'now()',
+    primary key (user_id, key) 
+);
+
 drop table if exists users_stripe_subscriptions;
 create table users_stripe_subscriptions
 (
@@ -893,7 +903,7 @@ create table rocketpool_nodes
     rpl_stake numeric not null,
     min_rpl_stake numeric not null,
     max_rpl_stake numeric not null,
-
+    rpl_cumulative_rewards numeric not null default 0,
     primary key(rocketpool_storage_address, address)
 );
 
@@ -921,6 +931,19 @@ create table rocketpool_dao_proposals
     state text not null,
 
     primary key(rocketpool_storage_address, id)
+);
+
+drop table if exists rocketpool_dao_proposals_member_votes;
+create table rocketpool_dao_proposals_member_votes
+(
+    rocketpool_storage_address bytea not null,
+
+    id int not null,
+    member_address bytea not null,
+    voted       boolean not null,
+    supported   boolean not null,
+
+    primary key(rocketpool_storage_address, id, member_address)
 );
 
 drop table if exists rocketpool_dao_members;
@@ -960,4 +983,18 @@ create table rocketpool_network_stats
     total_eth_balance numeric not null,
 
     primary key(id)
+);
+
+
+drop table if exists eth_store_stats;
+create table eth_store_stats
+(
+    day			int	not null,
+    effective_balances_sum	bigint	not null,
+    start_balances_sum		bigint	not null,
+    end_balances_sum		bigint	not null,
+    deposits_sum		bigint	not null,
+    
+    primary key(day)
+    
 );

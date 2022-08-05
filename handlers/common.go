@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/price"
@@ -10,8 +11,10 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
+	"github.com/gorilla/sessions"
 	"github.com/lib/pq"
 )
 
@@ -228,4 +231,106 @@ func GetTruncCurrentPriceFormatted(r *http.Request) string {
 	price := GetCurrentPrice(r)
 	symbol := GetCurrencySymbol(r)
 	return fmt.Sprintf("%s %s", symbol, utils.KFormatterEthPrice(price))
+}
+
+// GetValidatorIndexFrom gets the validator index from users input
+func GetValidatorIndexFrom(userInput string) (pubKey []byte, validatorIndex uint64, err error) {
+	validatorIndex, err = strconv.ParseUint(userInput, 10, 64)
+	if err == nil {
+		pubKey, err = db.GetValidatorPublicKey(validatorIndex)
+		return
+	}
+
+	pubKey, err = hex.DecodeString(strings.Replace(userInput, "0x", "", -1))
+	if err == nil {
+		validatorIndex, err = db.GetValidatorIndex(pubKey)
+		return
+	}
+	return
+}
+
+func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	user, session, err := getUserSession(r)
+	if err != nil {
+		logger.Errorf("error retrieving session: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	response := &types.ApiResponse{}
+	response.Status = "ERROR"
+
+	defer json.NewEncoder(w).Encode(response)
+
+	settings := types.DataTableSaveState{}
+	err = json.NewDecoder(r.Body).Decode(&settings)
+	if err != nil {
+		logger.Errorf("error saving data table state could not parse body: %v", err)
+		response.Status = "error saving table state"
+		return
+	}
+
+	key := settings.Key
+	if len(key) == 0 {
+		logger.Errorf("no key provided")
+		response.Status = "error saving table state"
+		return
+	}
+
+	if !user.Authenticated {
+		dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
+		key = dataTableStatePrefix + key
+		count := 0
+		for k, _ := range session.Values {
+			k, ok := k.(string)
+			if ok && strings.HasPrefix(k, dataTableStatePrefix) {
+				count += 1
+			}
+		}
+		if count > 50 {
+			_, ok := session.Values[key]
+			if !ok {
+				logger.Errorf("error maximum number of datatable states stored in session")
+				return
+			}
+		}
+		session.Values[key] = settings
+
+		err := session.Save(r, w)
+		if err != nil {
+			logger.WithError(err).Errorf("error updating session with key: %v and value: %v", key, settings)
+		}
+
+	} else {
+		err = db.SaveDataTableState(user.UserID, settings.Key, settings)
+		if err != nil {
+			logger.Errorf("error saving data table state could save values to db: %v", err)
+			response.Status = "error saving table state"
+			return
+		}
+	}
+
+	response.Status = "OK"
+	response.Data = ""
+}
+
+func GetDataTableState(user *types.User, session *sessions.Session, tableKey string) (*types.DataTableSaveState, error) {
+	if user.Authenticated {
+		state, err := db.GetDataTablesState(user.UserID, tableKey)
+		if err != nil {
+			return nil, err
+		}
+		return state, nil
+	}
+	stateRaw, exists := session.Values["table:state:"+utils.GetNetwork()+":"+tableKey]
+	if !exists {
+		return nil, nil
+	}
+	state, ok := stateRaw.(types.DataTableSaveState)
+	if !ok {
+		return nil, fmt.Errorf("error parsing session value into type DataTableSaveState")
+	}
+	return &state, nil
 }

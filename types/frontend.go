@@ -126,6 +126,47 @@ var EventNames = []EventName{
 	SyncCommitteeSoon,
 }
 
+type EventNameDesc struct {
+	Desc  string
+	Event EventName
+}
+
+// this is the source of truth for the validator events that are supported by the user/notification page
+var AddWatchlistEvents = []EventNameDesc{
+	{
+		Desc:  "Attestations missed",
+		Event: ValidatorMissedAttestationEventName,
+	},
+	{
+		Desc:  "Proposals missed",
+		Event: ValidatorMissedProposalEventName,
+	},
+	{
+		Desc:  "Proposals submitted",
+		Event: ValidatorExecutedProposalEventName,
+	},
+	{
+		Desc:  "Validator got slashed",
+		Event: ValidatorGotSlashedEventName,
+	},
+	{
+		Desc:  "Sync committee",
+		Event: SyncCommitteeSoon,
+	},
+}
+
+// this is the source of truth for the network events that are supported by the user/notification page
+var NetworkNotificationEvents = []EventNameDesc{
+	{
+		Desc:  "Network Notifications",
+		Event: NetworkLivenessIncreasedEventName,
+	},
+	// {
+	// 	Desc:  "Slashing Notifications",
+	// 	Event: NetworkSlashingEventName,
+	// },
+}
+
 func GetDisplayableEventName(event EventName) string {
 	return strings.Title(strings.ReplaceAll(string(event), "_", " "))
 }

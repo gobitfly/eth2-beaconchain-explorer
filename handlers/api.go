@@ -117,6 +117,45 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK. Last epoch is from %v ago", time.Since(utils.EpochToTime(lastEpoch)))
 }
 
+// ApiEthStoreDay godoc
+// @Summary Get ETH.STORE reference rate for a specified beaconchain-day or the latest day
+// @Tags ETH.STORE
+// @Description ETH.STORE represents the average financial return validators on the Ethereum network have achieved in a 24-hour period.
+// @Description For each 24-hour period the datapoint is denoted by the number of days that have passed since genesis for that period (= beaconchain-day)
+// @Description See https://github.com/gobitfly/eth.store for further information.
+// @Produce json
+// @Param day path string true "The beaconchain-day (periods of 225 epochs) to get the the ETH.STORE for. Must be a number or the string 'latest'."
+// @Success 200 {object} string
+// @Router /api/v1/ethstore/{day} [get]
+func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	day, err := strconv.ParseInt(vars["day"], 10, 64)
+	if err != nil && vars["day"] != "latest" {
+		sendErrorResponse(j, r.URL.String(), "invalid day provided")
+		return
+	}
+
+	if vars["day"] == "latest" {
+		day = (int64(services.LatestFinalizedEpoch()) / 225) - 1
+	}
+
+	rows, err := db.ReaderDb.Query(`
+		SELECT day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum
+		FROM eth_store_stats 
+		WHERE day = $1`, day)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
 // ApiEpoch godoc
 // @Summary Get epoch by number
 // @Tags Epoch
@@ -689,6 +728,7 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 			rpln.rpl_stake         AS node_rpl_stake,
 			rpln.max_rpl_stake     AS node_max_rpl_stake,
 			rpln.min_rpl_stake     AS node_min_rpl_stake,
+			rpln.rpl_cumulative_rewards     AS rpl_cumulative_rewards,
 			validators.validatorindex AS index 
 		FROM rocketpool_minipools rplm 
 		LEFT JOIN validators validators ON rplm.pubkey = validators.pubkey 
@@ -1564,13 +1604,30 @@ func GetUserPremiumByPackage(pkg string) PremiumUser {
 	return result
 }
 
-func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request) {
+func GetMobileWidgetStatsPost(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+	decoder := json.NewDecoder(r.Body)
 
+	var parsedBody types.DashboardRequest
+	err := decoder.Decode(&parsedBody)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not read body")
+		return
+	}
+
+	GetMobileWidgetStats(j, r, parsedBody.IndicesOrPubKey)
+}
+
+func GetMobileWidgetStatsGet(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	GetMobileWidgetStats(j, r, vars["indexOrPubkey"])
+}
 
-	epoch := int64(services.LatestEpoch()) - 100
+func GetMobileWidgetStats(j *json.Encoder, r *http.Request, indexOrPubkey string) {
+	epoch := int64(services.LatestEpoch())
 	if epoch < 0 {
 		epoch = 0
 	}
@@ -1580,33 +1637,62 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], prime.MaxValidators)
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(indexOrPubkey, prime.MaxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.ReaderDb.Query(
-		"SELECT pubkey, effectivebalance, slashed, activationeligibilityepoch, "+
-			"activationepoch, exitepoch, lastattestationslot, status, validator_performance.* FROM validators "+
-			"LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex "+
-			" WHERE validator_performance.validatorindex = ANY($1) OR pubkey = ANY($2) ORDER BY validator_performance.validatorindex",
-		pq.Array(queryIndices), queryPubkeys,
-	)
+	g, _ := errgroup.WithContext(context.Background())
+	var rocketpoolStats []any
+	var efficiencyRows *sql.Rows
+	var validatorRows *sql.Rows
+
+	g.Go(func() error {
+		validatorRows, err = db.ReaderDb.Query(
+			`SELECT 
+					validators.pubkey, 
+					effectivebalance, 
+					slashed, 
+					activationeligibilityepoch, 
+					activationepoch, 
+					exitepoch, 
+					lastattestationslot, 
+					validators.status, 
+					validator_performance.*,
+					TRUNC(rplm.node_fee::decimal, 10)::float  AS minipool_node_fee  
+				FROM validators 
+				LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex 
+				LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
+				WHERE validator_performance.validatorindex = ANY($1) OR validators.pubkey = ANY($2) ORDER BY validator_performance.validatorindex`,
+			pq.Array(queryIndices), queryPubkeys,
+		)
+		return err
+	})
+
+	g.Go(func() error {
+		efficiencyRows, err = getAttestationEfficiencyQuery(epoch-100, queryIndices, queryPubkeys)
+		return err
+	})
+
+	g.Go(func() error {
+		rocketpoolStats, err = getRocketpoolStats()
+		return err
+	})
+
+	err = g.Wait()
+	if validatorRows != nil {
+		defer validatorRows.Close()
+	}
+	if efficiencyRows != nil {
+		defer efficiencyRows.Close()
+	}
 	if err != nil {
-		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
-	defer rows.Close()
 
-	efficiencyRows, err := getAttestationEfficiencyQuery(epoch, queryIndices, queryPubkeys)
-	if err != nil {
-		sendErrorResponse(j, r.URL.String(), "could not retrieve efficiency db results")
-		return
-	}
-	defer efficiencyRows.Close()
-
-	generalData, err := utils.SqlRowsToJSON(rows)
+	generalData, err := utils.SqlRowsToJSON(validatorRows)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not parse db results")
 		return
@@ -1619,12 +1705,13 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &types.WidgetResponse{
-		Eff:       efficiencyData,
-		Validator: generalData,
-		Epoch:     epoch,
+		Eff:             efficiencyData,
+		Validator:       generalData,
+		Epoch:           epoch,
+		RocketpoolStats: rocketpoolStats,
 	}
 
-	sendOKResponse(j, r.URL.String(), []interface{}{data})
+	sendOKResponse(j, r.URL.String(), []any{data})
 }
 
 // MobileDeviceSettings godoc

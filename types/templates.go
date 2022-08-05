@@ -2,6 +2,7 @@ package types
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/pkg/errors"
 )
 
 // PageData is a struct to hold web page data
@@ -28,6 +30,19 @@ type PageData struct {
 	FinalizationDelay     uint64
 	Mainnet               bool
 	DepositContract       string
+	Rates                 PageRates
+	InfoBanner            *template.HTML
+	ClientsUpdated        bool
+	// IsUserClientUpdated   func(uint64) bool
+	ChainConfig    ChainConfig
+	Lang           string
+	NoAds          bool
+	Debug          bool
+	DebugTemplates []string
+	DebugSession   map[string]interface{}
+}
+
+type PageRates struct {
 	EthPrice              float64
 	EthRoundPrice         uint64
 	EthTruncPrice         string
@@ -51,12 +66,6 @@ type PageData struct {
 	CurrentPriceFormatted string
 	CurrentSymbol         string
 	ExchangeRate          float64
-	InfoBanner            *template.HTML
-	ClientsUpdated        bool
-	IsUserClientUpdated   func(uint64) bool
-	ChainConfig           ChainConfig
-	Lang                  string
-	NoAds                 bool
 }
 
 // Meta is a struct to hold metadata about the page
@@ -350,6 +359,7 @@ type RocketpoolValidatorPageData struct {
 	NodeRPLStake         *string    `db:"node_rpl_stake"`
 	NodeMinRPLStake      *string    `db:"node_min_rpl_stake"`
 	NodeMaxRPLStake      *string    `db:"node_max_rpl_stake"`
+	CumulativeRPL        *string    `db:"rpl_cumulative_rewards"`
 }
 
 type ValidatorStatsTablePageData struct {
@@ -703,6 +713,8 @@ type DataTableResponse struct {
 	RecordsTotal    uint64          `json:"recordsTotal"`
 	RecordsFiltered uint64          `json:"recordsFiltered"`
 	Data            [][]interface{} `json:"data"`
+	PageLength      uint64          `json:"pageLength"`
+	DisplayStart    uint64          `json:"displayStart"`
 }
 
 // EpochsPageData is a struct to hold epoch data for the epochs page
@@ -1068,14 +1080,22 @@ type UserNotificationsPageData struct {
 
 type UserNotificationsCenterPageData struct {
 	AuthData
-	Metrics                 interface{}                          `json:"metrics"`
-	Validators              []UserValidatorNotificationTableData `json:"validators"`
-	Network                 interface{}                          `json:"network"`
-	MonitoringSubscriptions []Subscription                       `json:"monitoring_subscriptions"`
-	Machines                []string
-	DashboardLink           string `json:"dashboardLink"`
-	NotificationChannels    []UserNotificationChannels
+	Metrics                    interface{}                          `json:"metrics"`
+	Validators                 []UserValidatorNotificationTableData `json:"validators"`
+	Network                    interface{}                          `json:"network"`
+	MonitoringSubscriptions    []Subscription                       `json:"monitoring_subscriptions"`
+	Machines                   []string
+	DashboardLink              string `json:"dashboardLink"`
+	NotificationChannelsModal  NotificationChannelsModal
+	AddValidatorWatchlistModal AddValidatorWatchlistModal
+	ManageNotificationModal    ManageNotificationModal
+	NetworkEventModal          NetworkEventModal
 	// Subscriptions []*Subscription
+}
+
+type NotificationChannelsModal struct {
+	CsrfField            template.HTML
+	NotificationChannels []UserNotificationChannels
 }
 
 type UserNotificationChannels struct {
@@ -1192,6 +1212,7 @@ type RocketpoolPageDataNode struct {
 	RPLStake                 string `db:"rpl_stake"`
 	MinRPLStake              string `db:"min_rpl_stake"`
 	MaxRPLStake              string `db:"max_rpl_stake"`
+	CumulativeRPL            string `db:"rpl_cumulative_rewards"`
 }
 
 type RocketpoolPageDataDAOProposal struct {
@@ -1214,6 +1235,14 @@ type RocketpoolPageDataDAOProposal struct {
 	IsExecuted               bool      `db:"is_executed"`
 	Payload                  []byte    `db:"payload"`
 	State                    string    `db:"state"`
+	MemberVotesJSON          []byte    `db:"member_votes"`
+}
+
+type RocketpoolPageDataDAOProposalMemberVotes struct {
+	Address   string `json:"member_address"`
+	Name      string `json:"name"`
+	Voted     bool   `json:"voted"`
+	Supported bool   `json:"supported"`
 }
 
 type RocketpoolPageDataDAOMember struct {
@@ -1238,7 +1267,7 @@ type UserWebhookRow struct {
 	WebhookError UserWebhookRowError
 	Response     *http.Response          `db:"response" json:"response"`
 	Request      *map[string]interface{} `db:"request" json:"request"`
-	Events       []WebhookPageEvent      `db:"event_names" json:"-"`
+	Events       []EventNameCheckbox     `db:"event_names" json:"-"`
 	Discord      bool
 	CsrfField    template.HTML
 }
@@ -1253,14 +1282,14 @@ type UserWebhookRowError struct {
 type WebhookPageData struct {
 	WebhookRows  []UserWebhookRow
 	Webhooks     []UserWebhook
-	Events       []WebhookPageEvent
+	Events       []EventNameCheckbox
 	CsrfField    template.HTML
 	Allowed      uint64
 	WebhookCount uint64
 	Flashes      []interface{}
 }
 
-type WebhookPageEvent struct {
+type EventNameCheckbox struct {
 	EventLabel string
 	EventName
 	Active bool
@@ -1277,4 +1306,62 @@ type PoolInfo struct {
 	AvgPerformance31d int64  `db:"avg_performance_31d"`
 	AvgPerformance7d  int64  `db:"avg_performance_7d"`
 	AvgPerformance1d  int64  `db:"avg_performance_1d"`
+}
+
+type AddValidatorWatchlistModal struct {
+	CsrfField       template.HTML
+	ValidatorIndex  int64
+	ValidatorPubkey string
+	Events          []EventNameCheckbox
+}
+type ManageNotificationModal struct {
+	CsrfField       template.HTML
+	ValidatorIndex  int64
+	ValidatorPubkey string
+	Events          []EventNameCheckbox
+}
+
+type NetworkEventModal struct {
+	CsrfField       template.HTML
+	ValidatorIndex  int64
+	ValidatorPubkey string
+	Events          []EventNameCheckbox
+}
+
+type DataTableSaveState struct {
+	Key     string                      `json:"key"`
+	Time    uint64                      `json:"time"`   // Time stamp of when the object was created
+	Start   uint64                      `json:"start"`  // Display start point
+	Length  uint64                      `json:"length"` // Page length
+	Order   [][]string                  `json:"order"`  // 2D array of column ordering information (see `order` option)
+	Search  DataTableSaveStateSearch    `json:"search"`
+	Columns []DataTableSaveStateColumns `json:"columns"`
+}
+
+func (e *DataTableSaveState) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &e)
+}
+
+func (a DataTableSaveState) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+type DataTableSaveStateOrder struct {
+}
+
+type DataTableSaveStateSearch struct {
+	Search          string `json:"search"`          // Search term
+	Regex           bool   `json:"regex"`           // Indicate if the search term should be treated as regex or not
+	Smart           bool   `json:"smart"`           // Flag to enable DataTables smart search
+	CaseInsensitive bool   `json:"caseInsensitive"` // Case insensitive flag
+}
+
+type DataTableSaveStateColumns struct {
+	Visible bool                     `json:"visible"`
+	Search  DataTableSaveStateSearch `json:"search"`
 }

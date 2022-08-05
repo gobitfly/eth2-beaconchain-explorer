@@ -1008,7 +1008,6 @@ func (pc *PrysmClient) GetValidatorParticipation(epoch uint64) (*types.Validator
 		logger.Printf("error retrieving epoch participation statistics: %v", err)
 		return &types.ValidatorParticipation{
 			Epoch:                   epoch,
-			Finalized:               false,
 			GlobalParticipationRate: 0,
 			VotedEther:              0,
 			EligibleEther:           0,
@@ -1016,7 +1015,6 @@ func (pc *PrysmClient) GetValidatorParticipation(epoch uint64) (*types.Validator
 	}
 	return &types.ValidatorParticipation{
 		Epoch:                   epoch,
-		Finalized:               epochParticipationStatistics.Finalized,
 		GlobalParticipationRate: epochParticipationStatistics.Participation.GlobalParticipationRate,
 		VotedEther:              epochParticipationStatistics.Participation.VotedEther,
 		EligibleEther:           epochParticipationStatistics.Participation.EligibleEther,

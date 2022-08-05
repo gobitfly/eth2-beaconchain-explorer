@@ -796,7 +796,6 @@ func SaveEpoch(data *types.EpochData) error {
 			validatorscount         = excluded.validatorscount,
 			averagevalidatorbalance = excluded.averagevalidatorbalance,
 			totalvalidatorbalance   = excluded.totalvalidatorbalance,
-			finalized               = excluded.finalized,
 			eligibleether           = excluded.eligibleether,
 			globalparticipationrate = excluded.globalparticipationrate,
 			votedether              = excluded.votedether`,
@@ -810,7 +809,7 @@ func SaveEpoch(data *types.EpochData) error {
 		validatorsCount,
 		validatorBalanceAverage.Uint64(),
 		validatorBalanceSum.Uint64(),
-		data.EpochParticipationStats.Finalized,
+		false,
 		data.EpochParticipationStats.EligibleEther,
 		data.EpochParticipationStats.GlobalParticipationRate,
 		data.EpochParticipationStats.VotedEther)
@@ -946,6 +945,7 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 		thresholdSlot = 0
 	}
 
+	latestEpoch := latestBlock / 32
 	farFutureEpoch := uint64(18446744073709551615)
 	maxSqlNumber := uint64(9223372036854775807)
 
@@ -1043,7 +1043,7 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline' 
 					ELSE 'active_online'
 					END`,
-			latestBlock, thresholdSlot, strings.Join(valueStrings, ","))
+			latestEpoch, thresholdSlot, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err
@@ -1579,19 +1579,29 @@ func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
 
 	_, err := WriterDb.Exec(`
 		UPDATE epochs SET
-			finalized = $1,
-			eligibleether = $2,
-			globalparticipationrate = $3,
-			votedether = $4
-		WHERE epoch = $5`,
-		stats.Finalized, stats.EligibleEther, stats.GlobalParticipationRate, stats.VotedEther, stats.Epoch)
+			eligibleether = $1,
+			globalparticipationrate = $2,
+			votedether = $3
+		WHERE epoch = $4`,
+		stats.EligibleEther, stats.GlobalParticipationRate, stats.VotedEther, stats.Epoch)
 
 	return err
 }
 
-// UpdateEpochFinalization will update finalized-flag of all epochs before the last finalized epoch
-func UpdateEpochFinalization() error {
-	_, err := WriterDb.Exec(`UPDATE epochs SET finalized = true WHERE epoch < (SELECT MAX(epoch) FROM epochs WHERE finalized = true)`)
+// UpdateEpochFinalization will update finalized-flag of unfinalized epochs
+func UpdateEpochFinalization(finality_epoch uint64) error {
+	// to prevent a full table scan, the query is constrained to update only between the last epoch that was tagged finalized and the passed finality_epoch
+	// will not fill gaps in the db in finalization this way, but makes the query much faster.
+	_, err := WriterDb.Exec(`
+	UPDATE epochs
+	SET finalized = true
+	WHERE epoch BETWEEN	(
+			SELECT epoch
+			FROM   epochs
+			WHERE  finalized = true
+			ORDER  BY epoch DESC
+			LIMIT  1
+		) AND $1 `, finality_epoch)
 	return err
 }
 

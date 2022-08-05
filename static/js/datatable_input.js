@@ -3,12 +3,11 @@
     var start = oSettings._iDisplayStart
     var length = oSettings._iDisplayLength
     var visibleRecords = oSettings.fnRecordsDisplay()
-    var noEntries = length <= 0
-    var isPage0 = start <= 0
-    var page = noEntries || isPage0 ? 0 : Math.ceil(start / length)
-    var pages = noEntries || isPage0 ? 1 : Math.ceil(visibleRecords / length)
+    var page = Math.ceil(start / length) || 0
+    var pages = Math.ceil(visibleRecords / length) || 1
     var disableFirstPrevClass = page > 0 ? "" : oSettings.oClasses.sPageButtonDisabled
     var disableNextLastClass = page < pages - 1 ? "" : oSettings.oClasses.sPageButtonDisabled
+
     return { first: disableFirstPrevClass, previous: disableFirstPrevClass, next: disableNextLastClass, last: disableNextLastClass }
   }
   function calcCurrentPage(oSettings) {
@@ -168,6 +167,15 @@
         .find("." + previousClassName)
         .removeClass(oSettings.oClasses.sPageButtonDisabled)
         .addClass(disableClasses[previousClassName])
+      $(an)
+        .find("." + nextClassName)
+        .removeClass(oSettings.oClasses.sPageButtonDisabled)
+        .addClass(disableClasses[nextClassName])
+      $(an)
+        .find("." + lastClassName)
+        .removeClass(oSettings.oClasses.sPageButtonDisabled)
+        .addClass(disableClasses[lastClassName])
+
       if (iPages === 1) {
         $(an)
           .find("." + nextClassName)
