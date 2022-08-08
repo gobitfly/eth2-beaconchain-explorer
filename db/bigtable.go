@@ -3,8 +3,12 @@ package db
 import (
 	"context"
 	"errors"
+	"eth2-exporter/erc20"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"fmt"
+	"log"
+	"math/big"
 	"strings"
 	"time"
 
@@ -14,7 +18,10 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/option"
 
+	"github.com/ethereum/go-ethereum/common"
+	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/golang/protobuf/proto"
+	"github.com/sirupsen/logrus"
 )
 
 var ErrBlockNotFound = errors.New("block not found")
@@ -368,4 +375,223 @@ func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations) error {
 	} else {
 		return err
 	}
+}
+
+func (bigtable *Bigtable) TransformBlock(blocks []*types.Eth1Block) (*types.BulkMutations, error) {
+	muts := &types.BulkMutations{}
+
+	block := blocks[0]
+	previous := blocks[1]
+
+	// logger.Infof("getting blocks block: %v, previous: %v time: %v, time: %v, diff: %v", block.GetNumber(), previous.GetNumber(), block.GetTime().AsTime().Unix(), previous.GetTime().AsTime().Unix(), block.GetTime().AsTime().Unix()-previous.GetTime().AsTime().Unix())
+
+	idx := types.Eth1BlockIndexed{
+		Hash:                   block.GetHash(),
+		ParentHash:             block.GetParentHash(),
+		UncleHash:              block.GetUncleHash(),
+		Coinbase:               block.GetCoinbase(),
+		Root:                   block.GetRoot(),
+		TxHash:                 block.GetTxHash(),
+		ReceiptHash:            block.GetReceiptHash(),
+		Difficulty:             block.GetDifficulty(),
+		Number:                 block.GetNumber(),
+		GasLimit:               block.GetGasLimit(),
+		GasUsed:                block.GetGasUsed(),
+		Time:                   block.GetTime(),
+		Extra:                  block.GetExtra(),
+		MixDigest:              block.GetMixDigest(),
+		Bloom:                  block.GetBloom(),
+		BaseFee:                block.GetBaseFee(),
+		Duration:               uint64(block.GetTime().AsTime().Unix() - previous.GetTime().AsTime().Unix()),
+		UncleCount:             uint64(len(block.GetUncles())),
+		TransactionCount:       uint64(len(block.GetTransactions())),
+		BaseFeeChange:          new(big.Int).Sub(new(big.Int).SetBytes(block.GetBaseFee()), new(big.Int).SetBytes(previous.GetBaseFee())).Bytes(),
+		BlockUtilizationChange: new(big.Int).Sub(new(big.Int).Div(big.NewInt(int64(block.GetGasUsed())), big.NewInt(int64(block.GetGasLimit()))), new(big.Int).Div(big.NewInt(int64(previous.GetGasUsed())), big.NewInt(int64(previous.GetGasLimit())))).Bytes(),
+	}
+
+	uncleReward := big.NewInt(0)
+	r := new(big.Int)
+
+	for _, uncle := range block.Uncles {
+		r.Add(big.NewInt(int64(uncle.GetNumber())), big.NewInt(8))
+		r.Sub(r, big.NewInt(int64(block.GetNumber())))
+		r.Mul(r, utils.BlockReward(block.GetNumber()))
+		r.Div(r, big.NewInt(8))
+
+		r.Div(utils.BlockReward(block.GetNumber()), big.NewInt(32))
+		uncleReward.Add(uncleReward, r)
+	}
+
+	idx.UncleReward = uncleReward.Bytes()
+
+	var maxGasPrice *big.Int
+	var minGasPrice *big.Int
+	txReward := big.NewInt(0)
+
+	for _, t := range block.GetTransactions() {
+		price := new(big.Int).SetBytes(t.GasPrice)
+
+		if minGasPrice == nil {
+			minGasPrice = price
+		}
+		if maxGasPrice == nil {
+			maxGasPrice = price
+		}
+
+		if price.Cmp(maxGasPrice) > 0 {
+			maxGasPrice = price
+		}
+
+		if price.Cmp(minGasPrice) < 0 {
+			minGasPrice = price
+		}
+
+		txReward.Add(new(big.Int).Mul(big.NewInt(int64(t.GasUsed)), new(big.Int).SetBytes(t.GasPrice)), txReward)
+	}
+
+	idx.TxReward = txReward.Bytes()
+
+	if maxGasPrice != nil {
+		idx.LowestGasPrice = minGasPrice.Bytes()
+
+	}
+	if minGasPrice != nil {
+		idx.HighestGasPrice = maxGasPrice.Bytes()
+	}
+
+	idx.Mev = CalculateMevFromBlock(block).Bytes()
+
+	// <chainID>:b:<reverse number>
+	key := fmt.Sprintf("%s:b:%s", bigtable.chainId, reversedPaddedBlockNumber(block.GetNumber()))
+	mut := gcp_bigtable.NewMutation()
+
+	b, err := proto.Marshal(&idx)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling proto object err: %w", err)
+	}
+
+	mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
+
+	muts.Keys = append(muts.Keys, key)
+	muts.Muts = append(muts.Muts, mut)
+
+	return muts, nil
+}
+
+func CalculateMevFromBlock(block *types.Eth1Block) *big.Int {
+	mevReward := big.NewInt(0)
+
+	for i, tx := range block.GetTransactions() {
+
+		if strings.ToLower(fmt.Sprintf("0x%x", tx.GetFrom())) == "0xf6da21e95d74767009accb145b96897ac3630bad" {
+			if strings.ToLower(fmt.Sprintf("0x%x", tx.GetTo())) == "0x0e09142e36e6dc1d2bb339e02b95bb624f0673c2" || strings.ToLower(fmt.Sprintf("0x%x", tx.GetTo())) == "0xd78a3280085ee846196cb5fab7d510b279486d44" { // ethermine mev arb contract
+				for j, l := range tx.GetLogs() {
+					if common.BytesToAddress(l.Address) != common.HexToAddress("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2") {
+						continue
+					}
+					if fmt.Sprintf("0x%x", l.Topics[0]) == "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef" {
+						filterer, err := erc20.NewErc20Filterer(common.Address{}, nil)
+						if err != nil {
+							log.Printf("error unpacking log: %v", err)
+							break
+						}
+
+						topics := make([]common.Hash, 0, len(l.GetTopics()))
+
+						for _, lTopic := range l.GetTopics() {
+							topics = append(topics, common.BytesToHash(lTopic))
+						}
+
+						log := eth_types.Log{
+							Address:     common.BytesToAddress(l.Address),
+							Data:        l.Data,
+							Topics:      topics,
+							BlockNumber: block.GetNumber(),
+							TxHash:      common.BytesToHash(tx.GetHash()),
+							TxIndex:     uint(i),
+							BlockHash:   common.BytesToHash(block.GetHash()),
+							Index:       uint(j),
+							Removed:     l.GetRemoved(),
+						}
+
+						t, err := filterer.ParseTransfer(log)
+						if err != nil {
+							logrus.Infof("error unpacking log: %v", err)
+							break
+						}
+						if t.From == common.HexToAddress("0xf6da21e95d74767009accb145b96897ac3630bad") {
+							logrus.Infof("tx %v subtracting %v to mev profit via mempool arb", tx.Hash, t.Value)
+							mevReward = new(big.Int).Sub(mevReward, t.Value)
+						}
+						if t.To == common.HexToAddress("0xf6da21e95d74767009accb145b96897ac3630bad") {
+							logrus.Infof("tx %v adding %v to mev profit via mempool arb", tx.Hash, t.Value)
+							mevReward = new(big.Int).Add(mevReward, t.Value)
+						}
+					}
+				}
+			}
+		}
+
+		for _, itx := range tx.GetItx() {
+			//log.Printf("%v - %v", common.HexToAddress(itx.To), common.HexToAddress(block.Miner))
+			if common.BytesToAddress(itx.To) == common.BytesToAddress(block.GetCoinbase()) {
+				mevReward = new(big.Int).Add(mevReward, new(big.Int).SetBytes(itx.GetValue()))
+			}
+		}
+
+	}
+	return mevReward
+}
+
+func (bigtable *Bigtable) TransformTransaction(block *types.Eth1Block) (*types.BulkMutations, error) {
+	muts := &types.BulkMutations{}
+
+	// normal tx
+
+	for _, tx := range block.GetTransactions() {
+		txHash := tx.GetHash()
+		key := fmt.Sprintf("%s:t:%s", bigtable.chainId, tx.GetHash())
+
+		if len(txHash) != 32 {
+			return nil, fmt.Errorf("unexpected hash: %x, len: %v, transaction: %+v, from: %x to: %x", txHash, len(txHash), tx, tx.From, tx.To)
+		}
+		for j, log := range tx.GetLogs() {
+			encLog, err := proto.Marshal(log)
+			if err != nil {
+				return nil, err
+			}
+			mut := gcp_bigtable.NewMutation()
+
+			// log:<hash>:<position>
+			mut.Set(DEFAULT_FAMILY, fmt.Sprintf("log:%03d", j), gcp_bigtable.Timestamp(0), encLog)
+			muts.Keys = append(muts.Keys, key)
+			muts.Muts = append(muts.Muts, mut)
+		}
+		tx.Logs = nil
+
+		for k, itx := range tx.GetItx() {
+			encItx, err := proto.Marshal(itx)
+			if err != nil {
+				return nil, err
+			}
+			mut := gcp_bigtable.NewMutation()
+			// itx:<hash>:<position>
+			mut.Set(DEFAULT_FAMILY, fmt.Sprintf("itx:%03d", k), gcp_bigtable.Timestamp(0), encItx)
+			muts.Keys = append(muts.Keys, key)
+			muts.Muts = append(muts.Muts, mut)
+		}
+		tx.Itx = nil
+		// store transaction without logs and internal transactions
+		encTx, err := proto.Marshal(tx)
+		if err != nil {
+			return nil, err
+		}
+		mut := gcp_bigtable.NewMutation()
+		// tx:<position>:<hash>
+		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), encTx)
+		muts.Keys = append(muts.Keys, key)
+		muts.Muts = append(muts.Muts, mut)
+	}
+
+	return muts, nil
 }
