@@ -32,12 +32,12 @@ func main() {
 		go IndexFromNode(bt, erigonEndpoint, start, end)
 	}
 
-	transforms := make([]func(blk []*types.Eth1Block) (*types.BulkMutations, error), 0)
-	transforms = append(transforms, bt.TransformForBlocksView)
+	transforms := make([]func(blk *types.Eth1Block) (*types.BulkMutations, error), 0)
+	transforms = append(transforms, bt.TransformForAccountsView)
 
 	err = IndexFromBigtable(bt, start, end, transforms)
 	if err != nil {
-		logrus.WithError(err).Error("error indexing from bigtable")
+		logrus.WithError(err).Fatalf("error indexing from bigtable")
 	}
 
 	utils.WaitForCtrlC()
@@ -92,7 +92,7 @@ func IndexFromNode(bt *db.Bigtable, erigonEndpoint *string, start, end *int64) {
 	}
 }
 
-func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk []*types.Eth1Block) (*types.BulkMutations, error)) error {
+func IndexBlocksFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk []*types.Eth1Block) (*types.BulkMutations, error)) error {
 	g := new(errgroup.Group)
 	g.SetLimit(20)
 
@@ -121,6 +121,59 @@ func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk
 			bulkMuts := types.BulkMutations{}
 			for _, transform := range transforms {
 				muts, err := transform(blocks)
+				if err != nil {
+					logrus.WithError(err).Error("error transforming block")
+				}
+				bulkMuts.Keys = append(bulkMuts.Keys, muts.Keys...)
+				bulkMuts.Muts = append(bulkMuts.Muts, muts.Muts...)
+			}
+
+			err = bt.WriteBulk(&bulkMuts)
+			if err != nil {
+				return fmt.Errorf("error writing to bigtable err: %w", err)
+			}
+
+			current := atomic.AddInt64(&processedBlocks, 1)
+			if current%100 == 0 {
+				logrus.Infof("processed %v blocks in %v (%.1f blocks / sec)", current, time.Since(startTs), float64((current))/time.Since(lastTickTs).Seconds())
+
+				lastTickTs = time.Now()
+				atomic.StoreInt64(&processedBlocks, 0)
+			}
+			return nil
+		})
+
+	}
+
+	if err := g.Wait(); err == nil {
+		logrus.Info("Successfully fetched all blocks")
+	} else {
+		return err
+	}
+	return nil
+}
+
+func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk *types.Eth1Block) (*types.BulkMutations, error)) error {
+	g := new(errgroup.Group)
+	g.SetLimit(20)
+
+	startTs := time.Now()
+	lastTickTs := time.Now()
+
+	processedBlocks := int64(0)
+	logrus.Infof("fetching blocks from %d to %d", *end, *start)
+	for i := *end; i >= *start; i-- {
+		i := i
+		g.Go(func() error {
+
+			block, err := bt.GetBlock(uint64(i))
+			if err != nil {
+				return err
+			}
+
+			bulkMuts := types.BulkMutations{}
+			for _, transform := range transforms {
+				muts, err := transform(block)
 				if err != nil {
 					logrus.WithError(err).Error("error transforming block")
 				}
