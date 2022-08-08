@@ -545,9 +545,7 @@ func CalculateMevFromBlock(block *types.Eth1Block) *big.Int {
 
 func (bigtable *Bigtable) TransformTransaction(block *types.Eth1Block) (*types.BulkMutations, error) {
 	muts := &types.BulkMutations{}
-
 	// normal tx
-
 	for _, tx := range block.GetTransactions() {
 		txHash := tx.GetHash()
 		key := fmt.Sprintf("%s:t:%s", bigtable.chainId, tx.GetHash())
@@ -555,19 +553,6 @@ func (bigtable *Bigtable) TransformTransaction(block *types.Eth1Block) (*types.B
 		if len(txHash) != 32 {
 			return nil, fmt.Errorf("unexpected hash: %x, len: %v, transaction: %+v, from: %x to: %x", txHash, len(txHash), tx, tx.From, tx.To)
 		}
-		for j, log := range tx.GetLogs() {
-			encLog, err := proto.Marshal(log)
-			if err != nil {
-				return nil, err
-			}
-			mut := gcp_bigtable.NewMutation()
-
-			// log:<hash>:<position>
-			mut.Set(DEFAULT_FAMILY, fmt.Sprintf("log:%03d", j), gcp_bigtable.Timestamp(0), encLog)
-			muts.Keys = append(muts.Keys, key)
-			muts.Muts = append(muts.Muts, mut)
-		}
-		tx.Logs = nil
 
 		for k, itx := range tx.GetItx() {
 			encItx, err := proto.Marshal(itx)
@@ -576,11 +561,41 @@ func (bigtable *Bigtable) TransformTransaction(block *types.Eth1Block) (*types.B
 			}
 			mut := gcp_bigtable.NewMutation()
 			// itx:<hash>:<position>
-			mut.Set(DEFAULT_FAMILY, fmt.Sprintf("itx:%03d", k), gcp_bigtable.Timestamp(0), encItx)
+			// 1 stands for idx
+			mut.Set(DEFAULT_FAMILY, fmt.Sprintf("001:%03d", k), gcp_bigtable.Timestamp(0), encItx)
 			muts.Keys = append(muts.Keys, key)
 			muts.Muts = append(muts.Muts, mut)
 		}
 		tx.Itx = nil
+
+		for j, log := range tx.GetLogs() {
+			encLog, err := proto.Marshal(log)
+			if err != nil {
+				return nil, err
+			}
+			mut := gcp_bigtable.NewMutation()
+
+			// 2 stands for log
+			mut.Set(DEFAULT_FAMILY, fmt.Sprintf("002:%03d", j), gcp_bigtable.Timestamp(0), encLog)
+			muts.Keys = append(muts.Keys, key)
+			muts.Muts = append(muts.Muts, mut)
+		}
+		tx.Logs = nil
+
+		for k, al := range tx.GetAccessList() {
+			encAL, err := proto.Marshal(al)
+			if err != nil {
+				return nil, err
+			}
+			mut := gcp_bigtable.NewMutation()
+
+			// 3 stands for access list
+			mut.Set(DEFAULT_FAMILY, fmt.Sprintf("003:%03d", k), gcp_bigtable.Timestamp(0), encAL)
+			muts.Keys = append(muts.Keys, key)
+			muts.Muts = append(muts.Muts, mut)
+		}
+		tx.AccessList = nil
+
 		// store transaction without logs and internal transactions
 		encTx, err := proto.Marshal(tx)
 		if err != nil {
@@ -588,7 +603,7 @@ func (bigtable *Bigtable) TransformTransaction(block *types.Eth1Block) (*types.B
 		}
 		mut := gcp_bigtable.NewMutation()
 		// tx:<position>:<hash>
-		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), encTx)
+		mut.Set(DEFAULT_FAMILY, "000", gcp_bigtable.Timestamp(0), encTx)
 		muts.Keys = append(muts.Keys, key)
 		muts.Muts = append(muts.Muts, mut)
 	}
