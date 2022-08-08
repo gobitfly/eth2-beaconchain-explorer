@@ -536,12 +536,12 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	chartData := &types.GenericChartData{
 		YAxisNegativeLog: true,
 		Title:            "Historical Pool Performance",
-		Subtitle:         "Historical Pool Performance measures the estimated yearly return rate (APR) of each pool for every day using the neutral ETH.STORE formula for each staking service. See <a style=\"color:rgb(56, 112, 168)\" href=\"https://github.com/gobitfly/eth.store\">github.com/gobitfly/eth.store</a> for further information.",
+		Subtitle:         "Historical Pool Performance measures the estimated yearly return rate (APR) of each pool for every day using the neutral ETH.STORE formula for each staking service. See <a style=\"color:rgb(56, 112, 168)\" href=\"https://github.com/gobitfly/eth.store\">github.com/gobitfly/eth.store</a> for further information.<br>This chart only contains consensus rewards. Tx rewards will be added soon",
 		XAxisTitle:       "",
 		YAxisTitle:       "APR [%]",
 		StackingMode:     "false",
 		Type:             "line",
-		TooltipSplit:     true,
+		TooltipSplit:     false,
 		Series:           chartSeries,
 	}
 

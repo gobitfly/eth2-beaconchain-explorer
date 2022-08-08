@@ -1,0 +1,238 @@
+{{ define "distribution_chart" }}
+  <div class="chart-pi">
+    <div style="overflow: hidden; position: relative;" class="d-flex flex-column justify-content-center w-100">
+      <figure>
+        <div id="pools-distribution-chart" class="h-100 text-center">
+          {{ template "loading_svg" . }}
+        </div>
+      </figure>
+    </div>
+  </div>
+  <script>
+    window.addEventListener('load', function () {
+        Highcharts.chart('pools-distribution-chart', {
+            chart: {
+                type: {{.PoolsDistribution.Data.Type }},
+                borderColor: null,
+                backgroundColor: "rgba(0,0,0,0.0)",
+                height: parseInt({{.PoolsDistribution.Height }}) ? parseInt({{.PoolsDistribution.Height }}) : 300,
+            },
+            rangeSelector: { enabled: false },
+            title: {
+                useHTML: true,
+                text: '<a class="text-dark" href="/pools">{{.PoolsDistribution.Data.Title}}</a>',
+            },
+            subtitle: {
+                useHTML: true,
+                text: '<span class="text-dark">{{.PoolsDistribution.Data.Subtitle}}</span>'{{ if .PoolsDistribution.Data.ShowGapHider }} + ' <button class="button btn-secondary btn-xs hide-gaps text-light">hide gaps</button>'{{ end }}
+            },
+            plotOptions: {
+                column: { stacking: {{.PoolsDistribution.Data.StackingMode }} },
+                {{ if .PoolsDistribution.Data.PlotOptionsPie }}pie: {{.PoolsDistribution.Data.PlotOptionsPie }}, {{ end }}
+                series: {
+                    events: {
+                        click: function (event) {
+                            if (event.point.name === "Others") return
+
+                            if (poolInfoTable) {
+                                if (event.point.name === "Whales") {
+                                    poolInfoTable.search("Whale").draw();
+                                } else poolInfoTable.search(event.point.name).draw();
+                            }
+                        }
+                    },
+                    {{ if .PoolsDistribution.Data.PlotOptionsSeriesCursor }}cursor: {{.PoolsDistribution.Data.PlotOptionsSeriesCursor }}, {{ end }}
+                },
+            },
+            xAxis: {
+                labels: {
+                    {{ if .PoolsDistribution.Data.XAxisLabelsFormatter }}formatter: {{.PoolsDistribution.Data.XAxisLabelsFormatter }}, {{ end }}
+                    }
+                },
+            yAxis: [{
+                type: 'logarithmic',
+                title: { text: {{.PoolsDistribution.Data.YAxisTitle }} },
+                opposite: false
+            }],
+            legend: { enabled: false },
+            series: {{.PoolsDistribution.Data.Series }},
+            navigator: { enabled: false },
+            scrollbar: { enabled: false },
+            tooltip: {
+                {{ if .PoolsDistribution.Data.TooltipFormatter }}formatter: {{.PoolsDistribution.Data.TooltipFormatter }}, {{ end }}
+            },
+            responsive: {
+                rules: [{
+                    condition: {
+                        maxWidth: 620
+                    },
+                    chartOptions: {
+                        plotOptions: {
+                            pie: {
+                                dataLabels: {
+                                    // enabled: false,
+                                    distance: 0,
+                                    overflow: 'crop',
+                                    formatter: function () {
+                                        if (this.point.percentage > 5) {
+                                            var name = this.point.name.length > 6 ? this.point.name.substring(0, 6) : this.point.name;
+                                            return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">' + name + '…</b><span style="stroke:none; fill: var(--font-color)">: ' + this.point.percentage.toFixed(2) + '%</span></span>'
+                                        } else {
+                                            return ''
+                                        }
+                                    },
+                                }
+                            }
+                        },
+                        chart: {
+                            // marginRight: 80
+                        },
+                    }
+                }]
+            },
+        })
+    });
+  </script>
+{{ end }}
+
+{{ define "performance_chart" }}
+  <div class="chart-pi">
+    <div style="overflow: hidden; position: relative;" class="d-flex flex-column justify-content-center w-100">
+      <figure>
+        <div id="performance-chart" class="h-100 text-center">
+          {{ template "loading_svg" . }}
+        </div>
+      </figure>
+    </div>
+  </div>
+  <script>
+    // source: https://stackoverflow.com/questions/63343645/overriding-log-scale-with-highcharts-export-server/63375446#63375446
+    window.addEventListener('load', function () {
+        (function (H) {
+            H.addEvent(H.Axis, 'afterInit', function () {
+                const logarithmic = this.logarithmic;
+
+                if (logarithmic && this.options.custom.allowNegativeLog) {
+                    // Avoid errors on negative numbers on a log axis
+                    this.positiveValuesOnly = false;
+
+                    // Override the converter functions
+                    logarithmic.log2lin = num => {
+                        const isNegative = num < 0;
+
+                        let adjustedNum = Math.abs(num);
+
+                        if (adjustedNum < 10) {
+                            adjustedNum += (10 - adjustedNum) / 10;
+                        }
+
+                        const result = Math.log(adjustedNum) / Math.LN10;
+                        return isNegative ? -result : result;
+                    };
+
+                    logarithmic.lin2log = num => {
+                        const isNegative = num < 0;
+
+                        let result = Math.pow(10, Math.abs(num));
+                        if (result < 10) {
+                            result = (10 * (result - 1)) / (10 - 1);
+                        }
+                        return isNegative ? -result : result;
+                    };
+                }
+            });
+        }(Highcharts));
+        Highcharts.stockChart('performance-chart', {
+            chart: {
+                type: {{.HistoricPoolPerformance.Data.Type}},
+                borderColor: null,
+                backgroundColor: "rgba(0,0,0,0.0)",
+                height: parseInt({{.HistoricPoolPerformance.Height }}) ? parseInt({{.HistoricPoolPerformance.Height }}) : 300,
+            },
+            rangeSelector: {
+                enabled: true,
+                selected: 0,
+            },
+            title: {
+                useHTML: true,
+                text: {{.HistoricPoolPerformance.Data.Title}}
+            },
+            subtitle: {text: {{.HistoricPoolPerformance.Data.Subtitle}} },
+            plotOptions: {
+                column: {
+                    stacking: {{.HistoricPoolPerformance.Data.StackingMode}},
+                    {{ if .HistoricPoolPerformance.Data.ColumnDataGroupingApproximation }}dataGrouping: {approximation: {{.HistoricPoolPerformance.Data.ColumnDataGroupingApproximation}}},{{end}}
+                    dataLabels: {
+                        enabled: {{ .HistoricPoolPerformance.Data.DataLabelsEnabled }},
+                        {{ if .HistoricPoolPerformance.Data.DataLabelsFormatter }} formatter: {{ .HistoricPoolPerformance.Data.DataLabelsFormatter }}, {{end}}
+                    },
+                },
+                wordcloud: {
+                    rotation: {
+                        from: -10, to: 10, orientations: 5,
+                    },
+                    minFontSize: 8,
+                    maxFontSize: 25,
+                },
+                series: {
+                    {{ if .HistoricPoolPerformance.Data.PlotOptionsSeriesCursor }}cursor: {{.HistoricPoolPerformance.Data.PlotOptionsSeriesCursor}},{{end}}
+                    events: {
+                        {{ if .HistoricPoolPerformance.Data.PlotOptionsSeriesEventsClick }}click: {{.HistoricPoolPerformance.Data.PlotOptionsSeriesEventsClick}},{{end}}
+                    }
+                }
+            },
+            xAxis: {
+                type: 'datetime',
+                labels: {
+                    formatter: function () {
+                        var epoch = timeToEpoch(this.value)
+                        var orig = this.axis.defaultLabelFormatter.call(this)
+                        return `${orig}<br/>Epoch ${epoch}`
+                    }
+                }
+            },
+            yAxis: [{
+                {{ if .HistoricPoolPerformance.Data.YAxisNegativeLog}}
+                type: 'logarithmic',
+                custom: {
+                  allowNegativeLog: true,
+                },
+                {{ else}}
+                custom: {
+                  allowNegativeLog: false,
+                },
+                {{ end }}
+                title: {
+                    text: {{.HistoricPoolPerformance.Data.YAxisTitle}}
+                },
+                opposite: false
+            }],
+            navigator: { enabled: true },
+            tooltip: {
+                {{ if .HistoricPoolPerformance.Data.TooltipFormatter }}
+                formatter: {{.HistoricPoolPerformance.Data.TooltipFormatter}},
+                {{ else }}
+                formatter: function (tooltip) {
+                    var orig = tooltip.defaultFormatter.call(this, tooltip)
+                    var epoch = timeToEpoch(this.x)
+                    orig[0] = orig[0] + '<span style="font-size:10px">Epoch ' + epoch + '</span>'
+                    return orig
+                },
+                {{end}}
+                shared: {{.HistoricPoolPerformance.Data.TooltipShared}},
+                useHTML: {{.HistoricPoolPerformance.Data.TooltipUseHTML}},
+                split: {{.HistoricPoolPerformance.Data.TooltipSplit}},
+                followPointer: {{.HistoricPoolPerformance.Data.TooltipFollowPointer}},
+            },
+            legend: {
+                enabled: true,
+                align: 'right',
+                layout: 'vertical',
+                verticalAlign: 'middle',
+                maxHeight: 250,
+            },
+            series: {{.HistoricPoolPerformance.Data.Series}},
+        });
+    });
+  </script>
+{{ end }}

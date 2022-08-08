@@ -18,7 +18,7 @@ type HistoricalPoolPerformanceExporter struct {
 	Sleep          time.Duration
 }
 
-func CHANGE_BEFORE_PR_LALALALALAL() {
+func historicalPoolPerformanceExporter() {
 	logger.Info("starting historicalpoolperformance exporter")
 	hpp := HistoricalPoolPerformanceExporter{
 		DB:             db.WriterDb,
@@ -33,7 +33,7 @@ func CHANGE_BEFORE_PR_LALALALALAL() {
 		hpp.ErrorInterval = time.Second * 10
 	}
 	if hpp.Sleep == 0 {
-		hpp.Sleep = time.Second * 5
+		hpp.Sleep = time.Second * 20
 	}
 
 	hpp.Run()
