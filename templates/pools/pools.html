@@ -6,6 +6,10 @@
   <script src="/js/jquery.min.js"></script>
   <script src="/js/luxon.min.js"></script>
   <script>
+    if (window.location.hash == "#performance") {
+      $("#distribution-chart").addClass("d-none")
+      $("#performance-chart").removeClass("d-none")
+    }
     $("#distribution-chart-btn").on("click", () => {
       $("#distribution-chart").removeClass("d-none")
       $("#performance-chart").addClass("d-none")
@@ -40,10 +44,10 @@
           </div>
         </div>
         <div class="d-flex justify-content-center btn-group border rounded w-25 m-auto">
-          <button type="button" class="btn border-right" id="distribution-chart-btn">
+          <a role="button" class="btn border-right" id="distribution-chart-btn" href="#distribution">
             <i class="fas fa-chart-pie  fa-lg text-dark"></i>
           </button>
-          <button type="button" class="btn" id="performance-chart-btn">
+          <a role="button" class="btn" id="performance-chart-btn" href="#performance">
             <i class="fas fa-chart-line fa-lg text-dark"></i>
           </button>
         </div>
