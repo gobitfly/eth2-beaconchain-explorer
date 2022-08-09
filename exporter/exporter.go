@@ -43,7 +43,6 @@ func Start(client rpc.Client) error {
 	if utils.Config.HistoricalPoolPerformanceExporter.Enabled {
 		go historicalPoolPerformanceExporter()
 	}
-
 	if utils.Config.Indexer.PubKeyTagsExporter.Enabled {
 		go UpdatePubkeyTag()
 	}
