@@ -711,7 +711,7 @@ func SaveEpoch(data *types.EpochData) error {
 		}
 		err = updateQueueDeposits()
 		if err != nil {
-			return fmt.Errorf("error updating queue deposits cache")
+			return fmt.Errorf("error updating queue deposits cache: %w", err)
 		}
 	}
 	logger.Infof("exporting proposal assignments data")
@@ -1691,6 +1691,27 @@ func updateQueueDeposits() error {
 		return err
 	}
 	return nil
+}
+
+func GetQueueAheadOfValidator(validatorIndex uint64) (uint64, error) {
+	var res uint64
+	err := ReaderDb.Get(&res, `
+	with SelectedValidator as (
+		select eth1_deposits.block_number, eth1_deposits.tx_index from validator_queue_deposits vqd2 
+		left join eth1_deposits on vqd2.tx_hash = eth1_deposits.tx_hash and
+								   vqd2.merkletree_index = eth1_deposits.merkletree_index
+		where vqd2.validatorindex = $1
+		)
+	select count(*)
+	from (
+		select validatorindex, eth1_deposits.block_number, eth1_deposits.tx_index
+		from validator_queue_deposits vqd
+		left join eth1_deposits on vqd.tx_hash = eth1_deposits.tx_hash and
+								   vqd.merkletree_index = eth1_deposits.merkletree_index
+	) as vqd 
+	where vqd.block_number < (select block_number from SelectedValidator) OR
+		vqd.block_number = (select block_number from SelectedValidator) and vqd.tx_index < (select tx_index from SelectedValidator)`, validatorIndex)
+	return res, err
 }
 
 func GetValidatorNames() (map[uint64]string, error) {
