@@ -1,7 +1,8 @@
-function setValidatorStatus(state) {
+function setValidatorStatus(state, activationEpoch) {
   // deposited, deposited_valid, deposited_invalid, pending, active_online, active_offline, exiting_online, exiting_offline, slashing_online, slashing_offline, exited, slashed
   // we cans set elements to active, failed and done
   var status = state
+  console.log(status)
 
   var depositToPending = document.querySelector(".validator__lifecycle-progress.validator__lifecycle-deposited")
   var pendingToActive = document.querySelector(".validator__lifecycle-progress.validator__lifecycle-pending")
@@ -70,10 +71,17 @@ function setValidatorStatus(state) {
   }
 
   if (status === "pending") {
-    pendingNode.classList.add("done")
-    pendingToActive.classList.add("active")
-    activeNode.classList.add("active")
+    if (activationEpoch > 100_000_000) {
+      depositedNode.classList.add("done")
+      depositToPending.classList.add("complete")
+      pendingNode.classList.add("active")
+    } else {
+      pendingNode.classList.add("done")
+      pendingToActive.classList.add("active")
+      activeNode.classList.add("active")
+    }
   }
+
 }
 
 function setupDashboardButtons(validatorIdx) {
