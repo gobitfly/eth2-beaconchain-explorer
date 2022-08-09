@@ -5,6 +5,8 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "./types";
 
+
+// Eth1Block is stored in the blocks table under <chainID>:<reversePaddedNumber>
 message Eth1Block {
     bytes hash = 1;
     bytes parent_hash = 2;
@@ -41,11 +43,6 @@ message Eth1Transaction {
 
     bytes chain_id = 14;
 
-    message AccessList {
-        bytes address = 1;
-        repeated bytes storage_keys = 2;
-    }
-
     repeated AccessList access_list = 15;
 
     bytes hash = 16;
@@ -61,6 +58,11 @@ message Eth1Transaction {
 
     // Internal transactions
     repeated Eth1InternalTransaction itx = 24;
+}
+
+message AccessList {
+    bytes address = 1;
+    repeated bytes storage_keys = 2;
 }
 
 message Eth1Log {
@@ -79,33 +81,71 @@ message Eth1InternalTransaction {
     string path = 6;
 }
 
+// Indexed structs stored in the data table
+
 message Eth1BlockIndexed {
     bytes hash = 1;
     bytes parent_hash = 2;
     bytes uncle_hash = 3;
     bytes coinbase = 4;
-    bytes root = 5;
-    bytes tx_hash = 6;
-    bytes receipt_hash = 7;
     bytes difficulty = 8;
     uint64 number = 9;
     uint64 gas_limit = 10;
     uint64 gas_used = 11;
     google.protobuf.Timestamp time = 12;
-    bytes extra = 13;
-    bytes mix_digest = 14;
-    bytes bloom = 17;
     bytes base_fee = 18;
     uint64 uncle_count = 19;
     uint64 transaction_count = 20;
     bytes mev = 21;
     bytes lowest_gas_price = 22;
     bytes highest_gas_price = 23;
-    uint64 duration = 24;
+    // uint64 duration = 24;
     bytes tx_reward = 25;
     bytes uncle_reward = 26;
-    bytes base_fee_change = 27;
-    bytes block_utilization_change = 28;
+    // bytes base_fee_change = 27;
+    // bytes block_utilization_change = 28;
 }
 
 
+message Eth1TransactionIndexed {
+    bytes hash = 1;
+    uint64 block_number = 2;
+    google.protobuf.Timestamp time = 3;
+    bytes method_id = 4;
+    bytes from = 5;
+    bytes to = 6;
+    bytes value = 7;
+    bytes tx_fee = 8;
+    bytes gas_price = 9;
+    bool is_contract_creation = 10;
+    bool invokes_contract = 11;
+    string error_msg = 12;
+}
+
+message Eth1InternalTransactionIndexed {
+    bytes parent_hash = 1;
+    uint64 block_number = 2;
+    string type = 3;
+    google.protobuf.Timestamp time = 4;
+    bytes from = 5;
+    bytes to = 6;
+    bytes value = 7;
+}
+
+message Eth1ERC20Indexed {
+    bytes parent_hash = 1;
+    uint64 block_number = 2;
+    bytes token_address = 3;
+    google.protobuf.Timestamp time = 4;
+    bytes from = 5;
+    bytes to = 6;
+    bytes value = 7;
+}
+
+message Eth1ERC721Indexed {
+
+}
+
+message ETh1ERC1155Indexed {
+
+}

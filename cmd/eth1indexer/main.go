@@ -4,19 +4,20 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"flag"
 	"fmt"
 	"sync/atomic"
 	"time"
 
+	"cloud.google.com/go/bigtable"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
 func main() {
-	erigonEndpoint := flag.String("erigon", "http://localhost:8545", "Erigon archive node enpoint")
+	// localhost:8545
+	erigonEndpoint := flag.String("erigon", "", "Erigon archive node enpoint")
 	start := flag.Int64("start", 0, "Block to start indexing")
 	end := flag.Int64("end", 0, "Block to finish indexing")
 
@@ -28,19 +29,24 @@ func main() {
 	}
 	defer bt.Close()
 
-	if erigonEndpoint != nil {
+	// bt.DeleteRowsWithPrefix("1:b:")
+	// return
+
+	if erigonEndpoint != nil && *erigonEndpoint != "" {
+		logrus.Infof("indexing from node %v", erigonEndpoint)
 		go IndexFromNode(bt, erigonEndpoint, start, end)
 	}
 
 	transforms := make([]func(blk *types.Eth1Block) (*types.BulkMutations, error), 0)
-	transforms = append(transforms, bt.TransformForAccountsView)
+	transforms = append(transforms, bt.TransformTx, bt.TransformERC20, bt.TransformERC20, bt.TransformBlock)
 
+	logrus.Infof("indexing from bigtable")
 	err = IndexFromBigtable(bt, start, end, transforms)
 	if err != nil {
 		logrus.WithError(err).Fatalf("error indexing from bigtable")
 	}
 
-	utils.WaitForCtrlC()
+	// utils.WaitForCtrlC()
 
 }
 
@@ -171,7 +177,10 @@ func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk
 				return err
 			}
 
-			bulkMuts := types.BulkMutations{}
+			bulkMuts := types.BulkMutations{
+				Keys: make([]string, 0),
+				Muts: make([]*bigtable.Mutation, 0),
+			}
 			for _, transform := range transforms {
 				muts, err := transform(block)
 				if err != nil {
@@ -180,16 +189,24 @@ func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk
 				bulkMuts.Keys = append(bulkMuts.Keys, muts.Keys...)
 				bulkMuts.Muts = append(bulkMuts.Muts, muts.Muts...)
 			}
-
+			// logrus.Infof("writing: %v", len(bulkMuts.Keys))
 			err = bt.WriteBulk(&bulkMuts)
 			if err != nil {
 				return fmt.Errorf("error writing to bigtable err: %w", err)
 			}
 
 			current := atomic.AddInt64(&processedBlocks, 1)
-			if current%100 == 0 {
-				logrus.Infof("processed %v blocks in %v (%.1f blocks / sec)", current, time.Since(startTs), float64((current))/time.Since(lastTickTs).Seconds())
-
+			if current%500 == 0 {
+				curr := uint64(*end) - block.GetNumber()
+				diff := *end - *start
+				if curr < 1 {
+					curr = 0
+				}
+				if diff < 1 {
+					diff = 1
+				}
+				perc := float64(curr) / float64(diff)
+				logrus.Infof("currently processing block: %v; processed %v blocks in %v (%.1f blocks / sec); sync is %.1f%% complete", block.GetNumber(), current, time.Since(startTs), float64((current))/time.Since(lastTickTs).Seconds(), perc*100)
 				lastTickTs = time.Now()
 				atomic.StoreInt64(&processedBlocks, 0)
 			}
