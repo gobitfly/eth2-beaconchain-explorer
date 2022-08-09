@@ -59,6 +59,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		churnRate = new(uint64)
 	}
 
+	if *churnRate == 0 {
+		*churnRate = 4
+		logger.Warning("Churn rate not set in config using 4 as default please set minPerEpochChurnLimit")
+	}
+	validatorPageData.ChurnRate = *churnRate
+
 	pendingCount := stats.PendingValidatorCount
 	if pendingCount == nil {
 		pendingCount = new(uint64)
@@ -149,13 +155,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				latestDeposit = utils.SlotToTime(0).Unix()
 				validatorPageData.InclusionDelay = 0
 			}
-
-			if *churnRate == 0 {
-				*churnRate = 4
-				logger.Warning("Churn rate not set in config using 4 as default please set minPerEpochChurnLimit")
-			}
-			activationEstimate := (*pendingCount / *churnRate)*(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch) + uint64(latestDeposit)
-			validatorPageData.EstimatedActivationTs = int64(activationEstimate)
 
 			for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
 				if deposit.ValidSignature {
@@ -333,6 +332,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
 	validatorPageData.ExitTs = utils.EpochToTime(validatorPageData.ExitEpoch)
 	validatorPageData.WithdrawableTs = utils.EpochToTime(validatorPageData.WithdrawableEpoch)
+
+	if validatorPageData.ActivationEpoch > 100_000_000 {
+		queueAhead, err := db.GetQueueAheadOfValidator(validatorPageData.Index)
+		if err != nil {
+			logger.WithError(err).Warnf("failed to retrieve queue ahead of validator %v", vars["index"])
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		validatorPageData.QueuePosition = queueAhead
+		estimatedActivationEpoch := validatorPageData.Epoch + (queueAhead / *churnRate) + 1 + utils.Config.Chain.Config.MaxSeedLookahead
+		validatorPageData.EstimatedActivationEpoch = estimatedActivationEpoch
+		estimatedDequeueTs := utils.EpochToTime(estimatedActivationEpoch)
+		validatorPageData.EstimatedActivationTs = estimatedDequeueTs
+	}
 
 	proposals := []struct {
 		Slot   uint64
