@@ -159,7 +159,11 @@ type Config struct {
 		StorageContractFirstBlock uint64 `yaml:"storageContractFirstBlock" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_FIRST_BLOCK"`
 	} `yaml:"rocketpoolExporter"`
 	EthStoreExporter struct {
-		Enabled        bool          `yaml:"enabled" envconfig:"ETHSTORE_EXPORTER_ENABLED"`
+		Enabled bool `yaml:"enabled" envconfig:"ETHSTORE_EXPORTER_ENABLED"`
+		Node    struct {
+			Port string `yaml:"port" envconfig:"ETHSTORE_EXPORTER_NODE_PORT"`
+			Host string `yaml:"host" envconfig:"ETHSTORE_EXPORTER_NODE_HOST"`
+		} `yaml:"node"`
 		UpdateInterval time.Duration `yaml:"updateInterval" envconfig:"ETHSTORE_EXPORTER_UPDATE_INTERVAL"`
 		ErrorInterval  time.Duration `yaml:"errorInterval" envconfig:"ETHSTORE_EXPORTER_ERROR_INTERVAL"`
 		Sleep          time.Duration `yaml:"sleep" envconfig:"ETHSTORE_EXPORTER_SLEEP"`

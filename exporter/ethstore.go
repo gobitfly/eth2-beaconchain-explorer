@@ -3,6 +3,7 @@ package exporter
 import (
 	"context"
 	"eth2-exporter/db"
+	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"strconv"
@@ -21,24 +22,23 @@ type EthStoreExporter struct {
 	Sleep          time.Duration
 }
 
-type EthStoreDay struct {
-	Day                  uint64 `db:"day"`
-	EffectiveBalancesSum uint64 `db:"effective_balances_sum"`
-	StartBalancesSum     uint64 `db:"start_balances_sum"`
-	EndBalancesSum       uint64 `db:"end_balances_sum"`
-	DepositsSum          uint64 `db:"deposits_sum"`
-}
-
 // start exporting of eth.store into db
 func ethStoreExporter() {
 	logger.Info("starting eth.store exporter")
 	ese := &EthStoreExporter{
 		DB:             db.WriterDb,
-		NodeHost:       utils.Config.Indexer.Node.Host,
-		NodePort:       utils.Config.Indexer.Node.Port,
+		NodeHost:       utils.Config.EthStoreExporter.Node.Host,
+		NodePort:       utils.Config.EthStoreExporter.Node.Port,
 		UpdateInverval: utils.Config.EthStoreExporter.UpdateInterval,
 		ErrorInterval:  utils.Config.EthStoreExporter.ErrorInterval,
 		Sleep:          utils.Config.EthStoreExporter.Sleep,
+	}
+	// set sane defaults if config is not set
+	if len(ese.NodeHost) == 0 {
+		ese.NodeHost = utils.Config.Indexer.Node.Host
+	}
+	if len(ese.NodePort) == 0 {
+		ese.NodePort = utils.Config.Indexer.Node.Port
 	}
 	if ese.UpdateInverval == 0 {
 		ese.UpdateInverval = time.Minute
@@ -60,9 +60,14 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 		return err
 	}
 	_, err = ese.DB.Exec(`
-		INSERT INTO eth_store_stats (day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum)
-		VALUES ($1, $2, $3, $4, $5)`,
-		ethStoreDay.Day, ethStoreDay.EffectiveBalance, ethStoreDay.StartBalance, ethStoreDay.EndBalance, ethStoreDay.DepositsSum)
+		INSERT INTO eth_store_stats (day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum, tx_fees_sum)
+		VALUES ($1, $2, $3, $4, $5, $6)`,
+		ethStoreDay.Day,
+		ethStoreDay.EffectiveBalanceGwei,
+		ethStoreDay.StartBalanceGwei,
+		ethStoreDay.EndBalanceGwei,
+		ethStoreDay.DepositsSumGwei,
+		ethStoreDay.TxFeesSumWei.String())
 	if err != nil {
 		return err
 	}
@@ -70,7 +75,7 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 }
 
 func (ese *EthStoreExporter) getStoreDay(day string) (*ethstore.Day, error) {
-	return ethstore.Calculate(context.Background(), fmt.Sprintf("http://%s:%s", ese.NodeHost, ese.NodePort), day, nil)
+	return ethstore.Calculate(context.Background(), fmt.Sprintf("http://%s:%s", ese.NodeHost, ese.NodePort), day)
 }
 
 func (ese *EthStoreExporter) Run() {
@@ -107,7 +112,7 @@ DBCHECK:
 
 			// set every existing day in db to false in export map
 			if ethStoreDayCount > 0 {
-				var ethStoreDays []EthStoreDay
+				var ethStoreDays []types.PerformanceDay
 				err = ese.DB.Select(&ethStoreDays, `
 						SELECT day 
 						FROM eth_store_stats`)
@@ -130,7 +135,7 @@ DBCHECK:
 						time.Sleep(ese.ErrorInterval)
 						continue DBCHECK
 					}
-					logger.Infof("exported eth.store day %s into db", dayToExport)
+					logger.Infof("exported eth.store day %d into db", dayToExport)
 					if ethStoreDayCount < latest.Day {
 						// more than 1 day is being exported, sleep for duration specified in config
 						time.Sleep(ese.Sleep)

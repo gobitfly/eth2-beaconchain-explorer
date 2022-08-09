@@ -821,6 +821,7 @@ type GenericChartData struct {
 	Subtitle                        string                    `json:"subtitle"`
 	XAxisTitle                      string                    `json:"x_axis_title"`
 	YAxisTitle                      string                    `json:"y_axis_title"`
+	YAxisNegativeLog                bool                      `json:"y_axis_negative_log"`
 	Type                            string                    `json:"type"`
 	StackingMode                    string                    `json:"stacking_mode"`
 	ColumnDataGroupingApproximation string                    // "average", "averages", "open", "high", "low", "close" and "sum"
@@ -1296,8 +1297,9 @@ type EventNameCheckbox struct {
 }
 
 type PoolsResp struct {
-	PoolsDistribution ChartsPageDataChart
-	PoolInfos         []*PoolInfo
+	PoolsDistribution       ChartsPageDataChart
+	HistoricPoolPerformance ChartsPageDataChart
+	PoolInfos               []*PoolInfo
 }
 
 type PoolInfo struct {

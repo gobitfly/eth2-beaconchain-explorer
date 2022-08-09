@@ -1,0 +1,90 @@
+{{ define "js" }}
+  <script src="/js/highcharts/highstock.min.js"></script>
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script src="/js/highcharts/highcharts-global-options.js"></script>
+  <script src="/js/requestInterval.js"></script>
+  <script src="/js/jquery.min.js"></script>
+  <script src="/js/luxon.min.js"></script>
+  <script>
+    if (window.location.hash == "#performance") {
+      $("#distribution-chart").addClass("d-none")
+      $("#performance-chart").removeClass("d-none")
+    }
+    $("#distribution-chart-btn").on("click", () => {
+      $("#distribution-chart").removeClass("d-none")
+      $("#performance-chart").addClass("d-none")
+    })
+    $("#performance-chart-btn").on("click", () => {
+      $("#distribution-chart").addClass("d-none")
+      $("#performance-chart").removeClass("d-none")
+    })
+  </script>
+{{ end }}
+
+{{ define "css" }}
+  <link rel="stylesheet" type="text/css" href="/css//datatables.min.css" />
+  <link rel="stylesheet" href="/css/pools.css" />
+  <style>
+    #charts-container {
+      height: 520px;
+    }
+  </style>
+{{ end }}
+
+{{ define "content" }}
+  <section>
+    <div class="container">
+      <div class="h-100 py-4">
+        <div id="charts-container" class="w-100">
+          <div id="distribution-chart" class="w-100 mb-2">
+            {{ template "distribution_chart" .Data }}
+          </div>
+          <div id="performance-chart" class="w-100 mb-2 d-none">
+            {{ template "performance_chart" .Data }}
+          </div>
+        </div>
+        <div class="d-flex justify-content-center btn-group border rounded w-25 m-auto">
+          <a role="button" class="btn border-right" id="distribution-chart-btn" href="#distribution">
+            <i class="fas fa-chart-pie  fa-lg text-dark"></i>
+          </a>
+          <a role="button" class="btn" id="performance-chart-btn" href="#performance">
+            <i class="fas fa-chart-line fa-lg text-dark"></i>
+          </a>
+        </div>
+      </div>
+
+      <br />
+      <div>Staking pool deposit adresses are based on on-chain data. Please open an <a href="https://github.com/gobitfly/eth2-beaconchain-explorer/issues">issue</a> if you want to add an Ethereum staking pool.</div>
+      <div class="row mt-4">
+        <div class="col-md-12">
+          <div id="poolTable" class="table-responsive card px-0 pb-1 mb-2">
+            <table class="table" id="staking-pool-table">
+              <thead>
+                <tr>
+                  <th>Pool</th>
+                  <th>Validators</th>
+                  <th>Avg. Performance 31d</th>
+                  <th>Avg. Performance 7d</th>
+                  <th>Avg. Performance 1d</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{ range .Data.PoolInfos }}
+                  <tr>
+                    <td>{{ .Name }}</td>
+                    <td>{{ .Count }}</td>
+                    <td>{{ formatBalanceChange .AvgPerformance31d $.Rates.Currency }}</td>
+                    <td>{{ formatBalanceChange .AvgPerformance7d $.Rates.Currency }}</td>
+                    <td>{{ formatBalanceChange .AvgPerformance1d $.Rates.Currency }}</td>
+                  </tr>
+                {{ end }}
+              </tbody>
+            </table>
+          </div>
+          <span class="px-2" id="lastUpdate"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div id="tempcont" class=""></div>
+{{ end }}

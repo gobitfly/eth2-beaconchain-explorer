@@ -144,7 +144,7 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.ReaderDb.Query(`
-		SELECT day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum
+		SELECT day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum, tx_fees_sum
 		FROM eth_store_stats 
 		WHERE day = $1`, day)
 	if err != nil {
