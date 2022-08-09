@@ -26,8 +26,9 @@ func historicalPoolPerformanceExporter() {
 		ErrorInterval:  utils.Config.HistoricalPoolPerformanceExporter.ErrorInterval,
 		Sleep:          utils.Config.HistoricalPoolPerformanceExporter.Sleep,
 	}
+	// set sane defaults if config is not set
 	if hpp.UpdateInverval == 0 {
-		hpp.UpdateInverval = time.Minute
+		hpp.UpdateInverval = time.Minute * 10
 	}
 	if hpp.ErrorInterval == 0 {
 		hpp.ErrorInterval = time.Second * 10
@@ -125,6 +126,8 @@ func (hpp *HistoricalPoolPerformanceExporter) ExportPoolPerformanceDay(poolPerfD
 func (hpp *HistoricalPoolPerformanceExporter) GetPoolPerformanceDay(day uint64) ([]types.PerformanceDay, error) {
 	var poolPerf []types.PerformanceDay
 
+	// the having clause prevents exporting pools on their first day of staking
+	// in which case the start effective balance is 0 and the ETH.STORE formula doesn't work
 	err := hpp.DB.Select(&poolPerf, `
 	SELECT pool,
 		day,
