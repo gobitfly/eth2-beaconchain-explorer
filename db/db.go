@@ -709,8 +709,11 @@ func SaveEpoch(data *types.EpochData) error {
 		if err != nil {
 			return fmt.Errorf("error saving validators to db: %w", err)
 		}
+		err = updateQueueDeposits()
+		if err != nil {
+			return fmt.Errorf("error updating queue deposits cache")
+		}
 	}
-
 	logger.Infof("exporting proposal assignments data")
 	err = saveValidatorProposalAssignments(data.Epoch, data.ValidatorAssignmentes.ProposerAssignments, tx)
 	if err != nil {
@@ -1617,6 +1620,77 @@ func GetActiveValidatorCount() (uint64, error) {
 	var count uint64
 	err := ReaderDb.Get(&count, "select count(*) from validators where status in ('active_offline', 'active_online');")
 	return count, err
+}
+
+func updateQueueDeposits() error {
+	start := time.Now()
+	defer func() {
+		logger.Infof("took %v seconds to update queue deposits", time.Since(start).Seconds())
+		metrics.TaskDuration.WithLabelValues("update_queue_deposits").Observe(time.Since(start).Seconds())
+	}()
+
+	// first we remove any publickeys aren't queued in the validators table anymore
+	_, err := WriterDb.Exec(`
+		DELETE FROM validator_queue_deposits
+		WHERE validator_queue_deposits.validatorindex NOT IN (
+			SELECT validatorindex 
+			FROM validators 
+			WHERE activationepoch=9223372036854775807 and status='pending')`)
+	if err != nil {
+		logger.Errorf("error removing queued publickeys from validator_queue_deposits: %v", err)
+		return err
+	}
+
+	// then we add any new queued ones
+	_, err = WriterDb.Exec(`
+		INSERT INTO validator_queue_deposits
+		SELECT validatorindex FROM validators WHERE activationepoch=9223372036854775807 and status='pending' ON CONFLICT DO NOTHING`)
+	if err != nil {
+		logger.Errorf("error adding queued publickeys to validator_queue_deposits: %v", err)
+		return err
+	}
+
+	// efficiently collect the tnx that pushed each validator over 32 ETH.
+	// benchmarks using a 12 thread laptop:
+	// realistic   1.7k valis: empty=>full: ~120ms,		  full=>full ~2ms
+	// unrealistic 373k valis: empty=>full: ~2.5 seconds, full=>full ~600ms
+	_, err = WriterDb.Exec(`
+		UPDATE validator_queue_deposits 
+		SET 
+			tx_hash=data.tx_hash,
+			merkletree_index=data.merkletree_index
+		FROM (
+			WITH CumSum AS
+			(
+				SELECT publickey, tx_hash, merkletree_index,
+					/* generate partion ordered by newest to oldest. store cum sum of deposits */
+					SUM(amount) OVER (partition BY publickey ORDER BY (block_number, tx_index) ASC) AS cumTotal
+				FROM eth1_deposits
+				/* deposits have to be valid and from a matching pubkey */
+				WHERE valid_signature AND publickey IN (
+					/* get the pubkeys of the indexes */
+					select pubkey from validators where validators.validatorindex in (
+						/* get the indexes we need to update */
+						select validatorindex from validator_queue_deposits where tx_hash is null
+					)
+				)
+				ORDER BY block_number, block_ts ASC
+			)
+			/* we only care about one deposit per vali */
+			SELECT DISTINCT ON(publickey) validators.validatorindex, tx_hash, merkletree_index
+			FROM CumSum
+			/* join so we can retrieve the validator index again */
+			left join validators on validators.pubkey = CumSum.publickey
+			/* we want the deposit that pushed the cum sum over 32 ETH */
+			WHERE cumTotal>=32000000000
+			ORDER BY publickey, cumTotal asc 
+		) AS data
+		WHERE validator_queue_deposits.validatorindex=data.validatorindex`)
+	if err != nil {
+		logger.Errorf("error updating validator_queue_deposits: %v", err)
+		return err
+	}
+	return nil
 }
 
 func GetValidatorNames() (map[uint64]string, error) {
