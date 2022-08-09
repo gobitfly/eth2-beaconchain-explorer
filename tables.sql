@@ -998,3 +998,16 @@ create table eth_store_stats
     primary key(day)
     
 );
+
+drop table if exists historical_pool_performance;
+create table historical_pool_performance
+(
+    pool 			varchar(40) 	not null,
+    day 			int 		not null,
+    effective_balances_sum	bigint		not null,
+    start_balances_sum		bigint		not null,
+    end_balances_sum		bigint		not null,
+    deposits_sum		bigint		not null,
+    
+    primary key(pool, day)
+);
