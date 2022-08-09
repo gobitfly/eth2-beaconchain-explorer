@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
+	"github.com/hashicorp/go-version"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/rocket-pool/rocketpool-go/dao"
@@ -25,6 +26,8 @@ import (
 	"github.com/rocket-pool/rocketpool-go/rocketpool"
 	"github.com/rocket-pool/rocketpool-go/tokens"
 	rpTypes "github.com/rocket-pool/rocketpool-go/types"
+	rputil "github.com/rocket-pool/rocketpool-go/utils"
+
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -396,9 +399,22 @@ func (rp *RocketpoolExporter) UpdateNetworkStats() error {
 		return err
 	}
 
-	nodeOperatorRewards, err := getBigIntFrom(rp.API, "rocketRewardsPool", "getClaimingContractAllowance", "rocketClaimNode")
+	isMergeUpdateDeployed, err := IsMergeUpdateDeployed(rp.API)
 	if err != nil {
 		return err
+	}
+
+	var nodeOperatorRewards *big.Int
+	if !isMergeUpdateDeployed {
+		nodeOperatorRewards, err = getBigIntFrom(rp.API, "rocketRewardsPool", "getClaimingContractAllowance", "rocketClaimNode")
+		if err != nil {
+			return err
+		}
+	} else {
+		nodeOperatorRewards, err = rewards.GetPendingRPLRewards(rp.API, nil)
+		if err != nil {
+			return err
+		}
 	}
 
 	totalEthStaking, err := network.GetStakingETHBalance(rp.API, nil)
@@ -425,6 +441,18 @@ func (rp *RocketpoolExporter) UpdateNetworkStats() error {
 		TotalEthBalance:        totalEthBalance,
 	}
 	return err
+}
+
+// Redstone activation check
+// Credit https://github.com/rocket-pool/smartnode/blob/4fd78852a331a7ec7a7e462fef2bcd49d1f0b0af/shared/utils/rp/update-checks.go
+func IsMergeUpdateDeployed(rp *rocketpool.RocketPool) (bool, error) {
+	currentVersion, err := rputil.GetCurrentVersion(rp)
+	if err != nil {
+		return false, err
+	}
+
+	constraint, _ := version.NewConstraint(">= 1.1.0")
+	return constraint.Check(currentVersion), nil
 }
 
 func getBigIntFrom(rp *rocketpool.RocketPool, contract string, method string, args ...interface{}) (*big.Int, error) {
@@ -527,7 +555,7 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 	}
 	defer tx.Rollback()
 
-	nArgs := 7
+	nArgs := 8
 
 	valueStringsArr := make([]string, nArgs)
 	for i := range valueStringsArr {
@@ -559,17 +587,18 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 			valueArgs = append(valueArgs, d.MinRPLStake.String())
 			valueArgs = append(valueArgs, d.MaxRPLStake.String())
 			valueArgs = append(valueArgs, d.RPLCumulativeRewards.String())
-
+			valueArgs = append(valueArgs, d.SmoothingPoolOptedIn)
 		}
 
 		stmt = fmt.Sprintf(`
-			insert into rocketpool_nodes (rocketpool_storage_address, address, timezone_location, rpl_stake, min_rpl_stake, max_rpl_stake, rpl_cumulative_rewards) 
+			insert into rocketpool_nodes (rocketpool_storage_address, address, timezone_location, rpl_stake, min_rpl_stake, max_rpl_stake, rpl_cumulative_rewards, smoothing_pool_opted_in) 
 			values %s 
 			on conflict (rocketpool_storage_address, address) do update set 
 				rpl_stake = excluded.rpl_stake, 
 				min_rpl_stake = excluded.min_rpl_stake, 
 				max_rpl_stake = excluded.max_rpl_stake, 
-				rpl_cumulative_rewards = excluded.rpl_cumulative_rewards
+				rpl_cumulative_rewards = excluded.rpl_cumulative_rewards,
+				smoothing_pool_opted_in = excluded.smoothing_pool_opted_in
 		`, strings.Join(valueStrings, ","))
 
 		_, err := tx.Exec(stmt, valueArgs...)
@@ -942,6 +971,7 @@ type RocketpoolNode struct {
 	MinRPLStake          *big.Int `db:"min_rpl_stake"`
 	MaxRPLStake          *big.Int `db:"max_rpl_stake"`
 	RPLCumulativeRewards *big.Int `db:"rpl_cumulative_rewards"`
+	SmoothingPoolOptedIn bool     `db:"smoothing_pool_opted_in"`
 }
 
 func NewRocketpoolNode(rp *rocketpool.RocketPool, addr []byte) (*RocketpoolNode, error) {
@@ -972,6 +1002,18 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool) error {
 	maxStake, err := node.GetNodeMaximumRPLStake(rp, common.BytesToAddress(this.Address), nil)
 	if err != nil {
 		return err
+	}
+
+	isMergeUpdateDeployed, err := IsMergeUpdateDeployed(rp)
+	if err != nil {
+		return err
+	}
+
+	if isMergeUpdateDeployed {
+		this.SmoothingPoolOptedIn, err = node.GetSmoothingPoolRegistrationState(rp, common.BytesToAddress(this.Address), nil)
+		if err != nil {
+			return err
+		}
 	}
 
 	this.RPLStake = stake

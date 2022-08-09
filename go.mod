@@ -9,7 +9,7 @@ require (
 	github.com/awa/go-iap v1.3.7
 	github.com/chromedp/cdproto v0.0.0-20200709115526-d1f6fc58448b
 	github.com/chromedp/chromedp v0.5.3
-	github.com/ethereum/go-ethereum v1.10.8
+	github.com/ethereum/go-ethereum v1.10.16
 	github.com/evanw/esbuild v0.8.23
 	github.com/gobitfly/eth.store v0.0.0-20220721051754-2f4ce5a9547a
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -38,7 +38,7 @@ require (
 	github.com/prysmaticlabs/eth2-types v0.0.0-20210303084904-c9735a06829d
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20210809151128-385d8c5e3fb7
 	github.com/prysmaticlabs/prysm v1.4.2-0.20210816195537-4db77ce69181
-	github.com/rocket-pool/rocketpool-go v1.0.1
+	github.com/rocket-pool/rocketpool-go v1.3.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stripe/stripe-go/v72 v72.50.0
 	github.com/swaggo/http-swagger v1.3.0
@@ -97,6 +97,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.0.5 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.1 // indirect
+	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/herumi/bls-eth-go-binary v0.0.0-20210130185500-57372fb27371 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.2.0 // indirect

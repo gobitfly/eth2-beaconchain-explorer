@@ -904,6 +904,7 @@ create table rocketpool_nodes
     min_rpl_stake numeric not null,
     max_rpl_stake numeric not null,
     rpl_cumulative_rewards numeric not null default 0,
+    smoothing_pool_opted_in boolean not null default f,
     primary key(rocketpool_storage_address, address)
 );
 
