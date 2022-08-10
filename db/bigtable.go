@@ -143,7 +143,7 @@ func (bigtable *Bigtable) GetFullBlock(number uint64) (*types.Eth1Block, error) 
 
 	paddedNumber := reversedPaddedBlockNumber(number)
 
-	row, err := bigtable.tableStefan.ReadRow(context.Background(), fmt.Sprintf("1:%s", paddedNumber))
+	row, err := bigtable.tableData.ReadRow(context.Background(), fmt.Sprintf("1:%s", paddedNumber))
 
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func (bigtable *Bigtable) GetMostRecentBlock() (*types.Eth1Block, error) {
 		return true
 	}
 
-	err := bigtable.tableStefan.ReadRows(ctx, rowRange, rowHandler, rowFilter, limit)
+	err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, rowFilter, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +276,7 @@ func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.
 	rowHandler := GetFullBlockHandler(&blocks)
 
 	startTime := time.Now()
-	err := bigtable.tableStefan.ReadRows(ctx, rowRange, rowHandler, gcp_bigtable.LimitRows(int64(limit)))
+	err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, gcp_bigtable.LimitRows(int64(limit)))
 	if err != nil {
 		return nil, err
 	}
@@ -868,8 +868,8 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutat
 				BlockNumber:  blk.GetNumber(),
 				Time:         blk.GetTime(),
 				TokenAddress: log.Address,
-				From:         transfer.From.Hash().Bytes(),
-				To:           transfer.To.Hash().Bytes(),
+				From:         transfer.From.Bytes(),
+				To:           transfer.To.Bytes(),
 				Value:        value,
 			}
 
@@ -954,8 +954,8 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 				BlockNumber:  blk.GetNumber(),
 				Time:         blk.GetTime(),
 				TokenAddress: log.Address,
-				From:         transfer.From.Hash().Bytes(),
-				To:           transfer.To.Hash().Bytes(),
+				From:         transfer.From.Bytes(),
+				To:           transfer.To.Bytes(),
 				TokenId:      tokenId.Bytes(),
 			}
 
@@ -1054,9 +1054,9 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 					indexedLog.BlockNumber = blk.GetNumber()
 					indexedLog.Time = blk.GetTime()
 					indexedLog.ParentHash = tx.GetHash()
-					indexedLog.From = transferBatch.From.Hash().Bytes()
-					indexedLog.To = transferBatch.To.Hash().Bytes()
-					indexedLog.Operator = transferBatch.Operator.Hash().Bytes()
+					indexedLog.From = transferBatch.From.Bytes()
+					indexedLog.To = transferBatch.To.Bytes()
+					indexedLog.Operator = transferBatch.Operator.Bytes()
 					indexedLog.TokenId = ids[ti]
 					indexedLog.Value = values[ti]
 				}
@@ -1064,9 +1064,9 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 				indexedLog.BlockNumber = blk.GetNumber()
 				indexedLog.Time = blk.GetTime()
 				indexedLog.ParentHash = tx.GetHash()
-				indexedLog.From = transferSingle.From.Hash().Bytes()
-				indexedLog.To = transferSingle.To.Hash().Bytes()
-				indexedLog.Operator = transferSingle.Operator.Hash().Bytes()
+				indexedLog.From = transferSingle.From.Bytes()
+				indexedLog.To = transferSingle.To.Bytes()
+				indexedLog.Operator = transferSingle.Operator.Bytes()
 				indexedLog.TokenId = transferSingle.Id.Bytes()
 				indexedLog.Value = transferSingle.Value.Bytes()
 			}
