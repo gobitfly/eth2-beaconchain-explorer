@@ -1629,7 +1629,7 @@ func updateQueueDeposits() error {
 		metrics.TaskDuration.WithLabelValues("update_queue_deposits").Observe(time.Since(start).Seconds())
 	}()
 
-	// first we remove any publickeys aren't queued in the validators table anymore
+	// first we remove any validator that isn't queued anymore
 	_, err := WriterDb.Exec(`
 		DELETE FROM validator_queue_deposits
 		WHERE validator_queue_deposits.validatorindex NOT IN (
@@ -1641,7 +1641,7 @@ func updateQueueDeposits() error {
 		return err
 	}
 
-	// then we add any new queued ones
+	// then we add any new ones that are queued
 	_, err = WriterDb.Exec(`
 		INSERT INTO validator_queue_deposits
 		SELECT validatorindex FROM validators WHERE activationepoch=9223372036854775807 and status='pending' ON CONFLICT DO NOTHING`)
