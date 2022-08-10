@@ -90,7 +90,7 @@ func GetEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 			utils.FormatTimeFromNow(b.GetTime().AsTime()),
 			b.GetTransactionCount(), // b.TxCount,
 			b.GetUncleCount(),       // b.UncleCount,
-			fmt.Sprintf("%ds", b.GetDuration()),
+			// fmt.Sprintf("%ds", b.GetDuration()),
 			utils.FormatAmount(float64(reward.Int64()), "ETH", 5),
 			utils.FormatAmount(float64(new(big.Int).SetBytes(b.GetMev()).Int64()), "ETH", 5),
 			utils.FormatAmount(float64(new(big.Int).SetBytes(b.GetBaseFee()).Int64()), "GWei", 5),

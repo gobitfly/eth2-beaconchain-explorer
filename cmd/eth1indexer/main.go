@@ -17,7 +17,7 @@ import (
 
 func main() {
 	// localhost:8545
-	erigonEndpoint := flag.String("erigon", "", "Erigon archive node enpoint")
+	// erigonEndpoint := flag.String("erigon", "", "Erigon archive node enpoint")
 	start := flag.Int64("start", 0, "Block to start indexing")
 	end := flag.Int64("end", 0, "Block to finish indexing")
 
@@ -32,13 +32,13 @@ func main() {
 	// bt.DeleteRowsWithPrefix("1:b:")
 	// return
 
-	if erigonEndpoint != nil && *erigonEndpoint != "" {
-		logrus.Infof("indexing from node %v", erigonEndpoint)
-		go IndexFromNode(bt, erigonEndpoint, start, end)
-	}
+	// if erigonEndpoint != nil && *erigonEndpoint != "" {
+	// 	logrus.Infof("indexing from node %v", erigonEndpoint)
+	// 	go IndexFromNode(bt, erigonEndpoint, start, end)
+	// }
 
 	transforms := make([]func(blk *types.Eth1Block) (*types.BulkMutations, error), 0)
-	transforms = append(transforms, bt.TransformTx, bt.TransformERC20, bt.TransformERC20, bt.TransformBlock, bt.TransformERC1155, bt.TransformERC721)
+	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155)
 
 	logrus.Infof("indexing from bigtable")
 	err = IndexFromBigtable(bt, start, end, transforms)
@@ -57,7 +57,7 @@ func IndexFromNode(bt *db.Bigtable, erigonEndpoint *string, start, end *int64) {
 	}
 
 	g := new(errgroup.Group)
-	g.SetLimit(20)
+	g.SetLimit(200)
 
 	startTs := time.Now()
 	lastTickTs := time.Now()

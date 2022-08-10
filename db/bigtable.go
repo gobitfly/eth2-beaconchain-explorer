@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"eth2-exporter/erc1155"
 	"eth2-exporter/erc20"
@@ -47,20 +46,15 @@ var (
 	ERC1155Topic []byte
 )
 
-func init() {
-	ERC20TOPIC, _ = hex.DecodeString()
-}
-
 type Bigtable struct {
 	client      *gcp_bigtable.Client
 	tableData   *gcp_bigtable.Table
 	tableBlocks *gcp_bigtable.Table
-	tableStefan *gcp_bigtable.Table
 	chainId     string
 }
 
 func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
-	poolSize := 20
+	poolSize := 200
 	btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance, option.WithGRPCConnectionPool(poolSize))
 	// btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance)
 
@@ -72,7 +66,6 @@ func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
 		client:      btClient,
 		tableData:   btClient.Open("data"),
 		tableBlocks: btClient.Open("blocks"),
-		tableStefan: btClient.Open("stefan"),
 		chainId:     chainId,
 	}
 	return bt, nil
@@ -1041,18 +1034,18 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 				continue
 			}
 
-			ids := make([][]byte, 0, len(transferBatch.Ids))
-			for _, id := range transferBatch.Ids {
-				ids = append(ids, id.Bytes())
-			}
-
-			values := make([][]byte, 0, len(transferBatch.Values))
-			for _, val := range transferBatch.Values {
-				values = append(values, val.Bytes())
-			}
-
 			// && len(transferBatch.Operator) == 20 && len(transferBatch.From) == 20 && len(transferBatch.To) == 20 && len(transferBatch.Ids) > 0 && len(transferBatch.Values) > 0
 			if transferBatch != nil {
+				ids := make([][]byte, 0, len(transferBatch.Ids))
+				for _, id := range transferBatch.Ids {
+					ids = append(ids, id.Bytes())
+				}
+
+				values := make([][]byte, 0, len(transferBatch.Values))
+				for _, val := range transferBatch.Values {
+					values = append(values, val.Bytes())
+				}
+
 				if len(ids) != len(values) {
 					logrus.Errorf("error parsing erc1155 batch transfer logs. Expected len(ids): %v len(values): %v to be the same", len(ids), len(values))
 					continue
