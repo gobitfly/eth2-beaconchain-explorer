@@ -57,7 +57,7 @@ func IndexFromNode(bt *db.Bigtable, erigonEndpoint *string, start, end *int64) {
 	}
 
 	g := new(errgroup.Group)
-	g.SetLimit(200)
+	g.SetLimit(30)
 
 	startTs := time.Now()
 	lastTickTs := time.Now()

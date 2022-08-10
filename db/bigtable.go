@@ -54,7 +54,7 @@ type Bigtable struct {
 }
 
 func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
-	poolSize := 200
+	poolSize := 50
 	btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance, option.WithGRPCConnectionPool(poolSize))
 	// btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance)
 
@@ -778,7 +778,7 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block) (*types.BulkMutatio
 	for i, tx := range blk.GetTransactions() {
 		for j, idx := range tx.GetItx() {
 
-			key := fmt.Sprintf("%s:ITX:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%03d", j))
+			key := fmt.Sprintf("%s:ITX:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%06d", j))
 			indexedItx := &types.Eth1InternalTransactionIndexed{
 				ParentHash:  tx.GetHash(),
 				BlockNumber: blk.GetNumber(),
@@ -802,8 +802,8 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block) (*types.BulkMutatio
 
 			indexes := []string{
 				// fmt.Sprintf("%s:i:ITX::%s:%s:%s", bigtable.chainId, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ITX:%x:TO:%x:%s:%s:%s", bigtable.chainId, idx.GetFrom(), idx.GetTo(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ITX:%x:FROM:%x:%s:%s:%s", bigtable.chainId, idx.GetTo(), idx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ITX:%x:TO:%x:%s:%s:%s", bigtable.chainId, idx.GetFrom(), idx.GetTo(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%06d", j)),
+				fmt.Sprintf("%s:I:ITX:%x:FROM:%x:%s:%s:%s", bigtable.chainId, idx.GetTo(), idx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%06d", j)),
 			}
 
 			for _, idx := range indexes {
