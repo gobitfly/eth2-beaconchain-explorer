@@ -143,9 +143,25 @@ message Eth1ERC20Indexed {
 }
 
 message Eth1ERC721Indexed {
-
+    bytes parent_hash = 1;
+    uint64 block_number = 2;
+    bytes token_address = 3;
+    google.protobuf.Timestamp time = 4;
+    bytes from = 5;
+    bytes to = 6;
+    bytes token_id = 7;
 }
 
+// https://eips.ethereum.org/EIPS/eip-1155
 message ETh1ERC1155Indexed {
-
+    bytes parent_hash = 1;
+    uint64 block_number = 2;
+    bytes token_address = 3;
+    google.protobuf.Timestamp time = 4;
+    bytes from = 5;
+    bytes to = 6;
+    bytes token_id = 7;
+    bytes value = 8;
+    // the address approved to make the transfer
+    bytes operator = 9;
 }
