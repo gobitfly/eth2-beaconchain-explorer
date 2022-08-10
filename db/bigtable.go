@@ -1,7 +1,9 @@
 package db
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"eth2-exporter/erc1155"
 	"eth2-exporter/erc20"
@@ -38,6 +40,16 @@ const (
 	MAX_INT        = 9223372036854775807
 	MIN_INT        = -9223372036854775808
 )
+
+var (
+	ERC20TOPIC   []byte
+	ERC721TOPIC  []byte
+	ERC1155Topic []byte
+)
+
+func init() {
+	ERC20TOPIC, _ = hex.DecodeString()
+}
 
 type Bigtable struct {
 	client      *gcp_bigtable.Client
@@ -825,7 +837,7 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutat
 	for i, tx := range blk.GetTransactions() {
 		for j, log := range tx.GetLogs() {
 
-			if len(log.GetTopics()) != 3 || fmt.Sprintf("%x", log.GetTopics()[0]) != "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef" {
+			if len(log.GetTopics()) != 3 || bytes.Compare(log.GetTopics()[0], erc20.TransferTopic) != 0 {
 				continue
 			}
 
@@ -911,8 +923,7 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 
 	for i, tx := range blk.GetTransactions() {
 		for j, log := range tx.GetLogs() {
-
-			if len(log.GetTopics()) != 4 || fmt.Sprintf("%x", log.GetTopics()[0]) != "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef" {
+			if len(log.GetTopics()) != 4 || bytes.Compare(log.GetTopics()[0], erc721.TransferTopic) != 0 {
 				continue
 			}
 
@@ -1001,7 +1012,7 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 			key := fmt.Sprintf("%s:ERC1155:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%03d", j))
 
 			// no events emitted continue
-			if len(log.GetTopics()) != 4 || (fmt.Sprintf("%x", log.GetTopics()[0]) != "4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb" && fmt.Sprintf("%x", log.GetTopics()[0]) != "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62") {
+			if len(log.GetTopics()) != 4 || (bytes.Compare(log.GetTopics()[0], erc1155.TransferBulkTopic) != 0 && bytes.Compare(log.GetTopics()[0], erc1155.TransferSingleTopic) != 0) {
 				continue
 			}
 
