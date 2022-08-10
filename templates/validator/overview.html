@@ -105,18 +105,16 @@
     <div class="col">
       <div class="px-2">
         <div class="p-2 mx-auto" style="max-width: 50rem;">
-            This validator has been processed by the beacon chain and is currently waiting to be activated. 
-            {{ if lt .ActivationEpoch 100_000_000 }}
-              It will be activated on <span class="font-weight-bolder" title="{{ .ActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .ActivationTs.Unix }}">{{ .ActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .ActivationEpoch }}</span>. 
-            {{ else if lt .EstimatedActivationEpoch 100_000_000 }}
-              It is estimated to be activated on <span class="font-weight-bolder" title="{{ .ActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .EstimatedActivationTs.Unix }}">{{ .EstimatedActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .EstimatedActivationEpoch }}</span>. 
-            {{ end }}
-            Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
+          This validator has been processed by the beacon chain and is currently waiting to be activated.
+          {{ if lt .ActivationEpoch 100_000_000 }}
+            It will be activated on <span class="font-weight-bolder" title="{{ .ActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .ActivationTs.Unix }}">{{ .ActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .ActivationEpoch }}</span>.
+          {{ else if lt .EstimatedActivationEpoch 100_000_000 }}
+            It is estimated to be activated on <span class="font-weight-bolder" title="{{ .ActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .EstimatedActivationTs.Unix }}">{{ .EstimatedActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .EstimatedActivationEpoch }}</span>.
+          {{ end }}
+          Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
         </div>
         {{ if gt .QueuePosition 0 }}
-          <div class="d-flex justify-content-center" data-toggle="tooltip" title="{{ .ChurnRate }} Validators get dequeued each Epoch.">
-            This validator is currently #{{ .QueuePosition }} in Queue.
-          </div>
+          <div class="d-flex justify-content-center" data-toggle="tooltip" title="{{ .ChurnRate }} Validators get dequeued each Epoch.">This validator is currently #{{ .QueuePosition }} in Queue.</div>
         {{ end }}
         <div class="my-4" style="min-width:300px;">
           {{ template "validatorCountdown" . }}

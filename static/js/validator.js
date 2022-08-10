@@ -81,7 +81,6 @@ function setValidatorStatus(state, activationEpoch) {
       activeNode.classList.add("active")
     }
   }
-
 }
 
 function setupDashboardButtons(validatorIdx) {
