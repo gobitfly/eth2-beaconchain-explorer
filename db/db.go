@@ -1651,33 +1651,29 @@ func updateQueueDeposits() error {
 	}
 
 	// efficiently collect the tnx that pushed each validator over 32 ETH.
-	// benchmarks using a 12 thread laptop:
-	// realistic   1.7k valis: empty=>full: ~120ms,		  full=>full ~2ms
-	// unrealistic 373k valis: empty=>full: ~2.5 seconds, full=>full ~600ms
 	_, err = WriterDb.Exec(`
 		UPDATE validator_queue_deposits 
 		SET 
-			tx_hash=data.tx_hash,
-			merkletree_index=data.merkletree_index
+			block_slot=data.block_slot,
+			block_index=data.block_index
 		FROM (
 			WITH CumSum AS
 			(
-				SELECT publickey, tx_hash, merkletree_index,
-					/* generate partion ordered by newest to oldest. store cum sum of deposits */
-					SUM(amount) OVER (partition BY publickey ORDER BY (block_number, tx_index) ASC) AS cumTotal
-				FROM eth1_deposits
-				/* deposits have to be valid and from a matching pubkey */
-				WHERE valid_signature AND publickey IN (
+				SELECT publickey, block_slot, block_index,
+					/* generate partion per publickey ordered by newest to oldest. store cum sum of deposits */
+					SUM(amount) OVER (partition BY publickey ORDER BY (block_slot, block_index) ASC) AS cumTotal
+				FROM blocks_deposits
+				WHERE publickey IN (
 					/* get the pubkeys of the indexes */
 					select pubkey from validators where validators.validatorindex in (
 						/* get the indexes we need to update */
-						select validatorindex from validator_queue_deposits where tx_hash is null
+						select validatorindex from validator_queue_deposits where block_slot is null and block_index is null
 					)
 				)
-				ORDER BY block_number, block_ts ASC
+				ORDER BY block_slot, block_index ASC
 			)
 			/* we only care about one deposit per vali */
-			SELECT DISTINCT ON(publickey) validators.validatorindex, tx_hash, merkletree_index
+			SELECT DISTINCT ON(publickey) validators.validatorindex, block_slot, block_index
 			FROM CumSum
 			/* join so we can retrieve the validator index again */
 			left join validators on validators.pubkey = CumSum.publickey
@@ -1697,20 +1693,22 @@ func GetQueueAheadOfValidator(validatorIndex uint64) (uint64, error) {
 	var res uint64
 	err := ReaderDb.Get(&res, `
 	with SelectedValidator as (
-		select eth1_deposits.block_number, eth1_deposits.tx_index from validator_queue_deposits vqd2 
-		left join eth1_deposits on vqd2.tx_hash = eth1_deposits.tx_hash and
-								   vqd2.merkletree_index = eth1_deposits.merkletree_index
-		where vqd2.validatorindex = $1
-		)
+		select block_slot, block_index, validators.activationeligibilityepoch from validator_queue_deposits vqd
+		inner join validators on validators.validatorindex = $1
+		where vqd.validatorindex = validators.validatorindex 
+	)
 	select count(*)
 	from (
-		select validatorindex, eth1_deposits.block_number, eth1_deposits.tx_index
+		select validatorindex, block_slot, block_index 
 		from validator_queue_deposits vqd
-		left join eth1_deposits on vqd.tx_hash = eth1_deposits.tx_hash and
-								   vqd.merkletree_index = eth1_deposits.merkletree_index
 	) as vqd 
-	where vqd.block_number < (select block_number from SelectedValidator) OR
-		vqd.block_number = (select block_number from SelectedValidator) and vqd.tx_index < (select tx_index from SelectedValidator)`, validatorIndex)
+	inner join validators on
+		validators.validatorindex = vqd.validatorindex and
+		validators.activationeligibilityepoch <= (select activationeligibilityepoch from SelectedValidator)
+	where 
+		validators.activationeligibilityepoch < (select activationeligibilityepoch from SelectedValidator) or 
+		vqd.block_slot < (select block_slot from SelectedValidator) or
+		vqd.block_slot = (select block_slot from SelectedValidator) and vqd.block_index < (select block_index from SelectedValidator)`, validatorIndex)
 	return res, err
 }
 
