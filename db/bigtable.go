@@ -825,7 +825,7 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutat
 	for i, tx := range blk.GetTransactions() {
 		for j, log := range tx.GetLogs() {
 
-			if len(log.GetTopics()) == 0 {
+			if len(log.GetTopics()) != 3 || fmt.Sprintf("%x", log.GetTopics()[0]) != "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef" {
 				continue
 			}
 
@@ -912,7 +912,7 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 	for i, tx := range blk.GetTransactions() {
 		for j, log := range tx.GetLogs() {
 
-			if len(log.GetTopics()) == 0 {
+			if len(log.GetTopics()) != 4 || fmt.Sprintf("%x", log.GetTopics()[0]) != "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef" {
 				continue
 			}
 
@@ -1000,8 +1000,8 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 		for j, log := range tx.GetLogs() {
 			key := fmt.Sprintf("%s:ERC1155:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%03d", j))
 
-			// no events continue
-			if len(log.GetTopics()) == 0 {
+			// no events emitted continue
+			if len(log.GetTopics()) != 4 || (fmt.Sprintf("%x", log.GetTopics()[0]) != "4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb" && fmt.Sprintf("%x", log.GetTopics()[0]) != "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62") {
 				continue
 			}
 
@@ -1031,7 +1031,6 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 			}
 
 			ids := make([][]byte, 0, len(transferBatch.Ids))
-
 			for _, id := range transferBatch.Ids {
 				ids = append(ids, id.Bytes())
 			}
@@ -1043,6 +1042,10 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 
 			// && len(transferBatch.Operator) == 20 && len(transferBatch.From) == 20 && len(transferBatch.To) == 20 && len(transferBatch.Ids) > 0 && len(transferBatch.Values) > 0
 			if transferBatch != nil {
+				if len(ids) != len(values) {
+					logrus.Errorf("error parsing erc1155 batch transfer logs. Expected len(ids): %v len(values): %v to be the same", len(ids), len(values))
+					continue
+				}
 				for ti := range ids {
 					indexedLog.BlockNumber = blk.GetNumber()
 					indexedLog.Time = blk.GetTime()
@@ -1095,11 +1098,6 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 
 	return bulk, nil
 }
-
-// 	return nil, nil
-// }
-
-// func IndexBlock(tx *types.Eth1Transaction) (*types.BulkMutations, error) {
 
 // 	return nil, nil
 // }
