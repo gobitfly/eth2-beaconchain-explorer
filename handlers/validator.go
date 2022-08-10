@@ -339,9 +339,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			logger.WithError(err).Warnf("failed to retrieve queue ahead of validator %v", vars["index"])
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-
-		validatorPageData.QueuePosition = queueAhead
-		estimatedActivationEpoch := validatorPageData.Epoch + (queueAhead / *churnRate) + 1 + utils.Config.Chain.Config.MaxSeedLookahead
+		validatorPageData.QueuePosition = queueAhead + 1
+		epochsToWait := queueAhead / *churnRate
+		// calculate dequeue epoch
+		estimatedActivationEpoch := validatorPageData.Epoch + epochsToWait + 1
+		// add activation offset
+		estimatedActivationEpoch += utils.Config.Chain.Config.MaxSeedLookahead + 1
 		validatorPageData.EstimatedActivationEpoch = estimatedActivationEpoch
 		estimatedDequeueTs := utils.EpochToTime(estimatedActivationEpoch)
 		validatorPageData.EstimatedActivationTs = estimatedDequeueTs
