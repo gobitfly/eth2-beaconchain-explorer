@@ -336,8 +336,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if validatorPageData.ActivationEpoch > 100_000_000 {
 		queueAhead, err := db.GetQueueAheadOfValidator(validatorPageData.Index)
 		if err != nil {
-			logger.WithError(err).Warnf("failed to retrieve queue ahead of validator %v", vars["index"])
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			logger.WithError(err).Warnf("failed to retrieve queue ahead of validator %v: %v", validatorPageData.ValidatorIndex, err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		}
 		validatorPageData.QueuePosition = queueAhead + 1
 		epochsToWait := queueAhead / *churnRate
