@@ -685,7 +685,7 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block) (*types.BulkMutation
 			isContract = true
 		}
 		invokesContract := false
-		if len(tx.GetItx()) > 0 {
+		if len(tx.GetItx()) > 0 || tx.GetGasUsed() > 21000 || tx.GetErrorMsg() != "" {
 			invokesContract = true
 		}
 		method := make([]byte, 0)
