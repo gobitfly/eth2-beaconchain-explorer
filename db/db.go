@@ -1700,7 +1700,7 @@ func GetQueueAheadOfValidator(validatorIndex uint64) (uint64, error) {
 	select count(*)
 	from (
 		select validatorindex, block_slot, block_index 
-		from validator_queue_deposits vqd
+		from validator_queue_deposits
 	) as vqd 
 	inner join validators on
 		validators.validatorindex = vqd.validatorindex and
