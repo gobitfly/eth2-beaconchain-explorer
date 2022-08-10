@@ -515,33 +515,36 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting eth store days: %w", err)
 	}
-	// generate eth store series datapoints
-	for _, ethStoreDay := range performanceDays {
-		timestamp = float64(utils.DayToTime(int64(ethStoreDay.Day)).Unix() * 1000)
-		arp, _ = CalcARP(ethStoreDay).Float64()
-		poolSeriesData["ETH.STORE"] = append(poolSeriesData["ETH.STORE"], [2]float64{
-			timestamp,
-			arp,
-		})
+	if len(performanceDays) > 0 {
+		// generate eth store series datapoints
+		for _, ethStoreDay := range performanceDays {
+			timestamp = float64(utils.DayToTime(int64(ethStoreDay.Day)).Unix() * 1000)
+			arp, _ = CalcARP(ethStoreDay).Float64()
+			poolSeriesData["ETH.STORE"] = append(poolSeriesData["ETH.STORE"], [2]float64{
+				timestamp,
+				arp,
+			})
+		}
+		// create eth store series
+		ethStoreSeries := types.GenericChartDataSeries{
+			Name:  "ETH.STORE",
+			Data:  poolSeriesData["ETH.STORE"],
+			Color: "#ed1c24",
+		}
+		chartSeries = append(chartSeries, &ethStoreSeries)
 	}
-	// create eth store series
-	ethStoreSeries := types.GenericChartDataSeries{
-		Name:  "ETH.STORE",
-		Data:  poolSeriesData["ETH.STORE"],
-		Color: "#ed1c24",
-	}
-	chartSeries = append(chartSeries, &ethStoreSeries)
 
 	//create chart struct, hypertext color is hardcoded into subtitle text
 	chartData := &types.GenericChartData{
 		YAxisNegativeLog: true,
 		Title:            "Historical Pool Performance",
-		Subtitle:         "Historical Pool Performance measures the estimated yearly return rate (APR) of each pool for every day using the neutral ETH.STORE formula for each staking service. See <a style=\"color:rgb(56, 112, 168)\" href=\"https://github.com/gobitfly/eth.store\">github.com/gobitfly/eth.store</a> for further information.<br>This chart only contains consensus rewards. Tx rewards will be added soon.",
+		Subtitle:         "Uses a neutral & verifiable formula <a style=\"color:rgb(56, 112, 168)\" href=\"https://github.com/gobitfly/eth.store\">ETH.STORE</a> to measure pool performance for consensus rewards.",
 		XAxisTitle:       "",
 		YAxisTitle:       "APR [%] (Logarithmic)",
 		StackingMode:     "false",
 		Type:             "line",
-		TooltipSplit:     true,
+		TooltipShared:    true,
+		TooltipUseHTML:   true,
 		Series:           chartSeries,
 	}
 
