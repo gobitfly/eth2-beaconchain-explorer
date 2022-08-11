@@ -362,7 +362,6 @@ func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations) error {
 		if err != nil {
 			return err
 		}
-		return nil
 	}
 
 	if (iterations * length) < numKeys {
@@ -372,9 +371,12 @@ func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations) error {
 		defer done()
 		// startTime := time.Now()
 		errs, err := bigtable.tableData.ApplyBulk(ctx, mutations.Keys[start:], mutations.Muts[start:])
+		if err != nil {
+			return err
+		}
 		for _, e := range errs {
 			if e != nil {
-				return err
+				return e
 			}
 		}
 		// logrus.Infof("wrote from %v to %v rows to bigtable in %.1fs", start, numKeys, time.Since(startTime).Seconds())
@@ -1338,7 +1340,7 @@ func (bigtable *Bigtable) GetEth1TxForAddress(address string, limit int64) ([]*t
 		if !strings.Contains(row.Key(), "TIME") {
 			return false
 		}
-		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "d:"))
+		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
 		return true
 	}, gcp_bigtable.LimitRows(limit))
 	if err != nil {
@@ -1384,7 +1386,7 @@ func (bigtable *Bigtable) GetEth1ItxForAddress(address string, limit int64) ([]*
 		if !strings.Contains(row.Key(), "TIME") {
 			return false
 		}
-		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "d:"))
+		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
 		return true
 	}, gcp_bigtable.LimitRows(limit))
 	if err != nil {
@@ -1424,12 +1426,13 @@ func (bigtable *Bigtable) GetEth1ERC20ForAddress(address string, limit int64) ([
 	data := make([]*types.Eth1ERC20Indexed, 0, limit)
 
 	keys := make([]string, 0, limit)
+	keysMap := make(map[string]*types.Eth1ERC20Indexed, limit)
 
 	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
 		if !strings.Contains(row.Key(), "TIME") {
 			return false
 		}
-		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "d:"))
+		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
 		return true
 	}, gcp_bigtable.LimitRows(limit))
 	if err != nil {
@@ -1447,8 +1450,104 @@ func (bigtable *Bigtable) GetEth1ERC20ForAddress(address string, limit int64) ([
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		keysMap[row.Key()] = b
+		return true
+	})
+
+	for _, key := range keys {
+		data = append(data, keysMap[key])
+	}
+
+	return data, nil
+}
+
+func (bigtable *Bigtable) GetEth1ERC721ForAddress(address string, limit int64) ([]*types.Eth1ERC721Indexed, error) {
+	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancle()
+
+	prefix := fmt.Sprintf("%s:I:ERC721:%s:TIME", bigtable.chainId, address)
+
+	rowRange := gcp_bigtable.InfiniteRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
+
+	data := make([]*types.Eth1ERC721Indexed, 0, limit)
+
+	keys := make([]string, 0, limit)
+	keysMap := make(map[string]*types.Eth1ERC721Indexed, limit)
+
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		if !strings.Contains(row.Key(), "TIME") {
+			return false
+		}
+		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
+		return true
+	}, gcp_bigtable.LimitRows(limit))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(keys) == 0 {
+		return data, nil
+	}
+
+	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+		b := &types.Eth1ERC721Indexed{}
+		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
+
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		data = append(data, b)
+		keysMap[row.Key()] = b
+		return true
+	})
+
+	for _, key := range keys {
+		data = append(data, keysMap[key])
+	}
+	return data, nil
+}
+
+func (bigtable *Bigtable) GetEth1ERC1155ForAddress(address string, limit int64) ([]*types.ETh1ERC1155Indexed, error) {
+	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancle()
+
+	prefix := fmt.Sprintf("%s:I:ERC1155:%s:TIME", bigtable.chainId, address)
+
+	rowRange := gcp_bigtable.InfiniteRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
+
+	data := make([]*types.ETh1ERC1155Indexed, 0, limit)
+
+	keys := make([]string, 0, limit)
+	keysMap := make(map[string]*types.ETh1ERC1155Indexed, limit)
+
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		if !strings.Contains(row.Key(), "TIME") {
+			return false
+		}
+		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
+		return true
+	}, gcp_bigtable.LimitRows(limit))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(keys) == 0 {
+		return data, nil
+	}
+
+	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+		b := &types.ETh1ERC1155Indexed{}
+		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
+
+		if err != nil {
+			logrus.Fatal(err)
+		}
 		data = append(data, b)
 		return true
 	})
+
+	for _, key := range keys {
+		data = append(data, keysMap[key])
+	}
 	return data, nil
 }
