@@ -32,13 +32,15 @@ var BigtableClient *Bigtable
 
 const max_block_number = 1000000000
 const (
-	DATA_COLUMN    = "data"
+	DATA_COLUMN    = "d"
 	INDEX_COLUMN   = "i"
-	DEFAULT_FAMILY = "default"
+	DEFAULT_FAMILY = "f"
 	writeRowLimit  = 10000
 	MAX_INT        = 9223372036854775807
 	MIN_INT        = -9223372036854775808
 )
+
+var ZERO_ADDRESS []byte = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
 var (
 	ERC20TOPIC   []byte
@@ -221,7 +223,7 @@ func GetFullBlockHandler(blocks *[]*types.Eth1Block) func(gcp_bigtable.Row) bool
 			logs := make(map[string][]*types.Eth1Log, 100)
 			itxs := make(map[string][]*types.Eth1InternalTransaction, 100)
 			for _, item := range row[DEFAULT_FAMILY][1:] {
-				if strings.HasPrefix(item.Column, "default:itx") {
+				if strings.HasPrefix(item.Column, "d:itx") {
 					hash := strings.Split(item.Column, ":")[2]
 					itx := types.Eth1InternalTransaction{}
 					err := proto.Unmarshal(item.Value, &itx)
@@ -230,7 +232,7 @@ func GetFullBlockHandler(blocks *[]*types.Eth1Block) func(gcp_bigtable.Row) bool
 					}
 					itxs[hash] = append(itxs[hash], &itx)
 				}
-				if strings.HasPrefix(item.Column, "default:log") {
+				if strings.HasPrefix(item.Column, "d:log") {
 					hash := strings.Split(item.Column, ":")[2]
 					log := types.Eth1Log{}
 					err := proto.Unmarshal(item.Value, &log)
@@ -239,7 +241,7 @@ func GetFullBlockHandler(blocks *[]*types.Eth1Block) func(gcp_bigtable.Row) bool
 					}
 					logs[hash] = append(logs[hash], &log)
 				}
-				if strings.HasPrefix(item.Column, "default:tx") {
+				if strings.HasPrefix(item.Column, "d:tx") {
 					hash := strings.Split(item.Column, ":")[3]
 					tx := types.Eth1Transaction{}
 					err := proto.Unmarshal(item.Value, &tx)
@@ -294,7 +296,7 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 	prefix := fmt.Sprintf("%s:b:%s", bigtable.chainId, startPadded)
 
 	rowRange := gcp_bigtable.InfiniteRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
-	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("data"))
+	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("d"))
 
 	blocks := make([]*types.Eth1BlockIndexed, 0, 100)
 
@@ -459,13 +461,13 @@ func (bigtable *Bigtable) DeleteRowsWithPrefix(prefix string) {
 // It transforms the block and strips any information that is not necessary for a blocks view
 // It writes blocks to table data:
 // Row:    <chainID>:B:<reversePaddedBlockNumber>
-// Family: default
+// Family: f
 // Column: data
 // Cell:   Proto<Eth1BlockIndexed>
 //
 // It indexes blocks by:
 // Row:    <chainID>:I:B:<Miner>:<reversePaddedBlockNumber>
-// Family: default
+// Family: f
 // Column: <chainID>:B:<reversePaddedBlockNumber>
 // Cell:   nil
 func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block) (*types.BulkMutations, error) {
@@ -642,15 +644,17 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block) (*types.BulkMutation
 	bulk := &types.BulkMutations{}
 
 	for i, tx := range blk.Transactions {
-		if i > 999 {
+		if i > 9999 {
 			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 999 but got: %v", i)
 		}
+		// logger.Infof("address to: %x address: contract: %x, len(to): %v, len(contract): %v, contranct zero: %v", tx.GetTo(), tx.GetContractAddress(), len(tx.GetTo()), len(tx.GetContractAddress()), bytes.Equal(tx.GetContractAddress(), ZERO_ADDRESS))
 		to := tx.GetTo()
 		isContract := false
-		if len(tx.GetContractAddress()) > 0 {
+		if !bytes.Equal(tx.GetContractAddress(), ZERO_ADDRESS) {
 			to = tx.GetContractAddress()
 			isContract = true
 		}
+		// logger.Infof("sending to: %x", to)
 		invokesContract := false
 		if len(tx.GetItx()) > 0 || tx.GetGasUsed() > 21000 || tx.GetErrorMsg() != "" {
 			invokesContract = true
@@ -689,24 +693,24 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block) (*types.BulkMutation
 		bulk.Muts = append(bulk.Muts, mut)
 
 		indexes := []string{
-			fmt.Sprintf("%s:I:TX:%x:TO:%x:%s:%s", bigtable.chainId, tx.GetFrom(), to, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i)),
-			fmt.Sprintf("%s:I:TX:%x:TIME:%s:%s", bigtable.chainId, tx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i)),
-			fmt.Sprintf("%s:I:TX:%x:BLOCK:%s:%s", bigtable.chainId, tx.GetFrom(), reversedPaddedBlockNumber(blk.GetNumber()), fmt.Sprintf("%03d", i)),
-			fmt.Sprintf("%s:I:TX:%x:METHOD:%x:%s:%s", bigtable.chainId, tx.GetFrom(), method, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i)),
-			fmt.Sprintf("%s:I:TX:%x:FROM:%x:%s:%s", bigtable.chainId, to, tx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i)),
-			fmt.Sprintf("%s:I:TX:%x:TIME:%s:%s", bigtable.chainId, to, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i)),
-			fmt.Sprintf("%s:I:TX:%x:BLOCK:%s:%s", bigtable.chainId, to, reversedPaddedBlockNumber(blk.GetNumber()), fmt.Sprintf("%03d", i)),
-			fmt.Sprintf("%s:I:TX:%x:METHOD:%x:%s:%s", bigtable.chainId, to, method, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i)),
+			fmt.Sprintf("%s:I:TX:%x:TO:%x:%s:%s", bigtable.chainId, tx.GetFrom(), to, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i)),
+			fmt.Sprintf("%s:I:TX:%x:TIME:%s:%s", bigtable.chainId, tx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i)),
+			fmt.Sprintf("%s:I:TX:%x:BLOCK:%s:%s", bigtable.chainId, tx.GetFrom(), reversedPaddedBlockNumber(blk.GetNumber()), fmt.Sprintf("%04d", i)),
+			fmt.Sprintf("%s:I:TX:%x:METHOD:%x:%s:%s", bigtable.chainId, tx.GetFrom(), method, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i)),
+			fmt.Sprintf("%s:I:TX:%x:FROM:%x:%s:%s", bigtable.chainId, to, tx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i)),
+			fmt.Sprintf("%s:I:TX:%x:TIME:%s:%s", bigtable.chainId, to, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i)),
+			fmt.Sprintf("%s:I:TX:%x:BLOCK:%s:%s", bigtable.chainId, to, reversedPaddedBlockNumber(blk.GetNumber()), fmt.Sprintf("%04d", i)),
+			fmt.Sprintf("%s:I:TX:%x:METHOD:%x:%s:%s", bigtable.chainId, to, method, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i)),
 		}
 
 		if indexedTx.ErrorMsg != "" {
-			indexes = append(indexes, fmt.Sprintf("%s:I:TX:%x:ERROR:%s:%s", bigtable.chainId, tx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i)))
-			indexes = append(indexes, fmt.Sprintf("%s:I:TX:%x:ERROR:%s:%s", bigtable.chainId, to, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i)))
+			indexes = append(indexes, fmt.Sprintf("%s:I:TX:%x:ERROR:%s:%s", bigtable.chainId, tx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i)))
+			indexes = append(indexes, fmt.Sprintf("%s:I:TX:%x:ERROR:%s:%s", bigtable.chainId, to, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i)))
 		}
 
 		if indexedTx.IsContractCreation {
-			indexes = append(indexes, fmt.Sprintf("%s:I:TX:%x:CONTRACT:%s:%s", bigtable.chainId, tx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i)))
-			indexes = append(indexes, fmt.Sprintf("%s:I:TX:%x:CONTRACT:%s:%s", bigtable.chainId, to, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i)))
+			indexes = append(indexes, fmt.Sprintf("%s:I:TX:%x:CONTRACT:%s:%s", bigtable.chainId, tx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i)))
+			indexes = append(indexes, fmt.Sprintf("%s:I:TX:%x:CONTRACT:%s:%s", bigtable.chainId, to, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i)))
 		}
 
 		for _, idx := range indexes {
@@ -726,32 +730,32 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block) (*types.BulkMutation
 // It transforms the internal transactions contained within a block and strips any information that is not necessary for our frontend views
 // It writes internal transactions to table data:
 // Row:    <chainID>:ITX:<TX_HASH>:<paddedITXIndex>
-// Family: default
+// Family: f
 // Column: data
 // Cell:   Proto<Eth1InternalTransactionIndexed>
 //
 // It indexes internal transactions by:
 // Row:    <chainID>:I:ITX:<FROM_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<paddedITXIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ITX:<HASH>:<paddedITXIndex>
 // Cell:   nil
 // Row:    <chainID>:I:ITX:<TO_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<paddedITXIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ITX:<HASH>:<paddedITXIndex>
 // Cell:   nil
 // Row:    <chainID>:I:ITX:<FROM_ADDRESS>:TO:<TO_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<paddedITXIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ITX:<HASH>:<paddedITXIndex>
 // Cell:   nil
 // Row:    <chainID>:I:ITX:<TO_ADDRESS>:FROM:<FROM_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<paddedITXIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ITX:<HASH>:<paddedITXIndex>
 // Cell:   nil
 func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block) (*types.BulkMutations, error) {
 	bulk := &types.BulkMutations{}
 
 	for i, tx := range blk.GetTransactions() {
-		if i > 999 {
+		if i > 9999 {
 			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 999 but got: %v", i)
 		}
 		for j, idx := range tx.GetItx() {
@@ -781,11 +785,11 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block) (*types.BulkMutatio
 			bulk.Muts = append(bulk.Muts, mut)
 
 			indexes := []string{
-				// fmt.Sprintf("%s:i:ITX::%s:%s:%s", bigtable.chainId, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ITX:%x:TO:%x:%s:%s:%s", bigtable.chainId, idx.GetFrom(), idx.GetTo(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%06d", j)),
-				fmt.Sprintf("%s:I:ITX:%x:FROM:%x:%s:%s:%s", bigtable.chainId, idx.GetTo(), idx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%06d", j)),
-				fmt.Sprintf("%s:I:ITX:%x:TIME:%s:%s:%s", bigtable.chainId, idx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%06d", j)),
-				fmt.Sprintf("%s:I:ITX:%x:TIME:%s:%s:%s", bigtable.chainId, idx.GetTo(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%06d", j)),
+				// fmt.Sprintf("%s:i:ITX::%s:%s:%s", bigtable.chainId, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ITX:%x:TO:%x:%s:%s:%s", bigtable.chainId, idx.GetFrom(), idx.GetTo(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%06d", j)),
+				fmt.Sprintf("%s:I:ITX:%x:FROM:%x:%s:%s:%s", bigtable.chainId, idx.GetTo(), idx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%06d", j)),
+				fmt.Sprintf("%s:I:ITX:%x:TIME:%s:%s:%s", bigtable.chainId, idx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%06d", j)),
+				fmt.Sprintf("%s:I:ITX:%x:TIME:%s:%s:%s", bigtable.chainId, idx.GetTo(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%06d", j)),
 			}
 
 			for _, idx := range indexes {
@@ -806,44 +810,44 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block) (*types.BulkMutatio
 // It transforms the logs contained within a block and writes the transformed logs to bigtable
 // It writes ERC20 events to the table data:
 // Row:    <chainID>:ERC20:<txHash>:<paddedLogIndex>
-// Family: default
+// Family: f
 // Column: data
 // Cell:   Proto<Eth1ERC20Indexed>
 // Example scan: "1:ERC20:b10588bde42cb8eb14e72d24088bd71ad3903857d23d50b3ba4187c0cb7d3646" returns mainnet ERC20 event(s) for transaction 0xb10588bde42cb8eb14e72d24088bd71ad3903857d23d50b3ba4187c0cb7d3646
 //
 // It indexes ERC20 events by:
 // Row:    <chainID>:I:ERC20:<TOKEN_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC20:<FROM_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC20:<TO_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC20:<FROM_ADDRESS>:TO:<TO_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC20:<TO_ADDRESS>:FROM:<FROM_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC20:<FROM_ADDRESS>:TOKEN_SENT:<TOKEN_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC20:<TO_ADDRESS>:TOKEN_RECEIVED:<TOKEN_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
 // Cell:   nil
 func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutations, error) {
@@ -855,7 +859,7 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutat
 	}
 
 	for i, tx := range blk.GetTransactions() {
-		if i > 999 {
+		if i > 9999 {
 			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 999 but got: %v", i)
 		}
 		for j, log := range tx.GetLogs() {
@@ -917,13 +921,13 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutat
 			bulk.Muts = append(bulk.Muts, mut)
 
 			indexes := []string{
-				fmt.Sprintf("%s:I:ERC20:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC20:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC20:%x:TO:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC20:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC20:%x:FROM:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC20:%x:TOKEN_SENT:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC20:%x:TOKEN_RECEIVED:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC20:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC20:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC20:%x:TO:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC20:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC20:%x:FROM:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC20:%x:TOKEN_SENT:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC20:%x:TOKEN_RECEIVED:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
 			}
 
 			for _, idx := range indexes {
@@ -944,44 +948,44 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutat
 // It transforms the logs contained within a block and writes the transformed logs to bigtable
 // It writes erc721 events to the table data:
 // Row:    <chainID>:ERC721:<txHash>:<paddedLogIndex>
-// Family: default
+// Family: f
 // Column: data
 // Cell:   Proto<Eth1ERC721Indexed>
 // Example scan: "1:ERC721:4d3a6c56cecb40637c070601c275df9cc7b599b5dc1d5ac2473c92c7a9e62c64" returns mainnet ERC721 event(s) for transaction 0x4d3a6c56cecb40637c070601c275df9cc7b599b5dc1d5ac2473c92c7a9e62c64
 //
 // It indexes ERC721 events by:
 // Row:    <chainID>:I:ERC721:<FROM_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC721:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC721:<TO_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC721:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC721:<TOKEN_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC721:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC721:<FROM_ADDRESS>:TO:<TO_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC721:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC721:<TO_ADDRESS>:FROM:<FROM_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC721:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC721:<FROM_ADDRESS>:TOKEN_SENT:<TOKEN_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC721:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC721:<TO_ADDRESS>:TOKEN_RECEIVED:<TOKEN_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC721:<txHash>:<paddedLogIndex>
 // Cell:   nil
 func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMutations, error) {
@@ -994,7 +998,7 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 	}
 
 	for i, tx := range blk.GetTransactions() {
-		if i > 999 {
+		if i > 9999 {
 			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 999 but got: %v", i)
 		}
 		for j, log := range tx.GetLogs() {
@@ -1056,14 +1060,14 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 			bulk.Muts = append(bulk.Muts, mut)
 
 			indexes := []string{
-				// fmt.Sprintf("%s:I:ERC721:%s:%s:%s", bigtable.chainId, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC721:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC721:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC721:%x:TO:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC721:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC721:%x:FROM:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC721:%x:TOKEN_SENT:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC721:%x:TOKEN_RECEIVED:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
+				// fmt.Sprintf("%s:I:ERC721:%s:%s:%s", bigtable.chainId, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC721:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC721:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC721:%x:TO:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC721:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC721:%x:FROM:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC721:%x:TOKEN_SENT:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC721:%x:TOKEN_RECEIVED:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
 			}
 
 			for _, idx := range indexes {
@@ -1084,44 +1088,44 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 // It transforms the logs contained within a block and writes the transformed logs to bigtable
 // It writes erc1155 events to the table data:
 // Row:    <chainID>:ERC1155:<txHash>:<paddedLogIndex>
-// Family: default
+// Family: f
 // Column: data
 // Cell:   Proto<Eth1ERC1155Indexed>
 // Example scan: "1:ERC1155:cffdd4b44ba9361a769a559c360293333d09efffeab79c36125bb4b20bd04270" returns mainnet erc1155 event(s) for transaction 0xcffdd4b44ba9361a769a559c360293333d09efffeab79c36125bb4b20bd04270
 //
 // It indexes erc1155 events by:
 // Row:    <chainID>:I:ERC1155:<FROM_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC1155:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC1155:<TO_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC1155:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC1155:<TOKEN_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC1155:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC1155:<TO_ADDRESS>:TO:<FROM_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC1155:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC1155:<FROM_ADDRESS>:FROM:<TO_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC1155:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC1155:<FROM_ADDRESS>:TOKEN_SENT:<TOKEN_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC1155:<txHash>:<paddedLogIndex>
 // Cell:   nil
 //
 // Row:    <chainID>:I:ERC1155:<TO_ADDRESS>:TOKEN_RECEIVED:<TOKEN_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
-// Family: default
+// Family: f
 // Column: <chainID>:ERC1155:<txHash>:<paddedLogIndex>
 // Cell:   nil
 func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMutations, error) {
@@ -1134,7 +1138,7 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 	}
 
 	for i, tx := range blk.GetTransactions() {
-		if i > 999 {
+		if i > 9999 {
 			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 999 but got: %v", i)
 		}
 		for j, log := range tx.GetLogs() {
@@ -1224,14 +1228,14 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 			bulk.Muts = append(bulk.Muts, mut)
 
 			indexes := []string{
-				// fmt.Sprintf("%s:I:ERC1155:%s:%s:%s", bigtable.chainId, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC1155:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC1155:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC1155:%x:TO:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC1155:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC1155:%x:FROM:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC1155:%x:TOKEN_SENT:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
-				fmt.Sprintf("%s:I:ERC1155:%x:TOKEN_RECEIVED:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
+				// fmt.Sprintf("%s:I:ERC1155:%s:%s:%s", bigtable.chainId, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC1155:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC1155:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC1155:%x:TO:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC1155:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC1155:%x:FROM:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC1155:%x:TOKEN_SENT:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ERC1155:%x:TOKEN_RECEIVED:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%03d", j)),
 			}
 
 			for _, idx := range indexes {
@@ -1251,7 +1255,7 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 // It transforms the uncles contained within a block, extracts the necessary information to create a view and writes that information to bigtable
 // It writes uncles to table data:
 // Row:    <chainID>:U:<reversePaddedNumber>
-// Family: default
+// Family: f
 // Column: data
 // Cell:   Proto<Eth1UncleIndexed>
 // Example scan: "1:U:" returns mainnet uncles mined in desc order
@@ -1259,7 +1263,7 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 //
 // It indexes uncles by:
 // Row:    <chainID>:I:U:<Miner>:TIME:<reversePaddedBigtableTimestamp>
-// Family: default
+// Family: f
 // Column: <chainID>:U:<reversePaddedNumber>
 // Cell:   nil
 // Example lookup: "1:I:U:ea674fdde714fd979de3edf0f56aa9716b898ec8:TIME:" returns mainnet uncles mined by ethermine in desc order
