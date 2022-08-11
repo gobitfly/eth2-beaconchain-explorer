@@ -166,22 +166,19 @@ func (bigtable *Bigtable) GetFullBlock(number uint64) (*types.Eth1Block, error) 
 	return blocks[0], nil
 }
 
-func (bigtable *Bigtable) GetMostRecentBlock() (*types.Eth1Block, error) {
+func (bigtable *Bigtable) GetMostRecentBlock() (*types.Eth1BlockIndexed, error) {
 	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancle()
 
-	prefix := fmt.Sprintf("%s:", bigtable.chainId)
+	prefix := fmt.Sprintf("%s:B:", bigtable.chainId)
 
 	rowRange := gcp_bigtable.PrefixRange(prefix)
-	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("block"))
+	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("d"))
 	limit := gcp_bigtable.LimitRows(1)
 
-	block := types.Eth1Block{}
-
+	block := types.Eth1BlockIndexed{}
 	rowHandler := func(row gcp_bigtable.Row) bool {
-		item := row[DEFAULT_FAMILY][0]
-
-		err := proto.Unmarshal(item.Value, &block)
+		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, &block)
 		if err != nil {
 			logger.Errorf("error could not unmarschal proto object, err: %v", err)
 		}

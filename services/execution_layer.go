@@ -28,7 +28,7 @@ func latestBlockUpdater() {
 			firstRun = false
 		}
 		atomic.StoreUint64(&latestEth1BlockNumber, recent.GetNumber())
-		time.Sleep(time.Second)
+		time.Sleep(time.Second * 10)
 	}
 }
 
