@@ -1510,20 +1510,25 @@ func (bigtable *Bigtable) GetEth1ERC721ForAddress(address string, limit int64) (
 func (bigtable *Bigtable) GetEth1ERC1155ForAddress(address string, limit int64) ([]*types.ETh1ERC1155Indexed, error) {
 	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancle()
+	startTime := time.Now()
 
-	prefix := fmt.Sprintf("%s:I:ERC1155:%s:TIME", bigtable.chainId, address)
+	end := fmt.Sprintf("%s:I:ERC1155:%s:TIME:%019d", bigtable.chainId, address, MAX_INT)
+	start := fmt.Sprintf("%s:I:ERC1155:%s:TIME:%019d", bigtable.chainId, address, 0)
+	rowRange := gcp_bigtable.NewRange(start, end)
 
-	rowRange := gcp_bigtable.InfiniteRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
+	// prefix := fmt.Sprintf("%s:I:ERC1155:%s:TIME:", bigtable.chainId, address)
+	// rowRange := gcp_bigtable.InfiniteRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
 
 	data := make([]*types.ETh1ERC1155Indexed, 0, limit)
 
 	keys := make([]string, 0, limit)
-	keysMap := make(map[string]*types.ETh1ERC1155Indexed, limit)
+	// keysMap := make(map[string]*types.ETh1ERC1155Indexed, limit)
 
 	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
-		if !strings.Contains(row.Key(), "TIME") {
-			return false
-		}
+		// if !strings.Contains(row.Key(), "TIME") {
+		// 	return false
+		// }
+		logger.Infof("key: %v", row.Key())
 		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
 		return true
 	}, gcp_bigtable.LimitRows(limit))
@@ -1546,8 +1551,9 @@ func (bigtable *Bigtable) GetEth1ERC1155ForAddress(address string, limit int64) 
 		return true
 	})
 
-	for _, key := range keys {
-		data = append(data, keysMap[key])
-	}
+	// for _, key := range keys {
+	// 	data = append(data, keysMap[key])
+	// }
+	logger.Infof("query GetEth1ERC1155ForAddress took %v", time.Since(startTime).Seconds())
 	return data, nil
 }
