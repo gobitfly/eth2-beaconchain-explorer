@@ -644,7 +644,7 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block) (*types.BulkMutation
 
 	for i, tx := range blk.Transactions {
 		if i > 9999 {
-			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v", i)
+			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
 		}
 		// logger.Infof("address to: %x address: contract: %x, len(to): %v, len(contract): %v, contranct zero: %v", tx.GetTo(), tx.GetContractAddress(), len(tx.GetTo()), len(tx.GetContractAddress()), bytes.Equal(tx.GetContractAddress(), ZERO_ADDRESS))
 		to := tx.GetTo()
@@ -755,11 +755,11 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block) (*types.BulkMutatio
 
 	for i, tx := range blk.GetTransactions() {
 		if i > 9999 {
-			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v", i)
+			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
 		}
 		for j, idx := range tx.GetItx() {
 			if j > 999999 {
-				return nil, fmt.Errorf("unexpected number of internal transactions in block expected at most 999999 but got: %v", j)
+				return nil, fmt.Errorf("unexpected number of internal transactions in block expected at most 999999 but got: %v, tx: %x", j, tx.GetHash())
 			}
 			key := fmt.Sprintf("%s:ITX:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%06d", j))
 			indexedItx := &types.Eth1InternalTransactionIndexed{
@@ -859,11 +859,11 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutat
 
 	for i, tx := range blk.GetTransactions() {
 		if i > 9999 {
-			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v", i)
+			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
 		}
 		for j, log := range tx.GetLogs() {
 			if j > 99999 {
-				return nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v", j)
+				return nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v tx: %x", j, tx.GetHash())
 			}
 			if len(log.GetTopics()) != 3 || !bytes.Equal(log.GetTopics()[0], erc20.TransferTopic) {
 				continue
@@ -998,11 +998,11 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 
 	for i, tx := range blk.GetTransactions() {
 		if i > 9999 {
-			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v", i)
+			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
 		}
 		for j, log := range tx.GetLogs() {
 			if j > 99999 {
-				return nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v", j)
+				return nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v tx: %x", j, tx.GetHash())
 			}
 			if len(log.GetTopics()) != 4 || !bytes.Equal(log.GetTopics()[0], erc721.TransferTopic) {
 				continue
@@ -1138,11 +1138,11 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 
 	for i, tx := range blk.GetTransactions() {
 		if i > 9999 {
-			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v", i)
+			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
 		}
 		for j, log := range tx.GetLogs() {
 			if j > 99999 {
-				return nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v", j)
+				return nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v tx: %x", j, tx.GetHash())
 			}
 			key := fmt.Sprintf("%s:ERC1155:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%05d", j))
 
