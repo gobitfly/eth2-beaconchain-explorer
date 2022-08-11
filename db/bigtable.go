@@ -293,7 +293,7 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancle()
 
-	prefix := fmt.Sprintf("%s:b:%s", bigtable.chainId, startPadded)
+	prefix := fmt.Sprintf("%s:B:%s", bigtable.chainId, startPadded)
 
 	rowRange := gcp_bigtable.InfiniteRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
 	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("d"))
