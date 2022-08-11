@@ -1528,7 +1528,6 @@ func (bigtable *Bigtable) GetEth1ERC1155ForAddress(address string, limit int64) 
 		// if !strings.Contains(row.Key(), "TIME") {
 		// 	return false
 		// }
-		logger.Infof("key: %v", row.Key())
 		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
 		return true
 	}, gcp_bigtable.LimitRows(limit))
