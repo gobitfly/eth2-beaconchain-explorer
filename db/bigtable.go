@@ -395,11 +395,70 @@ func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations) error {
 	// }
 }
 
+func (bigtable *Bigtable) DeleteRowsWithPrefix(prefix string) {
+
+	for {
+		ctx, done := context.WithTimeout(context.Background(), time.Second*30)
+		defer done()
+
+		rr := gcp_bigtable.InfiniteRange(prefix)
+
+		rowsToDelete := make([]string, 0, 10000)
+		bigtable.tableData.ReadRows(ctx, rr, func(r gcp_bigtable.Row) bool {
+			rowsToDelete = append(rowsToDelete, r.Key())
+			return true
+		})
+		mut := gcp_bigtable.NewMutation()
+		mut.DeleteRow()
+
+		muts := make([]*gcp_bigtable.Mutation, 0)
+		for j := 0; j < 10000; j++ {
+			muts = append(muts, mut)
+		}
+
+		l := len(rowsToDelete)
+		if l == 0 {
+			logger.Infof("all done")
+			break
+		}
+		logger.Infof("deleting %v rows", l)
+
+		for i := 0; i < l; i++ {
+			if !strings.HasPrefix(rowsToDelete[i], "1:t:") {
+				logger.Infof("wrong prefix: %v", rowsToDelete[i])
+			}
+			ctx, done := context.WithTimeout(context.Background(), time.Second*30)
+			defer done()
+			if i%10000 == 0 && i != 0 {
+				logger.Infof("deleting rows: %v to %v", i-10000, i)
+				errs, err := bigtable.tableData.ApplyBulk(ctx, rowsToDelete[i-10000:i], muts)
+				if err != nil {
+					logger.WithError(err).Errorf("error deleting row: %v", rowsToDelete[i])
+				}
+				for _, err := range errs {
+					logger.Error(err)
+				}
+			}
+			if l < 10000 && l > 0 {
+				logger.Infof("deleting remainder")
+				errs, err := bigtable.tableData.ApplyBulk(ctx, rowsToDelete, muts[:len(rowsToDelete)])
+				if err != nil {
+					logger.WithError(err).Errorf("error deleting row: %v", rowsToDelete[i])
+				}
+				for _, err := range errs {
+					logger.Error(err)
+				}
+				break
+			}
+		}
+	}
+
+}
+
+// TransformBlock reads from blocks table and extracts only the necessary information to display a blocks table
 func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block) (*types.BulkMutations, error) {
 
 	muts := &types.BulkMutations{}
-
-	// logger.Infof("getting blocks block: %v, previous: %v time: %v, time: %v, diff: %v", block.GetNumber(), previous.GetNumber(), block.GetTime().AsTime().Unix(), previous.GetTime().AsTime().Unix(), block.GetTime().AsTime().Unix()-previous.GetTime().AsTime().Unix())
 
 	idx := types.Eth1BlockIndexed{
 		Hash:       block.GetHash(),
@@ -621,70 +680,13 @@ func CalculateMevFromBlock(block *types.Eth1Block) *big.Int {
 // 	return muts, nil
 // }
 
-func (bigtable *Bigtable) DeleteRowsWithPrefix(prefix string) {
-
-	for {
-		ctx, done := context.WithTimeout(context.Background(), time.Second*30)
-		defer done()
-
-		rr := gcp_bigtable.InfiniteRange(prefix)
-
-		rowsToDelete := make([]string, 0, 10000)
-		bigtable.tableData.ReadRows(ctx, rr, func(r gcp_bigtable.Row) bool {
-			rowsToDelete = append(rowsToDelete, r.Key())
-			return true
-		})
-		mut := gcp_bigtable.NewMutation()
-		mut.DeleteRow()
-
-		muts := make([]*gcp_bigtable.Mutation, 0)
-		for j := 0; j < 10000; j++ {
-			muts = append(muts, mut)
-		}
-
-		l := len(rowsToDelete)
-		if l == 0 {
-			logger.Infof("all done")
-			break
-		}
-		logger.Infof("deleting %v rows", l)
-
-		for i := 0; i < l; i++ {
-			if !strings.HasPrefix(rowsToDelete[i], "1:t:") {
-				logger.Infof("wrong prefix: %v", rowsToDelete[i])
-			}
-			ctx, done := context.WithTimeout(context.Background(), time.Second*30)
-			defer done()
-			if i%10000 == 0 && i != 0 {
-				logger.Infof("deleting rows: %v to %v", i-10000, i)
-				errs, err := bigtable.tableData.ApplyBulk(ctx, rowsToDelete[i-10000:i], muts)
-				if err != nil {
-					logger.WithError(err).Errorf("error deleting row: %v", rowsToDelete[i])
-				}
-				for _, err := range errs {
-					logger.Error(err)
-				}
-			}
-			if l < 10000 && l > 0 {
-				logger.Infof("deleting remainder")
-				errs, err := bigtable.tableData.ApplyBulk(ctx, rowsToDelete, muts[:len(rowsToDelete)])
-				if err != nil {
-					logger.WithError(err).Errorf("error deleting row: %v", rowsToDelete[i])
-				}
-				for _, err := range errs {
-					logger.Error(err)
-				}
-				break
-			}
-		}
-	}
-
-}
-
 func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block) (*types.BulkMutations, error) {
 	bulk := &types.BulkMutations{}
 
 	for i, tx := range blk.Transactions {
+		if i > 999 {
+			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 999 but got: %v", i)
+		}
 		to := tx.GetTo()
 		isContract := false
 		if tx.GetContractAddress() != nil {
@@ -776,8 +778,13 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block) (*types.BulkMutatio
 	bulk := &types.BulkMutations{}
 
 	for i, tx := range blk.GetTransactions() {
+		if i > 999 {
+			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 999 but got: %v", i)
+		}
 		for j, idx := range tx.GetItx() {
-
+			if j > 999999 {
+				return nil, fmt.Errorf("unexpected number of internal transactions in block expected at most 999999 but got: %v", j)
+			}
 			key := fmt.Sprintf("%s:ITX:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%06d", j))
 			indexedItx := &types.Eth1InternalTransactionIndexed{
 				ParentHash:  tx.GetHash(),
@@ -828,9 +835,14 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutat
 	}
 
 	for i, tx := range blk.GetTransactions() {
+		if i > 999 {
+			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 999 but got: %v", i)
+		}
 		for j, log := range tx.GetLogs() {
-
-			if len(log.GetTopics()) != 3 || bytes.Compare(log.GetTopics()[0], erc20.TransferTopic) != 0 {
+			if j > 999 {
+				return nil, fmt.Errorf("unexpected number of logs in block expected at most 999 but got: %v", j)
+			}
+			if len(log.GetTopics()) != 3 || !bytes.Equal(log.GetTopics()[0], erc20.TransferTopic) {
 				continue
 			}
 
@@ -915,8 +927,14 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 	}
 
 	for i, tx := range blk.GetTransactions() {
+		if i > 999 {
+			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 999 but got: %v", i)
+		}
 		for j, log := range tx.GetLogs() {
-			if len(log.GetTopics()) != 4 || bytes.Compare(log.GetTopics()[0], erc721.TransferTopic) != 0 {
+			if j > 999 {
+				return nil, fmt.Errorf("unexpected number of logs in block expected at most 999 but got: %v", j)
+			}
+			if len(log.GetTopics()) != 4 || !bytes.Equal(log.GetTopics()[0], erc721.TransferTopic) {
 				continue
 			}
 
@@ -1001,11 +1019,17 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 	}
 
 	for i, tx := range blk.GetTransactions() {
+		if i > 999 {
+			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 999 but got: %v", i)
+		}
 		for j, log := range tx.GetLogs() {
+			if j > 999 {
+				return nil, fmt.Errorf("unexpected number of logs in block expected at most 999 but got: %v", j)
+			}
 			key := fmt.Sprintf("%s:ERC1155:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%03d", j))
 
 			// no events emitted continue
-			if len(log.GetTopics()) != 4 || (bytes.Compare(log.GetTopics()[0], erc1155.TransferBulkTopic) != 0 && bytes.Compare(log.GetTopics()[0], erc1155.TransferSingleTopic) != 0) {
+			if len(log.GetTopics()) != 4 || (!bytes.Equal(log.GetTopics()[0], erc1155.TransferBulkTopic) && !bytes.Equal(log.GetTopics()[0], erc1155.TransferSingleTopic)) {
 				continue
 			}
 
@@ -1103,15 +1127,13 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 	return bulk, nil
 }
 
-// func TransformUncle(tx *types.Eth1Transaction) (*types.BulkMutations, error) {
-
-// 	return nil, nil
-// }
-
 func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block) (*types.BulkMutations, error) {
 	bulk := &types.BulkMutations{}
 
 	for i, uncle := range block.Uncles {
+		if i > 99 {
+			return nil, fmt.Errorf("unexpected number of uncles in block expected at most 99 but got: %v", i)
+		}
 		r := new(big.Int)
 
 		r.Add(big.NewInt(int64(uncle.GetNumber())), big.NewInt(8))
