@@ -161,7 +161,7 @@ func IndexBlocksFromBigtable(bt *db.Bigtable, start, end *int64, transforms []fu
 
 func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk *types.Eth1Block) (*types.BulkMutations, error)) error {
 	g := new(errgroup.Group)
-	g.SetLimit(20)
+	g.SetLimit(10)
 
 	startTs := time.Now()
 	lastTickTs := time.Now()
@@ -220,5 +220,6 @@ func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk
 	} else {
 		return err
 	}
+
 	return nil
 }

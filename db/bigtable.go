@@ -1186,3 +1186,123 @@ func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block) (*types.BulkMut
 
 	return bulk, nil
 }
+
+func (bigtable *Bigtable) GetEth1TxForAddress(address string, limit int64) ([]*types.Eth1TransactionIndexed, error) {
+	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancle()
+
+	prefix := fmt.Sprintf("%s:I:TX:%s:TIME", bigtable.chainId, address)
+
+	rowRange := gcp_bigtable.InfiniteRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
+
+	data := make([]*types.Eth1TransactionIndexed, 0, limit)
+
+	keys := make([]string, 0, limit)
+
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		if !strings.Contains(row.Key(), "TIME") {
+			return false
+		}
+		keys = append(keys, strings.Replace(row[DEFAULT_FAMILY][0].Column, "default:", "", 1))
+		return true
+	}, gcp_bigtable.LimitRows(limit))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(keys) == 0 {
+		return data, nil
+	}
+
+	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+		b := &types.Eth1TransactionIndexed{}
+		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
+
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		data = append(data, b)
+		return true
+	})
+	return data, nil
+}
+
+func (bigtable *Bigtable) GetEth1ItxForAddress(address string, limit int64) ([]*types.Eth1InternalTransactionIndexed, error) {
+	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancle()
+
+	prefix := fmt.Sprintf("%s:I:ITX:%s:TIME", bigtable.chainId, address)
+
+	rowRange := gcp_bigtable.InfiniteRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
+
+	data := make([]*types.Eth1InternalTransactionIndexed, 0, limit)
+
+	keys := make([]string, 0, limit)
+
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		if !strings.Contains(row.Key(), "TIME") {
+			return false
+		}
+		keys = append(keys, strings.Replace(row[DEFAULT_FAMILY][0].Column, "default:", "", 1))
+		return true
+	}, gcp_bigtable.LimitRows(limit))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(keys) == 0 {
+		return data, nil
+	}
+
+	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+		b := &types.Eth1InternalTransactionIndexed{}
+		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
+
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		data = append(data, b)
+		return true
+	})
+	return data, nil
+}
+
+func (bigtable *Bigtable) GetEth1ERC20ForAddress(address string, limit int64) ([]*types.Eth1ERC20Indexed, error) {
+	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancle()
+
+	prefix := fmt.Sprintf("%s:I:ITX:%s:TIME", bigtable.chainId, address)
+
+	rowRange := gcp_bigtable.InfiniteRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
+
+	data := make([]*types.Eth1ERC20Indexed, 0, limit)
+
+	keys := make([]string, 0, limit)
+
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		if !strings.Contains(row.Key(), "TIME") {
+			return false
+		}
+		keys = append(keys, strings.Replace(row[DEFAULT_FAMILY][0].Column, "default:", "", 1))
+		return true
+	}, gcp_bigtable.LimitRows(limit))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(keys) == 0 {
+		return data, nil
+	}
+
+	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+		b := &types.Eth1ERC20Indexed{}
+		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
+
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		data = append(data, b)
+		return true
+	})
+	return data, nil
+}
