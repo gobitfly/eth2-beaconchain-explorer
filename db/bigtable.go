@@ -455,10 +455,12 @@ func (bigtable *Bigtable) DeleteRowsWithPrefix(prefix string) {
 
 }
 
-// TransformBlock reads from blocks table and extracts only the necessary information to display a blocks table
+// TransformBlock extracts blocks from the bigtable table blocks.
+// It transforms the block and strips any information that is not necessary for a blocks view
+// It writes
 func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block) (*types.BulkMutations, error) {
 
-	muts := &types.BulkMutations{}
+	bulk := &types.BulkMutations{}
 
 	idx := types.Eth1BlockIndexed{
 		Hash:       block.GetHash(),
@@ -541,10 +543,23 @@ func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block) (*types.BulkMut
 
 	mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
 
-	muts.Keys = append(muts.Keys, key)
-	muts.Muts = append(muts.Muts, mut)
+	bulk.Keys = append(bulk.Keys, key)
+	bulk.Muts = append(bulk.Muts, mut)
 
-	return muts, nil
+	indexes := []string{
+		// Index blocks by the miners address
+		fmt.Sprintf("%s:I:B:%x:TIME:%s", bigtable.chainId, block.GetCoinbase(), reversePaddedBigtableTimestamp(block.Time)),
+	}
+
+	for _, idx := range indexes {
+		mut := gcp_bigtable.NewMutation()
+		mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
+
+		bulk.Keys = append(bulk.Keys, idx)
+		bulk.Muts = append(bulk.Muts, mut)
+	}
+
+	return bulk, nil
 }
 
 func CalculateMevFromBlock(block *types.Eth1Block) *big.Int {
