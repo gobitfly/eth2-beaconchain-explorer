@@ -38,7 +38,8 @@ func main() {
 	// }
 
 	transforms := make([]func(blk *types.Eth1Block) (*types.BulkMutations, error), 0)
-	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155)
+	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
+	// transforms = append(transforms, bt.TransformTx)
 
 	logrus.Infof("indexing from bigtable")
 	err = IndexFromBigtable(bt, start, end, transforms)

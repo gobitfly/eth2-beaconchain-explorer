@@ -40,6 +40,8 @@ const (
 	MIN_INT        = -9223372036854775808
 )
 
+var ZERO_ADDRESS []byte = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+
 var (
 	ERC20TOPIC   []byte
 	ERC721TOPIC  []byte
@@ -645,12 +647,14 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block) (*types.BulkMutation
 		if i > 999 {
 			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 999 but got: %v", i)
 		}
+		// logger.Infof("address to: %x address: contract: %x, len(to): %v, len(contract): %v, contranct zero: %v", tx.GetTo(), tx.GetContractAddress(), len(tx.GetTo()), len(tx.GetContractAddress()), bytes.Equal(tx.GetContractAddress(), ZERO_ADDRESS))
 		to := tx.GetTo()
 		isContract := false
-		if len(tx.GetContractAddress()) > 0 {
+		if !bytes.Equal(tx.GetContractAddress(), ZERO_ADDRESS) {
 			to = tx.GetContractAddress()
 			isContract = true
 		}
+		// logger.Infof("sending to: %x", to)
 		invokesContract := false
 		if len(tx.GetItx()) > 0 || tx.GetGasUsed() > 21000 || tx.GetErrorMsg() != "" {
 			invokesContract = true
