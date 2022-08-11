@@ -1545,7 +1545,7 @@ func (bigtable *Bigtable) GetEth1ERC1155ForAddress(address string, limit int64) 
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		data = append(data, b)
+		keysMap[row.Key()] = b
 		return true
 	})
 
