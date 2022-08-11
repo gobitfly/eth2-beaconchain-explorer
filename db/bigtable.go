@@ -777,9 +777,11 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block) (*types.BulkMutatio
 			bulk.Muts = append(bulk.Muts, mut)
 
 			indexes := []string{
-				fmt.Sprintf("%s:i:ITX:%s:%s:%s", bigtable.chainId, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%06d", j)),
-				fmt.Sprintf("%s:I:ITX:%x:TO:%x:%s:%s:%s", bigtable.chainId, indexedItx.From, indexedItx.To, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%06d", j)),
-				fmt.Sprintf("%s:I:ITX:%x:FROM:%x:%s:%s:%s", bigtable.chainId, indexedItx.To, indexedItx.From, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%06d", j)),
+				// fmt.Sprintf("%s:i:ITX::%s:%s:%s", bigtable.chainId, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%03d", j)),
+				fmt.Sprintf("%s:I:ITX:%x:TO:%x:%s:%s:%s", bigtable.chainId, idx.GetFrom(), idx.GetTo(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%06d", j)),
+				fmt.Sprintf("%s:I:ITX:%x:FROM:%x:%s:%s:%s", bigtable.chainId, idx.GetTo(), idx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%06d", j)),
+				fmt.Sprintf("%s:I:ITX:%x:TIME:%s:%s:%s", bigtable.chainId, idx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%06d", j)),
+				fmt.Sprintf("%s:I:ITX:%x:TIME:%s:%s:%s", bigtable.chainId, idx.GetTo(), reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%03d", i), fmt.Sprintf("%06d", j)),
 			}
 
 			for _, idx := range indexes {
