@@ -1103,10 +1103,61 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 	return bulk, nil
 }
 
-// 	return nil, nil
-// }
-
-// func IndexUncle(tx *types.Eth1Transaction) (*types.BulkMutations, error) {
+// func TransformUncle(tx *types.Eth1Transaction) (*types.BulkMutations, error) {
 
 // 	return nil, nil
 // }
+
+func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block) (*types.BulkMutations, error) {
+	bulk := &types.BulkMutations{}
+
+	for i, uncle := range block.Uncles {
+		r := new(big.Int)
+
+		r.Add(big.NewInt(int64(uncle.GetNumber())), big.NewInt(8))
+		r.Sub(r, big.NewInt(int64(block.GetNumber())))
+		r.Mul(r, utils.BlockReward(block.GetNumber()))
+		r.Div(r, big.NewInt(8))
+
+		r.Div(utils.BlockReward(block.GetNumber()), big.NewInt(32))
+
+		uncleIndexed := types.Eth1UncleIndexed{
+			Number:      uncle.GetNumber(),
+			BlockNumber: block.GetNumber(),
+			GasLimit:    uncle.GetGasLimit(),
+			GasUsed:     uncle.GetGasUsed(),
+			BaseFee:     uncle.GetBaseFee(),
+			Difficulty:  uncle.GetDifficulty(),
+			Time:        uncle.GetTime(),
+			Reward:      r.Bytes(),
+		}
+		// store uncles in with the key <chainid>:U:<reversePaddedBlockNumber>:<reversePaddedUncleIndex>
+		key := fmt.Sprintf("%s:U:%s:%s", bigtable.chainId, reversedPaddedBlockNumber(block.GetNumber()), fmt.Sprintf("%02d", i))
+		mut := gcp_bigtable.NewMutation()
+
+		b, err := proto.Marshal(&uncleIndexed)
+		if err != nil {
+			return nil, fmt.Errorf("error marshalling proto object err: %w", err)
+		}
+
+		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
+
+		bulk.Keys = append(bulk.Keys, key)
+		bulk.Muts = append(bulk.Muts, mut)
+
+		indexes := []string{
+			// Index uncle by the miners address
+			fmt.Sprintf("%s:I:U:%x:TIME:%s:%s", bigtable.chainId, uncle.GetCoinbase(), reversePaddedBigtableTimestamp(block.Time), fmt.Sprintf("%02d", i)),
+		}
+
+		for _, idx := range indexes {
+			mut := gcp_bigtable.NewMutation()
+			mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
+
+			bulk.Keys = append(bulk.Keys, idx)
+			bulk.Muts = append(bulk.Muts, mut)
+		}
+	}
+
+	return bulk, nil
+}

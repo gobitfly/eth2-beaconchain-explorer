@@ -106,6 +106,17 @@ message Eth1BlockIndexed {
     // bytes block_utilization_change = 28;
 }
 
+message Eth1UncleIndexed {
+    uint64 block_number =1;
+    uint64 number = 2;
+    uint64 gas_limit = 3;
+    uint64 gas_used = 4;
+    bytes base_fee = 5;
+    bytes difficulty = 6;
+    google.protobuf.Timestamp time = 7;
+    bytes reward = 8;
+}
+
 
 message Eth1TransactionIndexed {
     bytes hash = 1;
