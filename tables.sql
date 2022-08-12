@@ -904,7 +904,11 @@ create table rocketpool_nodes
     min_rpl_stake numeric not null,
     max_rpl_stake numeric not null,
     rpl_cumulative_rewards numeric not null default 0,
-    smoothing_pool_opted_in boolean not null default f,
+    smoothing_pool_opted_in boolean not null default false,
+    claimed_smoothing_pool  numeric not null,
+    unclaimed_smoothing_pool  numeric not null,
+    unclaimed_rpl_rewards numeric not null,
+
     primary key(rocketpool_storage_address, address)
 );
 
@@ -986,6 +990,14 @@ create table rocketpool_network_stats
     primary key(id)
 );
 
+drop table if exists rocketpool_reward_tree;
+create table rocketpool_reward_tree
+(
+    id 				    bigserial,
+    data                jsonb not null,
+
+    primary key(id)
+);
 
 drop table if exists eth_store_stats;
 create table eth_store_stats
