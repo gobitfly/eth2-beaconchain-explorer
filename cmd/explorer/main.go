@@ -61,6 +61,8 @@ func main() {
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
 
+	db.NewBigtable("etherchain", "etherchain", "1")
+
 	db.MustInitDB(&types.DatabaseConfig{
 		Username: cfg.WriterDatabase.Username,
 		Password: cfg.WriterDatabase.Password,

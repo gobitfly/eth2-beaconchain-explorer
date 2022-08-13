@@ -504,6 +504,22 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		return fmt.Errorf("error retrieving epoch data: no validators received for epoch")
 	}
 
+	// export epoch data to bigtable
+	go func() {
+		err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
+		if err != nil {
+			logrus.Errorf("error exporting validator balances to bigtable: %v", err)
+		}
+		err = db.BigtableClient.SaveAttestationAssignments(epoch, data.ValidatorAssignmentes.AttestorAssignments)
+		if err != nil {
+			logrus.Errorf("error exporting attestation assignments to bigtable: %v", err)
+		}
+		err = db.BigtableClient.SaveAttestations(epoch, data.Blocks)
+		if err != nil {
+			logrus.Errorf("error exporting attestations to bigtable: %v", err)
+		}
+	}()
+
 	return db.SaveEpoch(data)
 }
 
