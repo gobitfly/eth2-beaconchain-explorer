@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"crypto/sha1"
 	"database/sql"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
@@ -15,6 +16,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/patrickmn/go-cache"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
@@ -29,6 +32,9 @@ var WriterDb *sqlx.DB
 var ReaderDb *sqlx.DB
 
 var logger = logrus.StandardLogger().WithField("module", "db")
+
+var attestationCache = cache.New(time.Hour, time.Minute)
+var epochsCache = cache.New(time.Hour, time.Minute)
 
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {
 	dbConnWriter, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", writer.Username, writer.Password, writer.Host, writer.Port, writer.Name))
@@ -680,6 +686,32 @@ func SaveBlock(block *types.Block) error {
 
 // SaveEpoch will stave the epoch data into the database
 func SaveEpoch(data *types.EpochData) error {
+	// Check if we need to export the epoch
+	hasher := sha1.New()
+	slots := make([]uint64, 0, len(data.Blocks))
+	for slot := range data.Blocks {
+		slots = append(slots, slot)
+	}
+	sort.Slice(slots, func(i, j int) bool {
+		return slots[i] < slots[j]
+	})
+
+	for _, slot := range slots {
+		for _, b := range data.Blocks[slot] {
+			hasher.Write(b.BlockRoot)
+		}
+	}
+
+	epochCacheKey := fmt.Sprintf("%x", hasher.Sum(nil))
+
+	logger.Infof("cache key for epoch %v is %v", data.Epoch, epochCacheKey)
+
+	cachedEpochKey, found := epochsCache.Get(fmt.Sprintf("%v", data.Epoch))
+	if found && epochCacheKey == cachedEpochKey.(string) {
+		logger.Infof("skipping export of epoch %v as it did not change compared to the previous export run")
+		return nil
+	}
+
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_epoch").Observe(time.Since(start).Seconds())
@@ -694,50 +726,75 @@ func SaveEpoch(data *types.EpochData) error {
 
 	logger.WithFields(logrus.Fields{"chainEpoch": utils.TimeToEpoch(time.Now()), "exportEpoch": data.Epoch}).Infof("starting export of epoch %v", data.Epoch)
 
-	logger.Infof("exporting block data")
-	err = saveBlocks(data.Blocks, tx)
-	if err != nil {
-		logger.Fatalf("error saving blocks to db: %v", err)
-		return fmt.Errorf("error saving blocks to db: %w", err)
-	}
+	g := new(errgroup.Group)
+
+	g.Go(func() error {
+		logger.Infof("exporting block data")
+		err = saveBlocks(data.Blocks, tx)
+		if err != nil {
+			logger.Fatalf("error saving blocks to db: %v", err)
+			return fmt.Errorf("error saving blocks to db: %w", err)
+		}
+		return nil
+	})
 
 	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+10 {
 		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting validators because epoch is far behind head")
 	} else {
-		logger.Infof("exporting validators")
-		err = saveValidators(data, tx)
-		if err != nil {
-			return fmt.Errorf("error saving validators to db: %w", err)
-		}
+		g.Go(func() error {
+			logger.Infof("exporting validators")
+			err = saveValidators(data, tx)
+			if err != nil {
+				return fmt.Errorf("error saving validators to db: %w", err)
+			}
+			return nil
+		})
 	}
 
 	logger.Infof("exporting proposal assignments data")
-	err = saveValidatorProposalAssignments(data.Epoch, data.ValidatorAssignmentes.ProposerAssignments, tx)
-	if err != nil {
-		return fmt.Errorf("error saving validator proposal assignments to db: %w", err)
-	}
+	g.Go(func() error {
+		err = saveValidatorProposalAssignments(data.Epoch, data.ValidatorAssignmentes.ProposerAssignments, tx)
+		if err != nil {
+			return fmt.Errorf("error saving validator proposal assignments to db: %w", err)
+		}
+		return nil
+	})
 
 	logger.Infof("exporting attestation assignments data")
-	err = saveValidatorAttestationAssignments(data.Epoch, data.ValidatorAssignmentes.AttestorAssignments, tx)
-	if err != nil {
-		return fmt.Errorf("error saving validator attestation assignments to db: %w", err)
-	}
+
+	g.Go(func() error {
+		err = saveValidatorAttestationAssignments(data.Epoch, data.ValidatorAssignmentes.AttestorAssignments, tx)
+		if err != nil {
+			return fmt.Errorf("error saving validator attestation assignments to db: %w", err)
+		}
+		return nil
+	})
 
 	logger.Infof("exporting validator balance data")
-	err = saveValidatorBalances(data.Epoch, data.Validators, tx)
-	if err != nil {
-		return fmt.Errorf("error saving validator balances to db: %w", err)
-	}
+	g.Go(func() error {
+		err = saveValidatorBalances(data.Epoch, data.Validators, tx)
+		if err != nil {
+			return fmt.Errorf("error saving validator balances to db: %w", err)
+		}
+		return nil
+	})
 
 	// only export recent validator balances if the epoch is within the threshold
 	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+10 {
 		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting recent validator balance because epoch is far behind head")
 	} else {
 		logger.Infof("exporting recent validator balance")
-		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx)
-		if err != nil {
-			return fmt.Errorf("error saving recent validator balances to db: %w", err)
-		}
+		g.Go(func() error {
+			err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx)
+			if err != nil {
+				return fmt.Errorf("error saving recent validator balances to db: %w", err)
+			}
+			return nil
+		})
+	}
+	err = g.Wait()
+	if err != nil {
+		return err
 	}
 
 	logger.Infof("exporting epoch statistics data")
@@ -826,6 +883,8 @@ func SaveEpoch(data *types.EpochData) error {
 	if err != nil {
 		return fmt.Errorf("error committing db transaction: %w", err)
 	}
+
+	epochsCache.Set(fmt.Sprintf("%v", data.Epoch), epochCacheKey, cache.DefaultExpiration)
 
 	logger.Infof("export of epoch %v completed, took %v", data.Epoch, time.Since(start))
 	return nil
@@ -1493,11 +1552,23 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 
 			for i, a := range b.Attestations {
 				attestationAssignmentsArgsWeek := make([][]interface{}, 0, 20000)
-				attestingValidators := make([]string, 0, 20000)
 
 				for _, validator := range a.Attesters {
+
+					// Check if we did already export an attestation for this validator in an earlier slot
+					cacheKey := fmt.Sprintf("%d:%d", validator, a.Data.Slot)
+
+					cachedSlot, found := attestationCache.Get(cacheKey)
+
+					if found {
+						if cachedSlot.(uint64) < b.Slot {
+							logrus.Infof("skipping export of attestation in block %v for slot %v from validator %v as it was already included in slot %v", b.Slot, a.Data.Slot, validator, cachedSlot.(uint64))
+							continue
+						}
+					}
 					attestationAssignmentsArgsWeek = append(attestationAssignmentsArgsWeek, []interface{}{a.Data.Slot / utils.Config.Chain.Config.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot, a.Data.Slot / utils.Config.Chain.Config.SlotsPerEpoch / 1575})
-					attestingValidators = append(attestingValidators, strconv.FormatUint(validator, 10))
+
+					attestationCache.Add(cacheKey, b.Slot, cache.DefaultExpiration)
 				}
 
 				batchSize := 20000
@@ -1563,7 +1634,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtProposalAssignments")
 			t = time.Now()
 
-			blockLog.Infof("export of block completed, took %v", time.Since(start))
+			blockLog.Infof("! export of block completed, took %v", time.Since(start))
 		}
 	}
 
