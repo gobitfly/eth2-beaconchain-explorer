@@ -63,7 +63,15 @@ func main() {
 		})
 
 		g.Go(func() error {
+			return bt.SaveProposalAssignments(data.Epoch, data.ValidatorAssignmentes.ProposerAssignments)
+		})
+
+		g.Go(func() error {
 			return bt.SaveAttestations(data.Blocks)
+		})
+
+		g.Go(func() error {
+			return bt.SaveProposals(data.Blocks)
 		})
 
 		err = g.Wait()

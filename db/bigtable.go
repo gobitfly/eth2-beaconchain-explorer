@@ -20,6 +20,7 @@ const (
 	DEFAULT_FAMILY            = "f"
 	VALIDATOR_BALANCES_FAMILY = "vb"
 	ATTESTATIONS_FAMILY       = "at"
+	PROPOSALS_FAMILY          = "pr"
 
 	max_block_number = 1000000000
 	max_epoch        = 1000000000
@@ -128,6 +129,24 @@ func (bigtable *Bigtable) SaveAttestationAssignments(epoch uint64, assignments m
 	return nil
 }
 
+func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[uint64]uint64) error {
+	start := time.Now()
+	ts := gcp_bigtable.Timestamp(0)
+
+	for slot, validator := range assignments {
+		mut := gcp_bigtable.NewMutation()
+		mut.Set(PROPOSALS_FAMILY, fmt.Sprintf("%d", validator), ts, []byte{})
+		err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(epoch), reversedPaddedSlot(slot)), mut)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	logger.Infof("exported proposal assignments to bigtable in %v", time.Since(start))
+	return nil
+}
+
 func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.Block) error {
 	start := time.Now()
 
@@ -168,6 +187,35 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 		}
 	}
 	logger.Infof("exported attestations to bigtable in %v", time.Since(start))
+	return nil
+}
+
+func (bigtable *Bigtable) SaveProposals(blocks map[uint64]map[string]*types.Block) error {
+	start := time.Now()
+
+	slots := make([]uint64, 0, len(blocks))
+	for slot := range blocks {
+		slots = append(slots, slot)
+	}
+	sort.Slice(slots, func(i, j int) bool {
+		return slots[i] < slots[j]
+	})
+
+	for _, slot := range slots {
+		for _, b := range blocks[slot] {
+
+			if len(b.BlockRoot) != 32 { // skip dummy blocks
+				continue
+			}
+			mut := gcp_bigtable.NewMutation()
+			mut.Set(PROPOSALS_FAMILY, fmt.Sprintf("%d", b.Proposer), gcp_bigtable.Timestamp((max_block_number-b.Slot)*1000), []byte{})
+			err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(b.Slot/32), reversedPaddedSlot(b.Slot)), mut)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	logger.Infof("exported proposals to bigtable in %v", time.Since(start))
 	return nil
 }
 
