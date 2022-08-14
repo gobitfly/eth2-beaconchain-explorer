@@ -1311,27 +1311,66 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validatorHistory []*types.ValidatorHistory
-	err = db.ReaderDb.Select(&validatorHistory, `
-			SELECT 
-				vbalance.epoch, 
-				COALESCE(vbalance.balance - LAG(vbalance.balance) OVER (ORDER BY vbalance.epoch), 0) AS balancechange,
-				COALESCE(assign.attesterslot, -1) AS attestatation_attesterslot,
-				assign.inclusionslot AS attestation_inclusionslot,
-				vblocks.status as proposal_status,
-				vblocks.slot as proposal_slot
-			FROM validator_balances_p vbalance
-			LEFT JOIN attestation_assignments_p assign ON vbalance.validatorindex = assign.validatorindex AND vbalance.epoch = assign.epoch AND vbalance.week = assign.week
-			LEFT JOIN blocks vblocks ON vbalance.validatorindex = vblocks.proposer AND vbalance.epoch = vblocks.epoch AND vbalance.week = vblocks.epoch / 1575
-			WHERE vbalance.validatorindex = $1 AND vbalance.epoch >= $2 AND vbalance.epoch <= $3 AND vbalance.week >= $2 / 1575 AND vbalance.week <= $3 / 1575
-			ORDER BY epoch DESC
-			LIMIT 10
-			`, index, lookBack, currentEpoch-start)
 
+	balanceHistory, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, currentEpoch-start, 12)
 	if err != nil {
-		logger.Errorf("error retrieving validator history: %v", err)
+		logger.Errorf("error retrieving validator balance history from bigtable: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
+	attestationHistory, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, currentEpoch-start, 12)
+	if err != nil {
+		logger.Errorf("error retrieving validator attestation history from bigtable: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if len(balanceHistory[index]) != len(attestationHistory[index]) {
+		logger.Errorf("error inconsisten balance & attestation history: %v !? %v", len(balanceHistory[index]), len(attestationHistory[index]))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	for i := 0; i < len(balanceHistory[index])-2; i++ {
+		balanceChange := int64(balanceHistory[index][i].Balance) - int64(balanceHistory[index][i+1].Balance)
+
+		h := &types.ValidatorHistory{
+			Epoch:          balanceHistory[index][i].Epoch,
+			BalanceChange:  sql.NullInt64{Int64: balanceChange, Valid: true},
+			AttesterSlot:   sql.NullInt64{Int64: int64(attestationHistory[index][i].AttesterSlot), Valid: true},
+			InclusionSlot:  sql.NullInt64{Int64: int64(attestationHistory[index][i].InclusionSlot), Valid: true},
+			ProposalStatus: sql.NullInt64{Int64: 0, Valid: false},
+			ProposalSlot:   sql.NullInt64{Int64: 0, Valid: false},
+		}
+		validatorHistory = append(validatorHistory, h)
+	}
+
+	// spew.Dump(validatorHistory)
+
+	// err = db.ReaderDb.Select(&validatorHistory, `
+	// 		SELECT
+	// 			vbalance.epoch,
+	// 			COALESCE(vbalance.balance - LAG(vbalance.balance) OVER (ORDER BY vbalance.epoch), 0) AS balancechange,
+	// 			COALESCE(assign.attesterslot, -1) AS attestatation_attesterslot,
+	// 			assign.inclusionslot AS attestation_inclusionslot,
+	// 			vblocks.status as proposal_status,
+	// 			vblocks.slot as proposal_slot
+	// 		FROM validator_balances_p vbalance
+	// 		LEFT JOIN attestation_assignments_p assign ON vbalance.validatorindex = assign.validatorindex AND vbalance.epoch = assign.epoch AND vbalance.week = assign.week
+	// 		LEFT JOIN blocks vblocks ON vbalance.validatorindex = vblocks.proposer AND vbalance.epoch = vblocks.epoch AND vbalance.week = vblocks.epoch / 1575
+	// 		WHERE vbalance.validatorindex = $1 AND vbalance.epoch >= $2 AND vbalance.epoch <= $3 AND vbalance.week >= $2 / 1575 AND vbalance.week <= $3 / 1575
+	// 		ORDER BY epoch DESC
+	// 		LIMIT 10
+	// 		`, index, lookBack, currentEpoch-start)
+
+	// if err != nil {
+	// 	logger.Errorf("error retrieving validator history: %v", err)
+	// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// spew.Dump(validatorHistory)
 
 	tableData := make([][]interface{}, 0, len(validatorHistory))
 	for _, b := range validatorHistory {

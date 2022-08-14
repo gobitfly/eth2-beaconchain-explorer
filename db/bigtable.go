@@ -128,7 +128,7 @@ func (bigtable *Bigtable) SaveAttestationAssignments(epoch uint64, assignments m
 	return nil
 }
 
-func (bigtable *Bigtable) SaveAttestations(epoch uint64, blocks map[uint64]map[string]*types.Block) error {
+func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.Block) error {
 	start := time.Now()
 
 	attestationsBySlot := make(map[uint64]map[uint64]uint64) //map[attestedSlot]map[validator]includedSlot
@@ -161,7 +161,7 @@ func (bigtable *Bigtable) SaveAttestations(epoch uint64, blocks map[uint64]map[s
 		for validator, inclusionSlot := range inclusions {
 			mut.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((max_block_number-inclusionSlot)*1000), []byte{})
 		}
-		err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(epoch), reversedPaddedSlot(attestedSlot)), mut)
+		err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(attestedSlot/32), reversedPaddedSlot(attestedSlot)), mut)
 
 		if err != nil {
 			return err
@@ -206,8 +206,9 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 				return false
 			}
 
-			epochString := strings.TrimPrefix(r.Key(), "1:e:b:")
-			epoch, err := strconv.ParseUint(epochString, 10, 64)
+			keySplit := strings.Split(r.Key(), ":")
+
+			epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
 			if err != nil {
 				logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
 				return false
@@ -299,15 +300,20 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 				res[validator] = make([]*types.ValidatorAttestation, 0, limit)
 			}
 
-			res[validator] = append(res[validator], &types.ValidatorAttestation{
-				Index:          validator,
-				Epoch:          attesterSlot / 32,
-				AttesterSlot:   attesterSlot,
-				CommitteeIndex: 0,
-				Status:         0,
-				InclusionSlot:  inclusionSlot,
-				Delay:          0,
-			})
+			if len(res[validator]) > 1 && res[validator][len(res[validator])-1].AttesterSlot == attesterSlot {
+				res[validator][len(res[validator])-1].InclusionSlot = inclusionSlot
+			} else {
+
+				res[validator] = append(res[validator], &types.ValidatorAttestation{
+					Index:          validator,
+					Epoch:          attesterSlot / 32,
+					AttesterSlot:   attesterSlot,
+					CommitteeIndex: 0,
+					Status:         0,
+					InclusionSlot:  inclusionSlot,
+					Delay:          0,
+				})
+			}
 
 		}
 		return true

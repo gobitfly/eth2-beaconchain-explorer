@@ -514,7 +514,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		if err != nil {
 			logrus.Errorf("error exporting attestation assignments to bigtable: %v", err)
 		}
-		err = db.BigtableClient.SaveAttestations(epoch, data.Blocks)
+		err = db.BigtableClient.SaveAttestations(data.Blocks)
 		if err != nil {
 			logrus.Errorf("error exporting attestations to bigtable: %v", err)
 		}
