@@ -373,6 +373,89 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	return res, nil
 }
 
+func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uint64) (map[uint64]*types.ValidatorBalanceStatistic, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
+
+	rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch)) // Reverse as keys are sorted in descending order
+	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch))
+
+	logger.Info(rangeStart)
+	logger.Info(rangeEnd)
+	res := make(map[uint64]*types.ValidatorBalanceStatistic)
+	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, rangeEnd), func(r gcp_bigtable.Row) bool {
+		logger.Info(r.Key())
+		for _, ri := range r[VALIDATOR_BALANCES_FAMILY] {
+			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, VALIDATOR_BALANCES_FAMILY+":"), 10, 64)
+			if err != nil {
+				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
+				return false
+			}
+
+			keySplit := strings.Split(r.Key(), ":")
+
+			epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
+			if err != nil {
+				logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
+				return false
+			}
+
+			balances := ri.Value
+
+			balanceBytes := balances[0:8]
+			effectiveBalanceBytes := balances[8:16]
+			balance := binary.LittleEndian.Uint64(balanceBytes)
+			effectiveBalance := binary.LittleEndian.Uint64(effectiveBalanceBytes)
+
+			if res[validator] == nil {
+				res[validator] = &types.ValidatorBalanceStatistic{
+					Index:                 validator,
+					MinEffectiveBalance:   effectiveBalance,
+					MaxEffectiveBalance:   0,
+					MinBalance:            balance,
+					MaxBalance:            0,
+					StartEffectiveBalance: 0,
+					EndEffectiveBalance:   0,
+					StartBalance:          0,
+					EndBalance:            0,
+				}
+			}
+
+			if epoch == startEpoch {
+				res[validator].StartBalance = balance
+				res[validator].StartEffectiveBalance = effectiveBalance
+			}
+
+			if epoch == endEpoch {
+				res[validator].EndBalance = balance
+				res[validator].EndEffectiveBalance = effectiveBalance
+			}
+
+			if balance > res[validator].MaxBalance {
+				res[validator].MaxBalance = balance
+			}
+			if balance < res[validator].MinBalance {
+				res[validator].MinBalance = balance
+			}
+
+			if balance > res[validator].MaxEffectiveBalance {
+				res[validator].MaxEffectiveBalance = balance
+			}
+			if balance < res[validator].MinEffectiveBalance {
+				res[validator].MinEffectiveBalance = balance
+			}
+		}
+
+		return true
+	}, gcp_bigtable.RowFilter(gcp_bigtable.FamilyFilter(VALIDATOR_BALANCES_FAMILY)))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 func reversedPaddedEpoch(epoch uint64) string {
 	return fmt.Sprintf("%09d", max_block_number-epoch)
 }

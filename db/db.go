@@ -663,7 +663,7 @@ func SaveBlock(block *types.Block) error {
 	}
 	blocksMap[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 
-	tx, err := WriterDb.Begin()
+	tx, err := WriterDb.Beginx()
 	if err != nil {
 		return fmt.Errorf("error starting db transactions: %v", err)
 	}
@@ -718,7 +718,7 @@ func SaveEpoch(data *types.EpochData) error {
 		logger.WithFields(logrus.Fields{"epoch": data.Epoch, "duration": time.Since(start)}).Info("completed saving epoch")
 	}()
 
-	tx, err := WriterDb.Begin()
+	tx, err := WriterDb.Beginx()
 	if err != nil {
 		return fmt.Errorf("error starting db transactions: %w", err)
 	}
@@ -770,14 +770,14 @@ func SaveEpoch(data *types.EpochData) error {
 		return nil
 	})
 
-	logger.Infof("exporting validator balance data")
-	g.Go(func() error {
-		err = saveValidatorBalances(data.Epoch, data.Validators, tx)
-		if err != nil {
-			return fmt.Errorf("error saving validator balances to db: %w", err)
-		}
-		return nil
-	})
+	// logger.Infof("exporting validator balance data")
+	// g.Go(func() error {
+	// 	err = saveValidatorBalances(data.Epoch, data.Validators, tx)
+	// 	if err != nil {
+	// 		return fmt.Errorf("error saving validator balances to db: %w", err)
+	// 	}
+	// 	return nil
+	// })
 
 	// only export recent validator balances if the epoch is within the threshold
 	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+10 {
@@ -890,7 +890,7 @@ func SaveEpoch(data *types.EpochData) error {
 	return nil
 }
 
-func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
+func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_graffitiwall").Observe(time.Since(start).Seconds())
@@ -954,7 +954,7 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) err
 	return nil
 }
 
-func saveValidators(data *types.EpochData, tx *sql.Tx) error {
+func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_validators").Observe(time.Since(start).Seconds())
@@ -1112,16 +1112,39 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 	}
 
 	s := time.Now()
-	_, err = tx.Exec("update validators set balanceactivation = (select balance from validator_balances_p where validator_balances_p.week = validators.activationepoch / 1575 and validator_balances_p.epoch = validators.activationepoch and validator_balances_p.validatorindex = validators.validatorindex) WHERE balanceactivation IS NULL;")
+	newValidators := []struct {
+		Validatorindex  uint64
+		ActivationEpoch uint64
+	}{}
+
+	err = tx.Select(newValidators, "SELECT validatorindex, activationepoch FROM validators WHERE balanceactivation IS NULL")
 	if err != nil {
 		return err
 	}
+
+	for _, newValidator := range newValidators {
+
+		balance, err := BigtableClient.GetValidatorBalanceHistory([]uint64{newValidator.Validatorindex}, newValidator.ActivationEpoch, 1)
+
+		if err != nil {
+			return err
+		}
+
+		if balance[newValidator.Validatorindex] == nil || len(balance[newValidator.Validatorindex]) == 0 {
+			return fmt.Errorf("no activation epoch balance found for validator %v for epoch %v", newValidator.Validatorindex, newValidator.ActivationEpoch)
+		}
+		_, err = tx.Exec("update validators set balanceactivation = $1 WHERE validatorindex = $2 AND balanceactivation IS NULL;", balance[newValidator.Validatorindex][0].Balance, newValidator.Validatorindex)
+		if err != nil {
+			return err
+		}
+	}
+
 	logger.Infof("updating validator activation epoch balance completed, took %v", time.Since(s))
 
 	return nil
 }
 
-func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint64, tx *sql.Tx) error {
+func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint64, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_proposal_assignments").Observe(time.Since(start).Seconds())
@@ -1146,7 +1169,7 @@ func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint6
 	return nil
 }
 
-func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]uint64, tx *sql.Tx) error {
+func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]uint64, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_attestation_assignments").Observe(time.Since(start).Seconds())
@@ -1188,47 +1211,47 @@ func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]ui
 	return nil
 }
 
-func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
-	start := time.Now()
-	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_save_validator_balances").Observe(time.Since(start).Seconds())
-	}()
+// func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sqlx.Tx) error {
+// 	start := time.Now()
+// 	defer func() {
+// 		metrics.TaskDuration.WithLabelValues("db_save_validator_balances").Observe(time.Since(start).Seconds())
+// 	}()
 
-	batchSize := 10000
+// 	batchSize := 10000
 
-	for b := 0; b < len(validators); b += batchSize {
-		start := b
-		end := b + batchSize
-		if len(validators) < end {
-			end = len(validators)
-		}
+// 	for b := 0; b < len(validators); b += batchSize {
+// 		start := b
+// 		end := b + batchSize
+// 		if len(validators) < end {
+// 			end = len(validators)
+// 		}
 
-		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*5)
-		for i, v := range validators[start:end] {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i*5+1, i*5+2, i*5+3, i*5+4, i*5+5))
-			valueArgs = append(valueArgs, epoch)
-			valueArgs = append(valueArgs, v.Index)
-			valueArgs = append(valueArgs, v.Balance)
-			valueArgs = append(valueArgs, v.EffectiveBalance)
-			valueArgs = append(valueArgs, epoch/1575)
-		}
-		stmt := fmt.Sprintf(`
-		INSERT INTO validator_balances_p (epoch, validatorindex, balance, effectivebalance, week)
-		VALUES %s
-		ON CONFLICT (epoch, validatorindex, week) DO UPDATE SET
-			balance          = EXCLUDED.balance,
-			effectivebalance = EXCLUDED.effectivebalance`, strings.Join(valueStrings, ","))
-		_, err := tx.Exec(stmt, valueArgs...)
-		if err != nil {
-			return err
-		}
-	}
+// 		valueStrings := make([]string, 0, batchSize)
+// 		valueArgs := make([]interface{}, 0, batchSize*5)
+// 		for i, v := range validators[start:end] {
+// 			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i*5+1, i*5+2, i*5+3, i*5+4, i*5+5))
+// 			valueArgs = append(valueArgs, epoch)
+// 			valueArgs = append(valueArgs, v.Index)
+// 			valueArgs = append(valueArgs, v.Balance)
+// 			valueArgs = append(valueArgs, v.EffectiveBalance)
+// 			valueArgs = append(valueArgs, epoch/1575)
+// 		}
+// 		stmt := fmt.Sprintf(`
+// 		INSERT INTO validator_balances_p (epoch, validatorindex, balance, effectivebalance, week)
+// 		VALUES %s
+// 		ON CONFLICT (epoch, validatorindex, week) DO UPDATE SET
+// 			balance          = EXCLUDED.balance,
+// 			effectivebalance = EXCLUDED.effectivebalance`, strings.Join(valueStrings, ","))
+// 		_, err := tx.Exec(stmt, valueArgs...)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
+func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_validator_balances_recent").Observe(time.Since(start).Seconds())
@@ -1273,7 +1296,7 @@ func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx
 	return nil
 }
 
-func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
+func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_blocks").Observe(time.Since(start).Seconds())
