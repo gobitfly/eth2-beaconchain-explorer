@@ -2,6 +2,7 @@ package types
 
 import (
 	ethpb "github.com/prysmaticlabs/prysm/proto/prysm/v1alpha1"
+	"github.com/sirupsen/logrus"
 )
 
 // ChainHead is a struct to hold chain head data
@@ -460,4 +461,16 @@ type HistoricEthPrice struct {
 	} `json:"market_data"`
 	Name   string `json:"name"`
 	Symbol string `json:"symbol"`
+}
+
+type Relay struct {
+	ID       string `db:"tag_id"`
+	Endpoint string `db:"endpoint"`
+	Logger   logrus.Entry
+}
+
+type BlockTag struct {
+	ID        string `db:"tag_id"`
+	BlockSlot uint64 `db:"slot"`
+	BlockRoot string `db:"blockroot"`
 }

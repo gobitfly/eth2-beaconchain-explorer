@@ -1011,3 +1011,32 @@ create table historical_pool_performance
     
     primary key(pool, day)
 );
+
+--- need to drop all three tabls in the correct order to correctly resolve foreign key constrains
+DROP TABLE IF EXISTS relays;
+DROP TABLE IF EXISTS blocks_tags;
+DROP TABLE IF EXISTS tags;
+
+CREATE TABLE tags (
+	id varchar NOT NULL,
+	metadata jsonb NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE TABLE blocks_tags (
+	slot int4 NOT NULL,
+	blockroot bytea NOT NULL,
+	tag_id varchar NOT NULL,
+	PRIMARY KEY (slot, blockroot, tag_id),
+	FOREIGN KEY (slot,blockroot) REFERENCES blocks(slot,blockroot),
+	FOREIGN KEY (tag_id) REFERENCES tags(id)
+);
+CREATE INDEX idx_blocks_tags_slot ON blocks_tags (slot);
+
+
+CREATE TABLE relays (
+	tag_id varchar NOT NULL,
+	endpoint varchar NOT NULL,
+	PRIMARY KEY (tag_id, endpoint),
+	FOREIGN KEY (tag_id) REFERENCES tags(id)
+);
