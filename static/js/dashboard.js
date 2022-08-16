@@ -788,7 +788,7 @@ $(document).ready(function () {
     if (state.validators.length > VALLIMIT) {
       state.validators = state.validators.slice(0, VALLIMIT)
       console.log(`${VALLIMIT} validators limit reached`)
-      alert(`You can not add more than ${VALLIMIT} validators to your dashboard`)
+      handleLimitHit()
     }
   }
 
@@ -812,11 +812,22 @@ $(document).ready(function () {
 
     if (limitReached) {
       console.log(`${VALLIMIT} validators limit reached`)
-      alert(`You can not add more than ${VALLIMIT} validators to your dashboard`)
+      handleLimitHit()
     }
     state.validators.sort(sortValidators)
     renderSelectedValidators()
     updateState()
+  }
+
+  function handleLimitHit() {
+    if (VALLIMIT == 300) {
+      // user is already at the top tier, no need to advertise it to them
+      alert(`Sorry, too many validators! You can not currently add more than ${VALLIMIT} validators to your dashboard.`)
+    } else {
+      if (window.confirm(`With your current premium level, you can not add more than ${VALLIMIT} validators to your dashboard.\n\nBy upgrading to the Whale Tier, this limit gets raised to 300 validators!`)) {
+        window.location.href='/premium';
+      };
+    }
   }
 
   function addValidator(index) {
@@ -825,7 +836,7 @@ $(document).ready(function () {
       overview.classList.remove("d-none")
     }
     if (state.validators.length >= VALLIMIT) {
-      alert(`Too many validators, you can not add more than ${VALLIMIT} validators to your dashboard!`)
+      handleLimitHit()
       return
     }
     index = index + "" // make sure index is string
