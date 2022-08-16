@@ -791,7 +791,9 @@ $(document).ready(function () {
     if (state.validators.length > VALLIMIT) {
       state.validators = state.validators.slice(0, VALLIMIT)
       console.log(`${VALLIMIT} validators limit reached`)
-      alert(`You can not add more than ${VALLIMIT} validators to your dashboard`)
+      if (window.confirm(`You can not add more than ${VALLIMIT} validators to your dashboard.\nUpgrade to beaconcha.in premium "Whale" to add up to 280 validators`)) {
+        window.location.href='/premium';
+      };
     }
   }
 
@@ -815,7 +817,9 @@ $(document).ready(function () {
 
     if (limitReached) {
       console.log(`${VALLIMIT} validators limit reached`)
-      alert(`You can not add more than ${VALLIMIT} validators to your dashboard`)
+      if (window.confirm(`You can not add more than ${VALLIMIT} validators to your dashboard.\nUpgrade to beaconcha.in premium "Whale" to add up to 280 validators`)) {
+        window.location.href='/premium';
+      };
     }
     state.validators.sort(sortValidators)
     renderSelectedValidators()
@@ -828,7 +832,9 @@ $(document).ready(function () {
       overview.classList.remove("d-none")
     }
     if (state.validators.length >= VALLIMIT) {
-      alert(`Too many validators, you can not add more than ${VALLIMIT} validators to your dashboard!`)
+      if (window.confirm(`You can not add more than ${VALLIMIT} validators to your dashboard.\nUpgrade to beaconcha.in premium "Whale" to add up to 280 validators`)) {
+        window.location.href='/premium';
+      };
       return
     }
     index = index + "" // make sure index is string
