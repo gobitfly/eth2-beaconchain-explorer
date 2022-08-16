@@ -1033,10 +1033,20 @@ CREATE TABLE blocks_tags (
 );
 CREATE INDEX idx_blocks_tags_slot ON blocks_tags (slot);
 
-
 CREATE TABLE relays (
 	tag_id varchar NOT NULL,
 	endpoint varchar NOT NULL,
 	PRIMARY KEY (tag_id, endpoint),
 	FOREIGN KEY (tag_id) REFERENCES tags(id)
 );
+
+DROP TABLE IF EXISTS validator_queue_deposits;
+CREATE TABLE validator_queue_deposits (
+	validatorindex int4 NOT NULL,
+	block_slot int4 NULL,
+	block_index int4 NULL,
+	CONSTRAINT validator_queue_deposits_fk FOREIGN KEY (block_slot,block_index) REFERENCES blocks_deposits(block_slot,block_index),
+	CONSTRAINT validator_queue_deposits_fk_validators FOREIGN KEY (validatorindex) REFERENCES validators(validatorindex)
+);
+CREATE INDEX idx_validator_queue_deposits_block_slot ON validator_queue_deposits USING btree (block_slot);
+CREATE UNIQUE INDEX idx_validator_queue_deposits_validatorindexON validator_queue_deposits USING btree (validatorindex);

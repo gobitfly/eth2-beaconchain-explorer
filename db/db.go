@@ -709,8 +709,11 @@ func SaveEpoch(data *types.EpochData) error {
 		if err != nil {
 			return fmt.Errorf("error saving validators to db: %w", err)
 		}
+		err = updateQueueDeposits()
+		if err != nil {
+			return fmt.Errorf("error updating queue deposits cache: %w", err)
+		}
 	}
-
 	logger.Infof("exporting proposal assignments data")
 	err = saveValidatorProposalAssignments(data.Epoch, data.ValidatorAssignmentes.ProposerAssignments, tx)
 	if err != nil {
@@ -1617,6 +1620,96 @@ func GetActiveValidatorCount() (uint64, error) {
 	var count uint64
 	err := ReaderDb.Get(&count, "select count(*) from validators where status in ('active_offline', 'active_online');")
 	return count, err
+}
+
+func updateQueueDeposits() error {
+	start := time.Now()
+	defer func() {
+		logger.Infof("took %v seconds to update queue deposits", time.Since(start).Seconds())
+		metrics.TaskDuration.WithLabelValues("update_queue_deposits").Observe(time.Since(start).Seconds())
+	}()
+
+	// first we remove any validator that isn't queued anymore
+	_, err := WriterDb.Exec(`
+		DELETE FROM validator_queue_deposits
+		WHERE validator_queue_deposits.validatorindex NOT IN (
+			SELECT validatorindex 
+			FROM validators 
+			WHERE activationepoch=9223372036854775807 and status='pending')`)
+	if err != nil {
+		logger.Errorf("error removing queued publickeys from validator_queue_deposits: %v", err)
+		return err
+	}
+
+	// then we add any new ones that are queued
+	_, err = WriterDb.Exec(`
+		INSERT INTO validator_queue_deposits
+		SELECT validatorindex FROM validators WHERE activationepoch=9223372036854775807 and status='pending' ON CONFLICT DO NOTHING`)
+	if err != nil {
+		logger.Errorf("error adding queued publickeys to validator_queue_deposits: %v", err)
+		return err
+	}
+
+	// efficiently collect the tnx that pushed each validator over 32 ETH.
+	_, err = WriterDb.Exec(`
+		UPDATE validator_queue_deposits 
+		SET 
+			block_slot=data.block_slot,
+			block_index=data.block_index
+		FROM (
+			WITH CumSum AS
+			(
+				SELECT publickey, block_slot, block_index,
+					/* generate partion per publickey ordered by newest to oldest. store cum sum of deposits */
+					SUM(amount) OVER (partition BY publickey ORDER BY (block_slot, block_index) ASC) AS cumTotal
+				FROM blocks_deposits
+				WHERE publickey IN (
+					/* get the pubkeys of the indexes */
+					select pubkey from validators where validators.validatorindex in (
+						/* get the indexes we need to update */
+						select validatorindex from validator_queue_deposits where block_slot is null and block_index is null
+					)
+				)
+				ORDER BY block_slot, block_index ASC
+			)
+			/* we only care about one deposit per vali */
+			SELECT DISTINCT ON(publickey) validators.validatorindex, block_slot, block_index
+			FROM CumSum
+			/* join so we can retrieve the validator index again */
+			left join validators on validators.pubkey = CumSum.publickey
+			/* we want the deposit that pushed the cum sum over 32 ETH */
+			WHERE cumTotal>=32000000000
+			ORDER BY publickey, cumTotal asc 
+		) AS data
+		WHERE validator_queue_deposits.validatorindex=data.validatorindex`)
+	if err != nil {
+		logger.Errorf("error updating validator_queue_deposits: %v", err)
+		return err
+	}
+	return nil
+}
+
+func GetQueueAheadOfValidator(validatorIndex uint64) (uint64, error) {
+	var res uint64
+	err := ReaderDb.Get(&res, `
+	with SelectedValidator as (
+		select block_slot, block_index, validators.activationeligibilityepoch from validator_queue_deposits vqd
+		inner join validators on validators.validatorindex = $1
+		where vqd.validatorindex = validators.validatorindex 
+	)
+	select count(*)
+	from (
+		select validatorindex, block_slot, block_index 
+		from validator_queue_deposits
+	) as vqd 
+	inner join validators on
+		validators.validatorindex = vqd.validatorindex and
+		validators.activationeligibilityepoch <= (select activationeligibilityepoch from SelectedValidator)
+	where 
+		validators.activationeligibilityepoch < (select activationeligibilityepoch from SelectedValidator) or 
+		vqd.block_slot < (select block_slot from SelectedValidator) or
+		vqd.block_slot = (select block_slot from SelectedValidator) and vqd.block_index < (select block_index from SelectedValidator)`, validatorIndex)
+	return res, err
 }
 
 func GetValidatorNames() (map[uint64]string, error) {
