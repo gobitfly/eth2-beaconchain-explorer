@@ -825,8 +825,8 @@ $(document).ready(function () {
       alert(`Sorry, too many validators! You can not currently add more than ${VALLIMIT} validators to your dashboard.`)
     } else {
       if (window.confirm(`With your current premium level, you can not add more than ${VALLIMIT} validators to your dashboard.\n\nBy upgrading to the Whale Tier, this limit gets raised to 300 validators!`)) {
-        window.location.href='/premium';
-      };
+        window.location.href = "/premium"
+      }
     }
   }
 
