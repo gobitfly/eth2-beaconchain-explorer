@@ -583,6 +583,8 @@ type BlockPageData struct {
 	AttesterSlashings []*BlockPageAttesterSlashing
 	ProposerSlashings []*BlockPageProposerSlashing
 	SyncCommittee     []uint64 // TODO: Setting it to contain the validator index
+
+	Tags TagMetadataSlice `db:"tags"`
 }
 
 func (u *BlockPageData) MarshalJSON() ([]byte, error) {

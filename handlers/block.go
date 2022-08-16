@@ -124,22 +124,32 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			exec_parent_hash,
 			exec_fee_recipient,
 			exec_state_root,
-		    exec_receipts_root,
-		    exec_logs_bloom,
-		    exec_random,
+			exec_receipts_root,
+			exec_logs_bloom,
+			exec_random,
 			exec_block_number,
 			exec_gas_limit,
 			exec_gas_used,
 			exec_timestamp,
-		    exec_extra_data,
-		    exec_base_fee_per_gas,
-		    exec_block_hash,
+			exec_extra_data,
+			exec_base_fee_per_gas,
+			exec_block_hash,
 			exec_transactions_count,
+			jsonb_agg(tags.metadata) as tags,
 			COALESCE(validator_names.name, '') AS name
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		WHERE blocks.slot = $1 ORDER BY blocks.status LIMIT 1`,
+		LEFT JOIN blocks_tags ON blocks.slot = blocks_tags.slot and blocks.blockroot = blocks_tags.blockroot
+		LEFT JOIN tags ON blocks_tags.tag_id = tags.id
+		WHERE blocks.slot = $1 
+		group by
+			blocks.epoch,
+			blocks.slot,
+			blocks.blockroot,
+			validator_names."name" 
+		ORDER BY blocks.status limit 1
+		`,
 		blockSlot)
 
 	blockPageData.Slot = uint64(blockSlot)
