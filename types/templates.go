@@ -340,7 +340,10 @@ type ValidatorPageData struct {
 	AttestationInclusionEffectiveness   float64
 	CsrfField                           template.HTML
 	NetworkStats                        *IndexPageData
-	EstimatedActivationTs               int64
+	ChurnRate                           uint64
+	QueuePosition                       uint64
+	EstimatedActivationTs               time.Time
+	EstimatedActivationEpoch            uint64
 	InclusionDelay                      int64
 	CurrentAttestationStreak            uint64
 	LongestAttestationStreak            uint64
