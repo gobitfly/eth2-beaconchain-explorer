@@ -48,20 +48,25 @@ func WriteStatisticsForDay(day uint64) error {
 	logger.Infof("export completed, took %v", time.Since(start))
 
 	start = time.Now()
-	logger.Infof("exporting missed_attestations and orphaned_attestations statistics")
-	_, err = tx.Exec(`
-		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) 
-		(
-			select validatorindex, $3, sum(case when status = 0 then 1 else 0 end), sum(case when status = 3 then 1 else 0 end)
-			from attestation_assignments_p
-			where week >= $1 / 1575 AND week <= $2 / 1575 and epoch >= $1 and epoch <= $2
-			group by validatorindex
-		) 
-		on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
-		firstEpoch, lastEpoch, day)
+	logger.Infof("exporting missed_attestations statistics")
+	ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, lastEpoch, int64(lastEpoch-firstEpoch))
 	if err != nil {
 		return err
 	}
+
+	for validator, missedAttestations := range ma {
+		_, err = tx.Exec(`
+		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
+		(
+			$1, $2, $3, 0
+		) 
+		on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
+			validator, day, missedAttestations)
+		if err != nil {
+			return err
+		}
+	}
+
 	logger.Infof("export completed, took %v", time.Since(start))
 
 	start = time.Now()

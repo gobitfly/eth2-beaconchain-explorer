@@ -675,14 +675,10 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 		with
 			firstdeposits as (
 				select distinct
-					vb.epoch,
-					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
+				v.activationepoch as epoch,
+					sum(v.balanceactivation) over (order by v.activationepoch asc) as amount
 				from validators v
-					left join validator_balances_p vb
-						on vb.validatorindex = v.validatorindex
-						and vb.epoch = v.activationepoch
-						and vb.week = v.activationepoch / 1575
-				order by vb.epoch
+				order by v.activationepoch
 			),
 			extradeposits as (
 				select distinct
@@ -771,14 +767,10 @@ func stakingRewardsChartData() (*types.GenericChartData, error) {
 		with
 			firstdeposits as (
 				select distinct
-					vb.epoch,
-					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
+				v.activationepoch as epoch,
+					sum(v.balanceactivation) over (order by v.activationepoch asc) as amount
 				from validators v
-					left join validator_balances_p vb
-						on vb.validatorindex = v.validatorindex
-						and vb.epoch = v.activationepoch
-						and vb.week = v.activationepoch / 1575
-				order by vb.epoch
+				order by v.activationepoch
 			),
 			extradeposits as (
 				select distinct

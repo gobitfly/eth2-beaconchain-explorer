@@ -1437,7 +1437,7 @@ func (n *validatorProposalNotification) GetInfoMarkdown() string {
 
 func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
 	latestEpoch := LatestEpoch()
-	latestSlot := LatestSlot()
+	// latestSlot := LatestSlot()
 
 	pubkeys, subMap, err := db.GetSubsForEventFilter(types.ValidatorMissedAttestationEventName)
 	if err != nil {
@@ -1467,30 +1467,41 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 
 		keys = pubkeys[start:end]
 
-		var partial []dbResult
-		err = db.WriterDb.Select(&partial, `
-		SELECT 
-			v.validatorindex,
-			v.pubkey,
-			aa.epoch,
-			aa.status,
-			aa.attesterslot,
-			aa.inclusionslot
-		FROM
-		(SELECT 
-				v.validatorindex as validatorindex, 
-				v.pubkey as pubkey
-			FROM validators v
-			WHERE pubkey = ANY($4)) v
-			INNER JOIN attestation_assignments_p aa ON v.validatorindex = aa.validatorindex AND aa.week >= ($1 - 3) / 1575 AND aa.epoch >= ($1 - 3)
-			WHERE status = $3
-			AND aa.inclusionslot = 0 AND aa.attesterslot < ($2 - 32)
-			`, latestEpoch, latestSlot, status, pq.ByteaArray(keys))
+		type indexpubkey struct {
+			ValidatorIndex uint64
+			Pubkey         []byte
+		}
+		var indexPubkeyArr []*indexpubkey
+		err := db.ReaderDb.Select(indexPubkeyArr, "SELECT validatorindex, pubkey FROM validators WHERE pubkey = ANY($1)", pq.ByteaArray(keys))
 		if err != nil {
 			return err
 		}
 
-		events = append(events, partial...)
+		indexToPubkeyMap := make(map[uint64][]byte)
+		indices := make([]uint64, 0, len(keys))
+		for _, v := range indexPubkeyArr {
+			indexToPubkeyMap[v.ValidatorIndex] = v.Pubkey
+			indices = append(indices, v.ValidatorIndex)
+		}
+
+		attestations, err := db.BigtableClient.GetValidatorAttestationHistory(indices, latestEpoch-1, int64(latestEpoch)-3)
+		if err != nil {
+			return err
+		}
+
+		for validator, history := range attestations {
+			for _, attestation := range history {
+				if attestation.Status == 0 {
+					events = append(events, dbResult{
+						ValidatorIndex: validator,
+						Epoch:          attestation.Epoch,
+						Status:         attestation.Status,
+						Slot:           attestation.AttesterSlot,
+						InclusionSlot:  attestation.InclusionSlot,
+					})
+				}
+			}
+		}
 	}
 
 	for _, event := range events {

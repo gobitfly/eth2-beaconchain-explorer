@@ -465,23 +465,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 	var one int
 	logger.Printf("checking partition status for epoch %v", epoch)
 	week := epoch / 1575
-	err := db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'attestation_assignments_%v'", week))
-	if err != nil {
-		logger.Infof("creating partition attestation_assignments_%v", week)
-		_, err := db.WriterDb.Exec(fmt.Sprintf("CREATE TABLE attestation_assignments_%v PARTITION OF attestation_assignments_p FOR VALUES IN (%v);", week, week))
-		if err != nil {
-			logger.Fatalf("unable to create partition attestation_assignments_%v: %v", week, err)
-		}
-	}
-	err = db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'validator_balances_%v'", week))
-	if err != nil {
-		logger.Infof("creating partition validator_balances_%v", week)
-		_, err := db.WriterDb.Exec(fmt.Sprintf("CREATE TABLE validator_balances_%v PARTITION OF validator_balances_p FOR VALUES IN (%v);", week, week))
-		if err != nil {
-			logger.Fatalf("unable to create partition validator_balances_%v: %v", week, err)
-		}
-	}
-	err = db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'sync_assignments_%v'", week))
+	err := db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'sync_assignments_%v'", week))
 	if err != nil {
 		logger.Infof("creating partition sync_assignments_%v", week)
 		_, err := db.WriterDb.Exec(fmt.Sprintf("CREATE TABLE sync_assignments_%v PARTITION OF sync_assignments_p FOR VALUES IN (%v);", week, week))
@@ -901,7 +885,7 @@ func genesisDepositsExporter() {
 					b.balance as amount,
 					d.signature as signature
 				FROM validators v
-				LEFT JOIN validator_balances_p b 
+				LEFT JOIN validator_balances_recent b 
 					ON v.validatorindex = b.validatorindex
 					AND b.epoch = 0
 					AND b.week = 0

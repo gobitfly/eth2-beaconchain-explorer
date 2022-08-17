@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"time"
 
 	"strconv"
 	"strings"
@@ -196,61 +195,6 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DashboardDataMissedAttestations(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	q := r.URL.Query()
-	validatorLimit := getUserPremium(r).MaxValidators
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
-	if err != nil {
-		http.Error(w, "Invalid query", 400)
-		return
-	}
-	filter := pq.Array(filterArr)
-
-	missedAttestations := []struct {
-		Epoch          uint64
-		Validatorindex uint64
-	}{}
-
-	maxEpoch := services.LatestEpoch() - 1
-	minEpoch := utils.TimeToEpoch(time.Now().Add(time.Hour * 24 * -7))
-
-	err = db.ReaderDb.Select(&missedAttestations, `
-		SELECT epoch, validatorindex
-		FROM attestation_assignments_p
-		WHERE 
-			validatorindex = ANY($1) 
-			AND epoch <= $2 
-			AND epoch >= $3 
-			AND week <= $2 / 1575
-			AND week >= $3 / 1575
-			AND status = 0`, filter, maxEpoch, minEpoch)
-	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving daily proposed blocks blocks count")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
-
-	result := make(map[int64][]uint64)
-
-	for _, ma := range missedAttestations {
-		ts := utils.EpochToTime(ma.Epoch).Unix()
-		if _, exists := result[ts]; !exists {
-			result[ts] = []uint64{ma.Validatorindex}
-		} else {
-			result[ts] = append(result[ts], ma.Validatorindex)
-		}
-	}
-
-	err = json.NewEncoder(w).Encode(result)
-	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
-}
-
 func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
 
@@ -426,7 +370,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	}
 	filter := pq.Array(filterArr)
 
-	var activeValidators pq.Int64Array
+	var activeValidators []uint64
 	err = db.ReaderDb.Select(&activeValidators, `
 		SELECT validatorindex FROM validators where validatorindex = ANY($1) and activationepoch < $2 AND exitepoch > $2
 	`, filter, services.LatestEpoch())
@@ -436,21 +380,10 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 
 	var avgIncDistance []float64
 
-	err = db.ReaderDb.Select(&avgIncDistance, `
-	SELECT
-		(SELECT COALESCE(
-			AVG(1 + inclusionslot - COALESCE((
-				SELECT MIN(slot)
-				FROM blocks
-				WHERE slot > aa.attesterslot AND blocks.status = '1'
-			), 0)
-		), 0)
-		FROM attestation_assignments_p aa
-		INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
-		WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = index AND aa.inclusionslot > 0
-		) as incd
-	FROM unnest($2::int[]) AS index;
-	`, int64(services.LatestEpoch())-100, activeValidators)
+	effectiveness, err := db.BigtableClient.GetValidatorEffectiveness(activeValidators, services.LatestEpoch())
+	for _, e := range effectiveness {
+		avgIncDistance = append(avgIncDistance, e.AttestationEfficiency)
+	}
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

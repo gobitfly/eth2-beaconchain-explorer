@@ -11,3 +11,8 @@ type ValidatorBalanceStatistic struct {
 	StartBalance          uint64
 	EndBalance            uint64
 }
+
+type ValidatorEffectiveness struct {
+	Validatorindex        uint64  `json:"validatorindex"`
+	AttestationEfficiency float64 `json:"attestation_efficiency"`
+}

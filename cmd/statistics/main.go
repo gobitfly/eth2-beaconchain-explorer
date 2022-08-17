@@ -18,7 +18,6 @@ func main() {
 	configPath := flag.String("config", "", "Path to the config file")
 	statisticsDayToExport := flag.Int64("statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
 	statisticsDaysToExport := flag.String("statistics.days", "", "Days to export statistics (will export the day independent if it has been already exported or not")
-	streaksDisabledFlag := flag.Bool("streaks.disabled", false, "Disable exporting streaks")
 	poolsDisabledFlag := flag.Bool("pools.disabled", false, "Disable exporting pools")
 
 	flag.Parse()
@@ -88,9 +87,6 @@ func main() {
 	}
 
 	go statisticsLoop()
-	if !*streaksDisabledFlag {
-		go streaksLoop()
-	}
 	if !*poolsDisabledFlag {
 		go poolsLoop()
 	}
@@ -142,22 +138,6 @@ func statisticsLoop() {
 			}
 		}
 		time.Sleep(time.Minute)
-	}
-}
-
-func streaksLoop() {
-	for {
-		done, err := db.UpdateAttestationStreaks()
-		if err != nil {
-			logrus.WithError(err).Error("error updating attesation_streaks")
-		}
-		if done {
-			// updated streaks up to the current finalized epoch
-			time.Sleep(time.Second * 3600)
-		} else {
-			// go faster until streaks are upated to the current finalized epoch
-			time.Sleep(time.Second * 10)
-		}
 	}
 }
 

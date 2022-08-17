@@ -407,19 +407,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// add attestationStats that are not yet in validator_stats
-		attestationStatsNotInStats := struct {
-			MissedAttestations   uint64 `db:"missed_attestations"`
-			OrphanedAttestations uint64 `db:"orphaned_attestations"`
-		}{}
-		err = db.ReaderDb.Get(&attestationStatsNotInStats, "select coalesce(sum(case when status = 0 then 1 else 0 end), 0) as missed_attestations, coalesce(sum(case when status = 3 then 1 else 0 end), 0) as orphaned_attestations from attestation_assignments_p where week >= $1/7 and epoch >= ($1+1)*225 and epoch < $2 and validatorindex = $3", lastStatsDay, services.LatestEpoch(), index)
-		if err != nil {
-			logger.Errorf("error retrieving validator attestationStatsAfterLastStatsDay: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations + attestationStatsNotInStats.MissedAttestations
-		validatorPageData.OrphanedAttestationsCount = attestationStats.OrphanedAttestations + attestationStatsNotInStats.OrphanedAttestations
+		// add attestationStats that are not yet in validator_stats TODO: Reimplement for bigtable
+		validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
+		validatorPageData.OrphanedAttestationsCount = attestationStats.OrphanedAttestations
 		validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount - validatorPageData.OrphanedAttestationsCount
 		validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.AttestationsCount-validatorPageData.MissedAttestationsCount) / float64(validatorPageData.AttestationsCount)
 	}
@@ -539,44 +529,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("slashing data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
-	err = db.ReaderDb.Get(&validatorPageData.AverageAttestationInclusionDistance, `
-		SELECT COALESCE(
-			AVG(1 + inclusionslot - COALESCE((
-				SELECT MIN(slot)
-				FROM blocks
-				WHERE slot > aa.attesterslot AND blocks.status = '1'
-			), 0)
-		), 0)
-		FROM attestation_assignments_p aa
-		INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
-		WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = $2 AND aa.inclusionslot > 0
-		`, int64(validatorPageData.Epoch)-100, index)
+	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, validatorPageData.Epoch)
 	if err != nil {
-		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
+		logger.Errorf("error retrieving validator effectiveness: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
-	if validatorPageData.AverageAttestationInclusionDistance > 0 {
-		validatorPageData.AttestationInclusionEffectiveness = 1.0 / validatorPageData.AverageAttestationInclusionDistance * 100
-	}
-
-	var attestationStreaks []struct {
-		Length uint64
-	}
-	err = db.ReaderDb.Select(&attestationStreaks, `select greatest(0,length) as length from validator_attestation_streaks where validatorindex = $1 and status = 1 order by start desc`, index)
-	if err != nil {
-		logger.Errorf("error retrieving AttestationStreaks: %v", err)
+	if len(eff) != 1 {
+		logger.Errorf("error retrieving validator effectiveness: invalid length %v", len(eff))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	if len(attestationStreaks) > 1 {
-		validatorPageData.CurrentAttestationStreak = attestationStreaks[0].Length
-		validatorPageData.LongestAttestationStreak = attestationStreaks[1].Length
-	} else if len(attestationStreaks) > 0 {
-		validatorPageData.CurrentAttestationStreak = attestationStreaks[0].Length
-		validatorPageData.LongestAttestationStreak = attestationStreaks[0].Length
-	}
+	validatorPageData.AttestationInclusionEffectiveness = (1 / eff[0].AttestationEfficiency) * 100
 
 	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
@@ -708,36 +672,22 @@ func ValidatorAttestationInclusionEffectiveness(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	var avgIncDistance float64
-
-	err = db.ReaderDb.Get(&avgIncDistance, `
-	SELECT COALESCE(
-		AVG(1 + inclusionslot - COALESCE((
-			SELECT MIN(slot)
-			FROM blocks
-			WHERE slot > aa.attesterslot AND blocks.status = '1'
-		), 0)
-	), 0)
-	FROM attestation_assignments_p aa
-	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
-	WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = $2 AND aa.inclusionslot > 0
-	`, int64(services.LatestEpoch())-100, index)
+	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, services.LatestEpoch())
 	if err != nil {
-		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
+		logger.Errorf("error retrieving validator effectiveness: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
-	var attestationInclusionEffectiveness float64
-
-	if avgIncDistance > 0 {
-		attestationInclusionEffectiveness = 1.0 / avgIncDistance * 100
+	if len(eff) != 1 {
+		logger.Errorf("error retrieving validator effectiveness: invalid length %v", len(eff))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 
 	type resp struct {
 		Effectiveness float64 `json:"effectiveness"`
 	}
-	err = json.NewEncoder(w).Encode(resp{Effectiveness: attestationInclusionEffectiveness})
+	err = json.NewEncoder(w).Encode(resp{Effectiveness: 1 / eff[0].AttestationEfficiency})
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -891,32 +841,8 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	length, err := strconv.ParseInt(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	if length > 100 {
-		length = 100
-	}
 
-	orderColumn := q.Get("order[0][column]")
-	orderByMap := map[string]string{
-		"0": "epoch",
-		"2": "status",
-		"4": "committeeindex",
-		"6": "delay",
-	}
-	orderBy, exists := orderByMap[orderColumn]
-	if !exists {
-		orderBy = "epoch"
-	}
-
-	orderDir := q.Get("order[0][dir]")
-	if orderDir != "desc" && orderDir != "asc" {
-		orderDir = "desc"
-	}
+	length := 10
 
 	epoch := services.LatestEpoch()
 
@@ -945,46 +871,24 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	tableData := [][]interface{}{}
 
 	if totalCount > 0 {
-		var blocks []*types.ValidatorAttestation
-		err = db.ReaderDb.Select(&blocks, `
-			SELECT 
-				aa.epoch, 
-				aa.attesterslot, 
-				aa.committeeindex, 
-				CASE 
-					WHEN blocks.status = '3' THEN '3'
-					ELSE aa.status
-				END AS status,
-				CASE 
-					WHEN blocks.status = '3' THEN 0
-					ELSE aa.inclusionslot
-				END AS inclusionslot,
-				COALESCE(inclusionslot - (SELECT MIN(slot) FROM blocks WHERE slot > aa.attesterslot AND blocks.status = '1'), 0) as delay
-			FROM attestation_assignments_p aa
-			LEFT JOIN blocks on blocks.slot = aa.inclusionslot
-			WHERE validatorindex = $1 AND aa.epoch > $2 AND aa.epoch <= $3
-			ORDER BY `+orderBy+` `+orderDir, index, int64(lastAttestationEpoch)-start-length, int64(lastAttestationEpoch)-start)
-
+		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, uint64(int64(lastAttestationEpoch)-start), int64(length))
 		if err != nil {
 			logger.Errorf("error retrieving validator attestations data: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
-		tableData = make([][]interface{}, len(blocks))
+		tableData = make([][]interface{}, len(attestationData[index]))
 
-		for i, b := range blocks {
-			if utils.SlotToTime(b.AttesterSlot).Before(time.Now().Add(time.Minute*-1)) && b.Status == 0 {
-				b.Status = 2
-			}
+		for i, history := range attestationData[index] {
 			tableData[i] = []interface{}{
-				utils.FormatEpoch(b.Epoch),
-				utils.FormatBlockSlot(b.AttesterSlot),
-				utils.FormatAttestationStatus(b.Status),
-				utils.FormatTimestamp(utils.SlotToTime(b.AttesterSlot).Unix()),
-				b.CommitteeIndex,
-				utils.FormatAttestationInclusionSlot(b.InclusionSlot),
-				utils.FormatInclusionDelay(b.InclusionSlot, b.Delay),
+				utils.FormatEpoch(history.Epoch),
+				utils.FormatBlockSlot(history.AttesterSlot),
+				utils.FormatAttestationStatus(history.Status),
+				utils.FormatTimestamp(utils.SlotToTime(history.AttesterSlot).Unix()),
+				0,
+				utils.FormatAttestationInclusionSlot(history.InclusionSlot),
+				utils.FormatInclusionDelay(history.InclusionSlot, history.Delay),
 			}
 		}
 	}
