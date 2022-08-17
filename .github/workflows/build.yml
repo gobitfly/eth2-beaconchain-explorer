@@ -14,14 +14,14 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.17
-        uses: actions/setup-go@v2
+      - name: Set up Go 1.18
+        uses: actions/setup-go@v3
         with:
-          go-version: ^1.17
+          go-version: 1.18
         id: go
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Check gofmt
         run: |
@@ -36,8 +36,8 @@ jobs:
           go install github.com/swaggo/swag/cmd/swag@v1.7.0 && swag init --parseDependency --parseInternal --parseDepth 1 -g handlers/api.go
           go get -v -t -d ./...
 
-#      - name: Test
-#        run: make test
+      #      - name: Test
+      #        run: make test
 
       - name: Build
         run: make all
