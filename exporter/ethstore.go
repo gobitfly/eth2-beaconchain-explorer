@@ -67,7 +67,6 @@ func ethStoreExporter() {
 	if err != nil {
 		logger.WithError(err).Error("eth.store exporter: failed exporting json into db, continuing to export normally")
 	}
-
 	ese.Run()
 }
 
@@ -131,12 +130,8 @@ func (ese *EthStoreExporter) ExportJSON(path string) error {
 	return nil
 }
 
-func (ese *EthStoreExporter) ExportDay(day string) error {
-	ethStoreDay, err := ese.getStoreDay(day)
-	if err != nil {
-		return err
-	}
-	_, err = ese.DB.Exec(`
+func (ese *EthStoreExporter) ExportDay(ethStoreDay *ethstore.Day) error {
+	_, err := ese.DB.Exec(`
 		INSERT INTO eth_store_stats (day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum, tx_fees_sum)
 		VALUES ($1, $2, $3, $4, $5, $6)`,
 		ethStoreDay.Day,
@@ -163,7 +158,7 @@ DBCHECK:
 		// get latest eth.store day
 		latest, err := ese.getStoreDay("finalized")
 		if err != nil {
-			logger.WithError(err).Errorf("error retrieving eth.store data")
+			logger.WithError(err).Errorf("error retrieving eth.store data for finalized day")
 			time.Sleep(ese.ErrorInterval)
 			continue
 		}
@@ -206,7 +201,21 @@ DBCHECK:
 			// export missing days
 			for dayToExport, shouldExport := range daysToExport {
 				if shouldExport {
-					err = ese.ExportDay(strconv.FormatUint(dayToExport, 10))
+					var ethStoreDay *ethstore.Day
+
+					// use already retrieved eth.store if exporting latest day, otherwise get new eth.store
+					if dayToExport == latest.Day.BigInt().Uint64() {
+						ethStoreDay = latest
+					} else {
+						ethStoreDay, err = ese.getStoreDay(strconv.FormatUint(dayToExport, 10))
+						if err != nil {
+							logger.WithError(err).Errorf("error retrieving eth.store data for day %d", dayToExport)
+							time.Sleep(ese.ErrorInterval)
+							continue DBCHECK
+						}
+					}
+
+					err = ese.ExportDay(ethStoreDay)
 					if err != nil {
 						logger.WithError(err).Errorf("error exporting eth.store day %d into database", dayToExport)
 						time.Sleep(ese.ErrorInterval)
