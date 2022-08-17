@@ -1117,7 +1117,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 		ActivationEpoch uint64
 	}{}
 
-	err = tx.Select(newValidators, "SELECT validatorindex, activationepoch FROM validators WHERE balanceactivation IS NULL")
+	err = tx.Select(&newValidators, "SELECT validatorindex, activationepoch FROM validators WHERE balanceactivation IS NULL")
 	if err != nil {
 		return err
 	}

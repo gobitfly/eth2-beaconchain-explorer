@@ -1665,7 +1665,6 @@ func GetMobileWidgetStats(j *json.Encoder, r *http.Request, indexOrPubkey string
 		epoch = 0
 	}
 	prime := getUserPremium(r)
-	prime.WidgetSupport = true
 	if !prime.WidgetSupport {
 		sendErrorResponse(j, r.URL.String(), "feature only available for premium users")
 		return

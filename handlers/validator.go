@@ -18,6 +18,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
@@ -535,12 +536,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	if len(eff) != 1 {
+	if len(eff) > 1 {
 		logger.Errorf("error retrieving validator effectiveness: invalid length %v", len(eff))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
+	} else if len(eff) == 0 {
+		validatorPageData.AttestationInclusionEffectiveness = 0
+	} else {
+		validatorPageData.AttestationInclusionEffectiveness = (1 / eff[0].AttestationEfficiency) * 100
 	}
-	validatorPageData.AttestationInclusionEffectiveness = (1 / eff[0].AttestationEfficiency) * 100
 
 	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
@@ -678,21 +682,31 @@ func ValidatorAttestationInclusionEffectiveness(w http.ResponseWriter, r *http.R
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	if len(eff) != 1 {
-		logger.Errorf("error retrieving validator effectiveness: invalid length %v", len(eff))
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
 
 	type resp struct {
 		Effectiveness float64 `json:"effectiveness"`
 	}
-	err = json.NewEncoder(w).Encode(resp{Effectiveness: 1 / eff[0].AttestationEfficiency})
-	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+
+	if len(eff) > 1 {
+		logger.Errorf("error retrieving validator effectiveness: invalid length %v", len(eff))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
+	} else if len(eff) == 0 {
+		err = json.NewEncoder(w).Encode(resp{Effectiveness: 0})
+		if err != nil {
+			logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = json.NewEncoder(w).Encode(resp{Effectiveness: 1 / eff[0].AttestationEfficiency})
+		if err != nil {
+			logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 	}
+
 }
 
 // ValidatorProposedBlocks returns a validator's proposed blocks in json
@@ -1216,18 +1230,55 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	var validatorHistory []*types.ValidatorHistory
 
-	balanceHistory, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, currentEpoch-start, 12)
+	g := new(errgroup.Group)
+
+	var balanceHistory map[uint64][]*types.ValidatorBalance
+	g.Go(func() error {
+		var err error
+		balanceHistory, err = db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, currentEpoch-start, 12)
+		if err != nil {
+			logger.Errorf("error retrieving validator balance history from bigtable: %v", err)
+			return err
+		}
+		return nil
+	})
+
+	var attestationHistory map[uint64][]*types.ValidatorAttestation
+	g.Go(func() error {
+		var err error
+		attestationHistory, err = db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, currentEpoch-start, 12)
+		if err != nil {
+			logger.Errorf("error retrieving validator attestation history from bigtable: %v", err)
+			return err
+		}
+		return nil
+	})
+
+	var proposalHistory map[uint64][]*types.ValidatorProposal
+	g.Go(func() error {
+		var err error
+		proposalHistory, err = db.BigtableClient.GetValidatorProposalHistory([]uint64{index}, currentEpoch-start, 12)
+		if err != nil {
+			logger.Errorf("error retrieving validator proposal history from bigtable: %v", err)
+			return err
+		}
+		return nil
+	})
+	err = g.Wait()
+
 	if err != nil {
-		logger.Errorf("error retrieving validator balance history from bigtable: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	attestationHistory, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, currentEpoch-start, 12)
-	if err != nil {
-		logger.Errorf("error retrieving validator attestation history from bigtable: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	proposalMap := make(map[uint64]*types.ValidatorProposal)
+
+	for _, proposal := range proposalHistory[index] {
+		proposalMap[proposal.Slot/32] = &types.ValidatorProposal{
+			Index:  index,
+			Slot:   proposal.Slot,
+			Status: proposal.Status,
+		}
 	}
 
 	if len(balanceHistory[index]) != len(attestationHistory[index]) {
@@ -1247,6 +1298,12 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			ProposalStatus: sql.NullInt64{Int64: 0, Valid: false},
 			ProposalSlot:   sql.NullInt64{Int64: 0, Valid: false},
 		}
+
+		if proposalMap[balanceHistory[index][i].Epoch] != nil {
+			h.ProposalStatus = sql.NullInt64{Int64: int64(proposalMap[balanceHistory[index][i].Epoch].Status), Valid: true}
+			h.ProposalSlot = sql.NullInt64{Int64: int64(proposalMap[balanceHistory[index][i].Epoch].Slot), Valid: true}
+		}
+
 		validatorHistory = append(validatorHistory, h)
 	}
 
