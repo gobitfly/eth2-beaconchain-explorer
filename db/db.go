@@ -709,7 +709,7 @@ func SaveEpoch(data *types.EpochData) error {
 		if err != nil {
 			return fmt.Errorf("error saving validators to db: %w", err)
 		}
-		err = updateQueueDeposits()
+		err = updateQueueDeposits(tx)
 		if err != nil {
 			return fmt.Errorf("error updating queue deposits cache: %w", err)
 		}
@@ -1622,15 +1622,14 @@ func GetActiveValidatorCount() (uint64, error) {
 	return count, err
 }
 
-func updateQueueDeposits() error {
+func updateQueueDeposits(tx *sql.Tx) error {
 	start := time.Now()
 	defer func() {
 		logger.Infof("took %v seconds to update queue deposits", time.Since(start).Seconds())
 		metrics.TaskDuration.WithLabelValues("update_queue_deposits").Observe(time.Since(start).Seconds())
 	}()
 
-	// first we remove any validator that isn't queued anymore
-	_, err := WriterDb.Exec(`
+	_, err := tx.Exec(`
 		DELETE FROM validator_queue_deposits
 		WHERE validator_queue_deposits.validatorindex NOT IN (
 			SELECT validatorindex 
@@ -1642,7 +1641,7 @@ func updateQueueDeposits() error {
 	}
 
 	// then we add any new ones that are queued
-	_, err = WriterDb.Exec(`
+	_, err = tx.Exec(`
 		INSERT INTO validator_queue_deposits
 		SELECT validatorindex FROM validators WHERE activationepoch=9223372036854775807 and status='pending' ON CONFLICT DO NOTHING`)
 	if err != nil {
@@ -1651,7 +1650,7 @@ func updateQueueDeposits() error {
 	}
 
 	// efficiently collect the tnx that pushed each validator over 32 ETH.
-	_, err = WriterDb.Exec(`
+	_, err = tx.Exec(`
 		UPDATE validator_queue_deposits 
 		SET 
 			block_slot=data.block_slot,
