@@ -384,6 +384,11 @@ func doFullCheck(client rpc.Client) {
 				epochBlacklist[epoch]++
 			}
 		}
+		// set all finalized epochs to finalized
+		err = db.UpdateEpochFinalization(head.FinalizedEpoch)
+		if err != nil {
+			logger.Errorf("error updating finalization of epochs: %v", err)
+		}
 		logger.Printf("finished export for epoch %v", epoch)
 	}
 
@@ -405,11 +410,6 @@ func doFullCheck(client rpc.Client) {
 	err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
 	if err != nil {
 		logger.Errorf("error updating epoch stratus: %v", err)
-	}
-	// set all finalized epochs to finalized
-	err = db.UpdateEpochFinalization(head.FinalizedEpoch)
-	if err != nil {
-		logger.Errorf("error updating finalization of epochs: %v", err)
 	}
 
 	logger.Infof("exporting validation queue")
