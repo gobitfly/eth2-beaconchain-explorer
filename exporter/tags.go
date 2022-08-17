@@ -40,7 +40,6 @@ func mevBoostRelaysExporter() {
 			}
 		} else {
 			logger.Warnf("failed to retrieve relays from db: %v", err)
-			continue
 		}
 		time.Sleep(time.Second * 60)
 	}
