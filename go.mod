@@ -11,7 +11,7 @@ require (
 	github.com/chromedp/chromedp v0.5.3
 	github.com/ethereum/go-ethereum v1.10.21
 	github.com/evanw/esbuild v0.8.23
-	github.com/gobitfly/eth.store v0.0.0-20220808081828-da7eca285e8f
+	github.com/gobitfly/eth.store v0.0.0-20220816142122-db01d6929546
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/context v1.1.1
@@ -68,7 +68,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/deckarep/golang-set v1.7.1 // indirect
+	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect

@@ -162,14 +162,14 @@ type Config struct {
 		Enabled bool `yaml:"enabled" envconfig:"MEVBOOSTRELAY_EXPORTER_ENABLED"`
 	} `yaml:"mevBoostRelayExporter"`
 	EthStoreExporter struct {
-		Enabled bool `yaml:"enabled" envconfig:"ETHSTORE_EXPORTER_ENABLED"`
-		Node    struct {
-			Port string `yaml:"port" envconfig:"ETHSTORE_EXPORTER_NODE_PORT"`
-			Host string `yaml:"host" envconfig:"ETHSTORE_EXPORTER_NODE_HOST"`
-		} `yaml:"node"`
-		UpdateInterval time.Duration `yaml:"updateInterval" envconfig:"ETHSTORE_EXPORTER_UPDATE_INTERVAL"`
-		ErrorInterval  time.Duration `yaml:"errorInterval" envconfig:"ETHSTORE_EXPORTER_ERROR_INTERVAL"`
-		Sleep          time.Duration `yaml:"sleep" envconfig:"ETHSTORE_EXPORTER_SLEEP"`
+		Enabled           bool          `yaml:"enabled" envconfig:"ETHSTORE_EXPORTER_ENABLED"`
+		JSONExportEnabled bool          `yaml:"jsonExportEnabled" envconfig:"ETHSTORE_EXPORTER_JSON_EXPORT_ENABLED"`
+		JSONPath          string        `yaml:"jsonPath" envconfig:"ETHSTORE_EXPORTER_JSON_PATH"`
+		ExecutionEndpoint string        `yaml:"executionEndpoint" envconfig:"ETHSTORE_EXPORTER_EXECUTION_ENDPOINT"`
+		ConsensusEndpoint string        `yaml:"consensusEndpoint" envconfig:"ETHSTORE_EXPORTER_CONSENSUS_ENDPOINT"`
+		UpdateInterval    time.Duration `yaml:"updateInterval" envconfig:"ETHSTORE_EXPORTER_UPDATE_INTERVAL"`
+		ErrorInterval     time.Duration `yaml:"errorInterval" envconfig:"ETHSTORE_EXPORTER_ERROR_INTERVAL"`
+		Sleep             time.Duration `yaml:"sleep" envconfig:"ETHSTORE_EXPORTER_SLEEP"`
 	} `yaml:"ethStoreExporter"`
 	HistoricalPoolPerformanceExporter struct {
 		Enabled        bool          `yaml:"enabled" envconfig:"HISTORICAL_POOL_PERFORMANCE_EXPORTER_ENABLED"`
