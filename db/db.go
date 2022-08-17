@@ -1629,6 +1629,7 @@ func updateQueueDeposits(tx *sql.Tx) error {
 		metrics.TaskDuration.WithLabelValues("update_queue_deposits").Observe(time.Since(start).Seconds())
 	}()
 
+	// first we remove any validator that isn't queued anymore
 	_, err := tx.Exec(`
 		DELETE FROM validator_queue_deposits
 		WHERE validator_queue_deposits.validatorindex NOT IN (
