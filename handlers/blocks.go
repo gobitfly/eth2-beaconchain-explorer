@@ -19,6 +19,7 @@ var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplat
 // Blocks will return information about blocks using a go template
 func Blocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
+	q := r.URL.Query()
 
 	data := InitPageData(w, r, "blocks", "/blocks", "Blocks")
 
@@ -40,7 +41,16 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 	if state != nil {
 		length = state.Length
 		start = state.Start
+		// we currently do not set search on state change
 		search = state.Search.Search
+	}
+
+	if q.Get("search[value]") != "" {
+		search = q.Get("search[value]")
+	}
+
+	if q.Get("q") != "" {
+		search = q.Get("q")
 	}
 
 	tableData, err := GetBlocksTableData(0, start, length, search, searchForEmpty)
