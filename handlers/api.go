@@ -2351,7 +2351,7 @@ func parseApiValidatorParam(origParam string, limit int) (indices []uint64, err 
 	queryIndicesDeduped = append(queryIndicesDeduped, indices...)
 	if len(pubkeys) != 0 {
 		indicesFromPubkeys := []uint64{}
-		err = db.ReaderDb.Select(indicesFromPubkeys, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1)", pubkeys)
+		err = db.ReaderDb.Select(&indicesFromPubkeys, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1)", pubkeys)
 
 		if err != nil {
 			return nil, err

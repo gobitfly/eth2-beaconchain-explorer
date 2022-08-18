@@ -402,37 +402,13 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 }
 
 func (bigtable *Bigtable) GetValidatorEffectiveness(validators []uint64, epoch uint64) ([]*types.ValidatorEffectiveness, error) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancel()
+	data, err := bigtable.GetValidatorAttestationHistory(validators, epoch, 100)
 
-	rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(epoch))
+	if err != nil {
+		return nil, err
+	}
+
 	res := make([]*types.ValidatorEffectiveness, 0, len(validators))
-
-	columnFilters := make([]gcp_bigtable.Filter, 0, len(validators))
-	for _, validator := range validators {
-		columnFilters = append(columnFilters, gcp_bigtable.ColumnFilter(fmt.Sprintf("%d", validator)))
-	}
-
-	filter := gcp_bigtable.ChainFilters(
-		gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
-		gcp_bigtable.InterleaveFilters(columnFilters...),
-		gcp_bigtable.LatestNFilter(1),
-	)
-
-	if len(columnFilters) == 1 { // special case to retrieve data for one validators
-		filter = gcp_bigtable.ChainFilters(
-			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
-			columnFilters[0],
-			gcp_bigtable.LatestNFilter(1),
-		)
-	}
-	if len(columnFilters) == 0 { // special case to retrieve data for all validators
-		filter = gcp_bigtable.ChainFilters(
-			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
-			gcp_bigtable.LatestNFilter(1),
-		)
-	}
-
 	type readings struct {
 		Count uint64
 		Sum   uint64
@@ -440,43 +416,20 @@ func (bigtable *Bigtable) GetValidatorEffectiveness(validators []uint64, epoch u
 
 	agg := make(map[uint64]*readings)
 
-	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, ""), func(r gcp_bigtable.Row) bool {
-		for _, ri := range r[ATTESTATIONS_FAMILY] {
-			keySplit := strings.Split(r.Key(), ":")
-
-			attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
-			if err != nil {
-				logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
-				return false
+	for validator, history := range data {
+		for _, attestation := range history {
+			if agg[validator] == nil {
+				agg[validator] = &readings{}
 			}
-			attesterSlot = max_block_number - attesterSlot
-			inclusionSlot := max_block_number - uint64(r[ATTESTATIONS_FAMILY][0].Timestamp)/1000
-
-			if inclusionSlot == max_block_number {
-				inclusionSlot = 0
-			}
-
-			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, ATTESTATIONS_FAMILY+":"), 10, 64)
-			if err != nil {
-				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
-				return false
-			}
-
-			if inclusionSlot > 0 {
-				if agg[validator] == nil {
-					agg[validator] = &readings{}
-				}
-				agg[validator].Sum += inclusionSlot - attesterSlot - 1
+			if attestation.InclusionSlot > 0 {
+				agg[validator].Sum += attestation.InclusionSlot - attestation.AttesterSlot - 1
+				agg[validator].Count++
+			} else {
+				agg[validator].Sum += 32 // missed attestations get a penalty of 32 slots
 				agg[validator].Count++
 			}
-
 		}
-		return true
-	}, gcp_bigtable.LimitRows(100), gcp_bigtable.RowFilter(filter))
-	if err != nil {
-		return nil, err
 	}
-
 	for validator, reading := range agg {
 		res = append(res, &types.ValidatorEffectiveness{
 			Validatorindex:        validator,

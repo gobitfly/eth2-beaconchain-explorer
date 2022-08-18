@@ -530,7 +530,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("slashing data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
-	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, validatorPageData.Epoch)
+	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, validatorPageData.Epoch-1)
 	if err != nil {
 		logger.Errorf("error retrieving validator effectiveness: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -543,7 +543,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	} else if len(eff) == 0 {
 		validatorPageData.AttestationInclusionEffectiveness = 0
 	} else {
-		validatorPageData.AttestationInclusionEffectiveness = (1 / eff[0].AttestationEfficiency) * 100
+		validatorPageData.AttestationInclusionEffectiveness = 100 - ((1 + eff[0].AttestationEfficiency) / 32 * 100)
 	}
 
 	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
@@ -552,7 +552,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	err = db.ReaderDb.Get(&validatorPageData.SyncCount, `SELECT count(*)*$1 FROM sync_committees WHERE validatorindex = $2`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod*utils.Config.Chain.Config.SlotsPerEpoch, index)
 	if err != nil {
 		logger.Errorf("error retrieving syncCount for validator %v: %v", index, err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -699,7 +699,7 @@ func ValidatorAttestationInclusionEffectiveness(w http.ResponseWriter, r *http.R
 			return
 		}
 	} else {
-		err = json.NewEncoder(w).Encode(resp{Effectiveness: 1 / eff[0].AttestationEfficiency})
+		err = json.NewEncoder(w).Encode(resp{Effectiveness: 100 - ((1 + eff[0].AttestationEfficiency) / 32 * 100)})
 		if err != nil {
 			logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -895,6 +895,10 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		tableData = make([][]interface{}, len(attestationData[index]))
 
 		for i, history := range attestationData[index] {
+
+			if history.Status == 0 && history.Epoch < epoch-1 {
+				history.Status = 2
+			}
 			tableData[i] = []interface{}{
 				utils.FormatEpoch(history.Epoch),
 				utils.FormatBlockSlot(history.AttesterSlot),
@@ -1216,7 +1220,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		start = 90
 	}
 
-	currentEpoch := services.LatestEpoch()
+	currentEpoch := services.LatestEpoch() - 1
 
 	lookBack := uint64(0)
 
@@ -1272,7 +1276,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	proposalMap := make(map[uint64]*types.ValidatorProposal)
-
 	for _, proposal := range proposalHistory[index] {
 		proposalMap[proposal.Slot/32] = &types.ValidatorProposal{
 			Index:  index,
@@ -1281,10 +1284,17 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if len(balanceHistory[index]) != len(attestationHistory[index]) {
-		logger.Errorf("error inconsisten balance & attestation history: %v !? %v", len(balanceHistory[index]), len(attestationHistory[index]))
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	attestationsMap := make(map[uint64]*types.ValidatorAttestation)
+	for _, attestation := range attestationHistory[index] {
+		attestationsMap[attestation.Epoch] = &types.ValidatorAttestation{
+			Index:          index,
+			Epoch:          attestation.Epoch,
+			AttesterSlot:   attestation.AttesterSlot,
+			CommitteeIndex: 0,
+			Status:         attestation.Status,
+			InclusionSlot:  attestation.InclusionSlot,
+			Delay:          attestation.Delay,
+		}
 	}
 
 	for i := 0; i < len(balanceHistory[index])-2; i++ {
@@ -1293,10 +1303,15 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		h := &types.ValidatorHistory{
 			Epoch:          balanceHistory[index][i].Epoch,
 			BalanceChange:  sql.NullInt64{Int64: balanceChange, Valid: true},
-			AttesterSlot:   sql.NullInt64{Int64: int64(attestationHistory[index][i].AttesterSlot), Valid: true},
-			InclusionSlot:  sql.NullInt64{Int64: int64(attestationHistory[index][i].InclusionSlot), Valid: true},
+			AttesterSlot:   sql.NullInt64{Int64: 0, Valid: false},
+			InclusionSlot:  sql.NullInt64{Int64: 0, Valid: false},
 			ProposalStatus: sql.NullInt64{Int64: 0, Valid: false},
 			ProposalSlot:   sql.NullInt64{Int64: 0, Valid: false},
+		}
+
+		if attestationsMap[balanceHistory[index][i].Epoch] != nil {
+			h.AttesterSlot = sql.NullInt64{Int64: int64(attestationsMap[balanceHistory[index][i].Epoch].AttesterSlot), Valid: true}
+			h.InclusionSlot = sql.NullInt64{Int64: int64(attestationsMap[balanceHistory[index][i].Epoch].InclusionSlot), Valid: true}
 		}
 
 		if proposalMap[balanceHistory[index][i].Epoch] != nil {

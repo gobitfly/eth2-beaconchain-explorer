@@ -17,7 +17,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/patrickmn/go-cache"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
@@ -726,39 +725,28 @@ func SaveEpoch(data *types.EpochData) error {
 
 	logger.WithFields(logrus.Fields{"chainEpoch": utils.TimeToEpoch(time.Now()), "exportEpoch": data.Epoch}).Infof("starting export of epoch %v", data.Epoch)
 
-	g := new(errgroup.Group)
-
-	g.Go(func() error {
-		logger.Infof("exporting block data")
-		err = saveBlocks(data.Blocks, tx)
-		if err != nil {
-			logger.Fatalf("error saving blocks to db: %v", err)
-			return fmt.Errorf("error saving blocks to db: %w", err)
-		}
-		return nil
-	})
+	logger.Infof("exporting block data")
+	err = saveBlocks(data.Blocks, tx)
+	if err != nil {
+		logger.Fatalf("error saving blocks to db: %v", err)
+		return fmt.Errorf("error saving blocks to db: %w", err)
+	}
 
 	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+10 {
 		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting validators because epoch is far behind head")
 	} else {
-		g.Go(func() error {
-			logger.Infof("exporting validators")
-			err = saveValidators(data, tx)
-			if err != nil {
-				return fmt.Errorf("error saving validators to db: %w", err)
-			}
-			return nil
-		})
+		logger.Infof("exporting validators")
+		err = saveValidators(data, tx)
+		if err != nil {
+			return fmt.Errorf("error saving validators to db: %w", err)
+		}
 	}
 
 	logger.Infof("exporting proposal assignments data")
-	g.Go(func() error {
-		err = saveValidatorProposalAssignments(data.Epoch, data.ValidatorAssignmentes.ProposerAssignments, tx)
-		if err != nil {
-			return fmt.Errorf("error saving validator proposal assignments to db: %w", err)
-		}
-		return nil
-	})
+	err = saveValidatorProposalAssignments(data.Epoch, data.ValidatorAssignmentes.ProposerAssignments, tx)
+	if err != nil {
+		return fmt.Errorf("error saving validator proposal assignments to db: %w", err)
+	}
 
 	logger.Infof("exporting attestation assignments data")
 
@@ -784,17 +772,10 @@ func SaveEpoch(data *types.EpochData) error {
 		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting recent validator balance because epoch is far behind head")
 	} else {
 		logger.Infof("exporting recent validator balance")
-		g.Go(func() error {
-			err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx)
-			if err != nil {
-				return fmt.Errorf("error saving recent validator balances to db: %w", err)
-			}
-			return nil
-		})
-	}
-	err = g.Wait()
-	if err != nil {
-		return err
+		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx)
+		if err != nil {
+			return fmt.Errorf("error saving recent validator balances to db: %w", err)
+		}
 	}
 
 	logger.Infof("exporting epoch statistics data")
@@ -961,6 +942,58 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 	}()
 
 	validators := data.Validators
+	// var currentState []*types.Validator
+	// err := tx.Select(&currentState, "SELECT * FROM validators;")
+
+	// if err != nil {
+	// 	return err
+	// }
+
+	// currentStateMap := make(map[uint64]*types.Validator, len(currentState))
+
+	// var queries strings.Builder
+	// for _, v := range data.Validators {
+	// 	c := currentStateMap[v.Index]
+
+	// 	if c == nil {
+	// 		logger.Infof("validator %v is new", v.Index)
+	// 		queries.WriteString(fmt.Sprintf("INSERT INTO validators (validatorindex, pubkey, balance, ) VALUES ();"))
+	// 	} else {
+	// 		if c.Balance != v.Balance {
+	// 			logger.Infof("Balance changed for validator %v from %v to %v", v.Index, c.Balance, v.Balance)
+	// 		}
+	// 		if c.EffectiveBalance != v.EffectiveBalance {
+	// 			logger.Infof("EffectiveBalance changed for validator %v from %v to %v", v.Index, c.EffectiveBalance, v.EffectiveBalance)
+	// 		}
+	// 		if c.Slashed != v.Slashed {
+	// 			logger.Infof("Slashed changed for validator %v from %v to %v", v.Index, c.Slashed, v.Slashed)
+	// 		}
+	// 		if c.ActivationEligibilityEpoch != v.ActivationEligibilityEpoch {
+	// 			logger.Infof("ActivationEligibilityEpoch changed for validator %v from %v to %v", v.Index, c.ActivationEligibilityEpoch, v.ActivationEligibilityEpoch)
+	// 		}
+	// 		if c.ActivationEpoch != v.ActivationEpoch {
+	// 			logger.Infof("ActivationEpoch changed for validator %v from %v to %v", v.Index, c.ActivationEpoch, v.ActivationEpoch)
+	// 		}
+	// 		if c.ExitEpoch != v.ExitEpoch {
+	// 			logger.Infof("ExitEpoch changed for validator %v from %v to %v", v.Index, c.ExitEpoch, v.ExitEpoch)
+	// 		}
+	// 		if c.WithdrawableEpoch != v.WithdrawableEpoch {
+	// 			logger.Infof("WithdrawableEpoch changed for validator %v from %v to %v", v.Index, c.WithdrawableEpoch, v.WithdrawableEpoch)
+	// 		}
+	// 		if bytes.Equal(c.WithdrawalCredentials, v.WithdrawalCredentials) {
+	// 			logger.Infof("WithdrawalCredentials changed for validator %v from %x to %x", v.Index, c.WithdrawalCredentials, v.WithdrawalCredentials)
+	// 		}
+	// 		if c.Balance1d != v.Balance1d {
+	// 			logger.Infof("Balance1d changed for validator %v from %v to %v", v.Index, c.Balance1d, v.Balance1d)
+	// 		}
+	// 		if c.Balance7d != v.Balance7d {
+	// 			logger.Infof("Balance7d changed for validator %v from %v to %v", v.Index, c.Balance7d, v.Balance7d)
+	// 		}
+	// 		if c.Balance31d != v.Balance31d {
+	// 			logger.Infof("Balance31d changed for validator %v from %v to %v", v.Index, c.Balance31d, v.Balance31d)
+	// 		}
+	// 	}
+	// }
 
 	validatorsByIndex := make(map[uint64]*types.Validator, len(data.Validators))
 	for _, v := range data.Validators {
@@ -1490,6 +1523,14 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("sync_assignments_p")
 			t = time.Now()
+			for i, a := range b.Attestations {
+				_, err = stmtAttestations.Exec(b.Slot, i, b.BlockRoot, a.AggregationBits, pq.Array(a.Attesters), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
+				if err != nil {
+					return fmt.Errorf("error executing stmtAttestations for block %v: %w", b.Slot, err)
+				}
+			}
+			blockLog.WithField("duration", time.Since(t)).Tracef("attestations")
+			t = time.Now()
 
 			for i, d := range b.Deposits {
 				_, err := stmtDeposits.Exec(b.Slot, i, b.BlockRoot, nil, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature)
@@ -1514,7 +1555,6 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 				return fmt.Errorf("error executing stmtProposalAssignments for block %v: %w", b.Slot, err)
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtProposalAssignments")
-			t = time.Now()
 
 			blockLog.Infof("! export of block completed, took %v", time.Since(start))
 		}

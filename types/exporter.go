@@ -61,6 +61,7 @@ type BeaconCommitteItem struct {
 type Validator struct {
 	Index                      uint64 `db:"validatorindex"`
 	PublicKey                  []byte `db:"pubkey"`
+	PublicKeyHex               string `db:"pubkeyhex"`
 	Balance                    uint64 `db:"balance"`
 	EffectiveBalance           uint64 `db:"effectivebalance"`
 	Slashed                    bool   `db:"slashed"`
