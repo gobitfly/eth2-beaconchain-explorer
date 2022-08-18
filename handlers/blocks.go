@@ -53,6 +53,8 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 		search = q.Get("q")
 	}
 
+	search = strings.Replace(search, "0x", "", -1)
+
 	tableData, err := GetBlocksTableData(0, start, length, search, searchForEmpty)
 	if err != nil {
 		logger.Errorf("error rendering blocks table data: %v", err)
@@ -81,7 +83,13 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	search := q.Get("search[value]")
+
+	if q.Get("q") != "" {
+		search = q.Get("q")
+	}
+
 	search = strings.Replace(search, "0x", "", -1)
+
 	searchForEmpty := (len(search) == 0 && q.Get("columns[11][search][value]") == "#showonlyemptygraffiti")
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
