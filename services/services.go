@@ -34,7 +34,7 @@ var logger = logrus.New().WithField("module", "services")
 
 // Init will initialize the services
 func Init() {
-	ready.Add(5)
+	ready.Add(4)
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
@@ -44,7 +44,7 @@ func Init() {
 		ready.Done()
 	} else {
 		go indexPageDataUpdater()
-		go poolsUpdater()
+		// go poolsUpdater()
 	}
 	ready.Wait()
 
