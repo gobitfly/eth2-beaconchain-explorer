@@ -30,6 +30,19 @@ import (
 var ErrBlockNotFound = errors.New("block not found")
 var BigtableClient *Bigtable
 
+type IndexFilter string
+
+const (
+	FILTER_TIME           IndexFilter = "TIME"
+	FILTER_TO             IndexFilter = "TO"
+	FILTER_FROM           IndexFilter = "FROM"
+	FILTER_TOKEN_RECEIVED IndexFilter = "TOKEN_RECEIVED"
+	FILTER_TOKEN_SENT     IndexFilter = "TOKEN_SENT"
+	FILTER_METHOD         IndexFilter = "METHOD"
+	FILTER_CONTRACT       IndexFilter = "CONTRACT"
+	FILTER_ERROR          IndexFilter = "ERROR"
+)
+
 const max_block_number = 1000000000
 const (
 	DATA_COLUMN    = "d"
@@ -1323,11 +1336,11 @@ func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block) (*types.BulkMut
 	return bulk, nil
 }
 
-func (bigtable *Bigtable) GetEth1TxForAddress(address, startKey string, limit int64) ([]*types.Eth1TransactionIndexed, string, error) {
+func (bigtable *Bigtable) GetEth1TxForAddress(address string, filterKey IndexFilter, limit int64) ([]*types.Eth1TransactionIndexed, string, error) {
 	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancle()
 
-	prefix := fmt.Sprintf("%s:I:TX:%s:%s", bigtable.chainId, address, startKey)
+	prefix := fmt.Sprintf("%s:I:TX:%s:%s", bigtable.chainId, address, filterKey)
 
 	rowRange := gcp_bigtable.PrefixRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
 
@@ -1364,6 +1377,27 @@ func (bigtable *Bigtable) GetEth1TxForAddress(address, startKey string, limit in
 	}
 
 	return data, keys[len(keys)-1], nil
+}
+
+func (bigtable *Bigtable) GetEth1TxForAddressCount(address string, filterKey IndexFilter) (uint64, error) {
+	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancle()
+
+	prefix := fmt.Sprintf("%s:I:TX:%s:%s", bigtable.chainId, address, filterKey)
+
+	rowRange := gcp_bigtable.PrefixRange(prefix)
+
+	sum := uint64(0)
+
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		sum += 1
+		return true
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return sum, nil
 }
 
 func (bigtable *Bigtable) GetEth1ItxForAddress(address, startKey string, limit int64) ([]*types.Eth1InternalTransactionIndexed, string, error) {

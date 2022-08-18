@@ -1365,3 +1365,7 @@ type DataTableSaveStateColumns struct {
 	Visible bool                     `json:"visible"`
 	Search  DataTableSaveStateSearch `json:"search"`
 }
+
+type Eth1AddressPageData struct {
+	Address string `json:"address"`
+}

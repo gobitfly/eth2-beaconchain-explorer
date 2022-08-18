@@ -271,8 +271,8 @@ func main() {
 			router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
 			router.HandleFunc("/execution/blocks", handlers.Eth1Blocks).Methods("GET")
 			router.HandleFunc("/execution/blocks/data", handlers.Eth1BlocksData).Methods("GET")
-			router.HandleFunc("/address/{address}", handlers.Eth1Account).Methods("GET")
-			router.HandleFunc("/address/{address}/transactions", handlers.Eth1AccountTransactions).Methods("GET")
+			router.HandleFunc("/execution/address/{address}", handlers.Eth1Address).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/transactions", handlers.Eth1AddressTransactions).Methods("GET")
 
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 			router.HandleFunc("/charts", handlers.Charts).Methods("GET")

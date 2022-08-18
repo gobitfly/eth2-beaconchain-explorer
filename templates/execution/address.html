@@ -1,0 +1,77 @@
+{{ define "js"}}
+	<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+	<script type="text/javascript" src="/js/datatable_input.js"></script>
+
+	<script>
+        $(document).ready(function () {
+            $('#address').DataTable({
+                processing: true,
+                serverSide: true,
+                ordering: false,
+                searching: false,
+                ajax: window.location.pathname + '/transactions',
+                pageLength: 10,
+                pagingType: 'input',
+                language: {
+                    searchPlaceholder: 'Transaction Hash',
+                    search: '',
+                    paginate: {
+                        previous: "<",
+                        next: ">",
+                    }
+                },
+                columnDefs: [
+                    // {
+                    //     targets: 11,
+                    //     data: '11',
+                    //     render: function(data, type, row) {
+                    //         return '<span class="text-truncate" style="display:block;max-width: 300px;">'+data+ '</span>'
+                    //     }
+                    // }
+                ],
+                preDrawCallback: function () {
+                    // this does not always work.. not sure how to solve the staying tooltip
+                    try {
+                        $('#address').find('[data-toggle="tooltip"]').tooltip('dispose')
+                    } catch (e) { }
+                },
+                drawCallback: function (settings) {
+                    formatTimestamps()
+                    $('#address').find('[data-toggle="tooltip"]').tooltip()
+                },
+            })
+        })
+	</script>
+{{end}} {{ define "css"}}
+	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
+{{end}} {{ define "content"}}
+	<div class="container mt-2">
+		<div class="d-md-flex py-2 my-2 justify-content-md-between">
+			<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cubes mr-2"></i>Address {{.Address}}</h1>
+		</div>
+		<div class="card">
+			<div class="card-body px-0 py-3">
+				{{ template "TransactionsTable" . }}
+			</div>
+        </div>
+	</div>
+{{end}}
+
+
+{{ define "TransactionsTable" }}
+<div class="table-responsive px-0 py-1">
+	<table class="table" id="address">
+		<thead>
+		<tr>
+			<th>Hash</th>
+			<th>Number</th>
+			<th>From</th>
+			<th>To</th>
+			<th>Value</th>
+			<th>Time</th>
+		</tr>
+		</thead>
+		<tbody> </tbody>
+	</table>
+</div>
+{{ end }}
