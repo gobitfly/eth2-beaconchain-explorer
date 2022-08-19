@@ -706,7 +706,7 @@ create table api_statistics
 
 drop table if exists stats_meta_p;
 CREATE TABLE stats_meta_p (
-                              id 				    bigserial,
+                              id 				    bigserial unique,
                               version 			int 				        not null default 1,
                               ts 				    timestamp  			        not null,
                               process 			character varying(20) 		not null,
@@ -737,7 +737,7 @@ CREATE TABLE stats_process (
 
                                meta_id 	 		bigint    			not null,
 
-                               foreign key(meta_id) references stats_meta(id)
+                               foreign key(meta_id) references stats_meta_p(id)
 );
 create index idx_stats_process_metaid on stats_process (meta_id);
 
@@ -806,7 +806,7 @@ CREATE TABLE stats_system (
                               meta_id	 			bigint		 	not null,
 
 
-                              foreign key(meta_id) references stats_meta(id)
+                              foreign key(meta_id) references stats_meta_p(id)
 );
 
 create index idx_stats_system_meta_id on stats_system (meta_id);
