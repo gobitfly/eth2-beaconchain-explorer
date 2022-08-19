@@ -1,6 +1,8 @@
 package types
 
 import (
+	"database/sql"
+
 	ethpb "github.com/prysmaticlabs/prysm/proto/prysm/v1alpha1"
 )
 
@@ -71,14 +73,14 @@ type Validator struct {
 	WithdrawableEpoch          uint64 `db:"withdrawableepoch"`
 	WithdrawalCredentials      []byte `db:"withdrawalcredentials"`
 
-	BalanceActivation uint64 `db:"balanceactivation"`
-	Balance1d         uint64 `db:"balance1d"`
-	Balance7d         uint64 `db:"balance7d"`
-	Balance31d        uint64 `db:"balance31d"`
-	Status            string `db:"status"`
+	BalanceActivation sql.NullInt64 `db:"balanceactivation"`
+	Balance1d         sql.NullInt64 `db:"balance1d"`
+	Balance7d         sql.NullInt64 `db:"balance7d"`
+	Balance31d        sql.NullInt64 `db:"balance31d"`
+	Status            string        `db:"status"`
 
-	LastAttestationSlot uint64 `db:"lastattestationslot"`
-	LastProposalSlot    uint64 `db:"lastproposalslot"`
+	LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`
+	LastProposalSlot    sql.NullInt64 `db:"lastproposalslot"`
 }
 
 // ValidatorQueue is a struct to hold validator queue data

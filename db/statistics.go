@@ -2,7 +2,10 @@ package db
 
 import (
 	"eth2-exporter/metrics"
+	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -20,12 +23,6 @@ func WriteStatisticsForDay(day uint64) error {
 
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
-	tx, err := WriterDb.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	start := time.Now()
 	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
 	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(firstEpoch, lastEpoch)
@@ -33,18 +30,65 @@ func WriteStatisticsForDay(day uint64) error {
 		return err
 	}
 
+	balanceStatsArr := make([]*types.ValidatorBalanceStatistic, 0, len(balanceStatistics))
 	for _, stat := range balanceStatistics {
-		_, err = tx.Exec(`
+		balanceStatsArr = append(balanceStatsArr, stat)
+	}
+	tx, err := WriterDb.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	batchSize := 6500 // max parameters: 65535
+	for b := 0; b < len(balanceStatsArr); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(balanceStatsArr) < end {
+			end = len(balanceStatsArr)
+		}
+
+		numArgs := 10
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*numArgs)
+		for i, stat := range balanceStatsArr[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10))
+			valueArgs = append(valueArgs, stat.Index)
+			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, stat.MinBalance)
+			valueArgs = append(valueArgs, stat.MaxBalance)
+			valueArgs = append(valueArgs, stat.MinEffectiveBalance)
+			valueArgs = append(valueArgs, stat.MaxEffectiveBalance)
+			valueArgs = append(valueArgs, stat.StartBalance)
+			valueArgs = append(valueArgs, stat.StartEffectiveBalance)
+			valueArgs = append(valueArgs, stat.EndBalance)
+			valueArgs = append(valueArgs, stat.EndEffectiveBalance)
+		}
+		stmt := fmt.Sprintf(`
 		insert into validator_stats (validatorindex, day, min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance, end_effective_balance) VALUES
-		(
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-		) 
+		%s
 		on conflict (validatorindex, day) do update set min_balance = excluded.min_balance, max_balance = excluded.max_balance, min_effective_balance = excluded.min_effective_balance, max_effective_balance = excluded.max_effective_balance, start_balance = excluded.start_balance, start_effective_balance = excluded.start_effective_balance, end_balance = excluded.end_balance, end_effective_balance = excluded.end_effective_balance;`,
-			stat.Index, day, stat.MinBalance, stat.MaxBalance, stat.MinEffectiveBalance, stat.MaxEffectiveBalance, stat.StartBalance, stat.StartEffectiveBalance, stat.EndBalance, stat.EndEffectiveBalance)
+			strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err
 		}
+
+		logger.Infof("saving validator balance batch %v completed", b)
 	}
+
+	// for _, stat := range balanceStatistics {
+	// 	_, err = tx.Exec(`
+	// 	insert into validator_stats (validatorindex, day, min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance, end_effective_balance) VALUES
+	// 	(
+	// 		$1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+	// 	)
+	// 	on conflict (validatorindex, day) do update set min_balance = excluded.min_balance, max_balance = excluded.max_balance, min_effective_balance = excluded.min_effective_balance, max_effective_balance = excluded.max_effective_balance, start_balance = excluded.start_balance, start_effective_balance = excluded.start_effective_balance, end_balance = excluded.end_balance, end_effective_balance = excluded.end_effective_balance;`,
+	// 		stat.Index, day, stat.MinBalance, stat.MaxBalance, stat.MinEffectiveBalance, stat.MaxEffectiveBalance, stat.StartBalance, stat.StartEffectiveBalance, stat.EndBalance, stat.EndEffectiveBalance)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 	logger.Infof("export completed, took %v", time.Since(start))
 
 	start = time.Now()
@@ -53,18 +97,40 @@ func WriteStatisticsForDay(day uint64) error {
 	if err != nil {
 		return err
 	}
+	maArr := make([]*types.ValidatorMissedAttestationsStatistic, 0, len(ma))
+	for _, stat := range ma {
+		maArr = append(maArr, stat)
+	}
 
-	for validator, missedAttestations := range ma {
-		_, err = tx.Exec(`
+	batchSize = 16000 // max parameters: 65535
+	for b := 0; b < len(maArr); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(maArr) < end {
+			end = len(maArr)
+		}
+
+		numArgs := 4
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*numArgs)
+		for i, stat := range maArr[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
+			valueArgs = append(valueArgs, stat.Index)
+			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, stat.MissedAttestations)
+			valueArgs = append(valueArgs, 0)
+		}
+		stmt := fmt.Sprintf(`
 		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
-		(
-			$1, $2, $3, 0
-		) 
+		%s
 		on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
-			validator, day, missedAttestations)
+			strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err
 		}
+
+		logger.Infof("saving missed attestations batch %v completed", b)
 	}
 
 	logger.Infof("export completed, took %v", time.Since(start))

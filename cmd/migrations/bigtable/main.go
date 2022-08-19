@@ -33,7 +33,7 @@ func main() {
 	}
 	utils.Config = cfg
 
-	bt, err := db.NewBigtable(*project, *instance, fmt.Sprintf("%d", *chainId))
+	bt, err := db.InitBigtable(*project, *instance, fmt.Sprintf("%d", *chainId))
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}

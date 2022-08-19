@@ -11,6 +11,12 @@ type ValidatorBalanceStatistic struct {
 	StartBalance          uint64
 	EndBalance            uint64
 }
+
+type ValidatorMissedAttestationsStatistic struct {
+	Index              uint64
+	MissedAttestations uint64
+}
+
 type ValidatorProposal struct {
 	Index  uint64
 	Slot   uint64

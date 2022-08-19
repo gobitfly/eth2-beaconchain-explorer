@@ -34,7 +34,7 @@ type Bigtable struct {
 	chainId          string
 }
 
-func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
+func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
 	poolSize := 50
 	btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance, option.WithGRPCConnectionPool(poolSize))
 	// btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance)
@@ -381,19 +381,24 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, startEpoch uint64, limit int64) (map[uint64]uint64, error) {
+func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, startEpoch uint64, limit int64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
 	data, err := bigtable.GetValidatorAttestationHistory(validators, startEpoch, limit)
 
 	if err != nil {
 		return nil, err
 	}
 
-	res := make(map[uint64]uint64)
+	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
 
 	for validator, attestations := range data {
 		for _, attestation := range attestations {
 			if attestation.Status == 0 {
-				res[validator]++
+				if res[validator] == nil {
+					res[validator] = &types.ValidatorMissedAttestationsStatistic{
+						Index: validator,
+					}
+				}
+				res[validator].MissedAttestations++
 			}
 		}
 	}
@@ -444,14 +449,13 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 
+	// logger.Info(startEpoch, endEpoch)
 	rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch)) // Reverse as keys are sorted in descending order
-	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch))
+	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-1))
 
-	logger.Info(rangeStart)
-	logger.Info(rangeEnd)
 	res := make(map[uint64]*types.ValidatorBalanceStatistic)
 	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, rangeEnd), func(r gcp_bigtable.Row) bool {
-		logger.Info(r.Key())
+		// logger.Info(r.Key())
 		for _, ri := range r[VALIDATOR_BALANCES_FAMILY] {
 			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, VALIDATOR_BALANCES_FAMILY+":"), 10, 64)
 			if err != nil {
@@ -466,7 +470,7 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 				logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
 				return false
 			}
-
+			epoch = max_epoch - epoch
 			balances := ri.Value
 
 			balanceBytes := balances[0:8]
@@ -488,6 +492,7 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 				}
 			}
 
+			// logger.Info(epoch, startEpoch)
 			if epoch == startEpoch {
 				res[validator].StartBalance = balance
 				res[validator].StartEffectiveBalance = effectiveBalance

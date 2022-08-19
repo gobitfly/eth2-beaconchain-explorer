@@ -665,10 +665,10 @@ func updateValidatorPerformance() error {
 				balance.Balance31d = balance.BalanceActivation
 			}
 
-			earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
-			earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
-			earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
-			earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
+			earningsTotal += int64(balance.Balance) - balance.BalanceActivation.Int64
+			earningsLastDay += int64(balance.Balance) - balance.Balance1d.Int64
+			earningsLastWeek += int64(balance.Balance) - balance.Balance7d.Int64
+			earningsLastMonth += int64(balance.Balance) - balance.Balance31d.Int64
 		}
 
 		data = append(data, &types.ValidatorPerformance{

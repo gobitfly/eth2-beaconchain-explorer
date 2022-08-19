@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"flag"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -46,6 +47,8 @@ func main() {
 	})
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
+
+	db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 
 	if *statisticsDaysToExport != "" {
 		s := strings.Split(*statisticsDaysToExport, "-")

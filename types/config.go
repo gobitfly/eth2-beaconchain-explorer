@@ -21,6 +21,10 @@ type Config struct {
 		Host     string `yaml:"host" envconfig:"WRITER_DB_HOST"`
 		Port     string `yaml:"port" envconfig:"WRITER_DB_PORT"`
 	} `yaml:"writerDatabase"`
+	Bigtable struct {
+		Project  string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
+		Instance string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
+	} `yaml:"bigtable"`
 	Chain struct {
 		Name             string `yaml:"name" envconfig:"CHAIN_NAME"`
 		GenesisTimestamp uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`

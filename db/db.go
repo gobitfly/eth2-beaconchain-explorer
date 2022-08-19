@@ -942,58 +942,6 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 	}()
 
 	validators := data.Validators
-	// var currentState []*types.Validator
-	// err := tx.Select(&currentState, "SELECT * FROM validators;")
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	// currentStateMap := make(map[uint64]*types.Validator, len(currentState))
-
-	// var queries strings.Builder
-	// for _, v := range data.Validators {
-	// 	c := currentStateMap[v.Index]
-
-	// 	if c == nil {
-	// 		logger.Infof("validator %v is new", v.Index)
-	// 		queries.WriteString(fmt.Sprintf("INSERT INTO validators (validatorindex, pubkey, balance, ) VALUES ();"))
-	// 	} else {
-	// 		if c.Balance != v.Balance {
-	// 			logger.Infof("Balance changed for validator %v from %v to %v", v.Index, c.Balance, v.Balance)
-	// 		}
-	// 		if c.EffectiveBalance != v.EffectiveBalance {
-	// 			logger.Infof("EffectiveBalance changed for validator %v from %v to %v", v.Index, c.EffectiveBalance, v.EffectiveBalance)
-	// 		}
-	// 		if c.Slashed != v.Slashed {
-	// 			logger.Infof("Slashed changed for validator %v from %v to %v", v.Index, c.Slashed, v.Slashed)
-	// 		}
-	// 		if c.ActivationEligibilityEpoch != v.ActivationEligibilityEpoch {
-	// 			logger.Infof("ActivationEligibilityEpoch changed for validator %v from %v to %v", v.Index, c.ActivationEligibilityEpoch, v.ActivationEligibilityEpoch)
-	// 		}
-	// 		if c.ActivationEpoch != v.ActivationEpoch {
-	// 			logger.Infof("ActivationEpoch changed for validator %v from %v to %v", v.Index, c.ActivationEpoch, v.ActivationEpoch)
-	// 		}
-	// 		if c.ExitEpoch != v.ExitEpoch {
-	// 			logger.Infof("ExitEpoch changed for validator %v from %v to %v", v.Index, c.ExitEpoch, v.ExitEpoch)
-	// 		}
-	// 		if c.WithdrawableEpoch != v.WithdrawableEpoch {
-	// 			logger.Infof("WithdrawableEpoch changed for validator %v from %v to %v", v.Index, c.WithdrawableEpoch, v.WithdrawableEpoch)
-	// 		}
-	// 		if bytes.Equal(c.WithdrawalCredentials, v.WithdrawalCredentials) {
-	// 			logger.Infof("WithdrawalCredentials changed for validator %v from %x to %x", v.Index, c.WithdrawalCredentials, v.WithdrawalCredentials)
-	// 		}
-	// 		if c.Balance1d != v.Balance1d {
-	// 			logger.Infof("Balance1d changed for validator %v from %v to %v", v.Index, c.Balance1d, v.Balance1d)
-	// 		}
-	// 		if c.Balance7d != v.Balance7d {
-	// 			logger.Infof("Balance7d changed for validator %v from %v to %v", v.Index, c.Balance7d, v.Balance7d)
-	// 		}
-	// 		if c.Balance31d != v.Balance31d {
-	// 			logger.Infof("Balance31d changed for validator %v from %v to %v", v.Index, c.Balance31d, v.Balance31d)
-	// 		}
-	// 	}
-	// }
 
 	validatorsByIndex := make(map[uint64]*types.Validator, len(data.Validators))
 	for _, v := range data.Validators {
@@ -1013,13 +961,16 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 			}
 			propVal := validatorsByIndex[b.Proposer]
 			if propVal != nil {
-				propVal.LastProposalSlot = b.Slot
+				propVal.LastProposalSlot = sql.NullInt64{Int64: int64(b.Slot), Valid: true}
 			}
 			for _, a := range b.Attestations {
 				for _, v := range a.Attesters {
 					attVal := validatorsByIndex[v]
 					if attVal != nil {
-						attVal.LastAttestationSlot = a.Data.Slot
+						attVal.LastAttestationSlot = sql.NullInt64{
+							Int64: int64(a.Data.Slot),
+							Valid: true,
+						}
 					}
 				}
 			}
@@ -1055,6 +1006,196 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 			v.ActivationEpoch = maxSqlNumber
 		}
 	}
+
+	// var currentState []*types.Validator
+	// err = tx.Select(&currentState, "SELECT * FROM validators;")
+
+	// if err != nil {
+	// 	return err
+	// }
+
+	// currentStateMap := make(map[uint64]*types.Validator, len(currentState))
+
+	// for _, v := range currentState {
+	// 	currentStateMap[v.Index] = v
+	// }
+
+	// var queries strings.Builder
+	// updates := 0
+	// for _, v := range data.Validators {
+	// 	c := currentStateMap[v.Index]
+
+	// 	if c == nil {
+	// 		logger.Infof("validator %v is new", v.Index)
+
+	// 		_, err = tx.Exec(`INSERT INTO validators (
+	// 			validatorindex,
+	// 			pubkey,
+	// 			withdrawableepoch,
+	// 			withdrawalcredentials,
+	// 			balance,
+	// 			effectivebalance,
+	// 			slashed,
+	// 			activationeligibilityepoch,
+	// 			activationepoch,
+	// 			exitepoch,
+	// 			balance1d,
+	// 			balance7d,
+	// 			balance31d,
+	// 			pubkeyhex,
+	// 			status,
+	// 			lastattestationslot
+	// 		)
+	// 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);`,
+	// 			v.Index,
+	// 			v.PublicKey,
+	// 			v.WithdrawableEpoch,
+	// 			v.WithdrawalCredentials,
+	// 			v.Balance,
+	// 			v.EffectiveBalance,
+	// 			v.Slashed,
+	// 			v.ActivationEligibilityEpoch,
+	// 			v.ActivationEpoch,
+	// 			v.ExitEpoch,
+	// 			v.Balance1d,
+	// 			v.Balance7d,
+	// 			v.Balance31d,
+	// 			fmt.Sprintf("%x", v.PublicKey),
+	// 			v.Status,
+	// 			v.LastAttestationSlot,
+	// 		)
+
+	// 		if err != nil {
+	// 			logger.Errorf("error saving new validator %v: %v", v.Index, err)
+	// 		}
+	// 	} else {
+	// 		// status                     =
+	// 		// CASE
+	// 		// WHEN EXCLUDED.exitepoch <= %[1]d AND EXCLUDED.slashed THEN 'slashed'
+	// 		// WHEN EXCLUDED.exitepoch <= %[1]d THEN 'exited'
+	// 		// WHEN EXCLUDED.activationeligibilityepoch = 9223372036854775807 THEN 'deposited'
+	// 		// WHEN EXCLUDED.activationepoch > %[1]d THEN 'pending'
+	// 		// WHEN EXCLUDED.slashed AND EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'slashing_offline'
+	// 		// WHEN EXCLUDED.slashed THEN 'slashing_online'
+	// 		// WHEN EXCLUDED.exitepoch < 9223372036854775807 AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'exiting_offline'
+	// 		// WHEN EXCLUDED.exitepoch < 9223372036854775807 THEN 'exiting_online'
+	// 		// WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline'
+	// 		// ELSE 'active_online'
+	// 		// END
+
+	// 		offline := false
+
+	// 		lastSeen := c.LastAttestationSlot.Int64
+	// 		if v.LastAttestationSlot.Int64 > lastSeen {
+	// 			lastSeen = v.LastAttestationSlot.Int64
+	// 		}
+
+	// 		if lastSeen < int64(thresholdSlot) {
+	// 			offline = true
+	// 		}
+
+	// 		if v.ExitEpoch <= latestEpoch && v.Slashed {
+	// 			v.Status = "slashed"
+	// 		} else if v.ExitEpoch <= latestEpoch {
+	// 			v.Status = "exited"
+	// 		} else if v.ActivationEligibilityEpoch == 9223372036854775807 {
+	// 			v.Status = "deposited"
+	// 		} else if v.ActivationEpoch > latestEpoch {
+	// 			v.Status = "pending"
+	// 		} else if v.Slashed && v.ActivationEpoch < latestEpoch && offline {
+	// 			v.Status = "slashing_offline"
+	// 		} else if v.Slashed {
+	// 			v.Status = "slashing_online"
+	// 		} else if v.ExitEpoch < 9223372036854775807 && offline {
+	// 			v.Status = "exiting_offline"
+	// 		} else if v.ExitEpoch < 9223372036854775807 {
+	// 			v.Status = "exiting_online"
+	// 		} else if v.ActivationEpoch < latestEpoch && offline {
+	// 			v.Status = "active_offline"
+	// 		} else {
+	// 			v.Status = "active_online"
+	// 		}
+
+	// 		if c.LastAttestationSlot != v.LastAttestationSlot && v.LastAttestationSlot.Valid {
+	// 			// logger.Infof("LastAttestationSlot changed for validator %v from %v to %v", v.Index, c.LastAttestationSlot.Int64, v.LastAttestationSlot.Int64)
+
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET lastattestationslot = %d WHERE validatorindex = %d;\n", v.LastAttestationSlot.Int64, c.Index))
+	// 			updates++
+	// 		}
+
+	// 		if c.Status != v.Status {
+	// 			logger.Infof("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET status = '%s' WHERE validatorindex = %d;\n", v.Status, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.Balance != v.Balance {
+	// 			// logger.Infof("Balance changed for validator %v from %v to %v", v.Index, c.Balance, v.Balance)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET balance = %d WHERE validatorindex = %d;\n", v.Balance, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.EffectiveBalance != v.EffectiveBalance {
+	// 			// logger.Infof("EffectiveBalance changed for validator %v from %v to %v", v.Index, c.EffectiveBalance, v.EffectiveBalance)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET effectivebalance = %d WHERE validatorindex = %d;\n", v.EffectiveBalance, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.Slashed != v.Slashed {
+	// 			logger.Infof("Slashed changed for validator %v from %v to %v", v.Index, c.Slashed, v.Slashed)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET slashed = %v WHERE validatorindex = %d;\n", v.Slashed, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.ActivationEligibilityEpoch != v.ActivationEligibilityEpoch {
+	// 			logger.Infof("ActivationEligibilityEpoch changed for validator %v from %v to %v", v.Index, c.ActivationEligibilityEpoch, v.ActivationEligibilityEpoch)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET activationeligibilityepoch = %d WHERE validatorindex = %d;\n", v.ActivationEligibilityEpoch, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.ActivationEpoch != v.ActivationEpoch {
+	// 			logger.Infof("ActivationEpoch changed for validator %v from %v to %v", v.Index, c.ActivationEpoch, v.ActivationEpoch)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET activationepoch = %d WHERE validatorindex = %d;\n", v.ActivationEpoch, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.ExitEpoch != v.ExitEpoch {
+	// 			logger.Infof("ExitEpoch changed for validator %v from %v to %v", v.Index, c.ExitEpoch, v.ExitEpoch)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET exitepoch = %d WHERE validatorindex = %d;\n", v.ExitEpoch, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.WithdrawableEpoch != v.WithdrawableEpoch {
+	// 			logger.Infof("WithdrawableEpoch changed for validator %v from %v to %v", v.Index, c.WithdrawableEpoch, v.WithdrawableEpoch)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET withdrawableepoch = %d WHERE validatorindex = %d;\n", v.WithdrawableEpoch, c.Index))
+	// 			updates++
+	// 		}
+	// 		if !bytes.Equal(c.WithdrawalCredentials, v.WithdrawalCredentials) {
+	// 			logger.Infof("WithdrawalCredentials changed for validator %v from %x to %x", v.Index, c.WithdrawalCredentials, v.WithdrawalCredentials)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET withdrawalcredentials = '\\%x' WHERE validatorindex = %d;\n", v.WithdrawalCredentials, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.Balance1d != v.Balance1d {
+	// 			// logger.Infof("Balance1d changed for validator %v from %v to %v", v.Index, c.Balance1d, v.Balance1d)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET balance1d = %d WHERE validatorindex = %d;\n", v.Balance1d.Int64, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.Balance7d != v.Balance7d {
+	// 			// logger.Infof("Balance7d changed for validator %v from %v to %v", v.Index, c.Balance7d, v.Balance7d)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET balance7d = %d WHERE validatorindex = %d;\n", v.Balance7d.Int64, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.Balance31d != v.Balance31d {
+	// 			// logger.Infof("Balance31d changed for validator %v from %v to %v", v.Index, c.Balance31d, v.Balance31d)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET balance31d = %d WHERE validatorindex = %d;\n", v.Balance31d.Int64, c.Index))
+	// 			updates++
+	// 		}
+	// 	}
+	// }
+
+	// updateStart := time.Now()
+	// logger.Infof("applying %v update queries", updates)
+	// _, err = tx.Exec(queries.String())
+
+	// logger.Infof("update completed, took %v", time.Since(updateStart))
+
+	// if err != nil {
+	// 	logger.Errorf("error executing validator update query: %v", err)
+	// 	return err
+	// }
 
 	batchSize := 4000 // max parameters: 65535
 	for b := 0; b < len(validators); b += batchSize {
@@ -1117,11 +1258,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 				balance1d                  = EXCLUDED.balance1d,
 				balance7d                  = EXCLUDED.balance7d,
 				balance31d                 = EXCLUDED.balance31d,
-				lastattestationslot        = 
-					CASE 
-					WHEN EXCLUDED.lastattestationslot > COALESCE(validators.lastattestationslot, 0) THEN EXCLUDED.lastattestationslot 
-					ELSE validators.lastattestationslot 
-					END,
+				lastattestationslot        = GREATEST(validators.lastattestationslot, EXCLUDED.lastattestationslot),
 				status                     = 
 					CASE 
 					WHEN EXCLUDED.exitepoch <= %[1]d AND EXCLUDED.slashed THEN 'slashed'
@@ -1346,7 +1483,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 
 			var dbBlockRootHash []byte
 			err := WriterDb.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
-			if err == nil && bytes.Compare(dbBlockRootHash, b.BlockRoot) == 0 {
+			if err == nil && bytes.Equal(dbBlockRootHash, b.BlockRoot) {
 				blockLog.Infof("skipping export of block as it is already present in the db")
 				continue
 			}
@@ -1473,7 +1610,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 					return fmt.Errorf("error executing stmtProposerSlashing for block %v: %w", b.Slot, err)
 				}
 			}
-			blockLog.WithField("duration", time.Since(t)).Tracef("stmtProposerSlashing")
+			blockLog.WithField("duration", time.Since(n)).Tracef("stmtProposerSlashing")
 			t = time.Now()
 
 			for i, as := range b.AttesterSlashings {
