@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -54,7 +55,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	err = db.ReaderDb.Get(&epochPageData, `
 		SELECT 
-			epoch, 
+			epoch,
 			blockscount, 
 			proposerslashingscount, 
 			attesterslashingscount, 
@@ -63,10 +64,10 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 			voluntaryexitscount, 
 			validatorscount, 
 			averagevalidatorbalance, 
-			finalized,
 			eligibleether,
 			globalparticipationrate,
-			votedether
+			votedether,
+			completeparticipationstats
 		FROM epochs 
 		WHERE epoch = $1`, epoch)
 	if err != nil {
@@ -161,6 +162,8 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	epochPageData.SyncParticipationRate /= float64(epochPageData.ProposedCount)
 
 	epochPageData.Ts = utils.EpochToTime(epochPageData.Epoch)
+
+	epochPageData.Finalized = epoch <= services.LatestFinalizedEpoch()
 
 	err = db.ReaderDb.Get(&epochPageData.NextEpoch, "SELECT epoch FROM epochs WHERE epoch > $1 ORDER BY epoch LIMIT 1", epochPageData.Epoch)
 	if err == sql.ErrNoRows {

@@ -181,7 +181,8 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 		epoch = int64(services.LatestEpoch())
 	}
 
-	rows, err := db.ReaderDb.Query(`SELECT *, 
+	rows, err := db.ReaderDb.Query(`SELECT *,
+	    $1 <= (select finalizedepoch from network_liveness order by headepoch desc limit 1) as finalized,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '0') as scheduledblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '1') as proposedblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '2') as missedblocks,
@@ -792,9 +793,13 @@ type DashboardResponse struct {
 }
 
 func getEpoch(epoch int64) ([]interface{}, error) {
-	rows, err := db.ReaderDb.Query(`SELECT attestationscount, attesterslashingscount, averagevalidatorbalance,
-	blockscount, depositscount, eligibleether, epoch, finalized, TRUNC(globalparticipationrate::decimal, 10)::float as globalparticipationrate, proposerslashingscount,
-	totalvalidatorbalance, validatorscount, voluntaryexitscount, votedether
+	rows, err := db.ReaderDb.Query(`
+	SELECT 
+		attestationscount, attesterslashingscount, averagevalidatorbalance,
+		blockscount, depositscount, eligibleether, epoch, completeparticipationstats,
+		TRUNC(globalparticipationrate::decimal, 10)::float as globalparticipationrate, proposerslashingscount,
+		totalvalidatorbalance, validatorscount, voluntaryexitscount, votedether, 
+		epoch <= (select finalizedepoch from network_liveness order by headepoch desc limit 1) as finalized
 	FROM epochs WHERE epoch = $1`, epoch)
 	if err != nil {
 		return nil, err

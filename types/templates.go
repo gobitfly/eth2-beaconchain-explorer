@@ -170,6 +170,7 @@ type IndexPageDataEpochs struct {
 	GlobalParticipationRateFormatted template.HTML `json:"globalparticipationrate_formatted"`
 	VotedEther                       uint64        `json:"votedether"`
 	VotedEtherFormatted              template.HTML `json:"votedether_formatted"`
+	ParticipationStatsCompelete      bool          `db:"completeparticipationstats" json:"participation_stats_complete"`
 }
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page
@@ -200,7 +201,6 @@ type IndexPageEpochHistory struct {
 	Epoch           uint64 `db:"epoch"`
 	ValidatorsCount uint64 `db:"validatorscount"`
 	EligibleEther   uint64 `db:"eligibleether"`
-	Finalized       bool   `db:"finalized"`
 }
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page
@@ -724,39 +724,40 @@ type DataTableResponse struct {
 
 // EpochsPageData is a struct to hold epoch data for the epochs page
 type EpochsPageData struct {
-	Epoch                   uint64  `db:"epoch"`
-	BlocksCount             uint64  `db:"blockscount"`
-	ProposerSlashingsCount  uint64  `db:"proposerslashingscount"`
-	AttesterSlashingsCount  uint64  `db:"attesterslashingscount"`
-	AttestationsCount       uint64  `db:"attestationscount"`
-	DepositsCount           uint64  `db:"depositscount"`
-	VoluntaryExitsCount     uint64  `db:"voluntaryexitscount"`
-	ValidatorsCount         uint64  `db:"validatorscount"`
-	AverageValidatorBalance uint64  `db:"averagevalidatorbalance"`
-	Finalized               bool    `db:"finalized"`
-	EligibleEther           uint64  `db:"eligibleether"`
-	GlobalParticipationRate float64 `db:"globalparticipationrate"`
-	VotedEther              uint64  `db:"votedether"`
+	Epoch                       uint64  `db:"epoch"`
+	BlocksCount                 uint64  `db:"blockscount"`
+	ProposerSlashingsCount      uint64  `db:"proposerslashingscount"`
+	AttesterSlashingsCount      uint64  `db:"attesterslashingscount"`
+	AttestationsCount           uint64  `db:"attestationscount"`
+	DepositsCount               uint64  `db:"depositscount"`
+	VoluntaryExitsCount         uint64  `db:"voluntaryexitscount"`
+	ValidatorsCount             uint64  `db:"validatorscount"`
+	AverageValidatorBalance     uint64  `db:"averagevalidatorbalance"`
+	ParticipationStatsCompelete bool    `db:"completeparticipationstats"`
+	EligibleEther               uint64  `db:"eligibleether"`
+	GlobalParticipationRate     float64 `db:"globalparticipationrate"`
+	VotedEther                  uint64  `db:"votedether"`
 }
 
 // EpochPageData is a struct to hold detailed epoch data for the epoch page
 type EpochPageData struct {
-	Epoch                   uint64  `db:"epoch"`
-	BlocksCount             uint64  `db:"blockscount"`
-	ProposerSlashingsCount  uint64  `db:"proposerslashingscount"`
-	AttesterSlashingsCount  uint64  `db:"attesterslashingscount"`
-	AttestationsCount       uint64  `db:"attestationscount"`
-	DepositsCount           uint64  `db:"depositscount"`
-	VoluntaryExitsCount     uint64  `db:"voluntaryexitscount"`
-	ValidatorsCount         uint64  `db:"validatorscount"`
-	AverageValidatorBalance uint64  `db:"averagevalidatorbalance"`
-	Finalized               bool    `db:"finalized"`
-	EligibleEther           uint64  `db:"eligibleether"`
-	GlobalParticipationRate float64 `db:"globalparticipationrate"`
-	VotedEther              uint64  `db:"votedether"`
+	Epoch                       uint64  `db:"epoch"`
+	BlocksCount                 uint64  `db:"blockscount"`
+	ProposerSlashingsCount      uint64  `db:"proposerslashingscount"`
+	AttesterSlashingsCount      uint64  `db:"attesterslashingscount"`
+	AttestationsCount           uint64  `db:"attestationscount"`
+	DepositsCount               uint64  `db:"depositscount"`
+	VoluntaryExitsCount         uint64  `db:"voluntaryexitscount"`
+	ValidatorsCount             uint64  `db:"validatorscount"`
+	AverageValidatorBalance     uint64  `db:"averagevalidatorbalance"`
+	ParticipationStatsCompelete bool    `db:"completeparticipationstats"`
+	EligibleEther               uint64  `db:"eligibleether"`
+	GlobalParticipationRate     float64 `db:"globalparticipationrate"`
+	VotedEther                  uint64  `db:"votedether"`
 
 	Blocks []*IndexPageDataBlocks
 
+	Finalized             bool
 	SyncParticipationRate float64
 	Ts                    time.Time
 	NextEpoch             uint64

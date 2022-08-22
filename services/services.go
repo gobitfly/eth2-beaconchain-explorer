@@ -221,6 +221,7 @@ func indexPageDataUpdater() {
 }
 
 func getIndexPageData() (*types.IndexPageData, error) {
+	var err error
 	currency := "ETH"
 
 	data := &types.IndexPageData{}
@@ -229,12 +230,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
 	data.ShowSyncingMessage = IsSyncing()
 
-	var epoch uint64
-	err := db.WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving latest epoch from the database: %v", err)
-	}
-	data.CurrentEpoch = epoch
+	data.CurrentEpoch = LatestEpoch()
 
 	cutoffSlot := utils.TimeToSlot(uint64(time.Now().Add(time.Second * 10).Unix()))
 
@@ -349,13 +345,28 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 
 	var epochs []*types.IndexPageDataEpochs
-	err = db.WriterDb.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
+	currentNodeEpoch := LatestNodeEpoch()
+	finalizedNodeEpoch := LatestNodeFinalizedEpoch()
+
+	err = db.WriterDb.Select(&epochs, `
+	SELECT 
+		epoch, 
+		eligibleether, 
+		globalparticipationrate, 
+		votedether,
+		completeparticipationstats
+	FROM epochs
+	where
+		epoch > $1 - 15 and 
+		epoch <= $1
+	ORDER BY epochs DESC`, currentNodeEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
 	}
 
 	for _, epoch := range epochs {
 		epoch.Ts = utils.EpochToTime(epoch.Epoch)
+		epoch.Finalized = epoch.Epoch <= finalizedNodeEpoch
 		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
 		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther, currency)
 		epoch.EligibleEtherFormatted = utils.FormatBalanceShort(epoch.EligibleEther, currency)
@@ -366,7 +377,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	var scheduledCount uint8
 	err = db.WriterDb.Get(&scheduledCount, `
 		select count(*) from blocks where status = '0' and epoch = $1;
-	`, epoch)
+	`, data.CurrentEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving scheduledCount from blocks: %v", err)
 	}
@@ -435,23 +446,18 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance), currency))
 
 	var epochLowerBound uint64
-	if epochLowerBound = 0; epoch > 1600 {
-		epochLowerBound = epoch - 1600
+	if epochLowerBound = 0; data.CurrentEpoch > 1600 {
+		epochLowerBound = data.CurrentEpoch - 1600
 	}
 	var epochHistory []*types.IndexPageEpochHistory
-	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
+	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount FROM epochs WHERE epoch < $1 and epoch > $2 and completeparticipationstats = true ORDER BY epoch", data.CurrentEpoch, epochLowerBound)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving staked ether history: %v", err)
 	}
 
 	if len(epochHistory) > 0 {
-		for i := len(epochHistory) - 1; i >= 0; i-- {
-			if epochHistory[i].Finalized {
-				data.CurrentFinalizedEpoch = epochHistory[i].Epoch
-				data.FinalityDelay = data.CurrentEpoch - epoch
-				break
-			}
-		}
+		data.CurrentFinalizedEpoch = LatestFinalizedEpoch()
+		data.FinalityDelay = currentNodeEpoch - finalizedNodeEpoch
 
 		data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther, currency))
 		data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
@@ -496,7 +502,7 @@ func LatestSlot() uint64 {
 
 //FinalizationDelay will return the current Finalization Delay
 func FinalizationDelay() uint64 {
-	return LatestEpoch() - LatestFinalizedEpoch()
+	return LatestNodeEpoch() - LatestNodeFinalizedEpoch()
 }
 
 // LatestProposedSlot will return the latest proposed slot
@@ -525,7 +531,7 @@ func LatestState() *types.LatestState {
 	data.CurrentSlot = LatestSlot()
 	data.CurrentFinalizedEpoch = LatestFinalizedEpoch()
 	data.LastProposedSlot = atomic.LoadUint64(&latestProposedSlot)
-	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
+	data.FinalityDelay = FinalizationDelay()
 	data.IsSyncing = IsSyncing()
 	data.UsdRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("USD"))
 	data.UsdTruncPrice = utils.KFormatterEthPrice(data.UsdRoundPrice)

@@ -20,7 +20,7 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 	}()
 
 	lastFinalizedEpoch := 0
-	err = WriterDb.Get(&lastFinalizedEpoch, `select coalesce(max(epoch),0) from epochs where finalized = 't'`)
+	err = WriterDb.Get(&lastFinalizedEpoch, `SELECT COALESCE(MAX(epoch), 0) FROM epochs where epoch <= (select finalizedepoch from network_liveness order by headepoch desc limit 1)`)
 	if err != nil {
 		return false, fmt.Errorf("error getting latestEpoch: %w", err)
 	}

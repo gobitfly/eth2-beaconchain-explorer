@@ -783,25 +783,26 @@ func SaveEpoch(data *types.EpochData) error {
 			validatorscount, 
 			averagevalidatorbalance, 
 			totalvalidatorbalance,
-			finalized, 
 			eligibleether, 
 			globalparticipationrate, 
-			votedether
+			votedether,
+			completeparticipationstats
 		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
 		ON CONFLICT (epoch) DO UPDATE SET 
-			blockscount             = excluded.blockscount, 
-			proposerslashingscount  = excluded.proposerslashingscount,
-			attesterslashingscount  = excluded.attesterslashingscount,
-			attestationscount       = excluded.attestationscount,
-			depositscount           = excluded.depositscount,
-			voluntaryexitscount     = excluded.voluntaryexitscount,
-			validatorscount         = excluded.validatorscount,
-			averagevalidatorbalance = excluded.averagevalidatorbalance,
-			totalvalidatorbalance   = excluded.totalvalidatorbalance,
-			eligibleether           = excluded.eligibleether,
-			globalparticipationrate = excluded.globalparticipationrate,
-			votedether              = excluded.votedether`,
+			blockscount                = excluded.blockscount, 
+			proposerslashingscount     = excluded.proposerslashingscount,
+			attesterslashingscount     = excluded.attesterslashingscount,
+			attestationscount          = excluded.attestationscount,
+			depositscount              = excluded.depositscount,
+			voluntaryexitscount        = excluded.voluntaryexitscount,
+			validatorscount            = excluded.validatorscount,
+			averagevalidatorbalance    = excluded.averagevalidatorbalance,
+			totalvalidatorbalance      = excluded.totalvalidatorbalance,
+			eligibleether              = excluded.eligibleether,
+			globalparticipationrate    = excluded.globalparticipationrate,
+			votedether                 = excluded.votedether,
+			completeparticipationstats = excluded.completeparticipationstats`,
 		data.Epoch,
 		len(data.Blocks),
 		proposerSlashingsCount,
@@ -812,10 +813,10 @@ func SaveEpoch(data *types.EpochData) error {
 		validatorsCount,
 		validatorBalanceAverage.Uint64(),
 		validatorBalanceSum.Uint64(),
-		false,
 		data.EpochParticipationStats.EligibleEther,
 		data.EpochParticipationStats.GlobalParticipationRate,
-		data.EpochParticipationStats.VotedEther)
+		data.EpochParticipationStats.VotedEther,
+		data.EpochParticipationStats.Complete)
 
 	if err != nil {
 		return fmt.Errorf("error executing save epoch statement: %w", err)

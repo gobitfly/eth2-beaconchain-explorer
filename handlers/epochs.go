@@ -81,10 +81,10 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		voluntaryexitscount, 
 		validatorscount, 
 		averagevalidatorbalance, 
-		finalized,
 		eligibleether,
 		globalparticipationrate,
-		votedether
+		votedether,
+		completeparticipationstats
 	FROM epochs 
 	WHERE epoch >= $1 AND epoch <= $2
 	ORDER BY epoch DESC`, endEpoch, startEpoch)
@@ -103,9 +103,9 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 			b.AttestationsCount,
 			b.DepositsCount,
 			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
-			utils.FormatYesNo(b.Finalized),
+			utils.FormatYesNo(b.Epoch <= services.LatestFinalizedEpoch()),
 			utils.FormatBalance(b.EligibleEther, currency),
-			utils.FormatGlobalParticipationRate(b.VotedEther, b.GlobalParticipationRate, currency),
+			utils.FormatGlobalParticipationRate(b.VotedEther, b.GlobalParticipationRate, currency, b.ParticipationStatsCompelete),
 		}
 	}
 
@@ -189,10 +189,10 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 				voluntaryexitscount, 
 				validatorscount, 
 				averagevalidatorbalance, 
-				finalized,
 				eligibleether,
 				globalparticipationrate,
-				votedether
+				votedether,
+				completeparticipationstats
 			FROM epochs 
 			WHERE epoch >= $1 AND epoch <= $2
 			ORDER BY epoch DESC`, endEpoch, startEpoch)
@@ -207,10 +207,10 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 				voluntaryexitscount, 
 				validatorscount, 
 				averagevalidatorbalance, 
-				finalized,
 				eligibleether,
 				globalparticipationrate,
-				votedether
+				votedether,
+				completeparticipationstats
 			FROM epochs 
 			WHERE epoch = $1
 			ORDER BY epoch DESC`, search)
@@ -230,9 +230,9 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 			b.AttestationsCount,
 			b.DepositsCount,
 			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
-			utils.FormatYesNo(b.Finalized),
+			utils.FormatYesNo(b.Epoch <= services.LatestFinalizedEpoch()),
 			utils.FormatBalance(b.EligibleEther, currency),
-			utils.FormatGlobalParticipationRate(b.VotedEther, b.GlobalParticipationRate, currency),
+			utils.FormatGlobalParticipationRate(b.VotedEther, b.GlobalParticipationRate, currency, b.ParticipationStatsCompelete),
 		}
 	}
 
