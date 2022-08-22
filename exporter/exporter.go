@@ -24,8 +24,8 @@ var epochBlacklist = make(map[uint64]uint64)
 
 // Start will start the export of data from rpc into the database
 func Start(client rpc.Client) error {
-	go performanceDataUpdater()
 	go networkLivenessUpdater(client)
+	go performanceDataUpdater()
 	go eth1DepositsExporter()
 	go genesisDepositsExporter()
 	go checkSubscriptions()
@@ -404,7 +404,7 @@ func doFullCheck(client rpc.Client) {
 	logger.Infof("updating status of epochs %v-%v", startEpoch, head.HeadEpoch)
 	err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
 	if err != nil {
-		logger.Errorf("error updating epoch stratus: %v", err)
+		logger.Errorf("error updating epoch status: %v", err)
 	}
 	logger.Infof("exporting validation queue")
 	err = exportValidatorQueue(client)
