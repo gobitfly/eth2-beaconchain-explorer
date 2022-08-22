@@ -406,12 +406,6 @@ func doFullCheck(client rpc.Client) {
 	if err != nil {
 		logger.Errorf("error updating epoch stratus: %v", err)
 	}
-	// set all finalized epochs to finalized
-	err = db.UpdateEpochFinalization(head.FinalizedEpoch)
-	if err != nil {
-		logger.Errorf("error updating finalization of epochs: %v", err)
-	}
-
 	logger.Infof("exporting validation queue")
 	err = exportValidatorQueue(client)
 	if err != nil {

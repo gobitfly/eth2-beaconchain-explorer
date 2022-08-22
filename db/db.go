@@ -1591,23 +1591,6 @@ func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
 	return err
 }
 
-// UpdateEpochFinalization will update finalized-flag of unfinalized epochs
-func UpdateEpochFinalization(finality_epoch uint64) error {
-	// to prevent a full table scan, the query is constrained to update only between the last epoch that was tagged finalized and the passed finality_epoch
-	// will not fill gaps in the db in finalization this way, but makes the query much faster.
-	_, err := WriterDb.Exec(`
-	UPDATE epochs
-	SET finalized = true
-	WHERE epoch BETWEEN	(
-			SELECT epoch
-			FROM   epochs
-			WHERE  finalized = true
-			ORDER  BY epoch DESC
-			LIMIT  1
-		) AND $1 `, finality_epoch)
-	return err
-}
-
 // GetTotalValidatorsCount will return the total-validator-count
 func GetTotalValidatorsCount() (uint64, error) {
 	var totalCount uint64
