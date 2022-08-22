@@ -339,17 +339,21 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 }
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
-func FormatGlobalParticipationRate(e uint64, r float64, currency string) template.HTML {
+func FormatGlobalParticipationRate(e uint64, r float64, currency string, complete bool) template.HTML {
 	p := message.NewPrinter(language.English)
 	rr := fmt.Sprintf("%.2f%%", r*100)
 	tpl := `
 	<div style="position:relative;width:inherit;height:inherit;">
 	  %.0[1]f <small class="text-muted ml-3">(%[2]v)</small>
 	  <div class="progress" style="position:absolute;bottom:-6px;width:100%%;height:4px;">
-		<div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div>
+		<div class="progress-bar %[3]v" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div>
 	  </div>
 	</div>`
-	return template.HTML(p.Sprintf(tpl, float64(e)/1e9*price.GetEthPrice(currency), rr))
+	var incomplete_style string
+	if !complete {
+		incomplete_style = "progress-bar-striped progress-bar-animated"
+	}
+	return template.HTML(p.Sprintf(tpl, float64(e)/1e9*price.GetEthPrice(currency), rr, incomplete_style))
 }
 
 // FormatGraffiti will return the graffiti formated as html
