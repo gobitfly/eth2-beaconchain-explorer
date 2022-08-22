@@ -149,6 +149,10 @@ func FormatBalanceChange(balance *int64, currency string) template.HTML {
 
 // FormatBalance will return a string for a balance
 func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
+	if balanceInt == 0.0 {
+		return template.HTML("Exporting...")
+	}
+
 	exchangeRate := ExchangeRateForCurrency(currency)
 	balance := FormatFloat((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
 
