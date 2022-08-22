@@ -1011,6 +1011,7 @@ func (pc *PrysmClient) GetValidatorParticipation(epoch uint64) (*types.Validator
 			GlobalParticipationRate: 0,
 			VotedEther:              0,
 			EligibleEther:           0,
+			Complete:                false,
 		}, nil
 	}
 	return &types.ValidatorParticipation{
@@ -1018,6 +1019,7 @@ func (pc *PrysmClient) GetValidatorParticipation(epoch uint64) (*types.Validator
 		GlobalParticipationRate: epochParticipationStatistics.Participation.GlobalParticipationRate,
 		VotedEther:              epochParticipationStatistics.Participation.VotedEther,
 		EligibleEther:           epochParticipationStatistics.Participation.EligibleEther,
+		Complete:                false,
 	}, nil
 }
 

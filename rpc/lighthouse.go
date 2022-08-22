@@ -384,6 +384,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 				GlobalParticipationRate: 1.0,
 				VotedEther:              0,
 				EligibleEther:           0,
+				Complete:                false,
 			}
 		}
 	}()
@@ -846,6 +847,7 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 			GlobalParticipationRate: float32(parsedResponse.Data.PreviousEpochTargetAttestingGwei) / float32(parsedResponse.Data.PreviousEpochActiveGwei),
 			VotedEther:              uint64(parsedResponse.Data.PreviousEpochTargetAttestingGwei),
 			EligibleEther:           uint64(parsedResponse.Data.PreviousEpochActiveGwei),
+			Complete:                true,
 		}
 	} else {
 		res = &types.ValidatorParticipation{
@@ -853,6 +855,7 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 			GlobalParticipationRate: float32(parsedResponse.Data.CurrentEpochTargetAttestingGwei) / float32(parsedResponse.Data.CurrentEpochActiveGwei),
 			VotedEther:              uint64(parsedResponse.Data.CurrentEpochTargetAttestingGwei),
 			EligibleEther:           uint64(parsedResponse.Data.CurrentEpochActiveGwei),
+			Complete:                false,
 		}
 	}
 	return res, nil
