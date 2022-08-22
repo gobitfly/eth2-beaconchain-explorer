@@ -598,5 +598,5 @@ func GetLatestStats() *types.Stats {
 
 // IsSyncing returns true if the chain is still syncing
 func IsSyncing() bool {
-	return time.Now().Add(time.Minute * -10).After(utils.EpochToTime(LatestEpoch()))
+	return LatestNodeEpoch() != LatestEpoch()
 }
