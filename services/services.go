@@ -16,7 +16,9 @@ import (
 )
 
 var latestEpoch uint64
+var latestNodeEpoch uint64
 var latestFinalizedEpoch uint64
+var latestNodeFinalizedEpoch uint64
 var latestSlot uint64
 var latestProposedSlot uint64
 var latestValidatorCount uint64
@@ -68,20 +70,40 @@ func epochUpdater() {
 	firstRun := true
 
 	for {
-		var latestFinalized uint64
-		err := db.WriterDb.Get(&latestFinalized, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
+		// latest epoch acording to the node
+		var epochNode uint64
+		err := db.WriterDb.Get(&epochNode, "SELECT headepoch FROM network_liveness order by headepoch desc LIMIT 1")
 		if err != nil {
-			logger.Errorf("error retrieving latest finalized epoch from the database: %v", err)
+			logger.Errorf("error retrieving latest node epoch from the database: %v", err)
 		} else {
-			atomic.StoreUint64(&latestFinalizedEpoch, latestFinalized)
+			atomic.StoreUint64(&latestNodeEpoch, epochNode)
 		}
 
+		// latest finalized epoch acording to the node
+		var latestNodeFinalized uint64
+		err = db.WriterDb.Get(&latestNodeFinalized, "SELECT finalizedepoch FROM network_liveness order by headepoch desc LIMIT 1")
+		if err != nil {
+			logger.Errorf("error retrieving latest node finalized epoch from the database: %v", err)
+		} else {
+			atomic.StoreUint64(&latestNodeFinalizedEpoch, latestNodeFinalized)
+		}
+
+		// latest exported epoch
 		var epoch uint64
 		err = db.WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 		if err != nil {
-			logger.Errorf("error retrieving latest epoch from the database: %v", err)
+			logger.Errorf("error retrieving latest exported epoch from the database: %v", err)
 		} else {
 			atomic.StoreUint64(&latestEpoch, epoch)
+		}
+
+		// latest exportered finalized epoch
+		var latestFinalized uint64
+		err = db.WriterDb.Get(&latestFinalized, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where epoch <= (select finalizedepoch from network_liveness order by headepoch desc limit 1)")
+		if err != nil {
+			logger.Errorf("error retrieving latest exported finalized epoch from the database: %v", err)
+		} else {
+			atomic.StoreUint64(&latestFinalizedEpoch, latestFinalized)
 			if firstRun {
 				logger.Info("initialized epoch updater")
 				ready.Done()
@@ -451,9 +473,19 @@ func LatestEpoch() uint64 {
 	return atomic.LoadUint64(&latestEpoch)
 }
 
+// LatestNodeEpoch will return the latest epoch acording to the node
+func LatestNodeEpoch() uint64 {
+	return atomic.LoadUint64(&latestNodeEpoch)
+}
+
 // LatestFinalizedEpoch will return the most recent epoch that has been finalized.
 func LatestFinalizedEpoch() uint64 {
 	return atomic.LoadUint64(&latestFinalizedEpoch)
+}
+
+// LatestNodeFinalizedEpoch will return the most recent epoch that has been finalized acording to the node
+func LatestNodeFinalizedEpoch() uint64 {
+	return atomic.LoadUint64(&latestNodeFinalizedEpoch)
 }
 
 // LatestSlot will return the latest slot
