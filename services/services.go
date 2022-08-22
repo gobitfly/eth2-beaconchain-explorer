@@ -227,6 +227,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
 	data.NetworkName = utils.Config.Chain.Config.ConfigName
 	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
+	data.ShowSyncingMessage = IsSyncing()
 
 	var epoch uint64
 	err := db.WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")

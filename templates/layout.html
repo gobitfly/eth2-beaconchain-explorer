@@ -193,8 +193,7 @@
                   </div>
                 </div>
               {{ end }}
-            {{ end }}
-            {{ if .ShowSyncingMessage }}
+            {{ else }}
               <div data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network" id="banner-status" class="info-item d-flex mr-1 mr-lg-3">
                 <div class="info-item-body"><i class="fas fa-sync"></i></div>
               </div>

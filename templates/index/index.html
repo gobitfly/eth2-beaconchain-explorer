@@ -150,6 +150,9 @@
                 scheduledCount: function () {
                     return this.page.scheduled_count
                 },
+                syncing: function () {
+                    return this.page.ShowSyncingMessage
+                },
                 epochCompletePercent: function () {
                     return ((32 - this.page.scheduled_count) / 32) * 100
                 }
@@ -171,7 +174,7 @@
                         $.getJSON('/index/data', function (response) {
                             this.page = response;
                         }.bind(this));
-                        this.updateIn = 15;
+                        this.updateIn = 12;
                     } else {
                         this.updateIn--;
                     }
