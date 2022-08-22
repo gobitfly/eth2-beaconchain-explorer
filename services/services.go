@@ -364,6 +364,17 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
 	}
 
+	if len(epochs) < 15 && currentNodeEpoch >= 15 {
+		// fill in projected epochs
+		for e := currentNodeEpoch - (15 - uint64(len(epochs)) - 1); e <= currentNodeEpoch; e++ {
+			tmp := types.IndexPageDataEpochs{
+				Epoch:                   e,
+				GlobalParticipationRate: 1,
+			}
+			epochs = append([]*types.IndexPageDataEpochs{&tmp}, epochs...)
+		}
+	}
+
 	for _, epoch := range epochs {
 		epoch.Ts = utils.EpochToTime(epoch.Epoch)
 		epoch.Finalized = epoch.Epoch <= finalizedNodeEpoch
