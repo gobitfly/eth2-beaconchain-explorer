@@ -36,23 +36,24 @@ var logger = logrus.New().WithField("module", "services")
 
 // Init will initialize the services
 func Init() {
-	ready.Add(5)
+	ready.Add(4)
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
 
 	if utils.Config.Frontend.OnlyAPI {
 		ready.Done()
-		ready.Done()
 	} else {
-		go indexPageDataUpdater()
 		go poolsUpdater()
 	}
 	ready.Wait()
-
 	if utils.Config.Frontend.OnlyAPI {
 		return
 	}
+	// we do this after the rest has readied up to ensure we get a complete index page
+	ready.Add(1)
+	go indexPageDataUpdater()
+	ready.Wait()
 
 	if !utils.Config.Frontend.DisableCharts {
 		go chartsPageDataUpdater()
