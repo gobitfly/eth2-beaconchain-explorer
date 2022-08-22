@@ -256,20 +256,20 @@ create table validatorqueue_exit
 drop table if exists epochs;
 create table epochs
 (
-    epoch                   int    not null,
-    blockscount             int    not null default 0,
-    proposerslashingscount  int    not null,
-    attesterslashingscount  int    not null,
-    attestationscount       int    not null,
-    depositscount           int    not null,
-    voluntaryexitscount     int    not null,
-    validatorscount         int    not null,
-    averagevalidatorbalance bigint not null,
-    totalvalidatorbalance   bigint not null,
-    finalized               bool,
-    eligibleether           bigint,
-    globalparticipationrate float,
-    votedether              bigint,
+    epoch                      int    not null,
+    blockscount                int    not null default 0,
+    proposerslashingscount     int    not null,
+    attesterslashingscount     int    not null,
+    attestationscount          int    not null,
+    depositscount              int    not null,
+    voluntaryexitscount        int    not null,
+    validatorscount            int    not null,
+    averagevalidatorbalance    bigint not null,
+    totalvalidatorbalance      bigint not null,
+    completeparticipationstats bool   default false,
+    eligibleether              bigint,
+    globalparticipationrate    float,
+    votedether                 bigint,
     primary key (epoch)
 );
 
@@ -448,6 +448,7 @@ create table network_liveness
     previousjustifiedepoch int not null,
     primary key (ts)
 );
+CREATE INDEX idx_network_liveness_headepoch ON network_liveness (headepoch);
 
 drop table if exists graffitiwall;
 create table graffitiwall
