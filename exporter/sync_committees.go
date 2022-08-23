@@ -55,6 +55,7 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 }
 
 func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
+
 	stateID := uint64(0)
 	if p > 0 {
 		stateID = utils.FirstEpochOfSyncPeriod(p-1) * utils.Config.Chain.Config.SlotsPerEpoch
@@ -69,6 +70,9 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 	lastEpoch := firstEpoch + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod
 	firstWeek := firstEpoch / 1575
 	lastWeek := lastEpoch / 1575
+
+	logger.Infof("exporting sync committee assignments for period %v (epoch %v to %v)", p, firstEpoch, lastEpoch)
+
 	for w := firstWeek; w <= lastWeek; w++ {
 		var one int
 		err := db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'sync_assignments_%v'", w))
@@ -95,6 +99,17 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 		validatorsU64[i] = idxU64
 	}
 
+	start := time.Now()
+	firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
+	lastSlot := lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch + utils.Config.Chain.Config.SlotsPerEpoch - 1
+	logger.Infof("exporting sync committee assignments for period %v (epoch %v to %v, slot %v to %v) to bigtable", p, firstEpoch, lastEpoch, firstSlot, lastSlot)
+
+	err = db.BigtableClient.SaveSyncCommitteesAssignments(firstSlot, lastSlot, validatorsU64)
+	if err != nil {
+		logger.Errorf("error saving sync committee assignments: %v", err)
+	}
+	logger.Infof("exported sync committee assignments for period %v to bigtable in %v", p, time.Since(start))
+
 	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		return err
@@ -120,14 +135,20 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 		return err
 	}
 
+	validatorsBySlot := make(map[uint64][]uint64)
+
 	slotsPerSyncPeriod := utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
-	firstSlot := utils.FirstEpochOfSyncPeriod(p) * utils.Config.Chain.Config.SlotsPerEpoch
+	firstSlot = utils.FirstEpochOfSyncPeriod(p) * utils.Config.Chain.Config.SlotsPerEpoch
 	nArgs = 4
 	valueArgs = make([]interface{}, int(slotsPerSyncPeriod)*nArgs)
 	valueIds = make([]string, slotsPerSyncPeriod)
 	for _, idxU64 := range validatorsU64 {
 		for i := 0; i < int(slotsPerSyncPeriod); i++ {
 			slot := firstSlot + uint64(i)
+			if validatorsBySlot[slot] == nil {
+				validatorsBySlot[slot] = make([]uint64, 0, 1028)
+			}
+			validatorsBySlot[slot] = append(validatorsBySlot[slot], idxU64)
 			valueArgs[i*nArgs+0] = slot
 			valueArgs[i*nArgs+1] = idxU64
 			valueArgs[i*nArgs+2] = 0 // status = scheduled
@@ -140,6 +161,9 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 				VALUES %s ON CONFLICT (slot, validatorindex, week) DO NOTHING`,
 				strings.Join(valueIds, ",")),
 			valueArgs...)
+		if err != nil {
+			return err
+		}
 	}
 
 	return tx.Commit()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"fmt"
 	"sort"
 	"strconv"
@@ -21,6 +22,7 @@ const (
 	VALIDATOR_BALANCES_FAMILY = "vb"
 	ATTESTATIONS_FAMILY       = "at"
 	PROPOSALS_FAMILY          = "pr"
+	SYNC_COMMITTEES_FAMILY    = "sc"
 
 	max_block_number = 1000000000
 	max_epoch        = 1000000000
@@ -147,6 +149,39 @@ func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[
 	return nil
 }
 
+func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint64, validators []uint64) error {
+	start := time.Now()
+	ts := gcp_bigtable.Timestamp(0)
+
+	var muts []*gcp_bigtable.Mutation
+	var keys []string
+
+	for i := startSlot; i <= endSlot; i++ {
+		mut := gcp_bigtable.NewMutation()
+		for _, validator := range validators {
+			mut.Set(SYNC_COMMITTEES_FAMILY, fmt.Sprintf("%d", validator), ts, []byte{})
+		}
+
+		muts = append(muts, mut)
+		keys = append(keys, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(i/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(i)))
+	}
+
+	errs, err := bigtable.tableBeaconchain.ApplyBulk(context.Background(), keys, muts)
+
+	if err != nil {
+		return err
+	}
+
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+
+	logger.Infof("exported sync committee assignments to bigtable in %v", time.Since(start))
+	return nil
+}
+
 func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.Block) error {
 	start := time.Now()
 
@@ -180,7 +215,7 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 		for validator, inclusionSlot := range inclusions {
 			mut.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((max_block_number-inclusionSlot)*1000), []byte{})
 		}
-		err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(attestedSlot/32), reversedPaddedSlot(attestedSlot)), mut)
+		err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(attestedSlot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(attestedSlot)), mut)
 
 		if err != nil {
 			return err
@@ -209,13 +244,69 @@ func (bigtable *Bigtable) SaveProposals(blocks map[uint64]map[string]*types.Bloc
 			}
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(PROPOSALS_FAMILY, fmt.Sprintf("%d", b.Proposer), gcp_bigtable.Timestamp((max_block_number-b.Slot)*1000), []byte{})
-			err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(b.Slot/32), reversedPaddedSlot(b.Slot)), mut)
+			err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(b.Slot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(b.Slot)), mut)
 			if err != nil {
 				return err
 			}
 		}
 	}
 	logger.Infof("exported proposals to bigtable in %v", time.Since(start))
+	return nil
+}
+
+func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*types.Block) error {
+	start := time.Now()
+
+	dutiesBySlot := make(map[uint64]map[uint64]bool) //map[dutiesSlot]map[validator]bool
+
+	slots := make([]uint64, 0, len(blocks))
+	for slot := range blocks {
+		slots = append(slots, slot)
+	}
+	sort.Slice(slots, func(i, j int) bool {
+		return slots[i] < slots[j]
+	})
+
+	for _, slot := range slots {
+		for _, b := range blocks[slot] {
+			if b.Status == 2 {
+				continue
+			} else if b.SyncAggregate != nil && len(b.SyncAggregate.SyncCommitteeValidators) > 0 {
+				bitLen := len(b.SyncAggregate.SyncCommitteeBits) * 8
+				valLen := len(b.SyncAggregate.SyncCommitteeValidators)
+				if bitLen < valLen {
+					return fmt.Errorf("error getting sync_committee participants: bitLen != valLen: %v != %v", bitLen, valLen)
+				}
+				for i, valIndex := range b.SyncAggregate.SyncCommitteeValidators {
+
+					if utils.BitAtVector(b.SyncAggregate.SyncCommitteeBits, i) {
+
+						if dutiesBySlot[b.Slot] == nil {
+							dutiesBySlot[b.Slot] = make(map[uint64]bool)
+						}
+						dutiesBySlot[b.Slot][valIndex] = true
+					}
+				}
+			}
+		}
+	}
+
+	if len(dutiesBySlot) == 0 {
+		logger.Infof("no sync duties to export")
+		return nil
+	}
+	for slot, validators := range dutiesBySlot {
+		mut := gcp_bigtable.NewMutation()
+		for validator := range validators {
+			mut.Set(SYNC_COMMITTEES_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((max_block_number-slot)*1000), []byte{})
+		}
+		err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(slot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(slot)), mut)
+
+		if err != nil {
+			return err
+		}
+	}
+	logger.Infof("exported sync committee duties to bigtable in %v", time.Since(start))
 	return nil
 }
 
@@ -362,7 +453,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 			} else {
 				res[validator] = append(res[validator], &types.ValidatorAttestation{
 					Index:          validator,
-					Epoch:          attesterSlot / 32,
+					Epoch:          attesterSlot / utils.Config.Chain.Config.SlotsPerEpoch,
 					AttesterSlot:   attesterSlot,
 					CommitteeIndex: 0,
 					Status:         status,

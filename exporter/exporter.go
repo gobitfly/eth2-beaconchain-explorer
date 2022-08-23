@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/metrics"
 	"eth2-exporter/rpc"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -510,7 +511,29 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		if err != nil {
 			logrus.Errorf("error exporting proposals to bigtable: %v", err)
 		}
+		err = db.BigtableClient.SaveSyncComitteeDuties(data.Blocks)
+		if err != nil {
+			logrus.Errorf("error exporting sync committe duties to bigtable: %v", err)
+		}
 	}()
+
+	attestedSlots := make(map[uint64]uint64)
+	for _, blockkv := range data.Blocks {
+		for _, block := range blockkv {
+			for _, attestation := range block.Attestations {
+				for _, validator := range attestation.Attesters {
+					if block.Slot > attestedSlots[validator] {
+						attestedSlots[validator] = block.Slot
+					}
+				}
+			}
+		}
+	}
+
+	err = services.SetLastAttestationSlots(attestedSlots)
+	if err != nil {
+		return fmt.Errorf("error settings last attestation slots for epoch %v: %v", data.Epoch, err)
+	}
 
 	return db.SaveEpoch(data)
 }
