@@ -572,25 +572,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// add syncStats that are not yet in validator_stats
-		syncStatsNotInStats := struct {
-			ScheduledSync    uint64 `db:"scheduled_sync"`
-			ParticipatedSync uint64 `db:"participated_sync"`
-			MissedSync       uint64 `db:"missed_sync"`
-			OrphanedSync     uint64 `db:"orphaned_sync"`
-		}{}
-		err = db.ReaderDb.Get(&syncStatsNotInStats, "select coalesce(sum(case when status = 0 then 1 else 0 end), 0) as scheduled_sync, coalesce(sum(case when status = 1 then 1 else 0 end), 0) as participated_sync, coalesce(sum(case when status = 2 then 1 else 0 end), 0) as missed_sync, coalesce(sum(case when status = 3 then 1 else 0 end), 0) as orphaned_sync from sync_assignments_p where week >= $1/7 and slot >= ($1+1)*225*32 and validatorindex = $2", lastStatsDay, index)
-		if err != nil {
-			logger.Errorf("error retrieving validator syncStatsAfterLastStatsDay: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		validatorPageData.ScheduledSyncCount = syncStatsNotInStats.ScheduledSync
-		validatorPageData.ParticipatedSyncCount = syncStats.ParticipatedSync + syncStatsNotInStats.ParticipatedSync
-		validatorPageData.MissedSyncCount = syncStats.MissedSync + syncStatsNotInStats.MissedSync
-		validatorPageData.OrphanedSyncCount = syncStats.OrphanedSync + syncStatsNotInStats.OrphanedSync
-
 		validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.SyncCount-validatorPageData.MissedSyncCount) / float64(validatorPageData.SyncCount)
 	}
 
@@ -1322,32 +1303,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		validatorHistory = append(validatorHistory, h)
 	}
 
-	// spew.Dump(validatorHistory)
-
-	// err = db.ReaderDb.Select(&validatorHistory, `
-	// 		SELECT
-	// 			vbalance.epoch,
-	// 			COALESCE(vbalance.balance - LAG(vbalance.balance) OVER (ORDER BY vbalance.epoch), 0) AS balancechange,
-	// 			COALESCE(assign.attesterslot, -1) AS attestatation_attesterslot,
-	// 			assign.inclusionslot AS attestation_inclusionslot,
-	// 			vblocks.status as proposal_status,
-	// 			vblocks.slot as proposal_slot
-	// 		FROM validator_balances_p vbalance
-	// 		LEFT JOIN attestation_assignments_p assign ON vbalance.validatorindex = assign.validatorindex AND vbalance.epoch = assign.epoch AND vbalance.week = assign.week
-	// 		LEFT JOIN blocks vblocks ON vbalance.validatorindex = vblocks.proposer AND vbalance.epoch = vblocks.epoch AND vbalance.week = vblocks.epoch / 1575
-	// 		WHERE vbalance.validatorindex = $1 AND vbalance.epoch >= $2 AND vbalance.epoch <= $3 AND vbalance.week >= $2 / 1575 AND vbalance.week <= $3 / 1575
-	// 		ORDER BY epoch DESC
-	// 		LIMIT 10
-	// 		`, index, lookBack, currentEpoch-start)
-
-	// if err != nil {
-	// 	logger.Errorf("error retrieving validator history: %v", err)
-	// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// spew.Dump(validatorHistory)
-
 	tableData := make([][]interface{}, 0, len(validatorHistory))
 	for _, b := range validatorHistory {
 		if b.AttesterSlot.Int64 == -1 && b.BalanceChange.Int64 < 0 {
@@ -1510,7 +1465,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	start, err := strconv.ParseInt(q.Get("start"), 10, 64)
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables start start-parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1524,23 +1479,6 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	}
 	if length > 100 {
 		length = 100
-	}
-
-	orderDir := q.Get("order[0][dir]")
-	if orderDir != "desc" && orderDir != "asc" {
-		orderDir = "desc"
-	}
-
-	orderColumn := q.Get("order[0][column]")
-	orderByMap := map[string]string{
-		"0": fmt.Sprintf("sa.week %[1]s, sa.slot %[1]s", orderDir),
-		"1": fmt.Sprintf("sa.week %[1]s, sa.slot %[1]s", orderDir),
-		"2": fmt.Sprintf("sa.week %[1]s, sa.slot %[1]s", orderDir),
-		"3": fmt.Sprintf("sa.status %[1]s", orderDir),
-	}
-	orderBy, exists := orderByMap[orderColumn]
-	if !exists {
-		orderBy = fmt.Sprintf("sa.week %[1]s, sa.slot %[1]s", orderDir)
 	}
 
 	var countData []struct {
@@ -1559,46 +1497,36 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 	totalCount := uint64(0)
 	tableData := [][]interface{}{}
+	currentEpoch := services.LatestEpoch()
 
 	if len(countData) > 0 {
 		// only show 1 scheduled slot in the sync-table
 		totalCount = countData[0].TotalCount
-		futureSlotsThreshold := (services.LatestEpoch()+1)*utils.Config.Chain.Config.SlotsPerEpoch + 1
-		firstSyncSlot := countData[0].MaxPeriod * utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
-		lastSyncSlot := (countData[0].MaxPeriod + 1) * utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
-		if futureSlotsThreshold < lastSyncSlot {
-			totalCount = futureSlotsThreshold - firstSyncSlot
-		}
-		var dbRows []struct {
-			Slot              uint64  `db:"slot"`
-			Status            uint64  `db:"status"`
-			ParticipationRate float64 `db:"participation"`
-		}
-		err = db.ReaderDb.Select(&dbRows, `
-			SELECT sa.slot, sa.status, COALESCE(b.syncaggregate_participation,0) AS participation
-			FROM sync_assignments_p sa
-			LEFT JOIN blocks b ON sa.slot = b.slot
-			WHERE validatorindex = $1 AND sa.slot < $4
-			ORDER BY `+orderBy+`
-			LIMIT $2 OFFSET $3`, index, length, start, futureSlotsThreshold)
+
+		res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, currentEpoch-start, 10)
 		if err != nil {
-			logger.Errorf("error retrieving validator sync participations data: %v", err)
+			logger.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		tableData = make([][]interface{}, len(dbRows))
-		for i, r := range dbRows {
+
+		tableData = make([][]interface{}, len(res[index]))
+		for i, r := range res[index] {
 			epoch := utils.EpochOfSlot(r.Slot)
-			participation := template.HTML("-") // no participation fro scheduled and nonblock-slots
-			if r.Status != 0 && r.Status != 3 {
-				participation = utils.FormatPercentageColored(r.ParticipationRate)
+
+			slotTime := utils.SlotToTime(r.Slot)
+
+			// if slotTime.After(time.Now().Add(time.Minute)) {
+			// 	continue
+			// }
+			if r.Status == 0 && time.Since(slotTime) > time.Minute {
+				r.Status = 2
 			}
 			tableData[i] = []interface{}{
 				fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
 				utils.FormatEpoch(epoch),
 				utils.FormatBlockSlot(r.Slot),
 				utils.FormatSyncParticipationStatus(r.Status),
-				participation,
 			}
 		}
 	}

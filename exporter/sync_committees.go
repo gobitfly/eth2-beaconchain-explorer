@@ -68,22 +68,8 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 
 	firstEpoch := utils.FirstEpochOfSyncPeriod(p)
 	lastEpoch := firstEpoch + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod
-	firstWeek := firstEpoch / 1575
-	lastWeek := lastEpoch / 1575
 
 	logger.Infof("exporting sync committee assignments for period %v (epoch %v to %v)", p, firstEpoch, lastEpoch)
-
-	for w := firstWeek; w <= lastWeek; w++ {
-		var one int
-		err := db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'sync_assignments_%v'", w))
-		if err != nil {
-			logger.Infof("creating partition sync_assignments_%v", w)
-			_, err := db.WriterDb.Exec(fmt.Sprintf("CREATE TABLE sync_assignments_%v PARTITION OF sync_assignments_p FOR VALUES IN (%v);", w, w))
-			if err != nil {
-				logger.Fatalf("unable to create partition sync_assignments_%v: %v", w, err)
-			}
-		}
-	}
 
 	c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", stateID), epoch)
 	if err != nil {
@@ -133,37 +119,6 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 		valueArgs...)
 	if err != nil {
 		return err
-	}
-
-	validatorsBySlot := make(map[uint64][]uint64)
-
-	slotsPerSyncPeriod := utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
-	firstSlot = utils.FirstEpochOfSyncPeriod(p) * utils.Config.Chain.Config.SlotsPerEpoch
-	nArgs = 4
-	valueArgs = make([]interface{}, int(slotsPerSyncPeriod)*nArgs)
-	valueIds = make([]string, slotsPerSyncPeriod)
-	for _, idxU64 := range validatorsU64 {
-		for i := 0; i < int(slotsPerSyncPeriod); i++ {
-			slot := firstSlot + uint64(i)
-			if validatorsBySlot[slot] == nil {
-				validatorsBySlot[slot] = make([]uint64, 0, 1028)
-			}
-			validatorsBySlot[slot] = append(validatorsBySlot[slot], idxU64)
-			valueArgs[i*nArgs+0] = slot
-			valueArgs[i*nArgs+1] = idxU64
-			valueArgs[i*nArgs+2] = 0 // status = scheduled
-			valueArgs[i*nArgs+3] = utils.WeekOfSlot(slot)
-			valueIds[i] = fmt.Sprintf("($%d,$%d,$%d,$%d)", i*nArgs+1, i*nArgs+2, i*nArgs+3, i*nArgs+4)
-		}
-		_, err = tx.Exec(
-			fmt.Sprintf(`
-				INSERT INTO sync_assignments_p (slot, validatorindex, status, week)
-				VALUES %s ON CONFLICT (slot, validatorindex, week) DO NOTHING`,
-				strings.Join(valueIds, ",")),
-			valueArgs...)
-		if err != nil {
-			return err
-		}
 	}
 
 	return tx.Commit()

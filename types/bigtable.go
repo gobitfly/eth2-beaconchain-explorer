@@ -17,6 +17,12 @@ type ValidatorMissedAttestationsStatistic struct {
 	MissedAttestations uint64
 }
 
+type ValidatorSyncDutiesStatistic struct {
+	Index            uint64
+	ParticipatedSync uint64
+	MissedSync       uint64
+}
+
 type ValidatorProposal struct {
 	Index  uint64
 	Slot   uint64

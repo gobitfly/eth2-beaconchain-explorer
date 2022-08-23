@@ -188,15 +188,12 @@ function addValidatorUpdateUI() {
     method: "GET",
   }).then((res) => {
     res.json().then((data) => {
-      let eff = 0.0
-      for (let incDistance of data) {
-        if (incDistance === 0.0) {
-          continue
-        }
-        eff += (1.0 / incDistance) * 100.0
+      let sum = 0.0
+      for (let eff of data) {
+        sum += eff
       }
-      eff = eff / data.length
-      setValidatorEffectiveness("validator-eff-total", eff)
+      sum = sum / data.length
+      setValidatorEffectiveness("validator-eff-total", sum)
     })
   })
   showProposedHistoryTable()

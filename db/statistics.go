@@ -18,8 +18,8 @@ func WriteStatisticsForDay(day uint64) error {
 	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
 	firstEpoch := day * epochsPerDay
 	lastEpoch := (day+1)*epochsPerDay - 1
-	firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
-	lastSlot := (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+	// firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
+	// lastSlot := (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
 
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
@@ -76,19 +76,6 @@ func WriteStatisticsForDay(day uint64) error {
 
 		logger.Infof("saving validator balance batch %v completed", b)
 	}
-
-	// for _, stat := range balanceStatistics {
-	// 	_, err = tx.Exec(`
-	// 	insert into validator_stats (validatorindex, day, min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance, end_effective_balance) VALUES
-	// 	(
-	// 		$1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-	// 	)
-	// 	on conflict (validatorindex, day) do update set min_balance = excluded.min_balance, max_balance = excluded.max_balance, min_effective_balance = excluded.min_effective_balance, max_effective_balance = excluded.max_effective_balance, start_balance = excluded.start_balance, start_effective_balance = excluded.start_effective_balance, end_balance = excluded.end_balance, end_effective_balance = excluded.end_effective_balance;`,
-	// 		stat.Index, day, stat.MinBalance, stat.MaxBalance, stat.MinEffectiveBalance, stat.MaxEffectiveBalance, stat.StartBalance, stat.StartEffectiveBalance, stat.EndBalance, stat.EndEffectiveBalance)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
 	logger.Infof("export completed, took %v", time.Since(start))
 
 	start = time.Now()
@@ -137,18 +124,45 @@ func WriteStatisticsForDay(day uint64) error {
 
 	start = time.Now()
 	logger.Infof("exporting sync statistics")
-	_, err = tx.Exec(`
-		insert into validator_stats (validatorindex, day, participated_sync, missed_sync, orphaned_sync) 
-		(
-			select validatorindex, $3, sum(case when status = 1 then 1 else 0 end), sum(case when status = 2 then 1 else 0 end), sum(case when status = 3 then 1 else 0 end)
-			from sync_assignments_p
-			where week >= $1 / 1575 AND week <= $2 / 1575 and slot >= $1 and slot <= $2
-			group by validatorindex
-		) 
-		on conflict (validatorindex, day) do update set participated_sync = excluded.participated_sync, missed_sync = excluded.missed_sync, orphaned_sync = excluded.orphaned_sync;`,
-		firstSlot, lastSlot, day)
+	syncStats, err := BigtableClient.GetValidatorSyncDutiesStatistics([]uint64{}, lastEpoch, int64(lastEpoch-firstEpoch))
 	if err != nil {
 		return err
+	}
+	syncStatsArr := make([]*types.ValidatorSyncDutiesStatistic, 0, len(ma))
+	for _, stat := range syncStats {
+		syncStatsArr = append(syncStatsArr, stat)
+	}
+
+	batchSize = 13000 // max parameters: 65535
+	for b := 0; b < len(maArr); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(maArr) < end {
+			end = len(maArr)
+		}
+
+		numArgs := 5
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*numArgs)
+		for i, stat := range syncStatsArr[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5))
+			valueArgs = append(valueArgs, stat.Index)
+			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, stat.ParticipatedSync)
+			valueArgs = append(valueArgs, stat.MissedSync)
+			valueArgs = append(valueArgs, 0)
+		}
+		stmt := fmt.Sprintf(`
+		insert into validator_stats (validatorindex, day, participated_sync, missed_sync, orphaned_sync)  VALUES
+		%s
+		on conflict (validatorindex, day) do update set participated_sync = excluded.participated_sync, missed_sync = excluded.missed_sync, orphaned_sync = excluded.orphaned_sync;`,
+			strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+
+		logger.Infof("saving sync statistics batch %v completed", b)
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
 

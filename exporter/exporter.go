@@ -230,7 +230,19 @@ func Start(client rpc.Client) error {
 			if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
 				doFullCheck(client)
 			} else { // else just save the in epoch block
-				err := db.SaveBlock(block)
+
+				blocksMap := make(map[uint64]map[string]*types.Block)
+				if blocksMap[block.Slot] == nil {
+					blocksMap[block.Slot] = make(map[string]*types.Block)
+				}
+				blocksMap[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
+
+				err := db.BigtableClient.SaveSyncComitteeDuties(blocksMap)
+				if err != nil {
+					logrus.Errorf("error exporting sync committe duties to bigtable for block %v: %v", block.Slot, err)
+				}
+
+				err = db.SaveBlock(block)
 				if err != nil {
 					logger.Errorf("error saving block: %v", err)
 				}
@@ -461,19 +473,6 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		metrics.TaskDuration.WithLabelValues("export_epoch").Observe(time.Since(start).Seconds())
 		logger.WithFields(logrus.Fields{"duration": time.Since(start), "epoch": epoch}).Info("completed exporting epoch")
 	}()
-
-	// Check if the partition for the validator_balances and attestation_assignments and sync_assignments table for this epoch exists
-	var one int
-	logger.Printf("checking partition status for epoch %v", epoch)
-	week := epoch / 1575
-	err := db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'sync_assignments_%v'", week))
-	if err != nil {
-		logger.Infof("creating partition sync_assignments_%v", week)
-		_, err := db.WriterDb.Exec(fmt.Sprintf("CREATE TABLE sync_assignments_%v PARTITION OF sync_assignments_p FOR VALUES IN (%v);", week, week))
-		if err != nil {
-			logger.Fatalf("unable to create partition sync_assignments_%v: %v", week, err)
-		}
-	}
 
 	startGetEpochData := time.Now()
 	logger.Printf("retrieving data for epoch %v", epoch)

@@ -472,6 +472,85 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	return res, nil
 }
 
+func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, startEpoch uint64, limit int64) (map[uint64][]*types.ValidatorSyncParticipation, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
+	res := make(map[uint64][]*types.ValidatorSyncParticipation, len(validators))
+
+	columnFilters := make([]gcp_bigtable.Filter, 0, len(validators))
+	for _, validator := range validators {
+		columnFilters = append(columnFilters, gcp_bigtable.ColumnFilter(fmt.Sprintf("%d", validator)))
+	}
+
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(SYNC_COMMITTEES_FAMILY),
+		gcp_bigtable.InterleaveFilters(columnFilters...),
+		gcp_bigtable.LatestNFilter(1),
+	)
+
+	if len(columnFilters) == 1 { // special case to retrieve data for one validators
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(SYNC_COMMITTEES_FAMILY),
+			columnFilters[0],
+			gcp_bigtable.LatestNFilter(1),
+		)
+	}
+	if len(columnFilters) == 0 { // special case to retrieve data for all validators
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(SYNC_COMMITTEES_FAMILY),
+			gcp_bigtable.LatestNFilter(1),
+		)
+	}
+
+	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, ""), func(r gcp_bigtable.Row) bool {
+		for _, ri := range r[SYNC_COMMITTEES_FAMILY] {
+			keySplit := strings.Split(r.Key(), ":")
+
+			slot, err := strconv.ParseUint(keySplit[4], 10, 64)
+			if err != nil {
+				logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
+				return false
+			}
+			slot = max_block_number - slot
+			inclusionSlot := max_block_number - uint64(r[SYNC_COMMITTEES_FAMILY][0].Timestamp)/1000
+
+			status := uint64(1)
+			if inclusionSlot == max_block_number {
+				inclusionSlot = 0
+				status = 0
+			}
+
+			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, SYNC_COMMITTEES_FAMILY+":"), 10, 64)
+			if err != nil {
+				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
+				return false
+			}
+
+			if res[validator] == nil {
+				res[validator] = make([]*types.ValidatorSyncParticipation, 0, limit)
+			}
+
+			if len(res[validator]) > 1 && res[validator][len(res[validator])-1].Slot == slot {
+				res[validator][len(res[validator])-1].Status = status
+			} else {
+				res[validator] = append(res[validator], &types.ValidatorSyncParticipation{
+					Slot:   slot,
+					Status: status,
+				})
+			}
+
+		}
+		return true
+	}, gcp_bigtable.LimitRows(limit), gcp_bigtable.RowFilter(filter))
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, startEpoch uint64, limit int64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
 	data, err := bigtable.GetValidatorAttestationHistory(validators, startEpoch, limit)
 
@@ -490,6 +569,34 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 					}
 				}
 				res[validator].MissedAttestations++
+			}
+		}
+	}
+
+	return res, nil
+}
+
+func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, startEpoch uint64, limit int64) (map[uint64]*types.ValidatorSyncDutiesStatistic, error) {
+	data, err := bigtable.GetValidatorSyncDutiesHistory(validators, startEpoch, limit)
+
+	if err != nil {
+		return nil, err
+	}
+
+	res := make(map[uint64]*types.ValidatorSyncDutiesStatistic)
+
+	for validator, duties := range data {
+		for _, duty := range duties {
+			if res[validator] == nil {
+				res[validator] = &types.ValidatorSyncDutiesStatistic{
+					Index: validator,
+				}
+			}
+
+			if duty.Status == 0 {
+				res[validator].MissedSync++
+			} else {
+				res[validator].ParticipatedSync++
 			}
 		}
 	}
