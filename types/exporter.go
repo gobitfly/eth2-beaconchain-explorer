@@ -2,8 +2,9 @@ package types
 
 import (
 	"database/sql"
-
+	"github.com/pkg/errors"
 	ethpb "github.com/prysmaticlabs/prysm/proto/prysm/v1alpha1"
+	"github.com/sirupsen/logrus"
 )
 
 // ChainHead is a struct to hold chain head data
@@ -24,7 +25,8 @@ type ChainHead struct {
 
 type FinalityCheckpoints struct {
 	PreviousJustified struct {
-		Epoch uint64 `json:"epoch"`
+		Epoch uint64 `
+    :"epoch"`
 		Root  string `json:"root"`
 	} `json:"previous_justified"`
 	CurrentJustified struct {
@@ -463,4 +465,43 @@ type HistoricEthPrice struct {
 	} `json:"market_data"`
 	Name   string `json:"name"`
 	Symbol string `json:"symbol"`
+}
+
+type Relay struct {
+	ID       string `db:"tag_id"`
+	Endpoint string `db:"endpoint"`
+	Logger   logrus.Entry
+}
+
+type BlockTag struct {
+	ID        string `db:"tag_id"`
+	BlockSlot uint64 `db:"slot"`
+	BlockRoot string `db:"blockroot"`
+}
+
+type TagMetadata struct {
+	Name        string `json:"name"`
+	Summary     string `json:"summary"`
+	Description string `json:"description"`
+	Color       string `json:"color"`
+}
+
+type TagMetadataSlice []TagMetadata
+
+func (s *TagMetadataSlice) Scan(src interface{}) error {
+	switch v := src.(type) {
+	case []byte:
+		err := json.Unmarshal(v, s)
+		if err != nil {
+			return err
+		}
+		// if no tags were found we will get back an empty TagMetadata, we don't want that
+		if len(*s) == 1 && (*s)[0].Name == "" {
+			*s = nil
+		}
+		return nil
+	case string:
+		return json.Unmarshal([]byte(v), s)
+	}
+	return errors.New("type assertion failed")
 }

@@ -66,7 +66,7 @@ func calculateStats() (*types.Stats, error) {
 
 	stats.PendingValidatorCount = &pendingValidatorCount
 
-	validatorChurnLimit, err := GetValidatorChurnLimit()
+	validatorChurnLimit, err := getValidatorChurnLimit(activeValidatorCount)
 	if err != nil {
 		logger.WithError(err).Error("error getting total validator churn limit")
 	}
@@ -141,19 +141,12 @@ func eth1UniqueValidatorsCount() (*uint64, error) {
 }
 
 // GetValidatorChurnLimit returns the rate at which validators can enter or leave the system
-func GetValidatorChurnLimit() (uint64, error) {
+func getValidatorChurnLimit(validatorCount uint64) (uint64, error) {
 	min := utils.Config.Chain.Config.MinPerEpochChurnLimit
 
-	stats := GetLatestStats()
-	count := stats.ActiveValidatorCount
-
-	if count == nil {
-		count = new(uint64)
-	}
-
 	adaptable := uint64(0)
-	if *count > 0 {
-		adaptable = utils.Config.Chain.Config.ChurnLimitQuotient / *count
+	if validatorCount > 0 {
+		adaptable = validatorCount / utils.Config.Chain.Config.ChurnLimitQuotient
 	}
 
 	if min > adaptable {

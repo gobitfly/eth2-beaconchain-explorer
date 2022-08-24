@@ -340,7 +340,10 @@ type ValidatorPageData struct {
 	AttestationInclusionEffectiveness   float64
 	CsrfField                           template.HTML
 	NetworkStats                        *IndexPageData
-	EstimatedActivationTs               int64
+	ChurnRate                           uint64
+	QueuePosition                       uint64
+	EstimatedActivationTs               time.Time
+	EstimatedActivationEpoch            uint64
 	InclusionDelay                      int64
 	CurrentAttestationStreak            uint64
 	LongestAttestationStreak            uint64
@@ -584,6 +587,8 @@ type BlockPageData struct {
 	AttesterSlashings []*BlockPageAttesterSlashing
 	ProposerSlashings []*BlockPageProposerSlashing
 	SyncCommittee     []uint64 // TODO: Setting it to contain the validator index
+
+	Tags TagMetadataSlice `db:"tags"`
 }
 
 func (u *BlockPageData) MarshalJSON() ([]byte, error) {
