@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -352,9 +353,9 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 			ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
 			ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
 			WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
-			Balance1d:                  validatorBalances1d[uint64(validator.Index)],
-			Balance7d:                  validatorBalances7d[uint64(validator.Index)],
-			Balance31d:                 validatorBalances31d[uint64(validator.Index)],
+			Balance1d:                  sql.NullInt64{Int64: int64(validatorBalances1d[uint64(validator.Index)]), Valid: true},
+			Balance7d:                  sql.NullInt64{Int64: int64(validatorBalances7d[uint64(validator.Index)]), Valid: true},
+			Balance31d:                 sql.NullInt64{Int64: int64(validatorBalances31d[uint64(validator.Index)]), Valid: true},
 			Status:                     validator.Status,
 		})
 	}

@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -547,18 +548,10 @@ func ApiRocketpoolValidators(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
-	}
-	if len(queryPubkeys) > 0 {
-		err := db.ReaderDb.Select(&queryIndices, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY validatorindex", queryPubkeys)
-		if err != nil {
-			logger.Errorf("dashboard could not resolve pubkeys to indices err: %v", err)
-			sendErrorResponse(j, r.URL.String(), err.Error())
-			return
-		}
 	}
 
 	stats, err := getRocketpoolValidators(queryIndices)
@@ -600,26 +593,17 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 	g, _ := errgroup.WithContext(context.Background())
 	var validatorsData []interface{}
-	var validatorEffectivenessData []interface{}
+	var validatorEffectivenessData []*types.ValidatorEffectiveness
 	var rocketpoolData []interface{}
 	var rocketpoolStats []interface{}
 	var currentEpochData []interface{}
 	var olderEpochData []interface{}
 
 	if getValidators {
-		queryIndices, queryPubkeys, err := parseApiValidatorParam(parsedBody.IndicesOrPubKey, maxValidators)
+		queryIndices, err := parseApiValidatorParam(parsedBody.IndicesOrPubKey, maxValidators)
 		if err != nil {
 			sendErrorResponse(j, r.URL.String(), err.Error())
 			return
-		}
-
-		if len(queryPubkeys) > 0 {
-			err := db.ReaderDb.Select(&queryIndices, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY validatorindex", queryPubkeys)
-			if err != nil {
-				logger.Errorf("dashboard could not resolve pubkeys to indices err: %v", err)
-				sendErrorResponse(j, r.URL.String(), err.Error())
-				return
-			}
 		}
 
 		if len(queryIndices) > 0 {
@@ -753,33 +737,13 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 	return utils.SqlRowsToJSON(rows)
 }
 
-func validatorEffectiveness(epoch int64, indices []uint64) ([]interface{}, error) {
-	effectivenessEpochRange := epoch - 100
-	if epoch < 0 {
-		effectivenessEpochRange = 0
-	}
-
-	rows, err := db.ReaderDb.Query(`
-	SELECT aa.validatorindex, validators.pubkey, TRUNC(COALESCE(
-		AVG(1 + inclusionslot - COALESCE((
-			SELECT MIN(slot)
-			FROM blocks
-			WHERE slot > aa.attesterslot AND blocks.status = '1'
-		), 0)
-	), 0)::decimal, 10)::float AS attestation_efficiency
-	FROM attestation_assignments_p aa
-	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
-	INNER JOIN validators ON validators.validatorindex = aa.validatorindex
-	WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND (validators.validatorindex = ANY($2)) AND aa.inclusionslot > 0
-	GROUP BY aa.validatorindex, validators.pubkey
-	ORDER BY aa.validatorindex
-	`, effectivenessEpochRange, pq.Array(indices))
+func validatorEffectiveness(epoch int64, indices []uint64) ([]*types.ValidatorEffectiveness, error) {
+	data, err := db.BigtableClient.GetValidatorEffectiveness(indices, services.LatestEpoch())
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	return utils.SqlRowsToJSON(rows)
+	return data, nil
 }
 
 type DashboardResponse struct {
@@ -818,13 +782,13 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, balance, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, validator_names.name FROM validators LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validatorindex = ANY($1) OR pubkey = ANY($2) ORDER BY validatorindex", pq.Array(queryIndices), queryPubkeys)
+	rows, err := db.ReaderDb.Query("SELECT validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, balance, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, validator_names.name FROM validators LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(queryIndices))
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -905,20 +869,57 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT validator_balances_p.* FROM validator_balances_p LEFT JOIN validators ON validators.validatorindex = validator_balances_p.validatorindex WHERE week >= ((SELECT MAX(epoch) FROM epochs)-100)/(225*7) AND (validators.validatorindex = ANY($1) OR validators.pubkey = ANY($2)) ORDER BY epoch DESC, validatorindex LIMIT 100", pq.Array(queryIndices), queryPubkeys)
+	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, 1000000000, 101)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
 	}
-	defer rows.Close()
 
-	returnQueryResults(rows, j, r)
+	type responseType struct {
+		Balance          uint64 `json:"balance"`
+		EffectiveBalance uint64 `json:"effectivebalance"`
+		Epoch            uint64 `json:"epoch"`
+		ValidatorIndex   uint64 `json:"validatorindex"`
+		Week             uint64 `json:"week"`
+	}
+	responseData := make([]*responseType, 0, len(history)*101)
+
+	for validatorIndex, balances := range history {
+		for _, balance := range balances {
+			responseData = append(responseData, &responseType{
+				Balance:          balance.Balance,
+				EffectiveBalance: balance.EffectiveBalance,
+				Epoch:            balance.Epoch,
+				ValidatorIndex:   validatorIndex,
+				Week:             balance.Epoch / 1575,
+			})
+		}
+	}
+
+	sort.Slice(responseData, func(i, j int) bool {
+		if responseData[i].Epoch != responseData[j].Epoch {
+			return responseData[i].Epoch > responseData[j].Epoch
+		}
+		return responseData[i].ValidatorIndex < responseData[j].ValidatorIndex
+	})
+
+	response := &types.ApiResponse{}
+	response.Status = "OK"
+
+	response.Data = responseData
+
+	err = j.Encode(response)
+
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not serialize data results")
+		return
+	}
 }
 
 // ApiValidatorPerformance godoc
@@ -936,13 +937,13 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT validator_performance.* FROM validator_performance LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex WHERE validator_performance.validatorindex = ANY($1) OR validators.pubkey = ANY($2) ORDER BY validatorindex", pq.Array(queryIndices), queryPubkeys)
+	rows, err := db.ReaderDb.Query("SELECT validator_performance.* FROM validator_performance LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex WHERE validator_performance.validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(queryIndices))
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -966,43 +967,31 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
 
-	epoch := int64(services.LatestEpoch()) - 100
-	if epoch < 0 {
-		epoch = 0
-	}
-
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.ReaderDb.Query(`
-		SELECT aa.validatorindex, validators.pubkey, COALESCE(
-			1 / AVG(1 + inclusionslot - COALESCE((
-				SELECT MIN(slot)
-				FROM blocks
-				WHERE slot > aa.attesterslot AND blocks.status = '1'
-			), 0)
-		), 0)::float AS attestation_effectiveness
-		FROM attestation_assignments_p aa
-		INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
-		INNER JOIN validators ON validators.validatorindex = aa.validatorindex
-		WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND (validators.validatorindex = ANY($2) OR validators.pubkey = ANY($3)) AND aa.inclusionslot > 0
-		GROUP BY aa.validatorindex, validators.pubkey
-		ORDER BY aa.validatorindex`,
-		epoch, pq.Array(queryIndices), queryPubkeys)
-
+	data, err := db.BigtableClient.GetValidatorEffectiveness(queryIndices, services.LatestEpoch())
 	if err != nil {
-		logger.Error(err)
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
 	}
-	defer rows.Close()
 
-	returnQueryResults(rows, j, r)
+	response := &types.ApiResponse{}
+	response.Status = "OK"
+
+	response.Data = data
+
+	err = j.Encode(response)
+
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not serialize data results")
+		return
+	}
 }
 
 // ApiValidatorAttestationEfficiency godoc
@@ -1019,47 +1008,50 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
 
-	epoch := int64(services.LatestEpoch()) - 100
-	if epoch < 0 {
-		epoch = 0
-	}
-
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := getAttestationEfficiencyQuery(epoch, queryIndices, queryPubkeys)
+	data, err := db.BigtableClient.GetValidatorEffectiveness(queryIndices, services.LatestEpoch())
 	if err != nil {
-		logger.Error(err)
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
 	}
-	defer rows.Close()
 
-	returnQueryResults(rows, j, r)
+	response := &types.ApiResponse{}
+	response.Status = "OK"
+
+	response.Data = data
+
+	err = j.Encode(response)
+
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not serialize data results")
+		return
+	}
 }
 
-func getAttestationEfficiencyQuery(epoch int64, queryIndices []uint64, queryPubkeys pq.ByteaArray) (*sql.Rows, error) {
-	return db.ReaderDb.Query(`
-	SELECT aa.validatorindex, validators.pubkey, COALESCE(
-		AVG(1 + inclusionslot - COALESCE((
-			SELECT MIN(slot)
-			FROM blocks
-			WHERE slot > aa.attesterslot AND blocks.status = '1'
-		), 0)
-	), 0)::float AS attestation_efficiency
-	FROM attestation_assignments_p aa
-	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
-	INNER JOIN validators ON validators.validatorindex = aa.validatorindex
-	WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND (validators.validatorindex = ANY($2) OR validators.pubkey = ANY($3)) AND aa.inclusionslot > 0
-	GROUP BY aa.validatorindex, validators.pubkey
-	ORDER BY aa.validatorindex
-	`, epoch, pq.Array(queryIndices), queryPubkeys)
-}
+// func getAttestationEfficiencyQuery(epoch int64, queryIndices []uint64) (*sql.Rows, error) {
+// 	return db.ReaderDb.Query(`
+// 	SELECT aa.validatorindex, validators.pubkey, COALESCE(
+// 		AVG(1 + inclusionslot - COALESCE((
+// 			SELECT MIN(slot)
+// 			FROM blocks
+// 			WHERE slot > aa.attesterslot AND blocks.status = '1'
+// 		), 0)
+// 	), 0)::float AS attestation_efficiency
+// 	FROM attestation_assignments_p aa
+// 	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
+// 	INNER JOIN validators ON validators.validatorindex = aa.validatorindex
+// 	WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND (validators.validatorindex = ANY($2)) AND aa.inclusionslot > 0
+// 	GROUP BY aa.validatorindex, validators.pubkey
+// 	ORDER BY aa.validatorindex
+// 	`, epoch, pq.Array(queryIndices))
+// }
 
 // ApiValidatorLeaderboard godoc
 // @Summary Get the current top 100 performing validators (using the income over the last 7 days)
@@ -1102,13 +1094,13 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT eth1_deposits.* FROM eth1_deposits LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey WHERE validators.validatorindex = ANY($1) or eth1_deposits.publickey = ANY($2)", pq.Array(queryIndices), queryPubkeys)
+	rows, err := db.ReaderDb.Query("SELECT eth1_deposits.* FROM eth1_deposits LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey WHERE validators.validatorindex = ANY($1)", pq.Array(queryIndices))
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1133,20 +1125,61 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT attestation_assignments_p.* FROM attestation_assignments_p LEFT JOIN validators ON validators.validatorindex = attestation_assignments_p.validatorindex WHERE (validators.validatorindex = ANY($1) OR validators.pubkey = ANY($2)) AND week >= $3 / 1575 AND epoch > $3 ORDER BY validatorindex, epoch desc LIMIT 100", pq.Array(queryIndices), queryPubkeys, services.LatestEpoch()-10)
+	history, err := db.BigtableClient.GetValidatorAttestationHistory(queryIndices, 1000000000, 101)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
 	}
-	defer rows.Close()
 
-	returnQueryResults(rows, j, r)
+	type responseType struct {
+		AttesterSlot   uint64 `json:"attesterslot"`
+		CommitteeIndex uint64 `json:"committeeindex"`
+		Epoch          uint64 `json:"epoch"`
+		InclusionSlot  uint64 `json:"inclusionslot"`
+		Status         uint64 `json:"status"`
+		ValidatorIndex uint64 `json:"validatorindex"`
+		Week           uint64 `json:"week"`
+	}
+	responseData := make([]*responseType, 0, len(history)*101)
+
+	for validatorIndex, balances := range history {
+		for _, attestation := range balances {
+			responseData = append(responseData, &responseType{
+				AttesterSlot:   attestation.AttesterSlot,
+				CommitteeIndex: 0,
+				Epoch:          attestation.Epoch,
+				InclusionSlot:  attestation.InclusionSlot,
+				Status:         attestation.Status,
+				ValidatorIndex: validatorIndex,
+				Week:           attestation.Epoch / 1575,
+			})
+		}
+	}
+
+	sort.Slice(responseData, func(i, j int) bool {
+		if responseData[i].Epoch != responseData[j].Epoch {
+			return responseData[i].Epoch > responseData[j].Epoch
+		}
+		return responseData[i].ValidatorIndex < responseData[j].ValidatorIndex
+	})
+
+	response := &types.ApiResponse{}
+	response.Status = "OK"
+
+	response.Data = responseData
+
+	err = j.Encode(response)
+
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not serialize data results")
+		return
+	}
 }
 
 // ApiValidatorProposals godoc
@@ -1164,13 +1197,13 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT blocks.* FROM blocks LEFT JOIN validators on validators.validatorindex = blocks.proposer WHERE (proposer = ANY($1) OR validators.pubkey = ANY($2)) AND epoch > $3 ORDER BY proposer, epoch desc, slot desc LIMIT 100", pq.Array(queryIndices), queryPubkeys, services.LatestEpoch()-100)
+	rows, err := db.ReaderDb.Query("SELECT blocks.* FROM blocks LEFT JOIN validators on validators.validatorindex = blocks.proposer WHERE (proposer = ANY($1)) AND epoch > $3 ORDER BY proposer, epoch desc, slot desc LIMIT 100", pq.Array(queryIndices), services.LatestEpoch()-100)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1637,7 +1670,7 @@ func GetMobileWidgetStats(j *json.Encoder, r *http.Request, indexOrPubkey string
 		return
 	}
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(indexOrPubkey, prime.MaxValidators)
+	queryIndices, err := parseApiValidatorParam(indexOrPubkey, prime.MaxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -1664,14 +1697,9 @@ func GetMobileWidgetStats(j *json.Encoder, r *http.Request, indexOrPubkey string
 				FROM validators 
 				LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex 
 				LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
-				WHERE validator_performance.validatorindex = ANY($1) OR validators.pubkey = ANY($2) ORDER BY validator_performance.validatorindex`,
-			pq.Array(queryIndices), queryPubkeys,
+				WHERE validator_performance.validatorindex = ANY($1) ORDER BY validator_performance.validatorindex`,
+			pq.Array(queryIndices),
 		)
-		return err
-	})
-
-	g.Go(func() error {
-		efficiencyRows, err = getAttestationEfficiencyQuery(epoch-100, queryIndices, queryPubkeys)
 		return err
 	})
 
@@ -1698,7 +1726,7 @@ func GetMobileWidgetStats(j *json.Encoder, r *http.Request, indexOrPubkey string
 		return
 	}
 
-	efficiencyData, err := utils.SqlRowsToJSON(efficiencyRows)
+	efficiencyData, err := db.BigtableClient.GetValidatorEffectiveness(queryIndices, services.LatestEpoch())
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not parse db results")
 		return
@@ -2190,7 +2218,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid query", 400)
 		return
 	}
-	queryValidatorsArr := pq.Array(queryValidators)
+	// queryValidatorsArr := pq.Array(queryValidators)
 
 	// get data from one week before latest epoch
 	latestEpoch := services.LatestEpoch()
@@ -2200,24 +2228,35 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		queryOffsetEpoch = latestEpoch - oneWeekEpochs
 	}
 
-	query := `
-		SELECT
-			epoch,
-			COALESCE(SUM(effectivebalance),0) AS effectivebalance,
-			COALESCE(SUM(balance),0) AS balance,
-			COUNT(*) AS validatorcount
-		FROM validator_balances_p
-		WHERE validatorindex = ANY($1) AND epoch > $2 AND week >= $2 / 1575
-		GROUP BY epoch
-		ORDER BY epoch ASC`
-
-	data := []*types.DashboardValidatorBalanceHistory{}
-	err = db.ReaderDb.Select(&data, query, queryValidatorsArr, queryOffsetEpoch)
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(queryValidators, latestEpoch, int64(latestEpoch-queryOffsetEpoch))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance history")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
+	dataMap := make(map[uint64]*types.DashboardValidatorBalanceHistory)
+
+	for _, balanceHistory := range balances {
+		for _, history := range balanceHistory {
+			if dataMap[history.Epoch] == nil {
+				dataMap[history.Epoch] = &types.DashboardValidatorBalanceHistory{}
+			}
+			dataMap[history.Epoch].Balance += history.Balance
+			dataMap[history.Epoch].EffectiveBalance += history.EffectiveBalance
+			dataMap[history.Epoch].Epoch = history.Epoch
+			dataMap[history.Epoch].ValidatorCount++
+		}
+	}
+
+	data := make([]*types.DashboardValidatorBalanceHistory, 0, len(dataMap))
+
+	for _, e := range dataMap {
+		data = append(data, e)
+	}
+
+	sort.Slice(data, func(i, j int) bool {
+		return data[i].Epoch < data[j].Epoch
+	})
 
 	balanceHistoryChartData := make([][4]float64, len(data))
 	for i, item := range data {
@@ -2297,25 +2336,48 @@ func sendOKResponse(j *json.Encoder, route string, data []interface{}) {
 	return
 }
 
-func parseApiValidatorParam(origParam string, limit int) (indices []uint64, pubkeys pq.ByteaArray, err error) {
+func parseApiValidatorParam(origParam string, limit int) (indices []uint64, err error) {
+	var pubkeys pq.ByteaArray
 	params := strings.Split(origParam, ",")
 	if len(params) > limit {
-		return nil, nil, fmt.Errorf("only a maximum of 100 query parameters are allowed")
+		return nil, fmt.Errorf("only a maximum of 100 query parameters are allowed")
 	}
 	for _, param := range params {
 		if strings.Contains(param, "0x") || len(param) == 96 {
 			pubkey, err := hex.DecodeString(strings.Replace(param, "0x", "", -1))
 			if err != nil {
-				return nil, nil, fmt.Errorf("invalid validator-parameter")
+				return nil, fmt.Errorf("invalid validator-parameter")
 			}
 			pubkeys = append(pubkeys, pubkey)
 		} else {
 			index, err := strconv.ParseUint(param, 10, 64)
 			if err != nil {
-				return nil, nil, fmt.Errorf("invalid validator-parameter: %v", param)
+				return nil, fmt.Errorf("invalid validator-parameter: %v", param)
 			}
 			indices = append(indices, index)
 		}
 	}
-	return indices, pubkeys, nil
+
+	var queryIndicesDeduped []uint64
+	queryIndicesDeduped = append(queryIndicesDeduped, indices...)
+	if len(pubkeys) != 0 {
+		indicesFromPubkeys := []uint64{}
+		err = db.ReaderDb.Select(&indicesFromPubkeys, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1)", pubkeys)
+
+		if err != nil {
+			return nil, err
+		}
+
+		indices = append(indices, indicesFromPubkeys...)
+
+		m := make(map[uint64]uint64)
+		for _, x := range indices {
+			m[x] = x
+		}
+		for x := range m {
+			queryIndicesDeduped = append(queryIndicesDeduped, x)
+		}
+	}
+
+	return queryIndicesDeduped, nil
 }

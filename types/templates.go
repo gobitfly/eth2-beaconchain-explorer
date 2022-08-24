@@ -466,6 +466,7 @@ type ValidatorPerformance struct {
 
 // ValidatorAttestation is a struct for the validators attestations data
 type ValidatorAttestation struct {
+	Index          uint64
 	Epoch          uint64 `db:"epoch"`
 	AttesterSlot   uint64 `db:"attesterslot"`
 	CommitteeIndex uint64 `db:"committeeindex"`

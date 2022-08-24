@@ -2,6 +2,7 @@
 FROM golang:1.18 AS build-env
 ADD . /src
 WORKDIR /src
+RUN go mod download
 RUN make -B all
 
 # final stage
