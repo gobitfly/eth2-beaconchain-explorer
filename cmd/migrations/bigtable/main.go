@@ -15,10 +15,6 @@ import (
 
 func main() {
 
-	project := flag.String("project", "", "GCP project name")
-	instance := flag.String("instance", "", "Bigtable instance name")
-	chainId := flag.Uint64("chainId", 1, "Chain ID")
-
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
 
 	start := flag.Int("start", 1, "Start epoch")
@@ -33,13 +29,13 @@ func main() {
 	}
 	utils.Config = cfg
 
-	bt, err := db.InitBigtable(*project, *instance, fmt.Sprintf("%d", *chainId))
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
 	defer bt.Close()
 
-	chainIDBig := new(big.Int).SetUint64(*chainId)
+	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
 
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
@@ -72,6 +68,10 @@ func main() {
 
 		g.Go(func() error {
 			return bt.SaveProposals(data.Blocks)
+		})
+
+		g.Go(func() error {
+			return bt.SaveSyncComitteeDuties(data.Blocks)
 		})
 
 		err = g.Wait()

@@ -2,6 +2,8 @@ package types
 
 import (
 	"database/sql"
+	"encoding/json"
+
 	"github.com/pkg/errors"
 	ethpb "github.com/prysmaticlabs/prysm/proto/prysm/v1alpha1"
 	"github.com/sirupsen/logrus"
@@ -27,7 +29,7 @@ type FinalityCheckpoints struct {
 	PreviousJustified struct {
 		Epoch uint64 `
     :"epoch"`
-		Root  string `json:"root"`
+		Root string `json:"root"`
 	} `json:"previous_justified"`
 	CurrentJustified struct {
 		Epoch uint64 `json:"epoch"`
