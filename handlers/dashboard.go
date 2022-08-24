@@ -29,7 +29,7 @@ func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, e
 
 	// we only support up to 200 validators
 	if strSplitLen > validatorLimit {
-		return []uint64{}, fmt.Errorf("Too much validators")
+		return []uint64{}, fmt.Errorf("too much validators")
 	}
 
 	validators := make([]uint64, strSplitLen)

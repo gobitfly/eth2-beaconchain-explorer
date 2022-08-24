@@ -2218,7 +2218,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid query", 400)
 		return
 	}
-	queryValidatorsArr := pq.Array(queryValidators)
+	// queryValidatorsArr := pq.Array(queryValidators)
 
 	// get data from one week before latest epoch
 	latestEpoch := services.LatestEpoch()
@@ -2228,24 +2228,35 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		queryOffsetEpoch = latestEpoch - oneWeekEpochs
 	}
 
-	query := `
-		SELECT
-			epoch,
-			COALESCE(SUM(effectivebalance),0) AS effectivebalance,
-			COALESCE(SUM(balance),0) AS balance,
-			COUNT(*) AS validatorcount
-		FROM validator_balances_p
-		WHERE validatorindex = ANY($1) AND epoch > $2 AND week >= $2 / 1575
-		GROUP BY epoch
-		ORDER BY epoch ASC`
-
-	data := []*types.DashboardValidatorBalanceHistory{}
-	err = db.ReaderDb.Select(&data, query, queryValidatorsArr, queryOffsetEpoch)
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(queryValidators, latestEpoch, int64(latestEpoch-queryOffsetEpoch))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance history")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
+	dataMap := make(map[uint64]*types.DashboardValidatorBalanceHistory)
+
+	for _, balanceHistory := range balances {
+		for _, history := range balanceHistory {
+			if dataMap[history.Epoch] == nil {
+				dataMap[history.Epoch] = &types.DashboardValidatorBalanceHistory{}
+			}
+			dataMap[history.Epoch].Balance += history.Balance
+			dataMap[history.Epoch].EffectiveBalance += history.EffectiveBalance
+			dataMap[history.Epoch].Epoch = history.Epoch
+			dataMap[history.Epoch].ValidatorCount++
+		}
+	}
+
+	data := make([]*types.DashboardValidatorBalanceHistory, 0, len(dataMap))
+
+	for _, e := range dataMap {
+		data = append(data, e)
+	}
+
+	sort.Slice(data, func(i, j int) bool {
+		return data[i].Epoch < data[j].Epoch
+	})
 
 	balanceHistoryChartData := make([][4]float64, len(data))
 	for i, item := range data {

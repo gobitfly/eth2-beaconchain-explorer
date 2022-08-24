@@ -885,7 +885,6 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 				utils.FormatBlockSlot(history.AttesterSlot),
 				utils.FormatAttestationStatus(history.Status),
 				utils.FormatTimestamp(utils.SlotToTime(history.AttesterSlot).Unix()),
-				0,
 				utils.FormatAttestationInclusionSlot(history.InclusionSlot),
 				utils.FormatInclusionDelay(history.InclusionSlot, history.Delay),
 			}
