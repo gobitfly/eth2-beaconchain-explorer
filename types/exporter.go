@@ -3,6 +3,8 @@ package types
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"math/big"
 
 	"github.com/pkg/errors"
 	ethpb "github.com/prysmaticlabs/prysm/proto/prysm/v1alpha1"
@@ -470,9 +472,23 @@ type HistoricEthPrice struct {
 }
 
 type Relay struct {
-	ID       string `db:"tag_id"`
-	Endpoint string `db:"endpoint"`
-	Logger   logrus.Entry
+	ID          string       `db:"tag_id"`
+	Endpoint    string       `db:"endpoint"`
+	Link        string       `db:"public_link"`
+	IsCensoring sql.NullBool `db:"is_censoring"`
+	IsEthical   sql.NullBool `db:"is_ethical"`
+	Name        string       `db:"name"`
+	Logger      logrus.Entry
+}
+
+type RelayBlock struct {
+	ID                   string `db:"tag_id"`
+	BlockSlot            uint64 `db:"block_slot"`
+	BlockRoot            string `db:"block_root"`
+	Value                uint64 `db:"value"`
+	BuilderPubkey        string `db:"builder_pubkey"`
+	ProposerPubkey       string `db:"proposer_pubkey"`
+	ProposerFeeRecipient string `db:"proposer_fee_recipient"`
 }
 
 type BlockTag struct {
@@ -506,4 +522,31 @@ func (s *TagMetadataSlice) Scan(src interface{}) error {
 		return json.Unmarshal([]byte(v), s)
 	}
 	return errors.New("type assertion failed")
+}
+
+type WeiString struct {
+	big.Int
+}
+
+func (b WeiString) MarshalJSON() ([]byte, error) {
+	return []byte(b.String()), nil
+}
+
+func (b *WeiString) UnmarshalJSON(p []byte) error {
+	if string(p) == "null" {
+		return nil
+	}
+	var z big.Int
+	_, ok := z.SetString(string(p[1:len(p)-1]), 10)
+	if !ok {
+		return fmt.Errorf("not a valid big integer: %s, %v", p, ok)
+	}
+	b.Int = z
+	return nil
+}
+
+func (b *WeiString) GweiInt() int64 {
+	var z big.Int
+	z.SetString(b.String(), 10)
+	return new(big.Int).Div(&z, big.NewInt(1e9)).Int64()
 }
