@@ -89,6 +89,14 @@ func FormatBalance(balanceInt uint64, currency string) template.HTML {
 	return template.HTML(balance + " " + currency)
 }
 
+func FormatSmallBalance(balanceInt uint64, currency string) template.HTML {
+	if currency == "ETH" {
+		balance := FormatFloat((float64(balanceInt)/float64(1e9)), 4) + " "
+		return template.HTML(balance + " " + currency)
+	}
+	return FormatBalance(balanceInt, currency)
+}
+
 func FormatBalanceSql(balanceInt sql.NullInt64, currency string) template.HTML {
 	if !balanceInt.Valid {
 		return template.HTML("0 " + currency)
