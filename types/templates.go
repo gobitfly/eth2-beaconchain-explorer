@@ -715,6 +715,7 @@ type DataTableResponse struct {
 	Data            [][]interface{} `json:"data"`
 	PageLength      uint64          `json:"pageLength"`
 	DisplayStart    uint64          `json:"displayStart"`
+	PagingToken     string          `json:"pagingToken"`
 }
 
 // EpochsPageData is a struct to hold epoch data for the epochs page
@@ -1367,5 +1368,6 @@ type DataTableSaveStateColumns struct {
 }
 
 type Eth1AddressPageData struct {
-	Address string `json:"address"`
+	Address           string `json:"address"`
+	TransactionsTable *DataTableResponse
 }

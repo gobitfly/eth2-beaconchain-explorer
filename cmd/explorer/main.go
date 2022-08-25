@@ -273,6 +273,12 @@ func main() {
 			router.HandleFunc("/execution/blocks/data", handlers.Eth1BlocksData).Methods("GET")
 			router.HandleFunc("/execution/address/{address}", handlers.Eth1Address).Methods("GET")
 			router.HandleFunc("/execution/address/{address}/transactions", handlers.Eth1AddressTransactions).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/internalTxns", handlers.Eth1AddressInternalTransactions).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/erc20", handlers.Eth1AddressErc20Transactions).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/erc721", handlers.Eth1AddressErc721Transactions).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/erc1155", handlers.Eth1AddressErc1155Transactions).Methods("GET")
+			router.HandleFunc("/execution/block/{block}", handlers.Eth1Block).Methods("GET")
+			router.HandleFunc("/execution/tx/{hash}", handlers.Eth1Transaction).Methods("GET")
 
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 			router.HandleFunc("/charts", handlers.Charts).Methods("GET")

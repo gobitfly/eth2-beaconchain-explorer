@@ -39,7 +39,7 @@ func EthBytesToFloat(b []byte) float64 {
 }
 
 func FormatBlockNumber(number uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", number))
+	return template.HTML(fmt.Sprintf("<a href=\"/execution/block/%[1]d\">%[1]d</a>", number))
 }
 
 func FormatTxHash(hash string) template.HTML {
@@ -61,37 +61,36 @@ func FormatTxHash(hash string) template.HTML {
 // 	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(ts, 0), ts))
 // }
 
-func FormatBlockHash(hash string) template.HTML {
-	hash = strings.Replace(hash, "0x", "", -1)
-
-	if len(hash) < 32 {
-		return "N/A"
+func FormatBlockHash(hash []byte) template.HTML {
+	if len(hash) < 20 {
+		return template.HTML("N/A")
 	}
-
-	return template.HTML(fmt.Sprintf("<a href=\"/block/0x%s\">%s…%s</a>", hash, hash[:4], hash[28:]))
+	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/execution/block/0x%x">0x%x…%x</a>`, hash, hash[:2], hash[len(hash)-2:]))
 }
 
-func FormatAddressAsLink(address string, name string, verified bool, isContract bool, length int) template.HTML {
-	address = strings.Replace(address, "0x", "", -1)
+func FormatTransactionHash(hash []byte) template.HTML {
+	if len(hash) < 20 {
+		return template.HTML("N/A")
+	}
+	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/execution/tx/0x%x">0x%x…%x</a>`, hash, hash[:2], hash[len(hash)-2:]))
+}
+
+func FormatAddressAsLink(address []byte, name string, verified bool, isContract bool) template.HTML {
 	ret := ""
 	name = template.HTMLEscapeString(name)
 
 	if len(name) > 0 {
 		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/account/0x%s\">✔ %s (0x%s…)</a>", address, name, address[:4])
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">✔ %s (0x%x…%x)</a>", address, name, address[:2], address[len(address)-2:])
 		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/account/0x%s\">%s 0x%s…</a>", address, name, address[:4])
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">%s 0x%x…%x</a>", address, name, address[:2], address[len(address)-2:])
 		}
 	} else {
-		if length >= 40 {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/account/0x%s\">0x%s</a>", address, address[:length])
-		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/account/0x%s\">0x%s…</a>", address, address[:length])
-		}
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">0x%x…%x</a>", address, address[:2], address[len(address)-2:])
 	}
 
 	if isContract {
-		ret = "<i class=\"fal fa-file-contract mr-1\"></i>" + ret
+		ret = "<i class=\"fas fa-file-contract mr-1\"></i>" + ret
 	}
 	return template.HTML(ret)
 }
