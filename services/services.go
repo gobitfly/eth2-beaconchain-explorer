@@ -23,6 +23,7 @@ var latestValidatorCount uint64
 var indexPageData atomic.Value
 var chartsPageData atomic.Value
 var poolsData atomic.Value
+var relaysData atomic.Value
 var ready = sync.WaitGroup{}
 
 var latestStats atomic.Value
@@ -34,22 +35,24 @@ var logger = logrus.New().WithField("module", "services")
 
 // Init will initialize the services
 func Init() {
-	ready.Add(5)
+	ready.Add(3)
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
 
-	if utils.Config.Frontend.OnlyAPI {
-		ready.Done()
-		ready.Done()
-	} else {
-		go indexPageDataUpdater()
-		go poolsUpdater()
-	}
 	ready.Wait()
 
 	if utils.Config.Frontend.OnlyAPI {
 		return
+	}
+	// we do this after the rest has readied up to ensure we get a complete index page
+
+	if !utils.Config.Frontend.OnlyAPI {
+		ready.Add(3)
+		go poolsUpdater()
+		go relaysUpdater()
+		go indexPageDataUpdater()
+		ready.Wait()
 	}
 
 	if !utils.Config.Frontend.DisableCharts {
@@ -133,6 +136,26 @@ func poolsUpdater() {
 	}
 }
 
+func relaysUpdater() {
+	firstRun := true
+
+	for {
+		data, err := getRelaysPageData()
+		if err != nil {
+			logger.Errorf("error retrieving relays page data: %v", err)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+		relaysData.Store(data)
+		if firstRun {
+			logger.Info("initialized relays page updater")
+			ready.Done()
+			firstRun = false
+		}
+		time.Sleep(time.Minute)
+	}
+}
+
 func getPoolsPageData() (*types.PoolsResp, error) {
 	var poolData types.PoolsResp
 
@@ -155,6 +178,59 @@ func getPoolsPageData() (*types.PoolsResp, error) {
 	}
 
 	return &poolData, nil
+}
+
+func getRelaysPageData() (*types.RelaysResp, error) {
+	var relaysData types.RelaysResp
+
+	query, err := db.ReaderDb.Preparex(`
+		with stats as (
+			select 
+				tag_id as relay_id,
+				count(*) as block_count,
+				sum(value) as total_value,
+				ROUND(avg(value)) as avg_value,
+				count(distinct builder_pubkey) as unique_builders,
+				max(value) as max_value,
+				(select rb2.block_slot from relays_blocks rb2 where rb2.value = max(rb.value) and rb2.tag_id = rb.tag_id limit 1) as max_value_slot
+			from relays_blocks rb where rb.block_slot > $1 group by tag_id 
+		)
+		select 
+			tags.metadata ->> 'name' as "name",
+			relays.public_link as link,
+			relays.is_censoring as censors,
+			relays.is_ethical as ethical,
+			stats.block_count / (select max(blocks.slot) - $1 from blocks)::float as network_usage,
+			stats.*
+		from relays
+		left join stats on stats.relay_id = relays.tag_id
+		left join tags on tags.id = relays.tag_id 
+		where stats.relay_id = tag_id 
+		order by stats.block_count DESC
+	`)
+	if err != nil {
+		logger.Errorf("failed to prepare relay page data query")
+		return nil, err
+	}
+	dayInSlots := 24 * 60 * 60 / utils.Config.Chain.Config.SecondsPerSlot
+
+	tmp := &relaysData.RelaysInfoContainers[0]
+	(*tmp).TimeSpan = "week"
+	(*tmp).IsFirst = true
+	logger.Info(LatestSlot() - (7 * dayInSlots))
+	err = query.Select(&(*tmp).RelaysInfo, LatestSlot()-(7*dayInSlots))
+	if err != nil {
+		return nil, err
+	}
+
+	tmp = &relaysData.RelaysInfoContainers[1]
+	(*tmp).TimeSpan = "month"
+	err = query.Select(&(*tmp).RelaysInfo, LatestSlot()-(31*dayInSlots))
+	if err != nil {
+		return nil, err
+	}
+
+	return &relaysData, nil
 }
 
 func latestProposedSlotUpdater() {
@@ -479,6 +555,10 @@ func LatestIndexPageData() *types.IndexPageData {
 // LatestPoolsPageData returns the latest pools page data
 func LatestPoolsPageData() *types.PoolsResp {
 	return poolsData.Load().(*types.PoolsResp)
+}
+
+func LatestRelaysPageData() *types.RelaysResp {
+	return relaysData.Load().(*types.RelaysResp)
 }
 
 func LatestValidatorCount() uint64 {

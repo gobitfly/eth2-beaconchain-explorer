@@ -1308,6 +1308,31 @@ type PoolsResp struct {
 	PoolInfos               []*PoolInfo
 }
 
+type RelaysResp struct {
+	RelaysInfoContainers [2]RelayInfoContainer
+}
+
+type RelayInfoContainer struct {
+	TimeSpan   string
+	IsFirst    bool
+	RelaysInfo []*RelayInfo
+}
+
+type RelayInfo struct {
+	RelayID        string         `db:"relay_id"`
+	Name           sql.NullString `db:"name"`
+	Link           sql.NullString `db:"link"`
+	Censors        sql.NullBool   `db:"censors"`
+	Ethical        sql.NullBool   `db:"ethical"`
+	BlockCount     uint64         `db:"block_count"`
+	UniqueBuilders uint64         `db:"unique_builders"`
+	NetworkUsage   float64        `db:"network_usage"`
+	TotalValue     uint64         `db:"total_value"`
+	AverageValue   uint64         `db:"avg_value"`
+	MaxValue       uint64         `db:"max_value"`
+	MaxValueSlot   uint64         `db:"max_value_slot"`
+}
+
 type PoolInfo struct {
 	Name              string `db:"name"`
 	Count             int64  `db:"count"`
