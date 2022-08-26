@@ -9,14 +9,14 @@ The explorer provides a comprehensive and easy to use interface for the upcoming
 
 ## About
 
-The explorer is built using golang and utilizes a PostgreSQL database for storing and indexing data. In order to avoid the situation we currently have with the Eth1 chain where closed source block explorers dominate the market we decided to make our explorer open source and available for everybody.
+The explorer is built using golang and a PostgreSQL database for storing and indexing data. To avoid the current situation with the Eth1 chain where closed source block explorers dominate the market, we decided to make our explorer open source and available for everybody.
 
 ### Eth 2.0 Testnet Explorers
 
 Prysm [beaconcha.in](https://beaconcha.in)<br>
 Lighthouse [lighthouse.beaconcha.in](https://lighthouse.beaconcha.in)
 
-**Warning:** The explorer is still under heavy active development. More or less everything might change without prior notice and we cannot guarantee any backwards compatibility for now. Once the eth2 ecosystem matures we will be able to provide stronger guarantees about the updatability of the explorer.
+**Warning:** The explorer is still under heavy active development. Everything might change without prior notice, and we cannot guarantee any backward compatibility for now. Once the eth2 ecosystem matures, we can provide stronger guarantees about the updatability of the explorer.
 
 ![Site](https://user-images.githubusercontent.com/26490734/120495328-e351f800-c3bc-11eb-92a8-e93fbde24539.png 'Beacon Chain Web Interface Screenshot')
 
@@ -85,5 +85,5 @@ Install golint. (see https://github.com/golang/lint)
 
 ## Commercial usage
 
-The explorer uses Highsoft charts which are not free for commercial and governmental use. If you plan to use the explorer for commercial purposes you currently need to purchase an appropriate HighSoft license.
-We are planning to switch out the Highsoft chart library with a less restrictive charting library (suggestions are welcome).
+The explorer uses Highsoft charts which are not accessible for commercial and governmental use. If you plan to use the explorer for commercial purposes, you currently need to purchase an appropriate HighSoft license.
+We plan to switch out the Highsoft chart library with a less restrictive charting library (suggestions are welcome).
