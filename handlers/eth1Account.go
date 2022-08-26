@@ -81,7 +81,7 @@ func Eth1AddressTransactions(w http.ResponseWriter, r *http.Request) {
 
 	pageToken := q.Get("pageToken")
 
-	logger.Infof("pagetoken: %v", pageToken)
+	// logger.Infof("PAGETOKEN: %v", pageToken)
 
 	search := ""
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)

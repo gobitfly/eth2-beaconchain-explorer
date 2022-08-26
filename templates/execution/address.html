@@ -4,6 +4,7 @@
 
   <script>
     var pageToken = {{.TransactionsTable.PagingToken}}
+    var previousToken = ""
     var isLoading = false
     // const tbody = document.querySelector('#transactions-table tbody')
 
@@ -43,14 +44,19 @@
     //   observerRow.observe(r)
     // })
     const infLoading = document.getElementById('transactions-table-inf-scroll')
-    const getTransactions = async (pageToken) => {
+    const getTransactions = async (token) => {
       try {
-         const res = await fetch(`${window.location.pathname}/transactions?pageToken=${encodeURI(pageToken)}`)
+         const res = await fetch(`${window.location.pathname}/transactions?pageToken=${encodeURI(token)}`)
          const data = await res.json()
-         if (data.pageToken && data.pageToken.length) {
-          pageToken = data.pageToken
-         }
-         if (data && data.data) {
+
+         console.log('got data: ', data)
+         
+         if (data && data.data && data.pagingToken && data.pagingToken.length) {
+           previousToken = pageToken
+           pageToken = data.pagingToken
+           console.log('setting new pagetoken:\n',"new:", pageToken,'\n',"pre:", previousToken)
+
+           // udpate the table
            for (let i = 0; i < data.data.length; i++) {
             const row = data.data[i];
             for (let j = 0; j < data.data[i].length; j++) {
@@ -63,7 +69,6 @@
             }
            }
          }
-         console.log('got data: ', data)
          isLoading = false
       } catch (err) {
         console.error("error getting transactions: ", err)
@@ -83,9 +88,11 @@
         const entry = entries[i];
         if (entry.isIntersecting) {
           console.log('intersecting');
-          console.log('paging token', pageToken)
-          isLoading = true
-          getTransactions(pageToken)
+          if(!isLoading) {
+            console.log('paging token', pageToken)
+            isLoading = true
+            getTransactions(pageToken)
+          }
         }
       }
     }

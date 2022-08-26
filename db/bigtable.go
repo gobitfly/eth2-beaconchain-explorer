@@ -1342,17 +1342,18 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string) ([]*types.Eth1Trans
 	defer cancle()
 
 	limit := int64(25)
-
-	rowRange := gcp_bigtable.NewRange(prefix, "") //gcp_bigtable.PrefixRange("1:1000000000")
-	logger.Infof("querying for prefix: %v", prefix)
+  // add \x00 to the row range such that we skip the previous value 
+	rowRange := gcp_bigtable.NewRange(prefix + "\x00", "")
+	// rowRange := gcp_bigtable.PrefixRange(prefix)
+	// logger.Infof("querying for prefix: %v", prefix)
 	data := make([]*types.Eth1TransactionIndexed, 0, limit)
 	keys := make([]string, 0, limit)
+	indexes := make([]string, 0, limit)
 
 	keysMap := make(map[string]*types.Eth1TransactionIndexed, limit)
-	lastKey := ""
 	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
 		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
-		lastKey = row.Key()
+		indexes = append(indexes, row.Key())
 		return true
 	}, gcp_bigtable.LimitRows(limit))
 	if err != nil {
@@ -1376,14 +1377,15 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string) ([]*types.Eth1Trans
 
 		return true
 	})
-
+  // logger.Infof("adding keys: %+v", keys)
+  // logger.Infof("adding indexes: %+v", indexes)
 	for _, key := range keys {
 		data = append(data, keysMap[key])
 	}
 
 	// logger.Infof("returning data len: %v lastkey: %v", len(data), lastKey)
 
-	return data, lastKey, nil
+	return data, indexes[len(indexes) - 1], nil
 }
 
 func (bigtable *Bigtable) GetAddressTransactionsTableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
