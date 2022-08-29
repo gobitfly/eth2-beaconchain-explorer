@@ -55,6 +55,7 @@ type Config struct {
 		} `yaml:"pubkeyTagsExporter"`
 	} `yaml:"indexer"`
 	Frontend struct {
+		TokenListPath                  string `yaml:"tokenListPath" envconfig:"FRONTEND_TOKEN_LIST_PATH"`
 		Debug                          bool   `yaml:"debug" envconfig:"FRONTEND_DEBUG"`
 		BeaconchainETHPoolBridgeSecret string `yaml:"beaconchainETHPoolBridgeSecret" envconfig:"FRONTEND_BEACONCHAIN_ETHPOOL_BRIDGE_SECRET"`
 		Kong                           string `yaml:"kong" envconfig:"FRONTEND_KONG"`

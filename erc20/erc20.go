@@ -1,18 +1,49 @@
 package erc20
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
 )
 
 var ERC20Abi, _ = abi.JSON(strings.NewReader(Erc20ABI))
 
 var TransferTopic []byte = []byte{0xdd, 0xf2, 0x52, 0xad, 0x1b, 0xe2, 0xc8, 0x9b, 0x69, 0xc2, 0xb0, 0x68, 0xfc, 0x37, 0x8d, 0xaa, 0x95, 0x2b, 0xa7, 0xf1, 0x63, 0xc4, 0xa1, 0x16, 0x28, 0xf5, 0x5a, 0x4d, 0xf5, 0x23, 0xb3, 0xef}
+
+var tokenMap = make(map[string]*ERC20TokenDetail)
+
+var logger = logrus.StandardLogger().WithField("module", "erc20")
+
+func InitTokenList(path string) {
+	body, err := ioutil.ReadFile(path)
+	if err != nil {
+		logger.Fatal("unable to retrieve erc20 token list", err)
+	}
+	TokenList := &ERC20TokenList{}
+
+	err = json.Unmarshal(body, TokenList)
+	if err != nil {
+		logger.Fatalf("unable to parse erc20 token list: %v", err)
+	}
+
+	for _, token := range TokenList.Tokens {
+		address := strings.Replace(token.Address, "0x", "", -1)
+		address = strings.ToLower(address)
+		tokenMap[address] = token
+		// logger.Info(address)
+	}
+
+}
+
+func GetTokenDetail(address string) *ERC20TokenDetail {
+	return tokenMap[address]
+}
 
 type ERC20TokenList struct {
 	Keywords  []string            `json:"keywords"`
@@ -28,23 +59,22 @@ type ERC20TokenList struct {
 }
 
 type ERC20TokenDetail struct {
-	AddressStr string         `json:"address"`
-	Address    common.Address `json:"-"`
-	Owner      string         `json:"-"`
-	ChainID    int64          `json:"chainId"`
-	Decimals   int64          `json:"decimals"`
-	Name       string         `json:"name"`
-	Symbol     string         `json:"symbol"`
-	Divider    *big.Int
-	Contract   *Erc20
+	Address  string `json:"address"`
+	Owner    string `json:"-"`
+	ChainID  int64  `json:"chainId"`
+	Decimals int64  `json:"decimals"`
+	Name     string `json:"name"`
+	Symbol   string `json:"symbol"`
+	Divider  *big.Int
+	Contract *Erc20
 }
 
 func (td *ERC20TokenDetail) FormatAmount(in *big.Int) string {
-	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.New(td.Decimals, 1))
+	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromFloat(float64(td.Decimals)))
 	num := decimal.NewFromBigInt(in, 0)
 	result := num.Div(mul)
 
-	return fmt.Sprintf("%v %v", result, td.Symbol)
+	return fmt.Sprintf("%v", result)
 }
 
 func (td *ERC20TokenDetail) FormatAmountFloat(in *big.Int) float64 {
