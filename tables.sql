@@ -200,20 +200,20 @@ create table validatorqueue_exit
 drop table if exists epochs;
 create table epochs
 (
-    epoch                   int    not null,
-    blockscount             int    not null default 0,
-    proposerslashingscount  int    not null,
-    attesterslashingscount  int    not null,
-    attestationscount       int    not null,
-    depositscount           int    not null,
-    voluntaryexitscount     int    not null,
-    validatorscount         int    not null,
-    averagevalidatorbalance bigint not null,
-    totalvalidatorbalance   bigint not null,
-    finalized               bool,
-    eligibleether           bigint,
-    globalparticipationrate float,
-    votedether              bigint,
+    epoch                      int    not null,
+    blockscount                int    not null default 0,
+    proposerslashingscount     int    not null,
+    attesterslashingscount     int    not null,
+    attestationscount          int    not null,
+    depositscount              int    not null,
+    voluntaryexitscount        int    not null,
+    validatorscount            int    not null,
+    averagevalidatorbalance    bigint not null,
+    totalvalidatorbalance      bigint not null,
+    completeparticipationstats bool,
+    eligibleether              bigint,
+    globalparticipationrate    float,
+    votedether                 bigint,
     primary key (epoch)
 );
 
@@ -392,6 +392,7 @@ create table network_liveness
     previousjustifiedepoch int not null,
     primary key (ts)
 );
+CREATE INDEX network_liveness_headepoch_idx ON network_liveness (headepoch);
 
 drop table if exists graffitiwall;
 create table graffitiwall
@@ -980,6 +981,9 @@ CREATE INDEX idx_blocks_tags_slot ON blocks_tags (slot);
 CREATE TABLE relays (
 	tag_id varchar NOT NULL,
 	endpoint varchar NOT NULL,
+	public_link varchar NULL,
+	is_censoring bool NULL,
+	is_ethical bool NULL,
 	PRIMARY KEY (tag_id, endpoint),
 	FOREIGN KEY (tag_id) REFERENCES tags(id)
 );
@@ -993,4 +997,18 @@ CREATE TABLE validator_queue_deposits (
 	CONSTRAINT validator_queue_deposits_fk_validators FOREIGN KEY (validatorindex) REFERENCES validators(validatorindex)
 );
 CREATE INDEX idx_validator_queue_deposits_block_slot ON validator_queue_deposits USING btree (block_slot);
-CREATE UNIQUE INDEX idx_validator_queue_deposits_validatorindexON validator_queue_deposits USING btree (validatorindex);
+CREATE UNIQUE INDEX idx_validator_queue_deposits_validatorindex ON validator_queue_deposits USING btree (validatorindex);
+
+
+DROP TABLE IF EXISTS relays_blocks;
+CREATE TABLE relays_blocks (
+	tag_id varchar NOT NULL,
+	block_slot int4 NOT NULL,
+	block_root bytea NOT NULL,
+	value int8 NOT NULL,
+	builder_pubkey bytea NOT NULL,
+	proposer_pubkey bytea NOT NULL,
+	proposer_fee_recipient bytea NOT NULL
+);
+CREATE INDEX idx_relays_blocks_block_slot ON public.relays_blocks (block_slot);
+CREATE INDEX idx_relays_blocks_value ON public.relays_blocks (value);

@@ -1,0 +1,79 @@
+{{ define "js" }}
+  <script type="text/javascript" src="/js/bootstrap4-toggle.min.js"></script>
+{{ end }}
+
+{{ define "css" }}
+  <link rel="stylesheet" type="text/css" href="/css/bootstrap4-toggle.min.css" />
+{{ end }}
+
+{{ define "content" }}
+  <section>
+    <div class="container">
+      <div class="h-100 py-4">
+        <br />
+        <h1>Relays:</h1>
+        <ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs justify-content-end" id="dashChartTabs" role="tablist">
+          <li class="nav-item">
+            <button class="nav-link show active" id="week-tab" data-bs-toggle="tab" type="button" data-bs-target="#week" role="tab" aria-controls="week" aria-selected="true"><span class="tab-text">7 Days</span></a>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="month-tab" data-bs-toggle="tab" type="button" data-bs-target="#month" role="tab" aria-controls="month" aria-selected="false"><span class="tab-text">31 Days</span></a>
+          </li>
+        </ul>
+        <div class="row mt-4">
+          <div class="col-md-12">
+            <div id="poolTable" class="table-responsive tab-content card px-0 pb-1 mb-2">
+              {{ range .Data.RelaysInfoContainers }}
+                <div class="tab-pane fade {{ if .IsFirst }}show active{{ end }}" id="{{ .TimeSpan }}" role="tabpanel" aria-labelledby="{{ .TimeSpan }}-tab">
+                  <table class="table" id="staking-pool-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Block Count</th>
+                        <th>Unique Builders</th>
+                        <th>Overall Bribes</th>
+                        <th>Average Bribe</th>
+                        <th>Highest Bribe</th>
+                        <th>Uncensored</th>
+                        <th>Ethical</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {{ range .RelaysInfo }}
+                        <tr>
+                          {{ if .Link.Valid }}
+                            <td><a href="{{ .Link.String }}" target="_blank" rel="noreferrer noopener">{{ .Name.String }}</a></td>
+                          {{ else }}
+                            <td>{{ .Name.String }}</td>
+                          {{ end }}
+                          <td>{{ .BlockCount }} ({{ formatPercentageWithPrecision .NetworkUsage 2}}%)</td>
+                          <td>{{ .UniqueBuilders }}</td>
+                          <td>{{ formatBalance .TotalValue $.Rates.Currency }}</td>
+                          <td>{{ formatSmallBalance .AverageValue $.Rates.Currency }}</td>
+                          <td>{{ formatBalance .MaxValue $.Rates.Currency }} (Slot {{ formatBlockSlot .MaxValueSlot }})</td>
+                          {{ if .Censors.Valid }}
+                            <td>{{ formatYesNo (not .Censors.Bool) }}</td>
+                          {{ else }}
+                            <td><span class="badge badge-pill bg-info text-white" style="font-size: 12px; font-weight: 500;">???</span></td>
+                          {{ end }}
+                          {{ if .Ethical.Valid }}
+                            <td>{{ formatYesNo (.Ethical.Bool) }}</td>
+                          {{ else }}
+                            <td><span class="badge badge-pill bg-info text-white" style="font-size: 12px; font-weight: 500;">???</span></td>
+                          {{ end }}
+                        </tr>
+                      {{ end }}
+                    </tbody>
+                  </table>
+                </div>
+              {{ end }}
+              </div>
+            </div>
+          </div>
+          <span class="px-2" id="lastUpdate"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div id="tempcont" class=""></div>
+{{ end }}
