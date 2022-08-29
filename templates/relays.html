@@ -14,10 +14,10 @@
         <h1>Relays:</h1>
         <ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs justify-content-end" id="dashChartTabs" role="tablist">
           <li class="nav-item">
-            <button class="nav-link show active" id="week-tab" data-bs-toggle="tab" type="button" data-bs-target="#week" role="tab" aria-controls="week" aria-selected="true"><span class="tab-text">7 Days</span></a>
+            <button class="nav-link show active" id="week-tab" data-bs-toggle="tab" type="button" data-bs-target="#week" role="tab" aria-controls="week" aria-selected="true"><span class="tab-text">7 Days</span></button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" id="month-tab" data-bs-toggle="tab" type="button" data-bs-target="#month" role="tab" aria-controls="month" aria-selected="false"><span class="tab-text">31 Days</span></a>
+            <button class="nav-link" id="month-tab" data-bs-toggle="tab" type="button" data-bs-target="#month" role="tab" aria-controls="month" aria-selected="false"><span class="tab-text">31 Days</span></button>
           </li>
         </ul>
         <div class="row mt-4">
@@ -46,7 +46,7 @@
                           {{ else }}
                             <td>{{ .Name.String }}</td>
                           {{ end }}
-                          <td>{{ .BlockCount }} ({{ formatPercentageWithPrecision .NetworkUsage 2}}%)</td>
+                          <td>{{ .BlockCount }} ({{ formatPercentageWithPrecision .NetworkUsage 2 }}%)</td>
                           <td>{{ .UniqueBuilders }}</td>
                           <td>{{ formatBalance .TotalValue $.Rates.Currency }}</td>
                           <td>{{ formatSmallBalance .AverageValue $.Rates.Currency }}</td>
@@ -67,11 +67,10 @@
                   </table>
                 </div>
               {{ end }}
-              </div>
             </div>
           </div>
-          <span class="px-2" id="lastUpdate"></span>
         </div>
+        <span class="px-2" id="lastUpdate"></span>
       </div>
     </div>
   </section>
