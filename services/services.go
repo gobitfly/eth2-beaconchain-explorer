@@ -215,7 +215,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 	dayInSlots := 24 * 60 * 60 / utils.Config.Chain.Config.SecondsPerSlot
 
 	tmp := &relaysData.RelaysInfoContainers[0]
-	(*tmp).TimeSpan = "week"
+	(*tmp).TimeSpan = "7 days"
 	(*tmp).IsFirst = true
 	logger.Info(LatestSlot() - (7 * dayInSlots))
 	err = query.Select(&(*tmp).RelaysInfo, LatestSlot()-(7*dayInSlots))
@@ -224,8 +224,15 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 	}
 
 	tmp = &relaysData.RelaysInfoContainers[1]
-	(*tmp).TimeSpan = "month"
+	(*tmp).TimeSpan = "31 days"
 	err = query.Select(&(*tmp).RelaysInfo, LatestSlot()-(31*dayInSlots))
+	if err != nil {
+		return nil, err
+	}
+
+	tmp = &relaysData.RelaysInfoContainers[2]
+	(*tmp).TimeSpan = "180 days"
+	err = query.Select(&(*tmp).RelaysInfo, LatestSlot()-(6*30*dayInSlots))
 	if err != nil {
 		return nil, err
 	}

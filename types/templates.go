@@ -1309,7 +1309,7 @@ type PoolsResp struct {
 }
 
 type RelaysResp struct {
-	RelaysInfoContainers [2]RelayInfoContainer
+	RelaysInfoContainers [3]RelayInfoContainer
 }
 
 type RelayInfoContainer struct {
