@@ -193,6 +193,7 @@ func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk
 			// logrus.Infof("writing: %v", len(bulkMuts.Keys))
 			err = bt.WriteBulk(&bulkMuts)
 			if err != nil {
+				logrus.Error(err)
 				return fmt.Errorf("error writing to bigtable err: %w", err)
 			}
 
@@ -219,6 +220,7 @@ func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk
 	if err := g.Wait(); err == nil {
 		logrus.Info("Successfully fetched all blocks")
 	} else {
+		logrus.Error(err)
 		return err
 	}
 
