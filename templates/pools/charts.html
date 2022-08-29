@@ -203,20 +203,46 @@
                 title: {
                     text: {{.HistoricPoolPerformance.Data.YAxisTitle}}
                 },
-                opposite: false
+                opposite: false,
+                labels: {
+                    formatter: function () {
+                        var orig = this.axis.defaultLabelFormatter.call(this)
+                        return `${orig}%`
+                    }
+                }
             }],
             navigator: { enabled: true },
             tooltip: {
-                {{ if .HistoricPoolPerformance.Data.TooltipFormatter }}
-                formatter: {{.HistoricPoolPerformance.Data.TooltipFormatter}},
-                {{ else }}
                 formatter: function (tooltip) {
+                    const x = this.x,
+                    y = this.y;
+                    const points = this.points;
+
+                    var tooltipString;
+
                     var orig = tooltip.defaultFormatter.call(this, tooltip)
                     var epoch = timeToEpoch(this.x)
-                    orig[0] = orig[0] + '<span style="font-size:10px">Epoch ' + epoch + '</span>'
-                    return orig
+                    tooltipString = '<div style="max-height: 300px; overflow-y: scroll">' +
+                        '<p style="font-size:10px"> ' +
+                            orig[0] + '<span style="font-size:10px">Epoch ' + epoch + '</span>' +
+                        '</p>'
+
+                    let i = 0;
+                    for (let point of points) {
+                        tooltipString += `<span style="color: ${point.series.color}">\u25CF<\/span> ${point.series.name}: ${point.y}%<br>`;
+                        i++;
+                    }
+                    return tooltipString;
                 },
-                {{end}}
+                positioner: function(labelWidth, labelHeight, point) {
+                    return {
+                        x: point.plotX,
+                        y: this.chart.plotTop
+                    }
+                },
+                style: {
+	                pointerEvents: 'auto'
+                },
                 shared: {{.HistoricPoolPerformance.Data.TooltipShared}},
                 useHTML: {{.HistoricPoolPerformance.Data.TooltipUseHTML}},
                 split: {{.HistoricPoolPerformance.Data.TooltipSplit}},
@@ -230,6 +256,43 @@
                 maxHeight: 250,
             },
             series: {{.HistoricPoolPerformance.Data.Series}},
+            responsive: {
+                rules: [{
+                    condition: {
+                        maxWidth: 700
+                    },
+                    chartOptions: {
+                        rangeSelector: {
+                            inputEnabled: false,
+                        },
+                        yAxis: {
+                            title: {
+                                enabled: false
+                            }
+                        },
+                        xAxis: {
+                            type: 'datetime',
+                            labels: {
+                                formatter: function () {
+                                    var orig = this.axis.defaultLabelFormatter.call(this)
+                                    return `${orig}`
+                                }
+                            }
+                        },
+                        legend: {
+                            enabled: true,
+                            align: 'center',
+                            layout: 'horizontal',
+                            verticalAlign: 'bottom',
+                            maxHeight: 70,
+                        },
+                        navigator: {
+                            margin: 5,
+                            height: 35,
+                        },
+                    }
+                }]
+            }
         });
     });
   </script>

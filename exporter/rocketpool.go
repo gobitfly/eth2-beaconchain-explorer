@@ -186,7 +186,7 @@ func (rp *RocketpoolExporter) InitDAOMembers() error {
 }
 
 func (rp *RocketpoolExporter) Run() error {
-	errorInterval := time.Second * 10
+	errorInterval := time.Second * 60
 	t := time.NewTicker(rp.UpdateInterval)
 	defer t.Stop()
 	var count int64 = 0

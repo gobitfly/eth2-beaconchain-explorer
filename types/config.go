@@ -21,7 +21,12 @@ type Config struct {
 		Host     string `yaml:"host" envconfig:"WRITER_DB_HOST"`
 		Port     string `yaml:"port" envconfig:"WRITER_DB_PORT"`
 	} `yaml:"writerDatabase"`
-	Chain struct {
+	Bigtable struct {
+		Project  string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
+		Instance string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
+	} `yaml:"bigtable"`
+	LastAttestationCachePath string `yaml:"lastAttestationCachePath" envconfig:"LAST_ATTESTATION_CACHE_PATH"`
+	Chain                    struct {
 		Name             string `yaml:"name" envconfig:"CHAIN_NAME"`
 		GenesisTimestamp uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
 		ConfigPath       string `yaml:"configPath" envconfig:"CHAIN_CONFIG_PATH"`
@@ -158,6 +163,9 @@ type Config struct {
 		StorageContractAddress    string `yaml:"storageContractAddress" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_ADDRESS"`
 		StorageContractFirstBlock uint64 `yaml:"storageContractFirstBlock" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_FIRST_BLOCK"`
 	} `yaml:"rocketpoolExporter"`
+	MevBoostRelayExporter struct {
+		Enabled bool `yaml:"enabled" envconfig:"MEVBOOSTRELAY_EXPORTER_ENABLED"`
+	} `yaml:"mevBoostRelayExporter"`
 	EthStoreExporter struct {
 		Enabled bool `yaml:"enabled" envconfig:"ETHSTORE_EXPORTER_ENABLED"`
 		Node    struct {

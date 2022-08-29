@@ -26,7 +26,7 @@
 	}
 
 	document.addEventListener('DOMContentLoaded', function() {
-		var genesis = {{.ActivationTs.Unix}}
+		var genesis = {{or .EstimatedActivationTs.Unix .ActivationTs.Unix }}
 		var now = Math.round((new Date()).getTime() / 1000)
 		var secondsLeft = genesis - now
 		var seconds = secondsLeft % 60

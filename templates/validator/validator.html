@@ -6,7 +6,7 @@
     })
   </script>
   <script src="/js/validator.js"></script>
-	<script>setValidatorStatus({{.Status}})</script>
+	<script>setValidatorStatus({{.Status}}, {{.ActivationEpoch}})</script>
   {{ if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid") }}
     <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
