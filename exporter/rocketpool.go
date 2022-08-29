@@ -1,8 +1,13 @@
 package exporter
 
 import (
+	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"net/http"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -11,10 +16,13 @@ import (
 	"eth2-exporter/utils"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
+	"github.com/hashicorp/go-version"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
+	"github.com/klauspost/compress/zstd"
 	"github.com/rocket-pool/rocketpool-go/dao"
 	rpDAO "github.com/rocket-pool/rocketpool-go/dao"
 	rpDAOTrustedNode "github.com/rocket-pool/rocketpool-go/dao/trustednode"
@@ -25,6 +33,7 @@ import (
 	"github.com/rocket-pool/rocketpool-go/rocketpool"
 	"github.com/rocket-pool/rocketpool-go/tokens"
 	rpTypes "github.com/rocket-pool/rocketpool-go/types"
+	rputil "github.com/rocket-pool/rocketpool-go/utils"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -32,6 +41,22 @@ import (
 
 var rpEth1RPRCClient *gethRPC.Client
 var rpEth1Client *ethclient.Client
+
+const GethEventLogInterval = 25000
+
+var legacyRewardsPoolAddress = map[string]string{
+	"mainnet": "0xA3a18348e6E2d3897B6f2671bb8c120e36554802",
+	"prater":  "0xf9aE18eB0CE4930Bc3d7d1A5E33e4286d4FB0f8B",
+	"kiln":    "0xFb62F3B5AF8099Bbd19d5d46084Bb152ECDE25A6",
+	"ropsten": "0x401e46fA6cBC9e1E6Cc3E9666C10329f938aE1B3",
+}
+
+var legacyClaimNodeAddress = map[string]string{
+	"mainnet": "0x899336A2a86053705E65dB61f52C686dcFaeF548",
+	"prater":  "0xc05b7A2a03A6d2736d1D0ebf4d4a0aFE2cc32cE1",
+	"kiln":    "0xF98086202F8F58dad8120055Fdd6e2f36De2c6Fb",
+	"ropsten": "0xA55F65219d7254DFde4021E4f534a7a55750C4a1",
+}
 
 func rocketpoolExporter() {
 	var err error
@@ -187,8 +212,141 @@ func (rp *RocketpoolExporter) Run() error {
 	}
 }
 
+func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, index uint64, intervalSize *big.Int, startBlock *big.Int) (rewards.RewardsEvent, error) {
+	// Get contracts
+	rocketRewardsPool, err := getRocketRewardsPool(rp)
+	if err != nil {
+		return rewards.RewardsEvent{}, err
+	}
+
+	// Construct a filter query for relevant logs
+	indexBig := big.NewInt(0).SetUint64(index)
+	indexBytes := [32]byte{}
+	indexBig.FillBytes(indexBytes[:])
+	addressFilter := []common.Address{*rocketRewardsPool.Address}
+	topicFilter := [][]common.Hash{{rocketRewardsPool.ABI.Events["RewardSnapshot"].ID}, {indexBytes}}
+
+	// Get the event logs
+	logs, err := eth.GetLogs(rp, addressFilter, topicFilter, intervalSize, startBlock, nil, nil)
+	if err != nil {
+		return rewards.RewardsEvent{}, err
+	}
+
+	// Get the log info
+	values := make(map[string]interface{})
+	if len(logs) == 0 {
+		return rewards.RewardsEvent{}, fmt.Errorf("reward snapshot for interval %d not found", index)
+	}
+	if rocketRewardsPool.ABI.Events["RewardSnapshot"].Inputs.UnpackIntoMap(values, logs[0].Data) != nil {
+		return rewards.RewardsEvent{}, err
+	}
+
+	// Get the decoded data
+	submissionPrototype := RewardSubmissionLegacy{}
+	submissionType := reflect.TypeOf(submissionPrototype)
+	submission := reflect.ValueOf(values["submission"]).Convert(submissionType).Interface().(RewardSubmissionLegacy)
+	eventIntervalStartTime := values["intervalStartTime"].(*big.Int)
+	eventIntervalEndTime := values["intervalEndTime"].(*big.Int)
+	submissionTime := values["time"].(*big.Int)
+	eventData := rewards.RewardsEvent{
+		Index:             indexBig,
+		ExecutionBlock:    submission.ExecutionBlock,
+		ConsensusBlock:    submission.ConsensusBlock,
+		IntervalsPassed:   submission.IntervalsPassed,
+		TreasuryRPL:       submission.TreasuryRPL,
+		TrustedNodeRPL:    submission.TrustedNodeRPL,
+		NodeRPL:           submission.NodeRPL,
+		NodeETH:           submission.NodeETH,
+		UserETH:           big.NewInt(0),
+		MerkleRoot:        common.BytesToHash(submission.MerkleRoot[:]),
+		MerkleTreeCID:     submission.MerkleTreeCID,
+		IntervalStartTime: time.Unix(eventIntervalStartTime.Int64(), 0),
+		IntervalEndTime:   time.Unix(eventIntervalEndTime.Int64(), 0),
+		SubmissionTime:    time.Unix(submissionTime.Int64(), 0),
+	}
+
+	return eventData, nil
+
+}
+
+type RewardSubmissionLegacy struct {
+	RewardIndex     *big.Int   `json:"rewardIndex"`
+	ExecutionBlock  *big.Int   `json:"executionBlock"`
+	ConsensusBlock  *big.Int   `json:"consensusBlock"`
+	MerkleRoot      [32]byte   `json:"merkleRoot"`
+	MerkleTreeCID   string     `json:"merkleTreeCID"`
+	IntervalsPassed *big.Int   `json:"intervalsPassed"`
+	TreasuryRPL     *big.Int   `json:"treasuryRPL"`
+	TrustedNodeRPL  []*big.Int `json:"trustedNodeRPL"`
+	NodeRPL         []*big.Int `json:"nodeRPL"`
+	NodeETH         []*big.Int `json:"nodeETH"`
+}
+
+func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
+	t0 := time.Now()
+	defer func(t0 time.Time) {
+		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Infof("updated rocketpool-reward-trees")
+	}(t0)
+
+	isMergeUpdateDeployed, err := IsMergeUpdateDeployed(rp.API)
+	if err != nil {
+		return err
+	}
+
+	if !isMergeUpdateDeployed {
+		return nil
+	}
+
+	missingIntervals := []rewards.RewardsEvent{}
+	for interval := uint64(0); ; interval++ {
+		var event rewards.RewardsEvent
+
+		event, err := GetRewardSnapshotEvent(
+			rp.API,
+			interval,
+			big.NewInt(int64(GethEventLogInterval)),
+			nil,
+		)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				break
+			}
+			return err
+		}
+
+		var dbInterval uint64
+		err = db.WriterDb.Get(&dbInterval, `SELECT id FROM rocketpool_reward_tree WHERE id = $1`, interval)
+		if err == sql.ErrNoRows {
+			missingIntervals = append(missingIntervals, event)
+		} else if err != nil {
+			return err
+		}
+
+	}
+
+	if len(missingIntervals) == 0 {
+		return nil
+	}
+
+	for _, missingInterval := range missingIntervals {
+		fmt.Printf("Downloading interval %d file... ", missingInterval.Index)
+		bytes, err := DownloadRewardsFile(fmt.Sprintf("rp-rewards-prater-%v.json", missingInterval.Index), missingInterval.Index.Uint64(), missingInterval.MerkleTreeCID, true)
+		if err != nil {
+			return fmt.Errorf("can not download reward file %v. Error %v", missingInterval.Index, err)
+		}
+		_, err = db.WriterDb.Exec(`INSERT INTO rocketpool_reward_tree (id, data) VALUES($1, $2)`, missingInterval.Index.Uint64(), bytes)
+		if err != nil {
+			return fmt.Errorf("can not store reward file %v. Error %v", missingInterval.Index, err)
+		}
+		logrus.Infof("Downloaded rocketpool rewards tree %v", missingInterval.Index)
+	}
+
+	return nil
+}
+
 func (rp *RocketpoolExporter) Update(count int64) error {
 	var wg errgroup.Group
+	wg.Go(func() error { return rp.DownloadMissingRewardTrees() })
 	wg.Go(func() error { return rp.UpdateMinipools() })
 	wg.Go(func() error { return rp.UpdateNodes(count%12 == 0) })
 	wg.Go(func() error { return rp.UpdateDAOProposals() })
@@ -271,36 +429,71 @@ func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 	if err != nil {
 		return err
 	}
+
+	isMergeUpdateDeployed, err := IsMergeUpdateDeployed(rp.API)
+	if err != nil {
+		return err
+	}
+
+	var allRocketpoolRewardTrees map[uint64]RewardsFile = nil
+	if isMergeUpdateDeployed {
+		allRocketpoolRewardTrees, err = getRocketpoolRewardTrees(rp.API)
+		if err != nil {
+			return err
+		}
+	}
+
+	if includeCumulativeRpl {
+		legacyRewardsPool := common.HexToAddress(legacyRewardsPoolAddress[utils.Config.Chain.Name])
+		legacyClaimNode := common.HexToAddress(legacyClaimNodeAddress[utils.Config.Chain.Name])
+		rp.NodeRPLCumulative, err = CalculateLifetimeNodeRewardsAllLegacy(
+			rp.API,
+			big.NewInt(60000),
+			&legacyRewardsPool,
+			&legacyClaimNode,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
 	for _, a := range nodeAddresses {
 		addrHex := a.Hex()
 		if node, exists := rp.NodesByAddress[addrHex]; exists {
-			err = node.Update(rp.API)
+			err = node.Update(rp.API, allRocketpoolRewardTrees, includeCumulativeRpl, rp.NodeRPLCumulative)
 			if err != nil {
 				return err
 			}
 			continue
 		}
-		node, err := NewRocketpoolNode(rp.API, a.Bytes())
+		node, err := NewRocketpoolNode(rp.API, a.Bytes(), allRocketpoolRewardTrees, rp.NodeRPLCumulative)
 		if err != nil {
 			return err
 		}
 		rp.NodesByAddress[addrHex] = node
 	}
 
-	if includeCumulativeRpl {
-		rp.NodeRPLCumulative, err = CalculateLifetimeNodeRewardsAll(rp.API, big.NewInt(60000))
-		if err != nil {
-			return err
-		}
-	}
-
-	for addrHex, amount := range rp.NodeRPLCumulative {
-		if node, exists := rp.NodesByAddress[addrHex]; exists {
-			node.RPLCumulativeRewards = amount
-		}
-	}
-
 	return nil
+}
+
+func getRocketpoolRewardTrees(rp *rocketpool.RocketPool) (map[uint64]RewardsFile, error) {
+	var allRewards map[uint64]RewardsFile = map[uint64]RewardsFile{}
+	for i := uint64(0); ; i++ {
+		var jsonData []byte
+		err := db.WriterDb.Get(&jsonData, `SELECT data FROM rocketpool_reward_tree WHERE id = $1`, i)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				break
+			}
+			return allRewards, fmt.Errorf("Can not load claimedInterval %v tree from database, is it exported? %v", i, err)
+		}
+		allRewards[i], err = getRewardsData(rp, jsonData, i)
+		if err != nil {
+			logrus.Infof("err getting reward data %v", err)
+			return allRewards, fmt.Errorf("Can parsing reward tree data to struct for interval %v. Error %v", i, err)
+		}
+	}
+	return allRewards, nil
 }
 
 func (rp *RocketpoolExporter) UpdateDAOProposals() error {
@@ -396,9 +589,22 @@ func (rp *RocketpoolExporter) UpdateNetworkStats() error {
 		return err
 	}
 
-	nodeOperatorRewards, err := getBigIntFrom(rp.API, "rocketRewardsPool", "getClaimingContractAllowance", "rocketClaimNode")
+	isMergeUpdateDeployed, err := IsMergeUpdateDeployed(rp.API)
 	if err != nil {
 		return err
+	}
+
+	var nodeOperatorRewards *big.Int
+	if !isMergeUpdateDeployed {
+		nodeOperatorRewards, err = getBigIntFrom(rp.API, "rocketRewardsPool", "getClaimingContractAllowance", "rocketClaimNode")
+		if err != nil {
+			return err
+		}
+	} else {
+		nodeOperatorRewards, err = rewards.GetPendingRPLRewards(rp.API, nil)
+		if err != nil {
+			return err
+		}
 	}
 
 	totalEthStaking, err := network.GetStakingETHBalance(rp.API, nil)
@@ -425,6 +631,18 @@ func (rp *RocketpoolExporter) UpdateNetworkStats() error {
 		TotalEthBalance:        totalEthBalance,
 	}
 	return err
+}
+
+// Redstone activation check
+// Credit https://github.com/rocket-pool/smartnode/blob/4fd78852a331a7ec7a7e462fef2bcd49d1f0b0af/shared/utils/rp/update-checks.go
+func IsMergeUpdateDeployed(rp *rocketpool.RocketPool) (bool, error) {
+	currentVersion, err := rputil.GetCurrentVersion(rp)
+	if err != nil {
+		return false, err
+	}
+
+	constraint, _ := version.NewConstraint(">= 1.1.0")
+	return constraint.Check(currentVersion), nil
 }
 
 func getBigIntFrom(rp *rocketpool.RocketPool, contract string, method string, args ...interface{}) (*big.Int, error) {
@@ -527,7 +745,7 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 	}
 	defer tx.Rollback()
 
-	nArgs := 7
+	nArgs := 11
 
 	valueStringsArr := make([]string, nArgs)
 	for i := range valueStringsArr {
@@ -559,17 +777,36 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 			valueArgs = append(valueArgs, d.MinRPLStake.String())
 			valueArgs = append(valueArgs, d.MaxRPLStake.String())
 			valueArgs = append(valueArgs, d.RPLCumulativeRewards.String())
-
+			valueArgs = append(valueArgs, d.SmoothingPoolOptedIn)
+			valueArgs = append(valueArgs, d.ClaimedSmoothingPool.String())
+			valueArgs = append(valueArgs, d.UnclaimedSmoothingPool.String())
+			valueArgs = append(valueArgs, d.UnclaimedRPLRewards.String())
 		}
 
 		stmt = fmt.Sprintf(`
-			insert into rocketpool_nodes (rocketpool_storage_address, address, timezone_location, rpl_stake, min_rpl_stake, max_rpl_stake, rpl_cumulative_rewards) 
+			insert into rocketpool_nodes (
+				rocketpool_storage_address, 
+				address, 
+				timezone_location, 
+				rpl_stake, 
+				min_rpl_stake, 
+				max_rpl_stake, 
+				rpl_cumulative_rewards, 
+				smoothing_pool_opted_in, 
+				claimed_smoothing_pool, 
+				unclaimed_smoothing_pool, 
+				unclaimed_rpl_rewards
+			) 
 			values %s 
 			on conflict (rocketpool_storage_address, address) do update set 
 				rpl_stake = excluded.rpl_stake, 
 				min_rpl_stake = excluded.min_rpl_stake, 
 				max_rpl_stake = excluded.max_rpl_stake, 
-				rpl_cumulative_rewards = excluded.rpl_cumulative_rewards
+				rpl_cumulative_rewards = excluded.rpl_cumulative_rewards,
+				smoothing_pool_opted_in = excluded.smoothing_pool_opted_in,
+				claimed_smoothing_pool = excluded.claimed_smoothing_pool,
+				unclaimed_smoothing_pool = excluded.unclaimed_smoothing_pool,
+				unclaimed_rpl_rewards = excluded.unclaimed_rpl_rewards
 		`, strings.Join(valueStrings, ","))
 
 		_, err := tx.Exec(stmt, valueArgs...)
@@ -936,15 +1173,19 @@ func (this *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
 }
 
 type RocketpoolNode struct {
-	Address              []byte   `db:"address"`
-	TimezoneLocation     string   `db:"timezone_location"`
-	RPLStake             *big.Int `db:"rpl_stake"`
-	MinRPLStake          *big.Int `db:"min_rpl_stake"`
-	MaxRPLStake          *big.Int `db:"max_rpl_stake"`
-	RPLCumulativeRewards *big.Int `db:"rpl_cumulative_rewards"`
+	Address                []byte   `db:"address"`
+	TimezoneLocation       string   `db:"timezone_location"`
+	RPLStake               *big.Int `db:"rpl_stake"`
+	MinRPLStake            *big.Int `db:"min_rpl_stake"`
+	MaxRPLStake            *big.Int `db:"max_rpl_stake"`
+	RPLCumulativeRewards   *big.Int `db:"rpl_cumulative_rewards"`
+	SmoothingPoolOptedIn   bool     `db:"smoothing_pool_opted_in"`
+	ClaimedSmoothingPool   *big.Int `db:"claimed_smoothing_pool"`
+	UnclaimedSmoothingPool *big.Int `db:"unclaimed_smoothing_pool"`
+	UnclaimedRPLRewards    *big.Int `db:"unclaimed_rpl_rewards"`
 }
 
-func NewRocketpoolNode(rp *rocketpool.RocketPool, addr []byte) (*RocketpoolNode, error) {
+func NewRocketpoolNode(rp *rocketpool.RocketPool, addr []byte, rewardTrees map[uint64]RewardsFile, legacyClaims map[string]*big.Int) (*RocketpoolNode, error) {
 	rpn := &RocketpoolNode{
 		Address: addr,
 	}
@@ -953,14 +1194,20 @@ func NewRocketpoolNode(rp *rocketpool.RocketPool, addr []byte) (*RocketpoolNode,
 		return nil, err
 	}
 	rpn.TimezoneLocation = tl
-	err = rpn.Update(rp)
+	err = rpn.Update(rp, rewardTrees, true, legacyClaims)
 	if err != nil {
 		return nil, err
 	}
 	return rpn, nil
 }
 
-func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool) error {
+type RocketpoolRewards struct {
+	RplColl          *big.Int
+	SmoothingPoolEth *big.Int
+	OdaoRpl          *big.Int
+}
+
+func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[uint64]RewardsFile, includeCumulativeRpl bool, legacyClaims map[string]*big.Int) error {
 	stake, err := node.GetNodeRPLStake(rp, common.BytesToAddress(this.Address), nil)
 	if err != nil {
 		return err
@@ -974,21 +1221,156 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool) error {
 		return err
 	}
 
+	if rewardTrees != nil {
+		nodeAddress := common.BytesToAddress(this.Address)
+
+		this.SmoothingPoolOptedIn, err = node.GetSmoothingPoolRegistrationState(rp, nodeAddress, nil)
+		if err != nil {
+			return err
+		}
+
+		if includeCumulativeRpl {
+
+			var claimedSum RocketpoolRewards = RocketpoolRewards{
+				SmoothingPoolEth: big.NewInt(0),
+				OdaoRpl:          big.NewInt(0),
+				RplColl:          big.NewInt(0),
+			}
+			var unclaimedSum RocketpoolRewards = RocketpoolRewards{
+				SmoothingPoolEth: big.NewInt(0),
+				OdaoRpl:          big.NewInt(0),
+				RplColl:          big.NewInt(0),
+			}
+
+			unclaimed, claimed, err := GetClaimStatus(rp, nodeAddress)
+			if err != nil {
+				return err
+			}
+
+			// Get the info for each claimed interval
+			for _, claimedInterval := range claimed {
+				rewardData := rewardTrees[claimedInterval]
+
+				rewards, exists := rewardData.NodeRewards[nodeAddress]
+
+				if exists {
+					claimedSum.RplColl = claimedSum.RplColl.Add(claimedSum.RplColl, &rewards.CollateralRpl.Int)
+					claimedSum.SmoothingPoolEth = claimedSum.SmoothingPoolEth.Add(claimedSum.SmoothingPoolEth, &rewards.SmoothingPoolEth.Int)
+					claimedSum.OdaoRpl = claimedSum.OdaoRpl.Add(claimedSum.OdaoRpl, &rewards.OracleDaoRpl.Int)
+				}
+			}
+
+			// Get the unclaimed rewards
+			for _, unclaimedInterval := range unclaimed {
+				rewardData, exists := rewardTrees[unclaimedInterval]
+
+				rewards, exists := rewardData.NodeRewards[nodeAddress]
+
+				if exists {
+					unclaimedSum.RplColl = unclaimedSum.RplColl.Add(unclaimedSum.RplColl, &rewards.CollateralRpl.Int)
+					unclaimedSum.SmoothingPoolEth = unclaimedSum.SmoothingPoolEth.Add(unclaimedSum.SmoothingPoolEth, &rewards.SmoothingPoolEth.Int)
+					unclaimedSum.OdaoRpl = unclaimedSum.OdaoRpl.Add(unclaimedSum.OdaoRpl, &rewards.OracleDaoRpl.Int)
+				}
+			}
+
+			this.RPLCumulativeRewards = claimedSum.RplColl
+			if legacyAmount, exists := legacyClaims[nodeAddress.Hex()]; exists {
+				this.RPLCumulativeRewards = this.RPLCumulativeRewards.Add(this.RPLCumulativeRewards, legacyAmount)
+			}
+			this.ClaimedSmoothingPool = claimedSum.SmoothingPoolEth
+			this.UnclaimedSmoothingPool = unclaimedSum.SmoothingPoolEth
+			this.UnclaimedRPLRewards = unclaimedSum.RplColl
+		}
+	}
+
 	this.RPLStake = stake
 	this.MinRPLStake = minStake
 	this.MaxRPLStake = maxStake
-	this.RPLCumulativeRewards = big.NewInt(0)
 
 	return nil
 }
 
-func CalculateLifetimeNodeRewardsAll(rp *rocketpool.RocketPool, intervalSize *big.Int) (map[string]*big.Int, error) {
+func getRewardsData(rp *rocketpool.RocketPool, jsonData []byte, interval uint64) (RewardsFile, error) {
+	var proofWrapper RewardsFile
+
+	var event rewards.RewardsEvent
+
+	event, err := GetRewardSnapshotEvent(rp, interval, big.NewInt(int64(GethEventLogInterval)), nil)
+	if err != nil {
+		return proofWrapper, err
+	}
+
+	err = json.Unmarshal(jsonData, &proofWrapper)
+	if err != nil {
+		err = fmt.Errorf("error deserializing : %w", err)
+		return proofWrapper, err
+	}
+
+	merkleRootFromFile := common.HexToHash(proofWrapper.MerkleRoot)
+	if event.MerkleRoot != merkleRootFromFile {
+		return proofWrapper, fmt.Errorf("invalid merkle root value : %w", err)
+	}
+	return proofWrapper, err
+}
+
+// Gets the intervals the node can claim and the intervals that have already been claimed
+func GetClaimStatus(rp *rocketpool.RocketPool, nodeAddress common.Address) (unclaimed []uint64, claimed []uint64, err error) {
+	// Get the current interval
+	currentIndexBig, err := rewards.GetRewardIndex(rp, nil)
+	if err != nil {
+		return
+	}
+
+	currentIndex := currentIndexBig.Uint64() // This is guaranteed to be from 0 to 65535 so the conversion is legal
+	if currentIndex == 0 {
+		// If we're still in the first interval, there's nothing to report.
+		return
+	}
+
+	// Get the claim status of every interval that's happened so far
+	one := big.NewInt(1)
+	bucket := currentIndex / 256
+	for i := uint64(0); i <= bucket; i++ {
+		bucketBig := big.NewInt(int64(i))
+		bucketBytes := [32]byte{}
+		bucketBig.FillBytes(bucketBytes[:])
+
+		var bitmap *big.Int
+		bitmap, err = rp.RocketStorage.GetUint(nil, crypto.Keccak256Hash([]byte("rewards.interval.claimed"), nodeAddress.Bytes(), bucketBytes[:]))
+
+		for j := uint64(0); j < 256; j++ {
+			targetIndex := i*256 + j
+			if targetIndex >= currentIndex {
+				// End once we've hit the current interval
+				break
+			}
+
+			mask := big.NewInt(0)
+			mask.Lsh(one, uint(j))
+			maskedBitmap := big.NewInt(0)
+			maskedBitmap.And(bitmap, mask)
+
+			if maskedBitmap.Cmp(mask) == 0 {
+				// This bit was flipped, so it's been claimed already
+				claimed = append(claimed, targetIndex)
+			} else {
+				// This bit was not flipped, so it hasn't been claimed yet
+				unclaimed = append(unclaimed, targetIndex)
+			}
+		}
+	}
+
+	return
+}
+
+func CalculateLifetimeNodeRewardsAllLegacy(rp *rocketpool.RocketPool, intervalSize *big.Int, legacyRocketRewardsPoolAddress *common.Address, legacyRocketClaimNodeAddress *common.Address) (map[string]*big.Int, error) {
+
 	// Get contracts
-	rocketRewardsPool, err := getRocketRewardsPool(rp)
+	rocketRewardsPool, err := getRocketRewardsPoolLegacy(rp, legacyRocketRewardsPoolAddress)
 	if err != nil {
 		return nil, err
 	}
-	rocketClaimNode, err := getRocketClaimNode(rp)
+	rocketClaimNode, err := getRocketClaimNodeLegacy(rp, legacyRocketClaimNodeAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -1034,13 +1416,27 @@ func getRocketRewardsPool(rp *rocketpool.RocketPool) (*rocketpool.Contract, erro
 	return rp.GetContract("rocketRewardsPool")
 }
 
+func getRocketRewardsPoolLegacy(rp *rocketpool.RocketPool, address *common.Address) (*rocketpool.Contract, error) {
+	rocketRewardsPoolLock.Lock()
+	defer rocketRewardsPoolLock.Unlock()
+	if address == nil {
+		return rp.VersionManager.V1_0_0.GetContract("rocketRewardsPool")
+	} else {
+		return rp.VersionManager.V1_0_0.GetContractWithAddress("rocketRewardsPool", *address)
+	}
+}
+
 // Get contracts
 var rocketClaimNodeLock sync.Mutex
 
-func getRocketClaimNode(rp *rocketpool.RocketPool) (*rocketpool.Contract, error) {
+func getRocketClaimNodeLegacy(rp *rocketpool.RocketPool, address *common.Address) (*rocketpool.Contract, error) {
 	rocketClaimNodeLock.Lock()
 	defer rocketClaimNodeLock.Unlock()
-	return rp.GetContract("rocketClaimNode")
+	if address == nil {
+		return rp.VersionManager.V1_0_0.GetContract("rocketClaimNode")
+	} else {
+		return rp.VersionManager.V1_0_0.GetContractWithAddress("rocketClaimNode", *address)
+	}
 }
 
 type RocketpoolDAOProposalMemberVotes struct {
@@ -1163,4 +1559,162 @@ func (this *RocketpoolDAOMember) Update(rp *rocketpool.RocketPool) error {
 	this.RPLBondAmount = d.RPLBondAmount
 	this.UnbondedValidatorCount = d.UnbondedValidatorCount
 	return nil
+}
+
+type MinipoolPerformanceFile struct {
+	Index               uint64                                               `json:"index"`
+	Network             string                                               `json:"network"`
+	MinipoolPerformance map[common.Address]*SmoothingPoolMinipoolPerformance `json:"minipoolPerformance"`
+}
+
+// Minipool stats
+type SmoothingPoolMinipoolPerformance struct {
+	Pubkey                  string   `json:"pubkey"`
+	SuccessfulAttestations  uint64   `json:"successfulAttestations"`
+	MissedAttestations      uint64   `json:"missedAttestations"`
+	ParticipationRate       float64  `json:"participationRate"`
+	MissingAttestationSlots []uint64 `json:"missingAttestationSlots"`
+	EthEarned               float64  `json:"ethEarned"`
+}
+
+// Node operator rewards
+type NodeRewardsInfo struct {
+	RewardNetwork                uint64        `json:"rewardNetwork"`
+	CollateralRpl                *QuotedBigInt `json:"collateralRpl"`
+	OracleDaoRpl                 *QuotedBigInt `json:"oracleDaoRpl"`
+	SmoothingPoolEth             *QuotedBigInt `json:"smoothingPoolEth"`
+	SmoothingPoolEligibilityRate float64       `json:"smoothingPoolEligibilityRate"`
+	MerkleData                   []byte        `json:"-"`
+	MerkleProof                  []string      `json:"merkleProof"`
+}
+
+// Rewards per network
+type NetworkRewardsInfo struct {
+	CollateralRpl    *QuotedBigInt `json:"collateralRpl"`
+	OracleDaoRpl     *QuotedBigInt `json:"oracleDaoRpl"`
+	SmoothingPoolEth *QuotedBigInt `json:"smoothingPoolEth"`
+}
+
+// Total cumulative rewards for an interval
+type TotalRewards struct {
+	ProtocolDaoRpl               *QuotedBigInt `json:"protocolDaoRpl"`
+	TotalCollateralRpl           *QuotedBigInt `json:"totalCollateralRpl"`
+	TotalOracleDaoRpl            *QuotedBigInt `json:"totalOracleDaoRpl"`
+	TotalSmoothingPoolEth        *QuotedBigInt `json:"totalSmoothingPoolEth"`
+	PoolStakerSmoothingPoolEth   *QuotedBigInt `json:"poolStakerSmoothingPoolEth"`
+	NodeOperatorSmoothingPoolEth *QuotedBigInt `json:"nodeOperatorSmoothingPoolEth"`
+}
+
+// JSON struct for a complete rewards file
+type RewardsFile struct {
+	// Serialized fields
+	RewardsFileVersion         uint64                              `json:"rewardsFileVersion"`
+	Index                      uint64                              `json:"index"`
+	Network                    string                              `json:"network"`
+	StartTime                  time.Time                           `json:"startTime,omitempty"`
+	EndTime                    time.Time                           `json:"endTime"`
+	ConsensusStartBlock        uint64                              `json:"consensusStartBlock,omitempty"`
+	ConsensusEndBlock          uint64                              `json:"consensusEndBlock"`
+	ExecutionStartBlock        uint64                              `json:"executionStartBlock,omitempty"`
+	ExecutionEndBlock          uint64                              `json:"executionEndBlock"`
+	IntervalsPassed            uint64                              `json:"intervalsPassed"`
+	MerkleRoot                 string                              `json:"merkleRoot,omitempty"`
+	MinipoolPerformanceFileCID string                              `json:"minipoolPerformanceFileCid,omitempty"`
+	TotalRewards               *TotalRewards                       `json:"totalRewards"`
+	NetworkRewards             map[uint64]*NetworkRewardsInfo      `json:"networkRewards"`
+	NodeRewards                map[common.Address]*NodeRewardsInfo `json:"nodeRewards"`
+	MinipoolPerformanceFile    MinipoolPerformanceFile             `json:"-"`
+}
+
+type QuotedBigInt struct {
+	big.Int
+}
+
+func NewQuotedBigInt(x int64) *QuotedBigInt {
+	q := QuotedBigInt{}
+	native := big.NewInt(x)
+	q.Int = *native
+	return &q
+}
+
+func NewQuotedBigIntFromBigInt(x *big.Int) *QuotedBigInt {
+	q := QuotedBigInt{}
+	q.Int = *x
+	return &q
+}
+
+func (b *QuotedBigInt) MarshalJSON() ([]byte, error) {
+	return []byte("\"" + b.String() + "\""), nil
+}
+
+func (b *QuotedBigInt) UnmarshalJSON(p []byte) error {
+	strippedString := strings.Trim(string(p), "\"")
+	nativeInt, success := big.NewInt(0).SetString(strippedString, 0)
+	if !success {
+		return fmt.Errorf("%s is not a valid big integer", strippedString)
+	}
+
+	b.Int = *nativeInt
+	return nil
+}
+
+func DownloadRewardsFile(fileName string, interval uint64, cid string, isDaemon bool) ([]byte, error) {
+
+	ipfsFilename := fileName + ".zst"
+
+	// Create URL list
+	urls := []string{
+		fmt.Sprintf("https://%s.ipfs.dweb.link/%s", cid, ipfsFilename),
+		fmt.Sprintf("https://ipfs.io/ipfs/%s/%s", cid, ipfsFilename),
+	}
+
+	// Attempt downloads
+	errBuilder := strings.Builder{}
+	for _, url := range urls {
+		resp, err := http.Get(url)
+		if err != nil {
+			errBuilder.WriteString(fmt.Sprintf("Downloading %s failed (%s)\n", url, err.Error()))
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			errBuilder.WriteString(fmt.Sprintf("Downloading %s failed with status %s\n", url, resp.Status))
+			continue
+		} else {
+			// If we got here, we have a successful download
+			bytes, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				errBuilder.WriteString(fmt.Sprintf("Error reading response bytes from %s: %s\n", url, err.Error()))
+				continue
+			}
+
+			// Decompress it
+			decompressedBytes, err := decompressFile(bytes)
+			if err != nil {
+				errBuilder.WriteString(fmt.Sprintf("Error decompressing %s: %s\n", url, err.Error()))
+				continue
+			}
+
+			return decompressedBytes, nil
+		}
+	}
+
+	return nil, fmt.Errorf(errBuilder.String())
+
+}
+
+// Decompresses a rewards file
+func decompressFile(compressedBytes []byte) ([]byte, error) {
+	decoder, err := zstd.NewReader(nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating compression decoder: %w", err)
+	}
+
+	decompressedBytes, err := decoder.DecodeAll(compressedBytes, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error decompressing rewards file: %w", err)
+	}
+
+	return decompressedBytes, nil
 }

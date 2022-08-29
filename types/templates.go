@@ -363,6 +363,10 @@ type RocketpoolValidatorPageData struct {
 	NodeMinRPLStake      *string    `db:"node_min_rpl_stake"`
 	NodeMaxRPLStake      *string    `db:"node_max_rpl_stake"`
 	CumulativeRPL        *string    `db:"rpl_cumulative_rewards"`
+	SmoothingClaimed     *string    `db:"claimed_smoothing_pool"`
+	SmoothingUnclaimed   *string    `db:"unclaimed_smoothing_pool"`
+	UnclaimedRPL         *string    `db:"unclaimed_rpl_rewards"`
+	SmoothingPoolOptIn   *bool      `db:"smoothing_pool_opted_in"`
 }
 
 type ValidatorStatsTablePageData struct {
@@ -1220,6 +1224,10 @@ type RocketpoolPageDataNode struct {
 	MinRPLStake              string `db:"min_rpl_stake"`
 	MaxRPLStake              string `db:"max_rpl_stake"`
 	CumulativeRPL            string `db:"rpl_cumulative_rewards"`
+	ClaimedSmoothingPool     string `db:"claimed_smoothing_pool"`
+	UnclaimedSmoothingPool   string `db:"unclaimed_smoothing_pool"`
+	UnclaimedRplRewards      string `db:"unclaimed_rpl_rewards"`
+	SmoothingPoolOptIn       bool   `db:"smoothing_pool_opted_in"`
 }
 
 type RocketpoolPageDataDAOProposal struct {

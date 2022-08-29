@@ -38,7 +38,7 @@ require (
 	github.com/prysmaticlabs/eth2-types v0.0.0-20210303084904-c9735a06829d
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20210809151128-385d8c5e3fb7
 	github.com/prysmaticlabs/prysm v1.4.2-0.20210816195537-4db77ce69181
-	github.com/rocket-pool/rocketpool-go v1.0.1
+	github.com/rocket-pool/rocketpool-go v1.3.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stripe/stripe-go/v72 v72.50.0
@@ -80,7 +80,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
@@ -90,8 +90,8 @@ require (
 	github.com/ferranbt/fastssz v0.0.0-20220103083642-bc5fefefa28b // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
 	github.com/go-chi/chi v4.0.2+incompatible // indirect
-	github.com/go-logr/logr v0.2.1 // indirect
-	github.com/go-ole/go-ole v1.2.5 // indirect
+	github.com/go-logr/logr v0.4.0 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/spec v0.20.6 // indirect
@@ -112,7 +112,8 @@ require (
 	github.com/googleapis/gax-go/v2 v2.4.0 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.1 // indirect
-	github.com/herumi/bls-eth-go-binary v0.0.0-20210130185500-57372fb27371 // indirect
+	github.com/hashicorp/go-version v1.6.0 // indirect
+	github.com/herumi/bls-eth-go-binary v0.0.0-20211108015406-b5186ba08dc7 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.2.0 // indirect
 	github.com/huin/goupnp v1.0.2 // indirect
@@ -128,12 +129,13 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/karalabe/usb v0.0.0-20191104083709-911d15fe12a9 // indirect
+	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.11 // indirect
 	github.com/knq/sysutil v0.0.0-20191005231841-15668db23d08 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
-	github.com/mattn/go-runewidth v0.0.12 // indirect
+	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect
 	github.com/minio/sha256-simd v1.0.0 // indirect
@@ -150,16 +152,17 @@ require (
 	github.com/prysmaticlabs/protoc-gen-go-cast v0.0.0-20210505221644-3b823fdaca7f // indirect
 	github.com/r3labs/sse/v2 v2.7.4 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
+	github.com/rocket-pool/smartnode v1.5.0 // indirect
 	github.com/rs/zerolog v1.26.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/status-im/keycard-go v0.0.0-20200402102358-957c09536969 // indirect
-	github.com/supranational/blst v0.3.4 // indirect
+	github.com/supranational/blst v0.3.10 // indirect
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954 // indirect
 	github.com/thomaso-mirodin/intmath v0.0.0-20160323211736-5dc6d854e46e // indirect
-	github.com/tklauser/go-sysconf v0.3.5 // indirect
-	github.com/tklauser/numcpus v0.2.2 // indirect
+	github.com/tklauser/go-sysconf v0.3.9 // indirect
+	github.com/tklauser/numcpus v0.3.0 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/urfave/cli/v2 v2.3.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
