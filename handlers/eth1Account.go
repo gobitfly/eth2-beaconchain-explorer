@@ -7,12 +7,11 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"math/big"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
+	"golang.org/x/sync/errgroup"
 )
 
 var eth1AddressTemplate = template.Must(template.New("address").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/address.html"))
@@ -25,23 +24,79 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "address", "/address", "address")
 
-	txns, err := db.BigtableClient.GetAddressTransactionsTableData(address, "", "")
-	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+	g := new(errgroup.Group)
+	g.SetLimit(5)
+
+	var txns *types.DataTableResponse
+	var internal *types.DataTableResponse
+	var erc20 *types.DataTableResponse
+	var erc721 *types.DataTableResponse
+	var erc1155 *types.DataTableResponse
+
+	g.Go(func() error {
+		var err error
+		txns, err = db.BigtableClient.GetAddressTransactionsTableData(address, "", "")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		internal, err = db.BigtableClient.GetAddressInternalTableData(address, "", "")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		erc20, err = db.BigtableClient.GetAddressErc20TableData(address, "", "")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		erc721, err = db.BigtableClient.GetAddressErc721TableData(address, "", "")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "", "")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 
 	data.Data = types.Eth1AddressPageData{
 		Address:           fmt.Sprintf("0x%s", address),
 		TransactionsTable: txns,
+		InternalTxnsTable: internal,
+		Erc20Table:        erc20,
+		Erc721Table:       erc721,
+		Erc1155Table:      erc1155,
 	}
 
 	if utils.Config.Frontend.Debug {
 		eth1AddressTemplate = template.Must(template.New("address").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/address.html"))
 	}
 
-	err = eth1AddressTemplate.ExecuteTemplate(w, "layout", data)
+	err := eth1AddressTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
 		return
 	}
 }
@@ -55,33 +110,7 @@ func Eth1AddressTransactions(w http.ResponseWriter, r *http.Request) {
 	address := strings.Replace(vars["address"], "0x", "", -1)
 	address = strings.ToLower(address)
 
-	// draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
-	// if err != nil {
-	// 	logger.Errorf("error converting datatables data parameter from string to int for route %v: %v", r.URL.String(), err)
-	// 	http.Error(w, "Internal server error", 503)
-	// 	return
-	// }
-	// start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	// if err != nil {
-	// 	// logger.Errorf("error converting datatables start parameter from string to int for route %v: %v", r.URL.String(), err)
-	// 	// http.Error(w, "Internal server error", 503)
-	// 	// return
-	// 	start = 0
-	// }
-	// length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	// if err != nil {
-	// 	// logger.Errorf("error converting datatables length parameter from string to int for route %v: %v", r.URL.String(), err)
-	// 	// http.Error(w, "Internal server error", 503)
-	// 	// return
-	// 	length = 10
-	// }
-	// if length > 100 {
-	// 	length = 100
-	// }
-
 	pageToken := q.Get("pageToken")
-
-	// logger.Infof("PAGETOKEN: %v", pageToken)
 
 	search := ""
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
@@ -109,31 +138,11 @@ func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 	address := strings.Replace(vars["address"], "0x", "", -1)
 	address = strings.ToLower(address)
 
-	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
-	if err != nil {
-		//logger.Errorf("error converting datatables data parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	if length > 100 {
-		length = 100
-	}
+	pageToken := q.Get("pageToken")
 
 	search := ""
-	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
-	data, err := GetAddressInternalTableData(address, search, draw, start, length)
+
+	data, err := db.BigtableClient.GetAddressInternalTableData(address, search, pageToken)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 block table data")
 	}
@@ -146,47 +155,6 @@ func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-}
-
-func GetAddressInternalTableData(address string, search string, draw, start, length uint64) (*types.DataTableResponse, error) {
-	transactions, _, err := db.BigtableClient.GetEth1ItxForAddress(address, db.FILTER_TIME, int64(length))
-	if err != nil {
-		return nil, err
-	}
-
-	count, err := db.BigtableClient.GetEth1InternalTxForAddressCount(address, db.FILTER_TIME)
-	if err != nil {
-		return nil, err
-	}
-
-	tableData := make([][]interface{}, len(transactions))
-	for i, t := range transactions {
-		from := utils.FormatHash(t.From)
-		if fmt.Sprintf("%x", t.From) != address {
-			from = utils.FormatAddressAsLink(t.From, "", false, false)
-		}
-		to := utils.FormatHash(t.To)
-		if fmt.Sprintf("%x", t.To) != address {
-			to = utils.FormatAddressAsLink(t.To, "", false, false)
-		}
-		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
-			utils.FormatTimestamp(t.Time.AsTime().Unix()),
-			from,
-			to,
-			utils.FormatAmount(float64(new(big.Int).SetBytes(t.Value).Int64()), "ETH", 6),
-			t.Type,
-		}
-	}
-
-	data := &types.DataTableResponse{
-		Draw:            draw,
-		RecordsTotal:    count,
-		RecordsFiltered: count,
-		Data:            tableData,
-	}
-
-	return data, nil
 }
 
 func Eth1AddressErc20Transactions(w http.ResponseWriter, r *http.Request) {
@@ -198,31 +166,11 @@ func Eth1AddressErc20Transactions(w http.ResponseWriter, r *http.Request) {
 	address := strings.Replace(vars["address"], "0x", "", -1)
 	address = strings.ToLower(address)
 
-	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
-	if err != nil {
-		//logger.Errorf("error converting datatables data parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	if length > 100 {
-		length = 100
-	}
+	pageToken := q.Get("pageToken")
 
 	search := ""
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
-	data, err := GetAddressErc20TableData(address, search, draw, start, length)
+	data, err := db.BigtableClient.GetAddressErc20TableData(address, search, pageToken)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 block table data")
 	}
@@ -235,47 +183,6 @@ func Eth1AddressErc20Transactions(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-}
-
-func GetAddressErc20TableData(address string, search string, draw, start, length uint64) (*types.DataTableResponse, error) {
-	transactions, _, err := db.BigtableClient.GetEth1ERC20ForAddress(address, db.FILTER_TIME, int64(length))
-	if err != nil {
-		return nil, err
-	}
-
-	count, err := db.BigtableClient.GetEth1ERC20TxForAddressCount(address, db.FILTER_TIME)
-	if err != nil {
-		return nil, err
-	}
-
-	tableData := make([][]interface{}, len(transactions))
-	for i, t := range transactions {
-		from := utils.FormatHash(t.From)
-		if fmt.Sprintf("%x", t.From) != address {
-			from = utils.FormatAddressAsLink(t.From, "", false, false)
-		}
-		to := utils.FormatHash(t.To)
-		if fmt.Sprintf("%x", t.To) != address {
-			to = utils.FormatAddressAsLink(t.To, "", false, false)
-		}
-		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
-			from,
-			to,
-			new(big.Int).SetBytes(t.Value),
-			// utils.FormatAmount(float64(new(big.Int).SetBytes(t.Value).Int64()), "ETH", 6),
-			utils.FormatAddressAsLink(t.TokenAddress, "", false, true),
-		}
-	}
-
-	data := &types.DataTableResponse{
-		Draw:            draw,
-		RecordsTotal:    count,
-		RecordsFiltered: count,
-		Data:            tableData,
-	}
-
-	return data, nil
 }
 
 func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
@@ -287,31 +194,10 @@ func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
 	address := strings.Replace(vars["address"], "0x", "", -1)
 	address = strings.ToLower(address)
 
-	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
-	if err != nil {
-		//logger.Errorf("error converting datatables data parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	if length > 100 {
-		length = 100
-	}
-
+	pageToken := q.Get("pageToken")
 	search := ""
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
-	data, err := GetAddressErc721TableData(address, search, draw, start, length)
+	data, err := db.BigtableClient.GetAddressErc721TableData(address, search, pageToken)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 block table data")
 	}
@@ -324,47 +210,6 @@ func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-}
-
-func GetAddressErc721TableData(address string, search string, draw, start, length uint64) (*types.DataTableResponse, error) {
-	transactions, _, err := db.BigtableClient.GetEth1ERC721ForAddress(address, db.FILTER_TIME, int64(length))
-	if err != nil {
-		return nil, err
-	}
-
-	count, err := db.BigtableClient.GetEth1ERC721TxForAddressCount(address, db.FILTER_TIME)
-	if err != nil {
-		return nil, err
-	}
-
-	tableData := make([][]interface{}, len(transactions))
-	for i, t := range transactions {
-		from := utils.FormatHash(t.From)
-		if fmt.Sprintf("%x", t.From) != address {
-			from = utils.FormatAddressAsLink(t.From, "", false, false)
-		}
-		to := utils.FormatHash(t.To)
-		if fmt.Sprintf("%x", t.To) != address {
-			to = utils.FormatAddressAsLink(t.To, "", false, false)
-		}
-		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
-			utils.FormatTimestamp(t.Time.AsTime().Unix()),
-			from,
-			to,
-			utils.FormatAddressAsLink(t.TokenAddress, "", false, true),
-			new(big.Int).SetBytes(t.TokenId).String(),
-		}
-	}
-
-	data := &types.DataTableResponse{
-		Draw:            draw,
-		RecordsTotal:    count,
-		RecordsFiltered: count,
-		Data:            tableData,
-	}
-
-	return data, nil
 }
 
 func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
@@ -375,32 +220,11 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	address := strings.Replace(vars["address"], "0x", "", -1)
 	address = strings.ToLower(address)
-
-	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
-	if err != nil {
-		//logger.Errorf("error converting datatables data parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	if length > 100 {
-		length = 100
-	}
+	pageToken := q.Get("pageToken")
 
 	search := ""
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
-	data, err := GetAddressErc1155TableData(address, search, draw, start, length)
+	data, err := db.BigtableClient.GetAddressErc1155TableData(address, search, pageToken)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 block table data")
 	}
@@ -413,48 +237,6 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-}
-
-func GetAddressErc1155TableData(address string, search string, draw, start, length uint64) (*types.DataTableResponse, error) {
-	transactions, _, err := db.BigtableClient.GetEth1ERC1155ForAddress(address, db.FILTER_TIME, int64(length))
-	if err != nil {
-		return nil, err
-	}
-
-	count, err := db.BigtableClient.GetEth1ERC1155TxForAddressCount(address, db.FILTER_TIME)
-	if err != nil {
-		return nil, err
-	}
-
-	tableData := make([][]interface{}, len(transactions))
-	for i, t := range transactions {
-		from := utils.FormatHash(t.From)
-		if fmt.Sprintf("%x", t.From) != address {
-			from = utils.FormatAddressAsLink(t.From, "", false, false)
-		}
-		to := utils.FormatHash(t.To)
-		if fmt.Sprintf("%x", t.To) != address {
-			to = utils.FormatAddressAsLink(t.To, "", false, false)
-		}
-		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
-			utils.FormatTimestamp(t.Time.AsTime().Unix()),
-			from,
-			to,
-			utils.FormatAddressAsLink(t.TokenAddress, "", false, true),
-			new(big.Int).SetBytes(t.TokenId).String(),
-			new(big.Int).SetBytes(t.Value).String(),
-		}
-	}
-
-	data := &types.DataTableResponse{
-		Draw:            draw,
-		RecordsTotal:    count,
-		RecordsFiltered: count,
-		Data:            tableData,
-	}
-
-	return data, nil
 }
 
 func Eth1Transaction(w http.ResponseWriter, r *http.Request) {
