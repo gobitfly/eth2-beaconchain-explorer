@@ -25,14 +25,7 @@
 
     // const tbody = document.querySelector('#transactions-table tbody')
 
-    // const createRow = (cols) => {
-    //   const row = document.createElement('tr')
-    //   for (let i = 0; i < cols.length; i++) {
-    //       const td = document.createElement('td')
-    //       td.innerHTML = cols[i]
-    //       row.appendChild(td) 
-    //   }
-    // }
+    // const infLoading = document.getElementById(loadingIndicatorDivId)
 
     // const appendRow = (row) => {
     //   tbody.appendChild(row)
@@ -66,6 +59,7 @@
     setupInfiniteScroll({{.Erc20Table.PagingToken}},'erc20-table', 'erc20-table-inf-scroll', 'erc20')
     setupInfiniteScroll({{.Erc721Table.PagingToken}},'erc721-table', 'erc721-table-inf-scroll', 'erc721')
     setupInfiniteScroll({{.Erc1155Table.PagingToken}},'erc1155-table', 'erc1155-table-inf-scroll', 'erc1155')
+    
 
     function setupInfiniteScroll(pageToken, tableID, loadingID, urlPart) {
       var previousToken = ""
@@ -136,54 +130,58 @@
   </script>
 {{ end }}
 {{ define "content" }}
-  <div class="container mt-2">
-    <div class="d-md-flex py-2 my-2 justify-content-md-between">
-      <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-address-book mr-2"></i>{{ .Data.Address }} <a style="width: 1rem; height: 1rem;" target="_blank" href="https://etherscan.io/address/{{.Data.Address}}"><i class="fas fa-external-link-alt"></i></a></h1>
+<div class="container mt-2">
+  <div class="d-md-flex py-2 my-2 justify-content-md-between">
+    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-address-book mr-2"></i>{{ .Data.Address }} <a
+        style="width: 1rem; height: 1rem;" target="_blank" href="https://etherscan.io/address/{{.Data.Address}}"><i
+          class="fas fa-external-link-alt"></i></a></h1>
+  </div>
+  <div class="card">
+    <div class="card-header p-0">
+      {{ template "AddressTabs" }}
     </div>
-    <div class="card">
-        <div class="card-header p-0">
-            {{ template "AddressTabs" }}
-        </div>
       <div class="card-body px-0 py-0">
         <div class="tab-content" id="address-tab-content">
-            <div class="tab-pane fade show active" id="transactions" role="tabpanel" aria-labelledby="transaction-tab">
-                {{ template "AddressTransactionsTableGrid" .Data.TransactionsTable }}
-            </div>
-            <div class="tab-pane fade" id="internalTxns" role="tabpanel" aria-labelledby="internalTxns-tab">
-                {{ template "AddressInternalTransactionsGrid" .Data.InternalTxnsTable }}
-            </div>
-            <div class="tab-pane fade" id="erc20Txns" role="tabpanel" aria-labelledby="erc20Txns-tab">
-                {{ template "AddressErc20TransactionsGrid" .Data.Erc20Table }}
-            </div>
-            <div class="tab-pane fade" id="erc721Txns" role="tabpanel" aria-labelledby="erc721Txns-tab">
-                {{ template "AddressErc721Grid" .Data.Erc721Table }}
-            </div>
-            <div class="tab-pane fade" id="erc1155Txns" role="tabpanel" aria-labelledby="erc1155Txns-tab">
-                {{ template "AddressErc1155Grid" .Data.Erc1155Table }}
-            </div>
+          <div class="tab-pane fade show active" id="transactions" role="tabpanel" aria-labelledby="transaction-tab">
+              {{ template "AddressTransactionsTableGrid" .Data.TransactionsTable }}
+          </div>
+          <div class="tab-pane fade" id="internalTxns" role="tabpanel" aria-labelledby="internalTxns-tab">
+            {{ template "AddressInternalTransactionsGrid" .Data.InternalTxnsTable }}
+          </div>
+          <div class="tab-pane fade" id="erc20Txns" role="tabpanel" aria-labelledby="erc20Txns-tab">
+              {{ template "AddressErc20TransactionsGrid" .Data.Erc20Table }}
+          </div>
+          <div class="tab-pane fade" id="erc721Txns" role="tabpanel" aria-labelledby="erc721Txns-tab">
+              {{ template "AddressErc721Grid" .Data.Erc721Table }}
+          </div>
+          <div class="tab-pane fade" id="erc1155Txns" role="tabpanel" aria-labelledby="erc1155Txns-tab">
+              {{ template "AddressErc1155Grid" .Data.Erc1155Table }}
+          </div>
         </div>
       </div>
     </div>
-  </div>
+</div>
 {{ end }}
 
 {{ define "AddressTabs" }}
 <ul class="nav nav-pills border-0 border-bottom-0" role="tablist">
-    <li class="nav-item" role="presentation">
-      <a class="nav-link border-bottom-radius-0 active" href="#transactions" id="transaction-tab" data-toggle="tab" role="tab" aria-controls="transactions" aria-selected="true">Transactions</a>
-    </li>
-    <li class="nav-item" role="presentation">
-      <a class="nav-link border-bottom-radius-0" href="#internalTxns" id="internalTxns-tab" data-toggle="tab" role="tab" aria-controls="internalTxns" aria-selected="false">Internal Txns</a>
-    </li>
-    <li class="nav-item" role="presentation">
-      <a class="nav-link border-bottom-radius-0" href="#erc20Txns" id="erc20Txns-tab" data-toggle="tab" role="tab" aria-controls="erc20Txns" aria-selected="false">Erc20 Token Txns</a>
-    </li>
-    <li class="nav-item" role="presentation">
-      <a class="nav-link border-bottom-radius-0" href="#erc721Txns" id="erc721Txns-tab" data-toggle="tab" role="tab" aria-controls="erc721Txns" aria-selected="false">Erc721 Token Txns</a>
-    </li>
-    <li class="nav-item" role="presentation">
-      <a class="nav-link border-bottom-radius-0" href="#erc1155Txns" id="erc1155Txns-tab" data-toggle="tab" role="tab" aria-controls="erc1155Txns" aria-selected="false" >Erc1155 Token Txns</a>
-    </li>
+  <li class="nav-item" role="presentation">
+    <a class="nav-link border-bottom-radius-0 active" href="#transactions" id="transaction-tab" data-toggle="tab"
+      role="tab" aria-controls="transactions" aria-selected="true">Transactions</a>
+  </li>
+  <li class="nav-item" role="presentation">
+    <a class="nav-link border-bottom-radius-0" href="#internalTxns" id="internalTxns-tab" data-toggle="tab" role="tab"
+      aria-controls="internalTxns" aria-selected="false">Internal Txns</a>
+  </li>
+  <li class="nav-item" role="presentation">
+    <a class="nav-link border-bottom-radius-0" href="#erc20Txns" id="erc20Txns-tab" data-toggle="tab" role="tab" aria-controls="erc20Txns" aria-selected="false">Erc20 Token Txns</a>
+  </li>
+  <li class="nav-item" role="presentation">
+    <a class="nav-link border-bottom-radius-0" href="#erc721Txns" id="erc721Txns-tab" data-toggle="tab" role="tab" aria-controls="erc721Txns" aria-selected="false">Erc721 Token Txns</a>
+  </li>
+  <li class="nav-item" role="presentation">
+    <a class="nav-link border-bottom-radius-0" href="#erc1155Txns" id="erc1155Txns-tab" data-toggle="tab" role="tab" aria-controls="erc1155Txns" aria-selected="false" >Erc1155 Token Txns</a>
+  </li>
 </ul>
 {{ end }}
 

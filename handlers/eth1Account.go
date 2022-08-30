@@ -124,7 +124,7 @@ func Eth1AddressTransactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -172,7 +172,7 @@ func Eth1AddressErc20Transactions(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
 	data, err := db.BigtableClient.GetAddressErc20TableData(address, search, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		logger.WithError(err).Errorf("error getting eth1 internal transactions table data")
 	}
 
 	// logger.Infof("GOT TX: %+v", data)
@@ -180,7 +180,7 @@ func Eth1AddressErc20Transactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -226,7 +226,7 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
 	data, err := db.BigtableClient.GetAddressErc1155TableData(address, search, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		logger.WithError(err).Errorf("error getting eth1 internal transactions table data")
 	}
 
 	// logger.Infof("GOT TX: %+v", data)
@@ -234,7 +234,7 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

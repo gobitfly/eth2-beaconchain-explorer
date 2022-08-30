@@ -17,7 +17,7 @@ import (
 
 func main() {
 	// localhost:8545
-	// erigonEndpoint := flag.String("erigon", "", "Erigon archive node enpoint")
+	erigonEndpoint := flag.String("erigon", "", "Erigon archive node enpoint")
 	start := flag.Int64("start", 0, "Block to start indexing")
 	end := flag.Int64("end", 0, "Block to finish indexing")
 
@@ -32,10 +32,11 @@ func main() {
 	// bt.DeleteRowsWithPrefix("1:b:")
 	// return
 
-	// if erigonEndpoint != nil && *erigonEndpoint != "" {
-	// 	logrus.Infof("indexing from node %v", erigonEndpoint)
-	// 	go IndexFromNode(bt, erigonEndpoint, start, end)
-	// }
+	if erigonEndpoint != nil && *erigonEndpoint != "" {
+		logrus.Infof("indexing from node %v", *erigonEndpoint)
+		IndexFromNode(bt, erigonEndpoint, start, end)
+		return
+	}
 
 	transforms := make([]func(blk *types.Eth1Block) (*types.BulkMutations, error), 0)
 	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
@@ -73,12 +74,14 @@ func IndexFromNode(bt *db.Bigtable, erigonEndpoint *string, start, end *int64) {
 			bc, timings, err := client.GetBlock(i)
 
 			if err != nil {
+				logrus.Error(err)
 				return err
 			}
 
 			dbStart := time.Now()
 			err = bt.SaveBlock(bc)
 			if err != nil {
+				logrus.Error(err)
 				return err
 			}
 			current := atomic.AddInt64(&processedBlocks, 1)
@@ -193,6 +196,7 @@ func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk
 			// logrus.Infof("writing: %v", len(bulkMuts.Keys))
 			err = bt.WriteBulk(&bulkMuts)
 			if err != nil {
+				logrus.Error(err)
 				return fmt.Errorf("error writing to bigtable err: %w", err)
 			}
 
@@ -219,6 +223,7 @@ func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk
 	if err := g.Wait(); err == nil {
 		logrus.Info("Successfully fetched all blocks")
 	} else {
+		logrus.Error(err)
 		return err
 	}
 
