@@ -366,7 +366,7 @@ type RocketpoolValidatorPageData struct {
 	SmoothingClaimed     *string    `db:"claimed_smoothing_pool"`
 	SmoothingUnclaimed   *string    `db:"unclaimed_smoothing_pool"`
 	UnclaimedRPL         *string    `db:"unclaimed_rpl_rewards"`
-	SmoothingPoolOptIn   *bool      `db:"smoothing_pool_opted_in"`
+	SmoothingPoolOptIn   bool       `db:"smoothing_pool_opted_in"`
 }
 
 type ValidatorStatsTablePageData struct {
