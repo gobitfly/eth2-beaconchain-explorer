@@ -143,15 +143,16 @@
 
 {{ define "AddressTransactionsTableGrid" }}
 <div id="transactions-table"
-  style="display: grid; grid-template-columns: repeat(6, minmax(auto, 1fr)); max-height: 800px; overflow: auto;">
+  style="display: grid; grid-template-columns: repeat(7, minmax(auto, 1fr)); max-height: 800px; overflow: auto;">
   <div class="h5 mb-0 p-2 bg-light">Hash</div>
+  <div class="h5 mb-0 p-2 bg-light">Method</div>
   <div class="h5 mb-0 p-2 bg-light">Age</div>
   <div class="h5 mb-0 p-2 bg-light">Number</div>
   <div class="h5 mb-0 p-2 bg-light">From</div>
   <div class="h5 mb-0 p-2 bg-light">To</div>
   <div class="h5 mb-0 p-2 bg-light">Value</div>
 
-  <div style="grid-column: 1 / 7;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
+  <div style="grid-column: 1 / 8;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
     <span>loading...</span>
   </div>
 </div>

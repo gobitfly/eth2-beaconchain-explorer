@@ -1441,8 +1441,18 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address string, search
 		if fmt.Sprintf("%x", t.To) != address {
 			to = utils.FormatAddressAsLink(t.To, "", false, false)
 		}
+		method := "Transfer"
+		if len(t.MethodId) > 0 {
+
+			if t.InvokesContract {
+				method = fmt.Sprintf("0x%x", t.MethodId)
+			} else {
+				method = "Transfer*"
+			}
+		}
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.Hash),
+			method,
 			utils.FormatTimeFromNow(t.Time.AsTime()),
 			utils.FormatBlockNumber(t.BlockNumber),
 			from,
