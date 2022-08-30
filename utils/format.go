@@ -861,6 +861,11 @@ func FormatRPL(num string) string {
 	return fmt.Sprintf("%.2f", floatNum/math.Pow10(18)) + " RPL"
 }
 
+func FormatETH(num string) string {
+	floatNum, _ := strconv.ParseFloat(num, 64)
+	return fmt.Sprintf("%.4f", floatNum/math.Pow10(18)) + " ETH"
+}
+
 func FormatFloat(num float64, precision int) string {
 	p := message.NewPrinter(language.English)
 	f := fmt.Sprintf("%%.%vf", precision)
