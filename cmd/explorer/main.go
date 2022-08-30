@@ -277,7 +277,7 @@ func main() {
 			router.HandleFunc("/execution/address/{address}", handlers.Eth1Address).Methods("GET")
 			router.HandleFunc("/execution/address/{address}/transactions", handlers.Eth1AddressTransactions).Methods("GET")
 			router.HandleFunc("/execution/address/{address}/internalTxns", handlers.Eth1AddressInternalTransactions).Methods("GET")
-			router.HandleFunc("/execution/address/{address}/erc20", handlers.Eth1AddressERC20Transfers).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/erc20", handlers.Eth1AddressErc20Transactions).Methods("GET")
 			router.HandleFunc("/execution/block/{block}", handlers.Eth1Block).Methods("GET")
 			router.HandleFunc("/execution/tx/{hash}", handlers.Eth1Transaction).Methods("GET")
 

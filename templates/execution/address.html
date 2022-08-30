@@ -1,92 +1,15 @@
-{{ define "js" }}
-<script>
-  function setupInfiniteScrollTable(tableDivId, loadingIndicatorDivId, endpoint) {
-    var currentToken = ''
-    var previousToken = ''
-
-    var isLoading = false
-
-    const infLoading = document.getElementById(loadingIndicatorDivId)
-
-    const getData = async (token) => {
-      try {
-        const res = await fetch(`${window.location.pathname}/${endpoint}?pageToken=${encodeURI(token)}`)
-        const data = await res.json()
-
-        console.log('got data: ', data)
-
-        if (data && data.data && data.pagingToken && data.pagingToken.length) {
-          previousToken = currentToken
-          currentToken = data.pagingToken
-          console.log('setting new pagetoken:\n', "new:", currentToken, '\n', "pre:", previousToken)
-
-          // udpate the table
-          for (let i = 0; i < data.data.length; i++) {
-            const row = data.data[i];
-            for (let j = 0; j < data.data[i].length; j++) {
-              const col = data.data[i][j]
-              const el = document.createElement('div')
-              el.classList.add('border-top')
-              el.classList.add('p-2')
-              el.innerHTML = col
-              infLoading.insertAdjacentElement("beforebegin", el)
-            }
-          }
-        } else {
-          console.log("removing")
-            infLoading.remove()
-        }
-        isLoading = false
-      } catch (err) {
-        console.error("error getting data: ", err)
-        isLoading = false
-      }
-    }
-    let optionsScroll = {
-      root: document.getElementById(tableDivId),
-      rootMargin: '5px',
-      threshold: 0
-    }
-    const handleTableEnd = (entries, observer) => {
-      for (let i = 0; i < entries.length; i++) {
-        const entry = entries[i];
-        if (entry.isIntersecting) {
-          console.log('intersecting');
-          if (!isLoading) {
-            console.log('paging token', currentToken)
-            isLoading = true
-            getData(currentToken)
-          }
-        }
-      }
-    }
-    let observerScroll = new IntersectionObserver(handleTableEnd, optionsScroll)
-    let lastElement = document.getElementById(loadingIndicatorDivId)
-    observerScroll.observe(lastElement)
-
-  }
-
-  setupInfiniteScrollTable('transactions-table', 'transactions-table-inf-scroll', 'transactions')
-  setupInfiniteScrollTable('internal-transactions-table', 'internal-transactions-table-inf-scroll', 'internalTxns')
-  setupInfiniteScrollTable('erc20-table', 'erc20-table-inf-scroll', 'erc20')
-
-
-
-</script>
-{{ end }}
 {{ define "css" }}
-<style>
-  .border-bottom-radius-0 {
-    border-bottom-left-radius: 0px !important;
-    border-bottom-right-radius: 0px !important;
-  }
-</style>
-<style>
-  .dataTables_scrollBody {
-    height: 100%;
-  }
-
-  /* #transactions-table div {
+  <style>
+    .border-bottom-radius-0 {
+      border-bottom-left-radius: 0px !important;
+      border-bottom-right-radius: 0px !important;
+    }
+  </style>
+  <style>
+    .dataTables_scrollBody {
+      height: 100%;
+    }
+    /* #transactions-table div {
       --ease-elastic-1:cubic-bezier(.5,.75,.75,1.25);
       --ease-elastic-2: cubic-bezier(.5,1,.75,1.25);
       --ease-elastic-3: cubic-bezier(.5,1.25,.75,1.25);
@@ -94,7 +17,117 @@
       transform: scaleX(calc(0.85 + (var(--shown, 1) * 0.15)));
       transition: all 0.3s var(--ease-elastic-1);
     } */
-</style>
+  </style>
+{{ end }}
+
+{{ define "js" }}
+  <script>
+
+    // const tbody = document.querySelector('#transactions-table tbody')
+
+    // const infLoading = document.getElementById(loadingIndicatorDivId)
+
+    // const appendRow = (row) => {
+    //   tbody.appendChild(row)
+    // }
+
+    // const handleIntersection = (entries, observer) => {
+    //   for (let i = 0; i < entries.length; i++) {
+    //     const entry = entries[i];
+    //     if (entry.isIntersecting) {
+    //       // console.log('observing intersection', entry);
+    //     }
+    //     entry.target.style.setProperty('--shown', entry.isIntersecting ? 1 : 0)
+    //   }
+    // }
+
+    // let optionsRow = {
+    //   root: null,
+    //   rootMargin: '0px',
+    //   threshold: 0
+    // }
+
+
+    // let observerRow = new IntersectionObserver(handleIntersection, optionsRow);
+    // const row = document.querySelectorAll('#transactions-table tbody tr') 
+    // row.forEach(r => {
+    //   observerRow.observe(r)
+    // })
+
+    setupInfiniteScroll({{.TransactionsTable.PagingToken}},'transactions-table', 'transactions-table-inf-scroll', 'transactions')
+    setupInfiniteScroll({{.InternalTxnsTable.PagingToken}},'internalTxns-table', 'internalTxns-table-inf-scroll', 'internalTxns')
+    setupInfiniteScroll({{.Erc20Table.PagingToken}},'erc20-table', 'erc20-table-inf-scroll', 'erc20')
+    setupInfiniteScroll({{.Erc721Table.PagingToken}},'erc721-table', 'erc721-table-inf-scroll', 'erc721')
+    setupInfiniteScroll({{.Erc1155Table.PagingToken}},'erc1155-table', 'erc1155-table-inf-scroll', 'erc1155')
+    
+
+    function setupInfiniteScroll(pageToken, tableID, loadingID, urlPart) {
+      var previousToken = ""
+      var isLoading = false
+  
+      const infLoading = document.getElementById(loadingID)
+      const getTransactions = async (token) => {
+        try {
+           const res = await fetch(`${window.location.pathname}/${urlPart}?pageToken=${encodeURI(token)}`)
+           const data = await res.json()
+  
+           console.log('got data: ', data)
+           
+           if (data && data.data && data.pagingToken && data.pagingToken.length) {
+             previousToken = pageToken
+             pageToken = data.pagingToken
+             console.log('setting new pagetoken:\n',"new:", pageToken,'\n',"pre:", previousToken)
+  
+             // udpate the table
+             for (let i = 0; i < data.data.length; i++) {
+              const row = data.data[i];
+              for (let j = 0; j < data.data[i].length; j++) {
+                const col = data.data[i][j]
+                const el = document.createElement('div')
+                el.classList.add('border-top')
+                el.classList.add('p-2')
+                el.classList.add('text-truncate')
+                el.innerHTML = col
+                infLoading.insertAdjacentElement("beforebegin",el)
+              }
+             }
+           }
+           isLoading = false
+        } catch (err) {
+          console.error("error getting transactions: ", err)
+          isLoading = false
+        }
+      }
+  
+      let optionsScroll = {
+        root: document.getElementById(tableID),
+        rootMargin: '5px',
+        threshold: 0
+      }
+  
+  
+      const handleTableEnd = (entries, observer) => {
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i];
+          if (entry.isIntersecting) {
+            console.log('intersecting');
+            if(!isLoading) {
+              console.log('paging token', pageToken)
+              isLoading = true
+              getTransactions(pageToken)
+            }
+          }
+        }
+      }
+  
+      let observerScroll = new IntersectionObserver(handleTableEnd, optionsScroll)
+  
+      let transactionsLastElement = document.getElementById(loadingID)
+      observerScroll.observe(transactionsLastElement)
+    }
+
+
+  </script>
 {{ end }}
 {{ define "content" }}
 <div class="container mt-2">
@@ -107,20 +140,26 @@
     <div class="card-header p-0">
       {{ template "AddressTabs" }}
     </div>
-    <div class="card-body px-0 py-0">
-      <div class="tab-content" id="address-tab-content">
-        <div class="tab-pane fade show active" id="transactions" role="tabpanel" aria-labelledby="transaction-tab">
-          {{ template "AddressTransactionsTableGrid" }}
-        </div>
-        <div class="tab-pane fade" id="internalTxns" role="tabpanel" aria-labelledby="internalTxns-tab">
-          {{ template "AddressInternalTransactionsTableGrid" }}
-        </div>
-        <div class="tab-pane fade" id="erc20Txns" role="tabpanel" aria-labelledby="erc20Txns-tab">
-          {{ template "AddressErc20TransactionsTableGrid" }}
+      <div class="card-body px-0 py-0">
+        <div class="tab-content" id="address-tab-content">
+          <div class="tab-pane fade show active" id="transactions" role="tabpanel" aria-labelledby="transaction-tab">
+              {{ template "AddressTransactionsTableGrid" .Data.TransactionsTable }}
+          </div>
+          <div class="tab-pane fade" id="internalTxns" role="tabpanel" aria-labelledby="internalTxns-tab">
+            {{ template "AddressInternalTransactionsGrid" .Data.InternalTxnsTable }}
+          </div>
+          <div class="tab-pane fade" id="erc20Txns" role="tabpanel" aria-labelledby="erc20Txns-tab">
+              {{ template "AddressErc20TransactionsGrid" .Data.Erc20Table }}
+          </div>
+          <div class="tab-pane fade" id="erc721Txns" role="tabpanel" aria-labelledby="erc721Txns-tab">
+              {{ template "AddressErc721Grid" .Data.Erc721Table }}
+          </div>
+          <div class="tab-pane fade" id="erc1155Txns" role="tabpanel" aria-labelledby="erc1155Txns-tab">
+              {{ template "AddressErc1155Grid" .Data.Erc1155Table }}
+          </div>
         </div>
       </div>
     </div>
-  </div>
 </div>
 {{ end }}
 
@@ -135,8 +174,13 @@
       aria-controls="internalTxns" aria-selected="false">Internal Txns</a>
   </li>
   <li class="nav-item" role="presentation">
-    <a class="nav-link border-bottom-radius-0" href="#erc20Txns" id="erc20Txns-tab" data-toggle="tab" role="tab"
-      aria-controls="erc20Txns" aria-selected="false">Erc20 Token Txns</a>
+    <a class="nav-link border-bottom-radius-0" href="#erc20Txns" id="erc20Txns-tab" data-toggle="tab" role="tab" aria-controls="erc20Txns" aria-selected="false">Erc20 Token Txns</a>
+  </li>
+  <li class="nav-item" role="presentation">
+    <a class="nav-link border-bottom-radius-0" href="#erc721Txns" id="erc721Txns-tab" data-toggle="tab" role="tab" aria-controls="erc721Txns" aria-selected="false">Erc721 Token Txns</a>
+  </li>
+  <li class="nav-item" role="presentation">
+    <a class="nav-link border-bottom-radius-0" href="#erc1155Txns" id="erc1155Txns-tab" data-toggle="tab" role="tab" aria-controls="erc1155Txns" aria-selected="false" >Erc1155 Token Txns</a>
   </li>
 </ul>
 {{ end }}
@@ -159,36 +203,80 @@
 {{ end }}
 
 
-{{ define "AddressInternalTransactionsTableGrid" }}
-<div id="internal-transactions-table"
-  style="display: grid; grid-template-columns: repeat(6, minmax(auto, 1fr)); max-height: 800px; overflow: auto;">
-  <div class="h5 mb-0 p-2 bg-light">Hash</div>
-  <div class="h5 mb-0 p-2 bg-light">Age</div>
-  <div class="h5 mb-0 p-2 bg-light">From</div>
-  <div class="h5 mb-0 p-2 bg-light">To</div>
-  <div class="h5 mb-0 p-2 bg-light">Value</div>
-  <div class="h5 mb-0 p-2 bg-light">Type</div>
-
-  <div style="grid-column: 1 / 7;" id="internal-transactions-table-inf-scroll"
-    class="d-flex justify-content-center p-2">
-    <span>loading...</span>
+{{ define "AddressInternalTransactionsGrid" }}
+  <div id="internalTxns-table" style="display: grid; grid-template-columns: repeat(6, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
+    <div class="h5 mb-0 p-2 bg-light">Hash</div>
+    <div class="h5 mb-0 p-2 bg-light">Age</div>
+    <div class="h5 mb-0 p-2 bg-light">From</div>
+    <div class="h5 mb-0 p-2 bg-light">To</div>
+    <div class="h5 mb-0 p-2 bg-light">Value</div>
+    <div class="h5 mb-0 p-2 bg-light">Type</div>
+    {{ range $i, $row := .Data }}
+      {{ range $j, $col := $row}}
+        <div class="border-top p-2 text-truncate">{{ $col }}</div>
+      {{end}}
+    {{ end }}
+    <div style="grid-column: 1 / 7;" id="internalTxns-table-inf-scroll" class="d-flex justify-content-center p-2">
+      <span>loading...</span>
+    </div>
   </div>
-</div>
 {{ end }}
 
-{{ define "AddressErc20TransactionsTableGrid" }}
-<div id="erc20-table"
-  style="display: grid; grid-template-columns: repeat(6, minmax(auto, 1fr)); max-height: 800px; overflow: auto;">
-  <div class="h5 mb-0 p-2 bg-light">Hash</div>
-  <div class="h5 mb-0 p-2 bg-light">Age</div>
-  <div class="h5 mb-0 p-2 bg-light">From</div>
-  <div class="h5 mb-0 p-2 bg-light">To</div>
-  <div class="h5 mb-0 p-2 bg-light">Value</div>
-  <div class="h5 mb-0 p-2 bg-light">Token</div>
 
-  <div style="grid-column: 1 / 7;" id="erc20-table-inf-scroll"
-    class="d-flex justify-content-center p-2">
-    <span>loading...</span>
+{{ define "AddressErc20TransactionsGrid" }}
+  <div id="erc20-table" style="display: grid; grid-template-columns: repeat(5, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
+    <div class="h5 mb-0 p-2 bg-light">Hash</div>
+    <div class="h5 mb-0 p-2 bg-light">From</div>
+    <div class="h5 mb-0 p-2 bg-light">To</div>
+    <div class="h5 mb-0 p-2 bg-light">Value</div>
+    <div class="h5 mb-0 p-2 bg-light">Token</div>
+    {{ range $i, $row := .Data }}
+      {{ range $j, $col := $row}}
+        <div class="border-top p-2 text-truncate">{{ $col }}</div>
+      {{end}}
+    {{ end }}
+    <div style="grid-column: 1 / 6;" id="erc20-table-inf-scroll" class="d-flex justify-content-center p-2">
+      <span>loading...</span>
+    </div>
   </div>
-</div>
+{{ end }}
+
+
+{{ define "AddressErc721Grid" }}
+  <div id="erc721-table" style="display: grid; grid-template-columns: repeat(6, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
+    <div class="h5 mb-0 p-2 bg-light">Hash</div>
+    <div class="h5 mb-0 p-2 bg-light">Age</div>
+    <div class="h5 mb-0 p-2 bg-light">From</div>
+    <div class="h5 mb-0 p-2 bg-light">To</div>
+    <div class="h5 mb-0 p-2 bg-light">Token Address</div>
+    <div class="h5 mb-0 p-2 bg-light">Token ID</div>
+    {{ range $i, $row := .Data }}
+      {{ range $j, $col := $row}}
+        <div class="border-top p-2 text-truncate">{{ $col }}</div>
+      {{end}}
+    {{ end }}
+    <div style="grid-column: 1 / 7;" id="erc721-table-inf-scroll" class="d-flex justify-content-center p-2">
+      <span>loading...</span>
+    </div>
+  </div>
+{{ end }}
+
+{{ define "AddressErc1155Grid" }}
+  <div id="erc1155-table" style="display: grid; grid-template-columns: repeat(7, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
+    <div class="h5 mb-0 p-2 bg-light">Hash</div>
+    <div class="h5 mb-0 p-2 bg-light">Age</div>
+    <div class="h5 mb-0 p-2 bg-light">From</div>
+    <div class="h5 mb-0 p-2 bg-light">To</div>
+    <div class="h5 mb-0 p-2 bg-light">Token Address</div>
+    <div class="h5 mb-0 p-2 bg-light">Token ID</div>
+    <div class="h5 mb-0 p-2 bg-light">Value</div>
+    {{ range $i, $row := .Data }}
+      {{ range $j, $col := $row}}
+        <div class="border-top p-2 text-truncate">{{ $col }}</div>
+      {{end}}
+    {{ end }}
+    <div style="grid-column: 1 / 7;" id="erc1155-table-inf-scroll" class="d-flex justify-content-center p-2">
+      <span>loading...</span>
+    </div>
+  </div>
 {{ end }}

@@ -1072,7 +1072,7 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 				tokenId = transfer.TokenId
 			}
 
-			key := fmt.Sprintf("%s:ERC721:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%05d", j))
+			key := fmt.Sprintf("%s:ERC721:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%05d", jReversed))
 			indexedLog := &types.Eth1ERC721Indexed{
 				ParentHash:   tx.GetHash(),
 				BlockNumber:  blk.GetNumber(),
@@ -1183,7 +1183,7 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 			}
 			jReversed := reversePaddedIndex(j, 100000)
 
-			key := fmt.Sprintf("%s:ERC1155:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%05d", j))
+			key := fmt.Sprintf("%s:ERC1155:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%05d", jReversed))
 
 			// no events emitted continue
 			if len(log.GetTopics()) != 4 || (!bytes.Equal(log.GetTopics()[0], erc1155.TransferBulkTopic) && !bytes.Equal(log.GetTopics()[0], erc1155.TransferSingleTopic)) {
@@ -1363,25 +1363,21 @@ func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block) (*types.BulkMut
 	return bulk, nil
 }
 
-func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, filter IndexFilter) ([]*types.Eth1TransactionIndexed, string, error) {
+func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*types.Eth1TransactionIndexed, string, error) {
 	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancle()
 
-	limit := int64(25)
+	logger.Infof("searching for prefix %v", prefix)
 	// add \x00 to the row range such that we skip the previous value
-	rowRange := gcp_bigtable.NewRange(prefix+"\x00", "")
+	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
 	// rowRange := gcp_bigtable.PrefixRange(prefix)
 	// logger.Infof("querying for prefix: %v", prefix)
 	data := make([]*types.Eth1TransactionIndexed, 0, limit)
 	keys := make([]string, 0, limit)
 	indexes := make([]string, 0, limit)
-
 	keysMap := make(map[string]*types.Eth1TransactionIndexed, limit)
-	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
-		if !strings.Contains(row.Key(), string(filter)) {
-			return false
-		}
 
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
 		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
 		indexes = append(indexes, row.Key())
 		return true
@@ -1389,7 +1385,8 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, filter IndexFilter)
 	if err != nil {
 		return nil, "", err
 	}
-	// logger.Infof("index found: %v rows", len(keys))
+
+	logger.Infof("found: %v results", len(keys))
 
 	if len(keys) == 0 {
 		return data, "", nil
@@ -1402,7 +1399,6 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, filter IndexFilter)
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		// data = append(data, b)
 		keysMap[row.Key()] = b
 
 		return true
@@ -1425,7 +1421,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address string, search
 
 	logger.Info(pageToken)
 
-	transactions, lastKey, err := BigtableClient.GetEth1TxForAddress(pageToken, FILTER_TIME)
+	transactions, lastKey, err := BigtableClient.GetEth1TxForAddress(pageToken, 25)
 	if err != nil {
 		return nil, err
 	}
@@ -1472,23 +1468,18 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address string, search
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, filter IndexFilter) ([]*types.Eth1InternalTransactionIndexed, string, error) {
+func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, limit int64) ([]*types.Eth1InternalTransactionIndexed, string, error) {
 	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancle()
 
-	limit := int64(25)
 	// add \x00 to the row range such that we skip the previous value
-	rowRange := gcp_bigtable.NewRange(prefix+"\x00", "")
+	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
 	data := make([]*types.Eth1InternalTransactionIndexed, 0, limit)
 	keys := make([]string, 0, limit)
 	indexes := make([]string, 0, limit)
 
 	keysMap := make(map[string]*types.Eth1InternalTransactionIndexed, limit)
 	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
-
-		if !strings.Contains(row.Key(), string(filter)) {
-			return false
-		}
 
 		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
 		indexes = append(indexes, row.Key())
@@ -1516,7 +1507,46 @@ func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, filter IndexFilter
 		data = append(data, keysMap[key])
 	}
 
-	return data, keys[len(keys)-1], nil
+	return data, indexes[len(indexes)-1], nil
+}
+
+func (bigtable *Bigtable) GetAddressInternalTableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
+	// defaults to most recent
+	if pageToken == "" {
+		pageToken = fmt.Sprintf("%s:I:ITX:%s:%s:", bigtable.chainId, address, FILTER_TIME)
+	}
+
+	transactions, lastKey, err := bigtable.GetEth1ItxForAddress(pageToken, 25)
+	if err != nil {
+		return nil, err
+	}
+
+	tableData := make([][]interface{}, len(transactions))
+	for i, t := range transactions {
+		from := utils.FormatHash(t.From)
+		if fmt.Sprintf("%x", t.From) != address {
+			from = utils.FormatAddressAsLink(t.From, "", false, false)
+		}
+		to := utils.FormatHash(t.To)
+		if fmt.Sprintf("%x", t.To) != address {
+			to = utils.FormatAddressAsLink(t.To, "", false, false)
+		}
+		tableData[i] = []interface{}{
+			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTimeFromNow(t.Time.AsTime()),
+			from,
+			to,
+			utils.FormatAmount(float64(new(big.Int).SetBytes(t.Value).Int64()), "ETH", 6),
+			t.Type,
+		}
+	}
+
+	data := &types.DataTableResponse{
+		Data:        tableData,
+		PagingToken: lastKey,
+	}
+
+	return data, nil
 }
 
 func (bigtable *Bigtable) GetAddressInternalTransactionsTableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
@@ -1524,7 +1554,7 @@ func (bigtable *Bigtable) GetAddressInternalTransactionsTableData(address string
 		pageToken = fmt.Sprintf("%s:I:ITX:%s:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
-	transactions, lastKey, err := BigtableClient.GetEth1ItxForAddress(pageToken, FILTER_TIME)
+	transactions, lastKey, err := BigtableClient.GetEth1ItxForAddress(pageToken, 25)
 	if err != nil {
 		return nil, err
 	}
@@ -1566,7 +1596,7 @@ func (bigtable *Bigtable) GetAddressERC20TransfersTableData(address string, sear
 		pageToken = fmt.Sprintf("%s:I:ERC20:%s:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
-	transactions, lastKey, err := BigtableClient.GetEth1ERC20ForAddress(pageToken, FILTER_TIME)
+	transactions, lastKey, err := BigtableClient.GetEth1ERC20ForAddress(pageToken, 25)
 	if err != nil {
 		return nil, err
 	}
@@ -1611,24 +1641,18 @@ func (bigtable *Bigtable) GetAddressERC20TransfersTableData(address string, sear
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, filter IndexFilter) ([]*types.Eth1ERC20Indexed, string, error) {
+func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]*types.Eth1ERC20Indexed, string, error) {
 	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancle()
 
-	limit := int64(25)
 	// add \x00 to the row range such that we skip the previous value
-	rowRange := gcp_bigtable.NewRange(prefix+"\x00", "")
+	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
 	data := make([]*types.Eth1ERC20Indexed, 0, limit)
 	keys := make([]string, 0, limit)
 	indexes := make([]string, 0, limit)
 
 	keysMap := make(map[string]*types.Eth1ERC20Indexed, limit)
 	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
-
-		if !strings.Contains(row.Key(), string(filter)) {
-			return false
-		}
-
 		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
 		indexes = append(indexes, row.Key())
 		return true
@@ -1655,7 +1679,46 @@ func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, filter IndexFilt
 		data = append(data, keysMap[key])
 	}
 
-	return data, keys[len(keys)-1], nil
+	return data, indexes[len(indexes)-1], nil
+}
+
+func (bigtable *Bigtable) GetAddressErc20TableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
+
+	if pageToken == "" {
+		pageToken = fmt.Sprintf("%s:I:ERC20:%s:%s:", bigtable.chainId, address, FILTER_TIME)
+	}
+
+	transactions, lastKey, err := bigtable.GetEth1ERC20ForAddress(pageToken, 25)
+	if err != nil {
+		return nil, err
+	}
+
+	tableData := make([][]interface{}, len(transactions))
+	for i, t := range transactions {
+		from := utils.FormatHash(t.From)
+		if fmt.Sprintf("%x", t.From) != address {
+			from = utils.FormatAddressAsLink(t.From, "", false, false)
+		}
+		to := utils.FormatHash(t.To)
+		if fmt.Sprintf("%x", t.To) != address {
+			to = utils.FormatAddressAsLink(t.To, "", false, false)
+		}
+		tableData[i] = []interface{}{
+			utils.FormatTransactionHash(t.ParentHash),
+			from,
+			to,
+			new(big.Int).SetBytes(t.Value),
+			utils.FormatAddressAsLink(t.TokenAddress, "", false, true),
+			// utils.FormatAmount(float64(new(big.Int).SetBytes(t.Value).Int64()), "ETH", 6),
+		}
+	}
+
+	data := &types.DataTableResponse{
+		Data:        tableData,
+		PagingToken: lastKey,
+	}
+
+	return data, nil
 }
 
 func (bigtable *Bigtable) GetEth1ERC20TxForAddressCount(address string, filterKey IndexFilter) (uint64, error) {
@@ -1679,21 +1742,25 @@ func (bigtable *Bigtable) GetEth1ERC20TxForAddressCount(address string, filterKe
 	return sum, nil
 }
 
-func (bigtable *Bigtable) GetEth1ERC721ForAddress(address string, startKey IndexFilter, limit int64) ([]*types.Eth1ERC721Indexed, string, error) {
+func (bigtable *Bigtable) GetEth1ERC721ForAddress(prefix string, limit int64) ([]*types.Eth1ERC721Indexed, string, error) {
 	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancle()
 
-	prefix := fmt.Sprintf("%s:I:ERC721:%s:%s", bigtable.chainId, address, startKey)
-
-	rowRange := gcp_bigtable.PrefixRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
+	// add \x00 to the row range such that we don't include the prefix itself in the response. Converts range to open interval (start, end).
+	// "1:I:ERC721:81d98c8fda0410ee3e9d7586cb949cd19fa4cf38:TIME;"
+	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
 
 	data := make([]*types.Eth1ERC721Indexed, 0, limit)
 
 	keys := make([]string, 0, limit)
 	keysMap := make(map[string]*types.Eth1ERC721Indexed, limit)
+	indexes := make([]string, 0, limit)
+
+	//  1:I:ERC721:81d98c8fda0410ee3e9d7586cb949cd19fa4cf38:TIME:9223372035220135322:0052:00000
 
 	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
 		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
+		indexes = append(indexes, row.Key())
 		return true
 	}, gcp_bigtable.LimitRows(limit))
 	if err != nil {
@@ -1711,7 +1778,6 @@ func (bigtable *Bigtable) GetEth1ERC721ForAddress(address string, startKey Index
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		data = append(data, b)
 		keysMap[row.Key()] = b
 		return true
 	})
@@ -1719,7 +1785,47 @@ func (bigtable *Bigtable) GetEth1ERC721ForAddress(address string, startKey Index
 	for _, key := range keys {
 		data = append(data, keysMap[key])
 	}
-	return data, keys[len(keys)-1], nil
+	return data, indexes[len(indexes)-1], nil
+}
+
+func (bigtable *Bigtable) GetAddressErc721TableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
+
+	if pageToken == "" {
+		pageToken = fmt.Sprintf("%s:I:ERC721:%s:%s:", bigtable.chainId, address, FILTER_TIME)
+		// pageToken = fmt.Sprintf("%s:I:ERC721:%s:%s:9999999999999999999:9999:99999", bigtable.chainId, address, FILTER_TIME)
+	}
+
+	transactions, lastKey, err := bigtable.GetEth1ERC721ForAddress(pageToken, 25)
+	if err != nil {
+		return nil, err
+	}
+
+	tableData := make([][]interface{}, len(transactions))
+	for i, t := range transactions {
+		from := utils.FormatHash(t.From)
+		if fmt.Sprintf("%x", t.From) != address {
+			from = utils.FormatAddressAsLink(t.From, "", false, false)
+		}
+		to := utils.FormatHash(t.To)
+		if fmt.Sprintf("%x", t.To) != address {
+			to = utils.FormatAddressAsLink(t.To, "", false, false)
+		}
+		tableData[i] = []interface{}{
+			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTimeFromNow(t.Time.AsTime()),
+			from,
+			to,
+			utils.FormatAddressAsLink(t.TokenAddress, "", false, true),
+			new(big.Int).SetBytes(t.TokenId).String(),
+		}
+	}
+
+	data := &types.DataTableResponse{
+		Data:        tableData,
+		PagingToken: lastKey,
+	}
+
+	return data, nil
 }
 
 func (bigtable *Bigtable) GetEth1ERC721TxForAddressCount(address string, filterKey IndexFilter) (uint64, error) {
@@ -1743,21 +1849,21 @@ func (bigtable *Bigtable) GetEth1ERC721TxForAddressCount(address string, filterK
 	return sum, nil
 }
 
-func (bigtable *Bigtable) GetEth1ERC1155ForAddress(address string, startKey IndexFilter, limit int64) ([]*types.ETh1ERC1155Indexed, string, error) {
+func (bigtable *Bigtable) GetEth1ERC1155ForAddress(prefix string, limit int64) ([]*types.ETh1ERC1155Indexed, string, error) {
 	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancle()
 
-	prefix := fmt.Sprintf("%s:I:ERC1155:%s:%s", bigtable.chainId, address, startKey)
-
-	rowRange := gcp_bigtable.PrefixRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
+	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
 
 	data := make([]*types.ETh1ERC1155Indexed, 0, limit)
 
 	keys := make([]string, 0, limit)
 	keysMap := make(map[string]*types.ETh1ERC1155Indexed, limit)
+	indexes := make([]string, 0, limit)
 
 	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
 		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
+		indexes = append(indexes, row.Key())
 		return true
 	}, gcp_bigtable.LimitRows(limit))
 	if err != nil {
@@ -1782,7 +1888,46 @@ func (bigtable *Bigtable) GetEth1ERC1155ForAddress(address string, startKey Inde
 	for _, key := range keys {
 		data = append(data, keysMap[key])
 	}
-	return data, keys[len(keys)-1], nil
+	return data, indexes[len(indexes)-1], nil
+}
+
+func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
+	if pageToken == "" {
+		pageToken = fmt.Sprintf("%s:I:ERC1155:%s:%s:", bigtable.chainId, address, FILTER_TIME)
+	}
+
+	transactions, lastKey, err := bigtable.GetEth1ERC1155ForAddress(pageToken, 25)
+	if err != nil {
+		return nil, err
+	}
+
+	tableData := make([][]interface{}, len(transactions))
+	for i, t := range transactions {
+		from := utils.FormatHash(t.From)
+		if fmt.Sprintf("%x", t.From) != address {
+			from = utils.FormatAddressAsLink(t.From, "", false, false)
+		}
+		to := utils.FormatHash(t.To)
+		if fmt.Sprintf("%x", t.To) != address {
+			to = utils.FormatAddressAsLink(t.To, "", false, false)
+		}
+		tableData[i] = []interface{}{
+			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTimeFromNow(t.Time.AsTime()),
+			from,
+			to,
+			utils.FormatAddressAsLink(t.TokenAddress, "", false, true),
+			new(big.Int).SetBytes(t.TokenId).String(),
+			new(big.Int).SetBytes(t.Value).String(),
+		}
+	}
+
+	data := &types.DataTableResponse{
+		Data:        tableData,
+		PagingToken: lastKey,
+	}
+
+	return data, nil
 }
 
 func (bigtable *Bigtable) GetEth1ERC1155TxForAddressCount(address string, filterKey IndexFilter) (uint64, error) {
@@ -1804,4 +1949,23 @@ func (bigtable *Bigtable) GetEth1ERC1155TxForAddressCount(address string, filter
 	}
 
 	return sum, nil
+}
+
+func prefixSuccessor(prefix string, pos int) string {
+	if prefix == "" {
+		return "" // infinite range
+	}
+	split := strings.Split(prefix, ":")
+	if len(split) > pos {
+		prefix = strings.Join(split[:pos], ":")
+	}
+	n := len(prefix)
+	for n--; n >= 0 && prefix[n] == '\xff'; n-- {
+	}
+	if n == -1 {
+		return ""
+	}
+	ans := []byte(prefix[:n])
+	ans = append(ans, prefix[n]+1)
+	return string(ans)
 }

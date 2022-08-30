@@ -1370,4 +1370,8 @@ type DataTableSaveStateColumns struct {
 type Eth1AddressPageData struct {
 	Address           string `json:"address"`
 	TransactionsTable *DataTableResponse
+	InternalTxnsTable *DataTableResponse
+	Erc20Table        *DataTableResponse
+	Erc721Table       *DataTableResponse
+	Erc1155Table      *DataTableResponse
 }
