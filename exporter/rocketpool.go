@@ -44,6 +44,15 @@ var rpEth1Client *ethclient.Client
 
 const GethEventLogInterval = 25000
 
+// Previous redstone reward pool addresses
+// https://github.com/rocket-pool/smartnode/blob/master/shared/services/config/smartnode-config.go
+var previousRewardsPoolAddress = map[string]string{
+	"mainnet": "",
+	"prater":  "0x594Fb75D3dc2DFa0150Ad03F99F97817747dd4E1",
+	"kiln":    "",
+	"ropsten": "",
+}
+
 var legacyRewardsPoolAddress = map[string]string{
 	"mainnet": "0xA3a18348e6E2d3897B6f2671bb8c120e36554802",
 	"prater":  "0xf9aE18eB0CE4930Bc3d7d1A5E33e4286d4FB0f8B",
@@ -97,6 +106,7 @@ type RocketpoolExporter struct {
 	DAOMembersByAddress map[string]*RocketpoolDAOMember
 	NodeRPLCumulative   map[string]*big.Int
 	NetworkStats        RocketpoolNetworkStats
+	LastRewardTree      uint64
 }
 
 func NewRocketpoolExporter(eth1Client *ethclient.Client, storageContractAddressHex string, db *sqlx.DB) (*RocketpoolExporter, error) {
@@ -113,6 +123,7 @@ func NewRocketpoolExporter(eth1Client *ethclient.Client, storageContractAddressH
 	rpe.NodesByAddress = map[string]*RocketpoolNode{}
 	rpe.DAOProposalsByID = map[uint64]*RocketpoolDAOProposal{}
 	rpe.DAOMembersByAddress = map[string]*RocketpoolDAOMember{}
+	rpe.LastRewardTree = 0
 	return rpe, nil
 }
 
@@ -212,9 +223,9 @@ func (rp *RocketpoolExporter) Run() error {
 	}
 }
 
-func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, index uint64, intervalSize *big.Int, startBlock *big.Int) (rewards.RewardsEvent, error) {
+func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, index uint64, intervalSize *big.Int, startBlock *big.Int, rewardPoolAddress *common.Address) (rewards.RewardsEvent, error) {
 	// Get contracts
-	rocketRewardsPool, err := getRocketRewardsPool(rp)
+	rocketRewardsPool, err := getRocketRewardsPool(rp, rewardPoolAddress)
 	if err != nil {
 		return rewards.RewardsEvent{}, err
 	}
@@ -242,9 +253,18 @@ func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, index uint64, intervalSiz
 	}
 
 	// Get the decoded data
-	submissionPrototype := RewardSubmissionLegacy{}
-	submissionType := reflect.TypeOf(submissionPrototype)
-	submission := reflect.ValueOf(values["submission"]).Convert(submissionType).Interface().(RewardSubmissionLegacy)
+	var submission RewardSubmission
+	if rewardPoolAddress != nil {
+		submissionPrototypeTemp := RewardSubmissionLegacy{}
+		submissionTypeTemp := reflect.TypeOf(submissionPrototypeTemp)
+		submissionTemp := reflect.ValueOf(values["submission"]).Convert(submissionTypeTemp).Interface().(RewardSubmissionLegacy)
+		submission = update_v150rc1_to_v150(submissionTemp)
+	} else {
+		submissionPrototype := RewardSubmission{}
+		submissionType := reflect.TypeOf(submissionPrototype)
+		submission = reflect.ValueOf(values["submission"]).Convert(submissionType).Interface().(RewardSubmission)
+	}
+
 	eventIntervalStartTime := values["intervalStartTime"].(*big.Int)
 	eventIntervalEndTime := values["intervalEndTime"].(*big.Int)
 	submissionTime := values["time"].(*big.Int)
@@ -257,7 +277,7 @@ func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, index uint64, intervalSiz
 		TrustedNodeRPL:    submission.TrustedNodeRPL,
 		NodeRPL:           submission.NodeRPL,
 		NodeETH:           submission.NodeETH,
-		UserETH:           big.NewInt(0),
+		UserETH:           submission.UserETH,
 		MerkleRoot:        common.BytesToHash(submission.MerkleRoot[:]),
 		MerkleTreeCID:     submission.MerkleTreeCID,
 		IntervalStartTime: time.Unix(eventIntervalStartTime.Int64(), 0),
@@ -267,6 +287,24 @@ func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, index uint64, intervalSiz
 
 	return eventData, nil
 
+}
+
+func update_v150rc1_to_v150(oldEvent RewardSubmissionLegacy) RewardSubmission {
+	newEvent := RewardSubmission{
+		RewardIndex:     oldEvent.RewardIndex,
+		ExecutionBlock:  oldEvent.ExecutionBlock,
+		ConsensusBlock:  oldEvent.ConsensusBlock,
+		MerkleRoot:      oldEvent.MerkleRoot,
+		MerkleTreeCID:   oldEvent.MerkleTreeCID,
+		IntervalsPassed: oldEvent.IntervalsPassed,
+		TreasuryRPL:     oldEvent.TreasuryRPL,
+		TrustedNodeRPL:  oldEvent.TrustedNodeRPL,
+		NodeRPL:         oldEvent.NodeRPL,
+		NodeETH:         oldEvent.NodeETH,
+		UserETH:         big.NewInt(0),
+	}
+
+	return newEvent
 }
 
 type RewardSubmissionLegacy struct {
@@ -280,6 +318,20 @@ type RewardSubmissionLegacy struct {
 	TrustedNodeRPL  []*big.Int `json:"trustedNodeRPL"`
 	NodeRPL         []*big.Int `json:"nodeRPL"`
 	NodeETH         []*big.Int `json:"nodeETH"`
+}
+
+type RewardSubmission struct {
+	RewardIndex     *big.Int   `json:"rewardIndex"`
+	ExecutionBlock  *big.Int   `json:"executionBlock"`
+	ConsensusBlock  *big.Int   `json:"consensusBlock"`
+	MerkleRoot      [32]byte   `json:"merkleRoot"`
+	MerkleTreeCID   string     `json:"merkleTreeCID"`
+	IntervalsPassed *big.Int   `json:"intervalsPassed"`
+	TreasuryRPL     *big.Int   `json:"treasuryRPL"`
+	TrustedNodeRPL  []*big.Int `json:"trustedNodeRPL"`
+	NodeRPL         []*big.Int `json:"nodeRPL"`
+	NodeETH         []*big.Int `json:"nodeETH"`
+	UserETH         *big.Int   `json:"userETH"`
 }
 
 func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
@@ -298,7 +350,7 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 	}
 
 	missingIntervals := []rewards.RewardsEvent{}
-	for interval := uint64(0); ; interval++ {
+	for interval := rp.LastRewardTree; ; interval++ {
 		var event rewards.RewardsEvent
 
 		event, err := GetRewardSnapshotEvent(
@@ -306,12 +358,32 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 			interval,
 			big.NewInt(int64(GethEventLogInterval)),
 			nil,
+			nil, // rewardPoolAddress
 		)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
-				break
+				if previousRewardsPoolAddress[utils.Config.Chain.Name] == "" {
+					break
+				}
+				oldAddress := common.HexToAddress(previousRewardsPoolAddress[utils.Config.Chain.Name])
+				event, err = GetRewardSnapshotEvent(
+					rp.API,
+					interval,
+					big.NewInt(int64(GethEventLogInterval)),
+					nil,
+					&oldAddress,
+				)
+				if err != nil {
+					if strings.Contains(err.Error(), "not found") {
+						break
+					} else {
+						return err
+					}
+				}
+			} else {
+				return err
 			}
-			return err
+
 		}
 
 		var dbInterval uint64
@@ -329,16 +401,28 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 	}
 
 	for _, missingInterval := range missingIntervals {
-		fmt.Printf("Downloading interval %d file... ", missingInterval.Index)
+		logrus.Infof("Downloading interval %d file... ", missingInterval.Index)
 		bytes, err := DownloadRewardsFile(fmt.Sprintf("rp-rewards-prater-%v.json", missingInterval.Index), missingInterval.Index.Uint64(), missingInterval.MerkleTreeCID, true)
 		if err != nil {
 			return fmt.Errorf("can not download reward file %v. Error %v", missingInterval.Index, err)
 		}
+
+		proofWrapper, err := getRewardsData(bytes)
+
+		merkleRootFromFile := common.HexToHash(proofWrapper.MerkleRoot)
+		if missingInterval.MerkleRoot != merkleRootFromFile {
+			return fmt.Errorf("invalid merkle root value : %w", err)
+		}
+
 		_, err = db.WriterDb.Exec(`INSERT INTO rocketpool_reward_tree (id, data) VALUES($1, $2)`, missingInterval.Index.Uint64(), bytes)
 		if err != nil {
 			return fmt.Errorf("can not store reward file %v. Error %v", missingInterval.Index, err)
 		}
 		logrus.Infof("Downloaded rocketpool rewards tree %v", missingInterval.Index)
+
+		if missingInterval.Index.Uint64() > rp.LastRewardTree {
+			rp.LastRewardTree = missingInterval.Index.Uint64()
+		}
 	}
 
 	return nil
@@ -346,7 +430,12 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 
 func (rp *RocketpoolExporter) Update(count int64) error {
 	var wg errgroup.Group
-	wg.Go(func() error { return rp.DownloadMissingRewardTrees() })
+	wg.Go(func() error {
+		if count%8 == 0 {
+			return rp.DownloadMissingRewardTrees()
+		}
+		return nil
+	})
 	wg.Go(func() error { return rp.UpdateMinipools() })
 	wg.Go(func() error { return rp.UpdateNodes(count%12 == 0) })
 	wg.Go(func() error { return rp.UpdateDAOProposals() })
@@ -487,7 +576,7 @@ func getRocketpoolRewardTrees(rp *rocketpool.RocketPool) (map[uint64]RewardsFile
 			}
 			return allRewards, fmt.Errorf("Can not load claimedInterval %v tree from database, is it exported? %v", i, err)
 		}
-		allRewards[i], err = getRewardsData(rp, jsonData, i)
+		allRewards[i], err = getRewardsData(jsonData)
 		if err != nil {
 			logrus.Infof("err getting reward data %v", err)
 			return allRewards, fmt.Errorf("Can parsing reward tree data to struct for interval %v. Error %v", i, err)
@@ -1290,26 +1379,15 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[ui
 	return nil
 }
 
-func getRewardsData(rp *rocketpool.RocketPool, jsonData []byte, interval uint64) (RewardsFile, error) {
+func getRewardsData(jsonData []byte) (RewardsFile, error) {
 	var proofWrapper RewardsFile
 
-	var event rewards.RewardsEvent
-
-	event, err := GetRewardSnapshotEvent(rp, interval, big.NewInt(int64(GethEventLogInterval)), nil)
-	if err != nil {
-		return proofWrapper, err
-	}
-
-	err = json.Unmarshal(jsonData, &proofWrapper)
+	err := json.Unmarshal(jsonData, &proofWrapper)
 	if err != nil {
 		err = fmt.Errorf("error deserializing : %w", err)
 		return proofWrapper, err
 	}
 
-	merkleRootFromFile := common.HexToHash(proofWrapper.MerkleRoot)
-	if event.MerkleRoot != merkleRootFromFile {
-		return proofWrapper, fmt.Errorf("invalid merkle root value : %w", err)
-	}
 	return proofWrapper, err
 }
 
@@ -1410,10 +1488,15 @@ func CalculateLifetimeNodeRewardsAllLegacy(rp *rocketpool.RocketPool, intervalSi
 // Get contracts
 var rocketRewardsPoolLock sync.Mutex
 
-func getRocketRewardsPool(rp *rocketpool.RocketPool) (*rocketpool.Contract, error) {
+func getRocketRewardsPool(rp *rocketpool.RocketPool, address *common.Address) (*rocketpool.Contract, error) {
 	rocketRewardsPoolLock.Lock()
 	defer rocketRewardsPoolLock.Unlock()
-	return rp.GetContract("rocketRewardsPool")
+
+	if address == nil {
+		return rp.GetContract("rocketRewardsPool")
+	} else {
+		return rp.VersionManager.V1_5_0_RC1.GetContractWithAddress("rocketRewardsPool", *address)
+	}
 }
 
 func getRocketRewardsPoolLegacy(rp *rocketpool.RocketPool, address *common.Address) (*rocketpool.Contract, error) {
