@@ -349,6 +349,12 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 		return nil
 	}
 
+	var dbIntervals []uint64
+	err = db.WriterDb.Select(&dbIntervals, `SELECT id FROM rocketpool_reward_tree `)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+
 	missingIntervals := []rewards.RewardsEvent{}
 	for interval := rp.LastRewardTree; ; interval++ {
 		var event rewards.RewardsEvent
@@ -386,12 +392,8 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 
 		}
 
-		var dbInterval uint64
-		err = db.WriterDb.Get(&dbInterval, `SELECT id FROM rocketpool_reward_tree WHERE id = $1`, interval)
-		if err == sql.ErrNoRows {
+		if !contains(dbIntervals, event.Index.Uint64()) {
 			missingIntervals = append(missingIntervals, event)
-		} else if err != nil {
-			return err
 		}
 
 	}
@@ -399,6 +401,12 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 	if len(missingIntervals) == 0 {
 		return nil
 	}
+
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 
 	for _, missingInterval := range missingIntervals {
 		logrus.Infof("Downloading interval %d file... ", missingInterval.Index)
@@ -414,7 +422,7 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 			return fmt.Errorf("invalid merkle root value : %w", err)
 		}
 
-		_, err = db.WriterDb.Exec(`INSERT INTO rocketpool_reward_tree (id, data) VALUES($1, $2)`, missingInterval.Index.Uint64(), bytes)
+		_, err = tx.Exec(`INSERT INTO rocketpool_reward_tree (id, data) VALUES($1, $2)`, missingInterval.Index.Uint64(), bytes)
 		if err != nil {
 			return fmt.Errorf("can not store reward file %v. Error %v", missingInterval.Index, err)
 		}
@@ -425,7 +433,18 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 		}
 	}
 
+	tx.Commit()
+
 	return nil
+}
+
+func contains(s []uint64, e uint64) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 func (rp *RocketpoolExporter) Update(count int64) error {
@@ -567,19 +586,22 @@ func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 
 func getRocketpoolRewardTrees(rp *rocketpool.RocketPool) (map[uint64]RewardsFile, error) {
 	var allRewards map[uint64]RewardsFile = map[uint64]RewardsFile{}
-	for i := uint64(0); ; i++ {
-		var jsonData []byte
-		err := db.WriterDb.Get(&jsonData, `SELECT data FROM rocketpool_reward_tree WHERE id = $1`, i)
+
+	type Data struct {
+		ID   uint64 `db:"id"`
+		Data []byte `db:"data"`
+	}
+
+	var jsonData []Data
+	err := db.ReaderDb.Select(&jsonData, `SELECT id, data FROM rocketpool_reward_tree`)
+	if err != nil {
+		return allRewards, fmt.Errorf("Can not load claimedInterval tree from database, is it exported? %v", err)
+	}
+
+	for _, data := range jsonData {
+		allRewards[data.ID], err = getRewardsData(data.Data)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				break
-			}
-			return allRewards, fmt.Errorf("Can not load claimedInterval %v tree from database, is it exported? %v", i, err)
-		}
-		allRewards[i], err = getRewardsData(jsonData)
-		if err != nil {
-			logrus.Infof("err getting reward data %v", err)
-			return allRewards, fmt.Errorf("Can parsing reward tree data to struct for interval %v. Error %v", i, err)
+			return allRewards, fmt.Errorf("Can parsing reward tree data to struct for interval %v. Error %v", data.ID, err)
 		}
 	}
 	return allRewards, nil
