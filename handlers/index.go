@@ -46,6 +46,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		data.DebugTemplates = indexTemplateFiles
 	}
 
+	data.Data.(*types.IndexPageData).ChainSlotsPerEpoch = data.ChainSlotsPerEpoch
 	data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
 	data.Data.(*types.IndexPageData).Countdown = utils.Config.Frontend.Countdown
 

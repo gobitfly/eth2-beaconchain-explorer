@@ -151,7 +151,8 @@
                     return this.page.scheduled_count
                 },
                 epochCompletePercent: function () {
-                    return ((32 - this.page.scheduled_count) / 32) * 100
+                    var slotsPerEpoch = {{.ChainSlotsPerEpoch}}
+                    return ((slotsPerEpoch - this.page.scheduled_count) / slotsPerEpoch) * 100
                 }
             },
             filters: {

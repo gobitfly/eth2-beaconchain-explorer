@@ -202,6 +202,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	currency := "ETH"
 
 	data := &types.IndexPageData{}
+	data.ChainSlotsPerEpoch = utils.Config.Chain.Config.SlotsPerEpoch
 	data.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
 	data.NetworkName = utils.Config.Chain.Config.ConfigName
 	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
