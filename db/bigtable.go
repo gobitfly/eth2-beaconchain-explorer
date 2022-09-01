@@ -154,6 +154,7 @@ func (bigtable *Bigtable) GetBlockFromBlocksTable(number uint64) (*types.Eth1Blo
 	}
 
 	if len(row[DEFAULT_FAMILY_BLOCKS]) == 0 { // block not found
+		logger.Errorf("block %v not found in block table", number)
 		return nil, ErrBlockNotFound
 	}
 
@@ -167,11 +168,12 @@ func (bigtable *Bigtable) GetBlockFromBlocksTable(number uint64) (*types.Eth1Blo
 	return bc, nil
 }
 
-func (bigtable *Bigtable) CheckForGapsInBlocksTable() error {
+func (bigtable *Bigtable) CheckForGapsInBlocksTable(lookback int) (gapFound bool, start int, end int, err error) {
 
 	prefix := bigtable.chainId + ":"
 	previous := 0
-	err := bigtable.tableBlocks.ReadRows(context.Background(), gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
+	i := 0
+	err = bigtable.tableBlocks.ReadRows(context.Background(), gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
 		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
 
 		if err != nil {
@@ -185,17 +187,20 @@ func (bigtable *Bigtable) CheckForGapsInBlocksTable() error {
 		}
 
 		if previous != 0 && previous != c+1 {
+			gapFound = true
+			start = c
+			end = previous
 			logger.Fatalf("found gap between block %v and block %v in blocks table", previous, c)
+			return false
 		}
 		previous = c
-		return true
+
+		i++
+
+		return i < lookback
 	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return gapFound, start, end, err
 }
 
 func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
@@ -225,10 +230,11 @@ func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
 	return lastBlock, nil
 }
 
-func (bigtable *Bigtable) CheckForGapsInDataTable() error {
+func (bigtable *Bigtable) CheckForGapsInDataTable(lookback int) error {
 
 	prefix := bigtable.chainId + ":B:"
 	previous := 0
+	i := 0
 	err := bigtable.tableData.ReadRows(context.Background(), gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
 		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
 
@@ -243,10 +249,13 @@ func (bigtable *Bigtable) CheckForGapsInDataTable() error {
 		}
 
 		if previous != 0 && previous != c+1 {
-			logger.Fatalf("found gap between block %v and block %v in blocks table", previous, c)
+			logger.Fatalf("found gap between block %v and block %v in data table", previous, c)
 		}
 		previous = c
-		return true
+
+		i++
+
+		return i < lookback
 	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
 
 	if err != nil {
@@ -294,6 +303,7 @@ func (bigtable *Bigtable) GetFullBlockFromDataTable(number uint64) (*types.Eth1B
 	}
 
 	if len(row[DEFAULT_FAMILY]) == 0 { // block not found
+		logger.Errorf("block %v not found in data table", number)
 		return nil, ErrBlockNotFound
 	}
 	blocks := make([]*types.Eth1Block, 0, 1)
@@ -880,6 +890,10 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *ccache.Cache
 			}
 			jReversed := reversePaddedIndex(j, 100000)
 
+			if idx.Path == "[]" || bytes.Equal(idx.Value, []byte{0x0}) { // skip top level call & empty calls
+				continue
+			}
+
 			key := fmt.Sprintf("%s:ITX:%x:%s", bigtable.chainId, tx.GetHash(), jReversed)
 			indexedItx := &types.Eth1InternalTransactionIndexed{
 				ParentHash:  tx.GetHash(),
@@ -890,6 +904,7 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *ccache.Cache
 				To:          idx.GetTo(),
 				Value:       idx.GetValue(),
 			}
+
 			markBalanceUpdate(indexedItx.To, []byte{0x0}, bulkMetadataUpdates, cache)
 			markBalanceUpdate(indexedItx.From, []byte{0x0}, bulkMetadataUpdates, cache)
 
