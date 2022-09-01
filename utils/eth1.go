@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"html/template"
 	"math/big"
@@ -65,14 +66,14 @@ func FormatBlockHash(hash []byte) template.HTML {
 	if len(hash) < 20 {
 		return template.HTML("N/A")
 	}
-	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/execution/block/0x%x">0x%x…%x</a>`, hash, hash[:2], hash[len(hash)-2:]))
+	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/execution/block/0x%x">0x%x…%x</a> %v`, hash, hash[:2], hash[len(hash)-2:], CopyButton(hex.EncodeToString(hash))))
 }
 
 func FormatTransactionHash(hash []byte) template.HTML {
 	if len(hash) < 20 {
 		return template.HTML("N/A")
 	}
-	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/execution/tx/0x%x">0x%x…%x</a>`, hash, hash[:2], hash[len(hash)-2:]))
+	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/execution/tx/0x%x">0x%x…%x</a> %v`, hash, hash[:2], hash[len(hash)-2:], CopyButton(hex.EncodeToString(hash))))
 }
 
 func FormatAddressAsLink(address []byte, name string, verified bool, isContract bool) template.HTML {
@@ -81,12 +82,12 @@ func FormatAddressAsLink(address []byte, name string, verified bool, isContract 
 
 	if len(name) > 0 {
 		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">✔ %s (0x%x…%x)</a>", address, name, address[:2], address[len(address)-2:])
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">✔ %s (0x%x…%x)</a> %v", address, name, address[:2], address[len(address)-2:], CopyButton(hex.EncodeToString(address)))
 		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">%s 0x%x…%x</a>", address, name, address[:2], address[len(address)-2:])
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">%s 0x%x…%x</a> %v", address, name, address[:2], address[len(address)-2:], CopyButton(hex.EncodeToString(address)))
 		}
 	} else {
-		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">0x%x…%x</a>", address, address[:2], address[len(address)-2:])
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">0x%x…%x</a> %v", address, address[:2], address[len(address)-2:], CopyButton(hex.EncodeToString(address)))
 	}
 
 	if isContract {
@@ -95,15 +96,31 @@ func FormatAddressAsLink(address []byte, name string, verified bool, isContract 
 	return template.HTML(ret)
 }
 
+func FormatAddressLong(address string) template.HTML {
+	if len(address) > 4 {
+		return template.HTML(fmt.Sprintf(`<span class="text-monospace">0x<span class="text-primary">%s</span><span>%s</span><span class="text-primary">%s</span></span>`, address[:4], address[2:len(address)-4], address[len(address)-4:]))
+	}
+
+	return template.HTML(address)
+
+}
+
 func FormatAmount(amount float64, unit string, digits int) template.HTML {
-	cssClass := "badge-success"
+	// cssClass := "badge-success"
+	displayUnit := "Ether"
 	if unit == "ETH" {
 		amount = amount / 1e18
 	} else if unit == "GWei" {
+		displayUnit = "GWei"
 		amount = amount / 1e9
-		cssClass = "badge-info"
+		// cssClass = "badge-info"
 	}
-	return template.HTML(fmt.Sprintf("<span class=\"badge %s\">%."+strconv.Itoa(digits)+"f %s</span>", cssClass, amount, unit))
+
+	return template.HTML(fmt.Sprintf("<span>%."+strconv.Itoa(digits)+"f %s</span>", amount, displayUnit))
+}
+
+func FormatMethod(method string) template.HTML {
+	return template.HTML(fmt.Sprintf(`<span class="badge badge-light">%s</span>`, method))
 }
 
 func FormatBlockUsage(gasUsage uint64, gasLimit uint64) template.HTML {

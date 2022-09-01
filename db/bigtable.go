@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"eth2-exporter/erc1155"
 	"eth2-exporter/erc20"
@@ -1535,12 +1536,12 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address string, search
 
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
-		from := utils.FormatHash(t.From)
+		from := utils.AddCopyButton(utils.FormatHash(t.From), hex.EncodeToString(t.From))
 
 		if fmt.Sprintf("%x", t.From) != address {
 			from = utils.FormatAddressAsLink(t.From, "", false, false)
 		}
-		to := utils.FormatHash(t.To)
+		to := utils.AddCopyButton(utils.FormatHash(t.To), hex.EncodeToString(t.To))
 		if fmt.Sprintf("%x", t.To) != address {
 			to = utils.FormatAddressAsLink(t.To, "", false, false)
 		}
@@ -1555,7 +1556,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address string, search
 		}
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.Hash),
-			method,
+			utils.FormatMethod(method),
 			utils.FormatTimeFromNow(t.Time.AsTime()),
 			utils.FormatBlockNumber(t.BlockNumber),
 			from,

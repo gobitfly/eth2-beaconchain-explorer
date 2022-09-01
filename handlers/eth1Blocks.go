@@ -74,7 +74,7 @@ func Eth1BlocksData(w http.ResponseWriter, r *http.Request) {
 func GetEth1BlocksTableData(draw, start, length uint64) (*types.DataTableResponse, error) {
 	latestBlockNumber := services.LatestEth1BlockNumber()
 
-	blocks, err := db.BigtableClient.GetBlocksDescending(latestBlockNumber-start, length)
+	blocks, err := db.BigtableClient.GetBlocksDescending(start, length)
 	if err != nil {
 		return nil, err
 	}

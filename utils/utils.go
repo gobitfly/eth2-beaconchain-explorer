@@ -73,6 +73,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatSlotToTimestamp":                   FormatSlotToTimestamp,
 		"formatDepositAmount":                     FormatDepositAmount,
 		"formatEpoch":                             FormatEpoch,
+		"formatAddressLong":                       FormatAddressLong,
 		"formatEth1Block":                         FormatEth1Block,
 		"formatEth1BlockHash":                     FormatEth1BlockHash,
 		"formatEth1Address":                       FormatEth1Address,
@@ -144,6 +145,7 @@ func GetTemplateFuncs() template.FuncMap {
 		},
 		"stringsJoin":     strings.Join,
 		"formatAddCommas": FormatAddCommas,
+		"encodeToString":  hex.EncodeToString,
 	}
 }
 

@@ -390,8 +390,12 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
 }
 
+func AddCopyButton(element template.HTML, copyContent string) template.HTML {
+	return element + " " + template.HTML(CopyButton(copyContent))
+}
+
 func CopyButton(clipboardText interface{}) string {
-	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
+	return fmt.Sprintf(`<i class="fa fa-copy text-muted text-white ml-2 p-1" style="opacity: .8;" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
 }
 
 func CopyButtonText(clipboardText interface{}) string {

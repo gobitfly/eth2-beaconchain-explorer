@@ -81,7 +81,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data = types.Eth1AddressPageData{
-		Address:           fmt.Sprintf("0x%s", address),
+		Address:           address,
 		TransactionsTable: txns,
 		InternalTxnsTable: internal,
 		Erc20Table:        erc20,
