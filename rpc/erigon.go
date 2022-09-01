@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"encoding/hex"
 	"eth2-exporter/types"
 	"fmt"
 	"math/big"
@@ -116,9 +117,14 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 
 	for _, tx := range txs {
 
+		var from []byte
 		msg, err := tx.AsMessage(geth_types.NewLondonSigner(tx.ChainId()), big.NewInt(1))
 		if err != nil {
-			return nil, nil, fmt.Errorf("error converting tx %v to msg: %v", tx.Hash(), err)
+			from, _ = hex.DecodeString("abababababababababababababababababababab")
+
+			logrus.Errorf("error converting tx %v to msg: %v", tx.Hash(), err)
+		} else {
+			from = msg.From().Bytes()
 		}
 
 		pbTx := &types.Eth1Transaction{
@@ -130,7 +136,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 			Gas:                  tx.Gas(),
 			Value:                tx.Value().Bytes(),
 			Data:                 tx.Data(),
-			From:                 msg.From().Bytes(),
+			From:                 from,
 			ChainId:              tx.ChainId().Bytes(),
 			AccessList:           []*types.AccessList{},
 			Hash:                 tx.Hash().Bytes(),
