@@ -54,12 +54,26 @@
     //   observerRow.observe(r)
     // })
 
-    setupInfiniteScroll({{.TransactionsTable.PagingToken}},'transactions-table', 'transactions-table-inf-scroll', 'transactions')
-    setupInfiniteScroll({{.InternalTxnsTable.PagingToken}},'internalTxns-table', 'internalTxns-table-inf-scroll', 'internalTxns')
-    setupInfiniteScroll({{.Erc20Table.PagingToken}},'erc20-table', 'erc20-table-inf-scroll', 'erc20')
-    setupInfiniteScroll({{.Erc721Table.PagingToken}},'erc721-table', 'erc721-table-inf-scroll', 'erc721')
-    setupInfiniteScroll({{.Erc1155Table.PagingToken}},'erc1155-table', 'erc1155-table-inf-scroll', 'erc1155')
+    {{ if .TransactionsTable.PagingToken }}
+      setupInfiniteScroll({{.TransactionsTable.PagingToken}},'transactions-table', 'transactions-table-inf-scroll', 'transactions')
+    {{ end }}
     
+    {{ if .InternalTxnsTable.PagingToken }}
+      setupInfiniteScroll({{.InternalTxnsTable.PagingToken}},'internalTxns-table', 'internalTxns-table-inf-scroll', 'internalTxns')
+    {{ end }}
+
+    {{ if .Erc20Table.PagingToken }}
+      setupInfiniteScroll({{.Erc20Table.PagingToken}},'erc20-table', 'erc20-table-inf-scroll', 'erc20')
+    {{ end }}
+
+    {{ if .Erc721Table.PagingToken}}
+      setupInfiniteScroll({{.Erc721Table.PagingToken}},'erc721-table', 'erc721-table-inf-scroll', 'erc721')
+    {{ end }}
+
+    {{ if .Erc1155Table.PagingToken }}
+      setupInfiniteScroll({{.Erc1155Table.PagingToken}},'erc1155-table', 'erc1155-table-inf-scroll', 'erc1155')
+    {{ end }}
+
 
     function setupInfiniteScroll(pageToken, tableID, loadingID, urlPart) {
       var previousToken = ""
@@ -88,9 +102,11 @@
                 el.classList.add('p-2')
                 el.classList.add('text-truncate')
                 el.innerHTML = col
-                infLoading.insertAdjacentElement("beforebegin",el)
+                infLoading.insertAdjacentElement("beforebegin", el)
               }
              }
+           } else if (data && data.data && data.data.length == 0) {
+
            }
            isLoading = false
         } catch (err) {
@@ -138,25 +154,33 @@
   </div>
   <div class="card">
     <div class="card-header p-0">
-      {{ template "AddressTabs" }}
+      {{ template "AddressTabs" . }}
     </div>
       <div class="card-body px-0 py-0">
-        <div class="tab-content" id="address-tab-content">
+        <div style="height: 800px;" class="tab-content" id="address-tab-content">
           <div class="tab-pane fade show active" id="transactions" role="tabpanel" aria-labelledby="transaction-tab">
               {{ template "AddressTransactionsTableGrid" .Data.TransactionsTable }}
           </div>
+          {{ if len .Data.InternalTxnsTable.Data }}
           <div class="tab-pane fade" id="internalTxns" role="tabpanel" aria-labelledby="internalTxns-tab">
             {{ template "AddressInternalTransactionsGrid" .Data.InternalTxnsTable }}
           </div>
+          {{ end }}
+          {{ if len .Data.Erc20Table.Data }}
           <div class="tab-pane fade" id="erc20Txns" role="tabpanel" aria-labelledby="erc20Txns-tab">
               {{ template "AddressErc20TransactionsGrid" .Data.Erc20Table }}
           </div>
+          {{ end }}
+          {{ if len .Data.Erc721Table.Data }}
           <div class="tab-pane fade" id="erc721Txns" role="tabpanel" aria-labelledby="erc721Txns-tab">
               {{ template "AddressErc721Grid" .Data.Erc721Table }}
           </div>
+          {{ end }}
+          {{ if len .Data.Erc1155Table.Data }}
           <div class="tab-pane fade" id="erc1155Txns" role="tabpanel" aria-labelledby="erc1155Txns-tab">
               {{ template "AddressErc1155Grid" .Data.Erc1155Table }}
           </div>
+          {{ end }}
         </div>
       </div>
     </div>
@@ -169,19 +193,27 @@
     <a class="nav-link border-bottom-radius-0 active" href="#transactions" id="transaction-tab" data-toggle="tab"
       role="tab" aria-controls="transactions" aria-selected="true">Transactions</a>
   </li>
+  {{ if len .Data.InternalTxnsTable.Data }}
   <li class="nav-item" role="presentation">
     <a class="nav-link border-bottom-radius-0" href="#internalTxns" id="internalTxns-tab" data-toggle="tab" role="tab"
       aria-controls="internalTxns" aria-selected="false">Internal Txns</a>
   </li>
+  {{ end }}
+  {{ if len .Data.Erc20Table.Data }}
   <li class="nav-item" role="presentation">
     <a class="nav-link border-bottom-radius-0" href="#erc20Txns" id="erc20Txns-tab" data-toggle="tab" role="tab" aria-controls="erc20Txns" aria-selected="false">Erc20 Token Txns</a>
   </li>
+  {{ end }}
+  {{ if len .Data.Erc721Table.Data }}
   <li class="nav-item" role="presentation">
     <a class="nav-link border-bottom-radius-0" href="#erc721Txns" id="erc721Txns-tab" data-toggle="tab" role="tab" aria-controls="erc721Txns" aria-selected="false">Erc721 Token Txns</a>
   </li>
+  {{ end }}
+  {{ if len .Data.Erc1155Table.Data }}
   <li class="nav-item" role="presentation">
     <a class="nav-link border-bottom-radius-0" href="#erc1155Txns" id="erc1155Txns-tab" data-toggle="tab" role="tab" aria-controls="erc1155Txns" aria-selected="false" >Erc1155 Token Txns</a>
   </li>
+  {{ end }}
 </ul>
 {{ end }}
 
@@ -275,7 +307,7 @@
         <div class="border-top p-2 text-truncate">{{ $col }}</div>
       {{end}}
     {{ end }}
-    <div style="grid-column: 1 / 7;" id="erc1155-table-inf-scroll" class="d-flex justify-content-center p-2">
+    <div style="grid-column: 1 / 8;" id="erc1155-table-inf-scroll" class="d-flex justify-content-center p-2">
       <span>loading...</span>
     </div>
   </div>
