@@ -29,40 +29,82 @@ func main() {
 	}
 	defer bt.Close()
 
-	// err = bt.CheckForGapsInDataTable()
-	// if err != nil {
-	// 	logrus.Fatal(err)
-	// }
+	if erigonEndpoint == nil || *erigonEndpoint == "" {
+		logrus.Fatal("no erigon node url provided")
+	}
+
+	logrus.Infof("using erigon node at %v", *erigonEndpoint)
+	client, err := rpc.NewErigonClient(*erigonEndpoint)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	err = IndexFromNode(bt, client, *start, *end)
+	if err != nil {
+		logrus.WithError(err).Fatalf("error indexing from node")
+	}
+
+	err = bt.CheckForGapsInBlocksTable()
+	if err != nil {
+		logrus.Fatal(err)
+	}
 
 	// return
 	// bt.DeleteRowsWithPrefix("1:b:")
 	// return
 
-	if erigonEndpoint != nil && *erigonEndpoint != "" {
-		logrus.Infof("indexing from node %v", *erigonEndpoint)
-		IndexFromNode(bt, erigonEndpoint, start, end)
-		return
-	}
-
-	transforms := make([]func(blk *types.Eth1Block, cache *ccache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
-	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
-	// transforms = append(transforms, bt.TransformTx)
-
-	logrus.Infof("indexing from bigtable")
-	err = IndexFromBigtable(bt, start, end, transforms)
+	lastBlockFromNode, err := client.GetLatestEth1BlockNumber()
 	if err != nil {
-		logrus.WithError(err).Fatalf("error indexing from bigtable")
+		logrus.Fatal(err)
 	}
+	lastBlockFromNode = lastBlockFromNode - 100
+
+	lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	lastBlockFromDataTable, err := bt.GetLastBlockInDataTable()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	logrus.WithFields(
+		logrus.Fields{
+			"node":   lastBlockFromNode,
+			"blocks": lastBlockFromBlocksTable,
+			"data":   lastBlockFromDataTable,
+		},
+	).Infof("last blocks")
+
+	if lastBlockFromBlocksTable < int(lastBlockFromNode) {
+		logrus.Infof("missing blocks %v to %v in blocks table, indexing", lastBlockFromBlocksTable, lastBlockFromNode)
+
+		err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable), int64(lastBlockFromNode))
+		if err != nil {
+			logrus.WithError(err).Fatalf("error indexing from node")
+		}
+	}
+
+	if lastBlockFromDataTable < int(lastBlockFromNode) {
+		transforms := make([]func(blk *types.Eth1Block, cache *ccache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
+		transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
+		// transforms = append(transforms, bt.TransformTx)
+
+		logrus.Infof("indexing from bigtable")
+		err = IndexFromBigtable(bt, int64(lastBlockFromDataTable), int64(lastBlockFromNode), transforms)
+		if err != nil {
+			logrus.WithError(err).Fatalf("error indexing from bigtable")
+		}
+	}
+
+	logrus.Infof("index run completed")
 
 	// utils.WaitForCtrlC()
 
 }
 
-func IndexFromNode(bt *db.Bigtable, erigonEndpoint *string, start, end *int64) {
-	client, err := rpc.NewErigonClient(*erigonEndpoint)
-	if err != nil {
-		logrus.Fatal(err)
-	}
+func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end int64) error {
 
 	g := new(errgroup.Group)
 	g.SetLimit(30)
@@ -72,7 +114,7 @@ func IndexFromNode(bt *db.Bigtable, erigonEndpoint *string, start, end *int64) {
 
 	processedBlocks := int64(0)
 
-	for i := *end; i >= *start; i-- {
+	for i := start; i <= end; i++ {
 
 		i := i
 		g.Go(func() error {
@@ -103,9 +145,7 @@ func IndexFromNode(bt *db.Bigtable, erigonEndpoint *string, start, end *int64) {
 
 	}
 
-	if err := g.Wait(); err == nil {
-		logrus.Info("Successfully fetched all blocks")
-	}
+	return g.Wait()
 }
 
 func IndexBlocksFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk []*types.Eth1Block) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error)) error {
@@ -184,9 +224,9 @@ func IndexBlocksFromBigtable(bt *db.Bigtable, start, end *int64, transforms []fu
 	return nil
 }
 
-func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error)) error {
+func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error)) error {
 	g := new(errgroup.Group)
-	g.SetLimit(10)
+	g.SetLimit(50)
 
 	startTs := time.Now()
 	lastTickTs := time.Now()
@@ -195,8 +235,8 @@ func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk
 
 	cache := ccache.New(ccache.Configure().MaxSize(1000000).ItemsToPrune(500))
 
-	logrus.Infof("fetching blocks from %d to %d", *end, *start)
-	for i := *end; i >= *start; i-- {
+	logrus.Infof("fetching blocks from %d to %d", start, end)
+	for i := start; i <= end; i++ {
 		i := i
 		g.Go(func() error {
 
@@ -237,8 +277,8 @@ func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk
 
 			current := atomic.AddInt64(&processedBlocks, 1)
 			if current%500 == 0 {
-				curr := uint64(*end) - block.GetNumber()
-				diff := *end - *start
+				curr := uint64(start) + block.GetNumber()
+				diff := end - start
 				if curr < 1 {
 					curr = 0
 				}

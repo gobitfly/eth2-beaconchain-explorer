@@ -197,6 +197,33 @@ func (bigtable *Bigtable) CheckForGapsInBlocksTable() error {
 	return nil
 }
 
+func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
+	prefix := bigtable.chainId + ":"
+	lastBlock := 0
+	err := bigtable.tableBlocks.ReadRows(context.Background(), gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
+		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
+
+		if err != nil {
+			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
+			return false
+		}
+		c = max_block_number - c
+
+		if c%10000 == 0 {
+			logger.Infof("scanning, currently at block %v", c)
+		}
+
+		lastBlock = c
+		return false
+	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+
+	if err != nil {
+		return 0, err
+	}
+
+	return lastBlock, nil
+}
+
 func (bigtable *Bigtable) CheckForGapsInDataTable() error {
 
 	prefix := bigtable.chainId + ":B:"
@@ -226,6 +253,33 @@ func (bigtable *Bigtable) CheckForGapsInDataTable() error {
 	}
 
 	return nil
+}
+
+func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
+	prefix := bigtable.chainId + ":B:"
+	lastBlock := 0
+	err := bigtable.tableData.ReadRows(context.Background(), gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
+		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
+
+		if err != nil {
+			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
+			return false
+		}
+		c = max_block_number - c
+
+		if c%10000 == 0 {
+			logger.Infof("scanning, currently at block %v", c)
+		}
+
+		lastBlock = c
+		return false
+	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+
+	if err != nil {
+		return 0, err
+	}
+
+	return lastBlock, nil
 }
 
 func (bigtable *Bigtable) GetFullBlockFromDataTable(number uint64) (*types.Eth1Block, error) {
