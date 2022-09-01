@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/golang/protobuf/proto"
+	"github.com/karlseguin/ccache/v2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -63,10 +64,11 @@ var (
 )
 
 type Bigtable struct {
-	client      *gcp_bigtable.Client
-	tableData   *gcp_bigtable.Table
-	tableBlocks *gcp_bigtable.Table
-	chainId     string
+	client               *gcp_bigtable.Client
+	tableData            *gcp_bigtable.Table
+	tableBlocks          *gcp_bigtable.Table
+	tableMetadataUpdates *gcp_bigtable.Table
+	chainId              string
 }
 
 func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
@@ -79,16 +81,25 @@ func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
 	}
 
 	bt := &Bigtable{
-		client:      btClient,
-		tableData:   btClient.Open("data"),
-		tableBlocks: btClient.Open("blocks"),
-		chainId:     chainId,
+		client:               btClient,
+		tableData:            btClient.Open("data"),
+		tableBlocks:          btClient.Open("blocks"),
+		tableMetadataUpdates: btClient.Open("metadata_updates"),
+		chainId:              chainId,
 	}
 	return bt, nil
 }
 
 func (bigtable *Bigtable) Close() {
 	bigtable.client.Close()
+}
+
+func (bigtable *Bigtable) GetDataTable() *gcp_bigtable.Table {
+	return bigtable.tableData
+}
+
+func (bigtable *Bigtable) GetMetadataUpdatesTable() *gcp_bigtable.Table {
+	return bigtable.tableMetadataUpdates
 }
 
 func (bigtable *Bigtable) SaveBlock(block *types.Eth1Block) error {
@@ -131,7 +142,7 @@ func (bigtable *Bigtable) SaveBlocks(block *types.Eth1Block) error {
 	return nil
 }
 
-func (bigtable *Bigtable) GetBlock(number uint64) (*types.Eth1Block, error) {
+func (bigtable *Bigtable) GetBlockFromBlocksTable(number uint64) (*types.Eth1Block, error) {
 
 	paddedNumber := reversedPaddedBlockNumber(number)
 
@@ -155,7 +166,69 @@ func (bigtable *Bigtable) GetBlock(number uint64) (*types.Eth1Block, error) {
 	return bc, nil
 }
 
-func (bigtable *Bigtable) GetFullBlock(number uint64) (*types.Eth1Block, error) {
+func (bigtable *Bigtable) CheckForGapsInBlocksTable() error {
+
+	prefix := bigtable.chainId + ":"
+	previous := 0
+	err := bigtable.tableBlocks.ReadRows(context.Background(), gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
+		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
+
+		if err != nil {
+			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
+			return false
+		}
+		c = max_block_number - c
+
+		if c%10000 == 0 {
+			logger.Infof("scanning, currently at block %v", c)
+		}
+
+		if previous != 0 && previous != c+1 {
+			logger.Fatalf("found gap between block %v and block %v in blocks table", previous, c)
+		}
+		previous = c
+		return true
+	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (bigtable *Bigtable) CheckForGapsInDataTable() error {
+
+	prefix := bigtable.chainId + ":B:"
+	previous := 0
+	err := bigtable.tableData.ReadRows(context.Background(), gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
+		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
+
+		if err != nil {
+			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
+			return false
+		}
+		c = max_block_number - c
+
+		if c%10000 == 0 {
+			logger.Infof("scanning, currently at block %v", c)
+		}
+
+		if previous != 0 && previous != c+1 {
+			logger.Fatalf("found gap between block %v and block %v in blocks table", previous, c)
+		}
+		previous = c
+		return true
+	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (bigtable *Bigtable) GetFullBlockFromDataTable(number uint64) (*types.Eth1Block, error) {
 
 	paddedNumber := reversedPaddedBlockNumber(number)
 
@@ -169,7 +242,7 @@ func (bigtable *Bigtable) GetFullBlock(number uint64) (*types.Eth1Block, error) 
 		return nil, ErrBlockNotFound
 	}
 	blocks := make([]*types.Eth1Block, 0, 1)
-	rowHandler := GetFullBlockHandler(&blocks)
+	rowHandler := getFullBlockHandler(&blocks)
 
 	rowHandler(row)
 
@@ -180,7 +253,7 @@ func (bigtable *Bigtable) GetFullBlock(number uint64) (*types.Eth1Block, error) 
 	return blocks[0], nil
 }
 
-func (bigtable *Bigtable) GetMostRecentBlock() (*types.Eth1BlockIndexed, error) {
+func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockIndexed, error) {
 	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancle()
 
@@ -208,7 +281,7 @@ func (bigtable *Bigtable) GetMostRecentBlock() (*types.Eth1BlockIndexed, error) 
 	return &block, nil
 }
 
-func GetBlockHandler(blocks *[]*types.Eth1BlockIndexed) func(gcp_bigtable.Row) bool {
+func getBlockHandler(blocks *[]*types.Eth1BlockIndexed) func(gcp_bigtable.Row) bool {
 	return func(row gcp_bigtable.Row) bool {
 		// startTime := time.Now()
 		block := types.Eth1BlockIndexed{}
@@ -222,7 +295,7 @@ func GetBlockHandler(blocks *[]*types.Eth1BlockIndexed) func(gcp_bigtable.Row) b
 	}
 }
 
-func GetFullBlockHandler(blocks *[]*types.Eth1Block) func(gcp_bigtable.Row) bool {
+func getFullBlockHandler(blocks *[]*types.Eth1Block) func(gcp_bigtable.Row) bool {
 	return func(row gcp_bigtable.Row) bool {
 		// startTime := time.Now()
 		block := types.Eth1Block{}
@@ -286,7 +359,7 @@ func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.
 
 	blocks := make([]*types.Eth1Block, 0, 100)
 
-	rowHandler := GetFullBlockHandler(&blocks)
+	rowHandler := getFullBlockHandler(&blocks)
 
 	startTime := time.Now()
 	err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, gcp_bigtable.LimitRows(int64(limit)))
@@ -311,7 +384,7 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 
 	blocks := make([]*types.Eth1BlockIndexed, 0, 100)
 
-	rowHandler := GetBlockHandler(&blocks)
+	rowHandler := getBlockHandler(&blocks)
 
 	startTime := time.Now()
 	err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
@@ -358,7 +431,7 @@ func TimestampToBigtableTimeDesc(ts time.Time) string {
 	return fmt.Sprintf("%04d%02d%02d%02d%02d%02d", 9999-ts.Year(), 12-ts.Month(), 31-ts.Day(), 23-ts.Hour(), 59-ts.Minute(), 59-ts.Second())
 }
 
-func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations) error {
+func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations, table *gcp_bigtable.Table) error {
 	length := 10000
 	numMutations := len(mutations.Muts)
 	numKeys := len(mutations.Keys)
@@ -375,7 +448,7 @@ func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations) error {
 		ctx, done := context.WithTimeout(context.Background(), time.Second*30)
 		defer done()
 		// startTime := time.Now()
-		errs, err := bigtable.tableData.ApplyBulk(ctx, mutations.Keys[start:end], mutations.Muts[start:end])
+		errs, err := table.ApplyBulk(ctx, mutations.Keys[start:end], mutations.Muts[start:end])
 		for _, e := range errs {
 			if e != nil {
 				return err
@@ -393,7 +466,7 @@ func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations) error {
 		ctx, done := context.WithTimeout(context.Background(), time.Second*30)
 		defer done()
 		// startTime := time.Now()
-		errs, err := bigtable.tableData.ApplyBulk(ctx, mutations.Keys[start:], mutations.Muts[start:])
+		errs, err := table.ApplyBulk(ctx, mutations.Keys[start:], mutations.Muts[start:])
 		if err != nil {
 			return err
 		}
@@ -492,9 +565,10 @@ func (bigtable *Bigtable) DeleteRowsWithPrefix(prefix string) {
 // Family: f
 // Column: <chainID>:B:<reversePaddedBlockNumber>
 // Cell:   nil
-func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block) (*types.BulkMutations, error) {
+func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
 
-	bulk := &types.BulkMutations{}
+	bulkData = &types.BulkMutations{}
+	bulkMetadataUpdates = &types.BulkMutations{}
 
 	idx := types.Eth1BlockIndexed{
 		Hash:       block.GetHash(),
@@ -566,19 +640,22 @@ func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block) (*types.BulkMut
 
 	idx.Mev = CalculateMevFromBlock(block).Bytes()
 
+	// Mark Coinbase for balance update
+	markBalanceUpdate(idx.Coinbase, []byte{0x0}, bulkMetadataUpdates, cache)
+
 	// <chainID>:b:<reverse number>
 	key := fmt.Sprintf("%s:B:%s", bigtable.chainId, reversedPaddedBlockNumber(block.GetNumber()))
 	mut := gcp_bigtable.NewMutation()
 
 	b, err := proto.Marshal(&idx)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling proto object err: %w", err)
+		return nil, nil, fmt.Errorf("error marshalling proto object err: %w", err)
 	}
 
 	mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
 
-	bulk.Keys = append(bulk.Keys, key)
-	bulk.Muts = append(bulk.Muts, mut)
+	bulkData.Keys = append(bulkData.Keys, key)
+	bulkData.Muts = append(bulkData.Muts, mut)
 
 	indexes := []string{
 		// Index blocks by the miners address
@@ -589,11 +666,11 @@ func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block) (*types.BulkMut
 		mut := gcp_bigtable.NewMutation()
 		mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
 
-		bulk.Keys = append(bulk.Keys, idx)
-		bulk.Muts = append(bulk.Muts, mut)
+		bulkData.Keys = append(bulkData.Keys, idx)
+		bulkData.Muts = append(bulkData.Muts, mut)
 	}
 
-	return bulk, nil
+	return bulkData, bulkMetadataUpdates, nil
 }
 
 func CalculateMevFromBlock(block *types.Eth1Block) *big.Int {
@@ -612,12 +689,13 @@ func CalculateMevFromBlock(block *types.Eth1Block) *big.Int {
 }
 
 // TransformTx extracts transactions from bigtable more specifically from the table blocks.
-func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block) (*types.BulkMutations, error) {
-	bulk := &types.BulkMutations{}
+func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	bulkData = &types.BulkMutations{}
+	bulkMetadataUpdates = &types.BulkMutations{}
 
 	for i, tx := range blk.Transactions {
 		if i > 9999 {
-			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
+			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
 		}
 		iReverse := reversePaddedIndex(i, 10000)
 		// logger.Infof("address to: %x address: contract: %x, len(to): %v, len(contract): %v, contranct zero: %v", tx.GetTo(), tx.GetContractAddress(), len(tx.GetTo()), len(tx.GetContractAddress()), bytes.Equal(tx.GetContractAddress(), ZERO_ADDRESS))
@@ -653,6 +731,9 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block) (*types.BulkMutation
 			InvokesContract:    invokesContract,
 			ErrorMsg:           tx.GetErrorMsg(),
 		}
+		// Mark Sender and Recipient for balance update
+		markBalanceUpdate(indexedTx.From, []byte{0x0}, bulkMetadataUpdates, cache)
+		markBalanceUpdate(indexedTx.To, []byte{0x0}, bulkMetadataUpdates, cache)
 
 		if len(indexedTx.Hash) != 32 {
 			logger.Fatalf("retrieved hash of length %v for a tx in block %v", len(indexedTx.Hash), blk.GetNumber())
@@ -660,14 +741,14 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block) (*types.BulkMutation
 
 		b, err := proto.Marshal(indexedTx)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		mut := gcp_bigtable.NewMutation()
 		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
 
-		bulk.Keys = append(bulk.Keys, key)
-		bulk.Muts = append(bulk.Muts, mut)
+		bulkData.Keys = append(bulkData.Keys, key)
+		bulkData.Muts = append(bulkData.Muts, mut)
 
 		indexes := []string{
 			fmt.Sprintf("%s:I:TX:%x:TO:%x:%s:%s", bigtable.chainId, tx.GetFrom(), to, reversePaddedBigtableTimestamp(blk.GetTime()), iReverse),
@@ -694,13 +775,13 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block) (*types.BulkMutation
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
 
-			bulk.Keys = append(bulk.Keys, idx)
-			bulk.Muts = append(bulk.Muts, mut)
+			bulkData.Keys = append(bulkData.Keys, idx)
+			bulkData.Muts = append(bulkData.Muts, mut)
 		}
 
 	}
 
-	return bulk, nil
+	return bulkData, bulkMetadataUpdates, nil
 }
 
 // TransformItx extracts internal transactions from bigtable more specifically from the table blocks.
@@ -728,18 +809,19 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block) (*types.BulkMutation
 // Family: f
 // Column: <chainID>:ITX:<HASH>:<paddedITXIndex>
 // Cell:   nil
-func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block) (*types.BulkMutations, error) {
-	bulk := &types.BulkMutations{}
+func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	bulkData = &types.BulkMutations{}
+	bulkMetadataUpdates = &types.BulkMutations{}
 
 	for i, tx := range blk.GetTransactions() {
 		if i > 9999 {
-			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
+			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
 		}
 		iReversed := reversePaddedIndex(i, 10000)
 
 		for j, idx := range tx.GetItx() {
 			if j > 999999 {
-				return nil, fmt.Errorf("unexpected number of internal transactions in block expected at most 999999 but got: %v, tx: %x", j, tx.GetHash())
+				return nil, nil, fmt.Errorf("unexpected number of internal transactions in block expected at most 999999 but got: %v, tx: %x", j, tx.GetHash())
 			}
 			jReversed := reversePaddedIndex(j, 100000)
 
@@ -753,17 +835,19 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block) (*types.BulkMutatio
 				To:          idx.GetTo(),
 				Value:       idx.GetValue(),
 			}
+			markBalanceUpdate(indexedItx.To, []byte{0x0}, bulkMetadataUpdates, cache)
+			markBalanceUpdate(indexedItx.From, []byte{0x0}, bulkMetadataUpdates, cache)
 
 			b, err := proto.Marshal(indexedItx)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
 
-			bulk.Keys = append(bulk.Keys, key)
-			bulk.Muts = append(bulk.Muts, mut)
+			bulkData.Keys = append(bulkData.Keys, key)
+			bulkData.Muts = append(bulkData.Muts, mut)
 
 			indexes := []string{
 				// fmt.Sprintf("%s:i:ITX::%s:%s:%s", bigtable.chainId, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%05d", j)),
@@ -777,13 +861,13 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block) (*types.BulkMutatio
 				mut := gcp_bigtable.NewMutation()
 				mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
 
-				bulk.Keys = append(bulk.Keys, idx)
-				bulk.Muts = append(bulk.Muts, mut)
+				bulkData.Keys = append(bulkData.Keys, idx)
+				bulkData.Muts = append(bulkData.Muts, mut)
 			}
 		}
 	}
 
-	return bulk, nil
+	return bulkData, bulkMetadataUpdates, nil
 }
 
 // https://etherscan.io/tx/0xb10588bde42cb8eb14e72d24088bd71ad3903857d23d50b3ba4187c0cb7d3646#eventlog
@@ -831,8 +915,9 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block) (*types.BulkMutatio
 // Family: f
 // Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
 // Cell:   nil
-func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutations, error) {
-	bulk := &types.BulkMutations{}
+func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	bulkData = &types.BulkMutations{}
+	bulkMetadataUpdates = &types.BulkMutations{}
 
 	filterer, err := erc20.NewErc20Filterer(common.Address{}, nil)
 	if err != nil {
@@ -841,12 +926,12 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutat
 
 	for i, tx := range blk.GetTransactions() {
 		if i > 9999 {
-			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
+			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
 		}
 		iReversed := reversePaddedIndex(i, 10000)
 		for j, log := range tx.GetLogs() {
 			if j > 99999 {
-				return nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v tx: %x", j, tx.GetHash())
+				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v tx: %x", j, tx.GetHash())
 			}
 			jReversed := reversePaddedIndex(j, 100000)
 			if len(log.GetTopics()) != 3 || !bytes.Equal(log.GetTopics()[0], erc20.TransferTopic) {
@@ -891,17 +976,19 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutat
 				To:           transfer.To.Bytes(),
 				Value:        value,
 			}
+			markBalanceUpdate(indexedLog.From, indexedLog.TokenAddress, bulkMetadataUpdates, cache)
+			markBalanceUpdate(indexedLog.To, indexedLog.TokenAddress, bulkMetadataUpdates, cache)
 
 			b, err := proto.Marshal(indexedLog)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
 
-			bulk.Keys = append(bulk.Keys, key)
-			bulk.Muts = append(bulk.Muts, mut)
+			bulkData.Keys = append(bulkData.Keys, key)
+			bulkData.Muts = append(bulkData.Muts, mut)
 
 			indexes := []string{
 				fmt.Sprintf("%s:I:ERC20:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
@@ -917,13 +1004,13 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutat
 				mut := gcp_bigtable.NewMutation()
 				mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
 
-				bulk.Keys = append(bulk.Keys, idx)
-				bulk.Muts = append(bulk.Muts, mut)
+				bulkData.Keys = append(bulkData.Keys, idx)
+				bulkData.Muts = append(bulkData.Muts, mut)
 			}
 		}
 	}
 
-	return bulk, nil
+	return bulkData, bulkMetadataUpdates, nil
 }
 
 // example: https://etherscan.io/tx/0x4d3a6c56cecb40637c070601c275df9cc7b599b5dc1d5ac2473c92c7a9e62c64#eventlog
@@ -971,9 +1058,9 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block) (*types.BulkMutat
 // Family: f
 // Column: <chainID>:ERC721:<txHash>:<paddedLogIndex>
 // Cell:   nil
-func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMutations, error) {
-
-	bulk := &types.BulkMutations{}
+func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	bulkData = &types.BulkMutations{}
+	bulkMetadataUpdates = &types.BulkMutations{}
 
 	filterer, err := erc721.NewErc721Filterer(common.Address{}, nil)
 	if err != nil {
@@ -982,12 +1069,12 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 
 	for i, tx := range blk.GetTransactions() {
 		if i > 9999 {
-			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
+			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
 		}
 		iReversed := reversePaddedIndex(i, 10000)
 		for j, log := range tx.GetLogs() {
 			if j > 99999 {
-				return nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v tx: %x", j, tx.GetHash())
+				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v tx: %x", j, tx.GetHash())
 			}
 			if len(log.GetTopics()) != 4 || !bytes.Equal(log.GetTopics()[0], erc721.TransferTopic) {
 				continue
@@ -1022,7 +1109,7 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 				tokenId = transfer.TokenId
 			}
 
-			key := fmt.Sprintf("%s:ERC721:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%05d", jReversed))
+			key := fmt.Sprintf("%s:ERC721:%x:%s", bigtable.chainId, tx.GetHash(), jReversed)
 			indexedLog := &types.Eth1ERC721Indexed{
 				ParentHash:   tx.GetHash(),
 				BlockNumber:  blk.GetNumber(),
@@ -1035,14 +1122,14 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 
 			b, err := proto.Marshal(indexedLog)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
 
-			bulk.Keys = append(bulk.Keys, key)
-			bulk.Muts = append(bulk.Muts, mut)
+			bulkData.Keys = append(bulkData.Keys, key)
+			bulkData.Muts = append(bulkData.Muts, mut)
 
 			indexes := []string{
 				// fmt.Sprintf("%s:I:ERC721:%s:%s:%s", bigtable.chainId, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%05d", j)),
@@ -1059,13 +1146,13 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 				mut := gcp_bigtable.NewMutation()
 				mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
 
-				bulk.Keys = append(bulk.Keys, idx)
-				bulk.Muts = append(bulk.Muts, mut)
+				bulkData.Keys = append(bulkData.Keys, idx)
+				bulkData.Muts = append(bulkData.Muts, mut)
 			}
 		}
 	}
 
-	return bulk, nil
+	return bulkData, bulkMetadataUpdates, nil
 }
 
 // TransformERC1155 accepts an eth1 block and creates bigtable mutations for erc1155 transfer events.
@@ -1113,9 +1200,9 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block) (*types.BulkMuta
 // Family: f
 // Column: <chainID>:ERC1155:<txHash>:<paddedLogIndex>
 // Cell:   nil
-func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMutations, error) {
-
-	bulk := &types.BulkMutations{}
+func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	bulkData = &types.BulkMutations{}
+	bulkMetadataUpdates = &types.BulkMutations{}
 
 	filterer, err := erc1155.NewErc1155Filterer(common.Address{}, nil)
 	if err != nil {
@@ -1124,16 +1211,16 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 
 	for i, tx := range blk.GetTransactions() {
 		if i > 9999 {
-			return nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
+			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
 		}
 		iReversed := reversePaddedIndex(i, 10000)
 		for j, log := range tx.GetLogs() {
 			if j > 99999 {
-				return nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v tx: %x", j, tx.GetHash())
+				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v tx: %x", j, tx.GetHash())
 			}
 			jReversed := reversePaddedIndex(j, 100000)
 
-			key := fmt.Sprintf("%s:ERC1155:%x:%s", bigtable.chainId, tx.GetHash(), fmt.Sprintf("%05d", jReversed))
+			key := fmt.Sprintf("%s:ERC1155:%x:%s", bigtable.chainId, tx.GetHash(), jReversed)
 
 			// no events emitted continue
 			if len(log.GetTopics()) != 4 || (!bytes.Equal(log.GetTopics()[0], erc1155.TransferBulkTopic) && !bytes.Equal(log.GetTopics()[0], erc1155.TransferSingleTopic)) {
@@ -1206,14 +1293,14 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 
 			b, err := proto.Marshal(indexedLog)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
 
-			bulk.Keys = append(bulk.Keys, key)
-			bulk.Muts = append(bulk.Muts, mut)
+			bulkData.Keys = append(bulkData.Keys, key)
+			bulkData.Muts = append(bulkData.Muts, mut)
 
 			indexes := []string{
 				// fmt.Sprintf("%s:I:ERC1155:%s:%s:%s", bigtable.chainId, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
@@ -1230,13 +1317,13 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 				mut := gcp_bigtable.NewMutation()
 				mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
 
-				bulk.Keys = append(bulk.Keys, idx)
-				bulk.Muts = append(bulk.Muts, mut)
+				bulkData.Keys = append(bulkData.Keys, idx)
+				bulkData.Muts = append(bulkData.Muts, mut)
 			}
 		}
 	}
 
-	return bulk, nil
+	return bulkData, bulkMetadataUpdates, nil
 }
 
 // TransformUncle accepts an eth1 block and creates bigtable mutations.
@@ -1255,12 +1342,13 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block) (*types.BulkMut
 // Column: <chainID>:U:<reversePaddedNumber>
 // Cell:   nil
 // Example lookup: "1:I:U:ea674fdde714fd979de3edf0f56aa9716b898ec8:TIME:" returns mainnet uncles mined by ethermine in desc order
-func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block) (*types.BulkMutations, error) {
-	bulk := &types.BulkMutations{}
+func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	bulkData = &types.BulkMutations{}
+	bulkMetadataUpdates = &types.BulkMutations{}
 
 	for i, uncle := range block.Uncles {
 		if i > 99 {
-			return nil, fmt.Errorf("unexpected number of uncles in block expected at most 99 but got: %v", i)
+			return nil, nil, fmt.Errorf("unexpected number of uncles in block expected at most 99 but got: %v", i)
 		}
 		iReversed := reversePaddedIndex(i, 10)
 		r := new(big.Int)
@@ -1288,13 +1376,13 @@ func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block) (*types.BulkMut
 
 		b, err := proto.Marshal(&uncleIndexed)
 		if err != nil {
-			return nil, fmt.Errorf("error marshalling proto object err: %w", err)
+			return nil, nil, fmt.Errorf("error marshalling proto object err: %w", err)
 		}
 
 		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
 
-		bulk.Keys = append(bulk.Keys, key)
-		bulk.Muts = append(bulk.Muts, mut)
+		bulkData.Keys = append(bulkData.Keys, key)
+		bulkData.Muts = append(bulkData.Muts, mut)
 
 		indexes := []string{
 			// Index uncle by the miners address
@@ -1305,12 +1393,12 @@ func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block) (*types.BulkMut
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
 
-			bulk.Keys = append(bulk.Keys, idx)
-			bulk.Muts = append(bulk.Muts, mut)
+			bulkData.Keys = append(bulkData.Keys, idx)
+			bulkData.Muts = append(bulkData.Muts, mut)
 		}
 	}
 
-	return bulk, nil
+	return bulkData, bulkMetadataUpdates, nil
 }
 
 func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*types.Eth1TransactionIndexed, string, error) {
@@ -1918,4 +2006,17 @@ func prefixSuccessor(prefix string, pos int) string {
 	ans := []byte(prefix[:n])
 	ans = append(ans, prefix[n]+1)
 	return string(ans)
+}
+
+func markBalanceUpdate(address []byte, token []byte, mutations *types.BulkMutations, cache *ccache.Cache) {
+	balanceUpdateKey := fmt.Sprintf("B:%x:%x", address, token) // format is B: for balance update as prefix + address + token id (0x0 = native ETH token)
+	if cache.Get(balanceUpdateKey) == nil {
+		mut := gcp_bigtable.NewMutation()
+		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), []byte{})
+
+		mutations.Keys = append(mutations.Keys, balanceUpdateKey)
+		mutations.Muts = append(mutations.Muts, mut)
+
+		cache.Set(balanceUpdateKey, true, time.Hour*48)
+	}
 }

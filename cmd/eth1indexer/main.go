@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"cloud.google.com/go/bigtable"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/karlseguin/ccache/v2"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -29,6 +29,12 @@ func main() {
 	}
 	defer bt.Close()
 
+	// err = bt.CheckForGapsInDataTable()
+	// if err != nil {
+	// 	logrus.Fatal(err)
+	// }
+
+	// return
 	// bt.DeleteRowsWithPrefix("1:b:")
 	// return
 
@@ -38,7 +44,7 @@ func main() {
 		return
 	}
 
-	transforms := make([]func(blk *types.Eth1Block) (*types.BulkMutations, error), 0)
+	transforms := make([]func(blk *types.Eth1Block, cache *ccache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
 	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
 	// transforms = append(transforms, bt.TransformTx)
 
@@ -102,7 +108,7 @@ func IndexFromNode(bt *db.Bigtable, erigonEndpoint *string, start, end *int64) {
 	}
 }
 
-func IndexBlocksFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk []*types.Eth1Block) (*types.BulkMutations, error)) error {
+func IndexBlocksFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk []*types.Eth1Block) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error)) error {
 	g := new(errgroup.Group)
 	g.SetLimit(20)
 
@@ -118,29 +124,44 @@ func IndexBlocksFromBigtable(bt *db.Bigtable, start, end *int64, transforms []fu
 
 			blocks := make([]*types.Eth1Block, 2)
 
-			blocks[0], err = bt.GetBlock(uint64(i))
+			blocks[0], err = bt.GetBlockFromBlocksTable(uint64(i))
 			if err != nil {
 				return err
 			}
 
-			blocks[1], err = bt.GetBlock(uint64(i - 1))
+			blocks[1], err = bt.GetBlockFromBlocksTable(uint64(i - 1))
 			if err != nil {
 				return err
 			}
 
-			bulkMuts := types.BulkMutations{}
+			bulkMutsData := types.BulkMutations{}
+			bulkMutsMetadataUpdate := types.BulkMutations{}
 			for _, transform := range transforms {
-				muts, err := transform(blocks)
+				mutsData, mutsMetadataUpdate, err := transform(blocks)
 				if err != nil {
 					logrus.WithError(err).Error("error transforming block")
 				}
-				bulkMuts.Keys = append(bulkMuts.Keys, muts.Keys...)
-				bulkMuts.Muts = append(bulkMuts.Muts, muts.Muts...)
+				bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
+				bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
+
+				if mutsMetadataUpdate != nil {
+					bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, mutsMetadataUpdate.Keys...)
+					bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mutsMetadataUpdate.Muts...)
+				}
 			}
 
-			err = bt.WriteBulk(&bulkMuts)
-			if err != nil {
-				return fmt.Errorf("error writing to bigtable err: %w", err)
+			if len(bulkMutsData.Keys) > 0 {
+				err = bt.WriteBulk(&bulkMutsData, bt.GetDataTable())
+				if err != nil {
+					return fmt.Errorf("error writing to bigtable data table: %w", err)
+				}
+			}
+
+			if len(bulkMutsMetadataUpdate.Keys) > 0 {
+				err = bt.WriteBulk(&bulkMutsMetadataUpdate, bt.GetMetadataUpdatesTable())
+				if err != nil {
+					return fmt.Errorf("error writing to bigtable metadata updates table: %w", err)
+				}
 			}
 
 			current := atomic.AddInt64(&processedBlocks, 1)
@@ -163,7 +184,7 @@ func IndexBlocksFromBigtable(bt *db.Bigtable, start, end *int64, transforms []fu
 	return nil
 }
 
-func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk *types.Eth1Block) (*types.BulkMutations, error)) error {
+func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error)) error {
 	g := new(errgroup.Group)
 	g.SetLimit(10)
 
@@ -171,33 +192,47 @@ func IndexFromBigtable(bt *db.Bigtable, start, end *int64, transforms []func(blk
 	lastTickTs := time.Now()
 
 	processedBlocks := int64(0)
+
+	cache := ccache.New(ccache.Configure().MaxSize(1000000).ItemsToPrune(500))
+
 	logrus.Infof("fetching blocks from %d to %d", *end, *start)
 	for i := *end; i >= *start; i-- {
 		i := i
 		g.Go(func() error {
 
-			block, err := bt.GetBlock(uint64(i))
+			block, err := bt.GetBlockFromBlocksTable(uint64(i))
 			if err != nil {
 				return err
 			}
 
-			bulkMuts := types.BulkMutations{
-				Keys: make([]string, 0),
-				Muts: make([]*bigtable.Mutation, 0),
-			}
+			bulkMutsData := types.BulkMutations{}
+			bulkMutsMetadataUpdate := types.BulkMutations{}
 			for _, transform := range transforms {
-				muts, err := transform(block)
+				mutsData, mutsMetadataUpdate, err := transform(block, cache)
 				if err != nil {
 					logrus.WithError(err).Error("error transforming block")
 				}
-				bulkMuts.Keys = append(bulkMuts.Keys, muts.Keys...)
-				bulkMuts.Muts = append(bulkMuts.Muts, muts.Muts...)
+				bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
+				bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
+
+				if mutsMetadataUpdate != nil {
+					bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, mutsMetadataUpdate.Keys...)
+					bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mutsMetadataUpdate.Muts...)
+				}
 			}
-			// logrus.Infof("writing: %v", len(bulkMuts.Keys))
-			err = bt.WriteBulk(&bulkMuts)
-			if err != nil {
-				logrus.Error(err)
-				return fmt.Errorf("error writing to bigtable err: %w", err)
+
+			if len(bulkMutsData.Keys) > 0 {
+				err = bt.WriteBulk(&bulkMutsData, bt.GetDataTable())
+				if err != nil {
+					return fmt.Errorf("error writing to bigtable data table: %w", err)
+				}
+			}
+
+			if len(bulkMutsMetadataUpdate.Keys) > 0 {
+				err = bt.WriteBulk(&bulkMutsMetadataUpdate, bt.GetMetadataUpdatesTable())
+				if err != nil {
+					return fmt.Errorf("error writing to bigtable metadata updates table: %w", err)
+				}
 			}
 
 			current := atomic.AddInt64(&processedBlocks, 1)
