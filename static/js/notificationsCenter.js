@@ -493,12 +493,9 @@ function loadValidatorsData(data) {
     data: data,
     drawCallback: function (settings) {
       $('[data-toggle="tooltip"]').tooltip()
-    },
-    initComplete: function (settings, json) {
-      $("body").find(".dataTables_scrollBody").addClass("scrollbar")
 
-      // click event to validators table edit button
-      $("#validators-notifications #edit-validator-events").on("click", function (e) {
+       // click event to validators table edit button
+       $("#validators-notifications #edit-validator-events").on("click", function (e) {
         let row = $(this).parent().parent().parent()
         $("#ManageNotificationModal").attr("rowId", "")
         $("#ManageNotificationModal").attr("subscriptions", "")
@@ -515,6 +512,9 @@ function loadValidatorsData(data) {
         $("#confirmRemoveModal").attr("rowId", rowId)
         $("#confirmRemoveModal").attr("tablename", "validators")
       })
+    },
+    initComplete: function (settings, json) {
+      $("body").find(".dataTables_scrollBody").addClass("scrollbar")
     },
     columnDefs: [
       {
@@ -749,7 +749,7 @@ $(function () {
   loadValidatorsData(DATA)
   loadMonitoringData(MONITORING)
 
-  if (typeof NET !== "undefined" && NET.Events_ts) {
+  if (typeof NET !== "undefined" && NET && NET.Events_ts) {
     loadNetworkData(NET.Events_ts)
   }
 
@@ -860,9 +860,10 @@ $(function () {
       })
 
     let rowID = $(this).attr("rowid")
+    // console.log('row id: ', rowID)
     if (rowID) {
-      let inputs = document.querySelectorAll('#ManageNotificationModal input[type="checkbox"]')
-      let activeCount = 0
+      // let inputs = document.querySelectorAll('#ManageNotificationModal input[type="checkbox"]')
+      // let activeCount = 0
       let subscriptions = $(this).attr("subscriptions")
       document.getElementById("ManageNotificationModal-validators").value = rowID
       if (subscriptions) {
@@ -870,13 +871,13 @@ $(function () {
         for (let i = 0; i < subscriptions.length; i++) {
           let sub = subscriptions[i]
           $("#watchlist-selected-" + sub).prop("checked", true)
-          activeCount += 1
+          // activeCount += 1
         }
       }
 
-      if (activeCount == inputs.length - 1) {
-        $("#ManageNotificationModal-all").prop("checked", true)
-      }
+      // if (activeCount == inputs.length - 1) {
+      //   $("#ManageNotificationModal-all").prop("checked", true)
+      // }
     } else {
       let rowsSelected = $("#validators-notifications").DataTable().rows(".selected").data()
       if (rowsSelected && rowsSelected.length) {
