@@ -18,7 +18,7 @@ func latestBlockUpdater() {
 	firstRun := true
 
 	for {
-		recent, err := db.BigtableClient.GetMostRecentBlock()
+		recent, err := db.BigtableClient.GetMostRecentBlockFromDataTable()
 		if err != nil {
 			logger.WithError(err).Error("error getting most recent eth1 block")
 		}
