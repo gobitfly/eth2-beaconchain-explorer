@@ -599,57 +599,7 @@ func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block) (*types.BulkMut
 func CalculateMevFromBlock(block *types.Eth1Block) *big.Int {
 	mevReward := big.NewInt(0)
 
-	for i, tx := range block.GetTransactions() {
-
-		if strings.ToLower(fmt.Sprintf("0x%x", tx.GetFrom())) == "0xf6da21e95d74767009accb145b96897ac3630bad" {
-			if strings.ToLower(fmt.Sprintf("0x%x", tx.GetTo())) == "0x0e09142e36e6dc1d2bb339e02b95bb624f0673c2" || strings.ToLower(fmt.Sprintf("0x%x", tx.GetTo())) == "0xd78a3280085ee846196cb5fab7d510b279486d44" { // ethermine mev arb contract
-				for j, l := range tx.GetLogs() {
-					if common.BytesToAddress(l.Address) != common.HexToAddress("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2") {
-						continue
-					}
-					if fmt.Sprintf("0x%x", l.Topics[0]) == "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef" {
-						filterer, err := erc20.NewErc20Filterer(common.Address{}, nil)
-						if err != nil {
-							log.Printf("error unpacking log: %v", err)
-							break
-						}
-
-						topics := make([]common.Hash, 0, len(l.GetTopics()))
-
-						for _, lTopic := range l.GetTopics() {
-							topics = append(topics, common.BytesToHash(lTopic))
-						}
-
-						log := eth_types.Log{
-							Address:     common.BytesToAddress(l.Address),
-							Data:        l.Data,
-							Topics:      topics,
-							BlockNumber: block.GetNumber(),
-							TxHash:      common.BytesToHash(tx.GetHash()),
-							TxIndex:     uint(i),
-							BlockHash:   common.BytesToHash(block.GetHash()),
-							Index:       uint(j),
-							Removed:     l.GetRemoved(),
-						}
-
-						t, err := filterer.ParseTransfer(log)
-						if err != nil {
-							logrus.Infof("error unpacking log: %v", err)
-							break
-						}
-						if t.From == common.HexToAddress("0xf6da21e95d74767009accb145b96897ac3630bad") {
-							logrus.Infof("tx %v subtracting %v to mev profit via mempool arb", tx.Hash, t.Value)
-							mevReward = new(big.Int).Sub(mevReward, t.Value)
-						}
-						if t.To == common.HexToAddress("0xf6da21e95d74767009accb145b96897ac3630bad") {
-							logrus.Infof("tx %v adding %v to mev profit via mempool arb", tx.Hash, t.Value)
-							mevReward = new(big.Int).Add(mevReward, t.Value)
-						}
-					}
-				}
-			}
-		}
-
+	for _, tx := range block.GetTransactions() {
 		for _, itx := range tx.GetItx() {
 			//log.Printf("%v - %v", common.HexToAddress(itx.To), common.HexToAddress(block.Miner))
 			if common.BytesToAddress(itx.To) == common.BytesToAddress(block.GetCoinbase()) {
