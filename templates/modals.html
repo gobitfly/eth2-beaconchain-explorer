@@ -142,13 +142,6 @@
                   </div>
                 </div>
               {{ end }}
-              <hr class="my-3" />
-              <div class="input-group my-1">
-                <div class="form-check form-check-inline w-100 my-2" id="manage_all_events">
-                  <label for="ManageNotificationModal-all" class="form-check-label mr-auto font-weight-normal">All events</label>
-                  <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="ManageNotificationModal-all" name="all" />
-                </div>
-              </div>
             </div>
           </div>
           <div class="col-sm-12 d-flex align-items-center justify-content-between mt-auto mt-sm-1 px-0">
@@ -159,15 +152,6 @@
       </div>
     </div>
   </div>
-  <script>
-    document.getElementById("ManageNotificationModal-all").addEventListener("change", function (event) {
-      document.querySelectorAll('#ManageNotificationModal input[type="checkbox"]').forEach((el) => {
-        if (el.checked !== event.target.checked) {
-          el.checked = event.target.checked
-        }
-      })
-    })
-  </script>
 {{ end }}
 
 {{ define "NetworkEventModal" }}

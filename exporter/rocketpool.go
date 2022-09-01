@@ -66,9 +66,6 @@ var legacyClaimNodeAddress = map[string]string{
 	"ropsten": "0xA55F65219d7254DFde4021E4f534a7a55750C4a1",
 }
 
-func RocketpoolExporter2() {
-	rocketpoolExporter()
-}
 func rocketpoolExporter() {
 	var err error
 	rpEth1RPRCClient, err = gethRPC.Dial(utils.Config.Indexer.Eth1Endpoint)
