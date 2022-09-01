@@ -128,17 +128,17 @@ func WriteStatisticsForDay(day uint64) error {
 	if err != nil {
 		return err
 	}
-	syncStatsArr := make([]*types.ValidatorSyncDutiesStatistic, 0, len(ma))
+	syncStatsArr := make([]*types.ValidatorSyncDutiesStatistic, 0, len(syncStats))
 	for _, stat := range syncStats {
 		syncStatsArr = append(syncStatsArr, stat)
 	}
 
 	batchSize = 13000 // max parameters: 65535
-	for b := 0; b < len(maArr); b += batchSize {
+	for b := 0; b < len(syncStatsArr); b += batchSize {
 		start := b
 		end := b + batchSize
-		if len(maArr) < end {
-			end = len(maArr)
+		if len(syncStatsArr) < end {
+			end = len(syncStatsArr)
 		}
 
 		numArgs := 5
