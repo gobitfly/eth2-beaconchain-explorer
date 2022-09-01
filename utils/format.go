@@ -890,5 +890,5 @@ func FormatBlockReward(blockNumber int64) template.HTML {
 		reward = big.NewInt(2e+18)
 	}
 
-	return FormatAmount(float64(reward.Int64()), "ETH", 5)
+	return FormatAmount(reward, "ETH", 5)
 }

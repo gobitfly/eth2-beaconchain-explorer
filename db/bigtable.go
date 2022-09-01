@@ -1539,6 +1539,8 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address string, search
 				method = "Transfer*"
 			}
 		}
+		// logger.Infof("hash: %x amount: %s", t.Hash, new(big.Int).SetBytes(t.Value))
+
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.Hash),
 			utils.FormatMethod(method),
@@ -1546,7 +1548,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address string, search
 			utils.FormatBlockNumber(t.BlockNumber),
 			from,
 			to,
-			utils.FormatAmount(float64(new(big.Int).SetBytes(t.Value).Int64()), "ETH", 6),
+			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "ETH", 6),
 		}
 	}
 
@@ -1629,7 +1631,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address string, search str
 			utils.FormatTimeFromNow(t.Time.AsTime()),
 			from,
 			to,
-			utils.FormatAmount(float64(new(big.Int).SetBytes(t.Value).Int64()), "ETH", 6),
+			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "ETH", 6),
 			t.Type,
 		}
 	}
@@ -1668,7 +1670,7 @@ func (bigtable *Bigtable) GetAddressInternalTransactionsTableData(address string
 			utils.FormatTimeFromNow(t.Time.AsTime()),
 			from,
 			to,
-			utils.FormatAmount(float64(new(big.Int).SetBytes(t.Value).Int64()), "ETH", 6),
+			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "ETH", 6),
 			t.Type,
 		}
 	}

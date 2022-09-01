@@ -105,18 +105,19 @@ func FormatAddressLong(address string) template.HTML {
 
 }
 
-func FormatAmount(amount float64, unit string, digits int) template.HTML {
+func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
 	// cssClass := "badge-success"
+	amountF := new(big.Float).SetInt(amount)
 	displayUnit := "Ether"
 	if unit == "ETH" {
-		amount = amount / 1e18
+		amountF.Quo(amountF, big.NewFloat(1e18))
 	} else if unit == "GWei" {
 		displayUnit = "GWei"
-		amount = amount / 1e9
+		amountF.Quo(amountF, big.NewFloat(1e9))
 		// cssClass = "badge-info"
 	}
 
-	return template.HTML(fmt.Sprintf("<span>%."+strconv.Itoa(digits)+"f %s</span>", amount, displayUnit))
+	return template.HTML(fmt.Sprintf("<span>%."+strconv.Itoa(digits)+"f %s</span>", amountF, displayUnit))
 }
 
 func FormatMethod(method string) template.HTML {
