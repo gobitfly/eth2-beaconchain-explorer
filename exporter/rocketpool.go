@@ -1,7 +1,6 @@
 package exporter
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -67,6 +66,9 @@ var legacyClaimNodeAddress = map[string]string{
 	"ropsten": "0xA55F65219d7254DFde4021E4f534a7a55750C4a1",
 }
 
+func RocketpoolExporter2() {
+	rocketpoolExporter()
+}
 func rocketpoolExporter() {
 	var err error
 	rpEth1RPRCClient, err = gethRPC.Dial(utils.Config.Indexer.Eth1Endpoint)
@@ -96,17 +98,24 @@ type RocketpoolNetworkStats struct {
 }
 
 type RocketpoolExporter struct {
-	Eth1Client          *ethclient.Client
-	API                 *rocketpool.RocketPool
-	DB                  *sqlx.DB
-	UpdateInterval      time.Duration
-	MinipoolsByAddress  map[string]*RocketpoolMinipool
-	NodesByAddress      map[string]*RocketpoolNode
-	DAOProposalsByID    map[uint64]*RocketpoolDAOProposal
-	DAOMembersByAddress map[string]*RocketpoolDAOMember
-	NodeRPLCumulative   map[string]*big.Int
-	NetworkStats        RocketpoolNetworkStats
-	LastRewardTree      uint64
+	Eth1Client                         *ethclient.Client
+	API                                *rocketpool.RocketPool
+	DB                                 *sqlx.DB
+	UpdateInterval                     time.Duration
+	MinipoolsByAddress                 map[string]*RocketpoolMinipool
+	NodesByAddress                     map[string]*RocketpoolNode
+	DAOProposalsByID                   map[uint64]*RocketpoolDAOProposal
+	DAOMembersByAddress                map[string]*RocketpoolDAOMember
+	NodeRPLCumulative                  map[string]*big.Int
+	NetworkStats                       RocketpoolNetworkStats
+	LastRewardTree                     uint64
+	RocketpoolRewardTreesDownloadQueue []RocketpoolRewardTreeDownloadable
+	RocketpoolRewardTreeData           map[uint64]RewardsFile
+}
+
+type RocketpoolRewardTreeDownloadable struct {
+	ID   uint64
+	Data []byte
 }
 
 func NewRocketpoolExporter(eth1Client *ethclient.Client, storageContractAddressHex string, db *sqlx.DB) (*RocketpoolExporter, error) {
@@ -124,6 +133,8 @@ func NewRocketpoolExporter(eth1Client *ethclient.Client, storageContractAddressH
 	rpe.DAOProposalsByID = map[uint64]*RocketpoolDAOProposal{}
 	rpe.DAOMembersByAddress = map[string]*RocketpoolDAOMember{}
 	rpe.LastRewardTree = 0
+	rpe.RocketpoolRewardTreesDownloadQueue = []RocketpoolRewardTreeDownloadable{}
+	rpe.RocketpoolRewardTreeData = map[uint64]RewardsFile{}
 	return rpe, nil
 }
 
@@ -201,6 +212,23 @@ func (rp *RocketpoolExporter) Run() error {
 	t := time.NewTicker(rp.UpdateInterval)
 	defer t.Stop()
 	var count int64 = 0
+
+	isMergeUpdateDeployed, err := IsMergeUpdateDeployed(rp.API)
+	if err != nil {
+		logger.WithError(err).Errorf("error retrieving rocketpool redstone deploy status")
+		return err
+	}
+
+	if isMergeUpdateDeployed {
+		rp.RocketpoolRewardTreeData, err = rp.getRocketpoolRewardTrees()
+		if err != nil {
+			logger.WithError(err).Errorf("error retrieving known rocketpool reward tree data from db")
+			return err
+		}
+	}
+
+	logger.Infof("rocketpool exporter initialized")
+
 	for {
 		t0 := time.Now()
 		var err error
@@ -349,12 +377,6 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 		return nil
 	}
 
-	var dbIntervals []uint64
-	err = db.WriterDb.Select(&dbIntervals, `SELECT id FROM rocketpool_reward_tree `)
-	if err != nil && err != sql.ErrNoRows {
-		return err
-	}
-
 	missingIntervals := []rewards.RewardsEvent{}
 	for interval := rp.LastRewardTree; ; interval++ {
 		var event rewards.RewardsEvent
@@ -392,7 +414,8 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 
 		}
 
-		if !contains(dbIntervals, event.Index.Uint64()) {
+		_, exists := rp.RocketpoolRewardTreeData[event.Index.Uint64()]
+		if !exists {
 			missingIntervals = append(missingIntervals, event)
 		}
 
@@ -402,14 +425,11 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 		return nil
 	}
 
-	tx, err := db.WriterDb.Beginx()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	for _, missingInterval := range missingIntervals {
-		logrus.Infof("Downloading interval %d file... ", missingInterval.Index)
+		if contains(rp.RocketpoolRewardTreesDownloadQueue, missingInterval.Index.Uint64()) {
+			continue
+		}
+
 		bytes, err := DownloadRewardsFile(fmt.Sprintf("rp-rewards-prater-%v.json", missingInterval.Index), missingInterval.Index.Uint64(), missingInterval.MerkleTreeCID, true)
 		if err != nil {
 			return fmt.Errorf("can not download reward file %v. Error %v", missingInterval.Index, err)
@@ -422,25 +442,24 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 			return fmt.Errorf("invalid merkle root value : %w", err)
 		}
 
-		_, err = tx.Exec(`INSERT INTO rocketpool_reward_tree (id, data) VALUES($1, $2)`, missingInterval.Index.Uint64(), bytes)
-		if err != nil {
-			return fmt.Errorf("can not store reward file %v. Error %v", missingInterval.Index, err)
-		}
-		logrus.Infof("Downloaded rocketpool rewards tree %v", missingInterval.Index)
+		rp.RocketpoolRewardTreesDownloadQueue = append(rp.RocketpoolRewardTreesDownloadQueue, RocketpoolRewardTreeDownloadable{
+			ID:   missingInterval.Index.Uint64(),
+			Data: bytes,
+		})
+
+		logrus.Infof("Downloaded rocketpool reward tree %v", missingInterval.Index)
 
 		if missingInterval.Index.Uint64() > rp.LastRewardTree {
 			rp.LastRewardTree = missingInterval.Index.Uint64()
 		}
 	}
 
-	tx.Commit()
-
 	return nil
 }
 
-func contains(s []uint64, e uint64) bool {
+func contains(s []RocketpoolRewardTreeDownloadable, e uint64) bool {
 	for _, a := range s {
-		if a == e {
+		if a.ID == e {
 			return true
 		}
 	}
@@ -495,6 +514,10 @@ func (rp *RocketpoolExporter) Save(count int64) error {
 			return err
 		}
 	}
+	err = rp.SaveRewardTrees()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -538,19 +561,6 @@ func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 		return err
 	}
 
-	isMergeUpdateDeployed, err := IsMergeUpdateDeployed(rp.API)
-	if err != nil {
-		return err
-	}
-
-	var allRocketpoolRewardTrees map[uint64]RewardsFile = nil
-	if isMergeUpdateDeployed {
-		allRocketpoolRewardTrees, err = getRocketpoolRewardTrees(rp.API)
-		if err != nil {
-			return err
-		}
-	}
-
 	if includeCumulativeRpl {
 		legacyRewardsPool := common.HexToAddress(legacyRewardsPoolAddress[utils.Config.Chain.Name])
 		legacyClaimNode := common.HexToAddress(legacyClaimNodeAddress[utils.Config.Chain.Name])
@@ -568,13 +578,13 @@ func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 	for _, a := range nodeAddresses {
 		addrHex := a.Hex()
 		if node, exists := rp.NodesByAddress[addrHex]; exists {
-			err = node.Update(rp.API, allRocketpoolRewardTrees, includeCumulativeRpl, rp.NodeRPLCumulative)
+			err = node.Update(rp.API, rp.RocketpoolRewardTreeData, includeCumulativeRpl, rp.NodeRPLCumulative)
 			if err != nil {
 				return err
 			}
 			continue
 		}
-		node, err := NewRocketpoolNode(rp.API, a.Bytes(), allRocketpoolRewardTrees, rp.NodeRPLCumulative)
+		node, err := NewRocketpoolNode(rp.API, a.Bytes(), rp.RocketpoolRewardTreeData, rp.NodeRPLCumulative)
 		if err != nil {
 			return err
 		}
@@ -584,7 +594,7 @@ func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 	return nil
 }
 
-func getRocketpoolRewardTrees(rp *rocketpool.RocketPool) (map[uint64]RewardsFile, error) {
+func (rp *RocketpoolExporter) getRocketpoolRewardTrees() (map[uint64]RewardsFile, error) {
 	var allRewards map[uint64]RewardsFile = map[uint64]RewardsFile{}
 
 	type Data struct {
@@ -593,7 +603,7 @@ func getRocketpoolRewardTrees(rp *rocketpool.RocketPool) (map[uint64]RewardsFile
 	}
 
 	var jsonData []Data
-	err := db.ReaderDb.Select(&jsonData, `SELECT id, data FROM rocketpool_reward_tree`)
+	err := rp.DB.Select(&jsonData, `SELECT id, data FROM rocketpool_reward_tree`)
 	if err != nil {
 		return allRewards, fmt.Errorf("Can not load claimedInterval tree from database, is it exported? %v", err)
 	}
@@ -927,6 +937,46 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 	}
 
 	return tx.Commit()
+}
+
+func (rp *RocketpoolExporter) SaveRewardTrees() error {
+	if len(rp.RocketpoolRewardTreesDownloadQueue) == 0 {
+		return nil
+	}
+
+	t0 := time.Now()
+	defer func(t0 time.Time) {
+		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Debugf("saved rocketpool reward trees")
+	}(t0)
+
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for _, rewardTree := range rp.RocketpoolRewardTreesDownloadQueue {
+		_, err = tx.Exec(`INSERT INTO rocketpool_reward_tree (id, data) VALUES($1, $2) ON CONFLICT DO NOTHING`, rewardTree.ID, rewardTree.Data)
+		if err != nil {
+			return fmt.Errorf("can not store reward file %v. Error %v", rewardTree.ID, err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	rp.RocketpoolRewardTreeData, err = rp.getRocketpoolRewardTrees()
+	if err != nil {
+		return err
+	}
+	// Delete download queue after refreshing the trees from db in case
+	// refreshing throws an error so we try again in the next iteration
+	// and always have an up to date tree
+	rp.RocketpoolRewardTreesDownloadQueue = []RocketpoolRewardTreeDownloadable{}
+
+	return nil
 }
 
 func (rp *RocketpoolExporter) SaveDAOProposals() error {
@@ -1332,7 +1382,7 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[ui
 		return err
 	}
 
-	if rewardTrees != nil {
+	if len(rewardTrees) > 0 {
 		nodeAddress := common.BytesToAddress(this.Address)
 
 		this.SmoothingPoolOptedIn, err = node.GetSmoothingPoolRegistrationState(rp, nodeAddress, nil)
