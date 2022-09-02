@@ -6,9 +6,12 @@ import (
 	"eth2-exporter/types"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -25,6 +28,8 @@ type ErigonClient struct {
 	endpoint  string
 	rpcClient *geth_rpc.Client
 	ethClient *ethclient.Client
+
+	multiChecker *Balance
 }
 
 func NewErigonClient(endpoint string) (*ErigonClient, error) {
@@ -43,6 +48,11 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 		return nil, fmt.Errorf("error dialing rpc node: %v", err)
 	}
 	client.ethClient = ethClient
+
+	client.multiChecker, err = NewBalance(common.HexToAddress("0xb1F8e55c7f64D203C1400B9D8555d050F94aDF39"), client.ethClient)
+	if err != nil {
+		return nil, fmt.Errorf("error initiation balance checker contract: %v", err)
+	}
 
 	return client, nil
 }
@@ -348,6 +358,87 @@ func (client *ErigonClient) TraceParity(blockNumber uint64) ([]*ParityTraceResul
 	return res, nil
 }
 
+func (client *ErigonClient) GetBalances(pairs []string) ([][]byte, error) {
+	batchElements := make([]rpc.BatchElem, 0, len(pairs))
+
+	for _, pair := range pairs {
+		s := strings.Split(pair, ":")
+
+		if len(s) != 3 {
+			logrus.Fatalf("%v has an invalid format", pair)
+		}
+
+		if s[0] != "B" {
+			logrus.Fatalf("%v has invalid balance update prefix", pair)
+		}
+
+		address := s[1]
+		token := s[2]
+		result := ""
+		if token == "00" {
+			batchElements = append(batchElements, rpc.BatchElem{
+				Method: "eth_getBalance",
+				Args:   []interface{}{common.HexToAddress(address), "latest"},
+				Result: &result,
+			})
+		} else {
+			to := common.HexToAddress(token)
+			msg := ethereum.CallMsg{
+				To:   &to,
+				Gas:  1000000,
+				Data: common.Hex2Bytes("70a08231000000000000000000000000" + address),
+			}
+
+			batchElements = append(batchElements, rpc.BatchElem{
+				Method: "eth_call",
+				Args:   []interface{}{toCallArg(msg), "latest"},
+				Result: &result,
+			})
+		}
+	}
+
+	err := client.rpcClient.BatchCall(batchElements)
+
+	ret := make([][]byte, len(pairs))
+	if err != nil {
+		return nil, fmt.Errorf("error during batch request: %v", err)
+	}
+
+	for i, el := range batchElements {
+		if el.Error != nil {
+			logrus.Errorf("error in batch call: %v", el.Error)
+		}
+
+		res := strings.TrimPrefix(*el.Result.(*string), "0x")
+		ret[i] = new(big.Int).SetBytes(common.Hex2Bytes(res)).Bytes()
+	}
+
+	return ret, nil
+}
+
+func (client *ErigonClient) GetBalancesForAddresse(address string, tokenStr []string) ([][]byte, error) {
+	opts := &bind.CallOpts{
+		BlockNumber: nil,
+	}
+
+	tokens := make([]common.Address, 0, len(tokenStr))
+
+	for _, token := range tokenStr {
+		tokens = append(tokens, common.HexToAddress(token))
+	}
+	balancesInt, err := client.multiChecker.Balances(opts, []common.Address{common.HexToAddress(address)}, tokens)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([][]byte, len(tokenStr))
+	for tokenIdx := range tokens {
+		res[tokenIdx] = balancesInt[tokenIdx].Bytes()
+	}
+
+	return res, nil
+}
+
 func (client *ErigonClient) GetNativeBalance(address string) ([]byte, error) {
 	balance, err := client.ethClient.BalanceAt(context.Background(), common.HexToAddress(address), nil)
 
@@ -355,4 +446,38 @@ func (client *ErigonClient) GetNativeBalance(address string) ([]byte, error) {
 		return nil, err
 	}
 	return balance.Bytes(), nil
+}
+
+func (client *ErigonClient) GetERC20TokenBalance(address string, token string) ([]byte, error) {
+	to := common.HexToAddress(token)
+	balance, err := client.ethClient.CallContract(context.Background(), ethereum.CallMsg{
+		To:   &to,
+		Gas:  1000000,
+		Data: common.Hex2Bytes("70a08231000000000000000000000000" + address),
+	}, nil)
+
+	if err != nil && !strings.HasPrefix(err.Error(), "execution reverted") {
+		return nil, err
+	}
+	return balance, nil
+}
+
+func toCallArg(msg ethereum.CallMsg) interface{} {
+	arg := map[string]interface{}{
+		"from": msg.From,
+		"to":   msg.To,
+	}
+	if len(msg.Data) > 0 {
+		arg["data"] = hexutil.Bytes(msg.Data)
+	}
+	if msg.Value != nil {
+		arg["value"] = (*hexutil.Big)(msg.Value)
+	}
+	if msg.Gas != 0 {
+		arg["gas"] = hexutil.Uint64(msg.Gas)
+	}
+	if msg.GasPrice != nil {
+		arg["gasPrice"] = (*hexutil.Big)(msg.GasPrice)
+	}
+	return arg
 }
