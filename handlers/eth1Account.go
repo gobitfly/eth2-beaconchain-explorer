@@ -315,10 +315,3 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, fmt.Sprintf("https://etherscan.io/block/%s", block), http.StatusSeeOther)
 }
-
-func Eth1Token(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	token := vars["token"]
-
-	http.Redirect(w, r, fmt.Sprintf("https://etherscan.io/token/%s", token), http.StatusSeeOther)
-}
