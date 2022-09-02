@@ -443,7 +443,7 @@ func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.
 		return nil, err
 	}
 
-	logger.Infof("finished getting blocks from table stefan: %v", time.Since(startTime))
+	logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
 	return blocks, nil
 }
 
@@ -468,7 +468,7 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 		return nil, err
 	}
 
-	logger.Infof("finished getting blocks from table stefan: %v", time.Since(startTime))
+	logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
 	return blocks, nil
 }
 
