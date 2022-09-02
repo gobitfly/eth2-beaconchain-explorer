@@ -21,15 +21,17 @@ func main() {
 
 	block := flag.Int64("block", 0, "Index a specific block")
 
-	concurrencyNode := flag.Int64("blocks.concurrency", 30, "Concurrency to use when indexing blocks from erigon")
-	startNode := flag.Int64("blocks.start", 0, "Block to start indexing")
-	endNode := flag.Int64("blocks.end", 0, "Block to finish indexing")
+	concurrencyBlocks := flag.Int64("blocks.concurrency", 30, "Concurrency to use when indexing blocks from erigon")
+	startBlocks := flag.Int64("blocks.start", 0, "Block to start indexing")
+	endBlocks := flag.Int64("blocks.end", 0, "Block to finish indexing")
+	offsetBlocks := flag.Int64("blocks.offset", 100, "Blocks offset")
 	checkBlocksGaps := flag.Bool("blocks.gaps", false, "Check for gaps in the blocks table")
 	checkBlocksGapsLookback := flag.Int("blocks.gaps.lookback", 1000000, "Lookback for gaps check of the blocks table")
 
-	concurrencyBigtable := flag.Int64("data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
-	startBigtable := flag.Int64("data.start", 0, "Block to start indexing")
-	endBigtable := flag.Int64("data.end", 0, "Block to finish indexing")
+	concurrencyData := flag.Int64("data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
+	startData := flag.Int64("data.start", 0, "Block to start indexing")
+	endData := flag.Int64("data.end", 0, "Block to finish indexing")
+	offsetData := flag.Int64("data.offset", 1000, "Data offset")
 	checkDataGaps := flag.Bool("data.gaps", false, "Check for gaps in the data table")
 	checkDataGapsLookback := flag.Int("data.gaps.lookback", 1000000, "Lookback for gaps check of the blocks table")
 
@@ -55,11 +57,11 @@ func main() {
 	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
 
 	if *block != 0 {
-		err = IndexFromNode(bt, client, *block, *block, *concurrencyNode)
+		err = IndexFromNode(bt, client, *block, *block, *concurrencyBlocks)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from node")
 		}
-		err = IndexFromBigtable(bt, *block, *block, transforms, *concurrencyBigtable)
+		err = IndexFromBigtable(bt, *block, *block, transforms, *concurrencyData)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from bigtable")
 		}
@@ -78,16 +80,16 @@ func main() {
 		return
 	}
 
-	if *endNode != 0 && *startNode < *endNode {
-		err = IndexFromNode(bt, client, *startNode, *endNode, *concurrencyNode)
+	if *endBlocks != 0 && *startBlocks < *endBlocks {
+		err = IndexFromNode(bt, client, *startBlocks, *endBlocks, *concurrencyBlocks)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from node")
 		}
 		return
 	}
 
-	if *endBigtable != 0 && *startBigtable < *endBigtable {
-		err = IndexFromBigtable(bt, int64(*startBigtable), int64(*endBigtable), transforms, *concurrencyBigtable)
+	if *endData != 0 && *startData < *endData {
+		err = IndexFromBigtable(bt, int64(*startData), int64(*endData), transforms, *concurrencyData)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from bigtable")
 		}
@@ -125,7 +127,7 @@ func main() {
 	if lastBlockFromBlocksTable < int(lastBlockFromNode) {
 		logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable, lastBlockFromNode)
 
-		err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-100, int64(lastBlockFromNode), *concurrencyNode)
+		err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from node")
 		}
@@ -135,7 +137,7 @@ func main() {
 		// transforms = append(transforms, bt.TransformTx)
 
 		logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)
-		err = IndexFromBigtable(bt, int64(lastBlockFromDataTable)-1000, int64(lastBlockFromNode), transforms, *concurrencyBigtable)
+		err = IndexFromBigtable(bt, int64(lastBlockFromDataTable)-*offsetData, int64(lastBlockFromNode), transforms, *concurrencyData)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from bigtable")
 		}
