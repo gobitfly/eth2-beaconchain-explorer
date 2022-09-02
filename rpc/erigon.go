@@ -347,3 +347,12 @@ func (client *ErigonClient) TraceParity(blockNumber uint64) ([]*ParityTraceResul
 
 	return res, nil
 }
+
+func (client *ErigonClient) GetNativeBalance(address string) ([]byte, error) {
+	balance, err := client.ethClient.BalanceAt(context.Background(), common.HexToAddress(address), nil)
+
+	if err != nil {
+		return nil, err
+	}
+	return balance.Bytes(), nil
+}

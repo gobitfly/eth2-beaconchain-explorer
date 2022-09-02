@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/types"
 	"flag"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -52,6 +53,32 @@ func main() {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
 	defer bt.Close()
+
+	updates, err := bt.GetMetadataUpdates("B:", 10000)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	for _, update := range updates {
+		logrus.Infof("updating balance of key %v", update)
+		s := strings.Split(update, ":")
+
+		if len(s) != 3 {
+			logrus.Fatalf("%v has an invalid format", update)
+		}
+
+		if s[0] != "B" {
+			logrus.Fatalf("%v has invalid balance update prefix", update)
+		}
+
+		address := s[1]
+		token := s[2]
+
+		if token == "00" {
+			logrus.Infof("updating native balance of address %v", address)
+		}
+	}
+	return
 
 	transforms := make([]func(blk *types.Eth1Block, cache *ccache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
 	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
@@ -100,50 +127,53 @@ func main() {
 	// bt.DeleteRowsWithPrefix("1:b:")
 	// return
 
-	lastBlockFromNode, err := client.GetLatestEth1BlockNumber()
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	lastBlockFromNode = lastBlockFromNode - 100
-
-	lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
-	lastBlockFromDataTable, err := bt.GetLastBlockInDataTable()
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
-	logrus.WithFields(
-		logrus.Fields{
-			"node":   lastBlockFromNode,
-			"blocks": lastBlockFromBlocksTable,
-			"data":   lastBlockFromDataTable,
-		},
-	).Infof("last blocks")
-
-	if lastBlockFromBlocksTable < int(lastBlockFromNode) {
-		logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable, lastBlockFromNode)
-
-		err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
+	for {
+		lastBlockFromNode, err := client.GetLatestEth1BlockNumber()
 		if err != nil {
-			logrus.WithError(err).Fatalf("error indexing from node")
+			logrus.Fatal(err)
 		}
-	}
+		lastBlockFromNode = lastBlockFromNode - 100
 
-	if lastBlockFromDataTable < int(lastBlockFromNode) {
-		// transforms = append(transforms, bt.TransformTx)
-
-		logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)
-		err = IndexFromBigtable(bt, int64(lastBlockFromDataTable)-*offsetData, int64(lastBlockFromNode), transforms, *concurrencyData)
+		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 		if err != nil {
-			logrus.WithError(err).Fatalf("error indexing from bigtable")
+			logrus.Fatal(err)
 		}
-	}
 
-	logrus.Infof("index run completed")
+		lastBlockFromDataTable, err := bt.GetLastBlockInDataTable()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		logrus.WithFields(
+			logrus.Fields{
+				"node":   lastBlockFromNode,
+				"blocks": lastBlockFromBlocksTable,
+				"data":   lastBlockFromDataTable,
+			},
+		).Infof("last blocks")
+
+		if lastBlockFromBlocksTable < int(lastBlockFromNode) {
+			logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable, lastBlockFromNode)
+
+			err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
+			if err != nil {
+				logrus.WithError(err).Fatalf("error indexing from node")
+			}
+		}
+
+		if lastBlockFromDataTable < int(lastBlockFromNode) {
+			// transforms = append(transforms, bt.TransformTx)
+
+			logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)
+			err = IndexFromBigtable(bt, int64(lastBlockFromDataTable)-*offsetData, int64(lastBlockFromNode), transforms, *concurrencyData)
+			if err != nil {
+				logrus.WithError(err).Fatalf("error indexing from bigtable")
+			}
+		}
+
+		logrus.Infof("index run completed")
+		time.Sleep(time.Second * 14)
+	}
 
 	// utils.WaitForCtrlC()
 
