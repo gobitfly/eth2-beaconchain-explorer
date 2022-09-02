@@ -272,9 +272,11 @@
         <div class="border-top p-2 text-truncate">{{ $col }}</div>
       {{end}}
     {{ end }}
+    {{ if gt (len .Data) 24 }}
     <div style="grid-column: 1 / 7;" id="internalTxns-table-inf-scroll" class="d-flex justify-content-center p-2">
       <span>loading...</span>
     </div>
+    {{ end }}
     {{ else }}
     <div style="grid-column: 1 / 7;" id="internalTxns-table-inf-scroll" class="d-flex justify-content-center p-2">
       <div class="d-flex justify-content-center align-items-center flex-column">
@@ -307,9 +309,11 @@
         <div class="border-top p-2 text-truncate">{{ $col }}</div>
       {{end}}
     {{ end }}
+    {{ if gt (len .Data) 24 }}
     <div style="grid-column: 1 / 6;" id="erc20-table-inf-scroll" class="d-flex justify-content-center p-2">
       <span>loading...</span>
     </div>
+    {{ end }}
     {{ else }}
     <div style="grid-column: 1 / 6;" id="erc20-table-inf-scroll" class="d-flex justify-content-center p-2">
       <div class="d-flex justify-content-center align-items-center flex-column">
@@ -344,9 +348,11 @@
         <div class="border-top p-2 text-truncate">{{ $col }}</div>
       {{end}}
     {{ end }}
+    {{ if gt (len .Data) 24 }}
     <div style="grid-column: 1 / 7;" id="erc721-table-inf-scroll" class="d-flex justify-content-center p-2">
       <span>loading...</span>
     </div>
+    {{ end }}
     {{ else }}
     <div style="grid-column: 1 / 7;" id="erc721-table-inf-scroll" class="d-flex justify-content-center p-2">
       <div class="d-flex justify-content-center align-items-center flex-column">
@@ -380,9 +386,11 @@
         <div class="border-top p-2 text-truncate">{{ $col }}</div>
       {{end}}
     {{ end }}
+    {{ if gt (len .Data) 24 }}
     <div style="grid-column: 1 / 8;" id="erc1155-table-inf-scroll" class="d-flex justify-content-center p-2">
       <span>loading...</span>
     </div>
+    {{ end }}
     {{ else }}
     <div style="grid-column: 1 / 8;" id="erc1155-table-inf-scroll" class="d-flex justify-content-center p-2">
       <div class="d-flex justify-content-center align-items-center flex-column">
