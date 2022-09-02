@@ -2254,6 +2254,113 @@ func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]st
 	return res, err
 }
 
+func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*types.Eth1ERC20Indexed, string, error) {
+	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancle()
+
+	logger.Infof("searching for prefix %v", prefix)
+	// add \x00 to the row range such that we skip the previous value
+	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
+	// rowRange := gcp_bigtable.PrefixRange(prefix)
+	// logger.Infof("querying for prefix: %v", prefix)
+	data := make([]*types.Eth1ERC20Indexed, 0, limit)
+	keys := make([]string, 0, limit)
+	indexes := make([]string, 0, limit)
+	keysMap := make(map[string]*types.Eth1ERC20Indexed, limit)
+
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
+		indexes = append(indexes, row.Key())
+		return true
+	}, gcp_bigtable.LimitRows(limit))
+	if err != nil {
+		return nil, "", err
+	}
+
+	logger.Infof("found transfers for token: %v results", len(keys))
+
+	if len(keys) == 0 {
+		return data, "", nil
+	}
+
+	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+		b := &types.Eth1ERC20Indexed{}
+		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
+
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		keysMap[row.Key()] = b
+
+		return true
+	})
+	// logger.Infof("adding keys: %+v", keys)
+	// logger.Infof("adding indexes: %+v", indexes)
+	for _, key := range keys {
+		data = append(data, keysMap[key])
+	}
+
+	// logger.Infof("returning data len: %v lastkey: %v", len(data), lastKey)
+
+	return data, indexes[len(indexes)-1], nil
+}
+
+func (bigtable *Bigtable) GetTokenTransactionsTableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
+	if pageToken == "" {
+		pageToken = fmt.Sprintf("%s:I:ERC20:%s:%s:", bigtable.chainId, address, FILTER_TIME)
+	}
+
+	logger.Info(pageToken)
+
+	transactions, lastKey, err := BigtableClient.GetEth1TxForToken(pageToken, 25)
+	if err != nil {
+		return nil, err
+	}
+
+	tableData := make([][]interface{}, len(transactions))
+	for i, t := range transactions {
+		from := utils.AddCopyButton(utils.FormatHash(t.From), hex.EncodeToString(t.From))
+
+		if fmt.Sprintf("%x", t.From) != address {
+			from = utils.FormatAddressAsLink(t.From, "", false, false)
+		}
+		to := utils.AddCopyButton(utils.FormatHash(t.To), hex.EncodeToString(t.To))
+		if fmt.Sprintf("%x", t.To) != address {
+			to = utils.FormatAddressAsLink(t.To, "", false, false)
+		}
+		// method := "Transfer"
+		// if len(t.MethodId) > 0 {
+
+		// 	if t.InvokesContract {
+		// 		method = fmt.Sprintf("0x%x", t.MethodId)
+		// 	} else {
+		// 		method = "Transfer*"
+		// 	}
+		// }
+		// logger.Infof("hash: %x amount: %s", t.Hash, new(big.Int).SetBytes(t.Value))
+
+		tableData[i] = []interface{}{
+			utils.FormatTransactionHash(t.ParentHash),
+			// utils.FormatMethod(method),
+			utils.FormatTimeFromNow(t.Time.AsTime()),
+			utils.FormatBlockNumber(t.BlockNumber),
+			from,
+			to,
+			new(big.Int).SetBytes(t.Value),
+		}
+	}
+
+	data := &types.DataTableResponse{
+		// Draw: draw,
+		// RecordsTotal:    ,
+		// RecordsFiltered: ,
+		Data:        tableData,
+		PagingToken: lastKey,
+	}
+
+	return data, nil
+}
+
 func prefixSuccessor(prefix string, pos int) string {
 	if prefix == "" {
 		return "" // infinite range

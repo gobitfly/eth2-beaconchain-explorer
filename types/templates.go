@@ -1377,3 +1377,18 @@ type Eth1AddressPageData struct {
 	Erc721Table       *DataTableResponse
 	Erc1155Table      *DataTableResponse
 }
+
+type Eth1TokenPageData struct {
+	Address          string        `json:"address"`
+	Holders          template.HTML `json:"holders"`
+	Transfers        template.HTML `json:"transfers"`
+	Price            template.HTML `json:"price"`
+	MarketCap        template.HTML `json:"marketCap"`
+	DilutedMarketCap template.HTML `json:"dilutedMarketCap"`
+	Decimals         template.HTML `json:"decimals"`
+	Contract         template.HTML `json:"contract"`
+	WebSite          template.HTML `json:"website"`
+	SocialProfiles   template.HTML `json:"socialProfiles"`
+	TransfersTable   *DataTableResponse
+	HoldersTable     *DataTableResponse
+}
