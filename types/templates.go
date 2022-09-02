@@ -1369,6 +1369,7 @@ type DataTableSaveStateColumns struct {
 
 type Eth1AddressPageData struct {
 	Address           string `json:"address"`
+	Balances          [][]byte
 	BlocksMinedTable  *DataTableResponse
 	UnclesMinedTable  *DataTableResponse
 	TransactionsTable *DataTableResponse
@@ -1376,6 +1377,9 @@ type Eth1AddressPageData struct {
 	Erc20Table        *DataTableResponse
 	Erc721Table       *DataTableResponse
 	Erc1155Table      *DataTableResponse
+}
+
+type Eth1AddressBalance struct {
 }
 
 type Eth1TokenPageData struct {

@@ -93,6 +93,11 @@ func main() {
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
 
+	rpc.CurrentErigonClient, err = rpc.NewErigonClient(utils.Config.Eth1Endpoint)
+	if err != nil {
+		logrus.Fatalf("error initializing erigon client: %v", err)
+	}
+
 	// if utils.Config.Frontend.Bigtable.Enabled {
 	bt, err := db.NewBigtable("etherchain", "etherchain", "1")
 	if err != nil {

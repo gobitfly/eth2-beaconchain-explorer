@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/erc1155"
 	"eth2-exporter/erc20"
 	"eth2-exporter/erc721"
+	"eth2-exporter/rpc"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -2264,6 +2265,24 @@ func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]st
 	}, gcp_bigtable.LimitRows(int64(limit)))
 
 	return res, err
+}
+
+func (bigtable *Bigtable) GetBalancesForAddress(address string) ([][]byte, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	pairs := make([]string, 0, 100)
+
+	err := bigtable.tableMetadataUpdates.ReadRows(ctx, gcp_bigtable.PrefixRange("B:"+address), func(row gcp_bigtable.Row) bool {
+		pairs = append(pairs, row.Key())
+		return true
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return rpc.CurrentErigonClient.GetBalances(pairs)
 }
 
 func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*types.Eth1ERC20Indexed, string, error) {

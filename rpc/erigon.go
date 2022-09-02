@@ -32,6 +32,8 @@ type ErigonClient struct {
 	multiChecker *Balance
 }
 
+var CurrentErigonClient *ErigonClient
+
 func NewErigonClient(endpoint string) (*ErigonClient, error) {
 	client := &ErigonClient{
 		endpoint: endpoint,

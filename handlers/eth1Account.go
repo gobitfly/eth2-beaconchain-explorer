@@ -22,8 +22,15 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	address := strings.Replace(vars["address"], "0x", "", -1)
 	address = strings.ToLower(address)
 
-	data := InitPageData(w, r, "address", "/address", "address")
+	data := InitPageData(w, r, "address", "/address", "Address")
 
+	balances, err := db.BigtableClient.GetBalancesForAddress(address)
+
+	if err != nil {
+		logger.Errorf("error retieving balances for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
 	g := new(errgroup.Group)
 	g.SetLimit(7)
 
@@ -94,12 +101,13 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	if err := g.Wait(); err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
 	data.Data = types.Eth1AddressPageData{
 		Address:           address,
+		Balances:          balances,
 		TransactionsTable: txns,
 		InternalTxnsTable: internal,
 		Erc20Table:        erc20,
@@ -113,10 +121,10 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		eth1AddressTemplate = template.Must(template.New("address").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/address.html"))
 	}
 
-	err := eth1AddressTemplate.ExecuteTemplate(w, "layout", data)
+	err = eth1AddressTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

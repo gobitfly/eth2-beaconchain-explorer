@@ -35,7 +35,7 @@ var rpEth1Client *ethclient.Client
 
 func rocketpoolExporter() {
 	var err error
-	rpEth1RPRCClient, err = gethRPC.Dial(utils.Config.Indexer.Eth1Endpoint)
+	rpEth1RPRCClient, err = gethRPC.Dial(utils.Config.Eth1Endpoint)
 	if err != nil {
 		logger.Fatal(err)
 	}
