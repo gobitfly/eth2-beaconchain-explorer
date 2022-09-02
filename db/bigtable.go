@@ -11,6 +11,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"html/template"
 	"log"
 	"math/big"
 	"strings"
@@ -1992,12 +1993,23 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address string, search string
 		if fmt.Sprintf("%x", t.To) != address {
 			to = utils.FormatAddressAsLink(t.To, "", false, false)
 		}
+
+		tokenInfo := erc20.GetTokenDetail(fmt.Sprintf("%x", t.TokenAddress))
+		value := ""
+		token := template.HTML("")
+		if tokenInfo != nil {
+			value = tokenInfo.FormatAmount(new(big.Int).SetBytes(t.Value))
+			token = utils.FormatAddressAsLink(t.TokenAddress, tokenInfo.Symbol, false, true)
+		} else {
+			value = new(big.Int).SetBytes(t.Value).String()
+			token = utils.FormatAddressAsLink(t.TokenAddress, "", false, true)
+		}
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
 			from,
 			to,
-			new(big.Int).SetBytes(t.Value),
-			utils.FormatAddressAsLink(t.TokenAddress, "", false, true),
+			value,
+			token,
 			// utils.FormatAmount(float64(new(big.Int).SetBytes(t.Value).Int64()), "ETH", 6),
 		}
 	}
