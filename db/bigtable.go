@@ -1504,7 +1504,7 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*ty
 		return nil, "", err
 	}
 
-	logger.Infof("found: %v results", len(keys))
+	logger.Infof("found transactions: %v results", len(keys))
 
 	if len(keys) == 0 {
 		return data, "", nil
@@ -1574,6 +1574,175 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address string, search
 			from,
 			to,
 			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "ETH", 6),
+		}
+	}
+
+	data := &types.DataTableResponse{
+		// Draw: draw,
+		// RecordsTotal:    ,
+		// RecordsFiltered: ,
+		Data:        tableData,
+		PagingToken: lastKey,
+	}
+
+	return data, nil
+}
+
+func (bigtable *Bigtable) GetEth1BlocksForAddress(prefix string, limit int64) ([]*types.Eth1BlockIndexed, string, error) {
+	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancle()
+
+	// add \x00 to the row range such that we skip the previous value
+	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 4))
+	// rowRange := gcp_bigtable.PrefixRange(prefix)
+	// logger.Infof("querying for prefix: %v", prefix)
+	data := make([]*types.Eth1BlockIndexed, 0, limit)
+	keys := make([]string, 0, limit)
+	indexes := make([]string, 0, limit)
+	keysMap := make(map[string]*types.Eth1BlockIndexed, limit)
+
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
+		indexes = append(indexes, row.Key())
+		return true
+	}, gcp_bigtable.LimitRows(limit))
+	if err != nil {
+		return nil, "", err
+	}
+
+	logger.Infof("found eth1blocks: %v results", len(keys))
+
+	if len(keys) == 0 {
+		return data, "", nil
+	}
+
+	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+		b := &types.Eth1BlockIndexed{}
+		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
+
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		keysMap[row.Key()] = b
+
+		return true
+	})
+	// logger.Infof("adding keys: %+v", keys)
+	// logger.Infof("adding indexes: %+v", indexes)
+	for _, key := range keys {
+		data = append(data, keysMap[key])
+	}
+
+	// logger.Infof("returning data len: %v lastkey: %v", len(data), lastKey)
+
+	return data, indexes[len(indexes)-1], nil
+}
+
+func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
+	if pageToken == "" {
+		pageToken = fmt.Sprintf("%s:I:B:%s:", bigtable.chainId, address)
+	}
+
+	blocks, lastKey, err := BigtableClient.GetEth1BlocksForAddress(pageToken, 25)
+	if err != nil {
+		return nil, err
+	}
+
+	tableData := make([][]interface{}, len(blocks))
+	for i, b := range blocks {
+		// logger.Infof("hash: %x amount: %s", t.Hash, new(big.Int).SetBytes(t.Value))
+
+		reward := new(big.Int).Add(utils.Eth1BlockReward(b.Number), new(big.Int).SetBytes(b.TxReward))
+
+		tableData[i] = []interface{}{
+			utils.FormatTransactionHash(b.Hash),
+			utils.FormatBlockNumber(b.Number),
+			utils.FormatTimeFromNow(b.Time.AsTime()),
+			utils.FormatAmount(reward, "ETH", 6),
+		}
+	}
+
+	data := &types.DataTableResponse{
+		// Draw: draw,
+		// RecordsTotal:    ,
+		// RecordsFiltered: ,
+		Data:        tableData,
+		PagingToken: lastKey,
+	}
+
+	return data, nil
+}
+
+func (bigtable *Bigtable) GetEth1UnclesForAddress(prefix string, limit int64) ([]*types.Eth1UncleIndexed, string, error) {
+	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancle()
+
+	// add \x00 to the row range such that we skip the previous value
+	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 4))
+	// rowRange := gcp_bigtable.PrefixRange(prefix)
+	// logger.Infof("querying for prefix: %v", prefix)
+	data := make([]*types.Eth1UncleIndexed, 0, limit)
+	keys := make([]string, 0, limit)
+	indexes := make([]string, 0, limit)
+	keysMap := make(map[string]*types.Eth1UncleIndexed, limit)
+
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
+		indexes = append(indexes, row.Key())
+		return true
+	}, gcp_bigtable.LimitRows(limit))
+	if err != nil {
+		return nil, "", err
+	}
+
+	logger.Infof("found uncles: %v results", len(keys))
+
+	if len(keys) == 0 {
+		return data, "", nil
+	}
+
+	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+		b := &types.Eth1UncleIndexed{}
+		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
+
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		keysMap[row.Key()] = b
+
+		return true
+	})
+	// logger.Infof("adding keys: %+v", keys)
+	// logger.Infof("adding indexes: %+v", indexes)
+	for _, key := range keys {
+		data = append(data, keysMap[key])
+	}
+
+	// logger.Infof("returning data len: %v lastkey: %v", len(data), lastKey)
+
+	return data, indexes[len(indexes)-1], nil
+}
+
+func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
+	if pageToken == "" {
+		pageToken = fmt.Sprintf("%s:I:U:%s:", bigtable.chainId, address)
+	}
+
+	logger.Info(pageToken)
+
+	uncles, lastKey, err := BigtableClient.GetEth1UnclesForAddress(pageToken, 25)
+	if err != nil {
+		return nil, err
+	}
+
+	tableData := make([][]interface{}, len(uncles))
+	for i, u := range uncles {
+
+		tableData[i] = []interface{}{
+			utils.FormatBlockNumber(u.Number),
+			utils.FormatTimeFromNow(u.Time.AsTime()),
+			utils.FormatDifficulty(new(big.Int).SetBytes(u.Difficulty)),
+			utils.FormatAmount(new(big.Int).SetBytes(u.Reward), "ETH", 6),
 		}
 	}
 
