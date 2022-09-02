@@ -252,13 +252,13 @@
 {{ define "AddressTransactionsTableGrid" }}
 <div id="transactions-table"
   style="display: grid; grid-template-columns: repeat(7, minmax(auto, 1fr)); max-height: 800px; overflow: auto;">
-  <div class="h5 mb-0 p-2 bg-light">Hash</div>
-  <div class="h5 mb-0 p-2 bg-light">Method</div>
-  <div class="h5 mb-0 p-2 bg-light">Age</div>
-  <div class="h5 mb-0 p-2 bg-light">Number</div>
-  <div class="h5 mb-0 p-2 bg-light">From</div>
-  <div class="h5 mb-0 p-2 bg-light">To</div>
-  <div class="h5 mb-0 p-2 bg-light">Value</div>
+  <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Hash</span></div>
+  <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Method</span></div>
+  <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Age</span></div>
+  <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Number</span></div>
+  <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>From</span></div>
+  <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>To</span></div>
+  <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Value</span></div>
 
 {{ if len .Data }}
 {{ range $i, $row := .Data }}
@@ -290,12 +290,12 @@
 
 {{ define "AddressInternalTransactionsGrid" }}
   <div id="internalTxns-table" style="display: grid; grid-template-columns: repeat(6, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
-    <div class="h5 mb-0 p-2 bg-light">Hash</div>
-    <div class="h5 mb-0 p-2 bg-light">Age</div>
-    <div class="h5 mb-0 p-2 bg-light">From</div>
-    <div class="h5 mb-0 p-2 bg-light">To</div>
-    <div class="h5 mb-0 p-2 bg-light">Value</div>
-    <div class="h5 mb-0 p-2 bg-light">Type</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">To</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Value</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Type</div>
 
     {{ if len .Data }}
     {{ range $i, $row := .Data }}
@@ -327,10 +327,10 @@
 
 {{ define "AddressBlocksMinedGrid" }}
   <div id="blocksMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
-    <div class="h5 mb-0 p-2 bg-light">Hash</div>
-    <div class="h5 mb-0 p-2 bg-light">Number</div>
-    <div class="h5 mb-0 p-2 bg-light">Age</div>
-    <div class="h5 mb-0 p-2 bg-light">Reward</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Number</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Reward</div>
 
     {{ if len .Data }}
     {{ range $i, $row := .Data }}
@@ -362,10 +362,10 @@
 
 {{ define "AddressUnclesMinedGrid" }}
   <div id="unclesMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
-    <div class="h5 mb-0 p-2 bg-light">Number</div>
-    <div class="h5 mb-0 p-2 bg-light">Age</div>
-    <div class="h5 mb-0 p-2 bg-light">Difficulty</div>
-    <div class="h5 mb-0 p-2 bg-light">Reward</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Number</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Difficulty</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Reward</div>
 
     {{ if len .Data }}
     {{ range $i, $row := .Data }}
@@ -398,11 +398,11 @@
 
 {{ define "AddressErc20TransactionsGrid" }}
   <div id="erc20-table" style="display: grid; grid-template-columns: repeat(5, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
-    <div class="h5 mb-0 p-2 bg-light">Hash</div>
-    <div class="h5 mb-0 p-2 bg-light">From</div>
-    <div class="h5 mb-0 p-2 bg-light">To</div>
-    <div class="h5 mb-0 p-2 bg-light">Value</div>
-    <div class="h5 mb-0 p-2 bg-light">Token</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">To</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Value</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Token</div>
 
     {{ if len .Data }}
     {{ range $i, $row := .Data }}
@@ -435,12 +435,12 @@
 
 {{ define "AddressErc721Grid" }}
   <div id="erc721-table" style="display: grid; grid-template-columns: repeat(6, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
-    <div class="h5 mb-0 p-2 bg-light">Hash</div>
-    <div class="h5 mb-0 p-2 bg-light">Age</div>
-    <div class="h5 mb-0 p-2 bg-light">From</div>
-    <div class="h5 mb-0 p-2 bg-light">To</div>
-    <div class="h5 mb-0 p-2 bg-light">Token Address</div>
-    <div class="h5 mb-0 p-2 bg-light">Token ID</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">To</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Token Address</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Token ID</div>
 
     
     {{ if len .Data }}
@@ -473,13 +473,13 @@
 
 {{ define "AddressErc1155Grid" }}
   <div id="erc1155-table" style="display: grid; grid-template-columns: repeat(7, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
-    <div class="h5 mb-0 p-2 bg-light">Hash</div>
-    <div class="h5 mb-0 p-2 bg-light">Age</div>
-    <div class="h5 mb-0 p-2 bg-light">From</div>
-    <div class="h5 mb-0 p-2 bg-light">To</div>
-    <div class="h5 mb-0 p-2 bg-light">Token Address</div>
-    <div class="h5 mb-0 p-2 bg-light">Token ID</div>
-    <div class="h5 mb-0 p-2 bg-light">Value</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">To</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Token Address</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Token ID</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Value</div>
 
     {{ if len .Data }}
     {{ range $i, $row := .Data }}
