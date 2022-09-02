@@ -47,13 +47,17 @@ const (
 
 const max_block_number = 1000000000
 const (
-	DATA_COLUMN           = "d"
-	INDEX_COLUMN          = "i"
-	DEFAULT_FAMILY        = "f"
-	DEFAULT_FAMILY_BLOCKS = "default"
-	writeRowLimit         = 10000
-	MAX_INT               = 9223372036854775807
-	MIN_INT               = -9223372036854775808
+	DATA_COLUMN             = "d"
+	INDEX_COLUMN            = "i"
+	DEFAULT_FAMILY          = "f"
+	DEFAULT_FAMILY_BLOCKS   = "default"
+	ACCOUNT_METADATA_FAMILY = "a"
+	ERC20_METADATA_FAMILY   = "erc20"
+	ERC721_METADATA_FAMILY  = "erc721"
+	ERC1155_METADATA_FAMILY = "erc1155"
+	writeRowLimit           = 10000
+	MAX_INT                 = 9223372036854775807
+	MIN_INT                 = -9223372036854775808
 )
 
 var ZERO_ADDRESS []byte = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
@@ -69,6 +73,7 @@ type Bigtable struct {
 	tableData            *gcp_bigtable.Table
 	tableBlocks          *gcp_bigtable.Table
 	tableMetadataUpdates *gcp_bigtable.Table
+	tableMetadata        *gcp_bigtable.Table
 	chainId              string
 }
 
@@ -86,6 +91,7 @@ func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
 		tableData:            btClient.Open("data"),
 		tableBlocks:          btClient.Open("blocks"),
 		tableMetadataUpdates: btClient.Open("metadata_updates"),
+		tableMetadata:        btClient.Open("metadata"),
 		chainId:              chainId,
 	}
 	return bt, nil
@@ -101,6 +107,10 @@ func (bigtable *Bigtable) GetDataTable() *gcp_bigtable.Table {
 
 func (bigtable *Bigtable) GetMetadataUpdatesTable() *gcp_bigtable.Table {
 	return bigtable.tableMetadataUpdates
+}
+
+func (bigtable *Bigtable) GetMetadatTable() *gcp_bigtable.Table {
+	return bigtable.tableMetadata
 }
 
 func (bigtable *Bigtable) SaveBlock(block *types.Eth1Block) error {
@@ -2210,8 +2220,8 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 }
 
 func (bigtable *Bigtable) GetEth1ERC1155TxForAddressCount(address string, filterKey IndexFilter) (uint64, error) {
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
 
 	prefix := fmt.Sprintf("%s:I:ERC1155:%s:%s", bigtable.chainId, address, filterKey)
 
@@ -2228,6 +2238,20 @@ func (bigtable *Bigtable) GetEth1ERC1155TxForAddressCount(address string, filter
 	}
 
 	return sum, nil
+}
+
+func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]string, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	res := make([]string, 0, limit)
+
+	err := bigtable.tableMetadataUpdates.ReadRows(ctx, gcp_bigtable.NewRange(startToken, ""), func(row gcp_bigtable.Row) bool {
+		res = append(res, row.Key())
+		return true
+	}, gcp_bigtable.LimitRows(int64(limit)))
+
+	return res, err
 }
 
 func prefixSuccessor(prefix string, pos int) string {
