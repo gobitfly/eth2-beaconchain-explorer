@@ -85,7 +85,7 @@ func GetEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 		tableData[i] = []interface{}{
 			b.GetNumber(), // utils.FormatBlockNumber(b.GetNumber()),
 			utils.FormatHash(b.GetHash(), true),
-			utils.FormatDifficulty(float64(new(big.Int).SetBytes(b.GetDifficulty()).Int64())),
+			utils.FormatDifficulty(new(big.Int).SetBytes(b.GetDifficulty())),
 			utils.FormatHash(b.GetCoinbase(), true), // utils.FormatAddressAsLink(b.MinerAddress, b.MinerName, b.MinerNameVerified, b.MinerIsContract, 6),
 			utils.FormatTimeFromNow(b.GetTime().AsTime()),
 			b.GetTransactionCount(), // b.TxCount,

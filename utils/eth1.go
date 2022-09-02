@@ -139,8 +139,11 @@ func FormatNumber(number interface{}) string {
 	return p.Sprintf("%.5f", number)
 }
 
-func FormatDifficulty(number float64) string {
-	return fmt.Sprintf("%.1f T", number/1e12)
+func FormatDifficulty(number *big.Int) string {
+	f := new(big.Float).SetInt(number)
+	f.Quo(f, big.NewFloat(1e12))
+	r, _ := f.Float64()
+	return fmt.Sprintf("%.1f T", r)
 }
 
 func FormatTime(t time.Time) template.HTML {

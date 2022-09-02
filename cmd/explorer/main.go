@@ -238,7 +238,9 @@ func main() {
 
 		services.Init() // Init frontend services
 		price.Init()
-		ethclients.Init()
+		if !utils.Config.Frontend.Debug {
+			ethclients.Init()
+		}
 
 		logrus.Infof("frontend services initiated")
 
@@ -275,6 +277,8 @@ func main() {
 			router.HandleFunc("/execution/blocks", handlers.Eth1Blocks).Methods("GET")
 			router.HandleFunc("/execution/blocks/data", handlers.Eth1BlocksData).Methods("GET")
 			router.HandleFunc("/execution/address/{address}", handlers.Eth1Address).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/blocks", handlers.Eth1AddressBlocksMined).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/uncles", handlers.Eth1AddressUnclesMined).Methods("GET")
 			router.HandleFunc("/execution/address/{address}/transactions", handlers.Eth1AddressTransactions).Methods("GET")
 			router.HandleFunc("/execution/address/{address}/internalTxns", handlers.Eth1AddressInternalTransactions).Methods("GET")
 			router.HandleFunc("/execution/address/{address}/erc20", handlers.Eth1AddressErc20Transactions).Methods("GET")
