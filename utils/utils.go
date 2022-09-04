@@ -146,6 +146,8 @@ func GetTemplateFuncs() template.FuncMap {
 		"stringsJoin":     strings.Join,
 		"formatAddCommas": FormatAddCommas,
 		"encodeToString":  hex.EncodeToString,
+
+		"formatTokenBalance": FormatTokenBalance,
 	}
 }
 

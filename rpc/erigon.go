@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"encoding/hex"
+	"eth2-exporter/erc20"
 	"eth2-exporter/types"
 	"fmt"
 	"math/big"
@@ -360,10 +361,12 @@ func (client *ErigonClient) TraceParity(blockNumber uint64) ([]*ParityTraceResul
 	return res, nil
 }
 
-func (client *ErigonClient) GetBalances(pairs []string) ([][]byte, error) {
+func (client *ErigonClient) GetBalances(pairs []string) ([]*types.Eth1AddressBalance, error) {
 	batchElements := make([]rpc.BatchElem, 0, len(pairs))
 
-	for _, pair := range pairs {
+	ret := make([]*types.Eth1AddressBalance, len(pairs))
+
+	for i, pair := range pairs {
 		s := strings.Split(pair, ":")
 
 		if len(s) != 3 {
@@ -377,6 +380,12 @@ func (client *ErigonClient) GetBalances(pairs []string) ([][]byte, error) {
 		address := s[1]
 		token := s[2]
 		result := ""
+
+		ret[i] = &types.Eth1AddressBalance{
+			Address: common.FromHex(address),
+			Token:   common.FromHex(token),
+		}
+
 		if token == "00" {
 			batchElements = append(batchElements, rpc.BatchElem{
 				Method: "eth_getBalance",
@@ -400,8 +409,6 @@ func (client *ErigonClient) GetBalances(pairs []string) ([][]byte, error) {
 	}
 
 	err := client.rpcClient.BatchCall(batchElements)
-
-	ret := make([][]byte, len(pairs))
 	if err != nil {
 		return nil, fmt.Errorf("error during batch request: %v", err)
 	}
@@ -412,13 +419,13 @@ func (client *ErigonClient) GetBalances(pairs []string) ([][]byte, error) {
 		}
 
 		res := strings.TrimPrefix(*el.Result.(*string), "0x")
-		ret[i] = new(big.Int).SetBytes(common.Hex2Bytes(res)).Bytes()
+		ret[i].Balance = new(big.Int).SetBytes(common.Hex2Bytes(res)).Bytes()
 	}
 
 	return ret, nil
 }
 
-func (client *ErigonClient) GetBalancesForAddresse(address string, tokenStr []string) ([][]byte, error) {
+func (client *ErigonClient) GetBalancesForAddresse(address string, tokenStr []string) ([]*types.Eth1AddressBalance, error) {
 	opts := &bind.CallOpts{
 		BlockNumber: nil,
 	}
@@ -433,9 +440,14 @@ func (client *ErigonClient) GetBalancesForAddresse(address string, tokenStr []st
 		return nil, err
 	}
 
-	res := make([][]byte, len(tokenStr))
+	res := make([]*types.Eth1AddressBalance, len(tokenStr))
 	for tokenIdx := range tokens {
-		res[tokenIdx] = balancesInt[tokenIdx].Bytes()
+
+		res[tokenIdx] = &types.Eth1AddressBalance{
+			Address: common.FromHex(address),
+			Token:   common.FromHex(string(tokens[tokenIdx].Bytes())),
+			Balance: balancesInt[tokenIdx].Bytes(),
+		}
 	}
 
 	return res, nil
@@ -462,6 +474,55 @@ func (client *ErigonClient) GetERC20TokenBalance(address string, token string) (
 		return nil, err
 	}
 	return balance, nil
+}
+
+func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metadata, error) {
+
+	logger.Infof("retrieving metadata for token %x", token)
+	contract, err := erc20.NewErc20(common.BytesToAddress(token), client.ethClient)
+
+	if err != nil {
+		return nil, err
+	}
+
+	g := new(errgroup.Group)
+
+	ret := &types.ERC20Metadata{}
+
+	g.Go(func() error {
+		symbol, err := contract.Symbol(nil)
+		if strings.Contains(err.Error(), "abi") {
+			ret.Symbol = "UNKNOWN"
+			return nil
+		}
+		if err != nil && !strings.Contains(err.Error(), "abi") {
+			return fmt.Errorf("error retrieving symbol: %v", err)
+		}
+		ret.Symbol = symbol
+		return nil
+	})
+
+	g.Go(func() error {
+		totalSupply, err := contract.TotalSupply(nil)
+		if err != nil {
+			return fmt.Errorf("error retrieving total supply: %v", err)
+		}
+		ret.TotalSupply = totalSupply.Bytes()
+		return nil
+	})
+
+	g.Go(func() error {
+		decimals, err := contract.Decimals(nil)
+		if err != nil {
+			return fmt.Errorf("error retrieving decimals: %v", err)
+		}
+		ret.TotalSupply = big.NewInt(int64(decimals)).Bytes()
+		return nil
+	})
+
+	err = g.Wait()
+
+	return ret, err
 }
 
 func toCallArg(msg ethereum.CallMsg) interface{} {

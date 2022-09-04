@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/protolambda/ztyp/bitfields"
+	"github.com/shopspring/decimal"
 
 	eth1common "github.com/ethereum/go-ethereum/common"
 	"golang.org/x/text/language"
@@ -880,7 +881,7 @@ func FormatNotificationChannel(ch types.NotificationChannel) string {
 }
 
 func FormatBlockReward(blockNumber int64) template.HTML {
-	reward := new(big.Int)
+	var reward *big.Int
 
 	if blockNumber < 4370000 {
 		reward = big.NewInt(5e+18)
@@ -891,4 +892,11 @@ func FormatBlockReward(blockNumber int64) template.HTML {
 	}
 
 	return FormatAmount(reward, "ETH", 5)
+}
+
+func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
+	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Metadata.Decimals), 0))
+	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
+
+	return template.HTML(fmt.Sprintf("%v <a href='/execution/token/0x%x?a=0x%x'>%s</a>", num.Div(mul), balance.Token, balance.Address, balance.Metadata.Symbol))
 }

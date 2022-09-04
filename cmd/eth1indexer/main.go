@@ -55,6 +55,10 @@ func main() {
 	}
 	defer bt.Close()
 
+	if *enableBalanceUpdater {
+		ProcessMetadataUpdates(bt, client)
+	}
+
 	transforms := make([]func(blk *types.Eth1Block, cache *ccache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
 	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
 
@@ -246,6 +250,11 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient) {
 
 		if err != nil {
 			logrus.Fatalf("error retrieving balances from node: %v", err)
+		}
+
+		err = bt.SaveBalances(balances)
+		if err != nil {
+			logrus.Fatalf("error saving balances to bigtable: %v", err)
 		}
 
 		// for i, b := range balances {

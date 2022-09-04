@@ -166,6 +166,13 @@
       <a style="width: 1rem; height: 1rem;" target="_blank" href="https://etherscan.io/address/{{.Data.Address }}"><i
           class="fas fa-external-link-alt"></i></a></h1>
   </div>
+
+  <h4>Balances</h4>
+  <ul>
+    {{ range .Data.Metadata.Balances}}
+    <li>{{. | formatTokenBalance}}</li>
+    {{end}}
+  </ul>
   <div class="card shadow-none">
     <div class="card-header p-0">
       {{ template "AddressTabs" . }}

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 	"golang.org/x/sync/errgroup"
 )
@@ -24,7 +25,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "address", "/address", "Address")
 
-	balances, err := db.BigtableClient.GetBalancesForAddress(address)
+	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address))
 
 	if err != nil {
 		logger.Errorf("error retieving balances for %v route: %v", r.URL.String(), err)
@@ -107,7 +108,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = types.Eth1AddressPageData{
 		Address:           address,
-		Balances:          balances,
+		Metadata:          metadata,
 		TransactionsTable: txns,
 		InternalTxnsTable: internal,
 		Erc20Table:        erc20,

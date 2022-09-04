@@ -15,12 +15,15 @@ import (
 	"html/template"
 	"log"
 	"math/big"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"strconv"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/option"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -718,7 +721,7 @@ func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block, cache *ccache.C
 	idx.Mev = CalculateMevFromBlock(block).Bytes()
 
 	// Mark Coinbase for balance update
-	markBalanceUpdate(idx.Coinbase, []byte{0x0}, bulkMetadataUpdates, cache)
+	bigtable.markBalanceUpdate(idx.Coinbase, []byte{0x0}, bulkMetadataUpdates, cache)
 
 	// <chainID>:b:<reverse number>
 	key := fmt.Sprintf("%s:B:%s", bigtable.chainId, reversedPaddedBlockNumber(block.GetNumber()))
@@ -809,8 +812,8 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *ccache.Cache)
 			ErrorMsg:           tx.GetErrorMsg(),
 		}
 		// Mark Sender and Recipient for balance update
-		markBalanceUpdate(indexedTx.From, []byte{0x0}, bulkMetadataUpdates, cache)
-		markBalanceUpdate(indexedTx.To, []byte{0x0}, bulkMetadataUpdates, cache)
+		bigtable.markBalanceUpdate(indexedTx.From, []byte{0x0}, bulkMetadataUpdates, cache)
+		bigtable.markBalanceUpdate(indexedTx.To, []byte{0x0}, bulkMetadataUpdates, cache)
 
 		if len(indexedTx.Hash) != 32 {
 			logger.Fatalf("retrieved hash of length %v for a tx in block %v", len(indexedTx.Hash), blk.GetNumber())
@@ -917,8 +920,8 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *ccache.Cache
 				Value:       idx.GetValue(),
 			}
 
-			markBalanceUpdate(indexedItx.To, []byte{0x0}, bulkMetadataUpdates, cache)
-			markBalanceUpdate(indexedItx.From, []byte{0x0}, bulkMetadataUpdates, cache)
+			bigtable.markBalanceUpdate(indexedItx.To, []byte{0x0}, bulkMetadataUpdates, cache)
+			bigtable.markBalanceUpdate(indexedItx.From, []byte{0x0}, bulkMetadataUpdates, cache)
 
 			b, err := proto.Marshal(indexedItx)
 			if err != nil {
@@ -1058,8 +1061,8 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block, cache *ccache.Cac
 				To:           transfer.To.Bytes(),
 				Value:        value,
 			}
-			markBalanceUpdate(indexedLog.From, indexedLog.TokenAddress, bulkMetadataUpdates, cache)
-			markBalanceUpdate(indexedLog.To, indexedLog.TokenAddress, bulkMetadataUpdates, cache)
+			bigtable.markBalanceUpdate(indexedLog.From, indexedLog.TokenAddress, bulkMetadataUpdates, cache)
+			bigtable.markBalanceUpdate(indexedLog.To, indexedLog.TokenAddress, bulkMetadataUpdates, cache)
 
 			b, err := proto.Marshal(indexedLog)
 			if err != nil {
@@ -2267,22 +2270,186 @@ func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]st
 	return res, err
 }
 
-func (bigtable *Bigtable) GetBalancesForAddress(address string) ([][]byte, error) {
+func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1AddressMetadata, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
-	pairs := make([]string, 0, 100)
-
-	err := bigtable.tableMetadataUpdates.ReadRows(ctx, gcp_bigtable.PrefixRange("B:"+address), func(row gcp_bigtable.Row) bool {
-		pairs = append(pairs, row.Key())
-		return true
-	})
+	row, err := bigtable.tableMetadata.ReadRow(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address))
 
 	if err != nil {
 		return nil, err
 	}
 
-	return rpc.CurrentErigonClient.GetBalances(pairs)
+	ret := &types.Eth1AddressMetadata{
+		Balances: []*types.Eth1AddressBalance{},
+		ERC20:    &types.ERC20Metadata{},
+		Name:     "",
+	}
+
+	g := new(errgroup.Group)
+	mux := sync.Mutex{}
+	for _, ri := range row {
+		for _, column := range ri {
+			if strings.HasPrefix(column.Column, ACCOUNT_METADATA_FAMILY+":B:") {
+				column := column
+				g.Go(func() error {
+					token := common.FromHex(strings.TrimPrefix(column.Column, "a:B:"))
+					if len(column.Value) == 0 && len(token) > 1 {
+						return nil
+					}
+					balance := &types.Eth1AddressBalance{
+						Address: address,
+						Token:   token,
+						Balance: column.Value,
+					}
+
+					metadata, err := bigtable.GetERC20MetadataForAddress(token)
+					if err != nil {
+						return err
+					}
+					balance.Metadata = metadata
+
+					mux.Lock()
+					ret.Balances = append(ret.Balances, balance)
+					mux.Unlock()
+
+					return nil
+				})
+			}
+
+			if column.Column == ACCOUNT_METADATA_FAMILY+":NAME" {
+				ret.Name = string(column.Value)
+			}
+		}
+	}
+
+	err = g.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(ret.Balances, func(i, j int) bool {
+		return bytes.Compare(ret.Balances[i].Token, ret.Balances[j].Token) < 0
+	})
+
+	return ret, nil
+}
+
+func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC20Metadata, error) {
+
+	if len(address) == 1 {
+		return &types.ERC20Metadata{
+			Decimals:    big.NewInt(18).Bytes(),
+			Symbol:      "Ether",
+			TotalSupply: []byte{},
+		}, nil
+	}
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
+	filter := gcp_bigtable.FamilyFilter(ERC20_METADATA_FAMILY)
+
+	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
+
+	if err != nil {
+		return nil, err
+	}
+
+	if row == nil { // Retrieve token metadata from Ethplorer and store it for later usage
+		logger.Infof("retrieving metadata for token %x via rpc", address)
+		metadata, err := rpc.CurrentErigonClient.GetERC20TokenMetadata(address)
+
+		if err != nil {
+			logger.Errorf("error retrieving metadata for token %x: %v", address, err)
+			return &types.ERC20Metadata{
+				Decimals:    []byte{0x0},
+				Symbol:      "UNKNOWN",
+				TotalSupply: []byte{0x0},
+			}, nil
+		}
+
+		mut := gcp_bigtable.NewMutation()
+		mut.Set(ERC20_METADATA_FAMILY, "DECIMALS", gcp_bigtable.Timestamp(0), metadata.Decimals)
+		mut.Set(ERC20_METADATA_FAMILY, "TOTALSUPPLY", gcp_bigtable.Timestamp(0), metadata.TotalSupply)
+		mut.Set(ERC20_METADATA_FAMILY, "SYMBOL", gcp_bigtable.Timestamp(0), []byte(metadata.Symbol))
+
+		err = bigtable.tableMetadata.Apply(ctx, rowKey, mut)
+		if err != nil {
+			return nil, err
+		}
+
+		return metadata, nil
+	}
+
+	logger.Infof("retrieving metadata for token %x via bigtable", address)
+	ret := &types.ERC20Metadata{}
+	for _, ri := range row {
+		for _, item := range ri {
+			if item.Column == ERC20_METADATA_FAMILY+":DECIMALS" {
+				ret.Decimals = item.Value
+			} else if item.Column == ERC20_METADATA_FAMILY+":TOTALSUPPLY" {
+				ret.TotalSupply = item.Value
+			} else if item.Column == ERC20_METADATA_FAMILY+":SYMBOL" {
+				ret.Symbol = string(item.Value)
+			}
+		}
+	}
+
+	return ret, nil
+}
+
+func (bigtable *Bigtable) SaveAddressName(address string, name string) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	mut := gcp_bigtable.NewMutation()
+	mut.Set(ACCOUNT_METADATA_FAMILY, "NAME", gcp_bigtable.Timestamp(0), []byte(name))
+
+	return bigtable.tableMetadata.Apply(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address), mut)
+}
+
+func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance) error {
+	if len(balances) == 0 {
+		return nil
+	}
+
+	mutsWrite := &types.BulkMutations{
+		Keys: make([]string, 0, len(balances)),
+		Muts: make([]*gcp_bigtable.Mutation, 0, len(balances)),
+	}
+	mutsDelete := &types.BulkMutations{
+		Keys: make([]string, 0, len(balances)),
+		Muts: make([]*gcp_bigtable.Mutation, 0, len(balances)),
+	}
+
+	for _, balance := range balances {
+		mutWrite := gcp_bigtable.NewMutation()
+
+		mutWrite.Set(ACCOUNT_METADATA_FAMILY, fmt.Sprintf("B:%x", balance.Token), gcp_bigtable.Timestamp(0), balance.Balance)
+		mutsWrite.Keys = append(mutsWrite.Keys, fmt.Sprintf("%s:%x", bigtable.chainId, balance.Address))
+		mutsWrite.Muts = append(mutsWrite.Muts, mutWrite)
+
+		mutDelete := gcp_bigtable.NewMutation()
+		mutDelete.DeleteRow()
+		mutsDelete.Keys = append(mutsDelete.Keys, fmt.Sprintf("%s:%x:%x", "B", balance.Address, balance.Token))
+		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+	}
+
+	err := bigtable.WriteBulk(mutsWrite, bigtable.tableMetadata)
+
+	if err != nil {
+		return err
+	}
+
+	err = bigtable.WriteBulk(mutsDelete, bigtable.tableMetadataUpdates)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*types.Eth1ERC20Indexed, string, error) {
@@ -2411,11 +2578,11 @@ func prefixSuccessor(prefix string, pos int) string {
 	return string(ans)
 }
 
-func markBalanceUpdate(address []byte, token []byte, mutations *types.BulkMutations, cache *ccache.Cache) {
-	balanceUpdateKey := fmt.Sprintf("B:%x:%x", address, token) // format is B: for balance update as prefix + address + token id (0x0 = native ETH token)
+func (bigtable *Bigtable) markBalanceUpdate(address []byte, token []byte, mutations *types.BulkMutations, cache *ccache.Cache) {
+	balanceUpdateKey := fmt.Sprintf("%s:B:%x", bigtable.chainId, address) // format is B: for balance update as chainid:prefix:address (token id will be encoded as column name)
 	if cache.Get(balanceUpdateKey) == nil {
 		mut := gcp_bigtable.NewMutation()
-		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), []byte{})
+		mut.Set(DEFAULT_FAMILY, fmt.Sprintf("%x", token), gcp_bigtable.Timestamp(0), []byte{})
 
 		mutations.Keys = append(mutations.Keys, balanceUpdateKey)
 		mutations.Muts = append(mutations.Muts, mut)
