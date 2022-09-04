@@ -27,7 +27,7 @@ Lighthouse [lighthouse.beaconcha.in](https://lighthouse.beaconcha.in)
 - Index page
   - Auto refresh - Index page data is automatically updated every 15 seconds
   - Basic chain statistics (current epoch, current slot, active validators, pending validators, staked ether)
-  - Information on the 20 most recent blocks (epoch, slot, time, proposer, hash, number of attestations, deposits, slahsings and voluntary exits)
+  - Information on the 20 most recent blocks (epoch, slot, time, proposer, hash, number of attestations, deposits, slashings and voluntary exits)
 - Epochs page
   - Pageable tabular view of all epochs (epoch, time, blocks, attestations, slashings, exits, finalization status, voting statistics)
 - Blocks page
