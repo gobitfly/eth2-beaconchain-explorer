@@ -1093,8 +1093,11 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block, cache *ccache.Cac
 				fmt.Sprintf("%s:I:ERC20:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ERC20:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 
-				fmt.Sprintf("%s:I:ERC20:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
-				fmt.Sprintf("%s:I:ERC20:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+				// fmt.Sprintf("%s:I:ERC20:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+				// fmt.Sprintf("%s:I:ERC20:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+
+				fmt.Sprintf("%s:I:ERC20:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+				fmt.Sprintf("%s:I:ERC20:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 
 				fmt.Sprintf("%s:I:ERC20:%x:TO:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ERC20:%x:FROM:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
@@ -1105,6 +1108,10 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block, cache *ccache.Cac
 			for _, idx := range indexes {
 				mut := gcp_bigtable.NewMutation()
 				mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
+
+				// if i == 3 || i == 4 {
+				// 	mut.DeleteRow()
+				// }
 
 				bulkData.Keys = append(bulkData.Keys, idx)
 				bulkData.Muts = append(bulkData.Muts, mut)
@@ -1239,8 +1246,11 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block, cache *ccache.Ca
 				fmt.Sprintf("%s:I:ERC721:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ERC721:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 
-				fmt.Sprintf("%s:I:ERC721:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
-				fmt.Sprintf("%s:I:ERC721:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+				// fmt.Sprintf("%s:I:ERC721:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+				// fmt.Sprintf("%s:I:ERC721:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+
+				fmt.Sprintf("%s:I:ERC721:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+				fmt.Sprintf("%s:I:ERC721:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 
 				fmt.Sprintf("%s:I:ERC721:%x:TO:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ERC721:%x:FROM:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
@@ -1251,6 +1261,10 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block, cache *ccache.Ca
 			for _, idx := range indexes {
 				mut := gcp_bigtable.NewMutation()
 				mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
+
+				// if i == 3 || i == 4 {
+				// 	mut.DeleteRow()
+				// }
 
 				bulkData.Keys = append(bulkData.Keys, idx)
 				bulkData.Muts = append(bulkData.Muts, mut)
@@ -1414,8 +1428,11 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block, cache *ccache.C
 				fmt.Sprintf("%s:I:ERC1155:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ERC1155:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 
-				fmt.Sprintf("%s:I:ERC1155:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
-				fmt.Sprintf("%s:I:ERC1155:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+				// fmt.Sprintf("%s:I:ERC1155:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+				// fmt.Sprintf("%s:I:ERC1155:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+
+				fmt.Sprintf("%s:I:ERC1155:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+				fmt.Sprintf("%s:I:ERC1155:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 
 				fmt.Sprintf("%s:I:ERC1155:%x:TO:%x:%s:%s:%s", bigtable.chainId, indexedLog.From, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ERC1155:%x:FROM:%x:%s:%s:%s", bigtable.chainId, indexedLog.To, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
@@ -1426,6 +1443,10 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block, cache *ccache.C
 			for _, idx := range indexes {
 				mut := gcp_bigtable.NewMutation()
 				mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
+
+				// if i == 3 || i == 4 {
+				// 	mut.DeleteRow()
+				// }
 
 				bulkData.Keys = append(bulkData.Keys, idx)
 				bulkData.Muts = append(bulkData.Muts, mut)
@@ -2574,9 +2595,13 @@ func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*type
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetTokenTransactionsTableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
+func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []byte, pageToken string) (*types.DataTableResponse, error) {
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:ERC20:%s:%s:", bigtable.chainId, address, FILTER_TIME)
+		if len(address) == 0 {
+			pageToken = fmt.Sprintf("%s:I:ERC20:%x:%s", bigtable.chainId, token, FILTER_TIME)
+		} else {
+			pageToken = fmt.Sprintf("%s:I:ERC20:%x:%x:%s", bigtable.chainId, token, address, FILTER_TIME)
+		}
 	}
 
 	logger.Info(pageToken)
@@ -2593,12 +2618,12 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(address string, search s
 	for i, t := range transactions {
 		from := utils.AddCopyButton(utils.FormatHash(t.From), hex.EncodeToString(t.From))
 
-		if fmt.Sprintf("%x", t.From) != address {
-			from = utils.FormatAddressAsLink(t.From, "", false, false)
+		if !bytes.Equal(address, t.From) {
+			from = utils.FormatAddressAsTokenLink(t.TokenAddress, t.From, "", false, false)
 		}
 		to := utils.AddCopyButton(utils.FormatHash(t.To), hex.EncodeToString(t.To))
-		if fmt.Sprintf("%x", t.To) != address {
-			to = utils.FormatAddressAsLink(t.To, "", false, false)
+		if !bytes.Equal(address, t.To) {
+			to = utils.FormatAddressAsTokenLink(t.TokenAddress, t.To, "", false, false)
 		}
 		// method := "Transfer"
 		// if len(t.MethodId) > 0 {
@@ -2620,7 +2645,8 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(address string, search s
 		}
 
 		tb := &types.Eth1AddressBalance{
-			Address:  ZERO_ADDRESS,
+			Address:  address,
+			Token:    t.TokenAddress,
 			Balance:  t.Value,
 			Metadata: metadataCache[string(t.TokenAddress)],
 		}

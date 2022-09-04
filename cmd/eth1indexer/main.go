@@ -42,6 +42,7 @@ func main() {
 	checkDataGapsLookback := flag.Int("data.gaps.lookback", 1000000, "Lookback for gaps check of the blocks table")
 
 	enableBalanceUpdater := flag.Bool("balances.enabled", false, "Enable balance update process")
+	balanceUpdaterPrefix := flag.String("balances.prefix", "", "Prefix to use for fetching balance updates")
 
 	flag.Parse()
 
@@ -62,7 +63,7 @@ func main() {
 	defer bt.Close()
 
 	if *enableBalanceUpdater {
-		ProcessMetadataUpdates(bt, client)
+		ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix)
 	}
 
 	transforms := make([]func(blk *types.Eth1Block, cache *ccache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
@@ -159,7 +160,7 @@ func main() {
 		logrus.Infof("index run completed")
 
 		if *enableBalanceUpdater {
-			ProcessMetadataUpdates(bt, client)
+			ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix)
 		}
 		time.Sleep(time.Second * 14)
 	}
@@ -168,8 +169,8 @@ func main() {
 
 }
 
-func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient) {
-	lastKey := "B:1"
+func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix string) {
+	lastKey := prefix
 	// for {
 	// 	updates, err := bt.GetMetadataUpdates(lastKey, 1000)
 	// 	if err != nil {

@@ -899,7 +899,12 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Metadata.Decimals), 0))
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
 
-	return template.HTML(fmt.Sprintf("%v <a href='/execution/token/0x%x?a=0x%x'>%s</a>", num.Div(mul), balance.Token, balance.Address, balance.Metadata.Symbol))
+	logo := ""
+	if len(balance.Metadata.Logo) != 0 {
+		logo = fmt.Sprintf(`<img style="height: 20px;" src="data:image/png;base64, %s">`, base64.StdEncoding.EncodeToString(balance.Metadata.Logo))
+	}
+
+	return template.HTML(fmt.Sprintf("%v <a href='/execution/token/0x%x?a=0x%x'>%s %s</a>", num.Div(mul), balance.Token, balance.Address, logo, balance.Metadata.Symbol))
 }
 
 func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {

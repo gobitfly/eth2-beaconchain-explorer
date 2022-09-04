@@ -1405,6 +1405,7 @@ type ERC20Metadata struct {
 }
 
 type Eth1TokenPageData struct {
+	Token            string `json:"token"`
 	Address          string `json:"address"`
 	Metadata         *ERC20Metadata
 	Holders          template.HTML `json:"holders"`

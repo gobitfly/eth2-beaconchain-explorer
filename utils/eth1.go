@@ -96,6 +96,26 @@ func FormatAddressAsLink(address []byte, name string, verified bool, isContract 
 	return template.HTML(ret)
 }
 
+func FormatAddressAsTokenLink(token, address []byte, name string, verified bool, isContract bool) template.HTML {
+	ret := ""
+	name = template.HTMLEscapeString(name)
+
+	if len(name) > 0 {
+		if verified {
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/token/0x%x?a=0x%x\">✔ %s (0x%x…%x)</a> %v", token, address, name, address[:2], address[len(address)-2:], CopyButton(hex.EncodeToString(address)))
+		} else {
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/token/0x%x?a=0x%x\">%s 0x%x…%x</a> %v", token, address, name, address[:2], address[len(address)-2:], CopyButton(hex.EncodeToString(address)))
+		}
+	} else {
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/token/0x%x?a=0x%x\">0x%x…%x</a> %v", token, address, address[:2], address[len(address)-2:], CopyButton(hex.EncodeToString(address)))
+	}
+
+	if isContract {
+		ret = "<i class=\"fas fa-file-contract mr-1\"></i>" + ret
+	}
+	return template.HTML(ret)
+}
+
 func FormatAddressLong(address string) template.HTML {
 	if len(address) > 4 {
 		return template.HTML(fmt.Sprintf(`<span class="text-monospace">0x<span class="text-primary">%s</span><span>%s</span><span class="text-primary">%s</span></span>`, address[:4], address[2:len(address)-4], address[len(address)-4:]))

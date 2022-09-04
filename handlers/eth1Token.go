@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
 	"html/template"
 	"net/http"
 	"strings"
@@ -19,8 +20,9 @@ var eth1TokenTemplate = template.Must(template.New("token").Funcs(utils.GetTempl
 func Eth1Token(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
-	address := strings.Replace(vars["token"], "0x", "", -1)
-	address = strings.ToLower(address)
+	token := common.FromHex(strings.TrimPrefix(vars["token"], "0x"))
+
+	address := common.FromHex(strings.TrimPrefix(r.URL.Query().Get("a"), "0x"))
 
 	data := InitPageData(w, r, "token", "/token", "token")
 
@@ -33,13 +35,13 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 
 	g.Go(func() error {
 		var err error
-		txns, err = db.BigtableClient.GetTokenTransactionsTableData(address, "", "")
+		txns, err = db.BigtableClient.GetTokenTransactionsTableData(token, address, "")
 		return err
 	})
 
 	g.Go(func() error {
 		var err error
-		metadata, err = db.BigtableClient.GetERC20MetadataForAddress(common.FromHex(address))
+		metadata, err = db.BigtableClient.GetERC20MetadataForAddress(token)
 		return err
 	})
 	// g.Go(func() error {
@@ -53,12 +55,13 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 
 	if err := g.Wait(); err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
 	data.Data = types.Eth1TokenPageData{
-		Address:        address,
+		Token:          fmt.Sprintf("%x", token),
+		Address:        fmt.Sprintf("%x", address),
 		TransfersTable: txns,
 		Metadata:       metadata,
 		// HoldersTable: holders,
@@ -71,7 +74,7 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 	err := eth1TokenTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -82,14 +85,13 @@ func Eth1TokenTransfers(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
 
+	token := common.FromHex(strings.TrimPrefix(vars["token"], "0x"))
+	address := common.FromHex(strings.TrimPrefix(q.Get("a"), "0x"))
 	pageToken := q.Get("pageToken")
 
-	search := ""
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
-	data, err := db.BigtableClient.GetTokenTransactionsTableData(address, search, pageToken)
+	data, err := db.BigtableClient.GetTokenTransactionsTableData(token, address, pageToken)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 block table data")
 	}
