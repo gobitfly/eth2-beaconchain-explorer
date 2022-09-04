@@ -1,11 +1,17 @@
 package main
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/types"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"math/big"
+	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -447,4 +453,90 @@ func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk 
 	}
 
 	return nil
+}
+
+func ImportMainnetERC20TokenMetadataFromTokenDirectory(bt *db.Bigtable) {
+
+	client := &http.Client{Timeout: time.Second * 10}
+
+	resp, err := client.Get("<INSERT_TOKENLIST_URL>")
+
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	type TokenDirectory struct {
+		ChainID       int64    `json:"chainId"`
+		Keywords      []string `json:"keywords"`
+		LogoURI       string   `json:"logoURI"`
+		Name          string   `json:"name"`
+		Timestamp     string   `json:"timestamp"`
+		TokenStandard string   `json:"tokenStandard"`
+		Tokens        []struct {
+			Address    string `json:"address"`
+			ChainID    int64  `json:"chainId"`
+			Decimals   int64  `json:"decimals"`
+			Extensions struct {
+				Description   string      `json:"description"`
+				Link          string      `json:"link"`
+				OgImage       interface{} `json:"ogImage"`
+				OriginAddress string      `json:"originAddress"`
+				OriginChainID int64       `json:"originChainId"`
+			} `json:"extensions"`
+			LogoURI string `json:"logoURI"`
+			Name    string `json:"name"`
+			Symbol  string `json:"symbol"`
+		} `json:"tokens"`
+	}
+
+	td := &TokenDirectory{}
+
+	err = json.Unmarshal(body, td)
+
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	for _, token := range td.Tokens {
+
+		address, err := hex.DecodeString(strings.TrimPrefix(token.Address, "0x"))
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		logrus.Infof("processing token %v at address %x", token.Name, address)
+
+		meta := &types.ERC20Metadata{}
+		meta.Decimals = big.NewInt(token.Decimals).Bytes()
+		meta.Description = token.Extensions.Description
+		if len(token.LogoURI) > 0 {
+			resp, err := client.Get(token.LogoURI)
+
+			if err == nil && resp.StatusCode == 200 {
+				body, err := ioutil.ReadAll(resp.Body)
+
+				if err != nil {
+					logrus.Fatal(err)
+				}
+
+				meta.Logo = body
+				meta.LogoFormat = token.LogoURI
+			}
+		}
+		meta.Name = token.Name
+		meta.OfficialSite = token.Extensions.Link
+		meta.Symbol = token.Symbol
+
+		err = bt.SaveERC20Metadata(address, meta)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		time.Sleep(time.Millisecond * 250)
+	}
+
 }

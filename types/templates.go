@@ -1396,14 +1396,17 @@ type ERC20Metadata struct {
 	Decimals     []byte
 	Symbol       string
 	Name         string
-	Icon         []byte
+	Description  string
+	Logo         []byte
+	LogoFormat   string
 	TotalSupply  []byte
 	OfficialSite string
 	Price        []byte
 }
 
 type Eth1TokenPageData struct {
-	Address          string        `json:"address"`
+	Address          string `json:"address"`
+	Metadata         *ERC20Metadata
 	Holders          template.HTML `json:"holders"`
 	Transfers        template.HTML `json:"transfers"`
 	Price            template.HTML `json:"price"`

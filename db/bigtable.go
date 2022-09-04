@@ -12,7 +12,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"log"
 	"math/big"
 	"sort"
@@ -63,6 +62,20 @@ const (
 	writeRowLimit           = 10000
 	MAX_INT                 = 9223372036854775807
 	MIN_INT                 = -9223372036854775808
+)
+
+const (
+	ERC20_COLUMN_DECIMALS    = "DECIMALS"
+	ERC20_COLUMN_TOTALSUPPLY = "TOTALSUPPLY"
+	ERC20_COLUMN_SYMBOL      = "SYMBOL"
+
+	ERC20_COLUMN_NAME           = "NAME"
+	ERC20_COLUMN_DESCRIPTION    = "DESCRIPTION"
+	ERC20_COLUMN_LOGO           = "LOGO"
+	ERC20_COLUMN_LOGO_FORMAT    = "LOGOFORMAT"
+	ERC20_COLUMN_LINK           = "LINK"
+	ERC20_COLUMN_OGIMAGE        = "OGIMAGE"
+	ERC20_COLUMN_OGIMAGE_FORMAT = "OGIMAGEFORMAT"
 )
 
 var ZERO_ADDRESS []byte = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
@@ -1976,10 +1989,10 @@ func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressErc20TableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
+func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string, pageToken string) (*types.DataTableResponse, error) {
 
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:ERC20:%s:%s:", bigtable.chainId, address, FILTER_TIME)
+		pageToken = fmt.Sprintf("%s:I:ERC20:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
 	transactions, lastKey, err := bigtable.GetEth1ERC20ForAddress(pageToken, 25)
@@ -1987,34 +2000,40 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address string, search string
 		return nil, err
 	}
 
+	metadataCache := make(map[string]*types.ERC20Metadata) // cache metadata
+
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
 		from := utils.FormatHash(t.From)
-		if fmt.Sprintf("%x", t.From) != address {
+		if !bytes.Equal(t.From, address) {
 			from = utils.FormatAddressAsLink(t.From, "", false, false)
 		}
 		to := utils.FormatHash(t.To)
-		if fmt.Sprintf("%x", t.To) != address {
+		if !bytes.Equal(t.To, address) {
 			to = utils.FormatAddressAsLink(t.To, "", false, false)
 		}
 
-		tokenInfo := erc20.GetTokenDetail(fmt.Sprintf("%x", t.TokenAddress))
-		value := ""
-		token := template.HTML("")
-		if tokenInfo != nil {
-			value = tokenInfo.FormatAmount(new(big.Int).SetBytes(t.Value))
-			token = utils.FormatAddressAsLink(t.TokenAddress, tokenInfo.Symbol, false, true)
-		} else {
-			value = new(big.Int).SetBytes(t.Value).String()
-			token = utils.FormatAddressAsLink(t.TokenAddress, "", false, true)
+		if metadataCache[string(t.TokenAddress)] == nil {
+			metadata, err := bigtable.GetERC20MetadataForAddress(t.TokenAddress)
+			if err != nil {
+				return nil, err
+			}
+			metadataCache[string(t.TokenAddress)] = metadata
 		}
+
+		tb := &types.Eth1AddressBalance{
+			Address:  address,
+			Balance:  t.Value,
+			Token:    t.TokenAddress,
+			Metadata: metadataCache[string(t.TokenAddress)],
+		}
+
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
 			from,
 			to,
-			value,
-			token,
-			// utils.FormatAmount(float64(new(big.Int).SetBytes(t.Value).Int64()), "ETH", 6),
+			utils.FormatTokenValue(tb),
+			utils.FormatTokenName(tb),
 		}
 	}
 
@@ -2370,12 +2389,8 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 			}, nil
 		}
 
-		mut := gcp_bigtable.NewMutation()
-		mut.Set(ERC20_METADATA_FAMILY, "DECIMALS", gcp_bigtable.Timestamp(0), metadata.Decimals)
-		mut.Set(ERC20_METADATA_FAMILY, "TOTALSUPPLY", gcp_bigtable.Timestamp(0), metadata.TotalSupply)
-		mut.Set(ERC20_METADATA_FAMILY, "SYMBOL", gcp_bigtable.Timestamp(0), []byte(metadata.Symbol))
+		err = bigtable.SaveERC20Metadata(address, metadata)
 
-		err = bigtable.tableMetadata.Apply(ctx, rowKey, mut)
 		if err != nil {
 			return nil, err
 		}
@@ -2387,17 +2402,60 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 	ret := &types.ERC20Metadata{}
 	for _, ri := range row {
 		for _, item := range ri {
-			if item.Column == ERC20_METADATA_FAMILY+":DECIMALS" {
+			if item.Column == ERC20_METADATA_FAMILY+":"+ERC20_COLUMN_DECIMALS {
 				ret.Decimals = item.Value
-			} else if item.Column == ERC20_METADATA_FAMILY+":TOTALSUPPLY" {
+			} else if item.Column == ERC20_METADATA_FAMILY+":"+ERC20_COLUMN_TOTALSUPPLY {
 				ret.TotalSupply = item.Value
-			} else if item.Column == ERC20_METADATA_FAMILY+":SYMBOL" {
+			} else if item.Column == ERC20_METADATA_FAMILY+":"+ERC20_COLUMN_SYMBOL {
 				ret.Symbol = string(item.Value)
+			} else if item.Column == ERC20_METADATA_FAMILY+":"+ERC20_COLUMN_DESCRIPTION {
+				ret.Description = string(item.Value)
+			} else if item.Column == ERC20_METADATA_FAMILY+":"+ERC20_COLUMN_NAME {
+				ret.Name = string(item.Value)
+			} else if item.Column == ERC20_METADATA_FAMILY+":"+ERC20_COLUMN_LOGO {
+				ret.Logo = item.Value
+			} else if item.Column == ERC20_METADATA_FAMILY+":"+ERC20_COLUMN_LOGO_FORMAT {
+				ret.LogoFormat = string(item.Value)
 			}
 		}
 	}
 
 	return ret, nil
+}
+
+func (bigtable *Bigtable) SaveERC20Metadata(address []byte, metadata *types.ERC20Metadata) error {
+	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	mut := gcp_bigtable.NewMutation()
+	if len(metadata.Decimals) > 0 {
+		mut.Set(ERC20_METADATA_FAMILY, ERC20_COLUMN_DECIMALS, gcp_bigtable.Timestamp(0), metadata.Decimals)
+	}
+
+	if len(metadata.TotalSupply) > 0 {
+		mut.Set(ERC20_METADATA_FAMILY, ERC20_COLUMN_TOTALSUPPLY, gcp_bigtable.Timestamp(0), metadata.TotalSupply)
+	}
+
+	if len(metadata.Symbol) > 0 {
+		mut.Set(ERC20_METADATA_FAMILY, ERC20_COLUMN_SYMBOL, gcp_bigtable.Timestamp(0), []byte(metadata.Symbol))
+	}
+
+	if len(metadata.Name) > 0 {
+		mut.Set(ERC20_METADATA_FAMILY, ERC20_COLUMN_NAME, gcp_bigtable.Timestamp(0), []byte(metadata.Name))
+	}
+
+	if len(metadata.Description) > 0 {
+		mut.Set(ERC20_METADATA_FAMILY, ERC20_COLUMN_DESCRIPTION, gcp_bigtable.Timestamp(0), []byte(metadata.Description))
+	}
+
+	if len(metadata.Logo) > 0 && len(metadata.LogoFormat) > 0 {
+		mut.Set(ERC20_METADATA_FAMILY, ERC20_COLUMN_LOGO, gcp_bigtable.Timestamp(0), metadata.Logo)
+		mut.Set(ERC20_METADATA_FAMILY, ERC20_COLUMN_LOGO_FORMAT, gcp_bigtable.Timestamp(0), []byte(metadata.LogoFormat))
+	}
+
+	return bigtable.tableMetadata.Apply(ctx, rowKey, mut)
 }
 
 func (bigtable *Bigtable) SaveAddressName(address string, name string) error {
@@ -2516,6 +2574,9 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(address string, search s
 	}
 
 	tableData := make([][]interface{}, len(transactions))
+
+	metadataCache := make(map[string]*types.ERC20Metadata) // cache metadata
+
 	for i, t := range transactions {
 		from := utils.AddCopyButton(utils.FormatHash(t.From), hex.EncodeToString(t.From))
 
@@ -2537,6 +2598,20 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(address string, search s
 		// }
 		// logger.Infof("hash: %x amount: %s", t.Hash, new(big.Int).SetBytes(t.Value))
 
+		if metadataCache[string(t.TokenAddress)] == nil {
+			metadata, err := bigtable.GetERC20MetadataForAddress(t.TokenAddress)
+			if err != nil {
+				return nil, err
+			}
+			metadataCache[string(t.TokenAddress)] = metadata
+		}
+
+		tb := &types.Eth1AddressBalance{
+			Address:  ZERO_ADDRESS,
+			Balance:  t.Value,
+			Metadata: metadataCache[string(t.TokenAddress)],
+		}
+
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
 			// utils.FormatMethod(method),
@@ -2544,7 +2619,7 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(address string, search s
 			utils.FormatBlockNumber(t.BlockNumber),
 			from,
 			to,
-			new(big.Int).SetBytes(t.Value),
+			utils.FormatTokenBalance(tb),
 		}
 	}
 

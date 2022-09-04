@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 	"golang.org/x/sync/errgroup"
 )
@@ -27,15 +28,19 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 	g.SetLimit(2)
 
 	var txns *types.DataTableResponse
+	var metadata *types.ERC20Metadata
 	// var holders *types.DataTableResponse
 
 	g.Go(func() error {
 		var err error
 		txns, err = db.BigtableClient.GetTokenTransactionsTableData(address, "", "")
-		if err != nil {
-			return err
-		}
-		return nil
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		metadata, err = db.BigtableClient.GetERC20MetadataForAddress(common.FromHex(address))
+		return err
 	})
 	// g.Go(func() error {
 	// 	var err error
@@ -55,6 +60,7 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 	data.Data = types.Eth1TokenPageData{
 		Address:        address,
 		TransfersTable: txns,
+		Metadata:       metadata,
 		// HoldersTable: holders,
 	}
 

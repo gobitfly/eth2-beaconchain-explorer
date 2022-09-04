@@ -144,6 +144,15 @@
       <a style="width: 1rem; height: 1rem;" target="_blank" href="https://etherscan.io/address/{{.Data.Address }}"><i
           class="fas fa-external-link-alt"></i></a></h1>
   </div>
+  <h4>Info</h4>
+  <ul>
+    <li>Name: {{.Data.Metadata.Name}}</li>
+    <li>Symbol: {{.Data.Metadata.Symbol}}</li>
+    <li>Description: {{.Data.Metadata.Description}}</li>
+    <li>Logo: <img style="height: 20px;" src="data:image/png;base64, {{toBase64 .Data.Metadata.Logo}}"></img></li>
+    <li>Decimals: {{bytesToNumberString .Data.Metadata.Decimals}}</li>
+    <li>Total Supply: {{bytesToNumberString .Data.Metadata.TotalSupply}}</li>
+  </ul>
   <div class="card shadow-none">
     <div class="card-header p-0">
       {{ template "AddressTabs" . }}

@@ -23,6 +23,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	address := strings.Replace(vars["address"], "0x", "", -1)
 	address = strings.ToLower(address)
 
+	addressBytes := common.FromHex(address)
 	data := InitPageData(w, r, "address", "/address", "Address")
 
 	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address))
@@ -61,7 +62,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		erc20, err = db.BigtableClient.GetAddressErc20TableData(address, "", "")
+		erc20, err = db.BigtableClient.GetAddressErc20TableData(addressBytes, "", "")
 		if err != nil {
 			return err
 		}
@@ -227,7 +228,7 @@ func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -240,11 +241,12 @@ func Eth1AddressErc20Transactions(w http.ResponseWriter, r *http.Request) {
 	address := strings.Replace(vars["address"], "0x", "", -1)
 	address = strings.ToLower(address)
 
+	addressBytes := common.FromHex(address)
 	pageToken := q.Get("pageToken")
 
 	search := ""
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
-	data, err := db.BigtableClient.GetAddressErc20TableData(address, search, pageToken)
+	data, err := db.BigtableClient.GetAddressErc20TableData(addressBytes, search, pageToken)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 internal transactions table data")
 	}
@@ -280,7 +282,7 @@ func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
