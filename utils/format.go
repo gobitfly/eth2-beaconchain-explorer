@@ -392,6 +392,19 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
 }
 
+func FormatName(name string, trunc_opt ...bool) template.HTML {
+	trunc := true
+	if len(trunc_opt) > 0 {
+		trunc = trunc_opt[0]
+	}
+
+	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
+	if len(name) > 8 && trunc {
+		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%s…</span>", name[:8]))
+	}
+	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%s</span>", name))
+}
+
 func AddCopyButton(element template.HTML, copyContent string) template.HTML {
 	return element + " " + template.HTML(CopyButton(copyContent))
 }

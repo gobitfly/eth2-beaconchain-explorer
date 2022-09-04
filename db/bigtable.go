@@ -65,6 +65,8 @@ const (
 )
 
 const (
+	ACCOUNT_COLUMN_NAME = "NAME"
+
 	ERC20_COLUMN_DECIMALS    = "DECIMALS"
 	ERC20_COLUMN_TOTALSUPPLY = "TOTALSUPPLY"
 	ERC20_COLUMN_SYMBOL      = "SYMBOL"
@@ -1583,9 +1585,9 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*ty
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressTransactionsTableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
+func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search string, pageToken string) (*types.DataTableResponse, error) {
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:TX:%s:%s:", bigtable.chainId, address, FILTER_TIME)
+		pageToken = fmt.Sprintf("%s:I:TX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
 	logger.Info(pageToken)
@@ -1595,17 +1597,32 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address string, search
 		return nil, err
 	}
 
+	metadataCache := make(map[string][]byte) // cache metadata
+
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
-		from := utils.AddCopyButton(utils.FormatHash(t.From), hex.EncodeToString(t.From))
 
-		if fmt.Sprintf("%x", t.From) != address {
-			from = utils.FormatAddressAsLink(t.From, "", false, false)
+		if metadataCache[string(t.To)] == nil {
+			metadataCache[string(t.To)], err = bigtable.GetAddressName(t.To)
+			if err != nil {
+				return nil, err
+			}
 		}
-		to := utils.AddCopyButton(utils.FormatHash(t.To), hex.EncodeToString(t.To))
-		if fmt.Sprintf("%x", t.To) != address {
-			to = utils.FormatAddressAsLink(t.To, "", false, false)
+
+		if metadataCache[string(t.From)] == nil {
+			metadataCache[string(t.From)], err = bigtable.GetAddressName(t.From)
+			if err != nil {
+				return nil, err
+			}
 		}
+
+		fromName := string(metadataCache[string(t.From)])
+
+		from := utils.FormatAddressAsLink(t.From, fromName, false, false)
+
+		toName := string(metadataCache[string(t.To)])
+		to := utils.FormatAddressAsLink(t.To, toName, false, false)
+
 		method := "Transfer"
 		if len(t.MethodId) > 0 {
 
@@ -2370,7 +2387,7 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 				})
 			}
 
-			if column.Column == ACCOUNT_METADATA_FAMILY+":NAME" {
+			if column.Column == ACCOUNT_METADATA_FAMILY+":"+ACCOUNT_COLUMN_NAME {
 				ret.Name = string(column.Value)
 			}
 		}
@@ -2492,12 +2509,33 @@ func (bigtable *Bigtable) SaveERC20Metadata(address []byte, metadata *types.ERC2
 	return bigtable.tableMetadata.Apply(ctx, rowKey, mut)
 }
 
-func (bigtable *Bigtable) SaveAddressName(address string, name string) error {
+func (bigtable *Bigtable) GetAddressName(address []byte) ([]byte, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
+
+	filter := gcp_bigtable.ChainFilters(gcp_bigtable.FamilyFilter(ACCOUNT_METADATA_FAMILY), gcp_bigtable.ColumnFilter(ACCOUNT_COLUMN_NAME))
+
+	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
+
+	if err != nil {
+		return []byte(""), err
+	}
+
+	if row == nil {
+		return []byte(""), nil
+	}
+
+	return row[ACCOUNT_METADATA_FAMILY][0].Value, nil
+}
+
+func (bigtable *Bigtable) SaveAddressName(address []byte, name string) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
 	mut := gcp_bigtable.NewMutation()
-	mut.Set(ACCOUNT_METADATA_FAMILY, "NAME", gcp_bigtable.Timestamp(0), []byte(name))
+	mut.Set(ACCOUNT_METADATA_FAMILY, ACCOUNT_COLUMN_NAME, gcp_bigtable.Timestamp(0), []byte(name))
 
 	return bigtable.tableMetadata.Apply(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address), mut)
 }

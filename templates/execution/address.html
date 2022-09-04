@@ -162,7 +162,7 @@
   <div class="d-md-flex py-2 my-4 justify-content-md-between">
     <h1 class="h4 mb-1 mb-md-0">
       <span class="d-block my-3 font-weight-bold"><i class="fas fa-address-book mr-1"></i> Address</span>
-      <span class="text-monospace">{{ .Data.Address | formatAddressLong }}</span> 
+      <span class="text-monospace">{{ .Data.Address | formatAddressLong }} ({{.Data.Metadata.Name}})</span> 
       <a style="width: 1rem; height: 1rem;" target="_blank" href="https://etherscan.io/address/{{.Data.Address }}"><i
           class="fas fa-external-link-alt"></i></a></h1>
   </div>

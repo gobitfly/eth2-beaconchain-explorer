@@ -46,7 +46,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	g.Go(func() error {
 		var err error
-		txns, err = db.BigtableClient.GetAddressTransactionsTableData(address, "", "")
+		txns, err = db.BigtableClient.GetAddressTransactionsTableData(addressBytes, "", "")
 		if err != nil {
 			return err
 		}
@@ -138,12 +138,13 @@ func Eth1AddressTransactions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	address := strings.Replace(vars["address"], "0x", "", -1)
 	address = strings.ToLower(address)
+	addressBytes := common.FromHex(address)
 
 	pageToken := q.Get("pageToken")
 
 	search := ""
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
-	data, err := db.BigtableClient.GetAddressTransactionsTableData(address, search, pageToken)
+	data, err := db.BigtableClient.GetAddressTransactionsTableData(addressBytes, search, pageToken)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 block table data")
 	}

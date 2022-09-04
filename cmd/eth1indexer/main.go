@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/karlseguin/ccache/v2"
 	"github.com/sirupsen/logrus"
@@ -62,6 +63,8 @@ func main() {
 	}
 	defer bt.Close()
 
+	ImportNameLabels(bt)
+	return
 	if *enableBalanceUpdater {
 		ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix)
 	}
@@ -540,4 +543,34 @@ func ImportMainnetERC20TokenMetadataFromTokenDirectory(bt *db.Bigtable) {
 		time.Sleep(time.Millisecond * 250)
 	}
 
+}
+
+func ImportNameLabels(bt *db.Bigtable) {
+	type NameEntry struct {
+		Name string
+	}
+
+	res := make(map[string]*NameEntry)
+
+	data, err := ioutil.ReadFile("")
+
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	err = json.Unmarshal(data, &res)
+
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	logrus.Infof("retrieved %v names", len(res))
+
+	for address, name := range res {
+		if name.Name == "" {
+			continue
+		}
+		logrus.Infof("%v: %v", address, name.Name)
+		bt.SaveAddressName(common.FromHex(strings.TrimPrefix(address, "0x")), name.Name)
+	}
 }
