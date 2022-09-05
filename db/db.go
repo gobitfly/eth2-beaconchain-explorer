@@ -49,6 +49,8 @@ func MustInitRedisCache(address string) {
 			logger.Fatal(err)
 		}
 
+		Redis = rdc
+
 		RedisCache = cache.New(&cache.Options{
 			Redis: rdc,
 		})
