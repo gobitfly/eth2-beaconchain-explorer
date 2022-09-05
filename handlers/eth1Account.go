@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"image/color"
 	"net/http"
 	"strings"
 
@@ -109,15 +110,33 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	png, err := qrcode.Encode(fmt.Sprintf("0x%s", address), qrcode.Medium, 300)
+	q, err := qrcode.New(fmt.Sprintf("0x%s", address), qrcode.Medium)
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v; error generating QR code for address", r.URL.String(), err)
+	}
+
+	q.BackgroundColor = color.Transparent
+	q.ForegroundColor = color.Black
+
+	png, err := q.PNG(320)
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v; error generating QR code for address", r.URL.String(), err)
+	}
+
+	q.ForegroundColor = color.White
+
+	pngInverse, err := q.PNG(320)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v; error generating QR code for address", r.URL.String(), err)
 	}
 
 	pngStr := base64.StdEncoding.EncodeToString(png)
+	pngStrInverse := base64.StdEncoding.EncodeToString(pngInverse)
+
 	data.Data = types.Eth1AddressPageData{
 		Address:           address,
 		QRCode:            pngStr,
+		QRCodeInverse:     pngStrInverse,
 		Metadata:          metadata,
 		TransactionsTable: txns,
 		InternalTxnsTable: internal,
