@@ -36,21 +36,27 @@ var Redis *redis.Client
 var logger = logrus.StandardLogger().WithField("module", "db")
 
 func MustInitRedisCache(address string) {
-	rdc := redis.NewClient(&redis.Options{
-		Addr:     address,
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
 
-	err := rdc.Ping(context.Background()).Err()
-	if err != nil {
-		logger.Fatal(err)
+	if !utils.Config.Frontend.Debug {
+		rdc := redis.NewClient(&redis.Options{
+			Addr:     address,
+			Password: "", // no password set
+			DB:       0,  // use default DB
+		})
+
+		err := rdc.Ping(context.Background()).Err()
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		RedisCache = cache.New(&cache.Options{
+			Redis: rdc,
+		})
+	} else {
+		RedisCache = cache.New(&cache.Options{
+			LocalCache: cache.NewTinyLFU(10000, time.Minute),
+		})
 	}
-	Redis = rdc
-
-	RedisCache = cache.New(&cache.Options{
-		Redis: rdc,
-	})
 }
 
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {
