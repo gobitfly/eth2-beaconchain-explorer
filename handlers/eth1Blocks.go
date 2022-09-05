@@ -39,19 +39,19 @@ func Eth1BlocksData(w http.ResponseWriter, r *http.Request) {
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		//logger.Errorf("error converting datatables data parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables start parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	if length > 100 {
@@ -66,7 +66,7 @@ func Eth1BlocksData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -81,22 +81,19 @@ func GetEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 
 	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
-		reward := new(big.Int).Add(utils.BlockReward(b.GetNumber()), new(big.Int).SetBytes(b.TxReward))
+		reward := new(big.Int).Add(utils.BlockReward(b.GetNumber()), new(big.Int).SetBytes(b.GetTxReward()))
 		tableData[i] = []interface{}{
-			b.GetNumber(), // utils.FormatBlockNumber(b.GetNumber()),
-			utils.FormatHash(b.GetHash(), true),
-			utils.FormatDifficulty(new(big.Int).SetBytes(b.GetDifficulty())),
-			utils.FormatHash(b.GetCoinbase(), true), // utils.FormatAddressAsLink(b.MinerAddress, b.MinerName, b.MinerNameVerified, b.MinerIsContract, 6),
-			utils.FormatTimeFromNow(b.GetTime().AsTime()),
-			b.GetTransactionCount(), // b.TxCount,
-			b.GetUncleCount(),       // b.UncleCount,
-			// fmt.Sprintf("%ds", b.GetDuration()),
-			utils.FormatAmount(reward, "ETH", 5),
-			utils.FormatAmount(new(big.Int).SetBytes(b.GetMev()), "ETH", 5),
-			utils.FormatAmount(new(big.Int).SetBytes(b.GetBaseFee()), "GWei", 5),
-			utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetBytes(b.GetBaseFee()), big.NewInt(int64(b.GetGasUsed()))), "ETH", 5),
-			// utils.FormatBlockUsage(b.GetGasUsed(), b.GasLimit),
-			fmt.Sprintf("%.1f%%", 100*float64(b.GetGasUsed())/float64(b.GetGasLimit())),
+			"-", // Epoch
+			fmt.Sprintf("-<BR /><font style=\"font-size: .63rem; color: grey;\">%v</font>", utils.FormatTimestamp(b.GetTime().AsTime().Unix())), // Slot
+			fmt.Sprintf("<A href=block/%d>%d</A>", b.GetNumber(), b.GetNumber()),                                                                // Block // utils.FormatBlockNumber(b.GetNumber()),
+			"-", // Status
+			utils.FormatAmount(new(big.Int).SetBytes(b.GetTxReward()), "-", 5), // Proposer
+			b.GetTransactionCount(), // Transactions
+			fmt.Sprintf("%v<BR /><font style=\"font-size: .63rem; color: grey;\">%.2f%% + -%%</font>", utils.FormatAddCommas(b.GetGasUsed()), float64(b.GetGasUsed())/float64(b.GetGasLimit())*100.0), // Gas Used
+			utils.FormatAddCommas(b.GetGasLimit()),                               // Gas Limit
+			utils.FormatAmount(new(big.Int).SetBytes(b.GetBaseFee()), "GWei", 2), // Base Fee
+			utils.FormatAmount(reward, "ETH", 5),                                 // Reward
+			fmt.Sprintf("%v (%.2f%%)", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetBytes(b.GetBaseFee()), big.NewInt(int64(b.GetGasUsed()))), "ETH", 5), 0.0), // Burned Fees
 		}
 	}
 

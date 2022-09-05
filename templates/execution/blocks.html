@@ -22,8 +22,8 @@
                 },
                 columnDefs: [
                     {
-                        targets: 11,
-                        data: '11',
+                        targets: 10,
+                        data: '10',
                         render: function(data, type, row) {
                             return '<span class="text-truncate" style="display:block;max-width: 300px;">'+data+ '</span>'
                         }
@@ -44,6 +44,9 @@
 	</script>
 {{end}} {{ define "css"}}
 	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
+	<style>
+		table.dataTable tbody td { vertical-align: top; }
+	</style>
 {{end}} {{ define "content"}}
 	<div class="container mt-2">
 		<div class="d-md-flex py-2 my-2 justify-content-md-between">
@@ -61,18 +64,17 @@
 					<table class="table" id="blocks">
 						<thead>
 						<tr>
-							<th>Number</th>
-							<th>Hash</th>
-							<th>Difficulty</th>
-							<th>Miner</th>
-							<th>Time</th>
-							<th># Tx</th>
-							<th># Uncles</th>
-							<th>Reward</th>
-							<th>MEV Reward</th>
+							<th>Epoch</th>
+							<th>Slot</th>
+							<th>Block</th>
+							<th>Status</th>
+							<th>Proposer</th>
+							<th>Transactions</th> 
+							<th>Gas Used</th>
+							<th>Gas Limit</th>
 							<th>Base Fee</th>
-							<th>Burned ETH</th>
-							<th>Usage</th>
+							<th>Reward</th>
+							<th>Burned Fees</th>
 						</tr>
 						</thead>
 						<tbody> </tbody>

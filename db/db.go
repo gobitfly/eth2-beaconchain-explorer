@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	redis "github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 
 	"github.com/lib/pq"
@@ -42,16 +42,15 @@ func MustInitRedisCache(address string) {
 	gocacheClient := gocache.New(time.Hour, time.Minute)
 	gocacheStore := store2.NewGoCache(gocacheClient)
 
-	redisStore := store2.NewRedis(redis.NewClient(&redis.Options{
-		Addr: address,
-	}))
+	if !utils.Config.Frontend.Debug {
+		redisStore := store2.NewRedis(redis.NewClient(&redis.Options{
+			Addr: address,
+		}))
 
 	cacheManager := cache2.NewChain[any](
 		cache2.New[any](gocacheStore),
 		cache2.New[any](redisStore),
 	)
-	EkoCacheString = cacheManager
-
 	marshal := marshaler.New(cacheManager)
 	EkoCache = marshal
 }
