@@ -2071,13 +2071,12 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 			defer muxMap[string(t.TokenAddress)].Unlock()
 
 			cacheKey := "ERC20:" + string(t.TokenAddress)
-			metadata := &types.ERC20Metadata{}
+			var metadata *types.ERC20Metadata
 
 			if cached, err := EkoCache.Get(context.Background(), cacheKey, new(types.ERC20Metadata)); err == nil {
 				metadata = cached.(*types.ERC20Metadata)
 			} else {
-				logger.Error(err)
-				metadata, err := bigtable.GetERC20MetadataForAddress(t.TokenAddress)
+				metadata, err = bigtable.GetERC20MetadataForAddress(t.TokenAddress)
 				if err != nil {
 					return err
 				}
@@ -2362,6 +2361,9 @@ func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]st
 		return true
 	}, gcp_bigtable.LimitRows(int64(limit)))
 
+	if err == context.DeadlineExceeded && len(res) > 0 {
+		return res, nil
+	}
 	return res, err
 }
 
@@ -2541,8 +2543,8 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
 	cacheKey := "NAME:" + rowKey
 
-	if wanted, err := EkoCache.Get(context.Background(), cacheKey, ""); err == nil {
-		logrus.Infof("retrieved name for address %x from cache", address)
+	if wanted, err := EkoCacheString.Get(context.Background(), cacheKey); err == nil {
+		// logrus.Infof("retrieved name for address %x from cache", address)
 		return wanted.(string), nil
 	}
 
@@ -2551,12 +2553,12 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
 
 	if err != nil || row == nil {
-		err = EkoCache.Set(context.Background(), cacheKey, "")
+		err = EkoCacheString.Set(context.Background(), cacheKey, "")
 		return "", err
 	}
 
 	wanted := string(row[ACCOUNT_METADATA_FAMILY][0].Value)
-	err = EkoCache.Set(context.Background(), cacheKey, wanted)
+	err = EkoCacheString.Set(context.Background(), cacheKey, wanted)
 	return wanted, err
 }
 
@@ -2594,6 +2596,10 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 			return nil, err
 		} else {
 			err = EkoCache.Set(context.Background(), cacheKey, ret)
+			if err != nil {
+				logger.Errorf("error caching contract metadata: %v", err)
+			}
+
 			err = bigtable.SaveContractMetadata(address, ret)
 
 			if err != nil {
@@ -2768,9 +2774,9 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 			muxMap[string(t.TokenAddress)].Lock()
 			defer muxMap[string(t.TokenAddress)].Unlock()
 			cacheKey := "ERC20:" + string(t.TokenAddress)
-			metadata := &types.ERC20Metadata{}
+			var metadata *types.ERC20Metadata
 
-			if cached, err := EkoCache.Get(context.Background(), cacheKey, new(*types.ERC20Metadata)); err == nil {
+			if cached, err := EkoCache.Get(context.Background(), cacheKey, new(types.ERC20Metadata)); err == nil {
 				metadata = cached.(*types.ERC20Metadata)
 			} else {
 				metadata, err = bigtable.GetERC20MetadataForAddress(t.TokenAddress)

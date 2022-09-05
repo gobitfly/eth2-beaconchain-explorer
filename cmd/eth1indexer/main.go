@@ -44,6 +44,7 @@ func main() {
 
 	enableBalanceUpdater := flag.Bool("balances.enabled", false, "Enable balance update process")
 	balanceUpdaterPrefix := flag.String("balances.prefix", "", "Prefix to use for fetching balance updates")
+	balanceUpdaterBatchSize := flag.Int("balances.batch", 1000, "Batch size for balance updates")
 
 	flag.Parse()
 
@@ -64,7 +65,8 @@ func main() {
 	defer bt.Close()
 
 	if *enableBalanceUpdater {
-		ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix)
+		ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize)
+		return
 	}
 
 	transforms := make([]func(blk *types.Eth1Block, cache *ccache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
@@ -161,7 +163,7 @@ func main() {
 		logrus.Infof("index run completed")
 
 		if *enableBalanceUpdater {
-			ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix)
+			ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize)
 		}
 		time.Sleep(time.Second * 14)
 	}
@@ -170,17 +172,17 @@ func main() {
 
 }
 
-func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix string) {
+func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix string, batchSize int) {
 	lastKey := prefix
 	// for {
-	// 	updates, err := bt.GetMetadataUpdates(lastKey, 1000)
+	// 	updates, err := bt.GetMetadataUpdates(lastKey, batchSize)
 	// 	if err != nil {
 	// 		logrus.Fatal(err)
 	// 	}
 
 	// 	currentAddress := ""
 	// 	tokens := make([]string, 0, 100)
-	// 	pairs := make([]string, 0, 1000)
+	// 	pairs := make([]string, 0, batchSize)
 	// 	for _, update := range updates {
 	// 		s := strings.Split(update, ":")
 
@@ -249,7 +251,7 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 
 	for {
 		start := time.Now()
-		updates, err := bt.GetMetadataUpdates(lastKey, 1000)
+		updates, err := bt.GetMetadataUpdates(lastKey, batchSize)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -276,7 +278,7 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 		lastKey = updates[len(updates)-1]
 	}
 	// g := new(errgroup.Group)
-	// g.SetLimit(1000)
+	// g.SetLimit(batchSize)
 
 	// for _, update := range updates {
 	// 	update := update

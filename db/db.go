@@ -34,6 +34,7 @@ var DBPGX *pgxpool.Conn
 var WriterDb *sqlx.DB
 var ReaderDb *sqlx.DB
 var EkoCache *marshaler.Marshaler
+var EkoCacheString *cache2.ChainCache[any]
 
 var logger = logrus.StandardLogger().WithField("module", "db")
 
@@ -41,24 +42,20 @@ func MustInitRedisCache(address string) {
 	gocacheClient := gocache.New(time.Hour, time.Minute)
 	gocacheStore := store2.NewGoCache(gocacheClient)
 
+	caches := []cache2.SetterCacheInterface[any]{cache2.New[any](gocacheStore)}
 	if !utils.Config.Frontend.Debug {
 		redisStore := store2.NewRedis(redis.NewClient(&redis.Options{
 			Addr: address,
 		}))
-
-		cacheManager := cache2.NewChain[any](
-			cache2.New[any](gocacheStore),
-			cache2.New[any](redisStore),
-		)
-		marshal := marshaler.New(cacheManager)
-		EkoCache = marshal
-	} else {
-		cacheManager := cache2.NewChain[any](
-			cache2.New[any](gocacheStore),
-		)
-		marshal := marshaler.New(cacheManager)
-		EkoCache = marshal
+		caches = append(caches, cache2.New[any](redisStore))
 	}
+
+	cacheManager := cache2.NewChain(
+		caches...,
+	)
+	marshal := marshaler.New(cacheManager)
+	EkoCache = marshal
+	EkoCacheString = cacheManager
 }
 
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {
