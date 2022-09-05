@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"eth2-exporter/erc1155"
 	"eth2-exporter/erc20"
@@ -2692,67 +2691,80 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 		}
 	}
 
-	logger.Info(pageToken)
-
 	transactions, lastKey, err := BigtableClient.GetEth1TxForToken(pageToken, 25)
 	if err != nil {
 		return nil, err
 	}
 
 	tableData := make([][]interface{}, len(transactions))
-
-	metadataCache := make(map[string]*types.ERC20Metadata) // cache metadata
-
+	g := new(errgroup.Group)
+	muxMap := make(map[string]*sync.Mutex)
 	for i, t := range transactions {
-		from := utils.AddCopyButton(utils.FormatHash(t.From), hex.EncodeToString(t.From))
+		i := i
+		t := t
 
-		if !bytes.Equal(address, t.From) {
-			from = utils.FormatAddressAsTokenLink(t.TokenAddress, t.From, "", false, false)
+		if muxMap[string(t.TokenAddress)] == nil {
+			muxMap[string(t.TokenAddress)] = &sync.Mutex{}
 		}
-		to := utils.AddCopyButton(utils.FormatHash(t.To), hex.EncodeToString(t.To))
-		if !bytes.Equal(address, t.To) {
-			to = utils.FormatAddressAsTokenLink(t.TokenAddress, t.To, "", false, false)
-		}
-		// method := "Transfer"
-		// if len(t.MethodId) > 0 {
 
-		// 	if t.InvokesContract {
-		// 		method = fmt.Sprintf("0x%x", t.MethodId)
-		// 	} else {
-		// 		method = "Transfer*"
-		// 	}
-		// }
-		// logger.Infof("hash: %x amount: %s", t.Hash, new(big.Int).SetBytes(t.Value))
-
-		if metadataCache[string(t.TokenAddress)] == nil {
-			metadata, err := bigtable.GetERC20MetadataForAddress(t.TokenAddress)
-			if err != nil {
-				return nil, err
+		g.Go(func() error {
+			if bigtable.addressNameCache.Get(string(t.To)) == nil {
+				name, err := bigtable.GetAddressName(t.To)
+				if err != nil {
+					return err
+				}
+				bigtable.addressNameCache.Set(string(t.To), name, time.Hour)
 			}
-			metadataCache[string(t.TokenAddress)] = metadata
-		}
 
-		tb := &types.Eth1AddressBalance{
-			Address:  address,
-			Token:    t.TokenAddress,
-			Balance:  t.Value,
-			Metadata: metadataCache[string(t.TokenAddress)],
-		}
+			if bigtable.addressNameCache.Get(string(t.From)) == nil {
+				name, err := bigtable.GetAddressName(t.From)
+				if err != nil {
+					return err
+				}
+				bigtable.addressNameCache.Set(string(t.From), name, time.Hour)
+			}
 
-		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
-			// utils.FormatMethod(method),
-			utils.FormatTimeFromNow(t.Time.AsTime()),
-			from,
-			to,
-			utils.FormatTokenValue(tb),
-		}
+			fromName := bigtable.addressNameCache.Get(string(t.From)).Value().(string)
+			from := utils.FormatAddress(t.From, t.TokenAddress, fromName, false, false, !bytes.Equal(t.From, address))
+
+			toName := bigtable.addressNameCache.Get(string(t.To)).Value().(string)
+			to := utils.FormatAddress(t.To, t.TokenAddress, toName, false, false, !bytes.Equal(t.To, address))
+
+			muxMap[string(t.TokenAddress)].Lock()
+			defer muxMap[string(t.TokenAddress)].Unlock()
+			if bigtable.tokenInfoCache.Get(string(t.TokenAddress)) == nil {
+				metadata, err := bigtable.GetERC20MetadataForAddress(t.TokenAddress)
+				if err != nil {
+					return err
+				}
+				bigtable.tokenInfoCache.Set(string(t.TokenAddress), metadata, time.Hour)
+			}
+
+			tb := &types.Eth1AddressBalance{
+				Address:  address,
+				Balance:  t.Value,
+				Token:    t.TokenAddress,
+				Metadata: bigtable.tokenInfoCache.Get(string(t.TokenAddress)).Value().(*types.ERC20Metadata),
+			}
+
+			tableData[i] = []interface{}{
+				utils.FormatTransactionHash(t.ParentHash),
+				utils.FormatTimeFromNow(t.Time.AsTime()),
+				from,
+				to,
+				utils.FormatTokenValue(tb),
+			}
+			return nil
+		})
+
+	}
+
+	err = g.Wait()
+	if err != nil {
+		return nil, err
 	}
 
 	data := &types.DataTableResponse{
-		// Draw: draw,
-		// RecordsTotal:    ,
-		// RecordsFiltered: ,
 		Data:        tableData,
 		PagingToken: lastKey,
 	}
