@@ -69,6 +69,8 @@
   
       const infLoading = document.getElementById(loadingID)
       const getTransactions = async (token) => {
+        infLoading.innerText = 'Loading...'
+
         try {
           const params = new Proxy(new URLSearchParams(window.location.search), {
             get: (searchParams, prop) => searchParams.get(prop),
@@ -98,9 +100,12 @@
                 drawCallback()
               }
              }
-           } else if (data && data.data && data.data.length == 0) {
-              infLoading.querySelector('h5').innerText = 'No entries found.'
+           } else if (data && data.data) {
+            if (data.data.length < 25) {
+              infLoading.innerText = ''
+            }
            }
+
            isLoading = false
         } catch (err) {
           console.error("error getting transactions: ", err)
@@ -189,14 +194,12 @@
 
 {{ define "AddressTransfersTableGrid" }}
 <div id="transfers-table"
-  style="display: grid; grid-template-columns: repeat(6, minmax(auto, 1fr)); max-height: 800px; overflow: auto;">
+  style="display: grid; grid-template-columns: repeat(5, minmax(auto, 1fr)); max-height: 800px; overflow: auto;">
   <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Hash</span></div>
-  <!-- <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Method</span></div> -->
   <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Age</span></div>
-  <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Number</span></div>
   <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>From</span></div>
   <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>To</span></div>
-  <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Value</span></div>
+  <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Quantity</span></div>
 
 {{ if len .Data }}
 {{ range $i, $row := .Data }}
@@ -204,11 +207,11 @@
     <div class="border-top p-2 text-truncate">{{ $col }}</div>
   {{end}}
 {{ end }}
-<div style="grid-column: 1 / 7;" id="transfers-table-inf-scroll" class="d-flex justify-content-center p-2">
-  <span>loading...</span>
+<div style="grid-column: 1 / 6;" id="transfers-table-inf-scroll" class="d-flex justify-content-center p-2">
+  <span> </span>
 </div>
 {{ else }}
-<div style="grid-column: 1 / 7;" id="transfers-table-inf-scroll" class="d-flex justify-content-center p-2">
+<div style="grid-column: 1 / 6;" id="transfers-table-inf-scroll" class="d-flex justify-content-center p-2">
   <div class="d-flex justify-content-center align-items-center flex-column">
     <div class="my-3 mt-5 p-2 pt-5">
       {{ template "UndrawTree" }}

@@ -2693,10 +2693,9 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 			utils.FormatTransactionHash(t.ParentHash),
 			// utils.FormatMethod(method),
 			utils.FormatTimeFromNow(t.Time.AsTime()),
-			utils.FormatBlockNumber(t.BlockNumber),
 			from,
 			to,
-			utils.FormatTokenBalance(tb),
+			utils.FormatTokenValue(tb),
 		}
 	}
 

@@ -921,10 +921,12 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 }
 
 func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
-	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Metadata.Decimals), 0))
+	decimals := new(big.Int).SetBytes(balance.Metadata.Decimals)
+
+	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
 
-	return template.HTML(fmt.Sprintf("%v", num.Div(mul)))
+	return template.HTML(fmt.Sprintf("%v", num.Div(mul).StringFixed(int32(decimals.Int64()))))
 }
 
 func FormatTokenName(balance *types.Eth1AddressBalance) template.HTML {

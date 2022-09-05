@@ -63,8 +63,6 @@ func main() {
 	}
 	defer bt.Close()
 
-	ImportNameLabels(bt)
-	return
 	if *enableBalanceUpdater {
 		ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix)
 	}
