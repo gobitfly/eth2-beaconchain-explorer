@@ -525,7 +525,6 @@ func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Met
 		ret.Decimals = big.NewInt(int64(decimals)).Bytes()
 		return nil
 	})
-
 	err = g.Wait()
 
 	return ret, err

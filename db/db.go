@@ -34,6 +34,7 @@ var DBPGX *pgxpool.Conn
 var WriterDb *sqlx.DB
 var ReaderDb *sqlx.DB
 var EkoCache *marshaler.Marshaler
+var EkoCacheString *cache2.ChainCache[any]
 
 var logger = logrus.StandardLogger().WithField("module", "db")
 
@@ -49,6 +50,8 @@ func MustInitRedisCache(address string) {
 		cache2.New[any](gocacheStore),
 		cache2.New[any](redisStore),
 	)
+	EkoCacheString = cacheManager
+
 	marshal := marshaler.New(cacheManager)
 	EkoCache = marshal
 }
