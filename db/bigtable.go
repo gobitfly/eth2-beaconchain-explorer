@@ -2361,6 +2361,9 @@ func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]st
 		return true
 	}, gcp_bigtable.LimitRows(int64(limit)))
 
+	if err == context.DeadlineExceeded && len(res) > 0 {
+		return res, nil
+	}
 	return res, err
 }
 
