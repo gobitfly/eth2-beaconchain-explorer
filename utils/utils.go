@@ -32,6 +32,7 @@ import (
 	"golang.org/x/text/message"
 	"gopkg.in/yaml.v3"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/lib/pq"
@@ -639,4 +640,100 @@ func ElementExists(arr []string, el string) bool {
 		}
 	}
 	return false
+}
+
+func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
+	meta, err := getABIFromEtherscan(address)
+
+	if err != nil {
+		logrus.Errorf("failed to get abi for contract %v from etherscan: %v", address, err)
+		return nil, fmt.Errorf("contract abi not found")
+	}
+	return meta, nil
+}
+
+func getABIFromSourcify(address []byte) (*types.ContractMetadata, error) {
+	httpClient := http.Client{
+		Timeout: time.Second * 5,
+	}
+
+	resp, err := httpClient.Get(fmt.Sprintf("https://sourcify.dev/server/repository/contracts/full_match/%d/0x%x/metadata.json", 1, address))
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == 200 {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		data := &types.SourcifyContractMetadata{}
+		err = json.Unmarshal(body, data)
+		if err != nil {
+			return nil, err
+		}
+
+		abiString, err := json.Marshal(data.Output.Abi)
+		if err != nil {
+			return nil, err
+		}
+
+		contractAbi, err := abi.JSON(bytes.NewReader(abiString))
+		if err != nil {
+			return nil, err
+		}
+
+		meta := &types.ContractMetadata{}
+		meta.ABIJson = abiString
+		meta.ABI = &contractAbi
+		meta.Name = ""
+
+		return meta, nil
+	} else {
+		return nil, fmt.Errorf("sourcify contract code not found")
+	}
+}
+
+func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
+	httpClient := http.Client{
+		Timeout: time.Second * 5,
+	}
+
+	baseUrl := "api.etherscan.io"
+
+	// if Config.Chain.Config.DepositChainID == 5 {
+	// 	baseUrl = "api-goerli.etherscan.io"
+	// }
+	resp, err := httpClient.Get(fmt.Sprintf("https://%s/api?module=contract&action=getsourcecode&address=0x%x&apikey=%s", baseUrl, address, ""))
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == 200 {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		logger.Info(string(body))
+
+		data := &types.EtherscanContractMetadata{}
+		err = json.Unmarshal(body, data)
+		if err != nil {
+			return nil, err
+		}
+
+		contractAbi, err := abi.JSON(strings.NewReader(data.Result[0].Abi))
+		if err != nil {
+			return nil, err
+		}
+		meta := &types.ContractMetadata{}
+		meta.ABIJson = []byte(data.Result[0].Abi)
+		meta.ABI = &contractAbi
+		meta.Name = data.Result[0].ContractName
+		return meta, nil
+	} else {
+		return nil, fmt.Errorf("etherscan contract code not found")
+	}
 }

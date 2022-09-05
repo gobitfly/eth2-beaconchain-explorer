@@ -6,9 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net/http"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
+	geth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 )
@@ -1404,6 +1408,12 @@ type ERC20Metadata struct {
 	Price        []byte
 }
 
+type ContractMetadata struct {
+	Name    string
+	ABI     *abi.ABI
+	ABIJson []byte
+}
+
 type Eth1TokenPageData struct {
 	Token            string `json:"token"`
 	Address          string `json:"address"`
@@ -1419,4 +1429,95 @@ type Eth1TokenPageData struct {
 	SocialProfiles   template.HTML `json:"socialProfiles"`
 	TransfersTable   *DataTableResponse
 	HoldersTable     *DataTableResponse
+}
+
+type Eth1TxData struct {
+	From               common.Address
+	To                 *common.Address
+	FromName           string
+	ToName             string
+	GethTx             *geth_types.Transaction
+	Receipt            *geth_types.Receipt
+	Header             *geth_types.Header
+	IsPending          bool
+	TargetIsContract   bool
+	IsContractCreation bool
+	TxFee              *big.Int
+	Events             []*Eth1EventData
+}
+
+type Eth1EventData struct {
+	Address     common.Address
+	Name        string
+	Topics      []common.Hash
+	Data        []byte
+	DecodedData map[string]string
+}
+
+type SourcifyContractMetadata struct {
+	Compiler struct {
+		Version string `json:"version"`
+	} `json:"compiler"`
+	Language string `json:"language"`
+	Output   struct {
+		Abi []struct {
+			Anonymous bool `json:"anonymous"`
+			Inputs    []struct {
+				Indexed      bool   `json:"indexed"`
+				InternalType string `json:"internalType"`
+				Name         string `json:"name"`
+				Type         string `json:"type"`
+			} `json:"inputs"`
+			Name    string `json:"name"`
+			Outputs []struct {
+				InternalType string `json:"internalType"`
+				Name         string `json:"name"`
+				Type         string `json:"type"`
+			} `json:"outputs"`
+			StateMutability string `json:"stateMutability"`
+			Type            string `json:"type"`
+		} `json:"abi"`
+	} `json:"output"`
+	Settings struct {
+		CompilationTarget struct {
+			Browser_Stakehavens_sol string `json:"browser/Stakehavens.sol"`
+		} `json:"compilationTarget"`
+		EvmVersion string   `json:"evmVersion"`
+		Libraries  struct{} `json:"libraries"`
+		Metadata   struct {
+			BytecodeHash string `json:"bytecodeHash"`
+		} `json:"metadata"`
+		Optimizer struct {
+			Enabled bool  `json:"enabled"`
+			Runs    int64 `json:"runs"`
+		} `json:"optimizer"`
+		Remappings []interface{} `json:"remappings"`
+	} `json:"settings"`
+	Sources struct {
+		Browser_Stakehavens_sol struct {
+			Keccak256 string   `json:"keccak256"`
+			Urls      []string `json:"urls"`
+		} `json:"browser/Stakehavens.sol"`
+	} `json:"sources"`
+	Version int64 `json:"version"`
+}
+
+type EtherscanContractMetadata struct {
+	Message string `json:"message"`
+	Result  []struct {
+		Abi                  string `json:"ABI"`
+		CompilerVersion      string `json:"CompilerVersion"`
+		ConstructorArguments string `json:"ConstructorArguments"`
+		ContractName         string `json:"ContractName"`
+		EVMVersion           string `json:"EVMVersion"`
+		Implementation       string `json:"Implementation"`
+		Library              string `json:"Library"`
+		LicenseType          string `json:"LicenseType"`
+		OptimizationUsed     string `json:"OptimizationUsed"`
+		Proxy                string `json:"Proxy"`
+		Runs                 string `json:"Runs"`
+		SourceCode           string `json:"SourceCode"`
+		SwarmSource          string `json:"SwarmSource"`
+	} `json:"result"`
+	Status string `json:"status"`
 }
