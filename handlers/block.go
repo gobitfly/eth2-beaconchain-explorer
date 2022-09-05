@@ -221,7 +221,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		blockPageData.Slot)
 	if err != nil {
 		logger.Errorf("error retrieving block transaction data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	defer rows.Close()
@@ -243,7 +243,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		)
 		if err != nil {
 			logger.Errorf("error scanning block transaction data: %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 		var amount, price big.Int
