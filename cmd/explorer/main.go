@@ -106,6 +106,8 @@ func main() {
 	db.BigtableClient = bt
 	// }
 
+	db.MustInitRedisCache(utils.Config.RedisCacheEndpoint)
+
 	if utils.Config.Metrics.Enabled {
 		go metrics.MonitorDB(db.WriterDb)
 		DBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.WriterDatabase.Username, cfg.WriterDatabase.Password, cfg.WriterDatabase.Host, cfg.WriterDatabase.Port, cfg.WriterDatabase.Name)
@@ -291,7 +293,7 @@ func main() {
 			router.HandleFunc("/execution/token/{token}", handlers.Eth1Token).Methods("GET")
 			router.HandleFunc("/execution/token/{token}/transfers", handlers.Eth1TokenTransfers).Methods("GET")
 			router.HandleFunc("/execution/block/{block}", handlers.Eth1Block).Methods("GET")
-			router.HandleFunc("/execution/tx/{hash}", handlers.Eth1Transaction).Methods("GET")
+			router.HandleFunc("/execution/tx/{hash}", handlers.Eth1TransactionTx).Methods("GET")
 
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 			router.HandleFunc("/charts", handlers.Charts).Methods("GET")

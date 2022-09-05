@@ -65,6 +65,10 @@ func (client *ErigonClient) Close() {
 	client.ethClient.Close()
 }
 
+func (client *ErigonClient) GetNativeClient() *ethclient.Client {
+	return client.ethClient
+}
+
 func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.GetBlockTimings, error) {
 	start := time.Now()
 	timings := &types.GetBlockTimings{}

@@ -27,9 +27,10 @@ type Config struct {
 		ConfigPath       string `yaml:"configPath" envconfig:"CHAIN_CONFIG_PATH"`
 		Config           ChainConfig
 	} `yaml:"chain"`
-	Eth1Endpoint    string `yaml:"eth1Endpoint" envconfig:"ETH1_ENDPOINT"`
-	EtherscanAPIKey string `yaml:"etherscanApiKey" envconfig:"ETHERSCAN_API_KEY"`
-	Indexer         struct {
+	Eth1Endpoint       string `yaml:"eth1Endpoint" envconfig:"ETH1_ENDPOINT"`
+	EtherscanAPIKey    string `yaml:"etherscanApiKey" envconfig:"ETHERSCAN_API_KEY"`
+	RedisCacheEndpoint string `yaml:"redicCacheEndpoint" envconfig:"REDIC_CACHE_ENDPOINT"`
+	Indexer            struct {
 		Enabled                     bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
 		FixCanonOnStartup           bool `yaml:"fixCanonOnStartup" envconfig:"INDEXER_FIX_CANON_ON_STARTUP"`
 		FullIndexOnStartup          bool `yaml:"fullIndexOnStartup" envconfig:"INDEXER_FULL_INDEX_ON_STARTUP"`

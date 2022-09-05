@@ -20,6 +20,7 @@ import (
 	"github.com/protolambda/ztyp/bitfields"
 	"github.com/shopspring/decimal"
 
+	"github.com/ethereum/go-ethereum/common"
 	eth1common "github.com/ethereum/go-ethereum/common"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -939,4 +940,37 @@ func FormatTokenName(balance *types.Eth1AddressBalance) template.HTML {
 
 func ToBase64(input []byte) string {
 	return base64.StdEncoding.EncodeToString(input)
+}
+
+// FormatBalance will return a string for a balance
+func FormatBalanceWei(balanceWei *big.Int, unit string) template.HTML {
+	balanceBigFloat := new(big.Float).SetInt(balanceWei)
+	if unit == "Ether" {
+		balanceBigFloat = new(big.Float).Quo(balanceBigFloat, big.NewFloat(1e18))
+	} else if unit == "GWei" {
+		balanceBigFloat = new(big.Float).Quo(balanceBigFloat, big.NewFloat(1e9))
+	}
+	balanceFloat, _ := balanceBigFloat.Float64()
+	balance := FormatFloat(balanceFloat, 8)
+
+	return template.HTML(balance + " " + unit)
+}
+
+// FormatBalance will return a string for a balance
+func FormatEth1TxStatus(status uint64) template.HTML {
+	if status == 1 {
+		return "Success"
+	} else {
+		return "Fail"
+	}
+}
+
+// FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
+func FormatTimestampUInt64(ts uint64) template.HTML {
+	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(int64(ts), 0), ts))
+}
+
+// FormatEth1AddressFull will return the eth1-address formated as html
+func FormatEth1AddressFull(addr common.Address) template.HTML {
+	return FormatAddress(addr.Bytes(), nil, "", false, false, true)
 }

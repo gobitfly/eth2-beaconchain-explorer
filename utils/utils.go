@@ -153,6 +153,12 @@ func GetTemplateFuncs() template.FuncMap {
 		"bytesToNumberString": func(input []byte) string {
 			return new(big.Int).SetBytes(input).String()
 		},
+
+		// ETH1 related formatting
+		"formatBalanceWei":      FormatBalanceWei,
+		"formatEth1TxStatus":    FormatEth1TxStatus,
+		"formatTimestampUInt64": FormatTimestampUInt64,
+		"formatEth1AddressFull": FormatEth1AddressFull,
 	}
 }
 
@@ -715,8 +721,6 @@ func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		logger.Info(string(body))
 
 		data := &types.EtherscanContractMetadata{}
 		err = json.Unmarshal(body, data)

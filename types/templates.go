@@ -1438,7 +1438,8 @@ type Eth1TxData struct {
 	ToName             string
 	GethTx             *geth_types.Transaction
 	Receipt            *geth_types.Receipt
-	Header             *geth_types.Header
+	BlockNumber        int64
+	Timestamp          uint64
 	IsPending          bool
 	TargetIsContract   bool
 	IsContractCreation bool

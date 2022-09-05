@@ -63,14 +63,6 @@ func main() {
 	}
 	defer bt.Close()
 
-	mt, err := bt.GetContractMetadata(common.HexToAddress("0xdac17f958d2ee523a2206206994597c13d831ec7").Bytes())
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
-	logrus.Info(mt.Name)
-	return
-
 	if *enableBalanceUpdater {
 		ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix)
 	}
