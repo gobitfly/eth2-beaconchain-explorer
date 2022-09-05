@@ -28,7 +28,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
-	"github.com/go-redis/cache/v8"
 	"github.com/golang/protobuf/proto"
 	"github.com/karlseguin/ccache/v2"
 	"github.com/sirupsen/logrus"
@@ -2074,17 +2073,15 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 			cacheKey := "ERC20:" + string(t.TokenAddress)
 			metadata := &types.ERC20Metadata{}
 
-			if err := RedisCache.Get(context.Background(), cacheKey, metadata); err != nil {
-				metadata, err = bigtable.GetERC20MetadataForAddress(t.TokenAddress)
+			if cached, err := EkoCache.Get(context.Background(), cacheKey, new(types.ERC20Metadata)); err == nil {
+				metadata = cached.(*types.ERC20Metadata)
+			} else {
+				logger.Error(err)
+				metadata, err := bigtable.GetERC20MetadataForAddress(t.TokenAddress)
 				if err != nil {
 					return err
 				}
-				err = RedisCache.Set(&cache.Item{
-					Ctx:   context.Background(),
-					Key:   cacheKey,
-					Value: metadata,
-					TTL:   0,
-				})
+				err = EkoCache.Set(context.Background(), cacheKey, metadata)
 				if err != nil {
 					return err
 				}
@@ -2543,10 +2540,10 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
 	cacheKey := "NAME:" + rowKey
-	wanted := ""
-	if val, err := Redis.Get(context.Background(), cacheKey).Result(); err == nil {
+
+	if wanted, err := EkoCache.Get(context.Background(), cacheKey, ""); err == nil {
 		logrus.Infof("retrieved name for address %x from cache", address)
-		return val, nil
+		return wanted.(string), nil
 	}
 
 	filter := gcp_bigtable.ChainFilters(gcp_bigtable.FamilyFilter(ACCOUNT_METADATA_FAMILY), gcp_bigtable.ColumnFilter(ACCOUNT_COLUMN_NAME))
@@ -2554,12 +2551,12 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
 
 	if err != nil || row == nil {
-		err = Redis.SetNX(context.Background(), cacheKey, "", time.Hour).Err()
+		err = EkoCache.Set(context.Background(), cacheKey, "")
 		return "", err
 	}
 
-	wanted = string(row[ACCOUNT_METADATA_FAMILY][0].Value)
-	err = Redis.SetNX(context.Background(), cacheKey, wanted, time.Hour).Err()
+	wanted := string(row[ACCOUNT_METADATA_FAMILY][0].Value)
+	err = EkoCache.Set(context.Background(), cacheKey, wanted)
 	return wanted, err
 }
 
@@ -2579,9 +2576,8 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
 	cacheKey := "CONTRACT:" + rowKey
-	metadata := &types.ContractMetadata{}
-	if err := RedisCache.Get(context.Background(), cacheKey, metadata); err == nil {
-		return metadata, nil
+	if cached, err := EkoCache.Get(context.Background(), cacheKey, new(types.ContractMetadata)); err == nil {
+		return cached.(*types.ContractMetadata), nil
 	}
 
 	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(gcp_bigtable.FamilyFilter(CONTRACT_METADATA_FAMILY)))
@@ -2594,20 +2590,10 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 
 		if err != nil {
 			logrus.Errorf("error fetching contract metadata for address %x: %v", address, err)
-			err = RedisCache.Set(&cache.Item{
-				Ctx:   context.Background(),
-				Key:   cacheKey,
-				Value: &types.ContractMetadata{},
-				TTL:   time.Hour,
-			})
+			err = EkoCache.Set(context.Background(), cacheKey, &types.ContractMetadata{})
 			return nil, err
 		} else {
-			err = RedisCache.Set(&cache.Item{
-				Ctx:   context.Background(),
-				Key:   cacheKey,
-				Value: ret,
-				TTL:   time.Hour,
-			})
+			err = EkoCache.Set(context.Background(), cacheKey, ret)
 			err = bigtable.SaveContractMetadata(address, ret)
 
 			if err != nil {
@@ -2633,13 +2619,7 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 		}
 	}
 
-	err = RedisCache.Set(&cache.Item{
-		Ctx:   context.Background(),
-		Key:   cacheKey,
-		Value: ret,
-		TTL:   time.Hour,
-	})
-
+	err = EkoCache.Set(context.Background(), cacheKey, ret)
 	return ret, err
 }
 
@@ -2790,17 +2770,14 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 			cacheKey := "ERC20:" + string(t.TokenAddress)
 			metadata := &types.ERC20Metadata{}
 
-			if err := RedisCache.Get(context.Background(), cacheKey, metadata); err != nil {
+			if cached, err := EkoCache.Get(context.Background(), cacheKey, new(*types.ERC20Metadata)); err == nil {
+				metadata = cached.(*types.ERC20Metadata)
+			} else {
 				metadata, err = bigtable.GetERC20MetadataForAddress(t.TokenAddress)
 				if err != nil {
 					return err
 				}
-				err = RedisCache.Set(&cache.Item{
-					Ctx:   context.Background(),
-					Key:   cacheKey,
-					Value: metadata,
-					TTL:   time.Hour,
-				})
+				err = EkoCache.Set(context.Background(), cacheKey, metadata)
 				if err != nil {
 					return err
 				}

@@ -156,6 +156,7 @@ func GetTemplateFuncs() template.FuncMap {
 
 		// ETH1 related formatting
 		"formatBalanceWei":      FormatBalanceWei,
+		"formatBytesAmount":     FormatBytesAmount,
 		"formatEth1TxStatus":    FormatEth1TxStatus,
 		"formatTimestampUInt64": FormatTimestampUInt64,
 		"formatEth1AddressFull": FormatEth1AddressFull,

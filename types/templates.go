@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"math/big"
 	"net/http"
 	"time"
 
@@ -1408,6 +1407,14 @@ type ERC20Metadata struct {
 	Price        []byte
 }
 
+func (metadata ERC20Metadata) MarshalBinary() ([]byte, error) {
+	return json.Marshal(metadata)
+}
+
+func (metadata ERC20Metadata) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, &metadata)
+}
+
 type ContractMetadata struct {
 	Name    string
 	ABI     *abi.ABI
@@ -1436,14 +1443,16 @@ type Eth1TxData struct {
 	To                 *common.Address
 	FromName           string
 	ToName             string
-	GethTx             *geth_types.Transaction
+	Hash               common.Hash
+	Value              []byte
+	GasPrice           []byte
 	Receipt            *geth_types.Receipt
 	BlockNumber        int64
 	Timestamp          uint64
 	IsPending          bool
 	TargetIsContract   bool
 	IsContractCreation bool
-	TxFee              *big.Int
+	TxFee              []byte
 	Events             []*Eth1EventData
 }
 

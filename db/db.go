@@ -2,7 +2,6 @@ package db
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
@@ -15,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-redis/cache/v8"
 	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 
@@ -23,6 +21,11 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+
+	cache2 "github.com/eko/gocache/v3/cache"
+	"github.com/eko/gocache/v3/marshaler"
+	store2 "github.com/eko/gocache/v3/store"
+	gocache "github.com/patrickmn/go-cache"
 )
 
 var DBPGX *pgxpool.Conn
@@ -30,35 +33,24 @@ var DBPGX *pgxpool.Conn
 // DB is a pointer to the explorer-database
 var WriterDb *sqlx.DB
 var ReaderDb *sqlx.DB
-var RedisCache *cache.Cache
-var Redis *redis.Client
+var EkoCache *marshaler.Marshaler
 
 var logger = logrus.StandardLogger().WithField("module", "db")
 
 func MustInitRedisCache(address string) {
+	gocacheClient := gocache.New(time.Hour, time.Minute)
+	gocacheStore := store2.NewGoCache(gocacheClient)
 
-	if !utils.Config.Frontend.Debug {
-		rdc := redis.NewClient(&redis.Options{
-			Addr:     address,
-			Password: "", // no password set
-			DB:       0,  // use default DB
-		})
+	redisStore := store2.NewRedis(redis.NewClient(&redis.Options{
+		Addr: address,
+	}))
 
-		err := rdc.Ping(context.Background()).Err()
-		if err != nil {
-			logger.Fatal(err)
-		}
-
-		Redis = rdc
-
-		RedisCache = cache.New(&cache.Options{
-			Redis: rdc,
-		})
-	} else {
-		RedisCache = cache.New(&cache.Options{
-			LocalCache: cache.NewTinyLFU(10000, time.Minute),
-		})
-	}
+	cacheManager := cache2.NewChain[any](
+		cache2.New[any](gocacheStore),
+		cache2.New[any](redisStore),
+	)
+	marshal := marshaler.New(cacheManager)
+	EkoCache = marshal
 }
 
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {

@@ -26,7 +26,7 @@
                 <div class="card-body px-0 py-1">
                     <div class="row border-bottom p-3 mx-0">
                         <div class="col-md-3">Transaction Hash:</div>
-                        <div class="col-md-9"><a href="/tx/{{.GethTx.Hash}}">{{.GethTx.Hash}}</a></div>
+                        <div class="col-md-9"><a href="/tx/{{.Hash}}">{{.Hash}}</a></div>
                     </div>  
                     <div class="row p-3 mx-0">
                         <div class="col-md-3">Status:</div>
@@ -56,15 +56,15 @@
                     </div>    
                     <div class="row p-3 mx-0">
                         <div class="col-md-3">Value:</div>
-                        <div class="col-md-9">{{formatBalanceWei .GethTx.Value "Ether"}}</div>
+                        <div class="col-md-9">{{formatBytesAmount .Value "Ether"}}</div>
                     </div>    
                     <div class="row border-bottom p-3 mx-0">
                         <div class="col-md-3">Transaction Fee:</div>
-                        <div class="col-md-9">{{formatBalanceWei .TxFee "Ether"}}</div>
+                        <div class="col-md-9">{{formatBytesAmount .TxFee "Ether"}}</div>
                     </div>  
                     <div class="row p-3 mx-0">
                         <div class="col-md-3">Gas Price:</div>
-                        <div class="col-md-9">{{formatBalanceWei .GethTx.GasPrice "GWei"}}</div>
+                        <div class="col-md-9">{{formatBytesAmount .GasPrice "GWei"}}</div>
                     </div>
                     {{range .Events}}
                     <div class="row border-top p-3 mx-0">

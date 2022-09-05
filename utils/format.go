@@ -955,6 +955,18 @@ func FormatBalanceWei(balanceWei *big.Int, unit string) template.HTML {
 
 	return template.HTML(balance + " " + unit)
 }
+func FormatBytesAmount(amount []byte, unit string) template.HTML {
+	balanceBigFloat := new(big.Float).SetInt(new(big.Int).SetBytes(amount))
+	if unit == "Ether" {
+		balanceBigFloat = new(big.Float).Quo(balanceBigFloat, big.NewFloat(1e18))
+	} else if unit == "GWei" {
+		balanceBigFloat = new(big.Float).Quo(balanceBigFloat, big.NewFloat(1e9))
+	}
+	balanceFloat, _ := balanceBigFloat.Float64()
+	balance := FormatFloat(balanceFloat, 8)
+
+	return template.HTML(balance + " " + unit)
+}
 
 // FormatBalance will return a string for a balance
 func FormatEth1TxStatus(status uint64) template.HTML {

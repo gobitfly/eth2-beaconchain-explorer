@@ -13,17 +13,15 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth_types "github.com/ethereum/go-ethereum/core/types"
-	"github.com/go-redis/cache/v8"
 	"github.com/sirupsen/logrus"
 )
 
 func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	cacheKey := fmt.Sprintf("tx:%s", hash.String())
-	wanted := &types.Eth1TxData{}
-	if err := db.RedisCache.Get(context.Background(), cacheKey, wanted); err == nil {
+	if wanted, err := db.EkoCache.Get(context.Background(), cacheKey, new(types.Eth1TxData)); err == nil {
 		logrus.Infof("retrieved data for tx %v from cache", hash)
-
-		return wanted, nil
+		logrus.Info(wanted)
+		return wanted.(*types.Eth1TxData), nil
 	}
 
 	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(context.Background(), hash)
@@ -37,7 +35,9 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	}
 
 	txPageData := &types.Eth1TxData{
-		GethTx:    tx,
+		Hash:      tx.Hash(),
+		Value:     tx.Value().Bytes(),
+		GasPrice:  tx.GasPrice().Bytes(),
 		IsPending: pending,
 		Events:    make([]*types.Eth1EventData, 0, 10),
 	}
@@ -48,7 +48,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	}
 
 	txPageData.Receipt = receipt
-	txPageData.TxFee = new(big.Int).Mul(tx.GasPrice(), new(big.Int).SetUint64(receipt.GasUsed))
+	txPageData.TxFee = new(big.Int).Mul(tx.GasPrice(), new(big.Int).SetUint64(receipt.GasUsed)).Bytes()
 
 	txPageData.To = tx.To()
 
@@ -129,12 +129,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		// }
 	}
 
-	err = db.RedisCache.Set(&cache.Item{
-		Ctx:   context.Background(),
-		Key:   cacheKey,
-		Value: txPageData,
-		TTL:   0,
-	})
+	err = db.EkoCache.Set(context.Background(), cacheKey, txPageData)
 	if err != nil {
 		return nil, fmt.Errorf("error writing data for tx %v to cache: %v", hash, err)
 	}
@@ -144,11 +139,10 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 
 func GetCodeAt(address common.Address) ([]byte, error) {
 	cacheKey := fmt.Sprintf("a:%s", address.String())
-	wanted := []byte{}
-	if err := db.RedisCache.Get(context.Background(), cacheKey, &wanted); err == nil {
+	if wanted, err := db.EkoCache.Get(context.Background(), cacheKey, []byte{}); err == nil {
 		logrus.Infof("retrieved code data for address %v from cache", address)
 
-		return wanted, nil
+		return wanted.([]byte), nil
 	}
 
 	code, err := rpc.CurrentErigonClient.GetNativeClient().CodeAt(context.Background(), address, nil)
@@ -156,12 +150,7 @@ func GetCodeAt(address common.Address) ([]byte, error) {
 		return nil, fmt.Errorf("error retrieving code data for address %v: %v", address, err)
 	}
 
-	err = db.RedisCache.Set(&cache.Item{
-		Ctx:   context.Background(),
-		Key:   cacheKey,
-		Value: code,
-		TTL:   0,
-	})
+	err = db.EkoCache.Set(context.Background(), cacheKey, code)
 	if err != nil {
 		return nil, fmt.Errorf("error writing code data for address %v to cache: %v", address, err)
 	}
@@ -172,10 +161,9 @@ func GetCodeAt(address common.Address) ([]byte, error) {
 func GetBlockHeaderByHash(hash common.Hash) (*geth_types.Header, error) {
 	cacheKey := fmt.Sprintf("h:%s", hash.String())
 
-	wanted := &geth_types.Header{}
-	if err := db.RedisCache.Get(context.Background(), cacheKey, &wanted); err == nil {
+	if wanted, err := db.EkoCache.Get(context.Background(), cacheKey, new(geth_types.Header)); err == nil {
 		logrus.Infof("retrieved header data for block %v from cache", hash)
-		return wanted, nil
+		return wanted.(*geth_types.Header), nil
 	}
 
 	header, err := rpc.CurrentErigonClient.GetNativeClient().HeaderByHash(context.Background(), hash)
@@ -183,12 +171,7 @@ func GetBlockHeaderByHash(hash common.Hash) (*geth_types.Header, error) {
 		return nil, fmt.Errorf("error retrieving block header data for tx %v: %v", hash, err)
 	}
 
-	err = db.RedisCache.Set(&cache.Item{
-		Ctx:   context.Background(),
-		Key:   cacheKey,
-		Value: header,
-		TTL:   0,
-	})
+	err = db.EkoCache.Set(context.Background(), cacheKey, header)
 	if err != nil {
 		return nil, fmt.Errorf("error writing header data for block %v to cache: %v", hash, err)
 	}
@@ -199,10 +182,9 @@ func GetBlockHeaderByHash(hash common.Hash) (*geth_types.Header, error) {
 func GetTransactionReceipt(hash common.Hash) (*geth_types.Receipt, error) {
 	cacheKey := fmt.Sprintf("r:%s", hash.String())
 
-	wanted := &geth_types.Receipt{}
-	if err := db.RedisCache.Get(context.Background(), cacheKey, &wanted); err == nil {
+	if wanted, err := db.EkoCache.Get(context.Background(), cacheKey, new(geth_types.Receipt)); err == nil {
 		logrus.Infof("retrieved receipt data for tx %v from cache", hash)
-		return wanted, nil
+		return wanted.(*geth_types.Receipt), nil
 	}
 
 	receipt, err := rpc.CurrentErigonClient.GetNativeClient().TransactionReceipt(context.Background(), hash)
@@ -210,12 +192,7 @@ func GetTransactionReceipt(hash common.Hash) (*geth_types.Receipt, error) {
 		return nil, fmt.Errorf("error retrieving receipt data for tx %v: %v", hash, err)
 	}
 
-	err = db.RedisCache.Set(&cache.Item{
-		Ctx:   context.Background(),
-		Key:   cacheKey,
-		Value: receipt,
-		TTL:   0,
-	})
+	err = db.EkoCache.Set(context.Background(), cacheKey, receipt)
 	if err != nil {
 		return nil, fmt.Errorf("error writing receipt data for tx %v to cache: %v", hash, err)
 	}
