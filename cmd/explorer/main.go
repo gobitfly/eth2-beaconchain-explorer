@@ -349,7 +349,7 @@ func main() {
 			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
 
-			router.HandleFunc("/unitConverter", handlers.UnitConverter).Methods("GET")
+			router.HandleFunc("/tools/unitConverter", handlers.UnitConverter).Methods("GET")
 
 			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
 
