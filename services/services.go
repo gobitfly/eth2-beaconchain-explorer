@@ -2,17 +2,24 @@ package services
 
 import (
 	"database/sql"
+	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/sirupsen/logrus"
+
+	geth_types "github.com/ethereum/go-ethereum/core/types"
+	geth_rpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 var latestEpoch uint64
@@ -23,6 +30,7 @@ var latestValidatorCount uint64
 var indexPageData atomic.Value
 var chartsPageData atomic.Value
 var poolsData atomic.Value
+var gasNowData atomic.Value
 var ready = sync.WaitGroup{}
 
 var latestStats atomic.Value
@@ -34,11 +42,12 @@ var logger = logrus.New().WithField("module", "services")
 
 // Init will initialize the services
 func Init() {
-	ready.Add(4)
+	ready.Add(5)
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
 	go initExecutionLayerServices()
+	go gasNowUpdater()
 
 	if utils.Config.Frontend.OnlyAPI {
 		ready.Done()
@@ -490,6 +499,10 @@ func LatestValidatorCount() uint64 {
 	return atomic.LoadUint64(&latestValidatorCount)
 }
 
+func LatestGasNowData() *types.GasNowPageData {
+	return gasNowData.Load().(*types.GasNowPageData)
+}
+
 // LatestState returns statistics about the current eth2 state
 func LatestState() *types.LatestState {
 	data := &types.LatestState{}
@@ -553,4 +566,133 @@ func GetLatestStats() *types.Stats {
 // IsSyncing returns true if the chain is still syncing
 func IsSyncing() bool {
 	return time.Now().Add(time.Minute * -10).After(utils.EpochToTime(LatestEpoch()))
+}
+
+func gasNowUpdater() {
+	firstRun := true
+
+	for {
+		data, err := getGasNowData()
+		if err != nil {
+			logger.Errorf("error retrieving gas now data: %v", err)
+			time.Sleep(time.Second * 5)
+			continue
+		}
+		gasNowData.Store(data)
+		if firstRun {
+			ready.Done()
+			firstRun = false
+		}
+		time.Sleep(time.Second * 5)
+	}
+}
+
+func getGasNowData() (*types.GasNowPageData, error) {
+	gpoData := &types.GasNowPageData{}
+	gpoData.Code = 200
+	gpoData.Data.Timestamp = time.Now().UnixNano() / 1e6
+
+	client, err := geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	var raw json.RawMessage
+	var body rpcBlock
+
+	err = client.Call(&raw, "eth_getBlockByNumber", "pending", true)
+
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving pending block data: %v", err)
+	}
+
+	err = json.Unmarshal(raw, &body)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Infof("pending block has %v tx", len(body.Transactions))
+
+	sort.Slice(body.Transactions, func(i, j int) bool {
+		return body.Transactions[i].tx.GasPrice().Cmp(body.Transactions[j].tx.GasPrice()) > 0
+	})
+	if len(body.Transactions) > 1 {
+		medianGasPrice := body.Transactions[len(body.Transactions)/2].tx.GasPrice()
+		tailGasPrice := body.Transactions[len(body.Transactions)-1].tx.GasPrice()
+
+		gpoData.Data.Rapid = medianGasPrice
+		gpoData.Data.Fast = tailGasPrice
+	} else {
+		return nil, fmt.Errorf("current pending block contains no tx")
+	}
+
+	err = client.Call(&raw, "txpool_content")
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	txPoolContent := &TxPoolContent{}
+	err = json.Unmarshal(raw, txPoolContent)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	pendingTxs := make([]*geth_types.Transaction, 0, len(txPoolContent.Pending))
+
+	for _, account := range txPoolContent.Pending {
+		lowestNonce := 9223372036854775807
+		for n := range account {
+			if n < int(lowestNonce) {
+				lowestNonce = n
+			}
+		}
+
+		pendingTxs = append(pendingTxs, account[lowestNonce])
+	}
+	sort.Slice(pendingTxs, func(i, j int) bool {
+		return pendingTxs[i].GasPrice().Cmp(pendingTxs[j].GasPrice()) > 0
+	})
+
+	standardIndex := int(math.Max(float64(2*len(body.Transactions)), 500))
+	slowIndex := int(math.Max(float64(5*len(body.Transactions)), 1000))
+	if standardIndex > len(pendingTxs)-1 {
+		standardIndex = len(pendingTxs) - 1
+	}
+	if slowIndex > len(pendingTxs)-1 {
+		slowIndex = len(pendingTxs) - 1
+	}
+
+	gpoData.Data.Standard = pendingTxs[standardIndex].GasPrice()
+	gpoData.Data.Slow = pendingTxs[slowIndex].GasPrice()
+
+	// gpoData.RapidUSD = gpoData.Rapid * 21000 * params.GWei / params.Ether * usd
+	// gpoData.FastUSD = gpoData.Fast * 21000 * params.GWei / params.Ether * usd
+	// gpoData.StandardUSD = gpoData.Standard * 21000 * params.GWei / params.Ether * usd
+	// gpoData.SlowUSD = gpoData.Slow * 21000 * params.GWei / params.Ether * usd
+	return gpoData, nil
+}
+
+type TxPoolContent struct {
+	Pending map[string]map[int]*geth_types.Transaction
+}
+
+type rpcTransaction struct {
+	tx *geth_types.Transaction
+	txExtraInfo
+}
+
+type txExtraInfo struct {
+	BlockNumber *string         `json:"blockNumber,omitempty"`
+	BlockHash   *common.Hash    `json:"blockHash,omitempty"`
+	From        *common.Address `json:"from,omitempty"`
+}
+
+type rpcBlock struct {
+	Transactions []rpcTransaction `json:"transactions"`
+}
+
+func (tx *rpcTransaction) UnmarshalJSON(msg []byte) error {
+	if err := json.Unmarshal(msg, &tx.tx); err != nil {
+		return err
+	}
+	return json.Unmarshal(msg, &tx.txExtraInfo)
 }

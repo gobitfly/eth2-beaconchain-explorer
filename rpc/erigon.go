@@ -36,6 +36,7 @@ type ErigonClient struct {
 var CurrentErigonClient *ErigonClient
 
 func NewErigonClient(endpoint string) (*ErigonClient, error) {
+	logger.Infof("initializing erigon client at %v", endpoint)
 	client := &ErigonClient{
 		endpoint: endpoint,
 	}
@@ -67,6 +68,10 @@ func (client *ErigonClient) Close() {
 
 func (client *ErigonClient) GetNativeClient() *ethclient.Client {
 	return client.ethClient
+}
+
+func (client *ErigonClient) GetRPCClient() *rpc.Client {
+	return client.rpcClient
 }
 
 func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.GetBlockTimings, error) {

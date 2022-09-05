@@ -92,7 +92,7 @@ func main() {
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
 
-	rpc.CurrentErigonClient, err = rpc.NewErigonClient(utils.Config.Eth1Endpoint)
+	rpc.CurrentErigonClient, err = rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
 	if err != nil {
 		logrus.Fatalf("error initializing erigon client: %v", err)
 	}
