@@ -1,0 +1,138 @@
+{{ define "js" }}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/4.0.4/bignumber.min.js"></script>
+	<script>
+    $("input").on("keyup", function () {
+      var id = $(this).attr('id');
+      var value = new BigNumber($(this).val());
+
+      var wei = new BigNumber(0);
+
+      switch (id) {
+        case "wei":
+          wei = value;
+          break;
+        case "kwei":
+          wei = value.mul(10e2);
+          break;
+        case "mwei":
+          wei = value.mul(10e5);
+          break;
+        case "gwei":
+          wei = value.mul(10e8);
+          break;
+        case "szabo":
+          wei = value.mul(10e11);
+          break;
+        case "finney":
+          wei = value.mul(10e14);
+          break;
+        case "ether":
+          wei = value.mul(10e17);
+          break;
+        case "kether":
+          wei = value.mul(10e20);
+          break;
+        case "mether":
+          wei = value.mul(10e23);
+          break;
+        case "gether":
+          wei = value.mul(10e26);
+          break;
+        case "tether":
+          wei = value.mul(10e29);
+          break;
+      }
+
+      $("#wei").val(wei.toFixed());
+      $("#kwei").val(wei.div(10e2).toFixed());
+      $("#mwei").val(wei.div(10e5).toFixed());
+      $("#gwei").val(wei.div(10e8).toFixed());
+      $("#szabo").val(wei.div(10e11).toFixed());
+      $("#finney").val(wei.div(10e14).toFixed());
+      $("#ether").val(wei.div(10e17).toFixed());
+      $("#kether").val(wei.div(10e20).toFixed());
+      $("#mether").val(wei.div(10e23).toFixed());
+      $("#gether").val(wei.div(10e26).toFixed());
+      $("#tether").val(wei.div(10e29).toFixed());
+    });
+	</script>
+{{ end }}
+
+{{ define "css" }}
+{{ end }}
+
+{{ define "content" }}
+    <div class="container mt-2">
+      <div class="d-md-flex py-2 my-3 justify-content-md-between">
+        <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-sync mr-2"></i>Unit Converter</h1>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+            <li class="breadcrumb-item">Tools</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Unit Converter</li>
+          </ol>
+        </nav>
+      </div>
+      <div class="row mt-4">
+		  	<div class="col-md-12">
+		  		<p><span class="fas fa-lightbulb mr-1"></span> INFO: Ethereum uses a lot of different units like Wei, GWei, Shannon and Ether. You can use this tool to convert between them.</p>
+		  	</div>
+		  </div>
+      <div class="input-group mb-2 mr-sm-2 mb-sm-0">
+        <input class="form-control" id="wei" type="text" value="1000000000000000000"/>
+        <div class="input-group-append">
+          <div class="input-group-text" style="width: 150px;">Wei</div>
+        </div>
+      </div>
+      <div class="input-group mt-2 mr-sm-2 mb-sm-0"><input class="form-control" id="kwei" type="text" value="1000000000000000"/>
+        <div class="input-group-append">
+          <div class="input-group-text" style="width: 150px;">KWei</div>
+        </div>
+      </div>
+      <div class="input-group mt-2 mr-sm-2 mb-sm-0"><input class="form-control" id="mwei" type="text" value="1000000000000"/>
+        <div class="input-group-append">
+          <div class="input-group-text" style="width: 150px;">MWei</div>
+        </div>
+      </div>
+      <div class="input-group mt-2 mr-sm-2 mb-sm-0"><input class="form-control" id="gwei" type="text" value="1000000000"/>
+        <div class="input-group-append">
+          <div class="input-group-text bg-info text-white" style="width: 150px;">GWei (Shannon)</div>
+        </div>
+      </div>
+      <div class="input-group mt-2 mr-sm-2 mb-sm-0"><input class="form-control" id="szabo" type="text" value="1000000"/>
+        <div class="input-group-append">
+          <div class="input-group-text" style="width: 150px;">Szabo</div>
+        </div>
+      </div>
+      <div class="input-group mt-2 mr-sm-2 mb-sm-0"><input class="form-control" id="finney" type="text" value="1000"/>
+        <div class="input-group-append">
+          <div class="input-group-text" style="width: 150px;">Finney</div>
+        </div>
+      </div>
+      <div class="input-group mt-2 mr-sm-2 mb-sm-0"><input class="form-control" id="ether" type="text" value="1"/>
+        <div class="input-group-append">
+          <div class="input-group-text bg-primary text-white" style="width: 150px;">Ether</div>
+        </div>
+      </div>
+      <div class="input-group mt-2 mr-sm-2 mb-sm-0"><input class="form-control" id="kether" type="text" value="0.001"/>
+        <div class="input-group-append">
+          <div class="input-group-text" style="width: 150px;">KEther</div>
+        </div>
+      </div>
+      <div class="input-group mt-2 mr-sm-2 mb-sm-0"><input class="form-control" id="mether" type="text" value="0.000001"/>
+        <div class="input-group-append">
+          <div class="input-group-text" style="width: 150px;">MEther</div>
+        </div>
+      </div>
+      <div class="input-group mt-2 mr-sm-2 mb-sm-0"><input class="form-control" id="gether" type="text" value="0.000000001"/>
+        <div class="input-group-append">
+          <div class="input-group-text" style="width: 150px;">GEther</div>
+        </div>
+      </div>
+      <div class="input-group mt-2 mr-sm-2 mb-sm-0"><input class="form-control" id="tether" type="text" value="0.000000000001"/>
+        <div class="input-group-append">
+          <div class="input-group-text" style="width: 150px;">TEther</div>
+        </div>
+      </div>
+    </div>
+{{ end }}
