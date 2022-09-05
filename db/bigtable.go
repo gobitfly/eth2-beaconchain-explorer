@@ -28,6 +28,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
+	"github.com/go-redis/cache/v8"
 	"github.com/golang/protobuf/proto"
 	"github.com/karlseguin/ccache/v2"
 	"github.com/sirupsen/logrus"
@@ -94,16 +95,12 @@ var (
 )
 
 type Bigtable struct {
-	client                *gcp_bigtable.Client
-	tableData             *gcp_bigtable.Table
-	tableBlocks           *gcp_bigtable.Table
-	tableMetadataUpdates  *gcp_bigtable.Table
-	tableMetadata         *gcp_bigtable.Table
-	chainId               string
-	addressNameCache      *ccache.Cache
-	tokenInfoCache        *ccache.Cache
-	contractMetadataCache *ccache.Cache
-	txDataCache           *ccache.Cache
+	client               *gcp_bigtable.Client
+	tableData            *gcp_bigtable.Table
+	tableBlocks          *gcp_bigtable.Table
+	tableMetadataUpdates *gcp_bigtable.Table
+	tableMetadata        *gcp_bigtable.Table
+	chainId              string
 }
 
 func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
@@ -116,16 +113,12 @@ func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
 	}
 
 	bt := &Bigtable{
-		client:                btClient,
-		tableData:             btClient.Open("data"),
-		tableBlocks:           btClient.Open("blocks"),
-		tableMetadataUpdates:  btClient.Open("metadata_updates"),
-		tableMetadata:         btClient.Open("metadata"),
-		chainId:               chainId,
-		addressNameCache:      ccache.New(ccache.Configure()),
-		tokenInfoCache:        ccache.New(ccache.Configure()),
-		contractMetadataCache: ccache.New(ccache.Configure()),
-		txDataCache:           ccache.New(ccache.Configure()),
+		client:               btClient,
+		tableData:            btClient.Open("data"),
+		tableBlocks:          btClient.Open("blocks"),
+		tableMetadataUpdates: btClient.Open("metadata_updates"),
+		tableMetadata:        btClient.Open("metadata"),
+		chainId:              chainId,
 	}
 	return bt, nil
 }
@@ -2077,19 +2070,31 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 
 			muxMap[string(t.TokenAddress)].Lock()
 			defer muxMap[string(t.TokenAddress)].Unlock()
-			if bigtable.tokenInfoCache.Get(string(t.TokenAddress)) == nil {
-				metadata, err := bigtable.GetERC20MetadataForAddress(t.TokenAddress)
+
+			cacheKey := "ERC20:" + string(t.TokenAddress)
+			metadata := &types.ERC20Metadata{}
+
+			if err := RedisCache.Get(context.Background(), cacheKey, metadata); err != nil {
+				metadata, err = bigtable.GetERC20MetadataForAddress(t.TokenAddress)
 				if err != nil {
 					return err
 				}
-				bigtable.tokenInfoCache.Set(string(t.TokenAddress), metadata, time.Hour)
+				err = RedisCache.Set(&cache.Item{
+					Ctx:   context.Background(),
+					Key:   cacheKey,
+					Value: metadata,
+					TTL:   0,
+				})
+				if err != nil {
+					return err
+				}
 			}
 
 			tb := &types.Eth1AddressBalance{
 				Address:  address,
 				Balance:  t.Value,
 				Token:    t.TokenAddress,
-				Metadata: bigtable.tokenInfoCache.Get(string(t.TokenAddress)).Value().(*types.ERC20Metadata),
+				Metadata: metadata,
 			}
 
 			tableData[i] = []interface{}{
@@ -2537,9 +2542,11 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	defer cancel()
 
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
-
-	if cached := bigtable.addressNameCache.Get(rowKey); cached != nil {
-		return cached.Value().(string), nil
+	cacheKey := "NAME:" + rowKey
+	wanted := ""
+	if err := RedisCache.Get(context.Background(), cacheKey, wanted); err == nil {
+		// logrus.Infof("retrieved name for address %x from cache", address)
+		return wanted, nil
 	}
 
 	filter := gcp_bigtable.ChainFilters(gcp_bigtable.FamilyFilter(ACCOUNT_METADATA_FAMILY), gcp_bigtable.ColumnFilter(ACCOUNT_COLUMN_NAME))
@@ -2547,13 +2554,23 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
 
 	if err != nil || row == nil {
-		bigtable.addressNameCache.Set(rowKey, "", time.Hour)
+		err = RedisCache.Set(&cache.Item{
+			Ctx:   context.Background(),
+			Key:   cacheKey,
+			Value: "",
+			TTL:   0,
+		})
 		return "", err
 	}
 
-	bigtable.addressNameCache.Set(rowKey, string(row[ACCOUNT_METADATA_FAMILY][0].Value), time.Hour)
-
-	return string(row[ACCOUNT_METADATA_FAMILY][0].Value), nil
+	wanted = string(row[ACCOUNT_METADATA_FAMILY][0].Value)
+	err = RedisCache.Set(&cache.Item{
+		Ctx:   context.Background(),
+		Key:   cacheKey,
+		Value: wanted,
+		TTL:   0,
+	})
+	return wanted, err
 }
 
 func (bigtable *Bigtable) SaveAddressName(address []byte, name string) error {
@@ -2571,9 +2588,10 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 	defer cancel()
 
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
-
-	if cached := bigtable.contractMetadataCache.Get(rowKey); cached != nil {
-		return cached.Value().(*types.ContractMetadata), nil
+	cacheKey := "CONTRACT:" + rowKey
+	metadata := &types.ContractMetadata{}
+	if err := RedisCache.Get(context.Background(), cacheKey, metadata); err == nil {
+		return metadata, nil
 	}
 
 	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(gcp_bigtable.FamilyFilter(CONTRACT_METADATA_FAMILY)))
@@ -2586,10 +2604,20 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 
 		if err != nil {
 			logrus.Errorf("error fetching contract metadata for address %x: %v", address, err)
-			bigtable.contractMetadataCache.Set(rowKey, ret, time.Hour)
+			err = RedisCache.Set(&cache.Item{
+				Ctx:   context.Background(),
+				Key:   cacheKey,
+				Value: &types.ContractMetadata{},
+				TTL:   0,
+			})
 			return nil, err
 		} else {
-			bigtable.contractMetadataCache.Set(rowKey, ret, time.Hour)
+			err = RedisCache.Set(&cache.Item{
+				Ctx:   context.Background(),
+				Key:   cacheKey,
+				Value: ret,
+				TTL:   0,
+			})
 			err = bigtable.SaveContractMetadata(address, ret)
 
 			if err != nil {
@@ -2615,9 +2643,14 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 		}
 	}
 
-	bigtable.contractMetadataCache.Set(rowKey, ret, time.Hour)
+	err = RedisCache.Set(&cache.Item{
+		Ctx:   context.Background(),
+		Key:   cacheKey,
+		Value: ret,
+		TTL:   0,
+	})
 
-	return ret, nil
+	return ret, err
 }
 
 func (bigtable *Bigtable) SaveContractMetadata(address []byte, metadata *types.ContractMetadata) error {
@@ -2764,19 +2797,30 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 
 			muxMap[string(t.TokenAddress)].Lock()
 			defer muxMap[string(t.TokenAddress)].Unlock()
-			if bigtable.tokenInfoCache.Get(string(t.TokenAddress)) == nil {
-				metadata, err := bigtable.GetERC20MetadataForAddress(t.TokenAddress)
+			cacheKey := "ERC20:" + string(t.TokenAddress)
+			metadata := &types.ERC20Metadata{}
+
+			if err := RedisCache.Get(context.Background(), cacheKey, metadata); err != nil {
+				metadata, err = bigtable.GetERC20MetadataForAddress(t.TokenAddress)
 				if err != nil {
 					return err
 				}
-				bigtable.tokenInfoCache.Set(string(t.TokenAddress), metadata, time.Hour)
+				err = RedisCache.Set(&cache.Item{
+					Ctx:   context.Background(),
+					Key:   cacheKey,
+					Value: metadata,
+					TTL:   0,
+				})
+				if err != nil {
+					return err
+				}
 			}
 
 			tb := &types.Eth1AddressBalance{
 				Address:  address,
 				Balance:  t.Value,
 				Token:    t.TokenAddress,
-				Metadata: bigtable.tokenInfoCache.Get(string(t.TokenAddress)).Value().(*types.ERC20Metadata),
+				Metadata: metadata,
 			}
 
 			tableData[i] = []interface{}{
