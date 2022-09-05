@@ -48,7 +48,8 @@ func MustInitRedisCache(address string) {
 	}
 
 	RedisCache = cache.New(&cache.Options{
-		Redis: rdc,
+		Redis:      rdc,
+		LocalCache: cache.NewTinyLFU(10000, time.Minute),
 	})
 }
 
