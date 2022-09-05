@@ -102,6 +102,10 @@ func slotUpdater() {
 
 		if err != nil {
 			logger.Errorf("error retrieving latest slot from the database: %v", err)
+
+			if err.Error() == "sql: database is closed" {
+				logger.Fatalf("error retrieving latest slot from the database: %v", err)
+			}
 		} else {
 			atomic.StoreUint64(&latestSlot, slot)
 			if firstRun {
@@ -208,7 +212,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
 
 	var epoch uint64
-	err := db.WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
+	err := db.ReaderDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving latest epoch from the database: %v", err)
 	}
@@ -232,7 +236,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		}
 
 		deposit := Deposit{}
-		err = db.WriterDb.Get(&deposit, `
+		err = db.ReaderDb.Get(&deposit, `
 			SELECT COUNT(*) as total, COALESCE(MAX(block_ts),NOW()) AS block_ts
 			FROM (
 				SELECT publickey, SUM(amount) AS amount, MAX(block_ts) as block_ts
@@ -327,7 +331,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 
 	var epochs []*types.IndexPageDataEpochs
-	err = db.WriterDb.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
+	err = db.ReaderDb.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
 	}
@@ -342,7 +346,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.Epochs = epochs
 
 	var scheduledCount uint8
-	err = db.WriterDb.Get(&scheduledCount, `
+	err = db.ReaderDb.Get(&scheduledCount, `
 		select count(*) from blocks where status = '0' and epoch = $1;
 	`, epoch)
 	if err != nil {
@@ -351,7 +355,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.ScheduledCount = scheduledCount
 
 	var blocks []*types.IndexPageDataBlocks
-	err = db.WriterDb.Select(&blocks, `
+	err = db.ReaderDb.Select(&blocks, `
 		SELECT
 			blocks.epoch,
 			blocks.slot,
@@ -398,7 +402,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		EnteringValidators uint64 `db:"entering_validators_count"`
 		ExitingValidators  uint64 `db:"exiting_validators_count"`
 	}{}
-	err = db.WriterDb.Get(&queueCount, "SELECT entering_validators_count, exiting_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
+	err = db.ReaderDb.Get(&queueCount, "SELECT entering_validators_count, exiting_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("error retrieving validator queue count: %v", err)
 	}
@@ -406,7 +410,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.ExitingValidators = queueCount.ExitingValidators
 
 	var averageBalance float64
-	err = db.WriterDb.Get(&averageBalance, "SELECT COALESCE(AVG(balance), 0) FROM validators")
+	err = db.ReaderDb.Get(&averageBalance, "SELECT COALESCE(AVG(balance), 0) FROM validators")
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator balance: %v", err)
 	}
@@ -417,7 +421,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		epochLowerBound = epoch - 1600
 	}
 	var epochHistory []*types.IndexPageEpochHistory
-	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
+	err = db.ReaderDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving staked ether history: %v", err)
 	}

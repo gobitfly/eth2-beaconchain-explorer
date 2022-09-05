@@ -14,12 +14,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+
+	cache2 "github.com/eko/gocache/v3/cache"
+	"github.com/eko/gocache/v3/marshaler"
+	store2 "github.com/eko/gocache/v3/store"
+	gocache "github.com/patrickmn/go-cache"
 )
 
 var DBPGX *pgxpool.Conn
@@ -27,8 +33,25 @@ var DBPGX *pgxpool.Conn
 // DB is a pointer to the explorer-database
 var WriterDb *sqlx.DB
 var ReaderDb *sqlx.DB
+var EkoCache *marshaler.Marshaler
 
 var logger = logrus.StandardLogger().WithField("module", "db")
+
+func MustInitRedisCache(address string) {
+	gocacheClient := gocache.New(time.Hour, time.Minute)
+	gocacheStore := store2.NewGoCache(gocacheClient)
+
+	redisStore := store2.NewRedis(redis.NewClient(&redis.Options{
+		Addr: address,
+	}))
+
+	cacheManager := cache2.NewChain[any](
+		cache2.New[any](gocacheStore),
+		cache2.New[any](redisStore),
+	)
+	marshal := marshaler.New(cacheManager)
+	EkoCache = marshal
+}
 
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {
 	dbConnWriter, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", writer.Username, writer.Password, writer.Host, writer.Port, writer.Name))
