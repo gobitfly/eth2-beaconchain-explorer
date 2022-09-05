@@ -2759,11 +2759,11 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 		}
 
 		g.Go(func() error {
-			fromName, err := bigtable.GetAddressName(t.To)
+			fromName, err := bigtable.GetAddressName(t.From)
 			if err != nil {
 				return err
 			}
-			toName, err := bigtable.GetAddressName(t.From)
+			toName, err := bigtable.GetAddressName(t.To)
 			if err != nil {
 				return err
 			}
