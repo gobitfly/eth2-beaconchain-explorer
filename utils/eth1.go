@@ -76,6 +76,36 @@ func FormatTransactionHash(hash []byte) template.HTML {
 	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/execution/tx/0x%x">0x%x…%x</a> %v`, hash, hash[:2], hash[len(hash)-2:], CopyButton(hex.EncodeToString(hash))))
 }
 
+func FormatAddress(address []byte, token []byte, name string, verified bool, isContract bool, link bool) template.HTML {
+
+	name = template.HTMLEscapeString(name)
+
+	tooltip := ""
+	if len(name) == 0 {
+		name = fmt.Sprintf("0x%x", address)
+		tooltip = name
+	} else {
+		tooltip = fmt.Sprintf("%s\n0x%x", name, address)
+	}
+
+	ret := ""
+	if isContract {
+		ret = "<i class=\"fas fa-file-contract mr-1\"></i>" + ret
+	}
+
+	if !link {
+		ret += fmt.Sprintf(`<span class="text-truncate" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</span>`, tooltip, name)
+		return template.HTML(ret)
+	}
+
+	if token != nil {
+		ret += fmt.Sprintf(`<a class="text-truncate" href="/execution/address/0x%x#erc20Txns" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+	} else {
+		ret += fmt.Sprintf(`<a class="text-truncate" href="/execution/address/0x%x" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+	}
+	return template.HTML(ret)
+}
+
 func FormatAddressAsLink(address []byte, name string, verified bool, isContract bool) template.HTML {
 	ret := ""
 	name = template.HTMLEscapeString(name)

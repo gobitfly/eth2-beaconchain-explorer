@@ -95,6 +95,8 @@ type Bigtable struct {
 	tableMetadataUpdates *gcp_bigtable.Table
 	tableMetadata        *gcp_bigtable.Table
 	chainId              string
+	addressNameCache     *ccache.Cache
+	tokenInfoCache       *ccache.Cache
 }
 
 func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
@@ -113,6 +115,8 @@ func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
 		tableMetadataUpdates: btClient.Open("metadata_updates"),
 		tableMetadata:        btClient.Open("metadata"),
 		chainId:              chainId,
+		addressNameCache:     ccache.New(ccache.Configure()),
+		tokenInfoCache:       ccache.New(ccache.Configure()),
 	}
 	return bt, nil
 }
@@ -1597,31 +1601,30 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 		return nil, err
 	}
 
-	metadataCache := make(map[string][]byte) // cache metadata
-
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
 
-		if metadataCache[string(t.To)] == nil {
-			metadataCache[string(t.To)], err = bigtable.GetAddressName(t.To)
+		if bigtable.addressNameCache.Get(string(t.To)) == nil {
+			name, err := bigtable.GetAddressName(t.To)
 			if err != nil {
 				return nil, err
 			}
+			bigtable.addressNameCache.Set(string(t.To), name, time.Hour)
 		}
 
-		if metadataCache[string(t.From)] == nil {
-			metadataCache[string(t.From)], err = bigtable.GetAddressName(t.From)
+		if bigtable.addressNameCache.Get(string(t.From)) == nil {
+			name, err := bigtable.GetAddressName(t.From)
 			if err != nil {
 				return nil, err
 			}
+			bigtable.addressNameCache.Set(string(t.From), name, time.Hour)
 		}
 
-		fromName := string(metadataCache[string(t.From)])
+		fromName := bigtable.addressNameCache.Get(string(t.From)).Value().(string)
+		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
 
-		from := utils.FormatAddressAsLink(t.From, fromName, false, false)
-
-		toName := string(metadataCache[string(t.To)])
-		to := utils.FormatAddressAsLink(t.To, toName, false, false)
+		toName := bigtable.addressNameCache.Get(string(t.To)).Value().(string)
+		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
 
 		method := "Transfer"
 		if len(t.MethodId) > 0 {
@@ -1867,12 +1870,13 @@ func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, limit int64) ([]*t
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressInternalTableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
+func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search string, pageToken string) (*types.DataTableResponse, error) {
 	// defaults to most recent
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:ITX:%s:%s:", bigtable.chainId, address, FILTER_TIME)
+		pageToken = fmt.Sprintf("%s:I:ITX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
+	logger.Info(pageToken)
 	transactions, lastKey, err := bigtable.GetEth1ItxForAddress(pageToken, 25)
 	if err != nil {
 		return nil, err
@@ -1880,14 +1884,29 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address string, search str
 
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
-		from := utils.FormatHash(t.From)
-		if fmt.Sprintf("%x", t.From) != address {
-			from = utils.FormatAddressAsLink(t.From, "", false, false)
+
+		if bigtable.addressNameCache.Get(string(t.To)) == nil {
+			name, err := bigtable.GetAddressName(t.To)
+			if err != nil {
+				return nil, err
+			}
+			bigtable.addressNameCache.Set(string(t.To), name, time.Hour)
 		}
-		to := utils.FormatHash(t.To)
-		if fmt.Sprintf("%x", t.To) != address {
-			to = utils.FormatAddressAsLink(t.To, "", false, false)
+
+		if bigtable.addressNameCache.Get(string(t.From)) == nil {
+			name, err := bigtable.GetAddressName(t.From)
+			if err != nil {
+				return nil, err
+			}
+			bigtable.addressNameCache.Set(string(t.From), name, time.Hour)
 		}
+
+		fromName := bigtable.addressNameCache.Get(string(t.From)).Value().(string)
+		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
+
+		toName := bigtable.addressNameCache.Get(string(t.To)).Value().(string)
+		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
+
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
 			utils.FormatTimeFromNow(t.Time.AsTime()),
@@ -2050,42 +2069,73 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 		return nil, err
 	}
 
-	metadataCache := make(map[string]*types.ERC20Metadata) // cache metadata
-
 	tableData := make([][]interface{}, len(transactions))
+	g := new(errgroup.Group)
+	muxMap := make(map[string]*sync.Mutex)
 	for i, t := range transactions {
-		from := utils.FormatHash(t.From)
-		if !bytes.Equal(t.From, address) {
-			from = utils.FormatAddressAsLink(t.From, "", false, false)
-		}
-		to := utils.FormatHash(t.To)
-		if !bytes.Equal(t.To, address) {
-			to = utils.FormatAddressAsLink(t.To, "", false, false)
+		i := i
+		t := t
+
+		if muxMap[string(t.TokenAddress)] == nil {
+			muxMap[string(t.TokenAddress)] = &sync.Mutex{}
 		}
 
-		if metadataCache[string(t.TokenAddress)] == nil {
-			metadata, err := bigtable.GetERC20MetadataForAddress(t.TokenAddress)
-			if err != nil {
-				return nil, err
+		g.Go(func() error {
+			if bigtable.addressNameCache.Get(string(t.To)) == nil {
+				name, err := bigtable.GetAddressName(t.To)
+				if err != nil {
+					return err
+				}
+				bigtable.addressNameCache.Set(string(t.To), name, time.Hour)
 			}
-			metadataCache[string(t.TokenAddress)] = metadata
-		}
 
-		tb := &types.Eth1AddressBalance{
-			Address:  address,
-			Balance:  t.Value,
-			Token:    t.TokenAddress,
-			Metadata: metadataCache[string(t.TokenAddress)],
-		}
+			if bigtable.addressNameCache.Get(string(t.From)) == nil {
+				name, err := bigtable.GetAddressName(t.From)
+				if err != nil {
+					return err
+				}
+				bigtable.addressNameCache.Set(string(t.From), name, time.Hour)
+			}
 
-		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
-			utils.FormatTimeFromNow(t.Time.AsTime()),
-			from,
-			to,
-			utils.FormatTokenValue(tb),
-			utils.FormatTokenName(tb),
-		}
+			fromName := bigtable.addressNameCache.Get(string(t.From)).Value().(string)
+			from := utils.FormatAddress(t.From, t.TokenAddress, fromName, false, false, !bytes.Equal(t.From, address))
+
+			toName := bigtable.addressNameCache.Get(string(t.To)).Value().(string)
+			to := utils.FormatAddress(t.To, t.TokenAddress, toName, false, false, !bytes.Equal(t.To, address))
+
+			muxMap[string(t.TokenAddress)].Lock()
+			defer muxMap[string(t.TokenAddress)].Unlock()
+			if bigtable.tokenInfoCache.Get(string(t.TokenAddress)) == nil {
+				metadata, err := bigtable.GetERC20MetadataForAddress(t.TokenAddress)
+				if err != nil {
+					return err
+				}
+				bigtable.tokenInfoCache.Set(string(t.TokenAddress), metadata, time.Hour)
+			}
+
+			tb := &types.Eth1AddressBalance{
+				Address:  address,
+				Balance:  t.Value,
+				Token:    t.TokenAddress,
+				Metadata: bigtable.tokenInfoCache.Get(string(t.TokenAddress)).Value().(*types.ERC20Metadata),
+			}
+
+			tableData[i] = []interface{}{
+				utils.FormatTransactionHash(t.ParentHash),
+				utils.FormatTimeFromNow(t.Time.AsTime()),
+				from,
+				to,
+				utils.FormatTokenValue(tb),
+				utils.FormatTokenName(tb),
+			}
+			return nil
+		})
+
+	}
+
+	err = g.Wait()
+	if err != nil {
+		return nil, err
 	}
 
 	data := &types.DataTableResponse{
@@ -2509,7 +2559,7 @@ func (bigtable *Bigtable) SaveERC20Metadata(address []byte, metadata *types.ERC2
 	return bigtable.tableMetadata.Apply(ctx, rowKey, mut)
 }
 
-func (bigtable *Bigtable) GetAddressName(address []byte) ([]byte, error) {
+func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
@@ -2520,14 +2570,14 @@ func (bigtable *Bigtable) GetAddressName(address []byte) ([]byte, error) {
 	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
 
 	if err != nil {
-		return []byte(""), err
+		return "", err
 	}
 
 	if row == nil {
-		return []byte(""), nil
+		return "", nil
 	}
 
-	return row[ACCOUNT_METADATA_FAMILY][0].Value, nil
+	return string(row[ACCOUNT_METADATA_FAMILY][0].Value), nil
 }
 
 func (bigtable *Bigtable) SaveAddressName(address []byte, name string) error {

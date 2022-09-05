@@ -54,7 +54,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		internal, err = db.BigtableClient.GetAddressInternalTableData(address, "", "")
+		internal, err = db.BigtableClient.GetAddressInternalTableData(addressBytes, "", "")
 		if err != nil {
 			return err
 		}
@@ -214,12 +214,13 @@ func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	address := strings.Replace(vars["address"], "0x", "", -1)
 	address = strings.ToLower(address)
+	addressBytes := common.FromHex(address)
 
 	pageToken := q.Get("pageToken")
 
 	search := ""
 
-	data, err := db.BigtableClient.GetAddressInternalTableData(address, search, pageToken)
+	data, err := db.BigtableClient.GetAddressInternalTableData(addressBytes, search, pageToken)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 block table data")
 	}

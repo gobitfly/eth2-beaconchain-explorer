@@ -4,7 +4,6 @@ import (
 	"encoding/gob"
 	"encoding/hex"
 	"eth2-exporter/db"
-	"eth2-exporter/erc20"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
@@ -169,9 +168,6 @@ func main() {
 	}
 
 	if cfg.Frontend.Enabled {
-
-		erc20.InitTokenList(utils.Config.Frontend.TokenListPath)
-
 		router := mux.NewRouter()
 
 		apiV1Router := router.PathPrefix("/api/v1").Subrouter()
@@ -241,13 +237,18 @@ func main() {
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET", "HEAD")
 		router.HandleFunc("/api/healthz-loadbalancer", handlers.ApiHealthzLoadbalancer).Methods("GET", "HEAD")
 
+		logrus.Infof("initializing frontend services")
 		services.Init() // Init frontend services
-		price.Init()
-		if !utils.Config.Frontend.Debug {
-			ethclients.Init()
-		}
-
 		logrus.Infof("frontend services initiated")
+
+		logrus.Infof("initializing prices")
+		price.Init()
+		logrus.Infof("prices initialized")
+		if !utils.Config.Frontend.Debug {
+			logrus.Infof("initializing ethclients")
+			ethclients.Init()
+			logrus.Infof("ethclients initialized")
+		}
 
 		if !utils.Config.Frontend.OnlyAPI {
 			if utils.Config.Frontend.SiteDomain == "" {
