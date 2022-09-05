@@ -2544,9 +2544,9 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
 	cacheKey := "NAME:" + rowKey
 	wanted := ""
-	if err := RedisCache.Get(context.Background(), cacheKey, wanted); err == nil {
-		// logrus.Infof("retrieved name for address %x from cache", address)
-		return wanted, nil
+	if val, err := Redis.Get(context.Background(), cacheKey).Result(); err == nil {
+		logrus.Infof("retrieved name for address %x from cache", address)
+		return val, nil
 	}
 
 	filter := gcp_bigtable.ChainFilters(gcp_bigtable.FamilyFilter(ACCOUNT_METADATA_FAMILY), gcp_bigtable.ColumnFilter(ACCOUNT_COLUMN_NAME))
@@ -2554,22 +2554,12 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
 
 	if err != nil || row == nil {
-		err = RedisCache.Set(&cache.Item{
-			Ctx:   context.Background(),
-			Key:   cacheKey,
-			Value: "",
-			TTL:   0,
-		})
+		err = Redis.SetNX(context.Background(), cacheKey, "", time.Hour).Err()
 		return "", err
 	}
 
 	wanted = string(row[ACCOUNT_METADATA_FAMILY][0].Value)
-	err = RedisCache.Set(&cache.Item{
-		Ctx:   context.Background(),
-		Key:   cacheKey,
-		Value: wanted,
-		TTL:   0,
-	})
+	err = Redis.SetNX(context.Background(), cacheKey, wanted, time.Hour).Err()
 	return wanted, err
 }
 
@@ -2608,7 +2598,7 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 				Ctx:   context.Background(),
 				Key:   cacheKey,
 				Value: &types.ContractMetadata{},
-				TTL:   0,
+				TTL:   time.Hour,
 			})
 			return nil, err
 		} else {
@@ -2616,7 +2606,7 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 				Ctx:   context.Background(),
 				Key:   cacheKey,
 				Value: ret,
-				TTL:   0,
+				TTL:   time.Hour,
 			})
 			err = bigtable.SaveContractMetadata(address, ret)
 
@@ -2647,7 +2637,7 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 		Ctx:   context.Background(),
 		Key:   cacheKey,
 		Value: ret,
-		TTL:   0,
+		TTL:   time.Hour,
 	})
 
 	return ret, err
@@ -2809,7 +2799,7 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 					Ctx:   context.Background(),
 					Key:   cacheKey,
 					Value: metadata,
-					TTL:   0,
+					TTL:   time.Hour,
 				})
 				if err != nil {
 					return err

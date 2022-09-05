@@ -31,6 +31,7 @@ var DBPGX *pgxpool.Conn
 var WriterDb *sqlx.DB
 var ReaderDb *sqlx.DB
 var RedisCache *cache.Cache
+var Redis *redis.Client
 
 var logger = logrus.StandardLogger().WithField("module", "db")
 
@@ -42,14 +43,13 @@ func MustInitRedisCache(address string) {
 	})
 
 	err := rdc.Ping(context.Background()).Err()
-
 	if err != nil {
 		logger.Fatal(err)
 	}
+	Redis = rdc
 
 	RedisCache = cache.New(&cache.Options{
-		Redis:      rdc,
-		LocalCache: cache.NewTinyLFU(10000, time.Minute),
+		Redis: rdc,
 	})
 }
 
