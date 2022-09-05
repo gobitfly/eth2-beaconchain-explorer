@@ -224,12 +224,12 @@
     <a class="nav-link border-bottom-radius-0 active" href="#transactions" id="transaction-tab" data-toggle="tab"
       role="tab" aria-controls="transactions" aria-selected="true">Transactions</a>
   </li>
-  
+  {{ if .Data.InternalTxnsTable.Data}}
   <li class="nav-item" role="presentation">
-    <a class="nav-link border-bottom-radius-0 {{ if not (len .Data.InternalTxnsTable.Data) }}disabled{{end}}" href="#internalTxns" id="internalTxns-tab" data-toggle="tab" role="tab"
+    <a class="nav-link border-bottom-radius-0 " href="#internalTxns" id="internalTxns-tab" data-toggle="tab" role="tab"
       aria-controls="internalTxns" aria-selected="false">Internal Txns</a>
   </li>
-
+  {{end}}
   {{ if .Data.BlocksMinedTable.Data }}
   <li class="nav-item" role="presentation">
     <a class="nav-link border-bottom-radius-0" href="#blocksMined" id="blocksMined-tab" data-toggle="tab" role="tab"
@@ -243,16 +243,21 @@
       aria-controls="unclesMined" aria-selected="false">Uncles Mined</a>
   </li>
   {{ end }}
-
+  {{ if .Data.Erc20Table.Data }}
   <li class="nav-item" role="presentation">
-    <a class="nav-link border-bottom-radius-0 {{ if not (len .Data.Erc20Table.Data) }}disabled{{end}}" href="#erc20Txns" id="erc20Txns-tab" data-toggle="tab" role="tab" aria-controls="erc20Txns" aria-selected="false">Erc20 Token Txns</a>
+    <a class="nav-link border-bottom-radius-0" href="#erc20Txns" id="erc20Txns-tab" data-toggle="tab" role="tab" aria-controls="erc20Txns" aria-selected="false">Erc20 Token Txns</a>
   </li>
+  {{ end }}
+  {{ if .Data.Erc721Table.Data }}
   <li class="nav-item" role="presentation">
-    <a class="nav-link border-bottom-radius-0 {{ if not (len .Data.Erc721Table.Data) }}disabled{{end}}" href="#erc721Txns" id="erc721Txns-tab" data-toggle="tab" role="tab" aria-controls="erc721Txns" aria-selected="false">Erc721 Token Txns</a>
+    <a class="nav-link border-bottom-radius-0" href="#erc721Txns" id="erc721Txns-tab" data-toggle="tab" role="tab" aria-controls="erc721Txns" aria-selected="false">Erc721 Token Txns</a>
   </li>
+  {{ end }}
+  {{ if .Data.Erc1155Table.Data }}
   <li class="nav-item" role="presentation">
-    <a class="nav-link border-bottom-radius-0 {{ if not (len .Data.Erc1155Table.Data) }}disabled{{end}}" href="#erc1155Txns" id="erc1155Txns-tab" data-toggle="tab" role="tab" aria-controls="erc1155Txns" aria-selected="false" >Erc1155 Token Txns</a>
+    <a class="nav-link border-bottom-radius-0" href="#erc1155Txns" id="erc1155Txns-tab" data-toggle="tab" role="tab" aria-controls="erc1155Txns" aria-selected="false" >Erc1155 Token Txns</a>
   </li>
+  {{end}}
 </ul>
 {{ end }}
 
@@ -273,9 +278,11 @@
     <div class="border-top p-2 text-truncate">{{ $col }}</div>
   {{end}}
 {{ end }}
+{{ if gt (len .Data) 24 }}
 <div style="grid-column: 1 / 8;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
   <span>loading...</span>
 </div>
+{{ end }}
 {{ else }}
 <div style="grid-column: 1 / 8;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
   <div class="d-flex justify-content-center align-items-center flex-column">
