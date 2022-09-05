@@ -67,8 +67,6 @@ require (
 	github.com/eko/gocache/v3 v3.1.1 // indirect
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
-	github.com/pegasus-kv/thrift v0.13.0 // indirect
-	github.com/spf13/cast v1.5.0 // indirect
 	github.com/vmihailenco/go-tinylfu v0.2.2 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.4 // indirect

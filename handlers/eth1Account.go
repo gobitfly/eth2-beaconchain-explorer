@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
+	"github.com/skip2/go-qrcode"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -36,13 +38,13 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	g := new(errgroup.Group)
 	g.SetLimit(7)
 
-	var txns *types.DataTableResponse
-	var internal *types.DataTableResponse
-	var erc20 *types.DataTableResponse
-	var erc721 *types.DataTableResponse
-	var erc1155 *types.DataTableResponse
-	var blocksMined *types.DataTableResponse
-	var unclesMined *types.DataTableResponse
+	txns := &types.DataTableResponse{}
+	internal := &types.DataTableResponse{}
+	erc20 := &types.DataTableResponse{}
+	erc721 := &types.DataTableResponse{}
+	erc1155 := &types.DataTableResponse{}
+	blocksMined := &types.DataTableResponse{}
+	unclesMined := &types.DataTableResponse{}
 
 	g.Go(func() error {
 		var err error
@@ -107,8 +109,15 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	png, err := qrcode.Encode(fmt.Sprintf("0x%s", address), qrcode.Medium, 300)
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v; error generating QR code for address", r.URL.String(), err)
+	}
+
+	pngStr := base64.StdEncoding.EncodeToString(png)
 	data.Data = types.Eth1AddressPageData{
 		Address:           address,
+		QRCode:            pngStr,
 		Metadata:          metadata,
 		TransactionsTable: txns,
 		InternalTxnsTable: internal,

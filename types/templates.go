@@ -1372,6 +1372,7 @@ type DataTableSaveStateColumns struct {
 
 type Eth1AddressPageData struct {
 	Address           string `json:"address"`
+	QRCode            string `json:"qr_code_base64"`
 	Metadata          *Eth1AddressMetadata
 	BlocksMinedTable  *DataTableResponse
 	UnclesMinedTable  *DataTableResponse
