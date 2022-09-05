@@ -102,6 +102,10 @@ func slotUpdater() {
 
 		if err != nil {
 			logger.Errorf("error retrieving latest slot from the database: %v", err)
+
+			if err.Error() == "sql: database is closed" {
+				logger.Fatalf("error retrieving latest slot from the database: %v", err)
+			}
 		} else {
 			atomic.StoreUint64(&latestSlot, slot)
 			if firstRun {

@@ -60,6 +60,16 @@ require (
 )
 
 require (
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/go-redis/redis/v8 v8.11.3 // indirect
+	github.com/klauspost/compress v1.13.6 // indirect
+	github.com/vmihailenco/go-tinylfu v0.2.2 // indirect
+	github.com/vmihailenco/msgpack/v5 v5.3.4 // indirect
+	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
+	golang.org/x/exp v0.0.0-20220426173459-3bcf042a4bf5 // indirect
+)
+
+require (
 	cloud.google.com/go v0.102.1 // indirect
 	cloud.google.com/go/compute v1.7.0 // indirect
 	cloud.google.com/go/firestore v1.4.0 // indirect
@@ -87,12 +97,13 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/ferranbt/fastssz v0.0.0-20220103083642-bc5fefefa28b // indirect
 	github.com/go-chi/chi v4.0.2+incompatible // indirect
-	github.com/go-logr/logr v0.2.1 // indirect
+	github.com/go-logr/logr v0.4.0 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/spec v0.20.6 // indirect
 	github.com/go-openapi/swag v0.21.1 // indirect
+	github.com/go-redis/cache/v8 v8.4.3
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gobwas/httphead v0.0.0-20180130184737-2c6c146eadee // indirect

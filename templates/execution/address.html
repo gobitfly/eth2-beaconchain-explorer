@@ -263,12 +263,13 @@
 
 {{ define "AddressTransactionsTableGrid" }}
 <div id="transactions-table"
-  style="display: grid; grid-template-columns: repeat(7, minmax(auto, 1fr)); max-height: 800px; overflow: auto;">
+  style="display: grid; grid-template-columns: repeat(8, minmax(auto, 1fr)); max-height: 800px; overflow: auto;">
   <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Hash</span></div>
   <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Method</span></div>
   <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Age</span></div>
   <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Number</span></div>
   <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>From</span></div>
+  <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span></span></div>
   <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>To</span></div>
   <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Value</span></div>
 
@@ -279,12 +280,12 @@
   {{end}}
 {{ end }}
 {{ if gt (len .Data) 24 }}
-<div style="grid-column: 1 / 8;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
+<div style="grid-column: 1 / 9;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
   <span>loading...</span>
 </div>
 {{ end }}
 {{ else }}
-<div style="grid-column: 1 / 8;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
+<div style="grid-column: 1 / 9;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
   <div class="d-flex justify-content-center align-items-center flex-column">
     <div class="my-3 mt-5 p-2 pt-5">
       {{ template "UndrawTree" }}
@@ -303,10 +304,11 @@
 
 
 {{ define "AddressInternalTransactionsGrid" }}
-  <div id="internalTxns-table" style="display: grid; grid-template-columns: repeat(6, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="internalTxns-table" style="display: grid; grid-template-columns: repeat(7, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
     <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
     <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
     <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"></div>
     <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">To</div>
     <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Value</div>
     <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Type</div>
@@ -318,12 +320,12 @@
       {{end}}
     {{ end }}
     {{ if gt (len .Data) 24 }}
-    <div style="grid-column: 1 / 7;" id="internalTxns-table-inf-scroll" class="d-flex justify-content-center p-2">
+    <div style="grid-column: 1 / 8;" id="internalTxns-table-inf-scroll" class="d-flex justify-content-center p-2">
       <span>loading...</span>
     </div>
     {{ end }}
     {{ else }}
-    <div style="grid-column: 1 / 7;" id="internalTxns-table-inf-scroll" class="d-flex justify-content-center p-2">
+    <div style="grid-column: 1 / 8;" id="internalTxns-table-inf-scroll" class="d-flex justify-content-center p-2">
       <div class="d-flex justify-content-center align-items-center flex-column">
         <div class="my-3 mt-5 p-2 pt-5">
           {{ template "UndrawTree" }}
@@ -411,10 +413,11 @@
 
 
 {{ define "AddressErc20TransactionsGrid" }}
-  <div id="erc20-table" style="display: grid; grid-template-columns: repeat(6, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="erc20-table" style="display: grid; grid-template-columns: repeat(7, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
     <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
     <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
     <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>
+    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"></div>
     <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">To</div>
     <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Value</div>
     <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Token</div>
@@ -426,12 +429,12 @@
       {{end}}
     {{ end }}
     {{ if gt (len .Data) 24 }}
-    <div style="grid-column: 1 / 6;" id="erc20-table-inf-scroll" class="d-flex justify-content-center p-2">
+    <div style="grid-column: 1 / 7;" id="erc20-table-inf-scroll" class="d-flex justify-content-center p-2">
       <span>loading...</span>
     </div>
     {{ end }}
     {{ else }}
-    <div style="grid-column: 1 / 6;" id="erc20-table-inf-scroll" class="d-flex justify-content-center p-2">
+    <div style="grid-column: 1 / 7;" id="erc20-table-inf-scroll" class="d-flex justify-content-center p-2">
       <div class="d-flex justify-content-center align-items-center flex-column">
         <div class="my-3 mt-5 p-2 pt-5">
           {{ template "UndrawTree" }}

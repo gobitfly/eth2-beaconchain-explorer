@@ -25,6 +25,7 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/golang/protobuf/proto"
@@ -50,21 +51,26 @@ const (
 
 const max_block_number = 1000000000
 const (
-	DATA_COLUMN             = "d"
-	INDEX_COLUMN            = "i"
-	DEFAULT_FAMILY          = "f"
-	DEFAULT_FAMILY_BLOCKS   = "default"
-	ACCOUNT_METADATA_FAMILY = "a"
-	ERC20_METADATA_FAMILY   = "erc20"
-	ERC721_METADATA_FAMILY  = "erc721"
-	ERC1155_METADATA_FAMILY = "erc1155"
-	writeRowLimit           = 10000
-	MAX_INT                 = 9223372036854775807
-	MIN_INT                 = -9223372036854775808
+	DATA_COLUMN              = "d"
+	INDEX_COLUMN             = "i"
+	DEFAULT_FAMILY           = "f"
+	DEFAULT_FAMILY_BLOCKS    = "default"
+	ACCOUNT_METADATA_FAMILY  = "a"
+	CONTRACT_METADATA_FAMILY = "c"
+	ERC20_METADATA_FAMILY    = "erc20"
+	ERC721_METADATA_FAMILY   = "erc721"
+	ERC1155_METADATA_FAMILY  = "erc1155"
+	writeRowLimit            = 10000
+	MAX_INT                  = 9223372036854775807
+	MIN_INT                  = -9223372036854775808
 )
 
 const (
 	ACCOUNT_COLUMN_NAME = "NAME"
+	ACCOUNT_IS_CONTRACT = "ISCONTRACT"
+
+	CONTRACT_NAME = "CONTRACTNAME"
+	CONTRACT_ABI  = "ABI"
 
 	ERC20_COLUMN_DECIMALS    = "DECIMALS"
 	ERC20_COLUMN_TOTALSUPPLY = "TOTALSUPPLY"
@@ -88,14 +94,16 @@ var (
 )
 
 type Bigtable struct {
-	client               *gcp_bigtable.Client
-	tableData            *gcp_bigtable.Table
-	tableBlocks          *gcp_bigtable.Table
-	tableMetadataUpdates *gcp_bigtable.Table
-	tableMetadata        *gcp_bigtable.Table
-	chainId              string
-	addressNameCache     *ccache.Cache
-	tokenInfoCache       *ccache.Cache
+	client                *gcp_bigtable.Client
+	tableData             *gcp_bigtable.Table
+	tableBlocks           *gcp_bigtable.Table
+	tableMetadataUpdates  *gcp_bigtable.Table
+	tableMetadata         *gcp_bigtable.Table
+	chainId               string
+	addressNameCache      *ccache.Cache
+	tokenInfoCache        *ccache.Cache
+	contractMetadataCache *ccache.Cache
+	txDataCache           *ccache.Cache
 }
 
 func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
@@ -108,14 +116,16 @@ func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
 	}
 
 	bt := &Bigtable{
-		client:               btClient,
-		tableData:            btClient.Open("data"),
-		tableBlocks:          btClient.Open("blocks"),
-		tableMetadataUpdates: btClient.Open("metadata_updates"),
-		tableMetadata:        btClient.Open("metadata"),
-		chainId:              chainId,
-		addressNameCache:     ccache.New(ccache.Configure()),
-		tokenInfoCache:       ccache.New(ccache.Configure()),
+		client:                btClient,
+		tableData:             btClient.Open("data"),
+		tableBlocks:           btClient.Open("blocks"),
+		tableMetadataUpdates:  btClient.Open("metadata_updates"),
+		tableMetadata:         btClient.Open("metadata"),
+		chainId:               chainId,
+		addressNameCache:      ccache.New(ccache.Configure()),
+		tokenInfoCache:        ccache.New(ccache.Configure()),
+		contractMetadataCache: ccache.New(ccache.Configure()),
+		txDataCache:           ccache.New(ccache.Configure()),
 	}
 	return bt, nil
 }
@@ -1098,9 +1108,6 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block, cache *ccache.Cac
 				fmt.Sprintf("%s:I:ERC20:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ERC20:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 
-				// fmt.Sprintf("%s:I:ERC20:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
-				// fmt.Sprintf("%s:I:ERC20:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
-
 				fmt.Sprintf("%s:I:ERC20:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ERC20:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 
@@ -1250,9 +1257,6 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block, cache *ccache.Ca
 				fmt.Sprintf("%s:I:ERC721:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ERC721:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ERC721:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
-
-				// fmt.Sprintf("%s:I:ERC721:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
-				// fmt.Sprintf("%s:I:ERC721:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 
 				fmt.Sprintf("%s:I:ERC721:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ERC721:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
@@ -1433,9 +1437,6 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block, cache *ccache.C
 				fmt.Sprintf("%s:I:ERC1155:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ERC1155:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 
-				// fmt.Sprintf("%s:I:ERC1155:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
-				// fmt.Sprintf("%s:I:ERC1155:%x:TIME:%x:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
-
 				fmt.Sprintf("%s:I:ERC1155:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.From, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ERC1155:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.TokenAddress, indexedLog.To, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 
@@ -1603,26 +1604,17 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
 
-		if bigtable.addressNameCache.Get(string(t.To)) == nil {
-			name, err := bigtable.GetAddressName(t.To)
-			if err != nil {
-				return nil, err
-			}
-			bigtable.addressNameCache.Set(string(t.To), name, time.Hour)
+		fromName, err := bigtable.GetAddressName(t.From)
+		if err != nil {
+			return nil, err
+		}
+		toName, err := bigtable.GetAddressName(t.To)
+		if err != nil {
+			return nil, err
 		}
 
-		if bigtable.addressNameCache.Get(string(t.From)) == nil {
-			name, err := bigtable.GetAddressName(t.From)
-			if err != nil {
-				return nil, err
-			}
-			bigtable.addressNameCache.Set(string(t.From), name, time.Hour)
-		}
-
-		fromName := bigtable.addressNameCache.Get(string(t.From)).Value().(string)
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
 
-		toName := bigtable.addressNameCache.Get(string(t.To)).Value().(string)
 		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
 
 		method := "Transfer"
@@ -1642,6 +1634,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 			utils.FormatTimeFromNow(t.Time.AsTime()),
 			utils.FormatBlockNumber(t.BlockNumber),
 			from,
+			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
 			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "ETH", 6),
 		}
@@ -1884,32 +1877,23 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
 
-		if bigtable.addressNameCache.Get(string(t.To)) == nil {
-			name, err := bigtable.GetAddressName(t.To)
-			if err != nil {
-				return nil, err
-			}
-			bigtable.addressNameCache.Set(string(t.To), name, time.Hour)
+		fromName, err := bigtable.GetAddressName(t.From)
+		if err != nil {
+			return nil, err
+		}
+		toName, err := bigtable.GetAddressName(t.To)
+		if err != nil {
+			return nil, err
 		}
 
-		if bigtable.addressNameCache.Get(string(t.From)) == nil {
-			name, err := bigtable.GetAddressName(t.From)
-			if err != nil {
-				return nil, err
-			}
-			bigtable.addressNameCache.Set(string(t.From), name, time.Hour)
-		}
-
-		fromName := bigtable.addressNameCache.Get(string(t.From)).Value().(string)
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
-
-		toName := bigtable.addressNameCache.Get(string(t.To)).Value().(string)
 		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
 			utils.FormatTimeFromNow(t.Time.AsTime()),
 			from,
+			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
 			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "ETH", 6),
 			t.Type,
@@ -2080,26 +2064,15 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 		}
 
 		g.Go(func() error {
-			if bigtable.addressNameCache.Get(string(t.To)) == nil {
-				name, err := bigtable.GetAddressName(t.To)
-				if err != nil {
-					return err
-				}
-				bigtable.addressNameCache.Set(string(t.To), name, time.Hour)
+			fromName, err := bigtable.GetAddressName(t.From)
+			if err != nil {
+				return err
 			}
-
-			if bigtable.addressNameCache.Get(string(t.From)) == nil {
-				name, err := bigtable.GetAddressName(t.From)
-				if err != nil {
-					return err
-				}
-				bigtable.addressNameCache.Set(string(t.From), name, time.Hour)
+			toName, err := bigtable.GetAddressName(t.To)
+			if err != nil {
+				return err
 			}
-
-			fromName := bigtable.addressNameCache.Get(string(t.From)).Value().(string)
 			from := utils.FormatAddress(t.From, t.TokenAddress, fromName, false, false, !bytes.Equal(t.From, address))
-
-			toName := bigtable.addressNameCache.Get(string(t.To)).Value().(string)
 			to := utils.FormatAddress(t.To, t.TokenAddress, toName, false, false, !bytes.Equal(t.To, address))
 
 			muxMap[string(t.TokenAddress)].Lock()
@@ -2123,6 +2096,7 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 				utils.FormatTransactionHash(t.ParentHash),
 				utils.FormatTimeFromNow(t.Time.AsTime()),
 				from,
+				utils.FormatInOutSelf(address, t.From, t.To),
 				to,
 				utils.FormatTokenValue(tb),
 				utils.FormatTokenName(tb),
@@ -2564,17 +2538,20 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
 
+	if cached := bigtable.addressNameCache.Get(rowKey); cached != nil {
+		return cached.Value().(string), nil
+	}
+
 	filter := gcp_bigtable.ChainFilters(gcp_bigtable.FamilyFilter(ACCOUNT_METADATA_FAMILY), gcp_bigtable.ColumnFilter(ACCOUNT_COLUMN_NAME))
 
 	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
 
-	if err != nil {
+	if err != nil || row == nil {
+		bigtable.addressNameCache.Set(rowKey, "", time.Hour)
 		return "", err
 	}
 
-	if row == nil {
-		return "", nil
-	}
+	bigtable.addressNameCache.Set(rowKey, string(row[ACCOUNT_METADATA_FAMILY][0].Value), time.Hour)
 
 	return string(row[ACCOUNT_METADATA_FAMILY][0].Value), nil
 }
@@ -2585,6 +2562,71 @@ func (bigtable *Bigtable) SaveAddressName(address []byte, name string) error {
 
 	mut := gcp_bigtable.NewMutation()
 	mut.Set(ACCOUNT_METADATA_FAMILY, ACCOUNT_COLUMN_NAME, gcp_bigtable.Timestamp(0), []byte(name))
+
+	return bigtable.tableMetadata.Apply(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address), mut)
+}
+
+func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMetadata, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
+
+	if cached := bigtable.contractMetadataCache.Get(rowKey); cached != nil {
+		return cached.Value().(*types.ContractMetadata), nil
+	}
+
+	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(gcp_bigtable.FamilyFilter(CONTRACT_METADATA_FAMILY)))
+
+	ret := &types.ContractMetadata{}
+
+	if err != nil || row == nil {
+		logrus.Infof("trying to fetch contract metadata")
+		ret, err := utils.TryFetchContractMetadata(address)
+
+		if err != nil {
+			logrus.Errorf("error fetching contract metadata for address %x: %v", address, err)
+			bigtable.contractMetadataCache.Set(rowKey, ret, time.Hour)
+			return nil, err
+		} else {
+			bigtable.contractMetadataCache.Set(rowKey, ret, time.Hour)
+			err = bigtable.SaveContractMetadata(address, ret)
+
+			if err != nil {
+				logger.Errorf("error saving contract metadata to bigtable: %v", err)
+			}
+			return ret, nil
+		}
+	}
+
+	for _, ri := range row {
+		for _, item := range ri {
+			if item.Column == CONTRACT_METADATA_FAMILY+":"+CONTRACT_NAME {
+				ret.Name = string(item.Value)
+			} else if item.Column == CONTRACT_METADATA_FAMILY+":"+CONTRACT_ABI {
+				ret.ABIJson = item.Value
+				val, err := abi.JSON(bytes.NewReader(ret.ABIJson))
+
+				if err != nil {
+					logrus.Fatalf("error decoding abi for address 0x%x: %v", address, err)
+				}
+				ret.ABI = &val
+			}
+		}
+	}
+
+	bigtable.contractMetadataCache.Set(rowKey, ret, time.Hour)
+
+	return ret, nil
+}
+
+func (bigtable *Bigtable) SaveContractMetadata(address []byte, metadata *types.ContractMetadata) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	mut := gcp_bigtable.NewMutation()
+	mut.Set(CONTRACT_METADATA_FAMILY, CONTRACT_NAME, gcp_bigtable.Timestamp(0), []byte(metadata.Name))
+	mut.Set(CONTRACT_METADATA_FAMILY, CONTRACT_ABI, gcp_bigtable.Timestamp(0), metadata.ABIJson)
 
 	return bigtable.tableMetadata.Apply(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address), mut)
 }
@@ -2708,26 +2750,16 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 		}
 
 		g.Go(func() error {
-			if bigtable.addressNameCache.Get(string(t.To)) == nil {
-				name, err := bigtable.GetAddressName(t.To)
-				if err != nil {
-					return err
-				}
-				bigtable.addressNameCache.Set(string(t.To), name, time.Hour)
+			fromName, err := bigtable.GetAddressName(t.To)
+			if err != nil {
+				return err
+			}
+			toName, err := bigtable.GetAddressName(t.From)
+			if err != nil {
+				return err
 			}
 
-			if bigtable.addressNameCache.Get(string(t.From)) == nil {
-				name, err := bigtable.GetAddressName(t.From)
-				if err != nil {
-					return err
-				}
-				bigtable.addressNameCache.Set(string(t.From), name, time.Hour)
-			}
-
-			fromName := bigtable.addressNameCache.Get(string(t.From)).Value().(string)
 			from := utils.FormatAddress(t.From, t.TokenAddress, fromName, false, false, !bytes.Equal(t.From, address))
-
-			toName := bigtable.addressNameCache.Get(string(t.To)).Value().(string)
 			to := utils.FormatAddress(t.To, t.TokenAddress, toName, false, false, !bytes.Equal(t.To, address))
 
 			muxMap[string(t.TokenAddress)].Lock()
@@ -2751,6 +2783,7 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 				utils.FormatTransactionHash(t.ParentHash),
 				utils.FormatTimeFromNow(t.Time.AsTime()),
 				from,
+				utils.FormatInOutSelf(address, t.From, t.To),
 				to,
 				utils.FormatTokenValue(tb),
 			}

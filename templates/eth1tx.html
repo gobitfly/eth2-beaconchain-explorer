@@ -1,0 +1,103 @@
+{{define "js"}}
+{{end}}
+
+{{define "css"}}
+    <style>
+    </style>
+{{end}}
+
+{{define "content"}}
+    {{with .Data}}
+        <div class="container mt-2">             
+            <div class="my-3">
+                <div class="d-md-flex py-2 justify-content-md-between">
+                    <h1 class="h4 mb-1 mb-md-0">                        
+                        <span class="ml-1 mr-1"><i class="fas fa-credit-card mr-2"></i>Transaction Details</span>
+                    </h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
+                            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">Tx Details</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body px-0 py-1">
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">Transaction Hash:</div>
+                        <div class="col-md-9"><a href="/tx/{{.GethTx.Hash}}">{{.GethTx.Hash}}</a></div>
+                    </div>  
+                    <div class="row p-3 mx-0">
+                        <div class="col-md-3">Status:</div>
+                        <div class="col-md-9">{{formatEth1TxStatus .Receipt.Status}}</div>
+                    </div>   
+                    <div class="row p-3 mx-0">
+                        <div class="col-md-3">Block:</div>
+                        <div class="col-md-9">{{.BlockNumber}}</div>
+                    </div>        
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">Timestamp:</div>
+                        <div class="col-md-9">{{formatTimestampUInt64 .Timestamp}}</div>
+                    </div>      
+                    <div class="row p-3 mx-0">
+                        <div class="col-md-3">From:</div>
+                        <div class="col-md-9">{{formatEth1AddressFull .From}}</div>
+                    </div>    
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">To:</div>
+                        <div class="col-md-9">
+                            {{if .IsContractCreation}}
+                                [Contract {{formatEth1AddressFull .To}}{{if ne .ToName ""}} ({{.ToName}}){{end}} Created]
+                            {{else}}
+                                {{if .TargetIsContract}}Contract {{end}}{{formatEth1AddressFull .To}}{{if ne .ToName ""}} ({{.ToName}}){{end}}
+                            {{end}}
+                        </div>
+                    </div>    
+                    <div class="row p-3 mx-0">
+                        <div class="col-md-3">Value:</div>
+                        <div class="col-md-9">{{formatBalanceWei .GethTx.Value "Ether"}}</div>
+                    </div>    
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">Transaction Fee:</div>
+                        <div class="col-md-9">{{formatBalanceWei .TxFee "Ether"}}</div>
+                    </div>  
+                    <div class="row p-3 mx-0">
+                        <div class="col-md-3">Gas Price:</div>
+                        <div class="col-md-9">{{formatBalanceWei .GethTx.GasPrice "GWei"}}</div>
+                    </div>
+                    {{range .Events}}
+                    <div class="row border-top p-3 mx-0">
+                        <div class="col-md-3">Address:</div>
+                        <div class="col-md-9">{{.Address}}</div>
+                    </div>
+                    <div class="row p-3 mx-0">
+                        <div class="col-md-3">Name:</div>
+                        <div class="col-md-9">{{.Name}}</div>
+                    </div>
+                    <div class="row p-3 mx-0">
+                        <div class="col-md-3">Topics:</div>
+                        <div class="col-md-9">
+                            {{range .Topics}}
+                            <div>{{.}}</div>
+                            {{end}}
+                        </div>
+                    </div>
+                    <div class="row p-3 mx-0">
+                        <div class="col-md-3">Data (Decoded):</div>
+                        <div class="col-md-9">
+                            {{range $key, $value :=.DecodedData}}
+                            <div>{{$key}}: {{$value}}</div>
+                            {{end}}
+                        </div>
+                    </div>
+                    <div class="row p-3 mx-0">
+                        <div class="col-md-3">Data (Hex):</div>
+                        <div class="col-md-9">{{printf "0x%x" .Data}}</div>
+                    </div>
+                    {{end}}                
+                </div>
+            </div>
+        </div>
+    {{end}}
+{{end}}

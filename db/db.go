@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
@@ -14,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-redis/cache/v8"
+	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 
 	"github.com/lib/pq"
@@ -27,8 +30,27 @@ var DBPGX *pgxpool.Conn
 // DB is a pointer to the explorer-database
 var WriterDb *sqlx.DB
 var ReaderDb *sqlx.DB
+var RedisCache *cache.Cache
 
 var logger = logrus.StandardLogger().WithField("module", "db")
+
+func MustInitRedisCache(address string) {
+	rdc := redis.NewClient(&redis.Options{
+		Addr:     address,
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+
+	err := rdc.Ping(context.Background()).Err()
+
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	RedisCache = cache.New(&cache.Options{
+		Redis: rdc,
+	})
+}
 
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {
 	dbConnWriter, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", writer.Username, writer.Password, writer.Host, writer.Port, writer.Name))
