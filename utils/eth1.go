@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -74,6 +75,21 @@ func FormatTransactionHash(hash []byte) template.HTML {
 		return template.HTML("N/A")
 	}
 	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/execution/tx/0x%x">0x%x…%x</a> %v`, hash, hash[:2], hash[len(hash)-2:], CopyButton(hex.EncodeToString(hash))))
+}
+
+func FormatInOutSelf(address, from, to []byte) template.HTML {
+	if address == nil && len(address) == 0 {
+		return ""
+	}
+	if !bytes.Equal(to, from) {
+		if bytes.Equal(address, from) {
+			return "OUT"
+		} else {
+			return "IN"
+		}
+	} else {
+		return "SELF"
+	}
 }
 
 func FormatAddress(address []byte, token []byte, name string, verified bool, isContract bool, link bool) template.HTML {

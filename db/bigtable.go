@@ -1642,6 +1642,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 			utils.FormatTimeFromNow(t.Time.AsTime()),
 			utils.FormatBlockNumber(t.BlockNumber),
 			from,
+			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
 			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "ETH", 6),
 		}
@@ -1910,6 +1911,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 			utils.FormatTransactionHash(t.ParentHash),
 			utils.FormatTimeFromNow(t.Time.AsTime()),
 			from,
+			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
 			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "ETH", 6),
 			t.Type,
@@ -2123,6 +2125,7 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 				utils.FormatTransactionHash(t.ParentHash),
 				utils.FormatTimeFromNow(t.Time.AsTime()),
 				from,
+				utils.FormatInOutSelf(address, t.From, t.To),
 				to,
 				utils.FormatTokenValue(tb),
 				utils.FormatTokenName(tb),
@@ -2751,6 +2754,7 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 				utils.FormatTransactionHash(t.ParentHash),
 				utils.FormatTimeFromNow(t.Time.AsTime()),
 				from,
+				utils.FormatInOutSelf(address, t.From, t.To),
 				to,
 				utils.FormatTokenValue(tb),
 			}
