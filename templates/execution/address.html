@@ -23,6 +23,44 @@
       transform: scaleX(calc(0.85 + (var(--shown, 1) * 0.15)));
       transition: all 0.3s var(--ease-elastic-1);
     } */
+
+  .header-address {
+    font-size: 1.2rem;
+  }
+
+  .header-address .text-monospace {
+    font-size: .81rem;
+  }
+
+  .qrcode-light {
+    visibility: hidden;
+  }
+
+  @media screen and (min-width: 600px) {
+    .header-address, .header-address .text-monospace, .fa-copy {
+      font-size: 1.2rem;
+    }
+  }
+
+
+  [data-theme="dark"] .qrcode-light {
+    display: none;
+  }
+  [data-theme="dark"] .qrcode-dark {
+    display: inline-block !important;
+    visibility: visible !important;
+  }
+
+  [data-theme="light"] .qrcode-dark {
+    display: none;
+  }
+
+  [data-theme="light"] .qrcode-light {
+    display: inline-block !important;
+    visibility: visible !important;
+  }
+
+
   </style>
 {{ end }}
 
@@ -165,12 +203,13 @@
 {{ end }}
 {{ define "content" }}
 <div class="container mt-2">
-  <div class="d-md-flex py-2 my-4 justify-content-md-between">
-    <h1 class="h4 mb-1 mb-md-0">
-      <span class="d-block my-3 font-weight-bold">
-       {{ template "QRCode" .}} Address
-      </span>
-      <span class="text-monospace">{{ .Data.Address | formatAddressLong }} {{if .Data.Metadata.Name}}({{.Data.Metadata.Name}}){{end}}</span> 
+  <div class="d-md-flex py-2 my-md-4 justify-content-md-between">
+    <h1 class="h4 mb-1 mb-md-0 header-address text-truncate">
+      <div class="my-md-3 font-weight-bold">
+        <span>{{ template "QRCode" .}} Address</span>
+        <i class="fa fa-copy text-muted text-white ml-2 p-1" style="opacity: .8; font-size: .81rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ .Data.Address }}"></i>
+      </div>
+      <span class="text-monospace">{{ .Data.Address | formatAddressLong }} {{if .Data.Metadata.Name}}({{.Data.Metadata.Name}}){{end}}</span>
     </h1>
   </div>
 
@@ -538,7 +577,8 @@
 {{ end }}
 
 {{ define "QRCode" }}
-  <img class="cursor-pointer" data-toggle="modal" data-target="#qrcode-modal" style="margin-bottom: .3rem; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{.Data.QRCode}}" alt="QR code for address 0x{{.Data.Address}}">
+  <img class="cursor-pointer qrcode-light" data-toggle="modal" data-target="#qrcode-modal" style="visibility: hidden; margin-bottom: .3rem; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{.Data.QRCode}}" alt="QR code for address 0x{{.Data.Address}}">
+  <img class="cursor-pointer qrcode-dark" data-toggle="modal" data-target="#qrcode-modal" style=" display: none; margin-bottom: .3rem; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{.Data.QRCodeInverse}}" alt="QR code for address 0x{{.Data.Address}}">
 {{end}}
 
 {{ define "AddressQRCodeModal"}}
@@ -549,7 +589,8 @@
         <span class="text-monospace text-truncate" style="font-size: 80%; max-width: 300px;">0x{{.Data.Address}}</span>
       </div>
       <div class="modal-body d-flex justify-content-center">
-        <img src="data:image/png;base64,{{.Data.QRCode}}" alt="QR code for address 0x{{.Data.Address}}">
+        <img style="visibility: hidden;" class="qrcode-light" src="data:image/png;base64,{{.Data.QRCode}}" alt="QR code for address 0x{{.Data.Address}}">
+        <img style="display: none" class="qrcode-dark" src="data:image/png;base64,{{.Data.QRCodeInverse}}" alt="QR code for address 0x{{.Data.Address}}">
       </div>
     </div>
   </div>
