@@ -235,7 +235,6 @@ func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
-	return
 }
 
 func UserNotifications(w http.ResponseWriter, r *http.Request) {
@@ -321,78 +320,6 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 // 		net+":%")
 // 	return metricsdb, err
 // }
-
-func getValidatorTableData(userId uint64) (interface{}, error) {
-	validatordb := []struct {
-		Pubkey       string  `db:"pubkey"`
-		Notification *string `db:"event_name"`
-		LastSent     *uint64 `db:"last_sent_ts"`
-		Threshold    *string `db:"event_threshold"`
-	}{}
-
-	err := db.FrontendWriterDB.Select(&validatordb, `
-	SELECT ENCODE(uvt.validator_publickey, 'hex') AS pubkey, us.event_name, extract( epoch from last_sent_ts)::Int as last_sent_ts, us.event_threshold
-		FROM users_validators_tags uvt
-		LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey, 'hex') AND us.user_id = uvt.user_id
-		WHERE uvt.user_id = $1;`, userId)
-
-	if err != nil {
-		return validatordb, err
-	}
-
-	type notification struct {
-		Notification string
-		Timestamp    uint64
-		Threshold    string
-	}
-
-	type validatorDetails struct {
-		Index  uint64
-		Pubkey string
-	}
-
-	type validator struct {
-		Validator     validatorDetails
-		Notifications []notification
-	}
-
-	result_map := map[uint64]validator{}
-
-	for _, item := range validatordb {
-		var index uint64
-
-		err = db.WriterDb.Get(&index, `
-		SELECT validatorindex
-		FROM validators WHERE pubkeyhex=$1
-		`, item.Pubkey)
-
-		if err != nil {
-			return validatordb, err
-		}
-
-		if _, exists := result_map[index]; !exists {
-			result_map[index] = validator{Validator: validatorDetails{Pubkey: item.Pubkey, Index: index}, Notifications: []notification{}}
-		}
-
-		if item.Notification != nil {
-			map_item := result_map[index]
-			var ts uint64 = 0
-			if item.LastSent != nil {
-				ts = *item.LastSent
-			}
-			map_item.Notifications = append(map_item.Notifications, notification{Notification: *item.Notification, Timestamp: ts, Threshold: *item.Threshold})
-			result_map[index] = map_item
-		}
-
-	}
-
-	valiadtors := []validator{}
-	for _, item := range result_map {
-		valiadtors = append(valiadtors, item)
-	}
-
-	return valiadtors, err
-}
 
 func getUserNetworkEvents(userId uint64) (interface{}, error) {
 	type result struct {
@@ -977,9 +904,6 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
-	search := q.Get("search[value]")
-	search = strings.Replace(search, "0x", "", -1)
-
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
@@ -1068,9 +992,6 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-
-	search := q.Get("search[value]")
-	search = strings.Replace(search, "0x", "", -1)
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
@@ -1181,7 +1102,7 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.Authenticated == true {
+	if user.Authenticated {
 		codeBytes, err1 := utils.GenerateRandomBytesSecure(32)
 		if err1 != nil {
 			logger.Errorf("error creating secure random bytes for user: %v %v", user.UserID, err1)
@@ -1223,7 +1144,7 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	if user.Authenticated == true {
+	if user.Authenticated {
 		err := db.DeleteUserById(user.UserID)
 		if err != nil {
 			logger.Errorf("error deleting user by email for user: %v %v", user.UserID, err)
@@ -1255,6 +1176,11 @@ func UserUpdateFlagsPost(w http.ResponseWriter, r *http.Request) {
 	logger.Errorf("shareStats: %v", shareStats)
 
 	err = db.SetUserMonitorSharingSetting(user.UserID, shareStats == "true")
+	if err != nil {
+		logger.Errorf("error setting user monitor sharing settings: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
 	http.Redirect(w, r, "/user/settings#app", http.StatusOK)
 }
@@ -1364,7 +1290,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 		Count int
 		Email string
 	}
-	err = db.FrontendWriterDB.Get(&existingEmails, "SELECT email FROM users WHERE email = $1", email)
+	db.FrontendWriterDB.Get(&existingEmails, "SELECT email FROM users WHERE email = $1", email)
 
 	if existingEmails.Email == email {
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
@@ -1432,7 +1358,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.Confirmed != true {
+	if !user.Confirmed {
 		utils.SetFlash(w, r, authSessionName, "Error: Cannot update email for an unconfirmed address.")
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
@@ -1445,7 +1371,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var emailExists string
-	err = db.FrontendWriterDB.Get(&emailExists, "SELECT email FROM users WHERE email = $1", newEmail)
+	db.FrontendWriterDB.Get(&emailExists, "SELECT email FROM users WHERE email = $1", newEmail)
 	if emailExists != "" {
 		utils.SetFlash(w, r, authSessionName, "Error: Email already exists. We could not update your email.")
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
@@ -1484,7 +1410,7 @@ func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
 		return fmt.Errorf("error getting confirmation-ts: %w", err)
 	}
 	if lastTs != nil && (*lastTs).Add(authConfirmEmailRateLimit).After(now) {
-		return &types.RateLimitError{(*lastTs).Add(authConfirmEmailRateLimit).Sub(now)}
+		return &types.RateLimitError{TimeLeft: (*lastTs).Add(authConfirmEmailRateLimit).Sub(now)}
 	}
 
 	_, err = tx.Exec("UPDATE users SET email_confirmation_hash = $1 WHERE id = $2", emailConfirmationHash, userId)
@@ -2654,7 +2580,7 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 		destination = "webhook_discord"
 	}
 
-	all := "on" == r.FormValue("all")
+	all := r.FormValue("all") == "on"
 
 	events := make(map[string]bool, 0)
 

@@ -25,16 +25,6 @@ var mobilePricingTemplate = template.Must(template.New("mobilepricing").Funcs(ut
 	"templates/svg/mobilepricing.html",
 ))
 
-var successTemplate = template.Must(template.New("success").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html",
-	"templates/payment/success.html",
-))
-
-var cancelTemplate = template.Must(template.New("cancled").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html",
-	"templates/payment/cancled.html",
-))
-
 func Pricing(w http.ResponseWriter, r *http.Request) {
 	var err error
 

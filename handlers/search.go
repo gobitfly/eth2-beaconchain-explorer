@@ -31,18 +31,18 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	_, err := strconv.Atoi(search)
 
 	if err == nil {
-		http.Redirect(w, r, "/block/"+search, 301)
+		http.Redirect(w, r, "/block/"+search, http.StatusMovedPermanently)
 		return
 	}
 
 	search = strings.Replace(search, "0x", "", -1)
 
 	if len(search) == 64 {
-		http.Redirect(w, r, "/block/"+search, 301)
+		http.Redirect(w, r, "/block/"+search, http.StatusMovedPermanently)
 	} else if len(search) == 96 {
-		http.Redirect(w, r, "/validator/"+search, 301)
+		http.Redirect(w, r, "/validator/"+search, http.StatusMovedPermanently)
 	} else if utils.IsValidEth1Address(search) {
-		http.Redirect(w, r, "/validators/eth1deposits?q="+search, 301)
+		http.Redirect(w, r, "/validators/eth1deposits?q="+search, http.StatusMovedPermanently)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
 		data := InitPageData(w, r, "search", "/search", "")
@@ -99,6 +99,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				WHERE blockroot = $1 OR
 					stateroot = $1
 				ORDER BY slot LIMIT 10`, blockHash)
+				if err != nil {
+					logger.Errorf("error reading block root: %v", err)
+					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+					return
+				}
 			}
 		}
 
@@ -181,6 +186,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				FROM eth1_deposits
 				WHERE from_address LIKE $1 || '%'::bytea 
 				LIMIT 10`, eth1AddressHash)
+			if err != nil {
+				logger.Errorf("error reading from_address: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
 		}
 		// logger.WithFields(logrus.Fields{
 		// 	"duration": time.Since(start),
@@ -230,6 +240,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			WHERE validatorrow <= $2 AND addressrow <= 10
 			GROUP BY from_address
 			ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
+			if err != nil {
+				logger.Errorf("error reading result data: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
 		}
 	case "indexed_validators_by_graffiti":
 		// find validators per graffiti (limit result by N graffities and M validators per graffiti)

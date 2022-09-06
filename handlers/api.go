@@ -103,7 +103,7 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if 18446744073709551615 == utils.Config.Chain.GenesisTimestamp {
+	if utils.Config.Chain.GenesisTimestamp == 18446744073709551615 {
 		fmt.Fprint(w, "OK. No GENESIS_TIMESTAMP defined yet")
 		return
 	}
@@ -252,6 +252,10 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(slotOrHash) != 64 {
 		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
+		if err != nil {
+			sendErrorResponse(j, r.URL.String(), "could not parse slot number")
+			return
+		}
 	}
 	if slotOrHash == "latest" {
 		blockSlot = int64(services.LatestSlot())

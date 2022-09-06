@@ -105,7 +105,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		AllowPromotionCodes: &enabled,
 		Mode:                stripe.String(string(stripe.CheckoutSessionModeSubscription)),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
-			&stripe.CheckoutSessionLineItemParams{
+			{
 				Price:    stripe.String(req.Price),
 				Quantity: stripe.Int64(1),
 				// DynamicTaxRates: taxRates,
