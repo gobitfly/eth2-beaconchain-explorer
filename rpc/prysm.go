@@ -223,7 +223,7 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 }
 
 // GetEpochData will get the epoch data from a Prysm client
-func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
+func (pc *PrysmClient) GetEpochData(epoch uint64, skipHistoricBalances bool) (*types.EpochData, error) {
 	var err error
 
 	data := &types.EpochData{}
