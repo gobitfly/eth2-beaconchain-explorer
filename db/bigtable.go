@@ -77,6 +77,8 @@ const (
 	ERC20_COLUMN_TOTALSUPPLY = "TOTALSUPPLY"
 	ERC20_COLUMN_SYMBOL      = "SYMBOL"
 
+	ERC20_COLUMN_PRICE = "PRICE"
+
 	ERC20_COLUMN_NAME           = "NAME"
 	ERC20_COLUMN_DESCRIPTION    = "DESCRIPTION"
 	ERC20_COLUMN_LOGO           = "LOGO"
@@ -2459,6 +2461,8 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 				ret.Logo = item.Value
 			} else if item.Column == ERC20_METADATA_FAMILY+":"+ERC20_COLUMN_LOGO_FORMAT {
 				ret.LogoFormat = string(item.Value)
+			} else if item.Column == ERC20_METADATA_FAMILY+":"+ERC20_COLUMN_PRICE {
+				ret.Price = item.Value
 			}
 		}
 	}
@@ -2495,6 +2499,10 @@ func (bigtable *Bigtable) SaveERC20Metadata(address []byte, metadata *types.ERC2
 
 	if len(metadata.Description) > 0 {
 		mut.Set(ERC20_METADATA_FAMILY, ERC20_COLUMN_DESCRIPTION, gcp_bigtable.Timestamp(0), []byte(metadata.Description))
+	}
+
+	if len(metadata.Price) > 0 {
+		mut.Set(ERC20_METADATA_FAMILY, ERC20_COLUMN_PRICE, gcp_bigtable.Timestamp(0), []byte(metadata.Price))
 	}
 
 	if len(metadata.Logo) > 0 && len(metadata.LogoFormat) > 0 {
@@ -2645,6 +2653,34 @@ func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance, del
 	}
 
 	err = bigtable.WriteBulk(mutsDelete, bigtable.tableMetadataUpdates)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (bigtable *Bigtable) SaveERC20TokenPrices(prices []*types.ERC20TokenPrice) error {
+	if len(prices) == 0 {
+		return nil
+	}
+
+	mutsWrite := &types.BulkMutations{
+		Keys: make([]string, 0, len(prices)),
+		Muts: make([]*gcp_bigtable.Mutation, 0, len(prices)),
+	}
+
+	for _, price := range prices {
+		rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, price.Token)
+		mut := gcp_bigtable.NewMutation()
+		mut.Set(ERC20_METADATA_FAMILY, ERC20_COLUMN_PRICE, gcp_bigtable.Timestamp(0), price.Price)
+		mut.Set(ERC20_METADATA_FAMILY, ERC20_COLUMN_TOTALSUPPLY, gcp_bigtable.Timestamp(0), price.TotalSupply)
+		mutsWrite.Keys = append(mutsWrite.Keys, rowKey)
+		mutsWrite.Muts = append(mutsWrite.Muts, mut)
+	}
+
+	err := bigtable.WriteBulk(mutsWrite, bigtable.tableMetadata)
 
 	if err != nil {
 		return err

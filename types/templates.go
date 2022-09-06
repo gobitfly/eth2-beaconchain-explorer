@@ -1401,6 +1401,12 @@ type Eth1AddressBalance struct {
 	Metadata *ERC20Metadata
 }
 
+type ERC20TokenPrice struct {
+	Token       []byte
+	Price       []byte
+	TotalSupply []byte
+}
+
 type ERC20Metadata struct {
 	Decimals     []byte
 	Symbol       string

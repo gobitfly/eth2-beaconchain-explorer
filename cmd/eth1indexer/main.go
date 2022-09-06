@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/erc20"
 	"eth2-exporter/rpc"
 	"eth2-exporter/types"
 	"flag"
@@ -20,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/karlseguin/ccache/v2"
+	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -51,7 +53,6 @@ func main() {
 	balanceUpdaterBatchSize := flag.Int("balances.batch", 1000, "Batch size for balance updates")
 
 	flag.Parse()
-
 	if erigonEndpoint == nil || *erigonEndpoint == "" {
 		logrus.Fatal("no erigon node url provided")
 	}
@@ -68,6 +69,11 @@ func main() {
 	}
 	defer bt.Close()
 
+	err = UpdateTokenPrices(bt, client, "tokenlists/tokens.uniswap.org.json")
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	return
 	// if *enableBalanceUpdater {
 	// 	ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
 	// 	return
@@ -117,7 +123,7 @@ func main() {
 	}
 
 	for {
-		err := HanldeChainReorgs(bt, client, *reorgDepth)
+		err := HandleChainReorgs(bt, client, *reorgDepth)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -176,7 +182,102 @@ func main() {
 
 }
 
-func HanldeChainReorgs(bt *db.Bigtable, client *rpc.ErigonClient, depth int) error {
+func UpdateTokenPrices(bt *db.Bigtable, client *rpc.ErigonClient, tokenListPath string) error {
+
+	tokenListContent, err := ioutil.ReadFile(tokenListPath)
+	if err != nil {
+		return err
+	}
+
+	tokenList := &erc20.ERC20TokenList{}
+
+	err = json.Unmarshal(tokenListContent, tokenList)
+	if err != nil {
+		return err
+	}
+
+	type defillamaPriceRequest struct {
+		Coins []string `json:"coins"`
+	}
+	coinsList := make([]string, 0, len(tokenList.Tokens))
+	for _, token := range tokenList.Tokens {
+		coinsList = append(coinsList, "ethereum:"+token.Address)
+	}
+
+	req := &defillamaPriceRequest{
+		Coins: coinsList,
+	}
+
+	reqEncoded, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	httpClient := &http.Client{Timeout: time.Second * 10}
+
+	resp, err := httpClient.Post("https://coins.llama.fi/prices", "application/json", bytes.NewReader(reqEncoded))
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("error querying defillama api: %v", resp.Status)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	type defillamaCoin struct {
+		Decimals  int64            `json:"decimals"`
+		Price     *decimal.Decimal `json:"price"`
+		Symbol    string           `json:"symbol"`
+		Timestamp int64            `json:"timestamp"`
+	}
+
+	type defillamaResponse struct {
+		Coins map[string]defillamaCoin `json:"coins"`
+	}
+
+	respParsed := &defillamaResponse{}
+	err = json.Unmarshal(body, respParsed)
+	if err != nil {
+		return err
+	}
+
+	tokenPrices := make([]*types.ERC20TokenPrice, 0, len(respParsed.Coins))
+	for address, data := range respParsed.Coins {
+		tokenPrices = append(tokenPrices, &types.ERC20TokenPrice{
+			Token: common.FromHex(strings.TrimPrefix(address, "ethereum:0x")),
+			Price: []byte(data.Price.String()),
+		})
+	}
+
+	g := new(errgroup.Group)
+	g.SetLimit(20)
+	for i := range tokenPrices {
+		i := i
+		g.Go(func() error {
+
+			metadata, err := client.GetERC20TokenMetadata(tokenPrices[i].Token)
+			if err != nil {
+				return err
+			}
+			tokenPrices[i].TotalSupply = metadata.TotalSupply
+			logrus.Infof("price for token %x is %s @ %x", tokenPrices[i].Token, tokenPrices[i].Price, tokenPrices[i].TotalSupply)
+			return nil
+		})
+	}
+	err = g.Wait()
+	if err != nil {
+		return err
+	}
+
+	return bt.SaveERC20TokenPrices(tokenPrices)
+}
+
+func HandleChainReorgs(bt *db.Bigtable, client *rpc.ErigonClient, depth int) error {
 	ctx := context.Background()
 	// get latest block from the node
 	latestNodeBlock, err := client.GetNativeClient().BlockByNumber(ctx, nil)
