@@ -97,6 +97,11 @@ func main() {
 		logrus.Fatalf("error initializing erigon client: %v", err)
 	}
 
+	rpc.CurrentGethClient, err = rpc.NewGethClient(utils.Config.Eth1GethEndpoint)
+	if err != nil {
+		logrus.Fatalf("error initializing erigon client: %v", err)
+	}
+
 	// if utils.Config.Frontend.Bigtable.Enabled {
 	bt, err := db.NewBigtable("etherchain", "etherchain", "1")
 	if err != nil {

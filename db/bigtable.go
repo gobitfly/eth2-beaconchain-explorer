@@ -2347,7 +2347,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 
 	if row == nil { // Retrieve token metadata from Ethplorer and store it for later usage
 		logger.Infof("retrieving metadata for token %x via rpc", address)
-		metadata, err := rpc.CurrentErigonClient.GetERC20TokenMetadata(address)
+		metadata, err := rpc.CurrentGethClient.GetERC20TokenMetadata(address)
 
 		if err != nil {
 			logger.Errorf("error retrieving metadata for token %x: %v", address, err)
