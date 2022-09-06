@@ -356,6 +356,12 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 	return template.HTML(p.Sprintf(tpl, float64(e)/1e9*price.GetEthPrice(currency), rr))
 }
 
+func FormatEtherValue(symbol string, ethPrice *big.Float, currentPrice string) template.HTML {
+	p := message.NewPrinter(language.English)
+	ep, _ := ethPrice.Float64()
+	return template.HTML(p.Sprintf("%s %.2f @ %s/ETH", symbol, ep, currentPrice))
+}
+
 // FormatGraffiti will return the graffiti formated as html
 func FormatGraffiti(graffiti []byte) template.HTML {
 	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
@@ -918,8 +924,8 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 	if len(balance.Metadata.Logo) != 0 {
 		logo = fmt.Sprintf(`<img class="mr-1" style="height: 1.2rem;" src="data:image/png;base64, %s">`, base64.StdEncoding.EncodeToString(balance.Metadata.Logo))
 	}
-
-	return template.HTML(p.Sprintf(`<div class="token-balance-col text-truncate"><a class="token-icon" href='/execution/token/0x%x?a=0x%x'>%s %s</a></div> <div class="token-balance-col"><span class="token-holdings">%s</span></div>`, balance.Token, balance.Address, logo, balance.Metadata.Symbol, num.Div(mul).StringFixed(5)))
+	flt, _ := num.Div(mul).Float64()
+	return template.HTML(p.Sprintf(`<div class="token-balance-col text-truncate"><a class="token-icon" href='/execution/token/0x%x?a=0x%x'>%s %s</a></div> <div class="token-balance-col"><span class="token-holdings">%.5f</span></div>`, balance.Token, balance.Address, logo, balance.Metadata.Symbol, flt))
 }
 
 func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
@@ -929,7 +935,7 @@ func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
 	flt, _ := num.Div(mul).Float64()
 	return template.HTML(p.Sprintf(`
 	<div class="d-flex align-items-center">
-		<svg style="width: 1.5rem; height: 1.5rem;">
+		<svg style="width: 1rem; height: 1rem;">
 			<use xlink:href="#ethereum-diamond-logo"/>
 		</svg> 
 		<span class="token-holdings">%.5f</span>

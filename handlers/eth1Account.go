@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html/template"
 	"image/color"
+	"math/big"
 	"net/http"
 	"strings"
 
@@ -25,6 +26,10 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	address := strings.Replace(vars["address"], "0x", "", -1)
 	address = strings.ToLower(address)
+
+	// currency := GetCurrency(r)
+	price := GetCurrentPrice(r)
+	symbol := GetCurrencySymbol(r)
 
 	addressBytes := common.FromHex(address)
 	data := InitPageData(w, r, "address", "/address", "Address")
@@ -140,6 +145,10 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		metadata.EthBalance = metadata.Balances[0]
 		metadata.Balances = metadata.Balances[1:]
 	}
+	ef := new(big.Float).SetInt(new(big.Int).SetBytes(metadata.EthBalance.Balance))
+	etherBalance := new(big.Float).Quo(ef, big.NewFloat(1e18))
+	ethPrice := new(big.Float).Mul(etherBalance, big.NewFloat(float64(price)))
+
 	data.Data = types.Eth1AddressPageData{
 		Address:           address,
 		QRCode:            pngStr,
@@ -152,6 +161,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		Erc1155Table:      erc1155,
 		BlocksMinedTable:  blocksMined,
 		UnclesMinedTable:  unclesMined,
+		EtherValue:        utils.FormatEtherValue(symbol, ethPrice, GetCurrentPriceFormatted(r)),
 	}
 
 	if utils.Config.Frontend.Debug {

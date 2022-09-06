@@ -1,5 +1,5 @@
 {{ define "css" }}
-{{ template "LayoutSvgSprite" }}
+  {{ template "LayoutSvgSprite" }}
   <style>
     .border-bottom-radius-0 {
       border-bottom-left-radius: 0px !important;
@@ -22,13 +22,16 @@
       display: flex;
       align-items: center;
     }
+    .nav-item {
+      margin: 0;
+    }
 
     .token-holdings {
     }
 
     .token-balance-col {
       /* border-bottom: 1px solid var(--shadow-light); */
-      padding: .25rem;
+      padding: 0.25rem;
     }
 
     /* #transactions-table div {
@@ -39,6 +42,25 @@
       transform: scaleX(calc(0.85 + (var(--shown, 1) * 0.15)));
       transition: all 0.3s var(--ease-elastic-1);
     } */
+
+    .overview-col {
+      border-bottom: 1px solid #5c4e4e;
+      padding: 1rem;
+    }
+
+    .overview-col:last-child,
+    .overview-col:nth-last-child(2) {
+      border-bottom: none;
+    }
+
+    .overview-label,
+    .overview-col {
+      font-weight: 300;
+      font-size: 1rem;
+      line-height: 23px;
+      font-style: normal;
+      /* font-family: 'Mukta'; */
+    }
 
     .header-address {
       font-size: 1.2rem;
@@ -76,11 +98,40 @@
       display: inline-block !important;
       visibility: visible !important;
     }
+
+    /* .overview-tab-initial {
+      display: none !important;
+    }
+
+    @media screen and (min-width: 820px) {
+      .overview-tab-initial {
+        display: flex !important;
+      }
+      #overviewTab {
+        display: none !important;
+
+      }
+      #overviewTab-tab {
+        display: none !important;
+      } 
+    } */
   </style>
 {{ end }}
 
 {{ define "js" }}
   <script>
+
+    window.addEventListener('resize', function(ev) {
+      if(window.innerWidth >= 820) {
+        $("#overview-tab").tab('show')
+      }
+    })
+
+    window.addEventListener('load', function(ev) {
+      if (window.innerWidth >= 820) {
+        $("#overview-tab").tab('show')
+      }
+    })
 
     // const tbody = document.querySelector('#transactions-table tbody')
 
@@ -236,49 +287,89 @@
       </div>
     </div>
 
-    <div class="mb-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); grid-auto-flow: row; gap: 1rem;">
-      <div class="card shadow-none flex-grow-1">
-        <div class="card-body">
-          <div style="display: grid; grid-template-columns: 1fr 2fr; gap: .25rem; grid-template-rows: auto; align-items: center; height: 100%;">
-            <div>
-              <span>Net Worth</span>
+    <div class="mb-3 overview-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); grid-auto-flow: row; gap: 1rem;">
+      <div class="d-flex flex-column overview-tab-initial">
+        <ul class="nav nav-tabs border-0 border-bottom-0 flex-grow-0" role="tablist">
+          <li style="margin: 0;" class="nav-item" role="presentation">
+            <a href="#overview" class="nav-link border-bottom-radius-0 border-bottom-0 active" id="overview-tab" data-toggle="tab" role="tab" aria-controls="overview" aria-selected="true">Overview</a>
+          </li>
+          <li style="margin: 0; border-bottom: none;" class="nav-item d-md-none" role="presentation">
+            <a href="#tokensTab" class="nav-link border-bottom-radius-0 border-bottom-0" id="tokenTab-tab" data-toggle="tab" role="tab" aria-controls="tokensTab" aria-selected="true">Tokens</a>
+          </li>
+        </ul>
+        <div class="tab-content" id="overview-tab-content">
+          <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+            <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card shadow-none flex-grow-1">
+              <div class="card-body p-0 overview-card">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; grid-template-rows: auto; height: 100%;">
+                  <div class="overview-col">
+                    <span>Balance</span>
+                  </div>
+                  <div class="overview-col">
+                    <span class="">
+                      {{ .Data.Metadata.EthBalance | formatAddressEthBalance }}
+                    </span>
+                  </div>
+                  <div class="overview-col">
+                    <span>Ether Value</span>
+                  </div>
+                  <div class="overview-col">
+                    <span class=""> {{.Data.EtherValue}}</span>
+                  </div>
+                  <div class="overview-col">
+                    <span>ERC 20 Tokens</span>
+                  </div>
+                  <div class="overview-col">
+                    <span class="">
+                      {{ len .Data.Metadata.Balances }}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <span class="h4">
-                $100,109,981.55
-              </span>
-            </div>
-            <div>
-              <span>Ether balance</span>
-            </div>
-            <div>
-              <span class="h4">
-                {{ .Data.Metadata.EthBalance | formatAddressEthBalance }}
-              </span>
-            </div>
-            <div>
-              <span>Token balance</span>
-            </div>
-            <div>
-              <span class="h4">
-                $49,109,981.55
-              </span>
+          </div>
+          <div class="tab-pane fade" id="tokensTab" role="tabpanel" aria-labelledby="tokensTab-tab">
+            <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card shadow-none flex-grow-1">
+              <div class="card-body p-0 pb-1">
+                <div class="position: relative" style="display: grid; max-height: 150px; overflow: auto; grid-template-columns: minmax(50px, 150px) minmax(50px, 2fr);">
+                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col bg-light">
+                    <span>Symbol</span>
+                  </div>
+                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col bg-light">
+                    <span>Balance</span>
+                  </div>
+                  {{ range .Data.Metadata.Balances }}
+                    {{ . | formatTokenBalance }}
+                  {{ end }}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <div class="card shadow-none flex-grow-1">
-        <div class="card-body p-0 pb-1">
-          <div class="position: relative" style="display: grid; max-height: 150px; overflow: auto; grid-template-columns: minmax(50px, 150px) minmax(50px, 2fr);">
-            <div style="top:0; z-index: 9;" class="position-sticky token-balance-col bg-light">
-              <span>Token</span>
+      <div class="flex-column d-none d-md-flex">
+        <ul class="nav nav-tabs border-0 border-bottom-0 flex-grow-0" role="tablist">
+          <li style="margin: 0; border-bottom: none;" class="nav-item" role="presentation">
+            <span class="nav-link border-bottom-radius-0 border-bottom-0 active" data-toggle="tab" role="tab" aria-controls="tokensTab" aria-selected="true">Tokens</span>
+          </li>
+        </ul>
+        <div class="tab-content flex-grow-1" id="overview-tab-content">
+          <div class="tab-pane fade active show h-100" id="tokensTab" role="tabpanel" aria-labelledby="tokensTab-tab">
+            <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card h-100 shadow-none">
+              <div class="card-body p-0 pb-1">
+                <div class="position: relative" style="display: grid; max-height: 150px; overflow: auto; grid-template-columns: minmax(50px, 150px) minmax(50px, 2fr);">
+                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col bg-light">
+                    <span>Symbol</span>
+                  </div>
+                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col bg-light">
+                    <span>Balance</span>
+                  </div>
+                  {{ range .Data.Metadata.Balances }}
+                    {{ . | formatTokenBalance }}
+                  {{ end }}
+                </div>
+              </div>
             </div>
-            <div style="top:0; z-index: 9;" class="position-sticky token-balance-col bg-light">
-              <span>Balance</span>
-            </div>
-            {{ range .Data.Metadata.Balances }}
-              {{ . | formatTokenBalance }}
-            {{ end }}
           </div>
         </div>
       </div>
@@ -333,37 +424,37 @@
 
 {{ define "AddressTabs" }}
   <ul class="nav nav-pills border-0 border-bottom-0" role="tablist">
-    <li class="nav-item" role="presentation">
+    <li style="margin: 0;" class="nav-item" role="presentation">
       <a class="nav-link border-bottom-radius-0 active" href="#transactions" id="transaction-tab" data-toggle="tab" role="tab" aria-controls="transactions" aria-selected="true">Transactions</a>
     </li>
     {{ if .Data.InternalTxnsTable.Data }}
-      <li class="nav-item" role="presentation">
+      <li style="margin: 0;" class="nav-item" role="presentation">
         <a class="nav-link border-bottom-radius-0 " href="#internalTxns" id="internalTxns-tab" data-toggle="tab" role="tab" aria-controls="internalTxns" aria-selected="false">Internal Txns</a>
       </li>
     {{ end }}
     {{ if .Data.BlocksMinedTable.Data }}
-      <li class="nav-item" role="presentation">
+      <li style="margin: 0;" class="nav-item" role="presentation">
         <a class="nav-link border-bottom-radius-0" href="#blocksMined" id="blocksMined-tab" data-toggle="tab" role="tab" aria-controls="blocksMined" aria-selected="false">Blocks Mined</a>
       </li>
     {{ end }}
 
     {{ if .Data.UnclesMinedTable.Data }}
-      <li class="nav-item" role="presentation">
+      <li style="margin: 0;" class="nav-item" role="presentation">
         <a class="nav-link border-bottom-radius-0" href="#unclesMined" id="unclesMined-tab" data-toggle="tab" role="tab" aria-controls="unclesMined" aria-selected="false">Uncles Mined</a>
       </li>
     {{ end }}
     {{ if .Data.Erc20Table.Data }}
-      <li class="nav-item" role="presentation">
+      <li style="margin: 0;" class="nav-item" role="presentation">
         <a class="nav-link border-bottom-radius-0" href="#erc20Txns" id="erc20Txns-tab" data-toggle="tab" role="tab" aria-controls="erc20Txns" aria-selected="false">Erc20 Token Txns</a>
       </li>
     {{ end }}
     {{ if .Data.Erc721Table.Data }}
-      <li class="nav-item" role="presentation">
+      <li style="margin: 0;" class="nav-item" role="presentation">
         <a class="nav-link border-bottom-radius-0" href="#erc721Txns" id="erc721Txns-tab" data-toggle="tab" role="tab" aria-controls="erc721Txns" aria-selected="false">Erc721 Token Txns</a>
       </li>
     {{ end }}
     {{ if .Data.Erc1155Table.Data }}
-      <li class="nav-item" role="presentation">
+      <li style="margin: 0;" class="nav-item" role="presentation">
         <a class="nav-link border-bottom-radius-0" href="#erc1155Txns" id="erc1155Txns-tab" data-toggle="tab" role="tab" aria-controls="erc1155Txns" aria-selected="false">Erc1155 Token Txns</a>
       </li>
     {{ end }}
@@ -371,7 +462,7 @@
 {{ end }}
 
 {{ define "AddressTransactionsTableGrid" }}
-  <div id="transactions-table" style="display: grid; grid-template-columns: repeat(8, minmax(auto, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="transactions-table" style="display: grid; grid-template-columns: repeat(8, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Hash</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Method</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Age</span></div>
@@ -409,7 +500,7 @@
 {{ end }}
 
 {{ define "AddressInternalTransactionsGrid" }}
-  <div id="internalTxns-table" style="display: grid; grid-template-columns: repeat(7, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="internalTxns-table" style="display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>
@@ -445,7 +536,7 @@
 {{ end }}
 
 {{ define "AddressBlocksMinedGrid" }}
-  <div id="blocksMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="blocksMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Number</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
@@ -478,7 +569,7 @@
 {{ end }}
 
 {{ define "AddressUnclesMinedGrid" }}
-  <div id="unclesMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="unclesMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Number</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Difficulty</div>
@@ -511,7 +602,7 @@
 {{ end }}
 
 {{ define "AddressErc20TransactionsGrid" }}
-  <div id="erc20-table" style="display: grid; grid-template-columns: repeat(7, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="erc20-table" style="display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>
@@ -547,7 +638,7 @@
 {{ end }}
 
 {{ define "AddressErc721Grid" }}
-  <div id="erc721-table" style="display: grid; grid-template-columns: repeat(6, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="erc721-table" style="display: grid; grid-template-columns: repeat(6, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>
@@ -582,7 +673,7 @@
 {{ end }}
 
 {{ define "AddressErc1155Grid" }}
-  <div id="erc1155-table" style="display: grid; grid-template-columns: repeat(7, minmax(80px, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="erc1155-table" style="display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>

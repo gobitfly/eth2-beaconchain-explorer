@@ -1383,6 +1383,7 @@ type Eth1AddressPageData struct {
 	Erc20Table        *DataTableResponse
 	Erc721Table       *DataTableResponse
 	Erc1155Table      *DataTableResponse
+	EtherValue        template.HTML
 }
 
 type Eth1AddressMetadata struct {
