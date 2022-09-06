@@ -664,7 +664,7 @@ func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
 	meta, err := getABIFromEtherscan(address)
 
 	if err != nil {
-		logrus.Errorf("failed to get abi for contract %v from etherscan: %v", address, err)
+		logrus.Errorf("failed to get abi for contract %x from etherscan: %v", address, err)
 		return nil, fmt.Errorf("contract abi not found")
 	}
 	return meta, nil

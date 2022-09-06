@@ -79,7 +79,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		for _, log := range receipt.Logs {
 			meta, err := db.BigtableClient.GetContractMetadata(log.Address.Bytes())
 
-			if err != nil {
+			if err != nil || meta == nil {
 				logrus.Errorf("error retrieving abi for contract %v: %v", tx.To(), err)
 				eth1Event := &types.Eth1EventData{
 					Address:     log.Address,
