@@ -1221,15 +1221,24 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 // @Summary Get all pixels that have been painted until now on the graffitiwall
 // @Tags Graffitiwall
 // @Produce  json
+// @Param startX path int false "Start X offset, default 0" default(0)
+// @Param startY path int false "Start Y offset, default 0" default(0)
+// @Param endX path int false "End X limit, default 999" default(999)
+// @Param endY path int false "End Y limit, default 999" default(999)
 // @Success 200 {object} string
-// @Router /api/v1/graffitiwall [get]
+// @Router /api/v1/graffitiwall/{startX}/{startY}/{endX}/{endY} [get]
 func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
 	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+	startX := parseUintWithDefault(vars["startX"], 0)
+	startY := parseUintWithDefault(vars["startY"], 0)
+	endX := parseUintWithDefault(vars["endX"], 999)
+	endY := parseUintWithDefault(vars["endY"], 999)
 
-	rows, err := db.ReaderDb.Query("SELECT x, y, color, slot, validator FROM graffitiwall ORDER BY x, y LIMIT 1000000")
+	rows, err := db.ReaderDb.Query(`SELECT x, y, color, slot, validator FROM graffitiwall WHERE x BETWEEN $1 AND $2 AND y BETWEEN $3 AND $4 ORDER BY x, y LIMIT 1000000`, startX, endX, startY, endY)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
