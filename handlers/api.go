@@ -614,7 +614,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 			})
 
 			g.Go(func() error {
-				validatorEffectivenessData, err = validatorEffectiveness(uint64(epoch), queryIndices)
+				validatorEffectivenessData, err = validatorEffectiveness(uint64(epoch)-1, queryIndices)
 				return err
 			})
 			g.Go(func() error {
@@ -984,7 +984,7 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	data, err := validatorEffectiveness(services.LatestEpoch(), queryIndices)
+	data, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1025,7 +1025,7 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := validatorEffectiveness(services.LatestEpoch(), queryIndices)
+	data, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1735,7 +1735,7 @@ func GetMobileWidgetStats(j *json.Encoder, r *http.Request, indexOrPubkey string
 		return
 	}
 
-	efficiencyData, err := validatorEffectiveness(services.LatestEpoch(), queryIndices)
+	efficiencyData, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not parse db results")
 		return
