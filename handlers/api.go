@@ -15,6 +15,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"sort"
 	"strconv"
@@ -748,7 +749,8 @@ func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorE
 	}
 	for i := 0; i < len(data); i++ {
 		// convert value to old api schema
-		data[i].AttestationEfficiency = 1 / (1 - ((1 + data[i].AttestationEfficiency) / 32))
+		tempValue := 1 / (1 - ((1 + data[i].AttestationEfficiency) / 32))
+		data[i].AttestationEfficiency = math.Floor(tempValue*10000) / 10000
 	}
 	return data, nil
 }
