@@ -183,7 +183,7 @@ func (bigtable *Bigtable) GetBlockFromBlocksTable(number uint64) (*types.Eth1Blo
 
 	paddedNumber := reversedPaddedBlockNumber(number)
 
-	row, err := bigtable.tableBlocks.ReadRow(context.Background(), fmt.Sprintf("1:%s", paddedNumber))
+	row, err := bigtable.tableBlocks.ReadRow(context.Background(), fmt.Sprintf("%s:%s", bigtable.chainId, paddedNumber))
 
 	if err != nil {
 		return nil, err
@@ -332,7 +332,7 @@ func (bigtable *Bigtable) GetFullBlockFromDataTable(number uint64) (*types.Eth1B
 
 	paddedNumber := reversedPaddedBlockNumber(number)
 
-	row, err := bigtable.tableData.ReadRow(context.Background(), fmt.Sprintf("1:%s", paddedNumber))
+	row, err := bigtable.tableData.ReadRow(context.Background(), fmt.Sprintf("%s:%s", bigtable.chainId, paddedNumber))
 
 	if err != nil {
 		return nil, err
@@ -2707,6 +2707,19 @@ func (bigtable *Bigtable) DeleteBlock(blockNumber uint64, blockHash []byte) erro
 	}
 
 	err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
+	if err != nil {
+		return err
+	}
+
+	mutsDelete = &types.BulkMutations{
+		Keys: make([]string, 0, len(keys)),
+		Muts: make([]*gcp_bigtable.Mutation, 0, len(keys)),
+	}
+	mutDelete := gcp_bigtable.NewMutation()
+	mutDelete.DeleteRow()
+	mutsDelete.Keys = append(mutsDelete.Keys, fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(blockNumber)))
+	mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+	err = bigtable.WriteBulk(mutsDelete, bigtable.tableBlocks)
 	if err != nil {
 		return err
 	}
