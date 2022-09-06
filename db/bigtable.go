@@ -1556,8 +1556,6 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*ty
 		return nil, "", err
 	}
 
-	logger.Infof("found transactions: %v results", len(keys))
-
 	if len(keys) == 0 {
 		return data, "", nil
 	}
