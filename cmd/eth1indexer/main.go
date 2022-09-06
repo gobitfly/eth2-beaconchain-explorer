@@ -187,7 +187,7 @@ func HanldeChainReorgs(bt *db.Bigtable, client *rpc.ErigonClient, depth int) err
 
 	// for each block check if block node hash and block db hash match
 	for i := latestNodeBlockNumber - uint64(depth); i <= latestNodeBlockNumber; i++ {
-		nodeBlock, err := client.GetNativeClient().BlockByNumber(ctx, big.NewInt(int64(i)))
+		nodeBlock, err := client.GetNativeClient().HeaderByNumber(ctx, big.NewInt(int64(i)))
 		if err != nil {
 			return err
 		}
