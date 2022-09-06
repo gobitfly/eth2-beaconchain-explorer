@@ -36,13 +36,12 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	search = strings.Replace(search, "0x", "", -1)
-
-	if len(search) == 64 {
-		http.Redirect(w, r, "/block/"+search, http.StatusMovedPermanently)
+	if utils.IsValidEth1Tx(search) {
+		http.Redirect(w, r, "/execution/tx/"+search, http.StatusMovedPermanently)
 	} else if len(search) == 96 {
 		http.Redirect(w, r, "/validator/"+search, http.StatusMovedPermanently)
 	} else if utils.IsValidEth1Address(search) {
-		http.Redirect(w, r, "/validators/eth1deposits?q="+search, http.StatusMovedPermanently)
+		http.Redirect(w, r, "/execution/address/"+search, http.StatusMovedPermanently)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
 		data := InitPageData(w, r, "search", "/search", "")

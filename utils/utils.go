@@ -387,11 +387,17 @@ func IsApiRequest(r *http.Request) bool {
 }
 
 var eth1AddressRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{40}$")
+var eth1TxRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{64}$")
 var zeroHashRE = regexp.MustCompile("^0?x?0+$")
 
 // IsValidEth1Address verifies whether a string represents a valid eth1-address.
 func IsValidEth1Address(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1AddressRE.MatchString(s)
+}
+
+// IsValidEth1Tx verifies whether a string represents a valid eth1-tx-hash.
+func IsValidEth1Tx(s string) bool {
+	return !zeroHashRE.MatchString(s) && eth1TxRE.MatchString(s)
 }
 
 // https://github.com/badoux/checkmail/blob/f9f80cb795fa/checkmail.go#L37

@@ -2778,7 +2778,7 @@ func (bigtable *Bigtable) SearchForAddress(addressPrefix []byte, limit int) ([]*
 		}
 		data = append(data, si)
 		return true
-	})
+	}, gcp_bigtable.LimitRows(int64(limit)))
 
 	if err != nil {
 		return nil, err

@@ -24,7 +24,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		return wanted.(*types.Eth1TxData), nil
 	}
 
-	tx, pending, err := rpc.CurrentGethClient.GetNativeClient().TransactionByHash(context.Background(), hash)
+	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(context.Background(), hash)
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving data for tx %v: %v", hash, err)
@@ -145,7 +145,7 @@ func GetCodeAt(address common.Address) ([]byte, error) {
 		return wanted.([]byte), nil
 	}
 
-	code, err := rpc.CurrentGethClient.GetNativeClient().CodeAt(context.Background(), address, nil)
+	code, err := rpc.CurrentErigonClient.GetNativeClient().CodeAt(context.Background(), address, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving code data for address %v: %v", address, err)
 	}
@@ -166,7 +166,7 @@ func GetBlockHeaderByHash(hash common.Hash) (*geth_types.Header, error) {
 		return wanted.(*geth_types.Header), nil
 	}
 
-	header, err := rpc.CurrentGethClient.GetNativeClient().HeaderByHash(context.Background(), hash)
+	header, err := rpc.CurrentErigonClient.GetNativeClient().HeaderByHash(context.Background(), hash)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block header data for tx %v: %v", hash, err)
 	}
@@ -187,7 +187,7 @@ func GetTransactionReceipt(hash common.Hash) (*geth_types.Receipt, error) {
 		return wanted.(*geth_types.Receipt), nil
 	}
 
-	receipt, err := rpc.CurrentGethClient.GetNativeClient().TransactionReceipt(context.Background(), hash)
+	receipt, err := rpc.CurrentErigonClient.GetNativeClient().TransactionReceipt(context.Background(), hash)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving receipt data for tx %v: %v", hash, err)
 	}
