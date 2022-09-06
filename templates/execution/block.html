@@ -8,11 +8,11 @@
             }
 
             if (type === "hex") {
-                $("#extra-data").text("0x" + extraDataHex)
+                $("#extra-data").text(extraDataHex)
             } else {
                 try {
                     var r = decodeURIComponent(extraDataHex.replace(/\s+/g, '').replace(/[0-9a-f]{2}/g, '%$&'));
-                    $("#extra-data").text(r)
+                    $("#extra-data").text(r.replace("0x", ""))
                 } catch (e) {
                     $("#extra-data").text(hex2a(extraDataHex.replace("0x", "")))
                 }
@@ -35,175 +35,188 @@
 {{end}}
 
 {{ define "content"}}
-	<div class="container mt-2">
+	{{ with .Data }}
+		<div class="container mt-2">
 
-		<div class="my-3">
-			<div class="d-md-flex py-2 justify-content-md-between">
-				<h1 class="h4 mb-1 mb-md-0">
-                    {{if gt .PreviousBlock 0}}
-						<a href="/execution/block/{{.PreviousBlock}}"><i class="fa fa-chevron-left"></i></a>
-                    {{end}}
-					<span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block {{.Number}}</span>
-                    {{if gt .NextBlock 0}}
-						<a href="/execution/block/{{.NextBlock}}"><i class="fa fa-chevron-right"></i></a>
-                    {{end}}
-				</h1>
-				<nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
-					<ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0" style="padding:0; background-color:transparent;">
-						<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-						<li class="breadcrumb-item"><a href="/execution/blocks" title="Blocks">Blocks</a></li>
-						<li class="breadcrumb-item active" aria-current="page">Block details</li>
-					</ol>
-				</nav>
+			<div class="my-3">
+				<div class="d-md-flex py-2 justify-content-md-between">
+					<h1 class="h4 mb-1 mb-md-0">
+						{{if gt .PreviousBlock 0}}
+							<a href="/execution/block/{{.PreviousBlock}}"><i class="fa fa-chevron-left"></i></a>
+						{{end}}
+						<span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block {{.Number}}</span>
+						{{if gt .NextBlock 0}}
+							<a href="/execution/block/{{.NextBlock}}"><i class="fa fa-chevron-right"></i></a>
+						{{end}}
+					</h1>
+					<nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
+						<ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0" style="padding:0; background-color:transparent;">
+							<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+							<li class="breadcrumb-item"><a href="/execution/blocks" title="Blocks">Blocks</a></li>
+							<li class="breadcrumb-item active" aria-current="page">Block details</li>
+						</ol>
+					</nav>
+				</div>
 			</div>
-		</div>
-		<ul style="margin-bottom: -1px;" class="nav nav-tabs justify-content-start" id="pills-tab" role="tablist">
-			<li class="nav-item">
-				<a class="nav-link active" id="pills-overview-tab" data-toggle="pill" href="#pills-overview" role="tab" aria-controls="pills-overview" aria-selected="true">Overview</a>
-			</li>
-			<li class="nav-item">
-				<a class="nav-link" id="pills-txs-tab" data-toggle="pill" href="#pills-txs" role="tab" aria-controls="pills-txs" aria-selected="false">Transactions <span class="badge bg-secondary text-white">{{.TxCount}}</span></a>
-			</li>
-            {{ if gt (len .Uncles) 0}}
+			<ul style="margin-bottom: -1px;" class="nav nav-tabs justify-content-start" id="tab" role="tablist">
 				<li class="nav-item">
-					<a class="nav-link" id="pills-uncles-tab" data-toggle="pill" href="#pills-uncles" role="tab" aria-controls="pills-uncles" aria-selected="false">Uncles <span class="badge bg-secondary text-white">{{.UncleCount}}</span></a>
+					<a class="nav-link active" id="overview-tab" data-toggle="pill" href="#overview" role="tab" aria-controls="overview" aria-selected="true">Overview</a>
 				</li>
-            {{end}}
-		</ul>
-		<style>
-            .block-card {
-                border-top-left-radius: 0;
-                border-top-right-radius: 0;
-            }
-		</style>
-		<div class="card block-card">
-			<div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
-				<div class="tab-content" id="pills-tabContent">
-					<div class="tab-pane fade show active" id="pills-overview" role="tabpanel"
-						 aria-labelledby="pills-overview-tab">
-						<div class="row border-bottom p-3 mx-0">
-							<div class="col-md-2">Hash:</div>
-							<div class="col-md-10 text-monospace"><a href="/block/0x{{.Hash}}">0x{{.Hash}}</a></div>
-						</div>
-						<div class="row border-bottom p-3 mx-0">
-							<div class="col-md-2">Miner:</div>
-							<div class="col-md-10 text-monospace"><a href="/account/0x{{.MinerAddress}}">{{.MinerAddressFormatted}}</a></div>
-						</div>
-						<div class="row border-bottom p-3 mx-0">
-							<div class="col-md-2">Reward:</div>
-							<div class="col-md-10">
-								{{formatAmount .Reward "ETH" 5}}
-								{{if gtf .MevReward 0}}
-									 + {{formatMEVAmount .MevReward "ETH" 5}}
-								{{end}}
-							</div>
-						</div>
-						<div class="row border-bottom p-3 mx-0">
-							<div class="col-md-2">Tx Fees:</div>
-							<div class="col-md-10">{{formatAmount .TxFees "ETH" 5}}</div>
-						</div>
-						<div class="row border-bottom p-3 mx-0">
-							<div class="col-md-2">Gas Usage:</div>
-							<div class="col-md-10">{{.GasUsage}}</div>
-						</div>
-                        {{if gt .TxCount 0}}
+        {{ if gt (len .Txs) 0}}
+				  <li class="nav-item">
+				  	<a class="nav-link" id="txs-tab" data-toggle="pill" href="#txs" role="tab" aria-controls="txs" aria-selected="false">Transactions <span class="badge bg-secondary text-white">{{.TxCount}}</span></a>
+				  </li>
+        {{ end}}
+				{{ if gt (len .Uncles) 0}}
+					<li class="nav-item">
+						<a class="nav-link" id="uncles-tab" data-toggle="pill" href="#uncles" role="tab" aria-controls="uncles" aria-selected="false">Uncles <span class="badge bg-secondary text-white">{{.UncleCount}}</span></a>
+					</li>
+				{{end}}
+			</ul>
+			<style>
+				.block-card {
+					border-top-left-radius: 0;
+					border-top-right-radius: 0;
+				}
+			</style>
+			<div class="card block-card">
+				<div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
+					<div class="tab-content" id="tabContent">
+						<div class="tab-pane fade show active" id="overview" role="tabpanel"
+							aria-labelledby="overview-tab">
 							<div class="row border-bottom p-3 mx-0">
-								<div class="col-md-2">Lowest gas price:</div>
-								<div class="col-md-10">{{formatAmount .LowestGasPrice "GWei" 0}}</div>
+								<div class="col-md-2">Hash:</div>
+								<div class="col-md-10 text-monospace"><a href="/execution/block/{{.Number}}">{{.Hash}}</a></div>
 							</div>
-                        {{end}}
-						<div class="row border-bottom p-3 mx-0">
-							<div class="col-md-2">Time:</div>
-							<div class="col-md-10">{{formatTime .Time}} ({{formatTimeFromNow .Time}})</div>
-						</div>
-						<div class="row border-bottom p-3 mx-0">
-							<div class="col-md-2">Size:</div>
-							<div class="col-md-10">{{.Size | filesizeformat}}</div>
-						</div>
-						<div class="row border-bottom p-3 mx-0">
-							<div class="col-md-2">Difficulty:</div>
-							<div class="col-md-10">{{.Difficulty | formatDifficulty}}</div>
-						</div>
-						<div class="row border-bottom p-3 mx-0">
-							<div class="col-md-2">Base fee:</div>
-							<div class="col-md-10">{{formatAmount .BaseFeePerGas "GWei" 5}}</div>
-						</div>
-						<div class="row border-bottom p-3 mx-0">
-							<div class="col-md-2">Burned fees:</div>
-							<div class="col-md-10">{{formatAmount .BurnedFees "ETH" 5}}</div>
-						</div>
-						<div class="row border-bottom p-3 mx-0">
-							<div class="col-md-2">Extra:</div>
-							<div class="col-md-8 text-monospace text-break" id="extra-data"
-								 aria-extra-data="{{.Extra}}">0x{{.Extra}}</div>
-							<div class="col-md-2">
-								<div class="btn-group btn-group-toggle" data-toggle="buttons">
-									<label class="btn btn-light text-dark active btn-sm" onclick="viewExtraDataAs('hex')">
-										<input type="radio" name="options" id="optionHex"> Hex
-									</label>
-									<label class="btn btn-light text-dark btn-sm" onclick="viewExtraDataAs('utf-8')">
-										<input type="radio" name="options" id="optionUTF8" checked> UTF-8
-									</label>
+							<div class="row border-bottom p-3 mx-0">
+								<div class="col-md-2">Miner:</div>
+								<div class="col-md-10 text-monospace"><a href="/execution/address/{{.MinerAddress}}">{{.MinerAddress}}</a></div>
+							</div>
+							<div class="row border-bottom p-3 mx-0">
+								<div class="col-md-2">Reward:</div>
+								<div class="col-md-10">
+									{{formatAmount .Reward "ETH" 5}}
+									{{if gt (bigIntCmp .MevReward 0) 0}}
+										+ {{formatAmount .MevReward "ETH" 5}}
+									{{end}}
+								</div>
+							</div>
+							<div class="row border-bottom p-3 mx-0">
+								<div class="col-md-2">Tx Fees:</div>
+								<div class="col-md-10">{{formatAmount .TxFees "ETH" 5}}</div>
+							</div>
+							<div class="row border-bottom p-3 mx-0">
+								<div class="col-md-2">Gas Usage:</div>
+								<div class="col-md-10">{{.GasUsage}}</div>
+							</div>
+							{{if gt .TxCount 0}}
+								<div class="row border-bottom p-3 mx-0">
+									<div class="col-md-2">Lowest gas price:</div>
+									<div class="col-md-10">{{formatAmount .LowestGasPrice "GWei" 0}}</div>
+								</div>
+							{{end}}
+							<div class="row border-bottom p-3 mx-0">
+								<div class="col-md-2">Time:</div>
+								<div class="col-md-7">
+									<span aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW">{{ .Ts }}</span> (<span id="timestamp" aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="LOCAL">{{ .Ts }}</span>) <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" onclick="copyTs()"></i>
+								</div>
+                <div class="col-md-3 text-right">
+                  <div id="unixTs" hidden>{{ .Ts.Unix }}</div>
+                  <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                    <label class="btn btn-light text-dark active btn-sm" onclick="setTs()"> <input type="radio" name="options" id="optionTs" /> Timestamp </label>
+                    <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setUtc()"> <input type="radio" name="options" id="optionUtc" /> UTC </label>
+                    <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setLocal()"> <input type="radio" name="options" id="optionLocal" checked /> Local </label>
+                  </div>
+                </div>
+							</div>
+							{{/* <div class="row border-bottom p-3 mx-0">
+								<div class="col-md-2">Size:</div>
+								<div class="col-md-10">{{.Size | filesizeformat}}</div>
+							</div> */}}
+							<div class="row border-bottom p-3 mx-0">
+								<div class="col-md-2">Difficulty:</div>
+								<div class="col-md-10">{{formatDifficulty .Difficulty}}</div>
+							</div>
+							<div class="row border-bottom p-3 mx-0">
+								<div class="col-md-2">Base fee:</div>
+								<div class="col-md-10">{{formatAmount .BaseFeePerGas "GWei" 5}}</div>
+							</div>
+							<div class="row border-bottom p-3 mx-0">
+								<div class="col-md-2">Burned fees:</div>
+								<div class="col-md-10">{{formatAmount .BurnedFees "ETH" 5}}</div>
+							</div>
+							<div class="row border-bottom p-3 mx-0">
+								<div class="col-md-2">Extra:</div>
+								<div class="col-md-8 text-monospace text-break" id="extra-data"
+									aria-extra-data="{{.Extra}}">{{.Extra}}</div>
+								<div class="col-md-2 text-right">
+									<div class="btn-group btn-group-toggle" data-toggle="buttons">
+										<label class="btn btn-light text-dark active btn-sm" onclick="viewExtraDataAs('hex')">
+											<input type="radio" name="options" id="optionHex"> Hex
+										</label>
+										<label class="btn btn-light text-dark btn-sm" onclick="viewExtraDataAs('utf-8')">
+											<input type="radio" name="options" id="optionUTF8" checked> UTF-8
+										</label>
+									</div>
 								</div>
 							</div>
 						</div>
-					</div>
-					<div class="tab-pane fade" id="pills-txs" role="tabpanel" aria-labelledby="pills-txs-tab">
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-12 text-center"><b>Showing {{ .TxCount }} Transactions </b></div>
-						</div>
-						<div class="table-responsive">
-							<table class="table table-sm table-bordered text-center">
-								<tr>
-									<th>Hash</th>
-									<th>From</th>
-									<th>To</th>
-									<th>Value</th>
-									<th>Fee</th>
-									<th>Gas Price</th>
-								</tr>
-                                {{range .Txs}}
+						<div class="tab-pane fade" id="txs" role="tabpanel" aria-labelledby="txs-tab">
+							<div class="row border-bottom p-1 mx-0">
+								<div class="col-md-12 text-center"><b>Showing {{ .TxCount }} Transactions </b></div>
+							</div>
+							<div class="table-responsive">
+								<table class="table table-sm table-bordered text-center">
 									<tr>
-										<td>{{if eq .Hash .ParentHash}}{{if .Failed}}<i class="fas fa-exclamation-triangle mr-1 text-danger"></i>{{end}}<a class="text-monospace" href="/tx/0x{{.Hash}}">0x{{printf "%.8s" .Hash}}…</a>{{end}}</td>
-										<td>{{.From}}</td>
-										<td>{{.To}}</td>
-										<td>{{formatAmount .Value "ETH" 5}}</td>
-										<td>{{if eq .Hash .ParentHash}}{{.Fee}}{{end}}</td>
-										<td>{{formatAmount .GasPrice "GWei" 0}}</td>
+										<th>Hash</th>
+										<th>From</th>
+										<th>To</th>
+										<th>Value</th>
+										<th>Fee</th>
+										<th>Gas Price</th>
 									</tr>
-                                {{end}}
-							</table>
+									{{range .Txs}}
+										<tr>
+											<td><a class="text-monospace" href="/execution/tx/{{.Hash}}">{{printf "%.8s" .Hash}}…</a></td>
+											<td><a class="text-monospace" href="/execution/address/{{.From}}">{{.From}}</a></td>
+											<td><a class="text-monospace" href="/execution/address/{{.To}}">{{.To}}</a></td>
+											<td>{{formatAmount .Value "ETH" 5}}</td>
+											<td>{{formatAmount .Fee "ETH" 5 }}</td>
+											<td>{{formatAmount .GasPrice "GWei" 0}}</td>
+										</tr>
+									{{end}}
+								</table>
+							</div>
 						</div>
-					</div>
-					<div class="tab-pane fade" id="pills-uncles" role="tabpanel"
-						 aria-labelledby="pills-uncles-tab">
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-12 text-center"><b>Showing {{ .UncleCount }} Uncle{{ .UncleCount | pluralize "s" }} </b></div>
-						</div>
-						<div class="table-responsive">
-							<table class="table table-sm table-bordered text-center">
-								<tr>
-									<th>Number</th>
-									<th>Level</th>
-									<th>Miner</th>
-									<th>Reward</th>
-									<th>Extra</th>
-								</tr>
-                                {{range .Uncles}}
+						<div class="tab-pane fade" id="uncles" role="tabpanel"
+							aria-labelledby="uncles-tab">
+							<div class="row border-bottom p-1 mx-0">
+								<div class="col-md-12 text-center"><b>Showing {{ .UncleCount }} Uncle{{ if gt .UncleCount 1 }}s{{end}} </b></div>
+							</div>
+							<div class="table-responsive">
+								<table class="table table-sm table-bordered text-center">
 									<tr>
-										<td>{{.Number}}</td>
-										<td>{{subuint64 $.Number .Number}}</td>
-										<td>{{formatAddressAsLink .MinerAddress .MinerName .MinerNameVerified .MinerIsContract 6}}</td>
-										<td>{{formatAmount .Reward "ETH" 5}}</td>
-										<td>{{.Extra}}</td>
+										<th>Number</th>
+										<th>Level</th>
+										<th>Miner</th>
+										<th>Reward</th>
+										<th>Extra</th>
 									</tr>
-                                {{end}}
-							</table>
+									{{range .Uncles}}
+										<tr>
+											<td>{{.Number}}</td>
+											<td>{{subUI64 $.Data.Number .Number}}</td>
+											<td><a href="/execution/address/{{.MinerAddress}}">{{.MinerAddress}}</a></td>
+											<td>{{formatAmount .Reward "ETH" 5}}</td>
+											<td>{{.Extra}}</td>
+										</tr>
+									{{end}}
+								</table>
+							</div>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
-	</div>
-
+	{{ end }}
 {{end}}

@@ -789,6 +789,30 @@ func CalculateMevFromBlock(block *types.Eth1Block) *big.Int {
 	return mevReward
 }
 
+func CalculateTxFeesFromBlock(block *types.Eth1Block) *big.Int {
+	txFees := new(big.Int)
+	for _, tx := range block.Transactions {
+		txFees.Add(txFees, CalculateTxFeeFromTransaction(tx, new(big.Int).SetBytes(block.BaseFee)))
+	}
+	return txFees
+}
+
+func CalculateTxFeeFromTransaction(tx *types.Eth1Transaction, blockBaseFee *big.Int) *big.Int {
+	// calculate tx fee depending on tx type
+	txFee := new(big.Int).SetUint64(tx.GasUsed)
+	if tx.Type == uint32(2) {
+		// multiply gasused with min(baseFee + maxpriorityfee, maxfee)
+		if normalGasPrice, maxGasPrice := new(big.Int).Add(blockBaseFee, new(big.Int).SetBytes(tx.MaxPriorityFeePerGas)), new(big.Int).SetBytes(tx.MaxFeePerGas); normalGasPrice.Cmp(maxGasPrice) <= 0 {
+			txFee.Mul(txFee, normalGasPrice)
+		} else {
+			txFee.Mul(txFee, maxGasPrice)
+		}
+	} else {
+		txFee.Mul(txFee, new(big.Int).SetBytes(tx.GasPrice))
+	}
+	return txFee
+}
+
 // TransformTx extracts transactions from bigtable more specifically from the table blocks.
 func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
 	bulkData = &types.BulkMutations{}
