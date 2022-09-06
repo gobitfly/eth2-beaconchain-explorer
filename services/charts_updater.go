@@ -6,11 +6,13 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"hash/fnv"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/prysmaticlabs/prysm/shared/mathutil"
+	"github.com/shopspring/decimal"
 )
 
 type chartHandler struct {
@@ -36,6 +38,7 @@ var ChartHandlers = map[string]chartHandler{
 	"deposits":                       {13, depositsChartData},
 	"graffiti_wordcloud":             {14, graffitiCloudChartData},
 	"pools_distribution":             {15, poolsDistributionChartData},
+	"historic_pool_performance":      {16, historicPoolPerformanceData},
 }
 
 // LatestChartsPageData returns the latest chart page data
@@ -449,6 +452,104 @@ func participationRateChartData() (*types.GenericChartData, error) {
 	return chartData, nil
 }
 
+func CalcARP(pd types.PerformanceDay) decimal.Decimal {
+	return ((decimal.NewFromInt(int64(pd.EndBalancesSum)).
+		Sub(decimal.NewFromInt(int64(pd.StartBalancesSum))).
+		Sub(decimal.NewFromInt(int64(pd.DepositsSum)))).
+		Div(decimal.NewFromInt(int64(pd.EffectiveBalancesSum)))).
+		Mul(decimal.NewFromInt(36500)).Round(3)
+}
+
+func historicPoolPerformanceData() (*types.GenericChartData, error) {
+	// retrieve pool performance from db
+	var performanceDays []types.PerformanceDay
+	err := db.ReaderDb.Select(&performanceDays, `
+		SELECT	pool, day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum
+		FROM	historical_pool_performance
+		ORDER BY day, pool ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("error getting historical pool performance: %w", err)
+	}
+
+	// generate pool performance series datapoints
+	poolSeriesData := map[string][][2]float64{}
+	var arp, timestamp float64
+	for _, poolPerfDay := range performanceDays {
+		timestamp = float64(utils.DayToTime(int64(poolPerfDay.Day)).Unix() * 1000)
+		arp, _ = CalcARP(poolPerfDay).Float64()
+		poolSeriesData[poolPerfDay.Pool] = append(poolSeriesData[poolPerfDay.Pool], [2]float64{
+			timestamp,
+			arp,
+		})
+	}
+
+	// create pool performance series
+	var colors = [...]string{
+		"#7fa6d4", "#90c978", "#e6a467", "#cc8398", "#bebdbe", "#928b8b", "#a5e5e1", "#ca5c58",
+		"#939b58", "#594f9d", "#7d81dc", "#d9cd66", "#d9cd66"}
+
+	chartSeries := []*types.GenericChartDataSeries{}
+	hash := fnv.New32()
+	var index int
+
+	for poolName, poolData := range poolSeriesData {
+		// generate hash from poolname for deterministic way of getting color index
+		hash.Write([]byte(poolName))
+		index = int(hash.Sum32()) % len(colors)
+		hash.Reset()
+
+		poolSeries := types.GenericChartDataSeries{
+			Name:  poolName,
+			Data:  poolData,
+			Color: colors[index],
+		}
+		chartSeries = append(chartSeries, &poolSeries)
+	}
+
+	// retrieve eth.store data from db
+	performanceDays = nil
+	err = db.ReaderDb.Select(&performanceDays, `
+		SELECT	day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum
+		FROM	eth_store_stats
+		ORDER BY day ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("error getting eth store days: %w", err)
+	}
+	if len(performanceDays) > 0 {
+		// generate eth store series datapoints
+		for _, ethStoreDay := range performanceDays {
+			timestamp = float64(utils.DayToTime(int64(ethStoreDay.Day)).Unix() * 1000)
+			arp, _ = CalcARP(ethStoreDay).Float64()
+			poolSeriesData["ETH.STORE"] = append(poolSeriesData["ETH.STORE"], [2]float64{
+				timestamp,
+				arp,
+			})
+		}
+		// create eth store series
+		ethStoreSeries := types.GenericChartDataSeries{
+			Name:  "ETH.STORE",
+			Data:  poolSeriesData["ETH.STORE"],
+			Color: "#ed1c24",
+		}
+		chartSeries = append(chartSeries, &ethStoreSeries)
+	}
+
+	//create chart struct, hypertext color is hardcoded into subtitle text
+	chartData := &types.GenericChartData{
+		YAxisNegativeLog: true,
+		Title:            "Historical Pool Performance",
+		Subtitle:         "Uses a neutral & verifiable formula <a style=\"color:rgb(56, 112, 168)\" href=\"https://github.com/gobitfly/eth.store\">ETH.STORE</a> to measure pool performance for consensus rewards.",
+		XAxisTitle:       "",
+		YAxisTitle:       "APR [%] (Logarithmic)",
+		StackingMode:     "false",
+		Type:             "line",
+		TooltipShared:    true,
+		TooltipUseHTML:   true,
+		Series:           chartSeries,
+	}
+
+	return chartData, nil
+}
 func inclusionDistanceChartData() (*types.GenericChartData, error) {
 	if LatestEpoch() == 0 {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
@@ -574,14 +675,10 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 		with
 			firstdeposits as (
 				select distinct
-					vb.epoch,
-					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
+				v.activationepoch as epoch,
+					sum(v.balanceactivation) over (order by v.activationepoch asc) as amount
 				from validators v
-					left join validator_balances_p vb
-						on vb.validatorindex = v.validatorindex
-						and vb.epoch = v.activationepoch
-						and vb.week = v.activationepoch / 1575
-				order by vb.epoch
+				order by v.activationepoch
 			),
 			extradeposits as (
 				select distinct
@@ -670,14 +767,10 @@ func stakingRewardsChartData() (*types.GenericChartData, error) {
 		with
 			firstdeposits as (
 				select distinct
-					vb.epoch,
-					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
+				v.activationepoch as epoch,
+					sum(v.balanceactivation) over (order by v.activationepoch asc) as amount
 				from validators v
-					left join validator_balances_p vb
-						on vb.validatorindex = v.validatorindex
-						and vb.epoch = v.activationepoch
-						and vb.week = v.activationepoch / 1575
-				order by vb.epoch
+				order by v.activationepoch
 			),
 			extradeposits as (
 				select distinct

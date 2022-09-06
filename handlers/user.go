@@ -2085,40 +2085,13 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 	} else {
 		if filterLen == 0 && (eventName == types.RocketpoolColleteralMaxReached || eventName == types.RocketpoolColleteralMinReached) {
 
-			myValidators, err2 := db.GetTaggedValidators(filterWatchlist)
-			if err2 != nil {
-				ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
-				return false
-			}
-
-			maxValidators := getUserPremium(r).MaxValidators
-
-			var pubkeys [][]byte
-			for _, v := range myValidators {
-				pubkeys = append(pubkeys, v.ValidatorPublickey)
-			}
-
-			var rocketpoolNodes []string
-			err = db.WriterDb.Select(&rocketpoolNodes, `
-				SELECT DISTINCT(ENCODE(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
-			`, pq.ByteaArray(pubkeys))
+			err = db.DeleteAllSubscription(user.UserID, utils.GetNetwork(), eventName)
 			if err != nil {
-				ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
+				logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 				return false
 			}
 
-			for i, v := range rocketpoolNodes {
-				err = db.DeleteSubscription(user.UserID, utils.GetNetwork(), eventName, v)
-				if err != nil {
-					logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
-					ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-					return false
-				}
-
-				if i >= maxValidators {
-					break
-				}
-			}
 		} else {
 			network := utils.GetNetwork()
 			if eventName == types.EthClientUpdateEventName || strings.HasPrefix(string(eventName), "monitoring_") {

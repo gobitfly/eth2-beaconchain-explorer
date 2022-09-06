@@ -12,7 +12,9 @@ import (
 
 var poolsServicesTemplate = template.Must(template.New("poolsServices").Funcs(utils.GetTemplateFuncs()).ParseFiles(
 	"templates/layout.html",
-	"templates/pools.html",
+	"templates/pools/pools.html",
+	"templates/pools/loadingSvg.html",
+	"templates/pools/charts.html",
 	"templates/bannerPools.html"))
 
 func Pools(w http.ResponseWriter, r *http.Request) {
@@ -20,7 +22,14 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "services", "/pools", "Staking Pools Services Overview")
 
-	chartData, err := services.ChartHandlers["pools_distribution"].DataFunc()
+	distributionData, err := services.ChartHandlers["pools_distribution"].DataFunc()
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
+	performanceData, err := services.ChartHandlers["historic_pool_performance"].DataFunc()
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -29,9 +38,14 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 
 	poolData := services.LatestPoolsPageData()
 
-	poolData.PoolsDistribution.Data = chartData
+	poolData.PoolsDistribution.Data = distributionData
 	poolData.PoolsDistribution.Height = 500
 	poolData.PoolsDistribution.Path = "pools_distribution"
+
+	poolData.HistoricPoolPerformance.Data = performanceData
+	poolData.HistoricPoolPerformance.Height = 500
+	poolData.HistoricPoolPerformance.Path = "historic_pool_performance"
+
 	data.Data = poolData
 
 	err = poolsServicesTemplate.ExecuteTemplate(w, "layout", data)

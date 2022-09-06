@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"database/sql"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -352,9 +353,9 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 				WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
 			}
 
-			val.Balance1d = validatorBalances1d[uint64(validator.Index)]
-			val.Balance7d = validatorBalances7d[uint64(validator.Index)]
-			val.Balance31d = validatorBalances31d[uint64(validator.Index)]
+			val.Balance1d = sql.NullInt64{Int64: int64(validatorBalances1d[uint64(validator.Index)]), Valid: true}
+			val.Balance7d = sql.NullInt64{Int64: int64(validatorBalances7d[uint64(validator.Index)]), Valid: true}
+			val.Balance31d = sql.NullInt64{Int64: int64(validatorBalances31d[uint64(validator.Index)]), Valid: true}
 
 			data.Validators = append(data.Validators, val)
 
@@ -1008,7 +1009,6 @@ func (pc *PrysmClient) GetValidatorParticipation(epoch uint64) (*types.Validator
 		logger.Printf("error retrieving epoch participation statistics: %v", err)
 		return &types.ValidatorParticipation{
 			Epoch:                   epoch,
-			Finalized:               false,
 			GlobalParticipationRate: 0,
 			VotedEther:              0,
 			EligibleEther:           0,
@@ -1016,7 +1016,6 @@ func (pc *PrysmClient) GetValidatorParticipation(epoch uint64) (*types.Validator
 	}
 	return &types.ValidatorParticipation{
 		Epoch:                   epoch,
-		Finalized:               epochParticipationStatistics.Finalized,
 		GlobalParticipationRate: epochParticipationStatistics.Participation.GlobalParticipationRate,
 		VotedEther:              epochParticipationStatistics.Participation.VotedEther,
 		EligibleEther:           epochParticipationStatistics.Participation.EligibleEther,

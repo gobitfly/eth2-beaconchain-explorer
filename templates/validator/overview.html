@@ -86,8 +86,6 @@
                             -->
               The last ETH1 deposit was made {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around 16-24 hours</a> until your deposit is processed by the beacon chain. This validator will be eligible for activation once the deposited amount sums up to 32 ETH.
             {{ end }}
-            <!-- {{ if and .PendingCount (and (gt .EstimatedActivationTs 0) (lt .EstimatedActivationTs 9223372036854775807)) }}This validator will be activated approximately <span class="font-weight-bolder">{{ .EstimatedActivationTs | formatTsWithoutTooltip }}</span> after being registered by the beacon chain.{{ end }}
-                        -->
           </span>
         </div>
       </div>
@@ -105,17 +103,22 @@
     <div class="col">
       <div class="px-2">
         <div class="p-2 mx-auto" style="max-width: 50rem;">
-          {{ if ne .ActivationEpoch 9223372036854775807 }}
-            This validator has been processed by the beacon chain and is currently waiting to be activated. It will approximately be activated on <span class="font-weight-bolder" title="{{ .ActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .ActivationTs.Unix }}">{{ .ActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .ActivationEpoch }}</span>. Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
-          {{ else }}
-            This validator has been registered by the beacon chain and is currently waiting to be voted into the activation queue. You can read more about this process in the <a href="https://kb.beaconcha.in/ethereum-2.0-depositing">Ethereum 2.0 Knowledge Base</a>.
+          This validator has been processed by the beacon chain and is currently waiting to be activated.
+          {{ if lt .ActivationEpoch 100_000_000 }}
+            It will be activated on <span class="font-weight-bolder" title="{{ .ActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .ActivationTs.Unix }}">{{ .ActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .ActivationEpoch }}</span>.
+          {{ else if lt .EstimatedActivationEpoch 100_000_000 }}
+            It is estimated to be activated on <span class="font-weight-bolder" title="{{ .ActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .EstimatedActivationTs.Unix }}">{{ .EstimatedActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .EstimatedActivationEpoch }}</span>.
           {{ end }}
+          Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
         </div>
-        {{ if lt .ActivationEpoch 9223372036854775807 }}
-          <div class="py-2" style="min-width:300px;">
-            {{ template "validatorCountdown" . }}
+        {{ if gt .QueuePosition 0 }}
+          <div class="d-flex justify-content-center">
+            <p>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined" data-toggle="tooltip" title="{{ .ChurnRate }} Validators get dequeued each Epoch.">#{{ .QueuePosition }}</span> in Queue.</p>
           </div>
         {{ end }}
+        <div class="my-4" style="min-width:300px;">
+          {{ template "validatorCountdown" . }}
+        </div>
       </div>
     </div>
   </div>

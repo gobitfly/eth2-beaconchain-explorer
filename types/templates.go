@@ -340,7 +340,10 @@ type ValidatorPageData struct {
 	AttestationInclusionEffectiveness   float64
 	CsrfField                           template.HTML
 	NetworkStats                        *IndexPageData
-	EstimatedActivationTs               int64
+	ChurnRate                           uint64
+	QueuePosition                       uint64
+	EstimatedActivationTs               time.Time
+	EstimatedActivationEpoch            uint64
 	InclusionDelay                      int64
 	CurrentAttestationStreak            uint64
 	LongestAttestationStreak            uint64
@@ -360,6 +363,10 @@ type RocketpoolValidatorPageData struct {
 	NodeMinRPLStake      *string    `db:"node_min_rpl_stake"`
 	NodeMaxRPLStake      *string    `db:"node_max_rpl_stake"`
 	CumulativeRPL        *string    `db:"rpl_cumulative_rewards"`
+	SmoothingClaimed     *string    `db:"claimed_smoothing_pool"`
+	SmoothingUnclaimed   *string    `db:"unclaimed_smoothing_pool"`
+	UnclaimedRPL         *string    `db:"unclaimed_rpl_rewards"`
+	SmoothingPoolOptIn   bool       `db:"smoothing_pool_opted_in"`
 }
 
 type ValidatorStatsTablePageData struct {
@@ -463,6 +470,7 @@ type ValidatorPerformance struct {
 
 // ValidatorAttestation is a struct for the validators attestations data
 type ValidatorAttestation struct {
+	Index          uint64
 	Epoch          uint64 `db:"epoch"`
 	AttesterSlot   uint64 `db:"attesterslot"`
 	CommitteeIndex uint64 `db:"committeeindex"`
@@ -583,6 +591,8 @@ type BlockPageData struct {
 	AttesterSlashings []*BlockPageAttesterSlashing
 	ProposerSlashings []*BlockPageProposerSlashing
 	SyncCommittee     []uint64 // TODO: Setting it to contain the validator index
+
+	Tags TagMetadataSlice `db:"tags"`
 }
 
 func (u *BlockPageData) MarshalJSON() ([]byte, error) {
@@ -821,6 +831,7 @@ type GenericChartData struct {
 	Subtitle                        string                    `json:"subtitle"`
 	XAxisTitle                      string                    `json:"x_axis_title"`
 	YAxisTitle                      string                    `json:"y_axis_title"`
+	YAxisNegativeLog                bool                      `json:"y_axis_negative_log"`
 	Type                            string                    `json:"type"`
 	StackingMode                    string                    `json:"stacking_mode"`
 	ColumnDataGroupingApproximation string                    // "average", "averages", "open", "high", "low", "close" and "sum"
@@ -1213,6 +1224,10 @@ type RocketpoolPageDataNode struct {
 	MinRPLStake              string `db:"min_rpl_stake"`
 	MaxRPLStake              string `db:"max_rpl_stake"`
 	CumulativeRPL            string `db:"rpl_cumulative_rewards"`
+	ClaimedSmoothingPool     string `db:"claimed_smoothing_pool"`
+	UnclaimedSmoothingPool   string `db:"unclaimed_smoothing_pool"`
+	UnclaimedRplRewards      string `db:"unclaimed_rpl_rewards"`
+	SmoothingPoolOptIn       bool   `db:"smoothing_pool_opted_in"`
 }
 
 type RocketpoolPageDataDAOProposal struct {
@@ -1296,8 +1311,9 @@ type EventNameCheckbox struct {
 }
 
 type PoolsResp struct {
-	PoolsDistribution ChartsPageDataChart
-	PoolInfos         []*PoolInfo
+	PoolsDistribution       ChartsPageDataChart
+	HistoricPoolPerformance ChartsPageDataChart
+	PoolInfos               []*PoolInfo
 }
 
 type PoolInfo struct {
