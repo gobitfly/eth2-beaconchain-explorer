@@ -148,8 +148,9 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatAddCommas": FormatAddCommas,
 		"encodeToString":  hex.EncodeToString,
 
-		"formatTokenBalance": FormatTokenBalance,
-		"toBase64":           ToBase64,
+		"formatTokenBalance":      FormatTokenBalance,
+		"formatAddressEthBalance": FormatAddressEthBalance,
+		"toBase64":                ToBase64,
 		"bytesToNumberString": func(input []byte) string {
 			return new(big.Int).SetBytes(input).String()
 		},

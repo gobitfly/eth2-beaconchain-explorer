@@ -1385,9 +1385,11 @@ type Eth1AddressPageData struct {
 }
 
 type Eth1AddressMetadata struct {
-	Balances []*Eth1AddressBalance
-	ERC20    *ERC20Metadata
-	Name     string
+	Balances   []*Eth1AddressBalance
+	ERC20      *ERC20Metadata
+	Name       string
+	Tags       []template.HTML
+	EthBalance *Eth1AddressBalance
 }
 
 type Eth1AddressBalance struct {

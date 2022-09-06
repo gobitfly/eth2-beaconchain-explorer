@@ -2264,9 +2264,10 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 	}
 
 	ret := &types.Eth1AddressMetadata{
-		Balances: []*types.Eth1AddressBalance{},
-		ERC20:    &types.ERC20Metadata{},
-		Name:     "",
+		Balances:   []*types.Eth1AddressBalance{},
+		ERC20:      &types.ERC20Metadata{},
+		Name:       "",
+		EthBalance: &types.Eth1AddressBalance{},
 	}
 
 	g := new(errgroup.Group)
@@ -2280,6 +2281,7 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 					if len(column.Value) == 0 && len(token) > 1 {
 						return nil
 					}
+
 					balance := &types.Eth1AddressBalance{
 						Address: address,
 						Token:   token,
