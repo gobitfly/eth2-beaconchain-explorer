@@ -613,7 +613,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 			})
 
 			g.Go(func() error {
-				validatorEffectivenessData, err = validatorEffectiveness(epoch, queryIndices)
+				validatorEffectivenessData, err = validatorEffectiveness(uint64(epoch), queryIndices)
 				return err
 			})
 			g.Go(func() error {
@@ -741,12 +741,15 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 	return utils.SqlRowsToJSON(rows)
 }
 
-func validatorEffectiveness(epoch int64, indices []uint64) ([]*types.ValidatorEffectiveness, error) {
-	data, err := db.BigtableClient.GetValidatorEffectiveness(indices, services.LatestEpoch())
+func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorEffectiveness, error) {
+	data, err := db.BigtableClient.GetValidatorEffectiveness(indices, epoch)
 	if err != nil {
 		return nil, err
 	}
-
+	for _, eff := range data {
+		// convert value to old api schema
+		eff.AttestationEfficiency = 1 / (1 - ((1 + eff.AttestationEfficiency) / 32))
+	}
 	return data, nil
 }
 
@@ -979,7 +982,7 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	data, err := db.BigtableClient.GetValidatorEffectiveness(queryIndices, services.LatestEpoch())
+	data, err := validatorEffectiveness(services.LatestEpoch(), queryIndices)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1020,7 +1023,7 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := db.BigtableClient.GetValidatorEffectiveness(queryIndices, services.LatestEpoch())
+	data, err := validatorEffectiveness(services.LatestEpoch(), queryIndices)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1730,7 +1733,7 @@ func GetMobileWidgetStats(j *json.Encoder, r *http.Request, indexOrPubkey string
 		return
 	}
 
-	efficiencyData, err := db.BigtableClient.GetValidatorEffectiveness(queryIndices, services.LatestEpoch())
+	efficiencyData, err := validatorEffectiveness(services.LatestEpoch(), queryIndices)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not parse db results")
 		return
