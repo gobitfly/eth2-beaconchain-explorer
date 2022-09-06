@@ -110,12 +110,17 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatValidatorTag":                      FormatValidatorTag,
 		"formatRPL":                               FormatRPL,
 		"formatFloat":                             FormatFloat,
+		"formatAmount":                            FormatAmount,
+		"formatAddressAsLink":                     FormatAddressAsLink,
+		"formatDifficulty":                        FormatDifficulty,
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
 		"roundDecimals":                           RoundDecimals,
+		"bigIntCmp":                               func(i *big.Int, j int) int { return i.Cmp(big.NewInt(int64(j))) },
 		"mod":                                     func(i, j int) bool { return i%j == 0 },
 		"sub":                                     func(i, j int) int { return i - j },
+		"subUI64":                                 func(i, j uint64) uint64 { return i - j },
 		"add":                                     func(i, j int) int { return i + j },
 		"addI64":                                  func(i, j int64) int64 { return i + j },
 		"addUI64":                                 func(i, j uint64) uint64 { return i + j },
@@ -388,11 +393,17 @@ func IsApiRequest(r *http.Request) bool {
 }
 
 var eth1AddressRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{40}$")
+var eth1TxRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{64}$")
 var zeroHashRE = regexp.MustCompile("^0?x?0+$")
 
 // IsValidEth1Address verifies whether a string represents a valid eth1-address.
 func IsValidEth1Address(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1AddressRE.MatchString(s)
+}
+
+// IsValidEth1Tx verifies whether a string represents a valid eth1-tx-hash.
+func IsValidEth1Tx(s string) bool {
+	return !zeroHashRE.MatchString(s) && eth1TxRE.MatchString(s)
 }
 
 // https://github.com/badoux/checkmail/blob/f9f80cb795fa/checkmail.go#L37
@@ -654,7 +665,7 @@ func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
 	meta, err := getABIFromEtherscan(address)
 
 	if err != nil {
-		logrus.Errorf("failed to get abi for contract %v from etherscan: %v", address, err)
+		logrus.Errorf("failed to get abi for contract %x from etherscan: %v", address, err)
 		return nil, fmt.Errorf("contract abi not found")
 	}
 	return meta, nil

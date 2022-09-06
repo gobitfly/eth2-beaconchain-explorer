@@ -51,18 +51,19 @@ const (
 
 const max_block_number = 1000000000
 const (
-	DATA_COLUMN              = "d"
-	INDEX_COLUMN             = "i"
-	DEFAULT_FAMILY           = "f"
-	DEFAULT_FAMILY_BLOCKS    = "default"
-	ACCOUNT_METADATA_FAMILY  = "a"
-	CONTRACT_METADATA_FAMILY = "c"
-	ERC20_METADATA_FAMILY    = "erc20"
-	ERC721_METADATA_FAMILY   = "erc721"
-	ERC1155_METADATA_FAMILY  = "erc1155"
-	writeRowLimit            = 10000
-	MAX_INT                  = 9223372036854775807
-	MIN_INT                  = -9223372036854775808
+	DATA_COLUMN                    = "d"
+	INDEX_COLUMN                   = "i"
+	DEFAULT_FAMILY                 = "f"
+	DEFAULT_FAMILY_BLOCKS          = "default"
+	METADATA_UPDATES_FAMILY_BLOCKS = "blocks"
+	ACCOUNT_METADATA_FAMILY        = "a"
+	CONTRACT_METADATA_FAMILY       = "c"
+	ERC20_METADATA_FAMILY          = "erc20"
+	ERC721_METADATA_FAMILY         = "erc721"
+	ERC1155_METADATA_FAMILY        = "erc1155"
+	writeRowLimit                  = 10000
+	MAX_INT                        = 9223372036854775807
+	MIN_INT                        = -9223372036854775808
 )
 
 const (
@@ -354,8 +355,8 @@ func (bigtable *Bigtable) GetFullBlockFromDataTable(number uint64) (*types.Eth1B
 }
 
 func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockIndexed, error) {
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
 
 	prefix := fmt.Sprintf("%s:B:", bigtable.chainId)
 
@@ -450,8 +451,8 @@ func getFullBlockHandler(blocks *[]*types.Eth1Block) func(gcp_bigtable.Row) bool
 // GetFullBlockDescending gets blocks starting at block start
 func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.Eth1Block, error) {
 	startPadded := reversedPaddedBlockNumber(start)
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
 
 	prefix := fmt.Sprintf("%s:%s", bigtable.chainId, startPadded)
 
@@ -474,8 +475,8 @@ func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.
 // GetBlocksDescending gets blocks starting at block start
 func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth1BlockIndexed, error) {
 	startPadded := reversedPaddedBlockNumber(start)
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
 
 	prefix := fmt.Sprintf("%s:B:%s", bigtable.chainId, startPadded)
 
@@ -786,6 +787,30 @@ func CalculateMevFromBlock(block *types.Eth1Block) *big.Int {
 
 	}
 	return mevReward
+}
+
+func CalculateTxFeesFromBlock(block *types.Eth1Block) *big.Int {
+	txFees := new(big.Int)
+	for _, tx := range block.Transactions {
+		txFees.Add(txFees, CalculateTxFeeFromTransaction(tx, new(big.Int).SetBytes(block.BaseFee)))
+	}
+	return txFees
+}
+
+func CalculateTxFeeFromTransaction(tx *types.Eth1Transaction, blockBaseFee *big.Int) *big.Int {
+	// calculate tx fee depending on tx type
+	txFee := new(big.Int).SetUint64(tx.GasUsed)
+	if tx.Type == uint32(2) {
+		// multiply gasused with min(baseFee + maxpriorityfee, maxfee)
+		if normalGasPrice, maxGasPrice := new(big.Int).Add(blockBaseFee, new(big.Int).SetBytes(tx.MaxPriorityFeePerGas)), new(big.Int).SetBytes(tx.MaxFeePerGas); normalGasPrice.Cmp(maxGasPrice) <= 0 {
+			txFee.Mul(txFee, normalGasPrice)
+		} else {
+			txFee.Mul(txFee, maxGasPrice)
+		}
+	} else {
+		txFee.Mul(txFee, new(big.Int).SetBytes(tx.GasPrice))
+	}
+	return txFee
 }
 
 // TransformTx extracts transactions from bigtable more specifically from the table blocks.
@@ -1499,6 +1524,9 @@ func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block, cache *ccache.C
 			Time:        uncle.GetTime(),
 			Reward:      r.Bytes(),
 		}
+
+		bigtable.markBalanceUpdate(uncle.Coinbase, []byte{0x0}, bulkMetadataUpdates, cache)
+
 		// store uncles in with the key <chainid>:U:<reversePaddedBlockNumber>:<reversePaddedUncleIndex>
 		key := fmt.Sprintf("%s:U:%s:%s", bigtable.chainId, reversedPaddedBlockNumber(block.GetNumber()), iReversed)
 		mut := gcp_bigtable.NewMutation()
@@ -1531,8 +1559,8 @@ func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block, cache *ccache.C
 }
 
 func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*types.Eth1TransactionIndexed, string, error) {
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
 
 	// add \x00 to the row range such that we skip the previous value
 	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
@@ -1551,8 +1579,6 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*ty
 	if err != nil {
 		return nil, "", err
 	}
-
-	logger.Infof("found transactions: %v results", len(keys))
 
 	if len(keys) == 0 {
 		return data, "", nil
@@ -1662,8 +1688,8 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 }
 
 func (bigtable *Bigtable) GetEth1BlocksForAddress(prefix string, limit int64) ([]*types.Eth1BlockIndexed, string, error) {
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
 
 	// add \x00 to the row range such that we skip the previous value
 	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 4))
@@ -1747,8 +1773,8 @@ func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, search 
 }
 
 func (bigtable *Bigtable) GetEth1UnclesForAddress(prefix string, limit int64) ([]*types.Eth1UncleIndexed, string, error) {
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
 
 	// add \x00 to the row range such that we skip the previous value
 	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 4))
@@ -1831,8 +1857,8 @@ func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, search 
 }
 
 func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, limit int64) ([]*types.Eth1InternalTransactionIndexed, string, error) {
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
 
 	// add \x00 to the row range such that we skip the previous value
 	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
@@ -1938,8 +1964,8 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 }
 
 func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]*types.Eth1ERC20Indexed, string, error) {
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
 
 	// add \x00 to the row range such that we skip the previous value
 	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
@@ -2070,8 +2096,8 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 }
 
 func (bigtable *Bigtable) GetEth1ERC721ForAddress(prefix string, limit int64) ([]*types.Eth1ERC721Indexed, string, error) {
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
 
 	// add \x00 to the row range such that we don't include the prefix itself in the response. Converts range to open interval (start, end).
 	// "1:I:ERC721:81d98c8fda0410ee3e9d7586cb949cd19fa4cf38:TIME;"
@@ -2156,8 +2182,8 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address string, search strin
 }
 
 func (bigtable *Bigtable) GetEth1ERC1155ForAddress(prefix string, limit int64) ([]*types.ETh1ERC1155Indexed, string, error) {
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
 
 	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
 
@@ -2236,21 +2262,31 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]string, error) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]string, []string, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*120))
 	defer cancel()
 
-	res := make([]string, 0, limit)
+	keys := make([]string, 0, limit)
+	pairs := make([]string, 0, limit)
 
 	err := bigtable.tableMetadataUpdates.ReadRows(ctx, gcp_bigtable.NewRange(startToken, ""), func(row gcp_bigtable.Row) bool {
-		res = append(res, row.Key())
+		if !strings.Contains(row.Key(), startToken) {
+			return false
+		}
+		keys = append(keys, row.Key())
+
+		for _, ri := range row {
+			for _, item := range ri {
+				pairs = append(pairs, row.Key()+":"+item.Column)
+			}
+		}
 		return true
 	}, gcp_bigtable.LimitRows(int64(limit)))
 
-	if err == context.DeadlineExceeded && len(res) > 0 {
-		return res, nil
+	if err == context.DeadlineExceeded && len(keys) > 0 {
+		return keys, pairs, nil
 	}
-	return res, err
+	return keys, pairs, err
 }
 
 func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1AddressMetadata, error) {
@@ -2573,16 +2609,12 @@ func (bigtable *Bigtable) SaveContractMetadata(address []byte, metadata *types.C
 	return bigtable.tableMetadata.Apply(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address), mut)
 }
 
-func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance) error {
+func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance, deleteKeys []string) error {
 	if len(balances) == 0 {
 		return nil
 	}
 
 	mutsWrite := &types.BulkMutations{
-		Keys: make([]string, 0, len(balances)),
-		Muts: make([]*gcp_bigtable.Mutation, 0, len(balances)),
-	}
-	mutsDelete := &types.BulkMutations{
 		Keys: make([]string, 0, len(balances)),
 		Muts: make([]*gcp_bigtable.Mutation, 0, len(balances)),
 	}
@@ -2593,17 +2625,23 @@ func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance) err
 		mutWrite.Set(ACCOUNT_METADATA_FAMILY, fmt.Sprintf("B:%x", balance.Token), gcp_bigtable.Timestamp(0), balance.Balance)
 		mutsWrite.Keys = append(mutsWrite.Keys, fmt.Sprintf("%s:%x", bigtable.chainId, balance.Address))
 		mutsWrite.Muts = append(mutsWrite.Muts, mutWrite)
-
-		mutDelete := gcp_bigtable.NewMutation()
-		mutDelete.DeleteRow()
-		mutsDelete.Keys = append(mutsDelete.Keys, fmt.Sprintf("%s:%x:%x", "B", balance.Address, balance.Token))
-		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
 	}
 
 	err := bigtable.WriteBulk(mutsWrite, bigtable.tableMetadata)
 
 	if err != nil {
 		return err
+	}
+
+	mutsDelete := &types.BulkMutations{
+		Keys: make([]string, 0, len(balances)),
+		Muts: make([]*gcp_bigtable.Mutation, 0, len(balances)),
+	}
+	for _, key := range deleteKeys {
+		mutDelete := gcp_bigtable.NewMutation()
+		mutDelete.DeleteRow()
+		mutsDelete.Keys = append(mutsDelete.Keys, key)
+		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
 	}
 
 	err = bigtable.WriteBulk(mutsDelete, bigtable.tableMetadataUpdates)
@@ -2615,9 +2653,70 @@ func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance) err
 	return nil
 }
 
+func (bigtable *Bigtable) SaveBlockKeys(blockNumber uint64, blockHash []byte, keys string) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	mut := gcp_bigtable.NewMutation()
+	mut.Set(METADATA_UPDATES_FAMILY_BLOCKS, "keys", gcp_bigtable.Timestamp(0), []byte(keys))
+
+	key := fmt.Sprintf("%s:BLOCK:%s:%x", bigtable.chainId, reversedPaddedBlockNumber(blockNumber), blockHash)
+	err := bigtable.tableMetadataUpdates.Apply(ctx, key, mut)
+
+	return err
+}
+
+func (bigtable *Bigtable) GetBlockKeys(blockNumber uint64, blockHash []byte) ([]string, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	key := fmt.Sprintf("%s:BLOCK:%s:%x", bigtable.chainId, reversedPaddedBlockNumber(blockNumber), blockHash)
+
+	row, err := bigtable.tableMetadataUpdates.ReadRow(ctx, key)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if row == nil {
+		return nil, fmt.Errorf("keys for block %v not found", blockNumber)
+	}
+
+	return strings.Split(string(row[METADATA_UPDATES_FAMILY_BLOCKS][0].Value), ","), nil
+}
+
+// Deletes all block data from bigtable
+func (bigtable *Bigtable) DeleteBlock(blockNumber uint64, blockHash []byte) error {
+
+	// First receive all keys that were written by this block (entities & indices)
+	keys, err := bigtable.GetBlockKeys(blockNumber, blockHash)
+	if err != nil {
+		return err
+	}
+
+	// Delete all of those keys
+	mutsDelete := &types.BulkMutations{
+		Keys: make([]string, 0, len(keys)),
+		Muts: make([]*gcp_bigtable.Mutation, 0, len(keys)),
+	}
+	for _, key := range keys {
+		mutDelete := gcp_bigtable.NewMutation()
+		mutDelete.DeleteRow()
+		mutsDelete.Keys = append(mutsDelete.Keys, key)
+		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+	}
+
+	err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*types.Eth1ERC20Indexed, string, error) {
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
 
 	// add \x00 to the row range such that we skip the previous value
 	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
@@ -2748,6 +2847,42 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 	data := &types.DataTableResponse{
 		Data:        tableData,
 		PagingToken: lastKey,
+	}
+
+	return data, nil
+}
+
+func (bigtable *Bigtable) SearchForAddress(addressPrefix []byte, limit int) ([]*types.Eth1AddressSearchItem, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	data := make([]*types.Eth1AddressSearchItem, 0, limit)
+
+	prefix := fmt.Sprintf("%s:%x", bigtable.chainId, addressPrefix)
+
+	err := bigtable.tableMetadata.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(row gcp_bigtable.Row) bool {
+		si := &types.Eth1AddressSearchItem{
+			Address: strings.TrimPrefix(row.Key(), bigtable.chainId+":"),
+			Name:    "",
+			Token:   "",
+		}
+		for _, ri := range row {
+			for _, item := range ri {
+				if item.Column == ACCOUNT_METADATA_FAMILY+":"+ACCOUNT_COLUMN_NAME {
+					si.Name = string(item.Value)
+				}
+
+				if item.Column == ERC20_METADATA_FAMILY+":"+ERC20_COLUMN_SYMBOL {
+					si.Token = "ERC20"
+				}
+			}
+		}
+		data = append(data, si)
+		return true
+	}, gcp_bigtable.LimitRows(int64(limit)))
+
+	if err != nil {
+		return nil, err
 	}
 
 	return data, nil

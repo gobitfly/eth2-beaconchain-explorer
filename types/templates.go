@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net/http"
 	"time"
 
@@ -1535,4 +1536,35 @@ type EtherscanContractMetadata struct {
 		SwarmSource          string `json:"SwarmSource"`
 	} `json:"result"`
 	Status string `json:"status"`
+}
+
+type Eth1BlockPageData struct {
+	Number         uint64
+	PreviousBlock  uint64
+	NextBlock      uint64
+	TxCount        uint64
+	UncleCount     uint64
+	Hash           string
+	MinerAddress   string
+	Reward         *big.Int
+	MevReward      *big.Int
+	TxFees         *big.Int
+	GasUsage       uint64
+	LowestGasPrice *big.Int
+	Ts             time.Time
+	Difficulty     *big.Int
+	BaseFeePerGas  *big.Int
+	BurnedFees     *big.Int
+	Extra          string
+	Txs            []Eth1BlockPageTransaction
+	Uncles         []Eth1BlockPageData
+}
+
+type Eth1BlockPageTransaction struct {
+	Hash     string
+	From     string
+	To       string
+	Value    *big.Int
+	Fee      *big.Int
+	GasPrice *big.Int
 }

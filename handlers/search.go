@@ -36,13 +36,12 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	search = strings.Replace(search, "0x", "", -1)
-
-	if len(search) == 64 {
-		http.Redirect(w, r, "/block/"+search, http.StatusMovedPermanently)
+	if utils.IsValidEth1Tx(search) {
+		http.Redirect(w, r, "/execution/tx/"+search, http.StatusMovedPermanently)
 	} else if len(search) == 96 {
 		http.Redirect(w, r, "/validator/"+search, http.StatusMovedPermanently)
 	} else if utils.IsValidEth1Address(search) {
-		http.Redirect(w, r, "/validators/eth1deposits?q="+search, http.StatusMovedPermanently)
+		http.Redirect(w, r, "/execution/address/"+search, http.StatusMovedPermanently)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
 		data := InitPageData(w, r, "search", "/search", "")
@@ -170,7 +169,6 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if len(search) <= 1 {
 			break
 		}
-		result = &types.SearchAheadEth1Result{}
 		if len(search)%2 != 0 {
 			search = search[:len(search)-1]
 		}
@@ -181,16 +179,9 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 				return
 			}
-			err = db.ReaderDb.Select(result, `
-				SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
-				FROM eth1_deposits
-				WHERE from_address LIKE $1 || '%'::bytea 
-				LIMIT 10`, eth1AddressHash)
-			if err != nil {
-				logger.Errorf("error reading from_address: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			}
+			result, err = db.BigtableClient.SearchForAddress(eth1AddressHash, 10)
+		} else {
+			result = []*types.Eth1AddressSearchItem{}
 		}
 		// logger.WithFields(logrus.Fields{
 		// 	"duration": time.Since(start),

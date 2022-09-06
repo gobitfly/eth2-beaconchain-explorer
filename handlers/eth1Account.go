@@ -349,10 +349,3 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
-func Eth1Block(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	block := vars["block"]
-
-	http.Redirect(w, r, fmt.Sprintf("https://etherscan.io/block/%s", block), http.StatusSeeOther)
-}
