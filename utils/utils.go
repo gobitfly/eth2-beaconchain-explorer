@@ -467,22 +467,16 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 			switch v.DatabaseTypeName() {
 			case "VARCHAR", "TEXT", "UUID":
 				scanArgs[i] = new(sql.NullString)
-				break
 			case "BOOL":
 				scanArgs[i] = new(sql.NullBool)
-				break
 			case "INT4", "INT8":
 				scanArgs[i] = new(sql.NullInt64)
-				break
 			case "FLOAT8":
 				scanArgs[i] = new(sql.NullFloat64)
-				break
 			case "TIMESTAMP":
 				scanArgs[i] = new(sql.NullTime)
-				break
 			case "_INT4", "_INT8":
 				scanArgs[i] = new(pq.Int64Array)
-				break
 			default:
 				scanArgs[i] = new(sql.NullString)
 			}
