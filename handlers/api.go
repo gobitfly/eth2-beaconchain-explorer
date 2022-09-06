@@ -746,9 +746,9 @@ func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorE
 	if err != nil {
 		return nil, err
 	}
-	for _, eff := range data {
+	for i := 0; i < len(data); i++ {
 		// convert value to old api schema
-		eff.AttestationEfficiency = 1 / (1 - ((1 + eff.AttestationEfficiency) / 32))
+		data[i].AttestationEfficiency = 1 / (1 - ((1 + data[i].AttestationEfficiency) / 32))
 	}
 	return data, nil
 }
