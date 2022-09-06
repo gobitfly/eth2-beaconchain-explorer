@@ -15,6 +15,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"sort"
 	"strconv"
@@ -613,7 +614,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 			})
 
 			g.Go(func() error {
-				validatorEffectivenessData, err = validatorEffectiveness(epoch, queryIndices)
+				validatorEffectivenessData, err = validatorEffectiveness(uint64(epoch)-1, queryIndices)
 				return err
 			})
 			g.Go(func() error {
@@ -741,12 +742,16 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 	return utils.SqlRowsToJSON(rows)
 }
 
-func validatorEffectiveness(epoch int64, indices []uint64) ([]*types.ValidatorEffectiveness, error) {
-	data, err := db.BigtableClient.GetValidatorEffectiveness(indices, services.LatestEpoch())
+func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorEffectiveness, error) {
+	data, err := db.BigtableClient.GetValidatorEffectiveness(indices, epoch)
 	if err != nil {
 		return nil, err
 	}
-
+	for i := 0; i < len(data); i++ {
+		// convert value to old api schema
+		tempValue := 1 / (1 - ((1 + data[i].AttestationEfficiency) / 32))
+		data[i].AttestationEfficiency = math.Floor(tempValue*10000) / 10000
+	}
 	return data, nil
 }
 
@@ -979,7 +984,7 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	data, err := db.BigtableClient.GetValidatorEffectiveness(queryIndices, services.LatestEpoch())
+	data, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1020,7 +1025,7 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := db.BigtableClient.GetValidatorEffectiveness(queryIndices, services.LatestEpoch())
+	data, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1730,7 +1735,7 @@ func GetMobileWidgetStats(j *json.Encoder, r *http.Request, indexOrPubkey string
 		return
 	}
 
-	efficiencyData, err := db.BigtableClient.GetValidatorEffectiveness(queryIndices, services.LatestEpoch())
+	efficiencyData, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not parse db results")
 		return
