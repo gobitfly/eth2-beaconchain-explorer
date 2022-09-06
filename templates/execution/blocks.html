@@ -22,10 +22,10 @@
                 },
                 columnDefs: [
                     {
-                        targets: 10,
-                        data: '10',
+                        targets: 4,
+                        data: '4',
                         render: function(data, type, row) {
-                            return '<span class="text-truncate" style="display:block;max-width: 300px;">'+data+ '</span>'
+                            return `<a href="address/${data}">0x${data.substr(0, 8)}...</a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${data}"></i>`
                         }
                     }
                 ],
@@ -68,8 +68,9 @@
 							<th>Slot</th>
 							<th>Block</th>
 							<th>Status</th>
+							<th><span data-toggle="tooltip" data-placement="top" title="Miner / Fee Recipient">Recipient</span></th>
 							<th>Proposer</th>
-							<th>Transactions</th> 
+							<th><span data-toggle="tooltip" data-placement="top" title="Transactions">Txn</span></th> 
 							<th>Gas Used</th>
 							<th>Gas Limit</th>
 							<th>Base Fee</th>
