@@ -169,7 +169,6 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if len(search) <= 1 {
 			break
 		}
-		result = &types.SearchAheadEth1Result{}
 		if len(search)%2 != 0 {
 			search = search[:len(search)-1]
 		}
@@ -180,16 +179,9 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 				return
 			}
-			err = db.ReaderDb.Select(result, `
-				SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
-				FROM eth1_deposits
-				WHERE from_address LIKE $1 || '%'::bytea 
-				LIMIT 10`, eth1AddressHash)
-			if err != nil {
-				logger.Errorf("error reading from_address: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			}
+			result, err = db.BigtableClient.SearchForAddress(eth1AddressHash, 10)
+		} else {
+			result = []*types.Eth1AddressSearchItem{}
 		}
 		// logger.WithFields(logrus.Fields{
 		// 	"duration": time.Since(start),

@@ -262,7 +262,7 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 			logrus.Fatalf("error retrieving balances from node: %v", err)
 		}
 
-		err = bt.SaveBalances(balances)
+		err = bt.SaveBalances(balances, updates)
 		if err != nil {
 			logrus.Fatalf("error saving balances to bigtable: %v", err)
 		}

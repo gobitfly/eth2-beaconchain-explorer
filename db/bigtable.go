@@ -1499,6 +1499,9 @@ func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block, cache *ccache.C
 			Time:        uncle.GetTime(),
 			Reward:      r.Bytes(),
 		}
+
+		bigtable.markBalanceUpdate(uncle.Coinbase, []byte{0x0}, bulkMetadataUpdates, cache)
+
 		// store uncles in with the key <chainid>:U:<reversePaddedBlockNumber>:<reversePaddedUncleIndex>
 		key := fmt.Sprintf("%s:U:%s:%s", bigtable.chainId, reversedPaddedBlockNumber(block.GetNumber()), iReversed)
 		mut := gcp_bigtable.NewMutation()
@@ -2237,7 +2240,7 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 }
 
 func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]string, error) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*120))
 	defer cancel()
 
 	res := make([]string, 0, limit)
@@ -2571,16 +2574,12 @@ func (bigtable *Bigtable) SaveContractMetadata(address []byte, metadata *types.C
 	return bigtable.tableMetadata.Apply(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address), mut)
 }
 
-func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance) error {
+func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance, deleteKeys []string) error {
 	if len(balances) == 0 {
 		return nil
 	}
 
 	mutsWrite := &types.BulkMutations{
-		Keys: make([]string, 0, len(balances)),
-		Muts: make([]*gcp_bigtable.Mutation, 0, len(balances)),
-	}
-	mutsDelete := &types.BulkMutations{
 		Keys: make([]string, 0, len(balances)),
 		Muts: make([]*gcp_bigtable.Mutation, 0, len(balances)),
 	}
@@ -2591,17 +2590,23 @@ func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance) err
 		mutWrite.Set(ACCOUNT_METADATA_FAMILY, fmt.Sprintf("B:%x", balance.Token), gcp_bigtable.Timestamp(0), balance.Balance)
 		mutsWrite.Keys = append(mutsWrite.Keys, fmt.Sprintf("%s:%x", bigtable.chainId, balance.Address))
 		mutsWrite.Muts = append(mutsWrite.Muts, mutWrite)
-
-		mutDelete := gcp_bigtable.NewMutation()
-		mutDelete.DeleteRow()
-		mutsDelete.Keys = append(mutsDelete.Keys, fmt.Sprintf("%s:%x:%x", "B", balance.Address, balance.Token))
-		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
 	}
 
 	err := bigtable.WriteBulk(mutsWrite, bigtable.tableMetadata)
 
 	if err != nil {
 		return err
+	}
+
+	mutsDelete := &types.BulkMutations{
+		Keys: make([]string, 0, len(balances)),
+		Muts: make([]*gcp_bigtable.Mutation, 0, len(balances)),
+	}
+	for _, key := range deleteKeys {
+		mutDelete := gcp_bigtable.NewMutation()
+		mutDelete.DeleteRow()
+		mutsDelete.Keys = append(mutsDelete.Keys, key)
+		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
 	}
 
 	err = bigtable.WriteBulk(mutsDelete, bigtable.tableMetadataUpdates)
@@ -2761,7 +2766,7 @@ func (bigtable *Bigtable) SearchForAddress(addressPrefix []byte, limit int) ([]*
 
 	err := bigtable.tableMetadata.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(row gcp_bigtable.Row) bool {
 		si := &types.Eth1AddressSearchItem{
-			Address: common.FromHex(strings.TrimPrefix(row.Key(), bigtable.chainId+":")),
+			Address: strings.TrimPrefix(row.Key(), bigtable.chainId+":"),
 			Name:    "",
 			Token:   "",
 		}

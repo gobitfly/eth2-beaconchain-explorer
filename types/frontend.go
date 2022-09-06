@@ -485,7 +485,7 @@ type GasNowPageData struct {
 }
 
 type Eth1AddressSearchItem struct {
-	Address []byte
-	Name    string
-	Token   string
+	Address string `json:"address"`
+	Name    string `json:"name"`
+	Token   string `json:"token"`
 }
