@@ -99,7 +99,7 @@ func main() {
 
 	rpc.CurrentGethClient, err = rpc.NewGethClient(utils.Config.Eth1GethEndpoint)
 	if err != nil {
-		logrus.Fatalf("error initializing erigon client: %v", err)
+		logrus.Fatalf("error initializing geth client: %v", err)
 	}
 
 	// if utils.Config.Frontend.Bigtable.Enabled {
