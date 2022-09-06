@@ -275,7 +275,7 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 }
 
 // GetEpochData will get the epoch data from Lighthouse RPC api
-func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
+func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool) (*types.EpochData, error) {
 	wg := &sync.WaitGroup{}
 	mux := &sync.Mutex{}
 	var err error
@@ -303,44 +303,45 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	var validatorBalances7d map[uint64]uint64
 	var validatorBalances31d map[uint64]uint64
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		start := time.Now()
-		var err error
-		validatorBalances1d, err = lc.getBalancesForEpoch(epoch1d)
-		if err != nil {
-			logrus.Errorf("error retrieving validator balances for epoch %v (1d): %v", epoch1d, err)
-			return
-		}
-		logger.Printf("retrieved data for %v validator balances for epoch %v (1d) took %v", len(parsedValidators.Data), epoch1d, time.Since(start))
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		start := time.Now()
-		var err error
-		validatorBalances7d, err = lc.getBalancesForEpoch(epoch7d)
-		if err != nil {
-			logrus.Errorf("error retrieving validator balances for epoch %v (7d): %v", epoch7d, err)
-			return
-		}
-		logger.Printf("retrieved data for %v validator balances for epoch %v (7d) took %v", len(parsedValidators.Data), epoch7d, time.Since(start))
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		start := time.Now()
-		var err error
-		validatorBalances31d, err = lc.getBalancesForEpoch(epoch31d)
-		if err != nil {
-			logrus.Errorf("error retrieving validator balances for epoch %v (31d): %v", epoch31d, err)
-			return
-		}
-		logger.Printf("retrieved data for %v validator balances for epoch %v (31d) took %v", len(parsedValidators.Data), epoch31d, time.Since(start))
-	}()
-	wg.Wait()
-
+	if !skipHistoricBalances {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			start := time.Now()
+			var err error
+			validatorBalances1d, err = lc.getBalancesForEpoch(epoch1d)
+			if err != nil {
+				logrus.Errorf("error retrieving validator balances for epoch %v (1d): %v", epoch1d, err)
+				return
+			}
+			logger.Printf("retrieved data for %v validator balances for epoch %v (1d) took %v", len(parsedValidators.Data), epoch1d, time.Since(start))
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			start := time.Now()
+			var err error
+			validatorBalances7d, err = lc.getBalancesForEpoch(epoch7d)
+			if err != nil {
+				logrus.Errorf("error retrieving validator balances for epoch %v (7d): %v", epoch7d, err)
+				return
+			}
+			logger.Printf("retrieved data for %v validator balances for epoch %v (7d) took %v", len(parsedValidators.Data), epoch7d, time.Since(start))
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			start := time.Now()
+			var err error
+			validatorBalances31d, err = lc.getBalancesForEpoch(epoch31d)
+			if err != nil {
+				logrus.Errorf("error retrieving validator balances for epoch %v (31d): %v", epoch31d, err)
+				return
+			}
+			logger.Printf("retrieved data for %v validator balances for epoch %v (31d) took %v", len(parsedValidators.Data), epoch31d, time.Since(start))
+		}()
+		wg.Wait()
+	}
 	for _, validator := range parsedValidators.Data {
 		data.Validators = append(data.Validators, &types.Validator{
 			Index:                      uint64(validator.Index),

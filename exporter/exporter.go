@@ -479,7 +479,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 
 	startGetEpochData := time.Now()
 	logger.Printf("retrieving data for epoch %v", epoch)
-	data, err := client.GetEpochData(epoch)
+	data, err := client.GetEpochData(epoch, false)
 	if err != nil {
 		return fmt.Errorf("error retrieving epoch data: %v", err)
 	}
