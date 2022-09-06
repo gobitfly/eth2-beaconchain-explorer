@@ -1534,7 +1534,6 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*ty
 	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancle()
 
-	logger.Infof("searching for prefix %v", prefix)
 	// add \x00 to the row range such that we skip the previous value
 	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
 	// rowRange := gcp_bigtable.PrefixRange(prefix)
@@ -1586,9 +1585,34 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 		pageToken = fmt.Sprintf("%s:I:TX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
-	logger.Info(pageToken)
-
 	transactions, lastKey, err := BigtableClient.GetEth1TxForAddress(pageToken, 25)
+	if err != nil {
+		return nil, err
+	}
+
+	// retrieve metadata
+	names := make(map[string]string)
+	for _, t := range transactions {
+		names[string(t.From)] = ""
+		names[string(t.To)] = ""
+	}
+	g := new(errgroup.Group)
+	g.SetLimit(25)
+	mux := sync.Mutex{}
+	for address := range names {
+		address := address
+		g.Go(func() error {
+			name, err := bigtable.GetAddressName([]byte(address))
+			if err != nil {
+				return err
+			}
+			mux.Lock()
+			names[address] = name
+			mux.Unlock()
+			return nil
+		})
+	}
+	err = g.Wait()
 	if err != nil {
 		return nil, err
 	}
@@ -1596,14 +1620,8 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
 
-		fromName, err := bigtable.GetAddressName(t.From)
-		if err != nil {
-			return nil, err
-		}
-		toName, err := bigtable.GetAddressName(t.To)
-		if err != nil {
-			return nil, err
-		}
+		fromName := names[string(t.From)]
+		toName := names[string(t.To)]
 
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
 
@@ -1860,8 +1878,33 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 		pageToken = fmt.Sprintf("%s:I:ITX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
-	logger.Info(pageToken)
 	transactions, lastKey, err := bigtable.GetEth1ItxForAddress(pageToken, 25)
+	if err != nil {
+		return nil, err
+	}
+
+	names := make(map[string]string)
+	for _, t := range transactions {
+		names[string(t.From)] = ""
+		names[string(t.To)] = ""
+	}
+	g := new(errgroup.Group)
+	g.SetLimit(25)
+	mux := sync.Mutex{}
+	for address := range names {
+		address := address
+		g.Go(func() error {
+			name, err := bigtable.GetAddressName([]byte(address))
+			if err != nil {
+				return err
+			}
+			mux.Lock()
+			names[address] = name
+			mux.Unlock()
+			return nil
+		})
+	}
+	err = g.Wait()
 	if err != nil {
 		return nil, err
 	}
@@ -1869,14 +1912,8 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
 
-		fromName, err := bigtable.GetAddressName(t.From)
-		if err != nil {
-			return nil, err
-		}
-		toName, err := bigtable.GetAddressName(t.To)
-		if err != nil {
-			return nil, err
-		}
+		fromName := names[string(t.From)]
+		toName := names[string(t.To)]
 
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
 		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
@@ -1893,98 +1930,6 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 	}
 
 	data := &types.DataTableResponse{
-		Data:        tableData,
-		PagingToken: lastKey,
-	}
-
-	return data, nil
-}
-
-func (bigtable *Bigtable) GetAddressInternalTransactionsTableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
-	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:ITX:%s:%s:", bigtable.chainId, address, FILTER_TIME)
-	}
-
-	transactions, lastKey, err := BigtableClient.GetEth1ItxForAddress(pageToken, 25)
-	if err != nil {
-		return nil, err
-	}
-
-	tableData := make([][]interface{}, len(transactions))
-	for i, t := range transactions {
-		from := utils.FormatHash(t.From)
-
-		if fmt.Sprintf("%x", t.From) != address {
-			from = utils.FormatAddressAsLink(t.From, "", false, false)
-		}
-		to := utils.FormatHash(t.To)
-		if fmt.Sprintf("%x", t.To) != address {
-			to = utils.FormatAddressAsLink(t.To, "", false, false)
-		}
-		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
-			utils.FormatTimeFromNow(t.Time.AsTime()),
-			from,
-			to,
-			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "ETH", 6),
-			t.Type,
-		}
-	}
-
-	data := &types.DataTableResponse{
-		// Draw: draw,
-		// RecordsTotal:    ,
-		// RecordsFiltered: ,
-		Data:        tableData,
-		PagingToken: lastKey,
-	}
-
-	return data, nil
-}
-
-func (bigtable *Bigtable) GetAddressERC20TransfersTableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
-	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:ERC20:%s:%s:", bigtable.chainId, address, FILTER_TIME)
-	}
-
-	transactions, lastKey, err := BigtableClient.GetEth1ERC20ForAddress(pageToken, 25)
-	if err != nil {
-		return nil, err
-	}
-
-	tableData := make([][]interface{}, len(transactions))
-	for i, t := range transactions {
-		from := utils.FormatHash(t.From)
-
-		if fmt.Sprintf("%x", t.From) != address {
-			from = utils.FormatAddressAsLink(t.From, "", false, false)
-		}
-		to := utils.FormatHash(t.To)
-		if fmt.Sprintf("%x", t.To) != address {
-			to = utils.FormatAddressAsLink(t.To, "", false, false)
-		}
-
-		tokenData := erc20.GetTokenDetail(fmt.Sprintf("%x", t.TokenAddress))
-		value := new(big.Int).SetBytes(t.Value).String()
-		symbol := fmt.Sprintf(" 0x%x...", t.TokenAddress[:8])
-		if tokenData != nil {
-			value = tokenData.FormatAmount(new(big.Int).SetBytes(t.Value))
-			symbol = fmt.Sprintf("<a href='#''>%s (%s)</a>", tokenData.Name, tokenData.Symbol)
-		}
-		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
-			utils.FormatTimeFromNow(t.Time.AsTime()),
-			from,
-			to,
-			value,
-			symbol,
-		}
-	}
-
-	data := &types.DataTableResponse{
-		// Draw: draw,
-		// RecordsTotal:    ,
-		// RecordsFiltered: ,
 		Data:        tableData,
 		PagingToken: lastKey,
 	}
@@ -2044,72 +1989,76 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 		return nil, err
 	}
 
-	tableData := make([][]interface{}, len(transactions))
+	names := make(map[string]string)
+	tokens := make(map[string]*types.ERC20Metadata)
+	for _, t := range transactions {
+		names[string(t.From)] = ""
+		names[string(t.To)] = ""
+		tokens[string(t.TokenAddress)] = nil
+	}
 	g := new(errgroup.Group)
-	muxMap := make(map[string]*sync.Mutex)
-	for i, t := range transactions {
-		i := i
-		t := t
-
-		if muxMap[string(t.TokenAddress)] == nil {
-			muxMap[string(t.TokenAddress)] = &sync.Mutex{}
-		}
-
+	g.SetLimit(25)
+	mux := sync.Mutex{}
+	for address := range names {
+		address := address
 		g.Go(func() error {
-			fromName, err := bigtable.GetAddressName(t.From)
+			name, err := bigtable.GetAddressName([]byte(address))
 			if err != nil {
 				return err
 			}
-			toName, err := bigtable.GetAddressName(t.To)
-			if err != nil {
-				return err
-			}
-			from := utils.FormatAddress(t.From, t.TokenAddress, fromName, false, false, !bytes.Equal(t.From, address))
-			to := utils.FormatAddress(t.To, t.TokenAddress, toName, false, false, !bytes.Equal(t.To, address))
-
-			muxMap[string(t.TokenAddress)].Lock()
-			defer muxMap[string(t.TokenAddress)].Unlock()
-
-			cacheKey := "ERC20:" + string(t.TokenAddress)
-			var metadata *types.ERC20Metadata
-
-			if cached, err := EkoCache.Get(context.Background(), cacheKey, new(types.ERC20Metadata)); err == nil {
-				metadata = cached.(*types.ERC20Metadata)
-			} else {
-				metadata, err = bigtable.GetERC20MetadataForAddress(t.TokenAddress)
-				if err != nil {
-					return err
-				}
-				err = EkoCache.Set(context.Background(), cacheKey, metadata)
-				if err != nil {
-					return err
-				}
-			}
-
-			tb := &types.Eth1AddressBalance{
-				Address:  address,
-				Balance:  t.Value,
-				Token:    t.TokenAddress,
-				Metadata: metadata,
-			}
-
-			tableData[i] = []interface{}{
-				utils.FormatTransactionHash(t.ParentHash),
-				utils.FormatTimeFromNow(t.Time.AsTime()),
-				from,
-				utils.FormatInOutSelf(address, t.From, t.To),
-				to,
-				utils.FormatTokenValue(tb),
-				utils.FormatTokenName(tb),
-			}
+			mux.Lock()
+			names[address] = name
+			mux.Unlock()
 			return nil
 		})
-
 	}
-
+	for address := range tokens {
+		address := address
+		g.Go(func() error {
+			metadata, err := bigtable.GetERC20MetadataForAddress([]byte(address))
+			if err != nil {
+				return err
+			}
+			mux.Lock()
+			tokens[address] = metadata
+			mux.Unlock()
+			return nil
+		})
+	}
 	err = g.Wait()
 	if err != nil {
 		return nil, err
+	}
+
+	// fromName := names[string(t.From)]
+	// toName := names[string(t.To)]
+
+	tableData := make([][]interface{}, len(transactions))
+
+	for i, t := range transactions {
+
+		fromName := names[string(t.From)]
+		toName := names[string(t.To)]
+		from := utils.FormatAddress(t.From, t.TokenAddress, fromName, false, false, !bytes.Equal(t.From, address))
+		to := utils.FormatAddress(t.To, t.TokenAddress, toName, false, false, !bytes.Equal(t.To, address))
+
+		tb := &types.Eth1AddressBalance{
+			Address:  address,
+			Balance:  t.Value,
+			Token:    t.TokenAddress,
+			Metadata: tokens[string(t.TokenAddress)],
+		}
+
+		tableData[i] = []interface{}{
+			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTimeFromNow(t.Time.AsTime()),
+			from,
+			utils.FormatInOutSelf(address, t.From, t.To),
+			to,
+			utils.FormatTokenValue(tb),
+			utils.FormatTokenName(tb),
+		}
+
 	}
 
 	data := &types.DataTableResponse{
@@ -2118,27 +2067,6 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 	}
 
 	return data, nil
-}
-
-func (bigtable *Bigtable) GetEth1ERC20TxForAddressCount(address string, filterKey IndexFilter) (uint64, error) {
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
-
-	prefix := fmt.Sprintf("%s:I:ERC20:%s:%s", bigtable.chainId, address, filterKey)
-
-	rowRange := gcp_bigtable.PrefixRange(prefix)
-
-	sum := uint64(0)
-
-	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
-		sum += 1
-		return true
-	})
-	if err != nil {
-		return 0, err
-	}
-
-	return sum, nil
 }
 
 func (bigtable *Bigtable) GetEth1ERC721ForAddress(prefix string, limit int64) ([]*types.Eth1ERC721Indexed, string, error) {
@@ -2227,27 +2155,6 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address string, search strin
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetEth1ERC721TxForAddressCount(address string, filterKey IndexFilter) (uint64, error) {
-	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancle()
-
-	prefix := fmt.Sprintf("%s:I:ERC721:%s:%s", bigtable.chainId, address, filterKey)
-
-	rowRange := gcp_bigtable.PrefixRange(prefix)
-
-	sum := uint64(0)
-
-	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
-		sum += 1
-		return true
-	})
-	if err != nil {
-		return 0, err
-	}
-
-	return sum, nil
-}
-
 func (bigtable *Bigtable) GetEth1ERC1155ForAddress(prefix string, limit int64) ([]*types.ETh1ERC1155Indexed, string, error) {
 	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancle()
@@ -2327,27 +2234,6 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 	}
 
 	return data, nil
-}
-
-func (bigtable *Bigtable) GetEth1ERC1155TxForAddressCount(address string, filterKey IndexFilter) (uint64, error) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancel()
-
-	prefix := fmt.Sprintf("%s:I:ERC1155:%s:%s", bigtable.chainId, address, filterKey)
-
-	rowRange := gcp_bigtable.PrefixRange(prefix)
-
-	sum := uint64(0)
-
-	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
-		sum += 1
-		return true
-	})
-	if err != nil {
-		return 0, err
-	}
-
-	return sum, nil
 }
 
 func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]string, error) {
@@ -2442,6 +2328,11 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 		}, nil
 	}
 
+	cacheKey := "ERC20:" + string(address)
+	if cached, err := EkoCache.Get(context.Background(), cacheKey, new(types.ERC20Metadata)); err == nil {
+		return cached.(*types.ERC20Metadata), nil
+	}
+
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
@@ -2460,15 +2351,24 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 
 		if err != nil {
 			logger.Errorf("error retrieving metadata for token %x: %v", address, err)
-			return &types.ERC20Metadata{
+			metadata = &types.ERC20Metadata{
 				Decimals:    []byte{0x0},
 				Symbol:      "UNKNOWN",
-				TotalSupply: []byte{0x0},
-			}, nil
+				TotalSupply: []byte{0x0}}
+
+			err = EkoCache.Set(context.Background(), cacheKey, metadata)
+			if err != nil {
+				return nil, err
+			}
+			return metadata, nil
 		}
 
 		err = bigtable.SaveERC20Metadata(address, metadata)
+		if err != nil {
+			return nil, err
+		}
 
+		err = EkoCache.Set(context.Background(), cacheKey, metadata)
 		if err != nil {
 			return nil, err
 		}
@@ -2476,7 +2376,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 		return metadata, nil
 	}
 
-	logger.Infof("retrieving metadata for token %x via bigtable", address)
+	// logger.Infof("retrieving metadata for token %x via bigtable", address)
 	ret := &types.ERC20Metadata{}
 	for _, ri := range row {
 		for _, item := range ri {
@@ -2498,6 +2398,10 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 		}
 	}
 
+	err = EkoCache.Set(context.Background(), cacheKey, ret)
+	if err != nil {
+		return nil, err
+	}
 	return ret, nil
 }
 
@@ -2686,7 +2590,6 @@ func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*type
 	ctx, cancle := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancle()
 
-	logger.Infof("searching for prefix %v", prefix)
 	// add \x00 to the row range such that we skip the previous value
 	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
 	// rowRange := gcp_bigtable.PrefixRange(prefix)
@@ -2704,8 +2607,6 @@ func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*type
 	if err != nil {
 		return nil, "", err
 	}
-
-	logger.Infof("found transfers for token: %v results", len(keys))
 
 	if len(keys) == 0 {
 		return data, "", nil
@@ -2747,71 +2648,72 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 		return nil, err
 	}
 
-	tableData := make([][]interface{}, len(transactions))
+	names := make(map[string]string)
+	tokens := make(map[string]*types.ERC20Metadata)
+	for _, t := range transactions {
+		names[string(t.From)] = ""
+		names[string(t.To)] = ""
+		tokens[string(t.TokenAddress)] = nil
+	}
 	g := new(errgroup.Group)
-	muxMap := make(map[string]*sync.Mutex)
-	for i, t := range transactions {
-		i := i
-		t := t
-
-		if muxMap[string(t.TokenAddress)] == nil {
-			muxMap[string(t.TokenAddress)] = &sync.Mutex{}
-		}
-
+	g.SetLimit(25)
+	mux := sync.Mutex{}
+	for address := range names {
+		address := address
 		g.Go(func() error {
-			fromName, err := bigtable.GetAddressName(t.From)
+			name, err := bigtable.GetAddressName([]byte(address))
 			if err != nil {
 				return err
 			}
-			toName, err := bigtable.GetAddressName(t.To)
-			if err != nil {
-				return err
-			}
-
-			from := utils.FormatAddress(t.From, t.TokenAddress, fromName, false, false, !bytes.Equal(t.From, address))
-			to := utils.FormatAddress(t.To, t.TokenAddress, toName, false, false, !bytes.Equal(t.To, address))
-
-			muxMap[string(t.TokenAddress)].Lock()
-			defer muxMap[string(t.TokenAddress)].Unlock()
-			cacheKey := "ERC20:" + string(t.TokenAddress)
-			var metadata *types.ERC20Metadata
-
-			if cached, err := EkoCache.Get(context.Background(), cacheKey, new(types.ERC20Metadata)); err == nil {
-				metadata = cached.(*types.ERC20Metadata)
-			} else {
-				metadata, err = bigtable.GetERC20MetadataForAddress(t.TokenAddress)
-				if err != nil {
-					return err
-				}
-				err = EkoCache.Set(context.Background(), cacheKey, metadata)
-				if err != nil {
-					return err
-				}
-			}
-
-			tb := &types.Eth1AddressBalance{
-				Address:  address,
-				Balance:  t.Value,
-				Token:    t.TokenAddress,
-				Metadata: metadata,
-			}
-
-			tableData[i] = []interface{}{
-				utils.FormatTransactionHash(t.ParentHash),
-				utils.FormatTimeFromNow(t.Time.AsTime()),
-				from,
-				utils.FormatInOutSelf(address, t.From, t.To),
-				to,
-				utils.FormatTokenValue(tb),
-			}
+			mux.Lock()
+			names[address] = name
+			mux.Unlock()
 			return nil
 		})
-
 	}
-
+	for address := range tokens {
+		address := address
+		g.Go(func() error {
+			metadata, err := bigtable.GetERC20MetadataForAddress([]byte(address))
+			if err != nil {
+				return err
+			}
+			mux.Lock()
+			tokens[address] = metadata
+			mux.Unlock()
+			return nil
+		})
+	}
 	err = g.Wait()
 	if err != nil {
 		return nil, err
+	}
+
+	tableData := make([][]interface{}, len(transactions))
+
+	for i, t := range transactions {
+
+		fromName := names[string(t.From)]
+		toName := names[string(t.To)]
+		from := utils.FormatAddress(t.From, t.TokenAddress, fromName, false, false, !bytes.Equal(t.From, address))
+		to := utils.FormatAddress(t.To, t.TokenAddress, toName, false, false, !bytes.Equal(t.To, address))
+
+		tb := &types.Eth1AddressBalance{
+			Address:  address,
+			Balance:  t.Value,
+			Token:    t.TokenAddress,
+			Metadata: tokens[string(t.TokenAddress)],
+		}
+
+		tableData[i] = []interface{}{
+			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTimeFromNow(t.Time.AsTime()),
+			from,
+			utils.FormatInOutSelf(address, t.From, t.To),
+			to,
+			utils.FormatTokenValue(tb),
+		}
+
 	}
 
 	data := &types.DataTableResponse{
