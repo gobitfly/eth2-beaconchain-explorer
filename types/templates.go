@@ -1427,6 +1427,7 @@ type Eth1TokenPageData struct {
 	Token            string `json:"token"`
 	Address          string `json:"address"`
 	Metadata         *ERC20Metadata
+	Balance          *Eth1AddressBalance
 	Holders          template.HTML `json:"holders"`
 	Transfers        template.HTML `json:"transfers"`
 	Price            template.HTML `json:"price"`

@@ -429,7 +429,6 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 	blockSlot := int64(-1)
 	blockRootHash, err := hex.DecodeString(slotOrHash)
 	if err != nil || len(slotOrHash) != 64 {
-		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 		if err != nil {
 			logger.Errorf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
@@ -451,9 +450,6 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := r.URL.Query()
-
-	search := q.Get("search[value]")
-	search = strings.Replace(search, "0x", "", -1)
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {

@@ -2318,6 +2318,33 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 	return ret, nil
 }
 
+func (bigtable *Bigtable) GetBalanceForAddress(address []byte, token []byte) (*types.Eth1AddressBalance, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	filter := gcp_bigtable.ChainFilters(gcp_bigtable.FamilyFilter(ACCOUNT_METADATA_FAMILY), gcp_bigtable.ColumnFilter(fmt.Sprintf("B:%x", token)))
+	row, err := bigtable.tableMetadata.ReadRow(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address), gcp_bigtable.RowFilter(filter))
+
+	if err != nil {
+		return nil, err
+	}
+
+	ret := &types.Eth1AddressBalance{
+		Address: address,
+		Token:   token,
+		Balance: row[ACCOUNT_METADATA_FAMILY][0].Value,
+	}
+
+	metadata, err := bigtable.GetERC20MetadataForAddress(token)
+	if err != nil {
+		return nil, err
+	}
+	ret.Metadata = metadata
+
+	return ret, nil
+
+}
+
 func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC20Metadata, error) {
 
 	if len(address) == 1 {

@@ -27,10 +27,11 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "token", "/token", "token")
 
 	g := new(errgroup.Group)
-	g.SetLimit(2)
+	g.SetLimit(3)
 
 	var txns *types.DataTableResponse
 	var metadata *types.ERC20Metadata
+	var balance *types.Eth1AddressBalance
 	// var holders *types.DataTableResponse
 
 	g.Go(func() error {
@@ -44,14 +45,14 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		metadata, err = db.BigtableClient.GetERC20MetadataForAddress(token)
 		return err
 	})
-	// g.Go(func() error {
-	// 	var err error
-	// 	holders, err = db.BigtableClient.GetTokenHoldersTableData(address, "", "")
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	return nil
-	// })
+
+	if address != nil {
+		g.Go(func() error {
+			var err error
+			balance, err = db.BigtableClient.GetBalanceForAddress(address, token)
+			return err
+		})
+	}
 
 	if err := g.Wait(); err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -64,7 +65,7 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		Address:        fmt.Sprintf("%x", address),
 		TransfersTable: txns,
 		Metadata:       metadata,
-		// HoldersTable: holders,
+		Balance:        balance,
 	}
 
 	if utils.Config.Frontend.Debug {

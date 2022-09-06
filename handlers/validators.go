@@ -33,7 +33,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -56,7 +56,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	err = db.ReaderDb.Select(&currentStateCounts, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -99,7 +99,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -262,7 +262,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	dataQuery, err := parseValidatorsDataQueryParams(r)
 	if err != nil {
 		logger.Errorf("error parsing query-data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -291,7 +291,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		err = db.ReaderDb.Select(&validators, qry, dataQuery.Length, dataQuery.Start)
 		if err != nil {
 			logger.Errorf("error retrieving validators data: %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 		isAll = true
@@ -337,7 +337,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 
 		if searchQry == "" {
 			logger.Errorf("error sql statement incomplete (without with statement)")
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 
@@ -375,7 +375,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		err = db.ReaderDb.Select(&validators, qry, args...)
 		if err != nil {
 			logger.Errorf("error retrieving validators data (with search): %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	}
@@ -433,7 +433,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	err = db.ReaderDb.Get(&countTotal, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators total count: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -454,7 +454,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

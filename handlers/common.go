@@ -222,9 +222,9 @@ func GetCurrentPriceFormatted(r *http.Request) string {
 	userAgent = strings.ToLower(userAgent)
 	price := GetCurrentPrice(r)
 	if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") || strings.Contains(userAgent, "windows phone") {
-		return fmt.Sprintf("%s", utils.KFormatterEthPrice(price))
+		return string(utils.KFormatterEthPrice(price))
 	}
-	return fmt.Sprintf("%s", utils.FormatAddCommas(uint64(price)))
+	return string(utils.FormatAddCommas(uint64(price)))
 }
 
 func GetTruncCurrentPriceFormatted(r *http.Request) string {
@@ -283,7 +283,7 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 		dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
 		key = dataTableStatePrefix + key
 		count := 0
-		for k, _ := range session.Values {
+		for k := range session.Values {
 			k, ok := k.(string)
 			if ok && strings.HasPrefix(k, dataTableStatePrefix) {
 				count += 1

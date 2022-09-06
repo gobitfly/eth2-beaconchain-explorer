@@ -51,7 +51,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
 			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	}
@@ -90,7 +90,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				blockHash, err := hex.DecodeString(search)
 				if err != nil {
 					logger.Errorf("error parsing blockHash to int: %v", err)
-					http.Error(w, "Internal server error", 503)
+					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 					return
 				}
 				err = db.ReaderDb.Select(result, `
@@ -173,7 +173,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			eth1AddressHash, err := hex.DecodeString(search)
 			if err != nil {
 				logger.Errorf("error parsing eth1AddressHash to hash: %v", err)
-				http.Error(w, "Internal server error", 503)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 				return
 			}
 			err = db.ReaderDb.Select(result, `
@@ -213,7 +213,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			eth1AddressHash, err := hex.DecodeString(search)
 			if err != nil {
 				logger.Errorf("error parsing eth1AddressHash to hex: %v", err)
-				http.Error(w, "Internal server error", 503)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 				return
 			}
 			err = db.ReaderDb.Select(result, `
@@ -292,12 +292,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).Error("error doing query for searchAhead")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	err = json.NewEncoder(w).Encode(result)
 	if err != nil {
 		logger.WithError(err).Error("error encoding searchAhead")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 	}
 }

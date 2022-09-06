@@ -65,7 +65,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if 18446744073709551615 == utils.Config.Chain.GenesisTimestamp {
+	if utils.Config.Chain.GenesisTimestamp == 18446744073709551615 {
 		fmt.Fprint(w, "OK. No GENESIS_TIMESTAMP defined yet")
 		return
 	}
@@ -1532,7 +1532,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if parsedBase.Valid == false {
+	if !parsedBase.Valid {
 		logger.Errorf("receipt is not valid %v", validationResult.RejectReason)
 		sendErrorResponse(j, r.URL.String(), "receipt is not valid")
 		return
@@ -2054,6 +2054,11 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 			db.CreateNewStatsMetaPartition()
 			tx.Rollback()
 			tx, err = db.NewTransaction()
+			if err != nil {
+				logger.Errorf("could not transact | %v", err)
+				sendErrorResponse(j, r.URL.String(), "could not store")
+				return false
+			}
 			id, err = db.InsertStatsMeta(tx, userData.ID, parsedMeta)
 		}
 		if err != nil {
@@ -2272,7 +2277,6 @@ func sendErrorResponse(j *json.Encoder, route, message string) {
 	if err != nil {
 		logger.Errorf("error serializing json error for API %v route: %v", route, err)
 	}
-	return
 }
 
 // SendOKResponse exposes sendOKResponse
@@ -2294,7 +2298,6 @@ func sendOKResponse(j *json.Encoder, route string, data []interface{}) {
 	if err != nil {
 		logger.Errorf("error serializing json data for API %v route: %v", route, err)
 	}
-	return
 }
 
 func parseApiValidatorParam(origParam string, limit int) (indices []uint64, pubkeys pq.ByteaArray, err error) {
