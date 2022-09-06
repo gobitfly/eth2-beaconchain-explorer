@@ -483,3 +483,9 @@ type GasNowPageData struct {
 		PriceUsd  float64  `json:"priceUSD"`
 	} `json:"data"`
 }
+
+type Eth1AddressSearchItem struct {
+	Address []byte
+	Name    string
+	Token   string
+}
