@@ -164,7 +164,7 @@ func FormatAddressAsTokenLink(token, address []byte, name string, verified bool,
 
 func FormatAddressLong(address string) template.HTML {
 	if len(address) > 4 {
-		return template.HTML(fmt.Sprintf(`<span class="text-monospace">0x<span class="text-primary">%s</span><span>%s</span><span class="text-primary">%s</span></span>`, address[:4], address[2:len(address)-4], address[len(address)-4:]))
+		return template.HTML(fmt.Sprintf(`<span class="text-monospace">0x<span class="text-primary">%s</span><span>%s</span><span class="text-primary">%s</span></span>`, address[:4], address[4:len(address)-4], address[len(address)-4:]))
 	}
 
 	return template.HTML(address)
