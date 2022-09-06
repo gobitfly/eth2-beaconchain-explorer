@@ -51,18 +51,19 @@ const (
 
 const max_block_number = 1000000000
 const (
-	DATA_COLUMN              = "d"
-	INDEX_COLUMN             = "i"
-	DEFAULT_FAMILY           = "f"
-	DEFAULT_FAMILY_BLOCKS    = "default"
-	ACCOUNT_METADATA_FAMILY  = "a"
-	CONTRACT_METADATA_FAMILY = "c"
-	ERC20_METADATA_FAMILY    = "erc20"
-	ERC721_METADATA_FAMILY   = "erc721"
-	ERC1155_METADATA_FAMILY  = "erc1155"
-	writeRowLimit            = 10000
-	MAX_INT                  = 9223372036854775807
-	MIN_INT                  = -9223372036854775808
+	DATA_COLUMN                    = "d"
+	INDEX_COLUMN                   = "i"
+	DEFAULT_FAMILY                 = "f"
+	DEFAULT_FAMILY_BLOCKS          = "default"
+	METADATA_UPDATES_FAMILY_BLOCKS = "blocks"
+	ACCOUNT_METADATA_FAMILY        = "a"
+	CONTRACT_METADATA_FAMILY       = "c"
+	ERC20_METADATA_FAMILY          = "erc20"
+	ERC721_METADATA_FAMILY         = "erc721"
+	ERC1155_METADATA_FAMILY        = "erc1155"
+	writeRowLimit                  = 10000
+	MAX_INT                        = 9223372036854775807
+	MIN_INT                        = -9223372036854775808
 )
 
 const (
@@ -2239,21 +2240,31 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]string, error) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*120))
+func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]string, []string, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*120))
 	defer cancel()
 
-	res := make([]string, 0, limit)
+	keys := make([]string, 0, limit)
+	pairs := make([]string, 0, limit)
 
 	err := bigtable.tableMetadataUpdates.ReadRows(ctx, gcp_bigtable.NewRange(startToken, ""), func(row gcp_bigtable.Row) bool {
-		res = append(res, row.Key())
+		if !strings.Contains(row.Key(), startToken) {
+			return false
+		}
+		keys = append(keys, row.Key())
+
+		for _, ri := range row {
+			for _, item := range ri {
+				pairs = append(pairs, row.Key()+":"+item.Column)
+			}
+		}
 		return true
 	}, gcp_bigtable.LimitRows(int64(limit)))
 
-	if err == context.DeadlineExceeded && len(res) > 0 {
-		return res, nil
+	if err == context.DeadlineExceeded && len(keys) > 0 {
+		return keys, pairs, nil
 	}
-	return res, err
+	return keys, pairs, err
 }
 
 func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1AddressMetadata, error) {
@@ -2611,6 +2622,67 @@ func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance, del
 
 	err = bigtable.WriteBulk(mutsDelete, bigtable.tableMetadataUpdates)
 
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (bigtable *Bigtable) SaveBlockKeys(blockNumber uint64, blockHash []byte, keys string) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	mut := gcp_bigtable.NewMutation()
+	mut.Set(METADATA_UPDATES_FAMILY_BLOCKS, "keys", gcp_bigtable.Timestamp(0), []byte(keys))
+
+	key := fmt.Sprintf("%s:BLOCK:%s:%x", bigtable.chainId, reversedPaddedBlockNumber(blockNumber), blockHash)
+	err := bigtable.tableMetadataUpdates.Apply(ctx, key, mut)
+
+	return err
+}
+
+func (bigtable *Bigtable) GetBlockKeys(blockNumber uint64, blockHash []byte) ([]string, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	key := fmt.Sprintf("%s:BLOCK:%s:%x", bigtable.chainId, reversedPaddedBlockNumber(blockNumber), blockHash)
+
+	row, err := bigtable.tableMetadataUpdates.ReadRow(ctx, key)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if row == nil {
+		return nil, fmt.Errorf("keys for block %v not found", blockNumber)
+	}
+
+	return strings.Split(string(row[METADATA_UPDATES_FAMILY_BLOCKS][0].Value), ","), nil
+}
+
+// Deletes all block data from bigtable
+func (bigtable *Bigtable) DeleteBlock(blockNumber uint64, blockHash []byte) error {
+
+	// First receive all keys that were written by this block (entities & indices)
+	keys, err := bigtable.GetBlockKeys(blockNumber, blockHash)
+	if err != nil {
+		return err
+	}
+
+	// Delete all of those keys
+	mutsDelete := &types.BulkMutations{
+		Keys: make([]string, 0, len(keys)),
+		Muts: make([]*gcp_bigtable.Mutation, 0, len(keys)),
+	}
+	for _, key := range keys {
+		mutDelete := gcp_bigtable.NewMutation()
+		mutDelete.DeleteRow()
+		mutsDelete.Keys = append(mutsDelete.Keys, key)
+		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+	}
+
+	err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
 	if err != nil {
 		return err
 	}

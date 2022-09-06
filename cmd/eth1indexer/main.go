@@ -64,10 +64,10 @@ func main() {
 	}
 	defer bt.Close()
 
-	if *enableBalanceUpdater {
-		ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize)
-		return
-	}
+	// if *enableBalanceUpdater {
+	// 	ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
+	// 	return
+	// }
 
 	transforms := make([]func(blk *types.Eth1Block, cache *ccache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
 	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
@@ -111,10 +111,6 @@ func main() {
 		}
 		return
 	}
-
-	// return
-	// bt.DeleteRowsWithPrefix("1:b:")
-	// return
 
 	for {
 		lastBlockFromNode, err := client.GetLatestEth1BlockNumber()
@@ -160,11 +156,11 @@ func main() {
 			}
 		}
 
-		logrus.Infof("index run completed")
-
 		if *enableBalanceUpdater {
-			ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize)
+			ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize, 10)
 		}
+
+		logrus.Infof("index run completed")
 		time.Sleep(time.Second * 14)
 	}
 
@@ -172,7 +168,7 @@ func main() {
 
 }
 
-func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix string, batchSize int) {
+func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix string, batchSize int, iterations int) {
 	lastKey := prefix
 	// for {
 	// 	updates, err := bt.GetMetadataUpdates(lastKey, batchSize)
@@ -249,20 +245,29 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 	// 	lastKey = updates[len(updates)-1]
 	// }
 
+	its := 0
 	for {
 		start := time.Now()
-		updates, err := bt.GetMetadataUpdates(lastKey, batchSize)
+		keys, pairs, err := bt.GetMetadataUpdates(lastKey, batchSize)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		balances, err := client.GetBalances(updates)
+		if len(keys) == 0 {
+			return
+		}
+
+		balances, err := client.GetBalances(pairs)
 
 		if err != nil {
 			logrus.Fatalf("error retrieving balances from node: %v", err)
 		}
 
-		err = bt.SaveBalances(balances, updates)
+		// for _, b := range balances {
+		// 	logrus.Infof("retrieved balance %x for token %x of address %x", b.Balance, b.Token, b.Address)
+		// }
+
+		err = bt.SaveBalances(balances, keys)
 		if err != nil {
 			logrus.Fatalf("error saving balances to bigtable: %v", err)
 		}
@@ -275,7 +280,13 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 		// }
 		logrus.Infof("retrieved %v balances in %v, currently at %v", len(balances), time.Since(start), lastKey)
 
-		lastKey = updates[len(updates)-1]
+		lastKey = keys[len(keys)-1]
+
+		its++
+
+		if iterations != -1 && its > iterations {
+			return
+		}
 	}
 	// g := new(errgroup.Group)
 	// g.SetLimit(batchSize)
@@ -420,6 +431,12 @@ func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk 
 			}
 
 			if len(bulkMutsData.Keys) > 0 {
+				metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
+				err = bt.SaveBlockKeys(block.Number, block.Hash, metaKeys)
+				if err != nil {
+					return fmt.Errorf("error saving block keys to bigtable metadata updates table: %w", err)
+				}
+
 				err = bt.WriteBulk(&bulkMutsData, bt.GetDataTable())
 				if err != nil {
 					return fmt.Errorf("error writing to bigtable data table: %w", err)

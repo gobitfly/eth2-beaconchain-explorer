@@ -378,16 +378,16 @@ func (client *ErigonClient) GetBalances(pairs []string) ([]*types.Eth1AddressBal
 	for i, pair := range pairs {
 		s := strings.Split(pair, ":")
 
-		if len(s) != 3 {
+		if len(s) != 5 {
 			logrus.Fatalf("%v has an invalid format", pair)
 		}
 
-		if s[0] != "B" {
+		if s[1] != "B" {
 			logrus.Fatalf("%v has invalid balance update prefix", pair)
 		}
 
-		address := s[1]
-		token := s[2]
+		address := s[2]
+		token := s[4]
 		result := ""
 
 		ret[i] = &types.Eth1AddressBalance{
