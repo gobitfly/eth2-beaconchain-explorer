@@ -1000,7 +1000,7 @@ func CalculateLifetimeNodeRewardsAll(rp *rocketpool.RocketPool, intervalSize *bi
 	// Get the event logs
 	logs, err := eth.GetLogs(rp, addressFilter, topicFilter, intervalSize, nil, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("can not load lifetime rewards: $1", err)
+		return nil, fmt.Errorf("can not load lifetime rewards: %v", err)
 	}
 
 	// Iterate over the logs and sum the amount

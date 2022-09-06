@@ -296,6 +296,9 @@ func ReadConfig(cfg *types.Config, path string) error {
 		default:
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
 		}
+		if err != nil {
+			return err
+		}
 	} else {
 		f, err := os.Open(cfg.Chain.ConfigPath)
 		if err != nil {
@@ -383,7 +386,6 @@ func CORSMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
-		return
 	})
 }
 
@@ -626,7 +628,7 @@ func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
 		return false, err
 	}
 	if len(googleResponse.ErrorCodes) > 0 {
-		err = fmt.Errorf("Error validating ReCaptcha %v", googleResponse.ErrorCodes)
+		err = fmt.Errorf("error validating ReCaptcha %v", googleResponse.ErrorCodes)
 	} else {
 		err = nil
 	}
@@ -635,7 +637,7 @@ func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
 		return true, err
 	}
 
-	return false, fmt.Errorf("Score too low threshold not reached, Score: %v - Required >0.5; %v", googleResponse.Score, err)
+	return false, fmt.Errorf("score too low threshold not reached, Score: %v - Required >0.5; %v", googleResponse.Score, err)
 }
 
 func BitAtVector(b []byte, i int) bool {
@@ -671,48 +673,48 @@ func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
 	return meta, nil
 }
 
-func getABIFromSourcify(address []byte) (*types.ContractMetadata, error) {
-	httpClient := http.Client{
-		Timeout: time.Second * 5,
-	}
+// func getABIFromSourcify(address []byte) (*types.ContractMetadata, error) {
+// 	httpClient := http.Client{
+// 		Timeout: time.Second * 5,
+// 	}
 
-	resp, err := httpClient.Get(fmt.Sprintf("https://sourcify.dev/server/repository/contracts/full_match/%d/0x%x/metadata.json", 1, address))
-	if err != nil {
-		return nil, err
-	}
+// 	resp, err := httpClient.Get(fmt.Sprintf("https://sourcify.dev/server/repository/contracts/full_match/%d/0x%x/metadata.json", 1, address))
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	if resp.StatusCode == 200 {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
+// 	if resp.StatusCode == 200 {
+// 		body, err := ioutil.ReadAll(resp.Body)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-		data := &types.SourcifyContractMetadata{}
-		err = json.Unmarshal(body, data)
-		if err != nil {
-			return nil, err
-		}
+// 		data := &types.SourcifyContractMetadata{}
+// 		err = json.Unmarshal(body, data)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-		abiString, err := json.Marshal(data.Output.Abi)
-		if err != nil {
-			return nil, err
-		}
+// 		abiString, err := json.Marshal(data.Output.Abi)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-		contractAbi, err := abi.JSON(bytes.NewReader(abiString))
-		if err != nil {
-			return nil, err
-		}
+// 		contractAbi, err := abi.JSON(bytes.NewReader(abiString))
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-		meta := &types.ContractMetadata{}
-		meta.ABIJson = abiString
-		meta.ABI = &contractAbi
-		meta.Name = ""
+// 		meta := &types.ContractMetadata{}
+// 		meta.ABIJson = abiString
+// 		meta.ABI = &contractAbi
+// 		meta.Name = ""
 
-		return meta, nil
-	} else {
-		return nil, fmt.Errorf("sourcify contract code not found")
-	}
-}
+// 		return meta, nil
+// 	} else {
+// 		return nil, fmt.Errorf("sourcify contract code not found")
+// 	}
+// }
 
 func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
 	httpClient := http.Client{
