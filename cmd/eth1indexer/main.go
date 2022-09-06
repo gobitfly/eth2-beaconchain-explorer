@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
@@ -27,6 +29,8 @@ func main() {
 	erigonEndpoint := flag.String("erigon", "", "Erigon archive node enpoint")
 
 	block := flag.Int64("block", 0, "Index a specific block")
+
+	reorgDepth := flag.Int("reorg.depth", 20, "Lookback to check and handle chain reorgs")
 
 	concurrencyBlocks := flag.Int64("blocks.concurrency", 30, "Concurrency to use when indexing blocks from erigon")
 	startBlocks := flag.Int64("blocks.start", 0, "Block to start indexing")
@@ -113,11 +117,15 @@ func main() {
 	}
 
 	for {
+		err := HanldeChainReorgs(bt, client, *reorgDepth)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		lastBlockFromNode, err := client.GetLatestEth1BlockNumber()
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		lastBlockFromNode = lastBlockFromNode - 100
 
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 		if err != nil {
@@ -166,6 +174,56 @@ func main() {
 
 	// utils.WaitForCtrlC()
 
+}
+
+func HanldeChainReorgs(bt *db.Bigtable, client *rpc.ErigonClient, depth int) error {
+	ctx := context.Background()
+	// get latest block from the node
+	latestNodeBlock, err := client.GetNativeClient().BlockByNumber(ctx, nil)
+	if err != nil {
+		return err
+	}
+	latestNodeBlockNumber := latestNodeBlock.NumberU64()
+
+	// for each block check if block node hash and block db hash match
+	for i := latestNodeBlockNumber - uint64(depth); i <= latestNodeBlockNumber; i++ {
+		nodeBlock, err := client.GetNativeClient().BlockByNumber(ctx, big.NewInt(int64(i)))
+		if err != nil {
+			return err
+		}
+
+		dbBlock, err := bt.GetBlockFromBlocksTable(i)
+		if err != nil {
+			if err == db.ErrBlockNotFound { // exit if we hit a block that is not yet in the db
+				return nil
+			}
+			return err
+		}
+
+		if !bytes.Equal(nodeBlock.Hash().Bytes(), dbBlock.Hash) {
+			logrus.Warnf("found incosistency at height %v, node block hash: %x, db block hash: %x", i, nodeBlock.Hash().Bytes(), dbBlock.Hash)
+
+			// delete all blocks starting from the fork block up to the latest block in the db
+			for j := i; j <= latestNodeBlockNumber; j++ {
+				dbBlock, err := bt.GetBlockFromBlocksTable(j)
+				if err != nil {
+					if err == db.ErrBlockNotFound { // exit if we hit a block that is not yet in the db
+						return nil
+					}
+					return err
+				}
+				logrus.Infof("deleting block at height %v with hash %x", dbBlock.Number, dbBlock.Hash)
+				err = bt.DeleteBlock(dbBlock.Number, dbBlock.Hash)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			logrus.Infof("height %v, node block hash: %x, db block hash: %x", i, nodeBlock.Hash().Bytes(), dbBlock.Hash)
+		}
+	}
+
+	return nil
 }
 
 func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix string, batchSize int, iterations int) {

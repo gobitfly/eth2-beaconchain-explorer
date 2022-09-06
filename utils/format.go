@@ -21,7 +21,6 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/common"
-	eth1common "github.com/ethereum/go-ethereum/common"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -105,13 +104,13 @@ func FormatBalanceSql(balanceInt sql.NullInt64, currency string) template.HTML {
 
 func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 	if currency == "ETH" {
-		balanceF := float64(*balance)
 		if balance == nil {
 			return template.HTML("<span> 0.00000 " + currency + "</span>")
 		} else if *balance == 0 {
 			return template.HTML("0")
 		}
 
+		balanceF := float64(*balance)
 		if balanceF < 0 {
 			return template.HTML(fmt.Sprintf("<span class=\"text-danger\">%.0f GWei</span>", balanceF))
 		}
@@ -274,8 +273,8 @@ func FormatEpoch(epoch uint64) template.HTML {
 
 // FormatEth1AddressString will return the eth1-address formated as html string
 func FormatEth1AddressString(addr []byte) template.HTML {
-	eth1Addr := eth1common.BytesToAddress(addr)
-	return template.HTML(fmt.Sprintf("%s", eth1Addr.Hex()))
+	eth1Addr := common.BytesToAddress(addr)
+	return template.HTML(eth1Addr.Hex())
 }
 
 // FormatEth1AddressString will return the eth1-address formated as html string
@@ -286,7 +285,7 @@ func FormatEth1AddressStringLowerCase(addr []byte) template.HTML {
 // FormatEth1Address will return the eth1-address formated as html
 func FormatEth1Address(addr []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(addr))
-	eth1Addr := eth1common.BytesToAddress(addr)
+	eth1Addr := common.BytesToAddress(addr)
 
 	if Config.Chain.Config.ConfigName == "prater" {
 		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
@@ -499,9 +498,9 @@ func formatBitvectorValidators(bits []byte, validators []uint64) template.HTML {
 		}
 
 		if (i+1)%64 == 0 {
-			buf.WriteString(fmt.Sprintf("\n"))
+			buf.WriteString("\n")
 		} else if (i+1)%8 == 0 {
-			buf.WriteString(fmt.Sprintf(" "))
+			buf.WriteString(" ")
 		}
 	}
 	buf.WriteString("</pre>")
@@ -717,7 +716,7 @@ func FormatValidatorWithName(validator interface{}, name string) template.HTML {
 }
 
 func FormatEth1AddressWithName(address []byte, name string) template.HTML {
-	eth1Addr := eth1common.BytesToAddress(address)
+	eth1Addr := common.BytesToAddress(address)
 	if name != "" {
 		return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s</a>", eth1Addr, name))
 	} else {

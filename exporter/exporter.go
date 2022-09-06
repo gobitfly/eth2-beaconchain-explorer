@@ -234,8 +234,6 @@ func Start(client rpc.Client) error {
 			lastExportedSlot = block.Slot
 		}
 	}
-
-	return nil
 }
 
 // Will ensure the db is fully in sync with the node
