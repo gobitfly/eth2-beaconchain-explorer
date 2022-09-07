@@ -77,7 +77,7 @@ func epochUpdater() {
 		}
 
 		var epoch uint64
-		err = db.WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
+		err = db.WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM blocks")
 		if err != nil {
 			logger.Errorf("error retrieving latest epoch from the database: %v", err)
 		} else {
