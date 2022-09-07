@@ -197,6 +197,7 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 
 	for _, slot := range slots {
 		for _, b := range blocks[slot] {
+			logger.Infof("processing slot %v", slot)
 			for _, a := range b.Attestations {
 				for _, validator := range a.Attesters {
 					inclusionSlot := slot
@@ -204,7 +205,10 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 					if attestationsBySlot[attestedSlot] == nil {
 						attestationsBySlot[attestedSlot] = make(map[uint64]uint64)
 					}
-					attestationsBySlot[attestedSlot][validator] = inclusionSlot
+
+					if attestationsBySlot[attestedSlot][validator] == 0 || inclusionSlot < attestationsBySlot[attestedSlot][validator] {
+						attestationsBySlot[attestedSlot][validator] = inclusionSlot
+					}
 				}
 			}
 		}
