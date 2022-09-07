@@ -2629,7 +2629,10 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
 	cacheKey := "CONTRACT:" + rowKey
 	if cached, err := EkoCache.Get(context.Background(), cacheKey, new(types.ContractMetadata)); err == nil {
-		return cached.(*types.ContractMetadata), nil
+		ret := cached.(*types.ContractMetadata)
+		val, err := abi.JSON(bytes.NewReader(ret.ABIJson))
+		ret.ABI = &val
+		return ret, err
 	}
 
 	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(gcp_bigtable.FamilyFilter(CONTRACT_METADATA_FAMILY)))
