@@ -98,40 +98,6 @@ create table proposal_assignments
 );
 create index idx_proposal_assignments_epoch on proposal_assignments (epoch);
 
-drop table if exists attestation_assignments_p;
-create table attestation_assignments_p
-(
-    epoch          int not null,
-    validatorindex int not null,
-    attesterslot   int not null,
-    committeeindex int not null,
-    status         int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
-    inclusionslot  int not null default 0, /* Slot this attestation was included for the first time */
-    week           int not null,
-    primary key (validatorindex, week, epoch)
-) PARTITION BY LIST (week);
-
-CREATE TABLE attestation_assignments_0 PARTITION OF attestation_assignments_p FOR VALUES IN (0);
-CREATE TABLE attestation_assignments_1 PARTITION OF attestation_assignments_p FOR VALUES IN (1);
-CREATE TABLE attestation_assignments_2 PARTITION OF attestation_assignments_p FOR VALUES IN (2);
-CREATE TABLE attestation_assignments_3 PARTITION OF attestation_assignments_p FOR VALUES IN (3);
-CREATE TABLE attestation_assignments_4 PARTITION OF attestation_assignments_p FOR VALUES IN (4);
-CREATE TABLE attestation_assignments_5 PARTITION OF attestation_assignments_p FOR VALUES IN (5);
-CREATE TABLE attestation_assignments_6 PARTITION OF attestation_assignments_p FOR VALUES IN (6);
-CREATE TABLE attestation_assignments_7 PARTITION OF attestation_assignments_p FOR VALUES IN (7);
-CREATE TABLE attestation_assignments_8 PARTITION OF attestation_assignments_p FOR VALUES IN (8);
-CREATE TABLE attestation_assignments_9 PARTITION OF attestation_assignments_p FOR VALUES IN (9);
-
-drop table if exists sync_assignments_p;
-create table sync_assignments_p
-(
-    slot           int not null,
-    validatorindex int not null,
-    status         int not null, /* Can be 0 = scheduled, 1 = executed, 2 = missed, 3 = orphaned */
-    week           int not null,
-    primary key (validatorindex, week, slot)
-) PARTITION BY LIST (week);
-
 drop table if exists sync_committees;
 create table sync_committees
 (
@@ -140,28 +106,6 @@ create table sync_committees
     committeeindex int not null,
     primary key (period, validatorindex, committeeindex)
 );
-
-drop table if exists validator_balances_p;
-create table validator_balances_p
-(
-    epoch            int    not null,
-    validatorindex   int    not null,
-    balance          bigint not null,
-    effectivebalance bigint not null,
-    week             int    not null,
-    primary key (validatorindex, week, epoch)
-) PARTITION BY LIST (week);
-
-CREATE TABLE validator_balances_0 PARTITION OF validator_balances_p FOR VALUES IN (0);
-CREATE TABLE validator_balances_1 PARTITION OF validator_balances_p FOR VALUES IN (1);
-CREATE TABLE validator_balances_2 PARTITION OF validator_balances_p FOR VALUES IN (2);
-CREATE TABLE validator_balances_3 PARTITION OF validator_balances_p FOR VALUES IN (3);
-CREATE TABLE validator_balances_4 PARTITION OF validator_balances_p FOR VALUES IN (4);
-CREATE TABLE validator_balances_5 PARTITION OF validator_balances_p FOR VALUES IN (5);
-CREATE TABLE validator_balances_6 PARTITION OF validator_balances_p FOR VALUES IN (6);
-CREATE TABLE validator_balances_7 PARTITION OF validator_balances_p FOR VALUES IN (7);
-CREATE TABLE validator_balances_8 PARTITION OF validator_balances_p FOR VALUES IN (8);
-CREATE TABLE validator_balances_9 PARTITION OF validator_balances_p FOR VALUES IN (9);
 
 drop table if exists validator_balances_recent;
 create table validator_balances_recent
@@ -904,6 +848,11 @@ create table rocketpool_nodes
     min_rpl_stake numeric not null,
     max_rpl_stake numeric not null,
     rpl_cumulative_rewards numeric not null default 0,
+    smoothing_pool_opted_in boolean not null default false,
+    claimed_smoothing_pool  numeric not null,
+    unclaimed_smoothing_pool  numeric not null,
+    unclaimed_rpl_rewards numeric not null,
+
     primary key(rocketpool_storage_address, address)
 );
 
@@ -985,18 +934,25 @@ create table rocketpool_network_stats
     primary key(id)
 );
 
+drop table if exists rocketpool_reward_tree;
+create table rocketpool_reward_tree
+(
+    id 				    bigserial,
+    data                jsonb not null,
+
+    primary key(id)
+);
 
 drop table if exists eth_store_stats;
 create table eth_store_stats
 (
-    day			int	not null,
-    effective_balances_sum	bigint	not null,
-    start_balances_sum		bigint	not null,
-    end_balances_sum		bigint	not null,
-    deposits_sum		bigint	not null,
-    
+    day                     int     not null,
+    effective_balances_sum  bigint  not null default 0,
+    start_balances_sum      bigint  not null default 0,
+    end_balances_sum        bigint  not null default 0,
+    deposits_sum            bigint  not null default 0,
+    tx_fees_sum             numeric not null default 0,
     primary key(day)
-    
 );
 
 drop table if exists historical_pool_performance;
