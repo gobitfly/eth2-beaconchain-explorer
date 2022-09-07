@@ -1429,7 +1429,7 @@ func (metadata ERC20Metadata) UnmarshalBinary(data []byte) error {
 
 type ContractMetadata struct {
 	Name    string
-	ABI     *abi.ABI
+	ABI     *abi.ABI `msgpack:"-"`
 	ABIJson []byte
 }
 
