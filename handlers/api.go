@@ -1140,7 +1140,7 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	history, err := db.BigtableClient.GetValidatorAttestationHistory(queryIndices, 1000000000, 101)
+	history, err := db.BigtableClient.GetValidatorAttestationHistory(queryIndices, services.LatestEpoch(), 101)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
