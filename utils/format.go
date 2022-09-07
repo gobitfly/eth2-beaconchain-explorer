@@ -919,12 +919,35 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
 	p := message.NewPrinter(language.English)
 
+	priceS := string(balance.Metadata.Price)
+	price := decimal.New(0, 0)
+	if priceS != "" {
+		var err error
+		price, err = decimal.NewFromString(priceS)
+		if err != nil {
+			logger.WithError(err).Errorf("error getting price from string - FormatTokenBalance price: %v", priceS)
+		}
+	}
+	// numPrice := num.Div(mul).Mul(price)
+
 	logo := ""
 	if len(balance.Metadata.Logo) != 0 {
 		logo = fmt.Sprintf(`<img class="mr-1" style="height: 1.2rem;" src="data:image/png;base64, %s">`, base64.StdEncoding.EncodeToString(balance.Metadata.Logo))
 	}
+	pflt, _ := price.Float64()
 	flt, _ := num.Div(mul).Float64()
-	return template.HTML(p.Sprintf(`<div class="token-balance-col token-name text-truncate"><a class="token-icon" href='/execution/token/0x%x?a=0x%x'>%s %s</a></div> <div class="token-balance-col token-balance"><span class="token-holdings">%.5f</span></div>`, balance.Token, balance.Address, logo, balance.Metadata.Symbol, flt))
+	bflt, _ := price.Mul(num.Div(mul)).Float64()
+	return template.HTML(p.Sprintf(`
+	<div class="token-balance-col token-name text-truncate d-flex align-items-center justify-content-between">
+		<a class="token-icon" href='/execution/token/0x%x?a=0x%x'>
+			<span>%s</span> <span>%s</span>
+		</a> 
+		<span class="text-muted" style="font-size: 90%%;">$%.2f</span>
+	</div> 
+	<div class="token-balance-col token-balance d-flex align-items-center justify-content-between">
+		<span class="token-holdings">%.5f</span>
+		<span class="text-muted" style="font-size: 90%%;">@ $%.2f</span>
+	</div>`, balance.Token, balance.Address, logo, balance.Metadata.Symbol, bflt, flt, pflt))
 }
 
 func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {

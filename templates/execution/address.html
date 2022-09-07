@@ -45,9 +45,10 @@
       border-top: 1px solid var(--border-color);
       padding: 0.5rem 1rem;
     }
-    .token-balance-col:nth-child(2n+2) {
+
+    /* .token-balance-col:nth-child(2n+2) {
       text-align: right;
-    }
+    } */
 
     .token-balance-col:nth-child(1), .token-balance-col:nth-child(2) {
       border-top: none;
@@ -77,7 +78,8 @@
     } */
 
     .overview-label,
-    .overview-col {
+    .overview-col,
+    .token-balance-col {
       font-weight: 300;
       font-size: 1rem;
       line-height: 23px;
@@ -243,6 +245,9 @@
       var isLoading = false
 
       const infLoading = document.getElementById(loadingID)
+      if (!infLoading) {
+        return
+      }
       const getTransactions = async (token) => {
         try {
            const res = await fetch(`${window.location.pathname}/${urlPart}?pageToken=${encodeURI(token)}`)
@@ -760,8 +765,8 @@
 
 {{ define "AddressTokenBalanceTabContent" }}
   <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card shadow-none flex-grow-1">
-    <div class="card-body p-0 pb-1" style="max-height: 170px; overflow: auto">
-      <div class="position: relative" style="display: grid; grid-template-columns: minmax(50px, 1fr) minmax(50px, 2fr);">
+    <div class="card-body p-0 pb-1" style="max-height: 170px; overflow-y: auto; overflow-x: hidden;">
+      <div class="position: relative" style="display: grid; grid-template-columns: minmax(100px, 1fr) minmax(100px, 1fr);">
         <div style="top:0; z-index: 9;" class="position-sticky token-balance-col overview-header-col">
           <span>Symbol</span>
         </div>
