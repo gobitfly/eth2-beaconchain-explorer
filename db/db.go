@@ -1007,27 +1007,57 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 		}
 	}
 
-	query := fmt.Sprintf(`
-	INSERT INTO validators (
-		validatorindex,
-		pubkey,
-		withdrawableepoch,
-		withdrawalcredentials,
-		balance,
-		effectivebalance,
-		slashed,
-		activationeligibilityepoch,
-		activationepoch,
-		exitepoch,
-		balance1d,
-		balance7d,
-		balance31d,
-		pubkeyhex,
-		status,
-		lastattestationslot
-	)			
-	(SELECT * FROM UNNEST($1::int[], $2::bytea[], $3::bigint[], $4::bytea[], $5::bigint[], $6::bigint[], $7::bool[], $8::bigint[], $9::bigint[], $10::bigint[], $11::bigint[], $12::bigint[], $13::bigint[], $14::text[], $15::varchar[], $16::bigint[]))
-			ON CONFLICT (validatorindex) DO UPDATE SET
+	batchSize := 4000 // max parameters: 65535
+	for b := 0; b < len(validators); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(validators) < end {
+			end = len(validators)
+		}
+
+		numArgs := 16
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*numArgs)
+		for i, v := range validators[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10, i*numArgs+11, i*numArgs+12, i*numArgs+13, i*numArgs+14, i*numArgs+15, i*numArgs+16))
+			valueArgs = append(valueArgs, v.Index)
+			valueArgs = append(valueArgs, v.PublicKey)
+			valueArgs = append(valueArgs, v.WithdrawableEpoch)
+			valueArgs = append(valueArgs, v.WithdrawalCredentials)
+			valueArgs = append(valueArgs, v.Balance)
+			valueArgs = append(valueArgs, v.EffectiveBalance)
+			valueArgs = append(valueArgs, v.Slashed)
+			valueArgs = append(valueArgs, v.ActivationEligibilityEpoch)
+			valueArgs = append(valueArgs, v.ActivationEpoch)
+			valueArgs = append(valueArgs, v.ExitEpoch)
+			valueArgs = append(valueArgs, v.Balance1d)
+			valueArgs = append(valueArgs, v.Balance7d)
+			valueArgs = append(valueArgs, v.Balance31d)
+			valueArgs = append(valueArgs, fmt.Sprintf("%x", v.PublicKey))
+			valueArgs = append(valueArgs, v.Status)
+			valueArgs = append(valueArgs, v.LastAttestationSlot)
+		}
+		stmt := fmt.Sprintf(`
+			INSERT INTO validators (
+				validatorindex,
+				pubkey,
+				withdrawableepoch,
+				withdrawalcredentials,
+				balance,
+				effectivebalance,
+				slashed,
+				activationeligibilityepoch,
+				activationepoch,
+				exitepoch,
+				balance1d,
+				balance7d,
+				balance31d,
+				pubkeyhex,
+				status,
+				lastattestationslot
+			) 
+			VALUES %[3]s
+			ON CONFLICT (validatorindex) DO UPDATE SET 
 				withdrawableepoch          = EXCLUDED.withdrawableepoch,
 				balance                    = EXCLUDED.balance,
 				effectivebalance           = EXCLUDED.effectivebalance,
@@ -1039,8 +1069,8 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 				balance7d                  = EXCLUDED.balance7d,
 				balance31d                 = EXCLUDED.balance31d,
 				lastattestationslot        = GREATEST(validators.lastattestationslot, EXCLUDED.lastattestationslot),
-				status                     =
-					CASE
+				status                     = 
+					CASE 
 					WHEN EXCLUDED.exitepoch <= %[1]d AND EXCLUDED.slashed THEN 'slashed'
 					WHEN EXCLUDED.exitepoch <= %[1]d THEN 'exited'
 					WHEN EXCLUDED.activationeligibilityepoch = 9223372036854775807 THEN 'deposited'
@@ -1049,152 +1079,17 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 					WHEN EXCLUDED.slashed THEN 'slashing_online'
 					WHEN EXCLUDED.exitepoch < 9223372036854775807 AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'exiting_offline'
 					WHEN EXCLUDED.exitepoch < 9223372036854775807 THEN 'exiting_online'
-					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline'
+					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline' 
 					ELSE 'active_online'
-					END
-	`, latestEpoch, thresholdSlot)
+					END`,
+			latestEpoch, thresholdSlot, strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
 
-	validatorindexArr := make([]uint64, 0, len(validators))
-	pubkeyArr := make([][]byte, 0, len(validators))
-	withdrawableepochArr := make([]uint64, 0, len(validators))
-	withdrawalcredentialsArr := make([][]byte, 0, len(validators))
-	balanceArr := make([]uint64, 0, len(validators))
-	effectivebalanceArr := make([]uint64, 0, len(validators))
-	slashedArr := make([]bool, 0, len(validators))
-	activationeligibilityepochArr := make([]uint64, 0, len(validators))
-	activationepochArr := make([]uint64, 0, len(validators))
-	exitepochArr := make([]uint64, 0, len(validators))
-	balance1dArr := make([]sql.NullInt64, 0, len(validators))
-	balance7dArr := make([]sql.NullInt64, 0, len(validators))
-	balance31dArr := make([]sql.NullInt64, 0, len(validators))
-	pubkeyhexArr := make([]string, 0, len(validators))
-	statusArr := make([]string, 0, len(validators))
-	lastattestationslotArr := make([]sql.NullInt64, 0, len(validators))
-
-	for _, v := range validators {
-		validatorindexArr = append(validatorindexArr, v.Index)
-		pubkeyArr = append(pubkeyArr, v.PublicKey)
-		withdrawableepochArr = append(withdrawableepochArr, v.WithdrawableEpoch)
-		withdrawalcredentialsArr = append(withdrawalcredentialsArr, v.WithdrawalCredentials)
-		balanceArr = append(balanceArr, v.Balance)
-		effectivebalanceArr = append(effectivebalanceArr, v.EffectiveBalance)
-		slashedArr = append(slashedArr, v.Slashed)
-		activationeligibilityepochArr = append(activationeligibilityepochArr, v.ActivationEligibilityEpoch)
-		activationepochArr = append(activationepochArr, v.ActivationEpoch)
-		exitepochArr = append(exitepochArr, v.ExitEpoch)
-		balance1dArr = append(balance1dArr, v.Balance1d)
-		balance7dArr = append(balance7dArr, v.Balance7d)
-		balance31dArr = append(balance31dArr, v.Balance31d)
-		pubkeyhexArr = append(pubkeyhexArr, fmt.Sprintf("%x", v.PublicKey))
-		statusArr = append(statusArr, v.Status)
-		lastattestationslotArr = append(lastattestationslotArr, v.LastAttestationSlot)
+		logger.Infof("saving validator batch %v completed", b)
 	}
-
-	_, err = tx.Exec(query,
-		pq.Array(validatorindexArr),
-		pq.ByteaArray(pubkeyArr),
-		pq.Array(withdrawableepochArr),
-		pq.ByteaArray(withdrawalcredentialsArr),
-		pq.Array(balanceArr),
-		pq.Array(effectivebalanceArr),
-		pq.Array(slashedArr),
-		pq.Array(activationeligibilityepochArr),
-		pq.Array(activationepochArr),
-		pq.Array(exitepochArr),
-		pq.Array(balance1dArr),
-		pq.Array(balance7dArr),
-		pq.Array(balance31dArr),
-		pq.StringArray(pubkeyhexArr),
-		pq.StringArray(statusArr),
-		pq.Array(lastattestationslotArr),
-	)
-
-	if err != nil {
-		return fmt.Errorf("error saving validators: %v", err)
-	}
-	// batchSize := 4000 // max parameters: 65535
-	// for b := 0; b < len(validators); b += batchSize {
-	// 	start := b
-	// 	end := b + batchSize
-	// 	if len(validators) < end {
-	// 		end = len(validators)
-	// 	}
-
-	// 	numArgs := 16
-	// 	valueStrings := make([]string, 0, batchSize)
-	// 	valueArgs := make([]interface{}, 0, batchSize*numArgs)
-	// 	for i, v := range validators[start:end] {
-	// 		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10, i*numArgs+11, i*numArgs+12, i*numArgs+13, i*numArgs+14, i*numArgs+15, i*numArgs+16))
-	// 		valueArgs = append(valueArgs, v.Index)
-	// 		valueArgs = append(valueArgs, v.PublicKey)
-	// 		valueArgs = append(valueArgs, v.WithdrawableEpoch)
-	// 		valueArgs = append(valueArgs, v.WithdrawalCredentials)
-	// 		valueArgs = append(valueArgs, v.Balance)
-	// 		valueArgs = append(valueArgs, v.EffectiveBalance)
-	// 		valueArgs = append(valueArgs, v.Slashed)
-	// 		valueArgs = append(valueArgs, v.ActivationEligibilityEpoch)
-	// 		valueArgs = append(valueArgs, v.ActivationEpoch)
-	// 		valueArgs = append(valueArgs, v.ExitEpoch)
-	// 		valueArgs = append(valueArgs, v.Balance1d)
-	// 		valueArgs = append(valueArgs, v.Balance7d)
-	// 		valueArgs = append(valueArgs, v.Balance31d)
-	// 		valueArgs = append(valueArgs, fmt.Sprintf("%x", v.PublicKey))
-	// 		valueArgs = append(valueArgs, v.Status)
-	// 		valueArgs = append(valueArgs, v.LastAttestationSlot)
-	// 	}
-	// 	stmt := fmt.Sprintf(`
-	// 		INSERT INTO validators (
-	// 			validatorindex,
-	// 			pubkey,
-	// 			withdrawableepoch,
-	// 			withdrawalcredentials,
-	// 			balance,
-	// 			effectivebalance,
-	// 			slashed,
-	// 			activationeligibilityepoch,
-	// 			activationepoch,
-	// 			exitepoch,
-	// 			balance1d,
-	// 			balance7d,
-	// 			balance31d,
-	// 			pubkeyhex,
-	// 			status,
-	// 			lastattestationslot
-	// 		)
-	// 		VALUES %[3]s
-	// 		ON CONFLICT (validatorindex) DO UPDATE SET
-	// 			withdrawableepoch          = EXCLUDED.withdrawableepoch,
-	// 			balance                    = EXCLUDED.balance,
-	// 			effectivebalance           = EXCLUDED.effectivebalance,
-	// 			slashed                    = EXCLUDED.slashed,
-	// 			activationeligibilityepoch = EXCLUDED.activationeligibilityepoch,
-	// 			activationepoch            = EXCLUDED.activationepoch,
-	// 			exitepoch                  = EXCLUDED.exitepoch,
-	// 			balance1d                  = EXCLUDED.balance1d,
-	// 			balance7d                  = EXCLUDED.balance7d,
-	// 			balance31d                 = EXCLUDED.balance31d,
-	// 			lastattestationslot        = GREATEST(validators.lastattestationslot, EXCLUDED.lastattestationslot),
-	// 			status                     =
-	// 				CASE
-	// 				WHEN EXCLUDED.exitepoch <= %[1]d AND EXCLUDED.slashed THEN 'slashed'
-	// 				WHEN EXCLUDED.exitepoch <= %[1]d THEN 'exited'
-	// 				WHEN EXCLUDED.activationeligibilityepoch = 9223372036854775807 THEN 'deposited'
-	// 				WHEN EXCLUDED.activationepoch > %[1]d THEN 'pending'
-	// 				WHEN EXCLUDED.slashed AND EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'slashing_offline'
-	// 				WHEN EXCLUDED.slashed THEN 'slashing_online'
-	// 				WHEN EXCLUDED.exitepoch < 9223372036854775807 AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'exiting_offline'
-	// 				WHEN EXCLUDED.exitepoch < 9223372036854775807 THEN 'exiting_online'
-	// 				WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline'
-	// 				ELSE 'active_online'
-	// 				END`,
-	// 		latestEpoch, thresholdSlot, strings.Join(valueStrings, ","))
-	// 	_, err := tx.Exec(stmt, valueArgs...)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	logger.Infof("saving validator batch %v completed", b)
-	// }
 
 	s := time.Now()
 	newValidators := []struct {
