@@ -1641,6 +1641,9 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[ui
 		}
 	}
 
+	if this.RPLCumulativeRewards == nil {
+		this.RPLCumulativeRewards = big.NewInt(0)
+	}
 	if this.UnclaimedRPLRewards == nil {
 		this.UnclaimedRPLRewards = big.NewInt(0)
 	}
