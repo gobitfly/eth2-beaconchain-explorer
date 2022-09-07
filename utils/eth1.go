@@ -98,8 +98,12 @@ func FormatAddress(address []byte, token []byte, name string, verified bool, isC
 
 	tooltip := ""
 	if len(name) == 0 {
-		name = fmt.Sprintf("0x%x", address)
-		tooltip = name
+		if len(address) > 2 {
+			name = fmt.Sprintf("0x%x…%x", address[:2], address[len(address)-2:])
+		} else {
+			name = fmt.Sprintf("0x%x", address)
+		}
+		tooltip = fmt.Sprintf("0x%x", address)
 	} else {
 		tooltip = fmt.Sprintf("%s\n0x%x", name, address)
 	}
@@ -110,7 +114,7 @@ func FormatAddress(address []byte, token []byte, name string, verified bool, isC
 	}
 
 	if !link {
-		ret += fmt.Sprintf(`<span class="text-truncate" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</span>`, tooltip, name)
+		ret += fmt.Sprintf(`<span class="text-truncate" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s" data-container="body">%s</span>`, tooltip, name)
 		return template.HTML(ret)
 	}
 
