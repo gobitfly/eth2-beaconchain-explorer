@@ -733,8 +733,6 @@ func SaveEpoch(data *types.EpochData) error {
 
 	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+10 {
 		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting validators because epoch is far behind head")
-	} else if found {
-		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting validators because validator status for that epoch has already been exported")
 	} else {
 		logger.Infof("exporting validators")
 		err = saveValidators(data, tx)
