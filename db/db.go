@@ -1112,7 +1112,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 	)
 
 	if err != nil {
-		logger.Fatalf("error saving validators: %v", err)
+		return fmt.Errorf("error saving validators: %v", err)
 	}
 	// batchSize := 4000 // max parameters: 65535
 	// for b := 0; b < len(validators); b += batchSize {
