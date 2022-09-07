@@ -52,6 +52,10 @@ func main() {
 	balanceUpdaterPrefix := flag.String("balances.prefix", "", "Prefix to use for fetching balance updates")
 	balanceUpdaterBatchSize := flag.Int("balances.batch", 1000, "Batch size for balance updates")
 
+	tokenPriceExport := flag.Bool("token.price.enabled", false, "Enable token export process")
+	tokenPriceExportList := flag.String("token.price.list", "", "Tokenlist path to use for the token price export")
+	tokenPriceExportFrequency := flag.Duration("token.price.frequency", time.Hour, "Token price export interval")
+
 	flag.Parse()
 	if erigonEndpoint == nil || *erigonEndpoint == "" {
 		logrus.Fatal("no erigon node url provided")
@@ -69,6 +73,18 @@ func main() {
 	}
 	defer bt.Close()
 
+	if *tokenPriceExport {
+		go func() {
+			for {
+				err = UpdateTokenPrices(bt, client, *tokenPriceExportList)
+				if err != nil {
+					logrus.Error(err)
+					time.Sleep(*tokenPriceExportFrequency)
+				}
+				time.Sleep(*tokenPriceExportFrequency)
+			}
+		}()
+	}
 	// err = UpdateTokenPrices(bt, client, "tokenlists/tokens.uniswap.org.json")
 	// if err != nil {
 	// 	logrus.Fatal(err)
