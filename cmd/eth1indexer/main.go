@@ -69,11 +69,11 @@ func main() {
 	}
 	defer bt.Close()
 
-	err = UpdateTokenPrices(bt, client, "tokenlists/tokens.uniswap.org.json")
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	return
+	// err = UpdateTokenPrices(bt, client, "tokenlists/tokens.uniswap.org.json")
+	// if err != nil {
+	// 	logrus.Fatal(err)
+	// }
+	// return
 	// if *enableBalanceUpdater {
 	// 	ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
 	// 	return
@@ -125,7 +125,7 @@ func main() {
 	for {
 		err := HandleChainReorgs(bt, client, *reorgDepth)
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Error(err)
 		}
 
 		lastBlockFromNode, err := client.GetLatestEth1BlockNumber()

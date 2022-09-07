@@ -104,6 +104,7 @@ message Eth1BlockIndexed {
     bytes uncle_reward = 26;
     // bytes base_fee_change = 27;
     // bytes block_utilization_change = 28;
+    uint64 internal_transaction_count = 29;
 }
 
 message Eth1UncleIndexed {
