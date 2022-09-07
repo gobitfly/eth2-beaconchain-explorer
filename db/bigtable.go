@@ -2299,6 +2299,32 @@ func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]st
 	return keys, pairs, err
 }
 
+func (bigtable *Bigtable) GetMetadata(startToken string, limit int) ([]string, []string, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*120))
+	defer cancel()
+
+	keys := make([]string, 0, limit)
+	pairs := make([]string, 0, limit)
+
+	err := bigtable.tableMetadata.ReadRows(ctx, gcp_bigtable.NewRange(startToken, ""), func(row gcp_bigtable.Row) bool {
+		keys = append(keys, row.Key())
+
+		for _, ri := range row {
+			for _, item := range ri {
+				if strings.Contains(item.Column, "a:B:") {
+					pairs = append(pairs, row.Key()+":"+item.Column)
+				}
+			}
+		}
+		return true
+	}, gcp_bigtable.LimitRows(int64(limit)))
+
+	if err == context.DeadlineExceeded && len(keys) > 0 {
+		return keys, pairs, nil
+	}
+	return keys, pairs, err
+}
+
 func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1AddressMetadata, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -2688,6 +2714,9 @@ func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance, del
 		return err
 	}
 
+	if len(deleteKeys) == 0 {
+		return nil
+	}
 	mutsDelete := &types.BulkMutations{
 		Keys: make([]string, 0, len(balances)),
 		Muts: make([]*gcp_bigtable.Mutation, 0, len(balances)),

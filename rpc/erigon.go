@@ -370,7 +370,7 @@ func (client *ErigonClient) TraceParity(blockNumber uint64) ([]*ParityTraceResul
 	return res, nil
 }
 
-func (client *ErigonClient) GetBalances(pairs []string) ([]*types.Eth1AddressBalance, error) {
+func (client *ErigonClient) GetBalances(pairs []string, addressIndex, tokenIndex int) ([]*types.Eth1AddressBalance, error) {
 	batchElements := make([]rpc.BatchElem, 0, len(pairs))
 
 	ret := make([]*types.Eth1AddressBalance, len(pairs))
@@ -382,12 +382,12 @@ func (client *ErigonClient) GetBalances(pairs []string) ([]*types.Eth1AddressBal
 			logrus.Fatalf("%v has an invalid format", pair)
 		}
 
-		if s[1] != "B" {
-			logrus.Fatalf("%v has invalid balance update prefix", pair)
-		}
+		// if s[1] != "B" {
+		// 	logrus.Fatalf("%v has invalid balance update prefix", pair)
+		// }
 
-		address := s[2]
-		token := s[4]
+		address := s[addressIndex] // 2
+		token := s[tokenIndex]     // 4
 		result := ""
 
 		ret[i] = &types.Eth1AddressBalance{
