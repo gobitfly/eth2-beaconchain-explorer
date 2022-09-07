@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 var logger = logrus.New().WithField("module", "exporter")
@@ -492,32 +493,53 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 	}
 
 	// export epoch data to bigtable
-	go func() {
+	g := new(errgroup.Group)
+	g.Go(func() error {
 		err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
 		if err != nil {
-			logrus.Errorf("error exporting validator balances to bigtable: %v", err)
+			return fmt.Errorf("error exporting validator balances to bigtable: %v", err)
 		}
+		return nil
+	})
+	g.Go(func() error {
 		err = db.BigtableClient.SaveAttestationAssignments(epoch, data.ValidatorAssignmentes.AttestorAssignments)
 		if err != nil {
-			logrus.Errorf("error exporting attestation assignments to bigtable: %v", err)
+			return fmt.Errorf("error exporting attestation assignments to bigtable: %v", err)
 		}
+		return nil
+	})
+	g.Go(func() error {
 		err = db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
 		if err != nil {
-			logrus.Errorf("error exporting proposal assignments to bigtable: %v", err)
+			return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
 		}
+		return nil
+	})
+	g.Go(func() error {
 		err = db.BigtableClient.SaveAttestations(data.Blocks)
 		if err != nil {
-			logrus.Errorf("error exporting attestations to bigtable: %v", err)
+			return fmt.Errorf("error exporting attestations to bigtable: %v", err)
 		}
+		return nil
+	})
+	g.Go(func() error {
 		err = db.BigtableClient.SaveProposals(data.Blocks)
 		if err != nil {
-			logrus.Errorf("error exporting proposals to bigtable: %v", err)
+			return fmt.Errorf("error exporting proposals to bigtable: %v", err)
 		}
+		return nil
+	})
+	g.Go(func() error {
 		err = db.BigtableClient.SaveSyncComitteeDuties(data.Blocks)
 		if err != nil {
-			logrus.Errorf("error exporting sync committe duties to bigtable: %v", err)
+			return fmt.Errorf("error exporting sync committe duties to bigtable: %v", err)
 		}
-	}()
+		return nil
+	})
+	err = g.Wait()
+	if err != nil {
+		return fmt.Errorf("error during bigtable export: %v", err)
+	}
 
 	attestedSlots := make(map[uint64]uint64)
 	for _, blockkv := range data.Blocks {
