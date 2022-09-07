@@ -581,6 +581,8 @@ type BlockPageData struct {
 
 	Transactions []*BlockPageTransaction
 
+	ExecutionData *Eth1BlockPageData
+
 	Attestations      []*BlockPageAttestation // Attestations included in this block
 	VoluntaryExits    []*BlockPageVoluntaryExits
 	Votes             []*BlockVote // Attestations that voted for that block
@@ -1552,11 +1554,14 @@ type Eth1BlockPageData struct {
 	TxCount        uint64
 	UncleCount     uint64
 	Hash           string
+	ParentHash     string
 	MinerAddress   string
+	MinerName      string
 	Reward         *big.Int
 	MevReward      *big.Int
 	TxFees         *big.Int
 	GasUsage       uint64
+	GasLimit       uint64
 	LowestGasPrice *big.Int
 	Ts             time.Time
 	Difficulty     *big.Int
@@ -1565,13 +1570,17 @@ type Eth1BlockPageData struct {
 	Extra          string
 	Txs            []Eth1BlockPageTransaction
 	Uncles         []Eth1BlockPageData
+	State          string
 }
 
 type Eth1BlockPageTransaction struct {
 	Hash     string
 	From     string
+	FromName string
 	To       string
+	ToName   string
 	Value    *big.Int
 	Fee      *big.Int
 	GasPrice *big.Int
+	Method   string
 }
