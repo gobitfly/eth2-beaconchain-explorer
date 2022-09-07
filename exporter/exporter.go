@@ -233,8 +233,7 @@ func Start(client rpc.Client) error {
 			// Do a full check on any epoch transition or after during the first run
 			if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
 				doFullCheck(client)
-			} else { // else just save the in epoch block
-
+			} else { // else just save the epoch block
 				blocksMap := make(map[uint64]map[string]*types.Block)
 				if blocksMap[block.Slot] == nil {
 					blocksMap[block.Slot] = make(map[string]*types.Block)
@@ -254,8 +253,6 @@ func Start(client rpc.Client) error {
 			lastExportedSlot = block.Slot
 		}
 	}
-
-	return nil
 }
 
 // Will ensure the db is fully in sync with the node
@@ -332,7 +329,7 @@ func doFullCheck(client rpc.Client) {
 		} else if block.Node == nil {
 			logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
 			epochsToExport[block.Epoch] = true
-		} else if bytes.Compare(block.Db.BlockRoot, block.Node.BlockRoot) != 0 {
+		} else if !bytes.Equal(block.Db.BlockRoot, block.Node.BlockRoot) {
 			logger.Printf("queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
 			epochsToExport[block.Epoch] = true
 		}
