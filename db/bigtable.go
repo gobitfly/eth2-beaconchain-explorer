@@ -2369,20 +2369,30 @@ func (bigtable *Bigtable) GetBalanceForAddress(address []byte, token []byte) (*t
 		return nil, err
 	}
 
-	ret := &types.Eth1AddressBalance{
-		Address: address,
-		Token:   token,
-		Balance: row[ACCOUNT_METADATA_FAMILY][0].Value,
+	if row == nil {
+		return nil, errors.New("row is nil, after reading tableMetadata")
+	}
+	if val, ok := row[ACCOUNT_METADATA_FAMILY]; ok {
+		if val == nil || len(val) < 1 {
+			return nil, errors.New("ReadItem is empty or nil")
+		}
+
+		ret := &types.Eth1AddressBalance{
+			Address: address,
+			Token:   token,
+			Balance: row[ACCOUNT_METADATA_FAMILY][0].Value,
+		}
+
+		metadata, err := bigtable.GetERC20MetadataForAddress(token)
+		if err != nil {
+			return nil, err
+		}
+		ret.Metadata = metadata
+
+		return ret, nil
 	}
 
-	metadata, err := bigtable.GetERC20MetadataForAddress(token)
-	if err != nil {
-		return nil, err
-	}
-	ret.Metadata = metadata
-
-	return ret, nil
-
+	return nil, errors.New("ACCOUNT_METADATA_FAMILY is not a valid index in row map")
 }
 
 func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC20Metadata, error) {
