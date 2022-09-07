@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"strconv"
 	"strings"
@@ -72,7 +73,6 @@ func ethStoreExporter() {
 
 func (ese *EthStoreExporter) ExportJSON(path string) error {
 	// check if filepath exists
-	logger.Info(path)
 	_, err := os.Stat(path)
 	if err != nil {
 		return err
@@ -164,7 +164,7 @@ DBCHECK:
 		}
 
 		// count rows of eth.store days in db
-		var ethStoreDayCount uint64
+		var ethStoreDayCount int64
 		err = ese.DB.Get(&ethStoreDayCount, `
 				SELECT COUNT(*)
 				FROM eth_store_stats`)
@@ -174,7 +174,7 @@ DBCHECK:
 			continue
 		}
 
-		if ethStoreDayCount <= latest.Day.BigInt().Uint64() {
+		if latest.Day.BigInt().Cmp(big.NewInt(ethStoreDayCount)) >= 0 {
 			// db is incomplete
 			// init export map, set every day to true
 			daysToExport := make(map[uint64]bool)
@@ -222,7 +222,7 @@ DBCHECK:
 						continue DBCHECK
 					}
 					logger.Infof("exported eth.store day %d into db", dayToExport)
-					if ethStoreDayCount < latest.Day.BigInt().Uint64() {
+					if latest.Day.BigInt().Cmp(big.NewInt(ethStoreDayCount)) > 0 {
 						// more than 1 day is being exported, sleep for duration specified in config
 						time.Sleep(ese.Sleep)
 					}
