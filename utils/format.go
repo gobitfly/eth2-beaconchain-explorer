@@ -960,8 +960,8 @@ func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
 		<svg style="width: 1rem; height: 1rem;">
 			<use xlink:href="#ethereum-diamond-logo"/>
 		</svg> 
-		<span class="token-holdings">%.5f</span>
-	</div>`, flt))
+		<span class="token-holdings">%s</span>
+	</div>`, strconv.FormatFloat(flt, 'f', -1, 64)))
 }
 
 func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
