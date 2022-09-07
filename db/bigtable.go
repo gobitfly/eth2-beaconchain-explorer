@@ -2310,10 +2310,12 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 	}
 
 	ret := &types.Eth1AddressMetadata{
-		Balances:   []*types.Eth1AddressBalance{},
-		ERC20:      &types.ERC20Metadata{},
-		Name:       "",
-		EthBalance: &types.Eth1AddressBalance{},
+		Balances: []*types.Eth1AddressBalance{},
+		ERC20:    &types.ERC20Metadata{},
+		Name:     "",
+		EthBalance: &types.Eth1AddressBalance{
+			Metadata: &types.ERC20Metadata{},
+		},
 	}
 
 	g := new(errgroup.Group)
@@ -2341,7 +2343,11 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 					balance.Metadata = metadata
 
 					mux.Lock()
-					ret.Balances = append(ret.Balances, balance)
+					if bytes.Equal([]byte{0x00}, token) {
+						ret.EthBalance = balance
+					} else {
+						ret.Balances = append(ret.Balances, balance)
+					}
 					mux.Unlock()
 
 					return nil
