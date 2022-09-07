@@ -35,7 +35,6 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "address", "/address", "Address")
 
 	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address))
-
 	if err != nil {
 		logger.Errorf("error retieving balances for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -140,17 +139,6 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	pngStr := base64.StdEncoding.EncodeToString(png)
 	pngStrInverse := base64.StdEncoding.EncodeToString(pngInverse)
 
-	// metadata.Balances = metadata.Balances[:10]
-
-	if len(metadata.Balances) > 0 {
-		metadata.EthBalance = metadata.Balances[0]
-		metadata.Balances = metadata.Balances[1:]
-	} else {
-		metadata.EthBalance = &types.Eth1AddressBalance{
-			Metadata: &types.ERC20Metadata{},
-		}
-		metadata.Balances = []*types.Eth1AddressBalance{}
-	}
 	ef := new(big.Float).SetInt(new(big.Int).SetBytes(metadata.EthBalance.Balance))
 	etherBalance := new(big.Float).Quo(ef, big.NewFloat(1e18))
 	ethPrice := new(big.Float).Mul(etherBalance, big.NewFloat(float64(price)))
