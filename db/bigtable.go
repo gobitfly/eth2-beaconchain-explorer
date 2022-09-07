@@ -668,6 +668,7 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 			logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
 			return false
 		}
+		epoch = max_epoch - epoch
 		logger.Infof("retrieved %v balances entries for epoch %v", len(r[VALIDATOR_BALANCES_FAMILY]), epoch)
 
 		for _, ri := range r[VALIDATOR_BALANCES_FAMILY] {
@@ -676,7 +677,6 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
 				return false
 			}
-			epoch = max_epoch - epoch
 			balances := ri.Value
 
 			balanceBytes := balances[0:8]
