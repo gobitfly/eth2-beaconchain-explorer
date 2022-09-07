@@ -27,7 +27,7 @@ import (
 )
 
 func main() {
-	// localhost:8545
+
 	erigonEndpoint := flag.String("erigon", "", "Erigon archive node enpoint")
 
 	block := flag.Int64("block", 0, "Index a specific block")

@@ -428,7 +428,7 @@ func (client *ErigonClient) GetBalances(pairs []string) ([]*types.Eth1AddressBal
 		}
 
 		res := strings.TrimPrefix(*el.Result.(*string), "0x")
-		ret[i].Balance = new(big.Int).SetBytes(common.Hex2Bytes(res)).Bytes()
+		ret[i].Balance = new(big.Int).SetBytes(common.FromHex(res)).Bytes()
 	}
 
 	return ret, nil
