@@ -90,7 +90,7 @@
 							</div>
 							<div class="row border-bottom p-3 mx-0">
 								<div class="col-md-2">Miner:</div>
-								<div class="col-md-10 text-monospace"><a href="/execution/address/{{.MinerAddress}}">{{.MinerAddress}}</a></div>
+								<div class="col-md-10 text-monospace"><a href="/execution/address/{{.MinerAddress}}">{{ if gt (len .MinerName ) 0 }} {{.MinerName}} {{ else}} {{.MinerAddress}} {{ end }} </a></div>
 							</div>
 							<div class="row border-bottom p-3 mx-0">
 								<div class="col-md-2">Reward:</div>
@@ -107,7 +107,7 @@
 							</div>
 							<div class="row border-bottom p-3 mx-0">
 								<div class="col-md-2">Gas Usage:</div>
-								<div class="col-md-10">{{.GasUsage}}</div>
+								<div class="col-md-10">{{formatAddCommas .GasUsage}} of {{formatAddCommas .GasLimit}}</div>
 							</div>
 							{{if gt .TxCount 0}}
 								<div class="row border-bottom p-3 mx-0">
@@ -162,31 +162,7 @@
 							</div>
 						</div>
 						<div class="tab-pane fade" id="txs" role="tabpanel" aria-labelledby="txs-tab">
-							<div class="row border-bottom p-1 mx-0">
-								<div class="col-md-12 text-center"><b>Showing {{ .TxCount }} Transactions </b></div>
-							</div>
-							<div class="table-responsive">
-								<table class="table table-sm table-bordered text-center">
-									<tr>
-										<th>Hash</th>
-										<th>From</th>
-										<th>To</th>
-										<th>Value</th>
-										<th>Fee</th>
-										<th>Gas Price</th>
-									</tr>
-									{{range .Txs}}
-										<tr>
-											<td><a class="text-monospace" href="/execution/tx/{{.Hash}}">{{printf "%.8s" .Hash}}…</a></td>
-											<td><a class="text-monospace" href="/execution/address/{{.From}}">{{.From}}</a></td>
-											<td><a class="text-monospace" href="/execution/address/{{.To}}">{{.To}}</a></td>
-											<td>{{formatAmount .Value "ETH" 5}}</td>
-											<td>{{formatAmount .Fee "ETH" 5 }}</td>
-											<td>{{formatAmount .GasPrice "GWei" 0}}</td>
-										</tr>
-									{{end}}
-								</table>
-							</div>
+							{{ template "execution_transactions" . }}
 						</div>
 						<div class="tab-pane fade" id="uncles" role="tabpanel"
 							aria-labelledby="uncles-tab">
@@ -206,7 +182,7 @@
 										<tr>
 											<td>{{.Number}}</td>
 											<td>{{subUI64 $.Data.Number .Number}}</td>
-											<td><a href="/execution/address/{{.MinerAddress}}">{{.MinerAddress}}</a></td>
+											<td><a href="/execution/address/{{.MinerAddress}}">{{ if gt (len .MinerName ) 0 }} {{.MinerName}} {{ else}} {{.MinerAddress}} {{ end }}</a></td>
 											<td>{{formatAmount .Reward "ETH" 5}}</td>
 											<td>{{.Extra}}</td>
 										</tr>

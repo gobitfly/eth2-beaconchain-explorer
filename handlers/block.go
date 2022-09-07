@@ -35,6 +35,7 @@ var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateF
 	"templates/block/proposerSlashing.html",
 	"templates/block/exits.html",
 	"templates/block/overview.html",
+	"templates/block/execTransactions.html",
 ))
 var blockFutureTemplate = template.Must(template.New("blockFuture").Funcs(utils.GetTemplateFuncs()).ParseFiles(
 	"templates/layout.html",
@@ -42,9 +43,10 @@ var blockFutureTemplate = template.Must(template.New("blockFuture").Funcs(utils.
 ))
 var blockNotFoundTemplate = template.Must(template.New("blocknotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocknotfound.html"))
 
+const MaxSlotValue = 137438953503 // we only render a page for blocks up to this slot
+
 // Block will return the data for a block
 func Block(w http.ResponseWriter, r *http.Request) {
-	const MaxSlotValue = 137438953503 // we only render a page for blocks up to this slot
 	w.Header().Set("Content-Type", "text/html")
 
 	vars := mux.Vars(r)
@@ -96,9 +98,69 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	blockPageData, err := GetSlotPageData(uint64(blockSlot), true)
+	if err == sql.ErrNoRows {
+		slot := uint64(blockSlot)
+		//Slot not in database -> Show future block
+		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
+		data.Meta.Path = "/block/" + slotOrHash
+
+		if slot > MaxSlotValue {
+			logger.Errorf("error retrieving blockPageData: %v", err)
+			err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+
+			if err != nil {
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		futurePageData := types.BlockPageData{
+			Slot:         slot,
+			Epoch:        utils.EpochOfSlot(slot),
+			Ts:           utils.SlotToTime(slot),
+			NextSlot:     slot + 1,
+			PreviousSlot: slot - 1,
+		}
+		data.Data = futurePageData
+
+		err = blockFutureTemplate.ExecuteTemplate(w, "layout", data)
+		if err != nil {
+			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		return
+	} else if err != nil {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, blockPageData.Slot, time.Now().Year())
+	data.Meta.Path = fmt.Sprintf("/block/%v", blockPageData.Slot)
+	data.Data = blockPageData
+
+	if utils.IsApiRequest(r) {
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(data.Data)
+	} else {
+		w.Header().Set("Content-Type", "text/html")
+		err = blockTemplate.ExecuteTemplate(w, "layout", data)
+	}
+
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func GetSlotPageData(blockSlot uint64, retrieveTxsFromDb bool) (*types.BlockPageData, error) {
 	blockPageData := types.BlockPageData{}
 	blockPageData.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
-	err = db.ReaderDb.Get(&blockPageData, `
+	err := db.ReaderDb.Get(&blockPageData, `
 		SELECT
 			blocks.epoch,
 			blocks.slot,
@@ -143,44 +205,6 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		blockSlot)
 
 	blockPageData.Slot = uint64(blockSlot)
-	if err != nil {
-		//Slot not in database -> Show future block
-		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
-		data.Meta.Path = "/block/" + slotOrHash
-
-		if blockPageData.Slot > MaxSlotValue {
-			logger.Errorf("error retrieving blockPageData: %v", err)
-			err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-
-			if err != nil {
-				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-		}
-
-		blockPageData = types.BlockPageData{
-			Slot:         blockPageData.Slot,
-			Epoch:        utils.EpochOfSlot(blockPageData.Slot),
-			Ts:           utils.SlotToTime(blockPageData.Slot),
-			NextSlot:     blockPageData.Slot + 1,
-			PreviousSlot: blockPageData.Slot - 1,
-			Status:       4,
-		}
-		data.Data = blockPageData
-
-		err = blockFutureTemplate.ExecuteTemplate(w, "layout", data)
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		return
-	}
-
-	data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, blockPageData.Slot, time.Now().Year())
-	data.Meta.Path = fmt.Sprintf("/block/%v", blockPageData.Slot)
 
 	blockPageData.Ts = utils.SlotToTime(blockPageData.Slot)
 	if blockPageData.ExecTimestamp.Valid {
@@ -188,75 +212,11 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 	blockPageData.SlashingsCount = blockPageData.AttesterSlashingsCount + blockPageData.ProposerSlashingsCount
 
-	err = db.ReaderDb.Get(&blockPageData.NextSlot, "SELECT slot FROM blocks WHERE slot > $1 ORDER BY slot LIMIT 1", blockPageData.Slot)
-	if err == sql.ErrNoRows {
-		blockPageData.NextSlot = 0
-	} else if err != nil {
-		logger.Errorf("error retrieving next slot for block %v: %v", blockPageData.Slot, err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	err = db.ReaderDb.Get(&blockPageData.PreviousSlot, "SELECT slot FROM blocks WHERE slot < $1 ORDER BY slot DESC LIMIT 1", blockPageData.Slot)
-	if err != nil {
-		logger.Errorf("error retrieving previous slot for block %v: %v", blockPageData.Slot, err)
-		blockPageData.PreviousSlot = 0
-	}
-
-	var transactions []*types.BlockPageTransaction
-	rows, err := db.ReaderDb.Query(`
-		SELECT
-    	block_slot,
-    	block_index,
-    	txhash,
-    	nonce,
-    	gas_price,
-    	gas_limit,
-    	sender,
-    	recipient,
-    	amount,
-    	payload
-		FROM blocks_transactions
-		WHERE block_slot = $1
-		ORDER BY block_index`,
-		blockPageData.Slot)
-	if err != nil {
-		logger.Errorf("error retrieving block transaction data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		tx := &types.BlockPageTransaction{}
-
-		err := rows.Scan(
-			&tx.BlockSlot,
-			&tx.BlockIndex,
-			&tx.TxHash,
-			&tx.AccountNonce,
-			&tx.Price,
-			&tx.GasLimit,
-			&tx.Sender,
-			&tx.Recipient,
-			&tx.Amount,
-			&tx.Payload,
-		)
-		if err != nil {
-			logger.Errorf("error scanning block transaction data: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-			return
-		}
-		var amount, price big.Int
-		amount.SetBytes(tx.Amount)
-		price.SetBytes(tx.Price)
-		tx.AmountPretty = ToEth(&amount)
-		tx.PricePretty = ToGWei(&amount)
-		transactions = append(transactions, tx)
-	}
-	blockPageData.Transactions = transactions
+	blockPageData.NextSlot = blockPageData.Slot + 1
+	blockPageData.PreviousSlot = blockPageData.Slot - 1
 
 	var attestations []*types.BlockPageAttestation
-	rows, err = db.ReaderDb.Query(`
+	rows, err := db.ReaderDb.Query(`
 		SELECT
 			block_slot,
 			block_index,
@@ -275,9 +235,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		ORDER BY block_index`,
 		blockPageData.Slot)
 	if err != nil {
-		logger.Errorf("error retrieving block attestation data: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("error retrieving block attestation data: %v", err)
 	}
 	defer rows.Close()
 
@@ -298,9 +256,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			&attestation.TargetEpoch,
 			&attestation.TargetRoot)
 		if err != nil {
-			logger.Errorf("error scanning block attestation data: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+			return nil, fmt.Errorf("error scanning block attestation data: %v", err)
 		}
 		attestations = append(attestations, attestation)
 	}
@@ -312,9 +268,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		WHERE beaconblockroot = $1`,
 		blockPageData.BlockRoot)
 	if err != nil {
-		logger.Errorf("error retrieving block votes data: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("error retrieving block votes data: %v", err)
 	}
 	defer rows.Close()
 
@@ -324,9 +278,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		validators := pq.Int64Array{}
 		err := rows.Scan(&validators)
 		if err != nil {
-			logger.Errorf("error scanning votes validators data: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+			return nil, fmt.Errorf("error scanning votes validators data: %v", err)
 		}
 		for _, validator := range validators {
 			votesCount++
@@ -343,9 +295,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 	err = db.ReaderDb.Select(&blockPageData.VoluntaryExits, "SELECT validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
-		logger.Errorf("error retrieving block deposit data: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("error retrieving block deposit data: %v", err)
 	}
 
 	err = db.ReaderDb.Select(&blockPageData.AttesterSlashings, `
@@ -373,9 +323,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		FROM blocks_attesterslashings
 		WHERE block_slot = $1`, blockPageData.Slot)
 	if err != nil {
-		logger.Errorf("error retrieving block attester slashings data: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("error retrieving block attester slashings data: %v", err)
 	}
 	if len(blockPageData.AttesterSlashings) > 0 {
 		for _, slashing := range blockPageData.AttesterSlashings {
@@ -389,34 +337,68 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 	err = db.ReaderDb.Select(&blockPageData.ProposerSlashings, "SELECT * FROM blocks_proposerslashings WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
-		logger.Errorf("error retrieving block proposer slashings data: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("error retrieving block proposer slashings data: %v", err)
 	}
 
 	// TODO: fix blockPageData data type to include SyncCommittee
 	err = db.ReaderDb.Select(&blockPageData.SyncCommittee, "SELECT validatorindex FROM sync_committees WHERE period = $1 ORDER BY committeeindex", utils.SyncPeriodOfEpoch(blockPageData.Epoch))
 	if err != nil {
-		logger.Errorf("error retrieving sync-committee of block %v: %v", blockPageData.Slot, err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("error retrieving sync-committee of block %v: %v", blockPageData.Slot, err)
 	}
 
-	data.Data = blockPageData
+	if retrieveTxsFromDb {
+		// retrieve transactions from db
+		var transactions []*types.BlockPageTransaction
+		rows, err = db.ReaderDb.Query(`
+			SELECT
+    		block_slot,
+    		block_index,
+    		txhash,
+    		nonce,
+    		gas_price,
+    		gas_limit,
+    		sender,
+    		recipient,
+    		amount,
+    		payload
+			FROM blocks_transactions
+			WHERE block_slot = $1
+			ORDER BY block_index`,
+			blockPageData.Slot)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving block transaction data: %v", err)
+		}
+		defer rows.Close()
 
-	if utils.IsApiRequest(r) {
-		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(data.Data)
-	} else {
-		w.Header().Set("Content-Type", "text/html")
-		err = blockTemplate.ExecuteTemplate(w, "layout", data)
+		for rows.Next() {
+			tx := &types.BlockPageTransaction{}
+
+			err := rows.Scan(
+				&tx.BlockSlot,
+				&tx.BlockIndex,
+				&tx.TxHash,
+				&tx.AccountNonce,
+				&tx.Price,
+				&tx.GasLimit,
+				&tx.Sender,
+				&tx.Recipient,
+				&tx.Amount,
+				&tx.Payload,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("error scanning block transaction data: %v", err)
+			}
+			var amount, price big.Int
+			amount.SetBytes(tx.Amount)
+			price.SetBytes(tx.Price)
+			tx.AmountPretty = ToEth(&amount)
+			tx.PricePretty = ToGWei(&amount)
+			transactions = append(transactions, tx)
+		}
+		blockPageData.Transactions = transactions
 	}
 
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	return &blockPageData, nil
 }
 
 // BlockDepositData returns the deposits for a specific slot
