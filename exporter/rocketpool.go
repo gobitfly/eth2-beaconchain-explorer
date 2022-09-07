@@ -1641,6 +1641,16 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[ui
 		}
 	}
 
+	if this.UnclaimedRPLRewards == nil {
+		this.UnclaimedRPLRewards = big.NewInt(0)
+	}
+	if this.UnclaimedSmoothingPool == nil {
+		this.UnclaimedSmoothingPool = big.NewInt(0)
+	}
+	if this.ClaimedSmoothingPool == nil {
+		this.ClaimedSmoothingPool = big.NewInt(0)
+	}
+
 	this.RPLStake = stake
 	this.MinRPLStake = minStake
 	this.MaxRPLStake = maxStake
