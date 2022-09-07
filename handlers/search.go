@@ -180,6 +180,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			result, err = db.BigtableClient.SearchForAddress(eth1AddressHash, 10)
+			if err != nil {
+				logger.Errorf("error searching for eth1AddressHash: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
 		} else {
 			result = []*types.Eth1AddressSearchItem{}
 		}

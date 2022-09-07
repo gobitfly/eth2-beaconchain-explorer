@@ -123,6 +123,11 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	dateRange := strings.Split(q.Get("days"), "-")
 	if len(dateRange) == 2 {
 		start, err = strconv.ParseUint(dateRange[0], 10, 64)
+		if err != nil {
+			logger.Errorf("error retrieving days range %v", err)
+			http.Error(w, "Invalid query", 400)
+			return
+		}
 		end, err = strconv.ParseUint(dateRange[1], 10, 64)
 		if err != nil {
 			logger.Errorf("error retrieving days range %v", err)
@@ -159,6 +164,11 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	dateRange := strings.Split(q.Get("days"), "-")
 	if len(dateRange) == 2 {
 		start, err = strconv.ParseUint(dateRange[0], 10, 64)
+		if err != nil {
+			logger.Errorf("error retrieving days range %v", err)
+			http.Error(w, "Invalid query", 400)
+			return
+		}
 		end, err = strconv.ParseUint(dateRange[1], 10, 64)
 		if err != nil {
 			logger.Errorf("error retrieving days range %v", err)

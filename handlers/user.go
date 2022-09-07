@@ -2566,15 +2566,15 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 
 	destination := "webhook"
 
-	validatorAttestationMissed := "on" == r.FormValue(string(types.ValidatorMissedAttestationEventName))
-	validatorProposalMissed := "on" == r.FormValue(string(types.ValidatorMissedProposalEventName))
-	validatorProposalSubmitted := "on" == r.FormValue(string(types.ValidatorExecutedProposalEventName))
-	validatorGotSlashed := "on" == r.FormValue(string(types.ValidatorGotSlashedEventName))
-	validatorSyncCommiteeSoon := "on" == r.FormValue(string(types.SyncCommitteeSoon))
-	monitoringMachineOffline := "on" == r.FormValue(string(types.MonitoringMachineOfflineEventName))
-	monitoringHddAlmostfull := "on" == r.FormValue(string(types.MonitoringMachineDiskAlmostFullEventName))
-	monitoringCpuLoad := "on" == r.FormValue(string(types.MonitoringMachineCpuLoadEventName))
-	discord := "on" == r.FormValue("discord")
+	validatorAttestationMissed := r.FormValue(string(types.ValidatorMissedAttestationEventName)) == "on"
+	validatorProposalMissed := r.FormValue(string(types.ValidatorMissedProposalEventName)) == "on"
+	validatorProposalSubmitted := r.FormValue(string(types.ValidatorExecutedProposalEventName)) == "on"
+	validatorGotSlashed := r.FormValue(string(types.ValidatorGotSlashedEventName)) == "on"
+	validatorSyncCommiteeSoon := r.FormValue(string(types.SyncCommitteeSoon)) == "on"
+	monitoringMachineOffline := r.FormValue(string(types.MonitoringMachineOfflineEventName)) == "on"
+	monitoringHddAlmostfull := r.FormValue(string(types.MonitoringMachineDiskAlmostFullEventName)) == "on"
+	monitoringCpuLoad := r.FormValue(string(types.MonitoringMachineCpuLoadEventName)) == "on"
+	discord := r.FormValue("discord") == "on"
 
 	if discord {
 		destination = "webhook_discord"
@@ -2711,21 +2711,21 @@ func UsersEditWebhook(w http.ResponseWriter, r *http.Request) {
 
 	destination := "webhook"
 
-	validatorAttestationMissed := "on" == r.FormValue(string(types.ValidatorMissedAttestationEventName))
-	validatorProposalMissed := "on" == r.FormValue(string(types.ValidatorMissedProposalEventName))
-	validatorProposalSubmitted := "on" == r.FormValue(string(types.ValidatorExecutedProposalEventName))
-	validatorGotSlashed := "on" == r.FormValue(string(types.ValidatorGotSlashedEventName))
-	validatorSyncCommiteeSoon := "on" == r.FormValue(string(types.SyncCommitteeSoon))
-	monitoringMachineOffline := "on" == r.FormValue(string(types.MonitoringMachineOfflineEventName))
-	monitoringHddAlmostfull := "on" == r.FormValue(string(types.MonitoringMachineDiskAlmostFullEventName))
-	monitoringCpuLoad := "on" == r.FormValue(string(types.MonitoringMachineCpuLoadEventName))
-	discord := "on" == r.FormValue("discord")
+	validatorAttestationMissed := r.FormValue(string(types.ValidatorMissedAttestationEventName)) == "on"
+	validatorProposalMissed := r.FormValue(string(types.ValidatorMissedProposalEventName)) == "on"
+	validatorProposalSubmitted := r.FormValue(string(types.ValidatorExecutedProposalEventName)) == "on"
+	validatorGotSlashed := r.FormValue(string(types.ValidatorGotSlashedEventName)) == "on"
+	validatorSyncCommiteeSoon := r.FormValue(string(types.SyncCommitteeSoon)) == "on"
+	monitoringMachineOffline := r.FormValue(string(types.MonitoringMachineOfflineEventName)) == "on"
+	monitoringHddAlmostfull := r.FormValue(string(types.MonitoringMachineDiskAlmostFullEventName)) == "on"
+	monitoringCpuLoad := r.FormValue(string(types.MonitoringMachineCpuLoadEventName)) == "on"
+	discord := r.FormValue("discord") == "on"
 
 	if discord {
 		destination = "webhook_discord"
 	}
 
-	all := "on" == r.FormValue("all")
+	all := r.FormValue("all") == "on"
 
 	events := make(map[string]bool, 0)
 

@@ -96,6 +96,12 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 		LIMIT $1
 		OFFSET $2`, length, start)
 
+	if err != nil {
+		logger.Errorf("error retrieving validator slashings from the database: %v", err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
 	tableData := make([][]interface{}, 0, len(slashings))
 
 	validatorNames, err := db.GetValidatorNames()

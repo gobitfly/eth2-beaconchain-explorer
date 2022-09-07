@@ -1135,7 +1135,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error parsing submitted pubkey %v: %v", pubkey, err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
-		http.Redirect(w, r, "/validator/"+pubkey, 301)
+		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
 	}
 
@@ -1152,7 +1152,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error decoding submitted signature %v: %v", signature, err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
-		http.Redirect(w, r, "/validator/"+pubkey, 301)
+		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
 	}
 
@@ -1163,14 +1163,14 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error parsing submitted signature %v: %v", signatureWrapper.Sig, err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
-		http.Redirect(w, r, "/validator/"+pubkey, 301)
+		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
 	}
 
 	if len(signatureParsed) != 65 {
 		logger.Errorf("signature must be 65 bytes long")
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
-		http.Redirect(w, r, "/validator/"+pubkey, 301)
+		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
 	}
 
@@ -1182,7 +1182,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error recovering pubkey: %v", err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
-		http.Redirect(w, r, "/validator/"+pubkey, 301)
+		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
 	}
 	recoveredAddress := crypto.PubkeyToAddress(*recoveredPubkey)
@@ -1192,7 +1192,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error getting validator-deposits from db for signature verification: %v", err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
-		http.Redirect(w, r, "/validator/"+pubkey, 301)
+		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 	}
 	for _, deposit := range deposits.Eth1Deposits {
 		if deposit.ValidSignature {
@@ -1201,7 +1201,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if strings.ToLower(depositedAddress) == strings.ToLower(recoveredAddress.Hex()) {
+	if strings.EqualFold(depositedAddress, recoveredAddress.Hex()) {
 		if applyNameToAll == "on" {
 			res, err := db.WriterDb.Exec(`
 				INSERT INTO validator_names (publickey, name)
@@ -1211,13 +1211,13 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				logger.Errorf("error saving validator name (apply to all): %x: %v: %v", pubkeyDecoded, name, err)
 				utils.SetFlash(w, r, validatorEditFlash, "Error: Db error while updating validator names")
-				http.Redirect(w, r, "/validator/"+pubkey, 301)
+				http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 				return
 			}
 
 			rowsAffected, _ := res.RowsAffected()
 			utils.SetFlash(w, r, validatorEditFlash, fmt.Sprintf("Your custom name has been saved for %v validator(s).", rowsAffected))
-			http.Redirect(w, r, "/validator/"+pubkey, 301)
+			http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		} else {
 			_, err := db.WriterDb.Exec(`
 				INSERT INTO validator_names (publickey, name) 
@@ -1226,17 +1226,17 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				logger.Errorf("error saving validator name: %x: %v: %v", pubkeyDecoded, name, err)
 				utils.SetFlash(w, r, validatorEditFlash, "Error: Db error while updating validator name")
-				http.Redirect(w, r, "/validator/"+pubkey, 301)
+				http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 				return
 			}
 
 			utils.SetFlash(w, r, validatorEditFlash, "Your custom name has been saved.")
-			http.Redirect(w, r, "/validator/"+pubkey, 301)
+			http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		}
 
 	} else {
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
-		http.Redirect(w, r, "/validator/"+pubkey, 301)
+		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 	}
 
 }
