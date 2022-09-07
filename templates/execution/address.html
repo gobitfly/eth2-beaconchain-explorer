@@ -225,7 +225,9 @@
       setupInfiniteScroll({{.Erc20Table.PagingToken}},'erc20-table', 'erc20-table-inf-scroll', 'erc20')
     {{ end }}
 
-
+    {{ if .Erc721Table.PagingToken }}
+      setupInfiniteScroll({{.Erc721Table.PagingToken}},'erc721-table', 'erc721-table-inf-scroll', 'erc721')
+    {{ end }}
 
     {{ if .Erc1155Table.PagingToken }}
       setupInfiniteScroll({{.Erc1155Table.PagingToken}},'erc1155-table', 'erc1155-table-inf-scroll', 'erc1155')
@@ -276,13 +278,15 @@
                 drawCallback()
               }
              }
+           } else if (data.pagingToken === "") {
+             infLoading.remove()
            } else if (data && data.data && data.data.length == 0) {
-              infLoading.querySelector('h5').innerText = 'No entries found.'
+              infLoading.querySelector('span').innerText = 'No entries found.'
            }
            isLoading = false
         } catch (err) {
           console.error("error getting transactions: ", err)
-          infLoading.querySelector('h5').innerText = 'Something went wrong fetching please try again another time.'
+          infLoading.querySelector('span').innerText = 'Something went wrong fetching please try again another time.'
           isLoading = false
         }
       }
