@@ -623,7 +623,7 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 			continue
 		}
 
-		bytes, err := DownloadRewardsFile(fmt.Sprintf("rp-rewards-prater-%v.json", missingInterval.Index), missingInterval.Index.Uint64(), missingInterval.MerkleTreeCID, true)
+		bytes, err := DownloadRewardsFile(fmt.Sprintf("rp-rewards-%v-%v.json", utils.Config.Chain.Name, missingInterval.Index), missingInterval.Index.Uint64(), missingInterval.MerkleTreeCID, true)
 		if err != nil {
 			return fmt.Errorf("can not download reward file %v. Error %v", missingInterval.Index, err)
 		}
@@ -1639,6 +1639,16 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[ui
 			this.UnclaimedSmoothingPool = unclaimedSum.SmoothingPoolEth
 			this.UnclaimedRPLRewards = unclaimedSum.RplColl
 		}
+	}
+
+	if this.UnclaimedRPLRewards == nil {
+		this.UnclaimedRPLRewards = big.NewInt(0)
+	}
+	if this.UnclaimedSmoothingPool == nil {
+		this.UnclaimedSmoothingPool = big.NewInt(0)
+	}
+	if this.ClaimedSmoothingPool == nil {
+		this.ClaimedSmoothingPool = big.NewInt(0)
 	}
 
 	this.RPLStake = stake
