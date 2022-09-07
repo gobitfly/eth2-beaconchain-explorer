@@ -187,6 +187,10 @@ func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
 		// cssClass = "badge-info"
 	}
 
+	if amountF.Cmp(big.NewFloat(0)) == 0 {
+		return template.HTML(fmt.Sprintf("<span>%s %s</span>", "0", displayUnit))
+	}
+
 	return template.HTML(fmt.Sprintf("<span>%."+strconv.Itoa(digits)+"f %s</span>", amountF, displayUnit))
 }
 
