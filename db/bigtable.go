@@ -729,6 +729,13 @@ func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block, cache *ccache.C
 		}
 
 		txReward.Add(new(big.Int).Mul(big.NewInt(int64(t.GasUsed)), new(big.Int).SetBytes(t.GasPrice)), txReward)
+
+		for _, itx := range t.Itx {
+			if itx.Path == "[]" || bytes.Equal(itx.Value, []byte{0x0}) { // skip top level call & empty calls
+				continue
+			}
+			idx.InternalTransactionCount++
+		}
 	}
 
 	idx.TxReward = txReward.Bytes()
