@@ -60,56 +60,56 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		}
 		return nil
 	})
-	if !utils.Config.Frontend.Debug {
-		g.Go(func() error {
-			var err error
-			internal, err = db.BigtableClient.GetAddressInternalTableData(addressBytes, "", "")
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		g.Go(func() error {
-			var err error
-			erc20, err = db.BigtableClient.GetAddressErc20TableData(addressBytes, "", "")
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		g.Go(func() error {
-			var err error
-			erc721, err = db.BigtableClient.GetAddressErc721TableData(address, "", "")
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		g.Go(func() error {
-			var err error
-			erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "", "")
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		g.Go(func() error {
-			var err error
-			blocksMined, err = db.BigtableClient.GetAddressBlocksMinedTableData(address, "", "")
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		g.Go(func() error {
-			var err error
-			unclesMined, err = db.BigtableClient.GetAddressUnclesMinedTableData(address, "", "")
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-	}
+	// if !utils.Config.Frontend.Debug {
+	g.Go(func() error {
+		var err error
+		internal, err = db.BigtableClient.GetAddressInternalTableData(addressBytes, "", "")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		erc20, err = db.BigtableClient.GetAddressErc20TableData(addressBytes, "", "")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		erc721, err = db.BigtableClient.GetAddressErc721TableData(address, "", "")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "", "")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		blocksMined, err = db.BigtableClient.GetAddressBlocksMinedTableData(address, "", "")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		unclesMined, err = db.BigtableClient.GetAddressUnclesMinedTableData(address, "", "")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	// }
 
 	if err := g.Wait(); err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -141,9 +141,15 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	pngStrInverse := base64.StdEncoding.EncodeToString(pngInverse)
 
 	// metadata.Balances = metadata.Balances[:10]
+
 	if len(metadata.Balances) > 0 {
 		metadata.EthBalance = metadata.Balances[0]
 		metadata.Balances = metadata.Balances[1:]
+	} else {
+		metadata.EthBalance = &types.Eth1AddressBalance{
+			Metadata: &types.ERC20Metadata{},
+		}
+		metadata.Balances = []*types.Eth1AddressBalance{}
 	}
 	ef := new(big.Float).SetInt(new(big.Int).SetBytes(metadata.EthBalance.Balance))
 	etherBalance := new(big.Float).Quo(ef, big.NewFloat(1e18))
