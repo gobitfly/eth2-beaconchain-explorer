@@ -41,7 +41,11 @@
 
     .token-balance-col {
       /* border-bottom: 1px solid var(--shadow-light); */
-      padding: 0.25rem;
+      border-top: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+    }
+    .token-balance-col:nth-child(2n+2) {
+      text-align: right;
     }
 
     /* #transactions-table div {
@@ -56,6 +60,10 @@
     .overview-col {
       border-top: 1px solid var(--border-color);
       padding: 1rem;
+    }
+
+    .overview-col:nth-child(1), .overview-col:nth-child(2)  {
+      border-top: none;
     }
 
     /* .overview-col:last-child,
@@ -129,6 +137,13 @@
         display: none !important;
       } 
     } */
+
+    .tbl-col {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   </style>
 {{ end }}
 
@@ -232,6 +247,8 @@
               for (let j = 0; j < data.data[i].length; j++) {
                 const col = data.data[i][j]
                 const el = document.createElement('div')
+                // el.classList.add(tableID+"-col")
+                el.classList.add("tbl-col")
                 el.classList.add('border-top')
                 el.classList.add('p-2')
                 el.classList.add('text-truncate')
@@ -345,15 +362,17 @@
           <div class="tab-pane fade" id="tokensTab" role="tabpanel" aria-labelledby="tokensTab-tab">
             <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card shadow-none flex-grow-1">
               <div class="card-body p-0 pb-1" style="max-height: 170px; overflow: auto">
-                <div class="position: relative" style="display: grid;  grid-template-columns: minmax(50px, 150px) minmax(50px, 2fr);">
+                <div class="position: relative" style="display: grid;  grid-template-columns: minmax(50px, 1fr) minmax(1fr, 2fr);">
                   <div style="top:0; z-index: 9;" class="position-sticky token-balance-col header-col">
                     <span>Symbol</span>
                   </div>
                   <div style="top:0; z-index: 9;" class="position-sticky token-balance-col header-col">
                     <span>Balance</span>
                   </div>
+                  <!-- <div style="top:0; z-index: 9;" class="position-sticky token-balance-col header-col"></div> -->
                   {{ range .Data.Metadata.Balances }}
                     {{ . | formatTokenBalance }}
+                    <!-- <div></div> -->
                   {{ end }}
                 </div>
               </div>
@@ -371,15 +390,17 @@
           <div class="tab-pane fade active show h-100" id="tokensTab" role="tabpanel" aria-labelledby="tokensTab-tab">
             <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card h-100 shadow-none">
               <div class="card-body p-0 pb-1" style="max-height: 170px; overflow: auto">
-                <div class="position: relative" style="display: grid; grid-template-columns: minmax(50px, 150px) minmax(50px, 2fr);">
+                <div class="position: relative" style="display: grid; grid-template-columns: minmax(50px, 1fr) minmax(50px, 2fr);">
                   <div style="top:0; z-index: 9;" class="position-sticky token-balance-col header-col">
                     <span>Symbol</span>
                   </div>
                   <div style="top:0; z-index: 9;" class="position-sticky token-balance-col header-col">
                     <span>Balance</span>
                   </div>
+                  <!-- <div style="top:0; z-index: 9;" class="position-sticky token-balance-col header-col"></div> -->
                   {{ range .Data.Metadata.Balances }}
                     {{ . | formatTokenBalance }}
+                    <!-- <div></div> -->
                   {{ end }}
                 </div>
               </div>
@@ -489,7 +510,7 @@
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
         {{ range $j, $col := $row }}
-          <div class="border-top p-2 text-truncate">{{ $col }}</div>
+          <div class="border-top p-2 text-truncate tbl-col">{{ $col }}</div>
         {{ end }}
       {{ end }}
       {{ if gt (len .Data) 24 }}
@@ -526,7 +547,7 @@
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
         {{ range $j, $col := $row }}
-          <div class="border-top p-2 text-truncate">{{ $col }}</div>
+          <div class="border-top p-2 text-truncate tbl-col">{{ $col }}</div>
         {{ end }}
       {{ end }}
       {{ if gt (len .Data) 24 }}
@@ -559,7 +580,7 @@
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
         {{ range $j, $col := $row }}
-          <div class="border-top p-2 text-truncate">{{ $col }}</div>
+          <div class="border-top p-2 text-truncate tbl-col">{{ $col }}</div>
         {{ end }}
       {{ end }}
       {{ if gt (len .Data) 24 }}
@@ -592,7 +613,7 @@
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
         {{ range $j, $col := $row }}
-          <div class="border-top p-2 text-truncate">{{ $col }}</div>
+          <div class="border-top p-2 text-truncate tbl-col">{{ $col }}</div>
         {{ end }}
       {{ end }}
       {{ if gt (len .Data) 24 }}
@@ -628,7 +649,7 @@
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
         {{ range $j, $col := $row }}
-          <div class="border-top p-2 text-truncate">{{ $col }}</div>
+          <div class="border-top p-2 text-truncate tbl-col">{{ $col }}</div>
         {{ end }}
       {{ end }}
       {{ if gt (len .Data) 24 }}
@@ -663,7 +684,7 @@
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
         {{ range $j, $col := $row }}
-          <div class="border-top p-2 text-truncate">{{ $col }}</div>
+          <div class="border-top p-2 text-truncate tbl-col">{{ $col }}</div>
         {{ end }}
       {{ end }}
       {{ if gt (len .Data) 24 }}
@@ -699,7 +720,7 @@
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
         {{ range $j, $col := $row }}
-          <div class="border-top p-2 text-truncate">{{ $col }}</div>
+          <div class="border-top p-2 text-truncate tbl-col">{{ $col }}</div>
         {{ end }}
       {{ end }}
       {{ if gt (len .Data) 24 }}

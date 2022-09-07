@@ -924,7 +924,7 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 		logo = fmt.Sprintf(`<img class="mr-1" style="height: 1.2rem;" src="data:image/png;base64, %s">`, base64.StdEncoding.EncodeToString(balance.Metadata.Logo))
 	}
 	flt, _ := num.Div(mul).Float64()
-	return template.HTML(p.Sprintf(`<div class="token-balance-col text-truncate"><a class="token-icon" href='/execution/token/0x%x?a=0x%x'>%s %s</a></div> <div class="token-balance-col"><span class="token-holdings">%.5f</span></div>`, balance.Token, balance.Address, logo, balance.Metadata.Symbol, flt))
+	return template.HTML(p.Sprintf(`<div class="token-balance-col token-name text-truncate"><a class="token-icon" href='/execution/token/0x%x?a=0x%x'>%s %s</a></div> <div class="token-balance-col token-balance"><span class="token-holdings">%.5f</span></div>`, balance.Token, balance.Address, logo, balance.Metadata.Symbol, flt))
 }
 
 func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
@@ -943,11 +943,11 @@ func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
 
 func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
 	decimals := new(big.Int).SetBytes(balance.Metadata.Decimals)
-
+	p := message.NewPrinter(language.English)
 	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
-
-	return template.HTML(fmt.Sprintf("%v", num.Div(mul).StringFixed(int32(decimals.Int64()))))
+	f, _ := num.Div(mul).Float64()
+	return template.HTML(p.Sprintf("%v", strconv.FormatFloat(f, 'f', -1, 64)))
 }
 
 func FormatTokenName(balance *types.Eth1AddressBalance) template.HTML {
