@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 var logger = logrus.New().WithField("module", "exporter")
@@ -232,8 +233,7 @@ func Start(client rpc.Client) error {
 			// Do a full check on any epoch transition or after during the first run
 			if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
 				doFullCheck(client)
-			} else { // else just save the in epoch block
-
+			} else { // else just save the epoch block
 				blocksMap := make(map[uint64]map[string]*types.Block)
 				if blocksMap[block.Slot] == nil {
 					blocksMap[block.Slot] = make(map[string]*types.Block)
@@ -253,8 +253,6 @@ func Start(client rpc.Client) error {
 			lastExportedSlot = block.Slot
 		}
 	}
-
-	return nil
 }
 
 // Will ensure the db is fully in sync with the node
@@ -331,7 +329,7 @@ func doFullCheck(client rpc.Client) {
 		} else if block.Node == nil {
 			logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
 			epochsToExport[block.Epoch] = true
-		} else if bytes.Compare(block.Db.BlockRoot, block.Node.BlockRoot) != 0 {
+		} else if !bytes.Equal(block.Db.BlockRoot, block.Node.BlockRoot) {
 			logger.Printf("queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
 			epochsToExport[block.Epoch] = true
 		}
@@ -479,7 +477,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 
 	startGetEpochData := time.Now()
 	logger.Printf("retrieving data for epoch %v", epoch)
-	data, err := client.GetEpochData(epoch)
+	data, err := client.GetEpochData(epoch, false)
 	if err != nil {
 		return fmt.Errorf("error retrieving epoch data: %v", err)
 	}
@@ -492,32 +490,53 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 	}
 
 	// export epoch data to bigtable
-	go func() {
+	g := new(errgroup.Group)
+	g.Go(func() error {
 		err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
 		if err != nil {
-			logrus.Errorf("error exporting validator balances to bigtable: %v", err)
+			return fmt.Errorf("error exporting validator balances to bigtable: %v", err)
 		}
+		return nil
+	})
+	g.Go(func() error {
 		err = db.BigtableClient.SaveAttestationAssignments(epoch, data.ValidatorAssignmentes.AttestorAssignments)
 		if err != nil {
-			logrus.Errorf("error exporting attestation assignments to bigtable: %v", err)
+			return fmt.Errorf("error exporting attestation assignments to bigtable: %v", err)
 		}
+		return nil
+	})
+	g.Go(func() error {
 		err = db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
 		if err != nil {
-			logrus.Errorf("error exporting proposal assignments to bigtable: %v", err)
+			return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
 		}
+		return nil
+	})
+	g.Go(func() error {
 		err = db.BigtableClient.SaveAttestations(data.Blocks)
 		if err != nil {
-			logrus.Errorf("error exporting attestations to bigtable: %v", err)
+			return fmt.Errorf("error exporting attestations to bigtable: %v", err)
 		}
+		return nil
+	})
+	g.Go(func() error {
 		err = db.BigtableClient.SaveProposals(data.Blocks)
 		if err != nil {
-			logrus.Errorf("error exporting proposals to bigtable: %v", err)
+			return fmt.Errorf("error exporting proposals to bigtable: %v", err)
 		}
+		return nil
+	})
+	g.Go(func() error {
 		err = db.BigtableClient.SaveSyncComitteeDuties(data.Blocks)
 		if err != nil {
-			logrus.Errorf("error exporting sync committe duties to bigtable: %v", err)
+			return fmt.Errorf("error exporting sync committe duties to bigtable: %v", err)
 		}
-	}()
+		return nil
+	})
+	err = g.Wait()
+	if err != nil {
+		return fmt.Errorf("error during bigtable export: %v", err)
+	}
 
 	attestedSlots := make(map[uint64]uint64)
 	for _, blockkv := range data.Blocks {
