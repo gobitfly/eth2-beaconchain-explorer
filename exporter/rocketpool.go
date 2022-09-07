@@ -623,7 +623,7 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 			continue
 		}
 
-		bytes, err := DownloadRewardsFile(fmt.Sprintf("rp-rewards-prater-%v.json", missingInterval.Index), missingInterval.Index.Uint64(), missingInterval.MerkleTreeCID, true)
+		bytes, err := DownloadRewardsFile(fmt.Sprintf("rp-rewards-%v-%v.json", utils.Config.Chain.Name, missingInterval.Index), missingInterval.Index.Uint64(), missingInterval.MerkleTreeCID, true)
 		if err != nil {
 			return fmt.Errorf("can not download reward file %v. Error %v", missingInterval.Index, err)
 		}
