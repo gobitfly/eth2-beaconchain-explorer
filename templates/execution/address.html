@@ -26,6 +26,16 @@
       margin: 0;
     }
 
+    .header-col {
+      background-color: var(--bg-color-light);
+      font-style: normal;
+      /* font-family: 'Mukta'; */
+      font-weight: 500;
+      font-size: 1rem;
+      line-height: 23px;
+      backdrop-filter: blur(2px);
+    }
+
     .token-holdings {
     }
 
@@ -44,14 +54,14 @@
     } */
 
     .overview-col {
-      border-bottom: 1px solid #5c4e4e;
+      border-top: 1px solid var(--border-color);
       padding: 1rem;
     }
 
-    .overview-col:last-child,
+    /* .overview-col:last-child,
     .overview-col:nth-last-child(2) {
       border-bottom: none;
-    }
+    } */
 
     .overview-label,
     .overview-col {
@@ -72,6 +82,10 @@
 
     .qrcode-light {
       visibility: hidden;
+    }
+
+    .border-top {
+      border-color: var(--border-color) !important;
     }
 
     @media screen and (min-width: 600px) {
@@ -330,12 +344,12 @@
           </div>
           <div class="tab-pane fade" id="tokensTab" role="tabpanel" aria-labelledby="tokensTab-tab">
             <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card shadow-none flex-grow-1">
-              <div class="card-body p-0 pb-1">
-                <div class="position: relative" style="display: grid; max-height: 150px; overflow: auto; grid-template-columns: minmax(50px, 150px) minmax(50px, 2fr);">
-                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col bg-light">
+              <div class="card-body p-0 pb-1" style="max-height: 170px; overflow: auto">
+                <div class="position: relative" style="display: grid;  grid-template-columns: minmax(50px, 150px) minmax(50px, 2fr);">
+                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col header-col">
                     <span>Symbol</span>
                   </div>
-                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col bg-light">
+                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col header-col">
                     <span>Balance</span>
                   </div>
                   {{ range .Data.Metadata.Balances }}
@@ -356,12 +370,12 @@
         <div class="tab-content flex-grow-1" id="overview-tab-content">
           <div class="tab-pane fade active show h-100" id="tokensTab" role="tabpanel" aria-labelledby="tokensTab-tab">
             <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card h-100 shadow-none">
-              <div class="card-body p-0 pb-1">
-                <div class="position: relative" style="display: grid; max-height: 150px; overflow: auto; grid-template-columns: minmax(50px, 150px) minmax(50px, 2fr);">
-                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col bg-light">
+              <div class="card-body p-0 pb-1" style="max-height: 170px; overflow: auto">
+                <div class="position: relative" style="display: grid; grid-template-columns: minmax(50px, 150px) minmax(50px, 2fr);">
+                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col header-col">
                     <span>Symbol</span>
                   </div>
-                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col bg-light">
+                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col header-col">
                     <span>Balance</span>
                   </div>
                   {{ range .Data.Metadata.Balances }}
@@ -463,14 +477,14 @@
 
 {{ define "AddressTransactionsTableGrid" }}
   <div id="transactions-table" style="display: grid; grid-template-columns: repeat(8, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Hash</span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Method</span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Age</span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Number</span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>From</span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span></span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>To</span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Value</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Hash</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Method</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Age</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Number</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>From</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span></span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>To</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Value</span></div>
 
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
@@ -501,13 +515,13 @@
 
 {{ define "AddressInternalTransactionsGrid" }}
   <div id="internalTxns-table" style="display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">To</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Value</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Type</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">To</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Value</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Type</div>
 
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
@@ -537,10 +551,10 @@
 
 {{ define "AddressBlocksMinedGrid" }}
   <div id="blocksMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Number</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Reward</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Number</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Reward</div>
 
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
@@ -570,10 +584,10 @@
 
 {{ define "AddressUnclesMinedGrid" }}
   <div id="unclesMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Number</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Difficulty</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Reward</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Number</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Difficulty</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Reward</div>
 
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
@@ -603,13 +617,13 @@
 
 {{ define "AddressErc20TransactionsGrid" }}
   <div id="erc20-table" style="display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">To</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Value</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Token</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">To</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Value</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Token</div>
 
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
@@ -639,12 +653,12 @@
 
 {{ define "AddressErc721Grid" }}
   <div id="erc721-table" style="display: grid; grid-template-columns: repeat(6, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">To</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Token Address</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Token ID</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">To</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Token Address</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Token ID</div>
 
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
@@ -674,13 +688,13 @@
 
 {{ define "AddressErc1155Grid" }}
   <div id="erc1155-table" style="display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Hash</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Age</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">From</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">To</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Token Address</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Token ID</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky">Value</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">To</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Token Address</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Token ID</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Value</div>
 
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
