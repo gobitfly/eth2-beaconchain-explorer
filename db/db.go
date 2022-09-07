@@ -1294,6 +1294,9 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 
 	for _, newValidator := range newValidators {
 
+		if newValidator.ActivationEpoch == 0 || newValidator.ActivationEpoch > data.Epoch {
+			continue
+		}
 		balance, err := BigtableClient.GetValidatorBalanceHistory([]uint64{newValidator.Validatorindex}, newValidator.ActivationEpoch, 1)
 
 		if err != nil {
