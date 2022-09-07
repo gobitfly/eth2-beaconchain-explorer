@@ -23,6 +23,15 @@ func WriteStatisticsForDay(day uint64) error {
 
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
+	latestDbEpoch, err := GetLatestEpoch()
+	if err != nil {
+		return err
+	}
+
+	if lastEpoch > latestDbEpoch {
+		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed", lastEpoch)
+	}
+
 	start := time.Now()
 	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
 	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(firstEpoch, lastEpoch)
