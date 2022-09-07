@@ -702,7 +702,6 @@ func SaveEpoch(data *types.EpochData) error {
 	}
 
 	epochCacheKey := fmt.Sprintf("%x", hasher.Sum(nil))
-
 	logger.Infof("cache key for epoch %v is %v", data.Epoch, epochCacheKey)
 
 	cachedEpochKey, found := epochsCache.Get(fmt.Sprintf("%v", data.Epoch))
@@ -734,6 +733,8 @@ func SaveEpoch(data *types.EpochData) error {
 
 	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+10 {
 		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting validators because epoch is far behind head")
+	} else if found {
+		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting validators because validator status for that epoch has already been exported")
 	} else {
 		logger.Infof("exporting validators")
 		err = saveValidators(data, tx)
