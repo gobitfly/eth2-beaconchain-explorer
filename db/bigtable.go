@@ -30,6 +30,7 @@ import (
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/golang/protobuf/proto"
 	"github.com/karlseguin/ccache/v2"
+	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 )
 
@@ -2359,7 +2360,27 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 	}
 
 	sort.Slice(ret.Balances, func(i, j int) bool {
-		return bytes.Compare(ret.Balances[i].Token, ret.Balances[j].Token) < 0
+		priceI := decimal.New(0, 0)
+		priceJ := decimal.New(0, 0)
+		var err error
+
+		if string(ret.Balances[i].Metadata.Price) != "" {
+			priceI, err = decimal.NewFromString(string(ret.Balances[i].Metadata.Price))
+			if err != nil {
+				logger.WithError(err).Errorf("error parsing string price value, price: %s", ret.Balances[i].Metadata.Price)
+			}
+		}
+
+		if string(ret.Balances[j].Metadata.Price) != "" {
+			priceJ, err = decimal.NewFromString(string(ret.Balances[j].Metadata.Price))
+			if err != nil {
+				logger.WithError(err).Errorf("error parsing string price value, price: %s", ret.Balances[j].Metadata.Price)
+			}
+		}
+
+		mkI := priceI.Mul(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[i].Balance), 0))
+		mkJ := priceJ.Mul(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Balance), 0))
+		return mkI.Cmp(mkJ) >= 0
 	})
 
 	return ret, nil
