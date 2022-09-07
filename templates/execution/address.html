@@ -346,7 +346,7 @@
           <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
             <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card shadow-none flex-grow-1">
               <div class="card-body p-0 overview-card">
-                <div style="display: grid; grid-template-columns: 1fr 2fr; grid-template-rows: auto; height: 100%;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto; height: 100%;">
                   <div class="overview-col">
                     <span>Balance</span>
                   </div>
@@ -374,23 +374,7 @@
             </div>
           </div>
           <div class="tab-pane fade" id="tokensTab" role="tabpanel" aria-labelledby="tokensTab-tab">
-            <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card shadow-none flex-grow-1">
-              <div class="card-body p-0 pb-1" style="max-height: 170px; overflow: auto">
-                <div class="position: relative" style="display: grid;  grid-template-columns: minmax(50px, 1fr) minmax(1fr, 2fr);">
-                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col overview-header-col">
-                    <span>Symbol</span>
-                  </div>
-                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col overview-header-col">
-                    <span>Balance</span>
-                  </div>
-                  <!-- <div style="top:0; z-index: 9;" class="position-sticky token-balance-col header-col"></div> -->
-                  {{ range .Data.Metadata.Balances }}
-                    {{ . | formatTokenBalance }}
-                    <!-- <div></div> -->
-                  {{ end }}
-                </div>
-              </div>
-            </div>
+            {{ template "AddressTokenBalanceTabContent" . }}
           </div>
         </div>
       </div>
@@ -400,27 +384,9 @@
             <span class="nav-link border-bottom-radius-0 border-bottom-0 active" data-toggle="tab" role="tab" aria-controls="tokensTab" aria-selected="true">Tokens</span>
           </li>
         </ul>
-        <div class="tab-content flex-grow-1" id="overview-tab-content">
-          <div class="tab-pane fade active show h-100" id="tokensTab" role="tabpanel" aria-labelledby="tokensTab-tab">
-            <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card h-100 shadow-none">
-              <div class="card-body p-0 pb-1" style="max-height: 170px; overflow: auto">
-                <div class="position: relative" style="display: grid; grid-template-columns: minmax(50px, 1fr) minmax(50px, 2fr);">
-                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col overview-header-col">
-                    <span>Symbol</span>
-                  </div>
-                  <div style="top:0; z-index: 9;" class="position-sticky token-balance-col overview-header-col">
-                    <span>Balance</span>
-                  </div>
-                  <!-- <div style="top:0; z-index: 9;" class="position-sticky token-balance-col header-col"></div> -->
-                  {{ range .Data.Metadata.Balances }}
-                    {{ . | formatTokenBalance }}
-                    <!-- <div></div> -->
-                  {{ end }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <div class="tab-pane fade active show" id="tokensTabLarge" role="tabpanel" aria-labelledby="tokensTab-tab">
+            {{ template "AddressTokenBalanceTabContent" . }}
+        </div> 
       </div>
     </div>
     <div class="card shadow-none flex-grow-1">
@@ -787,6 +753,26 @@
           <img style="visibility: hidden;" class="qrcode-light" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address 0x{{ .Data.Address }}" />
           <img style="display: none" class="qrcode-dark" src="data:image/png;base64,{{ .Data.QRCodeInverse }}" alt="QR code for address 0x{{ .Data.Address }}" />
         </div>
+      </div>
+    </div>
+  </div>
+{{ end }}
+
+{{ define "AddressTokenBalanceTabContent" }}
+  <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card shadow-none flex-grow-1">
+    <div class="card-body p-0 pb-1" style="max-height: 170px; overflow: auto">
+      <div class="position: relative" style="display: grid; grid-template-columns: minmax(50px, 1fr) minmax(50px, 2fr);">
+        <div style="top:0; z-index: 9;" class="position-sticky token-balance-col overview-header-col">
+          <span>Symbol</span>
+        </div>
+        <div style="top:0; z-index: 9;" class="position-sticky token-balance-col overview-header-col">
+          <span>Balance</span>
+        </div>
+        <!-- <div style="top:0; z-index: 9;" class="position-sticky token-balance-col header-col"></div> -->
+        {{ range .Data.Metadata.Balances }}
+          {{ . | formatTokenBalance }}
+          <!-- <div></div> -->
+        {{ end }}
       </div>
     </div>
   </div>
