@@ -900,7 +900,7 @@ func (rp *RocketpoolExporter) UpdateNetworkStats() error {
 		return err
 	}
 
-	effectiveRplStake, err := getBigIntFrom(rp.API, "rocketNetworkPrices", "getEffectiveRPLStake")
+	totalEffectiveStake, err := node.GetTotalEffectiveRPLStake(rp.API, nil)
 	if err != nil {
 		return err
 	}
@@ -917,9 +917,31 @@ func (rp *RocketpoolExporter) UpdateNetworkStats() error {
 			return err
 		}
 	} else {
-		nodeOperatorRewards, err = rewards.GetPendingRPLRewards(rp.API, nil)
+		inflationInterval, err := tokens.GetRPLInflationIntervalRate(rp.API, nil)
 		if err != nil {
 			return err
+		}
+
+		totalRplSupply, err := tokens.GetRPLTotalSupply(rp.API, nil)
+		if err != nil {
+			return err
+		}
+
+		nodeOperatorRewardsPercentRaw, err := rewards.GetNodeOperatorRewardsPercent(rp.API, nil)
+		nodeOperatorRewardsPercent := eth.WeiToEth(nodeOperatorRewardsPercentRaw)
+		if err != nil {
+			return err
+		}
+
+		rewardsIntervalDays := claimIntervalTime.Seconds() / (60 * 60 * 24)
+		inflationPerDay := eth.WeiToEth(inflationInterval)
+		totalRplAtNextCheckpoint := (math.Pow(inflationPerDay, float64(rewardsIntervalDays)) - 1) * eth.WeiToEth(totalRplSupply)
+		if totalRplAtNextCheckpoint < 0 {
+			totalRplAtNextCheckpoint = 0
+		}
+
+		if totalEffectiveStake.Cmp(big.NewInt(0)) == 1 {
+			nodeOperatorRewards = eth.EthToWei(totalRplAtNextCheckpoint * nodeOperatorRewardsPercent)
 		}
 	}
 
@@ -940,7 +962,7 @@ func (rp *RocketpoolExporter) UpdateNetworkStats() error {
 		CurrentNodeFee:         currentNodeFee,
 		CurrentNodeDemand:      currentNodeDemand,
 		RETHSupply:             rethSupply,
-		EffectiveRPLStake:      effectiveRplStake,
+		EffectiveRPLStake:      totalEffectiveStake,
 		NodeOperatorRewards:    nodeOperatorRewards,
 		RETHPrice:              exchangeRate,
 		TotalEthStaking:        totalEthStaking,
@@ -996,7 +1018,7 @@ func (rp *RocketpoolExporter) SaveMinipools() error {
 	}
 	defer tx.Rollback()
 
-	nArgs := 8
+	nArgs := 9
 	valueStringsArr := make([]string, nArgs)
 	for i := range valueStringsArr {
 		valueStringsArr[i] = "$%d"
@@ -1027,8 +1049,9 @@ func (rp *RocketpoolExporter) SaveMinipools() error {
 			valueArgs = append(valueArgs, d.NodeAddress)
 			valueArgs = append(valueArgs, d.NodeFee)
 			valueArgs = append(valueArgs, d.DepositType)
+			valueArgs = append(valueArgs, d.PenaltyCount)
 		}
-		stmt := fmt.Sprintf(`insert into rocketpool_minipools (rocketpool_storage_address, address, pubkey, status, status_time, node_address, node_fee, deposit_type) values %s on conflict (rocketpool_storage_address, address) do update set pubkey = excluded.pubkey, status = excluded.status, status_time = excluded.status_time, node_address = excluded.node_address, node_fee = excluded.node_fee, deposit_type = excluded.deposit_type`, strings.Join(valueStrings, ","))
+		stmt := fmt.Sprintf(`insert into rocketpool_minipools (rocketpool_storage_address, address, pubkey, status, status_time, node_address, node_fee, deposit_type, penalty_count) values %s on conflict (rocketpool_storage_address, address) do update set pubkey = excluded.pubkey, status = excluded.status, status_time = excluded.status_time, node_address = excluded.node_address, node_fee = excluded.node_fee, deposit_type = excluded.deposit_type, penalty_count = excluded.penalty_count`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return fmt.Errorf("error inserting into rocketpool_minipools: %w", err)
@@ -1455,13 +1478,14 @@ func (rp *RocketpoolExporter) SaveNetworkStats() error {
 }
 
 type RocketpoolMinipool struct {
-	Address     []byte    `db:"address"`
-	Pubkey      []byte    `db:"pubkey"`
-	NodeAddress []byte    `db:"node_address"`
-	NodeFee     float64   `db:"node_fee"`
-	DepositType string    `db:"deposit_type"`
-	Status      string    `db:"status"`
-	StatusTime  time.Time `db:"status_time"`
+	Address      []byte    `db:"address"`
+	Pubkey       []byte    `db:"pubkey"`
+	NodeAddress  []byte    `db:"node_address"`
+	NodeFee      float64   `db:"node_fee"`
+	DepositType  string    `db:"deposit_type"`
+	Status       string    `db:"status"`
+	StatusTime   time.Time `db:"status_time"`
+	PenaltyCount uint64    `db:"penalty_count"`
 }
 
 func NewRocketpoolMinipool(rp *rocketpool.RocketPool, addr []byte) (*RocketpoolMinipool, error) {
@@ -1508,6 +1532,7 @@ func (this *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
 	var wg errgroup.Group
 	var status rpTypes.MinipoolStatus
 	var statusTime time.Time
+	var penaltyCount uint64
 
 	wg.Go(func() error {
 		var err error
@@ -1519,6 +1544,11 @@ func (this *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
 		statusTime, err = mp.GetStatusTime(nil)
 		return err
 	})
+	wg.Go(func() error {
+		var err error
+		penaltyCount, err = minipool.GetMinipoolPenaltyCount(rp, common.BytesToAddress(this.Address), nil)
+		return err
+	})
 
 	if err := wg.Wait(); err != nil {
 		return err
@@ -1526,6 +1556,7 @@ func (this *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
 
 	this.Status = status.String()
 	this.StatusTime = statusTime
+	this.PenaltyCount = penaltyCount
 
 	return nil
 }

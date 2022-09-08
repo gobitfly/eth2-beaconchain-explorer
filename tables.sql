@@ -833,7 +833,7 @@ create table rocketpool_minipools
     deposit_type varchar(20) not null, -- none (invalid), full, half, empty .. see: https://github.com/rocket-pool/rocketpool/blob/683addf4ac/contracts/types/MinipoolDeposit.sol
     status text not null, -- Initialized, Prelaunch, Staking, Withdrawable, Dissolved .. see: https://github.com/rocket-pool/rocketpool/blob/683addf4ac/contracts/types/MinipoolStatus.sol
     status_time timestamp without time zone,
-
+    penalty_count numeric not null default 0,
     primary key(rocketpool_storage_address, address)
 );
 

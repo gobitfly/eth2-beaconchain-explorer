@@ -257,6 +257,10 @@
                     <div>{{ formatRPL .Rocketpool.UnclaimedRPL }}</div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Penalties</div>
+                    <div>{{ if gt .Rocketpool.PenaltyCount 0 }}<span class="text-danger">{{ .Rocketpool.PenaltyCount }}</span>{{else}}{{ .Rocketpool.PenaltyCount }}{{end}}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Smoothing Pool Opt-In</div>
                     <div>{{ if .Rocketpool.SmoothingPoolOptIn }}✅{{ else }}❌{{ end }}</div>
                   </div>
