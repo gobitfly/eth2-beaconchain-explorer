@@ -93,7 +93,9 @@
         },
         complete: function (columns) {
           var series = []
-
+          if (columns.series.length < 6) {
+            return series
+          }
           series[0] = columns.series[1]
           series[1] = columns.series[3]
           series[2] = columns.series[4]

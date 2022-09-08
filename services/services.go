@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -77,7 +78,7 @@ func epochUpdater() {
 		}
 
 		var epoch uint64
-		err = db.WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
+		err = db.WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM blocks")
 		if err != nil {
 			logger.Errorf("error retrieving latest epoch from the database: %v", err)
 		} else {
@@ -182,12 +183,15 @@ func indexPageDataUpdater() {
 	firstRun := true
 
 	for {
+		logger.Infof("updating index page data")
+		start := time.Now()
 		data, err := getIndexPageData()
 		if err != nil {
 			logger.Errorf("error retrieving index page data: %v", err)
 			time.Sleep(time.Second * 10)
 			continue
 		}
+		logger.Infof("index page data update completed in %v", time.Since(start))
 		indexPageData.Store(data)
 		if firstRun {
 			logger.Info("initialized index page updater")
@@ -325,21 +329,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.Genesis = false
 	}
 
-	var epochs []*types.IndexPageDataEpochs
-	err = db.WriterDb.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
-	}
-
-	for _, epoch := range epochs {
-		epoch.Ts = utils.EpochToTime(epoch.Epoch)
-		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
-		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther, currency)
-		epoch.EligibleEtherFormatted = utils.FormatBalanceShort(epoch.EligibleEther, currency)
-		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate, currency)
-	}
-	data.Epochs = epochs
-
 	var scheduledCount uint8
 	err = db.WriterDb.Get(&scheduledCount, `
 		select count(*) from blocks where status = '0' and epoch = $1;
@@ -348,6 +337,21 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		return nil, fmt.Errorf("error retrieving scheduledCount from blocks: %v", err)
 	}
 	data.ScheduledCount = scheduledCount
+
+	var epochs []*types.IndexPageDataEpochs
+	err = db.WriterDb.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
+	}
+	epochsMap := make(map[uint64]bool)
+	for _, epoch := range epochs {
+		epoch.Ts = utils.EpochToTime(epoch.Epoch)
+		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
+		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther, currency)
+		epoch.EligibleEtherFormatted = utils.FormatEligibleBalance(epoch.EligibleEther, currency)
+		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate, currency)
+		epochsMap[epoch.Epoch] = true
+	}
 
 	var blocks []*types.IndexPageDataBlocks
 	err = db.WriterDb.Select(&blocks, `
@@ -363,21 +367,65 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			blocks.proposerslashingscount,
 			blocks.attesterslashingscount,
 			blocks.status,
+			COALESCE(blocks.exec_block_number, 0) AS exec_block_number,
 			COALESCE(validator_names.name, '') AS name
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		WHERE blocks.slot < $1
-		ORDER BY blocks.slot DESC LIMIT 15`, cutoffSlot)
+		ORDER BY blocks.slot DESC LIMIT 20`, cutoffSlot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index block data: %v", err)
 	}
+
+	blocksMap := make(map[uint64]*types.IndexPageDataBlocks)
+	for _, block := range blocks {
+		if blocksMap[block.Slot] == nil || len(block.BlockRoot) > len(blocksMap[block.Slot].BlockRoot) {
+			blocksMap[block.Slot] = block
+		}
+	}
+	blocks = make([]*types.IndexPageDataBlocks, 0, len(blocks))
+	for _, b := range blocksMap {
+		blocks = append(blocks, b)
+	}
+	sort.Slice(blocks, func(i, j int) bool {
+		return blocks[i].Slot > blocks[j].Slot
+	})
 	data.Blocks = blocks
+
+	if len(data.Blocks) > 15 {
+		data.Blocks = data.Blocks[:15]
+	}
 
 	for _, block := range data.Blocks {
 		block.StatusFormatted = utils.FormatBlockStatus(block.Status)
 		block.ProposerFormatted = utils.FormatValidatorWithName(block.Proposer, block.ProposerName)
 		block.BlockRootFormatted = fmt.Sprintf("%x", block.BlockRoot)
+
+		if !epochsMap[block.Epoch] {
+			epochs = append(epochs, &types.IndexPageDataEpochs{
+				Epoch:                            block.Epoch,
+				Ts:                               utils.EpochToTime(block.Epoch),
+				Finalized:                        false,
+				FinalizedFormatted:               utils.FormatYesNo(false),
+				EligibleEther:                    0,
+				EligibleEtherFormatted:           utils.FormatEligibleBalance(0, "ETH"),
+				GlobalParticipationRate:          0,
+				GlobalParticipationRateFormatted: utils.FormatGlobalParticipationRate(0, 1, ""),
+				VotedEther:                       0,
+				VotedEtherFormatted:              "",
+			})
+			epochsMap[block.Epoch] = true
+		}
+	}
+	sort.Slice(epochs, func(i, j int) bool {
+		return epochs[i].Epoch > epochs[j].Epoch
+	})
+
+	data.Epochs = epochs
+
+	if len(data.Epochs) > 15 {
+		data.Epochs = data.Epochs[:15]
 	}
 
 	if data.GenesisPeriod {
@@ -404,19 +452,12 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.EnteringValidators = queueCount.EnteringValidators
 	data.ExitingValidators = queueCount.ExitingValidators
 
-	var averageBalance float64
-	err = db.WriterDb.Get(&averageBalance, "SELECT COALESCE(AVG(balance), 0) FROM validators")
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving validator balance: %v", err)
-	}
-	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance), currency))
-
 	var epochLowerBound uint64
 	if epochLowerBound = 0; epoch > 1600 {
 		epochLowerBound = epoch - 1600
 	}
 	var epochHistory []*types.IndexPageEpochHistory
-	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
+	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized, averagevalidatorbalance FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving staked ether history: %v", err)
 	}
@@ -426,6 +467,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			if epochHistory[i].Finalized {
 				data.CurrentFinalizedEpoch = epochHistory[i].Epoch
 				data.FinalityDelay = data.CurrentEpoch - epoch
+				data.AverageBalance = string(utils.FormatBalance(uint64(epochHistory[i].AverageValidatorBalance), currency))
 				break
 			}
 		}
