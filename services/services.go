@@ -182,12 +182,15 @@ func indexPageDataUpdater() {
 	firstRun := true
 
 	for {
+		logger.Infof("updating index page data")
+		start := time.Now()
 		data, err := getIndexPageData()
 		if err != nil {
 			logger.Errorf("error retrieving index page data: %v", err)
 			time.Sleep(time.Second * 10)
 			continue
 		}
+		logger.Infof("index page data update completed in %v", time.Since(start))
 		indexPageData.Store(data)
 		if firstRun {
 			logger.Info("initialized index page updater")
