@@ -751,3 +751,36 @@ func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
 		return nil, fmt.Errorf("etherscan contract code not found")
 	}
 }
+
+func FormatThousandsEnglish(number string) string {
+	runes := []rune(number)
+	cnt := 0
+	for _, rune := range runes {
+		if rune == '.' {
+			break
+		}
+		cnt += 1
+	}
+	amt := cnt / 3
+	rem := cnt % 3
+
+	res := make([]rune, 0, amt+rem)
+	if amt == 0 {
+		return number
+	}
+	for i := 0; i < len(runes); i++ {
+		if i != 0 && i == rem {
+			res = append(res, ',')
+			amt -= 1
+		}
+
+		if amt > 1 && i > rem && ((i-rem)%3) == 0 {
+			res = append(res, ',')
+			amt -= 1
+		}
+
+		res = append(res, runes[i])
+	}
+
+	return string(res)
+}
