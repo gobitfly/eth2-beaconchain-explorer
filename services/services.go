@@ -366,6 +366,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			blocks.proposerslashingscount,
 			blocks.attesterslashingscount,
 			blocks.status,
+			COALESCE(blocks.exec_block_number, 0) AS exec_block_number,
 			COALESCE(validator_names.name, '') AS name
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
