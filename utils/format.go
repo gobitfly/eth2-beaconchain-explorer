@@ -962,7 +962,7 @@ func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
 	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Metadata.Decimals), 0))
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
 	p := message.NewPrinter(language.English)
-	flt, rem := num.Div(mul).Float64()
+	flt, _ := num.Div(mul).Float64()
 	// return template.HTML(p.Sprintf(`
 	// <div class="d-flex align-items-center">
 	// 	<svg style="width: 1rem; height: 1rem;">
