@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/gob"
 	"encoding/hex"
 	"eth2-exporter/db"
@@ -97,9 +98,23 @@ func main() {
 		logrus.Fatalf("error initializing erigon client: %v", err)
 	}
 
+	erigonChainId, err := rpc.CurrentErigonClient.GetNativeClient().ChainID(context.Background())
+	if err != nil {
+		logrus.Fatalf("error retrieving erigon chain id: %v", err)
+	}
+
 	rpc.CurrentGethClient, err = rpc.NewGethClient(utils.Config.Eth1GethEndpoint)
 	if err != nil {
 		logrus.Fatalf("error initializing geth client: %v", err)
+	}
+
+	gethChainId, err := rpc.CurrentGethClient.GetNativeClient().ChainID(context.Background())
+	if err != nil {
+		logrus.Fatalf("error retrieving geth chain id: %v", err)
+	}
+
+	if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) {
+		logrus.Fatalf("chain id missmatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), erigonChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 	}
 
 	// if utils.Config.Frontend.Bigtable.Enabled {
