@@ -28,6 +28,10 @@ var epochBlacklist = make(map[uint64]uint64)
 var saveEpochMux = &sync.Mutex{}
 var fullCheckRunning = uint64(0)
 
+var getEpochDataChan = make(chan uint64, 10)
+var saveEpochDataChan = make(chan *types.EpochData, 10)
+var saveBlockDataChan = make(chan *types.Block, 10)
+
 // Start will start the export of data from rpc into the database
 func Start(client rpc.Client) error {
 	go performanceDataUpdater()
@@ -229,47 +233,45 @@ func Start(client rpc.Client) error {
 
 	lastExportedSlot := uint64(0)
 
-	doFullCheck(client)
+	// doFullCheck(client)
 
-	logger.Infof("initial check completed, entering monitoring mode")
+	logger.Infof("entering monitoring mode")
 	for {
-		select {
-		case block := <-newBlockChan:
-			// Do a full check on any epoch transition or after during the first run
-			if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
-				go func() {
-					v := atomic.LoadUint64(&fullCheckRunning)
-					if v == 1 {
-						logger.Infof("skipping full check as one is already running")
-						return
-					}
-					atomic.StoreUint64(&fullCheckRunning, 1)
-					doFullCheck(client)
-					atomic.StoreUint64(&fullCheckRunning, 0)
-				}()
-			} else { // else just save the epoch block
-				blocksMap := make(map[uint64]map[string]*types.Block)
-				if blocksMap[block.Slot] == nil {
-					blocksMap[block.Slot] = make(map[string]*types.Block)
+		block := <-newBlockChan
+		// Do a full check on any epoch transition or after during the first run
+		if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
+			go func() {
+				v := atomic.LoadUint64(&fullCheckRunning)
+				if v == 1 {
+					logger.Infof("skipping full check as one is already running")
+					return
 				}
-				blocksMap[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
-
-				err := db.BigtableClient.SaveAttestations(blocksMap)
-				if err != nil {
-					logrus.Errorf("error exporting attestations to bigtable for block %v: %v", block.Slot, err)
-				}
-				err = db.BigtableClient.SaveSyncComitteeDuties(blocksMap)
-				if err != nil {
-					logrus.Errorf("error exporting sync committe duties to bigtable for block %v: %v", block.Slot, err)
-				}
-
-				err = db.SaveBlock(block)
-				if err != nil {
-					logger.Errorf("error saving block: %v", err)
-				}
+				atomic.StoreUint64(&fullCheckRunning, 1)
+				doFullCheck(client)
+				atomic.StoreUint64(&fullCheckRunning, 0)
+			}()
+		} else { // else just save the epoch block
+			blocksMap := make(map[uint64]map[string]*types.Block)
+			if blocksMap[block.Slot] == nil {
+				blocksMap[block.Slot] = make(map[string]*types.Block)
 			}
-			lastExportedSlot = block.Slot
+			blocksMap[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
+
+			err := db.BigtableClient.SaveAttestations(blocksMap)
+			if err != nil {
+				logrus.Errorf("error exporting attestations to bigtable for block %v: %v", block.Slot, err)
+			}
+			err = db.BigtableClient.SaveSyncComitteeDuties(blocksMap)
+			if err != nil {
+				logrus.Errorf("error exporting sync committe duties to bigtable for block %v: %v", block.Slot, err)
+			}
+
+			err = db.SaveBlock(block)
+			if err != nil {
+				logger.Errorf("error saving block: %v", err)
+			}
 		}
+		lastExportedSlot = block.Slot
 	}
 }
 
