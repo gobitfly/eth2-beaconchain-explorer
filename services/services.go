@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -372,11 +373,29 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		WHERE blocks.slot < $1
-		ORDER BY blocks.slot DESC LIMIT 15`, cutoffSlot)
+		ORDER BY blocks.slot DESC LIMIT 20`, cutoffSlot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index block data: %v", err)
 	}
+
+	blocksMap := make(map[uint64]*types.IndexPageDataBlocks)
+	for _, block := range blocks {
+		if blocksMap[block.Slot] == nil || len(block.BlockRoot) > len(blocksMap[block.Slot].BlockRoot) {
+			blocksMap[block.Slot] = block
+		}
+	}
+	blocks = make([]*types.IndexPageDataBlocks, 0, len(blocks))
+	for _, b := range blocksMap {
+		blocks = append(blocks, b)
+	}
+	sort.Slice(blocks, func(i, j int) bool {
+		return blocks[i].Slot > blocks[j].Slot
+	})
 	data.Blocks = blocks
+
+	if len(data.Blocks) > 15 {
+		data.Blocks = data.Blocks[:15]
+	}
 
 	for _, block := range data.Blocks {
 		block.StatusFormatted = utils.FormatBlockStatus(block.Status)
