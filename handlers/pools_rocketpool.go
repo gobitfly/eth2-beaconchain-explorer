@@ -67,6 +67,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 		"3": "node_fee",
 		"4": "deposit_type",
 		"5": "status",
+		"6": "penalty_count",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -146,6 +147,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 		entry = append(entry, row.NodeFee)
 		entry = append(entry, row.DepositType)
 		entry = append(entry, row.Status)
+		entry = append(entry, row.PenaltyCount)
 		tableData = append(tableData, entry)
 	}
 

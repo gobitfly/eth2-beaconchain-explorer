@@ -369,6 +369,7 @@ type RocketpoolValidatorPageData struct {
 	SmoothingUnclaimed   *string    `db:"unclaimed_smoothing_pool"`
 	UnclaimedRPL         *string    `db:"unclaimed_rpl_rewards"`
 	SmoothingPoolOptIn   bool       `db:"smoothing_pool_opted_in"`
+	PenaltyCount         uint64     `db:"penalty_count"`
 }
 
 type ValidatorStatsTablePageData struct {
@@ -1215,6 +1216,7 @@ type RocketpoolPageDataMinipool struct {
 	DepositType              string    `db:"deposit_type"`
 	Status                   string    `db:"status"`
 	StatusTime               time.Time `db:"status_time"`
+	PenaltyCount             uint64    `db:"penalty_count"`
 }
 
 type RocketpoolPageDataNode struct {

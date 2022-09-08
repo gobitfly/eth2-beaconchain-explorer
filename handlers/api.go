@@ -708,6 +708,7 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 			TRUNC(rplm.node_fee::decimal, 10)::float          AS minipool_node_fee,
 			rplm.deposit_type      AS minipool_deposit_type,
 			rplm.status            AS minipool_status,
+			rplm.penalty_count     AS penalty_count,
 			rplm.status_time       AS minipool_status_time,
 			rpln.timezone_location AS node_timezone_location,
 			rpln.rpl_stake         AS node_rpl_stake,

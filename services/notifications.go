@@ -1947,7 +1947,7 @@ func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map
 		AND v.day >= $3 
 		AND v.machine = us.event_filter 
 		AND (us.last_sent_epoch < ($2 - 750) OR us.last_sent_epoch IS NULL)
-		AND sy.disk_node_bytes_free::decimal / sy.disk_node_bytes_total < event_threshold
+		AND sy.disk_node_bytes_free::decimal / (sy.disk_node_bytes_total + 1) < event_threshold
 		AND v.created_trunc > NOW() - INTERVAL '1 hours' 
 		group by us.user_id, machine
 	`)
