@@ -29,6 +29,7 @@ import (
 func main() {
 
 	erigonEndpoint := flag.String("erigon", "", "Erigon archive node enpoint")
+	network := flag.String("network", "", "Network to use for exporting (mainnet or goerli")
 
 	block := flag.Int64("block", 0, "Index a specific block")
 
@@ -67,7 +68,25 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	bt, err := db.NewBigtable("etherchain", "etherchain", "1")
+	chainId := ""
+	if *network == "mainnet" {
+		chainId = "1"
+	} else if *network == "goerli" {
+		chainId = "5"
+	} else {
+		logrus.Fatalf("unsupported network name %v provided", *network)
+	}
+
+	nodeChainId, err := client.GetNativeClient().ChainID(context.Background())
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	if nodeChainId.String() != chainId {
+		logrus.Fatalf("node chain id missmatch, wanted %v got %v", chainId, nodeChainId.String())
+	}
+
+	bt, err := db.NewBigtable("etherchain", "etherchain", chainId)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
