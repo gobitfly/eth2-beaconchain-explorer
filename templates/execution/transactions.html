@@ -1,0 +1,148 @@
+{{ define "js" }}
+  <script>
+    function drawCallback() {
+      $('[data-toggle="tooltip"]').tooltip()
+    }
+
+    {{ if .PagingToken }}
+      setupInfiniteScroll({{.PagingToken}},'transactions-table', 'transactions-table-inf-scroll', 'transacions')
+    {{ end }}
+
+    function setupInfiniteScroll(pageToken, tableID, loadingID, urlPart) {
+      var previousToken = ""
+      var isLoading = false
+
+      const infLoading = document.getElementById(loadingID)
+      const getTransactions = async (token) => {
+        try {
+          const res = await fetch(`${window.location.pathname}/data?pageToken=${encodeURI(token)}`)
+          const data = await res.json()
+
+          console.log('got data: ', data)
+
+          if (data && data.data && data.pagingToken && data.pagingToken.length) {
+            previousToken = pageToken
+            pageToken = data.pagingToken
+            console.log('setting new pagetoken:\n',"new:", pageToken,'\n',"pre:", previousToken)
+
+            if (data.data.length < 1) {
+              if (infLoading) {
+                let v = infLoading.querySelector('span')
+                if (v) {
+                  infLoading.querySelector('span').innerText = 'No more data, here is the end.'
+                }
+              }
+            }
+            for (let i = 0; i < data.data.length; i++) {
+              const row = data.data[i];
+              for (let j = 0; j < data.data[i].length; j++) {
+                const col = data.data[i][j]
+                const el = document.createElement('div')
+                el.classList.add('border-top', 'p-2', 'text-truncate')
+                el.innerHTML = col
+                infLoading.insertAdjacentElement("beforebegin", el)
+                drawCallback()
+              }
+            }
+          } else if (data && data.data && data.data.length == 0) {
+            if (infLoading) {
+              let v = infLoading.querySelector('h5')
+              if (v) {
+                infLoading.querySelector('h5').innerText = 'No entries found.'
+              }
+            }
+          }
+          isLoading = false
+        } catch (err) {
+          console.error("error getting transactions: ", err)
+          
+          if (infLoading) {
+            let v = infLoading.querySelector('h5')
+            if (v) {
+              infLoading.querySelector('h5').innerText = 'Something went wrong fetching please try again another time.'
+            }
+          }
+          
+          isLoading = false
+        }
+      }
+
+      let optionsScroll = {
+        root: document.getElementById(tableID),
+        rootMargin: '5px',
+        threshold: 0
+      }
+
+      const handleTableEnd = (entries, observer) => {
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i];
+          if (entry.isIntersecting) {
+            console.log('intersecting');
+            if(!isLoading) {
+              console.log(tableID,'token:', pageToken)
+              isLoading = true
+              getTransactions(pageToken)
+            }
+          }
+        }
+      }
+
+      let observerScroll = new IntersectionObserver(handleTableEnd, optionsScroll)
+
+      let transactionsLastElement = document.getElementById(loadingID)
+      if (!!transactionsLastElement) {
+        observerScroll.observe(transactionsLastElement)
+      }
+    }
+  </script>
+{{ end }}{{ define "css"}}
+{{end}} {{ define "content" }}
+  <div class="container mt-2">
+		<div class="d-md-flex py-2 my-2 justify-content-md-between">
+			<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cubes mr-2"></i>Transactions</h1>
+			<nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
+				<ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0" style="padding:0; background-color:transparent;">
+					<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Transactions</li>
+				</ol>
+			</nav>
+		</div>
+
+    <div class="card shadow-none flex-grow-1">
+      <div class="card-body px-0 py-0">
+        <div style="height: 800px;" class="tab-content" id="address-tab-content">
+          <div class="tab-pane fade show active" id="transactions" role="tabpanel" aria-labelledby="transaction-tab">
+            <div id="transactions-table" style="display: grid; grid-template-columns: repeat(8, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
+              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Tx Hash</span></div>
+              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Method</span></div>
+              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Block</span></div>
+              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Time</span></div>
+              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>From</span></div>
+              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>To</span></div>
+              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Value</span></div>
+              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Tx Fee</span></div>
+              {{ if len .Data.Data }}
+                {{ range $i, $row := .Data.Data }}
+                  {{ range $j, $col := $row }}
+                    <div class="border-top p-2 text-truncate">{{ $col }}</div>
+                  {{ end }}
+                {{ end }}
+                <div style="grid-column: 1 / 9;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
+                  <span style='color: grey;'>loading...</span>
+                </div>
+              {{ else }}
+                <div style="grid-column: 1 / 9;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
+                  <div class="d-flex justify-content-center align-items-center flex-column">
+                    <div>
+                      <h5 style='color: grey;'>No entries found.</h5>
+                    </div>
+                  </div>
+                </div>
+              {{ end }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{{ end }}
