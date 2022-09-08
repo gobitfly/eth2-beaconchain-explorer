@@ -185,10 +185,10 @@ func Start(client rpc.Client) error {
 			if block.Db == nil {
 				logger.Printf("queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
-			} else if block.Node == nil {
+			} else if block.Node == nil && !strings.HasSuffix(key, "-00") { //do not re-export because of missed blocks
 				logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
-			} else if bytes.Compare(block.Db.BlockRoot, block.Node.BlockRoot) != 0 {
+			} else if !bytes.Equal(block.Db.BlockRoot, block.Node.BlockRoot) {
 				logger.Printf("queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
 			}
@@ -346,7 +346,7 @@ func doFullCheck(client rpc.Client) {
 		if block.Db == nil {
 			logger.Printf("queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, key)
 			epochsToExport[block.Epoch] = true
-		} else if block.Node == nil {
+		} else if block.Node == nil && !strings.HasSuffix(key, "-00") {
 			logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
 			epochsToExport[block.Epoch] = true
 		} else if !bytes.Equal(block.Db.BlockRoot, block.Node.BlockRoot) {
