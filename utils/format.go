@@ -358,7 +358,7 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 func FormatEtherValue(symbol string, ethPrice *big.Float, currentPrice string) template.HTML {
 	p := message.NewPrinter(language.English)
 	ep, _ := ethPrice.Float64()
-	return template.HTML(p.Sprintf("%s %.2f @ %s/ETH", symbol, ep, currentPrice))
+	return template.HTML(p.Sprintf(`<span>%s %.2f</span> <span class="text-muted">@ %s/ETH</span>`, symbol, ep, currentPrice))
 }
 
 // FormatGraffiti will return the graffiti formated as html
@@ -935,19 +935,27 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 		logo = fmt.Sprintf(`<img class="mr-1" style="height: 1.2rem;" src="data:image/png;base64, %s">`, base64.StdEncoding.EncodeToString(balance.Metadata.Logo))
 	}
 	pflt, _ := price.Float64()
-	flt, _ := num.Div(mul).Float64()
+	flt, _ := num.Div(mul).Round(5).Float64()
 	bflt, _ := price.Mul(num.Div(mul)).Float64()
 	return template.HTML(p.Sprintf(`
-	<div class="token-balance-col token-name text-truncate d-flex align-items-center justify-content-between">
-		<a class="token-icon" href='/execution/token/0x%x?a=0x%x'>
-			<span>%s</span> <span>%s</span>
-		</a> 
-		<span class="text-muted" style="font-size: 90%%;">$%.2f</span>
+	<div class="token-balance-col token-name text-truncate d-flex align-items-center justify-content-between flex-wrap">
+		<div class="token-icon p-1">
+			<a href='/execution/token/0x%x?a=0x%x'>
+				<span>%s</span> <span>%s</span>
+			</a> 
+		</div>
+		<div class="token-price-balance p-1">
+			<span class="text-muted" style="font-size: 90%%;">$%.2f</span>
+		</div>
 	</div> 
-	<div class="token-balance-col token-balance d-flex align-items-center justify-content-between">
-		<span class="token-holdings">%.5f</span>
-		<span class="text-muted" style="font-size: 90%%;">@ $%.2f</span>
-	</div>`, balance.Token, balance.Address, logo, balance.Metadata.Symbol, bflt, flt, pflt))
+	<div class="token-balance-col token-balance d-flex align-items-center justify-content-between flex-wrap">
+		<div class="token-holdings p-1">
+			<span class="token-holdings">%s</span>
+		</div>
+		<div class="token-price p-1">
+			<span class="text-muted" style="font-size: 90%%;">@ $%.2f</span>
+		</div>
+	</div>`, balance.Token, balance.Address, logo, balance.Metadata.Symbol, bflt, strconv.FormatFloat(flt, 'f', -1, 64), pflt))
 }
 
 func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {

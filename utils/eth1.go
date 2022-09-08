@@ -74,7 +74,7 @@ func FormatTransactionHash(hash []byte) template.HTML {
 	if len(hash) < 20 {
 		return template.HTML("N/A")
 	}
-	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/execution/tx/0x%x">0x%x…%x</a> %v`, hash, hash[:2], hash[len(hash)-2:], CopyButton(hex.EncodeToString(hash))))
+	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/execution/tx/0x%x">0x%x…%x</a>`, hash, hash[:3], hash[len(hash)-3:]))
 }
 
 func FormatInOutSelf(address, from, to []byte) template.HTML {
@@ -98,7 +98,7 @@ func FormatAddress(address []byte, token []byte, name string, verified bool, isC
 
 	tooltip := ""
 	if len(name) == 0 {
-		name = string(FormatAddressLong(fmt.Sprintf("%x", address)))
+		name = fmt.Sprintf(`<span class="text-monospace">0x%x…%x</span>`, address[:3], address[len(address)-3:])
 		tooltip = fmt.Sprintf("0x%x", address)
 	} else {
 		tooltip = fmt.Sprintf("%s\n0x%x", name, address)
@@ -128,12 +128,12 @@ func FormatAddressAsLink(address []byte, name string, verified bool, isContract 
 
 	if len(name) > 0 {
 		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">✔ %s (0x%x…%x)</a> %v", address, name, address[:2], address[len(address)-2:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">✔ %s (0x%x…%x)</a> %v", address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
 		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">%s 0x%x…%x</a> %v", address, name, address[:2], address[len(address)-2:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">%s 0x%x…%x</a> %v", address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
 		}
 	} else {
-		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">0x%x…%x</a> %v", address, address[:2], address[len(address)-2:], CopyButton(hex.EncodeToString(address)))
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">0x%x…%x</a> %v", address, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
 	}
 
 	if isContract {
@@ -148,12 +148,12 @@ func FormatAddressAsTokenLink(token, address []byte, name string, verified bool,
 
 	if len(name) > 0 {
 		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/token/0x%x?a=0x%x\">✔ %s (0x%x…%x)</a> %v", token, address, name, address[:2], address[len(address)-2:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/token/0x%x?a=0x%x\">✔ %s (0x%x…%x)</a> %v", token, address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
 		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/token/0x%x?a=0x%x\">%s 0x%x…%x</a> %v", token, address, name, address[:2], address[len(address)-2:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/token/0x%x?a=0x%x\">%s 0x%x…%x</a> %v", token, address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
 		}
 	} else {
-		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/token/0x%x?a=0x%x\">0x%x…%x</a> %v", token, address, address[:2], address[len(address)-2:], CopyButton(hex.EncodeToString(address)))
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/token/0x%x?a=0x%x\">0x%x…%x</a> %v", token, address, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
 	}
 
 	if isContract {
@@ -166,9 +166,9 @@ func FormatHashLong(hash common.Hash) template.HTML {
 	address := hash.String()
 	test := `
 	<div class="d-flex text-monospace">
-		<div class="">0x%s</div>
-		<div class="flex-shrink-1 text-truncate">%s</div>
-		<div class="">%s</div>
+		<span class="">0x%s</span>
+		<span class="flex-shrink-1 text-truncate">%s</span>
+		<span class="">%s</span>
 	</div>`
 	if len(address) > 4 {
 		return template.HTML(fmt.Sprintf(test, address[:4], address[4:len(address)-4], address[len(address)-4:]))
@@ -179,11 +179,7 @@ func FormatHashLong(hash common.Hash) template.HTML {
 
 func FormatAddressLong(address string) template.HTML {
 	test := `
-	<div class="d-inline-flex text-monospace mw-100">
-		<div class="text-primary">0x%s</div>
-		<div class="flex-shrink-1 text-truncate">%s</div>
-		<div class="text-primary">%s</div>
-	</div>`
+	<span class="text-monospace mw-100"><span class="text-primary">0x%s</span><span class="text-truncate">%s</span><span class="text-primary">%s</span></span>`
 	if len(address) > 4 {
 		return template.HTML(fmt.Sprintf(test, address[:4], address[4:len(address)-4], address[len(address)-4:]))
 	}
