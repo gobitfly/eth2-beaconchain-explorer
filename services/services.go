@@ -404,16 +404,16 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 		if !epochsMap[block.Epoch] {
 			epochs = append(epochs, &types.IndexPageDataEpochs{
-				Epoch:                            epoch,
+				Epoch:                            block.Epoch,
 				Ts:                               utils.EpochToTime(epoch),
 				Finalized:                        false,
 				FinalizedFormatted:               utils.FormatYesNo(false),
 				EligibleEther:                    0,
 				EligibleEtherFormatted:           utils.FormatEligibleBalance(0, "ETH"),
 				GlobalParticipationRate:          0,
-				GlobalParticipationRateFormatted: "-",
+				GlobalParticipationRateFormatted: utils.FormatGlobalParticipationRate(0, 1, ""),
 				VotedEther:                       0,
-				VotedEtherFormatted:              utils.FormatGlobalParticipationRate(0, 1, ""),
+				VotedEtherFormatted:              "",
 			})
 			epochsMap[block.Epoch] = true
 		}
@@ -421,7 +421,12 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	sort.Slice(epochs, func(i, j int) bool {
 		return epochs[i].Epoch > epochs[j].Epoch
 	})
+
 	data.Epochs = epochs
+
+	if len(data.Epochs) > 15 {
+		data.Epochs = data.Epochs[:15]
+	}
 
 	if data.GenesisPeriod {
 		for _, blk := range blocks {
