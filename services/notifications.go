@@ -1472,7 +1472,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 			Pubkey         []byte
 		}
 		var indexPubkeyArr []*indexpubkey
-		err := db.ReaderDb.Select(indexPubkeyArr, "SELECT validatorindex, pubkey FROM validators WHERE pubkey = ANY($1)", pq.ByteaArray(keys))
+		err := db.ReaderDb.Select(&indexPubkeyArr, "SELECT validatorindex, pubkey FROM validators WHERE pubkey = ANY($1)", pq.ByteaArray(keys))
 		if err != nil {
 			return err
 		}

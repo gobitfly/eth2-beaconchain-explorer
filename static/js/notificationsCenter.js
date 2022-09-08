@@ -494,8 +494,8 @@ function loadValidatorsData(data) {
     drawCallback: function (settings) {
       $('[data-toggle="tooltip"]').tooltip()
 
-      // click event to validators table edit button
-      $("#validators-notifications #edit-validator-events").on("click", function (e) {
+       // click event to validators table edit button
+       $("#validators-notifications #edit-validator-events").on("click", function (e) {
         let row = $(this).parent().parent().parent()
         $("#ManageNotificationModal").attr("rowId", "")
         $("#ManageNotificationModal").attr("subscriptions", "")
