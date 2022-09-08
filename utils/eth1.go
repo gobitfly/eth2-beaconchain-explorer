@@ -188,7 +188,13 @@ func FormatAddressLong(address string) template.HTML {
 
 }
 
+func FormatAmountFormated(amount *big.Int, unit string, digits int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
+	return formatAmount(amount, unit, digits, fullAmountTooltip, smallUnit, newLineForUnit)
+}
 func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
+	return formatAmount(amount, unit, digits, false, false, false)
+}
+func formatAmount(amount *big.Int, unit string, digits int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
 	// cssClass := "badge-success"
 	amountF := new(big.Float).SetInt(amount)
 	displayUnit := "Ether"
@@ -200,11 +206,36 @@ func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
 		// cssClass = "badge-info"
 	}
 
-	if amountF.Cmp(big.NewFloat(0)) == 0 {
-		return template.HTML(fmt.Sprintf("<span>%s %s</span>", "0", displayUnit))
+	// small unit & new line for unit handling
+	{
+		unit = displayUnit
+		if newLineForUnit {
+			displayUnit = "<BR />"
+		} else {
+			displayUnit = ""
+		}
+		if smallUnit {
+			displayUnit += `<span style="font-size: .63rem;`
+			if newLineForUnit {
+				displayUnit += `color: grey;`
+			}
+			displayUnit += `">` + unit + `</span>`
+		} else {
+			displayUnit += unit
+		}
 	}
 
-	return template.HTML(fmt.Sprintf("<span>%."+strconv.Itoa(digits)+"f %s</span>", amountF, displayUnit))
+	// tooltip
+	tooltip := ""
+	if fullAmountTooltip {
+		tooltip = ` data-toggle="tooltip" data-placement="top" title="` + amountF.String() + `"`
+	}
+
+	if amountF.Cmp(big.NewFloat(0)) == 0 {
+		return template.HTML(fmt.Sprintf("<span%s>%s %s</span>", tooltip, "0", displayUnit))
+	}
+
+	return template.HTML(fmt.Sprintf("<span%s>%."+strconv.Itoa(digits)+"f %s</span>", tooltip, amountF, displayUnit))
 }
 
 func FormatMethod(method string) template.HTML {

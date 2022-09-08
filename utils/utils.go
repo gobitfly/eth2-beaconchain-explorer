@@ -718,9 +718,9 @@ func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
 
 	baseUrl := "api.etherscan.io"
 
-	// if Config.Chain.Config.DepositChainID == 5 {
-	// 	baseUrl = "api-goerli.etherscan.io"
-	// }
+	if Config.Chain.Config.DepositChainID == 5 {
+		baseUrl = "api-goerli.etherscan.io"
+	}
 	resp, err := httpClient.Get(fmt.Sprintf("https://%s/api?module=contract&action=getsourcecode&address=0x%x&apikey=%s", baseUrl, address, ""))
 	if err != nil {
 		return nil, err

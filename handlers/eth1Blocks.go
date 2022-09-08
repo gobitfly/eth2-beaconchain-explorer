@@ -148,11 +148,13 @@ func GetEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 			randomPropserName = "Untitled"
 		}
 
+		baseFee := new(big.Int).SetBytes(b.GetBaseFee())
 		gasHalf := float64(b.GetGasLimit()) / 2.0
 		blockReward := utils.BlockReward(b.GetNumber())
-		txReward := new(big.Int).Sub(new(big.Int).SetBytes(b.GetTxReward()), new(big.Int).Mul(new(big.Int).SetBytes(b.GetBaseFee()), big.NewInt(int64(b.GetTransactionCount()))))
+		txReward := new(big.Int).Sub(new(big.Int).SetBytes(b.GetTxReward()), new(big.Int).Mul(baseFee, big.NewInt(int64(b.GetTransactionCount()))))
 		totalReward := new(big.Int).Add(blockReward, new(big.Int).Add(txReward, new(big.Int).SetBytes(b.GetUncleReward())))
-		burned := new(big.Int).Mul(new(big.Int).SetBytes(b.GetBaseFee()), big.NewInt(int64(b.GetGasUsed())))
+
+		burned := new(big.Int).Mul(baseFee, big.NewInt(int64(b.GetGasUsed())))
 
 		burnedPercentage := float64(0.0)
 		if len(txReward.Bits()) != 0 {
@@ -163,17 +165,17 @@ func GetEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 
 		tableData[i] = []interface{}{
 			epochText, // Epoch
-			fmt.Sprintf(`%s<BR /><font style="font-size: .63rem; color: grey;">%v</font>`, slotText, utils.FormatTimestamp(b.GetTime().AsTime().Unix())), // Slot
+			fmt.Sprintf(`%s<BR /><span style="font-size: .63rem; color: grey;">%v</span>`, slotText, utils.FormatTimestamp(b.GetTime().AsTime().Unix())), // Slot
 			fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber())),                                                // Block
 			utils.FormatBlockStatus(uint64(rand.Intn(4))),                       // Status #RECY #RANDOM
 			fmt.Sprintf("%x", b.GetCoinbase()),                                  // Coinbase
 			utils.FormatValidatorWithName(rand.Intn(400000), randomPropserName), // Proposer #RECY #RANDOM
-			b.GetTransactionCount(),                                             // Transactions
-			fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="Gas Used %%" style="font-size: .63rem; color: grey;">%.2f%%</span>&nbsp;<span data-toggle="tooltip" data-placement="top" title="%% of Gas Target" style="font-size: .63rem; color: grey;">(%+.2f%%)</span>`, utils.FormatAddCommas(b.GetGasUsed()), float64(b.GetGasUsed())/float64(b.GetGasLimit())*100.0, ((float64(b.GetGasUsed())-gasHalf)/gasHalf)*100.0), // Gas Used
-			utils.FormatAddCommas(b.GetGasLimit()),                               // Gas Limit
-			utils.FormatAmount(new(big.Int).SetBytes(b.GetBaseFee()), "GWei", 2), // Base Fee
-			utils.FormatAmount(totalReward, "ETH", 5),                            // Reward
-			fmt.Sprintf(`%v<BR /><font style="font-size: .63rem; color: grey;">%.2f%%</font>`, utils.FormatAmount(burned, "ETH", 5), burnedPercentage*100.0), // Burned Fees
+			fmt.Sprintf(`<span data-toggle="tooltip" data-placement="top" title="%d transactions and %d internal transactions">%d<BR /><span style="font-size: .63rem; color: grey;">%d</span></span>`, b.GetTransactionCount(), b.GetInternalTransactionCount(), b.GetTransactionCount(), b.GetInternalTransactionCount()),                                                                                                                                                                             // Transactions
+			fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="Gas Used %%" style="font-size: .63rem; color: grey;">%.2f%%</span>&nbsp;<span data-toggle="tooltip" data-placement="top" title="%% of Gas Target" style="font-size: .63rem; color: grey;">(%+.2f%%)</span>`, utils.FormatAddCommas(b.GetGasUsed()), float64(int64(float64(b.GetGasUsed())/float64(b.GetGasLimit())*10000.0))/100.0, float64(int64(((float64(b.GetGasUsed())-gasHalf)/gasHalf)*10000.0))/100.0), // Gas Used
+			utils.FormatAddCommas(b.GetGasLimit()),                              // Gas Limit
+			utils.FormatAmountFormated(baseFee, "GWei", 5, true, true, true),    // Base Fee
+			utils.FormatAmountFormated(totalReward, "ETH", 5, true, true, true), // Reward
+			fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="%% of Transactions Fees" style="font-size: .63rem; color: grey;">%.2f%%</span>`, utils.FormatAmountFormated(burned, "ETH", 5, true, true, false), float64(int64(burnedPercentage*10000.0))/100.0), // Burned Fees
 		}
 	}
 
