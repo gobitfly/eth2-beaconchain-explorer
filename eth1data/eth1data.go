@@ -36,6 +36,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 
 	txPageData := &types.Eth1TxData{
 		Hash:      tx.Hash(),
+		CallData:  fmt.Sprintf("0x%x", tx.Data()),
 		Value:     tx.Value().Bytes(),
 		GasPrice:  tx.GasPrice().Bytes(),
 		IsPending: pending,
@@ -82,11 +83,10 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 			if err != nil || meta == nil {
 				logrus.Errorf("error retrieving abi for contract %v: %v", tx.To(), err)
 				eth1Event := &types.Eth1EventData{
-					Address:     log.Address,
-					Name:        "",
-					Topics:      log.Topics,
-					Data:        log.Data,
-					DecodedData: map[string]string{},
+					Address: log.Address,
+					Name:    "",
+					Topics:  log.Topics,
+					Data:    log.Data,
 				}
 
 				txPageData.Events = append(txPageData.Events, eth1Event)
@@ -108,11 +108,23 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 							Name:        strings.Replace(event.String(), "event ", "", 1),
 							Topics:      log.Topics,
 							Data:        log.Data,
-							DecodedData: map[string]string{},
+							DecodedData: map[string]types.Eth1DecodedEventData{},
+						}
+						typeMap := make(map[string]string)
+						for _, input := range meta.ABI.Events[name].Inputs {
+							typeMap[input.Name] = input.Type.String()
 						}
 
-						for name, val := range logData {
-							eth1Event.DecodedData[name] = fmt.Sprintf("0x%x", val)
+						for lName, val := range logData {
+							a := types.Eth1DecodedEventData{
+								Type:  typeMap[lName],
+								Raw:   fmt.Sprintf("0x%x", val),
+								Value: fmt.Sprintf("%s", val),
+							}
+							if typeMap[lName] == "address" {
+								a.Address = val.(common.Address)
+							}
+							eth1Event.DecodedData[lName] = a
 						}
 
 						txPageData.Events = append(txPageData.Events, eth1Event)

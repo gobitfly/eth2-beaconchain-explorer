@@ -98,11 +98,7 @@ func FormatAddress(address []byte, token []byte, name string, verified bool, isC
 
 	tooltip := ""
 	if len(name) == 0 {
-		if len(address) > 2 {
-			name = fmt.Sprintf("0x%x…%x", address[:2], address[len(address)-2:])
-		} else {
-			name = fmt.Sprintf("0x%x", address)
-		}
+		name = string(FormatAddressLong(fmt.Sprintf("%x", address)))
 		tooltip = fmt.Sprintf("0x%x", address)
 	} else {
 		tooltip = fmt.Sprintf("%s\n0x%x", name, address)
@@ -114,14 +110,14 @@ func FormatAddress(address []byte, token []byte, name string, verified bool, isC
 	}
 
 	if !link {
-		ret += fmt.Sprintf(`<span class="text-truncate" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s" data-container="body">%s</span>`, tooltip, name)
+		ret += fmt.Sprintf(`<span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s" data-container="body">%s</span>`, tooltip, name)
 		return template.HTML(ret)
 	}
 
 	if token != nil {
-		ret += fmt.Sprintf(`<a class="text-truncate" href="/execution/address/0x%x#erc20Txns" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+		ret += fmt.Sprintf(`<a href="/execution/address/0x%x#erc20Txns" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
 	} else {
-		ret += fmt.Sprintf(`<a class="text-truncate" href="/execution/address/0x%x" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+		ret += fmt.Sprintf(`<a href="/execution/address/0x%x" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
 	}
 	return template.HTML(ret)
 }
@@ -166,9 +162,30 @@ func FormatAddressAsTokenLink(token, address []byte, name string, verified bool,
 	return template.HTML(ret)
 }
 
-func FormatAddressLong(address string) template.HTML {
+func FormatHashLong(hash common.Hash) template.HTML {
+	address := hash.String()
+	test := `
+	<div class="d-flex text-monospace">
+		<div class="">0x%s</div>
+		<div class="flex-shrink-1 text-truncate">%s</div>
+		<div class="">%s</div>
+	</div>`
 	if len(address) > 4 {
-		return template.HTML(fmt.Sprintf(`<span class="text-monospace">0x<span class="text-primary">%s</span><span>%s</span><span class="text-primary">%s</span></span>`, address[:4], address[4:len(address)-4], address[len(address)-4:]))
+		return template.HTML(fmt.Sprintf(test, address[:4], address[4:len(address)-4], address[len(address)-4:]))
+	}
+
+	return template.HTML(address)
+}
+
+func FormatAddressLong(address string) template.HTML {
+	test := `
+	<div class="d-inline-flex text-monospace mw-100">
+		<div class="text-primary">0x%s</div>
+		<div class="flex-shrink-1 text-truncate">%s</div>
+		<div class="text-primary">%s</div>
+	</div>`
+	if len(address) > 4 {
+		return template.HTML(fmt.Sprintf(test, address[:4], address[4:len(address)-4], address[len(address)-4:]))
 	}
 
 	return template.HTML(address)

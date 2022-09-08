@@ -1467,6 +1467,7 @@ type Eth1TxData struct {
 	IsPending          bool
 	TargetIsContract   bool
 	IsContractCreation bool
+	CallData           string
 	TxFee              []byte
 	Events             []*Eth1EventData
 }
@@ -1476,7 +1477,14 @@ type Eth1EventData struct {
 	Name        string
 	Topics      []common.Hash
 	Data        []byte
-	DecodedData map[string]string
+	DecodedData map[string]Eth1DecodedEventData
+}
+
+type Eth1DecodedEventData struct {
+	Type    string
+	Value   string
+	Raw     string
+	Address common.Address
 }
 
 type SourcifyContractMetadata struct {

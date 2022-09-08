@@ -75,6 +75,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatDepositAmount":                     FormatDepositAmount,
 		"formatEpoch":                             FormatEpoch,
 		"formatAddressLong":                       FormatAddressLong,
+		"formatHashLong":                          FormatHashLong,
 		"formatEth1Block":                         FormatEth1Block,
 		"formatEth1BlockHash":                     FormatEth1BlockHash,
 		"formatEth1Address":                       FormatEth1Address,
