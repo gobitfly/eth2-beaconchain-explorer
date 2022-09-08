@@ -222,21 +222,24 @@ func FormatAddressLong(address string) template.HTML {
 
 }
 
-func FormatAmountFormated(amount *big.Int, unit string, digits int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
-	return formatAmount(amount, unit, digits, fullAmountTooltip, smallUnit, newLineForUnit)
+func FormatAmountFormated(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
+	return formatAmount(amount, unit, digits, maxPreCommaDigitsBeforeTrim, fullAmountTooltip, smallUnit, newLineForUnit)
 }
 func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
-	return formatAmount(amount, unit, digits, false, false, false)
+	return formatAmount(amount, unit, digits, 0, false, false, false)
 }
-func formatAmount(amount *big.Int, unit string, digits int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
+func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
 	// cssClass := "badge-success"
 	amountF := new(big.Float).SetInt(amount)
-	displayUnit := "Ether"
+	displayUnit := " Ether"
+	unitDigits := 0
 	if unit == "ETH" {
 		amountF.Quo(amountF, big.NewFloat(1e18))
+		unitDigits = 18
 	} else if unit == "GWei" {
-		displayUnit = "GWei"
+		displayUnit = " GWei"
 		amountF.Quo(amountF, big.NewFloat(1e9))
+		unitDigits = 9
 		// cssClass = "badge-info"
 	}
 
@@ -262,14 +265,29 @@ func formatAmount(amount *big.Int, unit string, digits int, fullAmountTooltip bo
 	// tooltip
 	tooltip := ""
 	if fullAmountTooltip {
-		tooltip = ` data-toggle="tooltip" data-placement="top" title="` + amountF.String() + `"`
+		s := "%f"
+		if unitDigits > 0 {
+			s = "%." + strconv.Itoa(unitDigits) + "f"
+		}
+		tooltip = ` data-toggle="tooltip" data-placement="top" title="` + strings.TrimRight(strings.TrimRight(fmt.Sprintf(s, amountF), "0"), ".") + `"`
 	}
 
-	if amountF.Cmp(big.NewFloat(0)) == 0 {
-		return template.HTML(fmt.Sprintf("<span%s>%s %s</span>", tooltip, "0", displayUnit))
+	// check limit length, 0 = ignore length
+	if maxPreCommaDigitsBeforeTrim > 0 {
+		i, _ := amountF.Int64()
+		l := len(fmt.Sprintf("%d", i))
+		if l > maxPreCommaDigitsBeforeTrim {
+			l -= maxPreCommaDigitsBeforeTrim
+			if l > digits {
+				digits = 0
+			} else {
+				digits -= l
+			}
+		}
 	}
 
-	return template.HTML(fmt.Sprintf("<span%s>%."+strconv.Itoa(digits)+"f %s</span>", tooltip, amountF, displayUnit))
+	// done, convert to HTML & return
+	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, strings.TrimRight(strings.TrimRight(fmt.Sprintf("%."+strconv.Itoa(digits)+"f", amountF), "0"), "."), displayUnit))
 }
 
 func FormatMethod(method string) template.HTML {
