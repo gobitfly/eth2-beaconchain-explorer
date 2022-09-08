@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/donovanhide/eventsource"
 	gtypes "github.com/ethereum/go-ethereum/core/types"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -50,46 +51,70 @@ func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, 
 func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 	blkCh := make(chan *types.Block, 10)
 	go func() {
-		// poll sync status 2 times per slot
-		t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot) / 2)
+		stream, err := eventsource.Subscribe(fmt.Sprintf("%s/eth/v1/events?topics=head", lc.endpoint), "")
 
-		lastHeadSlot := uint64(0)
-		headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/head", lc.endpoint))
-		if err == nil {
-			var parsedHead StandardBeaconHeaderResponse
-			err = json.Unmarshal(headResp, &parsedHead)
-			if err != nil {
-				logger.Warnf("failed to decode head, starting blocks channel at slot 0")
-			} else {
-				lastHeadSlot = uint64(parsedHead.Data.Header.Message.Slot)
-			}
-		} else {
-			logger.Warnf("failed to fetch head, starting blocks channel at slot 0")
+		if err != nil {
+			logrus.Fatal(err)
 		}
+		defer stream.Close()
+
+		// for {
+		// 	select {
+		// 	case e := <-stream.Events:
+		// 		var parsed StreamedBlockEventData
+		// 		err = json.Unmarshal([]byte(e.Data()), &parsed)
+		// 		if err != nil {
+		// 			logger.Warnf("failed to decode block event: %v", err)
+		// 		} else {
+		// 			slot := uint64(parsed.Slot)
+		// 			blks, err := lc.GetBlocksBySlot(parsed.Slot)
+		// 			if err != nil {
+		// 				logger.Warnf("failed to fetch block(s) for slot %d: %v", slot, err)
+		// 				continue
+		// 			}
+		// 			for _, blk := range blks {
+		// 				blkCh <- blk
+		// 			}
+		// 		}
+		// 	}
+		// }
+		// poll sync status 2 times per slot
+		// t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot) / 2)
+
+		// lastHeadSlot := uint64(0)
+		// headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/head", lc.endpoint))
+		// if err == nil {
+		// 	var parsedHead StandardBeaconHeaderResponse
+		// 	err = json.Unmarshal(headResp, &parsedHead)
+		// 	if err != nil {
+		// 		logger.Warnf("failed to decode head, starting blocks channel at slot 0")
+		// 	} else {
+		// 		lastHeadSlot = uint64(parsedHead.Data.Header.Message.Slot)
+		// 	}
+		// } else {
+		// 	logger.Warnf("failed to fetch head, starting blocks channel at slot 0")
+		// }
 
 		for {
-			<-t.C
-			syncingResp, err := lc.get(fmt.Sprintf("%s/eth/v1/node/syncing", lc.endpoint))
+			e := <-stream.Events
+			// logger.Infof("retrieved %v via event stream", e.Data())
+			var parsed StreamedBlockEventData
+			err = json.Unmarshal([]byte(e.Data()), &parsed)
 			if err != nil {
-				logger.Warnf("failed to retrieve syncing status: %v", err)
+				logger.Warnf("failed to decode block event: %v", err)
 				continue
 			}
-			var parsedSyncing StandardSyncingResponse
-			err = json.Unmarshal(syncingResp, &parsedSyncing)
+
+			logger.Infof("retrieving data for slot %v", parsed.Slot)
+			blks, err := lc.GetBlocksBySlot(uint64(parsed.Slot))
 			if err != nil {
-				logger.Warnf("failed to decode syncing status: %v", err)
+				logger.Warnf("failed to fetch block(s) for slot %d: %v", uint64(parsed.Slot), err)
 				continue
 			}
-			for slot := lastHeadSlot; slot < uint64(parsedSyncing.Data.HeadSlot); slot++ {
-				blks, err := lc.GetBlocksBySlot(slot)
-				if err != nil {
-					logger.Warnf("failed to fetch block(s) for slot %d: %v", slot, err)
-					continue
-				}
-				for _, blk := range blks {
-					blkCh <- blk
-				}
-				lastHeadSlot = slot
+			logger.Infof("retrieved %v blocks for slot %v", len(blks), parsed.Slot)
+			for _, blk := range blks {
+				// logger.Infof("pushing block %v", blk.Slot)
+				blkCh <- blk
 			}
 		}
 	}()
@@ -275,7 +300,7 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 }
 
 // GetEpochData will get the epoch data from Lighthouse RPC api
-func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
+func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool) (*types.EpochData, error) {
 	wg := &sync.WaitGroup{}
 	mux := &sync.Mutex{}
 	var err error
@@ -303,44 +328,45 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	var validatorBalances7d map[uint64]uint64
 	var validatorBalances31d map[uint64]uint64
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		start := time.Now()
-		var err error
-		validatorBalances1d, err = lc.getBalancesForEpoch(epoch1d)
-		if err != nil {
-			logrus.Errorf("error retrieving validator balances for epoch %v (1d): %v", epoch1d, err)
-			return
-		}
-		logger.Printf("retrieved data for %v validator balances for epoch %v (1d) took %v", len(parsedValidators.Data), epoch1d, time.Since(start))
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		start := time.Now()
-		var err error
-		validatorBalances7d, err = lc.getBalancesForEpoch(epoch7d)
-		if err != nil {
-			logrus.Errorf("error retrieving validator balances for epoch %v (7d): %v", epoch7d, err)
-			return
-		}
-		logger.Printf("retrieved data for %v validator balances for epoch %v (7d) took %v", len(parsedValidators.Data), epoch7d, time.Since(start))
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		start := time.Now()
-		var err error
-		validatorBalances31d, err = lc.getBalancesForEpoch(epoch31d)
-		if err != nil {
-			logrus.Errorf("error retrieving validator balances for epoch %v (31d): %v", epoch31d, err)
-			return
-		}
-		logger.Printf("retrieved data for %v validator balances for epoch %v (31d) took %v", len(parsedValidators.Data), epoch31d, time.Since(start))
-	}()
-	wg.Wait()
-
+	if !skipHistoricBalances {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			start := time.Now()
+			var err error
+			validatorBalances1d, err = lc.getBalancesForEpoch(epoch1d)
+			if err != nil {
+				logrus.Errorf("error retrieving validator balances for epoch %v (1d): %v", epoch1d, err)
+				return
+			}
+			logger.Printf("retrieved data for %v validator balances for epoch %v (1d) took %v", len(parsedValidators.Data), epoch1d, time.Since(start))
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			start := time.Now()
+			var err error
+			validatorBalances7d, err = lc.getBalancesForEpoch(epoch7d)
+			if err != nil {
+				logrus.Errorf("error retrieving validator balances for epoch %v (7d): %v", epoch7d, err)
+				return
+			}
+			logger.Printf("retrieved data for %v validator balances for epoch %v (7d) took %v", len(parsedValidators.Data), epoch7d, time.Since(start))
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			start := time.Now()
+			var err error
+			validatorBalances31d, err = lc.getBalancesForEpoch(epoch31d)
+			if err != nil {
+				logrus.Errorf("error retrieving validator balances for epoch %v (31d): %v", epoch31d, err)
+				return
+			}
+			logger.Printf("retrieved data for %v validator balances for epoch %v (31d) took %v", len(parsedValidators.Data), epoch31d, time.Since(start))
+		}()
+		wg.Wait()
+	}
 	for _, validator := range parsedValidators.Data {
 		data.Validators = append(data.Validators, &types.Validator{
 			Index:                      uint64(validator.Index),
@@ -980,6 +1006,12 @@ type StandardFinalityCheckpointsResponse struct {
 			Root  string    `json:"root"`
 		} `json:"finalized"`
 	} `json:"data"`
+}
+
+type StreamedBlockEventData struct {
+	Slot                uint64Str `json:"slot"`
+	Block               string    `json:"block"`
+	ExecutionOptimistic bool      `json:"execution_optimistic"`
 }
 
 type StandardProposerDuty struct {

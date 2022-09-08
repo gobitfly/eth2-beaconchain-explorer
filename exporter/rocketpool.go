@@ -1,10 +1,11 @@
 package exporter
 
 import (
-	"database/sql"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"math/big"
 	"net/http"
 	"reflect"
@@ -16,6 +17,7 @@ import (
 	"eth2-exporter/utils"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
@@ -44,6 +46,10 @@ var rpEth1Client *ethclient.Client
 
 const GethEventLogInterval = 25000
 
+const (
+	scanningWindowSize uint64 = 10000
+)
+
 // Previous redstone reward pool addresses
 // https://github.com/rocket-pool/smartnode/blob/master/shared/services/config/smartnode-config.go
 var previousRewardsPoolAddress = map[string]string{
@@ -65,6 +71,28 @@ var legacyClaimNodeAddress = map[string]string{
 	"prater":  "0xc05b7A2a03A6d2736d1D0ebf4d4a0aFE2cc32cE1",
 	"kiln":    "0xF98086202F8F58dad8120055Fdd6e2f36De2c6Fb",
 	"ropsten": "0xA55F65219d7254DFde4021E4f534a7a55750C4a1",
+}
+
+var rewardsSubmissionBlockMaps = map[string][]uint64{
+	"mainnet": {
+		15451165,
+	},
+	"prater": {
+		7287326,
+		7297026,
+		7314231,
+		7331462,
+		7387271,
+		7412366,
+		7420574,
+		7436546,
+		7456423,
+		7473017,
+		7489726,
+		7506706,
+	},
+	"kiln":    {},
+	"ropsten": {},
 }
 
 func rocketpoolExporter() {
@@ -96,17 +124,25 @@ type RocketpoolNetworkStats struct {
 }
 
 type RocketpoolExporter struct {
-	Eth1Client          *ethclient.Client
-	API                 *rocketpool.RocketPool
-	DB                  *sqlx.DB
-	UpdateInterval      time.Duration
-	MinipoolsByAddress  map[string]*RocketpoolMinipool
-	NodesByAddress      map[string]*RocketpoolNode
-	DAOProposalsByID    map[uint64]*RocketpoolDAOProposal
-	DAOMembersByAddress map[string]*RocketpoolDAOMember
-	NodeRPLCumulative   map[string]*big.Int
-	NetworkStats        RocketpoolNetworkStats
-	LastRewardTree      uint64
+	Eth1Client                         *ethclient.Client
+	API                                *rocketpool.RocketPool
+	DB                                 *sqlx.DB
+	UpdateInterval                     time.Duration
+	MinipoolsByAddress                 map[string]*RocketpoolMinipool
+	NodesByAddress                     map[string]*RocketpoolNode
+	DAOProposalsByID                   map[uint64]*RocketpoolDAOProposal
+	DAOMembersByAddress                map[string]*RocketpoolDAOMember
+	NodeRPLCumulative                  map[string]*big.Int
+	NetworkStats                       RocketpoolNetworkStats
+	LastRewardTree                     uint64
+	RocketpoolRewardTreesDownloadQueue []RocketpoolRewardTreeDownloadable
+	RocketpoolRewardTreeData           map[uint64]RewardsFile
+	RocketpoolLookForOldTrees          bool
+}
+
+type RocketpoolRewardTreeDownloadable struct {
+	ID   uint64
+	Data []byte
 }
 
 func NewRocketpoolExporter(eth1Client *ethclient.Client, storageContractAddressHex string, db *sqlx.DB) (*RocketpoolExporter, error) {
@@ -124,6 +160,9 @@ func NewRocketpoolExporter(eth1Client *ethclient.Client, storageContractAddressH
 	rpe.DAOProposalsByID = map[uint64]*RocketpoolDAOProposal{}
 	rpe.DAOMembersByAddress = map[string]*RocketpoolDAOMember{}
 	rpe.LastRewardTree = 0
+	rpe.RocketpoolLookForOldTrees = true
+	rpe.RocketpoolRewardTreesDownloadQueue = []RocketpoolRewardTreeDownloadable{}
+	rpe.RocketpoolRewardTreeData = map[uint64]RewardsFile{}
 	return rpe, nil
 }
 
@@ -201,6 +240,29 @@ func (rp *RocketpoolExporter) Run() error {
 	t := time.NewTicker(rp.UpdateInterval)
 	defer t.Stop()
 	var count int64 = 0
+
+	isMergeUpdateDeployed, err := IsMergeUpdateDeployed(rp.API)
+	if err != nil {
+		logger.WithError(err).Errorf("error retrieving rocketpool redstone deploy status")
+		return err
+	}
+
+	if isMergeUpdateDeployed {
+		rp.RocketpoolRewardTreeData, err = rp.getRocketpoolRewardTrees()
+		if err != nil {
+			logger.WithError(err).Errorf("error retrieving known rocketpool reward tree data from db")
+			return err
+		}
+
+		for _, data := range rp.RocketpoolRewardTreeData {
+			if data.Index > rp.LastRewardTree {
+				rp.LastRewardTree = data.Index
+			}
+		}
+	}
+
+	logger.Infof("rocketpool exporter initialized")
+
 	for {
 		t0 := time.Now()
 		var err error
@@ -223,7 +285,157 @@ func (rp *RocketpoolExporter) Run() error {
 	}
 }
 
-func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, index uint64, intervalSize *big.Int, startBlock *big.Int, rewardPoolAddress *common.Address) (rewards.RewardsEvent, error) {
+// Get the event for a rewards snapshot
+func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, interval uint64, intervalSize *big.Int, rewardPoolAddress *common.Address) (rewards.RewardsEvent, error) {
+
+	var event rewards.RewardsEvent
+	var err error
+
+	// Check if the interval is already recorded
+	prerecordedIntervals := rewardsSubmissionBlockMaps[utils.Config.Chain.Name]
+	if uint64(len(prerecordedIntervals)) > interval {
+		// This already recorded so just use that block number
+		blockNumber := big.NewInt(0).SetUint64(prerecordedIntervals[interval])
+
+		// Get the event details for this interval
+		return GetUpgradedRewardSnapshotEvent(rp, interval, big.NewInt(1), blockNumber, blockNumber, rewardPoolAddress)
+	} else {
+		// Grab the latest known one - there will always be at least one of these
+		latestInterval := len(prerecordedIntervals) - 1
+		latestBlock := prerecordedIntervals[latestInterval]
+		numberOfIntervalsPassed := interval - uint64(latestInterval)
+
+		var currentBlock *types.Header
+		currentBlock, err = rp.Client.HeaderByNumber(context.Background(), nil)
+		if err != nil {
+			return event, err
+		}
+
+		// Get the current interval time
+		var intervalTime time.Duration
+		intervalTime, err = rewards.GetClaimIntervalTime(rp, nil)
+		if err != nil {
+			err = fmt.Errorf("error getting claim interval time: %w", err)
+			return event, err
+		}
+
+		// Get the time of the latest block
+		var latestBlockHeader *types.Header
+		latestBlockHeader, err = rp.Client.HeaderByNumber(context.Background(), big.NewInt(int64(latestBlock)))
+		if err != nil {
+			return event, err
+		}
+
+		// Traverse multiples of the interval until we find it
+		headerToCheck := latestBlockHeader
+		timeToCheck := time.Unix(int64(latestBlockHeader.Time), 0).Add(intervalTime * time.Duration(numberOfIntervalsPassed))
+		scanningWindow := big.NewInt(0).SetUint64(scanningWindowSize)
+		found := false
+
+		for headerToCheck.Number.Uint64() < currentBlock.Number.Uint64() {
+			// Get the approximate next header to check
+			headerToCheck, err = GetELBlockHeaderForTime(timeToCheck, rp.Client)
+			if err != nil {
+				return event, err
+			}
+			// Scan the window around that block
+			startBlock := big.NewInt(0).Sub(headerToCheck.Number, scanningWindow)
+			endBlock := big.NewInt(0).Add(headerToCheck.Number, scanningWindow)
+			event, err = GetUpgradedRewardSnapshotEvent(rp, interval, intervalSize, startBlock, endBlock, rewardPoolAddress)
+			if err != nil {
+				if err.Error() == fmt.Sprintf("reward snapshot for interval %d not found", interval) {
+					// This isn't a great way to check the an event wasn't found, but it'll do for now
+					err = nil
+					timeToCheck = timeToCheck.Add(intervalTime) // Try the next interval
+					continue
+				} else {
+					return event, err
+				}
+			} else {
+				found = true
+				break
+			}
+
+		}
+
+		if !found {
+			err = fmt.Errorf("Rewards event for interval %d could not be found.", interval)
+			return event, err
+		}
+	}
+
+	return event, nil
+
+}
+
+func GetELBlockHeaderForTime(targetTime time.Time, ec rocketpool.ExecutionClient) (*types.Header, error) {
+
+	// Get the latest block's timestamp
+	latestBlockHeader, err := ec.HeaderByNumber(context.Background(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error getting latest block header: %w", err)
+	}
+	latestBlock := latestBlockHeader.Number
+
+	// Start at the halfway point
+	candidateBlockNumber := big.NewInt(0).Div(latestBlock, big.NewInt(2))
+	candidateBlock, err := ec.HeaderByNumber(context.Background(), candidateBlockNumber)
+	if err != nil {
+		return nil, err
+	}
+	bestBlock := candidateBlock
+	pivotSize := candidateBlock.Number.Uint64()
+	minimumDistance := +math.Inf(1)
+	targetTimeUnix := float64(targetTime.Unix())
+
+	for {
+		// Get the distance from the candidate block to the target time
+		candidateTime := float64(candidateBlock.Time)
+		delta := targetTimeUnix - candidateTime
+		distance := math.Abs(delta)
+
+		// If it's better, replace the best candidate with it
+		if distance < minimumDistance {
+			minimumDistance = distance
+			bestBlock = candidateBlock
+		} else if pivotSize == 1 {
+			// If the pivot is down to size 1 and we didn't find anything better after another iteration, this is the best block!
+			for candidateTime > targetTimeUnix {
+				// Get the previous block if this one happened after the target time
+				candidateBlockNumber.Sub(candidateBlockNumber, big.NewInt(1))
+				candidateBlock, err = ec.HeaderByNumber(context.Background(), candidateBlockNumber)
+				if err != nil {
+					return nil, err
+				}
+				candidateTime = float64(candidateBlock.Time)
+				bestBlock = candidateBlock
+			}
+			return bestBlock, nil
+		}
+
+		// Iterate over the correct half, setting the pivot to the halfway point of that half (rounded up)
+		pivotSize = uint64(math.Ceil(float64(pivotSize) / 2))
+		if delta < 0 {
+			// Go left
+			candidateBlockNumber.Sub(candidateBlockNumber, big.NewInt(int64(pivotSize)))
+		} else {
+			// Go right
+			candidateBlockNumber.Add(candidateBlockNumber, big.NewInt(int64(pivotSize)))
+		}
+
+		// Clamp the new candidate to the latest block
+		if candidateBlockNumber.Uint64() > (latestBlock.Uint64() - 1) {
+			candidateBlockNumber.SetUint64(latestBlock.Uint64() - 1)
+		}
+
+		candidateBlock, err = ec.HeaderByNumber(context.Background(), candidateBlockNumber)
+		if err != nil {
+			return nil, err
+		}
+	}
+}
+
+func GetUpgradedRewardSnapshotEvent(rp *rocketpool.RocketPool, index uint64, intervalSize *big.Int, startBlock *big.Int, endBlock *big.Int, rewardPoolAddress *common.Address) (rewards.RewardsEvent, error) {
 	// Get contracts
 	rocketRewardsPool, err := getRocketRewardsPool(rp, rewardPoolAddress)
 	if err != nil {
@@ -238,7 +450,7 @@ func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, index uint64, intervalSiz
 	topicFilter := [][]common.Hash{{rocketRewardsPool.ABI.Events["RewardSnapshot"].ID}, {indexBytes}}
 
 	// Get the event logs
-	logs, err := eth.GetLogs(rp, addressFilter, topicFilter, intervalSize, startBlock, nil, nil)
+	logs, err := eth.GetLogs(rp, addressFilter, topicFilter, intervalSize, startBlock, endBlock, nil)
 	if err != nil {
 		return rewards.RewardsEvent{}, err
 	}
@@ -349,68 +561,69 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 		return nil
 	}
 
-	var dbIntervals []uint64
-	err = db.WriterDb.Select(&dbIntervals, `SELECT id FROM rocketpool_reward_tree `)
-	if err != nil && err != sql.ErrNoRows {
-		return err
-	}
-
 	missingIntervals := []rewards.RewardsEvent{}
 	for interval := rp.LastRewardTree; ; interval++ {
 		var event rewards.RewardsEvent
-
+		logger.Infof("retrieving reward tree %v", interval)
 		event, err := GetRewardSnapshotEvent(
 			rp.API,
 			interval,
 			big.NewInt(int64(GethEventLogInterval)),
-			nil,
 			nil, // rewardPoolAddress
 		)
 		if err != nil {
-			if strings.Contains(err.Error(), "not found") {
-				if previousRewardsPoolAddress[utils.Config.Chain.Name] == "" {
+			if strings.Contains(err.Error(), "found") { // could not be found && not found
+				if previousRewardsPoolAddress[utils.Config.Chain.Name] == "" || !rp.RocketpoolLookForOldTrees {
+					logger.Infof("retrieving reward tree not found %v", interval)
 					break
 				}
+
+				logger.Infof("retrieving reward tree from old address %v", interval)
 				oldAddress := common.HexToAddress(previousRewardsPoolAddress[utils.Config.Chain.Name])
 				event, err = GetRewardSnapshotEvent(
 					rp.API,
 					interval,
 					big.NewInt(int64(GethEventLogInterval)),
-					nil,
 					&oldAddress,
 				)
 				if err != nil {
-					if strings.Contains(err.Error(), "not found") {
+					if strings.Contains(err.Error(), "found") { // could not be found && not found
+						logger.Infof("retrieving reward tree not found %v", interval)
 						break
 					} else {
+						logger.WithError(err).Errorf("retrieving reward tree not found %v", interval)
 						return err
 					}
 				}
 			} else {
+				logger.WithError(err).Errorf("retrieving reward tree not found %v", interval)
 				return err
 			}
-
+		} else {
+			// dont look for trees on the old reward address once an interval has been found on the new for performance reasons
+			rp.RocketpoolLookForOldTrees = false
 		}
 
-		if !contains(dbIntervals, event.Index.Uint64()) {
+		_, exists := rp.RocketpoolRewardTreeData[event.Index.Uint64()]
+		if !exists {
 			missingIntervals = append(missingIntervals, event)
+		} else {
+			rp.LastRewardTree = interval + 1
 		}
 
 	}
 
+	logger.Infof("downloading %v reward trees", len(missingIntervals))
 	if len(missingIntervals) == 0 {
 		return nil
 	}
 
-	tx, err := db.WriterDb.Beginx()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	for _, missingInterval := range missingIntervals {
-		logrus.Infof("Downloading interval %d file... ", missingInterval.Index)
-		bytes, err := DownloadRewardsFile(fmt.Sprintf("rp-rewards-prater-%v.json", missingInterval.Index), missingInterval.Index.Uint64(), missingInterval.MerkleTreeCID, true)
+		if contains(rp.RocketpoolRewardTreesDownloadQueue, missingInterval.Index.Uint64()) {
+			continue
+		}
+
+		bytes, err := DownloadRewardsFile(fmt.Sprintf("rp-rewards-%v-%v.json", utils.Config.Chain.Name, missingInterval.Index), missingInterval.Index.Uint64(), missingInterval.MerkleTreeCID, true)
 		if err != nil {
 			return fmt.Errorf("can not download reward file %v. Error %v", missingInterval.Index, err)
 		}
@@ -422,25 +635,24 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 			return fmt.Errorf("invalid merkle root value : %w", err)
 		}
 
-		_, err = tx.Exec(`INSERT INTO rocketpool_reward_tree (id, data) VALUES($1, $2)`, missingInterval.Index.Uint64(), bytes)
-		if err != nil {
-			return fmt.Errorf("can not store reward file %v. Error %v", missingInterval.Index, err)
-		}
-		logrus.Infof("Downloaded rocketpool rewards tree %v", missingInterval.Index)
+		rp.RocketpoolRewardTreesDownloadQueue = append(rp.RocketpoolRewardTreesDownloadQueue, RocketpoolRewardTreeDownloadable{
+			ID:   missingInterval.Index.Uint64(),
+			Data: bytes,
+		})
+
+		logrus.Infof("Downloaded rocketpool reward tree %v", missingInterval.Index)
 
 		if missingInterval.Index.Uint64() > rp.LastRewardTree {
 			rp.LastRewardTree = missingInterval.Index.Uint64()
 		}
 	}
 
-	tx.Commit()
-
 	return nil
 }
 
-func contains(s []uint64, e uint64) bool {
+func contains(s []RocketpoolRewardTreeDownloadable, e uint64) bool {
 	for _, a := range s {
-		if a == e {
+		if a.ID == e {
 			return true
 		}
 	}
@@ -495,6 +707,10 @@ func (rp *RocketpoolExporter) Save(count int64) error {
 			return err
 		}
 	}
+	err = rp.SaveRewardTrees()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -538,25 +754,12 @@ func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 		return err
 	}
 
-	isMergeUpdateDeployed, err := IsMergeUpdateDeployed(rp.API)
-	if err != nil {
-		return err
-	}
-
-	var allRocketpoolRewardTrees map[uint64]RewardsFile = nil
-	if isMergeUpdateDeployed {
-		allRocketpoolRewardTrees, err = getRocketpoolRewardTrees(rp.API)
-		if err != nil {
-			return err
-		}
-	}
-
 	if includeCumulativeRpl {
 		legacyRewardsPool := common.HexToAddress(legacyRewardsPoolAddress[utils.Config.Chain.Name])
 		legacyClaimNode := common.HexToAddress(legacyClaimNodeAddress[utils.Config.Chain.Name])
 		rp.NodeRPLCumulative, err = CalculateLifetimeNodeRewardsAllLegacy(
 			rp.API,
-			big.NewInt(60000),
+			big.NewInt(GethEventLogInterval),
 			&legacyRewardsPool,
 			&legacyClaimNode,
 		)
@@ -568,13 +771,13 @@ func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 	for _, a := range nodeAddresses {
 		addrHex := a.Hex()
 		if node, exists := rp.NodesByAddress[addrHex]; exists {
-			err = node.Update(rp.API, allRocketpoolRewardTrees, includeCumulativeRpl, rp.NodeRPLCumulative)
+			err = node.Update(rp.API, rp.RocketpoolRewardTreeData, includeCumulativeRpl, rp.NodeRPLCumulative)
 			if err != nil {
 				return err
 			}
 			continue
 		}
-		node, err := NewRocketpoolNode(rp.API, a.Bytes(), allRocketpoolRewardTrees, rp.NodeRPLCumulative)
+		node, err := NewRocketpoolNode(rp.API, a.Bytes(), rp.RocketpoolRewardTreeData, rp.NodeRPLCumulative)
 		if err != nil {
 			return err
 		}
@@ -584,7 +787,7 @@ func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 	return nil
 }
 
-func getRocketpoolRewardTrees(rp *rocketpool.RocketPool) (map[uint64]RewardsFile, error) {
+func (rp *RocketpoolExporter) getRocketpoolRewardTrees() (map[uint64]RewardsFile, error) {
 	var allRewards map[uint64]RewardsFile = map[uint64]RewardsFile{}
 
 	type Data struct {
@@ -592,8 +795,10 @@ func getRocketpoolRewardTrees(rp *rocketpool.RocketPool) (map[uint64]RewardsFile
 		Data []byte `db:"data"`
 	}
 
+	logger.Infof("rocketpool refreshing all reward tree data...")
+
 	var jsonData []Data
-	err := db.ReaderDb.Select(&jsonData, `SELECT id, data FROM rocketpool_reward_tree`)
+	err := rp.DB.Select(&jsonData, `SELECT id, data FROM rocketpool_reward_tree`)
 	if err != nil {
 		return allRewards, fmt.Errorf("Can not load claimedInterval tree from database, is it exported? %v", err)
 	}
@@ -927,6 +1132,48 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 	}
 
 	return tx.Commit()
+}
+
+func (rp *RocketpoolExporter) SaveRewardTrees() error {
+	t0 := time.Now()
+	defer func(t0 time.Time) {
+		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Infof("saved rocketpool reward trees")
+	}(t0)
+
+	if len(rp.RocketpoolRewardTreesDownloadQueue) == 0 {
+		return nil
+	}
+
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	logger.Infof("saving %v rocketpool reward trees", len(rp.RocketpoolRewardTreesDownloadQueue))
+
+	for _, rewardTree := range rp.RocketpoolRewardTreesDownloadQueue {
+		_, err = tx.Exec(`INSERT INTO rocketpool_reward_tree (id, data) VALUES($1, $2) ON CONFLICT DO NOTHING`, rewardTree.ID, rewardTree.Data)
+		if err != nil {
+			return fmt.Errorf("can not store reward file %v. Error %v", rewardTree.ID, err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	rp.RocketpoolRewardTreeData, err = rp.getRocketpoolRewardTrees()
+	if err != nil {
+		return err
+	}
+	// Delete download queue after refreshing the trees from db in case
+	// refreshing throws an error so we try again in the next iteration
+	// and always have an up to date tree
+	rp.RocketpoolRewardTreesDownloadQueue = []RocketpoolRewardTreeDownloadable{}
+
+	return nil
 }
 
 func (rp *RocketpoolExporter) SaveDAOProposals() error {
@@ -1332,7 +1579,7 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[ui
 		return err
 	}
 
-	if rewardTrees != nil {
+	if len(rewardTrees) > 0 {
 		nodeAddress := common.BytesToAddress(this.Address)
 
 		this.SmoothingPoolOptedIn, err = node.GetSmoothingPoolRegistrationState(rp, nodeAddress, nil)
@@ -1392,6 +1639,19 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[ui
 			this.UnclaimedSmoothingPool = unclaimedSum.SmoothingPoolEth
 			this.UnclaimedRPLRewards = unclaimedSum.RplColl
 		}
+	}
+
+	if this.RPLCumulativeRewards == nil {
+		this.RPLCumulativeRewards = big.NewInt(0)
+	}
+	if this.UnclaimedRPLRewards == nil {
+		this.UnclaimedRPLRewards = big.NewInt(0)
+	}
+	if this.UnclaimedSmoothingPool == nil {
+		this.UnclaimedSmoothingPool = big.NewInt(0)
+	}
+	if this.ClaimedSmoothingPool == nil {
+		this.ClaimedSmoothingPool = big.NewInt(0)
 	}
 
 	this.RPLStake = stake
@@ -1479,8 +1739,15 @@ func CalculateLifetimeNodeRewardsAllLegacy(rp *rocketpool.RocketPool, intervalSi
 	// RPLTokensClaimed(address clamingContract, address claimingAddress, uint256 amount, uint256 time)
 	topicFilter := [][]common.Hash{{rocketRewardsPool.ABI.Events["RPLTokensClaimed"].ID}, {rocketClaimNode.Address.Hash()}}
 
+	prerecordedIntervals := rewardsSubmissionBlockMaps[utils.Config.Chain.Name]
+	var maxBlockNumber *big.Int = nil
+	if len(prerecordedIntervals) > 0 {
+		// only look for legacy lifetime rewards before the new rewards system went live
+		maxBlockNumber = big.NewInt(0).SetUint64(prerecordedIntervals[0])
+	}
+
 	// Get the event logs
-	logs, err := eth.GetLogs(rp, addressFilter, topicFilter, intervalSize, nil, nil, nil)
+	logs, err := eth.GetLogs(rp, addressFilter, topicFilter, intervalSize, nil, maxBlockNumber, nil)
 	if err != nil {
 		return nil, fmt.Errorf("can not load lifetime rewards: $1", err)
 	}

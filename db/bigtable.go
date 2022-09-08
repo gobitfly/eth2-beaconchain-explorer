@@ -197,6 +197,7 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 
 	for _, slot := range slots {
 		for _, b := range blocks[slot] {
+			logger.Infof("processing slot %v", slot)
 			for _, a := range b.Attestations {
 				for _, validator := range a.Attesters {
 					inclusionSlot := slot
@@ -204,7 +205,10 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 					if attestationsBySlot[attestedSlot] == nil {
 						attestationsBySlot[attestedSlot] = make(map[uint64]uint64)
 					}
-					attestationsBySlot[attestedSlot][validator] = inclusionSlot
+
+					if attestationsBySlot[attestedSlot][validator] == 0 || inclusionSlot < attestationsBySlot[attestedSlot][validator] {
+						attestationsBySlot[attestedSlot][validator] = inclusionSlot
+					}
 				}
 			}
 		}
@@ -657,22 +661,22 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 
 	res := make(map[uint64]*types.ValidatorBalanceStatistic)
 	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, rangeEnd), func(r gcp_bigtable.Row) bool {
-		// logger.Info(r.Key())
+		keySplit := strings.Split(r.Key(), ":")
+
+		epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
+			return false
+		}
+		epoch = max_epoch - epoch
+		logger.Infof("retrieved %v balances entries for epoch %v", len(r[VALIDATOR_BALANCES_FAMILY]), epoch)
+
 		for _, ri := range r[VALIDATOR_BALANCES_FAMILY] {
 			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, VALIDATOR_BALANCES_FAMILY+":"), 10, 64)
 			if err != nil {
 				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
 				return false
 			}
-
-			keySplit := strings.Split(r.Key(), ":")
-
-			epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
-			if err != nil {
-				logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
-				return false
-			}
-			epoch = max_epoch - epoch
 			balances := ri.Value
 
 			balanceBytes := balances[0:8]

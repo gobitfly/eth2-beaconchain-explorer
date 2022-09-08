@@ -23,6 +23,15 @@ func WriteStatisticsForDay(day uint64) error {
 
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
+	latestDbEpoch, err := GetLatestEpoch()
+	if err != nil {
+		return err
+	}
+
+	if lastEpoch > latestDbEpoch {
+		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed", lastEpoch)
+	}
+
 	start := time.Now()
 	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
 	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(firstEpoch, lastEpoch)
@@ -128,17 +137,17 @@ func WriteStatisticsForDay(day uint64) error {
 	if err != nil {
 		return err
 	}
-	syncStatsArr := make([]*types.ValidatorSyncDutiesStatistic, 0, len(ma))
+	syncStatsArr := make([]*types.ValidatorSyncDutiesStatistic, 0, len(syncStats))
 	for _, stat := range syncStats {
 		syncStatsArr = append(syncStatsArr, stat)
 	}
 
 	batchSize = 13000 // max parameters: 65535
-	for b := 0; b < len(maArr); b += batchSize {
+	for b := 0; b < len(syncStatsArr); b += batchSize {
 		start := b
 		end := b + batchSize
-		if len(maArr) < end {
-			end = len(maArr)
+		if len(syncStatsArr) < end {
+			end = len(syncStatsArr)
 		}
 
 		numArgs := 5

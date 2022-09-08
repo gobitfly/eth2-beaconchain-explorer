@@ -15,6 +15,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"sort"
 	"strconv"
@@ -613,7 +614,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 			})
 
 			g.Go(func() error {
-				validatorEffectivenessData, err = validatorEffectiveness(epoch, queryIndices)
+				validatorEffectivenessData, err = validatorEffectiveness(uint64(epoch)-1, queryIndices)
 				return err
 			})
 			g.Go(func() error {
@@ -713,7 +714,11 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 			rpln.max_rpl_stake     AS node_max_rpl_stake,
 			rpln.min_rpl_stake     AS node_min_rpl_stake,
 			rpln.rpl_cumulative_rewards     AS rpl_cumulative_rewards,
-			validators.validatorindex AS index 
+			validators.validatorindex AS index,
+			rpln.claimed_smoothing_pool     AS claimed_smoothing_pool,
+			rpln.unclaimed_smoothing_pool   AS unclaimed_smoothing_pool,
+			rpln.unclaimed_rpl_rewards      AS unclaimed_rpl_rewards,
+			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in  
 		FROM rocketpool_minipools rplm 
 		LEFT JOIN validators validators ON rplm.pubkey = validators.pubkey 
 		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
@@ -737,12 +742,16 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 	return utils.SqlRowsToJSON(rows)
 }
 
-func validatorEffectiveness(epoch int64, indices []uint64) ([]*types.ValidatorEffectiveness, error) {
-	data, err := db.BigtableClient.GetValidatorEffectiveness(indices, services.LatestEpoch())
+func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorEffectiveness, error) {
+	data, err := db.BigtableClient.GetValidatorEffectiveness(indices, epoch)
 	if err != nil {
 		return nil, err
 	}
-
+	for i := 0; i < len(data); i++ {
+		// convert value to old api schema
+		tempValue := 1 / (1 - ((1 + data[i].AttestationEfficiency) / 32))
+		data[i].AttestationEfficiency = math.Floor(tempValue*10000) / 10000
+	}
 	return data, nil
 }
 
@@ -768,7 +777,7 @@ func getEpoch(epoch int64) ([]interface{}, error) {
 }
 
 // ApiValidator godoc
-// @Summary Get up to 100 validators by their index
+// @Summary Get up to 100 validators
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
@@ -829,7 +838,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param  eth1address path string true "Eth1 address from which the validator deposits were sent"
 // @Success 200 {object} string
-// @Router /api/v1/validator/eth1/{address} [get]
+// @Router /api/v1/validator/eth1/{eth1address} [get]
 func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
@@ -875,7 +884,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, 1000000000, 101)
+	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), 101)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -957,7 +966,7 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 // @Summary Get the current attestation-effectiveness of up to 100 validators. 1 = all attestations are included in the next possible block, < 1 some attestations have been included after the next possible block.
 // @Tags Validator
 // @Produce  json
-// @Param  index path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} string
 // @Router /api/v1/validator/{indexOrPubkey}/attestationeffectiveness [get]
 func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request) {
@@ -975,7 +984,7 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	data, err := db.BigtableClient.GetValidatorEffectiveness(queryIndices, services.LatestEpoch())
+	data, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -998,7 +1007,7 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 // @Summary Get the current performance of up to 100 validators
 // @Tags Validator
 // @Produce  json
-// @Param  index path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} string
 // @Router /api/v1/validator/{indexOrPubkey}/attestationefficiency [get]
 func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
@@ -1016,7 +1025,7 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := db.BigtableClient.GetValidatorEffectiveness(queryIndices, services.LatestEpoch())
+	data, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1131,7 +1140,7 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	history, err := db.BigtableClient.GetValidatorAttestationHistory(queryIndices, 1000000000, 101)
+	history, err := db.BigtableClient.GetValidatorAttestationHistory(queryIndices, services.LatestEpoch(), 101)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1726,7 +1735,7 @@ func GetMobileWidgetStats(j *json.Encoder, r *http.Request, indexOrPubkey string
 		return
 	}
 
-	efficiencyData, err := db.BigtableClient.GetValidatorEffectiveness(queryIndices, services.LatestEpoch())
+	efficiencyData, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not parse db results")
 		return

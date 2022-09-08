@@ -36,8 +36,8 @@ jobs:
           go install github.com/swaggo/swag/cmd/swag@v1.7.0 && swag init --parseDependency --parseInternal --parseDepth 1 -g handlers/api.go
           go get -v -t -d ./...
 
-#      - name: Test
-#        run: make test
+      #      - name: Test
+      #        run: make test
 
       - name: Build
         run: make all
