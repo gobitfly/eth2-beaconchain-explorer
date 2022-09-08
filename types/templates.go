@@ -197,10 +197,11 @@ type IndexPageDataBlocks struct {
 
 // IndexPageEpochHistory is a struct to hold the epoch history for the main web page
 type IndexPageEpochHistory struct {
-	Epoch           uint64 `db:"epoch"`
-	ValidatorsCount uint64 `db:"validatorscount"`
-	EligibleEther   uint64 `db:"eligibleether"`
-	Finalized       bool   `db:"finalized"`
+	Epoch                   uint64 `db:"epoch"`
+	ValidatorsCount         uint64 `db:"validatorscount"`
+	EligibleEther           uint64 `db:"eligibleether"`
+	Finalized               bool   `db:"finalized"`
+	AverageValidatorBalance uint64 `db:"averagevalidatorbalance"`
 }
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page

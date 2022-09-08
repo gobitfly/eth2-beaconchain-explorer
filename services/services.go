@@ -404,19 +404,12 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.EnteringValidators = queueCount.EnteringValidators
 	data.ExitingValidators = queueCount.ExitingValidators
 
-	var averageBalance float64
-	err = db.WriterDb.Get(&averageBalance, "SELECT COALESCE(AVG(balance), 0) FROM validators")
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving validator balance: %v", err)
-	}
-	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance), currency))
-
 	var epochLowerBound uint64
 	if epochLowerBound = 0; epoch > 1600 {
 		epochLowerBound = epoch - 1600
 	}
 	var epochHistory []*types.IndexPageEpochHistory
-	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
+	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized, averagevalidatorbalance FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving staked ether history: %v", err)
 	}
@@ -426,6 +419,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			if epochHistory[i].Finalized {
 				data.CurrentFinalizedEpoch = epochHistory[i].Epoch
 				data.FinalityDelay = data.CurrentEpoch - epoch
+				data.AverageBalance = string(utils.FormatBalance(uint64(epochHistory[i].AverageValidatorBalance), currency))
 				break
 			}
 		}
