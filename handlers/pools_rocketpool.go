@@ -147,6 +147,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 		entry = append(entry, row.NodeFee)
 		entry = append(entry, row.DepositType)
 		entry = append(entry, row.Status)
+		entry = append(entry, row.PenaltyCount)
 		tableData = append(tableData, entry)
 	}
 
