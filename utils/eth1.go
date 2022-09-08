@@ -93,16 +93,16 @@ func FormatInOutSelf(address, from, to []byte) template.HTML {
 }
 
 func FormatAddress(address []byte, token []byte, name string, verified bool, isContract bool, link bool) template.HTML {
-	return formatAddress(address, token, name, verified, isContract, "address", 17, 0)
+	return formatAddress(address, token, name, verified, isContract, "address", 17, 0, false)
 }
 
-func FormatAddressWithLimits(address []byte, name string, link string, digitsLimit int, nameLimit int) template.HTML {
-	return formatAddress(address, nil, name, false, false, link, digitsLimit, nameLimit)
+func FormatAddressWithLimits(address []byte, name string, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
+	return formatAddress(address, nil, name, false, false, link, digitsLimit, nameLimit, addCopyToClipboard)
 }
 
 // digitsLimit will limit the address output to that amount of total digits (including 0x & ...)
 // nameLimit will limit the name, if existing to giving amount of letters, a limit of 0 will display the full name
-func formatAddress(address []byte, token []byte, name string, verified bool, isContract bool, link string, digitsLimit int, nameLimit int) template.HTML {
+func formatAddress(address []byte, token []byte, name string, verified bool, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
 	name = template.HTMLEscapeString(name)
 
 	// we need at least 5 digits for 0x & ...
@@ -111,13 +111,14 @@ func formatAddress(address []byte, token []byte, name string, verified bool, isC
 	}
 
 	// setting tooltip & limit name/address if necessary
+	addressString := fmt.Sprintf("0x%x", address)
 	tooltip := ""
 	if len(name) == 0 { // no name set
-		tooltip = fmt.Sprintf("0x%x", address)
+		tooltip = addressString
 
 		l := len(address) * 2 // len will be twice address size, as 1 byte hex is 2 digits
 		if l <= digitsLimit { // len inside digitsLimits, not much to do
-			name = fmt.Sprintf("0x%x", address)
+			name = addressString
 		} else { // reduce to digits limit
 			digitsLimit -= 5                  // we will need 5 digits for 0x & ...
 			name = fmt.Sprintf("%x", address) // get hex bytes as string
@@ -142,14 +143,18 @@ func formatAddress(address []byte, token []byte, name string, verified bool, isC
 	// not a link
 	if len(link) < 1 {
 		ret += fmt.Sprintf(`<span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s" data-container="body">%s</span>`, tooltip, name)
-		return template.HTML(ret)
+	} else {
+		// link & token
+		if token != nil {
+			ret += fmt.Sprintf(`<a href="/execution/`+link+`/0x%x#erc20Txns" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+		} else { // just link
+			ret += fmt.Sprintf(`<a href="/execution/`+link+`/0x%x" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+		}
 	}
 
-	// link & token
-	if token != nil {
-		ret += fmt.Sprintf(`<a href="/execution/`+link+`/0x%x#erc20Txns" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
-	} else { // just link
-		ret += fmt.Sprintf(`<a href="/execution/`+link+`/0x%x" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+	// copy to clipboard
+	if addCopyToClipboard {
+		ret += ` <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="` + addressString + `"></i>`
 	}
 
 	// done
