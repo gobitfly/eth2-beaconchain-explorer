@@ -25,7 +25,7 @@
                         targets: 4,
                         data: '4',
                         render: function(data, type, row) {
-                            return `<a href="address/${data}" data-toggle="tooltip" data-placement="top" title="0x${data}">0x${data.substr(0, 8)}...</a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${data}"></i>`
+                            return `<a class="text-monospace" href="address/${data}" data-toggle="tooltip" data-placement="top" title="0x${data}">0x${data.substr(0, 4)}...${data.substr(data.length-4, data.length)}</a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${data}"></i>`
                         }
                     }
                 ],
