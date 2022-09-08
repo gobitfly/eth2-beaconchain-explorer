@@ -329,21 +329,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.Genesis = false
 	}
 
-	var epochs []*types.IndexPageDataEpochs
-	err = db.WriterDb.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
-	}
-
-	for _, epoch := range epochs {
-		epoch.Ts = utils.EpochToTime(epoch.Epoch)
-		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
-		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther, currency)
-		epoch.EligibleEtherFormatted = utils.FormatBalanceShort(epoch.EligibleEther, currency)
-		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate, currency)
-	}
-	data.Epochs = epochs
-
 	var scheduledCount uint8
 	err = db.WriterDb.Get(&scheduledCount, `
 		select count(*) from blocks where status = '0' and epoch = $1;
@@ -352,6 +337,21 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		return nil, fmt.Errorf("error retrieving scheduledCount from blocks: %v", err)
 	}
 	data.ScheduledCount = scheduledCount
+
+	var epochs []*types.IndexPageDataEpochs
+	err = db.WriterDb.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
+	}
+	epochsMap := make(map[uint64]bool)
+	for _, epoch := range epochs {
+		epoch.Ts = utils.EpochToTime(epoch.Epoch)
+		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
+		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther, currency)
+		epoch.EligibleEtherFormatted = utils.FormatEligibleBalance(epoch.EligibleEther, currency)
+		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate, currency)
+		epochsMap[epoch.Epoch] = true
+	}
 
 	var blocks []*types.IndexPageDataBlocks
 	err = db.WriterDb.Select(&blocks, `
@@ -401,7 +401,27 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		block.StatusFormatted = utils.FormatBlockStatus(block.Status)
 		block.ProposerFormatted = utils.FormatValidatorWithName(block.Proposer, block.ProposerName)
 		block.BlockRootFormatted = fmt.Sprintf("%x", block.BlockRoot)
+
+		if !epochsMap[block.Epoch] {
+			epochs = append(epochs, &types.IndexPageDataEpochs{
+				Epoch:                            epoch,
+				Ts:                               utils.EpochToTime(epoch),
+				Finalized:                        false,
+				FinalizedFormatted:               utils.FormatYesNo(false),
+				EligibleEther:                    0,
+				EligibleEtherFormatted:           utils.FormatEligibleBalance(0, "ETH"),
+				GlobalParticipationRate:          0,
+				GlobalParticipationRateFormatted: "-",
+				VotedEther:                       0,
+				VotedEtherFormatted:              utils.FormatGlobalParticipationRate(0, 1, ""),
+			})
+			epochsMap[block.Epoch] = true
+		}
 	}
+	sort.Slice(epochs, func(i, j int) bool {
+		return epochs[i].Epoch > epochs[j].Epoch
+	})
+	data.Epochs = epochs
 
 	if data.GenesisPeriod {
 		for _, blk := range blocks {

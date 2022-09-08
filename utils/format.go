@@ -89,6 +89,17 @@ func FormatBalance(balanceInt uint64, currency string) template.HTML {
 	return template.HTML(balance + " " + currency)
 }
 
+// FormatBalance will return a string for a balance
+func FormatEligibleBalance(balanceInt uint64, currency string) template.HTML {
+	if balanceInt == 0 {
+		return `<span class="text-small text-muted">Calculating...</span>`
+	}
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := FormatFloat((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
+
+	return template.HTML(balance)
+}
+
 func FormatBalanceSql(balanceInt sql.NullInt64, currency string) template.HTML {
 	if !balanceInt.Valid {
 		return template.HTML("0 " + currency)
@@ -340,6 +351,9 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
 func FormatGlobalParticipationRate(e uint64, r float64, currency string) template.HTML {
+	if e == 0 {
+		return `<span class="text-small text-muted">Calculating...</span>`
+	}
 	p := message.NewPrinter(language.English)
 	rr := fmt.Sprintf("%.2f%%", r*100)
 	tpl := `
