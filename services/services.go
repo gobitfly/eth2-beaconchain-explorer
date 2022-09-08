@@ -405,7 +405,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		if !epochsMap[block.Epoch] {
 			epochs = append(epochs, &types.IndexPageDataEpochs{
 				Epoch:                            block.Epoch,
-				Ts:                               utils.EpochToTime(epoch),
+				Ts:                               utils.EpochToTime(block.Epoch),
 				Finalized:                        false,
 				FinalizedFormatted:               utils.FormatYesNo(false),
 				EligibleEther:                    0,
