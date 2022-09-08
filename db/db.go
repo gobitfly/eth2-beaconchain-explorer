@@ -311,7 +311,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 					FROM
 						eth1_deposits as eth1
 					WHERE
-					ENCODE(eth1.from_address, 'hex') LOWER($1)
+					ENCODE(eth1.from_address, 'hex') LIKE LOWER($1)
 						GROUP BY from_address
 				) as count
 		`, query+"%")
