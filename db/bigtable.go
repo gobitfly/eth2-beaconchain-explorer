@@ -2433,7 +2433,7 @@ func (bigtable *Bigtable) GetBalanceForAddress(address []byte, token []byte) (*t
 	}
 
 	if row == nil {
-		return nil, errors.New("row is nil, after reading tableMetadata")
+		return nil, nil
 	}
 	if val, ok := row[ACCOUNT_METADATA_FAMILY]; ok {
 		if val == nil || len(val) < 1 {
