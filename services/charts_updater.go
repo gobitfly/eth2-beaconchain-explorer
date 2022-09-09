@@ -420,7 +420,11 @@ func participationRateChartData() (*types.GenericChartData, error) {
 		Globalparticipationrate float64
 	}{}
 
-	err := db.ReaderDb.Select(&rows, "SELECT epoch, globalparticipationrate FROM epochs WHERE epoch < $1 ORDER BY epoch", LatestEpoch())
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	err := db.ReaderDb.Select(&rows, "SELECT epoch, globalparticipationrate FROM epochs WHERE epoch < $1 ORDER BY epoch", epoch)
 	if err != nil {
 		return nil, err
 	}
