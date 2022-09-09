@@ -1453,9 +1453,18 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 		EventFilter    []byte `db:"pubkey"`
 	}
 
+	// get attestations for all validators for the last n epochs
+	attestations, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{}, latestEpoch-1, 3)
+	if err != nil {
+		return fmt.Errorf("error getting validator attestations from bigtable %w", err)
+	}
+
 	events := make([]dbResult, 0)
 	batchSize := 5000
 	dataLen := len(pubkeys)
+	// indices := make([]uint64, 0, len(dataLen))
+	indexToPubkeyMap := make(map[uint64][]byte)
+
 	for i := 0; i < dataLen; i += batchSize {
 		var keys [][]byte
 		start := i
@@ -1477,19 +1486,15 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 			return err
 		}
 
-		indexToPubkeyMap := make(map[uint64][]byte)
-		indices := make([]uint64, 0, len(keys))
 		for _, v := range indexPubkeyArr {
 			indexToPubkeyMap[v.ValidatorIndex] = v.Pubkey
-			indices = append(indices, v.ValidatorIndex)
+			// indices = append(indices, v.ValidatorIndex)
 		}
+	}
 
-		attestations, err := db.BigtableClient.GetValidatorAttestationHistory(indices, latestEpoch-1, 3)
-		if err != nil {
-			return fmt.Errorf("error getting validator attestations from bigtable %w", err)
-		}
-
-		for validator, history := range attestations {
+	for validator, history := range attestations {
+		pubkey, ok := indexToPubkeyMap[validator]
+		if ok {
 			for _, attestation := range history {
 				if attestation.Status == 0 {
 					events = append(events, dbResult{
@@ -1498,7 +1503,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 						Status:         attestation.Status,
 						Slot:           attestation.AttesterSlot,
 						InclusionSlot:  attestation.InclusionSlot,
-						EventFilter:    indexToPubkeyMap[validator],
+						EventFilter:    pubkey,
 					})
 				}
 			}
