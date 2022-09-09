@@ -1616,6 +1616,54 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*ty
 	return data, indexes[len(indexes)-1], nil
 }
 
+func (bigtable *Bigtable) GetAddressesNamesArMetadata(inputName *map[string]string, inputMetadata *map[string]*types.ERC20Metadata) (map[string]string, map[string]*types.ERC20Metadata, error) {
+	outputName := make(map[string]string)
+	outputMetadata := make(map[string]*types.ERC20Metadata)
+
+	g := new(errgroup.Group)
+	g.SetLimit(25)
+	mux := sync.Mutex{}
+
+	if inputName != nil {
+		for address := range *inputName {
+			address := address
+			g.Go(func() error {
+				name, err := bigtable.GetAddressName([]byte(address))
+				if err != nil {
+					return err
+				}
+				mux.Lock()
+				outputName[address] = name
+				mux.Unlock()
+				return nil
+			})
+		}
+	}
+
+	if inputMetadata != nil {
+		for address := range *inputMetadata {
+			address := address
+			g.Go(func() error {
+				metadata, err := bigtable.GetERC20MetadataForAddress([]byte(address))
+				if err != nil {
+					return err
+				}
+				mux.Lock()
+				outputMetadata[address] = metadata
+				mux.Unlock()
+				return nil
+			})
+		}
+	}
+
+	err := g.Wait()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return outputName, outputMetadata, nil
+}
+
 func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search string, pageToken string) (*types.DataTableResponse, error) {
 	if pageToken == "" {
 		pageToken = fmt.Sprintf("%s:I:TX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
@@ -1632,23 +1680,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 		names[string(t.From)] = ""
 		names[string(t.To)] = ""
 	}
-	g := new(errgroup.Group)
-	g.SetLimit(25)
-	mux := sync.Mutex{}
-	for address := range names {
-		address := address
-		g.Go(func() error {
-			name, err := bigtable.GetAddressName([]byte(address))
-			if err != nil {
-				return err
-			}
-			mux.Lock()
-			names[address] = name
-			mux.Unlock()
-			return nil
-		})
-	}
-	err = g.Wait()
+	names, _, err = BigtableClient.GetAddressesNamesArMetadata(&names, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1660,7 +1692,6 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 		toName := names[string(t.To)]
 
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
-
 		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
 
 		method := "Transfer"
@@ -1924,23 +1955,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 		names[string(t.From)] = ""
 		names[string(t.To)] = ""
 	}
-	g := new(errgroup.Group)
-	g.SetLimit(25)
-	mux := sync.Mutex{}
-	for address := range names {
-		address := address
-		g.Go(func() error {
-			name, err := bigtable.GetAddressName([]byte(address))
-			if err != nil {
-				return err
-			}
-			mux.Lock()
-			names[address] = name
-			mux.Unlock()
-			return nil
-		})
-	}
-	err = g.Wait()
+	names, _, err = BigtableClient.GetAddressesNamesArMetadata(&names, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2032,36 +2047,7 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 		names[string(t.To)] = ""
 		tokens[string(t.TokenAddress)] = nil
 	}
-	g := new(errgroup.Group)
-	g.SetLimit(25)
-	mux := sync.Mutex{}
-	for address := range names {
-		address := address
-		g.Go(func() error {
-			name, err := bigtable.GetAddressName([]byte(address))
-			if err != nil {
-				return err
-			}
-			mux.Lock()
-			names[address] = name
-			mux.Unlock()
-			return nil
-		})
-	}
-	for address := range tokens {
-		address := address
-		g.Go(func() error {
-			metadata, err := bigtable.GetERC20MetadataForAddress([]byte(address))
-			if err != nil {
-				return err
-			}
-			mux.Lock()
-			tokens[address] = metadata
-			mux.Unlock()
-			return nil
-		})
-	}
-	err = g.Wait()
+	names, tokens, err = BigtableClient.GetAddressesNamesArMetadata(&names, &tokens)
 	if err != nil {
 		return nil, err
 	}
@@ -2437,7 +2423,7 @@ func (bigtable *Bigtable) GetBalanceForAddress(address []byte, token []byte) (*t
 	}
 	if val, ok := row[ACCOUNT_METADATA_FAMILY]; ok {
 		if val == nil || len(val) < 1 {
-			return nil, errors.New("ReadItem is empty or nil")
+			return nil, fmt.Errorf("ReadItem is empty or nil")
 		}
 
 		ret := &types.Eth1AddressBalance{
@@ -2455,7 +2441,7 @@ func (bigtable *Bigtable) GetBalanceForAddress(address []byte, token []byte) (*t
 		return ret, nil
 	}
 
-	return nil, errors.New("ACCOUNT_METADATA_FAMILY is not a valid index in row map")
+	return nil, fmt.Errorf("ACCOUNT_METADATA_FAMILY is not a valid index in row map")
 }
 
 func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC20Metadata, error) {
@@ -2911,36 +2897,7 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 		names[string(t.To)] = ""
 		tokens[string(t.TokenAddress)] = nil
 	}
-	g := new(errgroup.Group)
-	g.SetLimit(25)
-	mux := sync.Mutex{}
-	for address := range names {
-		address := address
-		g.Go(func() error {
-			name, err := bigtable.GetAddressName([]byte(address))
-			if err != nil {
-				return err
-			}
-			mux.Lock()
-			names[address] = name
-			mux.Unlock()
-			return nil
-		})
-	}
-	for address := range tokens {
-		address := address
-		g.Go(func() error {
-			metadata, err := bigtable.GetERC20MetadataForAddress([]byte(address))
-			if err != nil {
-				return err
-			}
-			mux.Lock()
-			tokens[address] = metadata
-			mux.Unlock()
-			return nil
-		})
-	}
-	err = g.Wait()
+	names, tokens, err = BigtableClient.GetAddressesNamesArMetadata(&names, &tokens)
 	if err != nil {
 		return nil, err
 	}

@@ -25,10 +25,6 @@ func Eth1Transactions(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "eth1transactions", "/eth1transactions", "eth1transactions")
 	data.Data = getTransactionDataStartingWithPageToken("")
 
-	// Internal Transx
-	// Mindesthöhe von den Dingern?!?
-	// Mindest Update sonst gehts iwie ned gut
-
 	if utils.Config.Frontend.Debug {
 		eth1TransactionsTemplate = template.Must(template.New("transactions").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/transactions.html"))
 	}
@@ -81,30 +77,11 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 				names[string(v.GetFrom())] = ""
 				names[string(v.GetTo())] = ""
 			}
-			/**
-			g := new(errgroup.Group)
-			g.SetLimit(25)
-			mux := sync.Mutex{}
-			for address := range names {
-				address := address
-				g.Go(func() error {
-					name, err := db.BigtableClient.GetAddressName([]byte(address))
-					if err != nil {
-						logger.Errorf("error getting name for address '%s': %v", address, err)
-						return nil
-					}
-					mux.Lock()
-					names[address] = name
-					mux.Unlock()
-					return nil
-				})
-			}
-
-			err := g.Wait()
+			names, _, err = db.BigtableClient.GetAddressesNamesArMetadata(&names, nil)
 			if err != nil {
-				logger.Errorf("error waiting for threads collecting address names: %v", err)
+				logger.Errorf("error getting name for addresses: %v", err)
 				return nil
-			}/**/
+			}
 		}
 
 		for _, v := range *t {
