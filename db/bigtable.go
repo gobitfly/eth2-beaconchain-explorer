@@ -480,7 +480,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 
 			}
 			return true
-		}, gcp_bigtable.LimitRows(limit), gcp_bigtable.RowFilter(filter))
+		}, gcp_bigtable.RowFilter(filter))
 		if err != nil {
 			return nil, err
 		}
@@ -562,7 +562,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 
 		}
 		return true
-	}, gcp_bigtable.LimitRows(limit), gcp_bigtable.RowFilter(filter))
+	}, gcp_bigtable.RowFilter(filter))
 	if err != nil {
 		return nil, err
 	}
