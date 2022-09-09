@@ -1454,7 +1454,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 	}
 
 	// get attestations for all validators for the last n epochs
-	attestations, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{}, latestEpoch-1, 3)
+	attestations, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{}, latestEpoch-2, 3)
 	if err != nil {
 		return fmt.Errorf("error getting validator attestations from bigtable %w", err)
 	}
