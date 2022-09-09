@@ -84,7 +84,15 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 	if search == "" {
 		err = db.ReaderDb.Select(&minipools, fmt.Sprintf(`
 			select 
-				rocketpool_minipools.*, 
+				rocketpool_minipools.rocketpool_storage_address, 
+				rocketpool_minipools.address, 
+				rocketpool_minipools.pubkey, 
+				rocketpool_minipools.node_address, 
+				rocketpool_minipools.node_fee, 
+				rocketpool_minipools.deposit_type, 
+				rocketpool_minipools.status, 
+				rocketpool_minipools.status_time, 
+				rocketpool_minipools.penalty_count,
 				validators.validatorindex as validator_index,
 				coalesce(validator_names.name,'') as validator_name,
 				cnt.total_count
@@ -108,7 +116,15 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 				union (select address from validator_names inner join rocketpool_minipools on rocketpool_minipools.pubkey = validator_names.publickey where name ilike $4)
 			)
 			select 
-				rocketpool_minipools.*, 
+				rocketpool_minipools.rocketpool_storage_address, 
+				rocketpool_minipools.address, 
+				rocketpool_minipools.pubkey, 
+				rocketpool_minipools.node_address, 
+				rocketpool_minipools.node_fee, 
+				rocketpool_minipools.deposit_type, 
+				rocketpool_minipools.status, 
+				rocketpool_minipools.status_time, 
+				rocketpool_minipools.penalty_count,
 				validators.validatorindex as validator_index,
 				coalesce(validator_names.name,'') as validator_name,
 				cnt.total_count
@@ -216,9 +232,22 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 	recordsTotal := uint64(0)
 	recordsFiltered := uint64(0)
 	var dbResult []types.RocketpoolPageDataNode
+
 	if search == "" {
 		err = db.ReaderDb.Select(&dbResult, fmt.Sprintf(`
-			select rocketpool_nodes.*, cnt.total_count
+			select 
+				rocketpool_nodes.rocketpool_storage_address, 
+				rocketpool_nodes.address, 
+				rocketpool_nodes.timezone_location, 
+				rocketpool_nodes.rpl_stake, 
+				rocketpool_nodes.min_rpl_stake, 
+				rocketpool_nodes.max_rpl_stake, 
+				rocketpool_nodes.rpl_cumulative_rewards, 
+				rocketpool_nodes.smoothing_pool_opted_in, 
+				rocketpool_nodes.claimed_smoothing_pool, 
+				rocketpool_nodes.unclaimed_smoothing_pool, 
+				rocketpool_nodes.unclaimed_rpl_rewards, 
+				cnt.total_count
 			from rocketpool_nodes
 			left join (select count(*) from rocketpool_nodes) cnt(total_count) ON true
 			order by %s %s
@@ -234,7 +263,19 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 			with matched_nodes as (
 				select address from rocketpool_nodes where encode(address::bytea,'hex') like $3
 			)
-			select rocketpool_nodes.*, cnt.total_count
+			select 
+				rocketpool_nodes.rocketpool_storage_address, 
+				rocketpool_nodes.address, 
+				rocketpool_nodes.timezone_location, 
+				rocketpool_nodes.rpl_stake, 
+				rocketpool_nodes.min_rpl_stake, 
+				rocketpool_nodes.max_rpl_stake, 
+				rocketpool_nodes.rpl_cumulative_rewards, 
+				rocketpool_nodes.smoothing_pool_opted_in, 
+				rocketpool_nodes.claimed_smoothing_pool, 
+				rocketpool_nodes.unclaimed_smoothing_pool, 
+				rocketpool_nodes.unclaimed_rpl_rewards,
+				cnt.total_count
 			from rocketpool_nodes
 			inner join matched_nodes on matched_nodes.address = rocketpool_nodes.address
 			left join (select count(*) from rocketpool_nodes) cnt(total_count) ON true
