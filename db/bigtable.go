@@ -394,8 +394,8 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, startEpoch uint64, limit int64) (map[uint64][]*types.ValidatorAttestation, error) {
 	valLen := len(validators)
 
-	batchSize := 1000 // max column filters: 20480
 	res := make(map[uint64][]*types.ValidatorAttestation, len(validators))
+	batchSize := 1000 // max column filters: max 20480 bytes
 
 	for b := 0; b < valLen; b += batchSize {
 		start := b
@@ -404,7 +404,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 			end = valLen
 		}
 		validatorBatch := validators[start:end]
-		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*60))
 		defer cancel()
 
 		rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
@@ -434,7 +434,6 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 				gcp_bigtable.LatestNFilter(1),
 			)
 		}
-
 		err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, rangeEnd), func(r gcp_bigtable.Row) bool {
 			for _, ri := range r[ATTESTATIONS_FAMILY] {
 				keySplit := strings.Split(r.Key(), ":")
@@ -481,7 +480,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 
 			}
 			return true
-		}, gcp_bigtable.LimitRows(limit), gcp_bigtable.RowFilter(filter))
+		}, gcp_bigtable.RowFilter(filter))
 		if err != nil {
 			return nil, err
 		}
@@ -563,7 +562,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 
 		}
 		return true
-	}, gcp_bigtable.LimitRows(limit), gcp_bigtable.RowFilter(filter))
+	}, gcp_bigtable.RowFilter(filter))
 	if err != nil {
 		return nil, err
 	}

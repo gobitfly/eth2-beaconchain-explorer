@@ -1484,9 +1484,9 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 			indices = append(indices, v.ValidatorIndex)
 		}
 
-		attestations, err := db.BigtableClient.GetValidatorAttestationHistory(indices, latestEpoch-1, int64(latestEpoch)-3)
+		attestations, err := db.BigtableClient.GetValidatorAttestationHistory(indices, latestEpoch-1, 3)
 		if err != nil {
-			return err
+			return fmt.Errorf("error getting validator attestations from bigtable %w", err)
 		}
 
 		for validator, history := range attestations {
@@ -1498,6 +1498,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 						Status:         attestation.Status,
 						Slot:           attestation.AttesterSlot,
 						InclusionSlot:  attestation.InclusionSlot,
+						EventFilter:    indexToPubkeyMap[validator],
 					})
 				}
 			}
