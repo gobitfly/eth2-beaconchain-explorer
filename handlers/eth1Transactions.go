@@ -62,16 +62,17 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 
 	tableData := make([][]interface{}, 0, minimumTransactionsPerUpdate)
 	for len(tableData) < minimumTransactionsPerUpdate && pageTokenId != 0 {
-		t, n, err := getEth1TransactionFromBlock(pageTokenId)
+		b, n, err := getEth1BlockAndNext(pageTokenId)
 		if err != nil {
 			logger.Errorf("error getting transaction from block %v", err)
 			return nil
 		}
+		t := b.GetTransactions()
 
 		// retrieve metadata
 		names := make(map[string]string)
 		{
-			for _, v := range *t {
+			for _, v := range t {
 				names[string(v.GetFrom())] = ""
 				names[string(v.GetTo())] = ""
 			}
@@ -82,7 +83,7 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 			}
 		}
 
-		for _, v := range *t {
+		for _, v := range t {
 			method := "Transfer #missing" // #RECY #TODO // "Transfer"
 			/* if len(v.MethodId) > 0 {
 
@@ -95,13 +96,13 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 
 			tableData = append(tableData, []interface{}{
 				utils.FormatAddressWithLimits(v.GetHash(), "", "tx", 15, 18, true),
-				utils.FormatMethod(method),
-				"block #todo",
-				"time #todo",
-				utils.FormatAddressWithLimits(v.From, names[string(v.GetFrom())], "address", 15, 18, true),
-				utils.FormatAddressWithLimits(v.To, names[string(v.GetTo())], "address", 15, 18, true),
-				utils.FormatAmountFormated(new(big.Int).SetBytes(v.GetValue()), "ETH", 8, 3, true, true, true),
-				"fee #missing",
+				utils.FormatMethod(method), // #RECY #TODO
+				template.HTML(fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber()))),
+				utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
+				utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], "address", 15, 18, true),
+				utils.FormatAddressWithLimits(v.GetTo(), names[string(v.GetTo())], "address", 15, 18, true),
+				utils.FormatAmountFormated(new(big.Int).SetBytes(v.GetValue()), "ETH", 8, 4, true, true, true),
+				"fee #missing", // #RECY #TODO
 			})
 		}
 
@@ -114,9 +115,9 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 	}
 }
 
-// Return transactions from given block, next block number and error
+// Return given block, next block number and error
 // If block doesn't exists nil, 0, nil is returned
-func getEth1TransactionFromBlock(number uint64) (*[]*types.Eth1Transaction, uint64, error) {
+func getEth1BlockAndNext(number uint64) (*types.Eth1Block, uint64, error) {
 	block, err := db.BigtableClient.GetBlockFromBlocksTable(number)
 	if err != nil {
 		return nil, 0, err
@@ -136,6 +137,5 @@ func getEth1TransactionFromBlock(number uint64) (*[]*types.Eth1Transaction, uint
 		}
 	}
 
-	v := block.GetTransactions()
-	return &v, nextBlock, nil
+	return block, nextBlock, nil
 }

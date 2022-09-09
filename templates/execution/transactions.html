@@ -37,11 +37,19 @@
               const row = data.data[i];
               for (let j = 0; j < data.data[i].length; j++) {
                 const col = data.data[i][j]
+                const innerElement = document.createElement('div')
+                {
+                  innerElement.style.display = 'table-cell'
+                  innerElement.style.verticalAlign = 'middle'
+                  innerElement.innerHTML = col
+                }
                 const el = document.createElement('div')
-                el.classList.add('border-top', 'p-2', 'text-truncate')
-                el.innerHTML = col
+                {
+                  el.classList.add('border-top', 'p-2', 'text-truncate')
+                  el.style.display = 'table'
+                  el.appendChild(innerElement)
+                }
                 infLoading.insertAdjacentElement("beforebegin", el)
-                
               }
             }
             drawCallback()
@@ -123,7 +131,11 @@
               {{ if len .Data.Data }}
                 {{ range $i, $row := .Data.Data }}
                   {{ range $j, $col := $row }}
-                    <div class="border-top p-2 text-truncate">{{ $col }}</div>
+                    <div class="border-top p-2 text-truncate" style="display: table">
+                      <div style="display: table-cell; vertical-align: middle;">
+                        {{ $col }}
+                      </div>
+                    </div>
                   {{ end }}
                 {{ end }}
                 <div style="grid-column: 1 / 9;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
