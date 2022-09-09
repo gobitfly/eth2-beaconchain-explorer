@@ -1453,9 +1453,16 @@ type Eth1TokenPageData struct {
 	HoldersTable     *DataTableResponse
 }
 
+type Transfer struct {
+	From   template.HTML
+	To     template.HTML
+	Amount template.HTML
+	Token  template.HTML
+}
 type Eth1TxData struct {
 	From               common.Address
 	To                 *common.Address
+	InternalTxns       *DataTableResponse
 	FromName           string
 	ToName             string
 	Hash               common.Hash
@@ -1470,6 +1477,7 @@ type Eth1TxData struct {
 	CallData           string
 	TxFee              []byte
 	Events             []*Eth1EventData
+	Transfers          *[]Transfer
 }
 
 type Eth1EventData struct {

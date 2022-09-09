@@ -1988,6 +1988,116 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 	return data, nil
 }
 
+// currently only erc20
+func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction []byte) (*[]types.Transfer, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+	// uses a more standard transfer inbetween type so multiple token types can be handle before the final table response is generated
+	transfers := map[int]*types.Eth1ERC20Indexed{}
+	mux := sync.Mutex{}
+
+	// get all erc20 rows
+	prefix := fmt.Sprintf("%s:ERC20:%x:", bigtable.chainId, transaction)
+	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 3))
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		b := &types.Eth1ERC20Indexed{}
+		row_ := row[DEFAULT_FAMILY][0]
+		err := proto.Unmarshal(row_.Value, b)
+		if err != nil {
+			logrus.Fatal(err)
+			return false
+		}
+		rowN, err := strconv.Atoi(strings.Split(row_.Row, ":")[3])
+		if err != nil {
+			logrus.Fatal(err)
+			return false
+		}
+		rowN = 100000 - rowN
+		mux.Lock()
+		transfers[rowN] = b
+		mux.Unlock()
+		return true
+	}, gcp_bigtable.LimitRows(256))
+	if err != nil {
+		return nil, err
+	}
+
+	names := make(map[string]string)
+	tokens := make(map[string]*types.ERC20Metadata)
+	// init
+	for _, t := range transfers {
+		names[string(t.From)] = ""
+		names[string(t.To)] = ""
+		tokens[string(t.TokenAddress)] = nil
+	}
+	g := new(errgroup.Group)
+	g.SetLimit(25)
+	for address := range names {
+		address := address
+		g.Go(func() error {
+			name, err := bigtable.GetAddressName([]byte(address))
+			if err != nil {
+				return err
+			}
+			mux.Lock()
+			names[address] = name
+			mux.Unlock()
+			return nil
+		})
+	}
+	for address := range tokens {
+		address := address
+		g.Go(func() error {
+			metadata, err := bigtable.GetERC20MetadataForAddress([]byte(address))
+			if err != nil {
+				return err
+			}
+			mux.Lock()
+			tokens[address] = metadata
+			mux.Unlock()
+			return nil
+		})
+	}
+	err = g.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	data := make([]types.Transfer, len(transfers))
+
+	// sort by event id
+	keys := make([]int, 0, len(transfers))
+	for k := range transfers {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+
+	for i, k := range keys {
+		t := transfers[k]
+
+		fromName := names[string(t.From)]
+		toName := names[string(t.To)]
+		from := utils.FormatAddress(t.From, t.TokenAddress, fromName, false, false, true)
+		to := utils.FormatAddress(t.To, t.TokenAddress, toName, false, false, true)
+
+		tb := &types.Eth1AddressBalance{
+			Balance:  t.Value,
+			Token:    t.TokenAddress,
+			Metadata: tokens[string(t.TokenAddress)],
+		}
+
+		data[i] = types.Transfer{
+			From:   from,
+			To:     to,
+			Amount: utils.FormatTokenValue(tb),
+			Token:  utils.FormatTokenName(tb),
+		}
+
+	}
+
+	return &data, nil
+}
+
 func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]*types.Eth1ERC20Indexed, string, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()

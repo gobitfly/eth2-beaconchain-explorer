@@ -76,6 +76,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	}
 	txPageData.From = msg.From()
 
+	txPageData.Transfers, err = db.BigtableClient.GetArbitraryTokenTransfersForTransaction(tx.Hash().Bytes())
 	if len(receipt.Logs) > 0 {
 		for _, log := range receipt.Logs {
 			meta, err := db.BigtableClient.GetContractMetadata(log.Address.Bytes())
@@ -121,8 +122,11 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 								Raw:   fmt.Sprintf("0x%x", val),
 								Value: fmt.Sprintf("%s", val),
 							}
-							if typeMap[lName] == "address" {
+							switch b := typeMap[lName]; b {
+							case "address":
 								a.Address = val.(common.Address)
+							case "bytes":
+								a.Value = a.Raw
 							}
 							eth1Event.DecodedData[lName] = a
 						}
