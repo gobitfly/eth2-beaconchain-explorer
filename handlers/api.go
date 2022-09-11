@@ -2343,7 +2343,6 @@ func sendOKResponse(j *json.Encoder, route string, data []interface{}) {
 	if err != nil {
 		logger.Errorf("error serializing json data for API %v route: %v", route, err)
 	}
-	return
 }
 
 func parseApiValidatorParam(origParam string, limit int) (indices []uint64, err error) {
@@ -2387,6 +2386,10 @@ func parseApiValidatorParam(origParam string, limit int) (indices []uint64, err 
 		for x := range m {
 			queryIndicesDeduped = append(queryIndicesDeduped, x)
 		}
+	}
+
+	if len(queryIndicesDeduped) == 0 {
+		return nil, fmt.Errorf("invalid validator argument, pubkey(s) did not resolve to a validator index")
 	}
 
 	return queryIndicesDeduped, nil
