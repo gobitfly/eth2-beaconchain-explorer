@@ -2331,22 +2331,22 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetMetadataUpdates(startToken string, limit int) ([]string, []string, error) {
+func (bigtable *Bigtable) GetMetadataUpdates(prefix string, startToken string, limit int) ([]string, []*types.Eth1AddressBalance, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*120))
 	defer cancel()
 
 	keys := make([]string, 0, limit)
-	pairs := make([]string, 0, limit)
+	pairs := make([]*types.Eth1AddressBalance, 0, limit)
 
 	err := bigtable.tableMetadataUpdates.ReadRows(ctx, gcp_bigtable.NewRange(startToken, ""), func(row gcp_bigtable.Row) bool {
-		if !strings.Contains(row.Key(), startToken) {
+		if !strings.Contains(row.Key(), prefix) {
 			return false
 		}
 		keys = append(keys, row.Key())
 
 		for _, ri := range row {
 			for _, item := range ri {
-				pairs = append(pairs, row.Key()+":"+item.Column)
+				pairs = append(pairs, &types.Eth1AddressBalance{Address: common.FromHex(strings.Split(row.Key(), ":")[2]), Token: common.FromHex(strings.Split(item.Column, ":")[1])})
 			}
 		}
 		return true

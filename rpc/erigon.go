@@ -370,43 +370,36 @@ func (client *ErigonClient) TraceParity(blockNumber uint64) ([]*ParityTraceResul
 	return res, nil
 }
 
-func (client *ErigonClient) GetBalances(pairs []string, addressIndex, tokenIndex int) ([]*types.Eth1AddressBalance, error) {
+func (client *ErigonClient) GetBalances(pairs []*types.Eth1AddressBalance, addressIndex, tokenIndex int) ([]*types.Eth1AddressBalance, error) {
 	batchElements := make([]rpc.BatchElem, 0, len(pairs))
 
 	ret := make([]*types.Eth1AddressBalance, len(pairs))
 
 	for i, pair := range pairs {
-		s := strings.Split(pair, ":")
-
-		if len(s) != 5 {
-			logrus.Fatalf("%v has an invalid format", pair)
-		}
 
 		// if s[1] != "B" {
 		// 	logrus.Fatalf("%v has invalid balance update prefix", pair)
 		// }
 
-		address := s[addressIndex] // 2
-		token := s[tokenIndex]     // 4
 		result := ""
 
 		ret[i] = &types.Eth1AddressBalance{
-			Address: common.FromHex(address),
-			Token:   common.FromHex(token),
+			Address: pair.Address,
+			Token:   pair.Token,
 		}
 
-		if token == "00" {
+		if len(pair.Token) > 20 {
 			batchElements = append(batchElements, rpc.BatchElem{
 				Method: "eth_getBalance",
-				Args:   []interface{}{common.HexToAddress(address), "latest"},
+				Args:   []interface{}{common.BytesToAddress(pair.Address), "latest"},
 				Result: &result,
 			})
 		} else {
-			to := common.HexToAddress(token)
+			to := common.BytesToAddress(pair.Token)
 			msg := ethereum.CallMsg{
 				To:   &to,
 				Gas:  1000000,
-				Data: common.Hex2Bytes("70a08231000000000000000000000000" + address),
+				Data: common.Hex2Bytes(fmt.Sprintf("70a08231000000000000000000000000%x", pair.Address)),
 			}
 
 			batchElements = append(batchElements, rpc.BatchElem{

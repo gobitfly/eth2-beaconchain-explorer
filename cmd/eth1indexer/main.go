@@ -142,10 +142,10 @@ func main() {
 	// 	logrus.Fatal(err)
 	// }
 	// return
-	// if *enableBalanceUpdater {
-	// 	ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
-	// 	return
-	// }
+	if *enableBalanceUpdater {
+		ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
+		return
+	}
 
 	transforms := make([]func(blk *types.Eth1Block, cache *ccache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
 	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
@@ -475,7 +475,7 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 	its := 0
 	for {
 		start := time.Now()
-		keys, pairs, err := bt.GetMetadataUpdates(lastKey, batchSize)
+		keys, pairs, err := bt.GetMetadataUpdates(prefix, lastKey, batchSize)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -505,13 +505,14 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 		// 		logrus.Infof("balance for key %v is %x", updates[i], b)
 		// 	}
 		// }
-		logrus.Infof("retrieved %v balances in %v, currently at %v", len(balances), time.Since(start), lastKey)
 
 		lastKey = keys[len(keys)-1]
+		logrus.Infof("retrieved %v balances in %v, currently at %v", len(balances), time.Since(start), lastKey)
 
 		its++
 
 		if iterations != -1 && its > iterations {
+			logrus.Info("exit")
 			return
 		}
 	}
