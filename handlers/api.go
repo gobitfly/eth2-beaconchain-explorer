@@ -2388,5 +2388,9 @@ func parseApiValidatorParam(origParam string, limit int) (indices []uint64, err 
 		}
 	}
 
+	if len(queryIndicesDeduped) == 0 {
+		return nil, fmt.Errorf("invalid validator argument, pubkey(s) did not resolve to a validator index")
+	}
+
 	return queryIndicesDeduped, nil
 }
