@@ -2358,20 +2358,23 @@ func (bigtable *Bigtable) GetMetadataUpdates(prefix string, startToken string, l
 	return keys, pairs, err
 }
 
-func (bigtable *Bigtable) GetMetadata(startToken string, limit int) ([]string, []string, error) {
+func (bigtable *Bigtable) GetMetadata(startToken string, limit int) ([]string, []*types.Eth1AddressBalance, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*120))
 	defer cancel()
 
 	keys := make([]string, 0, limit)
-	pairs := make([]string, 0, limit)
+	pairs := make([]*types.Eth1AddressBalance, 0, limit)
 
 	err := bigtable.tableMetadata.ReadRows(ctx, gcp_bigtable.NewRange(startToken, ""), func(row gcp_bigtable.Row) bool {
+		if !strings.HasPrefix(row.Key(), bigtable.chainId+":") {
+			return false
+		}
 		keys = append(keys, row.Key())
 
 		for _, ri := range row {
 			for _, item := range ri {
 				if strings.Contains(item.Column, "a:B:") {
-					pairs = append(pairs, row.Key()+":"+item.Column)
+					pairs = append(pairs, &types.Eth1AddressBalance{Address: common.FromHex(strings.Split(row.Key(), ":")[1]), Token: common.FromHex(strings.Split(item.Column, ":")[2])})
 				}
 			}
 		}

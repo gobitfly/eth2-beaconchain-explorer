@@ -388,7 +388,9 @@ func (client *ErigonClient) GetBalances(pairs []*types.Eth1AddressBalance, addre
 			Token:   pair.Token,
 		}
 
-		if len(pair.Token) > 20 {
+		// logger.Infof("retrieving balance for %x / %x", ret[i].Address, ret[i].Token)
+
+		if len(pair.Token) < 20 {
 			batchElements = append(batchElements, rpc.BatchElem{
 				Method: "eth_getBalance",
 				Args:   []interface{}{common.BytesToAddress(pair.Address), "latest"},
@@ -422,6 +424,8 @@ func (client *ErigonClient) GetBalances(pairs []*types.Eth1AddressBalance, addre
 
 		res := strings.TrimPrefix(*el.Result.(*string), "0x")
 		ret[i].Balance = new(big.Int).SetBytes(common.FromHex(res)).Bytes()
+
+		// logger.Infof("retrieved balance %x / %x: %x (%v)", ret[i].Address, ret[i].Token, ret[i].Balance, *el.Result.(*string))
 	}
 
 	return ret, nil

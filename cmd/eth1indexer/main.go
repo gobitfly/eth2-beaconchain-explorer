@@ -50,6 +50,7 @@ func main() {
 	checkDataGapsLookback := flag.Int("data.gaps.lookback", 1000000, "Lookback for gaps check of the blocks table")
 
 	enableBalanceUpdater := flag.Bool("balances.enabled", false, "Enable balance update process")
+	enableFullBalanceUpdater := flag.Bool("balances.full.enabled", false, "Enable full balance update process")
 	balanceUpdaterPrefix := flag.String("balances.prefix", "", "Prefix to use for fetching balance updates")
 	balanceUpdaterBatchSize := flag.Int("balances.batch", 1000, "Batch size for balance updates")
 
@@ -92,39 +93,6 @@ func main() {
 	}
 	defer bt.Close()
 
-	// currentKey := *balanceUpdaterPrefix // "1:00028ebf7d36c5779c1deddf3ba72761fd46c8aa"
-	// for {
-	// 	keys, pairs, err := bt.GetMetadata(currentKey, 1000)
-	// 	if err != nil {
-	// 		logrus.Fatal(err)
-	// 	}
-
-	// 	if len(keys) == 0 {
-	// 		logrus.Infof("done")
-	// 		return
-	// 	}
-	// 	// for _, pair := range pairs {
-	// 	// 	logrus.Info(pair)
-	// 	// }
-
-	// 	logrus.Infof("currently at %v, processing balances for %v pairs", currentKey, len(pairs))
-	// 	balances, err := client.GetBalances(pairs, 1, 4)
-	// 	if err != nil {
-	// 		logrus.Fatal(err)
-	// 	}
-	// 	// for _, balance := range balances {
-	// 	// 	logrus.Infof("%x %x %s", balance.Address, balance.Token, new(big.Int).SetBytes(balance.Balance))
-	// 	// }
-
-	// 	err = bt.SaveBalances(balances, []string{})
-	// 	if err != nil {
-	// 		logrus.Fatal(err)
-	// 	}
-	// 	currentKey = keys[len(keys)-1]
-	// }
-
-	// return
-
 	if *tokenPriceExport {
 		go func() {
 			for {
@@ -142,10 +110,41 @@ func main() {
 	// 	logrus.Fatal(err)
 	// }
 	// return
-	// if *enableBalanceUpdater {
-	// 	ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
-	// 	return
-	// }
+	if *enableFullBalanceUpdater {
+		currentKey := *balanceUpdaterPrefix // "1:00028ebf7d36c5779c1deddf3ba72761fd46c8aa"
+		for {
+			keys, pairs, err := bt.GetMetadata(currentKey, *balanceUpdaterBatchSize)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
+			if len(keys) == 0 {
+				logrus.Infof("done")
+				return
+			}
+			// for _, pair := range pairs {
+			// 	logrus.Info(pair)
+			// }
+
+			logrus.Infof("currently at %v, processing balances for %v pairs", currentKey, len(pairs))
+			balances, err := client.GetBalances(pairs, 1, 4)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			// for _, balance := range balances {
+			// 	logrus.Infof("%x %x %s", balance.Address, balance.Token, new(big.Int).SetBytes(balance.Balance))
+			// }
+
+			err = bt.SaveBalances(balances, []string{})
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			currentKey = keys[len(keys)-1]
+		}
+
+		//ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
+		return
+	}
 
 	transforms := make([]func(blk *types.Eth1Block, cache *ccache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
 	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
