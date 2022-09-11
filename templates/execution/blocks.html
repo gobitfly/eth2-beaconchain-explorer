@@ -1,0 +1,87 @@
+{{ define "js"}}
+	<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+	<script type="text/javascript" src="/js/datatable_input.js"></script>
+
+	<script>
+        $(document).ready(function () {
+            $('#blocks').DataTable({
+                processing: true,
+                serverSide: true,
+                ordering: false,
+                searching: false,
+                ajax: '/execution/blocks/data',
+                pageLength: 10,
+                pagingType: 'input',
+                language: {
+                    searchPlaceholder: 'Block Number / Graffiti',
+                    search: '',
+                    paginate: {
+                        previous: "<",
+                        next: ">",
+                    }
+                },
+                columnDefs: [
+                    {
+                        targets: 4,
+                        data: '4',
+                        render: function(data, type, row) {
+                            return `<a class="text-monospace" href="address/${data}" data-toggle="tooltip" data-placement="top" title="0x${data}">0x${data.substr(0, 4)}...${data.substr(data.length-4, data.length)}</a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${data}"></i>`
+                        }
+                    }
+                ],
+                preDrawCallback: function () {
+                    // this does not always work.. not sure how to solve the staying tooltip
+                    try {
+                        $('#blocks').find('[data-toggle="tooltip"]').tooltip('dispose')
+                    } catch (e) { }
+                },
+                drawCallback: function (settings) {
+                    formatTimestamps()
+                    $('#blocks').find('[data-toggle="tooltip"]').tooltip()
+                },
+            })
+        })
+	</script>
+{{end}} {{ define "css"}}
+	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
+	<style>
+		table.dataTable tbody td { vertical-align: middle; }
+	</style>
+{{end}} {{ define "content"}}
+	<div class="container mt-2">
+		<div class="d-md-flex py-2 my-2 justify-content-md-between">
+			<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cubes mr-2"></i>Blocks</h1>
+			<nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
+				<ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0" style="padding:0; background-color:transparent;">
+					<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Blocks</li>
+				</ol>
+			</nav>
+		</div>
+		<div class="card">
+			<div class="card-body px-0 py-3">
+				<div class="table-responsive px-0 py-1">
+					<table class="table" id="blocks">
+						<thead>
+						<tr>
+							<th>Epoch</th>
+							<th>Slot</th>
+							<th>Block</th>
+							<th>Status</th>
+							<th><span data-toggle="tooltip" data-placement="top" title="Miner / Fee Recipient">Recipient</span></th>
+							<th>Proposer</th>
+							<th><span data-toggle="tooltip" data-placement="top" title="Transactions">Txn</span></th> 
+							<th>Gas Used</th>
+							<th>Gas Limit</th>
+							<th>Base Fee</th>
+							<th>Reward</th>
+							<th>Burned Fees</th>
+						</tr>
+						</thead>
+						<tbody> </tbody>
+					</table>
+				</div>
+			</div>
+        </div>
+	</div>
+{{end}}

@@ -67,7 +67,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if 18446744073709551615 == utils.Config.Chain.GenesisTimestamp {
+	if utils.Config.Chain.GenesisTimestamp == 18446744073709551615 {
 		fmt.Fprint(w, "OK. No GENESIS_TIMESTAMP defined yet")
 		return
 	}
@@ -105,7 +105,7 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if 18446744073709551615 == utils.Config.Chain.GenesisTimestamp {
+	if utils.Config.Chain.GenesisTimestamp == 18446744073709551615 {
 		fmt.Fprint(w, "OK. No GENESIS_TIMESTAMP defined yet")
 		return
 	}
@@ -254,6 +254,10 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(slotOrHash) != 64 {
 		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
+		if err != nil {
+			sendErrorResponse(j, r.URL.String(), "could not parse slot number")
+			return
+		}
 	}
 	if slotOrHash == "latest" {
 		blockSlot = int64(services.LatestSlot())
@@ -1575,7 +1579,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if parsedBase.Valid == false {
+	if !parsedBase.Valid {
 		logger.Errorf("receipt is not valid %v", validationResult.RejectReason)
 		sendErrorResponse(j, r.URL.String(), "receipt is not valid")
 		return
@@ -2092,6 +2096,11 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 			db.CreateNewStatsMetaPartition()
 			tx.Rollback()
 			tx, err = db.NewTransaction()
+			if err != nil {
+				logger.Errorf("could not transact | %v", err)
+				sendErrorResponse(j, r.URL.String(), "could not store")
+				return false
+			}
 			id, err = db.InsertStatsMeta(tx, userData.ID, parsedMeta)
 		}
 		if err != nil {
@@ -2321,7 +2330,6 @@ func sendErrorResponse(j *json.Encoder, route, message string) {
 	if err != nil {
 		logger.Errorf("error serializing json error for API %v route: %v", route, err)
 	}
-	return
 }
 
 // SendOKResponse exposes sendOKResponse

@@ -23,4 +23,5 @@ node_modules
 .vscode
 webassembly
 static/monaco-editor
+tokenlists/
 lastAttestationCache

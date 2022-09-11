@@ -39,7 +39,7 @@ func Poap(w http.ResponseWriter, r *http.Request) {
 	err := poapTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -55,7 +55,7 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 		err := json.NewEncoder(w).Encode(latestPoapData.(*types.DataTableResponse))
 		if err != nil {
 			logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 		return
@@ -76,7 +76,7 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 		group by graffiti`, poapMaxSlot)
 	if err != nil {
 		logger.Errorf("error retrieving poap data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -129,7 +129,7 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

@@ -6,9 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net/http"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
+	geth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 )
@@ -588,6 +592,8 @@ type BlockPageData struct {
 
 	Transactions []*BlockPageTransaction
 
+	ExecutionData *Eth1BlockPageData
+
 	Attestations      []*BlockPageAttestation // Attestations included in this block
 	VoluntaryExits    []*BlockPageVoluntaryExits
 	Votes             []*BlockVote // Attestations that voted for that block
@@ -728,6 +734,7 @@ type DataTableResponse struct {
 	Data            [][]interface{} `json:"data"`
 	PageLength      uint64          `json:"pageLength"`
 	DisplayStart    uint64          `json:"displayStart"`
+	PagingToken     string          `json:"pagingToken"`
 }
 
 // EpochsPageData is a struct to hold epoch data for the epochs page
@@ -1384,4 +1391,232 @@ type DataTableSaveStateSearch struct {
 type DataTableSaveStateColumns struct {
 	Visible bool                     `json:"visible"`
 	Search  DataTableSaveStateSearch `json:"search"`
+}
+
+type Eth1AddressPageData struct {
+	Address           string `json:"address"`
+	QRCode            string `json:"qr_code_base64"`
+	QRCodeInverse     string
+	Metadata          *Eth1AddressMetadata
+	BlocksMinedTable  *DataTableResponse
+	UnclesMinedTable  *DataTableResponse
+	TransactionsTable *DataTableResponse
+	InternalTxnsTable *DataTableResponse
+	Erc20Table        *DataTableResponse
+	Erc721Table       *DataTableResponse
+	Erc1155Table      *DataTableResponse
+	EtherValue        template.HTML
+}
+
+type Eth1AddressMetadata struct {
+	Balances   []*Eth1AddressBalance
+	ERC20      *ERC20Metadata
+	Name       string
+	Tags       []template.HTML
+	EthBalance *Eth1AddressBalance
+}
+
+type Eth1AddressBalance struct {
+	Address  []byte
+	Token    []byte
+	Balance  []byte
+	Metadata *ERC20Metadata
+}
+
+type ERC20TokenPrice struct {
+	Token       []byte
+	Price       []byte
+	TotalSupply []byte
+}
+
+type ERC20Metadata struct {
+	Decimals     []byte
+	Symbol       string
+	Name         string
+	Description  string
+	Logo         []byte
+	LogoFormat   string
+	TotalSupply  []byte
+	OfficialSite string
+	Price        []byte
+}
+
+func (metadata ERC20Metadata) MarshalBinary() ([]byte, error) {
+	return json.Marshal(metadata)
+}
+
+func (metadata ERC20Metadata) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, &metadata)
+}
+
+type ContractMetadata struct {
+	Name    string
+	ABI     *abi.ABI `msgpack:"-"`
+	ABIJson []byte
+}
+
+type Eth1TokenPageData struct {
+	Token            string `json:"token"`
+	Address          string `json:"address"`
+	Metadata         *ERC20Metadata
+	Balance          *Eth1AddressBalance
+	Holders          template.HTML `json:"holders"`
+	Transfers        template.HTML `json:"transfers"`
+	Price            template.HTML `json:"price"`
+	MarketCap        template.HTML `json:"marketCap"`
+	DilutedMarketCap template.HTML `json:"dilutedMarketCap"`
+	Decimals         template.HTML `json:"decimals"`
+	Contract         template.HTML `json:"contract"`
+	WebSite          template.HTML `json:"website"`
+	SocialProfiles   template.HTML `json:"socialProfiles"`
+	TransfersTable   *DataTableResponse
+	HoldersTable     *DataTableResponse
+}
+
+type Transfer struct {
+	From   template.HTML
+	To     template.HTML
+	Amount template.HTML
+	Token  template.HTML
+}
+type Eth1TxData struct {
+	From               common.Address
+	To                 *common.Address
+	InternalTxns       *DataTableResponse
+	FromName           string
+	ToName             string
+	Hash               common.Hash
+	Value              []byte
+	GasPrice           []byte
+	Receipt            *geth_types.Receipt
+	BlockNumber        int64
+	Timestamp          uint64
+	IsPending          bool
+	TargetIsContract   bool
+	IsContractCreation bool
+	CallData           string
+	TxFee              []byte
+	Events             []*Eth1EventData
+	Transfers          *[]Transfer
+}
+
+type Eth1EventData struct {
+	Address     common.Address
+	Name        string
+	Topics      []common.Hash
+	Data        []byte
+	DecodedData map[string]Eth1DecodedEventData
+}
+
+type Eth1DecodedEventData struct {
+	Type    string
+	Value   string
+	Raw     string
+	Address common.Address
+}
+
+type SourcifyContractMetadata struct {
+	Compiler struct {
+		Version string `json:"version"`
+	} `json:"compiler"`
+	Language string `json:"language"`
+	Output   struct {
+		Abi []struct {
+			Anonymous bool `json:"anonymous"`
+			Inputs    []struct {
+				Indexed      bool   `json:"indexed"`
+				InternalType string `json:"internalType"`
+				Name         string `json:"name"`
+				Type         string `json:"type"`
+			} `json:"inputs"`
+			Name    string `json:"name"`
+			Outputs []struct {
+				InternalType string `json:"internalType"`
+				Name         string `json:"name"`
+				Type         string `json:"type"`
+			} `json:"outputs"`
+			StateMutability string `json:"stateMutability"`
+			Type            string `json:"type"`
+		} `json:"abi"`
+	} `json:"output"`
+	Settings struct {
+		CompilationTarget struct {
+			Browser_Stakehavens_sol string `json:"browser/Stakehavens.sol"`
+		} `json:"compilationTarget"`
+		EvmVersion string   `json:"evmVersion"`
+		Libraries  struct{} `json:"libraries"`
+		Metadata   struct {
+			BytecodeHash string `json:"bytecodeHash"`
+		} `json:"metadata"`
+		Optimizer struct {
+			Enabled bool  `json:"enabled"`
+			Runs    int64 `json:"runs"`
+		} `json:"optimizer"`
+		Remappings []interface{} `json:"remappings"`
+	} `json:"settings"`
+	Sources struct {
+		Browser_Stakehavens_sol struct {
+			Keccak256 string   `json:"keccak256"`
+			Urls      []string `json:"urls"`
+		} `json:"browser/Stakehavens.sol"`
+	} `json:"sources"`
+	Version int64 `json:"version"`
+}
+
+type EtherscanContractMetadata struct {
+	Message string `json:"message"`
+	Result  []struct {
+		Abi                  string `json:"ABI"`
+		CompilerVersion      string `json:"CompilerVersion"`
+		ConstructorArguments string `json:"ConstructorArguments"`
+		ContractName         string `json:"ContractName"`
+		EVMVersion           string `json:"EVMVersion"`
+		Implementation       string `json:"Implementation"`
+		Library              string `json:"Library"`
+		LicenseType          string `json:"LicenseType"`
+		OptimizationUsed     string `json:"OptimizationUsed"`
+		Proxy                string `json:"Proxy"`
+		Runs                 string `json:"Runs"`
+		SourceCode           string `json:"SourceCode"`
+		SwarmSource          string `json:"SwarmSource"`
+	} `json:"result"`
+	Status string `json:"status"`
+}
+
+type Eth1BlockPageData struct {
+	Number         uint64
+	PreviousBlock  uint64
+	NextBlock      uint64
+	TxCount        uint64
+	UncleCount     uint64
+	Hash           string
+	ParentHash     string
+	MinerAddress   string
+	MinerName      string
+	Reward         *big.Int
+	MevReward      *big.Int
+	TxFees         *big.Int
+	GasUsage       uint64
+	GasLimit       uint64
+	LowestGasPrice *big.Int
+	Ts             time.Time
+	Difficulty     *big.Int
+	BaseFeePerGas  *big.Int
+	BurnedFees     *big.Int
+	Extra          string
+	Txs            []Eth1BlockPageTransaction
+	Uncles         []Eth1BlockPageData
+	State          string
+}
+
+type Eth1BlockPageTransaction struct {
+	Hash     string
+	From     string
+	FromName string
+	To       string
+	ToName   string
+	Value    *big.Int
+	Fee      *big.Int
+	GasPrice *big.Int
+	Method   string
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/gob"
 	"encoding/hex"
 	"eth2-exporter/db"
@@ -99,6 +100,41 @@ func main() {
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
 
+	rpc.CurrentErigonClient, err = rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
+	if err != nil {
+		logrus.Fatalf("error initializing erigon client: %v", err)
+	}
+
+	erigonChainId, err := rpc.CurrentErigonClient.GetNativeClient().ChainID(context.Background())
+	if err != nil {
+		logrus.Fatalf("error retrieving erigon chain id: %v", err)
+	}
+
+	rpc.CurrentGethClient, err = rpc.NewGethClient(utils.Config.Eth1GethEndpoint)
+	if err != nil {
+		logrus.Fatalf("error initializing geth client: %v", err)
+	}
+
+	gethChainId, err := rpc.CurrentGethClient.GetNativeClient().ChainID(context.Background())
+	if err != nil {
+		logrus.Fatalf("error retrieving geth chain id: %v", err)
+	}
+
+	if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) {
+		logrus.Fatalf("chain id missmatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), erigonChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	}
+
+	// if utils.Config.Frontend.Bigtable.Enabled {
+	bt, err := db.NewBigtable("etherchain", "etherchain", fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) //
+	if err != nil {
+		logrus.Fatalf("error connecting to bigtable: %v", err)
+	}
+	defer bt.Close()
+	db.BigtableClient = bt
+	// }
+
+	db.MustInitRedisCache(utils.Config.RedisCacheEndpoint)
+
 	if utils.Config.Metrics.Enabled {
 		go metrics.MonitorDB(db.WriterDb)
 		DBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.WriterDatabase.Username, cfg.WriterDatabase.Password, cfg.WriterDatabase.Host, cfg.WriterDatabase.Port, cfg.WriterDatabase.Name)
@@ -161,7 +197,6 @@ func main() {
 	}
 
 	if cfg.Frontend.Enabled {
-
 		router := mux.NewRouter()
 
 		apiV1Router := router.PathPrefix("/api/v1").Subrouter()
@@ -231,11 +266,18 @@ func main() {
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET", "HEAD")
 		router.HandleFunc("/api/healthz-loadbalancer", handlers.ApiHealthzLoadbalancer).Methods("GET", "HEAD")
 
+		logrus.Infof("initializing frontend services")
 		services.Init() // Init frontend services
-		price.Init()
-		ethclients.Init()
-
 		logrus.Infof("frontend services initiated")
+
+		logrus.Infof("initializing prices")
+		price.Init()
+		logrus.Infof("prices initialized")
+		if !utils.Config.Frontend.Debug {
+			logrus.Infof("initializing ethclients")
+			ethclients.Init()
+			logrus.Infof("ethclients initialized")
+		}
 
 		if !utils.Config.Frontend.OnlyAPI {
 			if utils.Config.Frontend.SiteDomain == "" {
@@ -267,6 +309,23 @@ func main() {
 			router.HandleFunc("/block/{slotOrHash}/votes", handlers.BlockVoteData).Methods("GET")
 			router.HandleFunc("/blocks", handlers.Blocks).Methods("GET")
 			router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
+			router.HandleFunc("/execution/blocks", handlers.Eth1Blocks).Methods("GET")
+			router.HandleFunc("/execution/blocks/data", handlers.Eth1BlocksData).Methods("GET")
+			router.HandleFunc("/execution/address/{address}", handlers.Eth1Address).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/blocks", handlers.Eth1AddressBlocksMined).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/uncles", handlers.Eth1AddressUnclesMined).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/transactions", handlers.Eth1AddressTransactions).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/internalTxns", handlers.Eth1AddressInternalTransactions).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/erc20", handlers.Eth1AddressErc20Transactions).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/erc721", handlers.Eth1AddressErc721Transactions).Methods("GET")
+			router.HandleFunc("/execution/address/{address}/erc1155", handlers.Eth1AddressErc1155Transactions).Methods("GET")
+			router.HandleFunc("/execution/token/{token}", handlers.Eth1Token).Methods("GET")
+			router.HandleFunc("/execution/token/{token}/transfers", handlers.Eth1TokenTransfers).Methods("GET")
+			router.HandleFunc("/execution/transactions", handlers.Eth1Transactions).Methods("GET")
+			router.HandleFunc("/execution/transactions/data", handlers.Eth1TransactionsData).Methods("GET")
+			router.HandleFunc("/execution/block/{block}", handlers.Eth1Block).Methods("GET")
+			router.HandleFunc("/execution/tx/{hash}", handlers.Eth1TransactionTx).Methods("GET")
+
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 			router.HandleFunc("/charts", handlers.Charts).Methods("GET")
 			router.HandleFunc("/charts/{chart}", handlers.Chart).Methods("GET")
@@ -322,6 +381,8 @@ func main() {
 			router.HandleFunc("/poap/data", handlers.PoapData).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
+
+			router.HandleFunc("/tools/unitConverter", handlers.UnitConverter).Methods("GET")
 
 			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
 

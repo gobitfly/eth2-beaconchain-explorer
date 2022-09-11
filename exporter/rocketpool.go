@@ -97,7 +97,7 @@ var rewardsSubmissionBlockMaps = map[string][]uint64{
 
 func rocketpoolExporter() {
 	var err error
-	rpEth1RPRCClient, err = gethRPC.Dial(utils.Config.Indexer.Eth1Endpoint)
+	rpEth1RPRCClient, err = gethRPC.Dial(utils.Config.Eth1GethEndpoint)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -1780,7 +1780,7 @@ func CalculateLifetimeNodeRewardsAllLegacy(rp *rocketpool.RocketPool, intervalSi
 	// Get the event logs
 	logs, err := eth.GetLogs(rp, addressFilter, topicFilter, intervalSize, nil, maxBlockNumber, nil)
 	if err != nil {
-		return nil, fmt.Errorf("can not load lifetime rewards: $1", err)
+		return nil, fmt.Errorf("can not load lifetime rewards: %v", err)
 	}
 
 	// Iterate over the logs and sum the amount

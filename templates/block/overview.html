@@ -111,24 +111,32 @@
           </div>
         {{ end }}
 
-        {{ if .ExecBlockHash }}
+        {{ with .ExecutionData}}
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Received Eth1 Block headers and Deposit data">Execution Payload:</span></div>
 
             <div class="col-md-10">
+
+              <div class="row p-1">
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Execution Block Hash">Block Hash:</span></div>
+                <div class="col-md-10 text-monospace text-break">
+                  {{ .Hash }}
+                </div>
+              </div>
+              
               <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Parent Execution Block Hash">Parent Hash:</span></div>
                 <div class="col-md-10 text-monospace text-break">
-                  0x{{ printf "%x" .ExecParentHash }}
+                  {{ .ParentHash }}
                 </div>
               </div>
 
               <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Fee recipient">Fee Recipient:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{ formatEth1Address .ExecFeeRecipient }}</div>
+                <div class="col-md-10 text-monospace text-break">{{ .MinerAddress }}</div>
               </div>
 
-              <div class="row p-1">
+              {{/* TODO <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Execution State Root">State Root:</span></div>
                 <div class="col-md-10 text-monospace text-break">
                   0x{{ printf "%x" .ExecStateRoot }}
@@ -152,54 +160,139 @@
                 <div class="col-md-10 text-monospace text-break">
                   0x{{ printf "%x" .ExecRandom }}
                 </div>
-              </div>
+              </div> */}}
 
               <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Number, the height, not the slot">Block Number:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{ .ExecBlockNumber.Int64 }}</div>
+                <div class="col-md-10 text-monospace text-break">{{ .Number }}</div>
               </div>
 
               <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Limit">Gas Limit:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{ .ExecGasLimit.Int64 }}</div>
+                <div class="col-md-10 text-monospace text-break">{{ .GasLimit }}</div>
               </div>
 
               <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Used">Gas Used:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{ .ExecGasUsed.Int64 }}</div>
+                <div class="col-md-10 text-monospace text-break">{{ .GasUsage }}</div>
               </div>
 
               <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Timestamp">Timestamp:</span></div>
-                <div class="col-md-5 text-monospace text-break">{{ .ExecTimestamp.Int64 }}</div>
-                <div class="col-md-5"><span aria-ethereum-date="{{ .ExecTimestamp.Int64 }}">{{ .ExecTime }}</span> (<span aria-ethereum-date="{{ .ExecTimestamp.Int64 }}" aria-ethereum-date-format="FROMNOW"></span>)</div>
+                <div class="col-md-5 text-monospace text-break">{{ .Ts.Unix }}</div>
+                <div class="col-md-5"><span aria-ethereum-date="{{ .Ts.Unix }}">{{ .Ts }}</span> (<span aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW"></span>)</div>
               </div>
 
               <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Extra Data">Block Extra Data</span></div>
                 <div class="col-md-10 text-monospace text-break">
-                  0x{{ printf "%x" .ExecExtraData }}
+                  {{ .Extra }}
                 </div>
               </div>
 
               <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Base fee per gas">Base fee per gas:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{ .ExecBaseFeePerGas.Int64 }}</div>
+                <div class="col-md-10 text-monospace text-break">{{ .BaseFeePerGas }}</div>
               </div>
 
-              <div class="row p-1">
-                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Execution Block Hash">Block Hash:</span></div>
-                <div class="col-md-10 text-monospace text-break">
-                  0x{{ printf "%x" .ExecBlockHash }}
-                </div>
-              </div>
 
               <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transactions">Transactions:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{ .ExecTransactionsCount }}</div>
+                <div class="col-md-10 text-monospace text-break">{{ .TxCount }}</div>
               </div>
             </div>
           </div>
+        {{ else }}
+          {{ if .ExecBlockHash }}
+            <div class="row border-bottom p-3 mx-0">
+              <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Received Eth1 Block headers and Deposit data">Execution Payload:</span></div>
+
+              <div class="col-md-10">
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Parent Execution Block Hash">Parent Hash:</span></div>
+                  <div class="col-md-10 text-monospace text-break">
+                    0x{{ printf "%x" .ExecParentHash }}
+                  </div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Fee recipient">Fee Recipient:</span></div>
+                  <div class="col-md-10 text-monospace text-break">{{ formatEth1Address .ExecFeeRecipient }}</div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Execution State Root">State Root:</span></div>
+                  <div class="col-md-10 text-monospace text-break">
+                    0x{{ printf "%x" .ExecStateRoot }}
+                  </div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Receipts Root">Receipts Root:</span></div>
+                  <div class="col-md-10 text-monospace text-break">
+                    0x{{ printf "%x" .ExecReceiptsRoot }}
+                  </div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Logs Bloom">Logs Bloom:</span></div>
+                  <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" .ExecLogsBloom }}</div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Randomness">Block Randomness:</span></div>
+                  <div class="col-md-10 text-monospace text-break">
+                    0x{{ printf "%x" .ExecRandom }}
+                  </div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Number, the height, not the slot">Block Number:</span></div>
+                  <div class="col-md-10 text-monospace text-break">{{ .ExecBlockNumber.Int64 }}</div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Limit">Gas Limit:</span></div>
+                  <div class="col-md-10 text-monospace text-break">{{ .ExecGasLimit.Int64 }}</div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Used">Gas Used:</span></div>
+                  <div class="col-md-10 text-monospace text-break">{{ .ExecGasUsed.Int64 }}</div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Timestamp">Timestamp:</span></div>
+                  <div class="col-md-5 text-monospace text-break">{{ .ExecTimestamp.Int64 }}</div>
+                  <div class="col-md-5"><span aria-ethereum-date="{{ .ExecTimestamp.Int64 }}">{{ .ExecTime }}</span> (<span aria-ethereum-date="{{ .ExecTimestamp.Int64 }}" aria-ethereum-date-format="FROMNOW"></span>)</div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Extra Data">Block Extra Data</span></div>
+                  <div class="col-md-10 text-monospace text-break">
+                    0x{{ printf "%x" .ExecExtraData }}
+                  </div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Base fee per gas">Base fee per gas:</span></div>
+                  <div class="col-md-10 text-monospace text-break">{{ .ExecBaseFeePerGas.Int64 }}</div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Execution Block Hash">Block Hash:</span></div>
+                  <div class="col-md-10 text-monospace text-break">
+                    0x{{ printf "%x" .ExecBlockHash }}
+                  </div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transactions">Transactions:</span></div>
+                  <div class="col-md-10 text-monospace text-break">{{ .ExecTransactionsCount }}</div>
+                </div>
+              </div>
+            </div>
+          {{ end }}
         {{ end }}
         <div class="row border-bottom p-3 mx-0">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of attestations included in this block by the block proposer">Attestations:</span></div>
