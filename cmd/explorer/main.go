@@ -125,7 +125,7 @@ func main() {
 	}
 
 	// if utils.Config.Frontend.Bigtable.Enabled {
-	bt, err := db.NewBigtable("etherchain", "etherchain", fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) //
+	bt, err := db.InitBigtable("etherchain", "etherchain", fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) //
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}

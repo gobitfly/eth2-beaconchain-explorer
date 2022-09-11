@@ -86,7 +86,7 @@ func main() {
 		logrus.Fatalf("node chain id missmatch, wanted %v got %v", chainId, nodeChainId.String())
 	}
 
-	bt, err := db.NewBigtable("etherchain", "etherchain", chainId)
+	bt, err := db.InitBigtable("etherchain", "etherchain", chainId)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}

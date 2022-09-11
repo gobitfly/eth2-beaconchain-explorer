@@ -30,9 +30,14 @@ const (
 
 type Bigtable struct {
 	client           *gcp_bigtable.Client
-	tableData        *gcp_bigtable.Table
-	tableBlocks      *gcp_bigtable.Table
+
 	tableBeaconchain *gcp_bigtable.Table
+
+	tableData            *gcp_bigtable.Table
+	tableBlocks          *gcp_bigtable.Table
+	tableMetadataUpdates *gcp_bigtable.Table
+	tableMetadata        *gcp_bigtable.Table
+
 	chainId          string
 }
 
@@ -47,8 +52,10 @@ func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
 
 	bt := &Bigtable{
 		client:           btClient,
-		tableData:        btClient.Open("data"),
-		tableBlocks:      btClient.Open("blocks"),
+		tableData:            btClient.Open("data"),
+		tableBlocks:          btClient.Open("blocks"),
+		tableMetadataUpdates: btClient.Open("metadata_updates"),
+		tableMetadata:        btClient.Open("metadata"),
 		tableBeaconchain: btClient.Open("beaconchain"),
 		chainId:          chainId,
 	}

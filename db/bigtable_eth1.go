@@ -22,7 +22,6 @@ import (
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
 	"golang.org/x/sync/errgroup"
-	"google.golang.org/api/option"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -35,7 +34,6 @@ import (
 )
 
 var ErrBlockNotFound = errors.New("block not found")
-var BigtableClient *Bigtable
 
 type IndexFilter string
 
@@ -50,11 +48,9 @@ const (
 	FILTER_ERROR          IndexFilter = "ERROR"
 )
 
-const max_block_number = 1000000000
 const (
 	DATA_COLUMN                    = "d"
 	INDEX_COLUMN                   = "i"
-	DEFAULT_FAMILY                 = "f"
 	DEFAULT_FAMILY_BLOCKS          = "default"
 	METADATA_UPDATES_FAMILY_BLOCKS = "blocks"
 	ACCOUNT_METADATA_FAMILY        = "a"
@@ -96,39 +92,6 @@ var (
 	ERC721TOPIC  []byte
 	ERC1155Topic []byte
 )
-
-type Bigtable struct {
-	client               *gcp_bigtable.Client
-	tableData            *gcp_bigtable.Table
-	tableBlocks          *gcp_bigtable.Table
-	tableMetadataUpdates *gcp_bigtable.Table
-	tableMetadata        *gcp_bigtable.Table
-	chainId              string
-}
-
-func NewBigtable(project, instance, chainId string) (*Bigtable, error) {
-	poolSize := 50
-	btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance, option.WithGRPCConnectionPool(poolSize))
-	// btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance)
-
-	if err != nil {
-		return nil, err
-	}
-
-	bt := &Bigtable{
-		client:               btClient,
-		tableData:            btClient.Open("data"),
-		tableBlocks:          btClient.Open("blocks"),
-		tableMetadataUpdates: btClient.Open("metadata_updates"),
-		tableMetadata:        btClient.Open("metadata"),
-		chainId:              chainId,
-	}
-	return bt, nil
-}
-
-func (bigtable *Bigtable) Close() {
-	bigtable.client.Close()
-}
 
 func (bigtable *Bigtable) GetDataTable() *gcp_bigtable.Table {
 	return bigtable.tableData
