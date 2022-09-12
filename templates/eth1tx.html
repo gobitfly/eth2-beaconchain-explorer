@@ -27,14 +27,14 @@
             <li class="nav-item">
               <a class="nav-link show active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true"><i class="tab-icon mr-md-1 fas fa-user"></i><span class="tab-text" style="margin-left: 6px;">Overview</span></a>
             </li>
-            {{ if .InternalTxns }}
+            {{ if gt (len .InternalTxns) 0 }}
               <li class="nav-item">
                 <a class="nav-link" id="internal-txns-tab" data-toggle="tab" href="#internal-txns" role="tab" aria-controls="internal-txns" aria-selected="false">
                   <i class="tab-icon mr-md-1 fas fa-mobile-alt"></i><span class="tab-text" style="margin-left: 6px;">Internal Transactions <span class="badge badge-dark align-middle text-white">{{ len .InternalTxns }}</span></span></a
                 >
               </li>
             {{ end }}
-            {{ if .Events }}
+            {{ if gt (len .Events) 0 }}
               <li class="nav-item">
                 <a class="nav-link" id="events-tab" data-toggle="tab" href="#events" role="tab" aria-controls="events" aria-selected="false">
                   <i class="tab-icon mr-md-1 fa fa-clipboard-list"></i><span class="tab-text" style="margin-left: 6px;">Events <span class="badge badge-dark align-middle text-white">{{ len .Events }}</span></span>
@@ -95,16 +95,31 @@
                       </div>
                     </div>
                   </div>
+                  {{ if gt (len .InternalTxns) 0 }}
+                    <ul class="fa-ul mb-0 mt-2">
+                      {{ range $i, $row := .InternalTxns }}
+                        <li class="mb-1">
+                          <i class="fa-li fas fa-long-arrow-alt-right"></i>
+                          <span>Transfer</span>
+                          <span>{{ .Amount }}</span>
+                          <span>From</span>
+                          <span>{{ .From }}</span>
+                          <span>To</span>
+                          <span>{{ .To }}</span>
+                        </li>
+                      {{ end }}
+                    </ul>
+                  {{ end }}
                 </div>
               </div>
-              {{ if .Transfers }}
+              {{ if gt (len .Transfers) 0 }}
                 <div class="row border-bottom p-3 mx-0" style="border-bottom-width:4px !important;">
                   <div class="col-md-3">Tokens Transferred:</div>
                   <div class="col-md-9">
                     <ul class="fa-ul mb-0">
                       {{ range $i, $row := .Transfers }}
                         <li class="mb-1">
-                          <i class="fa-li fas fa-exchange-alt"></i>
+                          <i class="fa-li fas fa-caret-right"></i>
                           <span>From</span>
                           <span>{{ .From }}</span>
                           <span>To</span>
@@ -190,8 +205,10 @@
                                 <tr>
                                   <th class="border-0 p-0 pb-1 pr-2 col-md-auto" style="width: 0%;">
                                     <span class="badge badge-dark align-bottom text-white">{{ $key }}</span>
-                                    <span class="badge badge-secondary ml-1 align-bottom text-white">{{ $value.Type }}</span>
                                   </th>
+                                  <td class="border-0 p-0 pr-2 col-md-auto" style="width: 0%;">
+                                    <span class="badge badge-secondary align-bottom text-white">{{ $value.Type }}</span>
+                                  </td>
                                   <td class="border-0 p-0 col-md-auto">
                                     <div class="d-inline-flex">
                                       <div class="flex-shrink-1">
