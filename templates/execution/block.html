@@ -40,17 +40,17 @@
         <div class="d-md-flex py-2 justify-content-md-between">
           <h1 class="h4 mb-1 mb-md-0">
             {{ if gt .PreviousBlock 0 }}
-              <a href="/execution/block/{{ .PreviousBlock }}"><i class="fa fa-chevron-left"></i></a>
+              <a href="/block/{{ .PreviousBlock }}"><i class="fa fa-chevron-left"></i></a>
             {{ end }}
             <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block {{ .Number }}</span>
             {{ if gt .NextBlock 0 }}
-              <a href="/execution/block/{{ .NextBlock }}"><i class="fa fa-chevron-right"></i></a>
+              <a href="/block/{{ .NextBlock }}"><i class="fa fa-chevron-right"></i></a>
             {{ end }}
           </h1>
           <nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
             <ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0" style="padding:0; background-color:transparent;">
               <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-              <li class="breadcrumb-item"><a href="/execution/blocks" title="Blocks">Blocks</a></li>
+              <li class="breadcrumb-item"><a href="/blocks" title="Blocks">Blocks</a></li>
               <li class="breadcrumb-item active" aria-current="page">Block details</li>
             </ol>
           </nav>
@@ -83,11 +83,11 @@
             <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Hash:</div>
-                <div class="col-md-10 text-monospace"><a href="/execution/block/{{ .Number }}">{{ .Hash }}</a></div>
+                <div class="col-md-10 text-monospace"><a href="/block/{{ .Number }}">{{ .Number }}</a></div>
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Miner:</div>
-                <div class="col-md-10 text-monospace"><a href="/execution/address/{{ .MinerAddress }}">{{ if gt (len .MinerName ) 0 }}{{ .MinerName }}{{ else }}{{ .MinerAddress }}{{ end }} </a></div>
+                <div class="col-md-10 text-monospace"><a href="/address/{{ .MinerAddress }}">{{ if gt (len .MinerName ) 0 }}{{ .MinerName }}{{ else }}{{ .MinerAddress }}{{ end }} </a></div>
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Reward:</div>
@@ -119,16 +119,12 @@
                 <div class="col-md-3 text-right">
                   <div id="unixTs" hidden>{{ .Ts.Unix }}</div>
                   <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                    <label class="btn btn-light text-dark active btn-sm" onclick="setTs()">
-                      <input type="radio" name="options" id="optionTs" />
-                      Timestamp
-                    </label>
+                    <label class="btn btn-light text-dark active btn-sm" onclick="setTs()"> <input type="radio" name="options" id="optionTs" /> Timestamp </label>
                     <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setUtc()"> <input type="radio" name="options" id="optionUtc" /> UTC </label>
                     <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setLocal()"> <input type="radio" name="options" id="optionLocal" checked /> Local </label>
                   </div>
                 </div>
               </div>
-
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Difficulty:</div>
                 <div class="col-md-10">{{ formatDifficulty .Difficulty }}</div>
@@ -151,33 +147,33 @@
                   </div>
                 </div>
               </div>
-              <div class="tab-pane fade" id="txs" role="tabpanel" aria-labelledby="txs-tab">
-                {{ template "execution_transactions" . }}
+            </div>
+            <div class="tab-pane fade" id="txs" role="tabpanel" aria-labelledby="txs-tab">
+              {{ template "execution_transactions" . }}
+            </div>
+            <div class="tab-pane fade" id="uncles" role="tabpanel" aria-labelledby="uncles-tab">
+              <div class="row border-bottom p-1 mx-0">
+                <div class="col-md-12 text-center"><b>Showing {{ .UncleCount }} Uncle{{ if gt .UncleCount 1 }}s{{ end }} </b></div>
               </div>
-              <div class="tab-pane fade" id="uncles" role="tabpanel" aria-labelledby="uncles-tab">
-                <div class="row border-bottom p-1 mx-0">
-                  <div class="col-md-12 text-center"><b>Showing {{ .UncleCount }} Uncle{{ if gt .UncleCount 1 }}s{{ end }} </b></div>
-                </div>
-                <div class="table-responsive">
-                  <table class="table table-sm table-bordered text-center">
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered text-center">
+                  <tr>
+                    <th>Number</th>
+                    <th>Level</th>
+                    <th>Miner</th>
+                    <th>Reward</th>
+                    <th>Extra</th>
+                  </tr>
+                  {{ range .Uncles }}
                     <tr>
-                      <th>Number</th>
-                      <th>Level</th>
-                      <th>Miner</th>
-                      <th>Reward</th>
-                      <th>Extra</th>
+                      <td>{{ .Number }}</td>
+                      <td>{{ subUI64 $.Data.Number .Number }}</td>
+                      <td><a href="/address/{{ .MinerAddress }}">{{ if gt (len .MinerName ) 0 }}{{ .MinerName }}{{ else }}{{ .MinerAddress }}{{ end }}</a></td>
+                      <td>{{ formatAmount .Reward "ETH" 5 }}</td>
+                      <td>{{ .Extra }}</td>
                     </tr>
-                    {{ range .Uncles }}
-                      <tr>
-                        <td>{{ .Number }}</td>
-                        <td>{{ subUI64 $.Data.Number .Number }}</td>
-                        <td><a href="/execution/address/{{ .MinerAddress }}">{{ if gt (len .MinerName ) 0 }}{{ .MinerName }}{{ else }}{{ .MinerAddress }}{{ end }}</a></td>
-                        <td>{{ formatAmount .Reward "ETH" 5 }}</td>
-                        <td>{{ .Extra }}</td>
-                      </tr>
-                    {{ end }}
-                  </table>
-                </div>
+                  {{ end }}
+                </table>
               </div>
             </div>
           </div>

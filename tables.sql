@@ -266,6 +266,7 @@ create index idx_blocks_proposer on blocks (proposer);
 create index idx_blocks_epoch on blocks (epoch);
 create index idx_blocks_graffiti_text on blocks using gin (graffiti_text gin_trgm_ops);
 create index idx_blocks_blockrootstatus on blocks (blockroot, status);
+create index idx_blocks_exec_block_number on blocks (exec_block_number);
 
 drop table if exists blocks_transactions;
 create table blocks_transactions

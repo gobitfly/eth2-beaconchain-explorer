@@ -31,17 +31,17 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	_, err := strconv.Atoi(search)
 
 	if err == nil {
-		http.Redirect(w, r, "/block/"+search, http.StatusMovedPermanently)
+		http.Redirect(w, r, "/slot/"+search, http.StatusMovedPermanently)
 		return
 	}
 
 	search = strings.Replace(search, "0x", "", -1)
 	if utils.IsValidEth1Tx(search) {
-		http.Redirect(w, r, "/execution/tx/"+search, http.StatusMovedPermanently)
+		http.Redirect(w, r, "/tx/"+search, http.StatusMovedPermanently)
 	} else if len(search) == 96 {
 		http.Redirect(w, r, "/validator/"+search, http.StatusMovedPermanently)
 	} else if utils.IsValidEth1Address(search) {
-		http.Redirect(w, r, "/execution/address/"+search, http.StatusMovedPermanently)
+		http.Redirect(w, r, "/address/"+search, http.StatusMovedPermanently)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
 		data := InitPageData(w, r, "search", "/search", "")

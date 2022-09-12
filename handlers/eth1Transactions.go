@@ -22,7 +22,7 @@ var eth1TransactionsTemplate = template.Must(template.New("transactions").Funcs(
 func Eth1Transactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "eth1transactions", "/eth1transactions", "eth1transactions")
+	data := InitPageData(w, r, "blockchain", "/eth1transactions", "eth1transactions")
 	data.Data = getTransactionDataStartingWithPageToken("")
 
 	if utils.Config.Frontend.Debug {

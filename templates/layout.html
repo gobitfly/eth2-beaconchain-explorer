@@ -353,17 +353,29 @@
                                 <span class="nav-text">Support Eth2</span>
                             </a>
                         </li> -->
-              <li class="nav-item {{ if eq .Active "epochs" }}active{{ end }}">
-                <a class="nav-link" href="/epochs">
-                  <!-- <span class="nav-icon"><i class="fas fa-history"></i></span> -->
-                  <span class="nav-text">Epochs</span>
+              <li class="nav-item {{ if eq .Active "blockchain" }}active{{ end }} dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <span class="nav-text">Blockchain</span>
                 </a>
-              </li>
-              <li class="nav-item {{ if eq .Active "blocks" }}active{{ end }}">
-                <a class="nav-link" href="/blocks">
-                  <!-- <span class="nav-icon"><i class="fas fa-cubes"></i></span> -->
-                  <span class="nav-text">Blocks</span>
-                </a>
+                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                  <a class="dropdown-item" href="/epochs">
+                    <span class="nav-icon"><i class="fas fa-history"></i></span>
+                    <span class="nav-text">Epochs</span>
+                  </a>
+                  <a class="dropdown-item" href="/slots">
+                    <span class="nav-icon"><i class="fas fa-cube"></i></span>
+                    <span class="nav-text">Slots</span>
+                  </a>
+                  <hr />
+                  <a class="dropdown-item" href="/blocks">
+                    <span class="nav-icon"><i class="fas fa-cubes"></i></span>
+                    <span class="nav-text">Blocks</span>
+                  </a>
+                  <a class="dropdown-item" href="/transactions">
+                    <span class="nav-icon"><i class="fas fa-credit-card"></i></span>
+                    <span class="nav-text">Txs</span>
+                  </a>
+                </div>
               </li>
               <li class="nav-item {{ if eq .Active "validators" }}active{{ end }} dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">

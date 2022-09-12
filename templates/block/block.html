@@ -11,7 +11,7 @@
         serverSide: true,
         ordering: false,
         searching: false,
-        ajax: "/block/" + slotNumber + "/deposits",
+        ajax: "/slot/" + slotNumber + "/deposits",
         pageLength: 10,
         pagingType: "input",
         language: {
@@ -64,7 +64,7 @@
         ordering: false,
         stateSave: true,
         searching: true,
-        ajax: "/block/" + slotNumber + "/votes",
+        ajax: "/slot/" + slotNumber + "/votes",
         pageLength: 10,
         pagingType: "input",
         language: {
@@ -146,27 +146,27 @@
         <h1 class="h4 my-3 mb-md-0">
           {{ with .ExecutionData }}
             {{ if gt .PreviousBlock 0 }}
-              <a href="/execution/block/{{ .PreviousBlock }}"><i class="fa fa-chevron-left"></i></a>
+              <a href="/block/{{ .PreviousBlock }}"><i class="fa fa-chevron-left"></i></a>
             {{ end }}
             <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block {{ .Number }}</span>
             {{ if gt .NextBlock 0 }}
-              <a href="/execution/block/{{ .NextBlock }}"><i class="fa fa-chevron-right"></i></a>
+              <a href="/block/{{ .NextBlock }}"><i class="fa fa-chevron-right"></i></a>
             {{ end }}
           {{ else }}
             {{ if not (eq .Slot 0) }}
-              <a href="/block/{{ .PreviousSlot }}"><i class="fa fa-chevron-left"></i></a>
+              <a href="/slot/{{ .PreviousSlot }}"><i class="fa fa-chevron-left"></i></a>
             {{ end }}
             <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block at Slot <span id="slot">{{ formatAddCommas .Slot }}</span></span>
             {{ if gt .NextSlot 0 }}
-              <a href="/block/{{ .NextSlot }}"><i class="fa fa-chevron-right"></i></a>
+              <a href="/slot/{{ .NextSlot }}"><i class="fa fa-chevron-right"></i></a>
             {{ end }}
           {{ end }}
         </h1>
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
             <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-            <li class="breadcrumb-item"><a href="/blocks" title="Blocks">Blocks</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Block details</li>
+            <li class="breadcrumb-item"><a href="/slots" title="Slots">Slots</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Slot details</li>
           </ol>
         </nav>
       </div>

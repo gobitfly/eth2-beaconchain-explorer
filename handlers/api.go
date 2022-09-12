@@ -827,7 +827,31 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 
 	index := vars["index"]
 
-	rows, err := db.ReaderDb.Query("SELECT * FROM validator_stats WHERE validatorindex = $1 ORDER BY day DESC", index)
+	rows, err := db.ReaderDb.Query(`
+		SELECT 
+		validatorindex,
+		day,
+		start_balance,
+		end_balance,
+		min_balance,
+		max_balance,
+		start_effective_balance,
+		end_effective_balance,
+		min_effective_balance,
+		max_effective_balance,
+		COALESCE(missed_attestations, 0) AS missed_attestations,
+		COALESCE(orphaned_attestations, 0) AS orphaned_attestations,
+		COALESCE(proposed_blocks, 0) AS proposed_blocks,
+		COALESCE(missed_blocks, 0) AS missed_blocks,
+		COALESCE(orphaned_blocks, 0) AS orphaned_blocks,
+		COALESCE(attester_slashings, 0) AS attester_slashings,
+		COALESCE(proposer_slashings, 0) AS proposer_slashings,
+		COALESCE(deposits, 0) AS deposits,
+		COALESCE(deposits_amount, 0) AS deposits_amount,
+		COALESCE(participated_sync, 0) AS participated_sync,
+		COALESCE(missed_sync, 0) AS missed_sync,
+		COALESCE(orphaned_sync, 0) AS orphaned_sync
+	FROM validator_stats WHERE validatorindex = $1 ORDER BY day DESC`, index)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return

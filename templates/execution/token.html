@@ -28,10 +28,28 @@
       border-top: none;
     }
 
-    /* .overview-col:last-child,
-    .overview-col:nth-last-child(2) {
-      border-bottom: none;
-    } */
+    .header-col,
+    .overview-header-col {
+      background-color: var(--bg-color-light);
+      font-style: normal;
+      /* font-family: 'Mukta'; */
+      font-weight: 500;
+      font-size: 1rem;
+      line-height: 23px;
+      backdrop-filter: blur(2px);
+    }
+
+    .tbl-col {
+      padding: 0.5rem;
+      border-top: var(--border-color) 1px solid;
+    }
+
+    .tbl-col-content {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     .overview-label,
     .overview-col,
@@ -50,12 +68,56 @@
         font-weight: 300;
       }
     }
+
+    .header-token {
+      font-size: 1.2rem;
+    }
+
+    .header-token .text-monospace {
+      font-size: 0.81rem;
+    }
+
+    @media screen and (min-width: 600px) {
+      .header-token,
+      .header-token .text-monospace,
+      .fa-copy {
+        font-size: 1.2rem;
+      }
+    }
+
+    [data-theme="dark"] .qrcode-light {
+      display: none;
+    }
+    [data-theme="dark"] .qrcode-dark {
+      display: inline-block !important;
+      visibility: visible !important;
+    }
+
+    [data-theme="light"] .qrcode-dark {
+      display: none;
+    }
+
+    [data-theme="light"] .qrcode-light {
+      display: inline-block !important;
+      visibility: visible !important;
+    }
   </style>
 {{ end }}
 
 {{ define "js" }}
   <script>
 
+    window.addEventListener('resize', function(ev) {
+      if(window.innerWidth >= 820) {
+        $("#overview-tab").tab('show')
+      }
+    })
+
+    window.addEventListener('load', function(ev) {
+      if (window.innerWidth >= 820) {
+        $("#overview-tab").tab('show')
+      }
+    })
     // const tbody = document.querySelector('#transfers-table tbody')
 
     // const infLoading = document.getElementById(loadingIndicatorDivId)
@@ -179,18 +241,35 @@
 {{ end }}
 {{ define "content" }}
   <div class="container mt-2">
-    <div class="d-md-flex py-2 my-4 justify-content-md-between">
-      <h1 class="h4 mb-1 mb-md-0">
-        <span class="d-block my-3 font-weight-bold"><i class="fas fa-coins mr-1"></i> Token</span>
-        <span class="text-monospace">{{ .Data.Token | formatAddressLong }}</span>
-        <a style="width: 1rem; height: 1rem;" target="_blank" href="https://etherscan.io/address/{{ .Data.Token }}"><i class="fas fa-external-link-alt"></i></a>
+    <div class="d-md-flex py-2 my-md-1 justify-content-md-between">
+      <h1 class="h4 mb-1 mb-md-0 header-token text-truncate">
+        <div class="my-md-3 font-weight-bold">
+          <span>
+            <span class="mr-1">
+              {{ if .Data.Metadata.Logo }}
+                <img class="mr-1" style="height: 20px;" src="data:image/png;base64, {{ toBase64 .Data.Metadata.Logo }}" /> {{ .Data.Metadata.Name }}
+              {{ else }}
+                <i class="fas fa-coins mr-1"></i>
+              {{ end }}
+              Token
+              {{ if .Data.Metadata.Symbol }}{{ .Data.Metadata.Symbol }}{{ end }}
+            </span>
+            <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
+            <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ .Data.Token }}"></i>
+          </span>
+        </div>
+        <!-- <span class="text-monospace">
+          {{ .Data.Token | formatAddressLong }}
+        </span> -->
       </h1>
-    </div>
-    <div class="d-md-flex py-2 my-4 justify-content-md-between">
-      <h1 class="h4 mb-1 mb-md-0">
-        <span class="text-monospace">Filter: {{ .Data.Address | formatAddressLong }}</span>
-        <a style="width: 1rem; height: 1rem;" target="_blank" href="https://etherscan.io/address/{{ .Data.Token }}"><i class="fas fa-external-link-alt"></i></a>
-      </h1>
+      <div>
+        {{ if .Data.Address }}
+          <span class="badge badge-primary text-light my-2" style="padding: .5rem 0 .5rem .5rem">
+            <span class="mr-1">Filter:</span>
+            <a class="text-light text-monospace" style="width: 1rem; height: 1rem;" target="_blank" href="/address/{{ .Data.Address }}">0x{{ .Data.Address }} <span class="text-muted text-light" data-toggle="tooltip" title="clear filter"><a class="text-light p-2" href="/token/{{.Data.Token}}">x</a></span></a>
+          </span>
+        {{ end }}
+      </div>
     </div>
     <div class="mb-3 overview-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); grid-auto-flow: row; gap: 1rem;">
       <div class="overview-content d-flex flex-column">
@@ -206,20 +285,23 @@
           <div class="tab-pane fade show active h-100" id="overview" role="tabpanel" aria-labelledby="overview-tab">
             <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card h-100 shadow-none">
               <div class="card-body p-0 overview-card" style="height: 185px;">
-                <div style="display: grid; grid-template-columns: 3fr 4fr; grid-template-rows: auto; height: 100%;">
+                <div style="display: grid; grid-template-columns: 2fr 4fr; grid-template-rows: auto; height: 100%;">
                   <div class="overview-col">
-                    <span>Name</span>
+                    <span>Symbol</span>
                   </div>
                   <div class="overview-col">
                     <span class="">
-                      <img style="height: 20px;" src="data:image/png;base64, {{ toBase64 .Data.Metadata.Logo }}" /> {{ .Data.Metadata.Name }}
+                      {{ if .Data.Metadata.Logo }}
+                        <img class="mr-1" style="height: 20px;" src="data:image/png;base64, {{ toBase64 .Data.Metadata.Logo }}" /> {{ .Data.Metadata.Name }}
+                      {{ end }}
+                      {{ if .Data.Metadata.Symbol }}{{ .Data.Metadata.Symbol }}{{ end }}
                     </span>
                   </div>
                   <div class="overview-col">
                     <span>Supply</span>
                   </div>
                   <div class="overview-col">
-                    <span class="">{{ bytesToNumberString .Data.Metadata.TotalSupply }}</span>
+                    <span style="max-width: 200px;" class="text-truncate d-inline-block">{{ (bigDecimalShift .Data.Metadata.TotalSupply .Data.Metadata.Decimals) | trimTrailingZero | formatStringThousands }}</span>
                   </div>
                   <div class="overview-col">
                     <span>Decimals</span>
@@ -233,7 +315,7 @@
               </div>
             </div>
           </div>
-          <div class="tab-pane fade" id="tokensTab" role="tabpanel" aria-labelledby="tokensTab-tab">
+          <div class="tab-pane fade" id="moreInfo" role="tabpanel" aria-labelledby="moreInfo-tab">
             {{ template "TokenMoreInfoTab" . }}
           </div>
         </div>
@@ -241,10 +323,10 @@
       <div class="overview-tab d-none d-lg-block">
         <ul class="nav nav-tabs border-0 border-bottom-0" role="tablist">
           <li style="margin: 0; border-bottom: none;" class="nav-item" role="presentation">
-            <span class="nav-link border-bottom-radius-0 border-bottom-0 active" data-toggle="tab" role="tab" aria-controls="tokensTab" aria-selected="true">More Info</span>
+            <span class="nav-link border-bottom-radius-0 border-bottom-0 active" data-toggle="tab" role="tab" aria-controls="moreInfo" aria-selected="true">More Info</span>
           </li>
         </ul>
-        <div class="tab-pane fade active show" id="tokensTabLarge" role="tabpanel" aria-labelledby="tokensTab-tab">
+        <div class="tab-pane fade active show" id="moreInfoLarge" role="tabpanel" aria-labelledby="moreInfo-tab">
           {{ template "TokenMoreInfoTab" . }}
         </div>
       </div>
@@ -270,6 +352,9 @@
         </div>
       </div>
     </div>
+    {{ if .Data.QRCode }}
+      {{ template "TokenQRCodeModal" . }}
+    {{ end }}
   </div>
 {{ end }}
 
@@ -282,23 +367,27 @@
 {{ end }}
 
 {{ define "AddressTransfersTableGrid" }}
-  <div id="transfers-table" style="display: grid; grid-template-columns: repeat(6, minmax(auto, 1fr)); max-height: 800px; overflow: auto;">
-    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Hash</span></div>
-    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Age</span></div>
-    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>From</span></div>
-    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span></span></div>
-    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>To</span></div>
-    <div style="z-index: 999; top: 0;" class="h5 mb-0 p-2 bg-light position-sticky"><span>Quantity</span></div>
+  <div id="transfers-table" style="display: grid; grid-template-columns: repeat(3, minmax(auto, 1fr)) max-content repeat(2, minmax(auto, 1fr)); max-height: 800px; overflow: auto;">
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Hash</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Age</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>From</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span></span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>To</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Quantity</span></div>
 
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
         {{ range $j, $col := $row }}
-          <div class="border-top p-2 text-truncate">{{ $col }}</div>
+          <div class="tbl-col">
+            <div class="tblk-col-content">{{ $col }}</div>
+          </div>
         {{ end }}
       {{ end }}
-      <div style="grid-column: 1 / 7;" id="transfers-table-inf-scroll" class="d-flex justify-content-center p-2">
-        <span> </span>
-      </div>
+      {{ if gt (len .Data) 24 }}
+        <div style="grid-column: 1 / 7;" id="transfers-table-inf-scroll" class="d-flex justify-content-center p-2">
+          <span>loading...</span>
+        </div>
+      {{ end }}
     {{ else }}
       <div style="grid-column: 1 / 7;" id="transfers-table-inf-scroll" class="d-flex justify-content-center p-2">
         <div class="d-flex justify-content-center align-items-center flex-column">
@@ -318,8 +407,16 @@
 {{ define "TokenMoreInfoTab" }}
   <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card h-100 shadow-none">
     <div class="card-body p-0 overview-card" style="height: 185px;">
-      <div style="display: grid; grid-template-columns: 3fr 4fr; grid-template-rows: auto; height: 100%;">
+      <div style="display: grid; grid-template-columns: 2fr 4fr; grid-template-rows: auto; height: 100%;">
         <div class="overview-col">
+          <span style="white-space: nowrap;">Contract Address</span>
+        </div>
+        <div class="overview-col text-truncate">
+          <span style="max-width: 100%;" class="text-monospace text-truncate d-inline-block">
+            <a class="text-truncate" href="/address/0x{{.Data.Token}}">{{ .Data.Token | formatAddressLong }}</a>
+          </span>
+        </div>
+        <!-- <div class="overview-col">
           <span>Symbol</span>
         </div>
         <div class="overview-col">
@@ -327,20 +424,33 @@
             {{ .Data.Metadata.Symbol }}
           </span>
         </div>
-        <!-- <div class="overview-col">
-        <span>Ether Value</span>
+        <div class="overview-col">
+          <span>Transfers</span>
+        </div>
+        <div class="overview-col">
+          <span class="text-truncate d-inline-block"> 3 </span>
+        </div> -->
       </div>
-      <div class="overview-col">
-        <span class=""> 3</span>
-      </div>
-      <div class="overview-col">
-        <span>ERC 20 Tokens</span>
-      </div>
-      <div class="overview-col">
-        <span class="">
-          3
-        </span>
-      </div> -->
+    </div>
+  </div>
+{{ end }}
+
+{{ define "QRCode" }}
+  <img class="cursor-pointer qrcode-light" data-toggle="modal" data-target="#qrcode-modal" style="visibility: hidden; margin-bottom: .3rem; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address 0x{{ .Data.Token }}" />
+  <img class="cursor-pointer qrcode-dark" data-toggle="modal" data-target="#qrcode-modal" style=" display: none; margin-bottom: .3rem; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{ .Data.QRCodeInverse }}" alt="QR code for address 0x{{ .Data.Token }}" />
+{{ end }}
+
+{{ define "TokenQRCodeModal" }}
+  <div class="modal fade" id="qrcode-modal" tabindex="-1" role="dialog" aria-labelledby="qrcode-modal-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="width: 95%; max-width: 400px; height: 375px; margin: 1.75rem auto;">
+      <div class="modal-content">
+        <div class="modal-header justify-content-center text-truncate">
+          <span class="text-monospace text-truncate text-center font-weight-bold" style="font-size: 85%; width: 100%;">0x{{ .Data.Token }}</span>
+        </div>
+        <div class="modal-body d-flex justify-content-center">
+          <img style="visibility: hidden;" class="qrcode-light" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address 0x{{ .Data.Token }}" />
+          <img style="display: none" class="qrcode-dark" src="data:image/png;base64,{{ .Data.QRCodeInverse }}" alt="QR code for address 0x{{ .Data.Token }}" />
+        </div>
       </div>
     </div>
   </div>

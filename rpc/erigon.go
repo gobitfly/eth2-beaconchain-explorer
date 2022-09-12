@@ -178,7 +178,45 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 		traces, err := client.TraceParity(block.NumberU64())
 
 		if err != nil {
-			return fmt.Errorf("error tracing block (%v), %v: %v", block.Number(), block.Hash(), err)
+			logger.Errorf("error tracing block via parity style traces (%v), %v: %v", block.Number(), block.Hash(), err)
+
+			gethTraceData, err := client.TraceGeth(block.Hash())
+
+			if err != nil {
+				return fmt.Errorf("error tracing block via geth style traces (%v), %v: %v", block.Number(), block.Hash(), err)
+			}
+
+			logger.Infof("retrieved %v calls via geth", len(gethTraceData))
+
+			for _, trace := range gethTraceData {
+
+				if trace.Error == "" {
+					c.Transactions[trace.TransactionPosition].Status = 1
+				} else {
+					c.Transactions[trace.TransactionPosition].Status = 0
+					c.Transactions[trace.TransactionPosition].ErrorMsg = trace.Error
+				}
+
+				tracePb := &types.Eth1InternalTransaction{
+					Type: strings.ToLower(trace.Type),
+					Path: "0",
+				}
+
+				tracePb.From = trace.From.Bytes()
+				tracePb.To = trace.To.Bytes()
+				tracePb.Value = common.FromHex(trace.Value)
+				if trace.Type == "CREATE" {
+				} else if trace.Type == "SUICIDE" {
+				} else if trace.Type == "CALL" || trace.Type == "DELEGATECALL" || trace.Type == "STATICCALL" {
+				} else {
+					spew.Dump(trace)
+					logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionPosition)
+				}
+
+				logger.Infof("appending trace %v to tx %x from %v to %v value %v", trace.TransactionPosition, c.Transactions[trace.TransactionPosition].Hash, trace.From, trace.To, trace.Value)
+
+				c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
+			}
 		}
 
 		timings.Traces = time.Since(start)
@@ -290,17 +328,18 @@ func (client *ErigonClient) GetLatestEth1BlockNumber() (uint64, error) {
 }
 
 type GethTraceCallResult struct {
-	Time    string
-	GasUsed string
-	From    common.Address
-	To      common.Address
-	Value   string
-	Gas     string
-	Input   string
-	Output  string
-	Error   string
-	Type    string
-	Calls   []*GethTraceCallResult
+	TransactionPosition int
+	Time                string
+	GasUsed             string
+	From                common.Address
+	To                  common.Address
+	Value               string
+	Gas                 string
+	Input               string
+	Output              string
+	Error               string
+	Type                string
+	Calls               []*GethTraceCallResult
 }
 
 type GethTraceCallData struct {
@@ -316,6 +355,21 @@ var gethTracerArg = map[string]string{
 	"tracer": "callTracer",
 }
 
+func extractCalls(r *GethTraceCallResult, d *[]*GethTraceCallResult) {
+	if r == nil {
+		return
+	}
+	*d = append(*d, r)
+
+	if r.Calls == nil {
+		return
+	}
+	for _, c := range r.Calls {
+		c.TransactionPosition = r.TransactionPosition
+		extractCalls(c, d)
+	}
+}
+
 func (client *ErigonClient) TraceGeth(blockHash common.Hash) ([]*GethTraceCallResult, error) {
 	var res []*GethTraceCallResult
 
@@ -324,7 +378,13 @@ func (client *ErigonClient) TraceGeth(blockHash common.Hash) ([]*GethTraceCallRe
 		return nil, err
 	}
 
-	return res, nil
+	data := make([]*GethTraceCallResult, 0, 20)
+	for i, r := range res {
+		r.TransactionPosition = i
+		extractCalls(r, &data)
+	}
+
+	return data, nil
 }
 
 type ParityTraceResult struct {

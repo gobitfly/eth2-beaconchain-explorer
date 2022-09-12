@@ -20,7 +20,7 @@ var eth1BlocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTem
 func Eth1Blocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "eth1blocks", "/eth1blocks", "eth1blocks")
+	data := InitPageData(w, r, "blockchain", "/eth1blocks", "Ethereum Blocks")
 
 	if utils.Config.Frontend.Debug {
 		eth1BlocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/blocks.html"))

@@ -10,11 +10,11 @@
     .dataTables_scrollBody {
       height: 100%;
     }
-    .badge {
+    /* .badge {
       border-radius: 0.8rem;
       padding: 0.4rem;
       font-weight: 500;
-    }
+    } */
 
     .token-icon {
       width: fit-content;
@@ -349,7 +349,7 @@
 {{ end }}
 {{ define "content" }}
   <div class="container mt-2">
-    <div class="d-md-flex py-2 my-md-4 justify-content-md-between">
+    <div class="d-md-flex py-2 my-md-1 justify-content-md-between">
       <h1 class="h4 mb-1 mb-md-0 header-address text-truncate">
         <div class="my-md-3 font-weight-bold">
           <span>
@@ -358,7 +358,7 @@
             <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ .Data.Address }}"></i>
           </span>
         </div>
-        <span class="text-monospace">
+        <span class="text-monospace mb-md-3 d-inline-block">
           {{ .Data.Address | formatAddressLong }}
         </span>
       </h1>
@@ -381,7 +381,7 @@
           <div class="tab-pane fade show active h-100" id="overview" role="tabpanel" aria-labelledby="overview-tab">
             <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card h-100 shadow-none">
               <div class="card-body p-0 overview-card" style="height: 185px;">
-                <div style="display: grid; grid-template-columns: 3fr 4fr; grid-template-rows: auto; height: 100%;">
+                <div style="display: grid; grid-template-columns: 2fr 4fr; grid-template-rows: auto; height: 100%;">
                   <div class="overview-col">
                     <span>Balance</span>
                   </div>
@@ -533,11 +533,11 @@
 {{ end }}
 
 {{ define "AddressTransactionsTableGrid" }}
-  <div id="transactions-table" style="display: grid; grid-template-columns: repeat(8, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="transactions-table" style="display: grid; grid-template-columns: repeat(5, minmax(max-content, 1fr)) max-content repeat(2, minmax(max-content, 1fr)); max-height: 800px; overflow: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Hash</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Method</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Block</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Age</span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Number</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>From</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span></span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>To</span></div>
@@ -573,7 +573,7 @@
 {{ end }}
 
 {{ define "AddressInternalTransactionsGrid" }}
-  <div id="internalTxns-table" style="display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="internalTxns-table" style="display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)) max-content repeat(3, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
@@ -681,7 +681,7 @@
 {{ end }}
 
 {{ define "AddressErc20TransactionsGrid" }}
-  <div id="erc20-table" style="display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="erc20-table" style="display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)) max-content repeat(3, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
@@ -800,10 +800,10 @@
 
 {{ define "AddressQRCodeModal" }}
   <div class="modal fade" id="qrcode-modal" tabindex="-1" role="dialog" aria-labelledby="qrcode-modal-label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="width: 320px; height: 320px; margin: 1.75rem auto;">
+    <div class="modal-dialog modal-dialog-centered" style="width: 95%; max-width: 400px; height: 375px; margin: 1.75rem auto;">
       <div class="modal-content">
         <div class="modal-header justify-content-center text-truncate">
-          <span class="text-monospace text-truncate" style="font-size: 80%; max-width: 300px;">0x{{ .Data.Address }}</span>
+          <span class="text-monospace text-truncate text-center font-weight-bold" style="font-size: 85%; width: 100%;">0x{{ .Data.Address }}</span>
         </div>
         <div class="modal-body d-flex justify-content-center">
           <img style="visibility: hidden;" class="qrcode-light" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address 0x{{ .Data.Address }}" />
