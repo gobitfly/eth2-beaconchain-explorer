@@ -27,7 +27,7 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 
 	address := common.FromHex(strings.TrimPrefix(r.URL.Query().Get("a"), "0x"))
 
-	data := InitPageData(w, r, "token", "/token", "token")
+	data := InitPageData(w, r, "blockchain", "/token", "token")
 
 	// priceEth := GetCurrentPrice(r)
 	// symbol := GetCurrencySymbol(r)

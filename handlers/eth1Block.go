@@ -22,7 +22,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 
-	data := InitPageData(w, r, "block", "/block", "Execution Block")
+	data := InitPageData(w, r, "blockchain", "/block", "Execution Block")
 	data.HeaderAd = true
 
 	// parse block number from url

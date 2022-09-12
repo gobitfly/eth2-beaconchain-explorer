@@ -24,7 +24,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	txHashString := strings.Replace(vars["hash"], "0x", "", -1)
 
-	data := InitPageData(w, r, "txs", "/tx", "Transaction")
+	data := InitPageData(w, r, "blockchain", "/tx", "Transaction")
 	data.HeaderAd = true
 
 	txHash, err := hex.DecodeString(strings.ReplaceAll(txHashString, "0x", ""))

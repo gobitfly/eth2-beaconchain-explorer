@@ -21,7 +21,7 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	q := r.URL.Query()
 
-	data := InitPageData(w, r, "slots", "/slots", "Slots")
+	data := InitPageData(w, r, "blockchain", "/slots", "Slots")
 
 	user, session, err := getUserSession(r)
 	if err != nil {

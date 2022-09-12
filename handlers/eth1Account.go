@@ -28,7 +28,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	symbol := GetCurrencySymbol(r)
 
 	addressBytes := common.FromHex(address)
-	data := InitPageData(w, r, "address", "/address", "Address")
+	data := InitPageData(w, r, "blockchain", "/address", "Address")
 
 	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address))
 	if err != nil {

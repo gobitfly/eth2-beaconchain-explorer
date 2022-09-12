@@ -441,12 +441,19 @@ func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.
 // GetBlocksDescending gets blocks starting at block start
 func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth1BlockIndexed, error) {
 	startPadded := reversedPaddedBlockNumber(start)
+
+	if limit > start { // avoid overflow
+		limit = start
+	}
+	endPadded := reversedPaddedBlockNumber(start - limit)
+
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
-	prefix := fmt.Sprintf("%s:B:%s", bigtable.chainId, startPadded)
+	startKey := fmt.Sprintf("%s:B:%s", bigtable.chainId, startPadded)
+	endKey := fmt.Sprintf("%s:B:%s", bigtable.chainId, endPadded)
 
-	rowRange := gcp_bigtable.InfiniteRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
+	rowRange := gcp_bigtable.NewRange(startKey, endKey) //gcp_bigtable.PrefixRange("1:1000000000")
 	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("d"))
 
 	blocks := make([]*types.Eth1BlockIndexed, 0, 100)
@@ -481,17 +488,6 @@ func reversePaddedIndex(i int, maxValue int) string {
 	length := fmt.Sprintf("%d", len(fmt.Sprintf("%d", maxValue))-1)
 	fmtStr := "%0" + length + "d"
 	return fmt.Sprintf(fmtStr, maxValue-i)
-}
-
-func blockFromPaddedBlockNumber(paddedBlockNumber string) uint64 {
-	num := strings.Split(paddedBlockNumber, ":")
-	paddedNumber, err := strconv.ParseUint(num[1], 10, 64)
-	if err != nil {
-		logger.WithError(err).Error("error parsing padded block")
-		return 0
-	}
-
-	return uint64(max_block_number) - paddedNumber
 }
 
 func TimestampToBigtableTimeDesc(ts time.Time) string {
@@ -3041,7 +3037,7 @@ func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*type
 func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []byte, pageToken string) (*types.DataTableResponse, error) {
 	if pageToken == "" {
 		if len(address) == 0 {
-			pageToken = fmt.Sprintf("%s:I:ERC20:%x:%s", bigtable.chainId, token, FILTER_TIME)
+			pageToken = fmt.Sprintf("%s:I:ERC20:%x:ALL:%s", bigtable.chainId, token, FILTER_TIME)
 		} else {
 			pageToken = fmt.Sprintf("%s:I:ERC20:%x:%x:%s", bigtable.chainId, token, address, FILTER_TIME)
 		}

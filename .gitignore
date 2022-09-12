@@ -25,3 +25,4 @@ webassembly
 static/monaco-editor
 tokenlists/
 lastAttestationCache
+cmd/forkwatch
