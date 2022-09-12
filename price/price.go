@@ -27,18 +27,42 @@ type EthPrice struct {
 var ethPrice = new(EthPrice)
 var ethPriceMux = &sync.RWMutex{}
 
-func Init() {
-	go updateEthPrice()
+func Init(chainId uint64) {
+	go updateEthPrice(chainId)
 }
 
-func updateEthPrice() {
-	for true {
-		fetchPrice()
+func updateEthPrice(chainId uint64) {
+	for {
+		fetchPrice(chainId)
 		time.Sleep(time.Minute)
 	}
 }
 
-func fetchPrice() {
+func fetchPrice(chainId uint64) {
+	if chainId != 1 {
+		ethPrice = &EthPrice{
+			Ethereum: struct {
+				Cad float64 "json:\"cad\""
+				Cny float64 "json:\"cny\""
+				Eur float64 "json:\"eur\""
+				Jpy float64 "json:\"jpy\""
+				Rub float64 "json:\"rub\""
+				Usd float64 "json:\"usd\""
+				Gbp float64 "json:\"gbp\""
+				Aud float64 "json:\"aud\""
+			}{
+				Cad: 0,
+				Cny: 0,
+				Eur: 0,
+				Jpy: 0,
+				Rub: 0,
+				Usd: 0,
+				Gbp: 0,
+				Aud: 0,
+			},
+		}
+		return
+	}
 	client := &http.Client{Timeout: time.Second * 10}
 	resp, err := client.Get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd%2Ceur%2Crub%2Ccny%2Ccad%2Cjpy%2Cgbp%2Caud")
 
