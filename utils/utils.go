@@ -189,6 +189,9 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatEth1TxStatus":    FormatEth1TxStatus,
 		"formatTimestampUInt64": FormatTimestampUInt64,
 		"formatEth1AddressFull": FormatEth1AddressFull,
+		"byteToString": func(num []byte) string {
+			return string(num)
+		},
 	}
 }
 
@@ -786,8 +789,12 @@ func FormatThousandsEnglish(number string) string {
 	amt := cnt / 3
 	rem := cnt % 3
 
+	if rem == 0 {
+		amt -= 1
+	}
+
 	res := make([]rune, 0, amt+rem)
-	if amt == 0 {
+	if amt <= 0 {
 		return number
 	}
 	for i := 0; i < len(runes); i++ {
@@ -796,7 +803,7 @@ func FormatThousandsEnglish(number string) string {
 			amt -= 1
 		}
 
-		if amt > 1 && i > rem && ((i-rem)%3) == 0 {
+		if amt > 0 && i > rem && ((i-rem)%3) == 0 {
 			res = append(res, ',')
 			amt -= 1
 		}

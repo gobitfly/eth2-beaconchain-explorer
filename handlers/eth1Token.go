@@ -3,15 +3,18 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net/http"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
+	"github.com/shopspring/decimal"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -25,6 +28,9 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 	address := common.FromHex(strings.TrimPrefix(r.URL.Query().Get("a"), "0x"))
 
 	data := InitPageData(w, r, "token", "/token", "token")
+
+	// priceEth := GetCurrentPrice(r)
+	// symbol := GetCurrencySymbol(r)
 
 	g := new(errgroup.Group)
 	g.SetLimit(3)
@@ -65,6 +71,35 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Error("error generating qr code for address %v", token)
 	}
 
+	if len(metadata.Price) == 0 {
+		metadata.Price = []byte("32.523423")
+	}
+
+	marketCap := float64(0)
+	ethExchangeRate := float64(0)
+	if len(metadata.Price) > 0 && len(metadata.TotalSupply) > 0 {
+		mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.Decimals), 0))
+		num := decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.TotalSupply), 0)
+
+		priceS := string(metadata.Price)
+		tokenPrice := decimal.New(0, 0)
+		if priceS != "" {
+			var err error
+			tokenPrice, err = decimal.NewFromString(priceS)
+			if err != nil {
+				logger.WithError(err).Errorf("error getting price from string - FormatTokenBalance price: %v", priceS)
+			}
+		}
+
+		marketCap, _ = tokenPrice.Mul(num.Div(mul)).Float64()
+
+		ethUsdRate := decimal.NewFromFloat(price.GetEthPrice("USD"))
+		logger.Infof("usd rate %s", ethUsdRate)
+		if !ethUsdRate.IsZero() {
+			ethExchangeRate, _ = tokenPrice.Div(ethUsdRate).Float64()
+		}
+	}
+
 	data.Data = types.Eth1TokenPageData{
 		Token:          fmt.Sprintf("%x", token),
 		Address:        fmt.Sprintf("%x", address),
@@ -73,6 +108,14 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		Balance:        balance,
 		QRCode:         pngStr,
 		QRCodeInverse:  pngStrInverse,
+		MarketCap:      template.HTML("$" + utils.FormatThousandsEnglish(fmt.Sprintf("%.2f", marketCap))),
+		SocialProfiles: template.HTML(`
+		<a class="text-muted" data-placement="top" data-toggle="tooltip" data-original-title="Twitter - Beaconchain explorer" rel="nofollow" target="_blank" href="https://twitter.com/beaconcha_in"><span class="fab fa-twitter"></span></a>
+		`),
+		Holders:          template.HTML(`<span>500</span>`),
+		Transfers:        template.HTML(`<span>10,000</span>`),
+		DilutedMarketCap: template.HTML("$" + utils.FormatThousandsEnglish(fmt.Sprintf("%.2f", marketCap))),
+		Price:            template.HTML(fmt.Sprintf("<span>$%s</span><span>@ %.6f</span>", string(metadata.Price), ethExchangeRate)),
 	}
 
 	if utils.Config.Frontend.Debug {

@@ -21,6 +21,7 @@
     .overview-col {
       border-top: 1px solid var(--border-color);
       padding: 1rem;
+      /* height: 63px; */
     }
 
     .overview-col:nth-child(1),
@@ -244,10 +245,10 @@
     <div class="d-md-flex py-2 my-md-1 justify-content-md-between">
       <h1 class="h4 mb-1 mb-md-0 header-token text-truncate">
         <div class="my-md-3 font-weight-bold">
-          <span>
-            <span class="mr-1">
+          <span class="d-flex">
+            <span class="mr-1 d-flex align-items-center">
               {{ if .Data.Metadata.Logo }}
-                <img class="mr-1" style="height: 20px;" src="data:image/png;base64, {{ toBase64 .Data.Metadata.Logo }}" /> {{ .Data.Metadata.Name }}
+                <img class="mr-1" style="height: 1.5rem;" src="data:image/png;base64, {{ toBase64 .Data.Metadata.Logo }}" />
               {{ else }}
                 <i class="fas fa-coins mr-1"></i>
               {{ end }}
@@ -255,7 +256,7 @@
               {{ if .Data.Metadata.Symbol }}{{ .Data.Metadata.Symbol }}{{ end }}
             </span>
             <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
-            <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ .Data.Token }}"></i>
+            <span class="d-flex align-items-center"><i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ .Data.Token }}"></i></span>
           </span>
         </div>
         <!-- <span class="text-monospace">
@@ -284,33 +285,34 @@
         <div class="tab-content flex-grow-1" id="overview-tab-content">
           <div class="tab-pane fade show active h-100" id="overview" role="tabpanel" aria-labelledby="overview-tab">
             <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card h-100 shadow-none">
-              <div class="card-body p-0 overview-card" style="height: 185px;">
+              <div class="card-body p-0 overview-card">
                 <div style="display: grid; grid-template-columns: 2fr 4fr; grid-template-rows: auto; height: 100%;">
                   <div class="overview-col">
                     <span>Symbol</span>
                   </div>
                   <div class="overview-col">
-                    <span class="">
+                    <span class="d-flex align-items-center">
                       {{ if .Data.Metadata.Logo }}
-                        <img class="mr-1" style="height: 20px;" src="data:image/png;base64, {{ toBase64 .Data.Metadata.Logo }}" /> {{ .Data.Metadata.Name }}
+                        <img class="mr-1" style="height: 1rem;" src="data:image/png;base64, {{ toBase64 .Data.Metadata.Logo }}" /> {{ if .Data.Metadata.Symbol }}{{ .Data.Metadata.Symbol }}{{ end }} 
                       {{ end }}
-                      {{ if .Data.Metadata.Symbol }}{{ .Data.Metadata.Symbol }}{{ end }}
                     </span>
                   </div>
+                  {{ if .Data.Metadata.Price}}
                   <div class="overview-col">
-                    <span>Supply</span>
+                    <span>Price</span>
                   </div>
                   <div class="overview-col">
-                    <span style="max-width: 200px;" class="text-truncate d-inline-block">{{ (bigDecimalShift .Data.Metadata.TotalSupply .Data.Metadata.Decimals) | trimTrailingZero | formatStringThousands }}</span>
+                    <span style="max-width: 200px;" class="text-truncate d-inline-block">${{ .Data.Metadata.Price | byteToString }}</span>
                   </div>
                   <div class="overview-col">
-                    <span>Decimals</span>
+                    <span>Market Cap</span>
                   </div>
                   <div class="overview-col">
                     <span class="">
-                      {{ bytesToNumberString .Data.Metadata.Decimals }}
+                      {{ .Data.MarketCap }}
                     </span>
                   </div>
+                  {{ end }}
                 </div>
               </div>
             </div>
@@ -406,7 +408,7 @@
 
 {{ define "TokenMoreInfoTab" }}
   <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card h-100 shadow-none">
-    <div class="card-body p-0 overview-card" style="height: 185px;">
+    <div class="card-body p-0 overview-card">
       <div style="display: grid; grid-template-columns: 2fr 4fr; grid-template-rows: auto; height: 100%;">
         <div class="overview-col">
           <span style="white-space: nowrap;">Contract Address</span>
@@ -416,28 +418,48 @@
             <a class="text-truncate" href="/address/0x{{.Data.Token}}">{{ .Data.Token | formatAddressLong }}</a>
           </span>
         </div>
-        <!-- <div class="overview-col">
-          <span>Symbol</span>
+        <div class="overview-col">
+          <span>Supply</span>
+        </div>
+        <div class="overview-col">
+          <span data-toggle="tooltip" title="{{ (bigDecimalShift .Data.Metadata.TotalSupply .Data.Metadata.Decimals) | trimTrailingZero | formatStringThousands }}" style="max-width: 200px;" class="text-truncate d-inline-block">{{ (bigDecimalShift .Data.Metadata.TotalSupply .Data.Metadata.Decimals) | trimTrailingZero | formatStringThousands }}</span>
+        </div>
+        <div class="overview-col">
+          <span>Decimals</span>
         </div>
         <div class="overview-col">
           <span class="">
-            {{ .Data.Metadata.Symbol }}
+            {{ bytesToNumberString .Data.Metadata.Decimals }}
           </span>
         </div>
-        <div class="overview-col">
-          <span>Transfers</span>
-        </div>
-        <div class="overview-col">
-          <span class="text-truncate d-inline-block"> 3 </span>
-        </div> -->
+        {{ if .Data.Metadata.OfficialSite}}
+          <div class="overview-col">
+            <span>Site</span>
+          </div>
+          <div class="overview-col">
+            <span class="">
+              {{ .Data.Metadata.OfficialSite }}
+            </span>
+          </div>
+        {{ end }}
+        {{ if .Data.SocialProfiles}}
+          <div class="overview-col">
+            <span>Social Media</span>
+          </div>
+          <div class="overview-col">
+            <span class="">
+              {{ .Data.SocialProfiles }}
+            </span>
+          </div>
+        {{ end }}
       </div>
     </div>
   </div>
 {{ end }}
 
 {{ define "QRCode" }}
-  <img class="cursor-pointer qrcode-light" data-toggle="modal" data-target="#qrcode-modal" style="visibility: hidden; margin-bottom: .3rem; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address 0x{{ .Data.Token }}" />
-  <img class="cursor-pointer qrcode-dark" data-toggle="modal" data-target="#qrcode-modal" style=" display: none; margin-bottom: .3rem; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{ .Data.QRCodeInverse }}" alt="QR code for address 0x{{ .Data.Token }}" />
+  <img class="cursor-pointer qrcode-light" data-toggle="modal" data-target="#qrcode-modal" style="visibility: hidden; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address 0x{{ .Data.Token }}" />
+  <img class="cursor-pointer qrcode-dark" data-toggle="modal" data-target="#qrcode-modal" style=" display: none; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{ .Data.QRCodeInverse }}" alt="QR code for address 0x{{ .Data.Token }}" />
 {{ end }}
 
 {{ define "TokenQRCodeModal" }}
