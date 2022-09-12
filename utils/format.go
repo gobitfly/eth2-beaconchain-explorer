@@ -1048,9 +1048,9 @@ func FormatBytesAmount(amount []byte, unit string) template.HTML {
 // FormatBalance will return a string for a balance
 func FormatEth1TxStatus(status uint64) template.HTML {
 	if status == 1 {
-		return "Success"
+		return template.HTML("<h5 class=\"m-0\"><span class=\"badge badge-success badge-pill align-middle text-white\"><i class=\"fas fa-check-circle\"></i> Success</span></h5>")
 	} else {
-		return "Fail"
+		return template.HTML("<h5 class=\"m-0\"><span class=\"badge badge-danger badge-pill align-middle text-white\"><i class=\"fas fa-times-circle\"></i> Failed</span></h5>")
 	}
 }
 
