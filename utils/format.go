@@ -1004,7 +1004,7 @@ func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
 	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
 	f, _ := num.Div(mul).Float64()
-	return template.HTML(p.Sprintf("%v", strconv.FormatFloat(f, 'f', -1, 64)))
+	return template.HTML(p.Sprintf("%s", FormatThousandsEnglish(strconv.FormatFloat(f, 'f', -1, 64))))
 }
 
 func FormatTokenName(balance *types.Eth1AddressBalance) template.HTML {

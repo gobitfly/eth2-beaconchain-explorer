@@ -13,6 +13,7 @@ import (
 	"eth2-exporter/types"
 	"fmt"
 	"html/template"
+	"image/color"
 	"io/ioutil"
 	"log"
 	"math"
@@ -37,6 +38,7 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
+	"github.com/skip2/go-qrcode"
 )
 
 // Config is the globally accessible configuration
@@ -142,9 +144,10 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%d", i)
 		},
-		"derefString":      DerefString,
-		"trLang":           TrLang,
-		"firstCharToUpper": func(s string) string { return strings.Title(s) },
+		"formatStringThousands": FormatThousandsEnglish,
+		"derefString":           DerefString,
+		"trLang":                TrLang,
+		"firstCharToUpper":      func(s string) string { return strings.Title(s) },
 		"eqsp": func(a, b *string) bool {
 			if a != nil && b != nil {
 				return *a == *b
@@ -161,7 +164,25 @@ func GetTemplateFuncs() template.FuncMap {
 		"bytesToNumberString": func(input []byte) string {
 			return new(big.Int).SetBytes(input).String()
 		},
-
+		"bigQuo": func(num []byte, denom []byte) string {
+			numFloat := new(big.Float).SetInt(new(big.Int).SetBytes(num))
+			denomFloat := new(big.Float).SetInt(new(big.Int).SetBytes(denom))
+			res := new(big.Float).Quo(numFloat, denomFloat)
+			return res.Text('f', int(res.MinPrec()))
+		},
+		"bigDecimalShift": func(num []byte, shift []byte) string {
+			numFloat := new(big.Float).SetInt(new(big.Int).SetBytes(num))
+			denom := new(big.Int).Exp(big.NewInt(10), new(big.Int).SetBytes(shift), nil)
+			// shift := new(big.Float).SetInt(new(big.Int).SetBytes(shift))
+			res := new(big.Float).Quo(numFloat, new(big.Float).SetInt(denom))
+			return res.Text('f', int(res.MinPrec()))
+		},
+		"trimTrailingZero": func(num string) string {
+			if strings.Contains(num, ".") {
+				return strings.TrimRight(num, "0")
+			}
+			return num
+		},
 		// ETH1 related formatting
 		"formatBalanceWei":      FormatBalanceWei,
 		"formatBytesAmount":     FormatBytesAmount,
@@ -769,13 +790,14 @@ func FormatThousandsEnglish(number string) string {
 	if amt == 0 {
 		return number
 	}
+	logger.Infof("amt %v rem %v cnt %v", amt, rem, cnt)
 	for i := 0; i < len(runes); i++ {
 		if i != 0 && i == rem {
 			res = append(res, ',')
 			amt -= 1
 		}
 
-		if amt > 1 && i > rem && ((i-rem)%3) == 0 {
+		if amt > 0 && i > rem && ((i-rem)%3) == 0 {
 			res = append(res, ',')
 			amt -= 1
 		}
@@ -784,4 +806,31 @@ func FormatThousandsEnglish(number string) string {
 	}
 
 	return string(res)
+}
+
+// Generates a QR code for an address
+// returns two transparent base64 encoded img strings for dark and light theme
+// the first has a black QR code the second a white QR code
+func GenerateQRCodeForAddress(address []byte) (string, string, error) {
+	q, err := qrcode.New(fmt.Sprintf("0x%x", address), qrcode.Medium)
+	if err != nil {
+		return "", "", err
+	}
+
+	q.BackgroundColor = color.Transparent
+	q.ForegroundColor = color.Black
+
+	png, err := q.PNG(320)
+	if err != nil {
+		return "", "", err
+	}
+
+	q.ForegroundColor = color.White
+
+	pngInverse, err := q.PNG(320)
+	if err != nil {
+		return "", "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(png), base64.StdEncoding.EncodeToString(pngInverse), nil
 }

@@ -1458,6 +1458,8 @@ type ContractMetadata struct {
 type Eth1TokenPageData struct {
 	Token            string `json:"token"`
 	Address          string `json:"address"`
+	QRCode           string `json:"qr_code_base64"`
+	QRCodeInverse    string
 	Metadata         *ERC20Metadata
 	Balance          *Eth1AddressBalance
 	Holders          template.HTML `json:"holders"`

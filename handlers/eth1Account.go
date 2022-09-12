@@ -1,21 +1,17 @@
 package handlers
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"fmt"
 	"html/template"
-	"image/color"
 	"math/big"
 	"net/http"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
-	"github.com/skip2/go-qrcode"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -116,28 +112,10 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q, err := qrcode.New(fmt.Sprintf("0x%s", address), qrcode.Medium)
+	pngStr, pngStrInverse, err := utils.GenerateQRCodeForAddress(addressBytes)
 	if err != nil {
-		logger.Errorf("error executing template for %v route: %v; error generating QR code for address", r.URL.String(), err)
+		logger.WithError(err).Error("error generating qr code for address %v", address)
 	}
-
-	q.BackgroundColor = color.Transparent
-	q.ForegroundColor = color.Black
-
-	png, err := q.PNG(320)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v; error generating QR code for address", r.URL.String(), err)
-	}
-
-	q.ForegroundColor = color.White
-
-	pngInverse, err := q.PNG(320)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v; error generating QR code for address", r.URL.String(), err)
-	}
-
-	pngStr := base64.StdEncoding.EncodeToString(png)
-	pngStrInverse := base64.StdEncoding.EncodeToString(pngInverse)
 
 	ef := new(big.Float).SetInt(new(big.Int).SetBytes(metadata.EthBalance.Balance))
 	etherBalance := new(big.Float).Quo(ef, big.NewFloat(1e18))

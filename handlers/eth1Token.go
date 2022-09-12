@@ -60,19 +60,26 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pngStr, pngStrInverse, err := utils.GenerateQRCodeForAddress(token)
+	if err != nil {
+		logger.WithError(err).Error("error generating qr code for address %v", token)
+	}
+
 	data.Data = types.Eth1TokenPageData{
 		Token:          fmt.Sprintf("%x", token),
 		Address:        fmt.Sprintf("%x", address),
 		TransfersTable: txns,
 		Metadata:       metadata,
 		Balance:        balance,
+		QRCode:         pngStr,
+		QRCodeInverse:  pngStrInverse,
 	}
 
 	if utils.Config.Frontend.Debug {
 		eth1TokenTemplate = template.Must(template.New("address").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/token.html"))
 	}
 
-	err := eth1TokenTemplate.ExecuteTemplate(w, "layout", data)
+	err = eth1TokenTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
