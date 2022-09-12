@@ -111,6 +111,8 @@ func main() {
 	// }
 	// return
 	if *enableFullBalanceUpdater {
+		ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
+
 		currentKey := *balanceUpdaterPrefix // "1:00028ebf7d36c5779c1deddf3ba72761fd46c8aa"
 		for {
 			keys, pairs, err := bt.GetMetadata(currentKey, *balanceUpdaterBatchSize)
@@ -142,7 +144,6 @@ func main() {
 			currentKey = keys[len(keys)-1]
 		}
 
-		//ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
 		return
 	}
 
