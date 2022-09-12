@@ -27,11 +27,11 @@
           <tbody v-if="page && page.blocks && page.blocks.length">
             <tr v-for="block in page.blocks">
               <td><a v-bind:href="'/epoch/' + block.epoch">${ addCommas(block.epoch) }</a></td>
-              <td><a v-bind:href="'/block/' + block.slot">${ addCommas(block.slot) }</a></td>
+              <td><a v-bind:href="'/slot/' + block.slot">${ addCommas(block.slot) }</a></td>
               <td v-if="block.exec_block_number === 0">
                 <span style="background: #e7e1d7" class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">-</span>
               </td>
-              <td v-else>${ block.exec_block_number }</td>
+              <td v-else><a v-bind:href="'/block/' + block.exec_block_number">${ block.exec_block_number }</a></td>
               <td v-if="block.slot === 0">
                 <span style="background: #e7e1d7" class="badge text-dark">Genesis</span>
               </td>
