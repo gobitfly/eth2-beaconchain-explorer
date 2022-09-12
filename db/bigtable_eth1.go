@@ -2186,6 +2186,13 @@ func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]
 
 func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string, pageToken string) (*types.DataTableResponse, error) {
 
+	if bytes.Equal(address, ZERO_ADDRESS) { //return nothing for the zero address
+		return &types.DataTableResponse{
+			Data:        [][]interface{}{},
+			PagingToken: pageToken,
+		}, nil
+	}
+
 	if pageToken == "" {
 		pageToken = fmt.Sprintf("%s:I:ERC20:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
