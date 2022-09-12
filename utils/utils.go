@@ -796,7 +796,7 @@ func FormatThousandsEnglish(number string) string {
 			amt -= 1
 		}
 
-		if amt > 0 && i > rem && ((i-rem)%3) == 0 {
+		if amt > 1 && i > rem && ((i-rem)%3) == 0 {
 			res = append(res, ',')
 			amt -= 1
 		}
