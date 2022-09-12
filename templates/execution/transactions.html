@@ -312,14 +312,14 @@
         <div style="height: 800px;" class="tab-content" id="address-tab-content">
           <div class="tab-pane fade show active" id="transactions" role="tabpanel" aria-labelledby="transaction-tab">
             <div id="transactions-table" style="display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)) max-content repeat(3, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
-              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Tx Hash</span></div>
-              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Method</span></div>
-              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Block</span></div>
-              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Time</span></div>
-              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>From</span></div>
-              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>To</span></div>
-              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Value</span></div>
-              <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Tx Fee</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Tx Hash</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Method</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Block</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Time</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>From</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>To</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Value</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Tx Fee</span></div>
               {{ if len .Data.Data }}
                 {{ range $i, $row := .Data.Data }}
                   {{ range $j, $col := $row }}
