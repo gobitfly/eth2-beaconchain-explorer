@@ -266,7 +266,7 @@
         {{ if .Data.Address }}
           <span class="badge badge-primary text-light my-2" style="padding: .5rem 0 .5rem .5rem">
             <span class="mr-1">Filter:</span>
-            <a class="text-light text-monospace" style="width: 1rem; height: 1rem;" target="_blank" href="https://etherscan.io/address/{{ .Data.Address }}">0x{{ .Data.Address }} <span class="text-muted text-light" data-toggle="tooltip" title="clear filter"><a class="text-light p-2" href="/token/{{.Data.Token}}">x</a></span></a>
+            <a class="text-light text-monospace" style="width: 1rem; height: 1rem;" target="_blank" href="/address/{{ .Data.Address }}">0x{{ .Data.Address }} <span class="text-muted text-light" data-toggle="tooltip" title="clear filter"><a class="text-light p-2" href="/token/{{.Data.Token}}">x</a></span></a>
           </span>
         {{ end }}
       </div>

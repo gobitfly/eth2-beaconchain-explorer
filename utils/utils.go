@@ -790,7 +790,6 @@ func FormatThousandsEnglish(number string) string {
 	if amt == 0 {
 		return number
 	}
-	logger.Infof("amt %v rem %v cnt %v", amt, rem, cnt)
 	for i := 0; i < len(runes); i++ {
 		if i != 0 && i == rem {
 			res = append(res, ',')
