@@ -25,13 +25,13 @@
         <div class="card-header">
           <ul class="nav nav-tabs card-header-tabs border-bottom-0" role="tablist">
             <li class="nav-item">
-              <a class="nav-link show active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true"><i class="tab-icon mr-md-1 fas fa-user"></i><span class="tab-text" style="margin-left: 6px;">Overview</span></a>
+              <a class="nav-link show active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true"><i class="fas fa-info-circle"></i><span class="tab-text" style="margin-left: 6px;">Overview</span></a>
             </li>
             {{ if gt (len .InternalTxns) 0 }}
               <li class="nav-item">
                 <a class="nav-link" id="internal-txns-tab" data-toggle="tab" href="#internal-txns" role="tab" aria-controls="internal-txns" aria-selected="false">
-                  <i class="tab-icon mr-md-1 fas fa-mobile-alt"></i><span class="tab-text" style="margin-left: 6px;">Internal Transactions <span class="badge badge-dark align-middle text-white">{{ len .InternalTxns }}</span></span></a
-                >
+                  <i class="fas fa-sitemap"></i><span class="tab-text" style="margin-left: 6px;">Internal Transactions <span class="badge badge-dark align-middle text-white">{{ len .InternalTxns }}</span></span>
+                </a>
               </li>
             {{ end }}
             {{ if gt (len .Events) 0 }}

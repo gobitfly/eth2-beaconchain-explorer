@@ -1482,7 +1482,7 @@ type Transfer struct {
 type Eth1TxData struct {
 	From               common.Address
 	To                 *common.Address
-	InternalTxns       *[]Transfer
+	InternalTxns       []Transfer
 	FromName           string
 	ToName             string
 	Hash               common.Hash

@@ -1949,7 +1949,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte) (*[]types.Transfer, error) {
+func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte) ([]types.Transfer, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
@@ -2034,7 +2034,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte)
 			Amount: utils.FormatBytesAmount(t.Value, "Ether"),
 		}
 	}
-	return &data, nil
+	return data, nil
 }
 
 // currently only erc20
@@ -2616,7 +2616,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 		}, nil
 	}
 
-	cacheKey := "ERC20:" + string(address)
+	cacheKey := fmt.Sprintf("%s:ERC20:%s", bigtable.chainId, string(address))
 	if cached, err := EkoCache.Get(context.Background(), cacheKey, new(types.ERC20Metadata)); err == nil {
 		return cached.(*types.ERC20Metadata), nil
 	}
@@ -2739,7 +2739,7 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	defer cancel()
 
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
-	cacheKey := "NAME:" + rowKey
+	cacheKey := bigtable.chainId + ":NAME:" + rowKey
 
 	if wanted, err := EkoCacheString.Get(context.Background(), cacheKey); err == nil {
 		// logrus.Infof("retrieved name for address %x from cache", address)
@@ -2775,7 +2775,7 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 	defer cancel()
 
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
-	cacheKey := "CONTRACT:" + rowKey
+	cacheKey := bigtable.chainId + ":CONTRACT:" + rowKey
 	if cached, err := EkoCache.Get(context.Background(), cacheKey, new(types.ContractMetadata)); err == nil {
 		ret := cached.(*types.ContractMetadata)
 		val, err := abi.JSON(bytes.NewReader(ret.ABIJson))
