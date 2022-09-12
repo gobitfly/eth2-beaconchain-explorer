@@ -131,11 +131,13 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 								Raw:   fmt.Sprintf("0x%x", val),
 								Value: fmt.Sprintf("%s", val),
 							}
-							switch b := typeMap[lName]; b {
-							case "address":
+							b := typeMap[lName]
+							if b == "address" {
 								a.Address = val.(common.Address)
-							case "bytes":
+							}
+							if strings.HasPrefix(b, "byte") {
 								a.Value = a.Raw
+
 							}
 							eth1Event.DecodedData[lName] = a
 						}
