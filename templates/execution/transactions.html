@@ -1,7 +1,8 @@
 {{ define "js" }}
   <script>
     function drawCallback() {
-      $('[data-toggle="tooltip"]').tooltip()
+      formatTimestamps()
+      $('[data-toggle="tooltip"]').tooltip()      
     }
 
     {{ if .PagingToken }}
