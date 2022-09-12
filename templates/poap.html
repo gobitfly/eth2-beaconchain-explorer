@@ -95,7 +95,7 @@
                     $(td).css('justify-content', 'space-between')
                 },
                 render: function(data, type, row) {
-                    return `<a style="display: inline-block; max-width: 130px;" class="text-truncate" href="https://etherchain.org/account/${data}">${data}</a><i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i>`
+                    return `<a style="display: inline-block; max-width: 130px;" class="text-truncate" href="/address/${data}">${data}</a><i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i>`
                 }
             },
             {

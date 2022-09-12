@@ -732,7 +732,7 @@ func FormatValidatorWithName(validator interface{}, name string) template.HTML {
 func FormatEth1AddressWithName(address []byte, name string) template.HTML {
 	eth1Addr := common.BytesToAddress(address)
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s</a>", eth1Addr, name))
+		return template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\" class=\"text-monospace\">%s</a>", eth1Addr, name))
 	} else {
 		return FormatEth1Address(address)
 	}
