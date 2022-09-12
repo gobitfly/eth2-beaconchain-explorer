@@ -358,7 +358,7 @@
             <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ .Data.Address }}"></i>
           </span>
         </div>
-        <span class="text-monospace">
+        <span class="text-monospace mb-md-3 d-inline-block">
           {{ .Data.Address | formatAddressLong }}
         </span>
       </h1>
@@ -533,11 +533,11 @@
 {{ end }}
 
 {{ define "AddressTransactionsTableGrid" }}
-  <div id="transactions-table" style="display: grid; grid-template-columns: repeat(5, minmax(min-content, 1fr)) max-content repeat(2, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="transactions-table" style="display: grid; grid-template-columns: repeat(5, minmax(max-content, 1fr)) max-content repeat(2, minmax(max-content, 1fr)); max-height: 800px; overflow: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Hash</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Method</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Block</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Age</span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Number</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>From</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span></span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>To</span></div>

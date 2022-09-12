@@ -1671,8 +1671,8 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.Hash),
 			utils.FormatMethod(method),
-			utils.FormatTimeFromNow(t.Time.AsTime()),
 			utils.FormatBlockNumber(t.BlockNumber),
+			utils.FormatTimeFromNow(t.Time.AsTime()),
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
