@@ -64,7 +64,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := InitPageData(w, r, "blocks", "/blocks", "")
+	data := InitPageData(w, r, "blockchain", "/blocks", "")
 
 	if blockSlot == -1 {
 		err = db.ReaderDb.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)

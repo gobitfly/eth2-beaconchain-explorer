@@ -3041,7 +3041,7 @@ func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*type
 func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []byte, pageToken string) (*types.DataTableResponse, error) {
 	if pageToken == "" {
 		if len(address) == 0 {
-			pageToken = fmt.Sprintf("%s:I:ERC20:%x:%s", bigtable.chainId, token, FILTER_TIME)
+			pageToken = fmt.Sprintf("%s:I:ERC20:%x:ALL:%s", bigtable.chainId, token, FILTER_TIME)
 		} else {
 			pageToken = fmt.Sprintf("%s:I:ERC20:%x:%x:%s", bigtable.chainId, token, address, FILTER_TIME)
 		}
