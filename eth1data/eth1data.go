@@ -77,6 +77,13 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	txPageData.From = msg.From()
 
 	txPageData.Transfers, err = db.BigtableClient.GetArbitraryTokenTransfersForTransaction(tx.Hash().Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("error loading token transfers from tx %v: %v", hash, err)
+	}
+	txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("error loading internal transfers from tx %v: %v", hash, err)
+	}
 	if len(receipt.Logs) > 0 {
 		for _, log := range receipt.Logs {
 			meta, err := db.BigtableClient.GetContractMetadata(log.Address.Bytes())
