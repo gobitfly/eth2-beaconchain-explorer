@@ -56,16 +56,12 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 		end as status,
 		b.epoch,
 		COALESCE(e.globalparticipationrate, 0) as globalparticipationrate,
-		case when nl.finalizedepoch >= b.epoch then true else false end as finalized,
-		case when nl.justifiedepoch >= b.epoch then true else false end as justified,
-		case when nl.previousjustifiedepoch >= b.epoch then true else false end as previousjustified
+		e.finalized
 	FROM blocks b
 		left join epochs e on e.epoch = b.epoch
-		left join network_liveness nl on headepoch = (select max(headepoch) from network_liveness)
-	WHERE
-	  b.epoch >= $1 and b.epoch <= $2
-	ORDER BY slot desc
-`, lookBack, services.LatestEpoch())
+	WHERE b.epoch >= $1
+	ORDER BY slot desc;
+`, services.LatestEpoch()-4)
 	if err != nil {
 		logger.Errorf("error querying blocks table for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

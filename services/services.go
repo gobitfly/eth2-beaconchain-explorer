@@ -78,7 +78,6 @@ func InitNotifications() {
 
 func epochUpdater() {
 	firstRun := true
-
 	for {
 		var latestFinalized uint64
 		err := db.WriterDb.Get(&latestFinalized, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")

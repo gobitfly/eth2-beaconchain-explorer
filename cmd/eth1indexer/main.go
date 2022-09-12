@@ -484,21 +484,34 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 			return
 		}
 
-		balances, err := client.GetBalances(pairs, 2, 4)
-
-		if err != nil {
-			logrus.Fatalf("error retrieving balances from node: %v", err)
-		}
+		logrus.Info(len(pairs))
 
 		// for _, b := range balances {
 		// 	logrus.Infof("retrieved balance %x for token %x of address %x", b.Balance, b.Token, b.Address)
 		// }
 
+		balances := make([]*types.Eth1AddressBalance, 0, len(pairs))
+		for b := 0; b < len(pairs); b += batchSize {
+			start := b
+			end := b + batchSize
+			if len(pairs) < end {
+				end = len(pairs)
+			}
+
+			logrus.Infof("processing batch %v with start %v and end %v", b, start, end)
+
+			b, err := client.GetBalances(pairs[start:end], 2, 4)
+
+			if err != nil {
+				logrus.Fatalf("error retrieving balances from node: %v", err)
+			}
+			balances = append(balances, b...)
+		}
+
 		err = bt.SaveBalances(balances, keys)
 		if err != nil {
 			logrus.Fatalf("error saving balances to bigtable: %v", err)
 		}
-
 		// for i, b := range balances {
 
 		// 	if len(b) > 0 {
