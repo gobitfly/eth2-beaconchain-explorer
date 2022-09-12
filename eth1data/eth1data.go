@@ -39,7 +39,6 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		Hash:      tx.Hash(),
 		CallData:  fmt.Sprintf("0x%x", tx.Data()),
 		Value:     tx.Value().Bytes(),
-		GasPrice:  tx.GasPrice().Bytes(),
 		IsPending: pending,
 		Events:    make([]*types.Eth1EventData, 0, 10),
 	}
@@ -50,7 +49,6 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	}
 
 	txPageData.Receipt = receipt
-	txPageData.TxFee = new(big.Int).Mul(tx.GasPrice(), new(big.Int).SetUint64(receipt.GasUsed)).Bytes()
 
 	txPageData.To = tx.To()
 
@@ -76,6 +74,34 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		return nil, fmt.Errorf("error converting tx %v to message: %v", hash, err)
 	}
 	txPageData.From = msg.From()
+	txPageData.Nonce = msg.Nonce()
+	txPageData.Type = receipt.Type
+	txPageData.TypeFormatted = utils.FormatTransactionType(receipt.Type)
+	txPageData.TxnPosition = receipt.TransactionIndex
+
+	txPageData.Gas.MaxPriorityFee = msg.GasTipCap().Bytes()
+	txPageData.Gas.MaxFee = msg.GasFeeCap().Bytes()
+	if header.BaseFee != nil {
+		txPageData.Gas.BlockBaseFee = header.BaseFee.Bytes()
+	}
+	txPageData.Gas.Used = receipt.GasUsed
+	txPageData.Gas.Limit = msg.Gas()
+	txPageData.Gas.UsedPerc = float64(receipt.GasUsed) / float64(msg.Gas())
+	if receipt.Type >= 2 {
+		tmp := new(big.Int)
+		tmp.Add(tmp, header.BaseFee)
+		if t := *new(big.Int).Sub(msg.GasFeeCap(), tmp); t.Cmp(msg.GasTipCap()) == -1 {
+			tmp.Add(tmp, &t)
+		} else {
+			tmp.Add(tmp, msg.GasTipCap())
+		}
+		txPageData.Gas.EffectiveFee = tmp.Bytes()
+		txPageData.Gas.TxFee = tmp.Mul(tmp, big.NewInt(int64(receipt.GasUsed))).Bytes()
+	} else {
+		txPageData.Gas.EffectiveFee = msg.GasFeeCap().Bytes()
+		txPageData.Gas.TxFee = msg.GasFeeCap().Mul(msg.GasFeeCap(), big.NewInt(int64(receipt.GasUsed))).Bytes()
+	}
+	// followin only works for type 0 transactions
 
 	txPageData.Transfers, err = db.BigtableClient.GetArbitraryTokenTransfersForTransaction(tx.Hash().Bytes())
 	if err != nil {
@@ -84,6 +110,14 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("error loading internal transfers from tx %v: %v", hash, err)
+	}
+	txPageData.FromName, err = db.BigtableClient.GetAddressName(msg.From().Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("error retrieveing from name for tx %v: %v", hash, err)
+	}
+	txPageData.ToName, err = db.BigtableClient.GetAddressName(msg.To().Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("error retrieveing to name for tx %v: %v", hash, err)
 	}
 
 	if len(receipt.Logs) > 0 {
@@ -101,7 +135,6 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 
 				txPageData.Events = append(txPageData.Events, eth1Event)
 			} else {
-				txPageData.ToName = meta.Name
 				boundContract := bind.NewBoundContract(*txPageData.To, *meta.ABI, nil, nil, nil)
 
 				for name, event := range meta.ABI.Events {
@@ -137,7 +170,6 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 							}
 							if strings.HasPrefix(b, "byte") {
 								a.Value = a.Raw
-
 							}
 							eth1Event.DecodedData[lName] = a
 						}
@@ -148,12 +180,6 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 			}
 		}
 
-		//
-
-		// for _, log := range receipt.Logs {
-		// 	var unpackedLog interface{}
-		// 	boundContract.UnpackLog(unpackedLog, )
-		// }
 	}
 
 	err = db.EkoCache.Set(context.Background(), cacheKey, txPageData)

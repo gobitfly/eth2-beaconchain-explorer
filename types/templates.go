@@ -1482,14 +1482,27 @@ type Transfer struct {
 	Token  template.HTML
 }
 type Eth1TxData struct {
-	From               common.Address
-	To                 *common.Address
-	InternalTxns       []Transfer
-	FromName           string
-	ToName             string
+	From         common.Address
+	To           *common.Address
+	InternalTxns []Transfer
+	FromName     string
+	ToName       string
+	Gas          struct {
+		BlockBaseFee   []byte
+		MaxFee         []byte
+		MaxPriorityFee []byte
+		Used           uint64
+		UsedPerc       float64
+		Limit          uint64
+		TxFee          []byte
+		EffectiveFee   []byte
+	}
+	TypeFormatted      string
+	Type               uint8
+	Nonce              uint64
+	TxnPosition        uint
 	Hash               common.Hash
 	Value              []byte
-	GasPrice           []byte
 	Receipt            *geth_types.Receipt
 	BlockNumber        int64
 	Timestamp          uint64
@@ -1497,7 +1510,6 @@ type Eth1TxData struct {
 	TargetIsContract   bool
 	IsContractCreation bool
 	CallData           string
-	TxFee              []byte
 	Events             []*Eth1EventData
 	Transfers          *[]Transfer
 }

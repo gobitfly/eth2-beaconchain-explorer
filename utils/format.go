@@ -249,6 +249,19 @@ func FormatBlockStatusShort(status uint64) template.HTML {
 	}
 }
 
+func FormatTransactionType(txnType uint8) string {
+	switch txnType {
+	case 0:
+		return "0 (legacy)"
+	case 1:
+		return "1 (Access-list)"
+	case 2:
+		return "2 (EIP-1559)"
+	default:
+		return fmt.Sprintf("%v (???)", txnType)
+	}
+}
+
 // FormatCurrentBalance will return the current balance formated as string with 9 digits after the comma (1 gwei = 1e9 eth)
 func FormatCurrentBalance(balanceInt uint64, currency string) template.HTML {
 	if currency == "ETH" {

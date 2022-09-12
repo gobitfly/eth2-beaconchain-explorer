@@ -86,7 +86,7 @@
                       <div class="col-md-auto">
                         <div class="d-flex flex-wrap">
                           {{ if .TargetIsContract }}
-                            <div class="mr-2 flex-shrink-1"><span class="badge badge-dark align-middle text-white">Contract</span></div>
+                            <div class="mr-2 flex-shrink-1"><span class="badge badge-secondary align-middle text-white">Contract</span></div>
                           {{ end }}
                           {{ if ne .ToName "" }}
                             <div class="flex-shrink-1"><span class="badge badge-dark align-middle text-white">Name: {{ .ToName }}</span></div>
@@ -114,7 +114,7 @@
               </div>
               {{ if gt (len .Transfers) 0 }}
                 <div class="row border-bottom p-3 mx-0" style="border-bottom-width:4px !important;">
-                  <div class="col-md-3">Tokens Transferred:</div>
+                  <div class="col-md-3">Tokens Transferred: <span class="badge badge-dark align-text-middle text-white">{{ len .Transfers }}</span></div>
                   <div class="col-md-9">
                     <ul class="fa-ul mb-0">
                       {{ range $i, $row := .Transfers }}
@@ -139,25 +139,66 @@
               </div>
               <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
                 <div class="col-md-3">Transaction Fee:</div>
-                <div class="col-md-9">{{ formatBytesAmount .TxFee "Ether" }}</div>
+                <div class="col-md-9">{{ formatBytesAmount .Gas.TxFee "Ether" }}</div>
               </div>
               <div class="row border-bottom p-3 mx-0">
-                <div class="col-md-3">Gas Price:</div>
-                <div class="col-md-9">{{ formatBytesAmount .GasPrice "GWei" }}</div>
-              </div>
-              <div class="row p-3 mx-0" style="border-width:4px !important;">
-                <a class="btn btn-link" data-toggle="collapse" href="#collapseExample" role="button" aria-expanded="false" aria-controls="collapseExample"> Advanced Info </a>
+                <div class="col-md-3">Effective Gas Price:</div>
+                <div class="col-md-9">{{ formatBytesAmount .Gas.EffectiveFee "GWei" }}</div>
               </div>
               <div class="collapse" id="collapseExample">
-                <div class="row border-top p-3 mx-0">
+                <div class="row border-bottom p-3 mx-0">
+                  <div class="col-md-3">Execution Stats:</div>
+                  <div class="col-md-9">
+                    <span class="text-secondary">Used</span>
+                    <span class="text-black">{{ .Gas.Used }}</span>
+                    <span class="text-secondary">out of</span>
+                    <span class="text-black">{{ .Gas.Limit }}</span>
+                    <span class="text-secondary">Gas</span>
+                    <span class="text-black">({{ formatPercentage .Gas.UsedPerc }}%)</div>
+                </div>
+                {{ if (gt .Type 1) }}
+                  <div class="row border-bottom p-3 mx-0" style="border-bottom-width:4px !important;">
+                    <div class="col-md-3">Gas Fees:</div>
+                    <div class="col-md-9">
+                      <span class="text-secondary">Base Block Fee:</span>
+                      <span class="text-black">{{ formatBytesAmount .Gas.BlockBaseFee "GWei" }}</span>
+                      <span class="px-2">|</span>
+                      <span class="text-secondary">Max Overall Fee:</span>
+                      <span class="text-black">{{ formatBytesAmount .Gas.MaxFee "GWei" }}</span>
+                      <span class="px-2">|</span>
+                      <span class="text-secondary">Max Priority Fee:</span>
+                      <span class="text-black">{{ formatBytesAmount .Gas.MaxPriorityFee "GWei" }}</span>
+                    </div>
+                  </div>
+                {{ end }}
+                <div class="row border-bottom p-3 mx-0">
+                  <div class="col-md-3">Attributes:</div>
+                  <div class="col-md-9">
+                    <div class="d-flex flex-wrap">
+                      <div class="mr-2 flex-shrink-1">
+                        <span class="badge badge-dark align-middle text-light p-1 px-2">Txn Type: <span class="text-white">{{ .TypeFormatted }}</span></span>
+                      </div>
+                      <div class="mr-2 flex-shrink-1">
+                        <span class="badge badge-dark align-middle text-light p-1 px-2">Nonce: <span class="text-white">{{ .Nonce }}</span></span>
+                      </div>
+                      <div class="mr-2 flex-shrink-1">
+                        <span class="badge badge-dark align-middle text-light p-1 px-2">Block Position: <span class="text-white">{{ .TxnPosition }}</span></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row border-bottom p-3 mx-0">
                   <div class="col-md-3">Call Data:</div>
                   <div class="col-md-9">
                     <textarea readonly class="form-control bg-light text-monospace ">{{ .CallData }}</textarea>
                     <div class="mt-2">
-                      <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .Hash }}">Copy Raw Data <i class="fa fa-copy"></i></button>
+                      <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .CallData }}">Copy Raw Data <i class="fa fa-copy"></i></button>
                     </div>
                   </div>
                 </div>
+              </div>
+              <div class="row p-3 mx-0" style="border-width:4px !important;">
+                <a class="btn btn-link" data-toggle="collapse" href="#collapseExample" role="button" aria-expanded="false" aria-controls="collapseExample">Advanced Info</a>
               </div>
             </div>
             {{ if .Events }}
