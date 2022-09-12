@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -12,6 +13,11 @@ import (
 var lastAttestationCacheDb *leveldb.DB
 
 func InitLastAttestationCache(path string) error {
+
+	if path == "" {
+		logger.Infof("no last attestation cache path provided, using temporary directory %v", os.TempDir()+"/lastAttestationCache")
+		path = os.TempDir() + "/lastAttestationCache"
+	}
 	db, err := leveldb.OpenFile(path, nil)
 
 	if err != nil {

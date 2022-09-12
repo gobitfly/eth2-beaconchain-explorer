@@ -1,0 +1,147 @@
+{{ define "css" }}
+  <style>
+    .tx__to-calls {
+      list-style-type: none;
+      padding-left: 20px;
+    }
+
+    .tx__to-calls > li::before {
+      content: "↳"; /*' ⏎ ';*/
+      /* display: inline; */
+      /* transform: rotate3d(0,1,0,180deg); */
+      /* position: absolute; */
+      /* left: 3rem; */
+    }
+  </style>
+{{ end }}
+
+{{ define "content" }}
+  <div class="container mt-2">
+    <div class="my-3">
+      <div class="d-md-flex py-2 justify-content-md-between align-items-center">
+        <h1 class="h4 mb-1 mb-md-0 text-truncate">
+          <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Transaction 0x{{ .Hash }}</span>
+        </h1>
+        <nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
+          {{ template "BuyCrypto" }}
+          {{ template "GamingCrypto" }}
+          {{ template "ExchangeCrypto" }}
+          <ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0">
+            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+            <li class="breadcrumb-item"><a href="/txs" title="Blocks">Transactions</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Tx details</li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+    <div class="card block-card">
+      <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2">Hash:</div>
+          <div class="col-md-10 text-monospace">0x{{ .Hash }}</div>
+        </div>
+        {{ if gt .BlockNumber 0 }}
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2">Block:</div>
+            <div class="col-md-10"><a href="/block/{{ .BlockNumber }}">{{ .BlockNumber }}</a></div>
+          </div>
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2">Time:</div>
+            <div class="col-md-10">{{ formatTime .Time }} ({{ formatTimeFromNow .Time }})</div>
+          </div>
+        {{ end }}
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2">Status:</div>
+          <div class="col-md-10">
+            {{ if .Failed }}
+              <span class="badge badge-danger">Error: {{ .ErrorMsg }}</span>
+            {{ else if eq .BlockNumber 0 }}
+              <span class="badge badge-warning">Pending…</span>
+            {{ else }}
+              <span class="badge badge-success">Success</span>
+            {{ end }}
+          </div>
+        </div>
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2">From:</div>
+          <div class="col-md-10 text-monospace"><a href="/account/0x{{ .FromAddress }}">{{ .From }}</a></div>
+        </div>
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2">To:</div>
+          <div class="col-md-10 text-monospace">
+            <div class="tx__to-recipient">
+              <a href="/account/0x{{ .ToAddress }}">{{ .To }}</a>
+            </div>
+            {{ if len .Calls }}
+              <div style="max-height: 150px; overflow-y: scroll; font-size: 85%; line-height: 23px;" class="tx__to-calls-container">
+                <ul class="tx__to-calls">
+                  {{ range $i, $call := .Calls }}
+                    <li><small class="text-muted text-uppercase pl-1">Transfer</small> {{ formatAmount $call.Value "ETH" 5 }} <small class="text-muted">From</small> <a href="/account/0x{{ $call.FromAddress }}">{{ $call.From }}</a> <small class="text-muted">To</small> → {{ $call.To }}</li>
+                  {{ end }}
+                </ul>
+              </div>
+            {{ end }}
+          </div>
+        </div>
+        {{ if gt (len .DefiEvents) 0 }}
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2">Events:</div>
+            <div class="col-md-10 align-middle">
+              {{ range .DefiEvents }}
+                <div>
+                  {{ . }}
+                </div>
+              {{ end }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt (len .ERC20Transfers) 0 }}
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2">ERC20 Transfers:</div>
+            <div class="col-md-10 align-middle">
+              {{ range .ERC20Transfers }}
+                <div>
+                  <b><span class="fas fa-credit-card mr-1"></span></b>
+                  From <span class="text-monospace">{{ .From }}</span> to <span class="text-monospace">{{ .To }}</span> for <b>{{ formatNumber .Value }} (<span data-toggle="tooltip" data-placement="top" title="Price: ${{ .Token.Price.Usd }}">${{ formatUSD (mul .Value .Token.Price.Usd) }}</span>) {{ formatTokenIcon .Token.Icon 14 }}<a href="/token/0x{{ .Address }}">{{ .Token.Symbol }}</a></b>
+                </div>
+              {{ end }}
+            </div>
+          </div>
+        {{ end }}
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2">Value:</div>
+          <div class="col-md-10">{{ formatAmount .Value "ETH" 5 }}</div>
+        </div>
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2">Fee:</div>
+          <div class="col-md-10">{{ .Fee }}</div>
+        </div>
+        {{ if gtf .EffectiveGasPrice 0 }}
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2">Effective Gas Price:</div>
+            <div class="col-md-10">{{ formatAmount .EffectiveGasPrice "GWei" 1 }}</div>
+          </div>
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2">Max Fee Per Gas:</div>
+            <div class="col-md-10">{{ formatAmount .MaxFeePerGas "GWei" 1 }}</div>
+          </div>
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2">Max Priority Fee Per Gas:</div>
+            <div class="col-md-10">{{ formatAmount .MaxPriorityFeePerGas "GWei" 1 }}</div>
+          </div>
+        {{ else }}
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2">Gas Price:</div>
+            <div class="col-md-10">{{ formatAmount .GasPrice "GWei" 1 }}</div>
+          </div>
+        {{ end }}
+        {{ if gt .BlockNumber 0 }}
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2">Gas used:</div>
+            <div class="col-md-10">{{ .GasUsage }}</div>
+          </div>
+        {{ end }}
+      </div>
+    </div>
+  </div>
+{{ end }}

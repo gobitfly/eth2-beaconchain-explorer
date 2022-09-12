@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	redis "github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 	"github.com/patrickmn/go-cache"
 
@@ -23,6 +24,11 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+
+	cache2 "github.com/eko/gocache/v3/cache"
+	"github.com/eko/gocache/v3/marshaler"
+	store2 "github.com/eko/gocache/v3/store"
+	gocache "github.com/patrickmn/go-cache"
 )
 
 var DBPGX *pgxpool.Conn
@@ -30,11 +36,33 @@ var DBPGX *pgxpool.Conn
 // DB is a pointer to the explorer-database
 var WriterDb *sqlx.DB
 var ReaderDb *sqlx.DB
+var EkoCache *marshaler.Marshaler
+var EkoCacheString *cache2.ChainCache[any]
 
 var logger = logrus.StandardLogger().WithField("module", "db")
 
 var epochsCache = cache.New(time.Hour, time.Minute)
 var saveValidatorsMux = &sync.Mutex{}
+
+func MustInitRedisCache(address string) {
+	gocacheClient := gocache.New(time.Hour, time.Minute)
+	gocacheStore := store2.NewGoCache(gocacheClient)
+
+	caches := []cache2.SetterCacheInterface[any]{cache2.New[any](gocacheStore)}
+	if !utils.Config.Frontend.Debug {
+		redisStore := store2.NewRedis(redis.NewClient(&redis.Options{
+			Addr: address,
+		}))
+		caches = append(caches, cache2.New[any](redisStore))
+	}
+
+	cacheManager := cache2.NewChain(
+		caches...,
+	)
+	marshal := marshaler.New(cacheManager)
+	EkoCache = marshal
+	EkoCacheString = cacheManager
+}
 
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {
 	dbConnWriter, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", writer.Username, writer.Password, writer.Host, writer.Port, writer.Name))
@@ -1486,11 +1514,28 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 			blockLog := logger.WithFields(logrus.Fields{"slot": b.Slot, "blockRoot": fmt.Sprintf("%x", b.BlockRoot)})
 
 			var dbBlockRootHash []byte
-			err := WriterDb.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
+			err := WriterDb.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and (blockroot = $2 OR blockroot <> '\x00')", b.Slot, b.BlockRoot)
 			if err == nil && bytes.Equal(dbBlockRootHash, b.BlockRoot) {
 				blockLog.Infof("skipping export of block as it is already present in the db")
 				continue
+			} else if err != nil && err != sql.ErrNoRows {
+				return fmt.Errorf("error checking for block in db: %w", err)
 			}
+
+			if bytes.Equal(b.BlockRoot, []byte{0x0}) { // do not insert placeholder block if a block has already been written at that slot
+				var blocksCount int
+				err := WriterDb.Get(&dbBlockRootHash, "SELECT COALESCE(COUNT(*), 0) FROM blocks WHERE slot = $1 and length(blockroot) > 1", b.Slot)
+
+				if err != nil {
+					return fmt.Errorf("error checking for existing block in db: %w", err)
+				}
+
+				if blocksCount > 0 {
+					blockLog.Infof("skipping export of block as it is a placeholder block and a proposed block is already present in the db")
+					continue
+				}
+			}
+
 			blockLog.WithField("duration", time.Since(start)).Tracef("check if exists")
 			t := time.Now()
 

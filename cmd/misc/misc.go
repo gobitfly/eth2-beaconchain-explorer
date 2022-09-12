@@ -34,11 +34,36 @@ func main() {
 	}
 	utils.Config = cfg
 
-	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
-	defer db.DB.Close()
-
-	db.MustInitFrontendDB(cfg.Frontend.Database.Username, cfg.Frontend.Database.Password, cfg.Frontend.Database.Host, cfg.Frontend.Database.Port, cfg.Frontend.Database.Name, cfg.Frontend.SessionSecret)
-	defer db.FrontendDB.Close()
+	db.MustInitDB(&types.DatabaseConfig{
+		Username: cfg.WriterDatabase.Username,
+		Password: cfg.WriterDatabase.Password,
+		Name:     cfg.WriterDatabase.Name,
+		Host:     cfg.WriterDatabase.Host,
+		Port:     cfg.WriterDatabase.Port,
+	}, &types.DatabaseConfig{
+		Username: cfg.ReaderDatabase.Username,
+		Password: cfg.ReaderDatabase.Password,
+		Name:     cfg.ReaderDatabase.Name,
+		Host:     cfg.ReaderDatabase.Host,
+		Port:     cfg.ReaderDatabase.Port,
+	})
+	defer db.ReaderDb.Close()
+	defer db.WriterDb.Close()
+	db.MustInitFrontendDB(&types.DatabaseConfig{
+		Username: cfg.Frontend.WriterDatabase.Username,
+		Password: cfg.Frontend.WriterDatabase.Password,
+		Name:     cfg.Frontend.WriterDatabase.Name,
+		Host:     cfg.Frontend.WriterDatabase.Host,
+		Port:     cfg.Frontend.WriterDatabase.Port,
+	}, &types.DatabaseConfig{
+		Username: cfg.Frontend.ReaderDatabase.Username,
+		Password: cfg.Frontend.ReaderDatabase.Password,
+		Name:     cfg.Frontend.ReaderDatabase.Name,
+		Host:     cfg.Frontend.ReaderDatabase.Host,
+		Port:     cfg.Frontend.ReaderDatabase.Port,
+	}, cfg.Frontend.SessionSecret)
+	defer db.FrontendReaderDB.Close()
+	defer db.FrontendWriterDB.Close()
 
 	switch opts.Command {
 	case "updateAPIKey":
@@ -62,7 +87,7 @@ func UpdateAPIKey(user uint64) error {
 	}
 
 	var u User
-	err := db.FrontendDB.Get(&u, `SELECT password, email, api_key from users where id = $1`, user)
+	err := db.FrontendWriterDB.Get(&u, `SELECT password, email, api_key from users where id = $1`, user)
 	if err != nil {
 		return fmt.Errorf("error getting current user, err: %w", err)
 	}
@@ -76,7 +101,7 @@ func UpdateAPIKey(user uint64) error {
 
 	logrus.Infof("updating api key for user %v from old key: %v to new key: %v", user, u.OldKey, apiKey)
 
-	tx, err := db.FrontendDB.Beginx()
+	tx, err := db.FrontendWriterDB.Beginx()
 	if err != nil {
 		return err
 	}

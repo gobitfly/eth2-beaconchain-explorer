@@ -1,0 +1,233 @@
+{{ define "js" }}
+{{ end }}
+
+{{ define "css" }}
+  <style></style>
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+          <h1 class="h4 mb-1 mb-md-0">
+            <span class="ml-1 mr-1"><i class="fas fa-credit-card mr-2"></i>Transaction Details</span>
+          </h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
+              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Tx Details</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <ul class="nav nav-tabs card-header-tabs border-bottom-0" role="tablist">
+            <li class="nav-item">
+              <a class="nav-link show active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true"><i class="tab-icon mr-md-1 fas fa-user"></i><span class="tab-text" style="margin-left: 6px;">Overview</span></a>
+            </li>
+            {{ if .InternalTxns }}
+              <li class="nav-item">
+                <a class="nav-link" id="internal-txns-tab" data-toggle="tab" href="#internal-txns" role="tab" aria-controls="internal-txns" aria-selected="false">
+                  <i class="tab-icon mr-md-1 fas fa-mobile-alt"></i><span class="tab-text" style="margin-left: 6px;">Internal Transactions <span class="badge badge-dark align-middle text-white">{{ len .InternalTxns }}</span></span></a
+                >
+              </li>
+            {{ end }}
+            {{ if .Events }}
+              <li class="nav-item">
+                <a class="nav-link" id="events-tab" data-toggle="tab" href="#events" role="tab" aria-controls="events" aria-selected="false">
+                  <i class="tab-icon mr-md-1 fa fa-clipboard-list"></i><span class="tab-text" style="margin-left: 6px;">Events <span class="badge badge-dark align-middle text-white">{{ len .Events }}</span></span>
+                </a>
+              </li>
+            {{ end }}
+          </ul>
+        </div>
+        <div class="card-body px-0 py-1">
+          <div class="tab-content h-100">
+            <div id="overview" class="tab-pane fade show active" role="tabpanel" aria-labelledby="overview-tab">
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Transaction Hash:</div>
+                <div class="col-md-9">
+                  <div class="d-flex align-items-center">
+                    <div style="min-width: 0;">{{ .Hash | formatHashLong }}</div>
+                    <div class="ml-2 flex-shrink-1">
+                      <button class="btn btn-dark text-white btn-sm align-bottom" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .Hash }}">
+                        <i class="fa fa-copy"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Status:</div>
+                <div class="col-md-9">{{ formatEth1TxStatus .Receipt.Status }}</div>
+              </div>
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Block:</div>
+                <div class="col-md-9">{{ .BlockNumber }}</div>
+              </div>
+              <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
+                <div class="col-md-3">Timestamp:</div>
+                <div class="col-md-9">{{ formatTimestampUInt64 .Timestamp }}</div>
+              </div>
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">From:</div>
+                <div class="col-md-9">{{ formatEth1AddressFull .From }}</div>
+              </div>
+              <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
+                <div class="col-md-3">{{ if .IsContractCreation }}Created{{ else if .TargetIsContract }}Interacted With{{ else }}To{{ end }}:</div>
+                <div class="col-md-9">
+                  <div class="d-flex">
+                    <div class="row no-gutters w-100">
+                      <div class="col-md-auto" style="min-width: 0;">
+                        <span class="align-middle mr-2">{{ formatEth1AddressFull .To }}</span>
+                      </div>
+                      <div class="col-md-auto">
+                        <div class="d-flex flex-wrap">
+                          {{ if .TargetIsContract }}
+                            <div class="mr-2 flex-shrink-1"><span class="badge badge-dark align-middle text-white">Contract</span></div>
+                          {{ end }}
+                          {{ if ne .ToName "" }}
+                            <div class="flex-shrink-1"><span class="badge badge-dark align-middle text-white">Name: {{ .ToName }}</span></div>
+                          {{ end }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {{ if .Transfers }}
+                <div class="row border-bottom p-3 mx-0" style="border-bottom-width:4px !important;">
+                  <div class="col-md-3">Tokens Transferred:</div>
+                  <div class="col-md-9">
+                    <ul class="fa-ul mb-0">
+                      {{ range $i, $row := .Transfers }}
+                        <li class="mb-1">
+                          <i class="fa-li fas fa-exchange-alt"></i>
+                          <span>From</span>
+                          <span>{{ .From }}</span>
+                          <span>To</span>
+                          <span>{{ .To }}</span>
+                          <span>For</span>
+                          <span>{{ .Amount }}</span>
+                          <span>{{ .Token }}</span>
+                        </li>
+                      {{ end }}
+                    </ul>
+                  </div>
+                </div>
+              {{ end }}
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Value:</div>
+                <div class="col-md-9">{{ formatBytesAmount .Value "Ether" }}</div>
+              </div>
+              <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
+                <div class="col-md-3">Transaction Fee:</div>
+                <div class="col-md-9">{{ formatBytesAmount .TxFee "Ether" }}</div>
+              </div>
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Gas Price:</div>
+                <div class="col-md-9">{{ formatBytesAmount .GasPrice "GWei" }}</div>
+              </div>
+              <div class="row p-3 mx-0" style="border-width:4px !important;">
+                <a class="btn btn-link" data-toggle="collapse" href="#collapseExample" role="button" aria-expanded="false" aria-controls="collapseExample"> Advanced Info </a>
+              </div>
+              <div class="collapse" id="collapseExample">
+                <div class="row border-top p-3 mx-0">
+                  <div class="col-md-3">Call Data:</div>
+                  <div class="col-md-9">
+                    <textarea readonly class="form-control bg-light text-monospace ">{{ .CallData }}</textarea>
+                    <div class="mt-2">
+                      <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .Hash }}">Copy Raw Data <i class="fa fa-copy"></i></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {{ if .Events }}
+              <div id="events" class="tab-pane fade" role="tabpanel" aria-labelledby="events-tab">
+                {{ range $index, $event := .Events }}
+                  <div class="row p-3 mx-0 {{ if $index }}border-top{{ end }}" {{ if $index }}style="border-width:4px !important;"{{ end }}>
+                    <div class="col-md-3">Address:</div>
+                    <div class="col-md-9">{{ formatEth1AddressFull .Address }}</div>
+                  </div>
+                  {{ if .Name }}
+                    <div class="row border-top p-3 mx-0">
+                      <div class="col-md-3">Name:</div>
+                      <div class="col-md-9"><samp>{{ .Name }}</samp></div>
+                    </div>
+                  {{ end }}
+                  <div class="row border-top p-3 mx-0">
+                    <div class="col-md-3">Topics:</div>
+                    <div class="col-md-9">
+                      <div class="table-responsive">
+                        <table class="table table-borderless text-monospace">
+                          <tbody>
+                            {{ range $index, $topic := .Topics }}
+                              <tr>
+                                <th class="border-0 p-0 pb-1 pr-2" style="width: 0%;">
+                                  <span class="badge badge-dark align-bottom text-white">{{ $index }}</span>
+                                </th>
+                                <td class="border-0 p-0 pb-1 align-bottom">
+                                  <samp>{{ . }}</samp>
+                                </td>
+                              </tr>
+                            {{ end }}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                  {{ if .DecodedData }}
+                    <div class="row border-top p-3 mx-0">
+                      <div class="col-md-3">Data (Decoded):</div>
+                      <div class="col-md-9">
+                        <div class="table-responsive">
+                          <table class="table table-borderless text-monospace">
+                            <tbody>
+                              {{ range $key, $value :=.DecodedData }}
+                                <tr>
+                                  <th class="border-0 p-0 pb-1 pr-2 col-md-auto" style="width: 0%;">
+                                    <span class="badge badge-dark align-bottom text-white">{{ $key }}</span>
+                                    <span class="badge badge-secondary ml-1 align-bottom text-white">{{ $value.Type }}</span>
+                                  </th>
+                                  <td class="border-0 p-0 col-md-auto">
+                                    <div class="d-inline-flex">
+                                      <div class="flex-shrink-1">
+                                        {{ if eq $value.Type "address" }}
+                                          {{ formatEth1AddressFull $value.Address }}
+                                        {{ else }}
+                                          <samp>{{ $value.Value }}</samp>
+                                        {{ end }}
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              {{ end }}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  {{ end }}
+                  <div class="row border-top p-3 mx-0">
+                    <div class="col-md-3">Data (Hex):</div>
+                    <div class="col-md-9">
+                      <textarea readonly class="form-control bg-light text-monospace ">{{ printf "0x%x" .Data }}</textarea>
+                      <div class="mt-2">
+                        <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .Data }}">Copy Raw Data <i class="fa fa-copy"></i></button>
+                      </div>
+                    </div>
+                  </div>
+                {{ end }}
+              </div>
+            {{ end }}
+            {{ if .InternalTxns }}
+            {{ end }}
+          </div>
+        </div>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

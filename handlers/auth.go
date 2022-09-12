@@ -91,6 +91,13 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
 	}
+	if err != nil {
+		logger.Errorf("error retrieving existing emails: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/register", http.StatusSeeOther)
+		return
+	}
 
 	pHash, err := bcrypt.GenerateFromPassword([]byte(pwd), 10)
 	if err != nil {
@@ -605,7 +612,7 @@ func sendConfirmationEmail(email string) error {
 		return fmt.Errorf("error getting confirmation-ts: %w", err)
 	}
 	if lastTs != nil && (*lastTs).Add(authConfirmEmailRateLimit).After(now) {
-		return &types.RateLimitError{(*lastTs).Add(authConfirmEmailRateLimit).Sub(now)}
+		return &types.RateLimitError{TimeLeft: (*lastTs).Add(authConfirmEmailRateLimit).Sub(now)}
 	}
 
 	_, err = tx.Exec("UPDATE users SET email_confirmation_hash = $1 WHERE email = $2", emailConfirmationHash, email)
@@ -656,7 +663,7 @@ func sendResetEmail(email string) error {
 		return fmt.Errorf("error getting reset-ts: %w", err)
 	}
 	if lastTs != nil && (*lastTs).Add(authResetEmailRateLimit).After(now) {
-		return &types.RateLimitError{(*lastTs).Add(authResetEmailRateLimit).Sub(now)}
+		return &types.RateLimitError{TimeLeft: (*lastTs).Add(authResetEmailRateLimit).Sub(now)}
 	}
 
 	_, err = tx.Exec("UPDATE users SET password_reset_hash = $1 WHERE email = $2", resetHash, email)

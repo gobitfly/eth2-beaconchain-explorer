@@ -169,13 +169,13 @@ func UserModalManageNotificationModal(w http.ResponseWriter, r *http.Request) {
 
 	events := make(map[types.EventName]bool, 0)
 
-	events[types.ValidatorMissedAttestationEventName] = "on" == r.FormValue(string(types.ValidatorMissedAttestationEventName))
-	events[types.ValidatorMissedProposalEventName] = "on" == r.FormValue(string(types.ValidatorMissedProposalEventName))
-	events[types.ValidatorExecutedProposalEventName] = "on" == r.FormValue(string(types.ValidatorExecutedProposalEventName))
-	events[types.ValidatorGotSlashedEventName] = "on" == r.FormValue(string(types.ValidatorGotSlashedEventName))
-	events[types.SyncCommitteeSoon] = "on" == r.FormValue(string(types.SyncCommitteeSoon))
+	events[types.ValidatorMissedAttestationEventName] = r.FormValue(string(types.ValidatorMissedAttestationEventName)) == "on"
+	events[types.ValidatorMissedProposalEventName] = r.FormValue(string(types.ValidatorMissedProposalEventName)) == "on"
+	events[types.ValidatorExecutedProposalEventName] = r.FormValue(string(types.ValidatorExecutedProposalEventName)) == "on"
+	events[types.ValidatorGotSlashedEventName] = r.FormValue(string(types.ValidatorGotSlashedEventName)) == "on"
+	events[types.SyncCommitteeSoon] = r.FormValue(string(types.SyncCommitteeSoon)) == "on"
 
-	all := "on" == r.FormValue("all")
+	all := r.FormValue("all") == "on"
 
 	for _, validator := range validators {
 		pubkey, _, err := GetValidatorIndexFrom(validator)

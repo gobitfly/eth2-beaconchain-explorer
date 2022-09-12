@@ -20,4 +20,10 @@ type Client interface {
 	GetSyncCommittee(stateID string, epoch uint64) (*StandardSyncCommittee, error)
 }
 
+type Eth1Client interface {
+	GetBlock(number uint64) (*types.Eth1Block, *types.GetBlockTimings, error)
+	GetLatestEth1BlockNumber() (uint64, error)
+	Close()
+}
+
 var logger = logrus.New().WithField("module", "rpc")

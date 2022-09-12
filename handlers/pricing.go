@@ -25,16 +25,6 @@ var mobilePricingTemplate = template.Must(template.New("mobilepricing").Funcs(ut
 	"templates/svg/mobilepricing.html",
 ))
 
-var successTemplate = template.Must(template.New("success").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html",
-	"templates/payment/success.html",
-))
-
-var cancelTemplate = template.Must(template.New("cancled").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html",
-	"templates/payment/cancled.html",
-))
-
 func Pricing(w http.ResponseWriter, r *http.Request) {
 	var err error
 
@@ -50,7 +40,7 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "pricing_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -58,7 +48,7 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 		subscription, err := db.StripeGetUserSubscription(data.User.UserID, utils.GROUP_API)
 		if err != nil {
 			logger.Errorf("error retrieving user subscriptions %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 		pageData.Subscription = subscription
@@ -74,7 +64,7 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 	err = pricingTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -94,7 +84,7 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "pricing_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -102,7 +92,7 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 		subscription, err := db.StripeGetUserSubscription(data.User.UserID, utils.GROUP_MOBILE)
 		if err != nil {
 			logger.Errorf("error retrieving user subscriptions %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 		pageData.Subscription = subscription
@@ -110,7 +100,7 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 		premiumSubscription, err := db.GetUserPremiumSubscription(data.User.UserID)
 		if err != nil && err != sql.ErrNoRows {
 			logger.Errorf("error retrieving user subscriptions %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 		pageData.ActiveMobileStoreSub = premiumSubscription.Active
@@ -126,7 +116,7 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 	err = mobilePricingTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

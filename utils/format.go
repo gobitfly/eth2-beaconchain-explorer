@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"database/sql"
+	"encoding/base64"
 	"encoding/hex"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
@@ -10,14 +11,16 @@ import (
 	"html"
 	"html/template"
 	"math"
+	"math/big"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/protolambda/ztyp/bitfields"
+	"github.com/shopspring/decimal"
 
-	eth1common "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -112,13 +115,13 @@ func FormatBalanceSql(balanceInt sql.NullInt64, currency string) template.HTML {
 
 func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 	if currency == "ETH" {
-		balanceF := float64(*balance)
 		if balance == nil {
 			return template.HTML("<span> 0.00000 " + currency + "</span>")
 		} else if *balance == 0 {
 			return template.HTML("0")
 		}
 
+		balanceF := float64(*balance)
 		if balanceF < 0 {
 			return template.HTML(fmt.Sprintf("<span class=\"text-danger\">%.0f GWei</span>", balanceF))
 		}
@@ -281,8 +284,8 @@ func FormatEpoch(epoch uint64) template.HTML {
 
 // FormatEth1AddressString will return the eth1-address formated as html string
 func FormatEth1AddressString(addr []byte) template.HTML {
-	eth1Addr := eth1common.BytesToAddress(addr)
-	return template.HTML(fmt.Sprintf("%s", eth1Addr.Hex()))
+	eth1Addr := common.BytesToAddress(addr)
+	return template.HTML(eth1Addr.Hex())
 }
 
 // FormatEth1AddressString will return the eth1-address formated as html string
@@ -293,7 +296,7 @@ func FormatEth1AddressStringLowerCase(addr []byte) template.HTML {
 // FormatEth1Address will return the eth1-address formated as html
 func FormatEth1Address(addr []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(addr))
-	eth1Addr := eth1common.BytesToAddress(addr)
+	eth1Addr := common.BytesToAddress(addr)
 
 	if Config.Chain.Config.ConfigName == "prater" {
 		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
@@ -366,6 +369,12 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 	return template.HTML(p.Sprintf(tpl, float64(e)/1e9*price.GetEthPrice(currency), rr))
 }
 
+func FormatEtherValue(symbol string, ethPrice *big.Float, currentPrice string) template.HTML {
+	p := message.NewPrinter(language.English)
+	ep, _ := ethPrice.Float64()
+	return template.HTML(p.Sprintf(`<span>%s %.2f</span> <span class="text-muted">@ %s/ETH</span>`, symbol, ep, currentPrice))
+}
+
 // FormatGraffiti will return the graffiti formated as html
 func FormatGraffiti(graffiti []byte) template.HTML {
 	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
@@ -396,18 +405,32 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 		trunc = trunc_opt[0]
 	}
 
-	// if len(hash) > 6 {
-	// 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x…%x</span>", hash[:3], hash[len(hash)-3:]))
-	// }
 	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
 	if len(hash) > 3 && trunc {
-		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…</span>", hash[:3]))
+		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…%x</span>", hash[:2], hash[len(hash)-2:]))
 	}
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
 }
 
+func FormatName(name string, trunc_opt ...bool) template.HTML {
+	trunc := true
+	if len(trunc_opt) > 0 {
+		trunc = trunc_opt[0]
+	}
+
+	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
+	if len(name) > 8 && trunc {
+		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%s…</span>", name[:8]))
+	}
+	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%s</span>", name))
+}
+
+func AddCopyButton(element template.HTML, copyContent string) template.HTML {
+	return element + " " + template.HTML(CopyButton(copyContent))
+}
+
 func CopyButton(clipboardText interface{}) string {
-	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
+	return fmt.Sprintf(`<i class="fa fa-copy text-muted text-white ml-2 p-1" style="opacity: .8;" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
 }
 
 func CopyButtonText(clipboardText interface{}) string {
@@ -489,9 +512,9 @@ func formatBitvectorValidators(bits []byte, validators []uint64) template.HTML {
 		}
 
 		if (i+1)%64 == 0 {
-			buf.WriteString(fmt.Sprintf("\n"))
+			buf.WriteString("\n")
 		} else if (i+1)%8 == 0 {
-			buf.WriteString(fmt.Sprintf(" "))
+			buf.WriteString(" ")
 		}
 	}
 	buf.WriteString("</pre>")
@@ -707,7 +730,7 @@ func FormatValidatorWithName(validator interface{}, name string) template.HTML {
 }
 
 func FormatEth1AddressWithName(address []byte, name string) template.HTML {
-	eth1Addr := eth1common.BytesToAddress(address)
+	eth1Addr := common.BytesToAddress(address)
 	if name != "" {
 		return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s</a>", eth1Addr, name))
 	} else {
@@ -894,4 +917,149 @@ func FormatNotificationChannel(ch types.NotificationChannel) string {
 		return ""
 	}
 	return label
+}
+
+func FormatBlockReward(blockNumber int64) template.HTML {
+	var reward *big.Int
+
+	if blockNumber < 4370000 {
+		reward = big.NewInt(5e+18)
+	} else if blockNumber < 7280000 {
+		reward = big.NewInt(3e+18)
+	} else {
+		reward = big.NewInt(2e+18)
+	}
+
+	return FormatAmount(reward, "ETH", 5)
+}
+
+func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
+	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Metadata.Decimals), 0))
+	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
+	p := message.NewPrinter(language.English)
+
+	priceS := string(balance.Metadata.Price)
+	price := decimal.New(0, 0)
+	if priceS != "" {
+		var err error
+		price, err = decimal.NewFromString(priceS)
+		if err != nil {
+			logger.WithError(err).Errorf("error getting price from string - FormatTokenBalance price: %v", priceS)
+		}
+	}
+	// numPrice := num.Div(mul).Mul(price)
+
+	logo := ""
+	if len(balance.Metadata.Logo) != 0 {
+		logo = fmt.Sprintf(`<img class="mr-1" style="height: 1.2rem;" src="data:image/png;base64, %s">`, base64.StdEncoding.EncodeToString(balance.Metadata.Logo))
+	}
+	pflt, _ := price.Float64()
+	flt, _ := num.Div(mul).Round(5).Float64()
+	bflt, _ := price.Mul(num.Div(mul)).Float64()
+	return template.HTML(p.Sprintf(`
+	<div class="token-balance-col token-name text-truncate d-flex align-items-center justify-content-between flex-wrap">
+		<div class="token-icon p-1">
+			<a href='/execution/token/0x%x?a=0x%x'>
+				<span>%s</span> <span>%s</span>
+			</a> 
+		</div>
+		<div class="token-price-balance p-1">
+			<span class="text-muted" style="font-size: 90%%;">$%.2f</span>
+		</div>
+	</div> 
+	<div class="token-balance-col token-balance d-flex align-items-center justify-content-between flex-wrap">
+		<div class="token-holdings p-1">
+			<span class="token-holdings">%s</span>
+		</div>
+		<div class="token-price p-1">
+			<span class="text-muted" style="font-size: 90%%;">@ $%.2f</span>
+		</div>
+	</div>`, balance.Token, balance.Address, logo, balance.Metadata.Symbol, bflt, FormatThousandsEnglish(strconv.FormatFloat(flt, 'f', -1, 64)), pflt))
+}
+
+func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
+	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Metadata.Decimals), 0))
+	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
+	p := message.NewPrinter(language.English)
+	flt, _ := num.Div(mul).Float64()
+	// return template.HTML(p.Sprintf(`
+	// <div class="d-flex align-items-center">
+	// 	<svg style="width: 1rem; height: 1rem;">
+	// 		<use xlink:href="#ethereum-diamond-logo"/>
+	// 	</svg>
+	// 	<span class="token-holdings">%s</span>
+	// </div>`, strconv.FormatFloat(flt, 'f', -1, 64)))
+	return template.HTML(p.Sprintf(`
+	<div class="d-flex align-items-center">
+		<svg style="width: 1rem; height: 1rem;">
+			<use xlink:href="#ethereum-diamond-logo"/>
+		</svg> 
+		<span class="token-holdings">%.18f</span>
+	</div>`, flt))
+}
+
+func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
+	decimals := new(big.Int).SetBytes(balance.Metadata.Decimals)
+	p := message.NewPrinter(language.English)
+	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
+	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
+	f, _ := num.Div(mul).Float64()
+	return template.HTML(p.Sprintf("%v", strconv.FormatFloat(f, 'f', -1, 64)))
+}
+
+func FormatTokenName(balance *types.Eth1AddressBalance) template.HTML {
+	logo := ""
+	if len(balance.Metadata.Logo) != 0 {
+		logo = fmt.Sprintf(`<img style="height: 20px;" src="data:image/png;base64, %s">`, base64.StdEncoding.EncodeToString(balance.Metadata.Logo))
+	}
+	return template.HTML(fmt.Sprintf("<a href='/execution/token/0x%x?a=0x%x'>%s %s</a>", balance.Token, balance.Address, logo, balance.Metadata.Symbol))
+}
+
+func ToBase64(input []byte) string {
+	return base64.StdEncoding.EncodeToString(input)
+}
+
+// FormatBalance will return a string for a balance
+func FormatBalanceWei(balanceWei *big.Int, unit string) template.HTML {
+	balanceBigFloat := new(big.Float).SetInt(balanceWei)
+	if unit == "Ether" {
+		balanceBigFloat = new(big.Float).Quo(balanceBigFloat, big.NewFloat(1e18))
+	} else if unit == "GWei" {
+		balanceBigFloat = new(big.Float).Quo(balanceBigFloat, big.NewFloat(1e9))
+	}
+	balanceFloat, _ := balanceBigFloat.Float64()
+	balance := FormatFloat(balanceFloat, 8)
+
+	return template.HTML(balance + " " + unit)
+}
+func FormatBytesAmount(amount []byte, unit string) template.HTML {
+	balanceBigFloat := new(big.Float).SetInt(new(big.Int).SetBytes(amount))
+	if unit == "Ether" {
+		balanceBigFloat = new(big.Float).Quo(balanceBigFloat, big.NewFloat(1e18))
+	} else if unit == "GWei" {
+		balanceBigFloat = new(big.Float).Quo(balanceBigFloat, big.NewFloat(1e9))
+	}
+	balanceFloat, _ := balanceBigFloat.Float64()
+	balance := FormatFloat(balanceFloat, 8)
+
+	return template.HTML(balance + " " + unit)
+}
+
+// FormatBalance will return a string for a balance
+func FormatEth1TxStatus(status uint64) template.HTML {
+	if status == 1 {
+		return "Success"
+	} else {
+		return "Fail"
+	}
+}
+
+// FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
+func FormatTimestampUInt64(ts uint64) template.HTML {
+	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(int64(ts), 0), ts))
+}
+
+// FormatEth1AddressFull will return the eth1-address formated as html
+func FormatEth1AddressFull(addr common.Address) template.HTML {
+	return FormatAddress(addr.Bytes(), nil, "", false, false, true)
 }

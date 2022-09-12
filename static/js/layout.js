@@ -305,7 +305,7 @@ $(document).ready(function () {
     } else if (sug.epoch !== undefined) {
       window.location = "/epoch/" + sug.epoch
     } else if (sug.address !== undefined) {
-      window.location = "/validators/eth1deposits?q=" + sug.address
+      window.location = "/execution/address/" + sug.address
     } else if (sug.graffiti !== undefined) {
       // sug.graffiti is html-escaped to prevent xss, we need to unescape it
       var el = document.createElement("textarea")
@@ -391,10 +391,19 @@ $(".nav-tabs a").on("shown.bs.tab", function (e) {
   }
 })
 
+$(".nav-pills a").on("shown.bs.tab", function (e) {
+  if (history.replaceState) {
+    history.pushState(null, null, e.target.hash)
+  } else {
+    window.location.hash = e.target.hash //Polyfill for old browsers
+  }
+})
+
 // Javascript to enable link to tab
 var url = document.location.toString()
 if (url.match("#")) {
   $('.nav-tabs a[href="#' + url.split("#")[1] + '"]').tab("show")
+  $('.nav-pills a[href="#' + url.split("#")[1] + '"]').tab("show")
 }
 
 function formatTimestamps(selStr) {

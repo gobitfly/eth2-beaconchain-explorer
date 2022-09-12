@@ -5,12 +5,13 @@
 
   <script>
     $(document).ready(function () {
+      let slotNumber = {{ .Slot }}
       var depositsTblOpts = {
         processing: true,
         serverSide: true,
         ordering: false,
         searching: false,
-        ajax: window.location.pathname + "/deposits",
+        ajax: "/block/" + slotNumber + "/deposits",
         pageLength: 10,
         pagingType: "input",
         language: {
@@ -63,7 +64,7 @@
         ordering: false,
         stateSave: true,
         searching: true,
-        ajax: window.location.pathname + "/votes",
+        ajax: "/block/" + slotNumber + "/votes",
         pageLength: 10,
         pagingType: "input",
         language: {
@@ -143,12 +144,22 @@
     <div class="container mt-2">
       <div class="d-md-flex py-2 justify-content-md-between">
         <h1 class="h4 my-3 mb-md-0">
-          {{ if not (eq .PreviousSlot .Slot) }}
-            <a href="/block/{{ .PreviousSlot }}"><i class="fa fa-chevron-left"></i></a>
-          {{ end }}
-          <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block at Slot {{ formatAddCommas .Slot }}</span>
-          {{ if gt .NextSlot 0 }}
-            <a href="/block/{{ .NextSlot }}"><i class="fa fa-chevron-right"></i></a>
+          {{ with .ExecutionData }}
+            {{ if gt .PreviousBlock 0 }}
+              <a href="/execution/block/{{ .PreviousBlock }}"><i class="fa fa-chevron-left"></i></a>
+            {{ end }}
+            <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block {{ .Number }}</span>
+            {{ if gt .NextBlock 0 }}
+              <a href="/execution/block/{{ .NextBlock }}"><i class="fa fa-chevron-right"></i></a>
+            {{ end }}
+          {{ else }}
+            {{ if not (eq .Slot 0) }}
+              <a href="/block/{{ .PreviousSlot }}"><i class="fa fa-chevron-left"></i></a>
+            {{ end }}
+            <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block at Slot <span id="slot">{{ formatAddCommas .Slot }}</span></span>
+            {{ if gt .NextSlot 0 }}
+              <a href="/block/{{ .NextSlot }}"><i class="fa fa-chevron-right"></i></a>
+            {{ end }}
           {{ end }}
         </h1>
         <nav aria-label="breadcrumb">
@@ -173,17 +184,17 @@
         <li class="nav-item">
           <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true">Overview</a>
         </li>
+        {{ if or (gt .ExecTransactionsCount 0) (.ExecutionData) }}
+          <li class="nav-item">
+            <a class="nav-link" id="transactions-tab" data-toggle="tab" href="#transactions" role="tab" aria-controls="transactions" aria-selected="false">Transactions <span class="badge bg-secondary text-white">{{ if .ExecutionData }}{{ .ExecutionData.TxCount }}{{ else }}{{ .ExecTransactionsCount }}{{ end }}</span></a>
+          </li>
+        {{ end }}
         <li class="nav-item">
           <a class="nav-link" id="votes-tab" data-toggle="tab" href="#votes" role="tab" aria-controls="votes" aria-selected="false">Votes <span class="badge bg-secondary text-white">{{ .VotesCount }}</span></a>
         </li>
         <li class="nav-item">
           <a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{ .AttestationsCount }}</span></a>
         </li>
-        {{ if gt .ExecTransactionsCount 0 }}
-          <li class="nav-item">
-            <a class="nav-link" id="transactions-tab" data-toggle="tab" href="#transactions" role="tab" aria-controls="transactions" aria-selected="false">Transactions <span class="badge bg-secondary text-white">{{ .ExecTransactionsCount }}</span></a>
-          </li>
-        {{ end }}
         {{ if gt .DepositsCount 0 }}
           <li class="nav-item">
             <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{ .DepositsCount }}</span></a>
@@ -234,7 +245,13 @@
           </div>
           {{ template "block_attestations" . }}
         </div>
-        {{ if gt .ExecTransactionsCount 0 }}
+        {{ if .ExecutionData }}
+          <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
+            <div class="card block-card py-1">
+              {{ template "execution_transactions" .ExecutionData }}
+            </div>
+          </div>
+        {{ else if gt .ExecTransactionsCount 0 }}
           <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
             <div class="card block-card">
               {{ template "block_transactions" . }}

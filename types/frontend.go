@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"html/template"
+	"math/big"
 	"strings"
 	"time"
 
@@ -469,4 +470,22 @@ func (e *ErrorResponse) Scan(value interface{}) error {
 
 func (a ErrorResponse) Value() (driver.Value, error) {
 	return json.Marshal(a)
+}
+
+type GasNowPageData struct {
+	Code int `json:"code"`
+	Data struct {
+		Rapid     *big.Int `json:"rapid"`
+		Fast      *big.Int `json:"fast"`
+		Standard  *big.Int `json:"standard"`
+		Slow      *big.Int `json:"slow"`
+		Timestamp int64    `json:"timestamp"`
+		PriceUsd  float64  `json:"priceUSD"`
+	} `json:"data"`
+}
+
+type Eth1AddressSearchItem struct {
+	Address string `json:"address"`
+	Name    string `json:"name"`
+	Token   string `json:"token"`
 }

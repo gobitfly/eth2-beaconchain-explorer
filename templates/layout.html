@@ -136,7 +136,7 @@
 		                break
                 }
             })
-        </script>
+        </script> {{ template "css" .Data }}
     </head>
     <header></header>
     <body ontouchstart="">
@@ -657,6 +657,10 @@
                         <span class="nav-icon"><i class="fas fa-laptop-code"></i></span>
                         <span class="nav-text ml-3">API Pricing</span>
                       </a>
+                      <a class="dropdown-item" href="/tools/unitConverter">
+                        <span class="nav-icon"><i class="fas fa-sync"></i></span>
+                        <span class="nav-text ml-3">Unit Converter</span>
+                      </a>
                     </div>
                     <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
                       <span class="ml-4" style="display: block; font-size: 18px; font-weight: 700; letter-spacing: .3px;">Services</span>
@@ -684,7 +688,6 @@
           <!-- </div> -->
         </div>
       </nav>
-      {{ template "css" .Data }}
       <main>
         <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;">
           <span class="d-none d-md-block">
