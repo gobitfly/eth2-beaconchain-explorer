@@ -83,12 +83,12 @@ func FormatInOutSelf(address, from, to []byte) template.HTML {
 	}
 	if !bytes.Equal(to, from) {
 		if bytes.Equal(address, from) {
-			return "OUT"
+			return template.HTML(`<span style="width: 45px;" class="font-weight-bold badge badge-warning text-white text-monospace">OUT</span>`)
 		} else {
-			return "IN"
+			return template.HTML(`<span style="width: 45px;" class="font-weight-bold badge badge-success text-white text-monospace">IN</span>`)
 		}
 	} else {
-		return "SELF"
+		return template.HTML(`<span style="width: 45px;" class="font-weight-bold badge badge-info text-white text-monospace">SELF</span>`)
 	}
 }
 
