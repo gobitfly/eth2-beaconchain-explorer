@@ -84,6 +84,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error loading internal transfers from tx %v: %v", hash, err)
 	}
+
 	if len(receipt.Logs) > 0 {
 		for _, log := range receipt.Logs {
 			meta, err := db.BigtableClient.GetContractMetadata(log.Address.Bytes())

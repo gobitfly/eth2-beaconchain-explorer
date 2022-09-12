@@ -1949,7 +1949,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte) (*[]types.Transfer, error) {
+func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte) ([]types.Transfer, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
@@ -2034,7 +2034,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte)
 			Amount: utils.FormatBytesAmount(t.Value, "Ether"),
 		}
 	}
-	return &data, nil
+	return data, nil
 }
 
 // currently only erc20
