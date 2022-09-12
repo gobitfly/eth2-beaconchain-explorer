@@ -119,16 +119,12 @@
                 <div class="col-md-3 text-right">
                   <div id="unixTs" hidden>{{ .Ts.Unix }}</div>
                   <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                    <label class="btn btn-light text-dark active btn-sm" onclick="setTs()">
-                      <input type="radio" name="options" id="optionTs" />
-                      Timestamp
-                    </label>
+                    <label class="btn btn-light text-dark active btn-sm" onclick="setTs()"> <input type="radio" name="options" id="optionTs" /> Timestamp </label>
                     <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setUtc()"> <input type="radio" name="options" id="optionUtc" /> UTC </label>
                     <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setLocal()"> <input type="radio" name="options" id="optionLocal" checked /> Local </label>
                   </div>
                 </div>
               </div>
-
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Difficulty:</div>
                 <div class="col-md-10">{{ formatDifficulty .Difficulty }}</div>
@@ -151,33 +147,33 @@
                   </div>
                 </div>
               </div>
-              <div class="tab-pane fade" id="txs" role="tabpanel" aria-labelledby="txs-tab">
-                {{ template "execution_transactions" . }}
+            </div>
+            <div class="tab-pane fade" id="txs" role="tabpanel" aria-labelledby="txs-tab">
+              {{ template "execution_transactions" . }}
+            </div>
+            <div class="tab-pane fade" id="uncles" role="tabpanel" aria-labelledby="uncles-tab">
+              <div class="row border-bottom p-1 mx-0">
+                <div class="col-md-12 text-center"><b>Showing {{ .UncleCount }} Uncle{{ if gt .UncleCount 1 }}s{{ end }} </b></div>
               </div>
-              <div class="tab-pane fade" id="uncles" role="tabpanel" aria-labelledby="uncles-tab">
-                <div class="row border-bottom p-1 mx-0">
-                  <div class="col-md-12 text-center"><b>Showing {{ .UncleCount }} Uncle{{ if gt .UncleCount 1 }}s{{ end }} </b></div>
-                </div>
-                <div class="table-responsive">
-                  <table class="table table-sm table-bordered text-center">
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered text-center">
+                  <tr>
+                    <th>Number</th>
+                    <th>Level</th>
+                    <th>Miner</th>
+                    <th>Reward</th>
+                    <th>Extra</th>
+                  </tr>
+                  {{ range .Uncles }}
                     <tr>
-                      <th>Number</th>
-                      <th>Level</th>
-                      <th>Miner</th>
-                      <th>Reward</th>
-                      <th>Extra</th>
+                      <td>{{ .Number }}</td>
+                      <td>{{ subUI64 $.Data.Number .Number }}</td>
+                      <td><a href="/execution/address/{{ .MinerAddress }}">{{ if gt (len .MinerName ) 0 }}{{ .MinerName }}{{ else }}{{ .MinerAddress }}{{ end }}</a></td>
+                      <td>{{ formatAmount .Reward "ETH" 5 }}</td>
+                      <td>{{ .Extra }}</td>
                     </tr>
-                    {{ range .Uncles }}
-                      <tr>
-                        <td>{{ .Number }}</td>
-                        <td>{{ subUI64 $.Data.Number .Number }}</td>
-                        <td><a href="/execution/address/{{ .MinerAddress }}">{{ if gt (len .MinerName ) 0 }}{{ .MinerName }}{{ else }}{{ .MinerAddress }}{{ end }}</a></td>
-                        <td>{{ formatAmount .Reward "ETH" 5 }}</td>
-                        <td>{{ .Extra }}</td>
-                      </tr>
-                    {{ end }}
-                  </table>
-                </div>
+                  {{ end }}
+                </table>
               </div>
             </div>
           </div>
