@@ -154,7 +154,8 @@
                     <span class="text-secondary">out of</span>
                     <span class="text-black">{{ .Gas.Limit }}</span>
                     <span class="text-secondary">Gas</span>
-                    <span class="text-black">({{ formatPercentage .Gas.UsedPerc }}%)</div>
+                    <span class="text-black">({{ formatPercentage .Gas.UsedPerc }}%)</span>
+                  </div>
                 </div>
                 {{ if (gt .Type 1) }}
                   <div class="row border-bottom p-3 mx-0" style="border-bottom-width:4px !important;">
