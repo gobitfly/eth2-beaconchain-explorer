@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
 	"strings"
@@ -17,7 +18,7 @@ import (
 )
 
 func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
-	cacheKey := fmt.Sprintf("tx:%s", hash.String())
+	cacheKey := fmt.Sprintf("%d:tx:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
 	if wanted, err := db.EkoCache.Get(context.Background(), cacheKey, new(types.Eth1TxData)); err == nil {
 		logrus.Infof("retrieved data for tx %v from cache", hash)
 		logrus.Info(wanted)
@@ -162,7 +163,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 }
 
 func GetCodeAt(address common.Address) ([]byte, error) {
-	cacheKey := fmt.Sprintf("a:%s", address.String())
+	cacheKey := fmt.Sprintf("%d:a:%s", utils.Config.Chain.Config.DepositChainID, address.String())
 	if wanted, err := db.EkoCache.Get(context.Background(), cacheKey, []byte{}); err == nil {
 		logrus.Infof("retrieved code data for address %v from cache", address)
 
@@ -183,7 +184,7 @@ func GetCodeAt(address common.Address) ([]byte, error) {
 }
 
 func GetBlockHeaderByHash(hash common.Hash) (*geth_types.Header, error) {
-	cacheKey := fmt.Sprintf("h:%s", hash.String())
+	cacheKey := fmt.Sprintf("%d:h:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
 
 	if wanted, err := db.EkoCache.Get(context.Background(), cacheKey, new(geth_types.Header)); err == nil {
 		logrus.Infof("retrieved header data for block %v from cache", hash)
@@ -204,7 +205,7 @@ func GetBlockHeaderByHash(hash common.Hash) (*geth_types.Header, error) {
 }
 
 func GetTransactionReceipt(hash common.Hash) (*geth_types.Receipt, error) {
-	cacheKey := fmt.Sprintf("r:%s", hash.String())
+	cacheKey := fmt.Sprintf("%d:r:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
 
 	if wanted, err := db.EkoCache.Get(context.Background(), cacheKey, new(geth_types.Receipt)); err == nil {
 		logrus.Infof("retrieved receipt data for tx %v from cache", hash)
