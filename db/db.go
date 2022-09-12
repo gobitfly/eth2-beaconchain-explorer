@@ -1514,11 +1514,28 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 			blockLog := logger.WithFields(logrus.Fields{"slot": b.Slot, "blockRoot": fmt.Sprintf("%x", b.BlockRoot)})
 
 			var dbBlockRootHash []byte
-			err := WriterDb.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
+			err := WriterDb.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and (blockroot = $2 OR blockroot <> '\x00')", b.Slot, b.BlockRoot)
 			if err == nil && bytes.Equal(dbBlockRootHash, b.BlockRoot) {
 				blockLog.Infof("skipping export of block as it is already present in the db")
 				continue
+			} else if err != nil && err != sql.ErrNoRows {
+				return fmt.Errorf("error checking for block in db: %w", err)
 			}
+
+			if bytes.Equal(b.BlockRoot, []byte{0x0}) { // do not insert placeholder block if a block has already been written at that slot
+				var blocksCount int
+				err := WriterDb.Get(&dbBlockRootHash, "SELECT COALESCE(COUNT(*), 0) FROM blocks WHERE slot = $1 and length(blockroot) > 1", b.Slot)
+
+				if err != nil {
+					return fmt.Errorf("error checking for existing block in db: %w", err)
+				}
+
+				if blocksCount > 0 {
+					blockLog.Infof("skipping export of block as it is a placeholder block and a proposed block is already present in the db")
+					continue
+				}
+			}
+
 			blockLog.WithField("duration", time.Since(start)).Tracef("check if exists")
 			t := time.Now()
 
