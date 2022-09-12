@@ -1713,7 +1713,7 @@ func (bigtable *Bigtable) GetEth1BlocksForAddress(prefix string, limit int64) ([
 		return nil, "", err
 	}
 
-	logger.Infof("found eth1blocks: %v results", len(keys))
+	// logger.Infof("found eth1blocks: %v results", len(keys))
 
 	if len(keys) == 0 {
 		return data, "", nil
@@ -1798,7 +1798,7 @@ func (bigtable *Bigtable) GetEth1UnclesForAddress(prefix string, limit int64) ([
 		return nil, "", err
 	}
 
-	logger.Infof("found uncles: %v results", len(keys))
+	// logger.Infof("found uncles: %v results", len(keys))
 
 	if len(keys) == 0 {
 		return data, "", nil
@@ -1830,8 +1830,6 @@ func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, search 
 	if pageToken == "" {
 		pageToken = fmt.Sprintf("%s:I:U:%s:", bigtable.chainId, address)
 	}
-
-	logger.Info(pageToken)
 
 	uncles, lastKey, err := BigtableClient.GetEth1UnclesForAddress(pageToken, 25)
 	if err != nil {
