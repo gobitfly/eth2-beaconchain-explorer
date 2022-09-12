@@ -264,9 +264,9 @@
       </h1>
       <div>
         {{ if .Data.Address }}
-          <span class="badge badge-secondary text-light my-2">
-            <span class="mr-1">filter:</span>
-            <a style="width: 1rem; height: 1rem;" target="_blank" href="https://etherscan.io/address/{{ .Data.Token }}"></a>
+          <span class="badge badge-primary text-light my-2" style="padding: .5rem 0 .5rem .5rem">
+            <span class="mr-1">Filter:</span>
+            <a class="text-light text-monospace" style="width: 1rem; height: 1rem;" target="_blank" href="https://etherscan.io/address/{{ .Data.Address }}">0x{{ .Data.Address }} <span class="text-muted text-light" data-toggle="tooltip" title="clear filter"><a class="text-light p-2" href="/token/{{.Data.Token}}">x</a></span></a>
           </span>
         {{ end }}
       </div>
@@ -368,12 +368,12 @@
 
 {{ define "AddressTransfersTableGrid" }}
   <div id="transfers-table" style="display: grid; grid-template-columns: repeat(3, minmax(auto, 1fr)) max-content repeat(2, minmax(auto, 1fr)); max-height: 800px; overflow: auto;">
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light header-col position-sticky"><span>Hash</span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light header-col position-sticky"><span>Age</span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light header-col position-sticky"><span>From</span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light header-col position-sticky"><span></span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light header-col position-sticky"><span>To</span></div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 bg-light header-col position-sticky"><span>Quantity</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Hash</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Age</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>From</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span></span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>To</span></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Quantity</span></div>
 
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
@@ -440,7 +440,7 @@
   <img class="cursor-pointer qrcode-dark" data-toggle="modal" data-target="#qrcode-modal" style=" display: none; margin-bottom: .3rem; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{ .Data.QRCodeInverse }}" alt="QR code for address 0x{{ .Data.Token }}" />
 {{ end }}
 
-{{ define "AddressQRCodeModal" }}
+{{ define "TokenQRCodeModal" }}
   <div class="modal fade" id="qrcode-modal" tabindex="-1" role="dialog" aria-labelledby="qrcode-modal-label" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="width: 95%; max-width: 400px; height: 375px; margin: 1.75rem auto;">
       <div class="modal-content">
