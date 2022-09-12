@@ -241,6 +241,26 @@
               </div>
             {{ end }}
             {{ if .InternalTxns }}
+              <div id="internal-txns" class="tab-pane fade" role="tabpanel" aria-labelledby="internal-txns-tab">
+                <div class="table-responsive">
+                  <table class="table table-borderless text-monospace">
+                    <thead>
+                      <th>From</th>
+                      <th>To</th>
+                      <th>Value</th>
+                    </thead>
+                    <tbody>
+                      {{ range $index, $tx := .InternalTxns }}
+                        <tr>
+                          <td>{{ .From }}</td>
+                          <td>{{ .To }}</td>
+                          <td>{{ .Amount }}</td>
+                        </tr>
+                      {{ end }}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             {{ end }}
           </div>
         </div>
