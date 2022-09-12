@@ -9,9 +9,10 @@ import (
 	"fmt"
 	"html/template"
 	"math/big"
-	"math/rand"
 	"net/http"
 	"strconv"
+
+	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 var eth1BlocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/blocks.html"))
@@ -39,7 +40,7 @@ func Eth1BlocksData(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		//logger.Errorf("error converting datatables data parameter from string to int for route %v: %v", r.URL.String(), err)
+		logger.Errorf("error converting datatables data parameter from string to int for route %v: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -59,7 +60,7 @@ func Eth1BlocksData(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
-	data, err := GetEth1BlocksTableData(draw, start, length)
+	data, err := getEth1BlocksTableData(draw, start, length)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 block table data")
 	}
@@ -72,7 +73,49 @@ func Eth1BlocksData(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetEth1BlocksTableData(draw, start, length uint64) (*types.DataTableResponse, error) {
+type additionalSlotData struct {
+	Epoch        uint64 `db:"epoch"`
+	Slot         uint64 `db:"slot"`
+	Proposer     uint64 `db:"proposer"`
+	Status       uint64 `db:"status"`
+	ProposerName string `db:"name"`
+}
+
+func getSlotByTimestamp(t *timestamp.Timestamp) uint64 {
+	ts := uint64(t.AsTime().Unix())
+	if ts >= utils.Config.Chain.GenesisTimestamp {
+		return (ts - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.Config.SecondsPerSlot
+	}
+	return 0
+}
+
+func getProposerAndStatusFromSlot(startSlot uint64, endSlot uint64) (map[uint64]*additionalSlotData, error) {
+	data := make(map[uint64]*additionalSlotData)
+
+	var blocks []*additionalSlotData
+	err := db.ReaderDb.Select(&blocks, `
+		SELECT 
+			blocks.epoch, 
+			blocks.slot,
+			blocks.proposer,
+			blocks.status,
+			COALESCE(validator_names.name, '') AS name
+		FROM blocks 
+		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+		WHERE blocks.slot >= $1 AND blocks.slot <= $2
+		ORDER BY blocks.slot DESC`, startSlot, endSlot)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, v := range blocks {
+		data[v.Slot] = v
+	}
+	return data, nil
+}
+
+func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableResponse, error) {
 	latestBlockNumber := services.LatestEth1BlockNumber()
 
 	if start > latestBlockNumber {
@@ -90,30 +133,57 @@ func GetEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 		return nil, err
 	}
 
+	var slotData map[uint64]*additionalSlotData
+	{
+		foundAtLeastOneValidSlot := false
+		startSlot := ^uint64(0)
+		endSlot := uint64(0)
+		for _, b := range blocks {
+			s := getSlotByTimestamp(b.GetTime())
+			if s > 0 {
+				foundAtLeastOneValidSlot = true
+				if s < startSlot {
+					startSlot = s
+				}
+				if s > endSlot {
+					endSlot = s
+				}
+			}
+		}
+
+		if foundAtLeastOneValidSlot {
+			slotData, err = getProposerAndStatusFromSlot(startSlot, endSlot)
+			if err != nil {
+				return nil, err
+			}
+
+		}
+	}
+
 	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
-		/* // #RECY #TODO add to GetBlocksDescending?
-		fullBlockData, err := db.BigtableClient.GetBlockFromBlocksTable(b.GetNumber())
-		if err != nil {
-			return nil, err
-		}
-
-		logrus.Infof("%v %v", b.GetTransactionCount(), len(fullBlockData.Transactions))
-		tTypes := make([]int, 100)
-		for _, v := range fullBlockData.Transactions {
-			tTypes[v.Type] += 1
-		}
-		for k, v := range tTypes {
-			if v != 0 {
-				logrus.Infof(">> %d %d", k, v)
+		var sData *additionalSlotData
+		if slotData != nil {
+			ts := uint64(b.GetTime().AsTime().Unix())
+			if ts >= utils.Config.Chain.GenesisTimestamp {
+				slot := (ts - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.Config.SecondsPerSlot
+				if val, ok := slotData[slot]; ok {
+					sData = val
+				} else {
+					return nil, fmt.Errorf("slot %d doesn't exists in ReaderDb", slot)
+				}
 			}
-		} /**/
+		}
 
-		posActive := true
 		slotText := "-"
 		epochText := "-"
-		{
-			// Difficulty == 0 represent active staking, so we will show the slot
+		status := template.HTML("-")
+		proposer := template.HTML("-")
+		if sData != nil {
+			status = utils.FormatBlockStatus(sData.Status)
+			proposer = utils.FormatValidatorWithName(sData.Proposer, sData.ProposerName)
+
+			posActive := true
 			for _, v := range b.GetDifficulty() {
 				if v != 0 {
 					posActive = false
@@ -121,31 +191,10 @@ func GetEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 				}
 			}
 
-			if posActive {
-				ts := uint64(b.GetTime().AsTime().Unix())
-				if ts >= utils.Config.Chain.GenesisTimestamp {
-					// slot
-					slot := (ts - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.Config.SecondsPerSlot
-					slotText = fmt.Sprintf(`<A href="block/%d">%s</A>`, b.GetNumber(), utils.FormatAddCommas(slot))
-
-					// epoch
-					{
-						epoch := slot / utils.Config.Chain.Config.SlotsPerEpoch
-						epochText = fmt.Sprintf(`<A href="epoch/%d">%s</A>`, epoch, utils.FormatAddCommas(epoch))
-					}
-				}
+			if posActive && sData != nil {
+				slotText = fmt.Sprintf(`<A href="block/%d">%s</A>`, b.GetNumber(), utils.FormatAddCommas(sData.Slot))
+				epochText = fmt.Sprintf(`<A href="epoch/%d">%s</A>`, sData.Epoch, utils.FormatAddCommas(sData.Epoch))
 			}
-		}
-
-		// #RECY #RANDOM
-		randomPropserName := ""
-		switch os := rand.Intn(20); os {
-		case 0:
-			randomPropserName = "gabuwhale"
-		case 1:
-			randomPropserName = "Uma-70"
-		case 2:
-			randomPropserName = "Untitled"
 		}
 
 		baseFee := new(big.Int).SetBytes(b.GetBaseFee())
@@ -167,9 +216,9 @@ func GetEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 			epochText, // Epoch
 			fmt.Sprintf(`%s<BR /><span style="font-size: .63rem; color: grey;">%v</span>`, slotText, utils.FormatTimestamp(b.GetTime().AsTime().Unix())), // Slot
 			fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber())),                                                // Block
-			utils.FormatBlockStatus(uint64(rand.Intn(4))),                       // Status #RECY #RANDOM
-			fmt.Sprintf("%x", b.GetCoinbase()),                                  // Coinbase
-			utils.FormatValidatorWithName(rand.Intn(400000), randomPropserName), // Proposer #RECY #RANDOM
+			status,                             // Status
+			fmt.Sprintf("%x", b.GetCoinbase()), // Recipient
+			proposer,                           // Proposer
 			fmt.Sprintf(`<span data-toggle="tooltip" data-placement="top" title="%d transactions and %d internal transactions">%d<BR /><span style="font-size: .63rem; color: grey;">%d</span></span>`, b.GetTransactionCount(), b.GetInternalTransactionCount(), b.GetTransactionCount(), b.GetInternalTransactionCount()),                                                                                                                                                                             // Transactions
 			fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="Gas Used %%" style="font-size: .63rem; color: grey;">%.2f%%</span>&nbsp;<span data-toggle="tooltip" data-placement="top" title="%% of Gas Target" style="font-size: .63rem; color: grey;">(%+.2f%%)</span>`, utils.FormatAddCommas(b.GetGasUsed()), float64(int64(float64(b.GetGasUsed())/float64(b.GetGasLimit())*10000.0))/100.0, float64(int64(((float64(b.GetGasUsed())-gasHalf)/gasHalf)*10000.0))/100.0), // Gas Used
 			utils.FormatAddCommas(b.GetGasLimit()),                                 // Gas Limit
