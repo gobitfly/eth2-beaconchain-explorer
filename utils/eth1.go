@@ -93,7 +93,11 @@ func FormatInOutSelf(address, from, to []byte) template.HTML {
 }
 
 func FormatAddress(address []byte, token []byte, name string, verified bool, isContract bool, link bool) template.HTML {
-	return formatAddress(address, token, name, verified, isContract, "address", 17, 0, false)
+	if link {
+		return formatAddress(address, token, name, verified, isContract, "address", 17, 0, false)
+
+	}
+	return formatAddress(address, token, name, verified, isContract, "", 17, 0, false)
 }
 
 func FormatAddressWithLimits(address []byte, name string, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
