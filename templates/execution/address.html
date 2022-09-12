@@ -800,10 +800,10 @@
 
 {{ define "AddressQRCodeModal" }}
   <div class="modal fade" id="qrcode-modal" tabindex="-1" role="dialog" aria-labelledby="qrcode-modal-label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="width: 320px; height: 320px; margin: 1.75rem auto;">
+    <div class="modal-dialog modal-dialog-centered" style="width: 95%; max-width: 400px; height: 375px; margin: 1.75rem auto;">
       <div class="modal-content">
         <div class="modal-header justify-content-center text-truncate">
-          <span class="text-monospace text-truncate" style="font-size: 80%; max-width: 300px;">0x{{ .Data.Address }}</span>
+          <span class="text-monospace text-truncate text-center font-weight-bold" style="font-size: 85%; width: 100%;">0x{{ .Data.Address }}</span>
         </div>
         <div class="modal-body d-flex justify-content-center">
           <img style="visibility: hidden;" class="qrcode-light" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address 0x{{ .Data.Address }}" />
