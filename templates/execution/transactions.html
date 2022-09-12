@@ -104,62 +104,62 @@
     }
   </script>
 {{ end }}{{ define "css" }}
-<style>
-  .border-bottom-radius-0 {
-    border-bottom-left-radius: 0px !important;
-    border-bottom-right-radius: 0px !important;
-  }
-</style>
-<style>
-  .dataTables_scrollBody {
-    height: 100%;
-  }
-  .badge {
-    border-radius: 0.8rem;
-    padding: 0.4rem;
-    font-weight: 500;
-  }
+  <style>
+    .border-bottom-radius-0 {
+      border-bottom-left-radius: 0px !important;
+      border-bottom-right-radius: 0px !important;
+    }
+  </style>
+  <style>
+    .dataTables_scrollBody {
+      height: 100%;
+    }
+    .badge {
+      border-radius: 0.8rem;
+      padding: 0.4rem;
+      font-weight: 500;
+    }
 
-  .token-icon {
-    width: fit-content;
-    padding: 0 0.15rem;
-    display: flex;
-    align-items: center;
-  }
-  .nav-item {
-    margin: 0;
-  }
+    .token-icon {
+      width: fit-content;
+      padding: 0 0.15rem;
+      display: flex;
+      align-items: center;
+    }
+    .nav-item {
+      margin: 0;
+    }
 
-  .header-col,
-  .overview-header-col {
-    background-color: var(--bg-color-light);
-    font-style: normal;
-    /* font-family: 'Mukta'; */
-    font-weight: 500;
-    font-size: 1rem;
-    line-height: 23px;
-    backdrop-filter: blur(2px);
-  }
+    .header-col,
+    .overview-header-col {
+      background-color: var(--bg-color-light);
+      font-style: normal;
+      /* font-family: 'Mukta'; */
+      font-weight: 500;
+      font-size: 1rem;
+      line-height: 23px;
+      backdrop-filter: blur(2px);
+    }
 
-  .token-holdings {
-  }
+    .token-holdings {
+    }
 
-  .token-balance-col {
-    /* border-bottom: 1px solid var(--shadow-light); */
-    border-top: 1px solid var(--border-color);
-    padding: 0.5rem 1rem;
-  }
+    .token-balance-col {
+      /* border-bottom: 1px solid var(--shadow-light); */
+      border-top: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+    }
 
-  /* .token-balance-col:nth-child(2n+2) {
+    /* .token-balance-col:nth-child(2n+2) {
     text-align: right;
   } */
 
-  .token-balance-col:nth-child(1),
-  .token-balance-col:nth-child(2) {
-    border-top: none;
-  }
+    .token-balance-col:nth-child(1),
+    .token-balance-col:nth-child(2) {
+      border-top: none;
+    }
 
-  /* #transactions-table div {
+    /* #transactions-table div {
     --ease-elastic-1:cubic-bezier(.5,.75,.75,1.25);
     --ease-elastic-2: cubic-bezier(.5,1,.75,1.25);
     --ease-elastic-3: cubic-bezier(.5,1.25,.75,1.25);
@@ -168,88 +168,88 @@
     transition: all 0.3s var(--ease-elastic-1);
   } */
 
-  .overview-col {
-    border-top: 1px solid var(--border-color);
-    padding: 1rem;
-  }
+    .overview-col {
+      border-top: 1px solid var(--border-color);
+      padding: 1rem;
+    }
 
-  .overview-col:nth-child(1),
-  .overview-col:nth-child(2) {
-    border-top: none;
-  }
+    .overview-col:nth-child(1),
+    .overview-col:nth-child(2) {
+      border-top: none;
+    }
 
-  /* .overview-col:last-child,
+    /* .overview-col:last-child,
   .overview-col:nth-last-child(2) {
     border-bottom: none;
   } */
 
-  .overview-label,
-  .overview-col,
-  .token-balance-col {
-    font-weight: 400;
-    font-size: 0.85rem;
-    line-height: 23px;
-    font-style: normal;
-    /* font-family: 'Mukta'; */
-  }
-  @media screen and (min-width: 820px) {
     .overview-label,
     .overview-col,
     .token-balance-col {
-      font-size: 1rem;
-      font-weight: 300;
+      font-weight: 400;
+      font-size: 0.85rem;
+      line-height: 23px;
+      font-style: normal;
+      /* font-family: 'Mukta'; */
     }
-  }
+    @media screen and (min-width: 820px) {
+      .overview-label,
+      .overview-col,
+      .token-balance-col {
+        font-size: 1rem;
+        font-weight: 300;
+      }
+    }
 
-  .header-address {
-    font-size: 1.2rem;
-  }
-
-  .header-address .text-monospace {
-    font-size: 0.81rem;
-  }
-
-  .qrcode-light {
-    visibility: hidden;
-  }
-
-  .border-top {
-    border-color: var(--border-color) !important;
-  }
-
-  @media screen and (min-width: 600px) {
-    .header-address,
-    .header-address .text-monospace,
-    .fa-copy {
+    .header-address {
       font-size: 1.2rem;
     }
-  }
 
-  [data-theme="dark"] .qrcode-light {
-    display: none;
-  }
-  [data-theme="dark"] .qrcode-dark {
-    display: inline-block !important;
-    visibility: visible !important;
-  }
+    .header-address .text-monospace {
+      font-size: 0.81rem;
+    }
 
-  [data-theme="light"] .qrcode-dark {
-    display: none;
-  }
+    .qrcode-light {
+      visibility: hidden;
+    }
 
-  [data-theme="light"] .qrcode-light {
-    display: inline-block !important;
-    visibility: visible !important;
-  }
+    .border-top {
+      border-color: var(--border-color) !important;
+    }
 
-  .token-icon {
-    min-width: 120px;
-  }
-  .token-holdings {
-    min-width: 120px;
-  }
+    @media screen and (min-width: 600px) {
+      .header-address,
+      .header-address .text-monospace,
+      .fa-copy {
+        font-size: 1.2rem;
+      }
+    }
 
-  /* .overview-tab-initial {
+    [data-theme="dark"] .qrcode-light {
+      display: none;
+    }
+    [data-theme="dark"] .qrcode-dark {
+      display: inline-block !important;
+      visibility: visible !important;
+    }
+
+    [data-theme="light"] .qrcode-dark {
+      display: none;
+    }
+
+    [data-theme="light"] .qrcode-light {
+      display: inline-block !important;
+      visibility: visible !important;
+    }
+
+    .token-icon {
+      min-width: 120px;
+    }
+    .token-holdings {
+      min-width: 120px;
+    }
+
+    /* .overview-tab-initial {
     display: none !important;
   }
 
@@ -266,31 +266,31 @@
     } 
   } */
 
-  .tbl-col {
-    padding: 0.5rem;
-    border-top: var(--border-color) 1px solid;
-  }
+    .tbl-col {
+      padding: 0.5rem;
+      border-top: var(--border-color) 1px solid;
+    }
 
-  .tbl-col-content {
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+    .tbl-col-content {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
-  .token-balance-col {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+    .token-balance-col {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
-  /* #erc721Txns .tbl-col, #erc721Txns .header-col {
+    /* #erc721Txns .tbl-col, #erc721Txns .header-col {
     max-width: 250px;
   } */
-  .nav-link.dropdown-toggle::after {
-    float: none !important;
-  }
-</style>
+    .nav-link.dropdown-toggle::after {
+      float: none !important;
+    }
+  </style>
 {{ end }}{{ define "content" }}
   <div class="container mt-2">
     <div class="my-3">
