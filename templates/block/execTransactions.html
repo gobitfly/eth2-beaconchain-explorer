@@ -1,27 +1,27 @@
 {{ define "execution_transactions" }}
-    <div class="row border-bottom p-1 mx-0">
-        <div class="col-md-12 text-center"><b>Showing {{ .TxCount }} Transactions </b></div>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-sm table-bordered text-center">
-            <tr>
-                <th>Hash</th>
-                <th>From</th>
-                <th>To</th>
-                <th>Value</th>
-                <th>Fee</th>
-                <th>Gas Price</th>
-            </tr>
-            {{range .Txs}}
-                <tr>
-                    <td><a class="text-monospace" href="/execution/tx/{{.Hash}}">{{printf "%.8s" .Hash}}…</a></td>
-                    <td><a class="text-monospace" href="/execution/address/{{.From}}">{{ if gt (len .FromName ) 0 }} {{.FromName}} {{ else}} {{.From}} {{ end }}</a></td>
-                    <td><a class="text-monospace" href="/execution/address/{{.To}}">{{ if gt (len .ToName ) 0 }} {{.ToName}} {{ else}} {{.To}} {{ end }}</a></td>
-                    <td>{{formatAmount .Value "ETH" 5}}</td>
-                    <td>{{formatAmount .Fee "ETH" 5 }}</td>
-                    <td>{{formatAmount .GasPrice "GWei" 0}}</td>
-                </tr>
-            {{end}}
-        </table>
-    </div>
+  <div class="row border-bottom p-1 mx-0">
+    <div class="col-md-12 text-center"><b>Showing {{ .TxCount }} Transactions </b></div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered text-center">
+      <tr>
+        <th>Hash</th>
+        <th>From</th>
+        <th>To</th>
+        <th>Value</th>
+        <th>Fee</th>
+        <th>Gas Price</th>
+      </tr>
+      {{ range .Txs }}
+        <tr>
+          <td><a class="text-monospace" href="/execution/tx/{{ .Hash }}">{{ printf "%.8s" .Hash }}…</a></td>
+          <td><a class="text-monospace" href="/execution/address/{{ .From }}">{{ if gt (len .FromName ) 0 }}{{ .FromName }}{{ else }}{{ .From }}{{ end }}</a></td>
+          <td><a class="text-monospace" href="/execution/address/{{ .To }}">{{ if gt (len .ToName ) 0 }}{{ .ToName }}{{ else }}{{ .To }}{{ end }}</a></td>
+          <td>{{ formatAmount .Value "ETH" 5 }}</td>
+          <td>{{ formatAmount .Fee "ETH" 5 }}</td>
+          <td>{{ formatAmount .GasPrice "GWei" 0 }}</td>
+        </tr>
+      {{ end }}
+    </table>
+  </div>
 {{ end }}

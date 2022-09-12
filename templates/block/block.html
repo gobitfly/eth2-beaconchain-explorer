@@ -144,14 +144,14 @@
     <div class="container mt-2">
       <div class="d-md-flex py-2 justify-content-md-between">
         <h1 class="h4 my-3 mb-md-0">
-          {{ with .ExecutionData}}
-            {{if gt .PreviousBlock 0}}
-							<a href="/execution/block/{{.PreviousBlock}}"><i class="fa fa-chevron-left"></i></a>
-						{{end}}
-						<span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block {{.Number}}</span>
-						{{if gt .NextBlock 0}}
-							<a href="/execution/block/{{.NextBlock}}"><i class="fa fa-chevron-right"></i></a>
-						{{end}}
+          {{ with .ExecutionData }}
+            {{ if gt .PreviousBlock 0 }}
+              <a href="/execution/block/{{ .PreviousBlock }}"><i class="fa fa-chevron-left"></i></a>
+            {{ end }}
+            <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block {{ .Number }}</span>
+            {{ if gt .NextBlock 0 }}
+              <a href="/execution/block/{{ .NextBlock }}"><i class="fa fa-chevron-right"></i></a>
+            {{ end }}
           {{ else }}
             {{ if not (eq .Slot 0) }}
               <a href="/block/{{ .PreviousSlot }}"><i class="fa fa-chevron-left"></i></a>
@@ -186,7 +186,7 @@
         </li>
         {{ if or (gt .ExecTransactionsCount 0) (.ExecutionData) }}
           <li class="nav-item">
-            <a class="nav-link" id="transactions-tab" data-toggle="tab" href="#transactions" role="tab" aria-controls="transactions" aria-selected="false">Transactions <span class="badge bg-secondary text-white">{{ if .ExecutionData }} {{ .ExecutionData.TxCount }} {{ else }} {{ .ExecTransactionsCount }} {{ end }}</span></a>
+            <a class="nav-link" id="transactions-tab" data-toggle="tab" href="#transactions" role="tab" aria-controls="transactions" aria-selected="false">Transactions <span class="badge bg-secondary text-white">{{ if .ExecutionData }}{{ .ExecutionData.TxCount }}{{ else }}{{ .ExecTransactionsCount }}{{ end }}</span></a>
           </li>
         {{ end }}
         <li class="nav-item">
