@@ -3067,14 +3067,15 @@ func prefixSuccessor(prefix string, pos int) string {
 }
 
 func (bigtable *Bigtable) markBalanceUpdate(address []byte, token []byte, mutations *types.BulkMutations, cache *ccache.Cache) {
-	balanceUpdateKey := fmt.Sprintf("%s:B:%x", bigtable.chainId, address) // format is B: for balance update as chainid:prefix:address (token id will be encoded as column name)
-	if cache.Get(balanceUpdateKey) == nil {
+	balanceUpdateKey := fmt.Sprintf("%s:B:%x", bigtable.chainId, address)                // format is B: for balance update as chainid:prefix:address (token id will be encoded as column name)
+	balanceUpdateCacheKey := fmt.Sprintf("%s:B:%x:%x", bigtable.chainId, address, token) // format is B: for balance update as chainid:prefix:address (token id will be encoded as column name)
+	if cache.Get(balanceUpdateCacheKey) == nil {
 		mut := gcp_bigtable.NewMutation()
 		mut.Set(DEFAULT_FAMILY, fmt.Sprintf("%x", token), gcp_bigtable.Timestamp(0), []byte{})
 
 		mutations.Keys = append(mutations.Keys, balanceUpdateKey)
 		mutations.Muts = append(mutations.Muts, mut)
 
-		cache.Set(balanceUpdateKey, true, time.Hour*48)
+		cache.Set(balanceUpdateCacheKey, true, time.Hour*48)
 	}
 }
