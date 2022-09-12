@@ -41,7 +41,7 @@ func EthBytesToFloat(b []byte) float64 {
 }
 
 func FormatBlockNumber(number uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/execution/block/%[1]d\">%[1]d</a>", number))
+	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", number))
 }
 
 func FormatTxHash(hash string) template.HTML {
@@ -67,14 +67,14 @@ func FormatBlockHash(hash []byte) template.HTML {
 	if len(hash) < 20 {
 		return template.HTML("N/A")
 	}
-	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/execution/block/0x%x">0x%x…%x</a> %v`, hash, hash[:2], hash[len(hash)-2:], CopyButton(hex.EncodeToString(hash))))
+	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/block/0x%x">0x%x…%x</a> %v`, hash, hash[:2], hash[len(hash)-2:], CopyButton(hex.EncodeToString(hash))))
 }
 
 func FormatTransactionHash(hash []byte) template.HTML {
 	if len(hash) < 20 {
 		return template.HTML("N/A")
 	}
-	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/execution/tx/0x%x">0x%x…%x</a>`, hash, hash[:3], hash[len(hash)-3:]))
+	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/tx/0x%x">0x%x…%x</a>`, hash, hash[:3], hash[len(hash)-3:]))
 }
 
 func FormatInOutSelf(address, from, to []byte) template.HTML {
@@ -146,9 +146,9 @@ func formatAddress(address []byte, token []byte, name string, verified bool, isC
 	} else {
 		// link & token
 		if token != nil {
-			ret += fmt.Sprintf(`<a href="/execution/`+link+`/0x%x#erc20Txns" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+			ret += fmt.Sprintf(`<a href="/`+link+`/0x%x#erc20Txns" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
 		} else { // just link
-			ret += fmt.Sprintf(`<a href="/execution/`+link+`/0x%x" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+			ret += fmt.Sprintf(`<a href="/`+link+`/0x%x" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
 		}
 	}
 
@@ -167,12 +167,12 @@ func FormatAddressAsLink(address []byte, name string, verified bool, isContract 
 
 	if len(name) > 0 {
 		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">✔ %s (0x%x…%x)</a> %v", address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/0x%x\">✔ %s (0x%x…%x)</a> %v", address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
 		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">%s 0x%x…%x</a> %v", address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/0x%x\">%s 0x%x…%x</a> %v", address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
 		}
 	} else {
-		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/address/0x%x\">0x%x…%x</a> %v", address, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/0x%x\">0x%x…%x</a> %v", address, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
 	}
 
 	if isContract {
@@ -187,12 +187,12 @@ func FormatAddressAsTokenLink(token, address []byte, name string, verified bool,
 
 	if len(name) > 0 {
 		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/token/0x%x?a=0x%x\">✔ %s (0x%x…%x)</a> %v", token, address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/0x%x?a=0x%x\">✔ %s (0x%x…%x)</a> %v", token, address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
 		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/token/0x%x?a=0x%x\">%s 0x%x…%x</a> %v", token, address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/0x%x?a=0x%x\">%s 0x%x…%x</a> %v", token, address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
 		}
 	} else {
-		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/execution/token/0x%x?a=0x%x\">0x%x…%x</a> %v", token, address, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/0x%x?a=0x%x\">0x%x…%x</a> %v", token, address, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
 	}
 
 	if isContract {

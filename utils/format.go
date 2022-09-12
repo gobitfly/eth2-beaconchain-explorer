@@ -181,12 +181,12 @@ func FormatBlockRoot(blockRoot []byte) template.HTML {
 	if len(blockRoot) < 32 {
 		return "N/A"
 	}
-	return template.HTML(fmt.Sprintf("<a href=\"/block/%x\">%v</a>%v", blockRoot, FormatHash(blockRoot), copyBtn))
+	return template.HTML(fmt.Sprintf("<a href=\"/slot/%x\">%v</a>%v", blockRoot, FormatHash(blockRoot), copyBtn))
 }
 
 // FormatBlockSlot will return the block-slot formated as html
 func FormatBlockSlot(blockSlot uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/block/%d\">%s</a>", blockSlot, FormatAddCommas(blockSlot)))
+	return template.HTML(fmt.Sprintf("<a href=\"/slot/%d\">%s</a>", blockSlot, FormatAddCommas(blockSlot)))
 }
 
 // FormatAttestationInclusionSlot will return the block-slot formated as html
@@ -299,44 +299,44 @@ func FormatEth1Address(addr []byte) template.HTML {
 	eth1Addr := common.BytesToAddress(addr)
 
 	if Config.Chain.Config.ConfigName == "prater" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
+		return template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
 	}
 	if Config.Chain.Config.ConfigName == "ropsten" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://ropsten.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
+		return template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
 	}
 	if Config.Chain.Config.ConfigName == "sepolia" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://sepolia.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
+		return template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
 	}
-	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
+	return template.HTML(fmt.Sprintf("<a href=\"address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
 }
 
 // FormatEth1Block will return the eth1-block formated as html
 func FormatEth1Block(block uint64) template.HTML {
 	if Config.Chain.Config.ConfigName == "prater" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/block/%[1]d\">%[1]d</a>", block))
+		return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", block))
 	}
 	if Config.Chain.Config.ConfigName == "ropsten" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://ropsten.etherscan.io/block/%[1]d\">%[1]d</a>", block))
+		return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", block))
 	}
 	if Config.Chain.Config.ConfigName == "sepolia" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://sepolia.etherscan.io/block/%[1]d\">%[1]d</a>", block))
+		return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", block))
 	}
-	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/block/%[1]d\">%[1]d</a>", block))
+	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", block))
 }
 
 // FormatEth1BlockHash will return the eth1-block formated as html
 func FormatEth1BlockHash(block []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(block))
 	if Config.Chain.Config.ConfigName == "prater" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
+		return template.HTML(fmt.Sprintf("<a href=\"/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
 	}
 	if Config.Chain.Config.ConfigName == "ropsten" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://ropsten.etherscan.io/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
+		return template.HTML(fmt.Sprintf("<a href=\"/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
 	}
 	if Config.Chain.Config.ConfigName == "sepolia" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://sepolia.etherscan.io/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
+		return template.HTML(fmt.Sprintf("<a href=\"/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
 	}
-	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/block/%#[1]x\">%[1]x</a>%s", block, copyBtn))
+	return template.HTML(fmt.Sprintf("<a href=\"/block/%#[1]x\">%[1]x</a>%s", block, copyBtn))
 }
 
 // FormatEth1TxHash will return the eth1-tx-hash formated as html
@@ -344,12 +344,12 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(hash))
 
 	if Config.Chain.Config.ConfigName == "prater" {
-		return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="https://goerli.etherscan.io/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
+		return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 	}
 	if Config.Chain.Config.ConfigName == "ropsten" {
-		return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="https://ropsten.etherscan.io/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
+		return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 	}
-	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="https://etherchain.org/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
+	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 }
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
@@ -959,7 +959,7 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 	return template.HTML(p.Sprintf(`
 	<div class="token-balance-col token-name text-truncate d-flex align-items-center justify-content-between flex-wrap">
 		<div class="token-icon p-1">
-			<a href='/execution/token/0x%x?a=0x%x'>
+			<a href='/token/0x%x?a=0x%x'>
 				<span>%s</span> <span>%s</span>
 			</a> 
 		</div>
@@ -1012,7 +1012,7 @@ func FormatTokenName(balance *types.Eth1AddressBalance) template.HTML {
 	if len(balance.Metadata.Logo) != 0 {
 		logo = fmt.Sprintf(`<img style="height: 20px;" src="data:image/png;base64, %s">`, base64.StdEncoding.EncodeToString(balance.Metadata.Logo))
 	}
-	return template.HTML(fmt.Sprintf("<a href='/execution/token/0x%x?a=0x%x'>%s %s</a>", balance.Token, balance.Address, logo, balance.Metadata.Symbol))
+	return template.HTML(fmt.Sprintf("<a href='/token/0x%x?a=0x%x'>%s %s</a>", balance.Token, balance.Address, logo, balance.Metadata.Symbol))
 }
 
 func ToBase64(input []byte) string {

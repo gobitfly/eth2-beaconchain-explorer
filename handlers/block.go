@@ -86,7 +86,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
-		data.Meta.Path = "/block/" + slotOrHash
+		data.Meta.Path = "/slot/" + slotOrHash
 		logger.Errorf("error retrieving block data: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -103,7 +103,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		slot := uint64(blockSlot)
 		//Slot not in database -> Show future block
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
-		data.Meta.Path = "/block/" + slotOrHash
+		data.Meta.Path = "/slot/" + slotOrHash
 
 		if slot > MaxSlotValue {
 			logger.Errorf("error retrieving blockPageData: %v", err)
@@ -139,7 +139,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, blockPageData.Slot, time.Now().Year())
-	data.Meta.Path = fmt.Sprintf("/block/%v", blockPageData.Slot)
+	data.Meta.Path = fmt.Sprintf("/slot/%v", blockPageData.Slot)
 	data.Data = blockPageData
 
 	if utils.IsApiRequest(r) {
