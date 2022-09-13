@@ -1886,8 +1886,8 @@ func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, address []byte, li
 			logrus.Fatal(err)
 		}
 
-		// geth traces include the inital transfer & zero-value staticalls
-		if bytes.Equal(b.From, address) || bytes.Equal(b.Value, []byte{}) {
+		// geth traces include zero-value staticalls
+		if bytes.Equal(b.Value, []byte{}) {
 			return true
 		}
 		keysMap[row.Key()] = b
