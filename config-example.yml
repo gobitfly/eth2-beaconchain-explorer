@@ -18,8 +18,8 @@ chain:
 frontend:
   enabled: true # Enable or disable to web frontend
   imprint: "templates/imprint.example.html}**"  # Path to the imprint page content
-  siteName: "Ethereum 2.0 Beacon Chain (Phase 0) Block Chain Explorer" # Name of the site, displayed in the title tag
-  siteSubtitle: "Showing the <a href='https://prylabs.net'>💎 Prysm Eth2 Testnet</a>" # Subtitle shown on the main page
+  siteName: "Ethereum Block Chain Explorer" # Name of the site, displayed in the title tag
+  siteSubtitle: "Showing the <a href='https://prylabs.net'>💎 Prysm Eth Testnet</a>" # Subtitle shown on the main page
   csrfAuthKey: '0123456789abcdef000000000000000000000000000000000000000000000000'
   jwtSigningSecret: "0123456789abcdef000000000000000000000000000000000000000000000000"
   jwtIssuer: "beaconcha.in"
