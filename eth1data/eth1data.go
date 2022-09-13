@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -18,14 +19,17 @@ import (
 )
 
 func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
 	cacheKey := fmt.Sprintf("%d:tx:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
-	if wanted, err := db.EkoCache.Get(context.Background(), cacheKey, new(types.Eth1TxData)); err == nil {
+	if wanted, err := db.EkoCache.Get(ctx, cacheKey, new(types.Eth1TxData)); err == nil {
 		logrus.Infof("retrieved data for tx %v from cache", hash)
 		logrus.Info(wanted)
 		return wanted.(*types.Eth1TxData), nil
 	}
 
-	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(context.Background(), hash)
+	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(ctx, hash)
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving data for tx %v: %v", hash, err)
@@ -43,7 +47,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		Events:    make([]*types.Eth1EventData, 0, 10),
 	}
 
-	receipt, err := GetTransactionReceipt(hash)
+	receipt, err := GetTransactionReceipt(ctx, hash)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving receipt data for tx %v: %v", hash, err)
 	}
@@ -56,13 +60,13 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		txPageData.To = &receipt.ContractAddress
 		txPageData.IsContractCreation = true
 	}
-	code, err := GetCodeAt(*txPageData.To)
+	code, err := GetCodeAt(ctx, *txPageData.To)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving code data for tx %v receipient %v: %v", hash, tx.To(), err)
 	}
 	txPageData.TargetIsContract = len(code) != 0
 
-	header, err := GetBlockHeaderByHash(receipt.BlockHash)
+	header, err := GetBlockHeaderByHash(ctx, receipt.BlockHash)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block header data for tx %v: %v", hash, err)
 	}
@@ -184,7 +188,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 
 	}
 
-	err = db.EkoCache.Set(context.Background(), cacheKey, txPageData)
+	err = db.EkoCache.Set(ctx, cacheKey, txPageData)
 	if err != nil {
 		return nil, fmt.Errorf("error writing data for tx %v to cache: %v", hash, err)
 	}
@@ -192,20 +196,20 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	return txPageData, nil
 }
 
-func GetCodeAt(address common.Address) ([]byte, error) {
+func GetCodeAt(ctx context.Context, address common.Address) ([]byte, error) {
 	cacheKey := fmt.Sprintf("%d:a:%s", utils.Config.Chain.Config.DepositChainID, address.String())
-	if wanted, err := db.EkoCache.Get(context.Background(), cacheKey, []byte{}); err == nil {
+	if wanted, err := db.EkoCache.Get(ctx, cacheKey, []byte{}); err == nil {
 		logrus.Infof("retrieved code data for address %v from cache", address)
 
 		return wanted.([]byte), nil
 	}
 
-	code, err := rpc.CurrentErigonClient.GetNativeClient().CodeAt(context.Background(), address, nil)
+	code, err := rpc.CurrentErigonClient.GetNativeClient().CodeAt(ctx, address, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving code data for address %v: %v", address, err)
 	}
 
-	err = db.EkoCache.Set(context.Background(), cacheKey, code)
+	err = db.EkoCache.Set(ctx, cacheKey, code)
 	if err != nil {
 		return nil, fmt.Errorf("error writing code data for address %v to cache: %v", address, err)
 	}
@@ -213,20 +217,20 @@ func GetCodeAt(address common.Address) ([]byte, error) {
 	return code, nil
 }
 
-func GetBlockHeaderByHash(hash common.Hash) (*geth_types.Header, error) {
+func GetBlockHeaderByHash(ctx context.Context, hash common.Hash) (*geth_types.Header, error) {
 	cacheKey := fmt.Sprintf("%d:h:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
 
-	if wanted, err := db.EkoCache.Get(context.Background(), cacheKey, new(geth_types.Header)); err == nil {
+	if wanted, err := db.EkoCache.Get(ctx, cacheKey, new(geth_types.Header)); err == nil {
 		logrus.Infof("retrieved header data for block %v from cache", hash)
 		return wanted.(*geth_types.Header), nil
 	}
 
-	header, err := rpc.CurrentErigonClient.GetNativeClient().HeaderByHash(context.Background(), hash)
+	header, err := rpc.CurrentErigonClient.GetNativeClient().HeaderByHash(ctx, hash)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block header data for tx %v: %v", hash, err)
 	}
 
-	err = db.EkoCache.Set(context.Background(), cacheKey, header)
+	err = db.EkoCache.Set(ctx, cacheKey, header)
 	if err != nil {
 		return nil, fmt.Errorf("error writing header data for block %v to cache: %v", hash, err)
 	}
@@ -234,20 +238,20 @@ func GetBlockHeaderByHash(hash common.Hash) (*geth_types.Header, error) {
 	return header, nil
 }
 
-func GetTransactionReceipt(hash common.Hash) (*geth_types.Receipt, error) {
+func GetTransactionReceipt(ctx context.Context, hash common.Hash) (*geth_types.Receipt, error) {
 	cacheKey := fmt.Sprintf("%d:r:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
 
-	if wanted, err := db.EkoCache.Get(context.Background(), cacheKey, new(geth_types.Receipt)); err == nil {
+	if wanted, err := db.EkoCache.Get(ctx, cacheKey, new(geth_types.Receipt)); err == nil {
 		logrus.Infof("retrieved receipt data for tx %v from cache", hash)
 		return wanted.(*geth_types.Receipt), nil
 	}
 
-	receipt, err := rpc.CurrentErigonClient.GetNativeClient().TransactionReceipt(context.Background(), hash)
+	receipt, err := rpc.CurrentErigonClient.GetNativeClient().TransactionReceipt(ctx, hash)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving receipt data for tx %v: %v", hash, err)
 	}
 
-	err = db.EkoCache.Set(context.Background(), cacheKey, receipt)
+	err = db.EkoCache.Set(ctx, cacheKey, receipt)
 	if err != nil {
 		return nil, fmt.Errorf("error writing receipt data for tx %v to cache: %v", hash, err)
 	}

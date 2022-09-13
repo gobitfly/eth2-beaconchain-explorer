@@ -95,12 +95,14 @@ func main() {
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+
 	rpc.CurrentErigonClient, err = rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
 	if err != nil {
 		logrus.Fatalf("error initializing erigon client: %v", err)
 	}
 
-	erigonChainId, err := rpc.CurrentErigonClient.GetNativeClient().ChainID(context.Background())
+	erigonChainId, err := rpc.CurrentErigonClient.GetNativeClient().ChainID(ctx)
 	if err != nil {
 		logrus.Fatalf("error retrieving erigon chain id: %v", err)
 	}
@@ -110,10 +112,11 @@ func main() {
 		logrus.Fatalf("error initializing geth client: %v", err)
 	}
 
-	gethChainId, err := rpc.CurrentGethClient.GetNativeClient().ChainID(context.Background())
+	gethChainId, err := rpc.CurrentGethClient.GetNativeClient().ChainID(ctx)
 	if err != nil {
 		logrus.Fatalf("error retrieving geth chain id: %v", err)
 	}
+	cancel()
 
 	if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) {
 		logrus.Fatalf("chain id missmatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), erigonChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))

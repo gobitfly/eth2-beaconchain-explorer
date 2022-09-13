@@ -42,8 +42,11 @@ type Bigtable struct {
 }
 
 func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
 	poolSize := 50
-	btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance, option.WithGRPCConnectionPool(poolSize))
+	btClient, err := gcp_bigtable.NewClient(ctx, project, instance, option.WithGRPCConnectionPool(poolSize))
 	// btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance)
 
 	if err != nil {
@@ -69,6 +72,10 @@ func (bigtable *Bigtable) Close() {
 }
 
 func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*types.Validator) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
 	start := time.Now()
 	ts := gcp_bigtable.Timestamp(0)
 
@@ -85,7 +92,7 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 		mut.Set(VALIDATOR_BALANCES_FAMILY, fmt.Sprintf("%d", validator.Index), ts, combined)
 
 		if i%100000 == 0 {
-			err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch)), mut)
+			err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch)), mut)
 
 			if err != nil {
 				return err
@@ -93,7 +100,7 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 			mut = gcp_bigtable.NewMutation()
 		}
 	}
-	err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch)), mut)
+	err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch)), mut)
 
 	if err != nil {
 		return err
@@ -104,6 +111,10 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 }
 
 func (bigtable *Bigtable) SaveAttestationAssignments(epoch uint64, assignments map[string]uint64) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
 	start := time.Now()
 	ts := gcp_bigtable.Timestamp(0)
 
@@ -127,7 +138,7 @@ func (bigtable *Bigtable) SaveAttestationAssignments(epoch uint64, assignments m
 		for _, validator := range validators {
 			mut.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), ts, []byte{})
 		}
-		err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(epoch), reversedPaddedSlot(slot)), mut)
+		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(epoch), reversedPaddedSlot(slot)), mut)
 
 		if err != nil {
 			return err
@@ -139,13 +150,17 @@ func (bigtable *Bigtable) SaveAttestationAssignments(epoch uint64, assignments m
 }
 
 func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[uint64]uint64) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
 	start := time.Now()
 	ts := gcp_bigtable.Timestamp(0)
 
 	for slot, validator := range assignments {
 		mut := gcp_bigtable.NewMutation()
 		mut.Set(PROPOSALS_FAMILY, fmt.Sprintf("%d", validator), ts, []byte{})
-		err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(epoch), reversedPaddedSlot(slot)), mut)
+		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(epoch), reversedPaddedSlot(slot)), mut)
 
 		if err != nil {
 			return err
@@ -157,6 +172,10 @@ func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[
 }
 
 func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint64, validators []uint64) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
 	start := time.Now()
 	ts := gcp_bigtable.Timestamp(0)
 
@@ -173,7 +192,7 @@ func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint6
 		keys = append(keys, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(i/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(i)))
 	}
 
-	errs, err := bigtable.tableBeaconchain.ApplyBulk(context.Background(), keys, muts)
+	errs, err := bigtable.tableBeaconchain.ApplyBulk(ctx, keys, muts)
 
 	if err != nil {
 		return err
@@ -190,6 +209,10 @@ func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint6
 }
 
 func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.Block) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
 	start := time.Now()
 
 	attestationsBySlot := make(map[uint64]map[uint64]uint64) //map[attestedSlot]map[validator]includedSlot
@@ -226,7 +249,7 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 		for validator, inclusionSlot := range inclusions {
 			mut.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((max_block_number-inclusionSlot)*1000), []byte{})
 		}
-		err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(attestedSlot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(attestedSlot)), mut)
+		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(attestedSlot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(attestedSlot)), mut)
 
 		if err != nil {
 			return err
@@ -237,6 +260,10 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 }
 
 func (bigtable *Bigtable) SaveProposals(blocks map[uint64]map[string]*types.Block) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
 	start := time.Now()
 
 	slots := make([]uint64, 0, len(blocks))
@@ -255,7 +282,7 @@ func (bigtable *Bigtable) SaveProposals(blocks map[uint64]map[string]*types.Bloc
 			}
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(PROPOSALS_FAMILY, fmt.Sprintf("%d", b.Proposer), gcp_bigtable.Timestamp((max_block_number-b.Slot)*1000), []byte{})
-			err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(b.Slot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(b.Slot)), mut)
+			err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(b.Slot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(b.Slot)), mut)
 			if err != nil {
 				return err
 			}
@@ -266,6 +293,10 @@ func (bigtable *Bigtable) SaveProposals(blocks map[uint64]map[string]*types.Bloc
 }
 
 func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*types.Block) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
 	start := time.Now()
 
 	dutiesBySlot := make(map[uint64]map[uint64]bool) //map[dutiesSlot]map[validator]bool
@@ -311,7 +342,7 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*t
 		for validator := range validators {
 			mut.Set(SYNC_COMMITTEES_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((max_block_number-slot)*1000), []byte{})
 		}
-		err := bigtable.tableBeaconchain.Apply(context.Background(), fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(slot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(slot)), mut)
+		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(slot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(slot)), mut)
 
 		if err != nil {
 			return err

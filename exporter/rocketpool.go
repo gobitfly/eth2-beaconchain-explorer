@@ -287,6 +287,8 @@ func (rp *RocketpoolExporter) Run() error {
 
 // Get the event for a rewards snapshot
 func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, interval uint64, intervalSize *big.Int, rewardPoolAddress *common.Address) (rewards.RewardsEvent, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
 
 	var event rewards.RewardsEvent
 	var err error
@@ -306,7 +308,7 @@ func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, interval uint64, interval
 		numberOfIntervalsPassed := interval - uint64(latestInterval)
 
 		var currentBlock *types.Header
-		currentBlock, err = rp.Client.HeaderByNumber(context.Background(), nil)
+		currentBlock, err = rp.Client.HeaderByNumber(ctx, nil)
 		if err != nil {
 			return event, err
 		}
@@ -321,7 +323,7 @@ func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, interval uint64, interval
 
 		// Get the time of the latest block
 		var latestBlockHeader *types.Header
-		latestBlockHeader, err = rp.Client.HeaderByNumber(context.Background(), big.NewInt(int64(latestBlock)))
+		latestBlockHeader, err = rp.Client.HeaderByNumber(ctx, big.NewInt(int64(latestBlock)))
 		if err != nil {
 			return event, err
 		}
@@ -369,9 +371,11 @@ func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, interval uint64, interval
 }
 
 func GetELBlockHeaderForTime(targetTime time.Time, ec rocketpool.ExecutionClient) (*types.Header, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
 
 	// Get the latest block's timestamp
-	latestBlockHeader, err := ec.HeaderByNumber(context.Background(), nil)
+	latestBlockHeader, err := ec.HeaderByNumber(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting latest block header: %w", err)
 	}
@@ -379,7 +383,7 @@ func GetELBlockHeaderForTime(targetTime time.Time, ec rocketpool.ExecutionClient
 
 	// Start at the halfway point
 	candidateBlockNumber := big.NewInt(0).Div(latestBlock, big.NewInt(2))
-	candidateBlock, err := ec.HeaderByNumber(context.Background(), candidateBlockNumber)
+	candidateBlock, err := ec.HeaderByNumber(ctx, candidateBlockNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -403,7 +407,7 @@ func GetELBlockHeaderForTime(targetTime time.Time, ec rocketpool.ExecutionClient
 			for candidateTime > targetTimeUnix {
 				// Get the previous block if this one happened after the target time
 				candidateBlockNumber.Sub(candidateBlockNumber, big.NewInt(1))
-				candidateBlock, err = ec.HeaderByNumber(context.Background(), candidateBlockNumber)
+				candidateBlock, err = ec.HeaderByNumber(ctx, candidateBlockNumber)
 				if err != nil {
 					return nil, err
 				}
@@ -428,7 +432,7 @@ func GetELBlockHeaderForTime(targetTime time.Time, ec rocketpool.ExecutionClient
 			candidateBlockNumber.SetUint64(latestBlock.Uint64() - 1)
 		}
 
-		candidateBlock, err = ec.HeaderByNumber(context.Background(), candidateBlockNumber)
+		candidateBlock, err = ec.HeaderByNumber(ctx, candidateBlockNumber)
 		if err != nil {
 			return nil, err
 		}
