@@ -1,25 +1,27 @@
 {{ define "execution_transactions" }}
-  <div class="row border-bottom p-1 mx-0">
+  <div class="row p-1 mx-0">
     <div class="col-md-12 text-center"><b>Showing {{ .TxCount }} Transactions </b></div>
   </div>
   <div class="table-responsive">
-    <table class="table table-sm table-bordered text-center">
-      <tr>
-        <th>Hash</th>
-        <th>From</th>
-        <th>To</th>
-        <th>Value</th>
-        <th>Fee</th>
-        <th>Gas Price</th>
+    <table class="table table-sm text-left">
+      <tr style="background-color: var(--bg-color-light);">
+        <th class="border-0">Tx Hash</th>
+        <th class="border-0">Method</th>
+        <th class="border-0">From</th>
+        <th class="border-0">To</th>
+        <th class="border-0">Value</th>
+        <th class="border-0">Tx Fee</th>
+        <th class="border-0">Gas Price</th>
       </tr>
       {{ range .Txs }}
-        <tr>
-          <td><a class="text-monospace" href="/tx/{{ .Hash }}">{{ printf "%.8s" .Hash }}…</a></td>
-          <td><a class="text-monospace" href="/address/{{ .From }}">{{ if gt (len .FromName ) 0 }}{{ .FromName }}{{ else }}{{ .From }}{{ end }}</a></td>
-          <td><a class="text-monospace" href="/address/{{ .To }}">{{ if gt (len .ToName ) 0 }}{{ .ToName }}{{ else }}{{ .To }}{{ end }}</a></td>
-          <td>{{ formatAmount .Value "ETH" 5 }}</td>
-          <td>{{ formatAmount .Fee "ETH" 5 }}</td>
-          <td>{{ formatAmount .GasPrice "GWei" 0 }}</td>
+        <tr class="border-bottom">
+          <td class="border-0">{{ .HashFormatted }}</td>
+          <td class="border-0"><span class="badge badge-light">{{ if gt (len .Method ) 0 }}{{ .Method }}{{ else }}Transfer{{ end }}</span></td>
+          <td class="border-0">{{ .FromFormatted }}</td>
+          <td class="border-0">{{ .ToFormatted }}</td>
+          <td class="border-0">{{ formatAmountFormatted .Value "ETH" 5 0 true true false}}</td>
+          <td class="border-0">{{ formatAmountFormatted .Fee "ETH" 5  0 true true false}}</td>
+          <td class="border-0">{{ formatAmountFormatted .GasPrice "GWei" 5 0 true true false}}</td>
         </tr>
       {{ end }}
     </table>

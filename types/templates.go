@@ -1606,7 +1606,7 @@ type Eth1BlockPageData struct {
 	Hash           string
 	ParentHash     string
 	MinerAddress   string
-	MinerName      string
+	MinerFormatted template.HTML
 	Reward         *big.Int
 	MevReward      *big.Int
 	TxFees         *big.Int
@@ -1624,13 +1624,14 @@ type Eth1BlockPageData struct {
 }
 
 type Eth1BlockPageTransaction struct {
-	Hash     string
-	From     string
-	FromName string
-	To       string
-	ToName   string
-	Value    *big.Int
-	Fee      *big.Int
-	GasPrice *big.Int
-	Method   string
+	Hash          string
+	HashFormatted template.HTML
+	From          string
+	FromFormatted template.HTML
+	To            string
+	ToFormatted   template.HTML
+	Value         *big.Int
+	Fee           *big.Int
+	GasPrice      *big.Int
+	Method        string
 }

@@ -247,7 +247,7 @@ func Start(client rpc.Client) error {
 					return
 				}
 				atomic.StoreUint64(&fullCheckRunning, 1)
-				doFullCheck(client)
+				doFullCheck(client, 0)
 				atomic.StoreUint64(&fullCheckRunning, 0)
 			}()
 		} else { // else just save the epoch block
@@ -276,7 +276,7 @@ func Start(client rpc.Client) error {
 }
 
 // Will ensure the db is fully in sync with the node
-func doFullCheck(client rpc.Client) {
+func doFullCheck(client rpc.Client, lookback uint64) {
 	logger.Infof("checking for new blocks/epochs to export")
 
 	// Use the chain head as our current point of reference
@@ -291,6 +291,8 @@ func doFullCheck(client rpc.Client) {
 	if head.FinalizedEpoch > 1 {
 		startEpoch = head.FinalizedEpoch - 1
 	}
+
+	startEpoch = startEpoch - lookback
 
 	// If the network is experiencing finality issues limit the export to the last 10 epochs
 	// Once the network reaches finality again all epochs should be exported again

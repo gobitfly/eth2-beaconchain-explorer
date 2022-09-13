@@ -192,7 +192,7 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 			}
 
 			if posActive && sData != nil {
-				slotText = fmt.Sprintf(`<A href="block/%d">%s</A>`, b.GetNumber(), utils.FormatAddCommas(sData.Slot))
+				slotText = fmt.Sprintf(`<A href="slot/%d">%s</A>`, sData.Slot, utils.FormatAddCommas(sData.Slot))
 				epochText = fmt.Sprintf(`<A href="epoch/%d">%s</A>`, sData.Epoch, utils.FormatAddCommas(sData.Epoch))
 			}
 		}
@@ -202,7 +202,6 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 		blockReward := utils.BlockReward(b.GetNumber())
 		txReward := new(big.Int).Sub(new(big.Int).SetBytes(b.GetTxReward()), new(big.Int).Mul(baseFee, big.NewInt(int64(b.GetTransactionCount()))))
 		totalReward := new(big.Int).Add(blockReward, new(big.Int).Add(txReward, new(big.Int).SetBytes(b.GetUncleReward())))
-
 		burned := new(big.Int).Mul(baseFee, big.NewInt(int64(b.GetGasUsed())))
 
 		burnedPercentage := float64(0.0)

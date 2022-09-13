@@ -112,39 +112,37 @@ func main() {
 	// return
 	if *enableFullBalanceUpdater {
 		ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
-
-		currentKey := *balanceUpdaterPrefix // "1:00028ebf7d36c5779c1deddf3ba72761fd46c8aa"
-		for {
-			keys, pairs, err := bt.GetMetadata(currentKey, *balanceUpdaterBatchSize)
-			if err != nil {
-				logrus.Fatal(err)
-			}
-
-			if len(keys) == 0 {
-				logrus.Infof("done")
-				return
-			}
-			// for _, pair := range pairs {
-			// 	logrus.Info(pair)
-			// }
-
-			logrus.Infof("currently at %v, processing balances for %v pairs", currentKey, len(pairs))
-			balances, err := client.GetBalances(pairs, 1, 4)
-			if err != nil {
-				logrus.Fatal(err)
-			}
-			// for _, balance := range balances {
-			// 	logrus.Infof("%x %x %s", balance.Address, balance.Token, new(big.Int).SetBytes(balance.Balance))
-			// }
-
-			err = bt.SaveBalances(balances, []string{})
-			if err != nil {
-				logrus.Fatal(err)
-			}
-			currentKey = keys[len(keys)-1]
-		}
-
 		return
+		// currentKey := *balanceUpdaterPrefix // "1:00028ebf7d36c5779c1deddf3ba72761fd46c8aa"
+		// for {
+		// 	keys, pairs, err := bt.GetMetadata(currentKey, *balanceUpdaterBatchSize)
+		// 	if err != nil {
+		// 		logrus.Fatal(err)
+		// 	}
+
+		// 	if len(keys) == 0 {
+		// 		logrus.Infof("done")
+		// 		return
+		// 	}
+		// 	// for _, pair := range pairs {
+		// 	// 	logrus.Info(pair)
+		// 	// }
+
+		// 	logrus.Infof("currently at %v, processing balances for %v pairs", currentKey, len(pairs))
+		// 	balances, err := client.GetBalances(pairs, 1, 4)
+		// 	if err != nil {
+		// 		logrus.Fatal(err)
+		// 	}
+		// 	// for _, balance := range balances {
+		// 	// 	logrus.Infof("%x %x %s", balance.Address, balance.Token, new(big.Int).SetBytes(balance.Balance))
+		// 	// }
+
+		// 	err = bt.SaveBalances(balances, []string{})
+		// 	if err != nil {
+		// 		logrus.Fatal(err)
+		// 	}
+		// 	currentKey = keys[len(keys)-1]
+		// }
 	}
 
 	transforms := make([]func(blk *types.Eth1Block, cache *ccache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)

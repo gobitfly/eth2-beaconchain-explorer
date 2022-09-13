@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html/template"
 	"math/big"
-	"strconv"
 	"strings"
 	"time"
 
@@ -94,19 +93,18 @@ func FormatInOutSelf(address, from, to []byte) template.HTML {
 
 func FormatAddress(address []byte, token []byte, name string, verified bool, isContract bool, link bool) template.HTML {
 	if link {
-		return formatAddress(address, token, name, verified, isContract, "address", 17, 0, false)
-
+		return formatAddress(address, token, name, isContract, "address", 17, 0, false)
 	}
-	return formatAddress(address, token, name, verified, isContract, "", 17, 0, false)
+	return formatAddress(address, token, name, isContract, "", 17, 0, false)
 }
 
-func FormatAddressWithLimits(address []byte, name string, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
-	return formatAddress(address, nil, name, false, false, link, digitsLimit, nameLimit, addCopyToClipboard)
+func FormatAddressWithLimits(address []byte, name string, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
+	return formatAddress(address, nil, name, isContract, link, digitsLimit, nameLimit, addCopyToClipboard)
 }
 
 // digitsLimit will limit the address output to that amount of total digits (including 0x & ...)
 // nameLimit will limit the name, if existing to giving amount of letters, a limit of 0 will display the full name
-func formatAddress(address []byte, token []byte, name string, verified bool, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
+func formatAddress(address []byte, token []byte, name string, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
 	name = template.HTMLEscapeString(name)
 
 	// we need at least 5 digits for 0x & ...
@@ -238,18 +236,18 @@ func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
 	return formatAmount(amount, unit, digits, 0, false, false, false)
 }
 func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
-	// cssClass := "badge-success"
-	amountF := new(big.Float).SetInt(amount)
-	displayUnit := " Ether"
-	unitDigits := 0
+	// define display unit & digits used per unit max
+	var displayUnit string
+	var unitDigits int
 	if unit == "ETH" {
-		amountF.Quo(amountF, big.NewFloat(1e18))
+		displayUnit = " Ether"
 		unitDigits = 18
 	} else if unit == "GWei" {
 		displayUnit = " GWei"
-		amountF.Quo(amountF, big.NewFloat(1e9))
 		unitDigits = 9
-		// cssClass = "badge-info"
+	} else {
+		displayUnit = " ?"
+		unitDigits = 0
 	}
 
 	// small unit & new line for unit handling
@@ -271,32 +269,55 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 		}
 	}
 
-	// tooltip
-	tooltip := ""
-	if fullAmountTooltip {
-		s := "%f"
-		if unitDigits > 0 {
-			s = "%." + strconv.Itoa(unitDigits) + "f"
+	// split in pre and post part
+	preComma := "0"
+	postComma := "0"
+	if amount != nil {
+		s := amount.String()
+		l := len(s)
+		if l > int(unitDigits) { // there is a pre comma part
+			l -= unitDigits
+			preComma = s[:l]
+			postComma = strings.TrimRight(s[l:], "0")
+			// reduce digits if precomma part exceeds limit
+			if maxPreCommaDigitsBeforeTrim > 0 && l > maxPreCommaDigitsBeforeTrim {
+				l -= maxPreCommaDigitsBeforeTrim
+				if digits < l {
+					digits = 0
+				} else {
+					digits -= l
+				}
+			}
+		} else if l == unitDigits { // there is only post comma part and no leading zeros has to be added
+			postComma = strings.TrimRight(s, "0")
+		} else if l != 0 { // there is only post comma part and leading zeros as to be added
+			d := fmt.Sprintf("%%0%dd", unitDigits-l)
+			postComma = strings.TrimRight(fmt.Sprintf(d, 0)+s, "0")
 		}
-		tooltip = ` data-toggle="tooltip" data-placement="top" title="` + strings.TrimRight(strings.TrimRight(fmt.Sprintf(s, amountF), "0"), ".") + `"`
 	}
 
-	// check limit length, 0 = ignore length
-	if maxPreCommaDigitsBeforeTrim > 0 {
-		i, _ := amountF.Int64()
-		l := len(fmt.Sprintf("%d", i))
-		if l > maxPreCommaDigitsBeforeTrim {
-			l -= maxPreCommaDigitsBeforeTrim
-			if l > digits {
-				digits = 0
-			} else {
-				digits -= l
-			}
+	// tooltip
+	var tooltip string
+	if fullAmountTooltip {
+		tooltip = ` data-toggle="tooltip" data-placement="top" title="` + preComma
+		if len(postComma) > 0 {
+			tooltip += `.` + postComma
 		}
+		tooltip += `"`
+	}
+
+	// limit floating part
+	if len(postComma) > digits {
+		postComma = postComma[:digits]
+	}
+
+	// set floating point
+	if len(postComma) > 0 {
+		preComma += "." + postComma
 	}
 
 	// done, convert to HTML & return
-	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, strings.TrimRight(strings.TrimRight(fmt.Sprintf("%."+strconv.Itoa(digits)+"f", amountF), "0"), "."), displayUnit))
+	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, preComma, displayUnit))
 }
 
 func FormatMethod(method string) template.HTML {
