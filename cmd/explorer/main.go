@@ -506,7 +506,7 @@ func main() {
 		}
 
 		l := negroni.NewLogger()
-		l.SetFormat(`{{.Request.RemoteAddr}} | {{.Request.Header.Get "X-Forwarded-For"}} | {{.StartTime}} | {{.Status}} | {{.Duration}} | {{.Hostname}} | {{.Method}} {{.Path}}?{{.Request.URL.RawQuery}}`)
+		l.SetFormat(`{{.Request.Header.Get "X-Forwarded-For"}}, {{.Request.RemoteAddr}} | {{.StartTime}} | {{.Status}} | {{.Duration}} | {{.Hostname}} | {{.Method}} {{.Path}}{{if ne .Request.URL.RawQuery ""}}?{{.Request.URL.RawQuery}}{{end}}`)
 
 		n := negroni.New(negroni.NewRecovery(), l)
 
