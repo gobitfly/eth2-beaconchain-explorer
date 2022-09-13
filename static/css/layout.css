@@ -352,6 +352,10 @@ table {
   animation: blinking 1s alternate infinite;
 }
 
+.active-epoch {
+  animation: blinking 1s alternate infinite;
+}
+
 @keyframes blinking {
   0% {
     opacity: 0.2

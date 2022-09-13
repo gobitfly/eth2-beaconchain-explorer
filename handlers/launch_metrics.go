@@ -28,16 +28,6 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var blks []sqlBlocks = []sqlBlocks{}
-	// latestEpoch := services.LatestEpoch()
-	// lowEpoch := latestEpoch - 5
-	// if latestEpoch < 5 {
-	// 	lowEpoch = 0
-
-	// } else {
-	// 	lowEpoch = latestEpoch - 5
-	// }
-
-	// highEpoch := latestEpoch
 
 	err := db.ReaderDb.Select(&blks, `
 	SELECT
@@ -74,6 +64,8 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 	type epochType struct {
 		Epoch          uint64         `json:"epoch"`
 		Finalized      bool           `json:"finalized"`
+		Justified      bool           `json:"justified"`
+		Justifying     bool           `json:"justifying"`
 		Particicpation float64        `json:"participation"`
 		Slots          [32]*blockType `json:"slots"`
 	}
@@ -82,7 +74,6 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 
 	res := struct {
 		Epochs []*epochType
-		// Peers  []peer
 	}{}
 
 	for _, b := range blks {
@@ -140,12 +131,25 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+		if epoch.Finalized {
+			epoch.Justified = true
+		}
 		res.Epochs = append(res.Epochs, epoch)
 	}
 
 	sort.Slice(res.Epochs, func(i, j int) bool {
 		return res.Epochs[i].Epoch > res.Epochs[j].Epoch
 	})
+
+	for i := 0; i < len(res.Epochs); i++ {
+		if res.Epochs[i].Finalized == false && i != 0 {
+			res.Epochs[i-1].Justifying = true
+		}
+		if res.Epochs[i].Finalized && i != 0 {
+			res.Epochs[i-1].Justified = true
+			break
+		}
+	}
 
 	err = json.NewEncoder(w).Encode(res)
 	if err != nil {
