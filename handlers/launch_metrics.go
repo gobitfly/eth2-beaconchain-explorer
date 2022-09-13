@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/utils"
 	"net/http"
+	"sort"
 	"time"
 )
 
@@ -27,12 +28,6 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var blks []sqlBlocks = []sqlBlocks{}
-	lookBack := services.LatestEpoch()
-	if lookBack < 4 {
-		lookBack = 0
-	} else {
-		lookBack = lookBack - 4
-	}
 	// latestEpoch := services.LatestEpoch()
 	// lowEpoch := latestEpoch - 5
 	// if latestEpoch < 5 {
@@ -56,7 +51,7 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 		end as status,
 		b.epoch,
 		COALESCE(e.globalparticipationrate, 0) as globalparticipationrate,
-		e.finalized
+		COALESCE(e.finalized, false) as finalized
 	FROM blocks b
 		left join epochs e on e.epoch = b.epoch
 	WHERE b.epoch >= $1
@@ -69,7 +64,6 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentSlot := utils.TimeToSlot(uint64(time.Now().Unix()))
-	currentEpoch := utils.EpochOfSlot(currentSlot)
 
 	type blockType struct {
 		Epoch  uint64
@@ -78,12 +72,10 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 		Active bool   `json:"active"`
 	}
 	type epochType struct {
-		Epoch             uint64      `json:"epoch"`
-		Finalized         bool        `json:"finalized"`
-		Justified         bool        `json:"justified"`
-		PreviousJustified bool        `json:"previousjustified"`
-		Particicpation    float64     `json:"participation"`
-		Slots             []blockType `json:"slots"`
+		Epoch          uint64         `json:"epoch"`
+		Finalized      bool           `json:"finalized"`
+		Particicpation float64        `json:"participation"`
+		Slots          [32]*blockType `json:"slots"`
 	}
 
 	epochMap := map[uint64]*epochType{}
@@ -94,49 +86,66 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 	}{}
 
 	for _, b := range blks {
-		active := false
-		if b.Epoch == currentEpoch && b.Slot == currentSlot {
-			active = true
+		if b.Globalparticipationrate == 1 && !b.Finalized {
+			b.Globalparticipationrate = 0
+		}
+		_, exists := epochMap[b.Epoch]
+		if !exists {
+			r := epochType{
+				Epoch:          b.Epoch,
+				Finalized:      b.Finalized,
+				Particicpation: b.Globalparticipationrate,
+				Slots:          [32]*blockType{},
+			}
+			epochMap[b.Epoch] = &r
+		}
 
-			// set previous active current slots to false
-			for _, epoch := range epochMap {
-				for _, slot := range epoch.Slots {
-					slot.Active = false
+		slotIndex := b.Slot - (b.Epoch * utils.Config.Chain.Config.SlotsPerEpoch)
+
+		epochMap[b.Epoch].Slots[slotIndex] = &blockType{
+			Epoch:  b.Epoch,
+			Slot:   b.Slot,
+			Status: b.Status,
+			Active: b.Slot == currentSlot,
+		}
+	}
+
+	for _, epoch := range epochMap {
+		for i := 0; i < 32; i++ {
+			if epoch.Slots[i] == nil {
+				status := "scheduled"
+				slot := epoch.Epoch*utils.Config.Chain.Config.SlotsPerEpoch + uint64(i)
+				if slot < currentSlot-3 {
+					status = "missed"
+				}
+				epoch.Slots[i] = &blockType{
+					Epoch:  epoch.Epoch,
+					Slot:   slot,
+					Status: status,
+					Active: slot == currentSlot,
 				}
 			}
 		}
-		_, exists := epochMap[b.Epoch]
-		if exists {
-			epochMap[b.Epoch].Slots = append(epochMap[b.Epoch].Slots, blockType{b.Epoch, b.Slot, b.Status, active})
-			if b.Globalparticipationrate > epochMap[b.Epoch].Particicpation {
-				epochMap[b.Epoch].Particicpation = b.Globalparticipationrate
-			}
-			if b.Finalized {
-				epochMap[b.Epoch].Finalized = b.Finalized
-			}
-			if b.Justified {
-				epochMap[b.Epoch].Justified = b.Justified
-			}
-			if b.Previousjustified {
-				epochMap[b.Epoch].PreviousJustified = b.Previousjustified
-			}
-		} else {
-			status := b.Status
-			if b.Epoch == 0 {
-				status = "genesis"
-			}
-			r := epochType{
-				Epoch:             b.Epoch,
-				Finalized:         b.Finalized,
-				Justified:         b.Justified,
-				PreviousJustified: b.Previousjustified,
-				Particicpation:    b.Globalparticipationrate,
-				Slots:             []blockType{{b.Epoch, b.Slot, status, active}},
-			}
-			epochMap[b.Epoch] = &r
-			res.Epochs = append(res.Epochs, &r)
-		}
 	}
+
+	for _, epoch := range epochMap {
+		for _, slot := range epoch.Slots {
+			slot.Active = slot.Slot == currentSlot
+
+			if slot.Status != "proposed" {
+				if slot.Slot >= currentSlot {
+					slot.Status = "scheduled"
+				} else {
+					slot.Status = "missed"
+				}
+			}
+		}
+		res.Epochs = append(res.Epochs, epoch)
+	}
+
+	sort.Slice(res.Epochs, func(i, j int) bool {
+		return res.Epochs[i].Epoch > res.Epochs[j].Epoch
+	})
 
 	err = json.NewEncoder(w).Encode(res)
 	if err != nil {

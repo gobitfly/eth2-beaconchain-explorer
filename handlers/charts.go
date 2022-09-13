@@ -107,6 +107,9 @@ func SlotViz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "stats", "/charts", "Charts")
 
+	if utils.Config.Frontend.Debug {
+		slotVizTemplate = template.Must(template.New("slotViz").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/slotViz.html"))
+	}
 	data.Data = nil
 	err := slotVizTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {

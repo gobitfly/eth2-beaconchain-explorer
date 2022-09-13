@@ -151,12 +151,8 @@
         .attr("dy", "0.35em")
         .attr("style", "font-size: .7rem")
         .text((d) => {
-          if (d.participation) {
-            var txt = d.justified ? (d.finalized ? "finalized" : "justified") : ""
-            return txt + " " + d.participation + "%"
-          } else {
-            return ""
-          }
+          var txt = d.finalized ? "finalized" : "in progress"
+          return txt + " " + d.participation + "%"
         })
 
       var heatmaps = svg
@@ -269,7 +265,7 @@
             .attr("x", (d) => participationX(d.participation) - x(0))
             .text((d) => {
               if (d.participation) {
-                var txt = d.justified ? (d.finalized ? "finalized" : "justified") : ""
+                var txt = d.finalized ? "finalized" : "in progress"
                 return txt + " " + d.participation + "%"
               } else {
                 return ""
@@ -288,7 +284,7 @@
                   .attr("slot", (d) => d.Slot)
                   .on("click", (d) => {
                     var slot = d.target.getAttribute("slot")
-                    window.location = "/block/" + slot
+                    window.location = "/slot/" + slot
                   })
                   .call((rect) =>
                     rect
@@ -361,11 +357,9 @@
                 // var slot = slots[k]
                 epochs[i].slots[k] = data[i].slots[k]
               }
-              epochs[i].slots.reverse()
+              epochs[i].slots
               epochs[i].participation = data[i].participation
               epochs[i].finalized = data[i].finalized
-              epochs[i].justified = data[i].justified
-              epochs[i].previousjustified = data[i].previousjustified
               epochs[i].epoch = data[i].epoch
             }
             chart.update(data)
