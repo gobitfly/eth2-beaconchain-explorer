@@ -259,7 +259,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 				HAVING SUM(amount) >= 32e9
 			) a`)
 		if err != nil {
-			return nil, fmt.Errorf("error retrieving eth1 deposits: %v", err)
+			return nil, fmt.Errorf("error retrieving eth deposits: %v", err)
 		}
 
 		threshold, err := db.GetDepositThresholdTime()

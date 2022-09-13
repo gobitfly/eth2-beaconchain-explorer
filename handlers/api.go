@@ -862,10 +862,10 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorByEth1Address godoc
-// @Summary Get all validators that belong to an eth1 address
+// @Summary Get all validators that belong to an eth address
 // @Tags Validator
 // @Produce  json
-// @Param  eth1address path string true "Eth1 address from which the validator deposits were sent"
+// @Param  eth1address path string true "Eth address from which the validator deposits were sent"
 // @Success 200 {object} string
 // @Router /api/v1/validator/eth1/{eth1address} [get]
 func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
@@ -878,7 +878,7 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 	eth1Address, err := hex.DecodeString(strings.Replace(vars["address"], "0x", "", -1))
 
 	if err != nil {
-		sendErrorResponse(j, r.URL.String(), "invalid eth1 address provided")
+		sendErrorResponse(j, r.URL.String(), "invalid eth address provided")
 		return
 	}
 
