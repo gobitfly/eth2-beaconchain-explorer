@@ -616,19 +616,18 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalB
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec("UPDATE blocks SET status = 1 WHERE epoch >= $1 AND epoch <= $2 AND (status = '1' OR status = '3')", startEpoch, endEpoch)
+	_, err = tx.Exec("UPDATE blocks SET status = 3 WHERE epoch >= $1 AND epoch <= $2 AND (status = '1' OR status = '3')", startEpoch, endEpoch)
 	if err != nil {
 		return err
 	}
 
 	for _, block := range blocks {
 		if block.Canonical {
-			continue
-		}
-		logger.Printf("marking block %x at slot %v as orphaned", block.BlockRoot, block.Slot)
-		_, err = tx.Exec("UPDATE blocks SET status = '3' WHERE blockroot = $1", block.BlockRoot)
-		if err != nil {
-			return err
+			logger.Printf("marking block %x at slot %v as canonical", block.BlockRoot, block.Slot)
+			_, err = tx.Exec("UPDATE blocks SET status = '1' WHERE blockroot = $1", block.BlockRoot)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return tx.Commit()
