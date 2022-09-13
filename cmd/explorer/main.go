@@ -502,7 +502,7 @@ func main() {
 			router.Use(metrics.HttpMiddleware)
 		}
 
-		n := negroni.New(negroni.NewRecovery())
+		n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
 
 		// Customize the logging middleware to include a proper module entry for the frontend
 		//frontendLogger := negronilogrus.NewMiddleware()
