@@ -1,4 +1,6 @@
 {{ define "block_overview" }}
+  {{ $isBlockView := (contains $.Meta.Path "block")}}
+  {{ with .Data }}
   <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
     <div class="row border-bottom p-3 mx-0">
       <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the number of 32 slots">Epoch:</span></div>
@@ -6,17 +8,25 @@
     </div>
     <div class="row border-bottom p-3 mx-0">
       <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="A slot is a chance for a block to be added to the Beacon Chain and shards">Slot:</span></div>
-      <div class="col-md-10"><b>{{ formatAddCommas .Slot }} </b><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Slot }}"></i></div>
+      <div class="col-md-10">
+        {{ if $isBlockView }}
+          <a href="/slot/{{.Slot}}"><b>{{ formatAddCommas .Slot }} </b></a>
+        {{ else }}
+          <b>{{ formatAddCommas .Slot }} </b>
+        {{ end }}
+        <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Slot }}"></i>
+      </div>
     </div>
-    {{ if or (.ExecutionData) (.ExecBlockHash) }}
+    {{ with .ExecutionData }}
       <div class="row border-bottom p-3 mx-0">
         <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Number, the height, not the slot">Block Number:</span></div>
         <div class="col-md-10">
-          {{ if .ExecutionData }}
-            <b>{{ .ExecutionData.Number }} </b><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .ExecutionData.Number }}"></i>
+          {{ if $isBlockView }}
+            <b>{{ .Number }} </b>
           {{ else }}
-            <a href="/block/{{ .ExecBlockNumber.Int64 }}"><b>{{ .ExecBlockNumber.Int64 }} </b></a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .ExecBlockNumber }}"></i>
+            <a href="/block/{{ .Number }}"><b>{{ .Number }} </b></a>
           {{ end }}
+          <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Number }}"></i>
         </div>
       </div>
     {{ end }}
@@ -128,37 +138,60 @@
             <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Received Eth Block headers and Deposit data">Execution Payload:</span></div>
             <div class="col-md-10">
               <div class="row p-1">
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Number, the height, not the slot">Block Number:</span></div>
+                <div class="col-md-10 text-monospace text-break"><a href="/block/{{ .Number }}">{{ .Number }}</a></div>
+              </div>
+
+              <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Execution Block Hash">Block Hash:</span></div>
                 <div class="col-md-10 text-monospace text-break">
-                  {{ .Hash }}
+                  <a href="/block/{{ .Hash }}">{{ .Hash }}</a>
                 </div>
               </div>
 
               <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Parent Execution Block Hash">Parent Hash:</span></div>
                 <div class="col-md-10 text-monospace text-break">
-                  {{ .ParentHash }}
+                  <a href="/block/{{ .ParentHash }}">{{ .ParentHash }}</a>
                 </div>
               </div>
 
               <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Fee recipient">Fee Recipient:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{ .MinerAddress }}</div>
+                <div class="col-md-10 text-monospace text-break">
+                  <a href="/address/{{ .MinerAddress }}">{{ .MinerFormatted }}</a>
+                </div>
               </div>
 
               <div class="row p-1">
-                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Number, the height, not the slot">Block Number:</span></div>
-                <div class="col-md-10 text-monospace text-break"><a href="/block/{{ .Number }}">{{ .Number }}</a></div>
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Fee recipient">Reward:</span></div>
+                <div class="col-md-10 text-monospace text-break">
+                  {{ formatAmount .Reward "ETH" 5 }}
+                  {{ if gt (bigIntCmp .MevReward 0) 0 }}
+                    +
+                    {{ formatAmount .MevReward "ETH" 5 }}
+                  {{ end }}
+                </div>
+              </div>
+
+              <div class="row p-1">
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Used">Gas Used:</span></div>
+                <div class="col-md-10 text-monospace text-break">{{ .GasUsage }}</div>
               </div>
 
               <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Limit">Gas Limit:</span></div>
                 <div class="col-md-10 text-monospace text-break">{{ .GasLimit }}</div>
               </div>
+              
+              <div class="row p-1">
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Base fee per gas">Base fee per gas:</span></div>
+                <div class="col-md-10 text-monospace text-break">{{ formatAmount .BaseFeePerGas "GWei" 5 }}</div>
+              </div>
 
               <div class="row p-1">
-                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Used">Gas Used:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{ .GasUsage }}</div>
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transactions">Transactions:</span></div>
+                <div class="col-md-10 text-monospace text-break">{{ .TxCount }}</div>
               </div>
 
               <div class="row p-1">
@@ -173,109 +206,8 @@
                   {{ .Extra }}
                 </div>
               </div>
-
-              <div class="row p-1">
-                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Base fee per gas">Base fee per gas:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{ .BaseFeePerGas }}</div>
-              </div>
-
-              <div class="row p-1">
-                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transactions">Transactions:</span></div>
-                <div class="col-md-10 text-monospace text-break">{{ .TxCount }}</div>
-              </div>
             </div>
           </div>
-        {{ else }}
-          {{ if .ExecBlockHash }}
-            <div class="row border-bottom p-3 mx-0">
-              <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Received Eth Block headers and Deposit data">Execution Payload:</span></div>
-
-              <div class="col-md-10">
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Parent Execution Block Hash">Parent Hash:</span></div>
-                  <div class="col-md-10 text-monospace text-break">
-                    0x{{ printf "%x" .ExecParentHash }}
-                  </div>
-                </div>
-
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Fee recipient">Fee Recipient:</span></div>
-                  <div class="col-md-10 text-monospace text-break">{{ formatEth1Address .ExecFeeRecipient }}</div>
-                </div>
-
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Execution State Root">State Root:</span></div>
-                  <div class="col-md-10 text-monospace text-break">
-                    0x{{ printf "%x" .ExecStateRoot }}
-                  </div>
-                </div>
-
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Receipts Root">Receipts Root:</span></div>
-                  <div class="col-md-10 text-monospace text-break">
-                    0x{{ printf "%x" .ExecReceiptsRoot }}
-                  </div>
-                </div>
-
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Logs Bloom">Logs Bloom:</span></div>
-                  <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" .ExecLogsBloom }}</div>
-                </div>
-
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Randomness">Block Randomness:</span></div>
-                  <div class="col-md-10 text-monospace text-break">
-                    0x{{ printf "%x" .ExecRandom }}
-                  </div>
-                </div>
-
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Number, the height, not the slot">Block Number:</span></div>
-                  <div class="col-md-10 text-monospace text-break">{{ .ExecBlockNumber.Int64 }}</div>
-                </div>
-
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Limit">Gas Limit:</span></div>
-                  <div class="col-md-10 text-monospace text-break">{{ .ExecGasLimit.Int64 }}</div>
-                </div>
-
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Used">Gas Used:</span></div>
-                  <div class="col-md-10 text-monospace text-break">{{ .ExecGasUsed.Int64 }}</div>
-                </div>
-
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Timestamp">Timestamp:</span></div>
-                  <div class="col-md-5 text-monospace text-break">{{ .ExecTimestamp.Int64 }}</div>
-                  <div class="col-md-5"><span aria-ethereum-date="{{ .ExecTimestamp.Int64 }}">{{ .ExecTime }}</span> (<span aria-ethereum-date="{{ .ExecTimestamp.Int64 }}" aria-ethereum-date-format="FROMNOW"></span>)</div>
-                </div>
-
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Extra Data">Block Extra Data</span></div>
-                  <div class="col-md-10 text-monospace text-break">
-                    0x{{ printf "%x" .ExecExtraData }}
-                  </div>
-                </div>
-
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Base fee per gas">Base fee per gas:</span></div>
-                  <div class="col-md-10 text-monospace text-break">{{ .ExecBaseFeePerGas.Int64 }}</div>
-                </div>
-
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Execution Block Hash">Block Hash:</span></div>
-                  <div class="col-md-10 text-monospace text-break">
-                    0x{{ printf "%x" .ExecBlockHash }}
-                  </div>
-                </div>
-
-                <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transactions">Transactions:</span></div>
-                  <div class="col-md-10 text-monospace text-break">{{ .ExecTransactionsCount }}</div>
-                </div>
-              </div>
-            </div>
-          {{ end }}
         {{ end }}
         <div class="row border-bottom p-3 mx-0">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of attestations included in this block by the block proposer">Attestations:</span></div>
@@ -304,4 +236,5 @@
       </div>
     {{ end }}
   </div>
+{{ end }}
 {{ end }}
