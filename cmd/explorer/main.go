@@ -505,7 +505,9 @@ func main() {
 			router.Use(metrics.HttpMiddleware)
 		}
 
-		n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
+		l := negroni.NewLogger()
+		l.SetFormat("{{.StartTime}} | {{.Status}} | \t {{.Duration}} | {{.Hostname}} | {{.Method}} {{.Path}}/{{.Request.URL.RawQuery}}")
+		n := negroni.New(negroni.NewRecovery(), l)
 
 		// Customize the logging middleware to include a proper module entry for the frontend
 		//frontendLogger := negronilogrus.NewMiddleware()
