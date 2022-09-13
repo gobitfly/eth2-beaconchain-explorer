@@ -94,13 +94,29 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 				}
 			}/**/
 
+			var toText template.HTML
+			{
+				to := v.GetTo()
+				if len(to) > 0 {
+					toText = utils.FormatAddressWithLimits(to, names[string(v.GetTo())], "address", 15, 18, true)
+				} else {
+					itx := v.GetItx()
+					if len(itx) > 0 && itx[0] != nil {
+						to = itx[0].GetTo()
+						if len(to) > 0 {
+							toText = utils.FormatAddressWithLimits(to, "Contract Creation", "address", 15, 18, true)
+						}
+					}
+				}
+			}
+
 			tableData = append(tableData, []interface{}{
 				utils.FormatAddressWithLimits(v.GetHash(), "", "tx", 15, 18, true),
 				utils.FormatMethod(method), // #RECY #TODO
 				template.HTML(fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber()))),
 				utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
 				utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], "address", 15, 18, true),
-				utils.FormatAddressWithLimits(v.GetTo(), names[string(v.GetTo())], "address", 15, 18, true),
+				toText,
 				utils.FormatAmountFormated(new(big.Int).SetBytes(v.GetValue()), "ETH", 8, 4, true, true, true),
 				"fee #missing", // #RECY #TODO
 			})
