@@ -166,10 +166,10 @@
                 <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Fee recipient">Reward:</span></div>
                   <div class="col-md-10 text-monospace text-break">
-                    {{ formatAmountFormatted .Reward "ETH" 5 0 true false false}}
+                    {{ formatAmountFormatted .Reward "ETH" 5 0 true false false }}
                     {{ if gt (bigIntCmp .MevReward 0) 0 }}
                       +
-                      {{ formatAmountFormatted .MevReward "ETH" 5 0 true false false}}
+                      {{ formatAmountFormatted .MevReward "ETH" 5 0 true false false }}
                     {{ end }}
                   </div>
                 </div>
@@ -186,7 +186,7 @@
 
                 <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Base fee per gas">Base fee per gas:</span></div>
-                  <div class="col-md-10 text-monospace text-break">{{ formatAmountFormatted .BaseFeePerGas "GWei" 5 0 true false false}}</div>
+                  <div class="col-md-10 text-monospace text-break">{{ formatAmountFormatted .BaseFeePerGas "GWei" 5 0 true false false }}</div>
                 </div>
 
                 <div class="row p-1">
