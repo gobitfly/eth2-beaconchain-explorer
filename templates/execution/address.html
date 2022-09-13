@@ -483,6 +483,7 @@
         <a class="nav-link border-bottom-radius-0 " href="#internalTxns" id="internalTxns-tab" data-toggle="tab" role="tab" aria-controls="internalTxns" aria-selected="false">Internal Txns</a>
       </li>
     {{ end }}
+    {{ if or (or .Data.BlocksMinedTable.Data (or .Data.UnclesMinedTable.Data .Data.Erc20Table.Data)) (or .Data.Erc721Table.Data .Data.Erc1155Table.Data)}}
     <li class="nav-item dropdown">
       <a class="nav-link dropdown-toggle d-lg-none" data-toggle="dropdown" href="#" role="button" aria-expanded="false">More</a>
       <div class="dropdown-menu dropdown-menu-right">
@@ -503,6 +504,7 @@
         {{ end }}
       </div>
     </li>
+    {{ end }}
     {{ if .Data.BlocksMinedTable.Data }}
       <li style="margin: 0;" class="nav-item d-none d-lg-block" role="presentation">
         <a class="nav-link border-bottom-radius-0" href="#blocksMined" id="blocksMined-tab" data-toggle="tab" role="tab" aria-controls="blocksMined" aria-selected="false">Blocks Mined</a>
