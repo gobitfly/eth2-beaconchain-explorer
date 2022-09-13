@@ -17,8 +17,8 @@ chain:
 frontend:
   enabled: true # Enable or disable to web frontend
   imprint: 'templates/imprint.example.html' # Path to the imprint page content
-  siteName: 'Ethereum 2.0 Beacon Chain Block Explorer' # Name of the site, displayed in the title tag
-  siteSubtitle: "Showing the <a href='https://prylabs.net'>💎 Prysm Eth2 Testnet</a>" # Subtitle shown on the main page
+  siteName: 'Ethereum Block Explorer' # Name of the site, displayed in the title tag
+  siteSubtitle: "Showing the <a href='https://prylabs.net'>💎 Prysm Eth Testnet</a>" # Subtitle shown on the main page
   server:
     host: '0.0.0.0' # Address to listen on
     port: '3333' # Port to listen on
