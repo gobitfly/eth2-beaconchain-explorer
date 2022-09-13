@@ -616,7 +616,14 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalB
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec("UPDATE blocks SET status = 3 WHERE epoch >= $1 AND epoch <= $2 AND (status = '1' OR status = '3')", startEpoch, endEpoch)
+	lastSlotNumber := uint64(0)
+	for _, block := range blocks {
+		if block.Slot > lastSlotNumber {
+			lastSlotNumber = block.Slot
+		}
+	}
+
+	_, err = tx.Exec("UPDATE blocks SET status = 3 WHERE epoch >= $1 AND epoch <= $2 AND (status = '1' OR status = '3') AND slot <= $3", startEpoch, endEpoch, lastSlotNumber)
 	if err != nil {
 		return err
 	}
