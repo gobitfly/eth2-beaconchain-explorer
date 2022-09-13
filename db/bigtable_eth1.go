@@ -1854,7 +1854,7 @@ func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, search 
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, limit int64) ([]*types.Eth1InternalTransactionIndexed, string, error) {
+func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, address []byte, limit int64) ([]*types.Eth1InternalTransactionIndexed, string, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
@@ -1885,12 +1885,19 @@ func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, limit int64) ([]*t
 		if err != nil {
 			logrus.Fatal(err)
 		}
+
+		// geth traces include the inital transfer & zero-value staticalls
+		if bytes.Equal(b.From, address) || bytes.Equal(b.Value, []byte{}) {
+			return true
+		}
 		keysMap[row.Key()] = b
 		return true
 	})
 
 	for _, key := range keys {
-		data = append(data, keysMap[key])
+		if d := keysMap[key]; d != nil {
+			data = append(data, d)
+		}
 	}
 
 	return data, indexes[len(indexes)-1], nil
@@ -1902,7 +1909,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 		pageToken = fmt.Sprintf("%s:I:ITX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
-	transactions, lastKey, err := bigtable.GetEth1ItxForAddress(pageToken, 25)
+	transactions, lastKey, err := bigtable.GetEth1ItxForAddress(pageToken, address, 25)
 	if err != nil {
 		return nil, err
 	}
@@ -1945,7 +1952,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte) ([]types.Transfer, error) {
+func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte, from []byte) ([]types.Transfer, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
@@ -1962,6 +1969,10 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte)
 		if err != nil {
 			logrus.Fatal(err)
 			return false
+		}
+		// geth traces include the inital transfer & zero-value staticalls
+		if bytes.Equal(b.From, from) || bytes.Equal(b.Value, []byte{}) {
+			return true
 		}
 		rowN, err := strconv.Atoi(strings.Split(row_.Row, ":")[3])
 		if err != nil {
