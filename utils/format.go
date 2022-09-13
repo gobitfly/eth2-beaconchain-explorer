@@ -406,7 +406,7 @@ func FormatGraffitiAsLink(graffiti []byte) template.HTML {
 	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
 	h := template.HTMLEscapeString(s)
 	u := url.QueryEscape(s)
-	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\"><a href=\"/blocks?q=%s\">%s</a></span>", graffiti, u, h))
+	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\"><a href=\"/slots?q=%s\">%s</a></span>", graffiti, u, h))
 }
 
 // FormatHash will return a hash formated as html

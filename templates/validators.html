@@ -214,7 +214,7 @@
                         render: function(data, type, row, meta) {
                             if (data === null)
                                 return 'No Attestation found';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/block/${data[0]}">Block ${addCommas(data[0])}</a>)</span>`
+                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/slot/${data[0]}">Block ${addCommas(data[0])}</a>)</span>`
                         }
                     },
                     {
