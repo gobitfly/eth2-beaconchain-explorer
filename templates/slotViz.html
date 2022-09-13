@@ -131,7 +131,10 @@
         .join("rect")
         .attr("id", ({ epoch, participation }) => epoch)
         .attr("fill", ({ participation }) => color(participation))
-        .attr("y", ({ epoch }) => y(epoch) + y.bandwidth() / 2 + (width - margin.right - margin.left) / 48)
+        .attr("y", ({ epoch }) => {
+          console.log(epoch)
+          return y(epoch) + y.bandwidth() / 2 + (width - margin.right - margin.left) / 48
+        })
         .attr("x", x(0))
         .attr("width", ({ participation }) => participationX(participation) - participationX(0))
         .attr("height", "10")
