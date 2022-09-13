@@ -108,11 +108,11 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		}
 		txs = append(txs, types.Eth1BlockPageTransaction{
 			Hash:          fmt.Sprintf("%#x", tx.Hash),
-			HashFormatted: utils.FormatAddressWithLimits(tx.Hash, "", "tx", 15, 18, true),
+			HashFormatted: utils.FormatAddressWithLimits(tx.Hash, "", false, "tx", 15, 18, true),
 			From:          fmt.Sprintf("%#x", tx.From),
-			FromFormatted: utils.FormatAddressWithLimits(tx.From, names[string(tx.From)], "address", 15, 20, true),
+			FromFormatted: utils.FormatAddressWithLimits(tx.From, names[string(tx.From)], false, "address", 15, 20, true),
 			To:            fmt.Sprintf("%#x", tx.To),
-			ToFormatted:   utils.FormatAddressWithLimits(tx.To, names[string(tx.To)], "address", 15, 20, true),
+			ToFormatted:   utils.FormatAddressWithLimits(tx.To, names[string(tx.To)], false, "address", 15, 20, true),
 			Value:         new(big.Int).SetBytes(tx.Value),
 			Fee:           txFee,
 			GasPrice:      effectiveGasPrice,
@@ -131,7 +131,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 			Number:       uncle.Number,
 			MinerAddress: fmt.Sprintf("%#x", uncle.Coinbase),
 			//MinerFormatted: utils.FormatAddress(uncle.Coinbase, nil, names[string(uncle.Coinbase)], false, false, false),
-			MinerFormatted: utils.FormatAddressWithLimits(uncle.Coinbase, names[string(uncle.Coinbase)], "block", 42, 42, true),
+			MinerFormatted: utils.FormatAddressWithLimits(uncle.Coinbase, names[string(uncle.Coinbase)], false, "block", 42, 42, true),
 			Reward:         reward,
 			Extra:          string(uncle.Extra),
 		})
@@ -149,7 +149,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		ParentHash:    fmt.Sprintf("%#x", block.ParentHash),
 		MinerAddress:  fmt.Sprintf("%#x", block.Coinbase),
 		//MinerFormatted: utils.FormatAddress(block.Coinbase, nil, names[string(block.Coinbase)], false, false, false),
-		MinerFormatted: utils.FormatAddressWithLimits(block.Coinbase, names[string(block.Coinbase)], "block", 42, 42, true),
+		MinerFormatted: utils.FormatAddressWithLimits(block.Coinbase, names[string(block.Coinbase)], false, "block", 42, 42, true),
 		Reward:         blockReward,
 		MevReward:      db.CalculateMevFromBlock(block),
 		TxFees:         txFees,
