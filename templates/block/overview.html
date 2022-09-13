@@ -6,10 +6,20 @@
     </div>
     <div class="row border-bottom p-3 mx-0">
       <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="A slot is a chance for a block to be added to the Beacon Chain and shards">Slot:</span></div>
-      <div class="col-md-10">
-        <a href="/slot/{{ .Slot }}"><b>{{ formatAddCommas .Slot }} </b></a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Slot }}"></i>
-      </div>
+      <div class="col-md-10"><b>{{ formatAddCommas .Slot }} </b><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Slot }}"></i></div>
     </div>
+    {{ if or (.ExecutionData) (.ExecBlockHash) }}
+      <div class="row border-bottom p-3 mx-0">
+        <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Number, the height, not the slot">Block Number:</span></div>
+        <div class="col-md-10">
+          {{ if .ExecutionData }}
+            <b>{{ .ExecutionData.Number }} </b><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .ExecutionData.Number }}"></i>
+          {{ else }}
+            <a href="/block/{{ .ExecBlockNumber.Int64 }}"><b>{{ .ExecBlockNumber.Int64 }} </b></a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .ExecBlockNumber }}"></i>
+          {{ end }}
+        </div>
+      </div>
+    {{ end }}
     <div class="row border-bottom p-3 mx-0">
       <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the current state of the block">Status:</span></div>
       <div class="col-md-10">
@@ -46,7 +56,7 @@
       {{ if ne .Slot 0 }}
         <div class="row border-bottom p-3 mx-0">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash pointing to the previous block">Parent Root:</span></div>
-          <div class="col-md-10 text-monospace text-break"><a href="/block/{{ printf "%x" .ParentRoot }}">0x{{ printf "%x" .ParentRoot }} </a><i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ printf "%x" .ParentRoot }}"></i></div>
+          <div class="col-md-10 text-monospace text-break"><a href="/slot/{{ printf "%x" .ParentRoot }}">0x{{ printf "%x" .ParentRoot }} </a><i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ printf "%x" .ParentRoot }}"></i></div>
         </div>
       {{ end }}
       <div class="row border-bottom p-3 mx-0">

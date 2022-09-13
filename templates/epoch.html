@@ -255,7 +255,7 @@
               <tbody>
                 {{ range .Blocks }}
                   <tr>
-                    <td><a href="/block/{{ .Slot }}">{{ formatAddCommas .Slot }}</a></td>
+                    <td><a href="/slot/{{ .Slot }}">{{ formatAddCommas .Slot }}</a></td>
                     <td class="text-capitalize">{{ formatBlockStatus .Status }}</td>
                     <td aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW">{{ .Ts.Format "2006-01-02T15:04:05" }}</td>
                     <td><a href="/validator/{{ .Proposer }}">{{ formatAddCommas .Proposer }}</a></td>

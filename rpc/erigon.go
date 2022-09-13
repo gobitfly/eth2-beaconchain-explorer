@@ -318,6 +318,16 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 	return c, timings, nil
 }
 
+func (client *ErigonClient) GetBlockNumberByHash(hash string) (uint64, error) {
+	block, err := client.ethClient.BlockByHash(context.Background(), common.HexToHash(hash))
+	if err != nil {
+		return 0, err
+	}
+	logger.Info(fmt.Sprintf("%#x", block.Hash().Bytes()))
+	logger.Info(fmt.Sprintf("%#x", block.Coinbase().Bytes()))
+	return block.NumberU64(), nil
+}
+
 func (client *ErigonClient) GetLatestEth1BlockNumber() (uint64, error) {
 	latestBlock, err := client.ethClient.BlockByNumber(context.Background(), nil)
 	if err != nil {

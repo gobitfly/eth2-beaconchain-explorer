@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"eth2-exporter/db"
+	"eth2-exporter/rpc"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
@@ -22,12 +24,18 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 
-	data := InitPageData(w, r, "blockchain", "/block", "Execution Block")
+	data := InitPageData(w, r, "block", "/block", "Execution Block")
 	data.HeaderAd = true
 
 	// parse block number from url
-	numberString := vars["block"]
-	number, err := strconv.ParseUint(numberString, 10, 64)
+	numberString := strings.Replace(vars["block"], "0x", "", -1)
+	var number uint64
+	var err error
+	if len(numberString) == 64 {
+		number, err = rpc.CurrentErigonClient.GetBlockNumberByHash(numberString)
+	} else {
+		number, err = strconv.ParseUint(numberString, 10, 64)
+	}
 	if err != nil {
 		err = eth1BlockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
@@ -50,47 +58,31 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// code taken from GetTokenTransactionsTableData() in bigtable.go produces race condition when retrieving address names which are already cached
+	// retrieve address names from bigtable
 	names := make(map[string]string)
-	/* names[string(block.Coinbase)] = ""
-	for _, t := range block.Transactions {
-		names[string(t.From)] = ""
-		names[string(t.To)] = ""
+	names[string(block.Coinbase)] = ""
+	for _, tx := range block.Transactions {
+		names[string(tx.From)] = ""
+		names[string(tx.To)] = ""
 	}
-	for _, u := range block.Uncles {
-		names[string(u.Coinbase)] = ""
+	for _, uncle := range block.Uncles {
+		names[string(uncle.Coinbase)] = ""
 	}
-	g := new(errgroup.Group)
-	g.SetLimit(25)
-	mux := sync.RWMutex{}
-	for address := range names {
-		address := address
-		g.Go(func() error {
-			name, err := db.BigtableClient.GetAddressName([]byte(address))
-			if err != nil {
-				return err
-			}
-			mux.Lock()
-			names[address] = name
-			mux.Unlock()
-			return nil
-		})
-	}
-	err = g.Wait()
+	names, _, err = db.BigtableClient.GetAddressesNamesArMetadata(&names, nil)
 	if err != nil {
-		logger.Errorf("b error executing template for %v route: %v", r.URL.String(), err)
+		logger.WithError(err).Errorf("error retrieving address names for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
-	} */
+	}
 
 	// calculate total block reward and set lowest gas price
 	txs := []types.Eth1BlockPageTransaction{}
 	txFees := new(big.Int)
-	lowestGasPrice := big.NewInt(1 << 32)
-
+	lowestGasPrice := big.NewInt(1 << 62)
 	for _, tx := range block.Transactions {
 		// calculate tx fee depending on tx type
 		txFee := new(big.Int).SetUint64(tx.GasUsed)
+
 		if tx.Type == uint32(2) {
 			// multiply gasused with min(baseFee + maxpriorityfee, maxfee)
 			if normalGasPrice, maxGasPrice := new(big.Int).Add(new(big.Int).SetBytes(block.BaseFee), new(big.Int).SetBytes(tx.MaxPriorityFeePerGas)), new(big.Int).SetBytes(tx.MaxFeePerGas); normalGasPrice.Cmp(maxGasPrice) <= 0 {
@@ -102,9 +94,9 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 			txFee.Mul(txFee, new(big.Int).SetBytes(tx.GasPrice))
 		}
 		txFees.Add(txFees, txFee)
-
-		if gasPrice := new(big.Int).SetBytes(tx.GasPrice); gasPrice.Cmp(lowestGasPrice) < 0 {
-			lowestGasPrice = gasPrice
+		effectiveGasPrice := new(big.Int).Div(txFee, new(big.Int).SetUint64(tx.GasUsed))
+		if effectiveGasPrice.Cmp(lowestGasPrice) < 0 {
+			lowestGasPrice = effectiveGasPrice
 		}
 		if tx.To == nil {
 			tx.To = tx.Itx[0].From
@@ -115,15 +107,16 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 			method = tx.GetData()[:4]
 		}
 		txs = append(txs, types.Eth1BlockPageTransaction{
-			Hash:     fmt.Sprintf("%#x", tx.Hash),
-			From:     fmt.Sprintf("%#x", tx.From),
-			FromName: names[string(tx.From)],
-			To:       fmt.Sprintf("%#x", tx.To),
-			ToName:   names[string(tx.To)],
-			Value:    new(big.Int).SetBytes(tx.Value),
-			Fee:      txFee,
-			GasPrice: new(big.Int).SetBytes(tx.GasPrice),
-			Method:   fmt.Sprintf("%#x", method),
+			Hash:          fmt.Sprintf("%#x", tx.Hash),
+			HashFormatted: utils.FormatAddressWithLimits(tx.Hash, "", "tx", 15, 18, true),
+			From:          fmt.Sprintf("%#x", tx.From),
+			FromFormatted: utils.FormatAddressWithLimits(tx.From, names[string(tx.From)], "address", 15, 20, true),
+			To:            fmt.Sprintf("%#x", tx.To),
+			ToFormatted:   utils.FormatAddressWithLimits(tx.To, names[string(tx.To)], "address", 15, 20, true),
+			Value:         new(big.Int).SetBytes(tx.Value),
+			Fee:           txFee,
+			GasPrice:      effectiveGasPrice,
+			Method:        fmt.Sprintf("%#x", method),
 		})
 	}
 
@@ -137,24 +130,26 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		uncles = append(uncles, types.Eth1BlockPageData{
 			Number:       uncle.Number,
 			MinerAddress: fmt.Sprintf("%#x", uncle.Coinbase),
-			MinerName:    names[string(uncle.Coinbase)],
-			Reward:       reward,
-			Extra:        string(uncle.Extra),
+			//MinerFormatted: utils.FormatAddress(uncle.Coinbase, nil, names[string(uncle.Coinbase)], false, false, false),
+			MinerFormatted: utils.FormatAddressWithLimits(uncle.Coinbase, names[string(uncle.Coinbase)], "block", 42, 42, true),
+			Reward:         reward,
+			Extra:          string(uncle.Extra),
 		})
 	}
 
 	burnedEth := new(big.Int).Mul(new(big.Int).SetBytes(block.BaseFee), big.NewInt(int64(block.GasUsed)))
 	blockReward.Add(blockReward, txFees).Add(blockReward, uncleInclusionRewards).Sub(blockReward, burnedEth)
 	eth1BlockPageData := types.Eth1BlockPageData{
-		Number:         number,
-		PreviousBlock:  number - 1,
-		NextBlock:      number + 1,
-		TxCount:        uint64(len(block.Transactions)),
-		UncleCount:     uint64(len(block.Uncles)),
-		Hash:           fmt.Sprintf("%#x", block.Hash),
-		ParentHash:     fmt.Sprintf("%#x", block.ParentHash),
-		MinerAddress:   fmt.Sprintf("%#x", block.Coinbase),
-		MinerName:      names[string(block.Coinbase)],
+		Number:        number,
+		PreviousBlock: number - 1,
+		NextBlock:     number + 1,
+		TxCount:       uint64(len(block.Transactions)),
+		UncleCount:    uint64(len(block.Uncles)),
+		Hash:          fmt.Sprintf("%#x", block.Hash),
+		ParentHash:    fmt.Sprintf("%#x", block.ParentHash),
+		MinerAddress:  fmt.Sprintf("%#x", block.Coinbase),
+		//MinerFormatted: utils.FormatAddress(block.Coinbase, nil, names[string(block.Coinbase)], false, false, false),
+		MinerFormatted: utils.FormatAddressWithLimits(block.Coinbase, names[string(block.Coinbase)], "block", 42, 42, true),
 		Reward:         blockReward,
 		MevReward:      db.CalculateMevFromBlock(block),
 		TxFees:         txFees,
