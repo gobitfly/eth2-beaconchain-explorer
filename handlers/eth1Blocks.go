@@ -192,7 +192,7 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 			}
 
 			if posActive && sData != nil {
-				slotText = fmt.Sprintf(`<A href="block/%d">%s</A>`, b.GetNumber(), utils.FormatAddCommas(sData.Slot))
+				slotText = fmt.Sprintf(`<A href="slot/%d">%s</A>`, b.GetNumber(), utils.FormatAddCommas(sData.Slot))
 				epochText = fmt.Sprintf(`<A href="epoch/%d">%s</A>`, sData.Epoch, utils.FormatAddCommas(sData.Epoch))
 			}
 		}
