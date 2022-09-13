@@ -506,7 +506,8 @@ func main() {
 		}
 
 		l := negroni.NewLogger()
-		l.SetFormat("{{.StartTime}} | {{.Status}} | \t {{.Duration}} | {{.Hostname}} | {{.Method}} {{.Path}}?{{.Request.URL.RawQuery}}")
+		l.SetFormat(`{{.Request.RemoteAddr}} | {{.Request.Header.Get "X-Forwarded-For"}} | {{.StartTime}} | {{.Status}} | {{.Duration}} | {{.Hostname}} | {{.Method}} {{.Path}}?{{.Request.URL.RawQuery}}`)
+
 		n := negroni.New(negroni.NewRecovery(), l)
 
 		// Customize the logging middleware to include a proper module entry for the frontend

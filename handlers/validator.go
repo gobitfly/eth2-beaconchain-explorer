@@ -1380,6 +1380,7 @@ var validatorStatsTableTemplate = template.Must(template.New("validator_stats").
 
 // Validator returns validator data using a go template
 func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
+
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 

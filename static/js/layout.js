@@ -305,7 +305,7 @@ $(document).ready(function () {
     } else if (sug.epoch !== undefined) {
       window.location = "/epoch/" + sug.epoch
     } else if (sug.address !== undefined) {
-      window.location = "/execution/address/" + sug.address
+      window.location = "/address/" + sug.address
     } else if (sug.graffiti !== undefined) {
       // sug.graffiti is html-escaped to prevent xss, we need to unescape it
       var el = document.createElement("textarea")
