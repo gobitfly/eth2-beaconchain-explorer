@@ -253,7 +253,7 @@ $(document).ready(function () {
       source: bhEth1Accounts,
       display: "address",
       templates: {
-        header: '<h3 class="h5">ETH1 Addresses</h3>',
+        header: '<h3 class="h5">ETH Addresses</h3>',
         suggestion: function (data) {
           return `<div class="text-monospace text-truncate">0x${data.address}</div>`
         },
