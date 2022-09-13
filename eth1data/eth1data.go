@@ -115,9 +115,11 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error retrieveing from name for tx %v: %v", hash, err)
 	}
-	txPageData.ToName, err = db.BigtableClient.GetAddressName(msg.To().Bytes())
-	if err != nil {
-		return nil, fmt.Errorf("error retrieveing to name for tx %v: %v", hash, err)
+	if msg.To() != nil {
+		txPageData.ToName, err = db.BigtableClient.GetAddressName(msg.To().Bytes())
+		if err != nil {
+			return nil, fmt.Errorf("error retrieveing to name for tx %v: %v", hash, err)
+		}
 	}
 
 	if len(receipt.Logs) > 0 {
