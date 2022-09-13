@@ -141,7 +141,7 @@
 
 {{ define "content" }}
   {{ with .Data }}
-    {{ $isBlockView := (contains $.Meta.Path "block")}}
+    {{ $isBlockView := (contains $.Meta.Path "block") }}
     <div class="container mt-2">
       <div class="d-md-flex py-2 justify-content-md-between">
         <h1 class="h4 my-3 mb-md-0">
