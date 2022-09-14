@@ -218,22 +218,22 @@ func GetCodeAt(ctx context.Context, address common.Address) ([]byte, error) {
 }
 
 func GetBlockHeaderByHash(ctx context.Context, hash common.Hash) (*geth_types.Header, error) {
-	cacheKey := fmt.Sprintf("%d:h:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
+	// cacheKey := fmt.Sprintf("%d:h:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
 
-	if wanted, err := db.EkoCache.Get(ctx, cacheKey, new(geth_types.Header)); err == nil {
-		logrus.Infof("retrieved header data for block %v from cache", hash)
-		return wanted.(*geth_types.Header), nil
-	}
+	// if wanted, err := db.EkoCache.Get(ctx, cacheKey, new(geth_types.Header)); err == nil {
+	// 	logrus.Infof("retrieved header data for block %v from cache", hash)
+	// 	return wanted.(*geth_types.Header), nil
+	// }
 
 	header, err := rpc.CurrentErigonClient.GetNativeClient().HeaderByHash(ctx, hash)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block header data for tx %v: %v", hash, err)
 	}
 
-	err = db.EkoCache.Set(ctx, cacheKey, header)
-	if err != nil {
-		return nil, fmt.Errorf("error writing header data for block %v to cache: %v", hash, err)
-	}
+	// err = db.EkoCache.Set(ctx, cacheKey, header)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error writing header data for block %v to cache: %v", hash, err)
+	// }
 
 	return header, nil
 }
