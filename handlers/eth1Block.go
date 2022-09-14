@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"database/sql"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -66,41 +66,13 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		// retrieve consensus data
 		// execution data is set in GetSlotPageData
 		blockPageData, err := GetSlotPageData(blockSlot)
-		if err == sql.ErrNoRows {
-			//Slot not in database -> Show future block
-			slot := uint64(blockSlot)
-
-			if slot > MaxSlotValue {
-				logger.Errorf("error retrieving blockPageData: %v", err)
-				err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-
-				if err != nil {
-					logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-					http.Error(w, "Internal server error", http.StatusInternalServerError)
-					return
-				}
-			}
-
-			futurePageData := types.BlockPageData{
-				Slot:         slot,
-				Epoch:        utils.EpochOfSlot(slot),
-				Ts:           utils.SlotToTime(slot),
-				NextSlot:     slot + 1,
-				PreviousSlot: slot - 1,
-			}
-			data.Data = futurePageData
-
-			err = blockFutureTemplate.ExecuteTemplate(w, "layout", data)
+		if err != nil {
+			err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 			if err != nil {
-				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				logger.Errorf("a error executing template for %v route: %v", r.URL.String(), err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-
-			return
-		} else if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		blockPageData.ExecutionData = eth1BlockPageData
@@ -128,8 +100,10 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetExecutionBlockPageData(number uint64) (*types.Eth1BlockPageData, error) {
-	// retrieve block from bigtable
 	block, err := db.BigtableClient.GetBlockFromBlocksTable(number)
+	if diffToHead := int64(services.LatestEth1BlockNumber()) - int64(number); err != nil && diffToHead < 0 && diffToHead >= -5 {
+		block, _, err = rpc.CurrentErigonClient.GetBlock(int64(number))
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -154,24 +128,20 @@ func GetExecutionBlockPageData(number uint64) (*types.Eth1BlockPageData, error) 
 	txFees := new(big.Int)
 	lowestGasPrice := big.NewInt(1 << 62)
 	for _, tx := range block.Transactions {
-		// calculate tx fee depending on tx type
-		txFee := new(big.Int).SetUint64(tx.GasUsed)
-
-		if tx.Type == uint32(2) {
-			// multiply gasused with min(baseFee + maxpriorityfee, maxfee)
-			if normalGasPrice, maxGasPrice := new(big.Int).Add(new(big.Int).SetBytes(block.BaseFee), new(big.Int).SetBytes(tx.MaxPriorityFeePerGas)), new(big.Int).SetBytes(tx.MaxFeePerGas); normalGasPrice.Cmp(maxGasPrice) <= 0 {
-				txFee.Mul(txFee, normalGasPrice)
-			} else {
-				txFee.Mul(txFee, maxGasPrice)
-			}
-		} else {
-			txFee.Mul(txFee, new(big.Int).SetBytes(tx.GasPrice))
-		}
+		// sum txFees
+		txFee := db.CalculateTxFeeFromTransaction(tx, new(big.Int).SetBytes(block.BaseFee))
 		txFees.Add(txFees, txFee)
-		effectiveGasPrice := new(big.Int).Div(txFee, new(big.Int).SetUint64(tx.GasUsed))
-		if effectiveGasPrice.Cmp(lowestGasPrice) < 0 {
-			lowestGasPrice = effectiveGasPrice
+
+		effectiveGasPrice := big.NewInt(0)
+		if gasUsed := new(big.Int).SetUint64(tx.GasUsed); gasUsed.Cmp(big.NewInt(0)) != 0 {
+			// calculate effective gas price
+			effectiveGasPrice = new(big.Int).Div(txFee, gasUsed)
+			if effectiveGasPrice.Cmp(lowestGasPrice) < 0 {
+				lowestGasPrice = effectiveGasPrice
+			}
 		}
+
+		// set tx to if tx is contract creation
 		if tx.To == nil && len(tx.Itx) >= 1 {
 			tx.To = tx.Itx[0].To
 			names[string(tx.To)] = "Contract Creation"
@@ -215,10 +185,14 @@ func GetExecutionBlockPageData(number uint64) (*types.Eth1BlockPageData, error) 
 
 	burnedEth := new(big.Int).Mul(new(big.Int).SetBytes(block.BaseFee), big.NewInt(int64(block.GasUsed)))
 	blockReward.Add(blockReward, txFees).Add(blockReward, uncleInclusionRewards).Sub(blockReward, burnedEth)
+	nextBlock := number + 1
+	if nextBlock > services.LatestEth1BlockNumber() {
+		nextBlock = 0
+	}
 	eth1BlockPageData := types.Eth1BlockPageData{
 		Number:        number,
 		PreviousBlock: number - 1,
-		NextBlock:     number + 1,
+		NextBlock:     nextBlock,
 		TxCount:       uint64(len(block.Transactions)),
 		UncleCount:    uint64(len(block.Uncles)),
 		Hash:          fmt.Sprintf("%#x", block.Hash),
