@@ -2,12 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
-	"eth2-exporter/db"
 	"eth2-exporter/services"
-	"eth2-exporter/utils"
 	"net/http"
-	"sort"
-	"time"
 )
 
 type sqlBlocks struct {
@@ -23,135 +19,20 @@ type sqlBlocks struct {
 // var currentEpoch uint64
 // var currentSlot uint64
 
-// LaunchMetricsData returns the metrics for the earliest epochs
-func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
+// SlotVizMetrics returns the metrics for the earliest epochs
+func SlotVizMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var blks []sqlBlocks = []sqlBlocks{}
+	// res, err := db.GetSlotVizData(latestEpoch)
+	// if err != nil {
+	// 	logger.Errorf("error getting slot viz data for %v route: %v", r.URL.String(), err)
+	// 	http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+	// 	return
+	// }
 
-	err := db.ReaderDb.Select(&blks, `
-	SELECT
-		b.slot,
-		case
-			when b.status = '0' then 'scheduled'
-			when b.status = '1' then 'proposed'
-			when b.status = '2' then 'missed'
-			when b.status = '3' then 'orphaned'
-			else 'unknown'
-		end as status,
-		b.epoch,
-		COALESCE(e.globalparticipationrate, 0) as globalparticipationrate,
-		COALESCE(e.finalized, false) as finalized
-	FROM blocks b
-		left join epochs e on e.epoch = b.epoch
-	WHERE b.epoch >= $1
-	ORDER BY slot desc;
-`, services.LatestEpoch()-4)
-	if err != nil {
-		logger.Errorf("error querying blocks table for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
+	res := services.LatestSlotVizMetrics()
 
-	currentSlot := utils.TimeToSlot(uint64(time.Now().Unix()))
-
-	type blockType struct {
-		Epoch  uint64
-		Slot   uint64
-		Status string `json:"status"`
-		Active bool   `json:"active"`
-	}
-	type epochType struct {
-		Epoch          uint64         `json:"epoch"`
-		Finalized      bool           `json:"finalized"`
-		Justified      bool           `json:"justified"`
-		Justifying     bool           `json:"justifying"`
-		Particicpation float64        `json:"participation"`
-		Slots          [32]*blockType `json:"slots"`
-	}
-
-	epochMap := map[uint64]*epochType{}
-
-	res := struct {
-		Epochs []*epochType
-	}{}
-
-	for _, b := range blks {
-		if b.Globalparticipationrate == 1 && !b.Finalized {
-			b.Globalparticipationrate = 0
-		}
-		_, exists := epochMap[b.Epoch]
-		if !exists {
-			r := epochType{
-				Epoch:          b.Epoch,
-				Finalized:      b.Finalized,
-				Particicpation: b.Globalparticipationrate,
-				Slots:          [32]*blockType{},
-			}
-			epochMap[b.Epoch] = &r
-		}
-
-		slotIndex := b.Slot - (b.Epoch * utils.Config.Chain.Config.SlotsPerEpoch)
-
-		epochMap[b.Epoch].Slots[slotIndex] = &blockType{
-			Epoch:  b.Epoch,
-			Slot:   b.Slot,
-			Status: b.Status,
-			Active: b.Slot == currentSlot,
-		}
-	}
-
-	for _, epoch := range epochMap {
-		for i := 0; i < 32; i++ {
-			if epoch.Slots[i] == nil {
-				status := "scheduled"
-				slot := epoch.Epoch*utils.Config.Chain.Config.SlotsPerEpoch + uint64(i)
-				if slot < currentSlot-3 {
-					status = "missed"
-				}
-				epoch.Slots[i] = &blockType{
-					Epoch:  epoch.Epoch,
-					Slot:   slot,
-					Status: status,
-					Active: slot == currentSlot,
-				}
-			}
-		}
-	}
-
-	for _, epoch := range epochMap {
-		for _, slot := range epoch.Slots {
-			slot.Active = slot.Slot == currentSlot
-
-			if slot.Status != "proposed" {
-				if slot.Slot >= currentSlot {
-					slot.Status = "scheduled"
-				} else {
-					slot.Status = "missed"
-				}
-			}
-		}
-		if epoch.Finalized {
-			epoch.Justified = true
-		}
-		res.Epochs = append(res.Epochs, epoch)
-	}
-
-	sort.Slice(res.Epochs, func(i, j int) bool {
-		return res.Epochs[i].Epoch > res.Epochs[j].Epoch
-	})
-
-	for i := 0; i < len(res.Epochs); i++ {
-		if res.Epochs[i].Finalized == false && i != 0 {
-			res.Epochs[i-1].Justifying = true
-		}
-		if res.Epochs[i].Finalized && i != 0 {
-			res.Epochs[i-1].Justified = true
-			break
-		}
-	}
-
-	err = json.NewEncoder(w).Encode(res)
+	err := json.NewEncoder(w).Encode(res)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

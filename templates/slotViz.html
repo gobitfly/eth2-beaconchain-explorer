@@ -1,72 +1,28 @@
-{{ define "content" }}
-  <div class="container mt-2">
-    <div class="d-md-flex py-2 justify-content-md-between">
-      <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-sitemap mr-2"></i>Slot Visualization</h1>
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-          <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-          <li class="breadcrumb-item"><a href="/charts" title="Charts">Charts</a></li>
-          <li class="breadcrumb-item active" aria-current="page">Slotviz</li>
-        </ol>
-      </nav>
-    </div>
-    <div class="description">
-      <p>This chart displays the most recent epochs and their slots. The color of the slots indicates if the slot has been proposed, orphaned or missed. The bar below the epochs displays the participation during the epoch. The y axis represents the epoch number and the x axis represents the slot number.</p>
-    </div>
-    <div></div>
-    <div class="mt-4">
-      <div class="w-100 my-2" id="checklist"></div>
-    </div>
-    <div class="position-relative">
-      <div style="top: 100%; right: 50%; transform: translateX(50%);" class="position-absolute">
-        <span class="text-muted font-weight-bold">beaconcha.in/charts/slotviz</span>
-      </div>
-    </div>
-  </div>
-{{ end }}
-{{ define "css" }}
-  <style>
-    #checklist > svg {
-      overflow: visible;
-    }
-    svg rect[slot],
-    svg rect[epoch] {
-      cursor: pointer;
-    }
-  </style>
-{{ end }}
-{{ define "js" }}
-  <script src="/js/d3.min.js"></script>
+
+
+
+{{ define "SlotViz" }}
+<script src="/js/d3.min.js"></script>
   <script>
     var defaultEpoch =
       '{ "epoch": 0, "finalized": false, "justified": false, "previousjustified": false, "participation": 0, "slots": [{ "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }] }'
     // set the default
 
+    // placeholder epochs
     var epoch0 = JSON.parse(defaultEpoch)
     var epoch1 = JSON.parse(defaultEpoch)
     var epoch2 = JSON.parse(defaultEpoch)
     var epoch3 = JSON.parse(defaultEpoch)
     var epoch4 = JSON.parse(defaultEpoch)
-    // var epoch5 = JSON.parse(defaultEpoch)
-    // var epoch6 = JSON.parse(defaultEpoch)
 
     var epochs = [epoch0, epoch1, epoch2, epoch3, epoch4]
     epochs[1].epoch = 1
     epochs[2].epoch = 2
     epochs[3].epoch = 3
     epochs[4].epoch = 4
-    // epochs[5].epoch = 5
-    // epochs[6].epoch = 5
-
-    // epochs[4].participation = 65.9
-    // epochs[0].slots[0].status = "proposed"
-    // epochs[1].slots[0].status = "missed"
-    // epochs[0].slots[1].active = true
-
-    // document.addEventListener("DOMContentLoaded", function () {
     /// Chat Dimensions
     var margin = { top: 20, right: 30, bottom: 0, left: 30 }
-    var width = document.getElementById("checklist").clientWidth
+    var width = document.getElementById({{.Selector}}).clientWidth
     var height = 120 + margin.top + margin.bottom + epochs.length * 50
 
     // var reveal = (path) =>
@@ -87,7 +43,7 @@
     var colorProposed = d3.scaleSequential().domain([0, 12]).interpolator(d3.interpolateRgb("rgba(100, 200, 100, 1)", "rgba(100, 200, 100, 0.3)"))
 
     // Chart Svg
-    var svg = d3.select("#checklist").append("svg").attr("viewBox", [0, 0, width, height]).attr("style", `max-width: ${width}px; font: 10px sans-serif;`)
+    var svg = d3.select("#"+{{.Selector}}).append("svg").attr("viewBox", [0, 0, width, height]).attr("style", `max-width: ${width}px; font: 10px sans-serif;`)
 
     // Define X axis
     var x = d3
@@ -109,7 +65,6 @@
       .range([margin.top, height - margin.bottom])
       .padding(0.1)
 
-    // var gx =
     svg
       .append("g")
       .attr("transform", `translate(0,${margin.top})`)
@@ -125,92 +80,14 @@
 
     function createBars(svg) {
       return svg.append("g")
-      // .selectAll("rect")
-      // .data(epochs, (d) => d)
-      // .join("rect")
-      // .attr("id", ({ epoch, participation }) => epoch)
-      // .attr("fill", ({ participation }) => color(participation))
-      // .attr("y", ({ epoch }) => y(epoch) + y.bandwidth() / 2 + (width - margin.right - margin.left) / 48)
-      // .attr("x", x(0))
-      // .attr("width", ({ participation }) => participationX(participation) - participationX(0))
-      // .attr("height", "10")
-      // .attr("data-original-title", (d, i) => `epoch ${d.epoch} participation ${d.participation}%`)
-      // .attr("data-toggle", "tooltip")
     }
 
     function createLabels(svg) {
       return svg.append("g").attr("text-anchor", "end").attr("transform", `translate(6, 5)`)
-      // .data(data, (d) => d.epoch)
-      // .join("text")
-      // .attr("fill", (d) => `${d3.lab(color(d.participation)).l < 60 ? "white" : "black"}`)
-      // .attr("y", (d) => y(d.epoch) + y.bandwidth() / 2 + (width - margin.right - margin.left) / 42)
-      // .attr("x", (d) => participationX(d.participation) - x(0))
-      // .attr("dy", ".5rem")
-      // .attr("style", "font-size: .7rem")
-      // .text((d) => {
-      //   var txt = d.finalized ? "finalized" : "justifying"
-      //   return txt + " " + d.participation + "%"
-      // })
     }
 
     function createSlots(svg) {
       return svg.append("g").attr("text-anchor", "middle")
-      // .selectAll("g")
-      // .data(epochs, (d) => d.epoch)
-      // .join("g")
-      // .attr("transform", ({ epoch }) => `translate(0, ${y(epoch)})`)
-      // .selectAll("rect")
-      // .data((d) => d.slots)
-      // .join("rect")
-      // .attr("x", (d, i) => x(i))
-      // .attr("y", (d, i) => y.bandwidth() / 2 - 7.5)
-      // .attr("class", (s, i) => {
-      //   if (s.active) {
-      //     return "active-slot"
-      //   } else {
-      //     return ""
-      //   }
-      // })
-      // .attr("data-original-title", (s, i) => {
-      //   if (s.active) {
-      //     return `current slot ${s.Slot}`
-      //   }
-      //   if (s.status === "proposed" && s.delay) {
-      //     return `slot: ${s.Slot} proposed in ${s.delay}s`
-      //   } else if (s.status === "proposed") {
-      //     return `slot: ${s.Slot} status: ${s.status}`
-      //   }
-      //   if (s.status !== "scheduled") {
-      //     return `slot: ${s.Slot} status: ${s.status}`
-      //   } else {
-      //     return `slot: ${s.Slot}`
-      //   }
-      // })
-      // // .attr("data-toggle", (s, i) => s.status !== "scheduled" || s.active ? "tooltip" : "")
-      // .attr("data-toggle", (s, i) => "tooltip")
-      // .attr("stroke-width", ".5")
-      // .attr("stroke", (d) => (d.active ? "var(--body-color)" : "transparent"))
-      // .attr("width", (d) => (width - margin.right - margin.left) / 48)
-      // .attr("height", (d) => (width - margin.right - margin.left) / 48)
-      // .attr("rx", "1")
-      // .attr("ry", "1")
-      // .attr("fill", (d) => {
-      //   if (d.status === "missed") {
-      //     return "rgba(200,100,100,0.8)"
-      //   } else if (d.status === "proposed") {
-      //     if (d.delay) {
-      //       return colorProposed(d.delay)
-      //     } else {
-      //       return colorProposed(1)
-      //     }
-      //   } else if (d.status === "orphaned") {
-      //     return "rgba(100,100, 200, 0.8)"
-      //   } else if (d.status === "genesis") {
-      //     return "rgba(119, 110, 255, 0.8)"
-      //   } else {
-      //     return "rgba(100,100,100, 0.5)"
-      //   }
-      // })
     }
 
     var slots = createSlots(svg)
@@ -324,13 +201,6 @@
                     var slot = d.target.getAttribute("slot")
                     window.location = "/slot/" + slot
                   })
-                  // .attr("class", (s, i) => {
-                  //   if (s.active) {
-                  //     return ""
-                  //   } else {
-                  //     return ""
-                  //   }
-                  // })
                   .attr("data-original-title", (s, i) => {
                     if (s.active) {
                       return `current slot ${s.Slot}`
@@ -493,7 +363,7 @@
       fetch("/launchMetrics")
         .then((res) => res.json())
         .then((data) => {
-          processLaunchMetrics(data.Epochs)
+          processLaunchMetrics(data)
         })
         .catch((error) => {
           console.error("error fetching resource", error)
@@ -509,6 +379,10 @@
       chart.update(data)
     }
 
-    setInterval(fetchMetrics, 2000)
+    {{ if len .Epochs }}
+      processLaunchMetrics({{.Epochs}})
+      processLaunchMetrics({{.Epochs}})
+    {{ end }}
+    setInterval(fetchMetrics, 3000)
   </script>
 {{ end }}

@@ -29,6 +29,7 @@ var indexTemplateFiles = []string{
 	"templates/svg/professor.html",
 	"templates/svg/timeline.html",
 	"templates/components/rocket.html",
+	"templates/slotViz.html",
 }
 
 var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFiles(
@@ -48,6 +49,14 @@ func Index(w http.ResponseWriter, r *http.Request) {
 
 	data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
 	data.Data.(*types.IndexPageData).Countdown = utils.Config.Frontend.Countdown
+
+	data.Data.(*types.IndexPageData).SlotVizData = struct {
+		Epochs   []*types.SlotVizEpochs
+		Selector string
+	}{
+		Epochs:   services.LatestSlotVizMetrics(),
+		Selector: "slotsViz",
+	}
 
 	err := indexTemplate.ExecuteTemplate(w, "layout", data)
 

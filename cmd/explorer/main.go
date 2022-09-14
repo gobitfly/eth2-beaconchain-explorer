@@ -307,7 +307,7 @@ func main() {
 
 			router.HandleFunc("/", handlers.Index).Methods("GET")
 			router.HandleFunc("/latestState", handlers.LatestState).Methods("GET")
-			router.HandleFunc("/launchMetrics", handlers.LaunchMetricsData).Methods("GET")
+			router.HandleFunc("/launchMetrics", handlers.SlotVizMetrics).Methods("GET")
 			router.HandleFunc("/index/data", handlers.IndexPageData).Methods("GET")
 			router.HandleFunc("/slot/{slotOrHash}", handlers.Block).Methods("GET")
 			router.HandleFunc("/slot/{slotOrHash}/deposits", handlers.BlockDepositData).Methods("GET")
