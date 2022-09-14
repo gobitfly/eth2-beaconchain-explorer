@@ -2095,9 +2095,9 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 
 		slotIndex := b.Slot - (b.Epoch * utils.Config.Chain.Config.SlotsPerEpoch)
 
-		if epochMap[b.Epoch].Slots[slotIndex] != nil && len(b.BlockRoot) > len(epochMap[b.Epoch].Slots[slotIndex].BlockRoot) {
-			logger.Infof("CONFLICTING block found for slotindex %v", slotIndex)
-		}
+		// if epochMap[b.Epoch].Slots[slotIndex] != nil && len(b.BlockRoot) > len(epochMap[b.Epoch].Slots[slotIndex].BlockRoot) {
+		// 	logger.Infof("CONFLICTING block found for slotindex %v", slotIndex)
+		// }
 
 		if epochMap[b.Epoch].Slots[slotIndex] == nil || len(b.BlockRoot) > len(epochMap[b.Epoch].Slots[slotIndex].BlockRoot) {
 			epochMap[b.Epoch].Slots[slotIndex] = &types.SlotVizSlots{
