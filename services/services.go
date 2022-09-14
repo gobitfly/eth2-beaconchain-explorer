@@ -43,20 +43,26 @@ var logger = logrus.New().WithField("module", "services")
 
 // Init will initialize the services
 func Init() {
-	ready.Add(5)
+	ready.Add(1)
 	go epochUpdater()
+
+	ready.Add(1)
 	go slotUpdater()
+
+	ready.Add(1)
 	go latestProposedSlotUpdater()
+
+	ready.Add(1)
 	go initExecutionLayerServices()
+
+	ready.Add(1)
 	go slotVizUpdater()
 
 	// ready.Add(1)
 	// go gasNowUpdater()
 
-	if utils.Config.Frontend.OnlyAPI {
-		ready.Done()
-		ready.Done()
-	} else {
+	if !utils.Config.Frontend.OnlyAPI {
+		ready.Add(1)
 		go indexPageDataUpdater()
 		// go poolsUpdater()
 	}
