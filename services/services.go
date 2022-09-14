@@ -565,6 +565,13 @@ func LatestIndexPageData() *types.IndexPageData {
 
 // LatestPoolsPageData returns the latest pools page data
 func LatestPoolsPageData() *types.PoolsResp {
+	if poolsData.Load() == nil {
+		return &types.PoolsResp{
+			PoolsDistribution:       types.ChartsPageDataChart{},
+			HistoricPoolPerformance: types.ChartsPageDataChart{},
+			PoolInfos:               []*types.PoolInfo{},
+		}
+	}
 	return poolsData.Load().(*types.PoolsResp)
 }
 
