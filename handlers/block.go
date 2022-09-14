@@ -139,7 +139,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if blockPageData.ExecBlockNumber.Int64 != 0 {
+	if blockPageData.ExecBlockNumber.Int64 != 0 && blockPageData.Status == 1 {
 		// slot has corresponing execution block, fetch execution data
 		eth1BlockPageData, err := GetExecutionBlockPageData(uint64(blockPageData.ExecBlockNumber.Int64))
 		// if err != nil, simply show slot view without block
