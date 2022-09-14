@@ -245,8 +245,10 @@
         .attr("d", function (d) {
           var fromNode = d[0],
             toNode = d[1]
-
-          return "M" + toNode.x + "," + toNode.y + "C" + toNode.x + "," + (toNode.y + 15) + " " + fromNode.x + "," + (fromNode.y - 15) + " " + fromNode.x + "," + fromNode.y
+          if (fromNode.block.hash.length >= 64) {
+            return "M" + toNode.x + "," + toNode.y + "C" + toNode.x + "," + (toNode.y + 15) + " " + fromNode.x + "," + (fromNode.y - 15) + " " + fromNode.x + "," + fromNode.y
+          }
+          return ""
         })
       link
         .enter()
@@ -257,11 +259,12 @@
         .attr("d", function (d) {
           var fromNode = d[0],
             toNode = d[1]
-
-          return "M" + toNode.x + "," + toNode.y + "C" + toNode.x + "," + (toNode.y + 15) + " " + fromNode.x + "," + (fromNode.y - 15) + " " + fromNode.x + "," + fromNode.y
+          if (fromNode.block.hash.length >= 64) {
+            return "M" + toNode.x + "," + toNode.y + "C" + toNode.x + "," + (toNode.y + 15) + " " + fromNode.x + "," + (fromNode.y - 15) + " " + fromNode.x + "," + fromNode.y
+          }
+          return ""
         })
       link.exit().remove()
-
       var earliest = Math.min.apply(
         null,
         nodes.map(function (n) {
@@ -307,20 +310,7 @@
 
     $(document).ready(function () {
       loadData()
-
-      var intervalId = window.setInterval(loadData, 10000)
-      $(window).blur(function () {
-        if (intervalId != undefined) {
-          window.clearInterval(intervalId)
-          intervalId = undefined
-        }
-      })
-      $(window).focus(function () {
-        if (intervalId == undefined) {
-          loadData()
-          intervalId = window.setInterval(loadData, 10000)
-        }
-      })
+      var intervalId = window.setInterval(loadData, 12000)
     })
   </script>
 {{ end }}
