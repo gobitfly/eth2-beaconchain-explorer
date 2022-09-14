@@ -195,7 +195,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		if err != nil {
 			logrus.Warningf("failed to get finalization stats for block %s", txPageData.BlockNumber)
 			txPageData.Epoch.Finalized = false
-			txPageData.Epoch.Participation = 1
+			txPageData.Epoch.Participation = -1
 		}
 	}
 
