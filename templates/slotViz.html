@@ -1,26 +1,13 @@
 {{ define "SlotViz" }}
   <script src="/js/d3.min.js"></script>
   <script>
-    var defaultEpoch =
-      '{ "epoch": 0, "finalized": false, "justified": false, "previousjustified": false, "participation": 0, "slots": [{ "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }, { "status": "scheduled" }] }'
-    // set the default
-
-    // placeholder epochs
-    var epoch0 = JSON.parse(defaultEpoch)
-    var epoch1 = JSON.parse(defaultEpoch)
-    var epoch2 = JSON.parse(defaultEpoch)
-    var epoch3 = JSON.parse(defaultEpoch)
-    var epoch4 = JSON.parse(defaultEpoch)
-
-    var epochs = [epoch0, epoch1, epoch2, epoch3, epoch4]
-    epochs[1].epoch = 1
-    epochs[2].epoch = 2
-    epochs[3].epoch = 3
-    epochs[4].epoch = 4
+    var epochs = {{.Epochs}}
     /// Chat Dimensions
     var margin = { top: 20, right: 30, bottom: 0, left: 30 }
     var width = document.getElementById({{.Selector}}).clientWidth
     var height = 120 + margin.top + margin.bottom + epochs.length * 50
+
+
 
     // var reveal = (path) =>
     //   path
@@ -376,9 +363,22 @@
       chart.update(data)
     }
 
-    {{ if len .Epochs }}
-      processLaunchMetrics({{.Epochs}})
-    {{ end }}
+    processLaunchMetrics(epochs)
     setInterval(fetchMetrics, 3000)
+
+    const watermarkContainer = document.createElement('div')
+    watermarkContainer.style.position = 'relative'
+
+    const watermarkContent = document.createElement('div')
+    watermarkContent.style.position = 'absolute'
+    watermarkContent.style.top = "100%"
+    watermarkContent.style.right = 0
+    watermarkContent.innerText = 'beaconcha.in'
+    watermarkContent.classList.add('text-muted')
+    watermarkContent.classList.add('font-weight-bold')
+
+    watermarkContainer.appendChild(watermarkContent)
+
+    document.getElementById({{.Selector}}).appendChild(watermarkContainer)
   </script>
 {{ end }}
