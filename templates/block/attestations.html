@@ -7,7 +7,7 @@
         </div>
         <div class="row border-bottom p-1 mx-0">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Slot number to which the validator is attesting">Slot:</span></div>
-          <div class="col-md-10"><a href="/block/{{ $attestation.Slot }}">{{ $attestation.Slot }}</a></div>
+          <div class="col-md-10"><a href="/slot/{{ $attestation.Slot }}">{{ $attestation.Slot }}</a></div>
         </div>
         <div class="row border-bottom p-1 mx-0">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="An identifier for a specific committee during a slot">Committee Index:</span></div>
@@ -27,7 +27,7 @@
         </div>
         <div class="row border-bottom p-1 mx-0">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Points to the block to which validators are attesting">Beacon Block Root:</span></div>
-          <div class="col-md-10 text-monospace text-break"><a href="/block/{{ printf "%x" $attestation.BeaconBlockRoot }}">0x{{ printf "%x" $attestation.BeaconBlockRoot }}</a></div>
+          <div class="col-md-10 text-monospace text-break"><a href="/slot/{{ printf "%x" $attestation.BeaconBlockRoot }}">0x{{ printf "%x" $attestation.BeaconBlockRoot }}</a></div>
         </div>
         <div class="row border-bottom p-1 mx-0">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Points to the latest justified epoch">Source:</span></div>

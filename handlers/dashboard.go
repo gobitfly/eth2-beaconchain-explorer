@@ -378,6 +378,11 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error retrieving active validators")
 	}
 
+	if len(activeValidators) == 0 {
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+
 	var avgIncDistance []float64
 
 	effectiveness, err := db.BigtableClient.GetValidatorEffectiveness(activeValidators, services.LatestEpoch()-1)

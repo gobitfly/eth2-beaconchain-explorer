@@ -220,7 +220,7 @@
           if (d.block.hash.length < 64) {
             return 'Missed by <a href="/validator/' + d.block.proposer + '">#' + d.block.proposer + "</a>"
           } else {
-            return '<a href="/block/' + d.block.hash + '">' + d.block.hash.substring(0, 10) + '</a> by validator <a href="/validator/' + d.block.proposer + '">#' + d.block.proposer + "</a>"
+            return '<a href="/slot/' + d.block.hash + '">' + d.block.hash.substring(0, 10) + '</a> by validator <a href="/validator/' + d.block.proposer + '">#' + d.block.proposer + "</a>"
           }
         })
       node
@@ -230,7 +230,7 @@
         .attr("x", 8)
         .style("text-anchor", "start")
         .html(function (d) {
-          return '<a href="/block/' + d.block.number + '">' + d.block.number + "</a>"
+          return '<a href="/slot/' + d.block.number + '">' + d.block.number + "</a>"
         })
       nodeset.exit().remove()
 

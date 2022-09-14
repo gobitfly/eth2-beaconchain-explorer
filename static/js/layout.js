@@ -253,7 +253,7 @@ $(document).ready(function () {
       source: bhEth1Accounts,
       display: "address",
       templates: {
-        header: '<h3 class="h5">ETH1 Addresses</h3>',
+        header: '<h3 class="h5">ETH Addresses</h3>',
         suggestion: function (data) {
           return `<div class="text-monospace text-truncate">0x${data.address}</div>`
         },
@@ -305,7 +305,7 @@ $(document).ready(function () {
     } else if (sug.epoch !== undefined) {
       window.location = "/epoch/" + sug.epoch
     } else if (sug.address !== undefined) {
-      window.location = "/execution/address/" + sug.address
+      window.location = "/address/" + sug.address
     } else if (sug.graffiti !== undefined) {
       // sug.graffiti is html-escaped to prevent xss, we need to unescape it
       var el = document.createElement("textarea")

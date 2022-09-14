@@ -406,7 +406,7 @@ func FormatGraffitiAsLink(graffiti []byte) template.HTML {
 	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
 	h := template.HTMLEscapeString(s)
 	u := url.QueryEscape(s)
-	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\"><a href=\"/blocks?q=%s\">%s</a></span>", graffiti, u, h))
+	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\"><a href=\"/slots?q=%s\">%s</a></span>", graffiti, u, h))
 }
 
 // FormatHash will return a hash formated as html
@@ -1075,4 +1075,7 @@ func FormatTimestampUInt64(ts uint64) template.HTML {
 // FormatEth1AddressFull will return the eth1-address formated as html
 func FormatEth1AddressFull(addr common.Address) template.HTML {
 	return FormatAddress(addr.Bytes(), nil, "", false, false, true)
+}
+
+func formatNumberInternal(prefix string, postfix string, number *big.Int, decimals int) {
 }

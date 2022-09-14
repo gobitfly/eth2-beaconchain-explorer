@@ -73,10 +73,13 @@ func (client *GethClient) GetRPCClient() *rpc.Client {
 }
 
 func (client *GethClient) GetBlock(number int64) (*types.Eth1Block, *types.GetBlockTimings, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
 	start := time.Now()
 	timings := &types.GetBlockTimings{}
 
-	block, err := client.ethClient.BlockByNumber(context.Background(), big.NewInt(int64(number)))
+	block, err := client.ethClient.BlockByNumber(ctx, big.NewInt(int64(number)))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -179,7 +182,7 @@ func (client *GethClient) GetBlock(number int64) (*types.Eth1Block, *types.GetBl
 	}
 
 	if len(reqs) > 0 {
-		if err := client.rpcClient.BatchCallContext(context.Background(), reqs); err != nil {
+		if err := client.rpcClient.BatchCallContext(ctx, reqs); err != nil {
 			return nil, nil, fmt.Errorf("error retrieving receipts for block %v: %v", block.Number(), err)
 		}
 	}
@@ -219,7 +222,10 @@ func (client *GethClient) GetBlock(number int64) (*types.Eth1Block, *types.GetBl
 }
 
 func (client *GethClient) GetLatestEth1BlockNumber() (uint64, error) {
-	latestBlock, err := client.ethClient.BlockByNumber(context.Background(), nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	latestBlock, err := client.ethClient.BlockByNumber(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("error getting latest block: %v", err)
 	}
@@ -331,7 +337,10 @@ func (client *GethClient) GetBalancesForAddresse(address string, tokenStr []stri
 }
 
 func (client *GethClient) GetNativeBalance(address string) ([]byte, error) {
-	balance, err := client.ethClient.BalanceAt(context.Background(), common.HexToAddress(address), nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	balance, err := client.ethClient.BalanceAt(ctx, common.HexToAddress(address), nil)
 
 	if err != nil {
 		return nil, err
@@ -340,8 +349,11 @@ func (client *GethClient) GetNativeBalance(address string) ([]byte, error) {
 }
 
 func (client *GethClient) GetERC20TokenBalance(address string, token string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
 	to := common.HexToAddress(token)
-	balance, err := client.ethClient.CallContract(context.Background(), ethereum.CallMsg{
+	balance, err := client.ethClient.CallContract(ctx, ethereum.CallMsg{
 		To:   &to,
 		Gas:  1000000,
 		Data: common.Hex2Bytes("70a08231000000000000000000000000" + address),

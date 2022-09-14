@@ -143,10 +143,12 @@
             </div>
           </a>
         {{ else }}
-          <div class="epoch__next">
-            <img src="/img/apps.png" alt="" />
-            <span class="epoch__next-loading">&nbsp;</span>
-          </div>
+          <a href="/epoch/{{ addUI64 .Epoch 1 }}">
+            <div class="epoch__next">
+              <img src="/img/apps.png" alt="" />
+              <span class="epoch__next-loading">&nbsp;</span>
+            </div>
+          </a>
         {{ end }}
       </div>
       <div class="card">
@@ -255,13 +257,13 @@
               <tbody>
                 {{ range .Blocks }}
                   <tr>
-                    <td><a href="/block/{{ .Slot }}">{{ formatAddCommas .Slot }}</a></td>
+                    <td><a href="/slot/{{ .Slot }}">{{ formatAddCommas .Slot }}</a></td>
                     <td class="text-capitalize">{{ formatBlockStatus .Status }}</td>
                     <td aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW">{{ .Ts.Format "2006-01-02T15:04:05" }}</td>
                     <td><a href="/validator/{{ .Proposer }}">{{ formatAddCommas .Proposer }}</a></td>
                     <td class="d-flex align-items-center text-monospace">
                       {{ if eq .Status 1 }}
-                        <a href="/block/{{ printf "%x" .BlockRoot }}">0x{{ printf "%.4x" .BlockRoot }}...</a>
+                        <a href="/slot/{{ printf "%x" .BlockRoot }}">0x{{ printf "%.4x" .BlockRoot }}...</a>
                         <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ printf "%x" .BlockRoot }}"></i>
                       {{ else }}
                         N/A
