@@ -681,12 +681,17 @@ func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block, cache *ccache.C
 	r := new(big.Int)
 
 	for _, uncle := range block.Uncles {
+
+		if len(block.Difficulty) == 0 { // no uncle rewards in PoS
+			continue
+		}
+
 		r.Add(big.NewInt(int64(uncle.GetNumber())), big.NewInt(8))
 		r.Sub(r, big.NewInt(int64(block.GetNumber())))
-		r.Mul(r, utils.BlockReward(block.GetNumber()))
+		r.Mul(r, utils.Eth1BlockReward(block.GetNumber(), block.Difficulty))
 		r.Div(r, big.NewInt(8))
 
-		r.Div(utils.BlockReward(block.GetNumber()), big.NewInt(32))
+		r.Div(utils.Eth1BlockReward(block.GetNumber(), block.Difficulty), big.NewInt(32))
 		uncleReward.Add(uncleReward, r)
 	}
 
@@ -1519,12 +1524,14 @@ func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block, cache *ccache.C
 		iReversed := reversePaddedIndex(i, 10)
 		r := new(big.Int)
 
-		r.Add(big.NewInt(int64(uncle.GetNumber())), big.NewInt(8))
-		r.Sub(r, big.NewInt(int64(block.GetNumber())))
-		r.Mul(r, utils.BlockReward(block.GetNumber()))
-		r.Div(r, big.NewInt(8))
+		if len(block.Difficulty) > 0 {
+			r.Add(big.NewInt(int64(uncle.GetNumber())), big.NewInt(8))
+			r.Sub(r, big.NewInt(int64(block.GetNumber())))
+			r.Mul(r, utils.Eth1BlockReward(block.GetNumber(), block.Difficulty))
+			r.Div(r, big.NewInt(8))
 
-		r.Div(utils.BlockReward(block.GetNumber()), big.NewInt(32))
+			r.Div(utils.Eth1BlockReward(block.GetNumber(), block.Difficulty), big.NewInt(32))
+		}
 
 		uncleIndexed := types.Eth1UncleIndexed{
 			Number:      uncle.GetNumber(),

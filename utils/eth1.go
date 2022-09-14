@@ -377,14 +377,3 @@ func FormatTokenIcon(icon []byte, size int) template.HTML {
 	icon64 := base64.StdEncoding.EncodeToString(icon)
 	return template.HTML(fmt.Sprintf("<img class=\"mb-1 mr-1\" src=\"data:image/gif;base64,%v\" width=\"%v\" height=\"%v\">", icon64, size, size))
 }
-
-func BlockReward(blockNumber uint64) *big.Int {
-	if blockNumber < 4370000 {
-		return big.NewInt(5e+18)
-	} else if blockNumber < 7280000 {
-		return big.NewInt(3e+18)
-	} else {
-		return big.NewInt(2e+18)
-	}
-
-}

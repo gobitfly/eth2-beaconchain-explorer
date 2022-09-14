@@ -195,12 +195,8 @@ func GetExecutionBlockPageData(number uint64) (*types.Eth1BlockPageData, error) 
 		})
 	}
 
-	var blockReward *big.Int
-	if new(big.Int).SetBytes(block.Difficulty).Cmp(big.NewInt(0)) == 0 {
-		blockReward = big.NewInt(0)
-	} else {
-		blockReward = utils.BlockReward(block.Number)
-	}
+	blockReward := utils.Eth1BlockReward(block.Number, block.Difficulty)
+
 	uncleInclusionRewards := new(big.Int)
 	uncleInclusionRewards.Div(blockReward, big.NewInt(32)).Mul(uncleInclusionRewards, big.NewInt(int64(len(block.Uncles))))
 	uncles := []types.Eth1BlockPageData{}
