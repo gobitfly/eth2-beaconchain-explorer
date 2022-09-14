@@ -376,6 +376,9 @@ func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockInd
 
 func getBlockHandler(blocks *[]*types.Eth1BlockIndexed) func(gcp_bigtable.Row) bool {
 	return func(row gcp_bigtable.Row) bool {
+		if !strings.Contains(row.Key(), ":B:") {
+			return false
+		}
 		// startTime := time.Now()
 		block := types.Eth1BlockIndexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, &block)
@@ -464,15 +467,38 @@ func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.
 	return blocks, nil
 }
 
+func (bigtable *Bigtable) GetBlocksIndexedMultiple(blockNumbers []uint64, limit uint64) ([]*types.Eth1BlockIndexed, error) {
+	rowList := gcp_bigtable.RowList{}
+	for _, block := range blockNumbers {
+		rowList = append(rowList, fmt.Sprintf("%s:B:%s", bigtable.chainId, reversedPaddedBlockNumber(block)))
+	}
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("d"))
+
+	blocks := make([]*types.Eth1BlockIndexed, 0, 100)
+
+	rowHandler := getBlockHandler(&blocks)
+
+	startTime := time.Now()
+	err := bigtable.tableData.ReadRows(ctx, rowList, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
+	return blocks, nil
+}
+
 // GetBlocksDescending gets blocks starting at block start
 func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth1BlockIndexed, error) {
 	startPadded := reversedPaddedBlockNumber(start)
-
-	if limit > start { // avoid overflow
-		limit = start
-	}
 	endPadded := reversedPaddedBlockNumber(start - limit)
 
+	logger.Info(start, start-limit)
+	logger.Info(startPadded, " ", endPadded)
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
@@ -480,6 +506,11 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 	endKey := fmt.Sprintf("%s:B:%s", bigtable.chainId, endPadded)
 
 	rowRange := gcp_bigtable.NewRange(startKey, endKey) //gcp_bigtable.PrefixRange("1:1000000000")
+
+	if limit >= start { // handle retrieval of the first blocks
+		rowRange = gcp_bigtable.InfiniteRange(startKey)
+	}
+
 	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("d"))
 
 	blocks := make([]*types.Eth1BlockIndexed, 0, 100)
@@ -681,12 +712,17 @@ func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block, cache *ccache.C
 	r := new(big.Int)
 
 	for _, uncle := range block.Uncles {
+
+		if len(block.Difficulty) == 0 { // no uncle rewards in PoS
+			continue
+		}
+
 		r.Add(big.NewInt(int64(uncle.GetNumber())), big.NewInt(8))
 		r.Sub(r, big.NewInt(int64(block.GetNumber())))
-		r.Mul(r, utils.BlockReward(block.GetNumber()))
+		r.Mul(r, utils.Eth1BlockReward(block.GetNumber(), block.Difficulty))
 		r.Div(r, big.NewInt(8))
 
-		r.Div(utils.BlockReward(block.GetNumber()), big.NewInt(32))
+		r.Div(utils.Eth1BlockReward(block.GetNumber(), block.Difficulty), big.NewInt(32))
 		uncleReward.Add(uncleReward, r)
 	}
 
@@ -1519,12 +1555,14 @@ func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block, cache *ccache.C
 		iReversed := reversePaddedIndex(i, 10)
 		r := new(big.Int)
 
-		r.Add(big.NewInt(int64(uncle.GetNumber())), big.NewInt(8))
-		r.Sub(r, big.NewInt(int64(block.GetNumber())))
-		r.Mul(r, utils.BlockReward(block.GetNumber()))
-		r.Div(r, big.NewInt(8))
+		if len(block.Difficulty) > 0 {
+			r.Add(big.NewInt(int64(uncle.GetNumber())), big.NewInt(8))
+			r.Sub(r, big.NewInt(int64(block.GetNumber())))
+			r.Mul(r, utils.Eth1BlockReward(block.GetNumber(), block.Difficulty))
+			r.Div(r, big.NewInt(8))
 
-		r.Div(utils.BlockReward(block.GetNumber()), big.NewInt(32))
+			r.Div(utils.Eth1BlockReward(block.GetNumber(), block.Difficulty), big.NewInt(32))
+		}
 
 		uncleIndexed := types.Eth1UncleIndexed{
 			Number:      uncle.GetNumber(),

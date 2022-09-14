@@ -21,7 +21,7 @@
         <div class="row border-bottom p-3 mx-0">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Number, the height, not the slot">Block Number:</span></div>
           <div class="col-md-10">
-            {{ if $isBlockView }}
+            {{ if or ($isBlockView) (eq $.Data.Status 3) }}
               <b>{{ .Number }} </b>
             {{ else }}
               <a href="/block/{{ .Number }}"><b>{{ .Number }} </b></a>
