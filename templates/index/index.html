@@ -185,9 +185,7 @@
                 })
             }
         })
-</script>
-{{ template "SlotViz" .SlotVizData }}
-
+</script> {{ template "SlotViz" .SlotVizData }}
 {{ end }}
 
 {{ define "css" }}
@@ -200,6 +198,7 @@
     <link rel="stylesheet" href="/css/rocket.css" />
   {{ end }}
 
+
   <style>
     #slotsViz > svg {
       overflow: visible;
@@ -209,7 +208,6 @@
       cursor: pointer;
     }
   </style>
-
 
   <style>
     .hero-container {
