@@ -161,6 +161,12 @@ type IndexPageData struct {
 	DepositChart              *ChartsPageDataChart
 	DepositDistribution       *ChartsPageDataChart
 	Countdown                 interface{}
+	SlotVizData               SlotVizPageData `json:"-"`
+}
+
+type SlotVizPageData struct {
+	Epochs   []*SlotVizEpochs
+	Selector string
 }
 
 type IndexPageDataEpochs struct {
@@ -1634,4 +1640,19 @@ type Eth1BlockPageTransaction struct {
 	Fee           *big.Int
 	GasPrice      *big.Int
 	Method        string
+}
+
+type SlotVizSlots struct {
+	Epoch  uint64
+	Slot   uint64
+	Status string `json:"status"`
+	Active bool   `json:"active"`
+}
+type SlotVizEpochs struct {
+	Epoch          uint64            `json:"epoch"`
+	Finalized      bool              `json:"finalized"`
+	Justified      bool              `json:"justified"`
+	Justifying     bool              `json:"justifying"`
+	Particicpation float64           `json:"participation"`
+	Slots          [32]*SlotVizSlots `json:"slots"`
 }

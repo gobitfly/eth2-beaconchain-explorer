@@ -37,16 +37,18 @@ var latestStats atomic.Value
 
 var eth1BlockDepositReached atomic.Value
 var depositThresholdReached atomic.Value
+var SlotVizMetrics atomic.Value
 
 var logger = logrus.New().WithField("module", "services")
 
 // Init will initialize the services
 func Init() {
-	ready.Add(4)
+	ready.Add(5)
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
 	go initExecutionLayerServices()
+	go slotVizUpdater()
 
 	// ready.Add(1)
 	// go gasNowUpdater()
@@ -213,6 +215,25 @@ func indexPageDataUpdater() {
 			firstRun = false
 		}
 		time.Sleep(time.Second * 10)
+	}
+}
+
+func slotVizUpdater() {
+	firstRun := true
+
+	for {
+		epochData, err := db.GetSlotVizData(LatestEpoch())
+		if err != nil {
+			logger.Errorf("error retrieving slot viz data from database: %v", err)
+		} else {
+			SlotVizMetrics.Store(epochData)
+			if firstRun {
+				logger.Info("initialized slotViz metrics")
+				ready.Done()
+				firstRun = false
+			}
+		}
+		time.Sleep(time.Second)
 	}
 }
 
@@ -543,6 +564,10 @@ func LatestValidatorCount() uint64 {
 
 func LatestGasNowData() *types.GasNowPageData {
 	return gasNowData.Load().(*types.GasNowPageData)
+}
+
+func LatestSlotVizMetrics() []*types.SlotVizEpochs {
+	return SlotVizMetrics.Load().([]*types.SlotVizEpochs)
 }
 
 // LatestState returns statistics about the current eth2 state

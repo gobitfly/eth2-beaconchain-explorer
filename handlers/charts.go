@@ -15,7 +15,7 @@ import (
 var chartsTemplate = template.Must(template.New("charts").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/charts.html"))
 var genericChartTemplate = template.Must(template.New("chart").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/genericchart.html"))
 var chartsUnavailableTemplate = template.Must(template.New("chart").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/chartsunavailable.html"))
-var slotVizTemplate = template.Must(template.New("slotViz").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/slotViz.html"))
+var slotVizTemplate = template.Must(template.New("slotViz").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/slotViz.html", "templates/slotVizPage.html"))
 
 // Charts uses a go template for presenting the page to show charts
 func Charts(w http.ResponseWriter, r *http.Request) {
@@ -108,9 +108,13 @@ func SlotViz(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "stats", "/charts", "Charts")
 
 	if utils.Config.Frontend.Debug {
-		slotVizTemplate = template.Must(template.New("slotViz").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/slotViz.html"))
+		slotVizTemplate = template.Must(template.New("slotViz").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/slotViz.html", "templates/slotVizPage.html"))
 	}
-	data.Data = nil
+	slotVizData := types.SlotVizPageData{
+		Selector: "checklist",
+		Epochs:   services.LatestSlotVizMetrics(),
+	}
+	data.Data = slotVizData
 	err := slotVizTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)

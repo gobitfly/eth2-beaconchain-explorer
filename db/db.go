@@ -2034,3 +2034,122 @@ func GetValidatorsGotSlashed(epoch uint64) ([]struct {
 	}
 	return dbResult, nil
 }
+
+func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
+	type sqlBlocks struct {
+		Slot                    uint64
+		Epoch                   uint64
+		Status                  string
+		Globalparticipationrate float64
+		Finalized               bool
+		Justified               bool
+		Previousjustified       bool
+	}
+
+	var blks []sqlBlocks = []sqlBlocks{}
+
+	err := ReaderDb.Select(&blks, `
+	SELECT
+		b.slot,
+		case
+			when b.status = '0' then 'scheduled'
+			when b.status = '1' then 'proposed'
+			when b.status = '2' then 'missed'
+			when b.status = '3' then 'orphaned'
+			else 'unknown'
+		end as status,
+		b.epoch,
+		COALESCE(e.globalparticipationrate, 0) as globalparticipationrate,
+		COALESCE(e.finalized, false) as finalized
+	FROM blocks b
+		left join epochs e on e.epoch = b.epoch
+	WHERE b.epoch >= $1
+	ORDER BY slot desc;
+`, latestEpoch-4)
+	if err != nil {
+		return nil, err
+	}
+
+	currentSlot := utils.TimeToSlot(uint64(time.Now().Unix()))
+
+	epochMap := map[uint64]*types.SlotVizEpochs{}
+
+	res := []*types.SlotVizEpochs{}
+
+	for _, b := range blks {
+		if b.Globalparticipationrate == 1 && !b.Finalized {
+			b.Globalparticipationrate = 0
+		}
+		_, exists := epochMap[b.Epoch]
+		if !exists {
+			r := types.SlotVizEpochs{
+				Epoch:          b.Epoch,
+				Finalized:      b.Finalized,
+				Particicpation: b.Globalparticipationrate,
+				Slots:          [32]*types.SlotVizSlots{},
+			}
+			epochMap[b.Epoch] = &r
+		}
+
+		slotIndex := b.Slot - (b.Epoch * utils.Config.Chain.Config.SlotsPerEpoch)
+
+		epochMap[b.Epoch].Slots[slotIndex] = &types.SlotVizSlots{
+			Epoch:  b.Epoch,
+			Slot:   b.Slot,
+			Status: b.Status,
+			Active: b.Slot == currentSlot,
+		}
+	}
+
+	for _, epoch := range epochMap {
+		for i := 0; i < 32; i++ {
+			if epoch.Slots[i] == nil {
+				status := "scheduled"
+				slot := epoch.Epoch*utils.Config.Chain.Config.SlotsPerEpoch + uint64(i)
+				if slot < currentSlot-3 {
+					status = "missed"
+				}
+				epoch.Slots[i] = &types.SlotVizSlots{
+					Epoch:  epoch.Epoch,
+					Slot:   slot,
+					Status: status,
+					Active: slot == currentSlot,
+				}
+			}
+		}
+	}
+
+	for _, epoch := range epochMap {
+		for _, slot := range epoch.Slots {
+			slot.Active = slot.Slot == currentSlot
+
+			if slot.Status != "proposed" {
+				if slot.Slot >= currentSlot {
+					slot.Status = "scheduled"
+				} else {
+					slot.Status = "missed"
+				}
+			}
+		}
+		if epoch.Finalized {
+			epoch.Justified = true
+		}
+		res = append(res, epoch)
+	}
+
+	sort.Slice(res, func(i, j int) bool {
+		return res[i].Epoch > res[j].Epoch
+	})
+
+	for i := 0; i < len(res); i++ {
+		if !res[i].Finalized && i != 0 {
+			res[i-1].Justifying = true
+		}
+		if res[i].Finalized && i != 0 {
+			res[i-1].Justified = true
+			break
+		}
+	}
+
+	return res, nil
+}

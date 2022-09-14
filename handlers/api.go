@@ -603,6 +603,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	var rocketpoolData []interface{}
 	var rocketpoolStats []interface{}
 	var currentEpochData []interface{}
+	var executionPerformance []types.ExecutionPerformanceResponse
 	var olderEpochData []interface{}
 
 	if getValidators {
@@ -627,6 +628,10 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 				return err
 			})
 
+			g.Go(func() error {
+				executionPerformance, err = getValidatorExecutionPerformance(queryIndices)
+				return err
+			})
 		}
 	}
 
@@ -653,12 +658,13 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &DashboardResponse{
-		Validators:      validatorsData,
-		Effectiveness:   validatorEffectivenessData,
-		CurrentEpoch:    currentEpochData,
-		OlderEpoch:      olderEpochData,
-		Rocketpool:      rocketpoolData,
-		RocketpoolStats: rocketpoolStats,
+		Validators:           validatorsData,
+		Effectiveness:        validatorEffectivenessData,
+		CurrentEpoch:         currentEpochData,
+		OlderEpoch:           olderEpochData,
+		Rocketpool:           rocketpoolData,
+		RocketpoolStats:      rocketpoolStats,
+		ExecutionPerformance: executionPerformance,
 	}
 
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
@@ -762,12 +768,13 @@ func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorE
 }
 
 type DashboardResponse struct {
-	Validators      interface{} `json:"validators"`
-	Effectiveness   interface{} `json:"effectiveness"`
-	CurrentEpoch    interface{} `json:"currentEpoch"`
-	OlderEpoch      interface{} `json:"olderEpoch"`
-	Rocketpool      interface{} `json:"rocketpool_validators"`
-	RocketpoolStats interface{} `json:"rocketpool_network_stats"`
+	Validators           interface{}                          `json:"validators"`
+	Effectiveness        interface{}                          `json:"effectiveness"`
+	CurrentEpoch         interface{}                          `json:"currentEpoch"`
+	OlderEpoch           interface{}                          `json:"olderEpoch"`
+	Rocketpool           interface{}                          `json:"rocketpool_validators"`
+	RocketpoolStats      interface{}                          `json:"rocketpool_network_stats"`
+	ExecutionPerformance []types.ExecutionPerformanceResponse `json:"execution_performance"`
 }
 
 func getEpoch(epoch int64) ([]interface{}, error) {
@@ -1012,6 +1019,17 @@ func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	result, err := getValidatorExecutionPerformance(queryIndices)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
+		logger.WithError(err).Error("can not getValidatorExecutionPerformance")
+		return
+	}
+
+	sendOKResponse(j, r.URL.String(), []any{result})
+}
+
+func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionPerformanceResponse, error) {
 	type ExecBlockProposer struct {
 		ExecBlock uint64 `db:"exec_block_number"`
 		Proposer  uint64 `db:"proposer"`
@@ -1023,7 +1041,7 @@ func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
 	last1dTimestamp := time.Now().Add(-1 * 24 * time.Hour)
 
 	var execBlocks []ExecBlockProposer
-	err = db.ReaderDb.Select(&execBlocks,
+	err := db.ReaderDb.Select(&execBlocks,
 		`SELECT 
 			exec_block_number, 
 			proposer 
@@ -1036,9 +1054,8 @@ func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
 		latestEpoch-7200, // 32d range
 	)
 	if err != nil {
-		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		logger.WithError(err).Error("can not load proposed blocks from db")
-		return
+		return nil, err
 	}
 
 	blockList := []uint64{}
@@ -1051,8 +1068,7 @@ func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
 	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, 10000)
 	if err != nil {
 		logger.WithError(err).Errorf("can not load mined blocks by GetBlocksIndexedMultiple")
-		sendErrorResponse(j, r.URL.String(), "could not retrieve block results")
-		return
+		return nil, err
 	}
 
 	resultPerProposer := make(map[uint64]types.ExecutionPerformanceResponse)
@@ -1091,7 +1107,7 @@ func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
 		results = append(results, resultPerProposer)
 	}
 
-	sendOKResponse(j, r.URL.String(), []any{results})
+	return results, nil
 }
 
 // ApiValidatorAttestationEffectiveness godoc

@@ -186,6 +186,8 @@
             }
         })
 </script>
+{{ template "SlotViz" .SlotVizData }}
+
 {{ end }}
 
 {{ define "css" }}
@@ -197,6 +199,16 @@
     <link rel="stylesheet" href="/css/checklist.css" />
     <link rel="stylesheet" href="/css/rocket.css" />
   {{ end }}
+
+  <style>
+    #slotsViz > svg {
+      overflow: visible;
+    }
+    svg rect[slot],
+    svg rect[epoch] {
+      cursor: pointer;
+    }
+  </style>
 
 
   <style>
