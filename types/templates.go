@@ -1649,10 +1649,11 @@ type Eth1BlockPageTransaction struct {
 }
 
 type SlotVizSlots struct {
-	Epoch  uint64
-	Slot   uint64
-	Status string `json:"status"`
-	Active bool   `json:"active"`
+	BlockRoot []byte
+	Epoch     uint64
+	Slot      uint64
+	Status    string `json:"status"`
+	Active    bool   `json:"active"`
 }
 type SlotVizEpochs struct {
 	Epoch          uint64            `json:"epoch"`

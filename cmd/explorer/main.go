@@ -510,6 +510,9 @@ func main() {
 		l.SetFormat(`{{.Request.Header.Get "X-Forwarded-For"}}, {{.Request.RemoteAddr}} | {{.StartTime}} | {{.Status}} | {{.Duration}} | {{.Hostname}} | {{.Method}} {{.Path}}{{if ne .Request.URL.RawQuery ""}}?{{.Request.URL.RawQuery}}{{end}}`)
 
 		n := negroni.New(negroni.NewRecovery(), l)
+		if utils.Config.Frontend.Debug {
+			n = negroni.New(negroni.NewRecovery())
+		}
 
 		// Customize the logging middleware to include a proper module entry for the frontend
 		//frontendLogger := negronilogrus.NewMiddleware()
