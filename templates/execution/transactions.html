@@ -46,7 +46,7 @@
                 }
                 const el = document.createElement('div')
                 {
-                  el.classList.add('border-top', 'p-2', 'text-truncate')
+                  el.classList.add('border-top', 'cellpadding', 'text-truncate')
                   el.style.display = 'table'
                   el.appendChild(innerElement)
                 }
@@ -105,6 +105,10 @@
   </script>
 {{ end }}{{ define "css" }}
   <style>
+    .cellpadding {
+      padding: .5rem .6rem !important;
+    }
+
     .border-bottom-radius-0 {
       border-bottom-left-radius: 0px !important;
       border-bottom-right-radius: 0px !important;
@@ -311,30 +315,30 @@
       <div class="card-body px-0 py-0">
         <div style="height: 800px;" class="tab-content" id="address-tab-content">
           <div class="tab-pane fade show active" id="transactions" role="tabpanel" aria-labelledby="transaction-tab">
-            <div id="transactions-table" style="display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)) max-content repeat(3, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
-              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Tx Hash</span></div>
-              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Method</span></div>
-              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Block</span></div>
-              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Time</span></div>
-              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>From</span></div>
-              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>To</span></div>
-              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Value</span></div>
-              <div style="z-index: 98; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Tx Fee</span></div>
+            <div id="transactions-table" style="display: grid; grid-template-columns: repeat(8, auto); max-height: 800px; overflow: auto;">
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 cellpadding header-col position-sticky"><span>Tx Hash</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 cellpadding header-col position-sticky"><span>Method</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 cellpadding header-col position-sticky"><span>Block</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 cellpadding header-col position-sticky"><span>Time</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 cellpadding header-col position-sticky"><span>From</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 cellpadding header-col position-sticky"><span>To</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 cellpadding header-col position-sticky"><span>Value</span></div>
+              <div style="z-index: 98; top: 0;" class="h5 mb-0 cellpadding header-col position-sticky"><span>Tx Fee</span></div>
               {{ if len .Data.Data }}
                 {{ range $i, $row := .Data.Data }}
                   {{ range $j, $col := $row }}
-                    <div class="border-top p-2 text-truncate" style="display: table">
+                    <div class="border-top cellpadding text-truncate" style="display: table">
                       <div style="display: table-cell; vertical-align: middle;">
                         {{ $col }}
                       </div>
                     </div>
                   {{ end }}
                 {{ end }}
-                <div style="grid-column: 1 / 9;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
+                <div style="grid-column: 1 / 9;" id="transactions-table-inf-scroll" class="d-flex justify-content-center cellpadding">
                   <span style="color: grey;">loading...</span>
                 </div>
               {{ else }}
-                <div style="grid-column: 1 / 9;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
+                <div style="grid-column: 1 / 9;" id="transactions-table-inf-scroll" class="d-flex justify-content-center cellpadding">
                   <div class="d-flex justify-content-center align-items-center flex-column">
                     <div>
                       <h5 style="color: grey;">No entries found.</h5>

@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	visibleDigitsForHash         = 8
 	minimumTransactionsPerUpdate = 25
 )
 
@@ -102,24 +103,24 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 			{
 				to := v.GetTo()
 				if len(to) > 0 {
-					toText = utils.FormatAddressWithLimits(to, names[string(v.GetTo())], false, "address", 15, 18, true)
+					toText = utils.FormatAddressWithLimits(to, names[string(v.GetTo())], false, "address", visibleDigitsForHash+5, 18, true)
 				} else {
 					itx := v.GetItx()
 					if len(itx) > 0 && itx[0] != nil {
 						to = itx[0].GetTo()
 						if len(to) > 0 {
-							toText = utils.FormatAddressWithLimits(to, "Contract Creation", true, "address", 15, 18, true)
+							toText = utils.FormatAddressWithLimits(to, "Contract Creation", true, "address", visibleDigitsForHash+5, 18, true)
 						}
 					}
 				}
 			}
 
 			tableData = append(tableData, []interface{}{
-				utils.FormatAddressWithLimits(v.GetHash(), "", false, "tx", 15, 18, true),
+				utils.FormatAddressWithLimits(v.GetHash(), "", false, "tx", visibleDigitsForHash+5, 18, true),
 				utils.FormatMethod(method),
 				template.HTML(fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber()))),
 				utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
-				utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", 15, 18, true),
+				utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", visibleDigitsForHash+5, 18, true),
 				toText,
 				utils.FormatAmountFormated(new(big.Int).SetBytes(v.GetValue()), "ETH", 8, 4, true, true, false),
 				utils.FormatAmountFormated(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), "ETH", 8, 4, true, true, false),
