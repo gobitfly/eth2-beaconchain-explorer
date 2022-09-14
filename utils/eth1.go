@@ -212,7 +212,7 @@ func FormatHashLong(hash common.Hash) template.HTML {
 	address := hash.String()
 	test := `
 	<div class="d-flex text-monospace">
-		<span class="">0x%s</span>
+		<span class="">%s</span>
 		<span class="flex-shrink-1 text-truncate">%s</span>
 		<span class="">%s</span>
 	</div>`

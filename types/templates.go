@@ -1505,6 +1505,10 @@ type Eth1TxData struct {
 		TxFee          []byte
 		EffectiveFee   []byte
 	}
+	Epoch struct {
+		Finalized     bool    `db:"finalized"`
+		Participation float64 `db:"globalparticipationrate"`
+	}
 	TypeFormatted      string
 	Type               uint8
 	Nonce              uint64

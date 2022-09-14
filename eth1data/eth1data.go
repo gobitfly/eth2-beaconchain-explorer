@@ -188,6 +188,17 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 
 	}
 
+	if txPageData.BlockNumber != 0 {
+		err := db.ReaderDb.Get(&txPageData.Epoch,
+			`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
+			&txPageData.BlockNumber)
+		if err != nil {
+			logrus.Warningf("failed to get finalization stats for block %s", txPageData.BlockNumber)
+			txPageData.Epoch.Finalized = false
+			txPageData.Epoch.Participation = 1
+		}
+	}
+
 	err = db.EkoCache.Set(ctx, cacheKey, txPageData)
 	if err != nil {
 		return nil, fmt.Errorf("error writing data for tx %v to cache: %v", hash, err)
