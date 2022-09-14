@@ -376,6 +376,9 @@ func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockInd
 
 func getBlockHandler(blocks *[]*types.Eth1BlockIndexed) func(gcp_bigtable.Row) bool {
 	return func(row gcp_bigtable.Row) bool {
+		if !strings.Contains(row.Key(), ":B:") {
+			return false
+		}
 		// startTime := time.Now()
 		block := types.Eth1BlockIndexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, &block)
@@ -467,12 +470,10 @@ func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.
 // GetBlocksDescending gets blocks starting at block start
 func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth1BlockIndexed, error) {
 	startPadded := reversedPaddedBlockNumber(start)
-
-	if limit > start { // avoid overflow
-		limit = start
-	}
 	endPadded := reversedPaddedBlockNumber(start - limit)
 
+	logger.Info(start, start-limit)
+	logger.Info(startPadded, " ", endPadded)
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
@@ -480,6 +481,11 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 	endKey := fmt.Sprintf("%s:B:%s", bigtable.chainId, endPadded)
 
 	rowRange := gcp_bigtable.NewRange(startKey, endKey) //gcp_bigtable.PrefixRange("1:1000000000")
+
+	if limit >= start { // handle retrieval of the first blocks
+		rowRange = gcp_bigtable.InfiniteRange(startKey)
+	}
+
 	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("d"))
 
 	blocks := make([]*types.Eth1BlockIndexed, 0, 100)
