@@ -69,18 +69,20 @@
                   <a href="/block/{{ .BlockNumber }}">
                     <span>{{ .BlockNumber }}</span>
                   </a>
-                  {{ if .Epoch.Finalized }}
-                    <span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="This transaction can't be reverted without manual intervention by all participants." data-container="body">
-                      <span class="badge badge-success align-text-top text-white px-1"><i class="fas fa-check-double"></i> Finalized</span>
-                    </span>
-                  {{ else if and (gtf .Epoch.Participation 0.66) (ltf .Epoch.Participation 1) }}
-                    <span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="This transaction can be safely considered as final, and is highly unlikely to be reverted." data-container="body">
-                      <span class="badge badge-secondary align-text-top text-white px-1"><i class="fas fa-check"></i> Justified (Safe)</span>
-                    </span>
-                  {{ else }}
-                    <span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="This transaction can still be reverted and shouldn't be considered final." data-container="body">
-                      <span class="badge badge-light align-text-top text-black px-1"><i class="fas fa-exclamation-circle"></i> Unfinalized</span>
-                    </span>
+                  {{ if gtf .Epoch.Participation 0 }}
+                    {{ if .Epoch.Finalized }}
+                      <span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="This transaction can't be reverted without manual intervention by all participants." data-container="body">
+                        <span class="badge badge-success align-text-top text-white px-1"><i class="fas fa-check-double"></i> Finalized</span>
+                      </span>
+                    {{ else if and (gtf .Epoch.Participation 0.66) (ltf .Epoch.Participation 1) }}
+                      <span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="This transaction can be safely considered as final, and is highly unlikely to be reverted." data-container="body">
+                        <span class="badge badge-secondary align-text-top text-white px-1"><i class="fas fa-check"></i> Not-Finalized (Safe)</span>
+                      </span>
+                    {{ else }}
+                      <span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="This transaction can still be reverted and shouldn't be considered final." data-container="body">
+                        <span class="badge badge-light align-text-top text-black px-1"><i class="fas fa-exclamation-circle"></i> Not-Finalized</span>
+                      </span>
+                    {{ end }}
                   {{ end }}
                 </div>
               </div>
