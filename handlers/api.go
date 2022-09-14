@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"math/big"
 	"net/http"
 	"sort"
 	"strconv"
@@ -961,7 +962,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorPerformance godoc
-// @Summary Get the current performance of up to 100 validators
+// @Summary Get the current consensus reward performance of up to 100 validators
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
@@ -989,6 +990,108 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	returnQueryResults(rows, j, r)
+}
+
+// ApiValidatorExecutionPerformance godoc
+// @Summary Get the current execution reward performance of up to 100 validators
+// @Tags Validator
+// @Produce  json
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Success 200 {object} string
+// @Router /api/v1/validator/{indexOrPubkey}/execution/performance [get]
+func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
+
+	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
+		return
+	}
+
+	type ExecBlockProposer struct {
+		ExecBlock uint64 `db:"exec_block_number"`
+		Proposer  uint64 `db:"proposer"`
+	}
+
+	latestEpoch := services.LatestEpoch()
+	last30dTimestamp := time.Now().Add(-31 * 24 * time.Hour)
+	last7dTimestamp := time.Now().Add(-7 * 24 * time.Hour)
+	last1dTimestamp := time.Now().Add(-1 * 24 * time.Hour)
+
+	var execBlocks []ExecBlockProposer
+	err = db.ReaderDb.Select(&execBlocks,
+		`SELECT 
+			exec_block_number, 
+			proposer 
+			FROM blocks 
+		WHERE proposer = ANY($1) 
+		AND exec_block_number IS NOT NULL 
+		AND exec_block_number > 0 
+		AND epoch > $2`,
+		pq.Array(queryIndices),
+		latestEpoch-7200, // 32d range
+	)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		logger.WithError(err).Error("can not load proposed blocks from db")
+		return
+	}
+
+	blockList := []uint64{}
+	blockToProposerMap := make(map[uint64]uint64)
+	for _, execBlock := range execBlocks {
+		blockList = append(blockList, execBlock.ExecBlock)
+		blockToProposerMap[execBlock.ExecBlock] = execBlock.Proposer
+	}
+
+	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, 10000)
+	if err != nil {
+		logger.WithError(err).Errorf("can not load mined blocks by GetBlocksIndexedMultiple")
+		sendErrorResponse(j, r.URL.String(), "could not retrieve block results")
+		return
+	}
+
+	resultPerProposer := make(map[uint64]types.ExecutionPerformanceResponse)
+
+	for _, block := range blocks {
+		proposer := blockToProposerMap[block.Number]
+		result, ok := resultPerProposer[proposer]
+		if !ok {
+			result = types.ExecutionPerformanceResponse{
+				Performance1d:  big.NewInt(0),
+				Performance7d:  big.NewInt(0),
+				Performance31d: big.NewInt(0),
+				ValidatorIndex: proposer,
+			}
+		}
+
+		txFees := big.NewInt(0).SetBytes(block.TxReward)
+		mev := big.NewInt(0).SetBytes(block.Mev)
+		income := big.NewInt(0).Add(txFees, mev)
+
+		if block.Time.AsTime().After(last30dTimestamp) {
+			result.Performance31d = result.Performance31d.Add(result.Performance31d, income)
+		}
+		if block.Time.AsTime().After(last7dTimestamp) {
+			result.Performance7d = result.Performance7d.Add(result.Performance7d, income)
+		}
+		if block.Time.AsTime().After(last1dTimestamp) {
+			result.Performance1d = result.Performance1d.Add(result.Performance1d, income)
+		}
+
+		resultPerProposer[proposer] = result
+	}
+
+	results := []types.ExecutionPerformanceResponse{}
+	for _, resultPerProposer := range resultPerProposer {
+		results = append(results, resultPerProposer)
+	}
+
+	sendOKResponse(j, r.URL.String(), []any{results})
 }
 
 // ApiValidatorAttestationEffectiveness godoc
