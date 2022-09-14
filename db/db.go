@@ -2038,6 +2038,7 @@ func GetValidatorsGotSlashed(epoch uint64) ([]struct {
 func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 	type sqlBlocks struct {
 		Slot                    uint64
+		BlockRoot               []byte
 		Epoch                   uint64
 		Status                  string
 		Globalparticipationrate float64
@@ -2051,6 +2052,7 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 	err := ReaderDb.Select(&blks, `
 	SELECT
 		b.slot,
+		b.blockroot,
 		case
 			when b.status = '0' then 'scheduled'
 			when b.status = '1' then 'proposed'
@@ -2093,12 +2095,20 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 
 		slotIndex := b.Slot - (b.Epoch * utils.Config.Chain.Config.SlotsPerEpoch)
 
-		epochMap[b.Epoch].Slots[slotIndex] = &types.SlotVizSlots{
-			Epoch:  b.Epoch,
-			Slot:   b.Slot,
-			Status: b.Status,
-			Active: b.Slot == currentSlot,
+		if epochMap[b.Epoch].Slots[slotIndex] != nil && len(b.BlockRoot) > len(epochMap[b.Epoch].Slots[slotIndex].BlockRoot) {
+			logger.Infof("CONFLICTING block found for slotindex %v", slotIndex)
 		}
+
+		if epochMap[b.Epoch].Slots[slotIndex] == nil || len(b.BlockRoot) > len(epochMap[b.Epoch].Slots[slotIndex].BlockRoot) {
+			epochMap[b.Epoch].Slots[slotIndex] = &types.SlotVizSlots{
+				Epoch:     b.Epoch,
+				Slot:      b.Slot,
+				Status:    b.Status,
+				Active:    b.Slot == currentSlot,
+				BlockRoot: b.BlockRoot,
+			}
+		}
+
 	}
 
 	for _, epoch := range epochMap {
