@@ -2106,8 +2106,8 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 			if epoch.Slots[i] == nil {
 				status := "scheduled"
 				slot := epoch.Epoch*utils.Config.Chain.Config.SlotsPerEpoch + uint64(i)
-				if slot < currentSlot-3 {
-					status = "missed"
+				if slot < currentSlot {
+					status = "scheduled-missed"
 				}
 				epoch.Slots[i] = &types.SlotVizSlots{
 					Epoch:  epoch.Epoch,
@@ -2124,10 +2124,12 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 			slot.Active = slot.Slot == currentSlot
 
 			if slot.Status != "proposed" {
+				if slot.Status == "scheduled" {
+					slot.Status = "scheduled-missed"
+				}
+
 				if slot.Slot >= currentSlot {
 					slot.Status = "scheduled"
-				} else {
-					slot.Status = "missed"
 				}
 			}
 		}
