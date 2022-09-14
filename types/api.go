@@ -3,6 +3,7 @@ package types
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"math/big"
 
 	"github.com/pkg/errors"
 )
@@ -135,6 +136,13 @@ type DiscordReq struct {
 	Payload         string             `json:"payload,omitempty"`
 	Attachments     interface{}        `json:"attachments,omitempty"`
 	Flags           int                `json:"flags,omitempty"`
+}
+
+type ExecutionPerformanceResponse struct {
+	Performance1d  *big.Int `json:"performance1d"`
+	Performance7d  *big.Int `json:"performance7d"`
+	Performance31d *big.Int `json:"performance31d"`
+	ValidatorIndex uint64   `json:"validatorindex"`
 }
 
 func (e *DiscordReq) Scan(value interface{}) error {

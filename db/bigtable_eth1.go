@@ -467,6 +467,31 @@ func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.
 	return blocks, nil
 }
 
+func (bigtable *Bigtable) GetBlocksIndexedMultiple(blockNumbers []uint64, limit uint64) ([]*types.Eth1BlockIndexed, error) {
+	rowList := gcp_bigtable.RowList{}
+	for _, block := range blockNumbers {
+		rowList = append(rowList, fmt.Sprintf("%s:B:%s", bigtable.chainId, reversedPaddedBlockNumber(block)))
+	}
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("d"))
+
+	blocks := make([]*types.Eth1BlockIndexed, 0, 100)
+
+	rowHandler := getBlockHandler(&blocks)
+
+	startTime := time.Now()
+	err := bigtable.tableData.ReadRows(ctx, rowList, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
+	return blocks, nil
+}
+
 // GetBlocksDescending gets blocks starting at block start
 func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth1BlockIndexed, error) {
 	startPadded := reversedPaddedBlockNumber(start)
