@@ -207,7 +207,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			blocks.slot,
 			blocks.blockroot,
 			validator_names."name" 
-		ORDER BY blocks.status limit 1
+		ORDER BY blocks.blockroot DESC, blocks.status ASC limit 1
 		`,
 		blockSlot)
 	if err != nil {
