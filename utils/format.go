@@ -1076,3 +1076,6 @@ func FormatTimestampUInt64(ts uint64) template.HTML {
 func FormatEth1AddressFull(addr common.Address) template.HTML {
 	return FormatAddress(addr.Bytes(), nil, "", false, false, true)
 }
+
+func formatNumberInternal(prefix string, postfix string, number *big.Int, decimals int) {
+}

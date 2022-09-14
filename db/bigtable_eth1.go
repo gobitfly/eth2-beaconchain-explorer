@@ -26,6 +26,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/golang/protobuf/proto"
 	"github.com/karlseguin/ccache/v2"
@@ -713,7 +714,22 @@ func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block, cache *ccache.C
 			minGasPrice = price
 		}
 
-		txReward.Add(new(big.Int).Mul(big.NewInt(int64(t.GasUsed)), new(big.Int).SetBytes(t.GasPrice)), txReward)
+		txFee := new(big.Int).Mul(new(big.Int).SetBytes(t.GasPrice), big.NewInt(int64(t.GasUsed)))
+
+		if len(block.BaseFee) > 0 {
+			effectiveGasPrice := math.BigMin(new(big.Int).Add(new(big.Int).SetBytes(t.MaxPriorityFeePerGas), new(big.Int).SetBytes(block.BaseFee)), new(big.Int).SetBytes(t.MaxFeePerGas))
+			proposerGasPricePart := new(big.Int).Sub(effectiveGasPrice, new(big.Int).SetBytes(block.BaseFee))
+
+			if proposerGasPricePart.Cmp(big.NewInt(0)) >= 0 {
+				txFee = new(big.Int).Mul(proposerGasPricePart, big.NewInt(int64(t.GasUsed)))
+			} else {
+				logger.Errorf("error minerGasPricePart is below 0 for tx %v: %v", t.Hash, proposerGasPricePart)
+				txFee = big.NewInt(0)
+			}
+
+		}
+
+		txReward.Add(txReward, txFee)
 
 		for _, itx := range t.Itx {
 			if itx.Path == "[]" || bytes.Equal(itx.Value, []byte{0x0}) { // skip top level call & empty calls
@@ -724,6 +740,8 @@ func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block, cache *ccache.C
 	}
 
 	idx.TxReward = txReward.Bytes()
+
+	// logger.Infof("tx reward for block %v is %v", block.Number, txReward.String())
 
 	if maxGasPrice != nil {
 		idx.LowestGasPrice = minGasPrice.Bytes()
@@ -1774,9 +1792,9 @@ func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, search 
 
 	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
-		// logger.Infof("hash: %x amount: %s", t.Hash, new(big.Int).SetBytes(t.Value))
+		logger.Infof("hash: %d amount: %s", b.Number, new(big.Int).SetBytes(b.TxReward).String())
 
-		reward := new(big.Int).Add(utils.Eth1BlockReward(b.Number), new(big.Int).SetBytes(b.TxReward))
+		reward := new(big.Int).Add(utils.Eth1BlockReward(b.Number, b.Difficulty), new(big.Int).SetBytes(b.TxReward))
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(b.Hash),
