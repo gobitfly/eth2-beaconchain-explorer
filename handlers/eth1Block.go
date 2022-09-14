@@ -67,9 +67,11 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		// execution data is set in GetSlotPageData
 		blockPageData, err := GetSlotPageData(blockSlot)
 		if err != nil {
+			logger.Errorf("error retrieving slot page data: %v", err)
+
 			err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 			if err != nil {
-				logger.Errorf("a error executing template for %v route: %v", r.URL.String(), err)
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}

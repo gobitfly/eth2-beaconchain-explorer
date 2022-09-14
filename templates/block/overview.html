@@ -35,6 +35,14 @@
         <div class="col-md-10">
           {{ if ne .Slot 0 }}
             {{ formatBlockStatus .Status }}
+
+            {{ if .EpochFinalized}}
+              Finalized
+            {{ else if and (gtf .EpochParticipationRate 0.66) (ltf .EpochParticipationRate 1)}}
+              Unfinalized (safe) {{.EpochParticipationRate}}
+            {{ else }}
+              Unfinalized
+            {{end}}
           {{ else }}
             <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
           {{ end }}

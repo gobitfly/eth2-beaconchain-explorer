@@ -133,6 +133,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"div":                                     func(i, j float64) float64 { return i / j },
 		"divInt":                                  func(i, j int) float64 { return float64(i) / float64(j) },
 		"gtf":                                     func(i, j float64) bool { return i > j },
+		"ltf":                                     func(i, j float64) bool { return i < j },
 		"round": func(i float64, n int) float64 {
 			return math.Round(i*math.Pow10(n)) / math.Pow10(n)
 		},

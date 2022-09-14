@@ -550,8 +550,10 @@ type VotesVisChartData struct {
 
 // BlockPageData is a struct block data used in the block page
 type BlockPageData struct {
-	Epoch                  uint64 `db:"epoch"`
-	Slot                   uint64 `db:"slot"`
+	Epoch                  uint64  `db:"epoch"`
+	EpochFinalized         bool    `db:"epoch_finalized"`
+	EpochParticipationRate float64 `db:"epoch_participation_rate"`
+	Slot                   uint64  `db:"slot"`
 	Ts                     time.Time
 	NextSlot               uint64
 	PreviousSlot           uint64
