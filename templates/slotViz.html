@@ -176,7 +176,7 @@
           .data(newData, (d) => d.epoch)
           .join(
             (enter) => {
-              enter.append("g").attr("transform", ({ epoch }) => `translate(0, ${y(epoch)})`)
+              return enter.append("g").attr("transform", ({ epoch }) => `translate(0, ${y(epoch)})`)
             },
             (update) => {
               return update.call((slotRow) => {
@@ -380,7 +380,6 @@
     }
 
     {{ if len .Epochs }}
-      processLaunchMetrics({{.Epochs}})
       processLaunchMetrics({{.Epochs}})
     {{ end }}
     setInterval(fetchMetrics, 3000)
