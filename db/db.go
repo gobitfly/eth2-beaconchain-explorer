@@ -48,14 +48,12 @@ func MustInitRedisCache(address string) {
 	gocacheClient := gocache.New(time.Hour, time.Minute)
 	gocacheStore := store2.NewGoCache(gocacheClient)
 
-	caches := []cache2.SetterCacheInterface[any]{}
+	caches := []cache2.SetterCacheInterface[any]{cache2.New[any](gocacheStore)}
 	if !utils.Config.Frontend.Debug {
 		redisStore := store2.NewRedis(redis.NewClient(&redis.Options{
 			Addr: address,
 		}))
 		caches = append(caches, cache2.New[any](redisStore))
-	} else {
-		caches = append(caches, cache2.New[any](gocacheStore))
 	}
 
 	cacheManager := cache2.NewChain(
