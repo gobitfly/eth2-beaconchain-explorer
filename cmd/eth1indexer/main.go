@@ -331,7 +331,7 @@ func UpdateTokenPrices(bt *db.Bigtable, client *rpc.ErigonClient, tokenListPath 
 				return err
 			}
 			tokenPrices[i].TotalSupply = metadata.TotalSupply
-			logrus.Infof("price for token %x is %s @ %v", tokenPrices[i].Token, tokenPrices[i].Price, new(big.Int).SetBytes(tokenPrices[i].TotalSupply))
+			// logrus.Infof("price for token %x is %s @ %v", tokenPrices[i].Token, tokenPrices[i].Price, new(big.Int).SetBytes(tokenPrices[i].TotalSupply))
 			return nil
 		})
 	}
@@ -702,7 +702,7 @@ func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk 
 	}
 
 	if err := g.Wait(); err == nil {
-		logrus.Info("Successfully fetched all blocks")
+		logrus.Info("data table indexing completed")
 	} else {
 		logrus.Error(err)
 		return err
