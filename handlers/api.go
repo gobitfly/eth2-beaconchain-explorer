@@ -252,7 +252,7 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 	slotOrHash := strings.Replace(vars["slotOrHash"], "0x", "", -1)
 	blockSlot := int64(-1)
 	blockRootHash, err := hex.DecodeString(slotOrHash)
-	if err != nil || len(slotOrHash) != 64 {
+	if slotOrHash != "latest" && (err != nil || len(slotOrHash) != 64) {
 		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 		if err != nil {
@@ -260,6 +260,7 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
 	if slotOrHash == "latest" {
 		blockSlot = int64(services.LatestSlot())
 	}
