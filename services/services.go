@@ -232,15 +232,18 @@ func slotVizUpdater(wg *sync.WaitGroup) {
 	firstRun := true
 
 	for {
-		epochData, err := db.GetSlotVizData(LatestEpoch())
-		if err != nil {
-			logger.Errorf("error retrieving slot viz data from database: %v", err)
-		} else {
-			SlotVizMetrics.Store(epochData)
-			if firstRun {
-				logger.Info("initialized slotViz metrics")
-				wg.Done()
-				firstRun = false
+		latestEpoch := LatestEpoch()
+		if latestEpoch > 0 {
+			epochData, err := db.GetSlotVizData(latestEpoch)
+			if err != nil {
+				logger.Errorf("error retrieving slot viz data from database: %v latest epoch: %v", err, latestEpoch)
+			} else {
+				SlotVizMetrics.Store(epochData)
+				if firstRun {
+					logger.Info("initialized slotViz metrics")
+					wg.Done()
+					firstRun = false
+				}
 			}
 		}
 		time.Sleep(time.Second)
