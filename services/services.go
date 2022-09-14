@@ -31,7 +31,6 @@ var indexPageData atomic.Value
 var chartsPageData atomic.Value
 var poolsData atomic.Value
 var gasNowData atomic.Value
-var ready = sync.WaitGroup{}
 
 var latestStats atomic.Value
 
@@ -43,21 +42,28 @@ var logger = logrus.New().WithField("module", "services")
 
 // Init will initialize the services
 func Init() {
-	ready.Add(5)
-	go epochUpdater()
-	go slotUpdater()
-	go latestProposedSlotUpdater()
-	go initExecutionLayerServices()
-	go slotVizUpdater()
+	ready := &sync.WaitGroup{}
+	ready.Add(1)
+	go epochUpdater(ready)
+
+	ready.Add(1)
+	go slotUpdater(ready)
+
+	ready.Add(1)
+	go latestProposedSlotUpdater(ready)
+
+	ready.Add(1)
+	go latestBlockUpdater(ready)
+
+	ready.Add(1)
+	go slotVizUpdater(ready)
 
 	// ready.Add(1)
 	// go gasNowUpdater()
 
-	if utils.Config.Frontend.OnlyAPI {
-		ready.Done()
-		ready.Done()
-	} else {
-		go indexPageDataUpdater()
+	if !utils.Config.Frontend.OnlyAPI {
+		ready.Add(1)
+		go indexPageDataUpdater(ready)
 		// go poolsUpdater()
 	}
 	ready.Wait()
@@ -78,7 +84,7 @@ func InitNotifications() {
 	go notificationsSender()
 }
 
-func epochUpdater() {
+func epochUpdater(wg *sync.WaitGroup) {
 	firstRun := true
 	for {
 		var latestFinalized uint64
@@ -97,7 +103,7 @@ func epochUpdater() {
 			atomic.StoreUint64(&latestEpoch, epoch)
 			if firstRun {
 				logger.Info("initialized epoch updater")
-				ready.Done()
+				wg.Done()
 				firstRun = false
 			}
 		}
@@ -105,7 +111,7 @@ func epochUpdater() {
 	}
 }
 
-func slotUpdater() {
+func slotUpdater(wg *sync.WaitGroup) {
 	firstRun := true
 
 	for {
@@ -122,7 +128,7 @@ func slotUpdater() {
 			atomic.StoreUint64(&latestSlot, slot)
 			if firstRun {
 				logger.Info("initialized slot updater")
-				ready.Done()
+				wg.Done()
 				firstRun = false
 			}
 		}
@@ -130,7 +136,7 @@ func slotUpdater() {
 	}
 }
 
-func poolsUpdater() {
+func poolsUpdater(wg *sync.WaitGroup) {
 	firstRun := true
 
 	for {
@@ -143,7 +149,7 @@ func poolsUpdater() {
 		poolsData.Store(data)
 		if firstRun {
 			logger.Info("initialized pools page updater")
-			ready.Done()
+			wg.Done()
 			firstRun = false
 		}
 		time.Sleep(time.Minute * 10)
@@ -174,7 +180,7 @@ func getPoolsPageData() (*types.PoolsResp, error) {
 	return &poolData, nil
 }
 
-func latestProposedSlotUpdater() {
+func latestProposedSlotUpdater(wg *sync.WaitGroup) {
 	firstRun := true
 
 	for {
@@ -187,7 +193,7 @@ func latestProposedSlotUpdater() {
 			atomic.StoreUint64(&latestProposedSlot, slot)
 			if firstRun {
 				logger.Info("initialized last proposed slot updater")
-				ready.Done()
+				wg.Done()
 				firstRun = false
 			}
 		}
@@ -195,7 +201,7 @@ func latestProposedSlotUpdater() {
 	}
 }
 
-func indexPageDataUpdater() {
+func indexPageDataUpdater(wg *sync.WaitGroup) {
 	firstRun := true
 
 	for {
@@ -211,14 +217,14 @@ func indexPageDataUpdater() {
 		indexPageData.Store(data)
 		if firstRun {
 			logger.Info("initialized index page updater")
-			ready.Done()
+			wg.Done()
 			firstRun = false
 		}
 		time.Sleep(time.Second * 10)
 	}
 }
 
-func slotVizUpdater() {
+func slotVizUpdater(wg *sync.WaitGroup) {
 	firstRun := true
 
 	for {
@@ -229,7 +235,7 @@ func slotVizUpdater() {
 			SlotVizMetrics.Store(epochData)
 			if firstRun {
 				logger.Info("initialized slotViz metrics")
-				ready.Done()
+				wg.Done()
 				firstRun = false
 			}
 		}
@@ -635,7 +641,7 @@ func IsSyncing() bool {
 	return time.Now().Add(time.Minute * -10).After(utils.EpochToTime(LatestEpoch()))
 }
 
-func gasNowUpdater() {
+func gasNowUpdater(wg *sync.WaitGroup) {
 	firstRun := true
 
 	for {
@@ -647,7 +653,7 @@ func gasNowUpdater() {
 		}
 		gasNowData.Store(data)
 		if firstRun {
-			ready.Done()
+			wg.Done()
 			firstRun = false
 		}
 		time.Sleep(time.Second * 5)

@@ -196,17 +196,17 @@ func main() {
 
 		lastBlockFromNode, err := client.GetLatestEth1BlockNumber()
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error retrieving latest eth block number: %v", err)
 		}
 
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error retrieving last blocks from blocks table: %v", err)
 		}
 
 		lastBlockFromDataTable, err := bt.GetLastBlockInDataTable()
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error retrieving last blocks from data table: %v", err)
 		}
 
 		logrus.WithFields(
@@ -331,7 +331,7 @@ func UpdateTokenPrices(bt *db.Bigtable, client *rpc.ErigonClient, tokenListPath 
 				return err
 			}
 			tokenPrices[i].TotalSupply = metadata.TotalSupply
-			logrus.Infof("price for token %x is %s @ %x", tokenPrices[i].Token, tokenPrices[i].Price, tokenPrices[i].TotalSupply)
+			// logrus.Infof("price for token %x is %s @ %v", tokenPrices[i].Token, tokenPrices[i].Price, new(big.Int).SetBytes(tokenPrices[i].TotalSupply))
 			return nil
 		})
 	}
@@ -482,8 +482,6 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 			return
 		}
 
-		logrus.Info(len(pairs))
-
 		// for _, b := range balances {
 		// 	logrus.Infof("retrieved balance %x for token %x of address %x", b.Balance, b.Token, b.Address)
 		// }
@@ -523,7 +521,6 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 		its++
 
 		if iterations != -1 && its > iterations {
-			logrus.Info("exit")
 			return
 		}
 	}
@@ -649,7 +646,6 @@ func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk 
 
 			block, err := bt.GetBlockFromBlocksTable(uint64(i))
 			if err != nil {
-				logrus.Fatal(err)
 				return err
 			}
 
@@ -706,7 +702,7 @@ func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk 
 	}
 
 	if err := g.Wait(); err == nil {
-		logrus.Info("Successfully fetched all blocks")
+		logrus.Info("data table indexing completed")
 	} else {
 		logrus.Error(err)
 		return err
