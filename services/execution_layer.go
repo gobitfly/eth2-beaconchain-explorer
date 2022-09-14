@@ -2,19 +2,15 @@ package services
 
 import (
 	"eth2-exporter/db"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
 var latestEth1BlockNumber uint64
 
-func initExecutionLayerServices() {
-	ready.Add(1)
-	go latestBlockUpdater()
-}
-
 // latestBlockUpdater updates the most recent eth1 block number variable
-func latestBlockUpdater() {
+func latestBlockUpdater(wg *sync.WaitGroup) {
 	firstRun := true
 
 	for {
@@ -24,7 +20,7 @@ func latestBlockUpdater() {
 		}
 		if firstRun {
 			logger.Info("initialized eth1 block updater")
-			ready.Done()
+			wg.Done()
 			firstRun = false
 		}
 		atomic.StoreUint64(&latestEth1BlockNumber, recent.GetNumber())
