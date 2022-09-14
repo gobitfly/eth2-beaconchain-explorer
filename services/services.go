@@ -55,16 +55,20 @@ func Init() {
 	ready.Add(1)
 	go latestBlockUpdater(ready)
 
-	ready.Add(1)
-	go slotVizUpdater(ready)
-
 	// ready.Add(1)
 	// go gasNowUpdater()
 
 	if !utils.Config.Frontend.OnlyAPI {
 		ready.Add(1)
+		go slotVizUpdater(ready)
+
+		ready.Add(1)
 		go indexPageDataUpdater(ready)
-		// go poolsUpdater()
+
+		if !utils.Config.Frontend.Debug {
+			ready.Add(1)
+			go poolsUpdater(ready)
+		}
 	}
 	ready.Wait()
 
