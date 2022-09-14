@@ -84,15 +84,19 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 		}
 
 		for _, v := range t {
-			method := "Transfer #missing" // #RECY #TODO // "Transfer"
-			/* if len(v.MethodId) > 0 {
+			method := "Transfer"
+			{
+				d := v.GetData()
+				if len(d) > 3 {
+					m := d[:4]
 
-				if v.InvokesContract {
-					method = fmt.Sprintf("0x%x", v.MethodId)
-				} else {
-					method = "Transfer*"
+					if len(v.GetItx()) > 0 || v.GetGasUsed() > 21000 || v.GetErrorMsg() != "" { // check for invokesContract
+						method = fmt.Sprintf("0x%x", m)
+					} else {
+						method = "Transfer*"
+					}
 				}
-			}/**/
+			}
 
 			var toText template.HTML
 			{
@@ -112,13 +116,13 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 
 			tableData = append(tableData, []interface{}{
 				utils.FormatAddressWithLimits(v.GetHash(), "", false, "tx", 15, 18, true),
-				utils.FormatMethod(method), // #RECY #TODO
+				utils.FormatMethod(method),
 				template.HTML(fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber()))),
 				utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
 				utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", 15, 18, true),
 				toText,
-				utils.FormatAmountFormated(new(big.Int).SetBytes(v.GetValue()), "ETH", 8, 4, true, true, true),
-				"fee #missing", // #RECY #TODO
+				utils.FormatAmountFormated(new(big.Int).SetBytes(v.GetValue()), "ETH", 8, 4, true, true, false),
+				utils.FormatAmountFormated(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), "ETH", 8, 4, true, true, false),
 			})
 		}
 

@@ -128,12 +128,6 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 		length = start
 	}
 
-	// #RECY #TODO added to avoid bug when doing something with block 1
-	if start == length {
-		length--
-	}
-	/////////
-
 	blocks, err := db.BigtableClient.GetBlocksDescending(start, length)
 	if err != nil {
 		return nil, err
@@ -233,8 +227,8 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    latestBlockNumber - 1, // #RECY #TODO added to avoid bug when doing something with block 1, remove -1 after fixing it
-		RecordsFiltered: latestBlockNumber - 1, // #RECY #TODO added to avoid bug when doing something with block 1, remove -1 after fixing it
+		RecordsTotal:    latestBlockNumber,
+		RecordsFiltered: latestBlockNumber,
 		Data:            tableData,
 	}
 
