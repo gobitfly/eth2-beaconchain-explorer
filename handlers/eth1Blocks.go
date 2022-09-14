@@ -199,7 +199,7 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 
 		baseFee := new(big.Int).SetBytes(b.GetBaseFee())
 		gasHalf := float64(b.GetGasLimit()) / 2.0
-		blockReward := utils.BlockReward(b.GetNumber())
+		blockReward := utils.Eth1BlockReward(b.GetNumber(), b.Difficulty)
 		txReward := new(big.Int).Sub(new(big.Int).SetBytes(b.GetTxReward()), new(big.Int).Mul(baseFee, big.NewInt(int64(b.GetTransactionCount()))))
 		totalReward := new(big.Int).Add(blockReward, new(big.Int).Add(txReward, new(big.Int).SetBytes(b.GetUncleReward())))
 		burned := new(big.Int).Mul(baseFee, big.NewInt(int64(b.GetGasUsed())))
