@@ -29,6 +29,16 @@
             <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Number }}"></i>
           </div>
         </div>
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Number, the height, not the slot">Tx Reward:</span></div>
+          <div class="col-md-10">
+            {{ formatAmountFormatted .Reward "ETH" 5 0 true false false }}
+            {{ if gt (bigIntCmp .MevReward 0) 0 }}
+              +
+              {{ formatAmountFormatted .MevReward "ETH" 5 0 true false false }}
+            {{ end }}
+          </div>
+        </div>
       {{ end }}
       <div class="row border-bottom p-3 mx-0">
         <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the current state of the block">Status:</span></div>
