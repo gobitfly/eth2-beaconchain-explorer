@@ -179,7 +179,7 @@ func GetExecutionBlockPageData(number uint64) (*types.Eth1BlockPageData, error) 
 			Number:       uncle.Number,
 			MinerAddress: fmt.Sprintf("%#x", uncle.Coinbase),
 			//MinerFormatted: utils.FormatAddress(uncle.Coinbase, nil, names[string(uncle.Coinbase)], false, false, false),
-			MinerFormatted: utils.FormatAddressWithLimits(uncle.Coinbase, names[string(uncle.Coinbase)], false, "address", 42, 42, true),
+			MinerFormatted: utils.FormatAddressAll(uncle.Coinbase, names[string(uncle.Coinbase)], false, "address", "#transactions", 42, 42, true),
 			Reward:         reward,
 			Extra:          string(uncle.Extra),
 		})
@@ -201,7 +201,7 @@ func GetExecutionBlockPageData(number uint64) (*types.Eth1BlockPageData, error) 
 		ParentHash:    fmt.Sprintf("%#x", block.ParentHash),
 		MinerAddress:  fmt.Sprintf("%#x", block.Coinbase),
 		//MinerFormatted: utils.FormatAddress(block.Coinbase, nil, names[string(block.Coinbase)], false, false, false),
-		MinerFormatted: utils.FormatAddressWithLimits(block.Coinbase, names[string(block.Coinbase)], false, "address", 42, 42, true),
+		MinerFormatted: utils.FormatAddressAll(block.Coinbase, names[string(block.Coinbase)], false, "address", "#transactions", 42, 42, true),
 		Reward:         blockReward,
 		MevReward:      db.CalculateMevFromBlock(block),
 		TxFees:         txFees,
