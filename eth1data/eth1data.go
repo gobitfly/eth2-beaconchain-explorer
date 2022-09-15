@@ -23,12 +23,24 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	defer cancel()
 
 	cacheKey := fmt.Sprintf("%d:tx:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
-	if wanted, err := db.EkoCache.Get(ctx, cacheKey, new(types.Eth1TxData)); err == nil {
+	var wanted types.Eth1TxData
+	if _, err := db.EkoCache.Get(ctx, cacheKey, &wanted); err == nil {
 		logrus.Infof("retrieved data for tx %v from cache", hash)
 		logrus.Info(wanted)
-		return wanted.(*types.Eth1TxData), nil
-	}
 
+		if wanted.BlockNumber != 0 {
+			err := db.ReaderDb.Get(&wanted.Epoch,
+				`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
+				&wanted.BlockNumber)
+			if err != nil {
+				logrus.Warningf("failed to get finalization stats for block %s", wanted.BlockNumber)
+				wanted.Epoch.Finalized = false
+				wanted.Epoch.Participation = -1
+			}
+		}
+
+		return &wanted, nil
+	}
 	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(ctx, hash)
 
 	if err != nil {

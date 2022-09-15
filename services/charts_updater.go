@@ -223,7 +223,7 @@ func blocksChartData() (*types.GenericChartData, error) {
 				Data:  dailyMissedBlocks,
 			},
 			{
-				Name:  "Orphaned",
+				Name:  "Missed (Orphaned)",
 				Color: "#adadad",
 				Data:  dailyOrphanedBlocks,
 			},

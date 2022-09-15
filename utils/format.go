@@ -54,7 +54,7 @@ func FormatAttestationStatus(status uint64) template.HTML {
 	} else if status == 2 {
 		return `<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Missed</span>`
 	} else if status == 3 {
-		return `<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Orphaned</span>`
+		return `<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Missed (Orphaned)</span>`
 	} else {
 		return "Unknown"
 	}
@@ -69,7 +69,7 @@ func FormatAttestationStatusShort(status uint64) template.HTML {
 	} else if status == 2 {
 		return `<span title="Missed" data-toggle="tooltip" class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Miss.</span>`
 	} else if status == 3 {
-		return `<span title="Orphaned" data-toggle="tooltip" class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
+		return `<span title="Missed (Orphaned)" data-toggle="tooltip" class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
 	} else if status == 4 {
 		return `<span title="Inactivity Leak" data-toggle="tooltip" class="badge badge-pill bg-danger text-white" style="font-size: 12px; font-weight: 500;">Leak</span>`
 	} else if status == 5 {
@@ -227,7 +227,7 @@ func FormatBlockStatus(status uint64) template.HTML {
 	} else if status == 2 {
 		return `<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Missed</span>`
 	} else if status == 3 {
-		return `<span class="badge badge-pill bg-secondary text-white" style="font-size: 12px; font-weight: 500;">Orphaned</span>`
+		return `<span class="badge badge-pill bg-secondary text-white" style="font-size: 12px; font-weight: 500;">Missed (Orphaned)</span>`
 	} else {
 		return "Unknown"
 	}
@@ -243,7 +243,7 @@ func FormatBlockStatusShort(status uint64) template.HTML {
 	} else if status == 2 {
 		return `<span title="Missed" data-toggle="tooltip" class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Miss.</span>`
 	} else if status == 3 {
-		return `<span title="Orphaned" data-toggle="tooltip" class="badge badge-pill bg-secondary text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
+		return `<span title="Missed (Orphaned)" data-toggle="tooltip" class="badge badge-pill bg-secondary text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
 	} else {
 		return "Unknown"
 	}

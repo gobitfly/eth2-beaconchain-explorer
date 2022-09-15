@@ -98,18 +98,22 @@ func FormatInOutSelf(address, from, to []byte) template.HTML {
 
 func FormatAddress(address []byte, token []byte, name string, verified bool, isContract bool, link bool) template.HTML {
 	if link {
-		return formatAddress(address, token, name, isContract, "address", 17, 0, false)
+		return formatAddress(address, token, name, isContract, "address", "", 17, 0, false)
 	}
-	return formatAddress(address, token, name, isContract, "", 17, 0, false)
+	return formatAddress(address, token, name, isContract, "", "", 17, 0, false)
 }
 
 func FormatAddressWithLimits(address []byte, name string, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
-	return formatAddress(address, nil, name, isContract, link, digitsLimit, nameLimit, addCopyToClipboard)
+	return formatAddress(address, nil, name, isContract, link, "", digitsLimit, nameLimit, addCopyToClipboard)
+}
+
+func FormatAddressAll(address []byte, name string, isContract bool, link string, urlFragment string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
+	return formatAddress(address, nil, name, isContract, link, urlFragment, digitsLimit, nameLimit, addCopyToClipboard)
 }
 
 // digitsLimit will limit the address output to that amount of total digits (including 0x & ...)
 // nameLimit will limit the name, if existing to giving amount of letters, a limit of 0 will display the full name
-func formatAddress(address []byte, token []byte, name string, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
+func formatAddress(address []byte, token []byte, name string, isContract bool, link string, urlFragment string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
 	name = template.HTMLEscapeString(name)
 
 	// we need at least 5 digits for 0x & ...
@@ -155,7 +159,7 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 		if token != nil {
 			ret += fmt.Sprintf(`<a href="/`+link+`/0x%x#erc20Txns" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
 		} else { // just link
-			ret += fmt.Sprintf(`<a href="/`+link+`/0x%x" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+			ret += fmt.Sprintf(`<a href="/`+link+`/0x%x`+urlFragment+`" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
 		}
 	}
 
