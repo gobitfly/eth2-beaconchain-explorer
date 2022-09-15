@@ -242,7 +242,7 @@
                           <tbody>
                             {{ range $index, $topic := .Topics }}
                               <tr>
-                                <th class="border-0 p-0 pb-1 pr-2" style="width: 0%;">
+                                <th class="border-0 p-0 pb-1 pr-2" style="width: 0;">
                                   <span class="badge badge-dark align-bottom text-white">{{ $index }}</span>
                                 </th>
                                 <td class="border-0 p-0 pb-1 align-bottom">
@@ -264,10 +264,10 @@
                             <tbody>
                               {{ range $key, $value :=.DecodedData }}
                                 <tr>
-                                  <th class="border-0 p-0 pb-1 pr-2 col-md-auto" style="width: 0%;">
+                                  <th class="border-0 p-0 pb-1 pr-2 col-md-auto" style="width: 0;">
                                     <span class="badge badge-dark align-bottom text-white">{{ $key }}</span>
                                   </th>
-                                  <td class="border-0 p-0 pr-2 col-md-auto" style="width: 0%;">
+                                  <td class="border-0 p-0 pr-2 col-md-auto" style="width: 0;">
                                     <span class="badge badge-secondary align-bottom text-white">{{ $value.Type }}</span>
                                   </td>
                                   <td class="border-0 p-0 col-md-auto">
