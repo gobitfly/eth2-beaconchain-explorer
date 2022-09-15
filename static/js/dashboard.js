@@ -1208,7 +1208,7 @@ function createProposedChart(data) {
         data: missed,
       },
       {
-        name: "Orphaned",
+        name: "Missed (Orphaned)",
         color: "#e4a354",
         data: orphaned,
       },
