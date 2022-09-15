@@ -29,8 +29,14 @@
             <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Number }}"></i>
           </div>
         </div>
-        <div class="row border-bottom p-3 mx-0">
-          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Number, the height, not the slot">Tx Reward:</span></div>
+        <div class="row border-bottom p-3 mx-0">  
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction fee recipient">Fee Recipient:</span></div>
+          <div class="col-md-10">
+            <a href="/address/{{ .MinerAddress }}">{{ .MinerFormatted }}</a>
+          </div>
+        </div>
+        <div class="row border-bottom p-3 mx-0">  
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction rewards from block {{ .Number }}">Tx Reward:</span></div>
           <div class="col-md-10">
             {{ formatAmountFormatted .Reward "ETH" 5 0 true false false }}
             {{ if gt (bigIntCmp .MevReward 0) 0 }}
@@ -188,7 +194,7 @@
                 </div>
 
                 <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Fee recipient">Reward:</span></div>
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction rewards from block {{ .Number }}">Reward:</span></div>
                   <div class="col-md-10 text-monospace text-break">
                     {{ formatAmountFormatted .Reward "ETH" 5 0 true false false }}
                     {{ if gt (bigIntCmp .MevReward 0) 0 }}
