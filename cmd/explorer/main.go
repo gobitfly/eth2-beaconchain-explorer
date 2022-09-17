@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/gob"
 	"encoding/hex"
+	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/exporter"
@@ -19,6 +20,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"sync"
 	"time"
 
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -62,76 +64,103 @@ func main() {
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
 
-	db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
+		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
+	}
 
-	db.MustInitDB(&types.DatabaseConfig{
-		Username: cfg.WriterDatabase.Username,
-		Password: cfg.WriterDatabase.Password,
-		Name:     cfg.WriterDatabase.Name,
-		Host:     cfg.WriterDatabase.Host,
-		Port:     cfg.WriterDatabase.Port,
-	}, &types.DatabaseConfig{
-		Username: cfg.ReaderDatabase.Username,
-		Password: cfg.ReaderDatabase.Password,
-		Name:     cfg.ReaderDatabase.Name,
-		Host:     cfg.ReaderDatabase.Host,
-		Port:     cfg.ReaderDatabase.Port,
-	})
+	wg := &sync.WaitGroup{}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		db.MustInitDB(&types.DatabaseConfig{
+			Username: cfg.WriterDatabase.Username,
+			Password: cfg.WriterDatabase.Password,
+			Name:     cfg.WriterDatabase.Name,
+			Host:     cfg.WriterDatabase.Host,
+			Port:     cfg.WriterDatabase.Port,
+		}, &types.DatabaseConfig{
+			Username: cfg.ReaderDatabase.Username,
+			Password: cfg.ReaderDatabase.Password,
+			Name:     cfg.ReaderDatabase.Name,
+			Host:     cfg.ReaderDatabase.Host,
+			Port:     cfg.ReaderDatabase.Port,
+		})
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		db.MustInitFrontendDB(&types.DatabaseConfig{
+			Username: cfg.Frontend.WriterDatabase.Username,
+			Password: cfg.Frontend.WriterDatabase.Password,
+			Name:     cfg.Frontend.WriterDatabase.Name,
+			Host:     cfg.Frontend.WriterDatabase.Host,
+			Port:     cfg.Frontend.WriterDatabase.Port,
+		}, &types.DatabaseConfig{
+			Username: cfg.Frontend.ReaderDatabase.Username,
+			Password: cfg.Frontend.ReaderDatabase.Password,
+			Name:     cfg.Frontend.ReaderDatabase.Name,
+			Host:     cfg.Frontend.ReaderDatabase.Host,
+			Port:     cfg.Frontend.ReaderDatabase.Port,
+		}, cfg.Frontend.SessionSecret)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+
+		rpc.CurrentErigonClient, err = rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
+		if err != nil {
+			logrus.Fatalf("error initializing erigon client: %v", err)
+		}
+
+		erigonChainId, err := rpc.CurrentErigonClient.GetNativeClient().ChainID(ctx)
+		if err != nil {
+			logrus.Fatalf("error retrieving erigon chain id: %v", err)
+		}
+
+		rpc.CurrentGethClient, err = rpc.NewGethClient(utils.Config.Eth1GethEndpoint)
+		if err != nil {
+			logrus.Fatalf("error initializing geth client: %v", err)
+		}
+
+		gethChainId, err := rpc.CurrentGethClient.GetNativeClient().ChainID(ctx)
+		if err != nil {
+			logrus.Fatalf("error retrieving geth chain id: %v", err)
+		}
+
+		if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) {
+			logrus.Fatalf("chain id missmatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), erigonChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		bt, err := db.InitBigtable("etherchain", "etherchain", fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) //
+		if err != nil {
+			logrus.Fatalf("error connecting to bigtable: %v", err)
+		}
+		db.BigtableClient = bt
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		db.MustInitRedisCache(utils.Config.RedisCacheEndpoint)
+		cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
+	}()
+
+	wg.Wait()
+
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
-	db.MustInitFrontendDB(&types.DatabaseConfig{
-		Username: cfg.Frontend.WriterDatabase.Username,
-		Password: cfg.Frontend.WriterDatabase.Password,
-		Name:     cfg.Frontend.WriterDatabase.Name,
-		Host:     cfg.Frontend.WriterDatabase.Host,
-		Port:     cfg.Frontend.WriterDatabase.Port,
-	}, &types.DatabaseConfig{
-		Username: cfg.Frontend.ReaderDatabase.Username,
-		Password: cfg.Frontend.ReaderDatabase.Password,
-		Name:     cfg.Frontend.ReaderDatabase.Name,
-		Host:     cfg.Frontend.ReaderDatabase.Host,
-		Port:     cfg.Frontend.ReaderDatabase.Port,
-	}, cfg.Frontend.SessionSecret)
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-
-	rpc.CurrentErigonClient, err = rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
-	if err != nil {
-		logrus.Fatalf("error initializing erigon client: %v", err)
-	}
-
-	erigonChainId, err := rpc.CurrentErigonClient.GetNativeClient().ChainID(ctx)
-	if err != nil {
-		logrus.Fatalf("error retrieving erigon chain id: %v", err)
-	}
-
-	rpc.CurrentGethClient, err = rpc.NewGethClient(utils.Config.Eth1GethEndpoint)
-	if err != nil {
-		logrus.Fatalf("error initializing geth client: %v", err)
-	}
-
-	gethChainId, err := rpc.CurrentGethClient.GetNativeClient().ChainID(ctx)
-	if err != nil {
-		logrus.Fatalf("error retrieving geth chain id: %v", err)
-	}
-	cancel()
-
-	if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) {
-		logrus.Fatalf("chain id missmatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), erigonChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
-	}
-
-	// if utils.Config.Frontend.Bigtable.Enabled {
-	bt, err := db.InitBigtable("etherchain", "etherchain", fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) //
-	if err != nil {
-		logrus.Fatalf("error connecting to bigtable: %v", err)
-	}
-	defer bt.Close()
-	db.BigtableClient = bt
-	// }
-
-	db.MustInitRedisCache(utils.Config.RedisCacheEndpoint)
+	defer db.BigtableClient.Close()
 
 	if utils.Config.Metrics.Enabled {
 		go metrics.MonitorDB(db.WriterDb)
@@ -143,9 +172,6 @@ func main() {
 	}
 
 	logrus.Infof("database connection established")
-	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
-		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
-	}
 
 	if utils.Config.Indexer.Enabled {
 
@@ -272,9 +298,9 @@ func main() {
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET", "HEAD")
 		router.HandleFunc("/api/healthz-loadbalancer", handlers.ApiHealthzLoadbalancer).Methods("GET", "HEAD")
 
-		logrus.Infof("initializing frontend services")
-		services.Init() // Init frontend services
-		logrus.Infof("frontend services initiated")
+		// logrus.Infof("initializing frontend services")
+		// services.Init() // Init frontend services
+		// logrus.Infof("frontend services initiated")
 
 		logrus.Infof("initializing prices")
 		price.Init(utils.Config.Chain.Config.DepositChainID)

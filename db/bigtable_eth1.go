@@ -1830,7 +1830,7 @@ func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, search 
 
 	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
-		logger.Infof("hash: %d amount: %s", b.Number, new(big.Int).SetBytes(b.TxReward).String())
+		// logger.Infof("hash: %d amount: %s", b.Number, new(big.Int).SetBytes(b.TxReward).String())
 
 		reward := new(big.Int).Add(utils.Eth1BlockReward(b.Number, b.Difficulty), new(big.Int).SetBytes(b.TxReward))
 
