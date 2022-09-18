@@ -604,11 +604,11 @@ func LatestProposedSlot() uint64 {
 
 // LatestIndexPageData returns the latest index page data
 func LatestIndexPageData() *types.IndexPageData {
-	var wanted *types.IndexPageData
+	wanted := &types.IndexPageData{}
 	cacheKey := fmt.Sprintf("%d:frontend:indexPageData", utils.Config.Chain.Config.DepositChainID)
 
-	if err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, &wanted); err == nil {
-		return wanted
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*50, wanted); err == nil {
+		return wanted.(*types.IndexPageData)
 	} else {
 		logger.Errorf("error retrieving indexPageData from cache: %v", err)
 	}
@@ -649,11 +649,11 @@ func LatestIndexPageData() *types.IndexPageData {
 // LatestPoolsPageData returns the latest pools page data
 func LatestPoolsPageData() *types.PoolsResp {
 
-	var wanted *types.PoolsResp
+	wanted := &types.PoolsResp{}
 	cacheKey := fmt.Sprintf("%d:frontend:poolsData", utils.Config.Chain.Config.DepositChainID)
 
-	if err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, &wanted); err == nil {
-		return wanted
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, wanted); err == nil {
+		return wanted.(*types.PoolsResp)
 	} else {
 		logger.Errorf("error retrieving poolsData from cache: %v", err)
 	}
@@ -666,11 +666,11 @@ func LatestPoolsPageData() *types.PoolsResp {
 }
 
 func LatestGasNowData() *types.GasNowPageData {
-	var wanted *types.GasNowPageData
+	wanted := &types.GasNowPageData{}
 	cacheKey := fmt.Sprintf("%d:frontend:gasNow", utils.Config.Chain.Config.DepositChainID)
 
-	if err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, &wanted); err == nil {
-		return wanted
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, &wanted); err == nil {
+		return wanted.(*types.GasNowPageData)
 	} else {
 		logger.Errorf("error retrieving gasNow from cache: %v", err)
 	}
@@ -679,12 +679,12 @@ func LatestGasNowData() *types.GasNowPageData {
 }
 
 func LatestSlotVizMetrics() []*types.SlotVizEpochs {
-
-	var wanted []*types.SlotVizEpochs
+	wanted := &[]*types.SlotVizEpochs{}
 	cacheKey := fmt.Sprintf("%d:frontend:slotVizMetrics", utils.Config.Chain.Config.DepositChainID)
 
-	if err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, &wanted); err == nil {
-		return wanted
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, wanted); err == nil {
+		w := wanted.(*[]*types.SlotVizEpochs)
+		return *w
 	} else {
 		logger.Errorf("error retrieving slotVizMetrics from cache: %v", err)
 	}
@@ -722,11 +722,11 @@ func LatestState() *types.LatestState {
 }
 
 func GetLatestStats() *types.Stats {
-	var wanted *types.Stats
+	wanted := &types.Stats{}
 	cacheKey := fmt.Sprintf("%d:frontend:latestStats", utils.Config.Chain.Config.DepositChainID)
 
-	if err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, &wanted); err == nil {
-		return wanted
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, wanted); err == nil {
+		return wanted.(*types.Stats)
 	} else {
 		logger.Errorf("error retrieving slotVizMetrics from cache: %v", err)
 	}

@@ -111,12 +111,12 @@ func (cache *tieredCache) Set(key string, value interface{}, expiration time.Dur
 	return cache.remoteRedisCache.Set(ctx, key, valueMarshal, expiration).Err()
 }
 
-func (cache *tieredCache) GetWithLocalTimeout(key string, localExpiration time.Duration, returnValue interface{}) error {
+func (cache *tieredCache) GetWithLocalTimeout(key string, localExpiration time.Duration, returnValue interface{}) (interface{}, error) {
 	// try to retrieve the key from the local cache
 	wanted, found := cache.localGoCache.Get(key)
 	if found {
-		returnValue = &wanted
-		return nil
+		logrus.Infof("retrieved %v from in memory cache", key)
+		return wanted, nil
 	}
 
 	// retrieve the key from the remote cache
@@ -125,14 +125,16 @@ func (cache *tieredCache) GetWithLocalTimeout(key string, localExpiration time.D
 
 	value, err := cache.remoteRedisCache.Get(ctx, key).Result()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = json.Unmarshal([]byte(value), returnValue)
 	if err != nil {
-		return err
+		logrus.Fatal(err)
+		return nil, err
 	}
+	logrus.Infof("retrieved %v from redis cache", key)
 
 	cache.localGoCache.Set(key, returnValue, localExpiration)
-	return nil
+	return returnValue, nil
 }

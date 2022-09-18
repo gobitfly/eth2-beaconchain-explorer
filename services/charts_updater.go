@@ -44,11 +44,11 @@ var ChartHandlers = map[string]chartHandler{
 
 // LatestChartsPageData returns the latest chart page data
 func LatestChartsPageData() *[]*types.ChartsPageDataChart {
-	var wanted *[]*types.ChartsPageDataChart
+	wanted := &[]*types.ChartsPageDataChart{}
 	cacheKey := fmt.Sprintf("%d:frontend:chartsPageData", utils.Config.Chain.Config.DepositChainID)
 
-	if err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &wanted); err == nil {
-		return wanted
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, wanted); err == nil {
+		return wanted.(*[]*types.ChartsPageDataChart)
 	} else {
 		logger.Errorf("error retrieving chartsPageData from cache: %v", err)
 	}
