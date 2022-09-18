@@ -107,7 +107,6 @@ func (cache *tieredCache) Set(key string, value interface{}, expiration time.Dur
 	if err != nil {
 		return err
 	}
-	cache.localGoCache.Set(key, valueMarshal, expiration)
 	return cache.remoteRedisCache.Set(ctx, key, valueMarshal, expiration).Err()
 }
 
@@ -129,7 +128,8 @@ func (cache *tieredCache) GetWithLocalTimeout(key string, localExpiration time.D
 
 	err = json.Unmarshal([]byte(value), returnValue)
 	if err != nil {
-		logrus.Fatal(err)
+		cache.remoteRedisCache.Del(ctx, key).Err()
+		logrus.Warnf("error unmarshalling data for key %v: %v", key, err)
 		return nil, err
 	}
 

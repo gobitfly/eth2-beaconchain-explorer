@@ -3,6 +3,7 @@ package eth1data
 import (
 	"bytes"
 	"context"
+	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/types"
@@ -23,23 +24,23 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	defer cancel()
 
 	cacheKey := fmt.Sprintf("%d:tx:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
-	var wanted types.Eth1TxData
-	if _, err := db.EkoCache.Get(ctx, cacheKey, &wanted); err == nil {
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, new(types.Eth1TxData)); err == nil {
 		logrus.Infof("retrieved data for tx %v from cache", hash)
 		logrus.Info(wanted)
 
-		if wanted.BlockNumber != 0 {
-			err := db.ReaderDb.Get(&wanted.Epoch,
+		data := wanted.(*types.Eth1TxData)
+		if data.BlockNumber != 0 {
+			err := db.ReaderDb.Get(data.Epoch,
 				`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
-				&wanted.BlockNumber)
+				data.BlockNumber)
 			if err != nil {
-				logrus.Warningf("failed to get finalization stats for block %s", wanted.BlockNumber)
-				wanted.Epoch.Finalized = false
-				wanted.Epoch.Participation = -1
+				logrus.Warningf("failed to get finalization stats for block %s", data.BlockNumber)
+				data.Epoch.Finalized = false
+				data.Epoch.Participation = -1
 			}
 		}
 
-		return &wanted, nil
+		return data, nil
 	}
 	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(ctx, hash)
 
@@ -211,7 +212,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		}
 	}
 
-	err = db.EkoCache.Set(ctx, cacheKey, txPageData)
+	err = cache.TieredCache.Set(cacheKey, txPageData, time.Hour*24)
 	if err != nil {
 		return nil, fmt.Errorf("error writing data for tx %v to cache: %v", hash, err)
 	}
@@ -221,10 +222,10 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 
 func GetCodeAt(ctx context.Context, address common.Address) ([]byte, error) {
 	cacheKey := fmt.Sprintf("%d:a:%s", utils.Config.Chain.Config.DepositChainID, address.String())
-	if wanted, err := db.EkoCache.Get(ctx, cacheKey, []byte{}); err == nil {
+	if wanted, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Hour); err == nil {
 		logrus.Infof("retrieved code data for address %v from cache", address)
 
-		return wanted.([]byte), nil
+		return []byte(wanted), nil
 	}
 
 	code, err := rpc.CurrentErigonClient.GetNativeClient().CodeAt(ctx, address, nil)
@@ -232,7 +233,7 @@ func GetCodeAt(ctx context.Context, address common.Address) ([]byte, error) {
 		return nil, fmt.Errorf("error retrieving code data for address %v: %v", address, err)
 	}
 
-	err = db.EkoCache.Set(ctx, cacheKey, code)
+	err = cache.TieredCache.SetString(cacheKey, string(code), time.Hour*24)
 	if err != nil {
 		return nil, fmt.Errorf("error writing code data for address %v to cache: %v", address, err)
 	}
@@ -264,7 +265,7 @@ func GetBlockHeaderByHash(ctx context.Context, hash common.Hash) (*geth_types.He
 func GetTransactionReceipt(ctx context.Context, hash common.Hash) (*geth_types.Receipt, error) {
 	cacheKey := fmt.Sprintf("%d:r:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
 
-	if wanted, err := db.EkoCache.Get(ctx, cacheKey, new(geth_types.Receipt)); err == nil {
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, new(geth_types.Receipt)); err == nil {
 		logrus.Infof("retrieved receipt data for tx %v from cache", hash)
 		return wanted.(*geth_types.Receipt), nil
 	}
@@ -274,7 +275,7 @@ func GetTransactionReceipt(ctx context.Context, hash common.Hash) (*geth_types.R
 		return nil, fmt.Errorf("error retrieving receipt data for tx %v: %v", hash, err)
 	}
 
-	err = db.EkoCache.Set(ctx, cacheKey, receipt)
+	err = cache.TieredCache.Set(cacheKey, receipt, time.Hour)
 	if err != nil {
 		return nil, fmt.Errorf("error writing receipt data for tx %v to cache: %v", hash, err)
 	}

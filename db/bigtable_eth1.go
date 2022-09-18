@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"eth2-exporter/cache"
 	"eth2-exporter/erc1155"
 	"eth2-exporter/erc20"
 	"eth2-exporter/erc721"
@@ -1639,7 +1640,7 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*ty
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error parsing Eth1TransactionIndexed data: %v", err)
 		}
 		keysMap[row.Key()] = b
 
@@ -1801,7 +1802,7 @@ func (bigtable *Bigtable) GetEth1BlocksForAddress(prefix string, limit int64) ([
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error parsing Eth1BlockIndexed data: %v", err)
 		}
 		keysMap[row.Key()] = b
 
@@ -1886,7 +1887,7 @@ func (bigtable *Bigtable) GetEth1UnclesForAddress(prefix string, limit int64) ([
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error parsing Eth1UncleIndexed data: %v", err)
 		}
 		keysMap[row.Key()] = b
 
@@ -1964,7 +1965,7 @@ func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, address []byte, li
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error parsing Eth1InternalTransactionIndexed data: %v", err)
 		}
 
 		// geth traces include zero-value staticalls
@@ -2048,7 +2049,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		row_ := row[DEFAULT_FAMILY][0]
 		err := proto.Unmarshal(row_.Value, b)
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error parsing Eth1InternalTransactionIndexed data: %v", err)
 			return false
 		}
 		// geth traces include the inital transfer & zero-value staticalls
@@ -2057,7 +2058,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		}
 		rowN, err := strconv.Atoi(strings.Split(row_.Row, ":")[3])
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error parsing Eth1InternalTransactionIndexed row number: %v", err)
 			return false
 		}
 		rowN = 100000 - rowN
@@ -2141,12 +2142,12 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 		row_ := row[DEFAULT_FAMILY][0]
 		err := proto.Unmarshal(row_.Value, b)
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error unmarshalling data for row %v: %v", row.Key(), err)
 			return false
 		}
 		rowN, err := strconv.Atoi(strings.Split(row_.Row, ":")[3])
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error parsing data for row %v: %v", row.Key(), err)
 			return false
 		}
 		rowN = 100000 - rowN
@@ -2263,7 +2264,7 @@ func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error parsing Eth1ERC20Indexed data: %v", err)
 		}
 		keysMap[row.Key()] = b
 		return true
@@ -2372,7 +2373,7 @@ func (bigtable *Bigtable) GetEth1ERC721ForAddress(prefix string, limit int64) ([
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error parsing Eth1ERC721Indexed data: %v", err)
 		}
 		keysMap[row.Key()] = b
 		return true
@@ -2454,7 +2455,7 @@ func (bigtable *Bigtable) GetEth1ERC1155ForAddress(prefix string, limit int64) (
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error parsing ETh1ERC1155Indexed data: %v", err)
 		}
 		keysMap[row.Key()] = b
 		return true
@@ -2713,7 +2714,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 	defer cancel()
 
 	cacheKey := fmt.Sprintf("%s:ERC20:%s", bigtable.chainId, string(address))
-	if cached, err := EkoCache.Get(ctx, cacheKey, new(types.ERC20Metadata)); err == nil {
+	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour*24, new(types.ERC20Metadata)); err == nil {
 		return cached.(*types.ERC20Metadata), nil
 	}
 
@@ -2737,7 +2738,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 				Symbol:      "UNKNOWN",
 				TotalSupply: []byte{0x0}}
 
-			err = EkoCache.Set(ctx, cacheKey, metadata)
+			err = cache.TieredCache.Set(cacheKey, metadata, time.Hour*24*365)
 			if err != nil {
 				return nil, err
 			}
@@ -2749,7 +2750,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 			return nil, err
 		}
 
-		err = EkoCache.Set(ctx, cacheKey, metadata)
+		err = cache.TieredCache.Set(cacheKey, metadata, time.Hour*24*365)
 		if err != nil {
 			return nil, err
 		}
@@ -2781,7 +2782,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 		}
 	}
 
-	err = EkoCache.Set(ctx, cacheKey, ret)
+	err = cache.TieredCache.Set(cacheKey, ret, time.Hour*24*365)
 	if err != nil {
 		return nil, err
 	}
@@ -2834,9 +2835,9 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
 	cacheKey := bigtable.chainId + ":NAME:" + rowKey
 
-	if wanted, err := EkoCacheString.Get(ctx, cacheKey); err == nil {
+	if wanted, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Hour*24); err == nil {
 		// logrus.Infof("retrieved name for address %x from cache", address)
-		return wanted.(string), nil
+		return wanted, nil
 	}
 
 	filter := gcp_bigtable.ChainFilters(gcp_bigtable.FamilyFilter(ACCOUNT_METADATA_FAMILY), gcp_bigtable.ColumnFilter(ACCOUNT_COLUMN_NAME))
@@ -2844,12 +2845,12 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
 
 	if err != nil || row == nil {
-		err = EkoCacheString.Set(ctx, cacheKey, "")
+		err = cache.TieredCache.SetString(cacheKey, "", time.Hour)
 		return "", err
 	}
 
 	wanted := string(row[ACCOUNT_METADATA_FAMILY][0].Value)
-	err = EkoCacheString.Set(ctx, cacheKey, wanted)
+	err = cache.TieredCache.SetString(cacheKey, wanted, time.Hour)
 	return wanted, err
 }
 
@@ -2869,7 +2870,7 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
 	cacheKey := bigtable.chainId + ":CONTRACT:" + rowKey
-	if cached, err := EkoCache.Get(ctx, cacheKey, new(types.ContractMetadata)); err == nil {
+	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour*24, new(types.ContractMetadata)); err == nil {
 		ret := cached.(*types.ContractMetadata)
 		val, err := abi.JSON(bytes.NewReader(ret.ABIJson))
 		ret.ABI = &val
@@ -2886,10 +2887,10 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 
 		if err != nil {
 			logrus.Errorf("error fetching contract metadata for address %x: %v", address, err)
-			err = EkoCache.Set(ctx, cacheKey, &types.ContractMetadata{})
+			err = cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
 			return nil, err
 		} else {
-			err = EkoCache.Set(ctx, cacheKey, ret)
+			err = cache.TieredCache.Set(cacheKey, ret, time.Hour*24)
 			if err != nil {
 				logger.Errorf("error caching contract metadata: %v", err)
 			}
@@ -2919,7 +2920,7 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 		}
 	}
 
-	err = EkoCache.Set(ctx, cacheKey, ret)
+	err = cache.TieredCache.Set(cacheKey, ret, time.Hour*24)
 	return ret, err
 }
 
@@ -3114,7 +3115,7 @@ func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*type
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("error parsing Eth1ERC20Indexed data: %v", err)
 		}
 		keysMap[row.Key()] = b
 
