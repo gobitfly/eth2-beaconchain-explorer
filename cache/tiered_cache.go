@@ -115,7 +115,6 @@ func (cache *tieredCache) GetWithLocalTimeout(key string, localExpiration time.D
 	// try to retrieve the key from the local cache
 	wanted, found := cache.localGoCache.Get(key)
 	if found {
-		logrus.Infof("retrieved %v from in memory cache", key)
 		return wanted, nil
 	}
 
@@ -133,7 +132,6 @@ func (cache *tieredCache) GetWithLocalTimeout(key string, localExpiration time.D
 		logrus.Fatal(err)
 		return nil, err
 	}
-	logrus.Infof("retrieved %v from redis cache", key)
 
 	cache.localGoCache.Set(key, returnValue, localExpiration)
 	return returnValue, nil
