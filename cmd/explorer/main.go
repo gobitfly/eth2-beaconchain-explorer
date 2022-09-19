@@ -158,7 +158,7 @@ func main() {
 	}
 
 	wg.Wait()
-	if utils.Config.TierdCacheProvider == "bigtable" {
+	if utils.Config.TierdCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
 		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 		logrus.Infof("Tiered Cache initialized. Latest finalized epoch: %v", services.LatestFinalizedEpoch())
 	}

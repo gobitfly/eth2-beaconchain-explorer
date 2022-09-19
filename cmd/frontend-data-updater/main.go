@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"flag"
+	"fmt"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
@@ -34,10 +35,10 @@ func main() {
 	// 	logrus.Fatalf("error setting up bigtable cache err: %v", err)
 	// }
 
-	// bigClient, err := db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
-	// if err != nil {
-	// 	logrus.Fatalf("error initializing bigtable %v", err)
-	// }
+	_, err = db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	if err != nil {
+		logrus.Fatalf("error initializing bigtable %v", err)
+	}
 
 	db.MustInitDB(&types.DatabaseConfig{
 		Username: cfg.WriterDatabase.Username,
@@ -55,9 +56,15 @@ func main() {
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 
-	// cache.MustInitTieredCacheBigtable(bigClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	if utils.Config.TierdCacheProvider == "redis" || len(utils.Config.RedisCacheEndpoint) != 0 {
+		cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
+	} else if utils.Config.TierdCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
+		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	}
 
-	cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
+	if utils.Config.TierdCacheProvider != "bigtable" && utils.Config.TierdCacheProvider != "redis" {
+		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis, bigtable)")
+	}
 
 	logrus.Infof("initializing frontend services")
 	services.Init() // Init frontend services
