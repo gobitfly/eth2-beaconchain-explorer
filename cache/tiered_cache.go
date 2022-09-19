@@ -32,7 +32,7 @@ func MustInitTieredCache(redisAddress string) {
 
 	remoteCache, err := InitRedisCache(ctx, redisAddress)
 	if err != nil {
-		logrus.Panicf("error initializing remote redis cache. address: %v", redisAddress)
+		logrus.WithError(err).Panicf("error initializing remote redis cache. address: %v", redisAddress)
 	}
 
 	TieredCache = &tieredCache{

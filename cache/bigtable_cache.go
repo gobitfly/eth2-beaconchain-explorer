@@ -58,7 +58,7 @@ func (cache *BigtableCache) Set(ctx context.Context, key string, value any, expi
 	mut := gcp_bigtable.NewMutation()
 	mut.Set(family, COLUMN_DATA, ts, valueMarshal)
 
-	err = cache.tableCache.Apply(ctx, fmt.Sprintf("C:%s:%s", cache.chainId, key), mut)
+	err = cache.tableCache.Apply(ctx, fmt.Sprintf("C:%s", key), mut)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func (cache *BigtableCache) setByte(ctx context.Context, key string, value []byt
 	mut := gcp_bigtable.NewMutation()
 	mut.Set(family, COLUMN_DATA, ts, value)
 
-	err := cache.tableCache.Apply(ctx, fmt.Sprintf("C:%s:%s", cache.chainId, key), mut)
+	err := cache.tableCache.Apply(ctx, fmt.Sprintf("C:%s", key), mut)
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func (cache *BigtableCache) getByte(ctx context.Context, key string) ([]byte, er
 		gcp_bigtable.LatestNFilter(1),
 	)
 
-	row, err := cache.tableCache.ReadRow(ctx, fmt.Sprintf("C:%s:%s", cache.chainId, key), gcp_bigtable.RowFilter(filter))
+	row, err := cache.tableCache.ReadRow(ctx, fmt.Sprintf("C:%s", key), gcp_bigtable.RowFilter(filter))
 	if err != nil {
 		return nil, err
 	}
