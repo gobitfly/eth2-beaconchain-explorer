@@ -636,7 +636,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	g.Go(func() error {
-		currentEpochData, err = getEpoch(epoch)
+		currentEpochData, err = getEpoch(epoch - 1)
 		return err
 	})
 

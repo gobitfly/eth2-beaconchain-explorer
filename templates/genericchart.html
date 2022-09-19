@@ -62,6 +62,9 @@
                     {{ if .PlotOptionsSeriesCursor }}cursor: {{.PlotOptionsSeriesCursor}},{{end}}
                     events: {
                         {{ if .PlotOptionsSeriesEventsClick }}click: {{.PlotOptionsSeriesEventsClick}},{{end}}
+                    },
+                    dataGrouping: {
+                        enabled: false
                     }
                 }
             },
@@ -129,6 +132,9 @@
                     {{ if .PlotOptionsSeriesCursor }}cursor: {{.PlotOptionsSeriesCursor}},{{end}}
                     events: {
                         {{ if .PlotOptionsSeriesEventsClick }}click: {{.PlotOptionsSeriesEventsClick}},{{end}}
+                    },
+                    dataGrouping: {
+                        enabled: false
                     }
                 }
             },
