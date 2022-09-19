@@ -110,11 +110,11 @@
           </div>
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="32 byte long message included by the block proposer">Graffiti:</span></div>
-            <div class="col-md-7 text-monospace text-break" id="graffiti" aria-graffiti="{{ printf "%x" .Graffiti }}">0x{{ printf "%x" .Graffiti }}</div>
+            <div class="col-md-7 text-monospace text-break" id="graffiti" aria-hex-data="{{ printf "%#x" .Graffiti }}">{{ printf "%#x" .Graffiti }}</div>
             <div class="col-md-3 text-right">
               <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="viewGraffitiAs('hex')"> <input type="radio" name="options" id="optionHex" /> Hex </label>
-                <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="viewGraffitiAs('utf-8')"> <input type="radio" name="options" id="optionUTF8" checked /> UTF-8 </label>
+                <label class="btn btn-light text-dark btn-sm pl-4 pr-4 active" onclick="viewHexDataAs('graffiti', 'hex')"> <input type="radio" name="options" id="optionHex" /> Hex </label>
+                <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="viewHexDataAs('graffiti', 'utf-8')"> <input type="radio" name="options" id="optionUTF8" checked /> UTF-8 </label>
               </div>
             </div>
           </div>
@@ -219,13 +219,19 @@
                 <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Timestamp">Timestamp:</span></div>
                   <div class="col-md-5 text-monospace text-break">{{ .Ts.Unix }}</div>
-                  <div class="col-md-5"><span aria-ethereum-date="{{ .Ts.Unix }}">{{ .Ts }}</span> (<span aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW"></span>)</div>
+                  <div class="col-md-5 text-right"><span aria-ethereum-date="{{ .Ts.Unix }}">{{ .Ts }}</span> (<span aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW"></span>)</div>
                 </div>
 
                 <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Extra Data">Block Extra Data</span></div>
-                  <div class="col-md-10 text-monospace text-break">
+                  <div class="col-md-8 text-monospace text-break" id="extra-data" aria-hex-data="{{ .Extra }}">
                     {{ .Extra }}
+                  </div>
+                  <div class="col-md-2 text-right">
+                    <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                      <label class="btn btn-light text-dark btn-sm pl-4 pr-4 active" onclick="viewHexDataAs('extra-data', 'hex')"> <input type="radio" name="options" id="optionHex" /> Hex </label>
+                      <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="viewHexDataAs('extra-data', 'utf-8')"> <input type="radio" name="options" id="optionUTF8" checked /> UTF-8 </label>
+                    </div>
                   </div>
                 </div>
               </div>

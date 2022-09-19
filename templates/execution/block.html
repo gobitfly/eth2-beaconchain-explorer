@@ -1,32 +1,6 @@
 {{ define "js" }}
-  <script type="text/javascript">
-    function viewExtraDataAs(type) {
-      var extraDataHex = $("[aria-extra-data]").attr("aria-extra-data")
-
-      if (!extraDataHex) {
-        return
-      }
-
-      if (type === "hex") {
-        $("#extra-data").text(extraDataHex)
-      } else {
-        try {
-          var r = decodeURIComponent(extraDataHex.replace(/\s+/g, "").replace(/[0-9a-f]{2}/g, "%$&"))
-          $("#extra-data").text(r.replace("0x", ""))
-        } catch (e) {
-          $("#extra-data").text(hex2a(extraDataHex.replace("0x", "")))
-        }
-      }
-    }
-
-    function hex2a(hexx) {
-      var hex = hexx.toString() //force conversion
-      var str = ""
-      for (var i = 0; i < hex.length; i += 2) str += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
-      return str
-    }
-
-    viewExtraDataAs("utf-8")
+  <script>
+    viewHexDataAs("extra-data", "utf-8")
   </script>
 {{ end }}
 
@@ -135,11 +109,11 @@
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Extra:</div>
-                <div class="col-md-8 text-monospace text-break" id="extra-data" aria-extra-data="{{ .Extra }}">{{ .Extra }}</div>
+                <div class="col-md-8 text-monospace text-break" id="extra-data" aria-hex-data="{{ .Extra }}">{{ .Extra }}</div>
                 <div class="col-md-2 text-right">
                   <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                    <label class="btn btn-light text-dark active btn-sm" onclick="viewExtraDataAs('hex')"> <input type="radio" name="options" id="optionHex" /> Hex </label>
-                    <label class="btn btn-light text-dark btn-sm" onclick="viewExtraDataAs('utf-8')"> <input type="radio" name="options" id="optionUTF8" checked /> UTF-8 </label>
+                    <label class="btn btn-light text-dark active btn-sm" onclick="viewHexDataAs('extra-data', 'hex')"> <input type="radio" name="options" id="optionHex" /> Hex </label>
+                    <label class="btn btn-light text-dark btn-sm" onclick="viewHexDataAs('extra-data', 'utf-8')"> <input type="radio" name="options" id="optionUTF8" checked /> UTF-8 </label>
                   </div>
                 </div>
               </div>

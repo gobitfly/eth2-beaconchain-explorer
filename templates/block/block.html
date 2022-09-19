@@ -99,39 +99,8 @@
   </script>
 
   <script>
-    window.addEventListener("popstate", function (event) {
-      event.preventDefault()
-      history.back()
-    })
-  </script>
-  <script type="text/javascript">
-    function viewGraffitiAs(type) {
-      var graffitiHex = $("[aria-graffiti]").attr("aria-graffiti")
-
-      if (!graffitiHex) {
-        return
-      }
-
-      if (type === "hex") {
-        $("#graffiti").text("0x" + graffitiHex)
-      } else {
-        try {
-          var r = decodeURIComponent(graffitiHex.replace(/\s+/g, "").replace(/[0-9a-f]{2}/g, "%$&"))
-          $("#graffiti").text(r)
-        } catch (e) {
-          $("#graffiti").text(hex2a(graffitiHex.replace("0x", "")))
-        }
-      }
-    }
-
-    function hex2a(hexx) {
-      var hex = hexx.toString() //force conversion
-      var str = ""
-      for (var i = 0; i < hex.length; i += 2) str += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
-      return str
-    }
-
-    viewGraffitiAs("utf-8")
+    viewHexDataAs("graffiti", "utf-8")
+    viewHexDataAs("extra-data", "utf-8")
   </script>
 {{ end }}
 
