@@ -653,6 +653,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 	return res, nil
 }
 
+// returns the validator attestation effectiveness in %
 func (bigtable *Bigtable) GetValidatorEffectiveness(validators []uint64, epoch uint64) ([]*types.ValidatorEffectiveness, error) {
 	data, err := bigtable.GetValidatorAttestationHistory(validators, epoch, 100)
 
@@ -663,29 +664,30 @@ func (bigtable *Bigtable) GetValidatorEffectiveness(validators []uint64, epoch u
 	res := make([]*types.ValidatorEffectiveness, 0, len(validators))
 	type readings struct {
 		Count uint64
-		Sum   uint64
+		Sum   float64
 	}
 
-	agg := make(map[uint64]*readings)
+	aggEffectiveness := make(map[uint64]*readings)
 
 	for validator, history := range data {
 		for _, attestation := range history {
-			if agg[validator] == nil {
-				agg[validator] = &readings{}
+			if aggEffectiveness[validator] == nil {
+				aggEffectiveness[validator] = &readings{}
 			}
 			if attestation.InclusionSlot > 0 {
-				agg[validator].Sum += attestation.InclusionSlot - attestation.AttesterSlot - 1
-				agg[validator].Count++
+				// logger.Infof("adding %v for epoch %v %.2f%%", attestation.InclusionSlot, attestation.AttesterSlot, 1.0/float64(attestation.InclusionSlot-attestation.AttesterSlot)*100)
+				aggEffectiveness[validator].Sum += 1.0 / float64(attestation.InclusionSlot-attestation.AttesterSlot)
+				aggEffectiveness[validator].Count++
 			} else {
-				agg[validator].Sum += 32 // missed attestations get a penalty of 32 slots
-				agg[validator].Count++
+				aggEffectiveness[validator].Sum += 0 // missed attestations get a penalty of 32 slots
+				aggEffectiveness[validator].Count++
 			}
 		}
 	}
-	for validator, reading := range agg {
+	for validator, reading := range aggEffectiveness {
 		res = append(res, &types.ValidatorEffectiveness{
 			Validatorindex:        validator,
-			AttestationEfficiency: float64(reading.Sum) / float64(reading.Count),
+			AttestationEfficiency: float64(reading.Sum) / float64(reading.Count) * 100,
 		})
 	}
 

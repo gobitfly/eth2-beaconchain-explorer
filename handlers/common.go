@@ -131,6 +131,10 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		earningsLastMonth += int64(balance.Balance) - balance.Balance31d.Int64
 	}
 
+	if totalDeposits == 0 {
+		totalDeposits = 32 * 1e9
+	}
+
 	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
 	if apr < float64(-1) {
 		apr = float64(-1)

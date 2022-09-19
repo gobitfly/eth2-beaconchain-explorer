@@ -387,7 +387,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 
 	effectiveness, err := db.BigtableClient.GetValidatorEffectiveness(activeValidators, services.LatestEpoch()-1)
 	for _, e := range effectiveness {
-		avgIncDistance = append(avgIncDistance, 100-((1+e.AttestationEfficiency)/32*100))
+		avgIncDistance = append(avgIncDistance, e.AttestationEfficiency)
 	}
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
