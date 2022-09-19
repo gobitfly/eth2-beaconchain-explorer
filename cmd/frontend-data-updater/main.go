@@ -8,14 +8,12 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"flag"
-	"fmt"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
 )
 
 func main() {
-
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
 	flag.Parse()
 
@@ -27,7 +25,19 @@ func main() {
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
 
-	db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	// ctx, done := context.WithTimeout(context.Background(), time.Second*30)
+	// defer done()
+	// db.MustInitBigtableAdmin(ctx, cfg.Bigtable.Project, cfg.Bigtable.Instance)
+
+	// err = db.BigAdminClient.SetupBigtableCache()
+	// if err != nil {
+	// 	logrus.Fatalf("error setting up bigtable cache err: %v", err)
+	// }
+
+	// bigClient, err := db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	// if err != nil {
+	// 	logrus.Fatalf("error initializing bigtable %v", err)
+	// }
 
 	db.MustInitDB(&types.DatabaseConfig{
 		Username: cfg.WriterDatabase.Username,
@@ -44,6 +54,8 @@ func main() {
 	})
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
+
+	// cache.MustInitTieredCacheBigtable(bigClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 
 	cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
 

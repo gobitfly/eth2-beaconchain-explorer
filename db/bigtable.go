@@ -71,6 +71,10 @@ func (bigtable *Bigtable) Close() {
 	bigtable.client.Close()
 }
 
+func (bigtable *Bigtable) GetClient() *gcp_bigtable.Client {
+	return bigtable.client
+}
+
 func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*types.Validator) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)

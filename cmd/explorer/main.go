@@ -152,9 +152,12 @@ func main() {
 		defer wg.Done()
 		cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
 		logrus.Infof("Tiered Cache initialized. Latest finalized epoch: %v", services.LatestFinalizedEpoch())
+
 	}()
 
 	wg.Wait()
+	// cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	// logrus.Infof("Tiered Cache initialized. Latest finalized epoch: %v", services.LatestFinalizedEpoch())
 
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
