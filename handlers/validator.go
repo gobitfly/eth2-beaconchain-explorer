@@ -559,7 +559,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	} else if len(eff) == 0 {
 		validatorPageData.AttestationInclusionEffectiveness = 0
 	} else {
-		validatorPageData.AttestationInclusionEffectiveness = 100 - ((1 + eff[0].AttestationEfficiency) / 32 * 100)
+		validatorPageData.AttestationInclusionEffectiveness = eff[0].AttestationEfficiency
 	}
 
 	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
@@ -678,7 +678,7 @@ func ValidatorAttestationInclusionEffectiveness(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, services.LatestEpoch())
+	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, services.LatestEpoch()-1)
 	if err != nil {
 		logger.Errorf("error retrieving validator effectiveness: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -701,7 +701,7 @@ func ValidatorAttestationInclusionEffectiveness(w http.ResponseWriter, r *http.R
 			return
 		}
 	} else {
-		err = json.NewEncoder(w).Encode(resp{Effectiveness: 100 - ((1 + eff[0].AttestationEfficiency) / 32 * 100)})
+		err = json.NewEncoder(w).Encode(resp{Effectiveness: eff[0].AttestationEfficiency})
 		if err != nil {
 			logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
