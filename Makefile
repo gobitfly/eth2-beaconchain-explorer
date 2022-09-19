@@ -5,7 +5,7 @@ BUILDDATE=`date -u +"%Y-%m-%dT%H:%M:%S%:z"`
 PACKAGE=eth2-exporter
 LDFLAGS="-X ${PACKAGE}/version.Version=${VERSION} -X ${PACKAGE}/version.BuildDate=${BUILDDATE} -X ${PACKAGE}/version.GitCommit=${GITCOMMIT} -X ${PACKAGE}/version.GitDate=${GITDATE}"
 
-all: explorer stats
+all: explorer stats frontend-data-updater
 
 lint:
 	golint ./...
@@ -29,3 +29,6 @@ chartshotter:
 
 stats:
 	go build --ldflags=${LDFLAGS} -o bin/statistics cmd/statistics/main.go
+
+frontend-data-updater:
+	go build --ldflags=${LDFLAGS} -o bin/frontend-data-updater cmd/frontend-data-updater/main.go
