@@ -1208,7 +1208,7 @@ func getUrlPart(validatorIndex uint64) string {
 // It looks 10 epochs back for when the balance increased the last time, this means if the explorer is not running for 10 epochs it is possible
 // that no new notification is sent even if there was a balance-increase.
 func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	latestEpoch := LatestEpoch()
+	latestEpoch := LatestFinalizedEpoch()
 	if latestEpoch < 3 {
 		return nil
 	}
@@ -1267,7 +1267,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 }
 
 func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
-	latestEpoch := LatestEpoch()
+	latestEpoch := LatestFinalizedEpoch()
 
 	type dbResult struct {
 		ValidatorIndex uint64 `db:"validatorindex"`
@@ -1436,7 +1436,7 @@ func (n *validatorProposalNotification) GetInfoMarkdown() string {
 }
 
 func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
-	latestEpoch := LatestEpoch()
+	latestEpoch := LatestFinalizedEpoch()
 	// latestSlot := LatestSlot()
 
 	pubkeys, subMap, err := db.GetSubsForEventFilter(types.ValidatorMissedAttestationEventName)
@@ -1697,7 +1697,7 @@ func (n *validatorGotSlashedNotification) GetInfoMarkdown() string {
 }
 
 func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	latestEpoch := LatestEpoch()
+	latestEpoch := LatestFinalizedEpoch()
 	if latestEpoch == 0 {
 		return nil
 	}
@@ -2024,7 +2024,7 @@ func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[ty
 }
 
 func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName, query string) error {
-	latestEpoch := LatestEpoch()
+	latestEpoch := LatestFinalizedEpoch()
 	if latestEpoch == 0 {
 		return nil
 	}
@@ -2639,7 +2639,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 			continue
 		}
 
-		currentEpoch := LatestEpoch()
+		currentEpoch := LatestFinalizedEpoch()
 		if sub.LastEpoch != nil {
 			lastSentEpoch := *sub.LastEpoch
 			if lastSentEpoch >= currentEpoch-80 || currentEpoch < sub.CreatedEpoch {
