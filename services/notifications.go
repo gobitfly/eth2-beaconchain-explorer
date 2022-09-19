@@ -131,8 +131,8 @@ func notificationsSender() {
 		// check if the explorer is not too far behind, if we set this value to close (10m) it could potentially never send any notifications
 		// if IsSyncing() {
 
-		if time.Now().Add(time.Minute * -20).After(utils.EpochToTime(LatestEpoch())) {
-			logger.Infof("skipping notifications because the explorer is syncing, latest epoch: %v", LatestEpoch())
+		if time.Now().Add(time.Minute * -20).After(utils.EpochToTime(LatestFinalizedEpoch())) {
+			logger.Infof("skipping notifications because the explorer is syncing, latest epoch: %v", LatestFinalizedEpoch())
 			time.Sleep(time.Second * 60)
 			continue
 		}
