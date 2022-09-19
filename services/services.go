@@ -568,7 +568,7 @@ func LatestFinalizedEpoch() uint64 {
 	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
 		return wanted
 	} else {
-		logger.Errorf("error retrieving latestFinalized from cache: %v", err)
+		logger.Errorf("error retrieving latestFinalized for key: %v from cache: %v", cacheKey, err)
 	}
 	return 0
 }

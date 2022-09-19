@@ -842,3 +842,13 @@ func GenerateQRCodeForAddress(address []byte) (string, string, error) {
 
 	return base64.StdEncoding.EncodeToString(png), base64.StdEncoding.EncodeToString(pngInverse), nil
 }
+
+// sliceContains reports whether the provided string is present in the given slice of strings.
+func SliceContains(list []string, target string) bool {
+	for _, s := range list {
+		if s == target {
+			return true
+		}
+	}
+	return false
+}

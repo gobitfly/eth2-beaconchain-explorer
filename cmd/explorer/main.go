@@ -151,6 +151,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 		cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
+		logrus.Infof("Tiered Cache initialized. Latest finalized epoch: %v", services.LatestFinalizedEpoch())
 	}()
 
 	wg.Wait()

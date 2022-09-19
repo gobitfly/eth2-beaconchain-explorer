@@ -120,6 +120,63 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	ef := new(big.Float).SetInt(new(big.Int).SetBytes(metadata.EthBalance.Balance))
 	etherBalance := new(big.Float).Quo(ef, big.NewFloat(1e18))
 	ethPrice := new(big.Float).Mul(etherBalance, big.NewFloat(float64(price)))
+	tabs := []types.Eth1AddressPageTabs{}
+
+	// if txns != nil && len(txns.Data) != 0 {
+	// 	tabs = append(tabs, types.Eth1AddressPageTabs{
+	// 		Id:   "transactions",
+	// 		Href: "#transactions",
+	// 		Text: "Transactions",
+	// 	})
+	// }
+	if internal != nil && len(internal.Data) != 0 {
+		tabs = append(tabs, types.Eth1AddressPageTabs{
+			Id:   "internalTxns",
+			Href: "#internalTxns",
+			Text: "Internal Txns",
+			Data: internal,
+		})
+	}
+	if erc20 != nil && len(erc20.Data) != 0 {
+		tabs = append(tabs, types.Eth1AddressPageTabs{
+			Id:   "erc20Txns",
+			Href: "#erc20Txns",
+			Text: "Erc20 Token Txns",
+			Data: erc20,
+		})
+	}
+	if erc721 != nil && len(erc721.Data) != 0 {
+		tabs = append(tabs, types.Eth1AddressPageTabs{
+			Id:   "erc721Txns",
+			Href: "#erc721Txns",
+			Text: "Erc721 Token Txns",
+			Data: erc721,
+		})
+	}
+	if blocksMined != nil && len(blocksMined.Data) != 0 {
+		tabs = append(tabs, types.Eth1AddressPageTabs{
+			Id:   "blocks",
+			Href: "#blocks",
+			Text: "Produced Blocks",
+			Data: blocksMined,
+		})
+	}
+	if unclesMined != nil && len(unclesMined.Data) != 0 {
+		tabs = append(tabs, types.Eth1AddressPageTabs{
+			Id:   "uncles",
+			Href: "#uncles",
+			Text: "Produced Uncles",
+			Data: unclesMined,
+		})
+	}
+	if erc1155 != nil && len(erc1155.Data) != 0 {
+		tabs = append(tabs, types.Eth1AddressPageTabs{
+			Id:   "erc1155Txns",
+			Href: "#erc1155Txns",
+			Text: "Erc1155 Token Txns",
+			Data: erc1155,
+		})
+	}
 
 	data.Data = types.Eth1AddressPageData{
 		Address:           address,
@@ -134,6 +191,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		BlocksMinedTable:  blocksMined,
 		UnclesMinedTable:  unclesMined,
 		EtherValue:        utils.FormatEtherValue(symbol, ethPrice, GetCurrentPriceFormatted(r)),
+		Tabs:              tabs,
 	}
 
 	if utils.Config.Frontend.Debug {

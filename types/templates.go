@@ -1414,6 +1414,14 @@ type Eth1AddressPageData struct {
 	Erc721Table       *DataTableResponse
 	Erc1155Table      *DataTableResponse
 	EtherValue        template.HTML
+	Tabs              []Eth1AddressPageTabs
+}
+
+type Eth1AddressPageTabs struct {
+	Id   string
+	Href string
+	Text string
+	Data *DataTableResponse
 }
 
 type Eth1AddressMetadata struct {
