@@ -498,8 +498,8 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 	startPadded := reversedPaddedBlockNumber(start)
 	endPadded := reversedPaddedBlockNumber(start - limit)
 
-	logger.Info(start, start-limit)
-	logger.Info(startPadded, " ", endPadded)
+	// logger.Info(start, start-limit)
+	// logger.Info(startPadded, " ", endPadded)
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 

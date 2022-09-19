@@ -128,6 +128,10 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 		length = start
 	}
 
+	if length == start && length == 0 {
+		return nil, fmt.Errorf("invalid block range provided (start: %v, length: %v)", start, length)
+	}
+
 	blocks, err := db.BigtableClient.GetBlocksDescending(start, length)
 	if err != nil {
 		return nil, err
