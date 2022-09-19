@@ -36,6 +36,7 @@ type Config struct {
 	Eth1GethEndpoint   string `yaml:"eth1GethEndpoint" envconfig:"ETH1_GETH_ENDPOINT"`
 	EtherscanAPIKey    string `yaml:"etherscanApiKey" envconfig:"ETHERSCAN_API_KEY"`
 	RedisCacheEndpoint string `yaml:"redicCacheEndpoint" envconfig:"REDIC_CACHE_ENDPOINT"`
+	TierdCacheProvider string `yaml:"tierdCacheProvider" envconfig:"CACHE_PROVIDER"`
 	Indexer            struct {
 		Enabled                     bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
 		FixCanonOnStartup           bool `yaml:"fixCanonOnStartup" envconfig:"INDEXER_FIX_CANON_ON_STARTUP"`
