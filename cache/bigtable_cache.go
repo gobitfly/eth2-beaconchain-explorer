@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	TABLE_CACHE        = "cache"
 	FAMILY_TEN_MINUTES = "10_min"
 	FAMILY_ONE_HOUR    = "1_hour"
 	FAMILY_ONE_DAY     = "1_day"
@@ -32,7 +33,7 @@ func SetupBigtableCache() {
 func InitBigtableCache(client *gcp_bigtable.Client, chainId string) *BigtableCache {
 	bt := &BigtableCache{
 		client:     client,
-		tableCache: client.Open("cache"),
+		tableCache: client.Open(TABLE_CACHE),
 		chainId:    chainId,
 	}
 
