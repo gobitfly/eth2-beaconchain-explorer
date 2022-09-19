@@ -204,10 +204,12 @@
                     text: {{.HistoricPoolPerformance.Data.YAxisTitle}}
                 },
                 opposite: false,
+                startOnTick: false,
+                endOnTick: false,
                 labels: {
                     formatter: function () {
                         var orig = this.axis.defaultLabelFormatter.call(this)
-                        return `${orig}%`
+                        return `${Math.round(orig * 100)/ 100}%`
                     }
                 }
             }],

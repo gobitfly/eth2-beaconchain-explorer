@@ -274,12 +274,13 @@ func activeValidatorsChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Validators",
-		Subtitle:     "History of daily active validators.",
-		XAxisTitle:   "",
-		YAxisTitle:   "# of Validators",
-		StackingMode: "false",
-		Type:         "column",
+		Title:                           "Validators",
+		Subtitle:                        "History of daily active validators.",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "# of Validators",
+		StackingMode:                    "false",
+		Type:                            "column",
+		ColumnDataGroupingApproximation: "close",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "# of Validators",
@@ -317,12 +318,13 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Staked Ether",
-		Subtitle:     "History of daily staked Ether, which is the sum of all Effective Balances.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Ether",
-		StackingMode: "false",
-		Type:         "column",
+		Title:                           "Staked eEther",
+		Subtitle:                        "History of daily staked Ether, which is the sum of all Effective Balances.",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Ether",
+		StackingMode:                    "false",
+		Type:                            "column",
+		ColumnDataGroupingApproximation: "close",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Staked Ether",
@@ -360,12 +362,13 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Validator Balance",
-		Subtitle:     "Average Daily Validator Balance.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Ether",
-		StackingMode: "false",
-		Type:         "column",
+		Title:                           "Validator Balance",
+		Subtitle:                        "Average Daily Validator Balance.",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Ether",
+		StackingMode:                    "false",
+		Type:                            "column",
+		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Average Balance [ETH]",
