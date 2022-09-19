@@ -7,7 +7,6 @@ import (
 	"time"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
-	gocache "github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 )
 
@@ -21,15 +20,26 @@ const (
 type BigtableCache struct {
 	client *gcp_bigtable.Client
 
-	tableCache   *gcp_bigtable.Table
-	localGoCache gocache.Cache
+	tableCache *gcp_bigtable.Table
 
 	chainId string
 }
 
-func (cache *BigtableCache) Set(key string, value any, expiration time.Duration) error {
-	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
-	defer done()
+func SetupBigtableCache() {
+
+}
+
+func InitBigtableCache(client *gcp_bigtable.Client, chainId string) *BigtableCache {
+	bt := &BigtableCache{
+		client:     client,
+		tableCache: client.Open("cache"),
+		chainId:    chainId,
+	}
+
+	return bt
+}
+
+func (cache *BigtableCache) Set(ctx context.Context, key string, value any, expiration time.Duration) error {
 
 	family := FAMILY_TEN_MINUTES
 	if expiration.Minutes() >= 60 {
@@ -76,33 +86,16 @@ func (cache *BigtableCache) setByte(ctx context.Context, key string, value []byt
 	return nil
 }
 
-func (cache *BigtableCache) SetString(key, value string, expiration time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-
-	cache.localGoCache.Set(key, value, expiration)
+func (cache *BigtableCache) SetString(ctx context.Context, key, value string, expiration time.Duration) error {
 	return cache.setByte(ctx, key, []byte(value), expiration)
 }
 
-func (cache *BigtableCache) SetUint64(key string, value uint64, expiration time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-
-	cache.localGoCache.Set(key, value, expiration)
+func (cache *BigtableCache) SetUint64(ctx context.Context, key string, value uint64, expiration time.Duration) error {
 	return cache.setByte(ctx, key, ui64tob(value), expiration)
 }
 
-func (cache *BigtableCache) GetWithLocalTimeout(key string, localExpiration time.Duration, returnValue interface{}) (interface{}, error) {
-	// try to retrieve the key from the local cache
-	wanted, found := cache.localGoCache.Get(key)
-	if found {
-		return wanted, nil
-	}
-
-	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
-	defer done()
-
-	res, err := cache.getByteWithLocalTimeout(ctx, key)
+func (cache *BigtableCache) Get(ctx context.Context, key string, returnValue any) (any, error) {
+	res, err := cache.getByte(ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -114,11 +107,10 @@ func (cache *BigtableCache) GetWithLocalTimeout(key string, localExpiration time
 		return nil, err
 	}
 
-	cache.localGoCache.Set(key, returnValue, localExpiration)
 	return returnValue, nil
 }
 
-func (cache *BigtableCache) getByteWithLocalTimeout(ctx context.Context, key string) ([]byte, error) {
+func (cache *BigtableCache) getByte(ctx context.Context, key string) ([]byte, error) {
 	filter := gcp_bigtable.ChainFilters(
 		gcp_bigtable.ColumnFilter("d"),
 		gcp_bigtable.LatestNFilter(1),
@@ -151,46 +143,23 @@ func (cache *BigtableCache) getByteWithLocalTimeout(ctx context.Context, key str
 	return res.Value, nil
 }
 
-func (cache *BigtableCache) GetUint64WithLocalTimeout(key string, localExpiration time.Duration) (uint64, error) {
-	// try to retrieve the key from the local cache
-	wanted, found := cache.localGoCache.Get(key)
-	if found {
-		return wanted.(uint64), nil
-	}
+func (cache *BigtableCache) GetUint64(ctx context.Context, key string) (uint64, error) {
 
-	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
-	defer done()
-
-	res, err := cache.getByteWithLocalTimeout(ctx, key)
+	res, err := cache.getByte(ctx, key)
 	if err != nil {
 		return 0, err
 	}
 
-	returnValue := btoi64(res)
-
-	cache.localGoCache.Set(key, returnValue, localExpiration)
-	return returnValue, nil
+	return btoi64(res), nil
 }
 
-func (cache *BigtableCache) GetStringWithLocalTimeout(key string, localExpiration time.Duration) (string, error) {
-	// try to retrieve the key from the local cache
-	wanted, found := cache.localGoCache.Get(key)
-	if found {
-		return wanted.(string), nil
-	}
+func (cache *BigtableCache) GetString(ctx context.Context, key string) (string, error) {
 
-	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
-	defer done()
-
-	res, err := cache.getByteWithLocalTimeout(ctx, key)
+	res, err := cache.getByte(ctx, key)
 	if err != nil {
 		return "", err
 	}
-
-	returnValue := string(res)
-
-	cache.localGoCache.Set(key, returnValue, localExpiration)
-	return returnValue, nil
+	return string(res), nil
 }
 
 func ui64tob(val uint64) []byte {
