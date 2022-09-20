@@ -618,6 +618,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validators.validatorindex = $1`, index)
 	if err == nil && (validatorPageData.Rocketpool.MinipoolAddress != nil || validatorPageData.Rocketpool.NodeAddress != nil) {
 		validatorPageData.IsRocketpool = true
+		if utils.Config.Chain.Config.DepositChainID == 1 {
+			validatorPageData.Rocketpool.RocketscanUrl = "rocketscan.io"
+		} else if utils.Config.Chain.Config.DepositChainID == 5 {
+			validatorPageData.Rocketpool.RocketscanUrl = "prater.rocketscan.io"
+		}
 	} else if err != nil && err != sql.ErrNoRows {
 		logger.Errorf("error getting rocketpool-data for validator for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
