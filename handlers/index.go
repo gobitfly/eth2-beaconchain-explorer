@@ -39,7 +39,7 @@ var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateF
 // Index will return the main "index" page using a go template
 func Index(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "index", "", "Index")
+	data := InitPageData(w, r, "index", "", "")
 	data.Data = services.LatestIndexPageData()
 
 	if data.Debug {

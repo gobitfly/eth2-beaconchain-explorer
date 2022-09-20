@@ -17,11 +17,17 @@ import (
 )
 
 func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string) *types.PageData {
+	fullTitle := fmt.Sprintf("%v - %v - beaconcha.in - %v", title, utils.Config.Frontend.SiteName, time.Now().Year())
+
+	if fullTitle == "" {
+		fullTitle = fmt.Sprintf("%v - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year())
+	}
+
 	user := getUser(r)
 	data := &types.PageData{
 		HeaderAd: false,
 		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - %v - beaconcha.in - %v", title, utils.Config.Frontend.SiteName, time.Now().Year()),
+			Title:       fullTitle,
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        path,
 			GATag:       utils.Config.Frontend.GATag,
