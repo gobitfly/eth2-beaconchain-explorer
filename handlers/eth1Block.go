@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -23,9 +22,6 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 
-	data := InitPageData(w, r, "block", "/block", "Execution Block")
-	data.HeaderAd = true
-
 	// parse block number from url
 	numberString := strings.Replace(vars["block"], "0x", "", -1)
 	var number uint64
@@ -35,7 +31,9 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	} else {
 		number, err = strconv.ParseUint(numberString, 10, 64)
 	}
+
 	if err != nil {
+		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", 0))
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
 			logger.Errorf("a error executing template for %v route: %v", r.URL.String(), err)
@@ -45,6 +43,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number))
 	eth1BlockPageData, err := GetExecutionBlockPageData(number)
 	if err != nil {
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
@@ -78,9 +77,9 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		blockPageData.ExecutionData = eth1BlockPageData
+
+		data.HeaderAd = true
 		data.Data = blockPageData
-		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, eth1BlockPageData.Number, time.Now().Year())
-		data.Meta.Path = fmt.Sprintf("/block/%v", blockPageData.Slot)
 
 		err = blockTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -91,6 +90,8 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Pre  Merge PoW Block
+		data := InitPageData(w, r, "block", "/block", fmt.Sprintf("Block %d", eth1BlockPageData.Number))
+		data.HeaderAd = true
 		data.Data = eth1BlockPageData
 		err = preMergeBlockTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
