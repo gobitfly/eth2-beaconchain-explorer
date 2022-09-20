@@ -119,13 +119,11 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 }
 
 func SetPageDataTitle(pageData *types.PageData, title string) {
-	fullTitle := fmt.Sprintf("%v - %v - beaconcha.in - %v", title, utils.Config.Frontend.SiteName, time.Now().Year())
-
 	if title == "" {
-		fullTitle = fmt.Sprintf("%v - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year())
+		pageData.Meta.Title = fmt.Sprintf("%v - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year())
+	} else {
+		pageData.Meta.Title = fmt.Sprintf("%v - %v - beaconcha.in - %v", title, utils.Config.Frontend.SiteName, time.Now().Year())
 	}
-
-	pageData.Meta.Title = fullTitle
 }
 
 func getUser(r *http.Request) *types.User {
