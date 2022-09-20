@@ -1836,9 +1836,9 @@ func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, search 
 		reward := new(big.Int).Add(utils.Eth1BlockReward(b.Number, b.Difficulty), new(big.Int).SetBytes(b.TxReward))
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(b.Hash),
 			utils.FormatBlockNumber(b.Number),
 			utils.FormatTimeFromNow(b.Time.AsTime()),
+			utils.FormatBlockUsage(b.GasUsed, b.GasLimit),
 			utils.FormatAmount(reward, "ETH", 6),
 		}
 	}

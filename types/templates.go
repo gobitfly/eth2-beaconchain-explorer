@@ -1630,7 +1630,7 @@ type Eth1BlockPageData struct {
 	Reward         *big.Int
 	MevReward      *big.Int
 	TxFees         *big.Int
-	GasUsage       uint64
+	GasUsage       template.HTML
 	GasLimit       uint64
 	LowestGasPrice *big.Int
 	Ts             time.Time

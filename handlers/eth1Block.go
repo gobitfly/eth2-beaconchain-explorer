@@ -56,14 +56,13 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// execute template based on whether block is pre or post merge
-	if eth1BlockPageData.Difficulty.Cmp(big.NewInt(0)) == 0 /* || eth1BlockPageData.Number >= 14477303 */ {
+	if eth1BlockPageData.Difficulty.Cmp(big.NewInt(0)) == 0 {
 		// Post Merge PoS Block
 
 		// calculate PoS slot number based on block timestamp
 		blockSlot := (uint64(eth1BlockPageData.Ts.Unix()) - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.Config.SecondsPerSlot
 
 		// retrieve consensus data
-		// execution data is set in GetSlotPageData
 		blockPageData, err := GetSlotPageData(blockSlot)
 		if err != nil {
 			logger.Errorf("error retrieving slot page data: %v", err)
@@ -206,7 +205,7 @@ func GetExecutionBlockPageData(number uint64) (*types.Eth1BlockPageData, error) 
 		Reward:         blockReward,
 		MevReward:      db.CalculateMevFromBlock(block),
 		TxFees:         txFees,
-		GasUsage:       block.GasUsed,
+		GasUsage:       utils.FormatBlockUsage(block.GasUsed, block.GasLimit),
 		GasLimit:       block.GasLimit,
 		LowestGasPrice: lowestGasPrice,
 		Ts:             block.GetTime().AsTime(),

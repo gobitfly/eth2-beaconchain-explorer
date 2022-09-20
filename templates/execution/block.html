@@ -75,7 +75,11 @@
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Gas Usage:</div>
-                <div class="col-md-10">{{ formatAddCommas .GasUsage }} of {{ formatAddCommas .GasLimit }}</div>
+                <div class="col-md-10">{{ .GasUsage }}</div>
+              </div>
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-2">Gas Limit:</div>
+                <div class="col-md-10">{{ formatAddCommas .GasLimit }}</div>
               </div>
               {{ if gt .TxCount 0 }}
                 <div class="row border-bottom p-3 mx-0">
