@@ -27,8 +27,6 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 
 	address := common.FromHex(strings.TrimPrefix(r.URL.Query().Get("a"), "0x"))
 
-	data := InitPageData(w, r, "blockchain", "/token", "token")
-
 	// priceEth := GetCurrentPrice(r)
 	// symbol := GetCurrencySymbol(r)
 
@@ -100,18 +98,18 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	data := InitPageData(w, r, "blockchain", "/token", fmt.Sprintf("Token 0x%x", token))
+
 	data.Data = types.Eth1TokenPageData{
-		Token:          fmt.Sprintf("%x", token),
-		Address:        fmt.Sprintf("%x", address),
-		TransfersTable: txns,
-		Metadata:       metadata,
-		Balance:        balance,
-		QRCode:         pngStr,
-		QRCodeInverse:  pngStrInverse,
-		MarketCap:      template.HTML("$" + utils.FormatThousandsEnglish(fmt.Sprintf("%.2f", marketCap))),
-		SocialProfiles: template.HTML(`
-		<a class="text-muted" data-placement="top" data-toggle="tooltip" data-original-title="Twitter - Beaconchain explorer" rel="nofollow" target="_blank" href="https://twitter.com/beaconcha_in"><span class="fab fa-twitter"></span></a>
-		`),
+		Token:            fmt.Sprintf("%x", token),
+		Address:          fmt.Sprintf("%x", address),
+		TransfersTable:   txns,
+		Metadata:         metadata,
+		Balance:          balance,
+		QRCode:           pngStr,
+		QRCodeInverse:    pngStrInverse,
+		MarketCap:        template.HTML("$" + utils.FormatThousandsEnglish(fmt.Sprintf("%.2f", marketCap))),
+		SocialProfiles:   template.HTML(``),
 		Holders:          template.HTML(`<span>500</span>`),
 		Transfers:        template.HTML(`<span>10,000</span>`),
 		DilutedMarketCap: template.HTML("$" + utils.FormatThousandsEnglish(fmt.Sprintf("%.2f", marketCap))),

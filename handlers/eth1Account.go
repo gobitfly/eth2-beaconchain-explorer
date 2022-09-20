@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
 	"html/template"
 	"math/big"
 	"net/http"
@@ -28,7 +29,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	symbol := GetCurrencySymbol(r)
 
 	addressBytes := common.FromHex(address)
-	data := InitPageData(w, r, "blockchain", "/address", "Address")
+	data := InitPageData(w, r, "blockchain", "/address", fmt.Sprintf("Address 0x%x", addressBytes))
 
 	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address))
 	if err != nil {
