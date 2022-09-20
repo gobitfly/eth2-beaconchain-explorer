@@ -92,55 +92,12 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid query", 400)
 		return
 	}
-	queryValidatorsArr := pq.Array(queryValidators)
 
-	// get data from one week before latest epoch
-	latestEpoch := services.LatestEpoch()
-
-	var incomeHistory []*types.ValidatorIncomeHistory
-	err = db.ReaderDb.Select(&incomeHistory, "SELECT day, COALESCE(SUM(start_balance),0) AS start_balance, COALESCE(SUM(end_balance),0) AS end_balance, COALESCE(SUM(deposits_amount), 0) AS deposits_amount FROM validator_stats WHERE validatorindex = ANY($1) GROUP BY day ORDER BY day;", queryValidatorsArr)
+	incomeHistoryChartData, err := db.GetValidatorIncomeHistoryChart(queryValidators, currency)
 	if err != nil {
-		logger.Errorf("error retrieving validator balance history: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Errorf("failed to genereate income history chart data for dashboard view: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
-	}
-	var currentBalance uint64
-	err = db.ReaderDb.Get(&currentBalance, "SELECT SUM(balance) as balance FROM validators WHERE validatorindex = ANY($1) AND status <> 'deposited'", queryValidatorsArr)
-	if err != nil {
-		logger.Errorf("error retrieving validator current balance: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
-
-	incomeHistoryChartData := make([]*types.ChartDataPoint, len(incomeHistory)+1)
-
-	if len(incomeHistory) > 0 {
-		for i := 0; i < len(incomeHistory); i++ {
-			var income int64
-			if i == len(incomeHistory)-1 {
-				income = incomeHistory[i].EndBalance - incomeHistory[i].StartBalance - incomeHistory[i].Deposits
-			} else {
-				income = incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance - incomeHistory[i].Deposits
-			}
-			color := "#7cb5ec"
-			if income < 0 {
-				color = "#f7a35c"
-			}
-			change := utils.ExchangeRateForCurrency(currency) * (float64(income) / 1000000000)
-			balanceTs := utils.DayToTime(incomeHistory[i].Day)
-			incomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: change, Color: color}
-		}
-
-		lastDayBalance := incomeHistory[len(incomeHistory)-1].EndBalance
-		lastDayIncome := int64(currentBalance) - lastDayBalance
-		lastDayIncomeColor := "#7cb5ec"
-		if lastDayIncome < 0 {
-			lastDayIncomeColor = "#f7a35c"
-		}
-
-		currentDay := latestEpoch / ((24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot)
-
-		incomeHistoryChartData[len(incomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(int64(currentDay)).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor}
 	}
 
 	err = json.NewEncoder(w).Encode(incomeHistoryChartData)

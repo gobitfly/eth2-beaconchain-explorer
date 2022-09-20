@@ -435,62 +435,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("attestations data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
-	var incomeHistory []*types.ValidatorIncomeHistory
-	err = db.ReaderDb.Select(&incomeHistory, "select day, coalesce(start_balance, 0) as start_balance, coalesce(end_balance, 0) as end_balance, coalesce(deposits_amount, 0) as deposits_amount from validator_stats where validatorindex = $1 order by day;", index)
+	validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency)
 	if err != nil {
-		logger.Errorf("error retrieving validator balance history: %v", err)
+		logger.Errorf("failed to generate income history chart data for validator view: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
-	}
-
-	validatorPageData.IncomeHistoryChartData = make([]*types.ChartDataPoint, len(incomeHistory)+1)
-
-	lastDayDepositsSum := uint64(0)
-	for _, d := range deposits.Eth2Deposits {
-		if len(incomeHistory) > 0 && utils.DayOfSlot(d.BlockSlot) <= uint64(incomeHistory[len(incomeHistory)-1].Day) {
-			continue
-		}
-		lastDayDepositsSum += d.Amount
-	}
-
-	currentDay := validatorPageData.Epoch / ((24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot)
-
-	if len(incomeHistory) > 0 {
-		for i := 0; i < len(incomeHistory); i++ {
-			var income int64
-			if i == len(incomeHistory)-1 {
-				income = incomeHistory[i].EndBalance - incomeHistory[i].StartBalance - incomeHistory[i].Deposits
-			} else {
-				income = incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance - incomeHistory[i].Deposits
-			}
-			color := "#7cb5ec"
-			if income < 0 {
-				color = "#f7a35c"
-			}
-			balanceTs := utils.DayToTime(incomeHistory[i].Day)
-			validatorPageData.IncomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(income) / 1000000000), Color: color}
-		}
-
-		lastDayBalance := incomeHistory[len(incomeHistory)-1].EndBalance
-		lastDayIncome := int64(validatorPageData.CurrentBalance) - lastDayBalance - int64(lastDayDepositsSum)
-		lastDayIncomeColor := "#7cb5ec"
-		if lastDayIncome < 0 {
-			lastDayIncomeColor = "#f7a35c"
-		}
-
-		validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(int64(currentDay)).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor}
-	} else if len(incomeHistory) == 0 && validatorPageData.ActivationEpoch < services.LatestEpoch() {
-		lastDayBalance := int64(0)
-		lastDayIncome := int64(validatorPageData.CurrentBalance) - lastDayBalance - int64(lastDayDepositsSum)
-		lastDayIncomeColor := "#7cb5ec"
-		if lastDayIncome < 0 {
-			lastDayIncomeColor = "#f7a35c"
-		}
-		validatorPageData.IncomeHistoryChartData = []*types.ChartDataPoint{
-			{X: float64(utils.DayToTime(int64(currentDay)).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor},
-		}
-	} else {
-		validatorPageData.IncomeHistoryChartData = []*types.ChartDataPoint{}
 	}
 
 	// logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
@@ -1460,26 +1409,29 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for i := len(validatorStatsTablePageData.Rows) - 1; i > 0; i-- {
-		if validatorStatsTablePageData.Rows[i].Day == -1 {
-			continue
-		}
-		validatorStatsTablePageData.Rows[i].EndBalance = validatorStatsTablePageData.Rows[i-1].StartBalance
-		if validatorStatsTablePageData.Rows[i].EndBalance.Valid && validatorStatsTablePageData.Rows[i].StartBalance.Valid {
-			validatorStatsTablePageData.Rows[i].Income = validatorStatsTablePageData.Rows[i].EndBalance.Int64 - validatorStatsTablePageData.Rows[i].StartBalance.Int64
-		}
-		if validatorStatsTablePageData.Rows[i].DepositsAmount.Valid {
-			validatorStatsTablePageData.Rows[i].Income -= validatorStatsTablePageData.Rows[i].DepositsAmount.Int64
-		}
+	balanceData, err := db.GetValidatorIncomeHistory([]uint64{index}, 0, 0)
+
+	if err != nil {
+		logger.Errorf("error retrieving validator income history: %v", err)
+		http.Error(w, "Validator not found", http.StatusNotFound)
+		return
+	}
+	// day => index mapping
+	dayMapping := make(map[int64]int)
+	for i := 0; i < len(validatorStatsTablePageData.Rows); i++ {
+		dayMapping[validatorStatsTablePageData.Rows[i].Day] = i
+
 	}
 
-	if len(validatorStatsTablePageData.Rows) > 0 {
-		if validatorStatsTablePageData.Rows[0].EndBalance.Valid && validatorStatsTablePageData.Rows[0].StartBalance.Valid {
-			validatorStatsTablePageData.Rows[0].Income = validatorStatsTablePageData.Rows[0].EndBalance.Int64 - validatorStatsTablePageData.Rows[0].StartBalance.Int64
+	for i := 0; i < len(balanceData); i++ {
+		j, found := dayMapping[balanceData[i].Day]
+		if !found {
+			continue
 		}
-		if validatorStatsTablePageData.Rows[0].DepositsAmount.Valid {
-			validatorStatsTablePageData.Rows[0].Income -= validatorStatsTablePageData.Rows[0].DepositsAmount.Int64
-		}
+		validatorStatsTablePageData.Rows[j].StartBalance = balanceData[i].StartBalance
+		validatorStatsTablePageData.Rows[j].EndBalance = balanceData[i].EndBalance
+		validatorStatsTablePageData.Rows[j].Income = balanceData[i].Income
+		validatorStatsTablePageData.Rows[j].Deposits = balanceData[i].DepositAmount
 	}
 
 	// if validatorStatsTablePageData.Rows[len(validatorStatsTablePageData.Rows)-1].Day == -1 {

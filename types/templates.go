@@ -446,11 +446,11 @@ type ValidatorBalanceHistory struct {
 
 // ValidatorBalanceHistory is a struct for the validator income history data
 type ValidatorIncomeHistory struct {
-	Day          int64 `db:"day"` // day can be -1 which is pre-genesis
-	Income       int64
-	StartBalance int64 `db:"start_balance" json:"-"`
-	EndBalance   int64 `db:"end_balance" json:"-"`
-	Deposits     int64 `db:"deposits_amount" json:"-"`
+	Day           int64         `db:"day"` // day can be -1 which is pre-genesis
+	Income        int64         `db:"diff"`
+	EndBalance    sql.NullInt64 `db:"end_balance"`
+	StartBalance  sql.NullInt64 `db:"start_balance"`
+	DepositAmount sql.NullInt64 `db:"deposits_amount"`
 }
 
 type ValidatorBalanceHistoryChartData struct {
