@@ -19,7 +19,7 @@ import (
 func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string) *types.PageData {
 	fullTitle := fmt.Sprintf("%v - %v - beaconcha.in - %v", title, utils.Config.Frontend.SiteName, time.Now().Year())
 
-	if fullTitle == "" {
+	if title == "" {
 		fullTitle = fmt.Sprintf("%v - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year())
 	}
 
@@ -121,7 +121,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 func SetPageDataTitle(pageData *types.PageData, title string) {
 	fullTitle := fmt.Sprintf("%v - %v - beaconcha.in - %v", title, utils.Config.Frontend.SiteName, time.Now().Year())
 
-	if fullTitle == "" {
+	if title == "" {
 		fullTitle = fmt.Sprintf("%v - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year())
 	}
 
