@@ -1,0 +1,51 @@
+{{ define "js" }}
+{{ end }}
+
+{{ define "css" }}
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="card">
+      <div class="card-body">
+        <div class="">Total Pending Transactions : (replace this with $kValue)</div>
+      </div>
+    </div>
+    <br>
+    <div class="card">
+        <div class="x">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Hash</th>
+                <th>Value</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Gas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{range .}}
+              <tr>
+                <td> <a href = "tx/{{.Hash}}">{{ .Hash }} </td>
+                <td> {{ formatAmount .Value "ETH" 5 }}</td>
+                <td> {{.From}}</td>
+                <td> {{.To}}</td>
+                <td> {{ formatAmountFormated .Gas "GWei" 1  true }} </td>
+              </tr>
+              {{end}}
+            </tbody>
+          </table>
+        </div>
+    </div>        
+    
+    
+  {{ end }}
+{{ end }}
+
+
+
+
+
+
+
