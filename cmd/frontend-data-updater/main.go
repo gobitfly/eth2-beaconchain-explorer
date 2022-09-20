@@ -56,13 +56,13 @@ func main() {
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 
-	if utils.Config.TierdCacheProvider == "redis" || len(utils.Config.RedisCacheEndpoint) != 0 {
+	if utils.Config.TieredCacheProvider == "redis" || len(utils.Config.RedisCacheEndpoint) != 0 {
 		cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
-	} else if utils.Config.TierdCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
+	} else if utils.Config.TieredCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
 		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 	}
 
-	if utils.Config.TierdCacheProvider != "bigtable" && utils.Config.TierdCacheProvider != "redis" {
+	if utils.Config.TieredCacheProvider != "bigtable" && utils.Config.TieredCacheProvider != "redis" {
 		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis, bigtable)")
 	}
 

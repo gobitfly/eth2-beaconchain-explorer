@@ -26,10 +26,6 @@ type BigtableCache struct {
 	chainId string
 }
 
-func SetupBigtableCache() {
-
-}
-
 func InitBigtableCache(client *gcp_bigtable.Client, chainId string) *BigtableCache {
 	bt := &BigtableCache{
 		client:     client,
