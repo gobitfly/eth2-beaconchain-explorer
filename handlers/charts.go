@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -89,7 +88,7 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data.Meta.Title = fmt.Sprintf("%v - %v Chart - beaconcha.in - %v", chartData.Title, utils.Config.Frontend.SiteName, time.Now().Year())
+	SetPageDataTitle(data, fmt.Sprintf("%v Chart", chartData.Title))
 	data.Meta.Path = "/charts/" + chartVar
 	data.Data = chartData
 

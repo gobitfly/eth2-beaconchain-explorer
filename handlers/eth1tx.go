@@ -9,7 +9,6 @@ import (
 	"html/template"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
@@ -30,7 +29,8 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 	txHash, err := hex.DecodeString(strings.ReplaceAll(txHashString, "0x", ""))
 
 	if err != nil {
-		data.Meta.Title = fmt.Sprintf("%v - Transaction %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, txHashString, time.Now().Year())
+
+		SetPageDataTitle(data, fmt.Sprintf("Transaction %v", txHashString))
 		data.Meta.Path = "/tx/" + txHashString
 		logger.Errorf("error parsing tx hash %v: %v", txHashString, err)
 		err = txNotFoundTemplate.ExecuteTemplate(w, "layout", data)
@@ -43,13 +43,14 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data.Meta.Title = fmt.Sprintf("%v - Tx 0x%x - beaconcha.in - %v", utils.Config.Frontend.SiteName, txHash, time.Now().Year())
+	SetPageDataTitle(data, fmt.Sprintf("Transaction 0x%x", txHash))
 	data.Meta.Path = fmt.Sprintf("/tx/0x%x", txHash)
 
 	txData, err := eth1data.GetEth1Transaction(common.BytesToHash(txHash))
 
 	if err != nil {
-		data.Meta.Title = fmt.Sprintf("%v - Transaction %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, txHashString, time.Now().Year())
+
+		SetPageDataTitle(data, fmt.Sprintf("Transaction 0x%v", txHashString))
 		data.Meta.Path = "/tx/" + txHashString
 		logger.Errorf(" %v", err)
 		err = txNotFoundTemplate.ExecuteTemplate(w, "layout", data)
