@@ -132,8 +132,8 @@ type StatsTopDepositors struct {
 
 // IndexPageData is a struct to hold info for the main web page
 type IndexPageData struct {
-	NetworkName               string `json:"-"`
-	DepositContract           string `json:"-"`
+	NetworkName               string `json:"networkName"`
+	DepositContract           string `json:"depositContract"`
 	ShowSyncingMessage        bool
 	CurrentEpoch              uint64                 `json:"current_epoch"`
 	CurrentFinalizedEpoch     uint64                 `json:"current_finalized_epoch"`
@@ -149,19 +149,19 @@ type IndexPageData struct {
 	DepositThreshold          float64                `json:"deposit_threshold"`
 	ValidatorsRemaining       float64                `json:"validators_remaining"`
 	NetworkStartTs            int64                  `json:"network_start_ts"`
-	MinGenesisTime            int64                  `json:"-"`
+	MinGenesisTime            int64                  `json:"minGenesisTime"`
 	Blocks                    []*IndexPageDataBlocks `json:"blocks"`
 	Epochs                    []*IndexPageDataEpochs `json:"epochs"`
 	StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
 	ActiveValidatorsChartData [][]float64            `json:"active_validators_chart_data"`
-	Subtitle                  template.HTML          `json:"-"`
+	Subtitle                  template.HTML          `json:"subtitle"`
 	Genesis                   bool                   `json:"genesis"`
 	GenesisPeriod             bool                   `json:"genesis_period"`
-	Mainnet                   bool                   `json:"-"`
+	Mainnet                   bool                   `json:"mainnet"`
 	DepositChart              *ChartsPageDataChart
 	DepositDistribution       *ChartsPageDataChart
 	Countdown                 interface{}
-	SlotVizData               SlotVizPageData `json:"-"`
+	SlotVizData               SlotVizPageData `json:"slotVizData"`
 }
 
 type SlotVizPageData struct {
