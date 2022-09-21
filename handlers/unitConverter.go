@@ -1,12 +1,13 @@
 package handlers
 
 import (
+	"eth2-exporter/templates"
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
 )
 
-var unitConverterTemplate = template.Must(template.New("unitConverter").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/unitConverter.html"))
+var unitConverterTemplate = template.Must(template.New("unitConverter").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "unitConverter.html"))
 
 // Faq will return the data from the frequently asked questions (FAQ) using a go template
 func UnitConverter(w http.ResponseWriter, r *http.Request) {

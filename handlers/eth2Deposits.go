@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
@@ -11,7 +12,7 @@ import (
 	"strings"
 )
 
-var eth2DepositsTemplate = template.Must(template.New("eth2Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth2Deposits.html"))
+var eth2DepositsTemplate = template.Must(template.New("eth2Deposits").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "eth2Deposits.html"))
 
 // Eth2Deposits will return information about deposits using a go template
 func Eth2Deposits(w http.ResponseWriter, r *http.Request) {

@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
 )
 
-var graffitiwallTemplate = template.Must(template.New("vis").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/graffitiwall.html"))
+var graffitiwallTemplate = template.Must(template.New("vis").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "graffitiwall.html"))
 
 func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 

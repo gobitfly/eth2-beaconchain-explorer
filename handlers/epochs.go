@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -12,13 +13,12 @@ import (
 	"strconv"
 )
 
-var epochsTemplate = template.Must(template.New("epochs").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epochs.html"))
+var epochsTemplate = template.Must(template.New("epochs").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "epochs.html"))
 
 // Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
 
-	// epochsTemplate = template.Must(template.New("epochs").ParseFiles("templates/layout.html", "templates/epochs.html"))
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "blockchain", "/epochs", "Epochs")
@@ -116,10 +116,6 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		Data:            tableData,
 		PageLength:      length,
 		DisplayStart:    start,
-	}
-
-	if utils.Config.Frontend.Debug {
-		epochsTemplate = template.Must(template.New("epochs").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epochs.html"))
 	}
 
 	err = epochsTemplate.ExecuteTemplate(w, "layout", data)

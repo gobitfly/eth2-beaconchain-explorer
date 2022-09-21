@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"eth2-exporter/mail"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -9,7 +10,7 @@ import (
 	"net/http"
 )
 
-var stakingServicesTemplate = template.Must(template.New("stakingServices").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/stakingServices.html", "templates/components/bannerStakingServices.html"))
+var stakingServicesTemplate = template.Must(template.New("stakingServices").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "stakingServices.html", "components/bannerStakingServices.html"))
 
 func StakingServices(w http.ResponseWriter, r *http.Request) {
 	var err error

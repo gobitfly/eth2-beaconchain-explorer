@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/price"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -18,7 +19,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var eth1TokenTemplate = template.Must(template.New("token").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/token.html"))
+var eth1TokenTemplate = template.Must(template.New("token").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/token.html"))
 
 func Eth1Token(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
@@ -114,10 +115,6 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		Transfers:        template.HTML(`<span>10,000</span>`),
 		DilutedMarketCap: template.HTML("$" + utils.FormatThousandsEnglish(fmt.Sprintf("%.2f", marketCap))),
 		Price:            template.HTML(fmt.Sprintf("<span>$%s</span><span>@ %.6f</span>", string(metadata.Price), ethExchangeRate)),
-	}
-
-	if utils.Config.Frontend.Debug {
-		eth1TokenTemplate = template.Must(template.New("address").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/token.html"))
 	}
 
 	err = eth1TokenTemplate.ExecuteTemplate(w, "layout", data)

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -16,7 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var eth1AddressTemplate = template.Must(template.New("address").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/sprites.html", "templates/execution/address.html"))
+var eth1AddressTemplate = template.Must(template.New("address").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "sprites.html", "execution/address.html"))
 
 func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
@@ -193,10 +194,6 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		UnclesMinedTable:  unclesMined,
 		EtherValue:        utils.FormatEtherValue(symbol, ethPrice, GetCurrentPriceFormatted(r)),
 		Tabs:              tabs,
-	}
-
-	if utils.Config.Frontend.Debug {
-		eth1AddressTemplate = template.Must(template.New("address").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/sprites.html", "templates/execution/address.html"))
 	}
 
 	err = eth1AddressTemplate.ExecuteTemplate(w, "layout", data)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -19,11 +20,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var loginTemplate = template.Must(template.New("login").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/login.html"))
-var registerTemplate = template.Must(template.New("register").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/register.html"))
-var resetPasswordTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/resetPassword.html"))
-var resendConfirmationTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/resendConfirmation.html"))
-var requestResetPaswordTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/requestResetPassword.html"))
+var loginTemplate = template.Must(template.New("login").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "login.html"))
+var registerTemplate = template.Must(template.New("register").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "register.html"))
+var resetPasswordTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "resetPassword.html"))
+var resendConfirmationTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "resendConfirmation.html"))
+var requestResetPaswordTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "requestResetPassword.html"))
 
 var authSessionName = "auth"
 var authResetEmailRateLimit = time.Second * 60 * 2

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -24,20 +25,20 @@ import (
 	"github.com/juliangruber/go-intersect"
 )
 
-var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html",
-	"templates/validator/validator.html",
-	"templates/validator/heading.html",
-	"templates/validator/tables.html",
-	"templates/validator/modals.html",
-	"templates/validator/overview.html",
-	"templates/validator/charts.html",
-	"templates/validator/countdown.html",
+var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
+	"layout.html",
+	"validator/validator.html",
+	"validator/heading.html",
+	"validator/tables.html",
+	"validator/modals.html",
+	"validator/overview.html",
+	"validator/charts.html",
+	"validator/countdown.html",
 
-	"templates/components/flashMessage.html",
-	"templates/components/rocket.html",
+	"components/flashMessage.html",
+	"components/rocket.html",
 ))
-var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator/validatornotfound.html"))
+var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validator/validatornotfound.html"))
 var validatorEditFlash = "edit_validator_flash"
 
 // Validator returns validator data using a go template
@@ -1331,7 +1332,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var validatorStatsTableTemplate = template.Must(template.New("validator_stats").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator_stats_table.html"))
+var validatorStatsTableTemplate = template.Must(template.New("validator_stats").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validator_stats_table.html"))
 
 // Validator returns validator data using a go template
 func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {

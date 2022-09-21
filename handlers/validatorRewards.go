@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -17,7 +18,7 @@ import (
 	"github.com/gorilla/csrf"
 )
 
-var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validatorRewards.html"))
+var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validatorRewards.html"))
 
 // var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub", "aud"}
 

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -24,24 +25,24 @@ import (
 // Hacky AF way to ensure intersect module is imported and not optimised away, unsure why its being optimised away
 var _ = intersect.Simple
 
-var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html",
-	"templates/block/block.html",
-	"templates/block/transactions.html",
-	"templates/block/attestations.html",
-	"templates/block/deposits.html",
-	"templates/block/votes.html",
-	"templates/block/attesterSlashing.html",
-	"templates/block/proposerSlashing.html",
-	"templates/block/exits.html",
-	"templates/block/overview.html",
-	"templates/block/execTransactions.html",
+var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
+	"layout.html",
+	"block/block.html",
+	"block/transactions.html",
+	"block/attestations.html",
+	"block/deposits.html",
+	"block/votes.html",
+	"block/attesterSlashing.html",
+	"block/proposerSlashing.html",
+	"block/exits.html",
+	"block/overview.html",
+	"block/execTransactions.html",
 ))
-var blockFutureTemplate = template.Must(template.New("blockFuture").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html",
-	"templates/block/blockFuture.html",
+var blockFutureTemplate = template.Must(template.New("blockFuture").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
+	"layout.html",
+	"block/blockFuture.html",
 ))
-var blockNotFoundTemplate = template.Must(template.New("blocknotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocknotfound.html"))
+var blockNotFoundTemplate = template.Must(template.New("blocknotfound").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "blocknotfound.html"))
 
 const MaxSlotValue = 137438953503 // we only render a page for blocks up to this slot
 

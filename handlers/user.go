@@ -7,6 +7,7 @@ import (
 	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -28,12 +29,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var notificationCenterParts []string = []string{"templates/layout.html", "templates/user/notificationsCenter.html", "templates/modals.html"}
+var notificationCenterParts []string = []string{"layout.html", "user/notificationsCenter.html", "modals.html"}
 
-var userTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/settings.html"))
-var notificationTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/notifications.html"))
-var notificationsCenterTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles(notificationCenterParts...))
-var authorizeTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/authorize.html"))
+var userTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "user/settings.html"))
+var notificationTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "user/notifications.html"))
+var notificationsCenterTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, notificationCenterParts...))
+var authorizeTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "user/authorize.html"))
 
 func UserAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -886,7 +887,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	data.User = user
 
 	if data.Debug {
-		notificationsCenterTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles(notificationCenterParts...))
+		notificationsCenterTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, notificationCenterParts...))
 		data.DebugTemplates = notificationCenterParts
 	}
 
@@ -2317,7 +2318,7 @@ func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(j, r.URL.String(), nil)
 }
 
-var webhookTemplate *template.Template = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/webhooks.html"))
+var webhookTemplate *template.Template = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "user/webhooks.html"))
 
 // Imprint will show the imprint data using a go template
 func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {

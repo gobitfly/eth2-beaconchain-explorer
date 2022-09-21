@@ -4,6 +4,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -16,7 +17,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var preMergeBlockTemplate = template.Must(template.New("executionBlock").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/block.html", "templates/block/execTransactions.html"))
+var preMergeBlockTemplate = template.Must(template.New("executionBlock").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/block.html", "block/execTransactions.html"))
 
 func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")

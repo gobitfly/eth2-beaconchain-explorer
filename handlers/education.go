@@ -1,12 +1,13 @@
 package handlers
 
 import (
+	"eth2-exporter/templates"
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
 )
 
-var educationServicesTemplate = template.Must(template.New("educationServices").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/educationServices.html"))
+var educationServicesTemplate = template.Must(template.New("educationServices").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "educationServices.html"))
 
 func EducationServices(w http.ResponseWriter, r *http.Request) {
 	var err error

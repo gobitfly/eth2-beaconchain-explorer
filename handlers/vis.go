@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -12,8 +13,8 @@ import (
 	"time"
 )
 
-var visTemplate = template.Must(template.New("vis").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/vis.html"))
-var visVotesTemplate = template.Must(template.New("vis").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/vis_votes.html"))
+var visTemplate = template.Must(template.New("vis").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "vis.html"))
+var visVotesTemplate = template.Must(template.New("vis").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "vis_votes.html"))
 
 // Vis returns the visualizations using a go template
 func Vis(w http.ResponseWriter, r *http.Request) {

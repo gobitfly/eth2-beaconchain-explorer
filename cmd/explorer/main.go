@@ -13,6 +13,7 @@ import (
 	"eth2-exporter/price"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
+	"eth2-exporter/static"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
@@ -535,7 +536,7 @@ func main() {
 			}
 			legalFs := http.FileServer(http.Dir(utils.Config.Frontend.LegalDir))
 			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", legalFs))
-			router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
+			router.PathPrefix("/").Handler(http.FileServer(http.FS(static.Files)))
 
 		}
 
