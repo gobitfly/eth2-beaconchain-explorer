@@ -107,6 +107,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatTimestamp":                         FormatTimestamp,
 		"formatTsWithoutTooltip":                  FormatTsWithoutTooltip,
 		"formatTimestampTs":                       FormatTimestampTs,
+		"formatTime":                              FormatTime,
 		"formatValidatorName":                     FormatValidatorName,
 		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
 		"formatValidatorTags":                     FormatValidatorTags,
