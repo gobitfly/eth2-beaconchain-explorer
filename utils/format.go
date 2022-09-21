@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/protolambda/ztyp/bitfields"
+	"github.com/prysmaticlabs/go-bitfield"
 	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -463,39 +463,38 @@ func Reverse(s string) string {
 }
 
 func FormatBitvector(b []byte) template.HTML {
-	return formatBits(b, false)
+	return formatBits(b, len(b)*8)
 }
 
 func FormatBitlist(b []byte) template.HTML {
-	return formatBits(b, true)
+	p := bitfield.Bitlist(b)
+	return formatBits(p.BytesNoTrim(), int(p.Len()))
 }
 
-func formatBits(b []byte, hasDelimiterBit bool) template.HTML {
+func formatBits(b []byte, length int) template.HTML {
 	var buf strings.Builder
-	buf.WriteString("<div class=\"text-bitfield\">")
+	buf.WriteString("<div class=\"text-bitfield text-monospace\">")
 	perLine := 8
 	for y := 0; y < len(b); y += perLine {
-		start, end := y, y+perLine
-		if end >= len(b) {
-			end = len(b)
+		start, end := y*8, (y+perLine)*8
+		if end >= length {
+			end = length
 		}
 		for x := start; x < end; x++ {
-			v := b[x]
-			var vStr string
-			// if it has a delimiter, and this is the last byte, strip the delimiter bit, and omit the trailing zeroes
-			if hasDelimiterBit && x == end-1 {
-				i := bitfields.BitIndex(v)
-				// mask out the delimit bit
-				v &^= 1 << i
-				// no padding. Reverse to put most significant bit on the right
-				vStr = Reverse(fmt.Sprintf("%b", v))
-			} else {
-				// pad to full 8 bits, don't omit zeroes. Reverse to put most significant bit on the right
-				vStr = Reverse(fmt.Sprintf("%08b", v))
+			if x%8 == 0 {
+				if x != 0 {
+					buf.WriteString("</span> ")
+				}
+				buf.WriteString("<span>")
 			}
-			buf.WriteString(fmt.Sprintf(" <span class=\"text-monospace\">%s</span>", vStr))
+			bit := BitAtVector(b, x)
+			if bit {
+				buf.WriteString("1")
+			} else {
+				buf.WriteString("0")
+			}
 		}
-		buf.WriteString("<br/>")
+		buf.WriteString("</span><br/>")
 	}
 	buf.WriteString("</div>")
 	return template.HTML(buf.String())
