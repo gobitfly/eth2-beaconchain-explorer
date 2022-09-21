@@ -34,7 +34,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 				`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
 				data.BlockNumber)
 			if err != nil {
-				logrus.Warningf("failed to get finalization stats for block %s", data.BlockNumber)
+				logrus.Warningf("failed to get finalization stats for block %v", data.BlockNumber)
 				data.Epoch.Finalized = false
 				data.Epoch.Participation = -1
 			}
@@ -206,7 +206,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 			`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
 			&txPageData.BlockNumber)
 		if err != nil {
-			logrus.Warningf("failed to get finalization stats for block %s", txPageData.BlockNumber)
+			logrus.Warningf("failed to get finalization stats for block %v", txPageData.BlockNumber)
 			txPageData.Epoch.Finalized = false
 			txPageData.Epoch.Participation = -1
 		}
