@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -24,20 +25,20 @@ import (
 	"github.com/juliangruber/go-intersect"
 )
 
-var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html",
-	"templates/validator/validator.html",
-	"templates/validator/heading.html",
-	"templates/validator/tables.html",
-	"templates/validator/modals.html",
-	"templates/validator/overview.html",
-	"templates/validator/charts.html",
-	"templates/validator/countdown.html",
+var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
+	"layout.html",
+	"validator/validator.html",
+	"validator/heading.html",
+	"validator/tables.html",
+	"validator/modals.html",
+	"validator/overview.html",
+	"validator/charts.html",
+	"validator/countdown.html",
 
-	"templates/components/flashMessage.html",
-	"templates/components/rocket.html",
+	"components/flashMessage.html",
+	"components/rocket.html",
 ))
-var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator/validatornotfound.html"))
+var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validator/validatornotfound.html"))
 var validatorEditFlash = "edit_validator_flash"
 
 // Validator returns validator data using a go template
@@ -128,7 +129,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 			validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
-				data.Meta.Title = fmt.Sprintf("%v - Validator %x - beaconcha.in - %v", utils.Config.Frontend.SiteName, pubKey, time.Now().Year())
+
+				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 				err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 				if err != nil {
@@ -220,7 +222,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	// GetAvgOptimalInclusionDistance(index)
 
-	data.Meta.Title = fmt.Sprintf("%v - Validator %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
+	SetPageDataTitle(data, fmt.Sprintf("Validator %v", index))
 	data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
 	// logger.Infof("retrieving data, elapsed: %v", time.Since(start))
@@ -434,62 +436,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("attestations data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
-	var incomeHistory []*types.ValidatorIncomeHistory
-	err = db.ReaderDb.Select(&incomeHistory, "select day, coalesce(start_balance, 0) as start_balance, coalesce(end_balance, 0) as end_balance, coalesce(deposits_amount, 0) as deposits_amount from validator_stats where validatorindex = $1 order by day;", index)
+	validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency)
 	if err != nil {
-		logger.Errorf("error retrieving validator balance history: %v", err)
+		logger.Errorf("failed to generate income history chart data for validator view: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
-	}
-
-	validatorPageData.IncomeHistoryChartData = make([]*types.ChartDataPoint, len(incomeHistory)+1)
-
-	lastDayDepositsSum := uint64(0)
-	for _, d := range deposits.Eth2Deposits {
-		if len(incomeHistory) > 0 && utils.DayOfSlot(d.BlockSlot) <= uint64(incomeHistory[len(incomeHistory)-1].Day) {
-			continue
-		}
-		lastDayDepositsSum += d.Amount
-	}
-
-	currentDay := validatorPageData.Epoch / ((24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot)
-
-	if len(incomeHistory) > 0 {
-		for i := 0; i < len(incomeHistory); i++ {
-			var income int64
-			if i == len(incomeHistory)-1 {
-				income = incomeHistory[i].EndBalance - incomeHistory[i].StartBalance - incomeHistory[i].Deposits
-			} else {
-				income = incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance - incomeHistory[i].Deposits
-			}
-			color := "#7cb5ec"
-			if income < 0 {
-				color = "#f7a35c"
-			}
-			balanceTs := utils.DayToTime(incomeHistory[i].Day)
-			validatorPageData.IncomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(income) / 1000000000), Color: color}
-		}
-
-		lastDayBalance := incomeHistory[len(incomeHistory)-1].EndBalance
-		lastDayIncome := int64(validatorPageData.CurrentBalance) - lastDayBalance - int64(lastDayDepositsSum)
-		lastDayIncomeColor := "#7cb5ec"
-		if lastDayIncome < 0 {
-			lastDayIncomeColor = "#f7a35c"
-		}
-
-		validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(int64(currentDay)).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor}
-	} else if len(incomeHistory) == 0 && validatorPageData.ActivationEpoch < services.LatestEpoch() {
-		lastDayBalance := int64(0)
-		lastDayIncome := int64(validatorPageData.CurrentBalance) - lastDayBalance - int64(lastDayDepositsSum)
-		lastDayIncomeColor := "#7cb5ec"
-		if lastDayIncome < 0 {
-			lastDayIncomeColor = "#f7a35c"
-		}
-		validatorPageData.IncomeHistoryChartData = []*types.ChartDataPoint{
-			{X: float64(utils.DayToTime(int64(currentDay)).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor},
-		}
-	} else {
-		validatorPageData.IncomeHistoryChartData = []*types.ChartDataPoint{}
 	}
 
 	// logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
@@ -559,7 +510,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	} else if len(eff) == 0 {
 		validatorPageData.AttestationInclusionEffectiveness = 0
 	} else {
-		validatorPageData.AttestationInclusionEffectiveness = 100 - ((1 + eff[0].AttestationEfficiency) / 32 * 100)
+		validatorPageData.AttestationInclusionEffectiveness = eff[0].AttestationEfficiency
 	}
 
 	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
@@ -617,6 +568,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validators.validatorindex = $1`, index)
 	if err == nil && (validatorPageData.Rocketpool.MinipoolAddress != nil || validatorPageData.Rocketpool.NodeAddress != nil) {
 		validatorPageData.IsRocketpool = true
+		if utils.Config.Chain.Config.DepositChainID == 1 {
+			validatorPageData.Rocketpool.RocketscanUrl = "rocketscan.io"
+		} else if utils.Config.Chain.Config.DepositChainID == 5 {
+			validatorPageData.Rocketpool.RocketscanUrl = "prater.rocketscan.io"
+		}
 	} else if err != nil && err != sql.ErrNoRows {
 		logger.Errorf("error getting rocketpool-data for validator for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -678,7 +634,7 @@ func ValidatorAttestationInclusionEffectiveness(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, services.LatestEpoch())
+	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, services.LatestEpoch()-1)
 	if err != nil {
 		logger.Errorf("error retrieving validator effectiveness: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -701,7 +657,7 @@ func ValidatorAttestationInclusionEffectiveness(w http.ResponseWriter, r *http.R
 			return
 		}
 	} else {
-		err = json.NewEncoder(w).Encode(resp{Effectiveness: 100 - ((1 + eff[0].AttestationEfficiency) / 32 * 100)})
+		err = json.NewEncoder(w).Encode(resp{Effectiveness: eff[0].AttestationEfficiency})
 		if err != nil {
 			logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1376,7 +1332,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var validatorStatsTableTemplate = template.Must(template.New("validator_stats").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator_stats_table.html"))
+var validatorStatsTableTemplate = template.Must(template.New("validator_stats").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validator_stats_table.html"))
 
 // Validator returns validator data using a go template
 func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
@@ -1414,7 +1370,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data.Meta.Title = fmt.Sprintf("%v - Daily Validator Statistics %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
+	SetPageDataTitle(data, fmt.Sprintf("Validator %v Daily Statistics", index))
 	data.Meta.Path = fmt.Sprintf("/validator/%v/stats", index)
 
 	validatorStatsTablePageData := &types.ValidatorStatsTablePageData{
@@ -1454,26 +1410,29 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for i := len(validatorStatsTablePageData.Rows) - 1; i > 0; i-- {
-		if validatorStatsTablePageData.Rows[i].Day == -1 {
-			continue
-		}
-		validatorStatsTablePageData.Rows[i].EndBalance = validatorStatsTablePageData.Rows[i-1].StartBalance
-		if validatorStatsTablePageData.Rows[i].EndBalance.Valid && validatorStatsTablePageData.Rows[i].StartBalance.Valid {
-			validatorStatsTablePageData.Rows[i].Income = validatorStatsTablePageData.Rows[i].EndBalance.Int64 - validatorStatsTablePageData.Rows[i].StartBalance.Int64
-		}
-		if validatorStatsTablePageData.Rows[i].DepositsAmount.Valid {
-			validatorStatsTablePageData.Rows[i].Income -= validatorStatsTablePageData.Rows[i].DepositsAmount.Int64
-		}
+	balanceData, err := db.GetValidatorIncomeHistory([]uint64{index}, 0, 0)
+
+	if err != nil {
+		logger.Errorf("error retrieving validator income history: %v", err)
+		http.Error(w, "Validator not found", http.StatusNotFound)
+		return
+	}
+	// day => index mapping
+	dayMapping := make(map[int64]int)
+	for i := 0; i < len(validatorStatsTablePageData.Rows); i++ {
+		dayMapping[validatorStatsTablePageData.Rows[i].Day] = i
+
 	}
 
-	if len(validatorStatsTablePageData.Rows) > 0 {
-		if validatorStatsTablePageData.Rows[0].EndBalance.Valid && validatorStatsTablePageData.Rows[0].StartBalance.Valid {
-			validatorStatsTablePageData.Rows[0].Income = validatorStatsTablePageData.Rows[0].EndBalance.Int64 - validatorStatsTablePageData.Rows[0].StartBalance.Int64
+	for i := 0; i < len(balanceData); i++ {
+		j, found := dayMapping[balanceData[i].Day]
+		if !found {
+			continue
 		}
-		if validatorStatsTablePageData.Rows[0].DepositsAmount.Valid {
-			validatorStatsTablePageData.Rows[0].Income -= validatorStatsTablePageData.Rows[0].DepositsAmount.Int64
-		}
+		validatorStatsTablePageData.Rows[j].StartBalance = balanceData[i].StartBalance
+		validatorStatsTablePageData.Rows[j].EndBalance = balanceData[i].EndBalance
+		validatorStatsTablePageData.Rows[j].Income = balanceData[i].Income
+		validatorStatsTablePageData.Rows[j].Deposits = balanceData[i].DepositAmount
 	}
 
 	// if validatorStatsTablePageData.Rows[len(validatorStatsTablePageData.Rows)-1].Day == -1 {

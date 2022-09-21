@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -13,16 +14,16 @@ import (
 	"github.com/gorilla/csrf"
 )
 
-var pricingTemplate = template.Must(template.New("pricing").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html",
-	"templates/payment/pricing.html",
-	"templates/svg/pricing.html",
+var pricingTemplate = template.Must(template.New("pricing").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
+	"layout.html",
+	"payment/pricing.html",
+	"svg/pricing.html",
 ))
 
-var mobilePricingTemplate = template.Must(template.New("mobilepricing").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html",
-	"templates/payment/mobilepricing.html",
-	"templates/svg/mobilepricing.html",
+var mobilePricingTemplate = template.Must(template.New("mobilepricing").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
+	"layout.html",
+	"payment/mobilepricing.html",
+	"svg/mobilepricing.html",
 ))
 
 func Pricing(w http.ResponseWriter, r *http.Request) {

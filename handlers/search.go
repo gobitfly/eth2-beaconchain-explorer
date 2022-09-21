@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
@@ -18,7 +19,7 @@ import (
 
 const searchValidatorsResultLimit = 300
 
-var searchNotFoundTemplate = template.Must(template.New("searchnotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/searchnotfound.html"))
+var searchNotFoundTemplate = template.Must(template.New("searchnotfound").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "searchnotfound.html"))
 
 var searchLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
 var thresholdHexLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{5,96}$`)

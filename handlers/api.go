@@ -15,7 +15,6 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"math/big"
 	"net/http"
 	"sort"
@@ -637,7 +636,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	g.Go(func() error {
-		currentEpochData, err = getEpoch(epoch)
+		currentEpochData, err = getEpoch(epoch - 1)
 		return err
 	})
 
@@ -762,8 +761,7 @@ func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorE
 	}
 	for i := 0; i < len(data); i++ {
 		// convert value to old api schema
-		tempValue := 1 / (1 - ((1 + data[i].AttestationEfficiency) / 32))
-		data[i].AttestationEfficiency = math.Floor(tempValue*10000) / 10000
+		data[i].AttestationEfficiency = 1 + (1 - data[i].AttestationEfficiency/100)
 	}
 	return data, nil
 }

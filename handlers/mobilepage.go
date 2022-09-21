@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"eth2-exporter/mail"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -9,7 +10,7 @@ import (
 	"net/http"
 )
 
-var mobileTemplate = template.Must(template.New("mobilepage").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/mobilepage.html"))
+var mobileTemplate = template.Must(template.New("mobilepage").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "mobilepage.html"))
 
 func MobilePage(w http.ResponseWriter, r *http.Request) {
 	var err error

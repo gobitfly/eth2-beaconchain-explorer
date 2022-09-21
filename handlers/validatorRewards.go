@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -17,7 +18,7 @@ import (
 	"github.com/gorilla/csrf"
 )
 
-var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validatorRewards.html"))
+var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validatorRewards.html"))
 
 // var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub", "aud"}
 
@@ -190,7 +191,7 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=income_history_%v_%v.pdf", s.Format("20060102"), e.Format("20060102")))
 	w.Header().Set("Content-Type", "text/csv")
 
-	_, err = w.Write(services.GeneratePdfReport(hist))
+	_, err = w.Write(services.GeneratePdfReport(hist, currency))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error writing response")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

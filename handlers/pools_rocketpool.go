@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -13,7 +14,7 @@ import (
 	"strings"
 )
 
-var poolsRocketpoolTemplate = template.Must(template.New("rocketpool").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/pools_rocketpool.html"))
+var poolsRocketpoolTemplate = template.Must(template.New("rocketpool").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "pools_rocketpool.html"))
 
 // PoolsRocketpool returns the rocketpool using a go template
 func PoolsRocketpool(w http.ResponseWriter, r *http.Request) {

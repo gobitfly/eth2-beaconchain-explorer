@@ -1,6 +1,7 @@
 package services
 
 import (
+	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
@@ -43,17 +44,23 @@ var ChartHandlers = map[string]chartHandler{
 
 // LatestChartsPageData returns the latest chart page data
 func LatestChartsPageData() *[]*types.ChartsPageDataChart {
-	data, ok := chartsPageData.Load().(*[]*types.ChartsPageDataChart)
-	if !ok {
-		return nil
+	wanted := &[]*types.ChartsPageDataChart{}
+	cacheKey := fmt.Sprintf("%d:frontend:chartsPageData", utils.Config.Chain.Config.DepositChainID)
+
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, wanted); err == nil {
+		return wanted.(*[]*types.ChartsPageDataChart)
+	} else {
+		logger.Errorf("error retrieving chartsPageData from cache: %v", err)
 	}
-	return data
+
+	return nil
 }
 
-func chartsPageDataUpdater() {
+func chartsPageDataUpdater(wg *sync.WaitGroup) {
 	sleepDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot)
 	var prevEpoch uint64
 
+	firstun := true
 	for {
 		latestEpoch := LatestEpoch()
 		if prevEpoch >= latestEpoch && latestEpoch != 0 {
@@ -76,8 +83,16 @@ func chartsPageDataUpdater() {
 		}
 		metrics.TaskDuration.WithLabelValues("service_charts_updater").Observe(time.Since(start).Seconds())
 		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(start)).Info("chartPageData update completed")
-		chartsPageData.Store(&data)
+
+		cacheKey := fmt.Sprintf("%d:frontend:chartsPageData", utils.Config.Chain.Config.DepositChainID)
+		cache.TieredCache.Set(cacheKey, data, time.Hour*24)
+
 		prevEpoch = latestEpoch
+
+		if firstun {
+			wg.Done()
+			firstun = false
+		}
 		if latestEpoch == 0 {
 			time.Sleep(time.Second * 60 * 10)
 		}
@@ -259,12 +274,13 @@ func activeValidatorsChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Validators",
-		Subtitle:     "History of daily active validators.",
-		XAxisTitle:   "",
-		YAxisTitle:   "# of Validators",
-		StackingMode: "false",
-		Type:         "column",
+		Title:                           "Validators",
+		Subtitle:                        "History of daily active validators.",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "# of Validators",
+		StackingMode:                    "false",
+		Type:                            "column",
+		ColumnDataGroupingApproximation: "close",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "# of Validators",
@@ -302,12 +318,13 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Staked Ether",
-		Subtitle:     "History of daily staked Ether, which is the sum of all Effective Balances.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Ether",
-		StackingMode: "false",
-		Type:         "column",
+		Title:                           "Staked eEther",
+		Subtitle:                        "History of daily staked Ether, which is the sum of all Effective Balances.",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Ether",
+		StackingMode:                    "false",
+		Type:                            "column",
+		ColumnDataGroupingApproximation: "close",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Staked Ether",
@@ -345,12 +362,13 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Validator Balance",
-		Subtitle:     "Average Daily Validator Balance.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Ether",
-		StackingMode: "false",
-		Type:         "column",
+		Title:                           "Validator Balance",
+		Subtitle:                        "Average Daily Validator Balance.",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Ether",
+		StackingMode:                    "false",
+		Type:                            "column",
+		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Average Balance [ETH]",

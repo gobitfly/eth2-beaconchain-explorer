@@ -108,7 +108,7 @@ func FormatBalanceSql(balanceInt sql.NullInt64, currency string) template.HTML {
 		return template.HTML("0 " + currency)
 	}
 	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := FormatFloat((float64(balanceInt.Int64)/float64(1e9))*float64(exchangeRate), 2)
+	balance := FormatFloat((float64(balanceInt.Int64)/float64(1e9))*float64(exchangeRate), 5)
 
 	return template.HTML(balance + " " + currency)
 }
@@ -570,11 +570,11 @@ func FormatIncomeSql(balanceInt sql.NullInt64, currency string) template.HTML {
 	balance := float64(balanceInt.Int64) / float64(1e9)
 
 	if balance > 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.4f %v</b></span>`, balance*exchangeRate, currency))
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%v %v</b></span>`, FormatFloat(balance*exchangeRate, 5), currency))
 	} else if balance < 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.4f %v</b></span>`, balance*exchangeRate, currency))
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%v %v</b></span>`, FormatFloat(balance*exchangeRate, 5), currency))
 	} else {
-		return template.HTML(fmt.Sprintf(`<b>%.4f %v</b>`, balance*exchangeRate, currency))
+		return template.HTML(fmt.Sprintf(`<b>%v %v</b>`, balance*exchangeRate, currency))
 	}
 }
 

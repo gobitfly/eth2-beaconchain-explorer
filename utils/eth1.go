@@ -338,7 +338,7 @@ func FormatBlockUsage(gasUsage uint64, gasLimit uint64) template.HTML {
 	if gasLimit != 0 {
 		percentage = gasUsage * 100 / gasLimit
 	}
-	tpl := `<div>%[1]v of %[3]v gas used <small class="text-muted ml-3">(%[2]v%%)</small></div><div class="progress" style="height:5px;"><div class="progress-bar" role="progressbar" style="width: %[2]v%%;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div></div>`
+	tpl := `<div>%[1]v<small class="text-muted ml-2">(%[2]v%%)</small></div><div class="progress" style="height:5px;"><div class="progress-bar" role="progressbar" style="width: %[2]v%%;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div></div>`
 	p := message.NewPrinter(language.English)
 	return template.HTML(p.Sprintf(tpl, gasUsage, percentage, gasLimit))
 }

@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	redis "github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 	"github.com/patrickmn/go-cache"
 
@@ -24,11 +23,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-
-	cache2 "github.com/eko/gocache/v3/cache"
-	"github.com/eko/gocache/v3/marshaler"
-	store2 "github.com/eko/gocache/v3/store"
-	gocache "github.com/patrickmn/go-cache"
 )
 
 var DBPGX *pgxpool.Conn
@@ -36,33 +30,11 @@ var DBPGX *pgxpool.Conn
 // DB is a pointer to the explorer-database
 var WriterDb *sqlx.DB
 var ReaderDb *sqlx.DB
-var EkoCache *marshaler.Marshaler
-var EkoCacheString *cache2.ChainCache[any]
 
 var logger = logrus.StandardLogger().WithField("module", "db")
 
 var epochsCache = cache.New(time.Hour, time.Minute)
 var saveValidatorsMux = &sync.Mutex{}
-
-func MustInitRedisCache(address string) {
-	gocacheClient := gocache.New(time.Hour, time.Minute)
-	gocacheStore := store2.NewGoCache(gocacheClient)
-
-	caches := []cache2.SetterCacheInterface[any]{cache2.New[any](gocacheStore)}
-	if !utils.Config.Frontend.Debug {
-		redisStore := store2.NewRedis(redis.NewClient(&redis.Options{
-			Addr: address,
-		}))
-		caches = append(caches, cache2.New[any](redisStore))
-	}
-
-	cacheManager := cache2.NewChain(
-		caches...,
-	)
-	marshal := marshaler.New(cacheManager)
-	EkoCache = marshal
-	EkoCacheString = cacheManager
-}
 
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {
 	dbConnWriter, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", writer.Username, writer.Password, writer.Host, writer.Port, writer.Name))
@@ -902,12 +874,14 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error committing db transaction: %w", err)
 	}
 
-	_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch = $1 group by slot having count(*) > 1) and blockroot = $2;", data.Epoch, []byte{0x0})
+	// delete duplicate scheduled slots
+	_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", data.Epoch-3, []byte{0x0})
 	if err != nil {
 		return fmt.Errorf("error cleaning up blocks table: %w", err)
 	}
 
-	_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch = $1 group by slot having count(*) > 1) and blockroot = $2;", data.Epoch, []byte{0x1})
+	// delete duplicate missed blocks
+	_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", data.Epoch-3, []byte{0x1})
 	if err != nil {
 		return fmt.Errorf("error cleaning up blocks table: %w", err)
 	}

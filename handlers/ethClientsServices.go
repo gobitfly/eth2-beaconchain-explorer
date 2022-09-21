@@ -3,6 +3,7 @@ package handlers
 import (
 	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
@@ -11,7 +12,7 @@ import (
 	"github.com/gorilla/csrf"
 )
 
-var ethClientsServicesTemplate = template.Must(template.New("ethClientsServices").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethClientsServices.html"))
+var ethClientsServicesTemplate = template.Must(template.New("ethClientsServices").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "ethClientsServices.html"))
 
 func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 	var err error

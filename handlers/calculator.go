@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
 )
 
-var stakingCalculatorTemplate = template.Must(template.New("calculator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/calculator.html"))
+var stakingCalculatorTemplate = template.Must(template.New("calculator").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "calculator.html"))
 
 // StakingCalculator renders stakingCalculatorTemplate
 func StakingCalculator(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +30,6 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "stats", "/calculator", "Staking calculator")
 	data.Data = calculatorPageData
 
-	// stakingCalculatorTemplate = template.Must(template.New("staking_estimator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/calculator.html"))
 	err = stakingCalculatorTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)

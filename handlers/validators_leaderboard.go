@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -12,7 +13,7 @@ import (
 	"strings"
 )
 
-var validatorsLeaderboardTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validators_leaderboard.html"))
+var validatorsLeaderboardTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validators_leaderboard.html"))
 
 // ValidatorsLeaderboard returns the validator-leaderboard using a go template
 func ValidatorsLeaderboard(w http.ResponseWriter, r *http.Request) {

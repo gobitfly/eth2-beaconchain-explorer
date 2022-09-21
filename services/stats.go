@@ -1,15 +1,19 @@
 package services
 
 import (
+	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
+	"sync"
 	"time"
 )
 
-func statsUpdater() {
+func statsUpdater(wg *sync.WaitGroup) {
 	sleepDuration := time.Duration(time.Minute)
 
+	firstrun := true
 	for {
 		latestEpoch := LatestEpoch()
 
@@ -21,7 +25,16 @@ func statsUpdater() {
 			continue
 		}
 		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(now)).Info("stats update completed")
-		latestStats.Store(statResult)
+
+		cacheKey := fmt.Sprintf("%d:frontend:latestStats", utils.Config.Chain.Config.DepositChainID)
+		err = cache.TieredCache.Set(cacheKey, statResult, time.Hour*24)
+		if err != nil {
+			logger.Errorf("error caching latestStats: %v", err)
+		}
+		if firstrun {
+			wg.Done()
+			firstrun = false
+		}
 		time.Sleep(sleepDuration)
 	}
 }

@@ -4,18 +4,19 @@ import (
 	// "eth2-exporter/db"
 
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
 	// "strings"
 )
 
-var poolsServicesTemplate = template.Must(template.New("poolsServices").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html",
-	"templates/pools/pools.html",
-	"templates/pools/loadingSvg.html",
-	"templates/pools/charts.html",
-	"templates/bannerPools.html"))
+var poolsServicesTemplate = template.Must(template.New("poolsServices").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
+	"layout.html",
+	"pools/pools.html",
+	"pools/loadingSvg.html",
+	"pools/charts.html",
+	"bannerPools.html"))
 
 func Pools(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")

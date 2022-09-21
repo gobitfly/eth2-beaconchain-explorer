@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
@@ -10,7 +11,7 @@ import (
 
 // Blocks will return information about blocks using a go template
 func ToolsGasNow(w http.ResponseWriter, r *http.Request) {
-	var toolsGasNowTemplate = template.Must(template.New("gasnow").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/tools_gasNow.html", "templates/components.html"))
+	var toolsGasNowTemplate = template.Must(template.New("gasnow").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "tools_gasNow.html", "components.html"))
 
 	w.Header().Set("Content-Type", "text/html")
 

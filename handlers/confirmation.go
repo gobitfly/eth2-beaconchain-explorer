@@ -1,12 +1,13 @@
 package handlers
 
 import (
+	"eth2-exporter/templates"
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
 )
 
-var confirmationTemplate = template.Must(template.New("confirmation").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/confirmation.html"))
+var confirmationTemplate = template.Must(template.New("confirmation").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "confirmation.html"))
 
 // Blocks will return information about blocks using a go template
 func Confirmation(w http.ResponseWriter, r *http.Request) {

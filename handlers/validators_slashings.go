@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
@@ -12,7 +13,7 @@ import (
 	"github.com/juliangruber/go-intersect"
 )
 
-var validatorsSlashingsTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validators_slashings.html"))
+var validatorsSlashingsTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validators_slashings.html"))
 
 // ValidatorsSlashings returns validator slashing using a go template
 func ValidatorsSlashings(w http.ResponseWriter, r *http.Request) {

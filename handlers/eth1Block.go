@@ -4,6 +4,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -12,19 +13,15 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
 )
 
-var preMergeBlockTemplate = template.Must(template.New("executionBlock").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/block.html", "templates/block/execTransactions.html"))
+var preMergeBlockTemplate = template.Must(template.New("executionBlock").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/block.html", "block/execTransactions.html"))
 
 func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
-
-	data := InitPageData(w, r, "block", "/block", "Execution Block")
-	data.HeaderAd = true
 
 	// parse block number from url
 	numberString := strings.Replace(vars["block"], "0x", "", -1)
@@ -35,7 +32,9 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	} else {
 		number, err = strconv.ParseUint(numberString, 10, 64)
 	}
+
 	if err != nil {
+		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", 0))
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
 			logger.Errorf("a error executing template for %v route: %v", r.URL.String(), err)
@@ -45,6 +44,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number))
 	eth1BlockPageData, err := GetExecutionBlockPageData(number)
 	if err != nil {
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
@@ -57,14 +57,13 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// execute template based on whether block is pre or post merge
-	if eth1BlockPageData.Difficulty.Cmp(big.NewInt(0)) == 0 /* || eth1BlockPageData.Number >= 14477303 */ {
+	if eth1BlockPageData.Difficulty.Cmp(big.NewInt(0)) == 0 {
 		// Post Merge PoS Block
 
 		// calculate PoS slot number based on block timestamp
 		blockSlot := (uint64(eth1BlockPageData.Ts.Unix()) - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.Config.SecondsPerSlot
 
 		// retrieve consensus data
-		// execution data is set in GetSlotPageData
 		blockPageData, err := GetSlotPageData(blockSlot)
 		if err != nil {
 			logger.Errorf("error retrieving slot page data: %v", err)
@@ -78,9 +77,9 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		blockPageData.ExecutionData = eth1BlockPageData
+
+		data.HeaderAd = true
 		data.Data = blockPageData
-		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, eth1BlockPageData.Number, time.Now().Year())
-		data.Meta.Path = fmt.Sprintf("/block/%v", blockPageData.Slot)
 
 		err = blockTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -91,6 +90,8 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Pre  Merge PoW Block
+		data := InitPageData(w, r, "block", "/block", fmt.Sprintf("Block %d", eth1BlockPageData.Number))
+		data.HeaderAd = true
 		data.Data = eth1BlockPageData
 		err = preMergeBlockTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
@@ -205,7 +206,7 @@ func GetExecutionBlockPageData(number uint64) (*types.Eth1BlockPageData, error) 
 		Reward:         blockReward,
 		MevReward:      db.CalculateMevFromBlock(block),
 		TxFees:         txFees,
-		GasUsage:       block.GasUsed,
+		GasUsage:       utils.FormatBlockUsage(block.GasUsed, block.GasLimit),
 		GasLimit:       block.GasLimit,
 		LowestGasPrice: lowestGasPrice,
 		Ts:             block.GetTime().AsTime(),

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -24,24 +25,24 @@ import (
 // Hacky AF way to ensure intersect module is imported and not optimised away, unsure why its being optimised away
 var _ = intersect.Simple
 
-var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html",
-	"templates/block/block.html",
-	"templates/block/transactions.html",
-	"templates/block/attestations.html",
-	"templates/block/deposits.html",
-	"templates/block/votes.html",
-	"templates/block/attesterSlashing.html",
-	"templates/block/proposerSlashing.html",
-	"templates/block/exits.html",
-	"templates/block/overview.html",
-	"templates/block/execTransactions.html",
+var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
+	"layout.html",
+	"block/block.html",
+	"block/transactions.html",
+	"block/attestations.html",
+	"block/deposits.html",
+	"block/votes.html",
+	"block/attesterSlashing.html",
+	"block/proposerSlashing.html",
+	"block/exits.html",
+	"block/overview.html",
+	"block/execTransactions.html",
 ))
-var blockFutureTemplate = template.Must(template.New("blockFuture").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html",
-	"templates/block/blockFuture.html",
+var blockFutureTemplate = template.Must(template.New("blockFuture").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
+	"layout.html",
+	"block/blockFuture.html",
 ))
-var blockNotFoundTemplate = template.Must(template.New("blocknotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocknotfound.html"))
+var blockNotFoundTemplate = template.Must(template.New("blocknotfound").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "blocknotfound.html"))
 
 const MaxSlotValue = 137438953503 // we only render a page for blocks up to this slot
 
@@ -64,7 +65,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := InitPageData(w, r, "blockchain", "/blocks", "")
+	data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash))
 
 	if blockSlot == -1 {
 		err = db.ReaderDb.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
@@ -85,7 +86,6 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/slot/" + slotOrHash
 		logger.Errorf("error retrieving block data: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
@@ -102,7 +102,6 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if err == sql.ErrNoRows {
 		slot := uint64(blockSlot)
 		//Slot not in database -> Show future block
-		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/slot/" + slotOrHash
 
 		if slot > MaxSlotValue {
@@ -147,8 +146,6 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			blockPageData.ExecutionData = eth1BlockPageData
 		}
 	}
-
-	data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, blockPageData.Slot, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/slot/%v", blockPageData.Slot)
 	data.Data = blockPageData
 

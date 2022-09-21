@@ -250,26 +250,26 @@ func Start(client rpc.Client) error {
 				doFullCheck(client, 0)
 				atomic.StoreUint64(&fullCheckRunning, 0)
 			}()
-		} else { // else just save the epoch block
-			blocksMap := make(map[uint64]map[string]*types.Block)
-			if blocksMap[block.Slot] == nil {
-				blocksMap[block.Slot] = make(map[string]*types.Block)
-			}
-			blocksMap[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
+		}
 
-			err := db.BigtableClient.SaveAttestations(blocksMap)
-			if err != nil {
-				logrus.Errorf("error exporting attestations to bigtable for block %v: %v", block.Slot, err)
-			}
-			err = db.BigtableClient.SaveSyncComitteeDuties(blocksMap)
-			if err != nil {
-				logrus.Errorf("error exporting sync committe duties to bigtable for block %v: %v", block.Slot, err)
-			}
+		blocksMap := make(map[uint64]map[string]*types.Block)
+		if blocksMap[block.Slot] == nil {
+			blocksMap[block.Slot] = make(map[string]*types.Block)
+		}
+		blocksMap[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 
-			err = db.SaveBlock(block)
-			if err != nil {
-				logger.Errorf("error saving block: %v", err)
-			}
+		err := db.BigtableClient.SaveAttestations(blocksMap)
+		if err != nil {
+			logrus.Errorf("error exporting attestations to bigtable for block %v: %v", block.Slot, err)
+		}
+		err = db.BigtableClient.SaveSyncComitteeDuties(blocksMap)
+		if err != nil {
+			logrus.Errorf("error exporting sync committe duties to bigtable for block %v: %v", block.Slot, err)
+		}
+
+		err = db.SaveBlock(block)
+		if err != nil {
+			logger.Errorf("error saving block: %v", err)
 		}
 		lastExportedSlot = block.Slot
 	}

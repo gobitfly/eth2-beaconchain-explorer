@@ -197,7 +197,7 @@
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mt-5 mb-4">
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-male mr-3 text-muted"></i>Minipool Address</div>
                     <div>
-                      {{ formatEth1Address .Rocketpool.MinipoolAddress }} <a class="no-highlight" href="https://rocketscan.dev/minipool/{{ formatEth1AddressStringLowerCase .Rocketpool.MinipoolAddress }}" target="_blank"><i class="fas fa-rocket" role="button" data-toggle="tooltip" title="" data-original-title="More infos on Rocketscan"></i></a>
+                      {{ formatEth1Address .Rocketpool.MinipoolAddress }}{{ if ne .Rocketpool.RocketscanUrl "" }}<a class="no-highlight" href="https://{{ .Rocketpool.RocketscanUrl }}/minipool/{{ formatEth1AddressStringLowerCase .Rocketpool.MinipoolAddress }}" target="_blank"><i class="fas fa-rocket" role="button" data-toggle="tooltip" title="" data-original-title="More infos on Rocketscan"></i></a>{{ end }}
                     </div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
@@ -229,7 +229,7 @@
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-male mr-2 text-muted"></i> Node Address</div>
                     <div>
-                      {{ formatEth1Address .Rocketpool.NodeAddress }} <a class="no-highlight" href="https://rocketscan.dev/node/{{ formatEth1AddressStringLowerCase .Rocketpool.NodeAddress }}" target="_blank"><i class="fas fa-rocket" role="button" data-toggle="tooltip" title="" data-original-title="More infos on Rocketscan"></i></a>
+                      {{ formatEth1Address .Rocketpool.NodeAddress }}{{ if ne .Rocketpool.RocketscanUrl "" }}<a class="no-highlight" href="https://{{ .Rocketpool.RocketscanUrl }}/node/{{ formatEth1AddressStringLowerCase .Rocketpool.NodeAddress }}" target="_blank"><i class="fas fa-rocket" role="button" data-toggle="tooltip" title="" data-original-title="More infos on Rocketscan"></i></a>{{ end }}
                     </div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">

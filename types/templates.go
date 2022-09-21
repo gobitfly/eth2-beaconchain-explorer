@@ -380,6 +380,7 @@ type RocketpoolValidatorPageData struct {
 	UnclaimedRPL         *string    `db:"unclaimed_rpl_rewards"`
 	SmoothingPoolOptIn   bool       `db:"smoothing_pool_opted_in"`
 	PenaltyCount         *uint64    `db:"penalty_count"`
+	RocketscanUrl        string     `db:"-"`
 }
 
 type ValidatorStatsTablePageData struct {
@@ -445,11 +446,11 @@ type ValidatorBalanceHistory struct {
 
 // ValidatorBalanceHistory is a struct for the validator income history data
 type ValidatorIncomeHistory struct {
-	Day          int64 `db:"day"` // day can be -1 which is pre-genesis
-	Income       int64
-	StartBalance int64 `db:"start_balance" json:"-"`
-	EndBalance   int64 `db:"end_balance" json:"-"`
-	Deposits     int64 `db:"deposits_amount" json:"-"`
+	Day           int64         `db:"day"` // day can be -1 which is pre-genesis
+	Income        int64         `db:"diff"`
+	EndBalance    sql.NullInt64 `db:"end_balance"`
+	StartBalance  sql.NullInt64 `db:"start_balance"`
+	DepositAmount sql.NullInt64 `db:"deposits_amount"`
 }
 
 type ValidatorBalanceHistoryChartData struct {
@@ -1414,6 +1415,14 @@ type Eth1AddressPageData struct {
 	Erc721Table       *DataTableResponse
 	Erc1155Table      *DataTableResponse
 	EtherValue        template.HTML
+	Tabs              []Eth1AddressPageTabs
+}
+
+type Eth1AddressPageTabs struct {
+	Id   string
+	Href string
+	Text string
+	Data *DataTableResponse
 }
 
 type Eth1AddressMetadata struct {
@@ -1622,7 +1631,7 @@ type Eth1BlockPageData struct {
 	Reward         *big.Int
 	MevReward      *big.Int
 	TxFees         *big.Int
-	GasUsage       uint64
+	GasUsage       template.HTML
 	GasLimit       uint64
 	LowestGasPrice *big.Int
 	Ts             time.Time

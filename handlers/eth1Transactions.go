@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -18,7 +19,7 @@ const (
 	minimumTransactionsPerUpdate = 25
 )
 
-var eth1TransactionsTemplate = template.Must(template.New("transactions").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/transactions.html"))
+var eth1TransactionsTemplate = template.Must(template.New("transactions").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/transactions.html"))
 
 func Eth1Transactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
@@ -27,7 +28,7 @@ func Eth1Transactions(w http.ResponseWriter, r *http.Request) {
 	data.Data = getTransactionDataStartingWithPageToken("")
 
 	if utils.Config.Frontend.Debug {
-		eth1TransactionsTemplate = template.Must(template.New("transactions").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/transactions.html"))
+		eth1TransactionsTemplate = template.Must(template.New("transactions").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/transactions.html"))
 	}
 
 	err := eth1TransactionsTemplate.ExecuteTemplate(w, "layout", data)

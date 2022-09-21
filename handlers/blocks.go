@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -14,7 +15,7 @@ import (
 	"time"
 )
 
-var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocks.html"))
+var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "blocks.html"))
 
 // Blocks will return information about blocks using a go template
 func Blocks(w http.ResponseWriter, r *http.Request) {
@@ -63,10 +64,6 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data = tableData
-
-	if utils.Config.Frontend.Debug {
-		blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocks.html"))
-	}
 
 	err = blocksTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {

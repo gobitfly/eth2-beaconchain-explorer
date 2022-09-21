@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -15,7 +16,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
-var eth1BlocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/blocks.html"))
+var eth1BlocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/blocks.html"))
 
 func Eth1Blocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
@@ -23,7 +24,7 @@ func Eth1Blocks(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "blockchain", "/eth1blocks", "Ethereum Blocks")
 
 	if utils.Config.Frontend.Debug {
-		eth1BlocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/execution/blocks.html"))
+		eth1BlocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/blocks.html"))
 	}
 
 	err := eth1BlocksTemplate.ExecuteTemplate(w, "layout", data)
@@ -126,6 +127,10 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 
 	if length > start {
 		length = start
+	}
+
+	if length == start && length == 0 {
+		return nil, fmt.Errorf("invalid block range provided (start: %v, length: %v)", start, length)
 	}
 
 	blocks, err := db.BigtableClient.GetBlocksDescending(start, length)
