@@ -17,16 +17,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var eth1BlocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/blocks.html"))
-
 func Eth1Blocks(w http.ResponseWriter, r *http.Request) {
+
+	var eth1BlocksTemplate = templates.GetTemplate("layout.html", "execution/blocks.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "blockchain", "/eth1blocks", "Ethereum Blocks")
-
-	if utils.Config.Frontend.Debug {
-		eth1BlocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/blocks.html"))
-	}
 
 	err := eth1BlocksTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {

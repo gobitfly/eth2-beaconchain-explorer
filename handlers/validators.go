@@ -9,14 +9,11 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html"
-	"html/template"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 )
-
-var validatorsTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validators.html"))
 
 type states struct {
 	Name  string `db:"statename"`
@@ -25,6 +22,8 @@ type states struct {
 
 // Validators returns the validators using a go template
 func Validators(w http.ResponseWriter, r *http.Request) {
+	var validatorsTemplate = templates.GetTemplate("layout.html", "validators.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	validatorsPageData := types.ValidatorsPageData{}

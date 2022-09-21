@@ -20,9 +20,6 @@ explorer:
 	go install github.com/swaggo/swag/cmd/swag@v1.8.3 && swag init --exclude bin,_gitignore,.vscode,.idea --parseDepth 1 -g ./handlers/api.go
 	go build --ldflags=${LDFLAGS} -o bin/explorer cmd/explorer/main.go
 
-chartshotter:
-	go build --ldflags=${LDFLAGS} -o bin/chartshotter cmd/chartshotter/main.go
-
 stats:
 	go build --ldflags=${LDFLAGS} -o bin/statistics cmd/statistics/main.go
 

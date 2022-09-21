@@ -14,10 +14,10 @@ import (
 	"strings"
 )
 
-var poolsRocketpoolTemplate = template.Must(template.New("rocketpool").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "pools_rocketpool.html"))
-
 // PoolsRocketpool returns the rocketpool using a go template
 func PoolsRocketpool(w http.ResponseWriter, r *http.Request) {
+	var poolsRocketpoolTemplate = templates.GetTemplate("layout.html", "pools_rocketpool.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "pools/rocketpool", "/pools/rocketpool", "Rocketpool")
 	data.HeaderAd = true

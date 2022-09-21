@@ -7,17 +7,16 @@ import (
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
-var eth1DepositsTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "eth1Deposits.html", "index/depositChart.html"))
-var eth1DepositsLeaderboardTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "eth1DepositsLeaderboard.html"))
-
 // Eth1Deposits will return information about deposits using a go template
 func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
+
+	var eth1DepositsTemplate = templates.GetTemplate("layout.html", "eth1Deposits.html", "index/depositChart.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	pageData := &types.EthOneDepositsPageData{}
@@ -144,6 +143,9 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 
 // Eth1Deposits will return information about deposits using a go template
 func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
+
+	var eth1DepositsLeaderboardTemplate = templates.GetTemplate("layout.html", "eth1DepositsLeaderboard.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Eth1 Deposits")

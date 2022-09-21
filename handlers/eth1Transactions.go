@@ -19,17 +19,14 @@ const (
 	minimumTransactionsPerUpdate = 25
 )
 
-var eth1TransactionsTemplate = template.Must(template.New("transactions").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/transactions.html"))
-
 func Eth1Transactions(w http.ResponseWriter, r *http.Request) {
+
+	var eth1TransactionsTemplate = templates.GetTemplate("layout.html", "execution/transactions.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "blockchain", "/eth1transactions", "eth1transactions")
 	data.Data = getTransactionDataStartingWithPageToken("")
-
-	if utils.Config.Frontend.Debug {
-		eth1TransactionsTemplate = template.Must(template.New("transactions").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/transactions.html"))
-	}
 
 	err := eth1TransactionsTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {

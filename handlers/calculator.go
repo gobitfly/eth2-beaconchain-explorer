@@ -4,15 +4,13 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
-	"eth2-exporter/utils"
-	"html/template"
 	"net/http"
 )
 
-var stakingCalculatorTemplate = template.Must(template.New("calculator").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "calculator.html"))
-
 // StakingCalculator renders stakingCalculatorTemplate
 func StakingCalculator(w http.ResponseWriter, r *http.Request) {
+
+	var stakingCalculatorTemplate = templates.GetTemplate("layout.html", "calculator.html")
 
 	calculatorPageData := types.StakingCalculatorPageData{}
 

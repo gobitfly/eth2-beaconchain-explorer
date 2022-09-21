@@ -2,15 +2,13 @@ package handlers
 
 import (
 	"eth2-exporter/templates"
-	"eth2-exporter/utils"
-	"html/template"
 	"net/http"
 )
 
-var faqTemplate = template.Must(template.New("faq").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "faq.html"))
-
 // Faq will return the data from the frequently asked questions (FAQ) using a go template
 func Faq(w http.ResponseWriter, r *http.Request) {
+	var faqTemplate = templates.GetTemplate("layout.html", "faq.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "faq", "/faq", "FAQ")

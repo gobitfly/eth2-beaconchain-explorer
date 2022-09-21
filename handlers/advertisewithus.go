@@ -10,9 +10,9 @@ import (
 	"net/http"
 )
 
-var advertisewithusTemplate = template.Must(template.New("advertisewithus").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "advertisewithus.html"))
-
 func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
+	var advertisewithusTemplate = templates.GetTemplate("layout.html", "advertisewithus.html")
+
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")

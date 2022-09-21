@@ -6,7 +6,6 @@ import (
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"html/template"
 	"net/http"
 )
 
@@ -33,12 +32,11 @@ var indexTemplateFiles = []string{
 	"slotViz.html",
 }
 
-var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
-	indexTemplateFiles...,
-))
-
 // Index will return the main "index" page using a go template
 func Index(w http.ResponseWriter, r *http.Request) {
+
+	var indexTemplate = templates.GetTemplate(indexTemplateFiles...)
+
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "index", "", "")
 	data.Data = services.LatestIndexPageData()

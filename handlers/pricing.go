@@ -14,19 +14,13 @@ import (
 	"github.com/gorilla/csrf"
 )
 
-var pricingTemplate = template.Must(template.New("pricing").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
-	"layout.html",
-	"payment/pricing.html",
-	"svg/pricing.html",
-))
-
-var mobilePricingTemplate = template.Must(template.New("mobilepricing").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
-	"layout.html",
-	"payment/mobilepricing.html",
-	"svg/mobilepricing.html",
-))
-
 func Pricing(w http.ResponseWriter, r *http.Request) {
+
+	var pricingTemplate = templates.GetTemplate(
+		"layout.html",
+		"payment/pricing.html",
+		"svg/pricing.html",
+	)
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
@@ -71,6 +65,13 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 }
 
 func MobilePricing(w http.ResponseWriter, r *http.Request) {
+
+	var mobilePricingTemplate = templates.GetTemplate(
+		"layout.html",
+		"payment/mobilepricing.html",
+		"svg/mobilepricing.html",
+	)
+
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")

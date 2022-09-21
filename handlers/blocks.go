@@ -15,10 +15,11 @@ import (
 	"time"
 )
 
-var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "blocks.html"))
-
 // Blocks will return information about blocks using a go template
 func Blocks(w http.ResponseWriter, r *http.Request) {
+
+	var blocksTemplate = templates.GetTemplate("layout.html", "blocks.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	q := r.URL.Query()
 

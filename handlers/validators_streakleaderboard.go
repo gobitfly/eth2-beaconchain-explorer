@@ -7,16 +7,15 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
-var validatorsStreakLeaderboardTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validators_streakleaderboard.html"))
-
 // ValidatorsStreaksLeaderboard returns the attestation-streak-leaderboard using a go template
 func ValidatorsStreakLeaderboard(w http.ResponseWriter, r *http.Request) {
+	var validatorsStreakLeaderboardTemplate = templates.GetTemplate("layout.html", "validators_streakleaderboard.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "validators", "/validators/streaksleaderboard", "Validator Streaks Leaderboard")

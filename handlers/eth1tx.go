@@ -7,7 +7,6 @@ import (
 	"eth2-exporter/templates"
 	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strings"
 
@@ -15,11 +14,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var txNotFoundTemplate = template.Must(template.New("txnotfound").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "eth1txnotfound.html"))
-var txTemplate = template.Must(template.New("txnotfound").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "eth1tx.html"))
-
 // Tx will show the tx using a go template
 func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
+
+	var txNotFoundTemplate = templates.GetTemplate("layout.html", "eth1txnotfound.html")
+	var txTemplate = templates.GetTemplate("layout.html", "eth1tx.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	txHashString := strings.Replace(vars["hash"], "0x", "", -1)

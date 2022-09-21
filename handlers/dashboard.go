@@ -9,7 +9,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"net/http"
 
 	"strconv"
@@ -17,8 +16,6 @@ import (
 
 	"github.com/lib/pq"
 )
-
-var dashboardTemplate = template.Must(template.New("dashboard").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "dashboard.html"))
 
 func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, error) {
 	if str == "" {
@@ -53,6 +50,9 @@ func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, e
 }
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
+
+	var dashboardTemplate = templates.GetTemplate("layout.html", "dashboard.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators
 

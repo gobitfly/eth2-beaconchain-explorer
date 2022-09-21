@@ -7,7 +7,6 @@ import (
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"html/template"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -19,13 +18,12 @@ import (
 
 const searchValidatorsResultLimit = 300
 
-var searchNotFoundTemplate = template.Must(template.New("searchnotfound").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "searchnotfound.html"))
-
 var searchLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
 var thresholdHexLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{5,96}$`)
 
 // Search handles search requests
 func Search(w http.ResponseWriter, r *http.Request) {
+	var searchNotFoundTemplate = templates.GetTemplate("layout.html", "searchnotfound.html")
 
 	search := r.FormValue("search")
 

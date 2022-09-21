@@ -6,17 +6,16 @@ import (
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"html/template"
 	"net/http"
 	"strconv"
 
 	"github.com/juliangruber/go-intersect"
 )
 
-var validatorsSlashingsTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validators_slashings.html"))
-
 // ValidatorsSlashings returns validator slashing using a go template
 func ValidatorsSlashings(w http.ResponseWriter, r *http.Request) {
+	var validatorsSlashingsTemplate = templates.GetTemplate("layout.html", "validators_slashings.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "validators", "/validators/slashings", "Validator Slashings")

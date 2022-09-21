@@ -7,7 +7,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"math/big"
 	"net/http"
 	"strings"
@@ -17,9 +16,10 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var eth1AddressTemplate = template.Must(template.New("address").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "sprites.html", "execution/address.html"))
-
 func Eth1Address(w http.ResponseWriter, r *http.Request) {
+
+	var eth1AddressTemplate = templates.GetTemplate("layout.html", "sprites.html", "execution/address.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	address := strings.Replace(vars["address"], "0x", "", -1)

@@ -12,19 +12,12 @@ import (
 	"strings"
 	"time"
 
-	"html/template"
 	"net/http"
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
 )
-
-var loginTemplate = template.Must(template.New("login").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "login.html"))
-var registerTemplate = template.Must(template.New("register").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "register.html"))
-var resetPasswordTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "resetPassword.html"))
-var resendConfirmationTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "resendConfirmation.html"))
-var requestResetPaswordTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "requestResetPassword.html"))
 
 var authSessionName = "auth"
 var authResetEmailRateLimit = time.Second * 60 * 2
@@ -33,6 +26,8 @@ var authInternalServerErrorFlashMsg = "Error: Something went wrong :( Please ret
 
 // Register handler renders a template that allows for the creation of a new user.
 func Register(w http.ResponseWriter, r *http.Request) {
+	var registerTemplate = templates.GetTemplate("layout.html", "register.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "register", "/register", "Register new account")
@@ -158,6 +153,9 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 
 // Login handler renders a template that allows a user to login.
 func Login(w http.ResponseWriter, r *http.Request) {
+
+	var loginTemplate = templates.GetTemplate("layout.html", "login.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "login", "/login", "Login")
@@ -300,6 +298,9 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 // This only works if the hash in the url is correct. This will also confirm
 // the email of the user if it has not been confirmed yet.
 func ResetPassword(w http.ResponseWriter, r *http.Request) {
+
+	var resetPasswordTemplate = templates.GetTemplate("layout.html", "resetPassword.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	session, err := utils.SessionStore.Get(r, authSessionName)
@@ -430,6 +431,9 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 
 // RequestResetPassword renders a template that lets the user enter his email and request a reset link.
 func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
+
+	var requestResetPaswordTemplate = templates.GetTemplate("layout.html", "requestResetPassword.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "register", "/register", "Reset Password")
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
@@ -492,6 +496,9 @@ func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 
 // ResendConfirmation handler sends a template for the user to request another confirmation link via email.
 func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
+
+	var resendConfirmationTemplate = templates.GetTemplate("layout.html", "resendConfirmation.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "resendConfirmation", "/resendConfirmation", "Resend Password Reset")

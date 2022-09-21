@@ -6,16 +6,15 @@ import (
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
-var eth2DepositsTemplate = template.Must(template.New("eth2Deposits").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "eth2Deposits.html"))
-
 // Eth2Deposits will return information about deposits using a go template
 func Eth2Deposits(w http.ResponseWriter, r *http.Request) {
+
+	var eth2DepositsTemplate = templates.GetTemplate("layout.html", "eth2Deposits.html")
 
 	w.Header().Set("Content-Type", "text/html")
 

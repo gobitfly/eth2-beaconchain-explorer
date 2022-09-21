@@ -18,8 +18,6 @@ import (
 	"github.com/gorilla/csrf"
 )
 
-var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validatorRewards.html"))
-
 // var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub", "aud"}
 
 type rewardsResp struct {
@@ -30,6 +28,8 @@ type rewardsResp struct {
 }
 
 func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
+	var validatorRewardsServicesTemplate = templates.GetTemplate("layout.html", "validatorRewards.html")
+
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")

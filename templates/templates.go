@@ -13,6 +13,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var logger = logrus.New().WithField("module", "templates")
+
 var (
 	//go:embed *
 	Files embed.FS
@@ -21,12 +23,12 @@ var (
 var templateCache = make(map[string]*template.Template)
 var templateCacheMux = &sync.RWMutex{}
 var templateFuncs = utils.GetTemplateFuncs()
-var pages map[string][]string
 
 // compile time check for templates
 var _ error = CompileTimeCheck(fs.FS(Files))
 
-func GetTemplate(name string, files ...string) *template.Template {
+func GetTemplate(files ...string) *template.Template {
+	name := strings.Join(files, "-")
 	if utils.Config.Frontend.Debug {
 		for i := range files {
 			files[i] = "templates/" + files[i]
@@ -34,13 +36,12 @@ func GetTemplate(name string, files ...string) *template.Template {
 		return template.Must(template.New(name).Funcs(template.FuncMap(templateFuncs)).ParseFiles(files...))
 	}
 
-	name = name + strings.Join(files, "-")
-
 	templateCacheMux.RLock()
-	defer templateCacheMux.RUnlock()
 	if templateCache[name] != nil {
+		templateCacheMux.RUnlock()
 		return templateCache[name]
 	}
+	templateCacheMux.RUnlock()
 
 	tmpl := template.Must(template.New(name).Funcs(template.FuncMap(templateFuncs)).ParseFS(Files, files...))
 	templateCacheMux.Lock()
@@ -56,7 +57,7 @@ func CompileTimeCheck(fsys fs.FS) error {
 		return err
 	}
 	template.Must(template.New("layout").Funcs(template.FuncMap(templateFuncs)).ParseFS(Files, files...))
-	logrus.Infof("Compile Time Check Complete")
+	logger.Infof("compile time check completed")
 
 	return nil
 }
