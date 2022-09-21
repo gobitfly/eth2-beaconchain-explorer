@@ -190,7 +190,7 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=income_history_%v_%v.pdf", s.Format("20060102"), e.Format("20060102")))
 	w.Header().Set("Content-Type", "text/csv")
 
-	_, err = w.Write(services.GeneratePdfReport(hist))
+	_, err = w.Write(services.GeneratePdfReport(hist, currency))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error writing response")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

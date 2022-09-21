@@ -112,7 +112,7 @@ func addCommas(balance float64, decimals string) string {
 	return string(rb)
 }
 
-func GeneratePdfReport(hist rewardHistory) []byte {
+func GeneratePdfReport(hist rewardHistory, currency string) []byte {
 
 	data := hist.History
 
@@ -157,9 +157,9 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 	pdf.SetTextColor(24, 24, 24)
 	pdf.SetFillColor(255, 255, 255)
 	// pdf.Ln(-1)
-	pdf.CellFormat(0, maxHt, fmt.Sprintf("Total Income ETH %s | %s", hist.TotalETH, hist.TotalCurrency), "", 0, "CM", true, 0, "")
+	pdf.CellFormat(0, maxHt, fmt.Sprintf("Income For Timeframe %s | %s", hist.TotalETH, hist.TotalCurrency), "", 0, "CM", true, 0, "")
 
-	header := [colCount]string{"Date", "End-of-date balance ETH", "Income for date ETH", "Price of ETH for date", "Income for date"}
+	header := [colCount]string{"Date", "Balance", "Income", "ETH Value", fmt.Sprintf("Income (%v)", currency)}
 
 	// pdf.SetMargins(marginH, marginH, marginH)
 	pdf.Ln(10)
@@ -217,7 +217,7 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 	pdf.Ln(10)
 	pdf.SetFont("Times", "", 9)
 
-	header = [colCount]string{"Index", "Balance Activation ETH", "Balance ETH", "Income ETH", "Last Attestation"}
+	header = [colCount]string{"Index", "Activation Balance", "Balance", "Income", "Last Attestation"}
 
 	// pdf.SetMargins(marginH, marginH, marginH)
 	// pdf.Ln(10)
@@ -276,7 +276,7 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 
 func GetPdfReport(validatorArr []uint64, currency string, start uint64, end uint64) []byte {
 	hist := GetValidatorHist(validatorArr, currency, start, end)
-	return GeneratePdfReport(hist)
+	return GeneratePdfReport(hist, currency)
 }
 
 func getValidatorDetails(validators []uint64) [][]string {
