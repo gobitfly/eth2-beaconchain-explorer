@@ -53,7 +53,7 @@ func ProcessSecrets(cfg interface{}) error {
 		if !hasPrefix {
 			continue
 		}
-		x, err := accessSecretVersion(info.Field.String())
+		x, err := AccessSecretVersion(info.Field.String())
 		if err != nil {
 			logrus.WithError(err).Error("error getting secret")
 			continue
@@ -173,7 +173,7 @@ func gatherInfo(prefix string, cfg interface{}) ([]varInfo, error) {
 // accessSecretVersion accesses the payload for the given secret version if one
 // exists. The version can be a version number as a string (e.g. "5") or an
 // alias (e.g. "latest").
-func accessSecretVersion(name string) (*string, error) {
+func AccessSecretVersion(name string) (*string, error) {
 	// Create the client.
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*45))
 	defer cancel()
