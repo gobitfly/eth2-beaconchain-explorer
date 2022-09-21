@@ -14,6 +14,7 @@ import (
 	"strconv"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/sirupsen/logrus"
 )
 
 var eth1BlocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/blocks.html"))
@@ -129,10 +130,6 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 		length = start
 	}
 
-	if length == start && length == 0 {
-		return nil, fmt.Errorf("invalid block range provided (start: %v, length: %v)", start, length)
-	}
-
 	blocks, err := db.BigtableClient.GetBlocksDescending(start, length)
 	if err != nil {
 		return nil, err
@@ -174,7 +171,8 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 				if val, ok := slotData[slot]; ok {
 					sData = val
 				} else {
-					return nil, fmt.Errorf("slot %d doesn't exists in ReaderDb", slot)
+					// return nil, fmt.Errorf("slot %d doesn't exists in ReaderDb", slot)
+					logrus.Infof("slot %d doesn't exists in ReaderDb", slot)
 				}
 			}
 		}
@@ -238,5 +236,4 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 	}
 
 	return data, nil
-
 }

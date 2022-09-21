@@ -495,6 +495,10 @@ func (bigtable *Bigtable) GetBlocksIndexedMultiple(blockNumbers []uint64, limit 
 
 // GetBlocksDescending gets blocks starting at block start
 func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth1BlockIndexed, error) {
+	if start < 1 || limit < 1 || limit > start {
+		return nil, fmt.Errorf("invalid block range provided (start: %v, limit: %v)", start, limit)
+	}
+
 	startPadded := reversedPaddedBlockNumber(start)
 	endPadded := reversedPaddedBlockNumber(start - limit)
 
