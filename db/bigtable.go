@@ -609,7 +609,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
 
 	for i := startEpoch; i >= startEpoch-endEpoch; i-- {
-		data, err := bigtable.GetValidatorAttestationHistory(validators, i, 0)
+		data, err := bigtable.GetValidatorAttestationHistory(validators, i, 1)
 
 		if err != nil {
 			return nil, err
