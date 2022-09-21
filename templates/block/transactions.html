@@ -1,3 +1,4 @@
+<!-- DEPRECATED, NOT USED ANYMORE -->
 {{ define "block_transactions" }}
   {{ range $i, $transaction := .Transactions }}
     <div class="card my-2">
@@ -8,7 +9,7 @@
         <div class="row border-bottom p-1 mx-0">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction hash">Transaction hash:</span></div>
           <div class="col-md-10 text-monospace text-break">
-            0x{{ printf "%x" $transaction.TxHash }}
+            <a href="/tx/0x{{ printf "%x" $transaction.TxHash }}">0x{{ printf "%x" $transaction.TxHash }}</a>
           </div>
         </div>
         <div class="row border-bottom p-1 mx-0">
@@ -30,10 +31,6 @@
           </div>
         </div>
         <div class="row border-bottom p-1 mx-0">
-          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Price">Gas Price:</span></div>
-          <div class="col-md-10 text-monospace text-break">{{ $transaction.PricePretty }} GWei</div>
-        </div>
-        <div class="row border-bottom p-1 mx-0">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Limit">Gas Limit:</span></div>
           <div class="col-md-10 text-monospace text-break">
             {{ $transaction.GasLimit }}
@@ -47,20 +44,6 @@
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction payload">Payload:</span></div>
           <div class="col-md-10 text-monospace text-break">
             0x{{ printf "%x" $transaction.Payload }}
-          </div>
-        </div>
-
-        <div class="row border-bottom p-1 mx-0">
-          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction payload">MaxPriorityFeePerGas:</span></div>
-          <div class="col-md-10 text-monospace text-break">
-            {{ $transaction.MaxPriorityFeePerGas }}
-          </div>
-        </div>
-
-        <div class="row border-bottom p-1 mx-0">
-          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction payload">MaxFeePerGas:</span></div>
-          <div class="col-md-10 text-monospace text-break">
-            {{ $transaction.MaxFeePerGas }}
           </div>
         </div>
       </div>

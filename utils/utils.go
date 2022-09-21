@@ -13,6 +13,7 @@ import (
 	"eth2-exporter/types"
 	"fmt"
 	"html/template"
+	"image/color"
 	"io/ioutil"
 	"log"
 	"math"
@@ -32,10 +33,12 @@ import (
 	"golang.org/x/text/message"
 	"gopkg.in/yaml.v3"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
+	"github.com/skip2/go-qrcode"
 )
 
 // Config is the globally accessible configuration
@@ -73,6 +76,8 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatSlotToTimestamp":                   FormatSlotToTimestamp,
 		"formatDepositAmount":                     FormatDepositAmount,
 		"formatEpoch":                             FormatEpoch,
+		"formatAddressLong":                       FormatAddressLong,
+		"formatHashLong":                          FormatHashLong,
 		"formatEth1Block":                         FormatEth1Block,
 		"formatEth1BlockHash":                     FormatEth1BlockHash,
 		"formatEth1Address":                       FormatEth1Address,
@@ -107,13 +112,20 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatValidatorTags":                     FormatValidatorTags,
 		"formatValidatorTag":                      FormatValidatorTag,
 		"formatRPL":                               FormatRPL,
+		"formatETH":                               FormatETH,
 		"formatFloat":                             FormatFloat,
+		"formatAmount":                            FormatAmount,
+		"formatAmountFormatted":                   FormatAmountFormated,
+		"formatAddressAsLink":                     FormatAddressAsLink,
+		"formatDifficulty":                        FormatDifficulty,
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
 		"roundDecimals":                           RoundDecimals,
+		"bigIntCmp":                               func(i *big.Int, j int) int { return i.Cmp(big.NewInt(int64(j))) },
 		"mod":                                     func(i, j int) bool { return i%j == 0 },
 		"sub":                                     func(i, j int) int { return i - j },
+		"subUI64":                                 func(i, j uint64) uint64 { return i - j },
 		"add":                                     func(i, j int) int { return i + j },
 		"addI64":                                  func(i, j int64) int64 { return i + j },
 		"addUI64":                                 func(i, j uint64) uint64 { return i + j },
@@ -121,6 +133,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"div":                                     func(i, j float64) float64 { return i / j },
 		"divInt":                                  func(i, j int) float64 { return float64(i) / float64(j) },
 		"gtf":                                     func(i, j float64) bool { return i > j },
+		"ltf":                                     func(i, j float64) bool { return i < j },
 		"round": func(i float64, n int) float64 {
 			return math.Round(i*math.Pow10(n)) / math.Pow10(n)
 		},
@@ -133,9 +146,10 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%d", i)
 		},
-		"derefString":      DerefString,
-		"trLang":           TrLang,
-		"firstCharToUpper": func(s string) string { return strings.Title(s) },
+		"formatStringThousands": FormatThousandsEnglish,
+		"derefString":           DerefString,
+		"trLang":                TrLang,
+		"firstCharToUpper":      func(s string) string { return strings.Title(s) },
 		"eqsp": func(a, b *string) bool {
 			if a != nil && b != nil {
 				return *a == *b
@@ -144,6 +158,42 @@ func GetTemplateFuncs() template.FuncMap {
 		},
 		"stringsJoin":     strings.Join,
 		"formatAddCommas": FormatAddCommas,
+		"encodeToString":  hex.EncodeToString,
+
+		"formatTokenBalance":      FormatTokenBalance,
+		"formatAddressEthBalance": FormatAddressEthBalance,
+		"toBase64":                ToBase64,
+		"bytesToNumberString": func(input []byte) string {
+			return new(big.Int).SetBytes(input).String()
+		},
+		"bigQuo": func(num []byte, denom []byte) string {
+			numFloat := new(big.Float).SetInt(new(big.Int).SetBytes(num))
+			denomFloat := new(big.Float).SetInt(new(big.Int).SetBytes(denom))
+			res := new(big.Float).Quo(numFloat, denomFloat)
+			return res.Text('f', int(res.MinPrec()))
+		},
+		"bigDecimalShift": func(num []byte, shift []byte) string {
+			numFloat := new(big.Float).SetInt(new(big.Int).SetBytes(num))
+			denom := new(big.Int).Exp(big.NewInt(10), new(big.Int).SetBytes(shift), nil)
+			// shift := new(big.Float).SetInt(new(big.Int).SetBytes(shift))
+			res := new(big.Float).Quo(numFloat, new(big.Float).SetInt(denom))
+			return res.Text('f', int(res.MinPrec()))
+		},
+		"trimTrailingZero": func(num string) string {
+			if strings.Contains(num, ".") {
+				return strings.TrimRight(num, "0")
+			}
+			return num
+		},
+		// ETH1 related formatting
+		"formatBalanceWei":      FormatBalanceWei,
+		"formatBytesAmount":     FormatBytesAmount,
+		"formatEth1TxStatus":    FormatEth1TxStatus,
+		"formatTimestampUInt64": FormatTimestampUInt64,
+		"formatEth1AddressFull": FormatEth1AddressFull,
+		"byteToString": func(num []byte) string {
+			return string(num)
+		},
 	}
 }
 
@@ -274,6 +324,9 @@ func ReadConfig(cfg *types.Config, path string) error {
 		default:
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
 		}
+		if err != nil {
+			return err
+		}
 	} else {
 		f, err := os.Open(cfg.Chain.ConfigPath)
 		if err != nil {
@@ -361,7 +414,6 @@ func CORSMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
-		return
 	})
 }
 
@@ -371,11 +423,17 @@ func IsApiRequest(r *http.Request) bool {
 }
 
 var eth1AddressRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{40}$")
+var eth1TxRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{64}$")
 var zeroHashRE = regexp.MustCompile("^0?x?0+$")
 
 // IsValidEth1Address verifies whether a string represents a valid eth1-address.
 func IsValidEth1Address(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1AddressRE.MatchString(s)
+}
+
+// IsValidEth1Tx verifies whether a string represents a valid eth1-tx-hash.
+func IsValidEth1Tx(s string) bool {
+	return !zeroHashRE.MatchString(s) && eth1TxRE.MatchString(s)
 }
 
 // https://github.com/badoux/checkmail/blob/f9f80cb795fa/checkmail.go#L37
@@ -437,22 +495,16 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 			switch v.DatabaseTypeName() {
 			case "VARCHAR", "TEXT", "UUID":
 				scanArgs[i] = new(sql.NullString)
-				break
 			case "BOOL":
 				scanArgs[i] = new(sql.NullBool)
-				break
 			case "INT4", "INT8":
 				scanArgs[i] = new(sql.NullInt64)
-				break
 			case "FLOAT8":
 				scanArgs[i] = new(sql.NullFloat64)
-				break
 			case "TIMESTAMP":
 				scanArgs[i] = new(sql.NullTime)
-				break
 			case "_INT4", "_INT8":
 				scanArgs[i] = new(pq.Int64Array)
-				break
 			default:
 				scanArgs[i] = new(sql.NullString)
 			}
@@ -598,7 +650,7 @@ func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
 		return false, err
 	}
 	if len(googleResponse.ErrorCodes) > 0 {
-		err = fmt.Errorf("Error validating ReCaptcha %v", googleResponse.ErrorCodes)
+		err = fmt.Errorf("error validating ReCaptcha %v", googleResponse.ErrorCodes)
 	} else {
 		err = nil
 	}
@@ -607,7 +659,7 @@ func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
 		return true, err
 	}
 
-	return false, fmt.Errorf("Score too low threshold not reached, Score: %v - Required >0.5; %v", googleResponse.Score, err)
+	return false, fmt.Errorf("score too low threshold not reached, Score: %v - Required >0.5; %v", googleResponse.Score, err)
 }
 
 func BitAtVector(b []byte, i int) bool {
@@ -627,6 +679,174 @@ func GetNetwork() string {
 func ElementExists(arr []string, el string) bool {
 	for _, e := range arr {
 		if e == el {
+			return true
+		}
+	}
+	return false
+}
+
+func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
+	meta, err := getABIFromEtherscan(address)
+
+	if err != nil {
+		logrus.Errorf("failed to get abi for contract %x from etherscan: %v", address, err)
+		return nil, fmt.Errorf("contract abi not found")
+	}
+	return meta, nil
+}
+
+// func getABIFromSourcify(address []byte) (*types.ContractMetadata, error) {
+// 	httpClient := http.Client{
+// 		Timeout: time.Second * 5,
+// 	}
+
+// 	resp, err := httpClient.Get(fmt.Sprintf("https://sourcify.dev/server/repository/contracts/full_match/%d/0x%x/metadata.json", 1, address))
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	if resp.StatusCode == 200 {
+// 		body, err := ioutil.ReadAll(resp.Body)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		data := &types.SourcifyContractMetadata{}
+// 		err = json.Unmarshal(body, data)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		abiString, err := json.Marshal(data.Output.Abi)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		contractAbi, err := abi.JSON(bytes.NewReader(abiString))
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		meta := &types.ContractMetadata{}
+// 		meta.ABIJson = abiString
+// 		meta.ABI = &contractAbi
+// 		meta.Name = ""
+
+// 		return meta, nil
+// 	} else {
+// 		return nil, fmt.Errorf("sourcify contract code not found")
+// 	}
+// }
+
+func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
+	httpClient := http.Client{
+		Timeout: time.Second * 5,
+	}
+
+	baseUrl := "api.etherscan.io"
+
+	if Config.Chain.Config.DepositChainID == 5 {
+		baseUrl = "api-goerli.etherscan.io"
+	}
+	resp, err := httpClient.Get(fmt.Sprintf("https://%s/api?module=contract&action=getsourcecode&address=0x%x&apikey=%s", baseUrl, address, ""))
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == 200 {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		data := &types.EtherscanContractMetadata{}
+		err = json.Unmarshal(body, data)
+		if err != nil {
+			return nil, err
+		}
+
+		contractAbi, err := abi.JSON(strings.NewReader(data.Result[0].Abi))
+		if err != nil {
+			return nil, err
+		}
+		meta := &types.ContractMetadata{}
+		meta.ABIJson = []byte(data.Result[0].Abi)
+		meta.ABI = &contractAbi
+		meta.Name = data.Result[0].ContractName
+		return meta, nil
+	} else {
+		return nil, fmt.Errorf("etherscan contract code not found")
+	}
+}
+
+func FormatThousandsEnglish(number string) string {
+	runes := []rune(number)
+	cnt := 0
+	for _, rune := range runes {
+		if rune == '.' {
+			break
+		}
+		cnt += 1
+	}
+	amt := cnt / 3
+	rem := cnt % 3
+
+	if rem == 0 {
+		amt -= 1
+	}
+
+	res := make([]rune, 0, amt+rem)
+	if amt <= 0 {
+		return number
+	}
+	for i := 0; i < len(runes); i++ {
+		if i != 0 && i == rem {
+			res = append(res, ',')
+			amt -= 1
+		}
+
+		if amt > 0 && i > rem && ((i-rem)%3) == 0 {
+			res = append(res, ',')
+			amt -= 1
+		}
+
+		res = append(res, runes[i])
+	}
+
+	return string(res)
+}
+
+// Generates a QR code for an address
+// returns two transparent base64 encoded img strings for dark and light theme
+// the first has a black QR code the second a white QR code
+func GenerateQRCodeForAddress(address []byte) (string, string, error) {
+	q, err := qrcode.New(fmt.Sprintf("0x%x", address), qrcode.Medium)
+	if err != nil {
+		return "", "", err
+	}
+
+	q.BackgroundColor = color.Transparent
+	q.ForegroundColor = color.Black
+
+	png, err := q.PNG(320)
+	if err != nil {
+		return "", "", err
+	}
+
+	q.ForegroundColor = color.White
+
+	pngInverse, err := q.PNG(320)
+	if err != nil {
+		return "", "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(png), base64.StdEncoding.EncodeToString(pngInverse), nil
+}
+
+// sliceContains reports whether the provided string is present in the given slice of strings.
+func SliceContains(list []string, target string) bool {
+	for _, s := range list {
+		if s == target {
 			return true
 		}
 	}

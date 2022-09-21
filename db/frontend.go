@@ -408,6 +408,22 @@ func UpdateUserSubscription(tx *sql.Tx, id uint64, valid bool, expiration int64,
 	return err
 }
 
+func SetSubscriptionToExpired(tx *sql.Tx, id uint64) error {
+	var err error
+	query := "UPDATE users_app_subscriptions SET validate_remotely = false, reject_reason = 'expired' WHERE id = $1;"
+	if tx == nil {
+		_, err = FrontendWriterDB.Exec(query,
+			id,
+		)
+	} else {
+		_, err = tx.Exec(query,
+			id,
+		)
+	}
+
+	return err
+}
+
 func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 	pushByID := map[uint64][]string{}
 	if len(ids) == 0 {

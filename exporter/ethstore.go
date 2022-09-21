@@ -40,7 +40,7 @@ func ethStoreExporter() {
 	}
 	// set sane defaults if config is not set
 	if len(ese.ExecutionEndpoint) == 0 {
-		ese.ExecutionEndpoint = utils.Config.Indexer.Eth1Endpoint
+		ese.ExecutionEndpoint = utils.Config.Eth1ErigonEndpoint
 	}
 	if len(ese.ConsensusEndpoint) == 0 {
 		ese.ConsensusEndpoint = fmt.Sprintf("http://%s:%s", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port)

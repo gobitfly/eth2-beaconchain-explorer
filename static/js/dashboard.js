@@ -188,15 +188,12 @@ function addValidatorUpdateUI() {
     method: "GET",
   }).then((res) => {
     res.json().then((data) => {
-      let eff = 0.0
-      for (let incDistance of data) {
-        if (incDistance === 0.0) {
-          continue
-        }
-        eff += (1.0 / incDistance) * 100.0
+      let sum = 0.0
+      for (let eff of data) {
+        sum += eff
       }
-      eff = eff / data.length
-      setValidatorEffectiveness("validator-eff-total", eff)
+      sum = sum / data.length
+      setValidatorEffectiveness("validator-eff-total", sum)
     })
   })
   showProposedHistoryTable()
@@ -598,7 +595,7 @@ $(document).ready(function () {
       source: bhEth1Addresses,
       display: "address",
       templates: {
-        header: "<h3>Validators by ETH1 Addresses</h3>",
+        header: "<h3>Validators by ETH Addresses</h3>",
         suggestion: function (data) {
           var len = data.validator_indices.length > VALLIMIT ? VALLIMIT + "+" : data.validator_indices.length
           return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.eth1_address}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
@@ -791,7 +788,7 @@ $(document).ready(function () {
     if (state.validators.length > VALLIMIT) {
       state.validators = state.validators.slice(0, VALLIMIT)
       console.log(`${VALLIMIT} validators limit reached`)
-      alert(`You can not add more than ${VALLIMIT} validators to your dashboard`)
+      handleLimitHit()
     }
   }
 
@@ -815,11 +812,22 @@ $(document).ready(function () {
 
     if (limitReached) {
       console.log(`${VALLIMIT} validators limit reached`)
-      alert(`You can not add more than ${VALLIMIT} validators to your dashboard`)
+      handleLimitHit()
     }
     state.validators.sort(sortValidators)
     renderSelectedValidators()
     updateState()
+  }
+
+  function handleLimitHit() {
+    if (VALLIMIT == 300) {
+      // user is already at the top tier, no need to advertise it to them
+      alert(`Sorry, too many validators! You can not currently add more than ${VALLIMIT} validators to your dashboard.`)
+    } else {
+      if (window.confirm(`With your current premium level, you can not add more than ${VALLIMIT} validators to your dashboard.\n\nBy upgrading to the Whale Tier, this limit gets raised to 280 validators!`)) {
+        window.location.href = "/premium"
+      }
+    }
   }
 
   function addValidator(index) {
@@ -828,7 +836,7 @@ $(document).ready(function () {
       overview.classList.remove("d-none")
     }
     if (state.validators.length >= VALLIMIT) {
-      alert(`Too many validators, you can not add more than ${VALLIMIT} validators to your dashboard!`)
+      handleLimitHit()
       return
     }
     index = index + "" // make sure index is string
@@ -1200,7 +1208,7 @@ function createProposedChart(data) {
         data: missed,
       },
       {
-        name: "Orphaned",
+        name: "Missed (Orphaned)",
         color: "#e4a354",
         data: orphaned,
       },

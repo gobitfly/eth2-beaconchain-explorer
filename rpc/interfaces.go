@@ -9,7 +9,7 @@ import (
 // Client provides an interface for RPC clients
 type Client interface {
 	GetChainHead() (*types.ChainHead, error)
-	GetEpochData(epoch uint64) (*types.EpochData, error)
+	GetEpochData(epoch uint64, skipHistoricBalances bool) (*types.EpochData, error)
 	GetValidatorQueue() (*types.ValidatorQueue, error)
 	GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error)
 	GetBlocksBySlot(slot uint64) ([]*types.Block, error)
@@ -18,6 +18,12 @@ type Client interface {
 	GetBlockStatusByEpoch(slot uint64) ([]*types.CanonBlock, error)
 	GetFinalityCheckpoints(epoch uint64) (*types.FinalityCheckpoints, error)
 	GetSyncCommittee(stateID string, epoch uint64) (*StandardSyncCommittee, error)
+}
+
+type Eth1Client interface {
+	GetBlock(number uint64) (*types.Eth1Block, *types.GetBlockTimings, error)
+	GetLatestEth1BlockNumber() (uint64, error)
+	Close()
 }
 
 var logger = logrus.New().WithField("module", "rpc")

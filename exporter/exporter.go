@@ -5,14 +5,18 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/metrics"
 	"eth2-exporter/rpc"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 var logger = logrus.New().WithField("module", "exporter")
@@ -21,6 +25,12 @@ var logger = logrus.New().WithField("module", "exporter")
 // This is a workaround for a bug in the prysm archive node that causes epochs without blocks
 // to not be archived properly (see https://github.com/prysmaticlabs/prysm/issues/4165)
 var epochBlacklist = make(map[uint64]uint64)
+var saveEpochMux = &sync.Mutex{}
+var fullCheckRunning = uint64(0)
+
+var getEpochDataChan = make(chan uint64, 10)
+var saveEpochDataChan = make(chan *types.EpochData, 10)
+var saveBlockDataChan = make(chan *types.Block, 10)
 
 // Start will start the export of data from rpc into the database
 func Start(client rpc.Client) error {
@@ -175,10 +185,10 @@ func Start(client rpc.Client) error {
 			if block.Db == nil {
 				logger.Printf("queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
-			} else if block.Node == nil {
+			} else if block.Node == nil && !strings.HasSuffix(key, "-00") { //do not re-export because of missed blocks
 				logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
-			} else if bytes.Compare(block.Db.BlockRoot, block.Node.BlockRoot) != 0 {
+			} else if !bytes.Equal(block.Db.BlockRoot, block.Node.BlockRoot) {
 				logger.Printf("queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
 			}
@@ -223,29 +233,50 @@ func Start(client rpc.Client) error {
 
 	lastExportedSlot := uint64(0)
 
-	doFullCheck(client)
+	// doFullCheck(client)
 
+	logger.Infof("entering monitoring mode")
 	for {
-		select {
-		case block := <-newBlockChan:
-			// Do a full check on any epoch transition or after during the first run
-			if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
-				doFullCheck(client)
-			} else { // else just save the in epoch block
-				err := db.SaveBlock(block)
-				if err != nil {
-					logger.Errorf("error saving block: %v", err)
+		block := <-newBlockChan
+		// Do a full check on any epoch transition or after during the first run
+		if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
+			go func() {
+				v := atomic.LoadUint64(&fullCheckRunning)
+				if v == 1 {
+					logger.Infof("skipping full check as one is already running")
+					return
 				}
-			}
-			lastExportedSlot = block.Slot
+				atomic.StoreUint64(&fullCheckRunning, 1)
+				doFullCheck(client, 0)
+				atomic.StoreUint64(&fullCheckRunning, 0)
+			}()
 		}
-	}
 
-	return nil
+		blocksMap := make(map[uint64]map[string]*types.Block)
+		if blocksMap[block.Slot] == nil {
+			blocksMap[block.Slot] = make(map[string]*types.Block)
+		}
+		blocksMap[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
+
+		err := db.BigtableClient.SaveAttestations(blocksMap)
+		if err != nil {
+			logrus.Errorf("error exporting attestations to bigtable for block %v: %v", block.Slot, err)
+		}
+		err = db.BigtableClient.SaveSyncComitteeDuties(blocksMap)
+		if err != nil {
+			logrus.Errorf("error exporting sync committe duties to bigtable for block %v: %v", block.Slot, err)
+		}
+
+		err = db.SaveBlock(block)
+		if err != nil {
+			logger.Errorf("error saving block: %v", err)
+		}
+		lastExportedSlot = block.Slot
+	}
 }
 
 // Will ensure the db is fully in sync with the node
-func doFullCheck(client rpc.Client) {
+func doFullCheck(client rpc.Client, lookback uint64) {
 	logger.Infof("checking for new blocks/epochs to export")
 
 	// Use the chain head as our current point of reference
@@ -260,6 +291,8 @@ func doFullCheck(client rpc.Client) {
 	if head.FinalizedEpoch > 1 {
 		startEpoch = head.FinalizedEpoch - 1
 	}
+
+	startEpoch = startEpoch - lookback
 
 	// If the network is experiencing finality issues limit the export to the last 10 epochs
 	// Once the network reaches finality again all epochs should be exported again
@@ -316,9 +349,11 @@ func doFullCheck(client rpc.Client) {
 			logger.Printf("queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, key)
 			epochsToExport[block.Epoch] = true
 		} else if block.Node == nil {
-			logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
-			epochsToExport[block.Epoch] = true
-		} else if bytes.Compare(block.Db.BlockRoot, block.Node.BlockRoot) != 0 {
+			if !strings.HasSuffix(key, "-00") {
+				logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
+				epochsToExport[block.Epoch] = true
+			}
+		} else if !bytes.Equal(block.Db.BlockRoot, block.Node.BlockRoot) {
 			logger.Printf("queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
 			epochsToExport[block.Epoch] = true
 		}
@@ -464,38 +499,9 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		logger.WithFields(logrus.Fields{"duration": time.Since(start), "epoch": epoch}).Info("completed exporting epoch")
 	}()
 
-	// Check if the partition for the validator_balances and attestation_assignments and sync_assignments table for this epoch exists
-	var one int
-	logger.Printf("checking partition status for epoch %v", epoch)
-	week := epoch / 1575
-	err := db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'attestation_assignments_%v'", week))
-	if err != nil {
-		logger.Infof("creating partition attestation_assignments_%v", week)
-		_, err := db.WriterDb.Exec(fmt.Sprintf("CREATE TABLE attestation_assignments_%v PARTITION OF attestation_assignments_p FOR VALUES IN (%v);", week, week))
-		if err != nil {
-			logger.Fatalf("unable to create partition attestation_assignments_%v: %v", week, err)
-		}
-	}
-	err = db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'validator_balances_%v'", week))
-	if err != nil {
-		logger.Infof("creating partition validator_balances_%v", week)
-		_, err := db.WriterDb.Exec(fmt.Sprintf("CREATE TABLE validator_balances_%v PARTITION OF validator_balances_p FOR VALUES IN (%v);", week, week))
-		if err != nil {
-			logger.Fatalf("unable to create partition validator_balances_%v: %v", week, err)
-		}
-	}
-	err = db.WriterDb.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'sync_assignments_%v'", week))
-	if err != nil {
-		logger.Infof("creating partition sync_assignments_%v", week)
-		_, err := db.WriterDb.Exec(fmt.Sprintf("CREATE TABLE sync_assignments_%v PARTITION OF sync_assignments_p FOR VALUES IN (%v);", week, week))
-		if err != nil {
-			logger.Fatalf("unable to create partition sync_assignments_%v: %v", week, err)
-		}
-	}
-
 	startGetEpochData := time.Now()
 	logger.Printf("retrieving data for epoch %v", epoch)
-	data, err := client.GetEpochData(epoch)
+	data, err := client.GetEpochData(epoch, false)
 	if err != nil {
 		return fmt.Errorf("error retrieving epoch data: %v", err)
 	}
@@ -507,7 +513,86 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		return fmt.Errorf("error retrieving epoch data: no validators received for epoch")
 	}
 
-	return db.SaveEpoch(data)
+	go func() {
+		saveEpochMux.Lock()
+		defer saveEpochMux.Unlock()
+		logger.Infof("acquired saveEpochMux lock for epoch %v", data.Epoch)
+		// export epoch data to bigtable
+		g := new(errgroup.Group)
+		g.Go(func() error {
+			err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
+			if err != nil {
+				return fmt.Errorf("error exporting validator balances to bigtable: %v", err)
+			}
+			return nil
+		})
+		g.Go(func() error {
+			err = db.BigtableClient.SaveAttestationAssignments(epoch, data.ValidatorAssignmentes.AttestorAssignments)
+			if err != nil {
+				return fmt.Errorf("error exporting attestation assignments to bigtable: %v", err)
+			}
+			return nil
+		})
+		g.Go(func() error {
+			err = db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
+			if err != nil {
+				return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
+			}
+			return nil
+		})
+		g.Go(func() error {
+			err = db.BigtableClient.SaveAttestations(data.Blocks)
+			if err != nil {
+				return fmt.Errorf("error exporting attestations to bigtable: %v", err)
+			}
+			return nil
+		})
+		g.Go(func() error {
+			err = db.BigtableClient.SaveProposals(data.Blocks)
+			if err != nil {
+				return fmt.Errorf("error exporting proposals to bigtable: %v", err)
+			}
+			return nil
+		})
+		g.Go(func() error {
+			err = db.BigtableClient.SaveSyncComitteeDuties(data.Blocks)
+			if err != nil {
+				return fmt.Errorf("error exporting sync committe duties to bigtable: %v", err)
+			}
+			return nil
+		})
+		g.Go(func() error {
+			attestedSlots := make(map[uint64]uint64)
+			for _, blockkv := range data.Blocks {
+				for _, block := range blockkv {
+					for _, attestation := range block.Attestations {
+						for _, validator := range attestation.Attesters {
+							if block.Slot > attestedSlots[validator] {
+								attestedSlots[validator] = block.Slot
+							}
+						}
+					}
+				}
+			}
+
+			err = services.SetLastAttestationSlots(attestedSlots)
+			if err != nil {
+				return fmt.Errorf("error settings last attestation slots for epoch %v: %v", data.Epoch, err)
+			}
+			return nil
+		})
+		err = g.Wait()
+		if err != nil {
+			logger.Errorf("error during bigtable export: %v", err)
+			return
+		}
+		err = db.SaveEpoch(data)
+		if err != nil {
+			logger.Errorf("error saving epoch data: %v", err)
+			return
+		}
+	}()
+	return nil
 }
 
 func exportValidatorQueue(client rpc.Client) error {
@@ -660,10 +745,10 @@ func updateValidatorPerformance() error {
 				balance.Balance31d = balance.BalanceActivation
 			}
 
-			earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
-			earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
-			earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
-			earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
+			earningsTotal += int64(balance.Balance) - balance.BalanceActivation.Int64
+			earningsLastDay += int64(balance.Balance) - balance.Balance1d.Int64
+			earningsLastWeek += int64(balance.Balance) - balance.Balance7d.Int64
+			earningsLastMonth += int64(balance.Balance) - balance.Balance31d.Int64
 		}
 
 		data = append(data, &types.ValidatorPerformance{
@@ -880,7 +965,7 @@ func genesisDepositsExporter() {
 					b.balance as amount,
 					d.signature as signature
 				FROM validators v
-				LEFT JOIN validator_balances_p b 
+				LEFT JOIN validator_balances_recent b 
 					ON v.validatorindex = b.validatorindex
 					AND b.epoch = 0
 					AND b.week = 0

@@ -171,7 +171,7 @@
                         $.getJSON('/index/data', function (response) {
                             this.page = response;
                         }.bind(this));
-                        this.updateIn = 15;
+                        this.updateIn = 5;
                     } else {
                         this.updateIn--;
                     }
@@ -198,6 +198,16 @@
     <link rel="stylesheet" href="/css/rocket.css" />
   {{ end }}
 
+
+  <style>
+    #slotsViz > svg {
+      overflow: visible;
+    }
+    svg rect[slot],
+    svg rect[epoch] {
+      cursor: pointer;
+    }
+  </style>
 
   <style>
     .hero-container {

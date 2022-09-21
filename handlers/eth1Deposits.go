@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
@@ -12,8 +13,8 @@ import (
 	"strings"
 )
 
-var eth1DepositsTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1Deposits.html", "templates/index/depositChart.html"))
-var eth1DepositsLeaderboardTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1DepositsLeaderboard.html"))
+var eth1DepositsTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "eth1Deposits.html", "index/depositChart.html"))
+var eth1DepositsLeaderboardTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "eth1DepositsLeaderboard.html"))
 
 // Eth1Deposits will return information about deposits using a go template
 func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +35,7 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 	pageData.Stats = services.GetLatestStats()
 	pageData.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
 
-	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Eth1 Deposits")
+	data := InitPageData(w, r, "blockchain", "/deposits/eth1", "Eth1 Deposits")
 	data.HeaderAd = true
 	data.Data = pageData
 
@@ -42,7 +43,7 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -61,19 +62,19 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	if length > 100 {
@@ -104,7 +105,7 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 	deposits, depositCount, err := db.GetEth1DepositsJoinEth2Deposits(search, length, start, orderBy, orderDir, latestEpoch, validatorOnlineThresholdSlot)
 	if err != nil {
 		logger.Errorf("GetEth1Deposits error retrieving eth1_deposit data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -136,7 +137,7 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -156,7 +157,7 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -173,19 +174,19 @@ func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	if length > 100 {
@@ -216,7 +217,7 @@ func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	deposits, depositCount, err := db.GetEth1DepositsLeaderboard(search, length, start, orderBy, orderDir, latestEpoch)
 	if err != nil {
 		logger.Errorf("GetEth1Deposits error retrieving eth1_deposit leaderboard data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -252,7 +253,7 @@ func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

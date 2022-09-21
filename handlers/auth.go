@@ -5,6 +5,7 @@ import (
 	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -19,11 +20,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var loginTemplate = template.Must(template.New("login").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/login.html"))
-var registerTemplate = template.Must(template.New("register").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/register.html"))
-var resetPasswordTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/resetPassword.html"))
-var resendConfirmationTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/resendConfirmation.html"))
-var requestResetPaswordTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/requestResetPassword.html"))
+var loginTemplate = template.Must(template.New("login").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "login.html"))
+var registerTemplate = template.Must(template.New("register").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "register.html"))
+var resetPasswordTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "resetPassword.html"))
+var resendConfirmationTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "resendConfirmation.html"))
+var requestResetPaswordTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "requestResetPassword.html"))
 
 var authSessionName = "auth"
 var authResetEmailRateLimit = time.Second * 60 * 2
@@ -87,6 +88,13 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	err = tx.Get(&existingEmails, "SELECT COUNT(*) FROM users WHERE LOWER(email) = $1", email)
 	if existingEmails > 0 {
 		session.AddFlash("Error: Email already exists!")
+		session.Save(r, w)
+		http.Redirect(w, r, "/register", http.StatusSeeOther)
+		return
+	}
+	if err != nil {
+		logger.Errorf("error retrieving existing emails: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
 		session.Save(r, w)
 		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
@@ -605,7 +613,7 @@ func sendConfirmationEmail(email string) error {
 		return fmt.Errorf("error getting confirmation-ts: %w", err)
 	}
 	if lastTs != nil && (*lastTs).Add(authConfirmEmailRateLimit).After(now) {
-		return &types.RateLimitError{(*lastTs).Add(authConfirmEmailRateLimit).Sub(now)}
+		return &types.RateLimitError{TimeLeft: (*lastTs).Add(authConfirmEmailRateLimit).Sub(now)}
 	}
 
 	_, err = tx.Exec("UPDATE users SET email_confirmation_hash = $1 WHERE email = $2", emailConfirmationHash, email)
@@ -656,7 +664,7 @@ func sendResetEmail(email string) error {
 		return fmt.Errorf("error getting reset-ts: %w", err)
 	}
 	if lastTs != nil && (*lastTs).Add(authResetEmailRateLimit).After(now) {
-		return &types.RateLimitError{(*lastTs).Add(authResetEmailRateLimit).Sub(now)}
+		return &types.RateLimitError{TimeLeft: (*lastTs).Add(authResetEmailRateLimit).Sub(now)}
 	}
 
 	_, err = tx.Exec("UPDATE users SET password_reset_hash = $1 WHERE email = $2", resetHash, email)

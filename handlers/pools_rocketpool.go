@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -13,7 +14,7 @@ import (
 	"strings"
 )
 
-var poolsRocketpoolTemplate = template.Must(template.New("rocketpool").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/pools_rocketpool.html"))
+var poolsRocketpoolTemplate = template.Must(template.New("rocketpool").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "pools_rocketpool.html"))
 
 // PoolsRocketpool returns the rocketpool using a go template
 func PoolsRocketpool(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +26,7 @@ func PoolsRocketpool(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -36,19 +37,19 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	if length > 100 {
@@ -67,6 +68,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 		"3": "node_fee",
 		"4": "deposit_type",
 		"5": "status",
+		"6": "penalty_count",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -83,7 +85,15 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 	if search == "" {
 		err = db.ReaderDb.Select(&minipools, fmt.Sprintf(`
 			select 
-				rocketpool_minipools.*, 
+				rocketpool_minipools.rocketpool_storage_address, 
+				rocketpool_minipools.address, 
+				rocketpool_minipools.pubkey, 
+				rocketpool_minipools.node_address, 
+				rocketpool_minipools.node_fee, 
+				rocketpool_minipools.deposit_type, 
+				rocketpool_minipools.status, 
+				rocketpool_minipools.status_time, 
+				rocketpool_minipools.penalty_count,
 				validators.validatorindex as validator_index,
 				coalesce(validator_names.name,'') as validator_name,
 				cnt.total_count
@@ -96,7 +106,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start)
 		if err != nil {
 			logger.Errorf("error getting rocketpool-minipools from db: %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	} else {
@@ -107,7 +117,15 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 				union (select address from validator_names inner join rocketpool_minipools on rocketpool_minipools.pubkey = validator_names.publickey where name ilike $4)
 			)
 			select 
-				rocketpool_minipools.*, 
+				rocketpool_minipools.rocketpool_storage_address, 
+				rocketpool_minipools.address, 
+				rocketpool_minipools.pubkey, 
+				rocketpool_minipools.node_address, 
+				rocketpool_minipools.node_fee, 
+				rocketpool_minipools.deposit_type, 
+				rocketpool_minipools.status, 
+				rocketpool_minipools.status_time, 
+				rocketpool_minipools.penalty_count,
 				validators.validatorindex as validator_index,
 				coalesce(validator_names.name,'') as validator_name,
 				cnt.total_count
@@ -121,7 +139,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start, search+"%", "%"+search+"%")
 		if err != nil {
 			logger.Errorf("error getting rocketpool-minipools from db (with search: %v): %v", search, err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	}
@@ -146,6 +164,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 		entry = append(entry, row.NodeFee)
 		entry = append(entry, row.DepositType)
 		entry = append(entry, row.Status)
+		entry = append(entry, row.PenaltyCount)
 		tableData = append(tableData, entry)
 	}
 
@@ -159,7 +178,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -170,19 +189,19 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	if length > 100 {
@@ -214,9 +233,22 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 	recordsTotal := uint64(0)
 	recordsFiltered := uint64(0)
 	var dbResult []types.RocketpoolPageDataNode
+
 	if search == "" {
 		err = db.ReaderDb.Select(&dbResult, fmt.Sprintf(`
-			select rocketpool_nodes.*, cnt.total_count
+			select 
+				rocketpool_nodes.rocketpool_storage_address, 
+				rocketpool_nodes.address, 
+				rocketpool_nodes.timezone_location, 
+				rocketpool_nodes.rpl_stake, 
+				rocketpool_nodes.min_rpl_stake, 
+				rocketpool_nodes.max_rpl_stake, 
+				rocketpool_nodes.rpl_cumulative_rewards, 
+				rocketpool_nodes.smoothing_pool_opted_in, 
+				rocketpool_nodes.claimed_smoothing_pool, 
+				rocketpool_nodes.unclaimed_smoothing_pool, 
+				rocketpool_nodes.unclaimed_rpl_rewards, 
+				cnt.total_count
 			from rocketpool_nodes
 			left join (select count(*) from rocketpool_nodes) cnt(total_count) ON true
 			order by %s %s
@@ -224,7 +256,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start)
 		if err != nil {
 			logger.Errorf("error getting rocketpool-nodes from db: %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	} else {
@@ -232,7 +264,19 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 			with matched_nodes as (
 				select address from rocketpool_nodes where encode(address::bytea,'hex') like $3
 			)
-			select rocketpool_nodes.*, cnt.total_count
+			select 
+				rocketpool_nodes.rocketpool_storage_address, 
+				rocketpool_nodes.address, 
+				rocketpool_nodes.timezone_location, 
+				rocketpool_nodes.rpl_stake, 
+				rocketpool_nodes.min_rpl_stake, 
+				rocketpool_nodes.max_rpl_stake, 
+				rocketpool_nodes.rpl_cumulative_rewards, 
+				rocketpool_nodes.smoothing_pool_opted_in, 
+				rocketpool_nodes.claimed_smoothing_pool, 
+				rocketpool_nodes.unclaimed_smoothing_pool, 
+				rocketpool_nodes.unclaimed_rpl_rewards,
+				cnt.total_count
 			from rocketpool_nodes
 			inner join matched_nodes on matched_nodes.address = rocketpool_nodes.address
 			left join (select count(*) from rocketpool_nodes) cnt(total_count) ON true
@@ -241,7 +285,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start, search+"%")
 		if err != nil {
 			logger.Errorf("error getting rocketpool-nodes from db (with search: %v): %v", search, err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	}
@@ -274,7 +318,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -285,19 +329,19 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	if length > 100 {
@@ -365,7 +409,7 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start)
 		if err != nil {
 			logger.Errorf("error getting rocketpool-proposals from db: %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	} else {
@@ -411,7 +455,7 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start, search, search+"%", "%"+search+"%")
 		if err != nil {
 			logger.Errorf("error getting rocketpool-proposals from db (with search: %v): %v", search, err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	}
@@ -463,7 +507,7 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -498,19 +542,19 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	if length > 100 {
@@ -553,7 +597,7 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start)
 		if err != nil {
 			logger.Errorf("error getting rocketpool-members from db: %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	} else {
@@ -572,7 +616,7 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start, search+"%", "%"+search+"%")
 		if err != nil {
 			logger.Errorf("error getting rocketpool-members from db (with search: %v): %v", search, err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	}
@@ -606,7 +650,7 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

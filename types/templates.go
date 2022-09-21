@@ -6,9 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net/http"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
+	geth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 )
@@ -128,8 +132,8 @@ type StatsTopDepositors struct {
 
 // IndexPageData is a struct to hold info for the main web page
 type IndexPageData struct {
-	NetworkName               string `json:"-"`
-	DepositContract           string `json:"-"`
+	NetworkName               string `json:"networkName"`
+	DepositContract           string `json:"depositContract"`
 	ShowSyncingMessage        bool
 	CurrentEpoch              uint64                 `json:"current_epoch"`
 	CurrentFinalizedEpoch     uint64                 `json:"current_finalized_epoch"`
@@ -145,18 +149,24 @@ type IndexPageData struct {
 	DepositThreshold          float64                `json:"deposit_threshold"`
 	ValidatorsRemaining       float64                `json:"validators_remaining"`
 	NetworkStartTs            int64                  `json:"network_start_ts"`
-	MinGenesisTime            int64                  `json:"-"`
+	MinGenesisTime            int64                  `json:"minGenesisTime"`
 	Blocks                    []*IndexPageDataBlocks `json:"blocks"`
 	Epochs                    []*IndexPageDataEpochs `json:"epochs"`
 	StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
 	ActiveValidatorsChartData [][]float64            `json:"active_validators_chart_data"`
-	Subtitle                  template.HTML          `json:"-"`
+	Subtitle                  template.HTML          `json:"subtitle"`
 	Genesis                   bool                   `json:"genesis"`
 	GenesisPeriod             bool                   `json:"genesis_period"`
-	Mainnet                   bool                   `json:"-"`
+	Mainnet                   bool                   `json:"mainnet"`
 	DepositChart              *ChartsPageDataChart
 	DepositDistribution       *ChartsPageDataChart
 	Countdown                 interface{}
+	SlotVizData               SlotVizPageData `json:"slotVizData"`
+}
+
+type SlotVizPageData struct {
+	Epochs   []*SlotVizEpochs
+	Selector string
 }
 
 type IndexPageDataEpochs struct {
@@ -193,14 +203,16 @@ type IndexPageDataBlocks struct {
 	Votes                uint64        `db:"votes" json:"votes"`
 	Graffiti             []byte        `db:"graffiti"`
 	ProposerName         string        `db:"name"`
+	ExecutionBlockNumber int           `db:"exec_block_number" json:"exec_block_number"`
 }
 
 // IndexPageEpochHistory is a struct to hold the epoch history for the main web page
 type IndexPageEpochHistory struct {
-	Epoch           uint64 `db:"epoch"`
-	ValidatorsCount uint64 `db:"validatorscount"`
-	EligibleEther   uint64 `db:"eligibleether"`
-	Finalized       bool   `db:"finalized"`
+	Epoch                   uint64 `db:"epoch"`
+	ValidatorsCount         uint64 `db:"validatorscount"`
+	EligibleEther           uint64 `db:"eligibleether"`
+	Finalized               bool   `db:"finalized"`
+	AverageValidatorBalance uint64 `db:"averagevalidatorbalance"`
 }
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page
@@ -363,6 +375,12 @@ type RocketpoolValidatorPageData struct {
 	NodeMinRPLStake      *string    `db:"node_min_rpl_stake"`
 	NodeMaxRPLStake      *string    `db:"node_max_rpl_stake"`
 	CumulativeRPL        *string    `db:"rpl_cumulative_rewards"`
+	SmoothingClaimed     *string    `db:"claimed_smoothing_pool"`
+	SmoothingUnclaimed   *string    `db:"unclaimed_smoothing_pool"`
+	UnclaimedRPL         *string    `db:"unclaimed_rpl_rewards"`
+	SmoothingPoolOptIn   bool       `db:"smoothing_pool_opted_in"`
+	PenaltyCount         *uint64    `db:"penalty_count"`
+	RocketscanUrl        string     `db:"-"`
 }
 
 type ValidatorStatsTablePageData struct {
@@ -428,11 +446,11 @@ type ValidatorBalanceHistory struct {
 
 // ValidatorBalanceHistory is a struct for the validator income history data
 type ValidatorIncomeHistory struct {
-	Day          int64 `db:"day"` // day can be -1 which is pre-genesis
-	Income       int64
-	StartBalance int64 `db:"start_balance" json:"-"`
-	EndBalance   int64 `db:"end_balance" json:"-"`
-	Deposits     int64 `db:"deposits_amount" json:"-"`
+	Day           int64         `db:"day"` // day can be -1 which is pre-genesis
+	Income        int64         `db:"diff"`
+	EndBalance    sql.NullInt64 `db:"end_balance"`
+	StartBalance  sql.NullInt64 `db:"start_balance"`
+	DepositAmount sql.NullInt64 `db:"deposits_amount"`
 }
 
 type ValidatorBalanceHistoryChartData struct {
@@ -466,6 +484,7 @@ type ValidatorPerformance struct {
 
 // ValidatorAttestation is a struct for the validators attestations data
 type ValidatorAttestation struct {
+	Index          uint64
 	Epoch          uint64 `db:"epoch"`
 	AttesterSlot   uint64 `db:"attesterslot"`
 	CommitteeIndex uint64 `db:"committeeindex"`
@@ -532,8 +551,10 @@ type VotesVisChartData struct {
 
 // BlockPageData is a struct block data used in the block page
 type BlockPageData struct {
-	Epoch                  uint64 `db:"epoch"`
-	Slot                   uint64 `db:"slot"`
+	Epoch                  uint64  `db:"epoch"`
+	EpochFinalized         bool    `db:"epoch_finalized"`
+	EpochParticipationRate float64 `db:"epoch_participation_rate"`
+	Slot                   uint64  `db:"slot"`
 	Ts                     time.Time
 	NextSlot               uint64
 	PreviousSlot           uint64
@@ -579,6 +600,8 @@ type BlockPageData struct {
 	ExecTransactionsCount uint64        `db:"exec_transactions_count"`
 
 	Transactions []*BlockPageTransaction
+
+	ExecutionData *Eth1BlockPageData
 
 	Attestations      []*BlockPageAttestation // Attestations included in this block
 	VoluntaryExits    []*BlockPageVoluntaryExits
@@ -720,6 +743,7 @@ type DataTableResponse struct {
 	Data            [][]interface{} `json:"data"`
 	PageLength      uint64          `json:"pageLength"`
 	DisplayStart    uint64          `json:"displayStart"`
+	PagingToken     string          `json:"pagingToken"`
 }
 
 // EpochsPageData is a struct to hold epoch data for the epochs page
@@ -1208,6 +1232,7 @@ type RocketpoolPageDataMinipool struct {
 	DepositType              string    `db:"deposit_type"`
 	Status                   string    `db:"status"`
 	StatusTime               time.Time `db:"status_time"`
+	PenaltyCount             uint64    `db:"penalty_count"`
 }
 
 type RocketpoolPageDataNode struct {
@@ -1219,6 +1244,10 @@ type RocketpoolPageDataNode struct {
 	MinRPLStake              string `db:"min_rpl_stake"`
 	MaxRPLStake              string `db:"max_rpl_stake"`
 	CumulativeRPL            string `db:"rpl_cumulative_rewards"`
+	ClaimedSmoothingPool     string `db:"claimed_smoothing_pool"`
+	UnclaimedSmoothingPool   string `db:"unclaimed_smoothing_pool"`
+	UnclaimedRplRewards      string `db:"unclaimed_rpl_rewards"`
+	SmoothingPoolOptIn       bool   `db:"smoothing_pool_opted_in"`
 }
 
 type RocketpoolPageDataDAOProposal struct {
@@ -1371,4 +1400,275 @@ type DataTableSaveStateSearch struct {
 type DataTableSaveStateColumns struct {
 	Visible bool                     `json:"visible"`
 	Search  DataTableSaveStateSearch `json:"search"`
+}
+
+type Eth1AddressPageData struct {
+	Address           string `json:"address"`
+	QRCode            string `json:"qr_code_base64"`
+	QRCodeInverse     string
+	Metadata          *Eth1AddressMetadata
+	BlocksMinedTable  *DataTableResponse
+	UnclesMinedTable  *DataTableResponse
+	TransactionsTable *DataTableResponse
+	InternalTxnsTable *DataTableResponse
+	Erc20Table        *DataTableResponse
+	Erc721Table       *DataTableResponse
+	Erc1155Table      *DataTableResponse
+	EtherValue        template.HTML
+	Tabs              []Eth1AddressPageTabs
+}
+
+type Eth1AddressPageTabs struct {
+	Id   string
+	Href string
+	Text string
+	Data *DataTableResponse
+}
+
+type Eth1AddressMetadata struct {
+	Balances   []*Eth1AddressBalance
+	ERC20      *ERC20Metadata
+	Name       string
+	Tags       []template.HTML
+	EthBalance *Eth1AddressBalance
+}
+
+type Eth1AddressBalance struct {
+	Address  []byte
+	Token    []byte
+	Balance  []byte
+	Metadata *ERC20Metadata
+}
+
+type ERC20TokenPrice struct {
+	Token       []byte
+	Price       []byte
+	TotalSupply []byte
+}
+
+type ERC20Metadata struct {
+	Decimals     []byte
+	Symbol       string
+	Name         string
+	Description  string
+	Logo         []byte
+	LogoFormat   string
+	TotalSupply  []byte
+	OfficialSite string
+	Price        []byte
+}
+
+func (metadata ERC20Metadata) MarshalBinary() ([]byte, error) {
+	return json.Marshal(metadata)
+}
+
+func (metadata ERC20Metadata) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, &metadata)
+}
+
+type ContractMetadata struct {
+	Name    string
+	ABI     *abi.ABI `msgpack:"-"`
+	ABIJson []byte
+}
+
+type Eth1TokenPageData struct {
+	Token            string `json:"token"`
+	Address          string `json:"address"`
+	QRCode           string `json:"qr_code_base64"`
+	QRCodeInverse    string
+	Metadata         *ERC20Metadata
+	Balance          *Eth1AddressBalance
+	Holders          template.HTML `json:"holders"`
+	Transfers        template.HTML `json:"transfers"`
+	Price            template.HTML `json:"price"`
+	MarketCap        template.HTML `json:"marketCap"`
+	DilutedMarketCap template.HTML `json:"dilutedMarketCap"`
+	Decimals         template.HTML `json:"decimals"`
+	Contract         template.HTML `json:"contract"`
+	WebSite          template.HTML `json:"website"`
+	SocialProfiles   template.HTML `json:"socialProfiles"`
+	TransfersTable   *DataTableResponse
+	HoldersTable     *DataTableResponse
+}
+
+type Transfer struct {
+	From   template.HTML
+	To     template.HTML
+	Amount template.HTML
+	Token  template.HTML
+}
+type Eth1TxData struct {
+	From         common.Address
+	To           *common.Address
+	InternalTxns []Transfer
+	FromName     string
+	ToName       string
+	Gas          struct {
+		BlockBaseFee   []byte
+		MaxFee         []byte
+		MaxPriorityFee []byte
+		Used           uint64
+		UsedPerc       float64
+		Limit          uint64
+		TxFee          []byte
+		EffectiveFee   []byte
+	}
+	Epoch struct {
+		Finalized     bool    `db:"finalized"`
+		Participation float64 `db:"globalparticipationrate"`
+	}
+	TypeFormatted      string
+	Type               uint8
+	Nonce              uint64
+	TxnPosition        uint
+	Hash               common.Hash
+	Value              []byte
+	Receipt            *geth_types.Receipt
+	BlockNumber        int64
+	Timestamp          uint64
+	IsPending          bool
+	TargetIsContract   bool
+	IsContractCreation bool
+	CallData           string
+	Events             []*Eth1EventData
+	Transfers          *[]Transfer
+}
+
+type Eth1EventData struct {
+	Address     common.Address
+	Name        string
+	Topics      []common.Hash
+	Data        []byte
+	DecodedData map[string]Eth1DecodedEventData
+}
+
+type Eth1DecodedEventData struct {
+	Type    string
+	Value   string
+	Raw     string
+	Address common.Address
+}
+
+type SourcifyContractMetadata struct {
+	Compiler struct {
+		Version string `json:"version"`
+	} `json:"compiler"`
+	Language string `json:"language"`
+	Output   struct {
+		Abi []struct {
+			Anonymous bool `json:"anonymous"`
+			Inputs    []struct {
+				Indexed      bool   `json:"indexed"`
+				InternalType string `json:"internalType"`
+				Name         string `json:"name"`
+				Type         string `json:"type"`
+			} `json:"inputs"`
+			Name    string `json:"name"`
+			Outputs []struct {
+				InternalType string `json:"internalType"`
+				Name         string `json:"name"`
+				Type         string `json:"type"`
+			} `json:"outputs"`
+			StateMutability string `json:"stateMutability"`
+			Type            string `json:"type"`
+		} `json:"abi"`
+	} `json:"output"`
+	Settings struct {
+		CompilationTarget struct {
+			Browser_Stakehavens_sol string `json:"browser/Stakehavens.sol"`
+		} `json:"compilationTarget"`
+		EvmVersion string   `json:"evmVersion"`
+		Libraries  struct{} `json:"libraries"`
+		Metadata   struct {
+			BytecodeHash string `json:"bytecodeHash"`
+		} `json:"metadata"`
+		Optimizer struct {
+			Enabled bool  `json:"enabled"`
+			Runs    int64 `json:"runs"`
+		} `json:"optimizer"`
+		Remappings []interface{} `json:"remappings"`
+	} `json:"settings"`
+	Sources struct {
+		Browser_Stakehavens_sol struct {
+			Keccak256 string   `json:"keccak256"`
+			Urls      []string `json:"urls"`
+		} `json:"browser/Stakehavens.sol"`
+	} `json:"sources"`
+	Version int64 `json:"version"`
+}
+
+type EtherscanContractMetadata struct {
+	Message string `json:"message"`
+	Result  []struct {
+		Abi                  string `json:"ABI"`
+		CompilerVersion      string `json:"CompilerVersion"`
+		ConstructorArguments string `json:"ConstructorArguments"`
+		ContractName         string `json:"ContractName"`
+		EVMVersion           string `json:"EVMVersion"`
+		Implementation       string `json:"Implementation"`
+		Library              string `json:"Library"`
+		LicenseType          string `json:"LicenseType"`
+		OptimizationUsed     string `json:"OptimizationUsed"`
+		Proxy                string `json:"Proxy"`
+		Runs                 string `json:"Runs"`
+		SourceCode           string `json:"SourceCode"`
+		SwarmSource          string `json:"SwarmSource"`
+	} `json:"result"`
+	Status string `json:"status"`
+}
+
+type Eth1BlockPageData struct {
+	Number         uint64
+	PreviousBlock  uint64
+	NextBlock      uint64
+	TxCount        uint64
+	UncleCount     uint64
+	Hash           string
+	ParentHash     string
+	MinerAddress   string
+	MinerFormatted template.HTML
+	Reward         *big.Int
+	MevReward      *big.Int
+	TxFees         *big.Int
+	GasUsage       template.HTML
+	GasLimit       uint64
+	LowestGasPrice *big.Int
+	Ts             time.Time
+	Difficulty     *big.Int
+	BaseFeePerGas  *big.Int
+	BurnedFees     *big.Int
+	Extra          string
+	Txs            []Eth1BlockPageTransaction
+	Uncles         []Eth1BlockPageData
+	State          string
+}
+
+type Eth1BlockPageTransaction struct {
+	Hash          string
+	HashFormatted template.HTML
+	From          string
+	FromFormatted template.HTML
+	To            string
+	ToFormatted   template.HTML
+	Value         *big.Int
+	Fee           *big.Int
+	GasPrice      *big.Int
+	Method        string
+}
+
+type SlotVizSlots struct {
+	BlockRoot []byte
+	Epoch     uint64
+	Slot      uint64
+	Status    string `json:"status"`
+	Active    bool   `json:"active"`
+}
+type SlotVizEpochs struct {
+	Epoch          uint64            `json:"epoch"`
+	Finalized      bool              `json:"finalized"`
+	Justified      bool              `json:"justified"`
+	Justifying     bool              `json:"justifying"`
+	Particicpation float64           `json:"participation"`
+	Slots          [32]*SlotVizSlots `json:"slots"`
 }

@@ -79,7 +79,6 @@
           <th>Slot</th>
           <th>Status</th>
           <th>Time</th>
-          <th>Committee</th>
           <th><span data-toggle="tooltip" title="Inclusion Slot">Incl. Slot</span></th>
           <th class="text-truncate" data-toggle="tooltip" title="The optimal inclusion distance shows the difference between the inclusion slot and the earliest slot it could have been included. The best case for the optimal inclusion distance is 0.">Opt.Incl.Dist.</th>
         </tr>
@@ -137,8 +136,8 @@
                             "orderable": false
                         },
                         {
-                            targets: 5,
-                            data: '5',
+                            targets: 4,
+                            data: '4',
                             "orderable": false
                         },
                     ],
@@ -160,7 +159,6 @@
           <th>Epoch</th>
           <th>Slot</th>
           <th>Status</th>
-          <th>Participation</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -221,11 +219,6 @@
                             data: '2',
                             "orderable": true
                         },
-                        {
-                            targets: 3,
-                            data: '3',
-                            "orderable": true
-                        },
                     ],
                     drawCallback: function(settings) {
                         formatTimestamps()
@@ -283,8 +276,8 @@
 {{ define "validatorDepositsTable" }}
   {{ with .Data }}
     <div class="table-eth1">
-      <h4 class="my-3">Eth1 Deposits</h4>
-      <h6 class="">This table displays the deposits made to the Eth1 deposit contract.</h6>
+      <h4 class="my-3">Ethereum Deposits</h4>
+      <h6 class="">This table displays the deposits made to the Ethereum staking deposit contract.</h6>
       <div class="table-responsive card card-body p-0">
         <table class="table" style="margin-top: 0 !important;" id="deposits-eth1-table" width="100%">
           <thead>
@@ -316,7 +309,7 @@
       <i class="fas fa-arrow-down"></i>
     </div>
     <div class="table-eth2">
-      <h4 class="my-3">Eth2 Deposits</h4>
+      <h4 class="my-3">Beaconchain Deposits</h4>
       {{ if not .Deposits.Eth2Deposits }}
         <h6 class="">No beacon chain deposits found for this validator. It takes <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{ .InclusionDelay }} hours</a> for a deposit to be processed by the beacon chain.</h6>
         <div class="wip d-flex justify-content-center p-3">

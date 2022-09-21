@@ -21,13 +21,23 @@ type Config struct {
 		Host     string `yaml:"host" envconfig:"WRITER_DB_HOST"`
 		Port     string `yaml:"port" envconfig:"WRITER_DB_PORT"`
 	} `yaml:"writerDatabase"`
-	Chain struct {
+	Bigtable struct {
+		Project  string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
+		Instance string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
+	} `yaml:"bigtable"`
+	LastAttestationCachePath string `yaml:"lastAttestationCachePath" envconfig:"LAST_ATTESTATION_CACHE_PATH"`
+	Chain                    struct {
 		Name             string `yaml:"name" envconfig:"CHAIN_NAME"`
 		GenesisTimestamp uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
 		ConfigPath       string `yaml:"configPath" envconfig:"CHAIN_CONFIG_PATH"`
 		Config           ChainConfig
 	} `yaml:"chain"`
-	Indexer struct {
+	Eth1ErigonEndpoint  string `yaml:"eth1ErigonEndpoint" envconfig:"ETH1_ERIGON_ENDPOINT"`
+	Eth1GethEndpoint    string `yaml:"eth1GethEndpoint" envconfig:"ETH1_GETH_ENDPOINT"`
+	EtherscanAPIKey     string `yaml:"etherscanApiKey" envconfig:"ETHERSCAN_API_KEY"`
+	RedisCacheEndpoint  string `yaml:"redisCacheEndpoint" envconfig:"REDIS_CACHE_ENDPOINT"`
+	TieredCacheProvider string `yaml:"tieredCacheProvider" envconfig:"CACHE_PROVIDER"`
+	Indexer             struct {
 		Enabled                     bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
 		FixCanonOnStartup           bool `yaml:"fixCanonOnStartup" envconfig:"INDEXER_FIX_CANON_ON_STARTUP"`
 		FullIndexOnStartup          bool `yaml:"fullIndexOnStartup" envconfig:"INDEXER_FULL_INDEX_ON_STARTUP"`
@@ -40,7 +50,6 @@ type Config struct {
 			Type     string `yaml:"type" envconfig:"INDEXER_NODE_TYPE"`
 			PageSize int32  `yaml:"pageSize" envconfig:"INDEXER_NODE_PAGE_SIZE"`
 		} `yaml:"node"`
-		Eth1Endpoint string `yaml:"eth1Endpoint" envconfig:"INDEXER_ETH1_ENDPOINT"`
 		// Deprecated Please use Phase0 config DEPOSIT_CONTRACT_ADDRESS
 		Eth1DepositContractAddress    string `yaml:"eth1DepositContractAddress" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_ADDRESS"`
 		Eth1DepositContractFirstBlock uint64 `yaml:"eth1DepositContractFirstBlock" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_FIRST_BLOCK"`
@@ -55,6 +64,8 @@ type Config struct {
 		} `yaml:"pubkeyTagsExporter"`
 	} `yaml:"indexer"`
 	Frontend struct {
+		TokenListPath                  string `yaml:"tokenListPath" envconfig:"FRONTEND_TOKEN_LIST_PATH"`
+		Debug                          bool   `yaml:"debug" envconfig:"FRONTEND_DEBUG"`
 		BeaconchainETHPoolBridgeSecret string `yaml:"beaconchainETHPoolBridgeSecret" envconfig:"FRONTEND_BEACONCHAIN_ETHPOOL_BRIDGE_SECRET"`
 		Kong                           string `yaml:"kong" envconfig:"FRONTEND_KONG"`
 		OnlyAPI                        bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
@@ -64,7 +75,6 @@ type Config struct {
 		RecaptchaSiteKey               string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`
 		RecaptchaSecretKey             string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
 		Enabled                        bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
-		Debug                          bool   `yaml:"debug" envconfig:"FRONTEND_DEBUG"`
 		// Imprint is deprdecated place imprint file into the legal directory
 		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
 		LegalDir     string `yaml:"legalDir" envconfig:"FRONTEND_LEGAL"`

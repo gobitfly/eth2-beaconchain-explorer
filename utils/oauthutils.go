@@ -132,14 +132,14 @@ func accessTokenGetClaims(tokenStringFull string, validate bool) (*CustomClaims,
 
 	// Make sure header hasnt been tampered with
 	if token.Method != signingMethod {
-		return nil, errors.New("Only SHA256hmac as signature method is allowed")
+		return nil, errors.New("only SHA256hmac as signature method is allowed")
 	}
 
 	claims, ok := token.Claims.(*CustomClaims)
 
 	// Check issuer claim
 	if claims.Issuer != Config.Frontend.JwtIssuer {
-		return nil, errors.New("Invalid issuer claim")
+		return nil, errors.New("invalid issuer claim")
 	}
 
 	valid := ok && token.Valid
@@ -177,7 +177,6 @@ func SendOAuthResponse(j *json.Encoder, route, accessToken, refreshToken string,
 	if err != nil {
 		logger.Errorf("error serializing json error for API %v route: %v", route, err)
 	}
-	return
 }
 
 // SendOAuthErrorResponse creates and sends a OAuth error response according to RFC6749
@@ -191,7 +190,6 @@ func SendOAuthErrorResponse(j *json.Encoder, route, errString, description strin
 	if err != nil {
 		logger.Errorf("error serializing json error for API %v route: %v", route, err)
 	}
-	return
 }
 
 func GetAuthorizationClaims(r *http.Request) *CustomClaims {
@@ -246,6 +244,5 @@ func AuthorizedAPIMiddleware(next http.Handler) http.Handler {
 		context.Set(r, ClaimsContextKey, claims)
 		context.Set(r, MobileAuthorizedKey, true)
 		next.ServeHTTP(w, r)
-		return
 	})
 }

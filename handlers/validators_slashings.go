@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
@@ -12,7 +13,7 @@ import (
 	"github.com/juliangruber/go-intersect"
 )
 
-var validatorsSlashingsTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validators_slashings.html"))
+var validatorsSlashingsTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validators_slashings.html"))
 
 // ValidatorsSlashings returns validator slashing using a go template
 func ValidatorsSlashings(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +26,7 @@ func ValidatorsSlashings(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -39,20 +40,20 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	if length > 100 {
@@ -96,13 +97,19 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 		LIMIT $1
 		OFFSET $2`, length, start)
 
+	if err != nil {
+		logger.Errorf("error retrieving validator slashings from the database: %v", err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
 	tableData := make([][]interface{}, 0, len(slashings))
 
 	validatorNames, err := db.GetValidatorNames()
 
 	if err != nil {
 		logger.Errorf("error retrieving validator names from the database: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	for _, row := range slashings {
@@ -136,7 +143,7 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 	records, err := db.GetSlashingCount()
 	if err != nil {
 		logger.Errorf("GetSlashingCount failed to retrieve record count: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 	}
 
 	data := &types.DataTableResponse{
@@ -149,7 +156,7 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

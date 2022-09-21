@@ -55,27 +55,7 @@ function setUtc() {
   if ($("#optionLocal").is(":checked") || $("#optionTs").is(":checked")) {
     var unixTs = $("#unixTs").text()
     var ts = luxon.DateTime.fromMillis(unixTs * 1000)
-    var utcDiff = ts["o"] / 60
-    var hour = ts["c"]["hour"] - utcDiff
-    var minute = ts["c"]["minute"]
-    var second = ts["c"]["second"]
-    var periode = ""
-    if (hour <= 12) {
-      periode = " AM"
-    } else {
-      hour -= 12
-      periode = " PM"
-    }
-    if (hour.toString().length == 1) {
-      hour = "0" + hour
-    }
-    if (minute.toString().length == 1) {
-      minute = "0" + minute
-    }
-    if (second.toString().length == 1) {
-      second = "0" + second
-    }
-    $("#timestamp").text(ts.toFormat("MMM-dd-yyyy") + " " + hour + ":" + minute + ":" + second + periode)
+    $("#timestamp").text(ts.toUTC().toFormat("MMM-dd-yyyy hh:mm:ss a"))
   }
 }
 
@@ -83,19 +63,7 @@ function setLocal() {
   if ($("#optionUtc").is(":checked") || $("#optionTs").is(":checked")) {
     var unixTs = $("#unixTs").text()
     var ts = luxon.DateTime.fromMillis(unixTs * 1000)
-    var hour = ts["c"]["hour"]
-    var minute = ts["c"]["minute"]
-    var second = ts["c"]["second"]
-    if (hour.toString().length == 1) {
-      hour = "0" + hour
-    }
-    if (minute.toString().length == 1) {
-      minute = "0" + minute
-    }
-    if (second.toString().length == 1) {
-      second = "0" + second
-    }
-    $("#timestamp").text(ts.toFormat("MMM-dd-yyyy") + " " + hour + ":" + minute + ":" + second + " UTC + " + ts["o"] / 60 + "h")
+    $("#timestamp").text(ts.toFormat("MMM-dd-yyyy HH:mm:ss") + " UTC" + ts.toFormat("Z"))
   }
 }
 
@@ -113,6 +81,31 @@ function copyTs() {
   } else {
     navigator.clipboard.writeText(tsArr[0])
   }
+}
+
+function viewHexDataAs(id, type) {
+  var extraDataHex = $(`#${id}`).attr("aria-hex-data")
+  if (!extraDataHex) {
+    return
+  }
+
+  if (type === "hex") {
+    $(`#${id}`).text(extraDataHex)
+  } else {
+    try {
+      var r = decodeURIComponent(extraDataHex.replace(/\s+/g, "").replace(/[0-9a-f]{2}/g, "%$&"))
+      $(`#${id}`).text(r.replace("0x", ""))
+    } catch (e) {
+      $(`#${id}`).text(hex2a(extraDataHex.replace("0x", "")))
+    }
+  }
+}
+
+function hex2a(hexx) {
+  var hex = hexx.toString() //force conversion
+  var str = ""
+  for (var i = 0; i < hex.length; i += 2) str += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
+  return str
 }
 
 // typeahead
@@ -253,7 +246,7 @@ $(document).ready(function () {
       source: bhEth1Accounts,
       display: "address",
       templates: {
-        header: '<h3 class="h5">ETH1 Addresses</h3>',
+        header: '<h3 class="h5">ETH Addresses</h3>',
         suggestion: function (data) {
           return `<div class="text-monospace text-truncate">0x${data.address}</div>`
         },
@@ -305,7 +298,7 @@ $(document).ready(function () {
     } else if (sug.epoch !== undefined) {
       window.location = "/epoch/" + sug.epoch
     } else if (sug.address !== undefined) {
-      window.location = "/validators/eth1deposits?q=" + sug.address
+      window.location = "/address/" + sug.address
     } else if (sug.graffiti !== undefined) {
       // sug.graffiti is html-escaped to prevent xss, we need to unescape it
       var el = document.createElement("textarea")
@@ -331,29 +324,7 @@ $("[aria-ethereum-date]").each(function (item) {
     $(this).attr("data-toggle", "tooltip")
   } else if (format === "LOCAL") {
     var local = luxon.DateTime.fromMillis(dt * 1000)
-    var utc = local.toUTC()
-    var utcHour = utc["c"]["hour"]
-    var localHour = local["c"]["hour"]
-    var localMinute = local["c"]["minute"]
-    var localSecond = local["c"]["minute"]
-    var diff = localHour - utcHour
-    var utcDiff = ""
-    if (diff < 0) {
-      utcDiff = " UTC - " + diff * -1
-    } else {
-      utcDiff = " UTC + " + diff
-    }
-    if (localHour.toString().length == 1) {
-      localHour = "0" + localHour
-    }
-    if (localMinute.toString().length == 1) {
-      localMinute = "0" + localMinute
-    }
-    if (localSecond.toString().length == 1) {
-      localSecond = "0" + localSecond
-    }
-
-    $(this).text(local.toFormat("MMM-dd-yyyy") + " " + localHour + ":" + localMinute + ":" + localSecond + utcDiff + "h")
+    $(this).text(local.toFormat("MMM-dd-yyyy HH:mm:ss") + " UTC" + local.toFormat("Z"))
     $(this).attr("title", luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
     $(this).attr("data-toggle", "tooltip")
   } else {
@@ -391,10 +362,19 @@ $(".nav-tabs a").on("shown.bs.tab", function (e) {
   }
 })
 
+$(".nav-pills a").on("shown.bs.tab", function (e) {
+  if (history.replaceState) {
+    history.pushState(null, null, e.target.hash)
+  } else {
+    window.location.hash = e.target.hash //Polyfill for old browsers
+  }
+})
+
 // Javascript to enable link to tab
 var url = document.location.toString()
 if (url.match("#")) {
   $('.nav-tabs a[href="#' + url.split("#")[1] + '"]').tab("show")
+  $('.nav-pills a[href="#' + url.split("#")[1] + '"]').tab("show")
 }
 
 function formatTimestamps(selStr) {

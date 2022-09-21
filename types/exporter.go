@@ -1,6 +1,7 @@
 package types
 
 import (
+	"database/sql"
 	"encoding/json"
 
 	"github.com/pkg/errors"
@@ -26,8 +27,9 @@ type ChainHead struct {
 
 type FinalityCheckpoints struct {
 	PreviousJustified struct {
-		Epoch uint64 `json:"epoch"`
-		Root  string `json:"root"`
+		Epoch uint64 `
+    :"epoch"`
+		Root string `json:"root"`
 	} `json:"previous_justified"`
 	CurrentJustified struct {
 		Epoch uint64 `json:"epoch"`
@@ -65,6 +67,7 @@ type BeaconCommitteItem struct {
 type Validator struct {
 	Index                      uint64 `db:"validatorindex"`
 	PublicKey                  []byte `db:"pubkey"`
+	PublicKeyHex               string `db:"pubkeyhex"`
 	Balance                    uint64 `db:"balance"`
 	EffectiveBalance           uint64 `db:"effectivebalance"`
 	Slashed                    bool   `db:"slashed"`
@@ -74,14 +77,14 @@ type Validator struct {
 	WithdrawableEpoch          uint64 `db:"withdrawableepoch"`
 	WithdrawalCredentials      []byte `db:"withdrawalcredentials"`
 
-	BalanceActivation uint64 `db:"balanceactivation"`
-	Balance1d         uint64 `db:"balance1d"`
-	Balance7d         uint64 `db:"balance7d"`
-	Balance31d        uint64 `db:"balance31d"`
-	Status            string `db:"status"`
+	BalanceActivation sql.NullInt64 `db:"balanceactivation"`
+	Balance1d         sql.NullInt64 `db:"balance1d"`
+	Balance7d         sql.NullInt64 `db:"balance7d"`
+	Balance31d        sql.NullInt64 `db:"balance31d"`
+	Status            string        `db:"status"`
 
-	LastAttestationSlot uint64 `db:"lastattestationslot"`
-	LastProposalSlot    uint64 `db:"lastproposalslot"`
+	LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`
+	LastProposalSlot    sql.NullInt64 `db:"lastproposalslot"`
 }
 
 // ValidatorQueue is a struct to hold validator queue data

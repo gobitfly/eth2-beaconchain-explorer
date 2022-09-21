@@ -46,7 +46,7 @@ func eth1DepositsExporter() {
 	eth1DepositContractAddress = common.HexToAddress(utils.Config.Indexer.Eth1DepositContractAddress)
 	eth1DepositContractFirstBlock = utils.Config.Indexer.Eth1DepositContractFirstBlock
 
-	rpcClient, err := gethRPC.Dial(utils.Config.Indexer.Eth1Endpoint)
+	rpcClient, err := gethRPC.Dial(utils.Config.Eth1GethEndpoint)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -66,12 +66,17 @@ func eth1DepositsExporter() {
 			time.Sleep(time.Second * 5)
 			continue
 		}
-		header, err := eth1Client.HeaderByNumber(context.Background(), nil)
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		header, err := eth1Client.HeaderByNumber(ctx, nil)
 		if err != nil {
 			logger.WithError(err).Errorf("error getting header from eth1-client")
+			cancel()
 			time.Sleep(time.Second * 5)
 			continue
 		}
+		cancel()
+
 		blockHeight := header.Number.Uint64()
 
 		fromBlock := lastDepositBlock + 1
@@ -143,6 +148,9 @@ func eth1DepositsExporter() {
 }
 
 func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1Deposit, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
 	qry := ethereum.FilterQuery{
 		Addresses: []common.Address{
 			eth1DepositContractAddress,
@@ -151,7 +159,7 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 		ToBlock:   new(big.Int).SetUint64(toBlock),
 	}
 
-	depositLogs, err := eth1Client.FilterLogs(context.Background(), qry)
+	depositLogs, err := eth1Client.FilterLogs(ctx, qry)
 	if err != nil {
 		return depositsToSave, fmt.Errorf("error getting logs from eth1-client: %w", err)
 	}

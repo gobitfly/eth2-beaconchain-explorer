@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -14,13 +15,14 @@ import (
 	"time"
 )
 
-var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocks.html"))
+var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "blocks.html"))
 
 // Blocks will return information about blocks using a go template
 func Blocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
+	q := r.URL.Query()
 
-	data := InitPageData(w, r, "blocks", "/blocks", "Blocks")
+	data := InitPageData(w, r, "blockchain", "/slots", "Slots")
 
 	user, session, err := getUserSession(r)
 	if err != nil {
@@ -40,8 +42,19 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 	if state != nil {
 		length = state.Length
 		start = state.Start
+		// we currently do not set search on state change
 		search = state.Search.Search
 	}
+
+	if q.Get("search[value]") != "" {
+		search = q.Get("search[value]")
+	}
+
+	if q.Get("q") != "" {
+		search = q.Get("q")
+	}
+
+	search = strings.Replace(search, "0x", "", -1)
 
 	tableData, err := GetBlocksTableData(0, start, length, search, searchForEmpty)
 	if err != nil {
@@ -51,10 +64,6 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data = tableData
-
-	if utils.Config.Frontend.Debug {
-		blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocks.html"))
-	}
 
 	err = blocksTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -71,7 +80,13 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	search := q.Get("search[value]")
+
+	if q.Get("q") != "" {
+		search = q.Get("q")
+	}
+
 	search = strings.Replace(search, "0x", "", -1)
+
 	searchForEmpty := (len(search) == 0 && q.Get("columns[11][search][value]") == "#showonlyemptygraffiti")
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)

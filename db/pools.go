@@ -246,8 +246,8 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		}
 
 		if int64(balance.ActivationEpoch) <= lastMonthEpoch && balance.Status == "active_online" {
-			earningsInPeriod += (int64(balance.Balance) - int64(balance.Balance31d)) - (int64(balance.Balance) - int64(balance.Balance7d))
-			earningsInPeriodBalance += int64(balance.BalanceActivation)
+			earningsInPeriod += (int64(balance.Balance) - balance.Balance31d.Int64) - (int64(balance.Balance) - balance.Balance7d.Int64)
+			earningsInPeriodBalance += balance.BalanceActivation.Int64
 		}
 	}
 

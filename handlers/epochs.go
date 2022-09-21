@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -12,16 +13,15 @@ import (
 	"strconv"
 )
 
-var epochsTemplate = template.Must(template.New("epochs").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epochs.html"))
+var epochsTemplate = template.Must(template.New("epochs").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "epochs.html"))
 
 // Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
 
-	// epochsTemplate = template.Must(template.New("epochs").ParseFiles("templates/layout.html", "templates/epochs.html"))
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "epochs", "/epochs", "Epochs")
+	data := InitPageData(w, r, "blockchain", "/epochs", "Epochs")
 	data.HeaderAd = true
 
 	var epochs []*types.EpochsPageData
@@ -90,7 +90,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 	ORDER BY epoch DESC`, endEpoch, startEpoch)
 	if err != nil {
 		logger.Errorf("error retrieving epoch data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -118,14 +118,10 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		DisplayStart:    start,
 	}
 
-	if utils.Config.Frontend.Debug {
-		epochsTemplate = template.Must(template.New("epochs").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epochs.html"))
-	}
-
 	err = epochsTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -145,19 +141,19 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	if length > 100 {
@@ -217,7 +213,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		logger.Errorf("error retrieving epoch data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -246,7 +242,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 

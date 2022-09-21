@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -16,7 +17,7 @@ import (
 	eth1common "github.com/ethereum/go-ethereum/common"
 )
 
-var poapTemplate = template.Must(template.New("poap").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/poap.html"))
+var poapTemplate = template.Must(template.New("poap").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "poap.html"))
 
 // do not change existing entries, only append new entries
 var poapClients = []string{"Prysm", "Lighthouse", "Teku", "Nimbus", "Lodestar"}
@@ -39,7 +40,7 @@ func Poap(w http.ResponseWriter, r *http.Request) {
 	err := poapTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -55,7 +56,7 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 		err := json.NewEncoder(w).Encode(latestPoapData.(*types.DataTableResponse))
 		if err != nil {
 			logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 		return
@@ -76,7 +77,7 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 		group by graffiti`, poapMaxSlot)
 	if err != nil {
 		logger.Errorf("error retrieving poap data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -129,7 +130,7 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

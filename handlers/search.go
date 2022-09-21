@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
@@ -18,7 +19,7 @@ import (
 
 const searchValidatorsResultLimit = 300
 
-var searchNotFoundTemplate = template.Must(template.New("searchnotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/searchnotfound.html"))
+var searchNotFoundTemplate = template.Must(template.New("searchnotfound").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "searchnotfound.html"))
 
 var searchLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
 var thresholdHexLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{5,96}$`)
@@ -31,18 +32,17 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	_, err := strconv.Atoi(search)
 
 	if err == nil {
-		http.Redirect(w, r, "/block/"+search, 301)
+		http.Redirect(w, r, "/slot/"+search, http.StatusMovedPermanently)
 		return
 	}
 
 	search = strings.Replace(search, "0x", "", -1)
-
-	if len(search) == 64 {
-		http.Redirect(w, r, "/block/"+search, 301)
+	if utils.IsValidEth1Tx(search) {
+		http.Redirect(w, r, "/tx/"+search, http.StatusMovedPermanently)
 	} else if len(search) == 96 {
-		http.Redirect(w, r, "/validator/"+search, 301)
+		http.Redirect(w, r, "/validator/"+search, http.StatusMovedPermanently)
 	} else if utils.IsValidEth1Address(search) {
-		http.Redirect(w, r, "/validators/eth1deposits?q="+search, 301)
+		http.Redirect(w, r, "/address/"+search, http.StatusMovedPermanently)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
 		data := InitPageData(w, r, "search", "/search", "")
@@ -51,7 +51,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
 			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 			return
 		}
 	}
@@ -90,7 +90,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				blockHash, err := hex.DecodeString(search)
 				if err != nil {
 					logger.Errorf("error parsing blockHash to int: %v", err)
-					http.Error(w, "Internal server error", 503)
+					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 					return
 				}
 				err = db.ReaderDb.Select(result, `
@@ -99,6 +99,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				WHERE blockroot = $1 OR
 					stateroot = $1
 				ORDER BY slot LIMIT 10`, blockHash)
+				if err != nil {
+					logger.Errorf("error reading block root: %v", err)
+					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+					return
+				}
 			}
 		}
 
@@ -165,7 +170,6 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if len(search) <= 1 {
 			break
 		}
-		result = &types.SearchAheadEth1Result{}
 		if len(search)%2 != 0 {
 			search = search[:len(search)-1]
 		}
@@ -173,14 +177,17 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			eth1AddressHash, err := hex.DecodeString(search)
 			if err != nil {
 				logger.Errorf("error parsing eth1AddressHash to hash: %v", err)
-				http.Error(w, "Internal server error", 503)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 				return
 			}
-			err = db.ReaderDb.Select(result, `
-				SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
-				FROM eth1_deposits
-				WHERE from_address LIKE $1 || '%'::bytea 
-				LIMIT 10`, eth1AddressHash)
+			result, err = db.BigtableClient.SearchForAddress(eth1AddressHash, 10)
+			if err != nil {
+				logger.Errorf("error searching for eth1AddressHash: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
+		} else {
+			result = []*types.Eth1AddressSearchItem{}
 		}
 		// logger.WithFields(logrus.Fields{
 		// 	"duration": time.Since(start),
@@ -213,7 +220,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			eth1AddressHash, err := hex.DecodeString(search)
 			if err != nil {
 				logger.Errorf("error parsing eth1AddressHash to hex: %v", err)
-				http.Error(w, "Internal server error", 503)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 				return
 			}
 			err = db.ReaderDb.Select(result, `
@@ -230,6 +237,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			WHERE validatorrow <= $2 AND addressrow <= 10
 			GROUP BY from_address
 			ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
+			if err != nil {
+				logger.Errorf("error reading result data: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
 		}
 	case "indexed_validators_by_graffiti":
 		// find validators per graffiti (limit result by N graffities and M validators per graffiti)
@@ -292,12 +304,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).Error("error doing query for searchAhead")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	err = json.NewEncoder(w).Encode(result)
 	if err != nil {
 		logger.WithError(err).Error("error encoding searchAhead")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 	}
 }

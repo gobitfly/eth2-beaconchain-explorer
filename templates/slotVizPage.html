@@ -1,0 +1,40 @@
+{{ define "content" }}
+  <div class="container mt-2">
+    <div class="d-md-flex py-2 justify-content-md-between">
+      <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-sitemap mr-2"></i>Slot Visualization</h1>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+          <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+          <li class="breadcrumb-item"><a href="/charts" title="Charts">Charts</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Slotviz</li>
+        </ol>
+      </nav>
+    </div>
+    <div class="description">
+      <p>This chart displays the most recent epochs and their slots. The color of the slots indicates if the slot has been proposed, orphaned or missed. The bar below the epochs displays the participation during the epoch. The y axis represents the epoch number and the x axis represents the slot number.</p>
+    </div>
+    <div></div>
+    <div class="mt-4">
+      <div class="w-100 my-2" id="checklist"></div>
+    </div>
+    <!-- <div class="position-relative">
+      <div style="top: 100%; right: 50%; transform: translateX(50%);" class="position-absolute">
+        <span class="text-muted font-weight-bold">beaconcha.in/charts/slotviz</span>
+      </div>
+    </div> -->
+  </div>
+{{ end }}
+{{ define "css" }}
+  <style>
+    #checklist > svg {
+      overflow: visible;
+    }
+    svg rect[slot],
+    svg rect[epoch] {
+      cursor: pointer;
+    }
+  </style>
+{{ end }}
+{{ define "js" }}
+  {{ template "SlotViz" . }}
+{{ end }}

@@ -5,12 +5,13 @@
 
   <script>
     $(document).ready(function () {
+      let slotNumber = {{ .Slot }}
       var depositsTblOpts = {
         processing: true,
         serverSide: true,
         ordering: false,
         searching: false,
-        ajax: window.location.pathname + "/deposits",
+        ajax: "/slot/" + slotNumber + "/deposits",
         pageLength: 10,
         pagingType: "input",
         language: {
@@ -63,7 +64,7 @@
         ordering: false,
         stateSave: true,
         searching: true,
-        ajax: window.location.pathname + "/votes",
+        ajax: "/slot/" + slotNumber + "/votes",
         pageLength: 10,
         pagingType: "input",
         language: {
@@ -98,39 +99,8 @@
   </script>
 
   <script>
-    window.addEventListener("popstate", function (event) {
-      event.preventDefault()
-      history.back()
-    })
-  </script>
-  <script type="text/javascript">
-    function viewGraffitiAs(type) {
-      var graffitiHex = $("[aria-graffiti]").attr("aria-graffiti")
-
-      if (!graffitiHex) {
-        return
-      }
-
-      if (type === "hex") {
-        $("#graffiti").text("0x" + graffitiHex)
-      } else {
-        try {
-          var r = decodeURIComponent(graffitiHex.replace(/\s+/g, "").replace(/[0-9a-f]{2}/g, "%$&"))
-          $("#graffiti").text(r)
-        } catch (e) {
-          $("#graffiti").text(hex2a(graffitiHex.replace("0x", "")))
-        }
-      }
-    }
-
-    function hex2a(hexx) {
-      var hex = hexx.toString() //force conversion
-      var str = ""
-      for (var i = 0; i < hex.length; i += 2) str += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
-      return str
-    }
-
-    viewGraffitiAs("utf-8")
+    viewHexDataAs("graffiti", "utf-8")
+    viewHexDataAs("extra-data", "utf-8")
   </script>
 {{ end }}
 
@@ -140,22 +110,35 @@
 
 {{ define "content" }}
   {{ with .Data }}
+    {{ $isBlockView := (contains $.Meta.Path "block") }}
     <div class="container mt-2">
       <div class="d-md-flex py-2 justify-content-md-between">
         <h1 class="h4 my-3 mb-md-0">
-          {{ if not (eq .PreviousSlot .Slot) }}
-            <a href="/block/{{ .PreviousSlot }}"><i class="fa fa-chevron-left"></i></a>
-          {{ end }}
-          <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block at Slot {{ formatAddCommas .Slot }}</span>
-          {{ if gt .NextSlot 0 }}
-            <a href="/block/{{ .NextSlot }}"><i class="fa fa-chevron-right"></i></a>
+          {{ if $isBlockView }}
+            {{ with .ExecutionData }}
+              {{ if gt .PreviousBlock 0 }}
+                <a href="/block/{{ .PreviousBlock }}"><i class="fa fa-chevron-left"></i></a>
+              {{ end }}
+              <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block {{ .Number }}</span>
+              {{ if gt .NextBlock 0 }}
+                <a href="/block/{{ .NextBlock }}"><i class="fa fa-chevron-right"></i></a>
+              {{ end }}
+            {{ end }}
+          {{ else }}
+            {{ if not (eq .Slot 0) }}
+              <a href="/slot/{{ .PreviousSlot }}"><i class="fa fa-chevron-left"></i></a>
+            {{ end }}
+            <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Slot <span id="slot">{{ formatAddCommas .Slot }}</span></span>
+            {{ if gt .NextSlot 0 }}
+              <a href="/slot/{{ .NextSlot }}"><i class="fa fa-chevron-right"></i></a>
+            {{ end }}
           {{ end }}
         </h1>
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
             <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-            <li class="breadcrumb-item"><a href="/blocks" title="Blocks">Blocks</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Block details</li>
+            <li class="breadcrumb-item"><a href="/slots" title="Slots">Slots</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Slot details</li>
           </ol>
         </nav>
       </div>
@@ -173,17 +156,17 @@
         <li class="nav-item">
           <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true">Overview</a>
         </li>
+        {{ with .ExecutionData }}
+          <li class="nav-item">
+            <a class="nav-link" id="transactions-tab" data-toggle="tab" href="#transactions" role="tab" aria-controls="transactions" aria-selected="false">Transactions <span class="badge bg-secondary text-white">{{ .TxCount }}</span></a>
+          </li>
+        {{ end }}
         <li class="nav-item">
           <a class="nav-link" id="votes-tab" data-toggle="tab" href="#votes" role="tab" aria-controls="votes" aria-selected="false">Votes <span class="badge bg-secondary text-white">{{ .VotesCount }}</span></a>
         </li>
         <li class="nav-item">
           <a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{ .AttestationsCount }}</span></a>
         </li>
-        {{ if gt .ExecTransactionsCount 0 }}
-          <li class="nav-item">
-            <a class="nav-link" id="transactions-tab" data-toggle="tab" href="#transactions" role="tab" aria-controls="transactions" aria-selected="false">Transactions <span class="badge bg-secondary text-white">{{ .ExecTransactionsCount }}</span></a>
-          </li>
-        {{ end }}
         {{ if gt .DepositsCount 0 }}
           <li class="nav-item">
             <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{ .DepositsCount }}</span></a>
@@ -214,7 +197,7 @@
       <div class="tab-content" id="tabContent">
         <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
           <div class="card block-card">
-            {{ template "block_overview" . }}
+            {{ template "block_overview" $ }}
           </div>
         </div>
         {{ if gt .VotesCount 0 }}
@@ -234,10 +217,10 @@
           </div>
           {{ template "block_attestations" . }}
         </div>
-        {{ if gt .ExecTransactionsCount 0 }}
+        {{ if .ExecutionData }}
           <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
-            <div class="card block-card">
-              {{ template "block_transactions" . }}
+            <div class="card block-card py-1">
+              {{ template "execution_transactions" .ExecutionData }}
             </div>
           </div>
         {{ end }}

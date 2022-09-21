@@ -197,7 +197,7 @@
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mt-5 mb-4">
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-male mr-3 text-muted"></i>Minipool Address</div>
                     <div>
-                      {{ formatEth1Address .Rocketpool.MinipoolAddress }} <a class="no-highlight" href="https://rocketscan.dev/minipool/{{ formatEth1AddressStringLowerCase .Rocketpool.MinipoolAddress }}" target="_blank"><i class="fas fa-rocket" role="button" data-toggle="tooltip" title="" data-original-title="More infos on Rocketscan"></i></a>
+                      {{ formatEth1Address .Rocketpool.MinipoolAddress }}{{ if ne .Rocketpool.RocketscanUrl "" }}<a class="no-highlight" href="https://{{ .Rocketpool.RocketscanUrl }}/minipool/{{ formatEth1AddressStringLowerCase .Rocketpool.MinipoolAddress }}" target="_blank"><i class="fas fa-rocket" role="button" data-toggle="tooltip" title="" data-original-title="More infos on Rocketscan"></i></a>{{ end }}
                     </div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
@@ -229,7 +229,7 @@
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-male mr-2 text-muted"></i> Node Address</div>
                     <div>
-                      {{ formatEth1Address .Rocketpool.NodeAddress }} <a class="no-highlight" href="https://rocketscan.dev/node/{{ formatEth1AddressStringLowerCase .Rocketpool.NodeAddress }}" target="_blank"><i class="fas fa-rocket" role="button" data-toggle="tooltip" title="" data-original-title="More infos on Rocketscan"></i></a>
+                      {{ formatEth1Address .Rocketpool.NodeAddress }}{{ if ne .Rocketpool.RocketscanUrl "" }}<a class="no-highlight" href="https://{{ .Rocketpool.RocketscanUrl }}/node/{{ formatEth1AddressStringLowerCase .Rocketpool.NodeAddress }}" target="_blank"><i class="fas fa-rocket" role="button" data-toggle="tooltip" title="" data-original-title="More infos on Rocketscan"></i></a>{{ end }}
                     </div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
@@ -244,14 +244,36 @@
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node Min RPL Stake</div>
                     <div>{{ formatRPL .Rocketpool.NodeMinRPLStake }}</div>
                   </div>
-                  <div class="w-75 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node Max RPL Stake</div>
                     <div>{{ formatRPL .Rocketpool.NodeMaxRPLStake }}</div>
                   </div>
-                  <div class="w-75 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node Cumulative RPL Claimed</div>
                     <div>{{ formatRPL .Rocketpool.CumulativeRPL }}</div>
                   </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Unclaimed RPL</div>
+                    <div>{{ formatRPL .Rocketpool.UnclaimedRPL }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Penalties</div>
+                    <div>{{ if .Rocketpool.PenaltyCount }}<span class="text-danger">{{ .Rocketpool.PenaltyCount }}</span>{{ else }}0{{ end }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Smoothing Pool Opt-In</div>
+                    <div>{{ if .Rocketpool.SmoothingPoolOptIn }}✅{{ else }}❌{{ end }}</div>
+                  </div>
+                  {{ if .Rocketpool.SmoothingPoolOptIn }}
+                    <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                      <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Smoothing Claimed</div>
+                      <div>{{ formatETH .Rocketpool.SmoothingClaimed }}</div>
+                    </div>
+                    <div class="w-75 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                      <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Smoothing Unclaimed</div>
+                      <div>{{ formatETH .Rocketpool.SmoothingUnclaimed }}</div>
+                    </div>
+                  {{ end }}
                 </div>
               {{ end }}
             </div>

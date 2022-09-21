@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
 )
 
-var graffitiwallTemplate = template.Must(template.New("vis").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/graffitiwall.html"))
+var graffitiwallTemplate = template.Must(template.New("vis").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "graffitiwall.html"))
 
 func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 
@@ -22,7 +23,7 @@ func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error retrieving block tree data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -34,7 +35,7 @@ func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

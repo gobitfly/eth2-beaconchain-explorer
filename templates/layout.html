@@ -4,7 +4,7 @@
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-      <meta name="keywords" content="ethereum 2.0 block explorer, eth2 block explorer, beacon chain explorer, ethereum blockchain explorer" />
+      <meta name="keywords" content="open source ethereum block explorer, ethereum block explorer, beacon chain explorer, ethereum blockchain explorer" />
       <meta name="description" content="{{ .Meta.Description }}" />
       <meta property="og:title" content="{{ .Meta.Title }}" />
       <meta property="og:type" content="website" />
@@ -136,7 +136,7 @@
 		                break
                 }
             })
-        </script>
+        </script> {{ template "css" .Data }}
     </head>
     <header></header>
     <body ontouchstart="">
@@ -162,7 +162,7 @@
                   <span class="item-icon"><i class="fas fa-cubes"></i></span>
                   <span class="item-text">Slot</span>
                 </div>
-                <div class="info-item-body"><a id="banner-slot-data" href="/block/{{ .CurrentSlot }}">{{ formatAddCommas .CurrentSlot }}</a></div>
+                <div class="info-item-body"><a id="banner-slot-data" href="/slot/{{ .CurrentSlot }}">{{ formatAddCommas .CurrentSlot }}</a></div>
               </div>
             </div>
             <div data-toggle="tooltip" title="" data-original-title="Price" id="banner-eth-price">
@@ -350,20 +350,32 @@
                                 <span class="nav-icon">
                                     <img src="/img/gitcoin_logo.svg" style="width: auto; height: 1rem;" class="mb-2">
                                 </span>
-                                <span class="nav-text">Support Eth2</span>
+                                <span class="nav-text">Support Ethereum</span>
                             </a>
                         </li> -->
-              <li class="nav-item {{ if eq .Active "epochs" }}active{{ end }}">
-                <a class="nav-link" href="/epochs">
-                  <!-- <span class="nav-icon"><i class="fas fa-history"></i></span> -->
-                  <span class="nav-text">Epochs</span>
+              <li class="nav-item {{ if eq .Active "blockchain" }}active{{ end }} dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <span class="nav-text">Blockchain</span>
                 </a>
-              </li>
-              <li class="nav-item {{ if eq .Active "blocks" }}active{{ end }}">
-                <a class="nav-link" href="/blocks">
-                  <!-- <span class="nav-icon"><i class="fas fa-cubes"></i></span> -->
-                  <span class="nav-text">Blocks</span>
-                </a>
+                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                  <a class="dropdown-item" href="/epochs">
+                    <span class="nav-icon"><i class="fas fa-history"></i></span>
+                    <span class="nav-text">Epochs</span>
+                  </a>
+                  <a class="dropdown-item" href="/slots">
+                    <span class="nav-icon"><i class="fas fa-cube"></i></span>
+                    <span class="nav-text">Slots</span>
+                  </a>
+                  <hr />
+                  <a class="dropdown-item" href="/blocks">
+                    <span class="nav-icon"><i class="fas fa-cubes"></i></span>
+                    <span class="nav-text">Blocks</span>
+                  </a>
+                  <a class="dropdown-item" href="/transactions">
+                    <span class="nav-icon"><i class="fas fa-credit-card"></i></span>
+                    <span class="nav-text">Txs</span>
+                  </a>
+                </div>
               </li>
               <li class="nav-item {{ if eq .Active "validators" }}active{{ end }} dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -397,11 +409,11 @@
                   <hr />
                   <a class="dropdown-item" href="/validators/eth1deposits">
                     <span class="nav-icon"><i class="fas fa-file-signature mr-2"></i></span>
-                    <span class="nav-text">Eth1 Deposits</span>
+                    <span class="nav-text">Initiated Deposits</span>
                   </a>
                   <a class="dropdown-item" href="/validators/eth2deposits">
                     <span class="nav-icon"><i class="fas fa-clipboard-check mr-2"></i></span>
-                    <span class="nav-text">Eth2 Deposits</span>
+                    <span class="nav-text">Included Deposits</span>
                   </a>
                 </div>
               </li>
@@ -657,6 +669,10 @@
                         <span class="nav-icon"><i class="fas fa-laptop-code"></i></span>
                         <span class="nav-text ml-3">API Pricing</span>
                       </a>
+                      <a class="dropdown-item" href="/tools/unitConverter">
+                        <span class="nav-icon"><i class="fas fa-sync"></i></span>
+                        <span class="nav-text ml-3">Unit Converter</span>
+                      </a>
                     </div>
                     <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
                       <span class="ml-4" style="display: block; font-size: 18px; font-weight: 700; letter-spacing: .3px;">Services</span>
@@ -684,18 +700,16 @@
           <!-- </div> -->
         </div>
       </nav>
-      {{ template "css" .Data }}
       <main>
-        <!--
-        <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;">
+        <!-- <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;">
           <span class="d-none d-md-block">
             <span>
               <span>
-                <a style="color: #ff6600;" href="https://ethstaker.cc/the-merge-validator-prep-workshop/" target="_blank">Merge Validator Workshop</a>
+                <a style="color: #ff6600;" href="https://blog.ethereum.org/2022/08/24/mainnet-merge-announcement" target="_blank">The Merge</a>
               </span>
-              on July 29th,
+              on Sep. 14th,
               <span>
-                  <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=CM1decziXkQ" target="_blank">YouTube</a>
+                <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=Nx-jYgI0QVI" target="_blank">on YouTube</a>
               </span>
               hosted by
               <span>
@@ -703,21 +717,15 @@
               </span>
             </span>
           </span>
-          -->
-        <!--
-                <span class="d-md-none p-1" style="font-size: 90%;">
-                    <span>
-                        <span>
-                            <a style="color: #ff6600;" href="https://rocketpool.net/" target="_blank" >Rocket Pool launch</a> 
-                        </span>, today, 
-                        <span style="color: #ff6600;">
-                            <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=CM1decziXkQ" target="_blank">on YouTube</a>
-                        </span> 
-                    </span>
-                </span>
-                
-        </div>
-        -->
+          <span class="d-md-none p-1" style="font-size: 90%;">
+            <span>
+              <span> <a style="color: #ff6600;" href="https://blog.ethereum.org/2022/08/24/mainnet-merge-announcement" target="_blank">The Merge</a> </span>, on Sep. 14th,
+              <span style="color: #ff6600;">
+                <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=Nx-jYgI0QVI" target="_blank">on YouTube</a>
+              </span>
+            </span>
+          </span>
+        </div> -->
 
         <!-- Discount banner
             <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;"> 
@@ -825,7 +833,7 @@
           </div>
           <div class="text-center row justify-content-center">
             <div class="col-12">
-              <span>© bitfly gmbh 2021 | {{ .Version }} |</span>
+              <span>© bitfly gmbh 2022 | {{ .Version }} |</span>
               <div class="theme-switch-wrapper">
                 <label class="theme-switch" for="toggleSwitch">
                   <input type="checkbox" id="toggleSwitch" />

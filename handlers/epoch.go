@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -11,14 +12,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
 )
 
-var epochTemplate = template.Must(template.New("epoch").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epoch.html"))
-var epochFutureTemplate = template.Must(template.New("epochFuture").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epochFuture.html"))
-var epochNotFoundTemplate = template.Must(template.New("epochnotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epochnotfound.html"))
+var epochTemplate = template.Must(template.New("epoch").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "epoch.html"))
+var epochFutureTemplate = template.Must(template.New("epochFuture").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "epochFuture.html"))
+var epochNotFoundTemplate = template.Must(template.New("epochnotfound").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "epochnotfound.html"))
 
 // Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
@@ -28,13 +28,13 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	epochString := strings.Replace(vars["epoch"], "0x", "", -1)
 
-	data := InitPageData(w, r, "epochs", "/epochs", "Epoch")
+	data := InitPageData(w, r, "blockchain", "/epochs", "Epoch")
 	data.HeaderAd = true
 
 	epoch, err := strconv.ParseUint(epochString, 10, 64)
 
 	if err != nil {
-		data.Meta.Title = fmt.Sprintf("%v - Epoch %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, epochString, time.Now().Year())
+		SetPageDataTitle(data, fmt.Sprintf("Epoch %v", epochString))
 		data.Meta.Path = "/epoch/" + epochString
 		logger.Errorf("error parsing epoch index %v: %v", epochString, err)
 		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
@@ -47,7 +47,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data.Meta.Title = fmt.Sprintf("%v - Epoch %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, epoch, time.Now().Year())
+	SetPageDataTitle(data, fmt.Sprintf("Epoch %v", epochString))
 	data.Meta.Path = fmt.Sprintf("/epoch/%v", epoch)
 
 	epochPageData := types.EpochPageData{}

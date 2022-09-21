@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"eth2-exporter/mail"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -9,7 +10,7 @@ import (
 	"net/http"
 )
 
-var mobileTemplate = template.Must(template.New("mobilepage").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/mobilepage.html"))
+var mobileTemplate = template.Must(template.New("mobilepage").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "mobilepage.html"))
 
 func MobilePage(w http.ResponseWriter, r *http.Request) {
 	var err error
@@ -22,7 +23,7 @@ func MobilePage(w http.ResponseWriter, r *http.Request) {
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "ad_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for mobile page %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 	data.Data = pageData
@@ -31,7 +32,7 @@ func MobilePage(w http.ResponseWriter, r *http.Request) {
 	err2 := mobileTemplate.ExecuteTemplate(w, "layout", data)
 	if err2 != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err2)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

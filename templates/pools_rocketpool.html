@@ -67,6 +67,9 @@
             return `<span class="badge badge-pill badge-info badge-custom text-white">${data}</span>`
           },
         },
+        {
+          targets: 6,
+        },
       ],
       initComplete: function (settings, json) {
         $("#minipools .first-col a").on("click", function (e) {
@@ -469,6 +472,7 @@
                 <th scope="col" class="h6 border-bottom-0">Node Fee</th>
                 <th scope="col" class="h6 border-bottom-0">Deposit Type</th>
                 <th scope="col" class="h6 border-bottom-0">Status</th>
+                <th scope="col" class="h6 border-bottom-0">Penalties</th>
               </tr>
             </thead>
             <tbody></tbody>

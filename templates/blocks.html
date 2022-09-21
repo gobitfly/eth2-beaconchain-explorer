@@ -9,7 +9,7 @@
         serverSide: true,
         ordering: false,
         searching: true,
-        ajax: "/blocks/data",
+        ajax: "/slots/data",
         stateSave: true,
         deferLoading: {{.RecordsTotal}},
         stateSaveCallback: function (settings, data) {
@@ -118,11 +118,11 @@
   {{ with .Data }}
     <div class="container mt-2">
       <div class="d-md-flex py-2 justify-content-md-between">
-        <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cubes mr-2"></i>Blocks</h1>
+        <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cube mr-2"></i>Slots</h1>
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
             <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Blocks</li>
+            <li class="breadcrumb-item active" aria-current="page">Slots</li>
           </ol>
         </nav>
       </div>

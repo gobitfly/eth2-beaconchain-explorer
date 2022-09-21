@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -17,7 +18,7 @@ import (
 	"github.com/gorilla/csrf"
 )
 
-var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validatorRewards.html"))
+var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validatorRewards.html"))
 
 // var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub", "aud"}
 
@@ -56,7 +57,7 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 	err = validatorRewardsServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -123,6 +124,11 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	dateRange := strings.Split(q.Get("days"), "-")
 	if len(dateRange) == 2 {
 		start, err = strconv.ParseUint(dateRange[0], 10, 64)
+		if err != nil {
+			logger.Errorf("error retrieving days range %v", err)
+			http.Error(w, "Invalid query", 400)
+			return
+		}
 		end, err = strconv.ParseUint(dateRange[1], 10, 64)
 		if err != nil {
 			logger.Errorf("error retrieving days range %v", err)
@@ -136,7 +142,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -159,6 +165,11 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	dateRange := strings.Split(q.Get("days"), "-")
 	if len(dateRange) == 2 {
 		start, err = strconv.ParseUint(dateRange[0], 10, 64)
+		if err != nil {
+			logger.Errorf("error retrieving days range %v", err)
+			http.Error(w, "Invalid query", 400)
+			return
+		}
 		end, err = strconv.ParseUint(dateRange[1], 10, 64)
 		if err != nil {
 			logger.Errorf("error retrieving days range %v", err)
@@ -180,10 +191,10 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=income_history_%v_%v.pdf", s.Format("20060102"), e.Format("20060102")))
 	w.Header().Set("Content-Type", "text/csv")
 
-	_, err = w.Write(services.GeneratePdfReport(hist))
+	_, err = w.Write(services.GeneratePdfReport(hist, currency))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error writing response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -245,7 +256,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -289,7 +300,7 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
@@ -324,7 +335,7 @@ func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }

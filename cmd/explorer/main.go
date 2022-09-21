@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"encoding/gob"
 	"encoding/hex"
+	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/exporter"
@@ -11,6 +13,7 @@ import (
 	"eth2-exporter/price"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
+	"eth2-exporter/static"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
@@ -18,6 +21,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"sync"
 	"time"
 
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -61,36 +65,114 @@ func main() {
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
 
-	db.MustInitDB(&types.DatabaseConfig{
-		Username: cfg.WriterDatabase.Username,
-		Password: cfg.WriterDatabase.Password,
-		Name:     cfg.WriterDatabase.Name,
-		Host:     cfg.WriterDatabase.Host,
-		Port:     cfg.WriterDatabase.Port,
-	}, &types.DatabaseConfig{
-		Username: cfg.ReaderDatabase.Username,
-		Password: cfg.ReaderDatabase.Password,
-		Name:     cfg.ReaderDatabase.Name,
-		Host:     cfg.ReaderDatabase.Host,
-		Port:     cfg.ReaderDatabase.Port,
-	})
+	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
+		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
+	}
+
+	wg := &sync.WaitGroup{}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		db.MustInitDB(&types.DatabaseConfig{
+			Username: cfg.WriterDatabase.Username,
+			Password: cfg.WriterDatabase.Password,
+			Name:     cfg.WriterDatabase.Name,
+			Host:     cfg.WriterDatabase.Host,
+			Port:     cfg.WriterDatabase.Port,
+		}, &types.DatabaseConfig{
+			Username: cfg.ReaderDatabase.Username,
+			Password: cfg.ReaderDatabase.Password,
+			Name:     cfg.ReaderDatabase.Name,
+			Host:     cfg.ReaderDatabase.Host,
+			Port:     cfg.ReaderDatabase.Port,
+		})
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		db.MustInitFrontendDB(&types.DatabaseConfig{
+			Username: cfg.Frontend.WriterDatabase.Username,
+			Password: cfg.Frontend.WriterDatabase.Password,
+			Name:     cfg.Frontend.WriterDatabase.Name,
+			Host:     cfg.Frontend.WriterDatabase.Host,
+			Port:     cfg.Frontend.WriterDatabase.Port,
+		}, &types.DatabaseConfig{
+			Username: cfg.Frontend.ReaderDatabase.Username,
+			Password: cfg.Frontend.ReaderDatabase.Password,
+			Name:     cfg.Frontend.ReaderDatabase.Name,
+			Host:     cfg.Frontend.ReaderDatabase.Host,
+			Port:     cfg.Frontend.ReaderDatabase.Port,
+		}, cfg.Frontend.SessionSecret)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+
+		rpc.CurrentErigonClient, err = rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
+		if err != nil {
+			logrus.Fatalf("error initializing erigon client: %v", err)
+		}
+
+		erigonChainId, err := rpc.CurrentErigonClient.GetNativeClient().ChainID(ctx)
+		if err != nil {
+			logrus.Fatalf("error retrieving erigon chain id: %v", err)
+		}
+
+		rpc.CurrentGethClient, err = rpc.NewGethClient(utils.Config.Eth1GethEndpoint)
+		if err != nil {
+			logrus.Fatalf("error initializing geth client: %v", err)
+		}
+
+		gethChainId, err := rpc.CurrentGethClient.GetNativeClient().ChainID(ctx)
+		if err != nil {
+			logrus.Fatalf("error retrieving geth chain id: %v", err)
+		}
+
+		if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) {
+			logrus.Fatalf("chain id missmatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), erigonChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		bt, err := db.InitBigtable("etherchain", "etherchain", fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) //
+		if err != nil {
+			logrus.Fatalf("error connecting to bigtable: %v", err)
+		}
+		db.BigtableClient = bt
+	}()
+
+	if utils.Config.TieredCacheProvider == "redis" || len(utils.Config.RedisCacheEndpoint) != 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
+			logrus.Infof("Tiered Cache initialized. Latest finalized epoch: %v", services.LatestFinalizedEpoch())
+
+		}()
+	}
+
+	wg.Wait()
+	if utils.Config.TieredCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
+		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+		logrus.Infof("Tiered Cache initialized. Latest finalized epoch: %v", services.LatestFinalizedEpoch())
+	}
+
+	if utils.Config.TieredCacheProvider != "bigtable" && utils.Config.TieredCacheProvider != "redis" {
+		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis, bigtable)")
+	}
+
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
-	db.MustInitFrontendDB(&types.DatabaseConfig{
-		Username: cfg.Frontend.WriterDatabase.Username,
-		Password: cfg.Frontend.WriterDatabase.Password,
-		Name:     cfg.Frontend.WriterDatabase.Name,
-		Host:     cfg.Frontend.WriterDatabase.Host,
-		Port:     cfg.Frontend.WriterDatabase.Port,
-	}, &types.DatabaseConfig{
-		Username: cfg.Frontend.ReaderDatabase.Username,
-		Password: cfg.Frontend.ReaderDatabase.Password,
-		Name:     cfg.Frontend.ReaderDatabase.Name,
-		Host:     cfg.Frontend.ReaderDatabase.Host,
-		Port:     cfg.Frontend.ReaderDatabase.Port,
-	}, cfg.Frontend.SessionSecret)
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
+	defer db.BigtableClient.Close()
 
 	if utils.Config.Metrics.Enabled {
 		go metrics.MonitorDB(db.WriterDb)
@@ -102,11 +184,15 @@ func main() {
 	}
 
 	logrus.Infof("database connection established")
-	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
-		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
-	}
 
 	if utils.Config.Indexer.Enabled {
+
+		err = services.InitLastAttestationCache(utils.Config.LastAttestationCachePath)
+
+		if err != nil {
+			logrus.Fatalf("error initializing last attesation cache: %v", err)
+		}
+
 		var rpcClient rpc.Client
 
 		chainID := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
@@ -154,7 +240,6 @@ func main() {
 	}
 
 	if cfg.Frontend.Enabled {
-
 		router := mux.NewRouter()
 
 		apiV1Router := router.PathPrefix("/api/v1").Subrouter()
@@ -173,6 +258,7 @@ func main() {
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}", handlers.ApiValidator).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/balancehistory", handlers.ApiValidatorBalanceHistory).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/performance", handlers.ApiValidatorPerformance).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/execution/performance", handlers.ApiValidatorExecutionPerformance).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestations", handlers.ApiValidatorAttestations).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/proposals", handlers.ApiValidatorProposals).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/deposits", handlers.ApiValidatorDeposits).Methods("GET", "OPTIONS")
@@ -224,11 +310,18 @@ func main() {
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET", "HEAD")
 		router.HandleFunc("/api/healthz-loadbalancer", handlers.ApiHealthzLoadbalancer).Methods("GET", "HEAD")
 
-		services.Init() // Init frontend services
-		price.Init()
-		ethclients.Init()
+		// logrus.Infof("initializing frontend services")
+		// services.Init() // Init frontend services
+		// logrus.Infof("frontend services initiated")
 
-		logrus.Infof("frontend services initiated")
+		logrus.Infof("initializing prices")
+		price.Init(utils.Config.Chain.Config.DepositChainID)
+		logrus.Infof("prices initialized")
+		if !utils.Config.Frontend.Debug {
+			logrus.Infof("initializing ethclients")
+			ethclients.Init()
+			logrus.Infof("ethclients initialized")
+		}
 
 		if !utils.Config.Frontend.OnlyAPI {
 			if utils.Config.Frontend.SiteDomain == "" {
@@ -253,13 +346,30 @@ func main() {
 
 			router.HandleFunc("/", handlers.Index).Methods("GET")
 			router.HandleFunc("/latestState", handlers.LatestState).Methods("GET")
-			router.HandleFunc("/launchMetrics", handlers.LaunchMetricsData).Methods("GET")
+			router.HandleFunc("/launchMetrics", handlers.SlotVizMetrics).Methods("GET")
 			router.HandleFunc("/index/data", handlers.IndexPageData).Methods("GET")
-			router.HandleFunc("/block/{slotOrHash}", handlers.Block).Methods("GET")
-			router.HandleFunc("/block/{slotOrHash}/deposits", handlers.BlockDepositData).Methods("GET")
-			router.HandleFunc("/block/{slotOrHash}/votes", handlers.BlockVoteData).Methods("GET")
-			router.HandleFunc("/blocks", handlers.Blocks).Methods("GET")
-			router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
+			router.HandleFunc("/slot/{slotOrHash}", handlers.Block).Methods("GET")
+			router.HandleFunc("/slot/{slotOrHash}/deposits", handlers.BlockDepositData).Methods("GET")
+			router.HandleFunc("/slot/{slotOrHash}/votes", handlers.BlockVoteData).Methods("GET")
+			router.HandleFunc("/slots", handlers.Blocks).Methods("GET")
+			router.HandleFunc("/slots/data", handlers.BlocksData).Methods("GET")
+			router.HandleFunc("/blocks", handlers.Eth1Blocks).Methods("GET")
+			router.HandleFunc("/blocks/data", handlers.Eth1BlocksData).Methods("GET")
+			router.HandleFunc("/address/{address}", handlers.Eth1Address).Methods("GET")
+			router.HandleFunc("/address/{address}/blocks", handlers.Eth1AddressBlocksMined).Methods("GET")
+			router.HandleFunc("/address/{address}/uncles", handlers.Eth1AddressUnclesMined).Methods("GET")
+			router.HandleFunc("/address/{address}/transactions", handlers.Eth1AddressTransactions).Methods("GET")
+			router.HandleFunc("/address/{address}/internalTxns", handlers.Eth1AddressInternalTransactions).Methods("GET")
+			router.HandleFunc("/address/{address}/erc20", handlers.Eth1AddressErc20Transactions).Methods("GET")
+			router.HandleFunc("/address/{address}/erc721", handlers.Eth1AddressErc721Transactions).Methods("GET")
+			router.HandleFunc("/address/{address}/erc1155", handlers.Eth1AddressErc1155Transactions).Methods("GET")
+			router.HandleFunc("/token/{token}", handlers.Eth1Token).Methods("GET")
+			router.HandleFunc("/token/{token}/transfers", handlers.Eth1TokenTransfers).Methods("GET")
+			router.HandleFunc("/transactions", handlers.Eth1Transactions).Methods("GET")
+			router.HandleFunc("/transactions/data", handlers.Eth1TransactionsData).Methods("GET")
+			router.HandleFunc("/block/{block}", handlers.Eth1Block).Methods("GET")
+			router.HandleFunc("/tx/{hash}", handlers.Eth1TransactionTx).Methods("GET")
+
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 			router.HandleFunc("/charts", handlers.Charts).Methods("GET")
 			router.HandleFunc("/charts/{chart}", handlers.Chart).Methods("GET")
@@ -315,6 +425,8 @@ func main() {
 			router.HandleFunc("/poap/data", handlers.PoapData).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
+
+			router.HandleFunc("/tools/unitConverter", handlers.UnitConverter).Methods("GET")
 
 			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
 
@@ -424,7 +536,7 @@ func main() {
 			}
 			legalFs := http.FileServer(http.Dir(utils.Config.Frontend.LegalDir))
 			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", legalFs))
-			router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
+			router.PathPrefix("/").Handler(http.FileServer(http.FS(static.Files)))
 
 		}
 
@@ -432,7 +544,10 @@ func main() {
 			router.Use(metrics.HttpMiddleware)
 		}
 
-		n := negroni.New(negroni.NewRecovery())
+		// l := negroni.NewLogger()
+		// l.SetFormat(`{{.Request.Header.Get "X-Forwarded-For"}}, {{.Request.RemoteAddr}} | {{.StartTime}} | {{.Status}} | {{.Duration}} | {{.Hostname}} | {{.Method}} {{.Path}}{{if ne .Request.URL.RawQuery ""}}?{{.Request.URL.RawQuery}}{{end}}`)
+
+		n := negroni.New(negroni.NewRecovery()) //, l
 
 		// Customize the logging middleware to include a proper module entry for the frontend
 		//frontendLogger := negronilogrus.NewMiddleware()

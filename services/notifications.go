@@ -131,8 +131,8 @@ func notificationsSender() {
 		// check if the explorer is not too far behind, if we set this value to close (10m) it could potentially never send any notifications
 		// if IsSyncing() {
 
-		if time.Now().Add(time.Minute * -20).After(utils.EpochToTime(LatestEpoch())) {
-			logger.Infof("skipping notifications because the explorer is syncing, latest epoch: %v", LatestEpoch())
+		if time.Now().Add(time.Minute * -20).After(utils.EpochToTime(LatestFinalizedEpoch())) {
+			logger.Infof("skipping notifications because the explorer is syncing, latest epoch: %v", LatestFinalizedEpoch())
 			time.Sleep(time.Second * 60)
 			continue
 		}
@@ -1208,7 +1208,7 @@ func getUrlPart(validatorIndex uint64) string {
 // It looks 10 epochs back for when the balance increased the last time, this means if the explorer is not running for 10 epochs it is possible
 // that no new notification is sent even if there was a balance-increase.
 func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	latestEpoch := LatestEpoch()
+	latestEpoch := LatestFinalizedEpoch()
 	if latestEpoch < 3 {
 		return nil
 	}
@@ -1267,7 +1267,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 }
 
 func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
-	latestEpoch := LatestEpoch()
+	latestEpoch := LatestFinalizedEpoch()
 
 	type dbResult struct {
 		ValidatorIndex uint64 `db:"validatorindex"`
@@ -1436,8 +1436,8 @@ func (n *validatorProposalNotification) GetInfoMarkdown() string {
 }
 
 func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
-	latestEpoch := LatestEpoch()
-	latestSlot := LatestSlot()
+	latestEpoch := LatestFinalizedEpoch()
+	// latestSlot := LatestSlot()
 
 	pubkeys, subMap, err := db.GetSubsForEventFilter(types.ValidatorMissedAttestationEventName)
 	if err != nil {
@@ -1453,9 +1453,18 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 		EventFilter    []byte `db:"pubkey"`
 	}
 
+	// get attestations for all validators for the last n epochs
+	attestations, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{}, latestEpoch-2, 3)
+	if err != nil {
+		return fmt.Errorf("error getting validator attestations from bigtable %w", err)
+	}
+
 	events := make([]dbResult, 0)
 	batchSize := 5000
 	dataLen := len(pubkeys)
+	// indices := make([]uint64, 0, len(dataLen))
+	indexToPubkeyMap := make(map[uint64][]byte)
+
 	for i := 0; i < dataLen; i += batchSize {
 		var keys [][]byte
 		start := i
@@ -1467,30 +1476,38 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 
 		keys = pubkeys[start:end]
 
-		var partial []dbResult
-		err = db.WriterDb.Select(&partial, `
-		SELECT 
-			v.validatorindex,
-			v.pubkey,
-			aa.epoch,
-			aa.status,
-			aa.attesterslot,
-			aa.inclusionslot
-		FROM
-		(SELECT 
-				v.validatorindex as validatorindex, 
-				v.pubkey as pubkey
-			FROM validators v
-			WHERE pubkey = ANY($4)) v
-			INNER JOIN attestation_assignments_p aa ON v.validatorindex = aa.validatorindex AND aa.week >= ($1 - 3) / 1575 AND aa.epoch >= ($1 - 3)
-			WHERE status = $3
-			AND aa.inclusionslot = 0 AND aa.attesterslot < ($2 - 32)
-			`, latestEpoch, latestSlot, status, pq.ByteaArray(keys))
+		type indexpubkey struct {
+			ValidatorIndex uint64
+			Pubkey         []byte
+		}
+		var indexPubkeyArr []*indexpubkey
+		err := db.ReaderDb.Select(&indexPubkeyArr, "SELECT validatorindex, pubkey FROM validators WHERE pubkey = ANY($1)", pq.ByteaArray(keys))
 		if err != nil {
 			return err
 		}
 
-		events = append(events, partial...)
+		for _, v := range indexPubkeyArr {
+			indexToPubkeyMap[v.ValidatorIndex] = v.Pubkey
+			// indices = append(indices, v.ValidatorIndex)
+		}
+	}
+
+	for validator, history := range attestations {
+		pubkey, ok := indexToPubkeyMap[validator]
+		if ok {
+			for _, attestation := range history {
+				if attestation.Status == 0 {
+					events = append(events, dbResult{
+						ValidatorIndex: validator,
+						Epoch:          attestation.Epoch,
+						Status:         attestation.Status,
+						Slot:           attestation.AttesterSlot,
+						InclusionSlot:  attestation.InclusionSlot,
+						EventFilter:    pubkey,
+					})
+				}
+			}
+		}
 	}
 
 	for _, event := range events {
@@ -1571,10 +1588,10 @@ func (n *validatorAttestationNotification) GetInfo(includeUrl bool) string {
 	if includeUrl {
 		switch n.Status {
 		case 0:
-			generalPart = fmt.Sprintf(`Validator <a href="https://%[3]v/validator/%[1]v">%[1]v</a> missed an attestation at slot <a href="https://%[3]v/block/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
+			generalPart = fmt.Sprintf(`Validator <a href="https://%[3]v/validator/%[1]v">%[1]v</a> missed an attestation at slot <a href="https://%[3]v/slot/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
 			//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
 		case 1:
-			generalPart = fmt.Sprintf(`Validator <a href="https://%[3]v/validator/%[1]v">%[1]v</a> submitted a successful attestation for slot  <a href="https://%[3]v/block/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
+			generalPart = fmt.Sprintf(`Validator <a href="https://%[3]v/validator/%[1]v">%[1]v</a> submitted a successful attestation for slot  <a href="https://%[3]v/slot/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
 		}
 		// return generalPart + getUrlPart(n.ValidatorIndex)
 	} else {
@@ -1618,9 +1635,9 @@ func (n *validatorAttestationNotification) GetInfoMarkdown() string {
 	var generalPart = ""
 	switch n.Status {
 	case 0:
-		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[3]v/validator/%[1]v) missed an attestation at slot [%[2]v](https://%[3]v/block/%[2]v).`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
+		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[3]v/validator/%[1]v) missed an attestation at slot [%[2]v](https://%[3]v/slot/%[2]v).`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
 	case 1:
-		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[3]v/validator/%[1]v) submitted a successful attestation for slot [%[2]v](https://%[3]v/block/%[2]v).`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
+		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[3]v/validator/%[1]v) submitted a successful attestation for slot [%[2]v](https://%[3]v/slot/%[2]v).`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
 	}
 	return generalPart
 }
@@ -1680,7 +1697,7 @@ func (n *validatorGotSlashedNotification) GetInfoMarkdown() string {
 }
 
 func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	latestEpoch := LatestEpoch()
+	latestEpoch := LatestFinalizedEpoch()
 	if latestEpoch == 0 {
 		return nil
 	}
@@ -1936,7 +1953,7 @@ func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map
 		AND v.day >= $3 
 		AND v.machine = us.event_filter 
 		AND (us.last_sent_epoch < ($2 - 750) OR us.last_sent_epoch IS NULL)
-		AND sy.disk_node_bytes_free::decimal / sy.disk_node_bytes_total < event_threshold
+		AND sy.disk_node_bytes_free::decimal / (sy.disk_node_bytes_total + 1) < event_threshold
 		AND v.created_trunc > NOW() - INTERVAL '1 hours' 
 		group by us.user_id, machine
 	`)
@@ -2007,7 +2024,7 @@ func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[ty
 }
 
 func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName, query string) error {
-	latestEpoch := LatestEpoch()
+	latestEpoch := LatestFinalizedEpoch()
 	if latestEpoch == 0 {
 		return nil
 	}
@@ -2622,7 +2639,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 			continue
 		}
 
-		currentEpoch := LatestEpoch()
+		currentEpoch := LatestFinalizedEpoch()
 		if sub.LastEpoch != nil {
 			lastSentEpoch := *sub.LastEpoch
 			if lastSentEpoch >= currentEpoch-80 || currentEpoch < sub.CreatedEpoch {

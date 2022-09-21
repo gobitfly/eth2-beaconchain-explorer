@@ -125,10 +125,14 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			balance.Balance31d = balance.BalanceActivation
 		}
 
-		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
-		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
-		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
-		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
+		earningsTotal += int64(balance.Balance) - balance.BalanceActivation.Int64
+		earningsLastDay += int64(balance.Balance) - balance.Balance1d.Int64
+		earningsLastWeek += int64(balance.Balance) - balance.Balance7d.Int64
+		earningsLastMonth += int64(balance.Balance) - balance.Balance31d.Int64
+	}
+
+	if totalDeposits == 0 {
+		totalDeposits = 32 * 1e9
 	}
 
 	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
@@ -222,9 +226,9 @@ func GetCurrentPriceFormatted(r *http.Request) string {
 	userAgent = strings.ToLower(userAgent)
 	price := GetCurrentPrice(r)
 	if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") || strings.Contains(userAgent, "windows phone") {
-		return fmt.Sprintf("%s", utils.KFormatterEthPrice(price))
+		return string(utils.KFormatterEthPrice(price))
 	}
-	return fmt.Sprintf("%s", utils.FormatAddCommas(uint64(price)))
+	return string(utils.FormatAddCommas(uint64(price)))
 }
 
 func GetTruncCurrentPriceFormatted(r *http.Request) string {
@@ -283,7 +287,7 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 		dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
 		key = dataTableStatePrefix + key
 		count := 0
-		for k, _ := range session.Values {
+		for k := range session.Values {
 			k, ok := k.(string)
 			if ok && strings.HasPrefix(k, dataTableStatePrefix) {
 				count += 1

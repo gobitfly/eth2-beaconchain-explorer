@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"eth2-exporter/db"
+	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -15,8 +16,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var renderer = template.Must(template.New("faq").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/mail/layout.html",
+var renderer = template.Must(template.New("faq").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
+	"mail/layout.html",
 ))
 
 type MailTemplate struct {
