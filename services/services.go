@@ -607,7 +607,7 @@ func LatestIndexPageData() *types.IndexPageData {
 	wanted := &types.IndexPageData{}
 	cacheKey := fmt.Sprintf("%d:frontend:indexPageData", utils.Config.Chain.Config.DepositChainID)
 
-	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*50, wanted); err == nil {
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, wanted); err == nil {
 		return wanted.(*types.IndexPageData)
 	} else {
 		logger.Errorf("error retrieving indexPageData from cache: %v", err)
