@@ -169,14 +169,6 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.ReaderDb.Select(&validators, `
-		WITH
-			proposals AS (
-				SELECT validatorindex, pa.status, count(*)
-				FROM proposal_assignments pa
-				INNER JOIN blocks b ON pa.proposerslot = b.slot AND b.status <> '3'
-				WHERE validatorindex = ANY($1)
-				GROUP BY validatorindex, pa.status
-			)
 		SELECT
 			validators.validatorindex,
 			validators.pubkey,
@@ -188,15 +180,13 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.lastattestationslot,
 			validators.activationepoch,
 			validators.exitepoch,
-			COALESCE(p1.count, 0) as executedproposals,
-			COALESCE(p2.count, 0) as missedproposals,
+			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '1') as executedproposals,
+			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '2') as missedproposals,
 			COALESCE(validator_performance.performance7d, 0) as performance7d,
 			COALESCE(validator_names.name, '') AS name,
 		    validators.status AS state
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		LEFT JOIN proposals p1 ON validators.validatorindex = p1.validatorindex AND p1.status = 1
-		LEFT JOIN proposals p2 ON validators.validatorindex = p2.validatorindex AND p2.status = 2
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 		WHERE validators.validatorindex = ANY($1)
 		LIMIT $2`, filter, validatorLimit)
