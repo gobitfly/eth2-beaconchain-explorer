@@ -4,11 +4,11 @@ import (
 	"embed"
 	"eth2-exporter/utils"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"path/filepath"
 	"strings"
 	"sync"
-	"text/template"
 
 	"github.com/sirupsen/logrus"
 )
