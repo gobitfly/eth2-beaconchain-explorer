@@ -3,13 +3,44 @@
   <script type="text/javascript" src="/js/datatable_input.js"></script>
 
   <script>
+    // live update for current block id
+    {
+      var ticker = document.getElementById("live-highest-block")
+      var highestID = 0
+
+      async function updateHighestBlock() {
+        if (highestID != 0) {
+          const response = await fetch(`${window.location.pathname}/highest`)
+          if (response.ok && response.status == 200) {
+            const text = await response.text()
+            const diff = text - highestID
+            if (diff > 0) {
+              if (diff == 1) {
+                ticker.innerHTML = "(" + diff + " new block found, reload page to show it)"
+              } else {
+                ticker.innerHTML = "(" + diff + " new blocks found, reload page to show them)"
+              }
+            }
+          }
+        }
+      }
+
+      setInterval(updateHighestBlock, 10000)
+    }
+
+    // data table
     $(document).ready(function () {
       $("#blocks").DataTable({
         processing: true,
         serverSide: true,
         ordering: false,
         searching: false,
-        ajax: "/blocks/data",
+        ajax: {
+          url: "/blocks/data",
+          data: function (d) {
+            return $.extend({}, d, { recordsTotal: highestID })
+          },
+        },
         pageLength: 10,
         pagingType: "input",
         language: {
@@ -38,6 +69,7 @@
         drawCallback: function (settings) {
           formatTimestamps()
           $("#blocks").find('[data-toggle="tooltip"]').tooltip()
+          highestID = settings._iRecordsTotal
         },
       })
     })
@@ -56,7 +88,7 @@
     <div class="my-3">
       <div class="d-md-flex py-2 justify-content-md-between">
         <h1 class="h4 mb-1 mb-md-0">
-          <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Blocks</span>
+          <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Blocks<span style="color:grey; font-size: 70%; padding-left: 10px;" id="live-highest-block"></span></span>
         </h1>
         <nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
           <ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0" style="padding:0; background-color:transparent;">

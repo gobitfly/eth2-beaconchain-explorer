@@ -37,6 +37,10 @@ func Eth1BlocksData(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
+	recordsTotal, err := strconv.ParseUint(q.Get("recordsTotal"), 10, 64)
+	if err != nil {
+		recordsTotal = 0
+	}
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int for route %v: %v", r.URL.String(), err)
@@ -59,7 +63,7 @@ func Eth1BlocksData(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
-	data, err := getEth1BlocksTableData(draw, start, length)
+	data, err := getEth1BlocksTableData(draw, start, length, recordsTotal)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 block table data")
 	}
@@ -114,13 +118,21 @@ func getProposerAndStatusFromSlot(startSlot uint64, endSlot uint64) (map[uint64]
 	return data, nil
 }
 
-func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableResponse, error) {
-	latestBlockNumber := services.LatestEth1BlockNumber()
+func Eth1BlocksHighest(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/text")
+	w.Write([]byte(fmt.Sprintf("%d", services.LatestEth1BlockNumber())))
+}
 
-	if start > latestBlockNumber {
+func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.DataTableResponse, error) {
+	if recordsTotal == 0 {
+		recordsTotal = services.LatestEth1BlockNumber()
+	}
+
+	if start > recordsTotal {
 		start = 1
 	} else {
-		start = latestBlockNumber - start
+		start = recordsTotal - start
 	}
 
 	if length > start {
@@ -227,8 +239,8 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    latestBlockNumber,
-		RecordsFiltered: latestBlockNumber,
+		RecordsTotal:    recordsTotal,
+		RecordsFiltered: recordsTotal,
 		Data:            tableData,
 	}
 
