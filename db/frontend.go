@@ -638,6 +638,12 @@ func CreateNewStatsMetaPartition() error {
 		return err
 	}
 
+	_, err = FrontendWriterDB.Exec("CREATE INDEX CONCURRENTLY idx_" + partitionName + "_user_machine ON " + partitionName + " (user_id, machine)")
+	if err != nil {
+		logger.Errorf("error creating index %v", err)
+		return err
+	}
+
 	return err
 }
 
