@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"net/http"
 	"strings"
+	"text/template"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
@@ -22,7 +23,8 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
+	address := template.HTMLEscapeString(vars["address"])
+	address = strings.Replace(address, "0x", "", -1)
 	address = strings.ToLower(address)
 
 	// currency := GetCurrency(r)
