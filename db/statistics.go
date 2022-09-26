@@ -308,7 +308,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 			(select day from _today) as day
 		from blocks_deposits
 		where 
-			block_slot > (select (day - 1) * 225 * 32 from _today) and
+			block_slot > (select (day) * 225 * 32 from _today) and
 			publickey in (select pubkey
 				from validators
 				where validatorindex = ANY($1))
