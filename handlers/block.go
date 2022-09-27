@@ -9,7 +9,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -25,29 +24,32 @@ import (
 // Hacky AF way to ensure intersect module is imported and not optimised away, unsure why its being optimised away
 var _ = intersect.Simple
 
-var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
-	"layout.html",
-	"block/block.html",
-	"block/transactions.html",
-	"block/attestations.html",
-	"block/deposits.html",
-	"block/votes.html",
-	"block/attesterSlashing.html",
-	"block/proposerSlashing.html",
-	"block/exits.html",
-	"block/overview.html",
-	"block/execTransactions.html",
-))
-var blockFutureTemplate = template.Must(template.New("blockFuture").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
-	"layout.html",
-	"block/blockFuture.html",
-))
-var blockNotFoundTemplate = template.Must(template.New("blocknotfound").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "blocknotfound.html"))
-
 const MaxSlotValue = 137438953503 // we only render a page for blocks up to this slot
 
 // Block will return the data for a block
 func Block(w http.ResponseWriter, r *http.Request) {
+
+	var blockTemplate = templates.GetTemplate(
+		"layout.html",
+		"block/block.html",
+		"block/transactions.html",
+		"block/attestations.html",
+		"block/deposits.html",
+		"block/votes.html",
+		"block/attesterSlashing.html",
+		"block/proposerSlashing.html",
+		"block/exits.html",
+		"block/overview.html",
+		"block/execTransactions.html",
+	)
+
+	var blockFutureTemplate = templates.GetTemplate(
+		"layout.html",
+		"block/blockFuture.html",
+	)
+
+	var blockNotFoundTemplate = templates.GetTemplate("layout.html", "blocknotfound.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	vars := mux.Vars(r)
@@ -70,7 +72,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if blockSlot == -1 {
 		err = db.ReaderDb.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
 		if blockSlot == -1 {
-			err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+			err := blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 			if err != nil {
 				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 				http.Error(w, "Internal server error", http.StatusServiceUnavailable)

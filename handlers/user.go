@@ -31,11 +31,6 @@ import (
 
 var notificationCenterParts []string = []string{"layout.html", "user/notificationsCenter.html", "modals.html"}
 
-var userTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "user/settings.html"))
-var notificationTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "user/notifications.html"))
-var notificationsCenterTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, notificationCenterParts...))
-var authorizeTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "user/authorize.html"))
-
 func UserAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := getUser(r)
@@ -51,6 +46,8 @@ func UserAuthMiddleware(next http.Handler) http.Handler {
 
 // UserSettings renders the user-template
 func UserSettings(w http.ResponseWriter, r *http.Request) {
+	var userTemplate = templates.GetTemplate("layout.html", "user/settings.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	userSettingsData := &types.UserSettingsPageData{}
 
@@ -169,6 +166,8 @@ func GenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 
 // UserAuthorizeConfirm renders the user-authorize template
 func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
+	var authorizeTemplate = templates.GetTemplate("layout.html", "user/authorize.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	authorizeData := &types.UserAuthorizeConfirmPageData{}
 
@@ -239,6 +238,8 @@ func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserNotifications(w http.ResponseWriter, r *http.Request) {
+	var notificationTemplate = templates.GetTemplate("layout.html", "user/notifications.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	userNotificationsData := &types.UserNotificationsPageData{}
 
@@ -617,6 +618,8 @@ func UserUpdateMonitoringSubscriptions(w http.ResponseWriter, r *http.Request) {
 
 // UserNotificationsCenter renders the notificationsCenter template
 func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
+	var notificationsCenterTemplate = templates.GetTemplate(notificationCenterParts...)
+
 	w.Header().Set("Content-Type", "text/html")
 	userNotificationsCenterData := &types.UserNotificationsCenterPageData{}
 	data := InitPageData(w, r, "user", "/user", "")
@@ -887,7 +890,6 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	data.User = user
 
 	if data.Debug {
-		notificationsCenterTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, notificationCenterParts...))
 		data.DebugTemplates = notificationCenterParts
 	}
 
@@ -2318,10 +2320,11 @@ func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(j, r.URL.String(), nil)
 }
 
-var webhookTemplate *template.Template = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "user/webhooks.html"))
-
 // Imprint will show the imprint data using a go template
 func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
+
+	var webhookTemplate = templates.GetTemplate("layout.html", "user/webhooks.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
 

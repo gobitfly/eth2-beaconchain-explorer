@@ -107,6 +107,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatTimestamp":                         FormatTimestamp,
 		"formatTsWithoutTooltip":                  FormatTsWithoutTooltip,
 		"formatTimestampTs":                       FormatTimestampTs,
+		"formatTime":                              FormatTime,
 		"formatValidatorName":                     FormatValidatorName,
 		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
 		"formatValidatorTags":                     FormatValidatorTags,
@@ -300,13 +301,28 @@ func WaitForCtrlC() {
 
 // ReadConfig will process a configuration
 func ReadConfig(cfg *types.Config, path string) error {
-	err := readConfigFile(cfg, path)
-	if err != nil {
-		return err
+
+	if strings.HasPrefix(path, "projects/") {
+		x, err := AccessSecretVersion(path)
+		if err != nil {
+			return fmt.Errorf("error getting config from secret store: %v", err)
+		}
+		err = yaml.Unmarshal([]byte(*x), cfg)
+		if err != nil {
+			return fmt.Errorf("error decoding config file %v: %v", path, err)
+		}
+
+		logger.Infof("seeded config file from secret store")
+	} else {
+
+		err := readConfigFile(cfg, path)
+		if err != nil {
+			return err
+		}
 	}
 
 	readConfigEnv(cfg)
-	err = readConfigSecrets(cfg)
+	err := readConfigSecrets(cfg)
 	if err != nil {
 		return err
 	}

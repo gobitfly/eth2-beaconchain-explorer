@@ -8,7 +8,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -17,9 +16,24 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var preMergeBlockTemplate = template.Must(template.New("executionBlock").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/block.html", "block/execTransactions.html"))
-
 func Eth1Block(w http.ResponseWriter, r *http.Request) {
+
+	var blockTemplate = templates.GetTemplate(
+		"layout.html",
+		"block/block.html",
+		"block/transactions.html",
+		"block/attestations.html",
+		"block/deposits.html",
+		"block/votes.html",
+		"block/attesterSlashing.html",
+		"block/proposerSlashing.html",
+		"block/exits.html",
+		"block/overview.html",
+		"block/execTransactions.html",
+	)
+	var blockNotFoundTemplate = templates.GetTemplate("layout.html", "blocknotfound.html")
+	var preMergeBlockTemplate = templates.GetTemplate("layout.html", "execution/block.html", "block/execTransactions.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 

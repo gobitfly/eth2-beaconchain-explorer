@@ -10,9 +10,9 @@ import (
 	"net/http"
 )
 
-var mobileTemplate = template.Must(template.New("mobilepage").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "mobilepage.html"))
-
 func MobilePage(w http.ResponseWriter, r *http.Request) {
+	var mobileTemplate = templates.GetTemplate("layout.html", "mobilepage.html")
+
 	var err error
 	w.Header().Set("Content-Type", "text/html")
 

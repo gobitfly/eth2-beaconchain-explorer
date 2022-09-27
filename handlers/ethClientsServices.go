@@ -5,16 +5,14 @@ import (
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
-	"eth2-exporter/utils"
-	"html/template"
 	"net/http"
 
 	"github.com/gorilla/csrf"
 )
 
-var ethClientsServicesTemplate = template.Must(template.New("ethClientsServices").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "ethClientsServices.html"))
-
 func EthClientsServices(w http.ResponseWriter, r *http.Request) {
+	var ethClientsServicesTemplate = templates.GetTemplate("layout.html", "ethClientsServices.html")
+
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")

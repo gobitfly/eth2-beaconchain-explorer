@@ -9,15 +9,12 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
 	"sync/atomic"
 
 	eth1common "github.com/ethereum/go-ethereum/common"
 )
-
-var poapTemplate = template.Must(template.New("poap").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "poap.html"))
 
 // do not change existing entries, only append new entries
 var poapClients = []string{"Prysm", "Lighthouse", "Teku", "Nimbus", "Lodestar"}
@@ -27,6 +24,8 @@ var poapData atomic.Value
 var poapDataEpoch uint64
 
 func Poap(w http.ResponseWriter, r *http.Request) {
+	var poapTemplate = templates.GetTemplate("layout.html", "poap.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "more", "/poap", "POAP")

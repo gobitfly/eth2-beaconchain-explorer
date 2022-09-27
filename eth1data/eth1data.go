@@ -19,14 +19,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var logger = logrus.New().WithField("module", "eth1data")
+
 func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	cacheKey := fmt.Sprintf("%d:tx:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
 	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, new(types.Eth1TxData)); err == nil {
-		logrus.Infof("retrieved data for tx %v from cache", hash)
-		logrus.Info(wanted)
+		logger.Infof("retrieved data for tx %v from cache", hash)
+		logger.Info(wanted)
 
 		data := wanted.(*types.Eth1TxData)
 		if data.BlockNumber != 0 {
@@ -34,7 +36,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 				`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
 				data.BlockNumber)
 			if err != nil {
-				logrus.Warningf("failed to get finalization stats for block %s", data.BlockNumber)
+				logger.Warningf("failed to get finalization stats for block %v", data.BlockNumber)
 				data.Epoch.Finalized = false
 				data.Epoch.Participation = -1
 			}
@@ -144,7 +146,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 			meta, err := db.BigtableClient.GetContractMetadata(log.Address.Bytes())
 
 			if err != nil || meta == nil {
-				logrus.Errorf("error retrieving abi for contract %v: %v", tx.To(), err)
+				logger.Errorf("error retrieving abi for contract %v: %v", tx.To(), err)
 				eth1Event := &types.Eth1EventData{
 					Address: log.Address,
 					Name:    "",
@@ -162,7 +164,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 						err := boundContract.UnpackLogIntoMap(logData, name, *log)
 
 						if err != nil {
-							logrus.Errorf("error decoding event %v", name)
+							logger.Errorf("error decoding event %v", name)
 						}
 
 						eth1Event := &types.Eth1EventData{
@@ -206,7 +208,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 			`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
 			&txPageData.BlockNumber)
 		if err != nil {
-			logrus.Warningf("failed to get finalization stats for block %s", txPageData.BlockNumber)
+			logger.Warningf("failed to get finalization stats for block %v: %v", txPageData.BlockNumber, err)
 			txPageData.Epoch.Finalized = false
 			txPageData.Epoch.Participation = -1
 		}
@@ -223,7 +225,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 func GetCodeAt(ctx context.Context, address common.Address) ([]byte, error) {
 	cacheKey := fmt.Sprintf("%d:a:%s", utils.Config.Chain.Config.DepositChainID, address.String())
 	if wanted, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Hour); err == nil {
-		logrus.Infof("retrieved code data for address %v from cache", address)
+		logger.Infof("retrieved code data for address %v from cache", address)
 
 		return []byte(wanted), nil
 	}
@@ -245,7 +247,7 @@ func GetBlockHeaderByHash(ctx context.Context, hash common.Hash) (*geth_types.He
 	// cacheKey := fmt.Sprintf("%d:h:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
 
 	// if wanted, err := db.EkoCache.Get(ctx, cacheKey, new(geth_types.Header)); err == nil {
-	// 	logrus.Infof("retrieved header data for block %v from cache", hash)
+	// 	logger.Infof("retrieved header data for block %v from cache", hash)
 	// 	return wanted.(*geth_types.Header), nil
 	// }
 
@@ -266,7 +268,7 @@ func GetTransactionReceipt(ctx context.Context, hash common.Hash) (*geth_types.R
 	cacheKey := fmt.Sprintf("%d:r:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
 
 	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, new(geth_types.Receipt)); err == nil {
-		logrus.Infof("retrieved receipt data for tx %v from cache", hash)
+		logger.Infof("retrieved receipt data for tx %v from cache", hash)
 		return wanted.(*geth_types.Receipt), nil
 	}
 

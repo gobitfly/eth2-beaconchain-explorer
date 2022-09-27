@@ -40,14 +40,12 @@
                 const col = data.data[i][j]
                 const innerElement = document.createElement('div')
                 {
-                  innerElement.style.display = 'table-cell'
-                  innerElement.style.verticalAlign = 'middle'
+                  innerElement.classList.add('tbl-col-content')
                   innerElement.innerHTML = col
                 }
                 const el = document.createElement('div')
                 {
-                  el.classList.add('border-top', 'cellpadding', 'text-truncate')
-                  el.style.display = 'table'
+                  el.classList.add('tbl-col')
                   el.appendChild(innerElement)
                 }
                 infLoading.insertAdjacentElement("beforebegin", el)
@@ -327,18 +325,16 @@
               {{ if len .Data.Data }}
                 {{ range $i, $row := .Data.Data }}
                   {{ range $j, $col := $row }}
-                    <div class="border-top cellpadding text-truncate" style="display: table">
-                      <div style="display: table-cell; vertical-align: middle;">
-                        {{ $col }}
-                      </div>
+                    <div class="tbl-col">
+                      <div class="tbl-col-content">{{ $col }}</div>
                     </div>
                   {{ end }}
                 {{ end }}
-                <div style="grid-column: 1 / 9;" id="transactions-table-inf-scroll" class="d-flex justify-content-center cellpadding">
+                <div style="grid-column: 1 / 8;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
                   <span style="color: grey;">loading...</span>
                 </div>
               {{ else }}
-                <div style="grid-column: 1 / 9;" id="transactions-table-inf-scroll" class="d-flex justify-content-center cellpadding">
+                <div style="grid-column: 1 / 8;" id="transactions-table-inf-scroll" class="d-flex justify-content-center p-2">
                   <div class="d-flex justify-content-center align-items-center flex-column">
                     <div>
                       <h5 style="color: grey;">No entries found.</h5>

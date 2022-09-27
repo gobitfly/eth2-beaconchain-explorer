@@ -8,15 +8,15 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
 )
 
-var epochsTemplate = template.Must(template.New("epochs").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "epochs.html"))
-
 // Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {
+
+	var epochsTemplate = templates.GetTemplate("layout.html", "epochs.html")
+
 	currency := GetCurrency(r)
 
 	w.Header().Set("Content-Type", "text/html")

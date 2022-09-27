@@ -14,18 +14,16 @@ import (
 	"strconv"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/sirupsen/logrus"
 )
 
-var eth1BlocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/blocks.html"))
-
 func Eth1Blocks(w http.ResponseWriter, r *http.Request) {
+
+	var eth1BlocksTemplate = templates.GetTemplate("layout.html", "execution/blocks.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "blockchain", "/eth1blocks", "Ethereum Blocks")
-
-	if utils.Config.Frontend.Debug {
-		eth1BlocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/blocks.html"))
-	}
 
 	err := eth1BlocksTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -39,6 +37,10 @@ func Eth1BlocksData(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
+	recordsTotal, err := strconv.ParseUint(q.Get("recordsTotal"), 10, 64)
+	if err != nil {
+		recordsTotal = 0
+	}
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int for route %v: %v", r.URL.String(), err)
@@ -61,7 +63,7 @@ func Eth1BlocksData(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
-	data, err := getEth1BlocksTableData(draw, start, length)
+	data, err := getEth1BlocksTableData(draw, start, length, recordsTotal)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 block table data")
 	}
@@ -116,21 +118,25 @@ func getProposerAndStatusFromSlot(startSlot uint64, endSlot uint64) (map[uint64]
 	return data, nil
 }
 
-func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableResponse, error) {
-	latestBlockNumber := services.LatestEth1BlockNumber()
+func Eth1BlocksHighest(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/text")
+	w.Write([]byte(fmt.Sprintf("%d", services.LatestEth1BlockNumber())))
+}
 
-	if start > latestBlockNumber {
+func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.DataTableResponse, error) {
+	if recordsTotal == 0 {
+		recordsTotal = services.LatestEth1BlockNumber()
+	}
+
+	if start > recordsTotal {
 		start = 1
 	} else {
-		start = latestBlockNumber - start
+		start = recordsTotal - start
 	}
 
 	if length > start {
 		length = start
-	}
-
-	if length == start && length == 0 {
-		return nil, fmt.Errorf("invalid block range provided (start: %v, length: %v)", start, length)
 	}
 
 	blocks, err := db.BigtableClient.GetBlocksDescending(start, length)
@@ -174,7 +180,8 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 				if val, ok := slotData[slot]; ok {
 					sData = val
 				} else {
-					return nil, fmt.Errorf("slot %d doesn't exists in ReaderDb", slot)
+					// return nil, fmt.Errorf("slot %d doesn't exists in ReaderDb", slot)
+					logrus.Infof("slot %d doesn't exists in ReaderDb", slot)
 				}
 			}
 		}
@@ -232,11 +239,10 @@ func getEth1BlocksTableData(draw, start, length uint64) (*types.DataTableRespons
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    latestBlockNumber,
-		RecordsFiltered: latestBlockNumber,
+		RecordsTotal:    recordsTotal,
+		RecordsFiltered: recordsTotal,
 		Data:            tableData,
 	}
 
 	return data, nil
-
 }

@@ -7,17 +7,14 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
 	"time"
 )
 
-var visTemplate = template.Must(template.New("vis").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "vis.html"))
-var visVotesTemplate = template.Must(template.New("vis").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "vis_votes.html"))
-
 // Vis returns the visualizations using a go template
 func Vis(w http.ResponseWriter, r *http.Request) {
+	var visTemplate = templates.GetTemplate("layout.html", "vis.html")
 
 	var err error
 
@@ -86,6 +83,8 @@ func VisBlocks(w http.ResponseWriter, r *http.Request) {
 
 // VisVotes shows the votes visualizations using a go template
 func VisVotes(w http.ResponseWriter, r *http.Request) {
+	var visVotesTemplate = templates.GetTemplate("layout.html", "vis_votes.html")
+
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")

@@ -8,7 +8,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,12 +15,13 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var epochTemplate = template.Must(template.New("epoch").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "epoch.html"))
-var epochFutureTemplate = template.Must(template.New("epochFuture").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "epochFuture.html"))
-var epochNotFoundTemplate = template.Must(template.New("epochnotfound").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "epochnotfound.html"))
-
 // Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
+
+	var epochTemplate = templates.GetTemplate("layout.html", "epoch.html")
+	var epochFutureTemplate = templates.GetTemplate("layout.html", "epochFuture.html")
+	var epochNotFoundTemplate = templates.GetTemplate("layout.html", "epochnotfound.html")
+
 	const MaxEpochValue = 4294967296 // we only render a page for epochs up to this value
 
 	w.Header().Set("Content-Type", "text/html")

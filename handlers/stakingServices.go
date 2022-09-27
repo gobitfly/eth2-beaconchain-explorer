@@ -10,9 +10,9 @@ import (
 	"net/http"
 )
 
-var stakingServicesTemplate = template.Must(template.New("stakingServices").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "stakingServices.html", "components/bannerStakingServices.html"))
-
 func StakingServices(w http.ResponseWriter, r *http.Request) {
+	var stakingServicesTemplate = templates.GetTemplate("layout.html", "stakingServices.html", "components/bannerStakingServices.html")
+
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")

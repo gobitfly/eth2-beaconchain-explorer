@@ -4,21 +4,18 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"net/http"
 
 	"github.com/gorilla/mux"
 )
 
-var chartsTemplate = template.Must(template.New("charts").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "charts.html"))
-var genericChartTemplate = template.Must(template.New("chart").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "genericchart.html"))
-var chartsUnavailableTemplate = template.Must(template.New("chart").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "chartsunavailable.html"))
-var slotVizTemplate = template.Must(template.New("slotViz").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "slotViz.html", "slotVizPage.html"))
-
 // Charts uses a go template for presenting the page to show charts
 func Charts(w http.ResponseWriter, r *http.Request) {
+
+	var chartsTemplate = templates.GetTemplate("layout.html", "charts.html")
+	var chartsUnavailableTemplate = templates.GetTemplate("layout.html", "chartsunavailable.html")
+
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "stats", "/charts", "Charts")
@@ -36,7 +33,6 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = chartsPageData
 
-	chartsTemplate = template.Must(template.New("charts").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "charts.html"))
 	err := chartsTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -59,6 +55,10 @@ func Chart(w http.ResponseWriter, r *http.Request) {
 
 // GenericChart uses a go template for presenting the page of a generic chart
 func GenericChart(w http.ResponseWriter, r *http.Request) {
+
+	var genericChartTemplate = templates.GetTemplate("layout.html", "genericchart.html")
+	var chartsUnavailableTemplate = templates.GetTemplate("layout.html", "chartsunavailable.html")
+
 	vars := mux.Vars(r)
 	chartVar := vars["chart"]
 
@@ -93,7 +93,6 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Path = "/charts/" + chartVar
 	data.Data = chartData
 
-	genericChartTemplate = template.Must(template.New("chart").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "genericchart.html"))
 	err := genericChartTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -104,12 +103,12 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 
 // SlotViz renders a single page with a d3 slot (block) visualisation
 func SlotViz(w http.ResponseWriter, r *http.Request) {
+
+	var slotVizTemplate = templates.GetTemplate("layout.html", "slotViz.html", "slotVizPage.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "stats", "/charts", "Charts")
 
-	if utils.Config.Frontend.Debug {
-		slotVizTemplate = template.Must(template.New("slotViz").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "slotViz.html", "slotVizPage.html"))
-	}
 	slotVizData := types.SlotVizPageData{
 		Selector: "checklist",
 		Epochs:   services.LatestSlotVizMetrics(),

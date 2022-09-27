@@ -436,7 +436,7 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, startEpoch uint64, limit int64) (map[uint64][]*types.ValidatorAttestation, error) {
 	valLen := len(validators)
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*60))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
 	defer cancel()
 
 	rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
@@ -604,24 +604,29 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, startEpoch uint64, limit int64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
-	data, err := bigtable.GetValidatorAttestationHistory(validators, startEpoch, limit)
-
-	if err != nil {
-		return nil, err
-	}
+func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
 
 	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
 
-	for validator, attestations := range data {
-		for _, attestation := range attestations {
-			if attestation.Status == 0 {
-				if res[validator] == nil {
-					res[validator] = &types.ValidatorMissedAttestationsStatistic{
-						Index: validator,
+	for i := startEpoch; i >= startEpoch-endEpoch; i-- {
+		data, err := bigtable.GetValidatorAttestationHistory(validators, i, 1)
+
+		if err != nil {
+			return nil, err
+		}
+
+		logger.Infof("retrieved attestation history for epoch %v", i)
+
+		for validator, attestations := range data {
+			for _, attestation := range attestations {
+				if attestation.Status == 0 {
+					if res[validator] == nil {
+						res[validator] = &types.ValidatorMissedAttestationsStatistic{
+							Index: validator,
+						}
 					}
+					res[validator].MissedAttestations++
 				}
-				res[validator].MissedAttestations++
 			}
 		}
 	}

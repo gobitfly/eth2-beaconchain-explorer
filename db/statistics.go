@@ -91,7 +91,7 @@ func WriteStatisticsForDay(day uint64) error {
 
 	start = time.Now()
 	logger.Infof("exporting missed_attestations statistics")
-	ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, lastEpoch, int64(lastEpoch-firstEpoch))
+	ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, lastEpoch, lastEpoch-firstEpoch)
 	if err != nil {
 		return err
 	}
@@ -308,7 +308,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 			(select day from _today) as day
 		from blocks_deposits
 		where 
-			block_slot > (select (day - 1) * 225 * 32 from _today) and
+			block_slot > (select (day) * 225 * 32 from _today) and
 			publickey in (select pubkey
 				from validators
 				where validatorindex = ANY($1))

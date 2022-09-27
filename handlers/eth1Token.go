@@ -19,9 +19,10 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var eth1TokenTemplate = template.Must(template.New("token").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "execution/token.html"))
-
 func Eth1Token(w http.ResponseWriter, r *http.Request) {
+
+	var eth1TokenTemplate = templates.GetTemplate("layout.html", "execution/token.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	token := common.FromHex(strings.TrimPrefix(vars["token"], "0x"))

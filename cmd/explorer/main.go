@@ -355,6 +355,7 @@ func main() {
 			router.HandleFunc("/slots/data", handlers.BlocksData).Methods("GET")
 			router.HandleFunc("/blocks", handlers.Eth1Blocks).Methods("GET")
 			router.HandleFunc("/blocks/data", handlers.Eth1BlocksData).Methods("GET")
+			router.HandleFunc("/blocks/highest", handlers.Eth1BlocksHighest).Methods("GET")
 			router.HandleFunc("/address/{address}", handlers.Eth1Address).Methods("GET")
 			router.HandleFunc("/address/{address}/blocks", handlers.Eth1AddressBlocksMined).Methods("GET")
 			router.HandleFunc("/address/{address}/uncles", handlers.Eth1AddressUnclesMined).Methods("GET")

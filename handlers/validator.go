@@ -25,24 +25,25 @@ import (
 	"github.com/juliangruber/go-intersect"
 )
 
-var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
-	"layout.html",
-	"validator/validator.html",
-	"validator/heading.html",
-	"validator/tables.html",
-	"validator/modals.html",
-	"validator/overview.html",
-	"validator/charts.html",
-	"validator/countdown.html",
-
-	"components/flashMessage.html",
-	"components/rocket.html",
-))
-var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validator/validatornotfound.html"))
 var validatorEditFlash = "edit_validator_flash"
 
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
+	var validatorTemplate = templates.GetTemplate(
+		"layout.html",
+		"validator/validator.html",
+		"validator/heading.html",
+		"validator/tables.html",
+		"validator/modals.html",
+		"validator/overview.html",
+		"validator/charts.html",
+		"validator/countdown.html",
+
+		"components/flashMessage.html",
+		"components/rocket.html",
+	)
+	var validatorNotFoundTemplate = templates.GetTemplate("layout.html", "validator/validatornotfound.html")
+
 	currency := GetCurrency(r)
 
 	//start := time.Now()
@@ -1332,10 +1333,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var validatorStatsTableTemplate = template.Must(template.New("validator_stats").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files, "layout.html", "validator_stats_table.html"))
-
 // Validator returns validator data using a go template
 func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
+
+	var validatorStatsTableTemplate = templates.GetTemplate("layout.html", "validator_stats_table.html")
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)

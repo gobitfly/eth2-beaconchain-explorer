@@ -8,17 +8,12 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"net/smtp"
 	"time"
 
 	"github.com/mailgun/mailgun-go/v4"
 	"github.com/sirupsen/logrus"
 )
-
-var renderer = template.Must(template.New("faq").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
-	"mail/layout.html",
-))
 
 type MailTemplate struct {
 	Mail   types.Email
@@ -28,6 +23,8 @@ type MailTemplate struct {
 // SendMail sends an email to the given address with the given message.
 // It will use smtp if configured otherwise it will use gunmail if configured.
 func SendHTMLMail(to, subject string, msg types.Email, attachment []types.EmailAttachment) error {
+	var renderer = templates.GetTemplate("mail/layout.html")
+
 	var err error
 	var body bytes.Buffer
 
