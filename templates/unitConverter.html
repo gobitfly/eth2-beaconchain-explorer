@@ -3,7 +3,7 @@
   <script>
     $("input").on("keyup", function () {
       var id = $(this).attr("id")
-      var value = new BigNumber($(this).val().replace(',', '.'))
+      var value = new BigNumber($(this).val().replace(",", "."))
 
       var wei = new BigNumber(0)
 
