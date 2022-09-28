@@ -1672,3 +1672,48 @@ type SlotVizEpochs struct {
 	Particicpation float64           `json:"participation"`
 	Slots          [32]*SlotVizSlots `json:"slots"`
 }
+
+type RelaysResp struct {
+	RelaysInfoContainers [3]RelayInfoContainer
+	RecentBlocks         []*RelaysRespBlock
+	TopBlocks            []*RelaysRespBlock
+	TopBuilders          []*struct {
+		Tags       TagMetadataSlice `db:"tags"`
+		Builder    []byte           `db:"builder_pubkey"`
+		BlockCount uint64           `db:"c"`
+		LatestSlot uint64           `db:"latest_slot"`
+		BlockPerc  float64
+	}
+}
+
+type RelaysRespBlock struct {
+	Tags                 TagMetadataSlice `db:"tags"`
+	Value                WeiString        `db:"value"`
+	Slot                 uint64           `db:"slot"`
+	Builder              []byte           `db:"builder_pubkey"`
+	ProposerFeeRecipient []byte           `db:"proposer_fee_recipient"`
+	BuilderFeeRecipient  []byte           `db:"block_fee_recipient"`
+	BlockExtraData       string           `db:"block_extra_data"`
+}
+
+type RelayInfoContainer struct {
+	Days                 uint64
+	IsFirst              bool
+	RelaysInfo           []*RelayInfo
+	NetworkParticipation float64
+}
+
+type RelayInfo struct {
+	RelayID        string         `db:"relay_id"`
+	Name           sql.NullString `db:"name"`
+	Link           sql.NullString `db:"link"`
+	Censors        sql.NullBool   `db:"censors"`
+	Ethical        sql.NullBool   `db:"ethical"`
+	BlockCount     uint64         `db:"block_count"`
+	UniqueBuilders uint64         `db:"unique_builders"`
+	NetworkUsage   float64        `db:"network_usage"`
+	TotalValue     WeiString      `db:"total_value"`
+	AverageValue   WeiString      `db:"avg_value"`
+	MaxValue       WeiString      `db:"max_value"`
+	MaxValueSlot   uint64         `db:"max_value_slot"`
+}

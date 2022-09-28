@@ -56,6 +56,9 @@ func Init() {
 	go poolsUpdater(ready)
 
 	ready.Add(1)
+	go relaysUpdater(ready)
+
+	ready.Add(1)
 	go chartsPageDataUpdater(ready)
 
 	ready.Add(1)
@@ -67,6 +70,182 @@ func Init() {
 func InitNotifications() {
 	logger.Infof("starting notifications-sender")
 	go notificationsSender()
+}
+
+func getRelaysPageData() (*types.RelaysResp, error) {
+	var relaysData types.RelaysResp
+
+	overallStatsQuery, err := db.ReaderDb.Preparex(`
+		with stats as (
+			select 
+				tag_id as relay_id,
+				count(*) as block_count,
+				sum(value) as total_value,
+				ROUND(avg(value)) as avg_value,
+				count(distinct builder_pubkey) as unique_builders,
+				max(value) as max_value,
+				(select rb2.block_slot from relays_blocks rb2 where rb2.value = max(rb.value) and rb2.tag_id = rb.tag_id limit 1) as max_value_slot
+			from relays_blocks rb where rb.block_slot > $1 group by tag_id 
+		)
+		select 
+			tags.metadata ->> 'name' as "name",
+			relays.public_link as link,
+			relays.is_censoring as censors,
+			relays.is_ethical as ethical,
+			stats.block_count / (select max(blocks.slot) - $1 from blocks)::float as network_usage,
+			stats.*
+		from relays
+		left join stats on stats.relay_id = relays.tag_id
+		left join tags on tags.id = relays.tag_id 
+		where stats.relay_id = tag_id 
+		order by stats.block_count DESC
+	`)
+	if err != nil {
+		logger.Errorf("failed to prepare overallStatsQuery: %v", err)
+		return nil, err
+	}
+	dayInSlots := 24 * 60 * 60 / utils.Config.Chain.Config.SecondsPerSlot
+
+	tmp := [3]types.RelayInfoContainer{{Days: 7}, {Days: 31}, {Days: 180}}
+	for i := 0; i < len(tmp); i++ {
+		tmp[i].IsFirst = i == 0
+		err = overallStatsQuery.Select(&tmp[i].RelaysInfo, LatestSlot()-(tmp[i].Days*dayInSlots))
+		if err != nil {
+			return nil, err
+		}
+		// calculate total adoption
+		for j := 0; j < len(tmp[i].RelaysInfo); j++ {
+			tmp[i].NetworkParticipation += tmp[i].RelaysInfo[j].NetworkUsage
+		}
+	}
+	relaysData.RelaysInfoContainers = tmp
+
+	err = db.ReaderDb.Select(&relaysData.TopBuilders, `
+	select 
+		builder_pubkey,
+		SUM(c) as c,
+		jsonb_agg(tags.metadata) as tags,
+		max(latest_slot) as latest_slot
+	from (
+		select 
+			builder_pubkey,
+			count(*) as c,
+			tag_id,
+			(
+				select block_slot
+				from relays_blocks rb2
+				where
+					rb2.builder_pubkey = rb.builder_pubkey
+				order by block_slot desc
+				limit 1
+			) as latest_slot
+		from relays_blocks rb
+		group by builder_pubkey, tag_id 
+	) foo
+	left join tags on tags.id = foo.tag_id
+	group by builder_pubkey 
+	order by c desc
+	limit 15`)
+	if err != nil {
+		logger.Errorf("failed to get builder ranking %v", err)
+		return nil, err
+	}
+
+	err = db.ReaderDb.Select(&relaysData.RecentBlocks, `
+	select
+		jsonb_agg(tags.metadata order by id) as tags,
+		max(relays_blocks.value) as value,
+		relays_blocks.block_slot as slot,
+		relays_blocks.builder_pubkey as builder_pubkey,
+		relays_blocks.proposer_fee_recipient as proposer_fee_recipient,
+		exec_fee_recipient as block_fee_recipient,
+		encode(exec_extra_data, 'hex') as block_extra_data
+	from (
+		select blockroot, exec_fee_recipient, exec_extra_data
+		from blocks
+		where blockroot in (
+			select rb.block_root
+			from relays_blocks rb
+		) 
+		order by blocks.slot desc
+		limit 15
+	) as blocks
+	left join relays_blocks
+		on relays_blocks.block_root = blocks.blockroot
+	left join tags 
+		on tags.id = relays_blocks.tag_id 
+	group by 
+		blockroot, 
+		relays_blocks.block_slot,
+		relays_blocks.builder_pubkey,
+		relays_blocks.proposer_fee_recipient,
+		blocks.exec_fee_recipient,
+		blocks.exec_extra_data 
+	order by relays_blocks.block_slot desc`)
+	if err != nil {
+		logger.Errorf("failed to get latest blocks for relays page %v", err)
+		return nil, err
+	}
+
+	err = db.ReaderDb.Select(&relaysData.TopBlocks, `
+	select
+		jsonb_agg(tags.metadata order by id) as tags,
+		max(relays_blocks.value) as value,
+		relays_blocks.block_slot as slot,
+		relays_blocks.builder_pubkey as builder_pubkey,
+		relays_blocks.proposer_fee_recipient as proposer_fee_recipient,
+		exec_fee_recipient as block_fee_recipient,
+		encode(exec_extra_data, 'hex') as block_extra_data
+	from (
+		select * 
+		from relays_blocks
+		order by relays_blocks.value desc
+		limit 15
+	) as relays_blocks 
+	left join blocks
+		on relays_blocks.block_root = blocks.blockroot
+	left join tags 
+		on tags.id = relays_blocks.tag_id 
+	group by 
+		blockroot, 
+		relays_blocks.block_slot,
+		relays_blocks.builder_pubkey,
+		relays_blocks.proposer_fee_recipient,
+		blocks.exec_fee_recipient,
+		blocks.exec_extra_data 
+	order by value desc`)
+	logger.Infof("test: %v", relaysData.TopBlocks[0].Value.Int)
+	if err != nil {
+		logger.Errorf("failed to get top blocks for relays page %v", err)
+		return nil, err
+	}
+
+	return &relaysData, nil
+}
+
+func relaysUpdater(wg *sync.WaitGroup) {
+	firstRun := true
+
+	for {
+		data, err := getRelaysPageData()
+		if err != nil {
+			logger.Errorf("error retrieving relays page data: %v", err)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		cacheKey := fmt.Sprintf("%d:frontend:relaysData", utils.Config.Chain.Config.DepositChainID)
+		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
+		if err != nil {
+			logger.Errorf("error caching relaysData: %v", err)
+		}
+		if firstRun {
+			logger.Info("initialized relays page updater")
+			wg.Done()
+			firstRun = false
+		}
+		time.Sleep(time.Minute)
+	}
 }
 
 func epochUpdater(wg *sync.WaitGroup) {
@@ -673,6 +852,19 @@ func LatestGasNowData() *types.GasNowPageData {
 		return wanted.(*types.GasNowPageData)
 	} else {
 		logger.Errorf("error retrieving gasNow from cache: %v", err)
+	}
+
+	return nil
+}
+
+func LatestRelaysPageData() *types.RelaysResp {
+	wanted := &types.RelaysResp{}
+	cacheKey := fmt.Sprintf("%d:frontend:relaysData", utils.Config.Chain.Config.DepositChainID)
+
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, wanted); err == nil {
+		return wanted.(*types.RelaysResp)
+	} else {
+		logger.Errorf("error retrieving relaysData from cache: %v", err)
 	}
 
 	return nil
