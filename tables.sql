@@ -998,6 +998,36 @@ CREATE TABLE relays (
 	FOREIGN KEY (tag_id) REFERENCES tags(id)
 );
 
+DROP TABLE IF EXISTS relays;
+
+CREATE TABLE relays (
+	tag_id varchar NOT NULL,
+	endpoint varchar NOT NULL,
+	public_link varchar NULL,
+	is_censoring bool NULL,
+	is_ethical bool NULL,
+	PRIMARY KEY (tag_id, endpoint),
+	FOREIGN KEY (tag_id) REFERENCES tags(id)
+);
+
+
+DROP TABLE IF EXISTS relays_blocks;
+
+CREATE TABLE relays_blocks (
+	tag_id varchar NOT NULL,
+	block_slot int4 NOT NULL,
+	block_root bytea NOT NULL,
+	builder_pubkey bytea NOT NULL,
+	proposer_pubkey bytea NOT NULL,
+	proposer_fee_recipient bytea NOT NULL,
+	value numeric NOT NULL,
+	PRIMARY KEY (block_slot, block_root, tag_id)
+);
+CREATE INDEX relays_blocks_block_root_idx ON public.relays_blocks (block_root);
+CREATE INDEX relays_blocks_builder_pubkey_idx ON public.relays_blocks (builder_pubkey);
+CREATE INDEX relays_blocks_value_idx ON public.relays_blocks (value);
+
+
 DROP TABLE IF EXISTS validator_queue_deposits;
 CREATE TABLE validator_queue_deposits (
 	validatorindex int4 NOT NULL,

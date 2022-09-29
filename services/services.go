@@ -73,6 +73,10 @@ func InitNotifications() {
 }
 
 func getRelaysPageData() (*types.RelaysResp, error) {
+	start := time.Now()
+	defer func() {
+		logger.WithFields(logrus.Fields{"duration": time.Since(start)}).Info("completed caching relays page data")
+	}()
 	var relaysData types.RelaysResp
 
 	overallStatsQuery, err := db.ReaderDb.Preparex(`
@@ -214,7 +218,6 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 		blocks.exec_fee_recipient,
 		blocks.exec_extra_data 
 	order by value desc`)
-	logger.Infof("test: %v", relaysData.TopBlocks[0].Value.Int)
 	if err != nil {
 		logger.Errorf("failed to get top blocks for relays page %v", err)
 		return nil, err
