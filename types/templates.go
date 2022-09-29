@@ -1677,6 +1677,7 @@ type RelaysResp struct {
 	RelaysInfoContainers [3]RelayInfoContainer
 	RecentBlocks         []*RelaysRespBlock
 	TopBlocks            []*RelaysRespBlock
+	LastUpdated          time.Time
 	TopBuilders          []*struct {
 		Tags       TagMetadataSlice `db:"tags"`
 		Builder    []byte           `db:"builder_pubkey"`

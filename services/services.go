@@ -79,6 +79,8 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 	}()
 	var relaysData types.RelaysResp
 
+	relaysData.LastUpdated = start
+
 	overallStatsQuery, err := db.ReaderDb.Preparex(`
 		with stats as (
 			select 
