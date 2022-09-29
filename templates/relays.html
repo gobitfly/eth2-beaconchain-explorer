@@ -99,11 +99,11 @@
                   <thead>
                     <tr>
                       <th>Slot</th>
+                      <th>Proposer</th>
                       <th>Relays</th>
                       <th>Bribe</th>
                       <th>Block Extra Data</th>
                       <th>Proposer Fee Receipient</th>
-                      <th>Builder Fee Receipient</th>
                       <th>Builder</th>
                     </tr>
                   </thead>
@@ -111,6 +111,7 @@
                     {{ range .Data.RecentBlocks }}
                       <tr>
                         <td>{{ formatBlockSlot .Slot }}</td>
+                        <td>{{ formatValidator .Proposer }}</td>
                         <td>
                           {{ range .Tags }}
                             <span class="badge badge-primary shadow-sm text-white" {{ if .Color }}style="background-color: {{ .Color }};"{{ end }}>
@@ -123,7 +124,6 @@
                           <span class="convertmetoutf8" id="slot_{{ .Slot }}" aria-hex-data="{{ .BlockExtraData }}"></span>
                         </td>
                         <td>{{ formatAddressAsLink .ProposerFeeRecipient "" false false }}</td>
-                        <td>{{ formatAddressAsLink .BuilderFeeRecipient "" false false }}</td>
                         <td>{{ formatBuilder .Builder }}</td>
                       </tr>
                     {{ end }}
@@ -135,11 +135,11 @@
                   <thead>
                     <tr>
                       <th>Slot</th>
+                      <th>Proposer</th>
                       <th>Relays</th>
                       <th>Bribe</th>
                       <th>Block Extra Data</th>
                       <th>Proposer Fee Receipient</th>
-                      <th>Builder Fee Receipient</th>
                       <th>Builder</th>
                     </tr>
                   </thead>
@@ -147,6 +147,7 @@
                     {{ range .Data.TopBlocks }}
                       <tr>
                         <td>{{ formatBlockSlot .Slot }}</td>
+                        <td>{{ formatValidator .Proposer }}</td>
                         <td>
                           {{ range .Tags }}
                             <span class="badge badge-primary shadow-sm text-white" {{ if .Color }}style="background-color: {{ .Color }};"{{ end }}>
@@ -159,7 +160,6 @@
                           <span class="convertmetoutf8" id="slot_{{ .Slot }}" aria-hex-data="{{ .BlockExtraData }}"></span>
                         </td>
                         <td>{{ formatAddressAsLink .ProposerFeeRecipient "" false false }}</td>
-                        <td>{{ formatAddressAsLink .BuilderFeeRecipient "" false false }}</td>
                         <td>{{ formatBuilder .Builder }}</td>
                       </tr>
                     {{ end }}

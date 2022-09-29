@@ -167,10 +167,10 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			relays_blocks.block_slot as slot,
 			relays_blocks.builder_pubkey as builder_pubkey,
 			relays_blocks.proposer_fee_recipient as proposer_fee_recipient,
-			exec_fee_recipient as block_fee_recipient,
+			validators.validatorindex as proposer,
 			encode(exec_extra_data, 'hex') as block_extra_data
 		from (
-			select blockroot, exec_fee_recipient, exec_extra_data
+			select blockroot, exec_extra_data
 			from blocks
 			where blockroot in (
 				select rb.block_root
@@ -183,13 +183,15 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			on relays_blocks.block_root = blocks.blockroot
 		left join tags 
 			on tags.id = relays_blocks.tag_id 
+		left join validators
+			on validators.pubkey = relays_blocks.proposer_pubkey  
 		group by 
 			blockroot, 
 			relays_blocks.block_slot,
 			relays_blocks.builder_pubkey,
 			relays_blocks.proposer_fee_recipient,
-			blocks.exec_fee_recipient,
-			blocks.exec_extra_data 
+			blocks.exec_extra_data,
+			validators.validatorindex 
 		order by relays_blocks.block_slot desc`)
 	if err != nil {
 		logger.Errorf("failed to get latest blocks for relays page %v", err)
@@ -203,7 +205,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			relays_blocks.block_slot as slot,
 			relays_blocks.builder_pubkey as builder_pubkey,
 			relays_blocks.proposer_fee_recipient as proposer_fee_recipient,
-			exec_fee_recipient as block_fee_recipient,
+			validators.validatorindex as proposer,
 			encode(exec_extra_data, 'hex') as block_extra_data
 		from (
 			select * 
@@ -215,13 +217,16 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			on relays_blocks.block_root = blocks.blockroot
 		left join tags 
 			on tags.id = relays_blocks.tag_id 
+		left join validators
+			on validators.pubkey = relays_blocks.proposer_pubkey  
 		group by 
 			blockroot, 
 			relays_blocks.block_slot,
 			relays_blocks.builder_pubkey,
 			relays_blocks.proposer_fee_recipient,
 			blocks.exec_fee_recipient,
-			blocks.exec_extra_data 
+			blocks.exec_extra_data,
+			validators.validatorindex 
 		order by value desc`)
 	if err != nil {
 		logger.Errorf("failed to get top blocks for relays page %v", err)

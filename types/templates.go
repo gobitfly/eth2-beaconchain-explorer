@@ -1693,7 +1693,7 @@ type RelaysRespBlock struct {
 	Slot                 uint64           `db:"slot"`
 	Builder              []byte           `db:"builder_pubkey"`
 	ProposerFeeRecipient []byte           `db:"proposer_fee_recipient"`
-	BuilderFeeRecipient  []byte           `db:"block_fee_recipient"`
+	Proposer             uint64           `db:"proposer"`
 	BlockExtraData       string           `db:"block_extra_data"`
 }
 
