@@ -127,99 +127,102 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 	relaysData.RelaysInfoContainers = tmp
 
 	err = db.ReaderDb.Select(&relaysData.TopBuilders, `
-	select 
-		builder_pubkey,
-		SUM(c) as c,
-		jsonb_agg(tags.metadata) as tags,
-		max(latest_slot) as latest_slot
-	from (
 		select 
 			builder_pubkey,
-			count(*) as c,
-			tag_id,
-			(
-				select block_slot
-				from relays_blocks rb2
-				where
-					rb2.builder_pubkey = rb.builder_pubkey
-				order by block_slot desc
-				limit 1
-			) as latest_slot
-		from relays_blocks rb
-		group by builder_pubkey, tag_id 
-	) foo
-	left join tags on tags.id = foo.tag_id
-	group by builder_pubkey 
-	order by c desc
-	limit 15`)
+			SUM(c) as c,
+			jsonb_agg(tags.metadata) as tags,
+			max(latest_slot) as latest_slot
+		from (
+			select 
+				builder_pubkey,
+				count(*) as c,
+				tag_id,
+				(
+					select block_slot
+					from relays_blocks rb2
+					where
+						rb2.builder_pubkey = rb.builder_pubkey
+					order by block_slot desc
+					limit 1
+				) as latest_slot
+			from (
+				select * 
+				from relays_blocks
+				where block_slot > $1
+				order by block_slot desc) rb
+			group by builder_pubkey, tag_id 
+		) foo
+		left join tags on tags.id = foo.tag_id
+		group by builder_pubkey 
+		order by c desc`, LatestSlot()-(14*dayInSlots))
 	if err != nil {
 		logger.Errorf("failed to get builder ranking %v", err)
 		return nil, err
 	}
 
 	err = db.ReaderDb.Select(&relaysData.RecentBlocks, `
-	select
-		jsonb_agg(tags.metadata order by id) as tags,
-		max(relays_blocks.value) as value,
-		relays_blocks.block_slot as slot,
-		relays_blocks.builder_pubkey as builder_pubkey,
-		relays_blocks.proposer_fee_recipient as proposer_fee_recipient,
-		exec_fee_recipient as block_fee_recipient,
-		encode(exec_extra_data, 'hex') as block_extra_data
-	from (
-		select blockroot, exec_fee_recipient, exec_extra_data
-		from blocks
-		where blockroot in (
-			select rb.block_root
-			from relays_blocks rb
-		) 
-		order by blocks.slot desc
-		limit 15
-	) as blocks
-	left join relays_blocks
-		on relays_blocks.block_root = blocks.blockroot
-	left join tags 
-		on tags.id = relays_blocks.tag_id 
-	group by 
-		blockroot, 
-		relays_blocks.block_slot,
-		relays_blocks.builder_pubkey,
-		relays_blocks.proposer_fee_recipient,
-		blocks.exec_fee_recipient,
-		blocks.exec_extra_data 
-	order by relays_blocks.block_slot desc`)
+		select
+			jsonb_agg(tags.metadata order by id) as tags,
+			max(relays_blocks.value) as value,
+			relays_blocks.block_slot as slot,
+			relays_blocks.builder_pubkey as builder_pubkey,
+			relays_blocks.proposer_fee_recipient as proposer_fee_recipient,
+			exec_fee_recipient as block_fee_recipient,
+			encode(exec_extra_data, 'hex') as block_extra_data
+		from (
+			select blockroot, exec_fee_recipient, exec_extra_data
+			from blocks
+			where blockroot in (
+				select rb.block_root
+				from relays_blocks rb
+			) 
+			order by blocks.slot desc
+			limit 15
+		) as blocks
+		left join relays_blocks
+			on relays_blocks.block_root = blocks.blockroot
+		left join tags 
+			on tags.id = relays_blocks.tag_id 
+		group by 
+			blockroot, 
+			relays_blocks.block_slot,
+			relays_blocks.builder_pubkey,
+			relays_blocks.proposer_fee_recipient,
+			blocks.exec_fee_recipient,
+			blocks.exec_extra_data 
+		order by relays_blocks.block_slot desc`)
 	if err != nil {
 		logger.Errorf("failed to get latest blocks for relays page %v", err)
 		return nil, err
 	}
 
 	err = db.ReaderDb.Select(&relaysData.TopBlocks, `
-	select
-		jsonb_agg(tags.metadata order by id) as tags,
-		max(relays_blocks.value) as value,
-		relays_blocks.block_slot as slot,
-		relays_blocks.builder_pubkey as builder_pubkey,
-		relays_blocks.proposer_fee_recipient as proposer_fee_recipient,
-		exec_fee_recipient as block_fee_recipient,
-		encode(exec_extra_data, 'hex') as block_extra_data
-	from (
-		select * 
-		from relays_blocks
-		order by relays_blocks.value desc
-		limit 15
-	) as relays_blocks 
-	left join blocks
-		on relays_blocks.block_root = blocks.blockroot
-	left join tags 
-		on tags.id = relays_blocks.tag_id 
-	group by 
-		blockroot, 
-		relays_blocks.block_slot,
-		relays_blocks.builder_pubkey,
-		relays_blocks.proposer_fee_recipient,
-		blocks.exec_fee_recipient,
-		blocks.exec_extra_data 
-	order by value desc`)
+		select
+			jsonb_agg(tags.metadata order by id) as tags,
+			max(relays_blocks.value) as value,
+			relays_blocks.block_slot as slot,
+			relays_blocks.builder_pubkey as builder_pubkey,
+			relays_blocks.proposer_fee_recipient as proposer_fee_recipient,
+			exec_fee_recipient as block_fee_recipient,
+			encode(exec_extra_data, 'hex') as block_extra_data
+		from (
+			select * 
+			from relays_blocks
+			order by relays_blocks.value desc
+			limit 15
+		) as relays_blocks 
+		left join blocks
+			on relays_blocks.block_root = blocks.blockroot
+		left join tags 
+			on tags.id = relays_blocks.tag_id 
+		group by 
+			blockroot, 
+			relays_blocks.block_slot,
+			relays_blocks.builder_pubkey,
+			relays_blocks.proposer_fee_recipient,
+			blocks.exec_fee_recipient,
+			blocks.exec_extra_data 
+		order by value desc`)
 	if err != nil {
 		logger.Errorf("failed to get top blocks for relays page %v", err)
 		return nil, err
