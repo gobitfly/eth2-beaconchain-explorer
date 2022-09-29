@@ -1007,4 +1007,4 @@ CREATE TABLE validator_queue_deposits (
 	CONSTRAINT validator_queue_deposits_fk_validators FOREIGN KEY (validatorindex) REFERENCES validators(validatorindex)
 );
 CREATE INDEX idx_validator_queue_deposits_block_slot ON validator_queue_deposits USING btree (block_slot);
-CREATE UNIQUE INDEX idx_validator_queue_deposits_validatorindexON validator_queue_deposits USING btree (validatorindex);
+CREATE UNIQUE INDEX idx_validator_queue_deposits_validatorindex ON validator_queue_deposits USING btree (validatorindex);
