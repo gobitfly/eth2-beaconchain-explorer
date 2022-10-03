@@ -1017,6 +1017,7 @@ CREATE TABLE relays_blocks (
 	tag_id varchar NOT NULL,
 	block_slot int4 NOT NULL,
 	block_root bytea NOT NULL,
+	exec_block_hash bytea NOT NULL,
 	builder_pubkey bytea NOT NULL,
 	proposer_pubkey bytea NOT NULL,
 	proposer_fee_recipient bytea NOT NULL,
@@ -1025,6 +1026,7 @@ CREATE TABLE relays_blocks (
 );
 CREATE INDEX relays_blocks_block_root_idx ON public.relays_blocks (block_root);
 CREATE INDEX relays_blocks_builder_pubkey_idx ON public.relays_blocks (builder_pubkey);
+CREATE INDEX relays_blocks_exec_block_hash_idx ON public.relays_blocks (exec_block_hash);
 CREATE INDEX relays_blocks_value_idx ON public.relays_blocks (value);
 
 
@@ -1037,4 +1039,4 @@ CREATE TABLE validator_queue_deposits (
 	CONSTRAINT validator_queue_deposits_fk_validators FOREIGN KEY (validatorindex) REFERENCES validators(validatorindex)
 );
 CREATE INDEX idx_validator_queue_deposits_block_slot ON validator_queue_deposits USING btree (block_slot);
-CREATE UNIQUE INDEX idx_validator_queue_deposits_validatorindexON validator_queue_deposits USING btree (validatorindex);
+CREATE UNIQUE INDEX idx_validator_queue_deposits_validatorindex ON validator_queue_deposits USING btree (validatorindex);

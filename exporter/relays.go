@@ -173,13 +173,14 @@ func retrieveAndInsertPayloadsFromRelay(r types.Relay, low_bound uint64, high_bo
 					tag_id,
 					block_slot,
 					block_root,
+					exec_block_hash,
 					value,
 					builder_pubkey,
 					proposer_pubkey,
 					proposer_fee_recipient
 				)
 				select 
-					$1,	blocks.slot, blocks.blockroot, $4, $5, $6, $7
+					$1,	blocks.slot, blocks.blockroot, blocks.exec_block_hash, $4, $5, $6, $7
 				from blocks
 				where
 					blocks.slot = $2 and
@@ -207,11 +208,14 @@ func retrieveAndInsertPayloadsFromRelay(r types.Relay, low_bound uint64, high_bo
 			r.Logger.Debugf("no more payloads avaliable")
 			break
 		}
+		if resp[len(resp)-1].Slot == offset {
+			return fmt.Errorf("relay doesn't follow spec, last returned slot matches offset (sort order ascending instead of descending)")
+		}
 
 		// sleep for a bit to not kill the relay
 		r.Logger.Debugf("sleeping 2 seconds before next request")
 		offset = resp[len(resp)-1].Slot
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Second * 1)
 	}
 	return tx.Commit()
 }

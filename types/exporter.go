@@ -485,6 +485,7 @@ type RelayBlock struct {
 	ID                   string `db:"tag_id" json:"tag_id"`
 	BlockSlot            uint64 `db:"block_slot" json:"block_slot"`
 	BlockRoot            string `db:"block_root" json:"block_root"`
+	ExecBlockHash        string `db:"exec_block_hash"`
 	Value                uint64 `db:"value" json:"value"`
 	BuilderPubkey        string `db:"builder_pubkey" json:"builder_pubkey"`
 	ProposerPubkey       string `db:"proposer_pubkey" json:"proposer_pubkey"`
