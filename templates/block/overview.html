@@ -31,13 +31,13 @@
         </div>
         {{ if .MevBribe }}
           <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Proposer Fee Recipient as reported by the Relay">MEV Fee Recipient:</span></div>
+            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Proposer Fee Recipient as reported by the Relay">MEV Reward Recipient:</span></div>
             <div class="col-md-10">
               {{ .MevRecipientFormatted }}
             </div>
           </div>
           <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Bribe payed out to the Proposer as reported by the Relay">MEV Bribe:</span></div>
+            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Reward payed out to the Proposer as reported by the Relay">MEV Block Reward:</span></div>
             <div class="col-md-10">{{ formatAmountFormatted .MevBribe "ETH" 5 0 true false false }}</div>
           </div>
         {{ else }}
