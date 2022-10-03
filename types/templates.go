@@ -1619,31 +1619,31 @@ type EtherscanContractMetadata struct {
 }
 
 type Eth1BlockPageData struct {
-	Number                 uint64
-	PreviousBlock          uint64
-	NextBlock              uint64
-	TxCount                uint64
-	UncleCount             uint64
-	Hash                   string
-	ParentHash             string
-	MinerAddress           string
-	MinerFormatted         template.HTML
-	Reward                 *big.Int
-	MevReward              *big.Int
-	MevBribe               *big.Int
-	MevReceipientFormatted template.HTML
-	TxFees                 *big.Int
-	GasUsage               template.HTML
-	GasLimit               uint64
-	LowestGasPrice         *big.Int
-	Ts                     time.Time
-	Difficulty             *big.Int
-	BaseFeePerGas          *big.Int
-	BurnedFees             *big.Int
-	Extra                  string
-	Txs                    []Eth1BlockPageTransaction
-	Uncles                 []Eth1BlockPageData
-	State                  string
+	Number                uint64
+	PreviousBlock         uint64
+	NextBlock             uint64
+	TxCount               uint64
+	UncleCount            uint64
+	Hash                  string
+	ParentHash            string
+	MinerAddress          string
+	MinerFormatted        template.HTML
+	Reward                *big.Int
+	MevReward             *big.Int
+	MevBribe              *big.Int
+	MevRecipientFormatted template.HTML
+	TxFees                *big.Int
+	GasUsage              template.HTML
+	GasLimit              uint64
+	LowestGasPrice        *big.Int
+	Ts                    time.Time
+	Difficulty            *big.Int
+	BaseFeePerGas         *big.Int
+	BurnedFees            *big.Int
+	Extra                 string
+	Txs                   []Eth1BlockPageTransaction
+	Uncles                []Eth1BlockPageData
+	State                 string
 }
 
 type Eth1BlockPageTransaction struct {
