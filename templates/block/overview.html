@@ -29,18 +29,31 @@
             <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Number }}"></i>
           </div>
         </div>
-        <div class="row border-bottom p-3 mx-0">
-          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction fee recipient">Fee Recipient:</span></div>
-          <div class="col-md-10">
-            {{ .MinerFormatted }}
+        {{ if .MevBribe }}
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="MEV Fee Recipient">MEV Fee Recipient:</span></div>
+            <div class="col-md-10">
+              {{ .MevReceipientFormatted }}
+            </div>
           </div>
-        </div>
-        <div class="row border-bottom p-3 mx-0">
-          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction rewards from block {{ .Number }}">Tx Reward:</span></div>
-          <div class="col-md-10">
-            {{ formatAmountFormatted .Reward "ETH" 5 0 true false false }}
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="MEV Bribe">MEV Bribe:</span></div>
+            <div class="col-md-10">{{ formatAmountFormatted .MevBribe "ETH" 5 0 true false false }}</div>
           </div>
-        </div>
+        {{ else }}
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction fee recipient">Fee Recipient:</span></div>
+            <div class="col-md-10">
+              {{ .MinerFormatted }}
+            </div>
+          </div>
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction rewards from block {{ .Number }}">Tx Reward:</span></div>
+            <div class="col-md-10">
+              {{ formatAmountFormatted .Reward "ETH" 5 0 true false false }}
+            </div>
+          </div>
+        {{ end }}
       {{ end }}
       <div class="row border-bottom p-3 mx-0">
         <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the current state of the block">Status:</span></div>
