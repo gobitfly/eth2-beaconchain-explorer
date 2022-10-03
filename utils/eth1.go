@@ -103,6 +103,14 @@ func FormatAddress(address []byte, token []byte, name string, verified bool, isC
 	return formatAddress(address, token, name, isContract, "", "", 17, 0, false)
 }
 
+func FormatBuilder(pubkey []byte) template.HTML {
+	name := ""
+	if bytes.Equal(pubkey, common.Hex2Bytes("aa1488eae4b06a1fff840a2b6db167afc520758dc2c8af0dfb57037954df3431b747e2f900fe8805f05d635e9a29717b")) {
+		name = "MEV-geth Default"
+	}
+	return FormatAddress(pubkey, nil, name, false, false, false)
+}
+
 func FormatAddressWithLimits(address []byte, name string, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
 	return formatAddress(address, nil, name, isContract, link, "", digitsLimit, nameLimit, addCopyToClipboard)
 }
