@@ -1263,7 +1263,7 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, j, r)
+	returnQueryResultsAsArray(rows, j, r)
 }
 
 // ApiValidatorAttestations godoc
@@ -2457,6 +2457,25 @@ func returnQueryResults(rows *sql.Rows, j *json.Encoder, r *http.Request) {
 	}
 
 	sendOKResponse(j, r.URL.String(), data)
+}
+
+func returnQueryResultsAsArray(rows *sql.Rows, j *json.Encoder, r *http.Request) {
+	data, err := utils.SqlRowsToJSON(rows)
+
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	response := &types.ApiResponse{
+		Status: "OK",
+		Data:   data,
+	}
+	err = j.Encode(response)
+
+	if err != nil {
+		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
+	}
 }
 
 // SendErrorResponse exposes sendErrorResponse
