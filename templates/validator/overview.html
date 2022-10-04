@@ -17,7 +17,7 @@
       </div>
       <div class="validator__lifecycle-progress validator__lifecycle-deposited text-white">
         <div class="validator__lifecycle-progress-epoch">
-          {{ if not $deposited }}<div data-toggle="tooltip" title="The eligible epoch is when your validator is registerd by the beacon chain and joins the queue to be activated."><a href="/epoch/{{ .ActivationEligibilityEpoch }}">{{ if eq .ActivationEligibilityEpoch 0 }}genesis{{ else }}{{ .ActivationEligibilityEpoch }}{{ end }}</a></div>{{ end }}
+          {{ if not $deposited }}<div data-toggle="tooltip" title="The eligible epoch is when your validator is registered by the beacon chain and joins the queue to be activated."><a href="/epoch/{{ .ActivationEligibilityEpoch }}">{{ if eq .ActivationEligibilityEpoch 0 }}genesis{{ else }}{{ .ActivationEligibilityEpoch }}{{ end }}</a></div>{{ end }}
         </div>
       </div>
       <div id="lifecycle-pending" class="validator__lifecycle-node-container validator__lifecycle-pending">

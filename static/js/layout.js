@@ -294,7 +294,7 @@ $(document).ready(function () {
       source: bhEth1Accounts,
       display: "address",
       templates: {
-        header: '<h3 class="h5">ETH Addresses</h3>',
+        header: '<h3 class="h5">Address</h3>',
         suggestion: function (data) {
           return `<div class="text-monospace text-truncate">0x${data.address}</div>`
         },
@@ -306,7 +306,7 @@ $(document).ready(function () {
       source: bhValidatorsByAddress,
       display: "eth1_address",
       templates: {
-        header: '<h3 class="h5">Validators by ETH Address</h3>',
+        header: '<h3 class="h5">Validators by Address</h3>',
         suggestion: function (data) {
           return `<div class="text-monospace text-truncate">${data.count}: 0x${data.eth1_address}</div>`
         },
