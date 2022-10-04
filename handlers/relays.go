@@ -10,7 +10,7 @@ func Relays(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	var relaysServicesTemplate = templates.GetTemplate("layout.html", "relays.html")
 
-	data := InitPageData(w, r, "services", "/relays", "MEV-Boost Relay Overview")
+	data := InitPageData(w, r, "services", "/relays", "Relay Overview")
 
 	relayData := services.LatestRelaysPageData()
 
