@@ -25,7 +25,7 @@ func Eth1Transactions(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "blockchain", "/eth1transactions", "eth1transactions")
+	data := InitPageData(w, r, "blockchain", "/eth1transactions", "Transactions")
 	data.Data = getTransactionDataStartingWithPageToken("")
 
 	err := eth1TransactionsTemplate.ExecuteTemplate(w, "layout", data)

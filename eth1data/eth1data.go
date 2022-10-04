@@ -77,7 +77,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	}
 	code, err := GetCodeAt(ctx, *txPageData.To)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving code data for tx %v receipient %v: %v", hash, tx.To(), err)
+		return nil, fmt.Errorf("error retrieving code data for tx %v recipient %v: %v", hash, tx.To(), err)
 	}
 	txPageData.TargetIsContract = len(code) != 0
 

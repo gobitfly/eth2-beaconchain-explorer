@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -30,7 +31,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	_, err := strconv.Atoi(search)
 
 	if err == nil {
-		http.Redirect(w, r, "/slot/"+search, http.StatusMovedPermanently)
+		http.Redirect(w, r, "/block/"+search, http.StatusMovedPermanently)
 		return
 	}
 
@@ -69,11 +70,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	var result interface{}
 
 	switch searchType {
-	case "blocks":
+	case "slots":
 		if len(search) <= 1 {
 			break
 		}
-		result = &types.SearchAheadBlocksResult{}
+		result = &types.SearchAheadSlotsResult{}
 		if len(search)%2 != 0 {
 			search = search[:len(search)-1]
 		}
@@ -104,7 +105,17 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-
+	case "blocks":
+		number, err := strconv.ParseUint(search, 10, 64)
+		if err == nil {
+			block, err := db.BigtableClient.GetBlockFromBlocksTable(number)
+			if err == nil {
+				result = &types.SearchAheadBlocksResult{{
+					Block: block.Number,
+					Hash:  fmt.Sprintf("%#x", block.Hash),
+				}}
+			}
+		}
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
 		err = db.ReaderDb.Select(graffiti, `
@@ -123,7 +134,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "transactions":
 		result = &types.SearchAheadTransactionsResult{}
 		err = db.ReaderDb.Select(result, `
-			SELECT block_slot as slot, ENCODE(txhash::bytea, 'hex') AS txhash
+			SELECT ENCODE(txhash::bytea, 'hex') AS txhash
 			FROM blocks_transactions
 			WHERE ENCODE(txhash::bytea, 'hex') LIKE LOWER($1)
 			ORDER BY block_slot LIMIT 10`, search+"%")
@@ -237,6 +248,41 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
 			if err != nil {
 				logger.Errorf("error reading result data: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
+		}
+	case "count_indexed_validators_by_eth1_address":
+		if len(search) <= 1 {
+			break
+		}
+		if len(search)%2 != 0 {
+			search = search[:len(search)-1]
+		}
+		if searchLikeRE.MatchString(search) {
+			// find validators per eth1-address (limit result by N addresses and M validators per address)
+			result = &[]struct {
+				Eth1Address string `db:"from_address" json:"eth1_address"`
+				Count       uint64 `db:"count" json:"count"`
+			}{}
+			eth1AddressHash, err := hex.DecodeString(search)
+			if err != nil {
+				logger.Errorf("error parsing eth1AddressHash to hex: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
+			err = db.ReaderDb.Select(result, `
+			SELECT from_address, COUNT(*) FROM (
+				SELECT 
+					DISTINCT ON(validatorindex) validatorindex,
+					ENCODE(from_address::bytea, 'hex') as from_address
+				FROM eth1_deposits
+				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
+				WHERE from_address LIKE $1 || '%'::bytea
+			) a 
+			GROUP BY from_address`, eth1AddressHash)
+			if err != nil {
+				logger.Errorf("error retrieving count of indexed validators by address data: %v", err)
 				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 				return
 			}

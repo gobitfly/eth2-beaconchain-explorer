@@ -284,12 +284,12 @@
            const res = await fetch(`${window.location.pathname}/${urlPart}?pageToken=${encodeURI(token)}`)
            const data = await res.json()
 
-           console.log('got data: ', data)
+          //  console.log('got data: ', data)
 
            if (data && data.data && data.pagingToken && data.pagingToken.length) {
              previousToken = pageToken
              pageToken = data.pagingToken
-             console.log('setting new pagetoken:\n',"new:", pageToken,'\n',"pre:", previousToken)
+            //  console.log('setting new pagetoken:\n',"new:", pageToken,'\n',"pre:", previousToken)
 
              // udpate the table
              for (let i = 0; i < data.data.length; i++) {
@@ -321,8 +321,8 @@
       }
 
       let optionsScroll = {
-        root: document.getElementById(tableID),
-        rootMargin: '5px',
+        root: null,
+        rootMargin: '300px',
         threshold: 0
       }
 
@@ -331,9 +331,9 @@
         for (let i = 0; i < entries.length; i++) {
           const entry = entries[i];
           if (entry.isIntersecting) {
-            console.log('intersecting');
+            // console.log('intersecting');
             if(!isLoading) {
-              console.log(tableID,'token:', pageToken)
+              // console.log(tableID,'token:', pageToken)
               isLoading = true
               getTransactions(pageToken)
             }
@@ -432,7 +432,7 @@
         {{ template "AddressTabs" . }}
       </div>
       <div class="card-body px-0 py-0">
-        <div style="height: 800px;" class="tab-content" id="address-tab-content">
+        <div class="tab-content" id="address-tab-content">
           <div class="tab-pane fade show active" id="transactions" role="tabpanel" aria-labelledby="transaction-tab">
             {{ template "AddressTransactionsTableGrid" .Data.TransactionsTable }}
           </div>
@@ -499,9 +499,9 @@
     {{ end }}
   </ul>
 {{ end }}
-
+ov
 {{ define "AddressTransactionsTableGrid" }}
-  <div id="transactions-table" style="display: grid; grid-template-columns: repeat(5, minmax(max-content, 1fr)) max-content repeat(2, minmax(max-content, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="transactions-table" style="display: grid; grid-template-columns: repeat(5, minmax(max-content, 1fr)) max-content repeat(2, minmax(max-content, 1fr)); overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Hash</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Method</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Block</span></div>
@@ -541,7 +541,7 @@
 {{ end }}
 
 {{ define "AddressInternalTransactionsGrid" }}
-  <div id="internalTxns-table" style="display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)) max-content repeat(3, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="internalTxns-table" style="display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)) max-content repeat(3, minmax(min-content, 1fr)); overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
@@ -579,7 +579,7 @@
 {{ end }}
 
 {{ define "AddressBlocksMinedGrid" }}
-  <div id="blocksMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="blocksMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(min-content, 1fr)); overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Number</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Gas Usage</div>
@@ -614,7 +614,7 @@
 {{ end }}
 
 {{ define "AddressUnclesMinedGrid" }}
-  <div id="unclesMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="unclesMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(min-content, 1fr)); overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Number</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Difficulty</div>
@@ -649,7 +649,7 @@
 {{ end }}
 
 {{ define "AddressErc20TransactionsGrid" }}
-  <div id="erc20-table" style="display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)) max-content repeat(3, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="erc20-table" style="display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)) max-content repeat(3, minmax(min-content, 1fr)); overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
@@ -667,12 +667,12 @@
         {{ end }}
       {{ end }}
       {{ if gt (len .Data) 24 }}
-        <div style="grid-column: 1 / 7;" id="erc20-table-inf-scroll" class="d-flex justify-content-center p-2">
+        <div style="grid-column: 1 / 8;" id="erc20-table-inf-scroll" class="d-flex justify-content-center p-2">
           <span>loading...</span>
         </div>
       {{ end }}
     {{ else }}
-      <div style="grid-column: 1 / 7;" id="erc20-table-inf-scroll" class="d-flex justify-content-center p-2">
+      <div style="grid-column: 1 / 8;" id="erc20-table-inf-scroll" class="d-flex justify-content-center p-2">
         <div class="d-flex justify-content-center align-items-center flex-column">
           <div class="my-3 mt-5 p-2 pt-5">
             {{ template "UndrawTree" }}
@@ -687,7 +687,7 @@
 {{ end }}
 
 {{ define "AddressErc721Grid" }}
-  <div id="erc721-table" style="display: grid; grid-template-columns: repeat(6, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="erc721-table" style="display: grid; grid-template-columns: repeat(6, minmax(min-content, 1fr)); overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
@@ -724,7 +724,7 @@
 {{ end }}
 
 {{ define "AddressErc1155Grid" }}
-  <div id="erc1155-table" style="display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr)); max-height: 800px; overflow: auto;">
+  <div id="erc1155-table" style="display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr)); overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
