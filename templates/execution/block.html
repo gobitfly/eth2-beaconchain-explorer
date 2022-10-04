@@ -36,7 +36,7 @@
         </li>
         {{ if gt (len .Txs) 0 }}
           <li class="nav-item">
-            <a class="nav-link" id="txs-tab" data-toggle="pill" href="#txs" role="tab" aria-controls="txs" aria-selected="false">Transactions <span class="badge bg-secondary text-white">{{ .TxCount }}</span></a>
+            <a class="nav-link" id="transactions-tab" data-toggle="pill" href="#transactions" role="tab" aria-controls="transactions" aria-selected="false">Transactions <span class="badge bg-secondary text-white">{{ .TxCount }}</span></a>
           </li>
         {{ end }}
         {{ if gt (len .Uncles) 0 }}
@@ -130,7 +130,7 @@
                 <div class="col-md-10 text-monospace"><a href="/block/{{ .ParentHash }}">{{ .ParentHash }}</a></div>
               </div>
             </div>
-            <div class="tab-pane fade" id="txs" role="tabpanel" aria-labelledby="txs-tab">
+            <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
               {{ template "execution_transactions" . }}
             </div>
             <div class="tab-pane fade" id="uncles" role="tabpanel" aria-labelledby="uncles-tab">

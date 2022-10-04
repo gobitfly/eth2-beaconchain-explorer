@@ -225,6 +225,11 @@
                 </div>
 
                 <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Burned fees">Burned fees:</span></div>
+                  <div class="col-md-10 text-monospace text-break">{{ formatAmountFormatted .BurnedFees "ETH" 5 0 true false false }}</div>
+                </div>
+
+                <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transactions">Transactions:</span></div>
                   <div class="col-md-10 text-monospace text-break">{{ .TxCount }}</div>
                 </div>
