@@ -112,6 +112,9 @@ function hex2a(hexx) {
 $(document).ready(function () {
   formatTimestamps() // make sure this happens before tooltips
   $('[data-toggle="tooltip"]').tooltip()
+  // set maxParallelRequests to number of datasets queried in each search
+  // make sure this is set in every one bloodhound object
+  let requestNum = 8
 
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -122,6 +125,20 @@ $(document).ready(function () {
     remote: {
       url: "/search/validators/%QUERY",
       wildcard: "%QUERY",
+      maxPendingRequests: requestNum,
+    },
+  })
+
+  var bhSlots = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function (obj) {
+      return obj.slot
+    },
+    remote: {
+      url: "/search/slots/%QUERY",
+      wildcard: "%QUERY",
+      maxPendingRequests: requestNum,
     },
   })
 
@@ -129,11 +146,12 @@ $(document).ready(function () {
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
     identify: function (obj) {
-      return obj.slot
+      return obj.block
     },
     remote: {
       url: "/search/blocks/%QUERY",
       wildcard: "%QUERY",
+      maxPendingRequests: requestNum,
     },
   })
 
@@ -146,6 +164,7 @@ $(document).ready(function () {
     remote: {
       url: "/search/transactions/%QUERY",
       wildcard: "%QUERY",
+      maxPendingRequests: requestNum,
     },
   })
 
@@ -158,6 +177,7 @@ $(document).ready(function () {
     remote: {
       url: "/search/graffiti/%QUERY",
       wildcard: "%QUERY",
+      maxPendingRequests: requestNum,
     },
   })
 
@@ -170,6 +190,7 @@ $(document).ready(function () {
     remote: {
       url: "/search/epochs/%QUERY",
       wildcard: "%QUERY",
+      maxPendingRequests: requestNum,
     },
   })
 
@@ -182,9 +203,24 @@ $(document).ready(function () {
     remote: {
       url: "/search/eth1_addresses/%QUERY",
       wildcard: "%QUERY",
+      maxPendingRequests: requestNum,
     },
   })
 
+  var bhValidatorsByAddress = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function (obj) {
+      return obj.eth1_address
+    },
+    remote: {
+      url: "/search/count_indexed_validators_by_eth1_address/%QUERY",
+      wildcard: "%QUERY",
+      maxPendingRequests: requestNum,
+    },
+  })
+
+  // before adding datasets make sure requestNum is set to the correct value
   $(".typeahead").typeahead(
     {
       minLength: 1,
@@ -208,11 +244,23 @@ $(document).ready(function () {
       limit: 5,
       name: "blocks",
       source: bhBlocks,
-      display: "blockroot",
+      display: "hash",
       templates: {
         header: '<h3 class="h5">Blocks</h3>',
         suggestion: function (data) {
-          return `<div class="text-monospace text-truncate">${data.slot}: ${data.blockroot}</div>`
+          return `<div class="text-monospace text-truncate">${data.block}: ${data.hash}</div>`
+        },
+      },
+    },
+    {
+      limit: 5,
+      name: "slots",
+      source: bhSlots,
+      display: "blockroot",
+      templates: {
+        header: '<h3 class="h5">Slots</h3>',
+        suggestion: function (data) {
+          return `<div class="text-monospace text-truncate">${data.slot}: 0x${data.blockroot}</div>`
         },
       },
     },
@@ -224,7 +272,7 @@ $(document).ready(function () {
       templates: {
         header: '<h3 class="h5">Transactions</h3>',
         suggestion: function (data) {
-          return `<div class="text-monospace text-truncate">${data.slot}: ${data.txhash}</div>`
+          return `<div class="text-monospace text-truncate">0x${data.txhash}</div>`
         },
       },
     },
@@ -249,6 +297,18 @@ $(document).ready(function () {
         header: '<h3 class="h5">ETH Addresses</h3>',
         suggestion: function (data) {
           return `<div class="text-monospace text-truncate">0x${data.address}</div>`
+        },
+      },
+    },
+    {
+      limit: 5,
+      name: "validators-by-address",
+      source: bhValidatorsByAddress,
+      display: "eth1_address",
+      templates: {
+        header: '<h3 class="h5">Validators by ETH Address</h3>',
+        suggestion: function (data) {
+          return `<div class="text-monospace text-truncate">${data.count}: 0x${data.eth1_address}</div>`
         },
       },
     },
@@ -289,9 +349,12 @@ $(document).ready(function () {
   })
 
   $(".typeahead").on("typeahead:select", function (ev, sug) {
-    if (sug.slot !== undefined) {
-      if (sug.txhash !== undefined) window.location = "/block/" + sug.slot + "#transactions"
-      else window.location = "/block/" + sug.slot
+    if (sug.txhash !== undefined) {
+      window.location = "/tx/" + sug.txhash
+    } else if (sug.block !== undefined) {
+      window.location = "/block/" + sug.block
+    } else if (sug.slot !== undefined) {
+      window.location = "/slot/" + sug.slot
     } else if (sug.index !== undefined) {
       if (sug.index === "deposited") window.location = "/validator/" + sug.pubkey
       else window.location = "/validator/" + sug.index
@@ -299,6 +362,8 @@ $(document).ready(function () {
       window.location = "/epoch/" + sug.epoch
     } else if (sug.address !== undefined) {
       window.location = "/address/" + sug.address
+    } else if (sug.eth1_address !== undefined) {
+      window.location = "/validators/eth1deposits?q=" + sug.eth1_address
     } else if (sug.graffiti !== undefined) {
       // sug.graffiti is html-escaped to prevent xss, we need to unescape it
       var el = document.createElement("textarea")

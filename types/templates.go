@@ -802,10 +802,16 @@ type SearchAheadEpochsResult []struct {
 	Epoch string `db:"epoch" json:"epoch,omitempty"`
 }
 
-// SearchAheadBlocksResult is a struct to hold the search ahead blocks results
-type SearchAheadBlocksResult []struct {
+// SearchAheadSlotsResult is a struct to hold the search ahead slots results
+type SearchAheadSlotsResult []struct {
 	Slot string `db:"slot" json:"slot,omitempty"`
 	Root string `db:"blockroot" json:"blockroot,omitempty"`
+}
+
+// SearchAheadBlockssResult is a struct to hold the search ahead block results
+type SearchAheadBlocksResult []struct {
+	Block uint64 `json:"block,omitempty"`
+	Hash  string `json:"hash,omitempty"`
 }
 
 type SearchAheadTransactionsResult []struct {
