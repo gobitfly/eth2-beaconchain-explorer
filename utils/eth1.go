@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dustin/go-humanize"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
 	"golang.org/x/text/language"
@@ -368,7 +367,7 @@ func FormatTime(t time.Time) template.HTML {
 }
 
 func FormatTimeFromNow(t time.Time) template.HTML {
-	return template.HTML(humanize.Time(t))
+	return template.HTML(HumanizeTime(t))
 }
 
 func FormatHashrate(h float64) template.HTML {
