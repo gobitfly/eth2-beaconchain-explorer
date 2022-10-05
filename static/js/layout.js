@@ -368,7 +368,7 @@ $(document).ready(function () {
       // sug.graffiti is html-escaped to prevent xss, we need to unescape it
       var el = document.createElement("textarea")
       el.innerHTML = sug.graffiti
-      window.location = "/blocks?q=" + encodeURIComponent(el.value)
+      window.location = "/slots?q=" + encodeURIComponent(el.value)
     } else {
       console.log("invalid typeahead-selection", sug)
     }
