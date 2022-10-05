@@ -458,35 +458,35 @@ function formatTimestamps(selStr) {
 }
 
 function getRelativeTime(tsLuxon) {
-  var duration = tsLuxon.diffNow(['days', 'hours', 'minutes', 'seconds'])
-    var daysPart = Math.round(duration.days)
-    var sDays = (daysPart === -1) ? '' : 's'
-    var hoursPart = Math.round(duration.hours)
-    var sHours = (hoursPart === -1) ? '' : 's'
-    var minutesPart = Math.round(duration.minutes)
-    var sMinutes = (minutesPart === -1) ? '' : 's'
-    var secondsPart = Math.round(duration.seconds)
-    var sSeconds = (secondsPart === -1) ? '' : 's'
-    var parts = []
-    if (daysPart !== 0) {
-      parts.push(`${daysPart * -1} day${sDays}`)
-    }
-    if (hoursPart !== 0) {
-      parts.push(`${hoursPart * -1} hr${sHours}`)
-    }
-    if (minutesPart !== 0) {
-      parts.push(`${minutesPart * -1} min${sMinutes}`)
-    }
-    if (secondsPart !== 0 && parts.length == 0) {
-      parts.push(`${secondsPart * -1} sec${sSeconds}`)
-    }
-    if (parts.length === 1) {
-     return `${parts[0]} ago`
-    } else if (parts.length > 1) {
-      return `${parts[0]} ${parts[1]} ago`
-    } else {
-      return `${duration.days * -1}days  ${duration.hours * -1}hrs ${duration.minutes * -1}mins ${duration.seconds * -1}secs ago`
-    }
+  var duration = tsLuxon.diffNow(["days", "hours", "minutes", "seconds"])
+  var daysPart = Math.round(duration.days)
+  var sDays = daysPart === -1 ? "" : "s"
+  var hoursPart = Math.round(duration.hours)
+  var sHours = hoursPart === -1 ? "" : "s"
+  var minutesPart = Math.round(duration.minutes)
+  var sMinutes = minutesPart === -1 ? "" : "s"
+  var secondsPart = Math.round(duration.seconds)
+  var sSeconds = secondsPart === -1 ? "" : "s"
+  var parts = []
+  if (daysPart !== 0) {
+    parts.push(`${daysPart * -1} day${sDays}`)
+  }
+  if (hoursPart !== 0) {
+    parts.push(`${hoursPart * -1} hr${sHours}`)
+  }
+  if (minutesPart !== 0) {
+    parts.push(`${minutesPart * -1} min${sMinutes}`)
+  }
+  if (secondsPart !== 0 && parts.length == 0) {
+    parts.push(`${secondsPart * -1} sec${sSeconds}`)
+  }
+  if (parts.length === 1) {
+    return `${parts[0]} ago`
+  } else if (parts.length > 1) {
+    return `${parts[0]} ${parts[1]} ago`
+  } else {
+    return `${duration.days * -1}days  ${duration.hours * -1}hrs ${duration.minutes * -1}mins ${duration.seconds * -1}secs ago`
+  }
 }
 function addCommas(number) {
   return number
