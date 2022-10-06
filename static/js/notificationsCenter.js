@@ -351,7 +351,7 @@ function loadMonitoringData(data) {
           if (parseInt(data) === 0) {
             return "N/A"
           }
-          return `<span class="heading-l4">${luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "long" }) || "N/A"}</span>`
+          return `<span class="heading-l4">${getRelativeTime(luxon.DateTime.fromMillis(data * 1000)) || "N/A"}</span>`
         },
       },
       // {
@@ -455,7 +455,7 @@ function loadNetworkData(data) {
           if (type === "sort" || type === "type") {
             return data
           }
-          return `<span class="heading-l4">${luxon.DateTime.fromMillis(data).toRelative({ style: "long" })}</span>`
+          return `<span class="heading-l4">${getRelativeTime(luxon.DateTime.fromMillis(data))}</span>`
         },
       },
     ],
@@ -649,7 +649,7 @@ function loadValidatorsData(data) {
                   .replace("validator", "")
                   .replaceAll("_", " ")
               : "N/A"
-          }</span><span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(row.Notification[0].Timestamp * 1000).toRelative({ style: "long" }) || "N/A"}</span>`
+          }</span><span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${getRelativeTime(luxon.DateTime.fromMillis(row.Notification[0].Timestamp * 1000)) || "N/A"}</span>`
         },
       },
       {

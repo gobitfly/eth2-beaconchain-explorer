@@ -221,13 +221,13 @@
         {
           targets: 3,
           render: function (data, type, row, meta) {
-            return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+            return `<span style="font-size: .9rem; font-weight: 400;">${getRelativeTime(luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000))}</span>`
           },
         },
         {
           targets: 4,
           render: function (data, type, row, meta) {
-            return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+            return `<span style="font-size: .9rem; font-weight: 400;">${getRelativeTime(luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000))}</span>`
           },
         },
         {
@@ -300,25 +300,25 @@
         {
           targets: 4,
           render: function (data, type, row, meta) {
-            return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+            return `<span style="font-size: .9rem; font-weight: 400;">${getRelativeTime(luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000))}</span>`
           },
         },
         {
           targets: 5,
           render: function (data, type, row, meta) {
-            return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+            return `<span style="font-size: .9rem; font-weight: 400;">${getRelativeTime(luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000))}</span>`
           },
         },
         {
           targets: 6,
           render: function (data, type, row, meta) {
-            return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+            return `<span style="font-size: .9rem; font-weight: 400;">${getRelativeTime(luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000))}</span>`
           },
         },
         {
           targets: 7,
           render: function (data, type, row, meta) {
-            return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+            return `<span style="font-size: .9rem; font-weight: 400;">${getRelativeTime(luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000))}</span>`
           },
         },
         {
