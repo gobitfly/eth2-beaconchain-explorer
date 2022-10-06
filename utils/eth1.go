@@ -118,12 +118,12 @@ func FormatAddressAll(address []byte, name string, isContract bool, link string,
 	return formatAddress(address, nil, name, isContract, link, urlFragment, digitsLimit, nameLimit, addCopyToClipboard)
 }
 
-// digitsLimit will limit the address output to that amount of total digits (including 0x & ...)
+// digitsLimit will limit the address output to that amount of total digits (including 0x & …)
 // nameLimit will limit the name, if existing to giving amount of letters, a limit of 0 will display the full name
 func formatAddress(address []byte, token []byte, name string, isContract bool, link string, urlFragment string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
 	name = template.HTMLEscapeString(name)
 
-	// we need at least 5 digits for 0x & ...
+	// we need at least 5 digits for 0x & …
 	if digitsLimit < 5 {
 		digitsLimit = 5
 	}
@@ -138,17 +138,17 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 		if l <= digitsLimit { // len inside digitsLimits, not much to do
 			name = addressString
 		} else { // reduce to digits limit
-			digitsLimit -= 5                  // we will need 5 digits for 0x & ...
+			digitsLimit -= 5                  // we will need 5 digits for 0x & …
 			name = fmt.Sprintf("%x", address) // get hex bytes as string
 			f := digitsLimit / 2              // as this int devision will always cut, we at an odd limit, we will have more digits at the end
-			name = fmt.Sprintf("0x%s...%s", name[:f], name[(l-(digitsLimit-f)):])
+			name = fmt.Sprintf("0x%s…%s", name[:f], name[(l-(digitsLimit-f)):])
 		}
 		name = fmt.Sprintf(`<span class="text-monospace">%s</span>`, name)
 	} else { // name set
 		tooltip = fmt.Sprintf("%s\n0x%x", name, address) // set tool tip first, as we will change name
 		// limit name if necessary
 		if nameLimit > 0 && len(name) > nameLimit {
-			name = name[:nameLimit-3] + "..."
+			name = name[:nameLimit-3] + "…"
 		}
 	}
 
