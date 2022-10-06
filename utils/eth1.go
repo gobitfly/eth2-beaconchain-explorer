@@ -44,7 +44,7 @@ func EthBytesToFloat(b []byte) float64 {
 }
 
 func FormatBlockNumber(number uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", number))
+	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[2]s</a>", number, FormatAddCommas(number)))
 }
 
 func FormatTxHash(hash string) template.HTML {
