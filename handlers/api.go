@@ -84,7 +84,38 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "OK. Last epoch is from %v ago", time.Since(epochTime))
+	// check latest eth1 indexed block
+	numberBlocksTable, err := db.BigtableClient.GetLastBlockInBlocksTable()
+	if err != nil {
+		logger.Errorf("could not retrieve latest block number from the blocks table: %v", err)
+		http.Error(w, "Internal server error: could not retrieve latest block number from the blocks table", http.StatusServiceUnavailable)
+		return
+	}
+	blockBlocksTable, err := db.BigtableClient.GetBlockFromBlocksTable(uint64(numberBlocksTable))
+	if err != nil {
+		logger.Errorf("could not retrieve latest block from the blocks table: %v", err)
+		http.Error(w, "Internal server error: could not retrieve latest block from the blocks table", http.StatusServiceUnavailable)
+		return
+	}
+	if blockBlocksTable.Time.AsTime().Before(time.Now().Add(time.Minute * -13)) {
+		http.Error(w, "Internal server error: last block in blocks table is more than 13 minutes old (check eth1 indexer)", http.StatusServiceUnavailable)
+		return
+	}
+
+	// check if eth1 indices are up to date
+	numberDataTable, err := db.BigtableClient.GetLastBlockInDataTable()
+	if err != nil {
+		logger.Errorf("could not retrieve latest block number from the data table: %v", err)
+		http.Error(w, "Internal server error: could not retrieve latest block number from the data table", http.StatusServiceUnavailable)
+		return
+	}
+
+	if numberDataTable < numberBlocksTable-32 {
+		http.Error(w, "Internal server error: data table is lagging behind the blocks table (check eth1 indexer)", http.StatusServiceUnavailable)
+		return
+	}
+
+	fmt.Fprintf(w, "OK. Last epoch is from %v ago, last cl block is from %v ago, data table is lagging %v blocks", time.Since(epochTime), time.Since(blockBlocksTable.Time.AsTime()), numberBlocksTable-numberDataTable)
 }
 
 // ApiHealthzLoadbalancer godoc
