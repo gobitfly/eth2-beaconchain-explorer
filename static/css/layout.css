@@ -465,3 +465,7 @@ label.btn.btn-light:hover {
   --theme-ethereum-green: #88e03f;
   --theme-ethereum-yellow: #ffef79;
 }
+
+.thousands-separator:before{
+  content: ",";
+}

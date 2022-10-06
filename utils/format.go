@@ -172,6 +172,7 @@ func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 func FormatAddCommas(n uint64) template.HTML {
 	number := FormatFloat(float64(n), 2)
 
+	number = strings.ReplaceAll(number, ",", `<span class="thousands-separator"></span>`)
 	return template.HTML(number)
 }
 
