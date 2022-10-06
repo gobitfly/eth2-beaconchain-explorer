@@ -58,6 +58,9 @@ func main() {
 	tokenPriceExportList := flag.String("token.price.list", "", "Tokenlist path to use for the token price export")
 	tokenPriceExportFrequency := flag.Duration("token.price.frequency", time.Hour, "Token price export interval")
 
+	bigtableProject := flag.String("bigtable.project", "", "Bigtable project")
+	bigtableInstance := flag.String("bigtable.instance", "", "Bigtable instance")
+
 	flag.Parse()
 	if erigonEndpoint == nil || *erigonEndpoint == "" {
 		logrus.Fatal("no erigon node url provided")
@@ -74,6 +77,8 @@ func main() {
 		chainId = "1"
 	} else if *network == "goerli" {
 		chainId = "5"
+	} else if *network == "sepolia" {
+		chainId = "11155111"
 	} else {
 		logrus.Fatalf("unsupported network name %v provided", *network)
 	}
@@ -87,7 +92,7 @@ func main() {
 		logrus.Fatalf("node chain id missmatch, wanted %v got %v", chainId, nodeChainId.String())
 	}
 
-	bt, err := db.InitBigtable("etherchain", "etherchain", chainId)
+	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, chainId)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
