@@ -200,6 +200,10 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 					c.Transactions[trace.TransactionPosition].ErrorMsg = trace.Error
 				}
 
+				if trace.Type == "CREATE2" {
+					trace.Type = "CREATE"
+				}
+
 				tracePb := &types.Eth1InternalTransaction{
 					Type: strings.ToLower(trace.Type),
 					Path: "0",
