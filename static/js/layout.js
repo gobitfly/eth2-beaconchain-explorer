@@ -492,5 +492,5 @@ function addCommas(number) {
   return number
     .toString()
     .replace(/,/g, "")
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+    .replace(/\B(?=(\d{3})+(?!\d))/g, "<span class='thousands-separator'></span>")
 }

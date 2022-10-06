@@ -36,7 +36,7 @@ function updateBanner() {
       // always visible
       var epochHandle = document.getElementById("banner-epoch-data")
 
-      if (data.currentEpoch) epochHandle.textContent = addCommas(data.currentEpoch)
+      if (data.currentEpoch) epochHandle.innerHTML = addCommas(data.currentEpoch)
 
       var ethPriceHandle = document.getElementById("banner-eth-price-data")
 
@@ -89,7 +89,7 @@ function updateBanner() {
       // always visible
       var slotHandle = document.getElementById("banner-slot-data")
 
-      if (data.currentSlot) slotHandle.textContent = addCommas(data.currentSlot)
+      if (data.currentSlot) slotHandle.innerHTML = addCommas(data.currentSlot)
 
       var finDelayDataHandle = document.getElementById("banner-fin-data")
       finDelayHtml = `
