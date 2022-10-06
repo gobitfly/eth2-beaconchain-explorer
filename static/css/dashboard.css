@@ -473,7 +473,7 @@ ul.multiselect input:focus {
 
 .proposals-table > div > div:nth-child(3) { margin-top: auto !important }
 
-.history-table table tbody td span { padding: .35rem .5rem !important }
+.history-table table tbody td span:not(.thousands-separator) { padding: .35rem .5rem !important }
 
 @media screen and (max-width: 1140px) {
   .dashboard-table-nav { margin: 0 }
