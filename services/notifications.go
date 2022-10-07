@@ -1572,7 +1572,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 						continue
 					}
 					// validator is currently bellow threshold and was previously reported as offline
-					// note: this doesn't necessarily guarantee that epochsSinceOffline is larger than EventThreshold specified by the sub
+					// note: this doesn't necessarily guarantee that epochsSinceOffline is larger than or equal to EventThreshold specified by the sub
 					//       if an attestation for the exported epoch gets included in the one after it, epochsSinceOffline might end up as EventThreshold - 1
 					//       in this scenario we still want to trigger the "back online notifcation", as otherwise the user might think they are still offline
 					originalLastSeenEpoch, err := strconv.ParseUint(sub.State.String, 10, 64)
