@@ -551,7 +551,9 @@ create table users_subscriptions
     last_sent_epoch   int,
     created_ts        timestamp without time zone not null,
     created_epoch     int                         not null,
-    unsubscribe_hash  bytea                        ,
+    unsubscribe_hash  bytea,
+	channels          _text,
+    internal_state    varchar,
     primary key (user_id, event_name, event_filter)
 );
 create index idx_users_subscriptions_unsubscribe_hash on users_subscriptions (unsubscribe_hash);

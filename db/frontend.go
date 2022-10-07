@@ -261,7 +261,7 @@ func AddSubscription(userID uint64, network string, eventName types.EventName, e
 	nowEpoch := utils.TimeToEpoch(now)
 
 	var onConflictDo string = "NOTHING"
-	if strings.HasPrefix(string(eventName), "monitoring_") || eventName == types.RocketpoolColleteralMaxReached || eventName == types.RocketpoolColleteralMinReached {
+	if strings.HasPrefix(string(eventName), "monitoring_") || eventName == types.RocketpoolColleteralMaxReached || eventName == types.RocketpoolColleteralMinReached || eventName == types.ValidatorIsOfflineEventName {
 		onConflictDo = "UPDATE SET event_threshold = $6"
 	}
 
@@ -832,8 +832,8 @@ func GetUserAPIKeyStatistics(apikey *string) (*types.ApiStatistics, error) {
 func GetSubsForEventFilter(eventName types.EventName) ([][]byte, map[string][]types.Subscription, error) {
 	var subs []types.Subscription
 	subQuery := `
-		SELECT id, user_id, event_filter, last_sent_epoch, created_epoch, event_threshold, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash from users_subscriptions where event_name = $1
-	`
+		SELECT id, user_id, event_filter, last_sent_epoch, created_epoch, event_threshold, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash, internal_state from users_subscriptions where event_name = $1
+		`
 
 	subMap := make(map[string][]types.Subscription, 0)
 	err := FrontendWriterDB.Select(&subs, subQuery, utils.GetNetwork()+":"+string(eventName))
@@ -853,6 +853,7 @@ func GetSubsForEventFilter(eventName types.EventName) ([][]byte, map[string][]ty
 			EventFilter:    sub.EventFilter,
 			CreatedEpoch:   sub.CreatedEpoch,
 			EventThreshold: sub.EventThreshold,
+			State:          sub.State,
 		})
 
 		b, _ := hex.DecodeString(sub.EventFilter)

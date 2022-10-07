@@ -258,6 +258,13 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 		metrics.Errors.WithLabelValues("notifications_collect_missed_attestation").Inc()
 	}
 	logger.Infof("Collecting attestation notifications took: %v\n", time.Since(start))
+	// Validator Is Offline (missed attestations v2)
+	err = collectOfflineValidatorNotifications(notificationsByUserID, types.ValidatorIsOfflineEventName)
+	if err != nil {
+		logger.Errorf("error collecting %v notifications: %v", types.ValidatorIsOfflineEventName, err)
+		metrics.Errors.WithLabelValues(string(types.ValidatorIsOfflineEventName)).Inc()
+	}
+	logger.Infof("Collecting offline validators took: %v\n", time.Since(start))
 
 	// Network liveness
 	err = collectNetworkNotifications(notificationsByUserID, types.NetworkLivenessIncreasedEventName)
@@ -391,6 +398,37 @@ func queueNotifications(notificationsByUserID map[uint64]map[types.EventName][]t
 		if err != nil {
 			logger.Errorf("error updating sent-time of sent notifications: %v", err)
 			metrics.Errors.WithLabelValues("notifications_updating_sent_time").Inc()
+		}
+	}
+	// update internal state of subscriptions
+
+	stateToSub := make(map[string]map[uint64]bool, 0)
+
+	for _, notificationMap := range notificationsByUserID { // _ => user
+		for _, notifications := range notificationMap { // _ => eventname
+			for _, notification := range notifications { // _ => index
+				state := notification.GetLatestState()
+				if state == "" {
+					continue
+				}
+				if _, exists := stateToSub[state]; !exists {
+					stateToSub[state] = make(map[uint64]bool, 0)
+				}
+				if _, exists := stateToSub[state][notification.GetSubscriptionID()]; !exists {
+					stateToSub[state][notification.GetSubscriptionID()] = true
+				}
+			}
+		}
+	}
+
+	for state, subs := range stateToSub {
+		subArray := make([]int64, 0)
+		for subID := range subs {
+			subArray = append(subArray, int64(subID))
+		}
+		_, err := db.WriterDb.Exec(`UPDATE users_subscriptions SET internal_state = $1 WHERE id = ANY($2)`, state, pq.Int64Array(subArray))
+		if err != nil {
+			logger.Errorf("failed to update internal state of notifcations: %v", err)
 		}
 	}
 
@@ -1153,6 +1191,10 @@ type validatorBalanceDecreasedNotification struct {
 	UnsubscribeHash    sql.NullString
 }
 
+func (n *validatorBalanceDecreasedNotification) GetLatestState() string {
+	return ""
+}
+
 func (n *validatorBalanceDecreasedNotification) GetUnsubscribeHash() string {
 	if n.UnsubscribeHash.Valid {
 		return n.UnsubscribeHash.String
@@ -1365,6 +1407,10 @@ type validatorProposalNotification struct {
 	UnsubscribeHash    sql.NullString
 }
 
+func (n *validatorProposalNotification) GetLatestState() string {
+	return ""
+}
+
 func (n *validatorProposalNotification) GetUnsubscribeHash() string {
 	if n.UnsubscribeHash.Valid {
 		return n.UnsubscribeHash.String
@@ -1433,6 +1479,143 @@ func (n *validatorProposalNotification) GetInfoMarkdown() string {
 	}
 
 	return generalPart
+}
+
+func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
+	var latestExportedEpoch uint64
+
+	// we use the latest exported epoch because that's what the lastattestationslot column is based upon
+	// note: could trigger missfires if there are gaps in the epoch processing.
+	// unless we do a choerence check this is hard to avoid
+	err := db.PraterReaderDb.Get(&latestExportedEpoch, `select epoch from epochs where eligibleether <> 0 order by epoch desc limit 1`)
+	if err != nil {
+		logger.Infof("failed to get last exported epoch: %v", err)
+	}
+
+	_, subMap, err := db.GetSubsForEventFilter(eventName)
+	if err != nil {
+		return fmt.Errorf("failed to get subs for %v: %v", eventName, err)
+	}
+	var pubkeys []string
+
+	for k := range subMap {
+		pubkeys = append(pubkeys, k)
+	}
+
+	batchSize := 5000
+	dataLen := len(pubkeys)
+	for i := 0; i < dataLen; i += batchSize {
+		var batch [][]byte
+		start := i
+		end := i + batchSize
+
+		if dataLen < end {
+			end = dataLen
+		}
+
+		for _, v := range pubkeys[start:end] {
+			batch = append(batch, utils.MustParseHex(v))
+		}
+
+		var dataArr []struct {
+			ValidatorIndex      uint64        `db:"validatorindex"`
+			LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`
+			Pubkey              []byte        `db:"pubkey"`
+		}
+		err = db.PraterReaderDb.Select(&dataArr, `select validatorindex, pubkey, lastattestationslot from validators where pubkey = ANY($1) order by validatorindex`, pq.ByteaArray(batch))
+		if err != nil {
+			return fmt.Errorf("failed to query potenitally offline validators: %v", err)
+		}
+
+		for _, v := range dataArr {
+			t := hex.EncodeToString(v.Pubkey)
+			subs := subMap[t]
+			lastSeenEpoch := uint64(v.LastAttestationSlot.Int64 / 32)
+			if latestExportedEpoch < lastSeenEpoch {
+				continue
+			}
+			epochsOffline := latestExportedEpoch - lastSeenEpoch
+			for _, sub := range subs {
+				if sub.EventThreshold < 3 {
+					sub.EventThreshold = 3
+				}
+				var n validatorStateChangeNotification
+				if uint64(sub.EventThreshold) <= epochsOffline {
+					if sub.UserID == nil || sub.ID == nil {
+						return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+					}
+					eventEpoch := uint64(lastSeenEpoch)
+					eventEpoch += uint64(sub.EventThreshold)
+					// limit to one notif every 32 epochs (~3.4 hours) after the threshold
+					eventEpoch += (epochsOffline - uint64(sub.EventThreshold)) / 32 * 32
+					if sub.LastEpoch != nil {
+						if *sub.LastEpoch == eventEpoch || lastSeenEpoch < sub.CreatedEpoch {
+							continue
+						}
+					}
+					logger.Debugf("new event: validator %v detected as offline for %v epochs", v.ValidatorIndex, epochsOffline)
+
+					n = validatorStateChangeNotification{
+						SubscriptionID: *sub.ID,
+						ValidatorIndex: v.ValidatorIndex,
+						IsOffline:      true,
+						EventEpoch:     eventEpoch,
+						LastSeenEpoch:  lastSeenEpoch,
+						EventName:      eventName,
+						EpochsOffline:  epochsOffline,
+						InternalState:  fmt.Sprint(lastSeenEpoch),
+						EventFilter:    hex.EncodeToString(v.Pubkey),
+					}
+
+				} else {
+					if sub.State.String == "" || sub.State.String == "-" {
+						continue
+					}
+					// validator is currently bellow threshold and was previously reported as offline
+					// note: this doesn't necessarily guarantee that epochsSinceOffline is larger than EventThreshold specified by the sub
+					//       if an attestation for the exported epoch gets included in the one after it, epochsSinceOffline might end up as EventThreshold - 1
+					//       in this scenario we still want to trigger the "back online notifcation", as otherwise the user might think they are still offline
+					originalLastSeenEpoch, err := strconv.ParseUint(sub.State.String, 10, 64)
+					epochsSinceOffline := latestExportedEpoch - originalLastSeenEpoch - 1
+					if err != nil {
+						// i have no idea what just happened.
+						return fmt.Errorf("this should never happen. couldn't parse state as uint64: %v", err)
+					}
+					logger.Debugf("new event: validator %v detected as online again after %v epochs", v.ValidatorIndex, epochsSinceOffline)
+					n = validatorStateChangeNotification{
+						SubscriptionID: *sub.ID,
+						ValidatorIndex: v.ValidatorIndex,
+						IsOffline:      false,
+						EventEpoch:     latestExportedEpoch,
+						LastSeenEpoch:  originalLastSeenEpoch,
+						EventName:      eventName,
+						EpochsOffline:  epochsSinceOffline,
+						InternalState:  "-",
+						EventFilter:    hex.EncodeToString(v.Pubkey),
+					}
+				}
+				if _, exists := notificationsByUserID[*sub.UserID]; !exists {
+					notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
+				}
+				if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
+					notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
+				}
+				isDuplicate := false
+				for _, userEvent := range notificationsByUserID[*sub.UserID][n.GetEventName()] {
+					if userEvent.GetSubscriptionID() == n.SubscriptionID {
+						isDuplicate = true
+						break
+					}
+				}
+				if isDuplicate {
+					continue
+				}
+				notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], &n)
+				metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
+			}
+		}
+	}
+	return nil
 }
 
 func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
@@ -1558,6 +1741,82 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 	return nil
 }
 
+type validatorStateChangeNotification struct {
+	SubscriptionID  uint64
+	ValidatorIndex  uint64
+	EventEpoch      uint64
+	LastSeenEpoch   uint64
+	IsOffline       bool
+	EpochsOffline   uint64
+	EventName       types.EventName
+	EventFilter     string
+	UnsubscribeHash sql.NullString
+	InternalState   string
+}
+
+func (n *validatorStateChangeNotification) GetLatestState() string {
+	return n.InternalState
+}
+
+func (n *validatorStateChangeNotification) GetSubscriptionID() uint64 {
+	return n.SubscriptionID
+}
+
+func (n *validatorStateChangeNotification) GetEventName() types.EventName {
+	return n.EventName
+}
+
+func (n *validatorStateChangeNotification) GetEpoch() uint64 {
+	return n.EventEpoch
+}
+
+func (n *validatorStateChangeNotification) GetInfo(includeUrl bool) string {
+	if n.IsOffline {
+		if includeUrl {
+			return fmt.Sprintf(`Validator <a href="https://%[4]v/validator/%[1]v">%[1]v</a> hasn't attested for %[3]v epochs (since epoch <a href="https://%[4]v/epoch/%[2]v">%[2]v</a>).`, n.ValidatorIndex, n.LastSeenEpoch, n.EpochsOffline, utils.Config.Frontend.SiteDomain)
+		} else {
+			return fmt.Sprintf(`Validator %[1]v hasn't attested for %[3]v epochs (since epoch %[2]v).`, n.ValidatorIndex, n.LastSeenEpoch, n.EpochsOffline)
+		}
+	} else {
+		if includeUrl {
+			return fmt.Sprintf(`Validator <a href="https://%[3]v/validator/%[1]v">%[1]v</a> is back online (was offline for %[2]v epochs).`, n.ValidatorIndex, n.EpochsOffline, utils.Config.Frontend.SiteDomain)
+		} else {
+			return fmt.Sprintf(`Validator %[1]v is back online (was offline for %[2]v epochs).`, n.ValidatorIndex, n.EpochsOffline)
+		}
+	}
+}
+
+func (n *validatorStateChangeNotification) GetTitle() string {
+	if n.IsOffline {
+		return "Validator Is Offline"
+	} else {
+		return "Validator Back Online"
+	}
+}
+
+func (n *validatorStateChangeNotification) GetEventFilter() string {
+	return n.EventFilter
+}
+
+func (n *validatorStateChangeNotification) GetEmailAttachment() *types.EmailAttachment {
+	return nil
+}
+
+func (n *validatorStateChangeNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
+}
+
+func (n *validatorStateChangeNotification) GetInfoMarkdown() string {
+	if n.IsOffline {
+		return fmt.Sprintf(`Validator [%[1]v](https://%[4]v/validator/%[1]v) hasn't attested for %[3]v epochs (since epoch [%[2]v](https://%[4]v/epoch/%[2]v)).`, n.ValidatorIndex, n.LastSeenEpoch, n.EpochsOffline, utils.Config.Frontend.SiteDomain)
+	} else {
+		return fmt.Sprintf(`Validator [%[1]v](https://%[3]v/validator/%[1]v) is back online (was offline for %[2]v epochs).`, n.ValidatorIndex, n.EpochsOffline, utils.Config.Frontend.SiteDomain)
+	}
+}
+
 type validatorAttestationNotification struct {
 	SubscriptionID     uint64
 	ValidatorIndex     uint64
@@ -1569,6 +1828,10 @@ type validatorAttestationNotification struct {
 	InclusionSlot      uint64
 	EventFilter        string
 	UnsubscribeHash    sql.NullString
+}
+
+func (n *validatorAttestationNotification) GetLatestState() string {
+	return ""
 }
 
 func (n *validatorAttestationNotification) GetSubscriptionID() uint64 {
@@ -1650,6 +1913,10 @@ type validatorGotSlashedNotification struct {
 	Reason          string
 	EventFilter     string
 	UnsubscribeHash sql.NullString
+}
+
+func (n *validatorGotSlashedNotification) GetLatestState() string {
+	return ""
 }
 
 func (n *validatorGotSlashedNotification) GetUnsubscribeHash() string {
@@ -1773,6 +2040,10 @@ type ethClientNotification struct {
 	EthClient       string
 	EventFilter     string
 	UnsubscribeHash sql.NullString
+}
+
+func (n *ethClientNotification) GetLatestState() string {
+	return ""
 }
 
 func (n *ethClientNotification) GetUnsubscribeHash() string {
@@ -2077,6 +2348,10 @@ type monitorMachineNotification struct {
 	UnsubscribeHash sql.NullString
 }
 
+func (n *monitorMachineNotification) GetLatestState() string {
+	return ""
+}
+
 func (n *monitorMachineNotification) GetUnsubscribeHash() string {
 	if n.UnsubscribeHash.Valid {
 		return n.UnsubscribeHash.String
@@ -2150,6 +2425,10 @@ type taxReportNotification struct {
 	Epoch           uint64
 	EventFilter     string
 	UnsubscribeHash sql.NullString
+}
+
+func (n *taxReportNotification) GetLatestState() string {
+	return ""
 }
 
 func (n *taxReportNotification) GetUnsubscribeHash() string {
@@ -2280,6 +2559,10 @@ type networkNotification struct {
 	UnsubscribeHash sql.NullString
 }
 
+func (n *networkNotification) GetLatestState() string {
+	return ""
+}
+
 func (n *networkNotification) GetUnsubscribeHash() string {
 	if n.UnsubscribeHash.Valid {
 		return n.UnsubscribeHash.String
@@ -2382,6 +2665,10 @@ type rocketpoolNotification struct {
 	EventName       types.EventName
 	ExtraData       string
 	UnsubscribeHash sql.NullString
+}
+
+func (n *rocketpoolNotification) GetLatestState() string {
+	return ""
 }
 
 func (n *rocketpoolNotification) GetUnsubscribeHash() string {
