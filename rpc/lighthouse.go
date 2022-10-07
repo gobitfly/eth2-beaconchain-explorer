@@ -445,6 +445,10 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 	wg.Wait()
 	logger.Printf("retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
 
+	if data.ValidatorAssignmentes == nil {
+		return data, fmt.Errorf("no assignments for epoch %v", epoch)
+	}
+
 	// Fill up missed and scheduled blocks
 	for slot, proposer := range data.ValidatorAssignmentes.ProposerAssignments {
 		_, found := data.Blocks[slot]
