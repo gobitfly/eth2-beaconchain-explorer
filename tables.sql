@@ -552,7 +552,6 @@ create table users_subscriptions
     created_ts        timestamp without time zone not null,
     created_epoch     int                         not null,
     unsubscribe_hash  bytea,
-	channels          _text,
     internal_state    varchar,
     primary key (user_id, event_name, event_filter)
 );
