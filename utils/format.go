@@ -426,6 +426,18 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
 }
 
+func FormatWithdawalCredentials(hash []byte) template.HTML {
+	if len(hash) != 32 {
+		return "INVALID CREDENTIALS"
+	}
+
+	if hash[0] == 0x01 {
+		return template.HTML(fmt.Sprintf(`<a href="/address/0x%x">%s</a>`, hash[12:], FormatHash(hash)))
+	} else {
+		return FormatHash(hash)
+	}
+}
+
 func FormatName(name string, trunc_opt ...bool) template.HTML {
 	trunc := true
 	if len(trunc_opt) > 0 {
