@@ -1284,11 +1284,11 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 					WHEN EXCLUDED.exitepoch <= %[1]d THEN 'exited'
 					WHEN EXCLUDED.activationeligibilityepoch = 9223372036854775807 THEN 'deposited'
 					WHEN EXCLUDED.activationepoch > %[1]d THEN 'pending'
-					WHEN EXCLUDED.slashed AND EXCLUDED.activationepoch < %[1]d AND (GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d OR GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) IS NULL) THEN 'slashing_offline'
+					WHEN EXCLUDED.slashed AND EXCLUDED.activationepoch < %[1]d AND GREATEST(COALESCE(validators.lastattestationslot, 0), EXCLUDED.lastattestationslot) < %[2]d THEN 'slashing_offline'
 					WHEN EXCLUDED.slashed THEN 'slashing_online'
-					WHEN EXCLUDED.exitepoch < 9223372036854775807 AND (GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d OR GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) IS NULL) THEN 'exiting_offline'
+					WHEN EXCLUDED.exitepoch < 9223372036854775807 AND GREATEST(COALESCE(validators.lastattestationslot, 0), EXCLUDED.lastattestationslot) < %[2]d THEN 'exiting_offline'
 					WHEN EXCLUDED.exitepoch < 9223372036854775807 THEN 'exiting_online'
-					WHEN EXCLUDED.activationepoch < %[1]d AND (GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d OR GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) IS NULL) THEN 'active_offline' 
+					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(COALESCE(validators.lastattestationslot, 0), EXCLUDED.lastattestationslot) < %[2]d THEN 'active_offline' 
 					ELSE 'active_online'
 					END`,
 			latestEpoch, thresholdSlot, strings.Join(valueStrings, ","))
