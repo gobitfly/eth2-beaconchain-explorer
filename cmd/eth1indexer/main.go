@@ -82,6 +82,7 @@ func main() {
 	} else {
 		logrus.Fatalf("unsupported network name %v provided", *network)
 	}
+	*balanceUpdaterPrefix = chainId + ":B:" // force set the prefix for easier setup
 
 	nodeChainId, err := client.GetNativeClient().ChainID(context.Background())
 	if err != nil {
