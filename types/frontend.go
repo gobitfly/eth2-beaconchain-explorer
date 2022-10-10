@@ -155,7 +155,7 @@ var AddWatchlistEvents = []EventNameDesc{
 		Event: SyncCommitteeSoon,
 	},
 	{
-		Desc:  "Validator Is Offline",
+		Desc:  "Validator is Offline",
 		Event: ValidatorIsOfflineEventName,
 	},
 }

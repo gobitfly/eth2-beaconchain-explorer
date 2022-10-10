@@ -2433,7 +2433,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 			Active:     utils.ElementExists(wh.EventNames, string(types.SyncCommitteeSoon)),
 		})
 		events = append(events, types.EventNameCheckbox{
-			EventLabel: "Validator Is Offline",
+			EventLabel: "Validator is Offline",
 			EventName:  types.ValidatorIsOfflineEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorIsOfflineEventName)),
 		})
@@ -2527,7 +2527,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 		EventName:  types.SyncCommitteeSoon,
 	})
 	events = append(events, types.EventNameCheckbox{
-		EventLabel: "Validator Is Offline",
+		EventLabel: "Validator is Offline",
 		EventName:  types.ValidatorIsOfflineEventName,
 	})
 	events = append(events, types.EventNameCheckbox{

@@ -1127,7 +1127,6 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					break // stop
 				}
 				// sleep between retries
-				logger.Infof("sleeping for %v", webhook.Retries)
 				time.Sleep(time.Duration(webhook.Retries) * time.Second)
 
 				reqBody := new(bytes.Buffer)
@@ -1782,7 +1781,7 @@ func (n *validatorIsOfflineNotification) GetInfo(includeUrl bool) string {
 
 func (n *validatorIsOfflineNotification) GetTitle() string {
 	if n.IsOffline {
-		return "Validator Is Offline"
+		return "Validator is Offline"
 	} else {
 		return "Validator Back Online"
 	}
