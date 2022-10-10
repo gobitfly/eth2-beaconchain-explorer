@@ -477,7 +477,7 @@ ul.multiselect input:focus {
   position: absolute;
   top: 0%;
   left: 1%;
-  z-index: 999;
+  z-index: 99;
 }
 
 .proposal-switch-selected {
