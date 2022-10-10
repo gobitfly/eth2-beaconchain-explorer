@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"sort"
 	"strconv"
 	"time"
 
@@ -88,6 +89,7 @@ DBCHECK:
 		}
 		latestDay := utils.DayOfSlot(latestFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch)
 
+		logger.Infof("latest day is %v", latestDay)
 		// count rows of eth.store days in db
 		var ethStoreDayCount uint64
 		err = ese.DB.Get(&ethStoreDayCount, `
@@ -98,6 +100,8 @@ DBCHECK:
 			time.Sleep(ese.ErrorInterval)
 			continue
 		}
+
+		logger.Infof("ethStoreDayCount is %v", ethStoreDayCount)
 
 		if ethStoreDayCount <= latestDay {
 			// db is incomplete
@@ -122,21 +126,28 @@ DBCHECK:
 					daysToExport[ethStoreDay.Day] = false
 				}
 			}
-
-			// export missing days
+			daysToExportArray := make([]uint64, 0, len(daysToExport))
 			for dayToExport, shouldExport := range daysToExport {
 				if shouldExport {
-					err = ese.ExportDay(strconv.FormatUint(dayToExport, 10))
-					if err != nil {
-						logger.WithError(err).Errorf("error exporting eth.store day %d into database", dayToExport)
-						time.Sleep(ese.ErrorInterval)
-						continue DBCHECK
-					}
-					logger.Infof("exported eth.store day %d into db", dayToExport)
-					if ethStoreDayCount < latestDay {
-						// more than 1 day is being exported, sleep for duration specified in config
-						time.Sleep(ese.Sleep)
-					}
+					daysToExportArray = append(daysToExportArray, dayToExport)
+				}
+			}
+
+			sort.Slice(daysToExportArray, func(i, j int) bool {
+				return daysToExportArray[i] < daysToExportArray[j]
+			})
+			// export missing days
+			for _, dayToExport := range daysToExportArray {
+				err = ese.ExportDay(strconv.FormatUint(dayToExport, 10))
+				if err != nil {
+					logger.WithError(err).Errorf("error exporting eth.store day %d into database", dayToExport)
+					time.Sleep(ese.ErrorInterval)
+					continue DBCHECK
+				}
+				logger.Infof("exported eth.store day %d into db", dayToExport)
+				if ethStoreDayCount < latestDay {
+					// more than 1 day is being exported, sleep for duration specified in config
+					time.Sleep(ese.Sleep)
 				}
 			}
 		}
