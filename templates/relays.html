@@ -42,11 +42,11 @@
                         <th>Name</th>
                         <th>Block Count</th>
                         <th>Unique Builders</th>
-                        <th>Average Block Reward</th>
-                        <th>Highest Block Reward</th>
-                        <th>Overall Block Rewards</th>
-                        <th>Uncensored</th>
-                        <th>Ethical</th>
+                        <th>Average Reward</th>
+                        <th>Highest Reward</th>
+                        <th>Overall Rewards</th>
+                        <th><span data-toggle="tooltip" data-placement="top" title="Does not block any addresses on sanction lists.">Uncensored</span></th>
+                        <th><span data-toggle="tooltip" data-placement="top" title="Does not restrict what kind of bundles searchers can make.">Unfiltered</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -68,7 +68,7 @@
                             <td><span class="badge badge-pill bg-info text-white" style="font-size: 12px; font-weight: 500;">???</span></td>
                           {{ end }}
                           {{ if .Ethical.Valid }}
-                            <td>{{ formatYesNo (.Ethical.Bool) }}</td>
+                            <td>{{ formatYesNo (not .Ethical.Bool) }}</td>
                           {{ else }}
                             <td><span class="badge badge-pill bg-info text-white" style="font-size: 12px; font-weight: 500;">???</span></td>
                           {{ end }}
