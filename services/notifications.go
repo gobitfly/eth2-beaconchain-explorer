@@ -257,14 +257,14 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 		logger.Errorf("error collecting validator_attestation_missed notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_missed_attestation").Inc()
 	}
-	logger.Infof("Collecting attestation notifications took: %v\n", time.Since(start))
+	logger.Infof("collecting attestation notifications took: %v\n", time.Since(start))
 	// Validator Is Offline (missed attestations v2)
 	err = collectOfflineValidatorNotifications(notificationsByUserID, types.ValidatorIsOfflineEventName)
 	if err != nil {
 		logger.Errorf("error collecting %v notifications: %v", types.ValidatorIsOfflineEventName, err)
 		metrics.Errors.WithLabelValues(string(types.ValidatorIsOfflineEventName)).Inc()
 	}
-	logger.Infof("Collecting offline validators took: %v\n", time.Since(start))
+	logger.Infof("collecting offline validators took: %v\n", time.Since(start))
 
 	// Network liveness
 	err = collectNetworkNotifications(notificationsByUserID, types.NetworkLivenessIncreasedEventName)
@@ -272,7 +272,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 		logger.Errorf("error collecting network notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_network").Inc()
 	}
-	logger.Infof("Collecting collecting network notifications took: %v\n", time.Since(start))
+	logger.Infof("collecting network notifications took: %v\n", time.Since(start))
 
 	// Rocketpool fee comission alert
 	err = collectRocketpoolComissionNotifications(notificationsByUserID, types.RocketpoolCommissionThresholdEventName)
@@ -280,35 +280,35 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 		logger.Errorf("error collecting rocketpool commision: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_comission").Inc()
 	}
-	logger.Infof("Collecting collecting rocketpool commissions took: %v\n", time.Since(start))
+	logger.Infof("collecting rocketpool commissions took: %v\n", time.Since(start))
 
 	err = collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID, types.RocketpoolNewClaimRoundStartedEventName)
 	if err != nil {
 		logger.Errorf("error collecting new rocketpool claim round: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_reward_claim").Inc()
 	}
-	logger.Infof("Collecting collecting rocketpool claim round took: %v\n", time.Since(start))
+	logger.Infof("collecting rocketpool claim round took: %v\n", time.Since(start))
 
 	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMaxReached)
 	if err != nil {
 		logger.Errorf("error collecting rocketpool max colleteral: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_max_reached").Inc()
 	}
-	logger.Infof("Collecting collecting rocketpool max collateral took: %v\n", time.Since(start))
+	logger.Infof("collecting rocketpool max collateral took: %v\n", time.Since(start))
 
 	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMinReached)
 	if err != nil {
 		logger.Errorf("error collecting rocketpool min colleteral: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_min_reached").Inc()
 	}
-	logger.Infof("Collecting collecting rocketpool min collateral took: %v\n", time.Since(start))
+	logger.Infof("collecting rocketpool min collateral took: %v\n", time.Since(start))
 
 	err = collectSyncCommittee(notificationsByUserID, types.SyncCommitteeSoon)
 	if err != nil {
 		logger.Errorf("error collecting sync committee: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_sync_committee").Inc()
 	}
-	logger.Infof("Collecting collecting sync committee took: %v\n", time.Since(start))
+	logger.Infof("collecting sync committee took: %v\n", time.Since(start))
 
 	return notificationsByUserID
 }
