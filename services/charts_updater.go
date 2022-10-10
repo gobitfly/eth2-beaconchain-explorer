@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/prysmaticlabs/prysm/shared/mathutil"
+	mathutil "github.com/prysmaticlabs/prysm/v3/math"
 	"github.com/shopspring/decimal"
 )
 

@@ -5,7 +5,6 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -15,31 +14,25 @@ import (
 
 type EthStoreExporter struct {
 	DB             *sqlx.DB
-	NodeHost       string
-	NodePort       string
+	BNAddress      string
+	ENAddress      string
 	UpdateInverval time.Duration
 	ErrorInterval  time.Duration
 	Sleep          time.Duration
 }
 
 // start exporting of eth.store into db
-func ethStoreExporter() {
+func StartEthStoreExporter(bnAddress string, enAddress string, updateInterval, errorInterval, sleepInterval time.Duration) {
 	logger.Info("starting eth.store exporter")
 	ese := &EthStoreExporter{
 		DB:             db.WriterDb,
-		NodeHost:       utils.Config.EthStoreExporter.Node.Host,
-		NodePort:       utils.Config.EthStoreExporter.Node.Port,
-		UpdateInverval: utils.Config.EthStoreExporter.UpdateInterval,
-		ErrorInterval:  utils.Config.EthStoreExporter.ErrorInterval,
-		Sleep:          utils.Config.EthStoreExporter.Sleep,
+		BNAddress:      bnAddress,
+		ENAddress:      enAddress,
+		UpdateInverval: updateInterval,
+		ErrorInterval:  errorInterval,
+		Sleep:          sleepInterval,
 	}
 	// set sane defaults if config is not set
-	if len(ese.NodeHost) == 0 {
-		ese.NodeHost = utils.Config.Indexer.Node.Host
-	}
-	if len(ese.NodePort) == 0 {
-		ese.NodePort = utils.Config.Indexer.Node.Port
-	}
 	if ese.UpdateInverval == 0 {
 		ese.UpdateInverval = time.Minute
 	}
@@ -75,7 +68,9 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 }
 
 func (ese *EthStoreExporter) getStoreDay(day string) (*ethstore.Day, error) {
-	return ethstore.Calculate(context.Background(), fmt.Sprintf("http://%s:%s", ese.NodeHost, ese.NodePort), day)
+	logger.Infof("retrieving eth.store for day %v", day)
+	ethstore.SetDebugLevel(1)
+	return ethstore.Calculate(context.Background(), ese.BNAddress, ese.ENAddress, day)
 }
 
 func (ese *EthStoreExporter) Run() {
@@ -84,12 +79,14 @@ func (ese *EthStoreExporter) Run() {
 DBCHECK:
 	for {
 		// get latest eth.store day
-		latest, err := ese.getStoreDay("latest")
+		var latestFinalizedEpoch uint64
+		err := db.WriterDb.Get(&latestFinalizedEpoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
 		if err != nil {
-			logger.WithError(err).Errorf("error retrieving eth.store data")
+			logger.WithError(err).Error("error retrieving latest finalized epoch from db")
 			time.Sleep(ese.ErrorInterval)
 			continue
 		}
+		latestDay := utils.DayOfSlot(latestFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch)
 
 		// count rows of eth.store days in db
 		var ethStoreDayCount uint64
@@ -102,11 +99,11 @@ DBCHECK:
 			continue
 		}
 
-		if ethStoreDayCount <= latest.Day {
+		if ethStoreDayCount <= latestDay {
 			// db is incomplete
 			// init export map, set every day to true
 			daysToExport := make(map[uint64]bool)
-			for i := uint64(0); i <= latest.Day; i++ {
+			for i := uint64(0); i <= latestDay; i++ {
 				daysToExport[i] = true
 			}
 
@@ -136,7 +133,7 @@ DBCHECK:
 						continue DBCHECK
 					}
 					logger.Infof("exported eth.store day %d into db", dayToExport)
-					if ethStoreDayCount < latest.Day {
+					if ethStoreDayCount < latestDay {
 						// more than 1 day is being exported, sleep for duration specified in config
 						time.Sleep(ese.Sleep)
 					}
