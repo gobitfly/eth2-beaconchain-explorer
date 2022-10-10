@@ -75,16 +75,13 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		result = &types.SearchAheadSlotsResult{}
-		if len(search)%2 != 0 {
-			search = search[:len(search)-1]
-		}
 		if searchLikeRE.MatchString(search) {
-			if len(search) < 64 {
+			if _, convertErr := strconv.Atoi(search); convertErr == nil {
 				err = db.ReaderDb.Select(result, `
 				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
 				FROM blocks 
-				WHERE CAST(slot AS text) LIKE LOWER($1)
-				ORDER BY slot LIMIT 10`, search+"%")
+				WHERE slot = $1
+				ORDER BY slot LIMIT 10`, search)
 			} else if len(search) == 64 {
 				blockHash, err := hex.DecodeString(search)
 				if err != nil {
