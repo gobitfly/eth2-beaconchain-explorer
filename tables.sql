@@ -947,14 +947,17 @@ create table rocketpool_reward_tree
 drop table if exists eth_store_stats;
 create table eth_store_stats
 (
-    day			int	not null,
-    effective_balances_sum	bigint	not null,
-    start_balances_sum		bigint	not null,
-    end_balances_sum		bigint	not null,
-    deposits_sum		bigint	not null,
+    day			                int not null,
+    effective_balances_sum_wei	numeric not null,
+    start_balances_sum_wei		numeric not null,
+    end_balances_sum_wei		numeric not null,
+    deposits_sum_wei		    numeric not null,
+    tx_fees_sum_wei		        numeric not null,
+    consensus_rewards_sum_wei	numeric not null,
+    total_rewards_wei		    numeric not null,
+    apr		                    numeric not null,
     
     primary key(day)
-    
 );
 
 drop table if exists historical_pool_performance;

@@ -475,11 +475,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 }
 
 func CalcARP(pd types.PerformanceDay) decimal.Decimal {
-	return ((decimal.NewFromInt(int64(pd.EndBalancesSum)).
-		Sub(decimal.NewFromInt(int64(pd.StartBalancesSum))).
-		Sub(decimal.NewFromInt(int64(pd.DepositsSum)))).
-		Div(decimal.NewFromInt(int64(pd.EffectiveBalancesSum)))).
-		Mul(decimal.NewFromInt(36500)).Round(3)
+	return pd.APR
 }
 
 func historicPoolPerformanceData() (*types.GenericChartData, error) {

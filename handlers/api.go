@@ -177,9 +177,18 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.ReaderDb.Query(`
-		SELECT day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum, tx_fees_sum
+		SELECT 
+			day, 
+			effective_balances_sum_wei, 
+			start_balances_sum_wei, 
+			end_balances_sum_wei, 
+			deposits_sum_wei, 
+			tx_fees_sum_wei, 
+			consensus_rewards_sum_wei,
+			total_rewards_wei,
+			apr
 		FROM eth_store_stats 
-		WHERE day = $1`, day)
+		WHERE day = $1;`, day)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return

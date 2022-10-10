@@ -11,6 +11,7 @@ import (
 
 	ethstore "github.com/gobitfly/eth.store"
 	"github.com/jmoiron/sqlx"
+	"github.com/shopspring/decimal"
 )
 
 type EthStoreExporter struct {
@@ -54,14 +55,18 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 		return err
 	}
 	_, err = ese.DB.Exec(`
-		INSERT INTO eth_store_stats (day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum, tx_fees_sum)
-		VALUES ($1, $2, $3, $4, $5, $6)`,
+		INSERT INTO eth_store_stats (day, effective_balances_sum_wei, start_balances_sum_wei, end_balances_sum_wei, deposits_sum_wei, tx_fees_sum_wei, consensus_rewards_sum_wei, total_rewards_wei, apr)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		ethStoreDay.Day,
-		ethStoreDay.EffectiveBalanceGwei,
-		ethStoreDay.StartBalanceGwei,
-		ethStoreDay.EndBalanceGwei,
-		ethStoreDay.DepositsSumGwei,
-		ethStoreDay.TxFeesSumWei.String())
+		ethStoreDay.EffectiveBalanceGwei.Mul(decimal.NewFromInt(1e9)),
+		ethStoreDay.StartBalanceGwei.Mul(decimal.NewFromInt(1e9)),
+		ethStoreDay.EndBalanceGwei.Mul(decimal.NewFromInt(1e9)),
+		ethStoreDay.DepositsSumGwei.Mul(decimal.NewFromInt(1e9)),
+		ethStoreDay.TxFeesSumWei,
+		ethStoreDay.ConsensusRewardsGwei.Mul(decimal.NewFromInt(1e9)),
+		ethStoreDay.TotalRewardsWei,
+		ethStoreDay.Apr,
+	)
 	if err != nil {
 		return err
 	}
@@ -134,7 +139,7 @@ DBCHECK:
 			}
 
 			sort.Slice(daysToExportArray, func(i, j int) bool {
-				return daysToExportArray[i] < daysToExportArray[j]
+				return daysToExportArray[i] > daysToExportArray[j]
 			})
 			// export missing days
 			for _, dayToExport := range daysToExportArray {
