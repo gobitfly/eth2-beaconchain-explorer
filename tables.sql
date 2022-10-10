@@ -955,7 +955,7 @@ create table eth_store_stats
     tx_fees_sum_wei		        numeric not null,
     consensus_rewards_sum_wei	numeric not null,
     total_rewards_wei		    numeric not null,
-    apr		                    numeric not null,
+    apr		                    float   not null,
     
     primary key(day)
 );

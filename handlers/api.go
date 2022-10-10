@@ -189,9 +189,10 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 			apr,
 			(select avg(apr) from eth_store_stats as e1 where e1.day > e.day - 7) as avgAPR7d,
 			(select avg(apr) from eth_store_stats as e2 where e2.day > e.day - 31) as avgAPR31d
-		FROM eth_store_stats 
+		FROM eth_store_stats e
 		WHERE day = $1;`, day)
 	if err != nil {
+		logger.Errorf("error retrieving eth.store data: %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
 	}
