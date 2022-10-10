@@ -842,6 +842,9 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 		if err != nil {
 			return fmt.Errorf("error quering users_webhooks, err: %w", err)
 		}
+		// webhook => [] notifications
+		discordNotifMap := make(map[uint64][]types.TransitDiscordContent)
+		notifs := make([]types.TransitWebhook, 0)
 		// send the notifications to each registered webhook
 		for _, w := range webhooks {
 			for event, notifications := range userNotifications {
@@ -853,11 +856,43 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 						break
 					}
 				}
+				// TODO: aggregate here instead of the emission
 				if eventSubscribed {
+					if len(notifications) > 0 {
+						// reset Retries
+						if w.Retries > 5 && w.LastSent.Valid && w.LastSent.Time.Add(time.Hour).Before(time.Now()) {
+							_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, w.ID)
+							if err != nil {
+								logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
+								continue
+							}
+						} else if w.Retries > 5 && !w.LastSent.Valid {
+							logger.Error("error webhook has more than 5 retries and does not have a valid last_sent timestamp")
+							continue
+						}
+
+						if w.Retries >= 5 {
+							// early return
+							continue
+						}
+					}
+
 					for _, n := range notifications {
-						var content interface{}
-						channel := w.Destination.String
 						if w.Destination.Valid && w.Destination.String == "webhook_discord" {
+							if _, exists := discordNotifMap[w.ID]; !exists {
+								discordNotifMap[w.ID] = make([]types.TransitDiscordContent, 0)
+							}
+							l_notifs := len(discordNotifMap[w.ID])
+							if l_notifs == 0 || len(discordNotifMap[w.ID][l_notifs-1].DiscordRequest.Embeds) >= 10 {
+								discordNotifMap[w.ID] = append(discordNotifMap[w.ID], types.TransitDiscordContent{
+									Webhook: w,
+									DiscordRequest: types.DiscordReq{
+										Username: utils.Config.Frontend.SiteDomain,
+									},
+								})
+								l_notifs++
+							}
+
 							fields := []types.DiscordEmbedField{
 								{
 									Name:   "Epoch",
@@ -874,106 +909,51 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 										Inline: false,
 									})
 							}
-
-							embeds := []types.DiscordEmbed{
-								{
-									Type:        "rich",
-									Color:       "16745472",
-									Description: n.GetInfoMarkdown(),
-									Title:       n.GetTitle(),
-									Fields:      fields,
-								},
-							}
-
-							// buttons := []types.DiscordComponentButton{
-							// 	{
-							// 		Style:    5,
-							// 		Label:    "Epoch",
-							// 		URL:      fmt.Sprintf("https://"+utils.Config.Frontend.SiteDomain+"/epoch/%v", n.GetEpoch()),
-							// 		Disabled: false,
-							// 		CustomID: "epoch_link",
-							// 		Type:     2,
-							// 	},
-							// }
-
-							// if n.GetEventName() == types.ValidatorMissedAttestationEventName {
-							// 	v, ok := n.(*validatorAttestationNotification)
-							// 	if ok {
-							// 		buttons = append(buttons, types.DiscordComponentButton{
-							// 			Style:    5,
-							// 			Label:    "Slot",
-							// 			CustomID: "slot_link",
-							// 			URL:      fmt.Sprintf("https://"+utils.Config.Frontend.SiteDomain+"/block/%v", v.Slot),
-							// 			Disabled: false,
-							// 			Type:     2,
-							// 		})
-							// 	}
-							// }
-
-							// if strings.HasPrefix(string(n.GetEventName()), "validator") {
-							// 	buttons = append(buttons, types.DiscordComponentButton{
-							// 		Style:    5,
-							// 		CustomID: "validator_link",
-							// 		Label:    "Validator",
-							// 		URL:      fmt.Sprintf("https://"+utils.Config.Frontend.SiteDomain+"/validator/%v", n.GetEventFilter()),
-							// 		Disabled: false,
-							// 		Type:     2,
-							// 	})
-							// }
-
-							// components := []types.DiscordComponent{
-							// 	{
-							// 		Type:       1,
-							// 		Components: buttons,
-							// 	},
-							// }
-							// n.GetEventName()
-							req := types.DiscordReq{
-								Username: utils.Config.Frontend.SiteDomain,
-								Embeds:   embeds,
-								//Components: components,
-							}
-
-							content = types.TransitDiscordContent{
-								Webhook:        w,
-								DiscordRequest: req,
-							}
+							discordNotifMap[w.ID][l_notifs-1].DiscordRequest.Embeds = append(discordNotifMap[w.ID][l_notifs-1].DiscordRequest.Embeds, types.DiscordEmbed{
+								Type:        "rich",
+								Color:       "16745472",
+								Description: n.GetInfoMarkdown(),
+								Title:       n.GetTitle(),
+								Fields:      fields,
+							})
 						} else {
-							content = types.TransitWebhookContent{
-								Webhook: w,
-								Event: types.WebhookEvent{
-									Network:     utils.GetNetwork(),
+							notifs = append(notifs, types.TransitWebhook{
+								Channel: w.Destination.String,
+								Content: types.TransitWebhookContent{
+									Webhook: w,
+									Event: types.WebhookEvent{
+										Network:     utils.GetNetwork(),
 									Name:        string(n.GetEventName()),
 									Title:       n.GetTitle(),
 									Description: n.GetInfo(false),
-									Epoch:       n.GetEpoch(),
-									Target:      n.GetEventFilter(),
+										Epoch:       n.GetEpoch(),
+										Target:      n.GetEventFilter(),
+									},
 								},
-							}
+							})
 						}
-						// reset Retries
-						if w.Retries > 5 && w.LastSent.Valid && w.LastSent.Time.Add(time.Hour).Before(time.Now()) {
-							_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, w.ID)
-							if err != nil {
-								logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
-								continue
-							}
-						} else if w.Retries > 5 && !w.LastSent.Valid {
-							logger.Error("error webhook has more than 5 retries and does not have a valid last_sent timestamp")
-							continue
-						}
-
-						if w.Retries <= 5 {
-							_, err = useDB.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES (now(), $1, $2);`, channel, content)
-							if err != nil {
-								logger.WithError(err).Errorf("error inserting into webhooks_queue")
-								continue
-							} else {
-								metrics.NotificationsQueued.WithLabelValues(channel, string(event)).Inc()
-							}
-						}
-
 					}
+				}
+			}
+		}
+		// process notifs
+		for _, n := range notifs {
+			_, err = useDB.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES (now(), $1, $2);`, n.Channel, n.Content)
+			if err != nil {
+				logger.WithError(err).Errorf("error inserting into webhooks_queue")
+			} else {
+				metrics.NotificationsQueued.WithLabelValues(n.Channel, n.Content.Event.Name).Inc()
+			}
+		}
+		// process discord notifs
+		for _, dNotifs := range discordNotifMap {
+			for _, n := range dNotifs {
+				_, err = useDB.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES (now(), 'webhook_discord', $1);`, n)
+				if err != nil {
+					logger.WithError(err).Errorf("error inserting into webhooks_queue (discord)")
+					continue
+				} else {
+					metrics.NotificationsQueued.WithLabelValues("webhook_discord", "multi").Inc()
 				}
 			}
 		}
@@ -1097,85 +1077,99 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 	client := &http.Client{Timeout: time.Second * 30}
 
 	logger.Infof("processing %v discord webhook notifications", len(notificationQueueItem))
-	// now := time.Now()
+	webhookMap := make(map[uint64]types.UserWebhook)
+
+	notifMap := make(map[uint64][]types.TransitDiscord)
+	// generate webhook id => discord req
+	// while mapping. aggregate embeds while doing so, up to 10 per req can be sent
 	for _, n := range notificationQueueItem {
-
-		// rate limit for 1 hour after 5 retries
+		// purge the event from existence if the retry counter is over 5
 		if n.Content.Webhook.Retries > 5 {
-			// if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
-			// 	_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
-			// 	if err != nil {
-			// 		logger.WithError(err).Errorf("error updating users_webhooks table; resetting retries")
-			// 		continue
-			// 	}
-			// } else {
-			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
-			if err != nil {
-				return fmt.Errorf("error deleting from notification queue: %w", err)
-			}
-			continue
-			// }
-		}
-
-		reqBody := new(bytes.Buffer)
-		err := json.NewEncoder(reqBody).Encode(n.Content.DiscordRequest)
-		if err != nil {
-			logger.WithError(err).Errorf("error marschalling webhook event")
-		}
-
-		_, err = url.Parse(n.Content.Webhook.Url)
-		if err != nil {
-			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
-			if err != nil {
-				return fmt.Errorf("error deleting from notification queue: %w", err)
-			}
+			db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
 			continue
 		}
-
-		go func(n types.TransitDiscord) {
-			if n.Content.Webhook.Retries > 0 {
-				time.Sleep(time.Duration(n.Content.Webhook.Retries) * time.Second)
-			}
-
-			resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
-			if err != nil {
-				logger.WithError(err).Errorf("error sending request")
-			} else {
-				metrics.NotificationsSent.WithLabelValues("webhook_discord", resp.Status).Inc()
-			}
-			if resp != nil && resp.StatusCode < 400 {
-				_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
-				if err != nil {
-					logger.WithError(err).Errorf("error updating notification_queue table")
-					return
-				}
-				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
-				if err != nil {
-					logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
-					return
-				}
-			} else {
-				var errResp types.ErrorResponse
-
-				if resp != nil {
-					b, err := io.ReadAll(resp.Body)
-					if err != nil {
-						logger.WithError(err).Error("error reading body")
-					} else {
-						errResp.Body = string(b)
-					}
-					errResp.Status = resp.Status
-				}
-
-				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content.DiscordRequest, errResp)
-				if err != nil {
-					logger.WithError(err).Errorf("error updating users_webhooks table; increasing retries")
-					return
-				}
-			}
-		}(n)
-
+		if _, exists := webhookMap[n.Content.Webhook.ID]; !exists {
+			webhookMap[n.Content.Webhook.ID] = n.Content.Webhook
+		}
+		if _, exists := notifMap[n.Content.Webhook.ID]; !exists {
+			notifMap[n.Content.Webhook.ID] = make([]types.TransitDiscord, 0)
+		}
+		notifMap[n.Content.Webhook.ID] = append(notifMap[n.Content.Webhook.ID], n)
 	}
+	for _, webhook := range webhookMap {
+		go func(webhook types.UserWebhook, reqs []types.TransitDiscord) {
+			defer func() {
+				// update retries counters in db based on end result
+				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = $1, last_sent = now() WHERE id = $2;`, webhook.Retries, webhook.ID)
+				if err != nil {
+					logger.Warnf("failed to update retries counter to %v for webhook %v: %v", webhook.Retries, webhook.ID, err)
+				}
+
+				// mark notifcations as sent in db
+				ids := make([]uint64, 0)
+				for _, req := range reqs {
+					ids = append(ids, req.Id)
+				}
+				_, err = db.FrontendWriterDB.Exec(`UPDATE notification_queue SET sent = now() where id = ANY($1)`, pq.Array(ids))
+				if err != nil {
+					logger.Warnf("failed to update sent for notifcations in queue: %v", err)
+				}
+			}()
+
+			_, err = url.Parse(webhook.Url)
+			if err != nil {
+				logger.Errorf("invalid url for webhook id %v: %v", webhook.ID, err)
+				return
+			}
+
+			for i := 0; i < len(reqs); i++ {
+				if webhook.Retries > 5 {
+					break // stop
+				}
+				// sleep between retries
+				logger.Infof("sleeping for %v", webhook.Retries)
+				time.Sleep(time.Duration(webhook.Retries) * time.Second)
+
+				reqBody := new(bytes.Buffer)
+				err := json.NewEncoder(reqBody).Encode(reqs[i].Content.DiscordRequest)
+				if err != nil {
+					logger.Errorf("error marschalling discord webhook event: %v", err)
+					continue // skip
+				}
+
+				resp, err := client.Post(webhook.Url, "application/json", reqBody)
+				if err != nil {
+					logger.Errorf("error sending discord webhook request: %v", err)
+				} else {
+					metrics.NotificationsSent.WithLabelValues("webhook_discord", resp.Status).Inc()
+				}
+				if resp != nil && resp.StatusCode < 400 {
+					webhook.Retries = 0
+				} else {
+					webhook.Retries++
+					i-- // retry
+					var errResp types.ErrorResponse
+
+					if resp != nil {
+						b, err := io.ReadAll(resp.Body)
+						if err != nil {
+							logger.Error("error reading body for discord webhook response: %v", err)
+						} else {
+							errResp.Body = string(b)
+						}
+						errResp.Status = resp.Status
+					}
+					logger.Infof("error pushing discord webhook: %v", errResp.Body)
+
+					_, err = useDB.Exec(`UPDATE users_webhooks SET request = $2, response = $3 WHERE id = $1;`, webhook.ID, reqs[i].Content.DiscordRequest, errResp)
+					if err != nil {
+						logger.Errorf("error storing failure data in users_webhooks table: %v", err)
+					}
+				}
+			}
+		}(webhook, notifMap[webhook.ID])
+	}
+
 	return nil
 }
 
@@ -1539,7 +1533,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 				if sub.EventThreshold < 3 {
 					sub.EventThreshold = 3
 				}
-				var n validatorStateChangeNotification
+				var n validatorIsOfflineNotification
 				if uint64(sub.EventThreshold) <= epochsOffline {
 					if sub.UserID == nil || sub.ID == nil {
 						return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
@@ -1555,7 +1549,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 					}
 					logger.Debugf("new event: validator %v detected as offline for %v epochs", v.ValidatorIndex, epochsOffline)
 
-					n = validatorStateChangeNotification{
+					n = validatorIsOfflineNotification{
 						SubscriptionID: *sub.ID,
 						ValidatorIndex: v.ValidatorIndex,
 						IsOffline:      true,
@@ -1582,7 +1576,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 						return fmt.Errorf("this should never happen. couldn't parse state as uint64: %v", err)
 					}
 					logger.Debugf("new event: validator %v detected as online again after %v epochs", v.ValidatorIndex, epochsSinceOffline)
-					n = validatorStateChangeNotification{
+					n = validatorIsOfflineNotification{
 						SubscriptionID: *sub.ID,
 						ValidatorIndex: v.ValidatorIndex,
 						IsOffline:      false,
@@ -1741,7 +1735,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 	return nil
 }
 
-type validatorStateChangeNotification struct {
+type validatorIsOfflineNotification struct {
 	SubscriptionID  uint64
 	ValidatorIndex  uint64
 	EventEpoch      uint64
@@ -1754,23 +1748,23 @@ type validatorStateChangeNotification struct {
 	InternalState   string
 }
 
-func (n *validatorStateChangeNotification) GetLatestState() string {
+func (n *validatorIsOfflineNotification) GetLatestState() string {
 	return n.InternalState
 }
 
-func (n *validatorStateChangeNotification) GetSubscriptionID() uint64 {
+func (n *validatorIsOfflineNotification) GetSubscriptionID() uint64 {
 	return n.SubscriptionID
 }
 
-func (n *validatorStateChangeNotification) GetEventName() types.EventName {
+func (n *validatorIsOfflineNotification) GetEventName() types.EventName {
 	return n.EventName
 }
 
-func (n *validatorStateChangeNotification) GetEpoch() uint64 {
+func (n *validatorIsOfflineNotification) GetEpoch() uint64 {
 	return n.EventEpoch
 }
 
-func (n *validatorStateChangeNotification) GetInfo(includeUrl bool) string {
+func (n *validatorIsOfflineNotification) GetInfo(includeUrl bool) string {
 	if n.IsOffline {
 		if includeUrl {
 			return fmt.Sprintf(`Validator <a href="https://%[4]v/validator/%[1]v">%[1]v</a> hasn't attested for %[3]v epochs (since epoch <a href="https://%[4]v/epoch/%[2]v">%[2]v</a>).`, n.ValidatorIndex, n.LastSeenEpoch, n.EpochsOffline, utils.Config.Frontend.SiteDomain)
@@ -1786,7 +1780,7 @@ func (n *validatorStateChangeNotification) GetInfo(includeUrl bool) string {
 	}
 }
 
-func (n *validatorStateChangeNotification) GetTitle() string {
+func (n *validatorIsOfflineNotification) GetTitle() string {
 	if n.IsOffline {
 		return "Validator Is Offline"
 	} else {
@@ -1794,22 +1788,22 @@ func (n *validatorStateChangeNotification) GetTitle() string {
 	}
 }
 
-func (n *validatorStateChangeNotification) GetEventFilter() string {
+func (n *validatorIsOfflineNotification) GetEventFilter() string {
 	return n.EventFilter
 }
 
-func (n *validatorStateChangeNotification) GetEmailAttachment() *types.EmailAttachment {
+func (n *validatorIsOfflineNotification) GetEmailAttachment() *types.EmailAttachment {
 	return nil
 }
 
-func (n *validatorStateChangeNotification) GetUnsubscribeHash() string {
+func (n *validatorIsOfflineNotification) GetUnsubscribeHash() string {
 	if n.UnsubscribeHash.Valid {
 		return n.UnsubscribeHash.String
 	}
 	return ""
 }
 
-func (n *validatorStateChangeNotification) GetInfoMarkdown() string {
+func (n *validatorIsOfflineNotification) GetInfoMarkdown() string {
 	if n.IsOffline {
 		return fmt.Sprintf(`Validator [%[1]v](https://%[4]v/validator/%[1]v) hasn't attested for %[3]v epochs (since epoch [%[2]v](https://%[4]v/epoch/%[2]v)).`, n.ValidatorIndex, n.LastSeenEpoch, n.EpochsOffline, utils.Config.Frontend.SiteDomain)
 	} else {
