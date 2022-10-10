@@ -426,7 +426,7 @@ func queueNotifications(notificationsByUserID map[uint64]map[types.EventName][]t
 		for subID := range subs {
 			subArray = append(subArray, int64(subID))
 		}
-		_, err := db.WriterDb.Exec(`UPDATE users_subscriptions SET internal_state = $1 WHERE id = ANY($2)`, state, pq.Int64Array(subArray))
+		_, err := db.FrontendWriterDB.Exec(`UPDATE users_subscriptions SET internal_state = $1 WHERE id = ANY($2)`, state, pq.Int64Array(subArray))
 		if err != nil {
 			logger.Errorf("failed to update internal state of notifcations: %v", err)
 		}
