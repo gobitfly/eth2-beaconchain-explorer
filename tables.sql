@@ -34,6 +34,7 @@ create index idx_validators_pubkeyhex_pattern_pos on validators (pubkeyhex varch
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
 create index idx_validators_activationepoch on validators (activationepoch);
+CREATE INDEX validators_is_offline_vali_idx ON validators (validatorindex, lastattestationslot, pubkey);
 
 drop table if exists validator_pool;
 create table validator_pool
