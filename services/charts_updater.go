@@ -475,14 +475,18 @@ func participationRateChartData() (*types.GenericChartData, error) {
 }
 
 func CalcARP(pd types.PerformanceDay) decimal.Decimal {
-	return pd.APR
+	return ((pd.EndBalancesSum.
+		Sub(pd.StartBalancesSum).
+		Sub(pd.DepositsSum)).
+		Div(pd.EffectiveBalancesSum)).
+		Mul(decimal.NewFromInt(36500)).Round(3)
 }
 
 func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	// retrieve pool performance from db
 	var performanceDays []types.PerformanceDay
 	err := db.ReaderDb.Select(&performanceDays, `
-		SELECT	pool, day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum
+		SELECT	pool, day, effective_balances_sum * 1e9 as effective_balances_sum_wei, start_balances_sum * 1e9 as start_balances_sum_wei, end_balances_sum * 1e9 as end_balances_sum_wei, deposits_sum * 1e9 as deposits_sum_wei
 		FROM	historical_pool_performance
 		ORDER BY day, pool ASC`)
 	if err != nil {
@@ -527,7 +531,7 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	// retrieve eth.store data from db
 	performanceDays = nil
 	err = db.ReaderDb.Select(&performanceDays, `
-		SELECT	day, effective_balances_sum, start_balances_sum, end_balances_sum, deposits_sum
+		SELECT	day, effective_balances_sum_wei, start_balances_sum_wei, end_balances_sum_wei, deposits_sum_wei
 		FROM	eth_store_stats
 		ORDER BY day ASC`)
 	if err != nil {
