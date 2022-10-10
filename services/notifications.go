@@ -1487,7 +1487,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 	// we use the latest exported epoch because that's what the lastattestationslot column is based upon
 	// note: could trigger missfires if there are gaps in the epoch processing.
 	// unless we do a choerence check this is hard to avoid
-	err := db.PraterReaderDb.Get(&latestExportedEpoch, `select epoch from epochs where eligibleether <> 0 order by epoch desc limit 1`)
+	err := db.ReaderDb.Get(&latestExportedEpoch, `select epoch from epochs where eligibleether <> 0 order by epoch desc limit 1`)
 	if err != nil {
 		logger.Infof("failed to get last exported epoch: %v", err)
 	}
@@ -1522,7 +1522,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 			LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`
 			Pubkey              []byte        `db:"pubkey"`
 		}
-		err = db.PraterReaderDb.Select(&dataArr, `select validatorindex, pubkey, lastattestationslot from validators where pubkey = ANY($1) order by validatorindex`, pq.ByteaArray(batch))
+		err = db.ReaderDb.Select(&dataArr, `select validatorindex, pubkey, lastattestationslot from validators where pubkey = ANY($1) order by validatorindex`, pq.ByteaArray(batch))
 		if err != nil {
 			return fmt.Errorf("failed to query potenitally offline validators: %v", err)
 		}
