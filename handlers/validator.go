@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
@@ -16,7 +17,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
 	"golang.org/x/sync/errgroup"
@@ -1005,8 +1008,48 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ValidatorSave(w http.ResponseWriter, r *http.Request) {
+/*
+		Implements required signature checks:
+		removes `0x` Prefix from msg,
+		checks signature `if` length == 65,
 
+	 checks if last byte (byte[64]) is not 0 or 1, replaces it with -27
+*/
+func sanitizeSignature(sig string) ([]byte, error) {
+	sig = strings.Replace(sig, "0x", "", -1)
+	decodedSig, _ := hex.DecodeString(sig)
+	if len(decodedSig) != 65 {
+		return nil, errors.New("Signature is less then 65 bytes")
+	}
+	if decodedSig[crypto.RecoveryIDOffset] == 27 || decodedSig[crypto.RecoveryIDOffset] == 28 {
+		decodedSig[crypto.RecoveryIDOffset] -= 27
+	}
+	return []byte(sig), nil
+}
+
+/*
+checks if Msg has at least 1 digit. If true:
+
+`0x` Prefix is removed from and []bytes is returned
+
+if Msg is `pure` string, then it has to be encoded to Hexadecimal value first. Then prefix is removed and []bytes returned
+*/
+func sanitizeMessage(msg string) []byte { // TODO fix error handling, plus maybe this function could be rewritten in a more clear way
+	for _, r := range msg {
+		if unicode.IsDigit(r) {
+			msg = strings.Replace(msg, "0x", "", -1)
+			msgDecoded, _ := hex.DecodeString(msg)
+			return msgDecoded
+		}
+	}
+	hx := hex.EncodeToString([]byte(msg))
+	hx = strings.Replace(hx, "0x", "", -1)
+
+	msgDecoded, _ := hex.DecodeString(hx)
+	return msgDecoded
+}
+
+func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	pubkey := r.FormValue("pubkey")
 	pubkey = strings.ToLower(pubkey)
 	pubkey = strings.Replace(pubkey, "0x", "", -1)
@@ -1036,35 +1079,24 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msgForHashing := "\x19Ethereum Signed Message:\n" + strconv.Itoa(len(signatureWrapper.Msg)) + signatureWrapper.Msg
-	msgHash := crypto.Keccak256Hash([]byte(msgForHashing))
+	msg := sanitizeMessage(signatureWrapper.Msg)
+	msgHash := accounts.TextHash(msg)
 
-	signatureParsed, err := hex.DecodeString(strings.Replace(signatureWrapper.Sig, "0x", "", -1))
+	sig, err := sanitizeSignature(signatureWrapper.Sig)
 	if err != nil {
 		logger.Errorf("error parsing submitted signature %v: %v", signatureWrapper.Sig, err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
 	}
-
-	if len(signatureParsed) != 65 {
-		logger.Errorf("signature must be 65 bytes long")
-		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
-		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
-		return
-	}
-
-	if signatureParsed[64] == 27 || signatureParsed[64] == 28 {
-		signatureParsed[64] -= 27
-	}
-
-	recoveredPubkey, err := crypto.SigToPub(msgHash.Bytes(), signatureParsed)
+	recoveredPubkey, err := crypto.SigToPub(msgHash, sig)
 	if err != nil {
 		logger.Errorf("error recovering pubkey: %v", err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
 	}
+
 	recoveredAddress := crypto.PubkeyToAddress(*recoveredPubkey)
 
 	var depositedAddress string
