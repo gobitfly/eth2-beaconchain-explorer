@@ -923,9 +923,9 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 									Webhook: w,
 									Event: types.WebhookEvent{
 										Network:     utils.GetNetwork(),
-									Name:        string(n.GetEventName()),
-									Title:       n.GetTitle(),
-									Description: n.GetInfo(false),
+										Name:        string(n.GetEventName()),
+										Title:       n.GetTitle(),
+										Description: n.GetInfo(false),
 										Epoch:       n.GetEpoch(),
 										Target:      n.GetEventFilter(),
 									},
