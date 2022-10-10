@@ -186,7 +186,9 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 			tx_fees_sum_wei, 
 			consensus_rewards_sum_wei,
 			total_rewards_wei,
-			apr
+			apr,
+			(select avg(apr) from eth_store_stats as e1 where e1.day > e.day - 7) as avgAPR7d,
+			(select avg(apr) from eth_store_stats as e2 where e2.day > e.day - 31) as avgAPR31d
 		FROM eth_store_stats 
 		WHERE day = $1;`, day)
 	if err != nil {
