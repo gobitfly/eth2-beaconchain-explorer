@@ -49,9 +49,8 @@ func SetAutoContentType(w http.ResponseWriter, r *http.Request) {
 // ErrorOrJSONResponse http.Error for web OR json error for API
 func ErrorOrJSONResponse(w http.ResponseWriter, r *http.Request, errorText string, statusCode int) {
 	if IsMobileAuth(r) {
-		j := json.NewEncoder(w)
 		w.WriteHeader(statusCode)
-		SendErrorResponse(j, r.URL.String(), errorText)
+		SendErrorResponse(w, r.URL.String(), errorText)
 	} else {
 		http.Error(w, errorText, statusCode)
 	}

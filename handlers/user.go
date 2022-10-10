@@ -1693,7 +1693,6 @@ func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 
 func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	j := json.NewEncoder(w)
 
 	type SubIntent struct {
 		EventName      string  `json:"event_name"`
@@ -1705,13 +1704,13 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &jsonObjects)
 	if err != nil {
 		logger.Errorf("Could not parse multiple notification subscription intent | %v", err)
-		sendErrorResponse(j, r.URL.String(), "could not parse request")
+		sendErrorResponse(w, r.URL.String(), "could not parse request")
 		return
 	}
 
 	if len(jsonObjects) > 100 {
 		logger.Errorf("Max number bundle subscribe is 100", err)
-		sendErrorResponse(j, r.URL.String(), "Max number bundle subscribe is 100")
+		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
 
@@ -1739,7 +1738,6 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 
 func MultipleUsersNotificationsSubscribeWeb(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	j := json.NewEncoder(w)
 
 	type SubIntent struct {
 		EventName      string  `json:"event_name"`
@@ -1751,20 +1749,20 @@ func MultipleUsersNotificationsSubscribeWeb(w http.ResponseWriter, r *http.Reque
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		logger.Errorf("error reading body %v URL: %v", err, r.URL.String())
-		sendErrorResponse(j, r.URL.String(), "could not parse body")
+		sendErrorResponse(w, r.URL.String(), "could not parse body")
 		return
 	}
 
 	err = json.Unmarshal(b, &jsonObjects)
 	if err != nil {
 		logger.Errorf("Could not parse multiple notification subscription intent | %v", err)
-		sendErrorResponse(j, r.URL.String(), "could not parse request")
+		sendErrorResponse(w, r.URL.String(), "could not parse request")
 		return
 	}
 
 	if len(jsonObjects) > 100 {
 		logger.Errorf("Max number bundle subscribe is 100", err)
-		sendErrorResponse(j, r.URL.String(), "Max number bundle subscribe is 100")
+		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
 
@@ -1914,7 +1912,6 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 
 func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	j := json.NewEncoder(w)
 
 	type UnSubIntent struct {
 		EventName   string `json:"event_name"`
@@ -1925,13 +1922,13 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &jsonObjects)
 	if err != nil {
 		logger.Errorf("Could not parse multiple notification subscription intent | %v", err)
-		sendErrorResponse(j, r.URL.String(), "could not parse request")
+		sendErrorResponse(w, r.URL.String(), "could not parse request")
 		return
 	}
 
 	if len(jsonObjects) > 100 {
 		logger.Errorf("Max number bundle unsubscribe is 100", err)
-		sendErrorResponse(j, r.URL.String(), "Max number bundle unsubscribe is 100")
+		sendErrorResponse(w, r.URL.String(), "Max number bundle unsubscribe is 100")
 		return
 	}
 
@@ -2190,7 +2187,7 @@ func UserNotificationsSubscribed(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	sessionUser := getUser(r)
 	if !sessionUser.Authenticated {
-		sendErrorResponse(j, r.URL.String(), "not authenticated")
+		sendErrorResponse(w, r.URL.String(), "not authenticated")
 		return
 	}
 
@@ -2200,7 +2197,7 @@ func UserNotificationsSubscribed(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(req)
 	if err != nil && err != io.EOF {
 		logger.WithError(err).Error("error decoding request body")
-		sendErrorResponse(j, r.URL.String(), "error decoding request body")
+		sendErrorResponse(w, r.URL.String(), "error decoding request body")
 		return
 	}
 
@@ -2230,14 +2227,14 @@ func UserNotificationsSubscribed(w http.ResponseWriter, r *http.Request) {
 	if lim != "" {
 		limit, err = strconv.ParseUint(lim, 10, 64)
 		if err != nil {
-			sendErrorResponse(j, r.URL.String(), "error parsing limit")
+			sendErrorResponse(w, r.URL.String(), "error parsing limit")
 		}
 	}
 
 	if off != "" {
 		offset, err = strconv.ParseUint(off, 10, 64)
 		if err != nil {
-			sendErrorResponse(j, r.URL.String(), "error parsing offset")
+			sendErrorResponse(w, r.URL.String(), "error parsing offset")
 		}
 	}
 
@@ -2254,7 +2251,7 @@ func UserNotificationsSubscribed(w http.ResponseWriter, r *http.Request) {
 		n, err := types.EventNameFromString(en)
 		if err != nil {
 			logger.WithError(err).Errorf("error parsing provided event %v to a known event name type", en)
-			sendErrorResponse(j, r.URL.String(), "error invalid event name provided")
+			sendErrorResponse(w, r.URL.String(), "error invalid event name provided")
 		}
 		eventNames = append(eventNames, n)
 	}
@@ -2274,7 +2271,7 @@ func UserNotificationsSubscribed(w http.ResponseWriter, r *http.Request) {
 
 	subs, err := db.GetSubscriptions(queryFilter)
 	if err != nil {
-		sendErrorResponse(j, r.URL.String(), "not authenticated")
+		sendErrorResponse(w, r.URL.String(), "not authenticated")
 		return
 	}
 
@@ -2295,25 +2292,25 @@ func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
 		temp, err := strconv.ParseUint(customDeviceID, 10, 64)
 		if err != nil {
 			logger.Errorf("error parsing id %v | err: %v", customDeviceID, err)
-			sendErrorResponse(j, r.URL.String(), "could not parse id")
+			sendErrorResponse(w, r.URL.String(), "could not parse id")
 			return
 		}
 		userDeviceID = temp
 		sessionUser := getUser(r)
 		if !sessionUser.Authenticated {
-			sendErrorResponse(j, r.URL.String(), "not authenticated")
+			sendErrorResponse(w, r.URL.String(), "not authenticated")
 			return
 		}
 		userID = sessionUser.UserID
 	} else {
-		sendErrorResponse(j, r.URL.String(), "you can not delete the device you are currently signed in with")
+		sendErrorResponse(w, r.URL.String(), "you can not delete the device you are currently signed in with")
 		return
 	}
 
 	err := db.MobileDeviceDelete(userID, userDeviceID)
 	if err != nil {
 		logger.Errorf("could not retrieve db results err: %v", err)
-		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
 
