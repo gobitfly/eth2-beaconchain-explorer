@@ -233,7 +233,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 		logger.Errorf("error collecting validator_got_slashed notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_validator_got_slashed").Inc()
 	}
-	logger.Infof("Collecting validator got slashed notifications took: %v\n", time.Since(start))
+	logger.Infof("collecting validator got slashed notifications took: %v\n", time.Since(start))
 
 	// executed Proposals
 	err = collectBlockProposalNotifications(notificationsByUserID, 1, types.ValidatorExecutedProposalEventName)
@@ -241,7 +241,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 		logger.Errorf("error collecting validator_proposal_submitted notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_executed_block_proposal").Inc()
 	}
-	logger.Infof("Collecting block proposal proposed notifications took: %v\n", time.Since(start))
+	logger.Infof("collecting block proposal proposed notifications took: %v\n", time.Since(start))
 
 	// Missed proposals
 	err = collectBlockProposalNotifications(notificationsByUserID, 2, types.ValidatorMissedProposalEventName)
@@ -249,7 +249,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 		logger.Errorf("error collecting validator_proposal_missed notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_missed_block_proposal").Inc()
 	}
-	logger.Infof("Collecting block proposal missed notifications took: %v\n", time.Since(start))
+	logger.Infof("collecting block proposal missed notifications took: %v\n", time.Since(start))
 
 	// Missed attestations
 	err = collectAttestationNotifications(notificationsByUserID, 0, types.ValidatorMissedAttestationEventName)
