@@ -174,6 +174,7 @@ func UserModalManageNotificationModal(w http.ResponseWriter, r *http.Request) {
 	events[types.ValidatorExecutedProposalEventName] = r.FormValue(string(types.ValidatorExecutedProposalEventName)) == "on"
 	events[types.ValidatorGotSlashedEventName] = r.FormValue(string(types.ValidatorGotSlashedEventName)) == "on"
 	events[types.SyncCommitteeSoon] = r.FormValue(string(types.SyncCommitteeSoon)) == "on"
+	events[types.ValidatorIsOfflineEventName] = r.FormValue(string(types.ValidatorIsOfflineEventName)) == "on"
 
 	all := r.FormValue("all") == "on"
 

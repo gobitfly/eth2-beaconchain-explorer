@@ -34,6 +34,7 @@ create index idx_validators_pubkeyhex_pattern_pos on validators (pubkeyhex varch
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
 create index idx_validators_activationepoch on validators (activationepoch);
+CREATE INDEX validators_is_offline_vali_idx ON validators (validatorindex, lastattestationslot, pubkey);
 
 drop table if exists validator_pool;
 create table validator_pool
@@ -551,7 +552,8 @@ create table users_subscriptions
     last_sent_epoch   int,
     created_ts        timestamp without time zone not null,
     created_epoch     int                         not null,
-    unsubscribe_hash  bytea                        ,
+    unsubscribe_hash  bytea,
+    internal_state    varchar,
     primary key (user_id, event_name, event_filter)
 );
 create index idx_users_subscriptions_unsubscribe_hash on users_subscriptions (unsubscribe_hash);
