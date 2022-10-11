@@ -1010,7 +1010,7 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 /*
 Function checks if the generated ECDSA signature has correct lentgth and if needed sets recovery byte to 0 or 1
 */
-func sanitizeSignature(sig string) ([]byte, error) { //add explanations on why we check here and what
+func sanitizeSignature(sig string) ([]byte, error) {
 	sig = strings.Replace(sig, "0x", "", -1)
 	decodedSig, _ := hex.DecodeString(sig)
 	if len(decodedSig) != 65 {
@@ -1030,7 +1030,7 @@ If it fails, it will try to decode `msg`value from Hexadecimal to string and ret
 func sanitizeMessage(msg string) ([]byte, error) {
 	subString := "beaconcha.in"
 
-	if strings.Contains(msg, subString) { // happy path
+	if strings.Contains(msg, subString) {
 		fmt.Printf("it cointains substring %s\n", subString)
 		return []byte(msg), nil
 	} else {
