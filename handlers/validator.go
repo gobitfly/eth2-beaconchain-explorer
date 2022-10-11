@@ -1080,6 +1080,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided message is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
+		}
 	msgHash := accounts.TextHash(msg)
 
 	sig, err := sanitizeSignature(signatureWrapper.Sig)
