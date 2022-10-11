@@ -34,6 +34,7 @@ create index idx_validators_pubkeyhex_pattern_pos on validators (pubkeyhex varch
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
 create index idx_validators_activationepoch on validators (activationepoch);
+CREATE INDEX validators_is_offline_vali_idx ON validators (validatorindex, lastattestationslot, pubkey);
 
 drop table if exists validator_pool;
 create table validator_pool
@@ -551,7 +552,8 @@ create table users_subscriptions
     last_sent_epoch   int,
     created_ts        timestamp without time zone not null,
     created_epoch     int                         not null,
-    unsubscribe_hash  bytea                        ,
+    unsubscribe_hash  bytea,
+    internal_state    varchar,
     primary key (user_id, event_name, event_filter)
 );
 create index idx_users_subscriptions_unsubscribe_hash on users_subscriptions (unsubscribe_hash);
@@ -947,14 +949,17 @@ create table rocketpool_reward_tree
 drop table if exists eth_store_stats;
 create table eth_store_stats
 (
-    day			int	not null,
-    effective_balances_sum	bigint	not null,
-    start_balances_sum		bigint	not null,
-    end_balances_sum		bigint	not null,
-    deposits_sum		bigint	not null,
+    day			                int not null,
+    effective_balances_sum_wei	numeric not null,
+    start_balances_sum_wei		numeric not null,
+    end_balances_sum_wei		numeric not null,
+    deposits_sum_wei		    numeric not null,
+    tx_fees_sum_wei		        numeric not null,
+    consensus_rewards_sum_wei	numeric not null,
+    total_rewards_wei		    numeric not null,
+    apr		                    float   not null,
     
     primary key(day)
-    
 );
 
 drop table if exists historical_pool_performance;

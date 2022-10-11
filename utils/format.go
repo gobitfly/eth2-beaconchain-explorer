@@ -172,6 +172,7 @@ func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 func FormatAddCommas(n uint64) template.HTML {
 	number := FormatFloat(float64(n), 2)
 
+	number = strings.ReplaceAll(number, ",", `<span class="thousands-separator"></span>`)
 	return template.HTML(number)
 }
 
@@ -423,6 +424,18 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…%x</span>", hash[:2], hash[len(hash)-2:]))
 	}
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
+}
+
+func FormatWithdawalCredentials(hash []byte) template.HTML {
+	if len(hash) != 32 {
+		return "INVALID CREDENTIALS"
+	}
+
+	if hash[0] == 0x01 {
+		return template.HTML(fmt.Sprintf(`<a href="/address/0x%x">%s</a>`, hash[12:], FormatHash(hash)))
+	} else {
+		return FormatHash(hash)
+	}
 }
 
 func FormatName(name string, trunc_opt ...bool) template.HTML {

@@ -23,7 +23,7 @@ const (
 	ValidatorMissedAttestationEventName              EventName = "validator_attestation_missed"
 	ValidatorGotSlashedEventName                     EventName = "validator_got_slashed"
 	ValidatorDidSlashEventName                       EventName = "validator_did_slash"
-	ValidatorStateChangedEventName                   EventName = "validator_state_changed"
+	ValidatorIsOfflineEventName                      EventName = "validator_is_offline"
 	ValidatorReceivedDepositEventName                EventName = "validator_received_deposit"
 	NetworkSlashingEventName                         EventName = "network_slashing"
 	NetworkValidatorActivationQueueFullEventName     EventName = "network_validator_activation_queue_full"
@@ -65,7 +65,7 @@ var EventLabel map[EventName]string = map[EventName]string{
 	ValidatorMissedAttestationEventName:              "Your validator(s) missed an attestation",
 	ValidatorGotSlashedEventName:                     "Your validator(s) got slashed",
 	ValidatorDidSlashEventName:                       "Your validator(s) slashed another validator",
-	ValidatorStateChangedEventName:                   "Your validator(s) state changed",
+	ValidatorIsOfflineEventName:                      "Your validator(s) state changed",
 	ValidatorReceivedDepositEventName:                "Your validator(s) received a deposit",
 	NetworkSlashingEventName:                         "A slashing event has been registered by the network",
 	NetworkValidatorActivationQueueFullEventName:     "The activation queue is full",
@@ -104,7 +104,7 @@ var EventNames = []EventName{
 	ValidatorMissedAttestationEventName,
 	ValidatorGotSlashedEventName,
 	ValidatorDidSlashEventName,
-	ValidatorStateChangedEventName,
+	ValidatorIsOfflineEventName,
 	ValidatorReceivedDepositEventName,
 	NetworkSlashingEventName,
 	NetworkValidatorActivationQueueFullEventName,
@@ -154,6 +154,10 @@ var AddWatchlistEvents = []EventNameDesc{
 		Desc:  "Sync committee",
 		Event: SyncCommitteeSoon,
 	},
+	{
+		Desc:  "Validator is Offline",
+		Event: ValidatorIsOfflineEventName,
+	},
 }
 
 // this is the source of truth for the network events that are supported by the user/notification page
@@ -188,6 +192,7 @@ const (
 )
 
 type Notification interface {
+	GetLatestState() string
 	GetSubscriptionID() uint64
 	GetEventName() EventName
 	GetEpoch() uint64
@@ -213,6 +218,7 @@ type Subscription struct {
 	CreatedEpoch    uint64         `db:"created_epoch"`
 	EventThreshold  float64        `db:"event_threshold"`
 	UnsubscribeHash sql.NullString `db:"unsubscribe_hash" swaggertype:"string"`
+	State           sql.NullString `db:"internal_state" swaggertype:"string"`
 }
 
 type TaggedValidators struct {

@@ -47,9 +47,6 @@ func Start(client rpc.Client) error {
 	if utils.Config.RocketpoolExporter.Enabled {
 		go rocketpoolExporter()
 	}
-	if utils.Config.EthStoreExporter.Enabled {
-		go ethStoreExporter()
-	}
 	if utils.Config.HistoricalPoolPerformanceExporter.Enabled {
 		go historicalPoolPerformanceExporter()
 	}

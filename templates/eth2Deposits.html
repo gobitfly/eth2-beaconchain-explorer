@@ -30,6 +30,9 @@
             render: function (data, type, row, meta) {
               // make the span we get from the backend into a DOM element and extract the text value from it (because clipboard text takes only string, not HTML elements)
               const clipboardtext = $(row[5]).text()
+              if (clipboardtext.startsWith("0x01")) {
+                data = `<a href="/address/${clipboardtext.replace("010000000000000000000000", "")}">${data}</a>`
+              }
               return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
             },
           },

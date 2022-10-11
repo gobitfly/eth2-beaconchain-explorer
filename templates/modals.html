@@ -23,7 +23,12 @@
               {{ range $i, $event := .Events }}
                 <div class="input-group my-1">
                   <div class="form-check form-check-inline w-100">
-                    <label for="watchlist_{{ $event.EventName }}" class="form-check-label mr-auto font-weight-normal py-2">{{ $event.EventLabel }}</label>
+                    <label for="watchlist_{{ $event.EventName }}" class="form-check-label mr-auto font-weight-normal py-2">
+                      {{ $event.EventLabel }}
+                      {{ if eq $event.EventName "validator_attestation_missed" }}
+                        <i data-toggle="tooltip" title="Will trigger every epoch (6.4 minutes) during downtime" class="fas fa-exclamation-circle text-warning"></i>
+                      {{ end }}
+                    </label>
                     <input {{ if $event.Active }}checked{{ end }} name="{{ $event.EventName }}" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="watchlist_{{ $event.EventName }}" />
                   </div>
                 </div>
@@ -137,7 +142,12 @@
               {{ range $i, $event := .Events }}
                 <div class="input-group my-1">
                   <div class="form-check form-check-inline w-100">
-                    <label for="watchlist-selected-{{ $event.EventName }}" class="form-check-label mr-auto font-weight-normal py-2">{{ $event.EventLabel }}</label>
+                    <label for="watchlist-selected-{{ $event.EventName }}" class="form-check-label mr-auto font-weight-normal py-2">
+                      {{ $event.EventLabel }}
+                      {{ if eq $event.EventName "validator_attestation_missed" }}
+                        <i data-toggle="tooltip" title="Will trigger every epoch (6.4 minutes) during downtime." class="fas fa-exclamation-circle text-warning"></i>
+                      {{ end }}
+                    </label>
                     <input {{ if $event.Active }}checked{{ end }} name="{{ $event.EventName }}" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="watchlist-selected-{{ $event.EventName }}" />
                   </div>
                 </div>

@@ -74,6 +74,8 @@ func main() {
 		chainId = "1"
 	} else if *network == "goerli" {
 		chainId = "5"
+	} else if *network == "sepolia" {
+		chainId = "11155111"
 	} else {
 		logrus.Fatalf("unsupported network name %v provided", *network)
 	}

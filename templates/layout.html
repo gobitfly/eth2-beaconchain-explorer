@@ -165,22 +165,24 @@
                 <div class="info-item-body"><a id="banner-slot-data" href="/slot/{{ .CurrentSlot }}">{{ formatAddCommas .CurrentSlot }}</a></div>
               </div>
             </div>
-            <div data-toggle="tooltip" title="" data-original-title="Price" id="banner-eth-price">
-              <div class="info-item d-flex mr-2 mr-lg-3">
-                <div class="info-item-header mr-1">
-                  <span class="item-icon"><i class="fas fa-cubes"></i></span>
-                  <span class="d-none d-xl-inline item-text">Price</span>
-                </div>
-                <div class="info-item-body">
-                  <a id="banner-eth-price-data">
-                    <span id="currentCurrencySymbol" class="currency-symbol">{{ .Rates.CurrentSymbol }}</span>
-                    <span id="initialPrice">{{ .Rates.CurrentPriceFormatted }}</span>
-                    <span id="currentKFormattedPrice" class="k-formatted-price"></span>
-                    <span id="currentCurencyPrice" class="price"></span>
-                  </a>
+            {{ if .Mainnet }}
+              <div data-toggle="tooltip" title="" data-original-title="Price" id="banner-eth-price">
+                <div class="info-item d-flex mr-2 mr-lg-3">
+                  <div class="info-item-header mr-1">
+                    <span class="item-icon"><i class="fas fa-cubes"></i></span>
+                    <span class="d-none d-xl-inline item-text">Price</span>
+                  </div>
+                  <div class="info-item-body">
+                    <a id="banner-eth-price-data">
+                      <span id="currentCurrencySymbol" class="currency-symbol">{{ .Rates.CurrentSymbol }}</span>
+                      <span id="initialPrice">{{ .Rates.CurrentPriceFormatted }}</span>
+                      <span id="currentKFormattedPrice" class="k-formatted-price"></span>
+                      <span id="currentCurencyPrice" class="price"></span>
+                    </a>
+                  </div>
                 </div>
               </div>
-            </div>
+            {{ end }}
             {{ if not .ShowSyncingMessage }}
               {{ if gt .FinalizationDelay 3 }}
                 <div data-toggle="tooltip" title="" data-original-title="Finality: the last finalized epoch was {{ .FinalizationDelay }} epochs ago" id="banner-fin" class="info-item d-flex mr-2 mr-lg-3">
