@@ -1019,7 +1019,7 @@ func sanitizeSignature(sig string) ([]byte, error) {
 	if decodedSig[crypto.RecoveryIDOffset] == 27 || decodedSig[crypto.RecoveryIDOffset] == 28 {
 		decodedSig[crypto.RecoveryIDOffset] -= 27
 	}
-	return []byte(sig), nil
+	return []byte(decodedSig), nil
 }
 
 /*
@@ -1031,7 +1031,6 @@ func sanitizeMessage(msg string) ([]byte, error) {
 	subString := "beaconcha.in"
 
 	if strings.Contains(msg, subString) {
-		fmt.Printf("it cointains substring %s\n", subString)
 		return []byte(msg), nil
 	} else {
 		decoded := strings.Replace(msg, "0x", "", -1)
@@ -1091,6 +1090,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
 	}
+
 	recoveredPubkey, err := crypto.SigToPub(msgHash, sig)
 	if err != nil {
 		logger.Errorf("error recovering pubkey: %v", err)
