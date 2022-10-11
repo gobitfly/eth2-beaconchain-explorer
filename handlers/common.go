@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"html/template"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -221,14 +222,14 @@ func GetCurrentPrice(r *http.Request) uint64 {
 	return price.GetEthRoundPrice(price.GetEthPrice(cookie.Value))
 }
 
-func GetCurrentPriceFormatted(r *http.Request) string {
+func GetCurrentPriceFormatted(r *http.Request) template.HTML {
 	userAgent := r.Header.Get("User-Agent")
 	userAgent = strings.ToLower(userAgent)
 	price := GetCurrentPrice(r)
 	if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") || strings.Contains(userAgent, "windows phone") {
-		return string(utils.KFormatterEthPrice(price))
+		return utils.KFormatterEthPrice(price)
 	}
-	return string(utils.FormatAddCommas(uint64(price)))
+	return utils.FormatAddCommas(uint64(price))
 }
 
 func GetTruncCurrentPriceFormatted(r *http.Request) string {
