@@ -1030,17 +1030,18 @@ If it fails, it will try to decode `msg`value from Hexadecimal to string and ret
 func sanitizeMessage(msg string) ([]byte, error) {
 	subString := "beaconcha.in"
 
-	if strings.Contains(msg, subString) {
-		hex := hex.EncodeToString([]byte(msg))
-		msg = strings.Replace(hex, "0x", "", -1)
+	if strings.Contains(msg, subString) { // happy path
+		fmt.Printf("it cointains substring %s\n", subString)
 		return []byte(msg), nil
 	} else {
-		dec, _ := hex.DecodeString(strings.Replace(msg, "0x", "", -1))
+		decoded := strings.Replace(msg, "0x", "", -1)
+		dec, _ := hex.DecodeString(decoded)
 		decodedString := (string(dec))
 		if strings.Contains(decodedString, subString) {
 			return []byte(decodedString), nil
 		}
 		return nil, errors.New("Beachoncha.in was not found")
+
 	}
 }
 
