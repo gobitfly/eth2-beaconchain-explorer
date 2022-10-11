@@ -76,7 +76,7 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 func (ese *EthStoreExporter) getStoreDay(day string) (*ethstore.Day, error) {
 	logger.Infof("retrieving eth.store for day %v", day)
 	ethstore.SetDebugLevel(1)
-	return ethstore.Calculate(context.Background(), ese.BNAddress, ese.ENAddress, day, 5)
+	return ethstore.Calculate(context.Background(), ese.BNAddress, ese.ENAddress, day, 1)
 }
 
 func (ese *EthStoreExporter) Run() {
