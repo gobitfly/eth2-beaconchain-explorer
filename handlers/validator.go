@@ -17,7 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -1009,13 +1008,9 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-		Implements required signature checks:
-		removes `0x` Prefix from msg,
-		checks signature `if` length == 65,
-
-	 checks if last byte (byte[64]) is not 0 or 1, replaces it with -27
+Function checks if the generated ECDSA signature has correct lentgth and if needed sets recovery byte to 0 or 1
 */
-func sanitizeSignature(sig string) ([]byte, error) {
+func sanitizeSignature(sig string) ([]byte, error) { //add explanations on why we check here and what
 	sig = strings.Replace(sig, "0x", "", -1)
 	decodedSig, _ := hex.DecodeString(sig)
 	if len(decodedSig) != 65 {
@@ -1028,25 +1023,25 @@ func sanitizeSignature(sig string) ([]byte, error) {
 }
 
 /*
-checks if Msg has at least 1 digit. If true:
-
-`0x` Prefix is removed from and []bytes is returned
-
-if Msg is `pure` string, then it has to be encoded to Hexadecimal value first. Then prefix is removed and []bytes returned
+Function tries to find the substring.
+If successful it turns string into []byte value and returns it 
+If it fails, it will try to decode `msg`value from Hexadecimal to string and retry search again
 */
-func sanitizeMessage(msg string) []byte { // TODO fix error handling, plus maybe this function could be rewritten in a more clear way
-	for _, r := range msg {
-		if unicode.IsDigit(r) {
-			msg = strings.Replace(msg, "0x", "", -1)
-			msgDecoded, _ := hex.DecodeString(msg)
-			return msgDecoded
-		}
-	}
-	hx := hex.EncodeToString([]byte(msg))
-	hx = strings.Replace(hx, "0x", "", -1)
+func sanitizeMessage(msg string) ([]byte, error) {
+	subString := "beaconcha.in"
 
-	msgDecoded, _ := hex.DecodeString(hx)
-	return msgDecoded
+	if strings.Contains(msg, subString) {
+		hex := hex.EncodeToString([]byte(msg))
+		msg = strings.Replace(hex, "0x", "", -1)
+		return []byte(msg), nil
+	} else {
+		dec, _ := hex.DecodeString(strings.Replace(msg, "0x", "", -1))
+		decodedString := (string(dec))
+		if strings.Contains(decodedString, subString) {
+			return []byte(decodedString), nil
+		}
+		return nil, errors.New("Beachoncha.in was not found")
+	}
 }
 
 func ValidatorSave(w http.ResponseWriter, r *http.Request) {
@@ -1079,7 +1074,12 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg := sanitizeMessage(signatureWrapper.Msg)
+	msg, err := sanitizeMessage(signatureWrapper.Msg)
+	if err != nil {
+		logger.Errorf("Message is invalid %v: %v", signatureWrapper.Msg, err)
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided message is invalid")
+		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
+		return
 	msgHash := accounts.TextHash(msg)
 
 	sig, err := sanitizeSignature(signatureWrapper.Sig)
