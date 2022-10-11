@@ -465,3 +465,18 @@ label.btn.btn-light:hover {
   --theme-ethereum-green: #88e03f;
   --theme-ethereum-yellow: #ffef79;
 }
+
+.thousands-separator:before{
+  content: ",";
+}
+
+.tooltip {
+  word-wrap: normal !important;
+}
+
+.tooltip-inner {
+  max-width: 400px;
+  padding: 0.25rem 0.5rem;
+  text-align: center;
+  border-radius: 0.35rem;
+}

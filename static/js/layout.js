@@ -294,7 +294,7 @@ $(document).ready(function () {
       source: bhEth1Accounts,
       display: "address",
       templates: {
-        header: '<h3 class="h5">ETH Addresses</h3>',
+        header: '<h3 class="h5">Address</h3>',
         suggestion: function (data) {
           return `<div class="text-monospace text-truncate">0x${data.address}</div>`
         },
@@ -306,7 +306,7 @@ $(document).ready(function () {
       source: bhValidatorsByAddress,
       display: "eth1_address",
       templates: {
-        header: '<h3 class="h5">Validators by ETH Address</h3>',
+        header: '<h3 class="h5">Validators by Address</h3>',
         suggestion: function (data) {
           return `<div class="text-monospace text-truncate">${data.count}: 0x${data.eth1_address}</div>`
         },
@@ -368,7 +368,7 @@ $(document).ready(function () {
       // sug.graffiti is html-escaped to prevent xss, we need to unescape it
       var el = document.createElement("textarea")
       el.innerHTML = sug.graffiti
-      window.location = "/blocks?q=" + encodeURIComponent(el.value)
+      window.location = "/slots?q=" + encodeURIComponent(el.value)
     } else {
       console.log("invalid typeahead-selection", sug)
     }
@@ -384,7 +384,7 @@ $("[aria-ethereum-date]").each(function (item) {
   }
 
   if (format === "FROMNOW") {
-    $(this).text(luxon.DateTime.fromMillis(dt * 1000).toRelative({ style: "short" }))
+    $(this).text(getRelativeTime(luxon.DateTime.fromMillis(dt * 1000)))
     $(this).attr("title", luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
     $(this).attr("data-toggle", "tooltip")
   } else if (format === "LOCAL") {
@@ -451,14 +451,56 @@ function formatTimestamps(selStr) {
     var ts = $(this).data("timestamp")
     var tsLuxon = luxon.DateTime.fromMillis(ts * 1000)
     $(this).attr("data-original-title", tsLuxon.toFormat("ff"))
-    $(this).text(tsLuxon.toRelative({ style: "short" }))
+
+    $(this).text(getRelativeTime(tsLuxon))
   })
   sel.find('[data-toggle="tooltip"]').tooltip()
 }
 
+function getRelativeTime(tsLuxon) {
+  var prefix = ""
+  var suffix = ""
+  if (tsLuxon.diffNow().milliseconds > 0) {
+    // inverse the difference of the timestamp (3 seconds into the future becomes 3 seconds into the past)
+    var now = luxon.DateTime.utc()
+    tsLuxon = luxon.DateTime.fromSeconds(now.ts / 10e2 - tsLuxon.diffNow().milliseconds / 10e2)
+    prefix = "in "
+  } else {
+    suffix = " ago"
+  }
+  var duration = tsLuxon.diffNow(["days", "hours", "minutes", "seconds"])
+  var daysPart = Math.round(duration.days)
+  var sDays = daysPart === -1 ? "" : "s"
+  var hoursPart = Math.round(duration.hours)
+  var sHours = hoursPart === -1 ? "" : "s"
+  var minutesPart = Math.round(duration.minutes)
+  var sMinutes = minutesPart === -1 ? "" : "s"
+  var secondsPart = Math.round(duration.seconds)
+  var sSeconds = secondsPart === -1 ? "" : "s"
+  var parts = []
+  if (daysPart !== 0) {
+    parts.push(`${daysPart * -1} day${sDays}`)
+  }
+  if (hoursPart !== 0) {
+    parts.push(`${hoursPart * -1} hr${sHours}`)
+  }
+  if (minutesPart !== 0) {
+    parts.push(`${minutesPart * -1} min${sMinutes}`)
+  }
+  if (secondsPart !== 0 && parts.length == 0) {
+    parts.push(`${secondsPart * -1} sec${sSeconds}`)
+  }
+  if (parts.length === 1) {
+    return `${prefix}${parts[0]}${suffix}`
+  } else if (parts.length > 1) {
+    return `${prefix}${parts[0]} ${parts[1]}${suffix}`
+  } else {
+    return `${prefix}${duration.days * -1}days  ${duration.hours * -1}hrs ${duration.minutes * -1}mins ${duration.seconds * -1}secs${suffix}`
+  }
+}
 function addCommas(number) {
   return number
     .toString()
     .replace(/,/g, "")
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+    .replace(/\B(?=(\d{3})+(?!\d))/g, "<span class='thousands-separator'></span>")
 }

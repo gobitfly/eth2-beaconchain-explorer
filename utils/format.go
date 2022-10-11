@@ -172,6 +172,7 @@ func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 func FormatAddCommas(n uint64) template.HTML {
 	number := FormatFloat(float64(n), 2)
 
+	number = strings.ReplaceAll(number, ",", `<span class="thousands-separator"></span>`)
 	return template.HTML(number)
 }
 
@@ -382,7 +383,7 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 	return template.HTML(p.Sprintf(tpl, float64(e)/1e9*price.GetEthPrice(currency), rr))
 }
 
-func FormatEtherValue(symbol string, ethPrice *big.Float, currentPrice string) template.HTML {
+func FormatEtherValue(symbol string, ethPrice *big.Float, currentPrice template.HTML) template.HTML {
 	p := message.NewPrinter(language.English)
 	ep, _ := ethPrice.Float64()
 	return template.HTML(p.Sprintf(`<span>%s %.2f</span> <span class="text-muted">@ %s/ETH</span>`, symbol, ep, currentPrice))
@@ -423,6 +424,18 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…%x</span>", hash[:2], hash[len(hash)-2:]))
 	}
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
+}
+
+func FormatWithdawalCredentials(hash []byte) template.HTML {
+	if len(hash) != 32 {
+		return "INVALID CREDENTIALS"
+	}
+
+	if hash[0] == 0x01 {
+		return template.HTML(fmt.Sprintf(`<a href="/address/0x%x">%s</a>`, hash[12:], FormatHash(hash)))
+	} else {
+		return FormatHash(hash)
+	}
 }
 
 func FormatName(name string, trunc_opt ...bool) template.HTML {
@@ -897,12 +910,12 @@ func TrLang(lang string, key string) template.HTML {
 	return template.HTML(I18n.Tr(lang, key))
 }
 
-func KFormatterEthPrice(price uint64) string {
+func KFormatterEthPrice(price uint64) template.HTML {
 	if price > 999 {
 		ethTruncPrice := fmt.Sprint(float64(int((float64(price)/float64(1000))*10))/float64(10)) + "k"
-		return ethTruncPrice
+		return template.HTML(ethTruncPrice)
 	}
-	return fmt.Sprint(price)
+	return template.HTML(fmt.Sprint(price))
 }
 
 func FormatRPL(num string) string {

@@ -167,7 +167,7 @@ func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 
 func (lc *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 	// pre-filter the status, to return much less validators, thus much faster!
-	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/head/validators?status=pending_queued,exited", lc.endpoint))
+	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/head/validators?status=pending_queued,active_exiting,active_slashed", lc.endpoint))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator for head valiqdator queue check: %v", err)
 	}
@@ -187,10 +187,11 @@ func (lc *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 		case "pending_queued":
 			activatingValidatorCount += 1
 			break
-		case "active_ongoing", "active_exiting", "active_slashed":
+		case "active_ongoing":
 			break
-		case "exited_unslashed", "exited_slashed":
+		case "active_exiting", "active_slashed":
 			exitingValidatorCount += exitingValidatorCount
+		case "exited_unslashed", "exited_slashed":
 			break
 		case "withdrawal_possible", "withdrawal_done":
 			break

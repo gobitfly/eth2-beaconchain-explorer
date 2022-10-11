@@ -448,7 +448,7 @@
                   <td>{{ formatDepositAmount $deposit.Amount $.Rates.Currency }}</td>
                   <!-- <td>{{ formatHash $deposit.Proof }}</td> -->
                   <td>
-                    {{ formatHash $deposit.Withdrawalcredentials }}
+                    {{ formatWithdawalCredentials $deposit.Withdrawalcredentials }}
                     <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash $deposit.Withdrawalcredentials false }}"></i>
                   </td>
                   <td>
