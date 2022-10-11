@@ -1024,7 +1024,7 @@ func sanitizeSignature(sig string) ([]byte, error) { //add explanations on why w
 
 /*
 Function tries to find the substring.
-If successful it turns string into []byte value and returns it 
+If successful it turns string into []byte value and returns it
 If it fails, it will try to decode `msg`value from Hexadecimal to string and retry search again
 */
 func sanitizeMessage(msg string) ([]byte, error) {
@@ -1080,7 +1080,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided message is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
-		}
+	}
 	msgHash := accounts.TextHash(msg)
 
 	sig, err := sanitizeSignature(signatureWrapper.Sig)
