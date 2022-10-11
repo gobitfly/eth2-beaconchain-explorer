@@ -97,42 +97,42 @@
                     case 'AUD':
                         document.getElementById('currentCurrencySymbol').textContent = 'A$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.AudTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.AudRoundPrice}}
+                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.AudRoundPrice}}
                         break
 	                case 'CAD':
                         document.getElementById('currentCurrencySymbol').textContent = 'C$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CadTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.CadRoundPrice}}
+                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.CadRoundPrice}}
 		                break
 	                case 'CNY':
                         document.getElementById('currentCurrencySymbol').textContent = '¥'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CnyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.CnyRoundPrice}}
+                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.CnyRoundPrice}}
 		                break
 	                case 'EUR':
                         document.getElementById('currentCurrencySymbol').textContent = '€'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.EurTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.EurRoundPrice}}
+                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.EurRoundPrice}}
 		                break
 	                case 'GBP':
                         document.getElementById('currentCurrencySymbol').textContent = '£'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.GbpTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.GbpRoundPrice}}
+                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.GbpRoundPrice}}
 		                break
 	                case 'JPY':
                         document.getElementById('currentCurrencySymbol').textContent = '¥'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.JpyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.JpyRoundPrice}}
+                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.JpyRoundPrice}}
 		                break
 	                case 'RUB':
                         document.getElementById('currentCurrencySymbol').textContent = '₽'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.RubTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.RubRoundPrice}}
+                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.RubRoundPrice}}
 		                break
                     default:
                         document.getElementById('currentCurrencySymbol').textContent = '$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.UsdTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .Rates.UsdRoundPrice}}
+                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.UsdRoundPrice}}
 		                break
                 }
             })
