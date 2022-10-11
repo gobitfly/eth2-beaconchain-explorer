@@ -49,25 +49,25 @@ type PageData struct {
 type PageRates struct {
 	EthPrice              float64
 	EthRoundPrice         uint64
-	EthTruncPrice         string
+	EthTruncPrice         template.HTML
 	UsdRoundPrice         uint64
-	UsdTruncPrice         string
+	UsdTruncPrice         template.HTML
 	EurRoundPrice         uint64
-	EurTruncPrice         string
+	EurTruncPrice         template.HTML
 	GbpRoundPrice         uint64
-	GbpTruncPrice         string
+	GbpTruncPrice         template.HTML
 	CnyRoundPrice         uint64
-	CnyTruncPrice         string
+	CnyTruncPrice         template.HTML
 	RubRoundPrice         uint64
-	RubTruncPrice         string
+	RubTruncPrice         template.HTML
 	CadRoundPrice         uint64
-	CadTruncPrice         string
+	CadTruncPrice         template.HTML
 	AudRoundPrice         uint64
-	AudTruncPrice         string
+	AudTruncPrice         template.HTML
 	JpyRoundPrice         uint64
-	JpyTruncPrice         string
+	JpyTruncPrice         template.HTML
 	Currency              string
-	CurrentPriceFormatted string
+	CurrentPriceFormatted template.HTML
 	CurrentSymbol         string
 	ExchangeRate          float64
 }
@@ -87,32 +87,32 @@ type Meta struct {
 
 // LatestState is a struct to hold data for the banner
 type LatestState struct {
-	LastProposedSlot      uint64  `json:"lastProposedSlot"`
-	CurrentSlot           uint64  `json:"currentSlot"`
-	CurrentEpoch          uint64  `json:"currentEpoch"`
-	CurrentFinalizedEpoch uint64  `json:"currentFinalizedEpoch"`
-	FinalityDelay         uint64  `json:"finalityDelay"`
-	IsSyncing             bool    `json:"syncing"`
-	EthPrice              float64 `json:"ethPrice"`
-	EthRoundPrice         uint64  `json:"ethRoundPrice"`
-	EthTruncPrice         string  `json:"ethTruncPrice"`
-	UsdRoundPrice         uint64  `json:"usdRoundPrice"`
-	UsdTruncPrice         string  `json:"usdTruncPrice"`
-	EurRoundPrice         uint64  `json:"eurRoundPrice"`
-	EurTruncPrice         string  `json:"eurTruncPrice"`
-	GbpRoundPrice         uint64  `json:"gbpRoundPrice"`
-	GbpTruncPrice         string  `json:"gbpTruncPrice"`
-	CnyRoundPrice         uint64  `json:"cnyRoundPrice"`
-	CnyTruncPrice         string  `json:"cnyTruncPrice"`
-	RubRoundPrice         uint64  `json:"rubRoundPrice"`
-	RubTruncPrice         string  `json:"rubTruncPrice"`
-	CadRoundPrice         uint64  `json:"cadRoundPrice"`
-	CadTruncPrice         string  `json:"cadTruncPrice"`
-	AudRoundPrice         uint64  `json:"audRoundPrice"`
-	AudTruncPrice         string  `json:"audTruncPrice"`
-	JpyRoundPrice         uint64  `json:"jpyRoundPrice"`
-	JpyTruncPrice         string  `json:"jpyTruncPrice"`
-	Currency              string  `json:"currency"`
+	LastProposedSlot      uint64        `json:"lastProposedSlot"`
+	CurrentSlot           uint64        `json:"currentSlot"`
+	CurrentEpoch          uint64        `json:"currentEpoch"`
+	CurrentFinalizedEpoch uint64        `json:"currentFinalizedEpoch"`
+	FinalityDelay         uint64        `json:"finalityDelay"`
+	IsSyncing             bool          `json:"syncing"`
+	EthPrice              float64       `json:"ethPrice"`
+	EthRoundPrice         uint64        `json:"ethRoundPrice"`
+	EthTruncPrice         template.HTML `json:"ethTruncPrice"`
+	UsdRoundPrice         uint64        `json:"usdRoundPrice"`
+	UsdTruncPrice         template.HTML `json:"usdTruncPrice"`
+	EurRoundPrice         uint64        `json:"eurRoundPrice"`
+	EurTruncPrice         template.HTML `json:"eurTruncPrice"`
+	GbpRoundPrice         uint64        `json:"gbpRoundPrice"`
+	GbpTruncPrice         template.HTML `json:"gbpTruncPrice"`
+	CnyRoundPrice         uint64        `json:"cnyRoundPrice"`
+	CnyTruncPrice         template.HTML `json:"cnyTruncPrice"`
+	RubRoundPrice         uint64        `json:"rubRoundPrice"`
+	RubTruncPrice         template.HTML `json:"rubTruncPrice"`
+	CadRoundPrice         uint64        `json:"cadRoundPrice"`
+	CadTruncPrice         template.HTML `json:"cadTruncPrice"`
+	AudRoundPrice         uint64        `json:"audRoundPrice"`
+	AudTruncPrice         template.HTML `json:"audTruncPrice"`
+	JpyRoundPrice         uint64        `json:"jpyRoundPrice"`
+	JpyTruncPrice         template.HTML `json:"jpyTruncPrice"`
+	Currency              string        `json:"currency"`
 }
 
 type Stats struct {
