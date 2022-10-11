@@ -458,6 +458,16 @@ function formatTimestamps(selStr) {
 }
 
 function getRelativeTime(tsLuxon) {
+  var prefix = ""
+  var suffix = ""
+  if (tsLuxon.diffNow().milliseconds > 0) {
+    // inverse the difference of the timestamp (3 seconds into the future becomes 3 seconds into the past)
+    var now = luxon.DateTime.utc()
+    tsLuxon = luxon.DateTime.fromSeconds(now.ts / 10e2 - tsLuxon.diffNow().milliseconds / 10e2)
+    prefix = "in "
+  } else {
+    suffix = " ago"
+  }
   var duration = tsLuxon.diffNow(["days", "hours", "minutes", "seconds"])
   var daysPart = Math.round(duration.days)
   var sDays = daysPart === -1 ? "" : "s"
@@ -481,11 +491,11 @@ function getRelativeTime(tsLuxon) {
     parts.push(`${secondsPart * -1} sec${sSeconds}`)
   }
   if (parts.length === 1) {
-    return `${parts[0]} ago`
+    return `${prefix}${parts[0]}${suffix}`
   } else if (parts.length > 1) {
-    return `${parts[0]} ${parts[1]} ago`
+    return `${prefix}${parts[0]} ${parts[1]}${suffix}`
   } else {
-    return `${duration.days * -1}days  ${duration.hours * -1}hrs ${duration.minutes * -1}mins ${duration.seconds * -1}secs ago`
+    return `${prefix}${duration.days * -1}days  ${duration.hours * -1}hrs ${duration.minutes * -1}mins ${duration.seconds * -1}secs${suffix}`
   }
 }
 function addCommas(number) {
