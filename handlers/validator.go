@@ -1010,7 +1010,7 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 /*
 Function checks if the generated ECDSA signature has correct lentgth and if needed sets recovery byte to 0 or 1
 */
-func sanitizeSignature(sig string) ([]byte, error) { //add explanations on why we check here and what
+func sanitizeSignature(sig string) ([]byte, error) {
 	sig = strings.Replace(sig, "0x", "", -1)
 	decodedSig, _ := hex.DecodeString(sig)
 	if len(decodedSig) != 65 {
@@ -1031,16 +1031,17 @@ func sanitizeMessage(msg string) ([]byte, error) {
 	subString := "beaconcha.in"
 
 	if strings.Contains(msg, subString) {
-		hex := hex.EncodeToString([]byte(msg))
-		msg = strings.Replace(hex, "0x", "", -1)
+		fmt.Printf("it cointains substring %s\n", subString)
 		return []byte(msg), nil
 	} else {
-		dec, _ := hex.DecodeString(strings.Replace(msg, "0x", "", -1))
+		decoded := strings.Replace(msg, "0x", "", -1)
+		dec, _ := hex.DecodeString(decoded)
 		decodedString := (string(dec))
 		if strings.Contains(decodedString, subString) {
 			return []byte(decodedString), nil
 		}
 		return nil, errors.New("Beachoncha.in was not found")
+
 	}
 }
 
