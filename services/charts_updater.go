@@ -549,7 +549,7 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	chartData := &types.GenericChartData{
 		YAxisNegativeLog: true,
 		Title:            "Historical Pool Performance",
-		Subtitle:         "Uses a neutral & verifiable formula <a style=\"color:rgb(56, 112, 168)\" href=\"https://github.com/gobitfly/eth.store\">ETH.STORE</a> to measure pool performance for consensus rewards.",
+		Subtitle:         "Uses a neutral & verifiable formula <a style=\"color:rgb(56, 112, 168)\" href=\"https://github.com/gobitfly/eth.store\">ETH.STORE</a> to measure pool performance for consensus & execution rewards.",
 		XAxisTitle:       "",
 		YAxisTitle:       "APR [%] (Logarithmic)",
 		StackingMode:     "false",
