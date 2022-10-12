@@ -20,6 +20,15 @@ const (
 func HumanizeTime(then time.Time) string {
 
 	duration := time.Since(then).Milliseconds()
+	var prefix string
+	var suffix string
+
+	if duration < 0 {
+		duration = duration * -1
+		prefix = "in "
+	} else {
+		suffix = " ago"
+	}
 
 	secondsPart := int64(0)
 	minutesPart := int64(0)
@@ -70,12 +79,12 @@ func HumanizeTime(then time.Time) string {
 	}
 
 	if len(parts) == 1 {
-		return fmt.Sprintf("%s ago", parts[0])
+		return fmt.Sprintf("%s%s%s", prefix, parts[0], suffix)
 	} else if len(parts) > 1 {
-		return fmt.Sprintf("%s %s ago", parts[0], parts[1])
+		return fmt.Sprintf("%s%s %s%s", prefix, parts[0], parts[1], suffix)
 	}
 
 	logger.Errorf("error formatting time %v", time.Since(then))
-	return fmt.Sprintf("%v ago", time.Since(then))
+	return fmt.Sprintf("%s%s%s", prefix, time.Since(then), suffix)
 
 }

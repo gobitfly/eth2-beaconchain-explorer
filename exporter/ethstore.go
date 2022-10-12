@@ -50,14 +50,26 @@ func StartEthStoreExporter(bnAddress string, enAddress string, updateInterval, e
 }
 
 func (ese *EthStoreExporter) ExportDay(day string) error {
-	ethStoreDay, err := ese.getStoreDay(day)
+	ethStoreDay, validators, err := ese.getStoreDay(day)
 	if err != nil {
 		return err
 	}
-	_, err = ese.DB.Exec(`
-		INSERT INTO eth_store_stats (day, effective_balances_sum_wei, start_balances_sum_wei, end_balances_sum_wei, deposits_sum_wei, tx_fees_sum_wei, consensus_rewards_sum_wei, total_rewards_wei, apr)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+
+	tx, err := ese.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`
+	INSERT INTO eth_store_stats (day, validator, effective_balances_sum_wei, start_balances_sum_wei, end_balances_sum_wei, deposits_sum_wei, tx_fees_sum_wei, consensus_rewards_sum_wei, total_rewards_wei, apr)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(
 		ethStoreDay.Day,
+		-1,
 		ethStoreDay.EffectiveBalanceGwei.Mul(decimal.NewFromInt(1e9)),
 		ethStoreDay.StartBalanceGwei.Mul(decimal.NewFromInt(1e9)),
 		ethStoreDay.EndBalanceGwei.Mul(decimal.NewFromInt(1e9)),
@@ -70,10 +82,48 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 	if err != nil {
 		return err
 	}
-	return nil
+
+	for index, day := range validators {
+		_, err = stmt.Exec(
+			day.Day,
+			index,
+			day.EffectiveBalanceGwei.Mul(decimal.NewFromInt(1e9)),
+			day.StartBalanceGwei.Mul(decimal.NewFromInt(1e9)),
+			day.EndBalanceGwei.Mul(decimal.NewFromInt(1e9)),
+			day.DepositsSumGwei.Mul(decimal.NewFromInt(1e9)),
+			day.TxFeesSumWei,
+			day.ConsensusRewardsGwei.Mul(decimal.NewFromInt(1e9)),
+			day.TotalRewardsWei,
+			day.Apr,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = tx.Exec(`
+	insert into historical_pool_performance 
+	select 
+	eth_store_stats.day, 
+	COALESCE(validator_pool.pool, 'Unknown'), 
+	COUNT(*) as validators,
+	sum(effective_balances_sum_wei) as effective_balances_sum_wei, 
+	sum(start_balances_sum_wei) as start_balances_sum_wei, 
+	sum(end_balances_sum_wei) as end_balances_sum_wei, 
+	sum(deposits_sum_wei) as deposits_sum_wei, 
+	sum(tx_fees_sum_wei) as tx_fees_sum_wei, 
+	sum(consensus_rewards_sum_wei) as tx_fees_sum_wei, 
+	sum(total_rewards_wei) as total_rewards_wei, 
+	avg(eth_store_stats.apr) as apr
+	from validators left join validator_pool on validators.pubkey = validator_pool.publickey join eth_store_stats on validators.validatorindex = eth_store_stats.validator where day = $1 group by validator_pool.pool, eth_store_stats.day
+;`, ethStoreDay.Day)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
-func (ese *EthStoreExporter) getStoreDay(day string) (*ethstore.Day, error) {
+func (ese *EthStoreExporter) getStoreDay(day string) (*ethstore.Day, map[uint64]*ethstore.Day, error) {
 	logger.Infof("retrieving eth.store for day %v", day)
 	ethstore.SetDebugLevel(1)
 	return ethstore.Calculate(context.Background(), ese.BNAddress, ese.ENAddress, day, 1)
@@ -92,14 +142,14 @@ DBCHECK:
 			time.Sleep(ese.ErrorInterval)
 			continue
 		}
-		latestDay := utils.DayOfSlot(latestFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch)
+		latestDay := utils.DayOfSlot(latestFinalizedEpoch*utils.Config.Chain.Config.SlotsPerEpoch) - 1
 
 		logger.Infof("latest day is %v", latestDay)
 		// count rows of eth.store days in db
 		var ethStoreDayCount uint64
 		err = ese.DB.Get(&ethStoreDayCount, `
 				SELECT COUNT(*)
-				FROM eth_store_stats`)
+				FROM eth_store_stats WHERE validator = -1`)
 		if err != nil {
 			logger.WithError(err).Error("error retrieving eth.store days count from db")
 			time.Sleep(ese.ErrorInterval)
@@ -121,7 +171,7 @@ DBCHECK:
 				var ethStoreDays []types.PerformanceDay
 				err = ese.DB.Select(&ethStoreDays, `
 						SELECT day 
-						FROM eth_store_stats`)
+						FROM eth_store_stats WHERE validator = -1`)
 				if err != nil {
 					logger.WithError(err).Error("error retrieving eth.store days from db")
 					time.Sleep(ese.ErrorInterval)

@@ -2,7 +2,6 @@ package types
 
 import (
 	"html/template"
-	"time"
 )
 
 // Config is a struct to hold the configuration data
@@ -170,22 +169,6 @@ type Config struct {
 	MevBoostRelayExporter struct {
 		Enabled bool `yaml:"enabled" envconfig:"MEVBOOSTRELAY_EXPORTER_ENABLED"`
 	} `yaml:"mevBoostRelayExporter"`
-	EthStoreExporter struct {
-		Enabled bool `yaml:"enabled" envconfig:"ETHSTORE_EXPORTER_ENABLED"`
-		Node    struct {
-			Port string `yaml:"port" envconfig:"ETHSTORE_EXPORTER_NODE_PORT"`
-			Host string `yaml:"host" envconfig:"ETHSTORE_EXPORTER_NODE_HOST"`
-		} `yaml:"node"`
-		UpdateInterval time.Duration `yaml:"updateInterval" envconfig:"ETHSTORE_EXPORTER_UPDATE_INTERVAL"`
-		ErrorInterval  time.Duration `yaml:"errorInterval" envconfig:"ETHSTORE_EXPORTER_ERROR_INTERVAL"`
-		Sleep          time.Duration `yaml:"sleep" envconfig:"ETHSTORE_EXPORTER_SLEEP"`
-	} `yaml:"ethStoreExporter"`
-	HistoricalPoolPerformanceExporter struct {
-		Enabled        bool          `yaml:"enabled" envconfig:"HISTORICAL_POOL_PERFORMANCE_EXPORTER_ENABLED"`
-		UpdateInterval time.Duration `yaml:"updateInterval" envconfig:"HISTORICAL_POOL_PERFORMANCE_EXPORTER_UPDATE_INTERVAL"`
-		ErrorInterval  time.Duration `yaml:"errorInterval" envconfig:"HISTORICAL_POOL_PERFORMANCE_EXPORTER_ERROR_INTERVAL"`
-		Sleep          time.Duration `yaml:"sleep" envconfig:"HISTORICAL_POOL_PERFORMANCE_EXPORTER_SLEEP"`
-	} `yaml:"historicalPoolPerformanceExporter"`
 }
 
 type DatabaseConfig struct {

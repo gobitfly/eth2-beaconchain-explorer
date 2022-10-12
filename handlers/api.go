@@ -187,10 +187,10 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 			consensus_rewards_sum_wei,
 			total_rewards_wei,
 			apr,
-			(select avg(apr) from eth_store_stats as e1 where e1.day > e.day - 7) as avgAPR7d,
-			(select avg(apr) from eth_store_stats as e2 where e2.day > e.day - 31) as avgAPR31d
+			(select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7) as avgAPR7d,
+			(select avg(apr) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31) as avgAPR31d
 		FROM eth_store_stats e
-		WHERE day = $1;`, day)
+		WHERE day = $1 AND validator = -1;`, day)
 	if err != nil {
 		logger.Errorf("error retrieving eth.store data: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")

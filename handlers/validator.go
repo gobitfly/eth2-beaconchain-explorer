@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
@@ -17,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
 	"golang.org/x/sync/errgroup"
@@ -1005,8 +1007,44 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ValidatorSave(w http.ResponseWriter, r *http.Request) {
+/*
+Function checks if the generated ECDSA signature has correct lentgth and if needed sets recovery byte to 0 or 1
+*/
+func sanitizeSignature(sig string) ([]byte, error) {
+	sig = strings.Replace(sig, "0x", "", -1)
+	decodedSig, _ := hex.DecodeString(sig)
+	if len(decodedSig) != 65 {
+		return nil, errors.New("Signature is less then 65 bytes")
+	}
+	if decodedSig[crypto.RecoveryIDOffset] == 27 || decodedSig[crypto.RecoveryIDOffset] == 28 {
+		decodedSig[crypto.RecoveryIDOffset] -= 27
+	}
+	return []byte(decodedSig), nil
+}
 
+/*
+Function tries to find the substring.
+If successful it turns string into []byte value and returns it
+If it fails, it will try to decode `msg`value from Hexadecimal to string and retry search again
+*/
+func sanitizeMessage(msg string) ([]byte, error) {
+	subString := "beaconcha.in"
+
+	if strings.Contains(msg, subString) {
+		return []byte(msg), nil
+	} else {
+		decoded := strings.Replace(msg, "0x", "", -1)
+		dec, _ := hex.DecodeString(decoded)
+		decodedString := (string(dec))
+		if strings.Contains(decodedString, subString) {
+			return []byte(decodedString), nil
+		}
+		return nil, errors.New("Beachoncha.in was not found")
+
+	}
+}
+
+func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	pubkey := r.FormValue("pubkey")
 	pubkey = strings.ToLower(pubkey)
 	pubkey = strings.Replace(pubkey, "0x", "", -1)
@@ -1036,10 +1074,16 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msgForHashing := "\x19Ethereum Signed Message:\n" + strconv.Itoa(len(signatureWrapper.Msg)) + signatureWrapper.Msg
-	msgHash := crypto.Keccak256Hash([]byte(msgForHashing))
+	msg, err := sanitizeMessage(signatureWrapper.Msg)
+	if err != nil {
+		logger.Errorf("Message is invalid %v: %v", signatureWrapper.Msg, err)
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided message is invalid")
+		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
+		return
+	}
+	msgHash := accounts.TextHash(msg)
 
-	signatureParsed, err := hex.DecodeString(strings.Replace(signatureWrapper.Sig, "0x", "", -1))
+	sig, err := sanitizeSignature(signatureWrapper.Sig)
 	if err != nil {
 		logger.Errorf("error parsing submitted signature %v: %v", signatureWrapper.Sig, err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
@@ -1047,24 +1091,14 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(signatureParsed) != 65 {
-		logger.Errorf("signature must be 65 bytes long")
-		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
-		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
-		return
-	}
-
-	if signatureParsed[64] == 27 || signatureParsed[64] == 28 {
-		signatureParsed[64] -= 27
-	}
-
-	recoveredPubkey, err := crypto.SigToPub(msgHash.Bytes(), signatureParsed)
+	recoveredPubkey, err := crypto.SigToPub(msgHash, sig)
 	if err != nil {
 		logger.Errorf("error recovering pubkey: %v", err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
 	}
+
 	recoveredAddress := crypto.PubkeyToAddress(*recoveredPubkey)
 
 	var depositedAddress string
