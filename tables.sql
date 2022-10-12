@@ -950,17 +950,19 @@ drop table if exists eth_store_stats;
 create table eth_store_stats
 (
     day			                int not null,
-    effective_balances_sum_wei	numeric not null,
-    start_balances_sum_wei		numeric not null,
-    end_balances_sum_wei		numeric not null,
-    deposits_sum_wei		    numeric not null,
-    tx_fees_sum_wei		        numeric not null,
-    consensus_rewards_sum_wei	numeric not null,
-    total_rewards_wei		    numeric not null,
-    apr		                    float   not null,
+    validator			        int not null,
+    effective_balances_sum_wei numeric not null,
+    start_balances_sum_wei numeric not null,
+    end_balances_sum_wei numeric not null,
+    deposits_sum_wei numeric not null,
+    tx_fees_sum_wei numeric not null,
+    consensus_rewards_sum_wei numeric not null,
+    total_rewards_wei numeric not null,
+    apr float   not null,
     
-    primary key(day)
+    primary key(day, validator)
 );
+create index idx_eth_store_validator on eth_store_stats (validator, day desc);
 
 drop table if exists historical_pool_performance;
 create table historical_pool_performance
