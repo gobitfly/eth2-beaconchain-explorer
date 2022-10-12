@@ -73,9 +73,9 @@
                   <tr>
                     <td>{{ .Name }}</td>
                     <td>{{ .Count }}</td>
-                    <td>{{ printf "%.1f" .AvgPerformance31d }}%</td>
-                    <td>{{ printf "%.1f" .AvgPerformance7d }}%</td>
-                    <td>{{ printf "%.1f" .AvgPerformance1d }}%</td>
+                    <td>{{ printf "%.2f" .AvgPerformance31d }}%</td>
+                    <td>{{ printf "%.2f" .AvgPerformance7d }}%</td>
+                    <td>{{ printf "%.2f" .AvgPerformance1d }}%</td>
                   </tr>
                 {{ end }}
               </tbody>
