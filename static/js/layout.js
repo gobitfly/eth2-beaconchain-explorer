@@ -111,7 +111,10 @@ function hex2a(hexx) {
 // typeahead
 $(document).ready(function () {
   formatTimestamps() // make sure this happens before tooltips
-  $('[data-toggle="tooltip"]').tooltip()
+  if ($('[data-toggle="tooltip"]').tooltip) {
+    $('[data-toggle="tooltip"]').tooltip()
+  }
+
   // set maxParallelRequests to number of datasets queried in each search
   // make sure this is set in every one bloodhound object
   let requestNum = 8
@@ -454,7 +457,10 @@ function formatTimestamps(selStr) {
 
     $(this).text(getRelativeTime(tsLuxon))
   })
-  sel.find('[data-toggle="tooltip"]').tooltip()
+
+  if (sel.find('[data-toggle="tooltip"]').tooltip) {
+    sel.find('[data-toggle="tooltip"]').tooltip()
+  }
 }
 
 function getRelativeTime(tsLuxon) {

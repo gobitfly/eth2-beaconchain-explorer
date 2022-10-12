@@ -16,7 +16,7 @@ require (
 	github.com/ethereum/go-ethereum v1.10.23
 	github.com/evanw/esbuild v0.8.23
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/gobitfly/eth.store v0.0.0-20221012092039-7da102207647
+	github.com/gobitfly/eth.store v0.0.0-20221012115129-3b4606992669
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/context v1.1.1

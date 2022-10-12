@@ -352,7 +352,6 @@ func poolsUpdater(wg *sync.WaitGroup) {
 
 func getPoolsPageData() (*types.PoolsResp, error) {
 	var poolData types.PoolsResp
-
 	err := db.ReaderDb.Select(&poolData.PoolInfos, `
 	select pool as name, validators as count, apr * 100 as avg_performance_1d, (select avg(apr) from historical_pool_performance as hpp1 where hpp1.pool = hpp.pool AND hpp1.day > hpp.day - 7) * 100 as avg_performance_7d, (select avg(apr) from historical_pool_performance as hpp1 where hpp1.pool = hpp.pool AND hpp1.day > hpp.day - 31) * 100 as avg_performance_31d from historical_pool_performance hpp where day = (select max(day) from historical_pool_performance) order by validators desc;
 	`)
@@ -360,6 +359,21 @@ func getPoolsPageData() (*types.PoolsResp, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	ethstoreData := &types.PoolInfo{}
+	err = db.ReaderDb.Get(ethstoreData, `
+	select 'ETH.STORE' as name, -1 as count, apr * 100 as avg_performance_1d, (select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7) * 100 as avg_performance_7d, (select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 31) * 100 as avg_performance_31d from eth_store_stats e where day = (select max(day) from eth_store_stats) LIMIT 1;
+	`)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pool := range poolData.PoolInfos {
+		pool.EthstoreCompoarison1d = pool.AvgPerformance1d*100/ethstoreData.AvgPerformance1d - 100
+		pool.EthstoreCompoarison7d = pool.AvgPerformance7d*100/ethstoreData.AvgPerformance7d - 100
+		pool.EthstoreCompoarison31d = pool.AvgPerformance31d*100/ethstoreData.AvgPerformance31d - 100
+	}
+	poolData.PoolInfos = append([]*types.PoolInfo{ethstoreData}, poolData.PoolInfos...)
 
 	return &poolData, nil
 }

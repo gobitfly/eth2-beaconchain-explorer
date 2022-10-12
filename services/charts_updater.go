@@ -13,7 +13,6 @@ import (
 	"time"
 
 	mathutil "github.com/prysmaticlabs/prysm/v3/math"
-	"github.com/shopspring/decimal"
 )
 
 type chartHandler struct {
@@ -474,14 +473,6 @@ func participationRateChartData() (*types.GenericChartData, error) {
 	return chartData, nil
 }
 
-func CalcARP(pd types.PerformanceDay) decimal.Decimal {
-	return ((pd.EndBalancesSum.
-		Sub(pd.StartBalancesSum).
-		Sub(pd.DepositsSum)).
-		Div(pd.EffectiveBalancesSum)).
-		Mul(decimal.NewFromInt(36500)).Round(3)
-}
-
 func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	// retrieve pool performance from db
 	var performanceDays []types.PerformanceDay
@@ -495,13 +486,12 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 
 	// generate pool performance series datapoints
 	poolSeriesData := map[string][][2]float64{}
-	var arp, timestamp float64
+	var timestamp float64
 	for _, poolPerfDay := range performanceDays {
 		timestamp = float64(utils.DayToTime(int64(poolPerfDay.Day)).Unix() * 1000)
-		arp, _ = CalcARP(poolPerfDay).Float64()
 		poolSeriesData[poolPerfDay.Pool] = append(poolSeriesData[poolPerfDay.Pool], [2]float64{
 			timestamp,
-			arp,
+			poolPerfDay.APR.InexactFloat64() * 100,
 		})
 	}
 
@@ -531,7 +521,7 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	// retrieve eth.store data from db
 	performanceDays = nil
 	err = db.ReaderDb.Select(&performanceDays, `
-		SELECT	day, effective_balances_sum_wei, start_balances_sum_wei, end_balances_sum_wei, deposits_sum_wei
+		SELECT	day, effective_balances_sum_wei, start_balances_sum_wei, end_balances_sum_wei, deposits_sum_wei, apr
 		FROM	eth_store_stats WHERE validator = -1 
 		ORDER BY day ASC`)
 	if err != nil {
@@ -541,10 +531,9 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 		// generate eth store series datapoints
 		for _, ethStoreDay := range performanceDays {
 			timestamp = float64(utils.DayToTime(int64(ethStoreDay.Day)).Unix() * 1000)
-			arp, _ = CalcARP(ethStoreDay).Float64()
 			poolSeriesData["ETH.STORE"] = append(poolSeriesData["ETH.STORE"], [2]float64{
 				timestamp,
-				arp,
+				ethStoreDay.APR.InexactFloat64() * 100,
 			})
 		}
 		// create eth store series
@@ -553,7 +542,7 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 			Data:  poolSeriesData["ETH.STORE"],
 			Color: "#ed1c24",
 		}
-		chartSeries = append(chartSeries, &ethStoreSeries)
+		chartSeries = append([]*types.GenericChartDataSeries{&ethStoreSeries}, chartSeries...)
 	}
 
 	//create chart struct, hypertext color is hardcoded into subtitle text
