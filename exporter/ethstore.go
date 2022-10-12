@@ -100,6 +100,25 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 			return err
 		}
 	}
+
+	_, err = tx.Exec(`
+	insert into historical_pool_performance 
+		select 
+		eth_store_stats.day, 
+		validator_pool.pool, 
+		sum(effective_balances_sum_wei) as effective_balances_sum_wei, 
+		sum(start_balances_sum_wei) as start_balances_sum_wei, 
+		sum(end_balances_sum_wei) as end_balances_sum_wei, 
+		sum(deposits_sum_wei) as deposits_sum_wei, 
+		sum(tx_fees_sum_wei) as tx_fees_sum_wei, 
+		sum(consensus_rewards_sum_wei) as tx_fees_sum_wei, 
+		sum(total_rewards_wei) as total_rewards_wei, 
+		avg(eth_store_stats.apr) as apr
+		from validator_pool join validators on validator_pool.publickey = validators.pubkey join eth_store_stats on validators.validatorindex = eth_store_stats.validator where day = $1 group by validator_pool.pool, eth_store_stats.day
+	;`, ethStoreDay.Day)
+	if err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 
