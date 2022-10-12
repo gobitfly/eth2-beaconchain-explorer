@@ -114,7 +114,7 @@ $(document).ready(function () {
   if ($('[data-toggle="tooltip"]').tooltip) {
     $('[data-toggle="tooltip"]').tooltip()
   }
-  
+
   // set maxParallelRequests to number of datasets queried in each search
   // make sure this is set in every one bloodhound object
   let requestNum = 8
