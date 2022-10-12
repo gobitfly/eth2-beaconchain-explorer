@@ -221,6 +221,28 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	notificationsByUserID := map[uint64]map[types.EventName][]types.Notification{}
 	start := time.Now()
 	var err error
+	var dbIsCoherent bool
+
+	err = db.ReaderDb.Get(&dbIsCoherent, `
+		select 
+			not (array[false] && array_agg(is_coherent)) as is_coherent
+		from (
+			select 
+				epoch - 1 = lead(epoch) over (order by epoch desc) as is_coherent
+			from epochs
+			order by epoch desc 
+			limit 2^14
+		) coherency`)
+
+	if err != nil {
+		logger.Errorf("failed to do epochs table coherence check, aborting: %v", err)
+		return nil
+	}
+	if !dbIsCoherent {
+		logger.Errorf("epochs coherence check failed, aborting.")
+		return nil
+	}
+
 	// if utils.Config.Notifications.ValidatorBalanceDecreasedNotificationsEnabled {
 	// 	err = collectValidatorBalanceDecreasedNotifications(notificationsByUserID)
 	// 	if err != nil {
@@ -856,7 +878,6 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 						break
 					}
 				}
-				// TODO: aggregate here instead of the emission
 				if eventSubscribed {
 					if len(notifications) > 0 {
 						// reset Retries
@@ -1478,8 +1499,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 	var latestExportedEpoch uint64
 
 	// we use the latest exported epoch because that's what the lastattestationslot column is based upon
-	// note: could trigger missfires if there are gaps in the epoch processing.
-	// unless we do a choerence check this is hard to avoid
+
 	err := db.ReaderDb.Get(&latestExportedEpoch, `select epoch from epochs where eligibleether <> 0 order by epoch desc limit 1`)
 	if err != nil {
 		logger.Infof("failed to get last exported epoch: %v", err)
