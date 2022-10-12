@@ -367,6 +367,12 @@ func getPoolsPageData() (*types.PoolsResp, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	for _, pool := range poolData.PoolInfos {
+		pool.EthstoreCompoarison1d = pool.AvgPerformance1d*100/ethstoreData.AvgPerformance1d - 100
+		pool.EthstoreCompoarison7d = pool.AvgPerformance7d*100/ethstoreData.AvgPerformance7d - 100
+		pool.EthstoreCompoarison31d = pool.AvgPerformance31d*100/ethstoreData.AvgPerformance31d - 100
+	}
 	poolData.PoolInfos = append([]*types.PoolInfo{ethstoreData}, poolData.PoolInfos...)
 
 	return &poolData, nil

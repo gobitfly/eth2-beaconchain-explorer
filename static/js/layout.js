@@ -454,7 +454,10 @@ function formatTimestamps(selStr) {
 
     $(this).text(getRelativeTime(tsLuxon))
   })
-  sel.find('[data-toggle="tooltip"]').tooltip()
+
+  if (sel.find('[data-toggle="tooltip"]')) {
+    sel.find('[data-toggle="tooltip"]').tooltip()
+  }
 }
 
 function getRelativeTime(tsLuxon) {

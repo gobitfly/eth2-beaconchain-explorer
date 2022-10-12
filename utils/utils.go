@@ -198,6 +198,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"byteToString": func(num []byte) string {
 			return string(num)
 		},
+		"formatEthstoreComparison": FormatEthstoreComparison,
 	}
 }
 
@@ -870,4 +871,17 @@ func SliceContains(list []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func FormatEthstoreComparison(pool string, val float64) template.HTML {
+	prefix := ""
+	textClass := "text-danger"
+	ou := "underperforms"
+	if val > 0 {
+		prefix = "+"
+		textClass = "text-success"
+		ou = "outperforms"
+	}
+
+	return template.HTML(fmt.Sprintf(`<sub title="%s %s the ETH.STORE indicator by %s%.2f%%" data-toggle="tooltip" class="%s">(%s%.2f%%)</sub>`, pool, ou, prefix, val, textClass, prefix, val))
 }

@@ -229,11 +229,7 @@
                             orig[0] + '<span style="font-size:10px">Epoch ' + epoch + '</span>' +
                         '</p>'
 
-                    let i = 0;
-                    for (let point of points) {
-                        tooltipString += `<span style="color: ${point.series.color}">\u25CF<\/span> ${point.series.name}: ${point.y}%<br>`;
-                        i++;
-                    }
+                    tooltipString += `<span style="color: ${this.point.series.color}">\u25CF<\/span> ${this.point.series.name}: ${this.point.y.toFixed(2)}%`;
                     return tooltipString;
                 },
                 positioner: function(labelWidth, labelHeight, point) {

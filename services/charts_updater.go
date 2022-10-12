@@ -491,7 +491,7 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 		timestamp = float64(utils.DayToTime(int64(poolPerfDay.Day)).Unix() * 1000)
 		poolSeriesData[poolPerfDay.Pool] = append(poolSeriesData[poolPerfDay.Pool], [2]float64{
 			timestamp,
-			poolPerfDay.APR.InexactFloat64(),
+			poolPerfDay.APR.InexactFloat64() * 100,
 		})
 	}
 
@@ -521,7 +521,7 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	// retrieve eth.store data from db
 	performanceDays = nil
 	err = db.ReaderDb.Select(&performanceDays, `
-		SELECT	day, effective_balances_sum_wei, start_balances_sum_wei, end_balances_sum_wei, deposits_sum_wei
+		SELECT	day, effective_balances_sum_wei, start_balances_sum_wei, end_balances_sum_wei, deposits_sum_wei, apr
 		FROM	eth_store_stats WHERE validator = -1 
 		ORDER BY day ASC`)
 	if err != nil {
@@ -533,7 +533,7 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 			timestamp = float64(utils.DayToTime(int64(ethStoreDay.Day)).Unix() * 1000)
 			poolSeriesData["ETH.STORE"] = append(poolSeriesData["ETH.STORE"], [2]float64{
 				timestamp,
-				ethStoreDay.APR.InexactFloat64(),
+				ethStoreDay.APR.InexactFloat64() * 100,
 			})
 		}
 		// create eth store series
@@ -542,7 +542,7 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 			Data:  poolSeriesData["ETH.STORE"],
 			Color: "#ed1c24",
 		}
-		chartSeries = append(chartSeries, &ethStoreSeries)
+		chartSeries = append([]*types.GenericChartDataSeries{&ethStoreSeries}, chartSeries...)
 	}
 
 	//create chart struct, hypertext color is hardcoded into subtitle text

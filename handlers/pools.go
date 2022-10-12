@@ -44,6 +44,8 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	poolData.HistoricPoolPerformance.Data = performanceData
 	poolData.HistoricPoolPerformance.Height = 500
 	poolData.HistoricPoolPerformance.Path = "historic_pool_performance"
+	poolData.HistoricPoolPerformance.Data.TooltipShared = false
+	poolData.HistoricPoolPerformance.Data.TooltipSplit = false
 
 	data.Data = poolData
 
