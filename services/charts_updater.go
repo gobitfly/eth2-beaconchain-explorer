@@ -532,7 +532,7 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	performanceDays = nil
 	err = db.ReaderDb.Select(&performanceDays, `
 		SELECT	day, effective_balances_sum_wei, start_balances_sum_wei, end_balances_sum_wei, deposits_sum_wei
-		FROM	eth_store_stats
+		FROM	eth_store_stats WHERE validator = -1 
 		ORDER BY day ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("error getting eth store days: %w", err)
