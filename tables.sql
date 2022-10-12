@@ -969,6 +969,7 @@ create table historical_pool_performance
 (
     day                int not null,
     pool        varchar(40) not null,
+    validators int not null,
     effective_balances_sum_wei numeric not null,
     start_balances_sum_wei numeric not null,
     end_balances_sum_wei numeric not null,

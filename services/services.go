@@ -354,18 +354,8 @@ func getPoolsPageData() (*types.PoolsResp, error) {
 	var poolData types.PoolsResp
 
 	err := db.ReaderDb.Select(&poolData.PoolInfos, `
-	select 
-		coalesce(pool, 'Unknown') as name, 
-		count(*) as count, 
-		avg(performance31d)::integer as avg_performance_31d, 
-		avg(performance7d)::integer as avg_performance_7d, 
-		avg(performance1d)::integer as avg_performance_1d 
-	from validators 
-		left outer join validator_pool on validators.pubkey = validator_pool.publickey 
-		left outer join validator_performance on validators.validatorindex = validator_performance.validatorindex 
-	where validators.status in ('active_online', 'active_offline') 
-	group by pool 
-	order by count(*) desc;`)
+	select pool as name, validators as count, apr * 100 as avg_performance_1d, (select avg(apr) from historical_pool_performance as hpp1 where hpp1.pool = hpp.pool AND hpp1.day > hpp.day - 7) * 100 as avg_performance_7d, (select avg(apr) from historical_pool_performance as hpp1 where hpp1.pool = hpp.pool AND hpp1.day > hpp.day - 31) * 100 as avg_performance_31d from historical_pool_performance hpp where day = (select max(day) from historical_pool_performance) order by validators desc;
+	`)
 
 	if err != nil {
 		return nil, err

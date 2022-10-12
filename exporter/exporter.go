@@ -28,10 +28,6 @@ var epochBlacklist = make(map[uint64]uint64)
 var saveEpochMux = &sync.Mutex{}
 var fullCheckRunning = uint64(0)
 
-var getEpochDataChan = make(chan uint64, 10)
-var saveEpochDataChan = make(chan *types.EpochData, 10)
-var saveBlockDataChan = make(chan *types.Block, 10)
-
 // Start will start the export of data from rpc into the database
 func Start(client rpc.Client) error {
 	go performanceDataUpdater()
@@ -46,9 +42,6 @@ func Start(client rpc.Client) error {
 	}
 	if utils.Config.RocketpoolExporter.Enabled {
 		go rocketpoolExporter()
-	}
-	if utils.Config.HistoricalPoolPerformanceExporter.Enabled {
-		go historicalPoolPerformanceExporter()
 	}
 
 	if utils.Config.Indexer.PubKeyTagsExporter.Enabled {

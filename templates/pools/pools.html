@@ -63,9 +63,9 @@
                 <tr>
                   <th>Pool</th>
                   <th>Validators</th>
-                  <th>Avg. Performance 31d</th>
-                  <th>Avg. Performance 7d</th>
-                  <th>Avg. Performance 1d</th>
+                  <th>Avg. APR 31d</th>
+                  <th>Avg. APR 7d</th>
+                  <th>Avg. APR 1d</th>
                 </tr>
               </thead>
               <tbody>
@@ -73,9 +73,9 @@
                   <tr>
                     <td>{{ .Name }}</td>
                     <td>{{ .Count }}</td>
-                    <td>{{ formatBalanceChange .AvgPerformance31d $.Rates.Currency }}</td>
-                    <td>{{ formatBalanceChange .AvgPerformance7d $.Rates.Currency }}</td>
-                    <td>{{ formatBalanceChange .AvgPerformance1d $.Rates.Currency }}</td>
+                    <td>{{ printf "%.1f" .AvgPerformance31d }}%</td>
+                    <td>{{ printf "%.1f" .AvgPerformance7d }}%</td>
+                    <td>{{ printf "%.1f" .AvgPerformance1d }}%</td>
                   </tr>
                 {{ end }}
               </tbody>

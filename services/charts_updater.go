@@ -486,8 +486,8 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	// retrieve pool performance from db
 	var performanceDays []types.PerformanceDay
 	err := db.ReaderDb.Select(&performanceDays, `
-		SELECT	pool, day, effective_balances_sum * 1e9 as effective_balances_sum_wei, start_balances_sum * 1e9 as start_balances_sum_wei, end_balances_sum * 1e9 as end_balances_sum_wei, deposits_sum * 1e9 as deposits_sum_wei
-		FROM	historical_pool_performance
+		SELECT pool, day, effective_balances_sum_wei, start_balances_sum_wei, end_balances_sum_wei, deposits_sum_wei, apr
+		FROM historical_pool_performance
 		ORDER BY day, pool ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("error getting historical pool performance: %w", err)

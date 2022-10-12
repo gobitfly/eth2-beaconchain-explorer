@@ -1343,11 +1343,11 @@ type PoolsResp struct {
 }
 
 type PoolInfo struct {
-	Name              string `db:"name"`
-	Count             int64  `db:"count"`
-	AvgPerformance31d int64  `db:"avg_performance_31d"`
-	AvgPerformance7d  int64  `db:"avg_performance_7d"`
-	AvgPerformance1d  int64  `db:"avg_performance_1d"`
+	Name              string  `db:"name"`
+	Count             int64   `db:"count"`
+	AvgPerformance31d float64 `db:"avg_performance_31d"`
+	AvgPerformance7d  float64 `db:"avg_performance_7d"`
+	AvgPerformance1d  float64 `db:"avg_performance_1d"`
 }
 
 type AddValidatorWatchlistModal struct {
