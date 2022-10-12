@@ -535,6 +535,8 @@ github.com/gobitfly/eth.store v0.0.0-20221012091851-63c85ea3521b h1:cOEYrL4Uz9vA
 github.com/gobitfly/eth.store v0.0.0-20221012091851-63c85ea3521b/go.mod h1:NlB9l6tiM42FM5qQHIsG/Iey6AJ0XQvRcKkmt63/ve0=
 github.com/gobitfly/eth.store v0.0.0-20221012092039-7da102207647 h1:MYpLEKbqz6ER/f83tuHJz3PWEsYIyDifiAHV5Ybz4Nk=
 github.com/gobitfly/eth.store v0.0.0-20221012092039-7da102207647/go.mod h1:NlB9l6tiM42FM5qQHIsG/Iey6AJ0XQvRcKkmt63/ve0=
+github.com/gobitfly/eth.store v0.0.0-20221012115129-3b4606992669 h1:nGqtKWpeItBrYO0TkdSSpeVRpjcWW6il28EasO9WZSo=
+github.com/gobitfly/eth.store v0.0.0-20221012115129-3b4606992669/go.mod h1:NlB9l6tiM42FM5qQHIsG/Iey6AJ0XQvRcKkmt63/ve0=
 github.com/gobwas/httphead v0.0.0-20180130184737-2c6c146eadee h1:s+21KNqlpePfkah2I+gwHF8xmJWRjooY+5248k6m4A0=
 github.com/gobwas/httphead v0.0.0-20180130184737-2c6c146eadee/go.mod h1:L0fX3K22YWvt/FAX9NnzrNzcI4wNYi9Yku4O0LKYflo=
 github.com/gobwas/pool v0.2.0 h1:QEmUOlnSjWtnpRGHF3SauEiOsy82Cup83Vf2LcMlnc8=
