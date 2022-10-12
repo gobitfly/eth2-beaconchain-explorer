@@ -71,8 +71,8 @@
               <tbody>
                 {{ range .Data.PoolInfos }}
                   <tr>
-                    <td>{{if eq .Name "ETH.STORE"}}<a href="https://github.com/gobitfly/eth.store">{{ .Name }}</a>{{else}}{{ .Name }}{{end}}</td>
-                    <td>{{if eq .Count -1}}-{{else}}{{ .Count }}{{end}}</td>
+                    <td>{{ if eq .Name "ETH.STORE" }}<a href="https://github.com/gobitfly/eth.store">{{ .Name }}</a>{{ else }}{{ .Name }}{{ end }}</td>
+                    <td>{{ if eq .Count -1 }}-{{ else }}{{ .Count }}{{ end }}</td>
                     <td>{{ printf "%.2f" .AvgPerformance31d }}%</td>
                     <td>{{ printf "%.2f" .AvgPerformance7d }}%</td>
                     <td>{{ printf "%.2f" .AvgPerformance1d }}%</td>
