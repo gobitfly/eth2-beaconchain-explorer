@@ -139,9 +139,9 @@ func FormatBalanceChange(balance *int64, currency string) template.HTML {
 		}
 
 		if balanceF < 0 {
-			return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\">%.0f GWei</span>", float64(*balance)))
+			return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\">%s GWei</span>", FormatAddCommasFormated(float64(*balance), 0)))
 		}
-		return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\">+%.0f GWei</span>", float64(*balance)))
+		return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\">+%s GWei</span>", FormatAddCommasFormated(float64(*balance), 0)))
 	} else {
 		if balance == nil {
 			return template.HTML("<span> 0 " + currency + "</span>")
@@ -167,6 +167,15 @@ func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 	balance := FormatFloat((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
 
 	return template.HTML(balance)
+}
+
+func FormatAddCommasFormated(num float64, precision uint) template.HTML {
+	p := message.NewPrinter(language.English)
+	s := p.Sprintf(fmt.Sprintf("%%.%vf", precision), num)
+	if precision > 0 {
+		s = strings.TrimRight(strings.TrimRight(s, "0"), ".")
+	}
+	return template.HTML(strings.ReplaceAll(string([]rune(p.Sprintf(s, num))), ",", `<span class="thousands-separator"></span>`))
 }
 
 func FormatAddCommas(n uint64) template.HTML {
