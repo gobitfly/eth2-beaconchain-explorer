@@ -471,10 +471,13 @@
       <table style="margin-top: 0px !important;" class="table" id="validator-history-table" width="100%">
         <thead>
           <tr>
-            <th>Epoch</th>
-            <!-- <th>Slot</th> -->
-            <th>Balance Change</th>
-            <th data-toggle="tooltip" title="Attestation and block proposal status for a given epoch">Att. & Prop.</th>
+            <th rowspan="2">Epoch</th>
+            <th colspan="2">Balance Changee</th>
+            <th rowspan="2" data-toggle="tooltip" title="Attestation and block proposal status for a given epoch">Att. & Prop.</th>
+          </tr>
+          <tr style="display:none">
+            <th></th>
+            <th></th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -503,6 +506,21 @@
                         next: '<i class="fas fa-chevron-right"></i>'
                     }
                 },
+                columnDefs: [
+                  {
+                    targets: 1,
+                    createdCell: function (td, cellData, rowData, row, col) {
+                      $(td).css("padding-right", "0px")
+                      $(td).css("width", "0px")
+                    },
+                  },
+                  {
+                    targets: 2,
+                    createdCell: function (td, cellData, rowData, row, col) {
+                      $(td).css("padding-left", "0px")
+                    },
+                  },
+                ],
                 drawCallback: function(settings) {
                     formatTimestamps()
                 },

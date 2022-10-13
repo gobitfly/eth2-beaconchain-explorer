@@ -130,6 +130,17 @@ func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 	return FormatBalanceChange(balance, currency)
 }
 
+func FormatBalanceChangeFormatedETH(balance *int64) (template.HTML, template.HTML) {
+	if balance == nil || *balance == 0 {
+		return template.HTML("<span class=\"float-right\">0</span>"), template.HTML("<span class=\"float-left\">&nbsp;GWei</span>")
+	}
+
+	if *balance < 0 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\">%s</span>", FormatAddCommasFormated(float64(*balance), 0))), template.HTML("<span class=\"text-danger float-left\">&nbsp;GWei</span>")
+	}
+	return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\">+%s</span>", FormatAddCommasFormated(float64(*balance), 0))), template.HTML("<span class=\"text-success float-left\">&nbsp;GWei</span>")
+}
+
 // FormatBalanceChange will return a string for a balance change
 func FormatBalanceChange(balance *int64, currency string) template.HTML {
 	balanceF := float64(*balance) / float64(1e9)

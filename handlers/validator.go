@@ -1340,11 +1340,21 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if b.BalanceChange.Valid {
-			tableData = append(tableData, []interface{}{
-				utils.FormatEpoch(b.Epoch),
-				utils.FormatBalanceChange(&b.BalanceChange.Int64, currency),
-				template.HTML(events),
-			})
+			if currency == "ETH" {
+				v, c := utils.FormatBalanceChangeFormatedETH(&b.BalanceChange.Int64)
+				tableData = append(tableData, []interface{}{
+					utils.FormatEpoch(b.Epoch),
+					v,
+					c,
+					template.HTML(events),
+				})
+			} else {
+				tableData = append(tableData, []interface{}{
+					utils.FormatEpoch(b.Epoch),
+					utils.FormatBalanceChange(&b.BalanceChange.Int64, currency),
+					template.HTML(events),
+				})
+			}
 		}
 	}
 
