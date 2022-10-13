@@ -1820,9 +1820,20 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 		JoinValidators: true,
 		Network:        utils.GetNetwork(),
 	}
+	if !userPremium.NotificationThresholds {
+		if eventName == types.MonitoringMachineDiskAlmostFullEventName {
+			threshold = 0.1
+		} else if eventName == types.MonitoringMachineCpuLoadEventName {
+			threshold = 0.6
+		} else if eventName == types.MonitoringMachineMemoryUsageEventName {
+			threshold = 0.8
+		} else if eventName == types.ValidatorIsOfflineEventName {
+			threshold = 3
+		}
+		// rocketpool thresholds are free
+	}
 
 	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") && !strings.HasPrefix(string(eventName), "rocketpool_") { // no filter = add all my watched validators
-
 		myValidators, err2 := db.GetTaggedValidators(filterWatchlist)
 		if err2 != nil {
 			ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
@@ -1833,7 +1844,13 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 
 		// not quite happy performance wise, placing a TODO here for future me
 		for i, v := range myValidators {
-			err = db.AddSubscription(user.UserID, utils.GetNetwork(), eventName, fmt.Sprintf("%v", hex.EncodeToString(v.ValidatorPublickey)), 0)
+			err = db.AddSubscription(
+				user.UserID,
+				utils.GetNetwork(),
+				eventName,
+				fmt.Sprintf("%v", hex.EncodeToString(v.ValidatorPublickey)),
+				threshold,
+			)
 			if err != nil {
 				logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1845,16 +1862,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 			}
 		}
 	} else { // add filtered one
-		if !userPremium.NotificationThresholds {
-			if eventName == types.MonitoringMachineDiskAlmostFullEventName {
-				threshold = 0.1
-			} else if eventName == types.MonitoringMachineCpuLoadEventName {
-				threshold = 0.6
-			} else if eventName == types.MonitoringMachineMemoryUsageEventName {
-				threshold = 0.8
-			}
-			// rocketpool thresholds are free
-		}
+
 		network := utils.GetNetwork()
 		if eventName == types.EthClientUpdateEventName || strings.HasPrefix(string(eventName), "monitoring_") {
 			network = ""
