@@ -24,7 +24,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/gorilla/mux"
-	"github.com/juliangruber/go-intersect"
 )
 
 var validatorEditFlash = "edit_validator_flash"
@@ -1398,9 +1397,10 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Request came with a validator index number
 		index, err = strconv.ParseUint(vars["index"], 10, 64)
+		// Request is not a valid index number
 		if err != nil {
 			logger.Errorf("error parsing validator index: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			http.Error(w, "Validator not found", http.StatusNotFound)
 			return
 		}
 	}
