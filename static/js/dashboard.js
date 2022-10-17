@@ -1060,7 +1060,7 @@ $(document).ready(function () {
           //     prevDay=day
           //   }
           // }
-          
+
           var t2 = Date.now()
           createBalanceChart(result.consensusChartData, result.executionChartData)
           var t3 = Date.now()
@@ -1106,20 +1106,18 @@ function createBalanceChart(income, executionIncomeHistory) {
     },
     plotOptions: {
       column: {
-          stacking: 'stacked',
-          dataLabels: {
-              enabled: false
-          },
-          pointInterval: 24 * 3600 * 1000,
-          // pointIntervalUnit: 'day',
-          dataGrouping: {
-              forced: true,
-              units: [
-                  ['day', [1]]
-              ]
-          }
-      }
-  },
+        stacking: "stacked",
+        dataLabels: {
+          enabled: false,
+        },
+        pointInterval: 24 * 3600 * 1000,
+        // pointIntervalUnit: 'day',
+        dataGrouping: {
+          forced: true,
+          units: [["day", [1]]],
+        },
+      },
+    },
     xAxis: {
       type: "datetime",
       range: 31 * 24 * 60 * 60 * 1000,
@@ -1167,12 +1165,12 @@ function createBalanceChart(income, executionIncomeHistory) {
       {
         name: "Daily Consensus Income",
         data: income,
-        index: 2
+        index: 2,
       },
       {
         name: "Daily Execution Income",
         data: executionIncomeHistory,
-        index: 1
+        index: 1,
       },
     ],
   })
