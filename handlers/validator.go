@@ -1329,11 +1329,11 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(validatorHistory))
 	for _, b := range validatorHistory {
-		if b.AttesterSlot.Int64 == -1 && b.BalanceChange.Int64 < 0 {
+		if !b.AttesterSlot.Valid && b.BalanceChange.Int64 < 0 {
 			b.AttestationStatus = 4
 		}
 
-		if b.AttesterSlot.Int64 == -1 && b.BalanceChange.Int64 >= 0 {
+		if !b.AttesterSlot.Valid && b.BalanceChange.Int64 >= 0 {
 			b.AttestationStatus = 5
 		}
 
