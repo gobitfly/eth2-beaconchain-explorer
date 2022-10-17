@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+	"eth2-exporter/types"
 	"fmt"
 	"html/template"
 	"math/big"
@@ -32,6 +33,15 @@ func Eth1BlockReward(blockNumber uint64, difficulty []byte) *big.Int {
 	} else {
 		return big.NewInt(2e+18)
 	}
+}
+
+func Eth1TotalReward(block *types.Eth1BlockIndexed) *big.Int {
+	blockReward := Eth1BlockReward(block.GetNumber(), block.GetDifficulty())
+	uncleReward := big.NewInt(0).SetBytes(block.GetUncleReward())
+	txFees := big.NewInt(0).SetBytes(block.GetTxReward())
+
+	totalReward := big.NewInt(0).Add(blockReward, txFees)
+	return totalReward.Add(totalReward, uncleReward)
 }
 
 func StripPrefix(hexStr string) string {

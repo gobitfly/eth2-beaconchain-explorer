@@ -268,6 +268,18 @@
                       <td><input id="rocketpool-checkbox" type="checkbox" data-toggle="toggle" {{ if .RocketpoolSmartnode.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('rocketpool-checkbox', 'eth_client_update', 'rocketpool')" /></td>
                     {{ end }}
                   </tr>
+                  <tr>
+                    <td data-column="Name"><a href="https://rocketpool.net">MEV-Boost</a></td>
+                    <td data-column="Language">Go</td>
+                    <td data-column="Latest update"><a href="https://github.com/flashbots/mev-boost/releases">{{ .MevBoost.ClientReleaseVersion }}</a> - {{ .MevBoost.ClientReleaseDate }}</td>
+                    <td data-column="Social media">
+                      <a href="http://discord.gg/flashbots" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
+                    </td>
+                    <td data-column="Support">N/A</td>
+                    {{ if $.User.Authenticated }}
+                      <td><input id="mevboost-checkbox" type="checkbox" data-toggle="toggle" {{ if .MevBoost.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('mevboost-checkbox', 'eth_client_update', 'mev-boost')" /></td>
+                    {{ end }}
+                  </tr>
                 </tbody>
               </table>
             </div>

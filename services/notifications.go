@@ -2105,6 +2105,8 @@ func (n *ethClientNotification) GetInfo(includeUrl bool) string {
 			url = "https://github.com/ledgerwatch/erigon/releases"
 		case "Rocketpool":
 			url = "https://github.com/rocket-pool/smartnode-install/releases"
+		case "MEV-Boost":
+			url = "https://github.com/flashbots/mev-boost/releases"
 		default:
 			url = "https://beaconcha.in/ethClients"
 		}
@@ -2143,6 +2145,8 @@ func (n *ethClientNotification) GetInfoMarkdown() string {
 		url = "https://github.com/ledgerwatch/erigon/releases"
 	case "Rocketpool":
 		url = "https://github.com/rocket-pool/smartnode-install/releases"
+	case "MEV-Boost":
+		url = "https://github.com/flashbots/mev-boost/releases"
 	default:
 		url = "https://beaconcha.in/ethClients"
 	}

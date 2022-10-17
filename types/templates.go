@@ -342,6 +342,7 @@ type ValidatorPageData struct {
 	Apr                                 float64
 	Proposals                           [][]uint64
 	IncomeHistoryChartData              []*ChartDataPoint
+	ExecutionIncomeHistoryData          []*ChartDataPoint
 	Deposits                            *ValidatorDeposits
 	Eth1DepositAddress                  []byte
 	FlashMessage                        string

@@ -145,6 +145,56 @@ type ExecutionPerformanceResponse struct {
 	ValidatorIndex uint64   `json:"validatorindex"`
 }
 
+type ExecutionBlockApiResponse struct {
+	Hash               string                `json:"blockHash"`
+	BlockNumber        uint64                `json:"blockNumber"`
+	Timestamp          uint64                `json:"timestamp"`
+	BlockReward        *big.Int              `json:"blockReward"`
+	BlockMevReward     *big.Int              `json:"blockMevReward"`
+	FeeRecipientReward *big.Int              `json:"producerReward"`
+	FeeRecipient       string                `json:"feeRecipient"`
+	GasLimit           uint64                `json:"gasLimit"`
+	GasUsed            uint64                `json:"gasUsed"`
+	BaseFee            *big.Int              `json:"baseFee"`
+	TxCount            uint64                `json:"txCount"`
+	InternalTxCount    uint64                `json:"internalTxCount"`
+	UncleCount         uint64                `json:"uncleCount"`
+	ParentHash         string                `json:"parentHash"`
+	UncleHash          string                `json:"uncleHash"`
+	Difficulty         *big.Int              `json:"difficulty"`
+	PoSData            *ExecBlockProposer    `json:"posConsensus"`
+	RelayData          *RelayDataApiResponse `json:"relay"`
+	ConsensusAlgorithm string                `json:"consensusAlgorithm"`
+}
+
+type RelayDataApiResponse struct {
+	TagID                string `json:"tag"`
+	BuilderPubKey        string `json:"builderPubkey"`
+	ProposerFeeRecipient string `json:"producerFeeRecipient"`
+}
+
+type AddressIndexOrPubkey struct {
+	Address []byte
+	Index   uint64
+	Pubkey  []byte
+}
+
+type RelaysData struct {
+	MevRecipient  []byte    `db:"proposer_fee_recipient"`
+	MevBribe      WeiString `db:"value"`
+	ExecBlockHash []byte    `db:"exec_block_hash"`
+	TagID         string    `db:"tag_id"`
+	BuilderPubKey []byte    `db:"builder_pubkey"`
+}
+
+type ExecBlockProposer struct {
+	ExecBlock uint64 `db:"exec_block_number" json:"executionBlockNumber"`
+	Proposer  uint64 `db:"proposer" json:"proposerIndex"`
+	Slot      uint64 `db:"slot" json:"slot"`
+	Epoch     uint64 `db:"epoch" json:"epoch"`
+	Finalized bool   `json:"finalized"`
+}
+
 func (e *DiscordReq) Scan(value interface{}) error {
 	b, ok := value.([]byte)
 	if !ok {
