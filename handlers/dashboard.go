@@ -119,8 +119,8 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var response struct {
-		ConsensusChartData []*types.ChartDataPoint `db:"consensusChartData"`
-		ExecutionChartData []*types.ChartDataPoint `db:"executionChartData"`
+		ConsensusChartData []*types.ChartDataPoint `json:"consensusChartData"`
+		ExecutionChartData []*types.ChartDataPoint `json:"executionChartData"`
 	}
 	response.ConsensusChartData = incomeHistoryChartData
 	response.ExecutionChartData = executionChartData
@@ -135,7 +135,7 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 
 func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDataPoint, error) {
 	var limit uint64 = 300
-	blockList, _, err := findExecBlockNumbersByProposerIndex(indices, 0, limit)
+	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -150,19 +150,22 @@ func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDat
 	}
 
 	var chartData = make([]*types.ChartDataPoint, len(blocks))
+	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
 
-	for i := 0; i < len(blocks); i++ {
-		color := "#7cd0ec"
+	for i := len(blocks) - 1; i >= 0; i-- {
+		consData := consMap[blocks[i].Number]
+		day := int64(consData.Epoch / epochsPerDay)
+		color := "#90ed7d"
 		totalReward, _ := utils.WeiToEther(utils.Eth1TotalReward(blocks[i])).Float64()
 		relayData, ok := relaysData[common.BytesToHash(blocks[i].Hash)]
 		if ok {
 			totalReward, _ = utils.WeiToEther(relayData.MevBribe.BigInt()).Float64()
 		}
 
-		balanceTs := blocks[i].GetTime().AsTime().Unix()
+		//balanceTs := blocks[i].GetTime().AsTime().Unix()
 
-		chartData[i] = &types.ChartDataPoint{
-			X:     float64(balanceTs * 1000),
+		chartData[len(blocks)-1-i] = &types.ChartDataPoint{
+			X:     float64(utils.DayToTime(day).Unix() * 1000), //float64(balanceTs * 1000),
 			Y:     utils.ExchangeRateForCurrency(currency) * totalReward,
 			Color: color,
 		}

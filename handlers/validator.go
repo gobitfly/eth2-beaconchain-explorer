@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -439,7 +440,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("attestations data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
-	validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency)
+	g, _ := errgroup.WithContext(context.Background())
+	g.Go(func() error {
+		validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency)
+		return err
+	})
+
+	g.Go(func() error {
+		validatorPageData.ExecutionIncomeHistoryData, err = getExecutionChartData([]uint64{index}, currency)
+		return err
+	})
+
+	err = g.Wait()
 	if err != nil {
 		logger.Errorf("failed to generate income history chart data for validator view: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
