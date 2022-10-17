@@ -533,8 +533,6 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
 	rangeEnd := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
 
-	logger.Info(rangeStart)
-	logger.Info(rangeEnd)
 	res := make(map[uint64][]*types.ValidatorSyncParticipation, len(validators))
 
 	columnFilters := make([]gcp_bigtable.Filter, 0, len(validators))
@@ -563,7 +561,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	}
 
 	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, rangeEnd), func(r gcp_bigtable.Row) bool {
-		logger.Infof("processing row %v", r.Key())
+
 		for _, ri := range r[SYNC_COMMITTEES_FAMILY] {
 			keySplit := strings.Split(r.Key(), ":")
 
