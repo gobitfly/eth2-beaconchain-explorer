@@ -92,7 +92,7 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 
 	err = db.BigtableClient.SaveSyncCommitteesAssignments(firstSlot, lastSlot, validatorsU64)
 	if err != nil {
-		logger.Errorf("error saving sync committee assignments: %v", err)
+		return fmt.Errorf("error saving sync committee assignments: %v", err)
 	}
 	logger.Infof("exported sync committee assignments for period %v to bigtable in %v", p, time.Since(start))
 

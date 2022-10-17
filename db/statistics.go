@@ -286,6 +286,26 @@ func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string)
 	return chartData, err
 }
 
+func GetValidatorELIncomeHistory(validator_indices []uint64, lowerBoundDay uint64, upperBoundDay uint64) ([]types.ValidatorIncomeHistory, error) {
+	if upperBoundDay == 0 {
+		upperBoundDay = 65536
+	}
+	queryValidatorsArr := pq.Array(validator_indices)
+
+	var result []types.ValidatorIncomeHistory
+	err := ReaderDb.Select(&result, `
+		select 
+			day, consensus_rewards_sum_wei AS income
+		FROM eth_store_stats
+		WHERE validator = ANY($1) AND
+			day BETWEEN ($2 - 1) AND $3
+		GROUP BY day
+		ORDER BY day
+	`, queryValidatorsArr, lowerBoundDay, upperBoundDay)
+
+	return result, err
+}
+
 func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64, upperBoundDay uint64) ([]types.ValidatorIncomeHistory, error) {
 	if upperBoundDay == 0 {
 		upperBoundDay = 65536

@@ -177,7 +177,7 @@ func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[
 
 func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint64, validators []uint64) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	start := time.Now()
