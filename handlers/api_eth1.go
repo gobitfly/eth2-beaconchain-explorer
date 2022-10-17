@@ -21,7 +21,7 @@ import (
 )
 
 // ApiETH1ExecBlocks godoc
-// @Summary Get Execution Blocks
+// @Summary Get execution blocks
 // @Tags Execution
 // @Description Get execution blocks by execution block number
 // @Produce json
@@ -72,7 +72,7 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiETH1AccountProposedBlocks godoc
-// @Summary Get Proposed Blocks
+// @Summary Get proposed or mined blocks
 // @Tags Execution
 // @Description Get a list of proposed or mined blocks from a given fee recipient address, proposer index or proposer pubkey
 // @Produce json
@@ -81,7 +81,7 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 // @Param limit query int false "Limit, amount of entries you wish to receive"
 // @Success 200 {object} string
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/execution/{addressIndexOrPubkey}/proposed [get]
+// @Router /api/v1/execution/{addressIndexOrPubkey}/produced [get]
 func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
