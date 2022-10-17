@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/price"
@@ -14,7 +15,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/lib/pq"
+	"golang.org/x/sync/errgroup"
 )
 
 func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, error) {
@@ -69,6 +72,102 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
+}
+
+// Dashboard Chart that combines balance data and
+func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+	validatorLimit := getUserPremium(r).MaxValidators
+
+	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+	if len(queryValidators) < 1 {
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+
+	g, _ := errgroup.WithContext(context.Background())
+	var incomeHistoryChartData []*types.ChartDataPoint
+	var executionChartData []*types.ChartDataPoint
+	g.Go(func() error {
+		incomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart(queryValidators, currency)
+		return err
+	})
+
+	g.Go(func() error {
+		executionChartData, err = getExecutionChartData(queryValidators, currency)
+		return err
+	})
+
+	err = g.Wait()
+	if err != nil {
+		logger.Errorf("combined balance chart %v", err)
+		sendErrorResponse(w, r.URL.String(), err.Error())
+		return
+	}
+
+	var response struct {
+		ConsensusChartData []*types.ChartDataPoint `db:"consensusChartData"`
+		ExecutionChartData []*types.ChartDataPoint `db:"executionChartData"`
+	}
+	response.ConsensusChartData = incomeHistoryChartData
+	response.ExecutionChartData = executionChartData
+
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+}
+
+func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDataPoint, error) {
+	var limit uint64 = 300
+	blockList, _, err := findExecBlockNumbersByProposerIndex(indices, 0, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, limit)
+	if err != nil {
+		return nil, err
+	}
+	relaysData, err := getRelayDataForIndexedBlocks(blocks)
+	if err != nil {
+		return nil, err
+	}
+
+	var chartData = make([]*types.ChartDataPoint, len(blocks))
+
+	for i := 0; i < len(blocks); i++ {
+		color := "#7cd0ec"
+		totalReward, _ := utils.WeiToEther(utils.Eth1TotalReward(blocks[i])).Float64()
+		relayData, ok := relaysData[common.BytesToHash(blocks[i].Hash)]
+		if ok {
+			totalReward, _ = utils.WeiToEther(relayData.MevBribe.BigInt()).Float64()
+		}
+
+		balanceTs := blocks[i].GetTime().AsTime().Unix()
+
+		chartData[i] = &types.ChartDataPoint{
+			X:     float64(balanceTs * 1000),
+			Y:     utils.ExchangeRateForCurrency(currency) * totalReward,
+			Color: color,
+		}
+	}
+	return chartData, nil
 }
 
 // DashboardDataBalance retrieves the income history of a set of validators
