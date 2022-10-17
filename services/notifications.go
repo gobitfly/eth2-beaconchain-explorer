@@ -30,6 +30,7 @@ import (
 	"firebase.google.com/go/messaging"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	"github.com/rocket-pool/rocketpool-go/utils/eth"
 )
 
 func notificationsSender() {
@@ -123,6 +124,7 @@ func notificationsSender() {
 	// 	logger.Error("error acquiring advisory lock stopping notification sender")
 	// 	return
 	// }
+
 	if utils.Config.Notifications.Sender {
 		go notificationSender()
 	}
@@ -1330,6 +1332,8 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 		Epoch          uint64 `db:"epoch"`
 		Status         uint64 `db:"status"`
 		EventFilter    []byte `db:"pubkey"`
+		ExecBlock      uint64 `db:"exec_block_number"`
+		ExecRewardETH  float64
 	}
 
 	pubkeys, subMap, err := db.GetSubsForEventFilter(eventName)
@@ -1358,18 +1362,44 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 					v.validatorindex, 
 					pa.epoch,
 					pa.status,
-					v.pubkey as pubkey
+					v.pubkey as pubkey,
+					exec_block_number 
 				FROM 
 				(SELECT 
 					v.validatorindex as validatorindex, 
-					v.pubkey as pubkey
-				FROM validators v
-				WHERE pubkey = ANY($3)) v
+					v.pubkey as pubkey 
+					FROM validators v
+					WHERE pubkey = ANY($3)
+				) v
 				INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch >= ($1 - 5) 
+				INNER JOIN blocks ON blocks.slot = pa.proposerslot 
 				WHERE pa.status = $2 AND pa.epoch >= ($1 - 5)`, latestEpoch, status, pq.ByteaArray(keys))
 		if err != nil {
 			return err
 		}
+
+		if status == 1 { // if proposed
+			var blockList = []uint64{}
+			for _, data := range partial {
+				blockList = append(blockList, data.ExecBlock)
+			}
+
+			blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, 10000)
+			if err != nil {
+				logger.WithError(err).Errorf("can not load blocks from bigtable for notification")
+				return err
+			}
+			var execBlockNrToExecBlockMap = map[uint64]*types.Eth1BlockIndexed{}
+			for _, block := range blocks {
+				execBlockNrToExecBlockMap[block.GetNumber()] = block
+			}
+
+			for i = 0; i < len(partial); i++ {
+				reward := utils.Eth1TotalReward(execBlockNrToExecBlockMap[partial[i].ExecBlock])
+				partial[i].ExecRewardETH = float64(int64(eth.WeiToEth(reward)*100000)) / 100000
+			}
+		}
+
 		events = append(events, partial...)
 	}
 
@@ -1394,6 +1424,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 				Epoch:          event.Epoch,
 				Status:         event.Status,
 				EventName:      eventName,
+				Reward:         event.ExecRewardETH,
 				EventFilter:    hex.EncodeToString(event.EventFilter),
 			}
 			if _, exists := notificationsByUserID[*sub.UserID]; !exists {
@@ -1418,6 +1449,7 @@ type validatorProposalNotification struct {
 	Status             uint64 // * Can be 0 = scheduled, 1 executed, 2 missed */
 	EventName          types.EventName
 	EventFilter        string
+	Reward             float64
 	UnsubscribeHash    sql.NullString
 }
 
@@ -1454,7 +1486,7 @@ func (n *validatorProposalNotification) GetInfo(includeUrl bool) string {
 	case 0:
 		generalPart = fmt.Sprintf(`New scheduled block proposal for Validator %[1]v.`, n.ValidatorIndex)
 	case 1:
-		generalPart = fmt.Sprintf(`Validator %[1]v proposed a new block.`, n.ValidatorIndex)
+		generalPart = fmt.Sprintf(`Validator %[1]v proposed a new block with %v ETH execution reward.`, n.ValidatorIndex, n.Reward)
 	case 2:
 		generalPart = fmt.Sprintf(`Validator %[1]v missed a block proposal.`, n.ValidatorIndex)
 	}
@@ -1487,7 +1519,7 @@ func (n *validatorProposalNotification) GetInfoMarkdown() string {
 	case 0:
 		generalPart = fmt.Sprintf(`New scheduled block proposal for Validator [%[1]v](https://%[2]v/%[1]v).`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator")
 	case 1:
-		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[2]v/%[1]v) proposed a new block.`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator")
+		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[2]v/%[1]v) proposed a new block with %v ETH execution reward.`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator", n.Reward)
 	case 2:
 		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[2]v/%[1]v) missed a block proposal.`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator")
 	}
