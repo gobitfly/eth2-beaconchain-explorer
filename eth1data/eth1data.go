@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth_types "github.com/ethereum/go-ethereum/core/types"
@@ -120,15 +121,26 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		txPageData.Gas.EffectiveFee = msg.GasFeeCap().Bytes()
 		txPageData.Gas.TxFee = msg.GasFeeCap().Mul(msg.GasFeeCap(), big.NewInt(int64(receipt.GasUsed))).Bytes()
 	}
-	// followin only works for type 0 transactions
 
-	txPageData.Transfers, err = db.BigtableClient.GetArbitraryTokenTransfersForTransaction(tx.Hash().Bytes())
-	if err != nil {
-		return nil, fmt.Errorf("error loading token transfers from tx %v: %v", hash, err)
+	if receipt.Status != 1 {
+		data, err := rpc.CurrentErigonClient.TraceParityTx(tx.Hash().Hex())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get parity trace for revert reason: %v", err)
+		}
+		errorMsg, err := abi.UnpackRevert(utils.MustParseHex(data[0].Result.Output))
+		if err == nil {
+			txPageData.ErrorMsg = errorMsg
+		}
 	}
-	txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes(), msg.From().Bytes())
-	if err != nil {
-		return nil, fmt.Errorf("error loading internal transfers from tx %v: %v", hash, err)
+	if receipt.Status == 1 {
+		txPageData.Transfers, err = db.BigtableClient.GetArbitraryTokenTransfersForTransaction(tx.Hash().Bytes())
+		if err != nil {
+			return nil, fmt.Errorf("error loading token transfers from tx %v: %v", hash, err)
+		}
+		txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes(), msg.From().Bytes())
+		if err != nil {
+			return nil, fmt.Errorf("error loading internal transfers from tx %v: %v", hash, err)
+		}
 	}
 	txPageData.FromName, err = db.BigtableClient.GetAddressName(msg.From().Bytes())
 	if err != nil {

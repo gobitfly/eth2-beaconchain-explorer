@@ -47,7 +47,7 @@
           <div class="tab-content h-100">
             <div id="overview" class="tab-pane fade show active" role="tabpanel" aria-labelledby="overview-tab">
               <div class="row border-bottom p-3 mx-0">
-                <div class="col-md-3">Transaction Hash:</div>
+                <div class="col-md-3"><span class="align-middle">Transaction Hash:</span></div>
                 <div class="col-md-9">
                   <div class="d-flex align-items-center">
                     <div style="min-width: 0;">{{ .Hash | formatHashLong }}</div>
@@ -61,8 +61,22 @@
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-3">Status:</div>
-                <div class="col-md-9">{{ formatEth1TxStatus .Receipt.Status }}</div>
+                <div class="col-md-9">
+                  <div class="d-flex flex-wrap">
+                    <div class="mr-2 flex-shrink-1">
+                      {{ formatEth1TxStatus .Receipt.Status }}
+                    </div>
+                  </div>
+                </div>
               </div>
+              {{ if .ErrorMsg }}
+                <div class="row border-bottom p-3 mx-0">
+                  <div class="col-md-3">Revert Reason:</div>
+                  <div class="col-md-9">
+                    <span class="text-monospace">{{ .ErrorMsg }}</span>
+                  </div>
+                </div>
+              {{ end }}
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-3">Block:</div>
                 <div class="col-md-9">

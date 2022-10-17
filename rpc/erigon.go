@@ -453,6 +453,17 @@ func (client *ErigonClient) TraceParity(blockNumber uint64) ([]*ParityTraceResul
 	return res, nil
 }
 
+func (client *ErigonClient) TraceParityTx(txHash string) ([]*ParityTraceResult, error) {
+	var res []*ParityTraceResult
+
+	err := client.rpcClient.Call(&res, "trace_transaction", txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 func (client *ErigonClient) GetBalances(pairs []*types.Eth1AddressBalance, addressIndex, tokenIndex int) ([]*types.Eth1AddressBalance, error) {
 	batchElements := make([]rpc.BatchElem, 0, len(pairs))
 

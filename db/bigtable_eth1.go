@@ -2131,7 +2131,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 }
 
 // currently only erc20
-func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction []byte) (*[]types.Transfer, error) {
+func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction []byte) ([]*types.Transfer, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 	// uses a more standard transfer inbetween type so multiple token types can be handle before the final table response is generated
@@ -2205,7 +2205,7 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 		return nil, err
 	}
 
-	data := make([]types.Transfer, len(transfers))
+	data := make([]*types.Transfer, len(transfers))
 
 	// sort by event id
 	keys := make([]int, 0, len(transfers))
@@ -2228,7 +2228,7 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 			Metadata: tokens[string(t.TokenAddress)],
 		}
 
-		data[i] = types.Transfer{
+		data[i] = &types.Transfer{
 			From:   from,
 			To:     to,
 			Amount: utils.FormatTokenValue(tb),
@@ -2237,7 +2237,7 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 
 	}
 
-	return &data, nil
+	return data, nil
 }
 
 func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]*types.Eth1ERC20Indexed, string, error) {

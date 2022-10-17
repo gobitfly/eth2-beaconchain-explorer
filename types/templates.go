@@ -1533,6 +1533,7 @@ type Eth1TxData struct {
 	Hash               common.Hash
 	Value              []byte
 	Receipt            *geth_types.Receipt
+	ErrorMsg           string
 	BlockNumber        int64
 	Timestamp          uint64
 	IsPending          bool
@@ -1540,7 +1541,7 @@ type Eth1TxData struct {
 	IsContractCreation bool
 	CallData           string
 	Events             []*Eth1EventData
-	Transfers          *[]Transfer
+	Transfers          []*Transfer
 }
 
 type Eth1EventData struct {
