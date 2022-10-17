@@ -7,38 +7,6 @@
   <script src="/js/highcharts/drilldown.min.js"></script>
 
     <script>
-        // source: https://stackoverflow.com/questions/63343645/overriding-log-scale-with-highcharts-export-server/63375446#63375446
-        Highcharts.addEvent(Highcharts.Axis, 'afterInit', function () {
-            const logarithmic = this.logarithmic;
-
-            if (logarithmic && this.options.custom.allowNegativeLog) {
-                // Avoid errors on negative numbers on a log axis
-                this.positiveValuesOnly = false;
-
-                // Override the converter functions
-                logarithmic.log2lin = num => {
-                    const isNegative = num < 0;
-
-                    let adjustedNum = Math.abs(num);
-
-                    if (adjustedNum < 10) {
-                        adjustedNum += (10 - adjustedNum) / 10;
-                    }
-
-                    const result = Math.log(adjustedNum) / Math.LN10;
-                    return isNegative ? -result : result;
-                };
-                logarithmic.lin2log = num => {
-                    const isNegative = num < 0;
-
-                    let result = Math.pow(10, Math.abs(num));
-                    if (result < 10) {
-                        result = (10 * (result - 1)) / (10 - 1);
-                    }
-                    return isNegative ? -result : result;
-                };
-            }
-        });
         {{if .IsNormalChart}}
         Highcharts.chart('chart', {
             chart: {
@@ -72,16 +40,6 @@
             },
             yAxis: [{
                 type: 'logarithmic',
-                {{ if .YAxisNegativeLog}}
-                custom: {
-                  allowNegativeLog: true,
-                },
-                {{ else}}
-                custom: {
-                  allowNegativeLog: false,
-                },
-                {{ end }}
-
                 title: {text: {{.YAxisTitle}} },
                 opposite: false
             }],
@@ -143,16 +101,6 @@
                 }
             },
             yAxis: [{
-                {{ if .YAxisNegativeLog}}
-                type: 'logarithmic',
-                custom: {
-                  allowNegativeLog: true,
-                },
-                {{ else}}
-                custom: {
-                  allowNegativeLog: false,
-                },
-                {{ end }}
                 title: {
                     text: {{.YAxisTitle}}
                 },
