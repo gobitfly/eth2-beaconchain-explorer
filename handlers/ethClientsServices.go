@@ -55,6 +55,8 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 				pageData.Erigon.IsUserSubscribed = true
 			case "rocketpool":
 				pageData.RocketpoolSmartnode.IsUserSubscribed = true
+			case "mev-boost":
+				pageData.MevBoost.IsUserSubscribed = true
 			default:
 				continue
 			}
