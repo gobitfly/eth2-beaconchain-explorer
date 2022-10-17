@@ -1104,6 +1104,12 @@ function createBalanceChart(income, executionIncomeHistory) {
     title: {
       text: "Daily Income for all Validators",
     },
+    navigator: {
+      series: {
+        data: income,
+        color: "#7cb5ec",
+      },
+    },
     plotOptions: {
       column: {
         stacking: "stacked",
