@@ -22,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
+	"github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/gorilla/mux"
@@ -1507,11 +1508,12 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// ValidatorSync retrieves one page of sync duties of a specific validator for DataTable.
 func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
-	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	validatorIndex, err := strconv.ParseUint(vars["index"], 10, 64)
 	if err != nil {
 		logger.Errorf("error parsing validator index: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1532,7 +1534,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	length, err := strconv.ParseInt(q.Get("length"), 10, 64)
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length length-parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1541,53 +1543,150 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	if length > 100 {
 		length = 100
 	}
+	ascOrdering := q.Get("order[0][dir]") == "asc"
 
-	var countData []struct {
-		TotalCount uint64 `db:"totalcount"`
-		MaxPeriod  uint64 `db:"maxperiod"`
+	// retrieve all sync periods for this validator
+	// ordering is descending for now
+	var syncPeriods []struct {
+		Period     uint64 `db:"period"`
+		StartEpoch uint64 `db:"startepoch"`
+		EndEpoch   uint64 `db:"endepoch"`
 	}
-	err = db.ReaderDb.Select(&countData, `
-		SELECT count(*)*$1 AS totalcount, max(period) AS maxperiod 
+
+	err = db.ReaderDb.Select(&syncPeriods, `
+		SELECT period as period, (period*$1) as endepoch, ((period+1)*$1)-1 as startepoch
 		FROM sync_committees 
-		WHERE validatorindex = $2`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod*utils.Config.Chain.Config.SlotsPerEpoch, index)
+		WHERE validatorindex = $2
+		ORDER BY period desc`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, validatorIndex)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting countData of sync-assignments")
+		logger.WithError(err).Errorf("error getting new countData of sync-assignments")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	totalCount := uint64(0)
+	// set latest epoch of this validators latest sync period to current epoch if latest sync epoch has yet to happen
+	var diffToLatestEpoch uint64 = 0
+	if latestEpoch := services.LatestEpoch(); latestEpoch < syncPeriods[0].StartEpoch {
+		diffToLatestEpoch = syncPeriods[0].StartEpoch - latestEpoch
+		syncPeriods[0].StartEpoch = latestEpoch
+	}
+
+	// total count of sync duties for this validator
+	totalCount := (uint64(len(syncPeriods))*utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod - diffToLatestEpoch) * utils.Config.Chain.Config.SlotsPerEpoch
+
 	tableData := [][]interface{}{}
-	currentEpoch := services.LatestEpoch()
 
-	if len(countData) > 0 {
-		// only show 1 scheduled slot in the sync-table
-		totalCount = countData[0].TotalCount
+	if totalCount > 0 && start <= totalCount {
+		// if ordering is ascending, reverse sync period slice & swap start and end epoch of each period
+		if ascOrdering {
+			utils.ReverseSlice(syncPeriods)
+			for i, _ := range syncPeriods {
+				syncPeriods[i].StartEpoch, syncPeriods[i].EndEpoch = syncPeriods[i].EndEpoch, syncPeriods[i].StartEpoch
+			}
+		}
+		// syncPeriods[0].startEpoch will always be the epoch shown on page 1, regardless of the ordering
+		// meaning that for descending ordering, syncPeriods[0].startEpoch will be the chronologically latest epoch of this validators lastest sync period
+		// and for ascending ordering, syncPeriods[0].startEpoch will be the chronologically earliest epoch of this validators first sync period
 
-		res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, currentEpoch-start, 10)
+		// set functions for moving away from start and back to start (with start being page 1)
+		// depending on the ordering, this means either going up or down in epoch number
+		var moveAway func(uint64, uint64) uint64
+		var moveBack func(uint64, uint64) uint64
+		var IsFurtherAway func(uint64, uint64) bool
+		if ascOrdering {
+			moveAway = func(a uint64, b uint64) uint64 {
+				return a + b
+			}
+			moveBack = func(a uint64, b uint64) uint64 {
+				return a - b
+			}
+			IsFurtherAway = func(a uint64, b uint64) bool {
+				return a > b
+			}
+		} else {
+			moveAway = func(a uint64, b uint64) uint64 {
+				return a - b
+			}
+			moveBack = func(a uint64, b uint64) uint64 {
+				return a + b
+			}
+			IsFurtherAway = func(a uint64, b uint64) bool {
+				return a < b
+			}
+		}
+
+		// amount of epochs moved away from start epoch
+		epochOffset := (start / utils.Config.Chain.Config.SlotsPerEpoch)
+		// amount of distinct consecutive epochs shown on this page
+		epochsDiff := ((start + length) / utils.Config.Chain.Config.SlotsPerEpoch) - epochOffset
+
+		shownEpochIndex := 0
+		// first epoch containing the duties shown on this page
+		firstShownEpoch := moveAway(syncPeriods[shownEpochIndex].StartEpoch, epochOffset)
+
+		// handle first shown epoch being in the next sync period
+		for IsFurtherAway(firstShownEpoch, syncPeriods[shownEpochIndex].EndEpoch) {
+			overshoot := firstShownEpoch - syncPeriods[shownEpochIndex].EndEpoch
+			shownEpochIndex++
+			firstShownEpoch = syncPeriods[shownEpochIndex].StartEpoch + moveBack(overshoot, 1)
+		}
+
+		// last epoch containing the duties shown on this page
+		lastShownEpoch := moveAway(firstShownEpoch, epochsDiff)
+		// amount of epochs fetched by bigtable
+		limit := moveBack(firstShownEpoch-lastShownEpoch, 1)
+
+		var nextPeriodLimit int64 = 0
+		if IsFurtherAway(lastShownEpoch, syncPeriods[shownEpochIndex].EndEpoch) {
+			if IsFurtherAway(lastShownEpoch, syncPeriods[len(syncPeriods)-1].EndEpoch) {
+				// handle showing the last page, which may hold less than 'length' amount of rows
+				length = utils.Config.Chain.Config.SlotsPerEpoch - (start % utils.Config.Chain.Config.SlotsPerEpoch)
+			} else {
+				// handle crossing sync periods on the same page (i.e. including the earliest and latest slot of two sync periods from this validator)
+				overshoot := lastShownEpoch - syncPeriods[shownEpochIndex].EndEpoch
+				lastShownEpoch = syncPeriods[shownEpochIndex+1].StartEpoch + moveBack(overshoot, 1)
+				limit += overshoot
+				nextPeriodLimit = int64(overshoot)
+			}
+		}
+
+		// retrieve sync duties from bigtable
+		// note that the limit may be negative for either call, which results in the function fetching epochs for the absolute limit value in ascending ordering
+		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, firstShownEpoch, int64(limit), ascOrdering)
 		if err != nil {
 			logger.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
-		tableData = make([][]interface{}, len(res[index]))
-		for i, r := range res[index] {
-			epoch := utils.EpochOfSlot(r.Slot)
-
-			slotTime := utils.SlotToTime(r.Slot)
-
-			// if slotTime.After(time.Now().Add(time.Minute)) {
-			// 	continue
-			// }
-			if r.Status == 0 && time.Since(slotTime) > time.Minute {
-				r.Status = 2
+		if nextPeriodLimit != 0 {
+			nextPeriodSyncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, lastShownEpoch, nextPeriodLimit, ascOrdering)
+			if err != nil {
+				logger.Errorf("error retrieving second validator sync participations data from bigtable: %v", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
 			}
-			tableData[i] = []interface{}{
-				fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
-				utils.FormatEpoch(epoch),
-				utils.FormatBlockSlot(r.Slot),
-				utils.FormatSyncParticipationStatus(r.Status),
+			syncDuties = append(syncDuties, nextPeriodSyncDuties...)
+		}
+
+		// sanity check for right amount of slots in response
+		if uint64(len(syncDuties))%utils.Config.Chain.Config.SlotsPerEpoch == 0 {
+			// extract correct slots
+			tableData = make([][]interface{}, length)
+			for dataIndex, slotIndex := 0, start%utils.Config.Chain.Config.SlotsPerEpoch; slotIndex < math.MinU64((start%utils.Config.Chain.Config.SlotsPerEpoch)+length, uint64(len(syncDuties))); dataIndex, slotIndex = dataIndex+1, slotIndex+1 {
+				epoch := utils.EpochOfSlot(syncDuties[slotIndex].Slot)
+
+				slotTime := utils.SlotToTime(syncDuties[slotIndex].Slot)
+
+				if syncDuties[slotIndex].Status == 0 && time.Since(slotTime) > time.Minute {
+					syncDuties[slotIndex].Status = 2
+				}
+				tableData[dataIndex] = []interface{}{
+					fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
+					utils.FormatEpoch(epoch),
+					utils.FormatBlockSlot(syncDuties[slotIndex].Slot),
+					utils.FormatSyncParticipationStatus(syncDuties[slotIndex].Status),
+				}
 			}
 		}
 	}
