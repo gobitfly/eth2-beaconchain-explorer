@@ -678,6 +678,10 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 
 			var msg types.Email
 
+			if utils.Config.Chain.Name != "mainnet" {
+				msg.Body += template.HTML(fmt.Sprintf("<b>Notice: This email contains notifications for the %s network!</b><br>", utils.Config.Chain.Name))
+			}
+
 			for event, ns := range userNotifications {
 				if len(msg.Body) > 0 {
 					msg.Body += "<br>"
