@@ -87,7 +87,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 
-	addresses, indices, err := getAddressesOrIndicesFromAddressIndexOrPubkey(vars["addressIndexOrPubkey"])
+	addresses, indices, err := getAddressesOrIndicesFromAddressIndexOrPubkey(vars["addressIndexOrPubkey"], 20)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "invalid address, validator index or pubkey or exceeded max of 20 params")
 		return
@@ -413,10 +413,19 @@ func getBlockNumbersAndMapProposer(data []types.ExecBlockProposer) ([]uint64, ma
 	return blockList, blockToProposerMap
 }
 
-func getAddressesOrIndicesFromAddressIndexOrPubkey(search string) ([][]byte, []uint64, error) {
+func resolveIndices(pubkeys [][]byte) ([]uint64, error) {
+	indicesFromPubkeys := []uint64{}
+	err := db.ReaderDb.Select(&indicesFromPubkeys,
+		"SELECT validatorindex FROM validators WHERE pubkey = ANY($1)",
+		pq.ByteaArray(pubkeys),
+	)
+	return indicesFromPubkeys, err
+}
+
+func getAddressesOrIndicesFromAddressIndexOrPubkey(search string, max int) ([][]byte, []uint64, error) {
 	individuals := strings.Split(search, ",")
-	if len(individuals) > 20 {
-		return nil, nil, fmt.Errorf("only a maximum of 20 query parameters are allowed")
+	if len(individuals) > max {
+		return nil, nil, fmt.Errorf("only a maximum of %v query parameters are allowed", max)
 	}
 	var resultAddresses [][]byte
 
@@ -438,11 +447,7 @@ func getAddressesOrIndicesFromAddressIndexOrPubkey(search string) ([][]byte, []u
 
 	// resolve pubkeys to index
 	if len(pubkeys) > 0 {
-		indicesFromPubkeys := []uint64{}
-		err := db.ReaderDb.Select(&indicesFromPubkeys,
-			"SELECT validatorindex FROM validators WHERE pubkey = ANY($1)",
-			pq.ByteaArray(pubkeys),
-		)
+		indicesFromPubkeys, err := resolveIndices(pubkeys)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -456,6 +461,44 @@ func getAddressesOrIndicesFromAddressIndexOrPubkey(search string) ([][]byte, []u
 	return resultAddresses, nil, nil
 }
 
+// careful, result contains pubkeys even if index could be resolved
+// deduplication must happen higher up
+func getIndicesFromIndexOrPubkey(search string, max int) ([][]byte, []uint64, error) {
+	individuals := strings.Split(search, ",")
+	if len(individuals) > max {
+		return nil, nil, fmt.Errorf("only a maximum of %v query parameters are allowed", max)
+	}
+
+	var indices []uint64
+	var pubkeys [][]byte
+	for _, individual := range individuals {
+		addInPub, err := parseFromAddressIndexOrPubkey(individual)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(addInPub.Pubkey) > 0 {
+			pubkeys = append(pubkeys, addInPub.Pubkey)
+		} else if addInPub.Index > 0 {
+			indices = append(indices, addInPub.Index)
+		}
+	}
+
+	// resolve pubkeys to index
+	if len(pubkeys) > 0 {
+		indicesFromPubkeys, err := resolveIndices(pubkeys)
+		if err != nil {
+			return nil, nil, err
+		}
+		indices = append(indices, indicesFromPubkeys...)
+	}
+
+	if len(indices) > 0 {
+		return pubkeys, indices, nil
+	}
+
+	return pubkeys, nil, nil
+}
+
 func parseFromAddressIndexOrPubkey(search string) (types.AddressIndexOrPubkey, error) {
 	if strings.Contains(search, "0x") && len(search) == 42 {
 		address, err := hex.DecodeString(search[2:])
@@ -466,7 +509,14 @@ func parseFromAddressIndexOrPubkey(search string) (types.AddressIndexOrPubkey, e
 			Address: address,
 		}, nil
 	} else if strings.Contains(search, "0x") || len(search) == 96 {
-		pubkey, err := hex.DecodeString(search[2:])
+		if len(search) < 94 {
+			return types.AddressIndexOrPubkey{}, fmt.Errorf("invalid pubkey")
+		}
+		start := 2
+		if len(search) == 96 {
+			start = 0
+		}
+		pubkey, err := hex.DecodeString(search[start:])
 		if err != nil {
 			return types.AddressIndexOrPubkey{}, err
 		}

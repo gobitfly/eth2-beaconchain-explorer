@@ -1216,13 +1216,20 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	pubkey, index, err := getIndicesFromIndexOrPubkey(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT eth1_deposits.* FROM eth1_deposits LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey WHERE validators.validatorindex = ANY($1)", pq.Array(queryIndices))
+	rows, err := db.ReaderDb.Query(
+		`SELECT eth1_deposits.* FROM eth1_deposits 
+		LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey 
+		WHERE validators.validatorindex = ANY($1) OR eth1_deposits.publickey = ANY($2) 
+		GROUP BY tx_hash, merkletree_index`,
+		pq.Array(index),
+		pq.ByteaArray(pubkey),
+	)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return

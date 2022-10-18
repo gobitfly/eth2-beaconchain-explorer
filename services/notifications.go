@@ -1395,8 +1395,11 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 			}
 
 			for i = 0; i < len(partial); i++ {
-				reward := utils.Eth1TotalReward(execBlockNrToExecBlockMap[partial[i].ExecBlock])
-				partial[i].ExecRewardETH = float64(int64(eth.WeiToEth(reward)*100000)) / 100000
+				execData, found := execBlockNrToExecBlockMap[partial[i].ExecBlock]
+				if found {
+					reward := utils.Eth1TotalReward(execData)
+					partial[i].ExecRewardETH = float64(int64(eth.WeiToEth(reward)*100000)) / 100000
+				}
 			}
 		}
 
