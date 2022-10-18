@@ -508,10 +508,6 @@ ul.multiselect input:focus {
   margin-top: auto !important;
 }
 
-.history-table table tbody td span:not(.thousands-separator) {
-  padding: 0.35rem 0.5rem !important;
-}
-
 @media screen and (max-width: 1140px) {
   .dashboard-table-nav {
     margin: 0;
