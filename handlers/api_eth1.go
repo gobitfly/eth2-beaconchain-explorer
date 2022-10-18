@@ -76,7 +76,7 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 // @Tags Execution
 // @Description Get a list of proposed or mined blocks from a given fee recipient address, proposer index or proposer pubkey
 // @Produce json
-// @Param addressIndexOrPubkey path string true "Either the fee recipient address, the proposer index or proposer pubkey. You can provide multiple by seperating them with ',' up to max 20."
+// @Param addressIndexOrPubkey path string true "Either the fee recipient address, the proposer index or proposer pubkey. You can provide multiple by separating them with ',' up to max 20."
 // @Param offset query int false "Offset"
 // @Param limit query int false "Limit, amount of entries you wish to receive"
 // @Success 200 {object} string

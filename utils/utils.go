@@ -464,7 +464,7 @@ func IsValidEth1Tx(s string) bool {
 // https://github.com/badoux/checkmail/blob/f9f80cb795fa/checkmail.go#L37
 var emailRE = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
-// IsValidEmail verifies wheter a string represents a valid email-address.
+// IsValidEmail verifies whether a string represents a valid email-address.
 func IsValidEmail(s string) bool {
 	return emailRE.MatchString(s)
 }
@@ -639,7 +639,7 @@ func ExchangeRateForCurrency(currency string) float64 {
 	return price.GetEthPrice(currency)
 }
 
-// Glob walks through a directory and returns files with a given extention
+// Glob walks through a directory and returns files with a given extension
 func Glob(dir string, ext string) ([]string, error) {
 	files := []string{}
 	err := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {

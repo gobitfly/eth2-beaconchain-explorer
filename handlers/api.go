@@ -1422,7 +1422,7 @@ func APIGetToken(w http.ResponseWriter, r *http.Request) {
 	default:
 		j := json.NewEncoder(w)
 		w.WriteHeader(http.StatusBadRequest)
-		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.InvalidGrant, "grant type must be authroization_code or refresh_token")
+		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.InvalidGrant, "grant type must be authorization_code or refresh_token")
 	}
 }
 

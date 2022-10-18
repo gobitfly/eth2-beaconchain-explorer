@@ -538,7 +538,7 @@ func reversedPaddedBlockNumber(blockNumber uint64) string {
 
 func reversePaddedBigtableTimestamp(timestamp *timestamppb.Timestamp) string {
 	if timestamp == nil {
-		log.Fatalf("unknown timestap: %v", timestamp)
+		log.Fatalf("unknown timestamp: %v", timestamp)
 	}
 	return fmt.Sprintf("%019d", MAX_INT-timestamp.Seconds)
 }
@@ -2056,7 +2056,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 			logrus.Fatalf("error parsing Eth1InternalTransactionIndexed data: %v", err)
 			return false
 		}
-		// geth traces include the inital transfer & zero-value staticalls
+		// geth traces include the initial transfer & zero-value staticalls
 		if bytes.Equal(b.From, from) || bytes.Equal(b.Value, []byte{}) {
 			return true
 		}
@@ -2134,7 +2134,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction []byte) ([]*types.Transfer, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
-	// uses a more standard transfer inbetween type so multiple token types can be handle before the final table response is generated
+	// uses a more standard transfer in-between type so multiple token types can be handle before the final table response is generated
 	transfers := map[int]*types.Eth1ERC20Indexed{}
 	mux := sync.Mutex{}
 

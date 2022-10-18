@@ -119,7 +119,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			LEFT JOIN (SELECT COUNT(*) FROM validator_performance) cnt(total_count) ON true`, length, start)
 	} else {
-		// for perfomance-reasons we combine multiple search results with `union`
+		// for performance-reasons we combine multiple search results with `union`
 		args := []interface{}{}
 		args = append(args, "%"+strings.ToLower(search)+"%")
 		searchQry := fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE LOWER(name) LIKE $%d `, len(args))

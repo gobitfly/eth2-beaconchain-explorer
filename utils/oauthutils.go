@@ -46,7 +46,7 @@ type CustomClaims struct {
 	jwt.StandardClaims
 }
 
-// OAuthResponse Structure of an successfull OAuth response
+// OAuthResponse Structure of an successful OAuth response
 type OAuthResponse struct {
 	AccessToken  string `json:"access_token"`
 	TokenType    string `json:"token_type"`

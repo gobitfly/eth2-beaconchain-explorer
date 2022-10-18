@@ -254,7 +254,7 @@ func Start(client rpc.Client) error {
 		}
 		err = db.BigtableClient.SaveSyncComitteeDuties(blocksMap)
 		if err != nil {
-			logrus.Errorf("error exporting sync committe duties to bigtable for block %v: %v", block.Slot, err)
+			logrus.Errorf("error exporting sync committee duties to bigtable for block %v: %v", block.Slot, err)
 		}
 
 		err = db.SaveBlock(block)
@@ -547,7 +547,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		g.Go(func() error {
 			err = db.BigtableClient.SaveSyncComitteeDuties(data.Blocks)
 			if err != nil {
-				return fmt.Errorf("error exporting sync committe duties to bigtable: %v", err)
+				return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
 			}
 			return nil
 		})

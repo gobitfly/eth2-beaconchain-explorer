@@ -41,7 +41,7 @@ var (
 	}, []string{"task"})
 	DBSLongRunningQueries = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "db_long_running_queries",
-		Help: "Counter of long-running-queries with datbase and query in labels",
+		Help: "Counter of long-running-queries with database and query in labels",
 	}, []string{"database", "query"})
 	Errors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "errors",

@@ -365,8 +365,8 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 
 		err = tx.Commit()
 		if err != nil {
-			logger.WithError(err).Error("error commiting transaction ", subscription.ID)
-			http.Error(w, "error commiting transaction :"+err.Error(), http.StatusServiceUnavailable)
+			logger.WithError(err).Error("error committing transaction ", subscription.ID)
+			http.Error(w, "error committing transaction :"+err.Error(), http.StatusServiceUnavailable)
 		}
 
 		if currSub.PriceID != nil && *currSub.PriceID != priceID && utils.GetPurchaseGroup(*currSub.PriceID) == utils.GetPurchaseGroup(priceID) {
@@ -416,8 +416,8 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 
 		err = tx.Commit()
 		if err != nil {
-			logger.WithError(err).Error("error commiting transaction ", subscription.ID)
-			http.Error(w, "error commiting transaction :"+err.Error(), http.StatusServiceUnavailable)
+			logger.WithError(err).Error("error committing transaction ", subscription.ID)
+			http.Error(w, "error committing transaction :"+err.Error(), http.StatusServiceUnavailable)
 		}
 
 	// inform the user when the subscription will expire
@@ -477,8 +477,8 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 
 		err = tx.Commit()
 		if err != nil {
-			logger.WithError(err).Error("error commiting transaction ")
-			http.Error(w, "error commiting transaction :"+err.Error(), http.StatusServiceUnavailable)
+			logger.WithError(err).Error("error committing transaction ")
+			http.Error(w, "error committing transaction :"+err.Error(), http.StatusServiceUnavailable)
 		}
 
 	case "invoice.payment_failed":

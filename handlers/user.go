@@ -1423,7 +1423,7 @@ func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
 
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("error commiting db-tx: %w", err)
+		return fmt.Errorf("error committing db-tx: %w", err)
 	}
 
 	subject := fmt.Sprintf("%s: Verify your email-address", utils.Config.Frontend.SiteDomain)
@@ -2436,7 +2436,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorGotSlashedEventName)),
 		})
 		events = append(events, types.EventNameCheckbox{
-			EventLabel: "Sync Commitee Soon",
+			EventLabel: "Sync Committee Soon",
 			EventName:  types.SyncCommitteeSoon,
 			Active:     utils.ElementExists(wh.EventNames, string(types.SyncCommitteeSoon)),
 		})
@@ -2531,7 +2531,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 		EventName:  types.ValidatorGotSlashedEventName,
 	})
 	events = append(events, types.EventNameCheckbox{
-		EventLabel: "Sync Commitee Soon",
+		EventLabel: "Sync Committee Soon",
 		EventName:  types.SyncCommitteeSoon,
 	})
 	events = append(events, types.EventNameCheckbox{

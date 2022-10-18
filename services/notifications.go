@@ -298,10 +298,10 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	}
 	logger.Infof("collecting network notifications took: %v\n", time.Since(start))
 
-	// Rocketpool fee comission alert
+	// Rocketpool fee commission alert
 	err = collectRocketpoolComissionNotifications(notificationsByUserID, types.RocketpoolCommissionThresholdEventName)
 	if err != nil {
-		logger.Errorf("error collecting rocketpool commision: %v", err)
+		logger.Errorf("error collecting rocketpool commission: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_comission").Inc()
 	}
 	logger.Infof("collecting rocketpool commissions took: %v\n", time.Since(start))
@@ -315,14 +315,14 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 
 	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMaxReached)
 	if err != nil {
-		logger.Errorf("error collecting rocketpool max colleteral: %v", err)
+		logger.Errorf("error collecting rocketpool max collateral: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_max_reached").Inc()
 	}
 	logger.Infof("collecting rocketpool max collateral took: %v\n", time.Since(start))
 
 	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMinReached)
 	if err != nil {
-		logger.Errorf("error collecting rocketpool min colleteral: %v", err)
+		logger.Errorf("error collecting rocketpool min collateral: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_min_reached").Inc()
 	}
 	logger.Infof("collecting rocketpool min collateral took: %v\n", time.Since(start))
@@ -528,7 +528,7 @@ func queuePushNotification(notificationsByUserID map[uint64]map[types.EventName]
 	tokensByUserID, err := db.GetUserPushTokenByIds(userIDs)
 	if err != nil {
 		metrics.Errors.WithLabelValues("notifications_send_push_notifications").Inc()
-		return fmt.Errorf("error when sending push-notificaitons: could not get tokens: %w", err)
+		return fmt.Errorf("error when sending push-notifications: could not get tokens: %w", err)
 	}
 
 	for userID, userNotifications := range notificationsByUserID {

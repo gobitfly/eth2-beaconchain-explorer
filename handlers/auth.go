@@ -131,7 +131,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 
 	err = tx.Commit()
 	if err != nil {
-		logger.Errorf("error commiting db-tx when registering user: %v", err)
+		logger.Errorf("error committing db-tx when registering user: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
 		session.Save(r, w)
 		http.Redirect(w, r, "/register", http.StatusSeeOther)
@@ -630,7 +630,7 @@ func sendConfirmationEmail(email string) error {
 
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("error commiting db-tx: %w", err)
+		return fmt.Errorf("error committing db-tx: %w", err)
 	}
 
 	subject := fmt.Sprintf("%s: Verify your email-address", utils.Config.Frontend.SiteDomain)
@@ -681,7 +681,7 @@ func sendResetEmail(email string) error {
 
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("error commiting db-tx: %w", err)
+		return fmt.Errorf("error committing db-tx: %w", err)
 	}
 
 	subject := fmt.Sprintf("%s: Reset your password", utils.Config.Frontend.SiteDomain)
