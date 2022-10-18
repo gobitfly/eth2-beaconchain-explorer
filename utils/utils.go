@@ -200,6 +200,7 @@ func GetTemplateFuncs() template.FuncMap {
 			return string(num)
 		},
 		"formatEthstoreComparison": FormatEthstoreComparison,
+		"formatPoolPerformance":    FormatPoolPerformance,
 	}
 }
 
@@ -889,6 +890,10 @@ func FormatEthstoreComparison(pool string, val float64) template.HTML {
 	}
 
 	return template.HTML(fmt.Sprintf(`<sub title="%s %s the ETH.STORE indicator by %s%.2f%%" data-toggle="tooltip" class="%s">(%s%.2f%%)</sub>`, pool, ou, prefix, val, textClass, prefix, val))
+}
+
+func FormatPoolPerformance(val float64) template.HTML {
+	return template.HTML(fmt.Sprintf(`<span data-toggle="tooltip" title=%f%%>%s%%</span>`, val, fmt.Sprintf("%.2f", val)))
 }
 
 func ReverseSlice[S ~[]E, E any](s S) {
