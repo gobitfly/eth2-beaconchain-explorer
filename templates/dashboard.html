@@ -658,10 +658,13 @@
                 <table style="margin-top:0px !important;" class="table d-none" id="dash-validator-history-table" width="100%">
                   <thead>
                     <tr>
-                      <th>Epoch</th>
-                      <!-- <th>Slot</th> -->
-                      <th>Balance Change</th>
-                      <th data-toggle="tooltip" title="Attestation and block proposal status for a given epoch">Att. & Prop.</th>
+                      <th rowspan="2">Epoch</th>
+                      <th colspan="2">Balance Change</th>
+                      <th rowspan="2" data-toggle="tooltip" title="Attestation and block proposal status for a given epoch">Att. & Prop.</th>
+                    </tr>
+                    <tr style="display:none">
+                      <th></th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody></tbody>
