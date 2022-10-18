@@ -1039,7 +1039,7 @@ $(document).ready(function () {
     if (state.validators && state.validators.length) {
       var qryStr = "?validators=" + state.validators.join(",")
       $.ajax({
-        url: "/dashboard/data/balance" + qryStr,
+        url: "/dashboard/data/allbalances" + qryStr,
         success: function (result) {
           var t1 = Date.now()
           // let prevDayIncome = 0
@@ -1062,7 +1062,7 @@ $(document).ready(function () {
           // }
 
           var t2 = Date.now()
-          createBalanceChart(result)
+          createBalanceChart(result.consensusChartData, result.executionChartData)
           var t3 = Date.now()
           console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
         },
@@ -1083,7 +1083,8 @@ $(document).ready(function () {
   }
 })
 
-function createBalanceChart(income) {
+function createBalanceChart(income, executionIncomeHistory) {
+  executionIncomeHistory = executionIncomeHistory || []
   // console.log("u", utilization)
   Highcharts.stockChart("balance-chart", {
     exporting: {
@@ -1095,12 +1096,33 @@ function createBalanceChart(income) {
     chart: {
       type: "column",
       height: "500px",
+      pointInterval: 24 * 3600 * 1000,
     },
     legend: {
       enabled: true,
     },
     title: {
       text: "Daily Income for all Validators",
+    },
+    navigator: {
+      series: {
+        data: income,
+        color: "#7cb5ec",
+      },
+    },
+    plotOptions: {
+      column: {
+        stacking: "stacked",
+        dataLabels: {
+          enabled: false,
+        },
+        pointInterval: 24 * 3600 * 1000,
+        // pointIntervalUnit: 'day',
+        dataGrouping: {
+          forced: true,
+          units: [["day", [1]]],
+        },
+      },
     },
     xAxis: {
       type: "datetime",
@@ -1147,8 +1169,14 @@ function createBalanceChart(income) {
     ],
     series: [
       {
-        name: "Daily Income",
+        name: "Daily Consensus Income",
         data: income,
+        index: 2,
+      },
+      {
+        name: "Daily Execution Income",
+        data: executionIncomeHistory,
+        index: 1,
       },
     ],
   })

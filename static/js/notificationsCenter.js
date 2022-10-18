@@ -768,7 +768,7 @@ $(function () {
     const tablename = $("#confirmRemoveModal").attr("tablename")
 
     // if rowId also check tablename then delete row in corresponding data section
-    // if no row id delete directly in correponding data section
+    // if no row id delete directly in corresponding data section
     if (rowId !== undefined) {
       if (tablename === "monitoring") {
         $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Removing...</span></div>')

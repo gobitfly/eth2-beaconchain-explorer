@@ -342,6 +342,7 @@ type ValidatorPageData struct {
 	Apr                                 float64
 	Proposals                           [][]uint64
 	IncomeHistoryChartData              []*ChartDataPoint
+	ExecutionIncomeHistoryData          []*ChartDataPoint
 	Deposits                            *ValidatorDeposits
 	Eth1DepositAddress                  []byte
 	FlashMessage                        string
@@ -856,7 +857,6 @@ type GenericChartData struct {
 	Subtitle                        string                    `json:"subtitle"`
 	XAxisTitle                      string                    `json:"x_axis_title"`
 	YAxisTitle                      string                    `json:"y_axis_title"`
-	YAxisNegativeLog                bool                      `json:"y_axis_negative_log"`
 	Type                            string                    `json:"type"`
 	StackingMode                    string                    `json:"stacking_mode"`
 	ColumnDataGroupingApproximation string                    // "average", "averages", "open", "high", "low", "close" and "sum"
@@ -1534,6 +1534,7 @@ type Eth1TxData struct {
 	Hash               common.Hash
 	Value              []byte
 	Receipt            *geth_types.Receipt
+	ErrorMsg           string
 	BlockNumber        int64
 	Timestamp          uint64
 	IsPending          bool
@@ -1541,7 +1542,7 @@ type Eth1TxData struct {
 	IsContractCreation bool
 	CallData           string
 	Events             []*Eth1EventData
-	Transfers          *[]Transfer
+	Transfers          []*Transfer
 }
 
 type Eth1EventData struct {

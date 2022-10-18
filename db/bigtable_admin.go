@@ -60,7 +60,7 @@ func MustInitBigtableAdmin(ctx context.Context, project, instance string) {
 func (admin *BigtableAdmin) SetupBigtableCache() error {
 
 	if err := admin.createTables([]CreateTables{CacheTable}); err != nil {
-		log.Fatal("Error occured trying to create tables", err)
+		log.Fatal("Error occurred trying to create tables", err)
 	}
 	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
 	defer done()

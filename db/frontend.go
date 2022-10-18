@@ -167,7 +167,7 @@ func GetUserAuthDataByAuthorizationCode(code string) (*types.OAuthCodeData, erro
 	return nil, errors.New("no rows found")
 }
 
-// GetByRefreshToken basically used to confirm the claimed user id with the refresh token. Returns the userId if successfull
+// GetByRefreshToken basically used to confirm the claimed user id with the refresh token. Returns the userId if successful
 func GetByRefreshToken(claimUserID, claimAppID, claimDeviceID uint64, hashedRefreshToken string) (uint64, error) {
 	var userID uint64
 	err := FrontendWriterDB.Get(&userID,

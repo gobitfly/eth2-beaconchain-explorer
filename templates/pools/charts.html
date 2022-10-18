@@ -108,38 +108,6 @@
   <script>
     // source: https://stackoverflow.com/questions/63343645/overriding-log-scale-with-highcharts-export-server/63375446#63375446
     window.addEventListener('load', function () {
-        Highcharts.addEvent(Highcharts.Axis, 'afterInit', function () {
-            const logarithmic = this.logarithmic;
-
-            if (logarithmic && this.options.custom.allowNegativeLog) {
-                // Avoid errors on negative numbers on a log axis
-                this.positiveValuesOnly = false;
-
-                // Override the converter functions
-                logarithmic.log2lin = num => {
-                    const isNegative = num < 0;
-
-                    let adjustedNum = Math.abs(num);
-
-                    if (adjustedNum < 10) {
-                        adjustedNum += (10 - adjustedNum) / 10;
-                    }
-
-                    const result = Math.log(adjustedNum) / Math.LN10;
-                    return isNegative ? -result : result;
-                };
-
-                logarithmic.lin2log = num => {
-                    const isNegative = num < 0;
-
-                    let result = Math.pow(10, Math.abs(num));
-                    if (result < 10) {
-                        result = (10 * (result - 1)) / (10 - 1);
-                    }
-                    return isNegative ? -result : result;
-                };
-            }
-        });
         Highcharts.stockChart('performance-chart', {
             chart: {
                 type: {{.HistoricPoolPerformance.Data.Type}},
@@ -190,16 +158,6 @@
                 }
             },
             yAxis: [{
-                {{ if .HistoricPoolPerformance.Data.YAxisNegativeLog}}
-                type: 'logarithmic',
-                custom: {
-                  allowNegativeLog: true,
-                },
-                {{ else}}
-                custom: {
-                  allowNegativeLog: false,
-                },
-                {{ end }}
                 title: {
                     text: {{.HistoricPoolPerformance.Data.YAxisTitle}}
                 },
@@ -215,32 +173,16 @@
             }],
             navigator: { enabled: true },
             tooltip: {
+                {{ if .HistoricPoolPerformance.Data.TooltipFormatter }}
+                formatter: {{.HistoricPoolPerformance.Data.TooltipFormatter}},
+                {{ else }}
                 formatter: function (tooltip) {
-                    const x = this.x,
-                    y = this.y;
-                    const points = this.points;
-
-                    var tooltipString;
-
                     var orig = tooltip.defaultFormatter.call(this, tooltip)
                     var epoch = timeToEpoch(this.x)
-                    tooltipString = '<div style="max-height: 300px; overflow-y: scroll">' +
-                        '<p style="font-size:10px"> ' +
-                            orig[0] + '<span style="font-size:10px">Epoch ' + epoch + '</span>' +
-                        '</p>'
-
-                    tooltipString += `<span style="color: ${this.point.series.color}">\u25CF<\/span> ${this.point.series.name}: ${this.point.y.toFixed(2)}%`;
-                    return tooltipString;
+                    orig[0] = orig[0] + '<span style="font-size:10px">Epoch ' + epoch + '</span>'
+                    return orig
                 },
-                positioner: function(labelWidth, labelHeight, point) {
-                    return {
-                        x: point.plotX,
-                        y: this.chart.plotTop
-                    }
-                },
-                style: {
-	                pointerEvents: 'auto'
-                },
+                {{end}}
                 shared: {{.HistoricPoolPerformance.Data.TooltipShared}},
                 useHTML: {{.HistoricPoolPerformance.Data.TooltipUseHTML}},
                 split: {{.HistoricPoolPerformance.Data.TooltipSplit}},

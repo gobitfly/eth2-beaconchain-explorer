@@ -64,6 +64,7 @@ type EthClientServicesPageData struct {
 	Lighthouse          EthClients
 	Erigon              EthClients
 	RocketpoolSmartnode EthClients
+	MevBoost            EthClients
 	Banner              string
 	CsrfField           template.HTML
 }
@@ -248,6 +249,7 @@ func updateEthClient() {
 	ethClients.Lighthouse.ClientReleaseVersion, ethClients.Lighthouse.ClientReleaseDate = prepareEthClientData("/sigp/lighthouse", "Lighthouse", curTime)
 
 	ethClients.RocketpoolSmartnode.ClientReleaseVersion, ethClients.RocketpoolSmartnode.ClientReleaseDate = prepareEthClientData("/rocket-pool/smartnode-install", "Rocketpool", curTime)
+	ethClients.MevBoost.ClientReleaseVersion, ethClients.MevBoost.ClientReleaseDate = prepareEthClientData("/flashbots/mev-boost", "MEV-Boost", curTime)
 
 	ethClients.LastUpdate = curTime
 }

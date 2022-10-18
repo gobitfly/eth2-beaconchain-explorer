@@ -296,7 +296,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		}
 		isAll = true
 	} else {
-		// for perfomance-reasons we combine multiple search results with `union`
+		// for performance-reasons we combine multiple search results with `union`
 		args := []interface{}{}
 		searchQry := ""
 		countWhere := ""

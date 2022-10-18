@@ -205,7 +205,7 @@ func retrieveAndInsertPayloadsFromRelay(r types.Relay, low_bound uint64, high_bo
 		if len(resp) < 100 {
 			// if the response is less than 100 payloads, we assume that we have reached the end and break
 			r.Logger.Debugf("got %v, expected 100 payloads", len(resp))
-			r.Logger.Debugf("no more payloads avaliable")
+			r.Logger.Debugf("no more payloads available")
 			break
 		}
 		if resp[len(resp)-1].Slot == offset {

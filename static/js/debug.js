@@ -137,7 +137,7 @@
     }
 
     // async function renderNewTemplate(data) {
-    //   console.log("tempalte data", data)
+    //   console.log("template data", data)
 
     //   let templates = JSON.parse(data).DebugTemplates
     //   console.log("rendering templates", templates)

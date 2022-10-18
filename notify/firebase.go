@@ -44,6 +44,6 @@ func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, err
 		}
 	}
 
-	logger.Infof("Successfully send %v firebase notifications. Successfull: %v | Failed: %v", len(messages), result.SuccessCount, result.FailureCount)
+	logger.Infof("Successfully send %v firebase notifications. Successful: %v | Failed: %v", len(messages), result.SuccessCount, result.FailureCount)
 	return result, nil
 }

@@ -9,7 +9,7 @@
       <meta property="og:title" content="{{ .Meta.Title }}" />
       <meta property="og:type" content="website" />
       <meta property="og:image" content="https://beaconcha.in/img/logo.png" />
-      <meta property="og:image:alt" content="The beaconcha.in logo is a satelite dish expanding its signal." />
+      <meta property="og:image:alt" content="The beaconcha.in logo is a satellite dish expanding its signal." />
       <meta property="og:description" content="{{ .Meta.Description }}" />
       <meta property="og:url" content="https://beaconcha.in{{ .Meta.Path }}" />
       <meta property="og:site_name" content="beaconcha.in" />
@@ -18,7 +18,7 @@
       <meta name="twitter:title" content="{{ .Meta.Title }}" />
       <meta property="twitter:description" content="{{ .Meta.Description }}" />
       <meta property="twitter:image" content="https://beaconcha.in/img/logo.png" />
-      <meta property="twitter:image:alt" content="The beaconcha.in logo is a satelite dish expanding its signal." />
+      <meta property="twitter:image:alt" content="The beaconcha.in logo is a satellite dish expanding its signal." />
 
       <link rel="canonical" href="https://beaconcha.in{{ .Meta.Path }}" />
       <title>{{ .Meta.Title }}</title>
@@ -92,49 +92,51 @@
             })
 
             window.addEventListener('DOMContentLoaded', function () {
+              if ({{.Mainnet}}) {
                 document.getElementById('initialPrice').textContent = ''
                 switch (getCookie('currency')) {
-                    case 'AUD':
+                  case 'AUD':
                         document.getElementById('currentCurrencySymbol').textContent = 'A$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.AudTruncPrice}}
                         document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.AudRoundPrice}}
                         break
-	                case 'CAD':
+                  case 'CAD':
                         document.getElementById('currentCurrencySymbol').textContent = 'C$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CadTruncPrice}}
                         document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.CadRoundPrice}}
-		                break
-	                case 'CNY':
+                        break
+                  case 'CNY':
                         document.getElementById('currentCurrencySymbol').textContent = '¥'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CnyTruncPrice}}
                         document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.CnyRoundPrice}}
-		                break
-	                case 'EUR':
+                        break
+                  case 'EUR':
                         document.getElementById('currentCurrencySymbol').textContent = '€'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.EurTruncPrice}}
                         document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.EurRoundPrice}}
-		                break
-	                case 'GBP':
+                        break
+                  case 'GBP':
                         document.getElementById('currentCurrencySymbol').textContent = '£'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.GbpTruncPrice}}
                         document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.GbpRoundPrice}}
-		                break
-	                case 'JPY':
+                        break
+                  case 'JPY':
                         document.getElementById('currentCurrencySymbol').textContent = '¥'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.JpyTruncPrice}}
                         document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.JpyRoundPrice}}
-		                break
-	                case 'RUB':
+                        break
+                  case 'RUB':
                         document.getElementById('currentCurrencySymbol').textContent = '₽'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.RubTruncPrice}}
                         document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.RubRoundPrice}}
-		                break
-                    default:
+                        break
+                  default:
                         document.getElementById('currentCurrencySymbol').textContent = '$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.Rates.UsdTruncPrice}}
                         document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.UsdRoundPrice}}
-		                break
+                        break
                 }
+              }
             })
         </script> {{ template "css" .Data }}
     </head>

@@ -130,6 +130,17 @@ func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 	return FormatBalanceChange(balance, currency)
 }
 
+func FormatBalanceChangeFormatedETH(balance *int64) (template.HTML, template.HTML) {
+	if balance == nil || *balance == 0 {
+		return template.HTML("<span class=\"float-right\">0</span>"), template.HTML("<span class=\"float-left\">&nbsp;GWei</span>")
+	}
+
+	if *balance < 0 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\">%s</span>", FormatAddCommasFormated(float64(*balance), 0))), template.HTML("<span class=\"text-danger float-left\">&nbsp;GWei</span>")
+	}
+	return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\">+%s</span>", FormatAddCommasFormated(float64(*balance), 0))), template.HTML("<span class=\"text-success float-left\">&nbsp;GWei</span>")
+}
+
 // FormatBalanceChange will return a string for a balance change
 func FormatBalanceChange(balance *int64, currency string) template.HTML {
 	balanceF := float64(*balance) / float64(1e9)
@@ -139,9 +150,9 @@ func FormatBalanceChange(balance *int64, currency string) template.HTML {
 		}
 
 		if balanceF < 0 {
-			return template.HTML(fmt.Sprintf("<span title=\"%.0f GWei\" data-toggle=\"tooltip\" class=\"text-danger\">%.5f ETH</span>", float64(*balance), balanceF))
+			return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\">%s GWei</span>", FormatAddCommasFormated(float64(*balance), 0)))
 		}
-		return template.HTML(fmt.Sprintf("<span title=\"%.0f GWei\" data-toggle=\"tooltip\" class=\"text-success\">+%.5f ETH</span>", float64(*balance), balanceF))
+		return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\">+%s GWei</span>", FormatAddCommasFormated(float64(*balance), 0)))
 	} else {
 		if balance == nil {
 			return template.HTML("<span> 0 " + currency + "</span>")
@@ -167,6 +178,15 @@ func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 	balance := FormatFloat((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
 
 	return template.HTML(balance)
+}
+
+func FormatAddCommasFormated(num float64, precision uint) template.HTML {
+	p := message.NewPrinter(language.English)
+	s := p.Sprintf(fmt.Sprintf("%%.%vf", precision), num)
+	if precision > 0 {
+		s = strings.TrimRight(strings.TrimRight(s, "0"), ".")
+	}
+	return template.HTML(strings.ReplaceAll(string([]rune(p.Sprintf(s, num))), ",", `<span class="thousands-separator"></span>`))
 }
 
 func FormatAddCommas(n uint64) template.HTML {

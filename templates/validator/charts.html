@@ -155,6 +155,7 @@
     {{ if .IncomeHistoryChartData }}
         <script>
             var incomeHistory = {{.IncomeHistoryChartData}}
+            var executionIncomeHistory = {{ .ExecutionIncomeHistoryData }}
             var currency = {{$.Rates.Currency}}
                 window.addEventListener('load', function () {
                     Highcharts.stockChart('income-chart', {
@@ -164,13 +165,36 @@
                         },
                         chart: {
                             type: 'column',
-                            height: '500px'
+                            height: '500px',
+                            pointInterval: 24 * 3600 * 1000
                         },
                         title: {
                             text: 'Daily Income'
                         },
                         legend: {
                             enabled: true
+                        },
+                        navigator: {
+                            series: {
+                                data: incomeHistory,
+                                color: '#7cb5ec',
+                            }
+                        },
+                        plotOptions: {
+                            column: {
+                                stacking: 'stacked',
+                                dataLabels: {
+                                    enabled: false
+                                },
+                                pointInterval: 24 * 3600 * 1000,
+                                // pointIntervalUnit: 'day',
+                                dataGrouping: {
+                                    forced: true,
+                                    units: [
+                                        ['day', [1]]
+                                    ]
+                                }
+                            }
                         },
                         xAxis: {
                             type: 'datetime',
@@ -199,8 +223,14 @@
                             }
                         }],
                         series: [{
-                            name: "Daily Income",
-                            data: incomeHistory
+                            name: "Daily Consensus Income",
+                            data: incomeHistory,
+                            index: 2
+                        },
+                        {
+                            name: "Daily Execution Income",
+                            data: executionIncomeHistory,
+                            index: 1
                         },
                             // {
                             //     name: "Effective Balance",

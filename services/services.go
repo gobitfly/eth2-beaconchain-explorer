@@ -506,7 +506,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 		threshold, err := db.GetDepositThresholdTime()
 		if err != nil {
-			logger.WithError(err).Error("error could not calcualte threshold time")
+			logger.WithError(err).Error("error could not calculate threshold time")
 		}
 		if threshold == nil {
 			threshold = &deposit.BlockTs
@@ -568,7 +568,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		}
 	}
 
-	// has genesis occured
+	// has genesis occurred
 	if now.After(startSlotTime) {
 		data.Genesis = true
 	} else {

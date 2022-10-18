@@ -177,7 +177,7 @@ func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[
 
 func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint64, validators []uint64) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
 
 	start := time.Now()
@@ -195,6 +195,8 @@ func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint6
 		muts = append(muts, mut)
 		keys = append(keys, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(i/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(i)))
 	}
+
+	logger.Infof("saving %v mutations for sync duties", len(muts))
 
 	errs, err := bigtable.tableBeaconchain.ApplyBulk(ctx, keys, muts)
 
@@ -524,12 +526,29 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	return res, nil
 }
 
+func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validatorIndex uint64, startEpoch uint64, limit int64, reverseOrdering bool) ([]*types.ValidatorSyncParticipation, error) {
+	// a negative limit results in ascending fetched epoch numbers for the absolut value of limit
+	if limit < 0 {
+		limit = -limit
+		startEpoch += uint64(limit - 1)
+	}
+	res, err := bigtable.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, startEpoch, limit)
+	if err != nil {
+		return nil, err
+	}
+	if reverseOrdering {
+		utils.ReverseSlice(res[validatorIndex])
+	}
+	return res[validatorIndex], nil
+}
+
 func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, startEpoch uint64, limit int64) (map[uint64][]*types.ValidatorSyncParticipation, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
 	rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
 	rangeEnd := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
+
 	res := make(map[uint64][]*types.ValidatorSyncParticipation, len(validators))
 
 	columnFilters := make([]gcp_bigtable.Filter, 0, len(validators))
@@ -558,6 +577,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	}
 
 	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, rangeEnd), func(r gcp_bigtable.Row) bool {
+
 		for _, ri := range r[SYNC_COMMITTEES_FAMILY] {
 			keySplit := strings.Split(r.Key(), ":")
 

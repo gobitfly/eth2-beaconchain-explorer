@@ -547,16 +547,14 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 
 	//create chart struct, hypertext color is hardcoded into subtitle text
 	chartData := &types.GenericChartData{
-		YAxisNegativeLog: true,
-		Title:            "Historical Pool Performance",
-		Subtitle:         "Uses a neutral & verifiable formula <a style=\"color:rgb(56, 112, 168)\" href=\"https://github.com/gobitfly/eth.store\">ETH.STORE</a> to measure pool performance for consensus rewards.",
-		XAxisTitle:       "",
-		YAxisTitle:       "APR [%] (Logarithmic)",
-		StackingMode:     "false",
-		Type:             "line",
-		TooltipShared:    true,
-		TooltipUseHTML:   true,
-		Series:           chartSeries,
+		Title:         "Historical Pool Performance",
+		Subtitle:      "Uses a neutral & verifiable formula <a style=\"color:rgb(56, 112, 168)\" href=\"https://github.com/gobitfly/eth.store\">ETH.STORE</a> to measure pool performance for consensus & execution rewards.",
+		XAxisTitle:    "",
+		YAxisTitle:    "APR [%] (Logarithmic)",
+		StackingMode:  "false",
+		Type:          "line",
+		TooltipShared: false,
+		Series:        chartSeries,
 	}
 
 	return chartData, nil
@@ -1646,7 +1644,7 @@ func graffitiCloudChartData() (*types.GenericChartData, error) {
 		group by graffities.graffiti, graffities.count
 		order by weight desc`)
 	if err != nil {
-		return nil, fmt.Errorf("error getting graffiti-occurences: %w", err)
+		return nil, fmt.Errorf("error getting graffiti-occurrences: %w", err)
 	}
 
 	for i := range rows {
@@ -1657,13 +1655,13 @@ func graffitiCloudChartData() (*types.GenericChartData, error) {
 		IsNormalChart:                true,
 		Type:                         "wordcloud",
 		Title:                        "Graffiti Word Cloud",
-		Subtitle:                     "Word Cloud of the 25 most occuring graffities.",
-		TooltipFormatter:             `function(){ return '<b>'+this.point.name+'</b><br\>Occurences: '+this.point.weight+'<br\>Validators: '+this.point.validators }`,
+		Subtitle:                     "Word Cloud of the 25 most occurring graffities.",
+		TooltipFormatter:             `function(){ return '<b>'+this.point.name+'</b><br\>Occurrences: '+this.point.weight+'<br\>Validators: '+this.point.validators }`,
 		PlotOptionsSeriesEventsClick: `function(event){ window.location.href = '/blocks?q='+encodeURIComponent(event.point.name) }`,
 		PlotOptionsSeriesCursor:      "pointer",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Occurences",
+				Name: "Occurrences",
 				Data: rows,
 				Type: "wordcloud",
 			},

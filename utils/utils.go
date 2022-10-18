@@ -34,6 +34,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/lib/pq"
@@ -199,6 +200,7 @@ func GetTemplateFuncs() template.FuncMap {
 			return string(num)
 		},
 		"formatEthstoreComparison": FormatEthstoreComparison,
+		"formatPoolPerformance":    FormatPoolPerformance,
 	}
 }
 
@@ -294,6 +296,10 @@ func TimeToEpoch(ts time.Time) int64 {
 		return 0
 	}
 	return (ts.Unix() - int64(Config.Chain.GenesisTimestamp)) / int64(Config.Chain.Config.SecondsPerSlot) / int64(Config.Chain.Config.SlotsPerEpoch)
+}
+
+func WeiToEther(wei *big.Int) *big.Float {
+	return new(big.Float).Quo(new(big.Float).SetInt(wei), big.NewFloat(params.Ether))
 }
 
 // WaitForCtrlC will block/wait until a control-c is pressed
@@ -459,7 +465,7 @@ func IsValidEth1Tx(s string) bool {
 // https://github.com/badoux/checkmail/blob/f9f80cb795fa/checkmail.go#L37
 var emailRE = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
-// IsValidEmail verifies wheter a string represents a valid email-address.
+// IsValidEmail verifies whether a string represents a valid email-address.
 func IsValidEmail(s string) bool {
 	return emailRE.MatchString(s)
 }
@@ -634,7 +640,7 @@ func ExchangeRateForCurrency(currency string) float64 {
 	return price.GetEthPrice(currency)
 }
 
-// Glob walks through a directory and returns files with a given extention
+// Glob walks through a directory and returns files with a given extension
 func Glob(dir string, ext string) ([]string, error) {
 	files := []string{}
 	err := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
@@ -884,4 +890,14 @@ func FormatEthstoreComparison(pool string, val float64) template.HTML {
 	}
 
 	return template.HTML(fmt.Sprintf(`<sub title="%s %s the ETH.STORE indicator by %s%.2f%%" data-toggle="tooltip" class="%s">(%s%.2f%%)</sub>`, pool, ou, prefix, val, textClass, prefix, val))
+}
+
+func FormatPoolPerformance(val float64) template.HTML {
+	return template.HTML(fmt.Sprintf(`<span data-toggle="tooltip" title=%f%%>%s%%</span>`, val, fmt.Sprintf("%.2f", val)))
+}
+
+func ReverseSlice[S ~[]E, E any](s S) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
 }

@@ -29,7 +29,7 @@ func UpdatePubkeyTag() {
 
 		err = tx.Commit()
 		if err != nil {
-			logger.WithError(err).Error("Error commiting transaction")
+			logger.WithError(err).Error("Error committing transaction")
 		}
 		tx.Rollback()
 

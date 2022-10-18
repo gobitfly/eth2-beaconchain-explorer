@@ -325,7 +325,7 @@ func saveEth1Deposits(depositsToSave []*types.Eth1Deposit) error {
 
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("error commiting db-tx for eth1-deposits: %w", err)
+		return fmt.Errorf("error committing db-tx for eth1-deposits: %w", err)
 	}
 
 	return nil
