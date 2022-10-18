@@ -470,13 +470,6 @@ label.btn.btn-light:hover {
   content: ",";
 }
 
-.tooltip {
-  word-wrap: normal !important;
-}
-
 .tooltip-inner {
-  max-width: 400px;
-  padding: 0.25rem 0.5rem;
-  text-align: center;
-  border-radius: 0.35rem;
+  max-width: none;
 }
