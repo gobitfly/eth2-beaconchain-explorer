@@ -1,83 +1,77 @@
 {{ define "js" }}
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
-  
-  
+
   <script>
-    $('#example').DataTable({
-      searching:true,
-      ordering:false,
-        pageLength: 10,
-        language: {
+    $("#example").DataTable({
+      searching: true,
+      ordering: false,
+      pageLength: 10,
+      language: {
         paginate: {
-            previous: "<",
-            next: ">",
-          },
-        }
-    });
-    document.getElementById('example-body').classList.remove('d-none')
+          previous: "<",
+          next: ">",
+        },
+      },
+    })
+    document.getElementById("example-body").classList.remove("d-none")
   </script>
-
-
-
 {{ end }}
 
 {{ define "css" }}
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
-<style>
-  table.dataTable tbody td {
-    vertical-align: middle;
-  }
-</style>
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
+  <style>
+    table.dataTable tbody td {
+      vertical-align: middle;
+    }
+  </style>
 {{ end }}
 
-{{define "content"}}
-{{ with .Data }}
-<div class="container mt-2">
-  <div class="my-3">
-    <div class="d-md-flex py-2 justify-content-md-between">
-      <h1 class="h4 mb-1 mb-md-0">
-        <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Mempool Transactions</span>
-      </h1>
-      <nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
-        <ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0" style="padding:0; background-color:transparent;">
-          <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-          <li class="breadcrumb-item active" aria-current="page">Mempool Transactions</li>
-        </ol>
-      </nav>
-    </div>
-  </div>
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+          <h1 class="h4 mb-1 mb-md-0">
+            <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Mempool Transactions</span>
+          </h1>
+          <nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
+            <ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0" style="padding:0; background-color:transparent;">
+              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Mempool Transactions</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
 
-
-  <div class="card card-header">
-    <div class="card-body px-0 py-3">
-      <div class="table-responsive px-0 py-1">
-        <table class ="table dataTable table-sm" id="example" style="width:100%">
-          <thead >
-            <tr role="row">
-              <th>Hash</th>
-              <th>Value</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Gas</th>
-            </tr>
-          </thead>
-          <tbody id="example-body" class="d-none">
-            {{range .}}
-            <tr>
-              <td><a href="tx/{{.Hash}}">{{.Hash}}</a></td>
-              <td>{{ .Value }}</td>
-              <td>{{ .From }}</td>
-              <td>{{ .To }}</td>
-              <td> {{ .Gas }} </td>
-            </tr>
-            {{end}}
-          </tbody>
-        </table>
+      <div class="card card-header">
+        <div class="card-body px-0 py-3">
+          <div class="table-responsive px-0 py-1">
+            <table class="table dataTable table-sm" id="example" style="width:100%">
+              <thead>
+                <tr role="row">
+                  <th>Hash</th>
+                  <th>Value</th>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Gas</th>
+                </tr>
+              </thead>
+              <tbody id="example-body" class="d-none">
+                {{ range . }}
+                  <tr>
+                    <td><a href="tx/{{ .Hash }}">{{ .Hash }}</a></td>
+                    <td>{{ .Value }}</td>
+                    <td>{{ .From }}</td>
+                    <td>{{ .To }}</td>
+                    <td>{{ .Gas }}</td>
+                  </tr>
+                {{ end }}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
-{{end}}
-{{end}}
-
+  {{ end }}
+{{ end }}
