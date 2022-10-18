@@ -38,32 +38,33 @@ func MempoolView(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// this function connects to RPC or to local cache and requests raw memory pool data.
+// this function connects to RPC and requests raw memory pool data. TODO: Local Cache Implementation
 func _fetchRawMempoolData() json.RawMessage {
 
 	client, err := gethRPC.Dial(utils.Config.Eth1GethEndpoint)
+	if err != nil {
+		logrus.Error("Can't Connect to Node: ", err)
+	}
 	var raw json.RawMessage
 
 	err = client.Call(&raw, "txpool_content")
 	if err != nil {
-		logrus.Error("node rpc command error: ", err)
+		logrus.Error("Node rpc command error: ", err)
 	}
 	return raw
 }
 
-// This is a helper function. If receiver Address is nil or empty(in case of a new contract creation).
+// This is a helper function. It replaces Nil or empty receiver Address with a string in case case of a new contract creation.
 // This function catches the Nil exception
-func isContractCreation(tx *common.Address) string {
+func _isContractCreation(tx *common.Address) string {
 	if tx == nil {
 		return "Contract Creation"
-	} else {
-		return string(utils.FormatAddressAll(tx.Bytes(), "", false, "address", "", int(12), int(12), true))
 	}
-
+	return string(utils.FormatAddressAll(tx.Bytes(), "", false, "address", "", int(12), int(12), true))
 }
 
-// This Function formats each Transaction into Html strings.
-// This should make all calculations faster, reducing browser's rendering time.
+// This Function formats each Transaction into Html string.
+// This makes all calculations faster, reducing browser's rendering time.
 func formatToHtml(content json.RawMessage) []formatedTx {
 
 	rawMempoolData := RawMempoolResponse{}
@@ -77,7 +78,7 @@ func formatToHtml(content json.RawMessage) []formatedTx {
 		for _, tx := range pendingData {
 			htmlFormatedData = append(htmlFormatedData, formatedTx{Hash: template.HTML(tx.Hash.String()),
 				From:  utils.FormatAddressAll(tx.From.Bytes(), "", false, "address", "", int(12), int(12), true),
-				To:    template.HTML(isContractCreation(tx.To)),
+				To:    template.HTML(_isContractCreation(tx.To)),
 				Value: utils.FormatAmount((*big.Int)(tx.Value), "ETH", 5),
 				Gas:   utils.FormatAmountFormated(tx.Gas.ToInt(), "GWei", 5, 0, true, true, false)})
 		}
