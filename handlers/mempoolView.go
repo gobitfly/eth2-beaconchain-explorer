@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"eth2-exporter/templates"
 	"eth2-exporter/utils"
 	"html/template"
 	"math/big"
@@ -20,10 +21,8 @@ func MempoolView(w http.ResponseWriter, r *http.Request) {
 	formatedData := formatToHtml(rawMempoolData)
 
 	var err error
-	var mempoolViewTemplate = template.Must(template.New("mempoolview").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-		"templates/layout.html",
-		"templates/mempoolview.html",
-	))
+	var mempoolViewTemplate = templates.GetTemplate("layout.html", "mempoolview.html")
+
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "services", "/mempool", "Pending Mempool Transactions")
 
