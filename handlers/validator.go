@@ -1575,7 +1575,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		// if ordering is ascending, reverse sync period slice & swap start and end epoch of each period
 		if ascOrdering {
 			utils.ReverseSlice(syncPeriods)
-			for i, _ := range syncPeriods {
+			for i := range syncPeriods {
 				syncPeriods[i].StartEpoch, syncPeriods[i].EndEpoch = syncPeriods[i].EndEpoch, syncPeriods[i].StartEpoch
 			}
 		}
