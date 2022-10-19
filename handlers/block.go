@@ -602,9 +602,10 @@ func BlockVoteData(w http.ResponseWriter, r *http.Request) {
 
 	var count uint64
 	var votes []struct {
-		BlockSlot      uint64        `db:"block_slot"`
-		Validators     pq.Int64Array `db:"validators"`
+		AllocatedSlot  uint64        `db:"slot"` // "the slot during which the validators were allocated to vote for a block"
 		CommitteeIndex uint64        `db:"committeeindex"`
+		BlockSlot      uint64        `db:"block_slot"` // "the block where the attestation was included in"
+		Validators     pq.Int64Array `db:"validators"`
 	}
 	if search == "" {
 		err = db.ReaderDb.Get(&count, `SELECT count(*) FROM blocks_attestations WHERE beaconblockroot = $1`, blockRootHash)
@@ -615,9 +616,10 @@ func BlockVoteData(w http.ResponseWriter, r *http.Request) {
 		}
 		err = db.ReaderDb.Select(&votes, `
 			SELECT
+				slot,
+				committeeindex,
 				block_slot,
-				validators,
-				committeeindex
+				validators
 			FROM blocks_attestations
 			WHERE beaconblockroot = $1
 			ORDER BY committeeindex
@@ -638,9 +640,10 @@ func BlockVoteData(w http.ResponseWriter, r *http.Request) {
 		}
 		err = db.ReaderDb.Select(&votes, `
 			SELECT
+				slot,
+				committeeindex,
 				block_slot,
-				validators,
-				committeeindex
+				validators
 			FROM blocks_attestations
 			WHERE beaconblockroot = $1 AND $2 = ANY(validators)
 			ORDER BY committeeindex
@@ -662,8 +665,9 @@ func BlockVoteData(w http.ResponseWriter, r *http.Request) {
 			formatedValidators[i] = fmt.Sprintf("<a href='/validator/%[1]d'>%[1]d</a>", v)
 		}
 		tableData = append(tableData, []interface{}{
-			vote.BlockSlot,
+			vote.AllocatedSlot,
 			vote.CommitteeIndex,
+			vote.BlockSlot,
 			strings.Join(formatedValidators, ", "),
 		})
 	}
