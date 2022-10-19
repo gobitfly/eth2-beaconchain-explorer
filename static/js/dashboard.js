@@ -62,14 +62,13 @@ function showValidatorHist(index) {
       {
         targets: 1,
         createdCell: function (td, cellData, rowData, row, col) {
-          $(td).css("padding-right", "0px")
           $(td).css("width", "0px")
         },
       },
       {
         targets: 2,
         createdCell: function (td, cellData, rowData, row, col) {
-          $(td).css("padding-left", "0px")
+          $(td).css("padding", "0px")
         },
       },
     ],
