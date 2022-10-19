@@ -130,15 +130,32 @@ func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 	return FormatBalanceChange(balance, currency)
 }
 
-func FormatBalanceChangeFormatedETH(balance *int64) (template.HTML, template.HTML) {
-	if balance == nil || *balance == 0 {
-		return template.HTML("<span class=\"float-right\">0</span>"), template.HTML("<span class=\"float-left\">&nbsp;GWei</span>")
-	}
+func FormatBalanceChangeFormated(balance *int64, currencyName string) template.HTML {
+	if currencyName == "ETH" {
+		if balance == nil || *balance == 0 {
+			return template.HTML("<span class=\"float-right\">0 GWei</span>")
+		}
+		if *balance < 0 {
+			return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\">%s GWei</span>", FormatAddCommasFormated(float64(*balance), 0)))
+		}
+		return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\">+%s GWei</span>", FormatAddCommasFormated(float64(*balance), 0)))
+	} else {
+		if balance == nil {
+			return template.HTML("<span class=\"float-right\">0 " + currencyName + "</span>")
+		}
+		if *balance == 0 {
+			return template.HTML("pending")
+		}
 
-	if *balance < 0 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\">%s</span>", FormatAddCommasFormated(float64(*balance), 0))), template.HTML("<span class=\"text-danger float-left\">&nbsp;GWei</span>")
+		balanceF := float64(*balance) / float64(1e9)
+		exchangeRate := ExchangeRateForCurrency(currencyName)
+		value := balanceF * float64(exchangeRate)
+
+		if *balance < 0 {
+			return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%f\">%s %s</span>", value, FormatAddCommasFormated(value, 2), currencyName))
+		}
+		return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%f\">+%s %s</span>", value, FormatAddCommasFormated(value, 2), currencyName))
 	}
-	return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\">+%s</span>", FormatAddCommasFormated(float64(*balance), 0))), template.HTML("<span class=\"text-success float-left\">&nbsp;GWei</span>")
 }
 
 // FormatBalanceChange will return a string for a balance change
