@@ -98,13 +98,13 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	offsetString := r.URL.Query().Get("offset")
 	offset, err = strconv.ParseUint(offsetString, 10, 64)
-	if err != nil || offset < 0 {
+	if err != nil {
 		offset = 0
 	}
 
 	limitString := r.URL.Query().Get("limit")
 	limit, err = strconv.ParseUint(limitString, 10, 64)
-	if err != nil || limit < 0 {
+	if err != nil {
 		limit = 10
 	}
 	if limit > 100 {

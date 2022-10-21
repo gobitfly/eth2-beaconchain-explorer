@@ -491,6 +491,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 
 	startGetEpochData := time.Now()
 	logger.Printf("retrieving data for epoch %v", epoch)
+
 	data, err := client.GetEpochData(epoch, false)
 	if err != nil {
 		return fmt.Errorf("error retrieving epoch data: %v", err)
@@ -571,6 +572,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 			}
 			return nil
 		})
+
 		err = g.Wait()
 		if err != nil {
 			logger.Errorf("error during bigtable export: %v", err)
