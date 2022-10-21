@@ -203,7 +203,7 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 // ApiEpoch godoc
 // @Summary Get epoch by number
 // @Tags Epoch
-// @Description Returns information for a specified epoch by the epoch number or the latest epoch
+// @Description Returns information for a specified epoch by the epoch number or an epoch tag (can be latest or finalized)
 // @Produce  json
 // @Param  epoch path string true "Epoch number or the string latest"
 // @Success 200 {object} string
@@ -216,13 +216,21 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	epoch, err := strconv.ParseInt(vars["epoch"], 10, 64)
-	if err != nil && vars["epoch"] != "latest" {
+	if err != nil && vars["epoch"] != "latest" && vars["epoch"] != "finalized" {
 		sendErrorResponse(w, r.URL.String(), "invalid epoch provided")
 		return
 	}
 
 	if vars["epoch"] == "latest" {
-		epoch = int64(services.LatestEpoch())
+		err = db.ReaderDb.Get(&epoch, "SELECT MAX(epoch) FROM epochs")
+		if err != nil {
+			sendErrorResponse(w, r.URL.String(), "unable to retrieve latest epoch number")
+			return
+		}
+	}
+
+	if vars["epoch"] == "finalized" {
+		epoch = int64(services.LatestFinalizedEpoch())
 	}
 
 	rows, err := db.ReaderDb.Query(`SELECT *, 
