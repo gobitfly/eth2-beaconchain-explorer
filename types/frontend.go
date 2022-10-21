@@ -135,8 +135,8 @@ type EventNameDesc struct {
 // this is the source of truth for the validator events that are supported by the user/notification page
 var AddWatchlistEvents = []EventNameDesc{
 	{
-		Desc:  "Attestations missed",
-		Event: ValidatorMissedAttestationEventName,
+		Desc:  "Validator is Offline",
+		Event: ValidatorIsOfflineEventName,
 	},
 	{
 		Desc:  "Proposals missed",
@@ -155,8 +155,8 @@ var AddWatchlistEvents = []EventNameDesc{
 		Event: SyncCommitteeSoon,
 	},
 	{
-		Desc:  "Validator is Offline",
-		Event: ValidatorIsOfflineEventName,
+		Desc:  "Attestations missed",
+		Event: ValidatorMissedAttestationEventName,
 	},
 }
 

@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
 	"github.com/patrickmn/go-cache"
 
@@ -1404,6 +1405,29 @@ func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx
 	}
 
 	return nil
+}
+
+func GetRelayDataForIndexedBlocks(blocks []*types.Eth1BlockIndexed) (map[common.Hash]types.RelaysData, error) {
+	var execBlockHashes [][]byte
+	var relaysData []types.RelaysData
+
+	for _, block := range blocks {
+		execBlockHashes = append(execBlockHashes, block.Hash)
+	}
+	// try to get mev rewards from relys_blocks table
+	err := ReaderDb.Select(&relaysData,
+		`SELECT proposer_fee_recipient, value, exec_block_hash, tag_id, builder_pubkey FROM relays_blocks WHERE relays_blocks.exec_block_hash = ANY($1)`,
+		pq.ByteaArray(execBlockHashes),
+	)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+	var relaysDataMap = make(map[common.Hash]types.RelaysData)
+	for _, relayData := range relaysData {
+		relaysDataMap[common.BytesToHash(relayData.ExecBlockHash)] = relayData
+	}
+
+	return relaysDataMap, nil
 }
 
 func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {

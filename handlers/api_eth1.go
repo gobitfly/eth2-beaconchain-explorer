@@ -58,7 +58,7 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	relaysData, err := getRelayDataForIndexedBlocks(blocks)
+	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
 	if err != nil {
 		logger.Errorf("can not load mev data %v", err)
 		sendErrorResponse(w, r.URL.String(), "can not retrieve mev data")
@@ -76,7 +76,7 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 // @Tags Execution
 // @Description Get a list of proposed or mined blocks from a given fee recipient address, proposer index or proposer pubkey
 // @Produce json
-// @Param addressIndexOrPubkey path string true "Either the fee recipient address, the proposer index or proposer pubkey. You can provide multiple by separating them with ',' up to max 20."
+// @Param addressIndexOrPubkey path string true "Either the fee recipient address, the proposer index or proposer pubkey. You can provide multiple by separating them with ','. Max allowed index or pubkeys are 100, max allowed user addresses are 20."
 // @Param offset query int false "Offset"
 // @Param limit query int false "Limit, amount of entries you wish to receive"
 // @Success 200 {object} string
@@ -87,9 +87,23 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 
-	addresses, indices, err := getAddressesOrIndicesFromAddressIndexOrPubkey(vars["addressIndexOrPubkey"], 20)
+	maxValidators := getUserPremium(r).MaxValidators
+	addresses, indices, err := getAddressesOrIndicesFromAddressIndexOrPubkey(vars["addressIndexOrPubkey"], maxValidators)
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "invalid address, validator index or pubkey or exceeded max of 20 params")
+		sendErrorResponse(
+			w,
+			r.URL.String(),
+			fmt.Sprintf("invalid address, validator index or pubkey or exceeded max of %v params", maxValidators),
+		)
+		return
+	}
+
+	if len(addresses) > 20 {
+		sendErrorResponse(
+			w,
+			r.URL.String(),
+			"you are only allowed to query up to max 20 addresses",
+		)
 		return
 	}
 
@@ -144,7 +158,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	relaysData, err := getRelayDataForIndexedBlocks(blocks)
+	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
 	if err != nil {
 		logger.Errorf("can not load mev data %v", err)
 		sendErrorResponse(w, r.URL.String(), "can not retrieve mev data")
@@ -155,29 +169,6 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	sendOKResponse(j, r.URL.String(), []interface{}{results})
-}
-
-func getRelayDataForIndexedBlocks(blocks []*types.Eth1BlockIndexed) (map[common.Hash]types.RelaysData, error) {
-	var execBlockHashes [][]byte
-	var relaysData []types.RelaysData
-
-	for _, block := range blocks {
-		execBlockHashes = append(execBlockHashes, block.Hash)
-	}
-	// try to get mev rewards from relys_blocks table
-	err := db.ReaderDb.Select(&relaysData,
-		`SELECT proposer_fee_recipient, value, exec_block_hash, tag_id, builder_pubkey FROM relays_blocks WHERE relays_blocks.exec_block_hash = ANY($1)`,
-		pq.ByteaArray(execBlockHashes),
-	)
-	if err != nil {
-		return nil, err
-	}
-	var relaysDataMap = make(map[common.Hash]types.RelaysData)
-	for _, relayData := range relaysData {
-		relaysDataMap[common.BytesToHash(relayData.ExecBlockHash)] = relayData
-	}
-
-	return relaysDataMap, nil
 }
 
 func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map[common.Hash]types.RelaysData, beaconDataMap map[uint64]types.ExecBlockProposer) []types.ExecutionBlockApiResponse {
@@ -283,7 +274,7 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 
 	resultPerProposer := make(map[uint64]types.ExecutionPerformanceResponse)
 
-	relaysData, err := getRelayDataForIndexedBlocks(blocks)
+	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
 	if err != nil {
 		logger.WithError(err).Errorf("can not get relays data")
 		return nil, err

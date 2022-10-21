@@ -476,12 +476,15 @@ function getRelativeTime(tsLuxon) {
   }
   var duration = tsLuxon.diffNow(["days", "hours", "minutes", "seconds"])
   var daysPart = Math.round(duration.days)
-  var sDays = daysPart === -1 ? "" : "s"
   var hoursPart = Math.round(duration.hours)
-  var sHours = hoursPart === -1 ? "" : "s"
   var minutesPart = Math.round(duration.minutes)
-  var sMinutes = minutesPart === -1 ? "" : "s"
   var secondsPart = Math.round(duration.seconds)
+  if (daysPart === 0 && hoursPart === 0 && minutesPart === 0 && secondsPart === 0) {
+    return `${prefix}0 secs${suffix}`
+  }
+  var sDays = daysPart === -1 ? "" : "s"
+  var sHours = hoursPart === -1 ? "" : "s"
+  var sMinutes = minutesPart === -1 ? "" : "s"
   var sSeconds = secondsPart === -1 ? "" : "s"
   var parts = []
   if (daysPart !== 0) {

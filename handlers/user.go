@@ -2416,9 +2416,9 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 		events := make([]types.EventNameCheckbox, 0, 7)
 
 		events = append(events, types.EventNameCheckbox{
-			EventLabel: "Attestation Missed",
-			EventName:  types.ValidatorMissedAttestationEventName,
-			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorMissedAttestationEventName)),
+			EventLabel: "Validator is Offline",
+			EventName:  types.ValidatorIsOfflineEventName,
+			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorIsOfflineEventName)),
 		})
 		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Proposal Missed",
@@ -2441,9 +2441,9 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 			Active:     utils.ElementExists(wh.EventNames, string(types.SyncCommitteeSoon)),
 		})
 		events = append(events, types.EventNameCheckbox{
-			EventLabel: "Validator is Offline",
-			EventName:  types.ValidatorIsOfflineEventName,
-			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorIsOfflineEventName)),
+			EventLabel: "Attestation Missed",
+			EventName:  types.ValidatorMissedAttestationEventName,
+			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorMissedAttestationEventName)),
 		})
 		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Machine Offline",
@@ -2515,8 +2515,8 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 	events := make([]types.EventNameCheckbox, 0, 7)
 
 	events = append(events, types.EventNameCheckbox{
-		EventLabel: "Attestation Missed",
-		EventName:  types.ValidatorMissedAttestationEventName,
+		EventLabel: "Validator is Offline",
+		EventName:  types.ValidatorIsOfflineEventName,
 	})
 	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Proposal Missed",
@@ -2535,8 +2535,8 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 		EventName:  types.SyncCommitteeSoon,
 	})
 	events = append(events, types.EventNameCheckbox{
-		EventLabel: "Validator is Offline",
-		EventName:  types.ValidatorIsOfflineEventName,
+		EventLabel: "Attestation Missed",
+		EventName:  types.ValidatorMissedAttestationEventName,
 	})
 	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Machine Offline",
@@ -2584,12 +2584,12 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 
 	destination := "webhook"
 
-	validatorAttestationMissed := r.FormValue(string(types.ValidatorMissedAttestationEventName)) == "on"
+	validatorIsOffline := r.FormValue(string(types.ValidatorIsOfflineEventName)) == "on"
 	validatorProposalMissed := r.FormValue(string(types.ValidatorMissedProposalEventName)) == "on"
 	validatorProposalSubmitted := r.FormValue(string(types.ValidatorExecutedProposalEventName)) == "on"
 	validatorGotSlashed := r.FormValue(string(types.ValidatorGotSlashedEventName)) == "on"
 	validatorSyncCommiteeSoon := r.FormValue(string(types.SyncCommitteeSoon)) == "on"
-	validatorIsOffline := r.FormValue(string(types.ValidatorIsOfflineEventName)) == "on"
+	validatorAttestationMissed := r.FormValue(string(types.ValidatorMissedAttestationEventName)) == "on"
 	monitoringMachineOffline := r.FormValue(string(types.MonitoringMachineOfflineEventName)) == "on"
 	monitoringHddAlmostfull := r.FormValue(string(types.MonitoringMachineDiskAlmostFullEventName)) == "on"
 	monitoringCpuLoad := r.FormValue(string(types.MonitoringMachineCpuLoadEventName)) == "on"
@@ -2603,12 +2603,12 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 
 	events := make(map[string]bool, 0)
 
-	events[string(types.ValidatorMissedAttestationEventName)] = validatorAttestationMissed
+	events[string(types.ValidatorIsOfflineEventName)] = validatorIsOffline
 	events[string(types.ValidatorMissedProposalEventName)] = validatorProposalMissed
 	events[string(types.ValidatorExecutedProposalEventName)] = validatorProposalSubmitted
 	events[string(types.ValidatorGotSlashedEventName)] = validatorGotSlashed
 	events[string(types.SyncCommitteeSoon)] = validatorSyncCommiteeSoon
-	events[string(types.ValidatorIsOfflineEventName)] = validatorIsOffline
+	events[string(types.ValidatorMissedAttestationEventName)] = validatorAttestationMissed
 	events[string(types.MonitoringMachineOfflineEventName)] = monitoringMachineOffline
 	events[string(types.MonitoringMachineDiskAlmostFullEventName)] = monitoringHddAlmostfull
 	events[string(types.MonitoringMachineCpuLoadEventName)] = monitoringCpuLoad
@@ -2731,12 +2731,12 @@ func UsersEditWebhook(w http.ResponseWriter, r *http.Request) {
 
 	destination := "webhook"
 
-	validatorAttestationMissed := r.FormValue(string(types.ValidatorMissedAttestationEventName)) == "on"
+	validatorIsOffline := r.FormValue(string(types.ValidatorIsOfflineEventName)) == "on"
 	validatorProposalMissed := r.FormValue(string(types.ValidatorMissedProposalEventName)) == "on"
 	validatorProposalSubmitted := r.FormValue(string(types.ValidatorExecutedProposalEventName)) == "on"
 	validatorGotSlashed := r.FormValue(string(types.ValidatorGotSlashedEventName)) == "on"
 	validatorSyncCommiteeSoon := r.FormValue(string(types.SyncCommitteeSoon)) == "on"
-	validatorIsOffline := r.FormValue(string(types.ValidatorIsOfflineEventName)) == "on"
+	validatorAttestationMissed := r.FormValue(string(types.ValidatorMissedAttestationEventName)) == "on"
 	monitoringMachineOffline := r.FormValue(string(types.MonitoringMachineOfflineEventName)) == "on"
 	monitoringHddAlmostfull := r.FormValue(string(types.MonitoringMachineDiskAlmostFullEventName)) == "on"
 	monitoringCpuLoad := r.FormValue(string(types.MonitoringMachineCpuLoadEventName)) == "on"
@@ -2750,12 +2750,12 @@ func UsersEditWebhook(w http.ResponseWriter, r *http.Request) {
 
 	events := make(map[string]bool, 0)
 
-	events[string(types.ValidatorMissedAttestationEventName)] = validatorAttestationMissed
+	events[string(types.ValidatorIsOfflineEventName)] = validatorIsOffline
 	events[string(types.ValidatorMissedProposalEventName)] = validatorProposalMissed
 	events[string(types.ValidatorExecutedProposalEventName)] = validatorProposalSubmitted
 	events[string(types.ValidatorGotSlashedEventName)] = validatorGotSlashed
 	events[string(types.SyncCommitteeSoon)] = validatorSyncCommiteeSoon
-	events[string(types.ValidatorIsOfflineEventName)] = validatorIsOffline
+	events[string(types.ValidatorMissedAttestationEventName)] = validatorAttestationMissed
 	events[string(types.MonitoringMachineOfflineEventName)] = monitoringMachineOffline
 	events[string(types.MonitoringMachineDiskAlmostFullEventName)] = monitoringHddAlmostfull
 	events[string(types.MonitoringMachineCpuLoadEventName)] = monitoringCpuLoad
