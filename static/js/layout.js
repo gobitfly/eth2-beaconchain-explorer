@@ -366,7 +366,7 @@ $(document).ready(function () {
     } else if (sug.address !== undefined) {
       window.location = "/address/" + sug.address
     } else if (sug.eth1_address !== undefined) {
-      window.location = "/validators/eth1deposits?q=" + sug.eth1_address
+      window.location = "/validators/initiated-deposits?q=" + sug.eth1_address
     } else if (sug.graffiti !== undefined) {
       // sug.graffiti is html-escaped to prevent xss, we need to unescape it
       var el = document.createElement("textarea")
