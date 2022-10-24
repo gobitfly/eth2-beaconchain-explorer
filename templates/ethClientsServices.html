@@ -228,6 +228,20 @@
                       <td><input id="lighthouse-checkbox" type="checkbox" data-toggle="toggle" {{ if .Lighthouse.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('lighthouse-checkbox', 'eth_client_update', 'lighthouse')" /></td>
                     {{ end }}
                   </tr>
+
+                  <tr>
+                    <td data-column="Name"><a href="https://lodestar.chainsafe.io/">Lodestar</a></td>
+                    <td data-column="Language">Typescript</td>
+                    <td data-column="Latest update"><a id="lodestar" href="https://github.com/chainsafe/lodestar/releases">{{ .Lodestar.ClientReleaseVersion }}</a> - {{ .Lodestar.ClientReleaseDate }}</td>
+                    <td data-column="Social media">
+                      <a href="https://discord.gg/aMxzVcr" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
+                      <a href="https://twitter.com/lodestar_eth" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>
+                    </td>
+                    <td data-column="Support"><a href="https://gitcoin.co/grants/6034/lodestar-typescript-eth-consensus-client-by-chains">Gitcoin</a></td>
+                    {{ if $.User.Authenticated }}
+                      <td><input id="lodestar-checkbox" type="checkbox" data-toggle="toggle" {{ if .Lodestar.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('lodestar-checkbox', 'eth_client_update', 'lodestar')" /></td>
+                    {{ end }}
+                  </tr>
                 </tbody>
               </table>
             </div>
