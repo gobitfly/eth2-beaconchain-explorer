@@ -27,6 +27,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
+
+	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
 var validatorEditFlash = "edit_validator_flash"
@@ -1293,6 +1295,17 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
+	var incomeDetails map[uint64]map[uint64]*itypes.ValidatorEpochIncome
+	g.Go(func() error {
+		var err error
+		incomeDetails, err = db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{index}, currentEpoch-start, 12)
+		if err != nil {
+			logger.Errorf("error retrieving validator income details history from bigtable: %v", err)
+			return err
+		}
+		return nil
+	})
+
 	var attestationHistory map[uint64][]*types.ValidatorAttestation
 	g.Go(func() error {
 		var err error
@@ -1355,6 +1368,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			ProposalSlot:   sql.NullInt64{Int64: 0, Valid: false},
 		}
 
+		if incomeDetails[index] != nil {
+			h.IncomeDetails = incomeDetails[index][balanceHistory[index][i].Epoch]
+		}
+
 		if attestationsMap[balanceHistory[index][i].Epoch] != nil {
 			h.AttesterSlot = sql.NullInt64{Int64: int64(attestationsMap[balanceHistory[index][i].Epoch].AttesterSlot), Valid: true}
 			h.InclusionSlot = sql.NullInt64{Int64: int64(attestationsMap[balanceHistory[index][i].Epoch].InclusionSlot), Valid: true}
@@ -1396,7 +1413,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		if b.BalanceChange.Valid {
 			tableData = append(tableData, []interface{}{
 				utils.FormatEpoch(b.Epoch),
-				utils.FormatBalanceChangeFormated(&b.BalanceChange.Int64, currency),
+				utils.FormatBalanceChangeFormated(&b.BalanceChange.Int64, currency, b.IncomeDetails),
 				template.HTML(""),
 				template.HTML(events),
 			})

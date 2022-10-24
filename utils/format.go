@@ -23,6 +23,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
+
+	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
 func FormatMessageToHtml(message string) template.HTML {
@@ -130,15 +132,86 @@ func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 	return FormatBalanceChange(balance, currency)
 }
 
-func FormatBalanceChangeFormated(balance *int64, currencyName string) template.HTML {
+func FormatBalanceChangeFormated(balance *int64, currencyName string, details *itypes.ValidatorEpochIncome) template.HTML {
+
+	income := ""
+	if details != nil {
+
+		total := int64(0)
+		if details.AttestationSourceReward > 0 {
+			income += fmt.Sprintf("Att. Source Reward: %d GWei<br/>", details.AttestationSourceReward)
+			total += int64(details.AttestationSourceReward)
+		}
+		if details.AttestationSourcePenalty > 0 {
+			income += fmt.Sprintf("Att. Source Penalty: %d GWei<br/>", details.AttestationSourcePenalty)
+			total -= int64(details.AttestationSourcePenalty)
+		}
+
+		if details.AttestationTargetReward > 0 {
+			income += fmt.Sprintf("Att. Target Reward: %d GWei<br/>", details.AttestationTargetReward)
+			total += int64(details.AttestationTargetReward)
+		}
+		if details.AttestationTargetPenalty > 0 {
+			income += fmt.Sprintf("Att. Target Penalty: %d GWei<br/>", details.AttestationTargetPenalty)
+			total -= int64(details.AttestationTargetPenalty)
+		}
+
+		if details.AttestationHeadReward > 0 {
+			income += fmt.Sprintf("Att. Head Reward: %d GWei<br/>", details.AttestationHeadReward)
+			total += int64(details.AttestationHeadReward)
+		}
+
+		if details.FinalityDelayPenalty > 0 {
+			income += fmt.Sprintf("Finality Delay Penalty: %d GWei<br/>", details.FinalityDelayPenalty)
+			total -= int64(details.FinalityDelayPenalty)
+		}
+
+		if details.ProposerSlashingInclusionReward > 0 {
+			income += fmt.Sprintf("Proposer Slashing Inc. Reward: %d GWei<br/>", details.ProposerSlashingInclusionReward)
+			total += int64(details.ProposerSlashingInclusionReward)
+		}
+
+		if details.ProposerAttestationInclusionReward > 0 {
+			income += fmt.Sprintf("Proposer Att. Inc. Reward: %d GWei<br/>", details.ProposerAttestationInclusionReward)
+			total += int64(details.ProposerAttestationInclusionReward)
+		}
+
+		if details.ProposerSyncInclusionReward > 0 {
+			income += fmt.Sprintf("Proposer Sync Inc. Reward: %d GWei<br/>", details.ProposerSyncInclusionReward)
+			total += int64(details.ProposerSyncInclusionReward)
+		}
+
+		if details.SyncCommitteeReward > 0 {
+			income += fmt.Sprintf("Sync Comm. Reward: %d GWei<br/>", details.SyncCommitteeReward)
+			total += int64(details.SyncCommitteeReward)
+		}
+
+		if details.SyncCommitteePenalty > 0 {
+			income += fmt.Sprintf("Sync Comm. Penalty: %d GWei<br/>", details.SyncCommitteePenalty)
+			total -= int64(details.SyncCommitteePenalty)
+		}
+
+		if details.SlashingReward > 0 {
+			income += fmt.Sprintf("Slashing Reward: %d GWei<br/>", details.SlashingReward)
+			total += int64(details.SlashingReward)
+		}
+
+		if details.SlashingPenalty > 0 {
+			income += fmt.Sprintf("Slashing Penalty: %d GWei<br/>", details.SlashingPenalty)
+			total -= int64(details.SlashingPenalty)
+		}
+
+		income += fmt.Sprintf("Total: %d GWei", total)
+	}
+
 	if currencyName == "ETH" {
 		if balance == nil || *balance == 0 {
 			return template.HTML("<span class=\"float-right\">0 GWei</span>")
 		}
 		if *balance < 0 {
-			return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\">%s GWei</span>", FormatAddCommasFormated(float64(*balance), 0)))
+			return template.HTML(fmt.Sprintf("<span title=\"%s\" data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger float-right\">%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
 		}
-		return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\">+%s GWei</span>", FormatAddCommasFormated(float64(*balance), 0)))
+		return template.HTML(fmt.Sprintf("<span title=\"%s\" data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success float-right\">+%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
 	} else {
 		if balance == nil {
 			return template.HTML("<span class=\"float-right\">0 " + currencyName + "</span>")
