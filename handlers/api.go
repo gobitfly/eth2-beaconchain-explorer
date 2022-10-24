@@ -657,6 +657,8 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	var currentEpochData []interface{}
 	var executionPerformance []types.ExecutionPerformanceResponse
 	var olderEpochData []interface{}
+	var currentSyncCommittee []interface{}
+	var nextSyncCommittee []interface{}
 
 	if getValidators {
 		queryIndices, err := parseApiValidatorParam(parsedBody.IndicesOrPubKey, maxValidators)
@@ -682,6 +684,18 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				executionPerformance, err = getValidatorExecutionPerformance(queryIndices)
+				return err
+			})
+
+			g.Go(func() error {
+				period := utils.SyncPeriodOfEpoch(services.LatestEpoch())
+				currentSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
+				return err
+			})
+
+			g.Go(func() error {
+				period := utils.SyncPeriodOfEpoch(services.LatestEpoch()) + 1
+				nextSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
 				return err
 			})
 		}
@@ -717,9 +731,32 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 		Rocketpool:           rocketpoolData,
 		RocketpoolStats:      rocketpoolStats,
 		ExecutionPerformance: executionPerformance,
+		CurrentSyncCommittee: currentSyncCommittee,
+		NextSyncCommittee:    nextSyncCommittee,
 	}
 
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
+}
+
+func getSyncCommitteeFor(validators []uint64, period uint64) ([]interface{}, error) {
+	rows, err := db.ReaderDb.Query(
+		`SELECT 
+			period, 
+			period*$2 AS start_epoch, 
+			(period+1)*$2-1 AS end_epoch, 
+			ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators 
+		FROM sync_committees 
+		WHERE period = $1 AND validatorindex = ANY($3)
+		GROUP BY period`,
+		period,
+		utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod,
+		pq.Array(validators),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return utils.SqlRowsToJSON(rows)
 }
 
 type Cached struct {
@@ -826,6 +863,8 @@ type DashboardResponse struct {
 	Rocketpool           interface{}                          `json:"rocketpool_validators"`
 	RocketpoolStats      interface{}                          `json:"rocketpool_network_stats"`
 	ExecutionPerformance []types.ExecutionPerformanceResponse `json:"execution_performance"`
+	CurrentSyncCommittee interface{}                          `json:"current_sync_committee"`
+	NextSyncCommittee    interface{}                          `json:"next_sync_committee"`
 }
 
 func getEpoch(epoch int64) ([]interface{}, error) {
