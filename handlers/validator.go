@@ -594,6 +594,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.ParticipatedSyncCount = syncStats.ParticipatedSync
 		validatorPageData.MissedSyncCount = syncStats.MissedSync
 		validatorPageData.OrphanedSyncCount = syncStats.OrphanedSync
+		validatorPageData.ScheduledSyncCount = syncStats.ScheduledSync
 		validatorPageData.SyncCount = validatorPageData.ParticipatedSyncCount + validatorPageData.MissedSyncCount + validatorPageData.OrphanedSyncCount
 		validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.SyncCount-validatorPageData.MissedSyncCount) / float64(validatorPageData.SyncCount)
 	}
