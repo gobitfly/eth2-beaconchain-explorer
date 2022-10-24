@@ -611,7 +611,8 @@ type BlockPageData struct {
 	ProposerSlashings []*BlockPageProposerSlashing
 	SyncCommittee     []uint64 // TODO: Setting it to contain the validator index
 
-	Tags TagMetadataSlice `db:"tags"`
+	Tags       TagMetadataSlice `db:"tags"`
+	IsValidMev bool             `db:"is_valid_mev"`
 }
 
 func (u *BlockPageData) MarshalJSON() ([]byte, error) {
@@ -1641,6 +1642,7 @@ type Eth1BlockPageData struct {
 	Reward                *big.Int
 	MevReward             *big.Int
 	MevBribe              *big.Int
+	IsValidMev            bool
 	MevRecipientFormatted template.HTML
 	TxFees                *big.Int
 	GasUsage              template.HTML

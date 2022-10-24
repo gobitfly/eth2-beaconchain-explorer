@@ -91,7 +91,11 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 				count(distinct builder_pubkey) as unique_builders,
 				max(value) as max_value,
 				(select rb2.block_slot from relays_blocks rb2 where rb2.value = max(rb.value) and rb2.tag_id = rb.tag_id limit 1) as max_value_slot
-			from relays_blocks rb where rb.block_slot > $1 group by tag_id 
+			from relays_blocks rb
+			where 
+				rb.block_slot > $1 and 
+				rb.block_root not in (select bt.blockroot from blocks_tags bt where bt.tag_id='invalid-relay-reward') 
+			group by tag_id 
 		)
 		select 
 			tags.metadata ->> 'name' as "name",
@@ -104,8 +108,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 		left join stats on stats.relay_id = relays.tag_id
 		left join tags on tags.id = relays.tag_id 
 		where stats.relay_id = tag_id 
-		order by stats.block_count DESC
-	`)
+		order by stats.block_count DESC`)
 	if err != nil {
 		logger.Errorf("failed to prepare overallStatsQuery: %v", err)
 		return nil, err
@@ -210,6 +213,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 		from (
 			select * 
 			from relays_blocks
+			where relays_blocks.block_root not in (select bt.blockroot from blocks_tags bt where bt.tag_id='invalid-relay-reward') 
 			order by relays_blocks.value desc
 			limit 15
 		) as relays_blocks 

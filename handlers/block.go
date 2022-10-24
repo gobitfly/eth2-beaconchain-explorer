@@ -146,6 +146,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		// if err != nil, simply show slot view without block
 		if err == nil {
 			blockPageData.ExecutionData = eth1BlockPageData
+			blockPageData.ExecutionData.IsValidMev = blockPageData.IsValidMev
 		}
 	}
 	data.Meta.Path = fmt.Sprintf("/slot/%v", blockPageData.Slot)
@@ -196,6 +197,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			blocks.status,
 			exec_block_number,
 			jsonb_agg(tags.metadata) as tags,
+			COALESCE(not 'invalid-relay-reward'=ANY(array_agg(tags.id)), true) as is_valid_mev,
 			COALESCE(validator_names.name, '') AS name
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
