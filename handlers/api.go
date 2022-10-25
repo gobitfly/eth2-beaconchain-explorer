@@ -2500,20 +2500,6 @@ func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request) 
 
 	sendOKResponse(j, r.URL.String(), data)
 }
-func returnQueryResultList(rows *sql.Rows, vals *sql.Rows, w http.ResponseWriter, r *http.Request) {
-	j := json.NewEncoder(w)
-	data, err := utils.SqlRowsToJSON(rows)
-
-	data1, err := utils.SqlRowsToJSON(vals)
-	data = append(data, data1)
-
-	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not parse db results")
-		return
-	}
-
-	sendOKResponse(j, r.URL.String(), data)
-}
 
 func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Request) {
 	data, err := utils.SqlRowsToJSON(rows)
