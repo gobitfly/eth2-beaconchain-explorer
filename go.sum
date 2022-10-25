@@ -468,6 +468,8 @@ github.com/gobitfly/eth-rewards v0.1.2-0.20221025073351-dc809f9fb656 h1:Lfph+60m
 github.com/gobitfly/eth-rewards v0.1.2-0.20221025073351-dc809f9fb656/go.mod h1:GEerfGH16ByR90QoS/9QyJ0UyCHQRLQ9QH6ZbfneSdU=
 github.com/gobitfly/eth-rewards v0.1.2-0.20221025081113-cb8018635203 h1:mhp/hdDt5AA3TNiz2SLgWgqXIqJl95HyuCp5BO5Ai00=
 github.com/gobitfly/eth-rewards v0.1.2-0.20221025081113-cb8018635203/go.mod h1:GEerfGH16ByR90QoS/9QyJ0UyCHQRLQ9QH6ZbfneSdU=
+github.com/gobitfly/eth-rewards v0.1.2-0.20221025085430-cf9817bb1fd7 h1:GZ/GTfbDfsHTDbs8//6qSKTD8gjLSeHMSwoyzfmkXak=
+github.com/gobitfly/eth-rewards v0.1.2-0.20221025085430-cf9817bb1fd7/go.mod h1:GEerfGH16ByR90QoS/9QyJ0UyCHQRLQ9QH6ZbfneSdU=
 github.com/gobitfly/eth.store v0.0.0-20221012115129-3b4606992669 h1:nGqtKWpeItBrYO0TkdSSpeVRpjcWW6il28EasO9WZSo=
 github.com/gobitfly/eth.store v0.0.0-20221012115129-3b4606992669/go.mod h1:NlB9l6tiM42FM5qQHIsG/Iey6AJ0XQvRcKkmt63/ve0=
 github.com/goccy/go-yaml v1.9.5 h1:Eh/+3uk9kLxG4koCX6lRMAPS1OaMSAi+FJcya0INdB0=

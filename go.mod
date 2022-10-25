@@ -12,7 +12,7 @@ require (
 	github.com/ethereum/go-ethereum v1.10.23
 	github.com/evanw/esbuild v0.8.23
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/gobitfly/eth-rewards v0.1.2-0.20221025081113-cb8018635203
+	github.com/gobitfly/eth-rewards v0.1.2-0.20221025085430-cf9817bb1fd7
 	github.com/gobitfly/eth.store v0.0.0-20221012115129-3b4606992669
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/protobuf v1.5.2
