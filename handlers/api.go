@@ -55,7 +55,7 @@ import (
 // @Tags Health
 // @Description Health endpoint for montitoring if the explorer is in sync
 // @Produce  text/plain
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Router /api/healthz [get]
 func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 
@@ -124,7 +124,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 // @Tags Health
 // @Description Health endpoint for montitoring if the explorer-api
 // @Produce  text/plain
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Router /api/healthz-loadbalancer [get]
 func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 
@@ -159,7 +159,7 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 // @Description See https://github.com/gobitfly/eth.store for further information.
 // @Produce json
 // @Param day path string true "The beaconchain-day (periods of 225 epochs) to get the the ETH.STORE for. Must be a number or the string 'latest'."
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/ethstore/{day} [get]
 func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
@@ -208,7 +208,7 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 // @Description Returns information for a specified epoch by the epoch number or an epoch tag (can be latest or finalized)
 // @Produce  json
 // @Param  epoch path string true "Epoch number or the string latest"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/epoch/{epoch} [get]
 func ApiEpoch(w http.ResponseWriter, r *http.Request) {
@@ -256,7 +256,7 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 // @Description Returns all blocks for a specified epoch
 // @Produce  json
 // @Param  epoch path string true "Epoch number or the string latest"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/epoch/{epoch}/blocks [get]
 func ApiEpochBlocks(w http.ResponseWriter, r *http.Request) {
@@ -291,7 +291,7 @@ func ApiEpochBlocks(w http.ResponseWriter, r *http.Request) {
 // @Description Returns a block by its slot or root hash
 // @Produce  json
 // @Param  slotOrHash path string true "Block slot or root hash or the string latest"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/block/{slotOrHash} [get]
 func ApiBlock(w http.ResponseWriter, r *http.Request) {
@@ -332,7 +332,7 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 // @Description Returns the attestations included in a specific block
 // @Produce  json
 // @Param  slot path string true "Block slot"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/block/{slot}/attestations [get]
 func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
@@ -363,7 +363,7 @@ func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
 // @Description Returns the deposits included in a specific block
 // @Produce  json
 // @Param  slot path string true "Block slot"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/block/{slot}/deposits [get]
 func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
@@ -393,7 +393,7 @@ func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 // @Tags Block
 // @Description Returns the current number of validators entering and exiting the beacon chain
 // @Produce  json
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validators/queue [get]
 func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
@@ -415,7 +415,7 @@ func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 // @Description Returns the attester slashings included in a specific block
 // @Produce  json
 // @Param  slot path string true "Block slot"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/block/{slot}/attesterslashings [get]
 func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
@@ -446,7 +446,7 @@ func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 // @Description Returns the proposer slashings included in a specific block
 // @Produce  json
 // @Param  slot path string true "Block slot"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/block/{slot}/proposerslashings [get]
 func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
@@ -477,7 +477,7 @@ func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
 // @Description Returns the voluntary exits included in a specific block
 // @Produce  json
 // @Param  slot path string true "Block slot"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/block/{slot}/voluntaryexits [get]
 func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
@@ -508,7 +508,7 @@ func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 // @Description Returns the sync-committee for a sync-period. Validators are sorted by sync-committee-index.
 // @Produce json
 // @Param period path string true "Period ('latest' for latest period or 'next' for next period in the future)"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/sync_committee/{period} [get]
 func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
@@ -544,7 +544,7 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 // @Tags Eth1
 // @Produce  json
 // @Param  txhash path string true "Eth1 transaction hash"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/eth1deposit/{txhash} [get]
 func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
@@ -573,7 +573,7 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 // @Summary Get global rocketpool network statistics
 // @Tags Rocketpool
 // @Produce  json
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/rocketpool/stats [get]
 func ApiRocketpoolStats(w http.ResponseWriter, r *http.Request) {
@@ -597,7 +597,7 @@ func ApiRocketpoolStats(w http.ResponseWriter, r *http.Request) {
 // @Tags Rocketpool
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Produce  json
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/rocketpool/validator/{indexOrPubkey} [get]
 func ApiRocketpoolValidators(w http.ResponseWriter, r *http.Request) {
@@ -886,7 +886,7 @@ func getEpoch(epoch int64) ([]interface{}, error) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey} [get]
 func ApiValidator(w http.ResponseWriter, r *http.Request) {
@@ -917,7 +917,7 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  index path string true "Validator index"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/stats/{index} [get]
 func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
@@ -966,7 +966,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  eth1address path string true "Eth1 address from which the validator deposits were sent"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/eth1/{eth1address} [get]
 func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
@@ -1064,7 +1064,7 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/balancehistory [get]
 func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
@@ -1133,7 +1133,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/performance [get]
 func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
@@ -1164,7 +1164,7 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/execution/performance [get]
 func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
@@ -1195,7 +1195,7 @@ func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/attestationeffectiveness [get]
 func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request) {
@@ -1237,7 +1237,7 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/attestationefficiency [get]
 func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
@@ -1296,7 +1296,7 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 // @Summary Get the current top 100 performing validators (using the income over the last 7 days)
 // @Tags Validator
 // @Produce  json
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/leaderboard [get]
 func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
@@ -1322,7 +1322,7 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/deposits [get]
 func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
@@ -1360,7 +1360,7 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/attestations [get]
 func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
@@ -1433,7 +1433,7 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/proposals [get]
 func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
@@ -1463,7 +1463,7 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 // @Summary Get all pixels that have been painted until now on the graffitiwall
 // @Tags Graffitiwall
 // @Produce  json
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/graffitiwall [get]
 func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
@@ -1485,7 +1485,7 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 // @Tags Charts
 // @Produce  json
 // @Param  chart path string true "Chart name (see https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/services/charts_updater.go#L20 for all available names)"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/chart/{chart} [get]
 func ApiChart(w http.ResponseWriter, r *http.Request) {

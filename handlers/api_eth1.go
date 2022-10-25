@@ -26,7 +26,7 @@ import (
 // @Description Get execution blocks by execution block number
 // @Produce json
 // @Param blockNumber path string true "Provide one or more execution block numbers. Coma separated up to max 100. "
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/execution/block/{blockNumber} [get]
 func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +79,7 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 // @Param addressIndexOrPubkey path string true "Either the fee recipient address, the proposer index or proposer pubkey. You can provide multiple by separating them with ','. Max allowed index or pubkeys are 100, max allowed user addresses are 20."
 // @Param offset query int false "Offset"
 // @Param limit query int false "Limit, amount of entries you wish to receive"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/execution/{addressIndexOrPubkey}/produced [get]
 func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
