@@ -145,9 +145,12 @@
       {{ if ne (len .Tags) 0 }}
         <div class="tags">
           {{ range .Tags }}
-            <a class="user-select-none mb-2 mr-1 px-2 py-2 badge badge-primary shadow-sm text-white" {{ if .Color }}style="background-color: {{ .Color }};"{{ end }} data-toggle="tooltip" data-placement="bottom" title="{{ .Summary }}">
+            <a class="user-select-none mb-2 mr-1 px-2 py-2 badge badge-primary shadow-sm text-white" {{ if .Color }}style="background-color: {{ .Color }};"{{ end }} data-toggle="tooltip" data-placement="bottom" title="{{ .Summary }}" {{ if .PublicLink }}href="{{ .PublicLink }}" target="_blank" rel="noopener noreferrer"{{ end }}>
               {{ .Name }}
               <i class="fas fa-info-circle pl-1"></i>
+              {{ if .PublicLink }}
+                <i class="fas fa-link"></i>
+              {{ end }}
             </a>
           {{ end }}
         </div>

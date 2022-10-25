@@ -525,6 +525,7 @@ type BlockTag struct {
 type TagMetadata struct {
 	Name        string `json:"name"`
 	Summary     string `json:"summary"`
+	PublicLink  string `json:"public_url"`
 	Description string `json:"description"`
 	Color       string `json:"color"`
 }
