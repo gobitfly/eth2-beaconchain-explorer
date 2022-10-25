@@ -28,6 +28,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mssola/user_agent"
 	"golang.org/x/sync/errgroup"
+
+	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
 // @title Beaconcha.in ETH2 API
@@ -988,6 +990,73 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	returnQueryResults(rows, w, r)
+}
+
+// ApiValidator godoc
+// @Summary Get the income detail history (last 100 epochs) of up to 100 validators
+// @Tags Validator
+// @Produce  json
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Success 200 {object} string
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/validator/{indexOrPubkey}/incomedetailhistory [get]
+func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
+
+	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), err.Error())
+		return
+	}
+
+	history, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(queryIndices, services.LatestEpoch(), 101)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	type responseType struct {
+		Income         *itypes.ValidatorEpochIncome `json:"income"`
+		Epoch          uint64                       `json:"epoch"`
+		ValidatorIndex uint64                       `json:"validatorindex"`
+		Week           uint64                       `json:"week"`
+	}
+	responseData := make([]*responseType, 0, len(history)*101)
+
+	for validatorIndex, epochs := range history {
+		for epoch, income := range epochs {
+			responseData = append(responseData, &responseType{
+				Epoch:          epoch,
+				ValidatorIndex: validatorIndex,
+				Week:           epoch / 1575,
+				Income:         income,
+			})
+		}
+	}
+
+	sort.Slice(responseData, func(i, j int) bool {
+		if responseData[i].Epoch != responseData[j].Epoch {
+			return responseData[i].Epoch > responseData[j].Epoch
+		}
+		return responseData[i].ValidatorIndex < responseData[j].ValidatorIndex
+	})
+
+	response := &types.ApiResponse{}
+	response.Status = "OK"
+
+	response.Data = responseData
+
+	err = j.Encode(response)
+
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		return
+	}
 }
 
 // ApiValidator godoc
