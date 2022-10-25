@@ -997,7 +997,7 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} string
+// @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/incomedetailhistory [get]
 func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {

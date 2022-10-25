@@ -1571,7 +1571,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} types.ApiResponse
 // @Failure 500 {object} types.ApiResponse
 // @Security ApiKeyAuth
-// @Router /api/v1/user/validator/{pubkey}/remove [post]
+// @Router /api/v1/user/dashboard/save [post]
 func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
