@@ -896,7 +896,7 @@ func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[u
 	defer cancel()
 
 	start := time.Now()
-	ts := gcp_bigtable.Timestamp(utils.EpochToTime(epoch).Unix())
+	ts := gcp_bigtable.Timestamp(utils.EpochToTime(epoch).UnixMicro())
 
 	mut := gcp_bigtable.NewMutation()
 
