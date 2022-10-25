@@ -390,7 +390,7 @@ func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	rows, err := db.ReaderDb.Query("SELECT entering_validators_count as beaconchain_entering, exiting_validators_count as beaconchain_exiting FROM queue ORDER BY ts DESC LIMIT 1")
+	rows, err := db.ReaderDb.Query("SELECT e.validatorscount, q.entering_validators_count as beaconchain_entering, q.exiting_validators_count as beaconchain_exiting FROM  epochs e, queue q ORDER BY epoch DESC LIMIT 1 ")
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -616,8 +616,8 @@ func ApiRocketpoolValidators(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	Combined validator get, performance, attestationefficency, epoch, historic epoch and rpl
-	Not public documented
+Combined validator get, performance, attestationefficency, epoch, historic epoch and rpl
+Not public documented
 */
 func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -2492,6 +2492,20 @@ func getAuthClaims(r *http.Request) *utils.CustomClaims {
 func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 	data, err := utils.SqlRowsToJSON(rows)
+
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	sendOKResponse(j, r.URL.String(), data)
+}
+func returnQueryResultList(rows *sql.Rows, vals *sql.Rows, w http.ResponseWriter, r *http.Request) {
+	j := json.NewEncoder(w)
+	data, err := utils.SqlRowsToJSON(rows)
+
+	data1, err := utils.SqlRowsToJSON(vals)
+	data = append(data, data1)
 
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not parse db results")
