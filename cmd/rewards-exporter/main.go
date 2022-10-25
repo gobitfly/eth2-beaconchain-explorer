@@ -63,7 +63,7 @@ func main() {
 				logrus.Fatal(err)
 			}
 			if int64(head.FinalizedEpoch) <= *epoch {
-				time.Sleep(time.Minute)
+				time.Sleep(time.Second * 12)
 				continue
 			}
 

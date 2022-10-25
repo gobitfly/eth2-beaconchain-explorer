@@ -137,71 +137,43 @@ func FormatBalanceChangeFormated(balance *int64, currencyName string, details *i
 	income := ""
 	if details != nil {
 
-		total := int64(0)
-		if details.AttestationSourceReward > 0 {
-			income += fmt.Sprintf("Att. Source Reward: %d GWei<br/>", details.AttestationSourceReward)
-			total += int64(details.AttestationSourceReward)
-		}
-		if details.AttestationSourcePenalty > 0 {
-			income += fmt.Sprintf("Att. Source Penalty: %d GWei<br/>", details.AttestationSourcePenalty)
-			total -= int64(details.AttestationSourcePenalty)
-		}
-
-		if details.AttestationTargetReward > 0 {
-			income += fmt.Sprintf("Att. Target Reward: %d GWei<br/>", details.AttestationTargetReward)
-			total += int64(details.AttestationTargetReward)
-		}
-		if details.AttestationTargetPenalty > 0 {
-			income += fmt.Sprintf("Att. Target Penalty: %d GWei<br/>", details.AttestationTargetPenalty)
-			total -= int64(details.AttestationTargetPenalty)
-		}
-
-		if details.AttestationHeadReward > 0 {
-			income += fmt.Sprintf("Att. Head Reward: %d GWei<br/>", details.AttestationHeadReward)
-			total += int64(details.AttestationHeadReward)
-		}
+		income += fmt.Sprintf("Att. Source: %s GWei<br/>", FormatAddCommasFormated(float64(details.AttestationSourceReward+details.AttestationSourcePenalty), 0))
+		income += fmt.Sprintf("Att. Target: %s GWei<br/>", FormatAddCommasFormated(float64(details.AttestationTargetReward+details.AttestationTargetPenalty), 0))
+		income += fmt.Sprintf("Att. Head Vote: %s GWei<br/>", FormatAddCommasFormated(float64(details.AttestationHeadReward), 0))
 
 		if details.FinalityDelayPenalty > 0 {
-			income += fmt.Sprintf("Finality Delay Penalty: %d GWei<br/>", details.FinalityDelayPenalty)
-			total -= int64(details.FinalityDelayPenalty)
+			income += fmt.Sprintf("Finality Delay Penalty: %s GWei<br/>", FormatAddCommasFormated(float64(details.FinalityDelayPenalty), 0))
 		}
 
 		if details.ProposerSlashingInclusionReward > 0 {
-			income += fmt.Sprintf("Proposer Slashing Inc. Reward: %d GWei<br/>", details.ProposerSlashingInclusionReward)
-			total += int64(details.ProposerSlashingInclusionReward)
+			income += fmt.Sprintf("Proposer Slashing Inc. Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.ProposerSlashingInclusionReward), 0))
 		}
 
 		if details.ProposerAttestationInclusionReward > 0 {
-			income += fmt.Sprintf("Proposer Att. Inc. Reward: %d GWei<br/>", details.ProposerAttestationInclusionReward)
-			total += int64(details.ProposerAttestationInclusionReward)
+			income += fmt.Sprintf("Proposer Att. Inc. Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.ProposerAttestationInclusionReward), 0))
 		}
 
 		if details.ProposerSyncInclusionReward > 0 {
-			income += fmt.Sprintf("Proposer Sync Inc. Reward: %d GWei<br/>", details.ProposerSyncInclusionReward)
-			total += int64(details.ProposerSyncInclusionReward)
+			income += fmt.Sprintf("Proposer Sync Inc. Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.ProposerSyncInclusionReward), 0))
 		}
 
 		if details.SyncCommitteeReward > 0 {
-			income += fmt.Sprintf("Sync Comm. Reward: %d GWei<br/>", details.SyncCommitteeReward)
-			total += int64(details.SyncCommitteeReward)
+			income += fmt.Sprintf("Sync Comm. Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.SyncCommitteeReward), 0))
 		}
 
 		if details.SyncCommitteePenalty > 0 {
-			income += fmt.Sprintf("Sync Comm. Penalty: %d GWei<br/>", details.SyncCommitteePenalty)
-			total -= int64(details.SyncCommitteePenalty)
+			income += fmt.Sprintf("Sync Comm. Penalty: %s GWei<br/>", FormatAddCommasFormated(float64(details.SyncCommitteePenalty), 0))
 		}
 
 		if details.SlashingReward > 0 {
-			income += fmt.Sprintf("Slashing Reward: %d GWei<br/>", details.SlashingReward)
-			total += int64(details.SlashingReward)
+			income += fmt.Sprintf("Slashing Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.SlashingReward), 0))
 		}
 
 		if details.SlashingPenalty > 0 {
-			income += fmt.Sprintf("Slashing Penalty: %d GWei<br/>", details.SlashingPenalty)
-			total -= int64(details.SlashingPenalty)
+			income += fmt.Sprintf("Slashing Penalty: %s GWei<br/>", FormatAddCommasFormated(float64(details.SlashingPenalty), 0))
 		}
 
-		income += fmt.Sprintf("Total: %d GWei", total)
+		income += fmt.Sprintf("Total: %s GWei", FormatAddCommasFormated(float64(details.TotalClRewards()), 0))
 	}
 
 	if currencyName == "ETH" {
@@ -209,9 +181,9 @@ func FormatBalanceChangeFormated(balance *int64, currencyName string, details *i
 			return template.HTML("<span class=\"float-right\">0 GWei</span>")
 		}
 		if *balance < 0 {
-			return template.HTML(fmt.Sprintf("<span title=\"%s\" data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger float-right\">%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
+			return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger float-right\">%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
 		}
-		return template.HTML(fmt.Sprintf("<span title=\"%s\" data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success float-right\">+%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
+		return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success float-right\">+%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
 	} else {
 		if balance == nil {
 			return template.HTML("<span class=\"float-right\">0 " + currencyName + "</span>")
