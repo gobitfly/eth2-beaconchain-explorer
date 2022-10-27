@@ -243,15 +243,22 @@
                                 var orig = tooltip.defaultFormatter.call(this, tooltip)
                                 var epoch = timeToEpoch(this.x)
                                 orig[0] = `${orig[0]}<span style="font-size:10px">Epoch ${epoch}</span>`
-                                if(currency !== "ETH") {
-                                   orig[1] = `<span style=\"color:${this.points[0].color}\">●</span> Daily Income: <b>${this.y.toFixed(2)}</b><br/>`
-                                }
                                 return orig
                             },
                             dateTimeLabelFormats: {
                               day: "%A, %b %e, %Y",
                               minute: "%A, %b %e",
                               hour: "%A, %b %e",
+                            },
+                            pointFormatter: function(){
+                                function formatPointValue(n) {
+                                    if (currency !== "ETH") {
+                                        return n.toFixed(2)
+                                    }
+                                    return n
+                                }
+
+                                return '<span style="color:' + this.series.color + '">\u25CF</span> ' + this.series.name + ':<br><b>' + formatPointValue(this.y) + '</b></br>'
                             }
                         }
                     });
