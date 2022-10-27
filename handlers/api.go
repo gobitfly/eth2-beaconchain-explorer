@@ -316,7 +316,25 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 		blockSlot = int64(services.LatestSlot())
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT * FROM blocks WHERE slot = $1 OR blockroot = $2", blockSlot, blockRootHash)
+	if len(blockRootHash) != 32 {
+		err := db.ReaderDb.Get(&blockRootHash, `SELECT blockroot FROM blocks WHERE slot = $1`, blockSlot)
+
+		if err != nil || len(blockRootHash) != 32 {
+			sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+			return
+		}
+	}
+
+	rows, err := db.ReaderDb.Query(`
+	SELECT b.*, ba.votes
+	FROM
+		(SELECT * from blocks) b
+	LEFT JOIN
+		(SELECT beaconblockroot, sum(array_length(validators, 1)) AS votes FROM blocks_attestations GROUP BY beaconblockroot) ba
+	ON
+		(b.blockroot = ba.beaconblockroot)
+	WHERE b.blockroot = $1;`, blockRootHash)
+
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
