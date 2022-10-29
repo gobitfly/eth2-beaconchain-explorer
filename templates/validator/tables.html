@@ -561,7 +561,7 @@
             APR <span data-toggle="tooltip" title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i class="far fa-question-circle"></i></span>
           </th>
           <td>
-            <span class="{{ if gtf .Apr 0 }}text-success{{ end }} {{ if gtf  0 .Apr }}text-danger{{ end }}"><b>{{ .Apr | formatPercentage }}%</b></span>
+            <span data-toggle="tooltip" title="{{ formatPercentageWithPrecision .Apr 5 }}%" class="{{ if gtf .Apr 0 }}text-success{{ end }} {{ if gtf  0 .Apr }}text-danger{{ end }}"><b>{{ .Apr | formatPercentage }}%</b></span>
           </td>
         </tr>
         <tr>
