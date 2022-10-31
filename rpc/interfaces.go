@@ -18,6 +18,7 @@ type Client interface {
 	GetBlockStatusByEpoch(slot uint64) ([]*types.CanonBlock, error)
 	GetFinalityCheckpoints(epoch uint64) (*types.FinalityCheckpoints, error)
 	GetSyncCommittee(stateID string, epoch uint64) (*StandardSyncCommittee, error)
+	GetBalancesForEpoch(epoch int64) (map[uint64]uint64, error)
 }
 
 type Eth1Client interface {

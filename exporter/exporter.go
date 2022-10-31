@@ -28,6 +28,8 @@ var epochBlacklist = make(map[uint64]uint64)
 var saveEpochMux = &sync.Mutex{}
 var fullCheckRunning = uint64(0)
 
+var Client *rpc.Client
+
 // Start will start the export of data from rpc into the database
 func Start(client rpc.Client) error {
 	go performanceDataUpdater()
@@ -578,7 +580,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 			logger.Errorf("error during bigtable export: %v", err)
 			return
 		}
-		err = db.SaveEpoch(data)
+		err = db.SaveEpoch(data, client)
 		if err != nil {
 			logger.Errorf("error saving epoch data: %v", err)
 			return

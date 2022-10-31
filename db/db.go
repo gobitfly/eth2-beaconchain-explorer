@@ -23,6 +23,8 @@ import (
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 
+	"eth2-exporter/rpc"
+
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -692,7 +694,7 @@ func SaveBlock(block *types.Block) error {
 }
 
 // SaveEpoch will stave the epoch data into the database
-func SaveEpoch(data *types.EpochData) error {
+func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 	// Check if we need to export the epoch
 	hasher := sha1.New()
 	slots := make([]uint64, 0, len(data.Blocks))
@@ -755,7 +757,7 @@ func SaveEpoch(data *types.EpochData) error {
 			}
 			defer validatorsTx.Rollback()
 
-			err = saveValidators(data, validatorsTx)
+			err = saveValidators(data, validatorsTx, client)
 			if err != nil {
 				logger.Errorf("error saving validators to db: %w", err)
 			}
@@ -955,7 +957,7 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) er
 	return nil
 }
 
-func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
+func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_validators").Observe(time.Since(start).Seconds())
@@ -1307,26 +1309,50 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 		ActivationEpoch uint64
 	}{}
 
-	err = tx.Select(&newValidators, "SELECT validatorindex, activationepoch FROM validators WHERE balanceactivation IS NULL")
+	err = tx.Select(&newValidators, "SELECT validatorindex, activationepoch FROM validators WHERE balanceactivation IS NULL ORDER BY activationepoch LIMIT 10000")
 	if err != nil {
 		return err
 	}
 
+	balanceCache := make(map[uint64]map[uint64]uint64)
+	currentActivationEpoch := uint64(0)
 	for _, newValidator := range newValidators {
 
-		if newValidator.ActivationEpoch == 0 || newValidator.ActivationEpoch > data.Epoch {
+		if newValidator.ActivationEpoch > data.Epoch {
 			continue
 		}
+
+		if newValidator.ActivationEpoch != currentActivationEpoch {
+			logger.Infof("removing epoch %v from the activation epoch balance cache", currentActivationEpoch)
+			delete(balanceCache, currentActivationEpoch) // remove old items from the map
+			currentActivationEpoch = newValidator.ActivationEpoch
+		}
+
 		balance, err := BigtableClient.GetValidatorBalanceHistory([]uint64{newValidator.Validatorindex}, newValidator.ActivationEpoch, 1)
 
 		if err != nil {
 			return err
 		}
 
+		foundBalance := uint64(0)
 		if balance[newValidator.Validatorindex] == nil || len(balance[newValidator.Validatorindex]) == 0 {
-			return fmt.Errorf("no activation epoch balance found for validator %v for epoch %v", newValidator.Validatorindex, newValidator.ActivationEpoch)
+			logger.Errorf("no activation epoch balance found for validator %v for epoch %v in bigtable, trying node", newValidator.Validatorindex, newValidator.ActivationEpoch)
+
+			if balanceCache[newValidator.ActivationEpoch] == nil {
+				balances, err := client.GetBalancesForEpoch(int64(newValidator.ActivationEpoch))
+				if err != nil {
+					return fmt.Errorf("error retrieving balances for epoch %d: %v", newValidator.ActivationEpoch, err)
+				}
+				balanceCache[newValidator.ActivationEpoch] = balances
+			}
+			foundBalance = balanceCache[newValidator.ActivationEpoch][newValidator.Validatorindex]
+		} else {
+			foundBalance = balance[newValidator.Validatorindex][0].Balance
 		}
-		_, err = tx.Exec("update validators set balanceactivation = $1 WHERE validatorindex = $2 AND balanceactivation IS NULL;", balance[newValidator.Validatorindex][0].Balance, newValidator.Validatorindex)
+
+		logger.Infof("retrieved activation epoch balance of %v for validator %v", foundBalance, newValidator.Validatorindex)
+
+		_, err = tx.Exec("update validators set balanceactivation = $1 WHERE validatorindex = $2 AND balanceactivation IS NULL;", foundBalance, newValidator.Validatorindex)
 		if err != nil {
 			return err
 		}
