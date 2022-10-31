@@ -2590,7 +2590,6 @@ func SendErrorResponse(w http.ResponseWriter, route, message string) {
 }
 
 func sendErrorResponse(w http.ResponseWriter, route, message string) {
-	logger.Errorf("API error: " + message)
 	w.WriteHeader(400)
 	j := json.NewEncoder(w)
 	response := &types.ApiResponse{}
