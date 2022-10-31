@@ -446,46 +446,41 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 	wg.Wait()
 	logger.Printf("retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
 
-	// Fix panic: runtime error: invalid memory address or nil pointer dereference
-	// when:
-	// error retrieving committees data: error-response: {\"code\":400,\"message\":\"BAD_REQUEST: epoch out of bounds, too far in future
-	if (data.ValidatorAssignmentes != nil && data.ValidatorAssignmentes.ProposerAssignments != nil) {
-		// Fill up missed and scheduled blocks
-		for slot, proposer := range data.ValidatorAssignmentes.ProposerAssignments {
-			_, found := data.Blocks[slot]
-			if !found {
-				// Proposer was assigned but did not yet propose a block
-				data.Blocks[slot] = make(map[string]*types.Block)
-				data.Blocks[slot]["0x0"] = &types.Block{
-					Status:            0,
-					Canonical:         true,
-					Proposer:          proposer,
-					BlockRoot:         []byte{0x0},
-					Slot:              slot,
-					ParentRoot:        []byte{},
-					StateRoot:         []byte{},
-					Signature:         []byte{},
-					RandaoReveal:      []byte{},
-					Graffiti:          []byte{},
-					BodyRoot:          []byte{},
-					Eth1Data:          &types.Eth1Data{},
-					ProposerSlashings: make([]*types.ProposerSlashing, 0),
-					AttesterSlashings: make([]*types.AttesterSlashing, 0),
-					Attestations:      make([]*types.Attestation, 0),
-					Deposits:          make([]*types.Deposit, 0),
-					VoluntaryExits:    make([]*types.VoluntaryExit, 0),
-					SyncAggregate:     nil,
-				}
+	// Fill up missed and scheduled blocks
+	for slot, proposer := range data.ValidatorAssignmentes.ProposerAssignments {
+		_, found := data.Blocks[slot]
+		if !found {
+			// Proposer was assigned but did not yet propose a block
+			data.Blocks[slot] = make(map[string]*types.Block)
+			data.Blocks[slot]["0x0"] = &types.Block{
+				Status:            0,
+				Canonical:         true,
+				Proposer:          proposer,
+				BlockRoot:         []byte{0x0},
+				Slot:              slot,
+				ParentRoot:        []byte{},
+				StateRoot:         []byte{},
+				Signature:         []byte{},
+				RandaoReveal:      []byte{},
+				Graffiti:          []byte{},
+				BodyRoot:          []byte{},
+				Eth1Data:          &types.Eth1Data{},
+				ProposerSlashings: make([]*types.ProposerSlashing, 0),
+				AttesterSlashings: make([]*types.AttesterSlashing, 0),
+				Attestations:      make([]*types.Attestation, 0),
+				Deposits:          make([]*types.Deposit, 0),
+				VoluntaryExits:    make([]*types.VoluntaryExit, 0),
+				SyncAggregate:     nil,
+			}
 
-				if utils.SlotToTime(slot).After(time.Now().Add(time.Second * -60)) {
-					// Block is in the future, set status to scheduled
-					data.Blocks[slot]["0x0"].Status = 0
-					data.Blocks[slot]["0x0"].BlockRoot = []byte{0x0}
-				} else {
-					// Block is in the past, set status to missed
-					data.Blocks[slot]["0x0"].Status = 2
-					data.Blocks[slot]["0x0"].BlockRoot = []byte{0x1}
-				}
+			if utils.SlotToTime(slot).After(time.Now().Add(time.Second * -60)) {
+				// Block is in the future, set status to scheduled
+				data.Blocks[slot]["0x0"].Status = 0
+				data.Blocks[slot]["0x0"].BlockRoot = []byte{0x0}
+			} else {
+				// Block is in the past, set status to missed
+				data.Blocks[slot]["0x0"].Status = 2
+				data.Blocks[slot]["0x0"].BlockRoot = []byte{0x1}
 			}
 		}
 	}
