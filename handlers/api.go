@@ -317,6 +317,7 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(blockRootHash) != 32 {
+		// blockRootHash is required for the SQL statement below, if none has passed we retrieve it manually
 		err := db.ReaderDb.Get(&blockRootHash, `SELECT blockroot FROM blocks WHERE slot = $1`, blockSlot)
 
 		if err != nil || len(blockRootHash) != 32 {
@@ -326,14 +327,17 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.ReaderDb.Query(`
-	SELECT b.*, ba.votes
+	SELECT
+		b.*,
+		ba.votes
 	FROM
 		(SELECT * from blocks) b
 	LEFT JOIN
 		(SELECT beaconblockroot, sum(array_length(validators, 1)) AS votes FROM blocks_attestations GROUP BY beaconblockroot) ba
 	ON
 		(b.blockroot = ba.beaconblockroot)
-	WHERE b.blockroot = $1;`, blockRootHash)
+	WHERE
+		b.blockroot = $1;`, blockRootHash)
 
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -2586,6 +2590,7 @@ func SendErrorResponse(w http.ResponseWriter, route, message string) {
 }
 
 func sendErrorResponse(w http.ResponseWriter, route, message string) {
+	logger.Errorf("API error: " + message)
 	w.WriteHeader(400)
 	j := json.NewEncoder(w)
 	response := &types.ApiResponse{}
