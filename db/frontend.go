@@ -627,22 +627,31 @@ func CreateNewStatsMetaPartition() error {
 	partitionName := "stats_meta_" + strconv.Itoa(day)
 	logger.Info("creating new partition table " + partitionName)
 
-	_, err := FrontendWriterDB.Exec("CREATE TABLE " + partitionName + " PARTITION OF stats_meta_p FOR VALUES IN (" + strconv.Itoa(day) + ")")
+	tx, err := FrontendWriterDB.Begin()
+	if err != nil {
+		logger.Errorf("error starting tx for creating partition %v", err)
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec("CREATE TABLE " + partitionName + " PARTITION OF stats_meta_p FOR VALUES IN (" + strconv.Itoa(day) + ")")
 	if err != nil {
 		logger.Errorf("error creating partition %v", err)
 		return err
 	}
-	_, err = FrontendWriterDB.Exec("CREATE UNIQUE INDEX " + partitionName + "_user_id_created_trunc_process_machine_key ON public." + partitionName + " USING btree (user_id, created_trunc, process, machine)")
+	_, err = tx.Exec("CREATE UNIQUE INDEX " + partitionName + "_user_id_created_trunc_process_machine_key ON public." + partitionName + " USING btree (user_id, created_trunc, process, machine)")
 	if err != nil {
 		logger.Errorf("error creating index %v", err)
 		return err
 	}
 
-	_, err = FrontendWriterDB.Exec("CREATE INDEX CONCURRENTLY idx_" + partitionName + "_user_machine ON " + partitionName + " (user_id, machine)")
+	_, err = tx.Exec("CREATE INDEX CONCURRENTLY idx_" + partitionName + "_user_machine ON " + partitionName + " (user_id, machine)")
 	if err != nil {
 		logger.Errorf("error creating index %v", err)
 		return err
 	}
+
+	err = tx.Commit()
 
 	return err
 }
