@@ -64,6 +64,7 @@ func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
 	}
 
 	BigtableClient = bt
+	logger.Infof("BitTable instantiated successfully")
 	return bt, nil
 }
 
