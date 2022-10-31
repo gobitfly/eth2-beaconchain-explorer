@@ -141,8 +141,8 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		logrus.Infof("Initialising BigTable...")
-		bt, err := db.InitBigtable("etherchain", "etherchain", fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) //
+		logrus.Infof("Initializing BigTable...")
+		bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) //
 		if err != nil {
 			logrus.Fatalf("error connecting to bigtable: %v", err)
 		}

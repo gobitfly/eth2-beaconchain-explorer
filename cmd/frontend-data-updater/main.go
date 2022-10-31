@@ -35,7 +35,7 @@ func main() {
 	// 	logrus.Fatalf("error setting up bigtable cache err: %v", err)
 	// }
 
-	_, err = db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	_, err = db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 	if err != nil {
 		logrus.Fatalf("error initializing bigtable %v", err)
 	}

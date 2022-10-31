@@ -37,6 +37,8 @@
     </div>
     <script>
         {{if .DepositChart}}
+        {{if .DepositChart.Data}}
+        {{if .DepositChart.Data.Series and gt (len .DepositChart.Data.Series) 0}}
     var series = {{.DepositChart.Data.Series}}
     var filteredSeries = []
     if (series && series.length && series.length > 1) {
@@ -109,6 +111,8 @@
             legend: {enabled: false}
         })
     })
+    {{end}}
+    {{end}}
     {{end}}
     </script>
   </div>
