@@ -2317,8 +2317,9 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 	id, err := db.InsertStatsMeta(tx, userData.ID, parsedMeta)
 	if err != nil {
 		if strings.Contains(err.Error(), "no partition of relation") {
-			db.CreateNewStatsMetaPartition()
 			tx.Rollback()
+
+			db.CreateNewStatsMetaPartition()
 			tx, err = db.NewTransaction()
 			if err != nil {
 				logger.Errorf("could not transact | %v", err)
