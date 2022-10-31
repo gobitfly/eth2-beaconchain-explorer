@@ -1,5 +1,5 @@
 # The dockerfile is currently still WIP and might be broken
-FROM golang:1.18 AS build-env
+FROM golang:1.18.7 AS build-env
 ADD . /src
 WORKDIR /src
 RUN go mod download
