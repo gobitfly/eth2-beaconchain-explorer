@@ -928,10 +928,9 @@ func FormatValidatorName(name string) template.HTML {
 }
 
 func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
-
 	tooltipText := "The attestation inclusion effectiveness should be 80% or higher to minimize reward penalties."
 	if eff == 0 {
-		return ""
+		return template.HTML(`<span class="text-danger" data-toggle="tooltip" title="Validator did not attest during the last 100 epochs"> N/A <i class="fas fa-frown"></i>`)
 	} else if eff >= 100 {
 		return template.HTML(fmt.Sprintf(`<span class="text-success" data-toggle="tooltip" title="%s"> %.0f%% - Perfect <i class="fas fa-grin-stars"></i>`, tooltipText, eff))
 	} else if eff > 80 {

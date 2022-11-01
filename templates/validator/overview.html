@@ -155,12 +155,10 @@
         <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Status</small></span>
         {{ .Status | formatValidatorStatus }}
       </div>
-      {{ if gtf .AttestationInclusionEffectiveness 0 }}
         <div style="width: 8.32rem" class="m-3 position-relative">
           <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Effectiveness</small></span>
           {{ .AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness }}
         </div>
-      {{ end }}
     </div>
     {{ template "validatorOverviewCount" . }}
   {{ end }}
