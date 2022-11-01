@@ -1008,7 +1008,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 	}
 
 	var latestBlock uint64
-	err := WriterDb.Get(&latestBlock, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
+	err := WriterDb.Get(&latestBlock, "SELECT COALESCE(MAX(lastattestationslot), 0) FROM validators")
 	if err != nil {
 		return err
 	}
@@ -2204,14 +2204,9 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 		metrics.TaskDuration.WithLabelValues("update_validator_performance").Observe(time.Since(start).Seconds())
 	}()
 
-	_, err := tx.Exec("TRUNCATE validator_performance")
-	if err != nil {
-		return fmt.Errorf("error truncating validator performance table: %w", err)
-	}
-
 	var currentEpoch int64
 
-	err = tx.Get(&currentEpoch, "SELECT MAX(epoch) FROM epochs")
+	err := tx.Get(&currentEpoch, "SELECT MAX(epoch) FROM epochs")
 	if err != nil {
 		return fmt.Errorf("error retrieving latest epoch: %w", err)
 	}
@@ -2355,12 +2350,22 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 
 		stmt := fmt.Sprintf(`		
 			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d)
-			VALUES %s`, strings.Join(valueStrings, ","))
+			VALUES %s
+			ON CONFLICT (validatorindex) DO UPDATE SET 
+			balance             = excluded.balance, 
+			performance1d  = excluded.performance1d,
+			performance7d  = excluded.performance7d,
+			performance31d       = excluded.performance31d,
+			performance365d           = excluded.performance365d,
+			rank7d     = excluded.rank7d;			
+			`, strings.Join(valueStrings, ","))
 
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err
 		}
+
+		logger.Infof("saving validator performance batch %v completed", b)
 	}
 
 	return tx.Commit()
