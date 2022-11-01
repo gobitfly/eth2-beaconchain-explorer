@@ -1,0 +1,145 @@
+# See full list of environment variables:
+# https://github.com/gnosischain/gbc-explorer/blob/update-upstream/types/config.go#L8
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: explorer
+  namespace: chiado
+  labels:
+    app: explorer
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: explorer
+  template:
+    metadata:
+      labels:
+        app: explorer
+    spec:
+      containers:
+        - name: redis
+          image: redis:6.2.7@sha256:b89af8f6c962b7c53f36e630a34ddb05084c74d277156dae147743e1f622d2b7
+          args: ["/tmp/redis.conf", "--loglevel", "debug"]
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              memory: "250Mi"
+              cpu: "250m"
+            limits:
+              memory: "500Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: explorer-config
+              mountPath: /tmp/redis.conf
+              subPath: redis.conf
+        ## YOU CAN ALSO USE LITTLE BIGTABLE
+        # - name: bigtable
+        #   image: gnosisdevops/little-bigtable@sha256:423c5483fc4191a61e33772605df48b11de400030e5c44541c09c3c21f200722
+        #   args: [
+        #     "-db-file",
+        #     "/gbc/bigtable/db",
+        #     "-host",
+        #     "0.0.0.0",
+        #     "-port",
+        #     "9035"
+        #   ]
+        #   ports:
+        #     - containerPort: 9035
+        #   resources:
+        #     requests:
+        #       memory: "500Mi"
+        #       cpu: "500m"
+        #     limits:
+        #       memory: "1000Mi"
+        #       cpu: "750m"
+        #   volumeMounts:
+        #     - name: explorer-data
+        #       mountPath: /gbc/bigtable
+        #       readOnly: false
+        - name: explorer
+          image: ghcr.io/gnosischain/gbc-explorer:update-upstream
+          imagePullPolicy: 'Always' # or use IfNotPresent if you stick to a specific version
+          command: ["./explorer"]
+          args: ["--config", "/gbc/config/explorer.config.yml"]
+          ports:
+          - containerPort: 3333
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 2000Mi
+            limits:
+              cpu: 2000m
+              memory: 4000Mi
+          volumeMounts:
+            - name: explorer-data
+              mountPath: /gbc
+              readOnly: false
+            - name: explorer-config
+              mountPath: /gbc/config/config.yml
+              subPath: config.yml
+            - name: explorer-config
+              mountPath: /gbc/config/imprint.html
+              subPath: imprint.html
+            - name: explorer
+              mountPath: /gbc/config/explorer.config.yml
+              subPath: explorer.config.yml
+            - name: explorer
+              mountPath: /tmp/credentials.json
+              subPath: credentials.json
+          env:
+            ## YOU CAN ALSO USE LITTLE BIGTABLE
+            # - name: BIGTABLE_EMULATOR_HOST
+            #   value: 0.0.0.0:9035
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/tmp/credentials.json"
+            # See full list of environment variables:
+            # https://github.com/gnosischain/gbc-explorer/blob/update-upstream/types/config.go#L8
+        - name: statistics
+          image: ghcr.io/gnosischain/gbc-explorer:update-upstream
+          imagePullPolicy: 'Always'
+          command: ["./statistics"]
+          args: ["--config", "/gbc/config/explorer.config.yml"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 1000Mi
+            limits:
+              cpu: 500m
+              memory: 4000Mi
+          volumeMounts:
+            - name: explorer-data
+              mountPath: /gbc
+              readOnly: false
+            - name: explorer-config
+              mountPath: /gbc/config/config.yml
+              subPath: config.yml
+            - name: explorer-config
+              mountPath: /gbc/config/imprint.html
+              subPath: imprint.html
+            - name: explorer
+              mountPath: /gbc/config/explorer.config.yml
+              subPath: explorer.config.yml
+            - name: explorer
+              mountPath: /tmp/credentials.json
+              subPath: credentials.json
+          env:
+            # - name: BIGTABLE_EMULATOR_HOST
+            #   value: 0.0.0.0:9035
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/tmp/credentials.json"
+            # See full list of environment variables:
+            # https://github.com/gnosischain/gbc-explorer/blob/update-upstream/types/config.go#L8
+      volumes:
+        - name: explorer-config
+          configMap:
+            name: explorer-config
+        - name: explorer
+          secret:
+            secretName: explorer
+        - name: explorer-data
+          persistentVolumeClaim:
+            claimName: explorer-data
