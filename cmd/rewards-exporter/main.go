@@ -24,6 +24,7 @@ func main() {
 	bnAddress := flag.String("beacon-node-address", "", "Url of the beacon node api")
 	enAddress := flag.String("execution-node-address", "", "Url of the execution node api")
 	epoch := flag.Int64("epoch", -1, "epoch to export (use -1 to export latest finalized epoch)")
+	network := flag.String("network", "", "Config to use (can be mainnet, prater or sepolia")
 
 	flag.Parse()
 
@@ -72,10 +73,10 @@ func main() {
 			start := time.Now()
 			logrus.Infof("retrieving rewards details for epoch %v", *epoch)
 
-			rewards, err := eth_rewards.GetRewardsForEpoch(int(*epoch), client, elClient)
+			rewards, err := eth_rewards.GetRewardsForEpoch(int(*epoch), client, elClient, *network)
 
 			if err != nil {
-				logrus.Fatalf("error retrieving reward details for epoch %v", *epoch)
+				logrus.Fatalf("error retrieving reward details for epoch %v: %v", *epoch, err)
 			} else {
 				logrus.Infof("retrieved %v reward details for epoch %v in %v", len(rewards), *epoch, time.Since(start))
 			}
@@ -90,10 +91,10 @@ func main() {
 	start := time.Now()
 	logrus.Infof("retrieving rewards details for epoch %v", *epoch)
 
-	rewards, err := eth_rewards.GetRewardsForEpoch(int(*epoch), client, elClient)
+	rewards, err := eth_rewards.GetRewardsForEpoch(int(*epoch), client, elClient, *network)
 
 	if err != nil {
-		logrus.Fatalf("error retrieving reward details for epoch %v", *epoch)
+		logrus.Fatalf("error retrieving reward details for epoch %v: %v", *epoch, err)
 	} else {
 		logrus.Infof("retrieved %v reward details for epoch %v in %v", len(rewards), *epoch, time.Since(start))
 	}

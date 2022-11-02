@@ -472,6 +472,10 @@ github.com/gobitfly/eth-rewards v0.1.2-0.20221025085430-cf9817bb1fd7 h1:GZ/GTfbD
 github.com/gobitfly/eth-rewards v0.1.2-0.20221025085430-cf9817bb1fd7/go.mod h1:GEerfGH16ByR90QoS/9QyJ0UyCHQRLQ9QH6ZbfneSdU=
 github.com/gobitfly/eth-rewards v0.1.2-0.20221025094522-6bb5f1a4e26b h1:kvmYm3DPeq3fkDjRmBnodC+9CXDO3HuQxKSTXYXn+RA=
 github.com/gobitfly/eth-rewards v0.1.2-0.20221025094522-6bb5f1a4e26b/go.mod h1:GEerfGH16ByR90QoS/9QyJ0UyCHQRLQ9QH6ZbfneSdU=
+github.com/gobitfly/eth-rewards v0.1.2-0.20221102074626-2f0a040aade5 h1:QA+RnPmjq5/StPqDNNn9JZJmFPJsE9R7xoFr2UIJKVY=
+github.com/gobitfly/eth-rewards v0.1.2-0.20221102074626-2f0a040aade5/go.mod h1:GEerfGH16ByR90QoS/9QyJ0UyCHQRLQ9QH6ZbfneSdU=
+github.com/gobitfly/eth-rewards v0.1.2-0.20221102075232-f1fad9916be8 h1:WKS/xtcRroGdnennVoW97un2O9kOHxetVwQ0w633R50=
+github.com/gobitfly/eth-rewards v0.1.2-0.20221102075232-f1fad9916be8/go.mod h1:GEerfGH16ByR90QoS/9QyJ0UyCHQRLQ9QH6ZbfneSdU=
 github.com/gobitfly/eth.store v0.0.0-20221012115129-3b4606992669 h1:nGqtKWpeItBrYO0TkdSSpeVRpjcWW6il28EasO9WZSo=
 github.com/gobitfly/eth.store v0.0.0-20221012115129-3b4606992669/go.mod h1:NlB9l6tiM42FM5qQHIsG/Iey6AJ0XQvRcKkmt63/ve0=
 github.com/goccy/go-yaml v1.9.5 h1:Eh/+3uk9kLxG4koCX6lRMAPS1OaMSAi+FJcya0INdB0=
