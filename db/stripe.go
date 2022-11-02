@@ -73,6 +73,7 @@ func StripeUpdateSubscription(tx *sql.Tx, priceID, subscriptionID string, payloa
 func StripeUpdateSubscriptionStatus(tx *sql.Tx, id string, status bool, payload *json.RawMessage) error {
 	var err error
 	var useInternTx bool = tx == nil
+	var result sql.Result
 	if useInternTx {
 		tx, err := FrontendWriterDB.Begin()
 		if err != nil {
@@ -82,15 +83,24 @@ func StripeUpdateSubscriptionStatus(tx *sql.Tx, id string, status bool, payload 
 	}
 
 	if payload == nil {
-		_, err = tx.Exec("UPDATE users_stripe_subscriptions SET active = $2 WHERE subscription_id = $1", id, status)
+		result, err = tx.Exec("UPDATE users_stripe_subscriptions SET active = $2 WHERE subscription_id = $1", id, status)
 		if err != nil {
 			return err
 		}
 	} else {
-		_, err = tx.Exec("UPDATE users_stripe_subscriptions SET active = $2, payload = $3 WHERE subscription_id = $1", id, status, payload)
+		result, err = tx.Exec("UPDATE users_stripe_subscriptions SET active = $2, payload = $3 WHERE subscription_id = $1", id, status, payload)
 		if err != nil {
 			return err
 		}
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected <= 0 {
+		return fmt.Errorf("no rows affected")
 	}
 
 	if useInternTx {
