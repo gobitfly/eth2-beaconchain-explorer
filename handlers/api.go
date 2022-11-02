@@ -116,7 +116,24 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "OK. Last epoch is from %v ago, last cl block is from %v ago, data table is lagging %v blocks", time.Since(epochTime), time.Since(blockBlocksTable.Time.AsTime()), numberBlocksTable-numberDataTable)
+	// check if tx were sent during the last hour
+	res := []*struct {
+		Channel           string
+		NotificationCount int64
+	}{}
+	err = db.FrontendReaderDB.Select(&res, "select channel, count(*) as notificationcount from notification_queue where sent > now() - interval '1 hour' group by channel order by channel;")
+	if err != nil {
+		logger.Errorf("could not retrieve notification stats from db: %v", err)
+		http.Error(w, "Internal server error: could not retrieve notification stats from db", http.StatusServiceUnavailable)
+		return
+	}
+
+	ret := fmt.Sprintf("OK. Last epoch is from %v ago, last cl block is from %v ago, data table is lagging %v blocks\n\nNotifications sent during the last hour:\n", time.Since(epochTime), time.Since(blockBlocksTable.Time.AsTime()), numberBlocksTable-numberDataTable)
+
+	for _, entry := range res {
+		ret += fmt.Sprintf("%s: %d\n", entry.Channel, entry.NotificationCount)
+	}
+	fmt.Fprint(w, ret)
 }
 
 // ApiHealthzLoadbalancer godoc
