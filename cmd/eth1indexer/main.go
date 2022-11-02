@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/erc20"
 	"eth2-exporter/rpc"
 	"eth2-exporter/types"
+	"eth2-exporter/version"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -61,7 +62,14 @@ func main() {
 	bigtableProject := flag.String("bigtable.project", "", "Bigtable project")
 	bigtableInstance := flag.String("bigtable.instance", "", "Bigtable instance")
 
+	versionFlag := flag.Bool("version", false, "Print version and exit")
+
 	flag.Parse()
+	if *versionFlag {
+		fmt.Println(version.Version)
+		return
+	}
+
 	if erigonEndpoint == nil || *erigonEndpoint == "" {
 		logrus.Fatal("no erigon node url provided")
 	}
