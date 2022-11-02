@@ -1416,7 +1416,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 					reward := utils.Eth1TotalReward(execData)
 					relayData, found := relaysData[common.BytesToHash(execData.Hash)]
 					if found {
-						reward = relayData.MevBribe.Int
+						reward = relayData.MevBribe.BigInt()
 					}
 					events[j].ExecRewardETH = float64(int64(eth.WeiToEth(reward)*100000)) / 100000
 				}
