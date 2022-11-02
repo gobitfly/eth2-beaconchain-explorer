@@ -546,7 +546,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validatorindex = $2
 		ORDER BY period desc`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, index)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting new countData of sync-assignments")
+		logger.WithError(err).Errorf("error getting sync participation count data of sync-assignments")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -568,7 +568,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		logger.Infof("%+v", syncStats)
 		if latestEpoch := services.LatestEpoch(); latestEpoch <= syncPeriods[0].LastEpoch {
 			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, latestEpoch, int64(latestEpoch-syncPeriods[0].FirstEpoch))
 			if err != nil {
@@ -1608,7 +1607,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		WHERE validatorindex = $2
 		ORDER BY period desc`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, validatorIndex)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting new countData of sync-assignments")
+		logger.WithError(err).Errorf("error getting sync tab count data of sync-assignments")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
