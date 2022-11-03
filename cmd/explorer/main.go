@@ -141,7 +141,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		bt, err := db.InitBigtable("etherchain", "etherchain", fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) //
+		bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) //
 		if err != nil {
 			logrus.Fatalf("error connecting to bigtable: %v", err)
 		}
@@ -248,6 +248,7 @@ func main() {
 		apiV1Router.HandleFunc("/validator/leaderboard", handlers.ApiValidatorLeaderboard).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}", handlers.ApiValidator).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/balancehistory", handlers.ApiValidatorBalanceHistory).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/incomedetailhistory", handlers.ApiValidatorIncomeDetailsHistory).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/performance", handlers.ApiValidatorPerformance).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/execution/performance", handlers.ApiValidatorExecutionPerformance).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestations", handlers.ApiValidatorAttestations).Methods("GET", "OPTIONS")
@@ -394,12 +395,12 @@ func main() {
 			router.HandleFunc("/validators/leaderboard/data", handlers.ValidatorsLeaderboardData).Methods("GET")
 			router.HandleFunc("/validators/streakleaderboard", handlers.ValidatorsStreakLeaderboard).Methods("GET")
 			router.HandleFunc("/validators/streakleaderboard/data", handlers.ValidatorsStreakLeaderboardData).Methods("GET")
-			router.HandleFunc("/validators/eth1deposits", handlers.Eth1Deposits).Methods("GET")
-			router.HandleFunc("/validators/eth1deposits/data", handlers.Eth1DepositsData).Methods("GET")
-			router.HandleFunc("/validators/eth1leaderboard", handlers.Eth1DepositsLeaderboard).Methods("GET")
-			router.HandleFunc("/validators/eth1leaderboard/data", handlers.Eth1DepositsLeaderboardData).Methods("GET")
-			router.HandleFunc("/validators/eth2deposits", handlers.Eth2Deposits).Methods("GET")
-			router.HandleFunc("/validators/eth2deposits/data", handlers.Eth2DepositsData).Methods("GET")
+			router.HandleFunc("/validators/initiated-deposits", handlers.Eth1Deposits).Methods("GET")
+			router.HandleFunc("/validators/initiated-deposits/data", handlers.Eth1DepositsData).Methods("GET")
+			router.HandleFunc("/validators/deposit-leaderboard", handlers.Eth1DepositsLeaderboard).Methods("GET")
+			router.HandleFunc("/validators/deposit-leaderboard/data", handlers.Eth1DepositsLeaderboardData).Methods("GET")
+			router.HandleFunc("/validators/included-deposits", handlers.Eth2Deposits).Methods("GET")
+			router.HandleFunc("/validators/included-deposits/data", handlers.Eth2DepositsData).Methods("GET")
 
 			router.HandleFunc("/dashboard", handlers.Dashboard).Methods("GET")
 			router.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST")
@@ -421,7 +422,6 @@ func main() {
 			router.HandleFunc("/poap/data", handlers.PoapData).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
-
 			router.HandleFunc("/tools/unitConverter", handlers.UnitConverter).Methods("GET")
 
 			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")

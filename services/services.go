@@ -91,7 +91,11 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 				count(distinct builder_pubkey) as unique_builders,
 				max(value) as max_value,
 				(select rb2.block_slot from relays_blocks rb2 where rb2.value = max(rb.value) and rb2.tag_id = rb.tag_id limit 1) as max_value_slot
-			from relays_blocks rb where rb.block_slot > $1 group by tag_id 
+			from relays_blocks rb
+			where 
+				rb.block_slot > $1 and 
+				rb.block_root not in (select bt.blockroot from blocks_tags bt where bt.tag_id='invalid-relay-reward') 
+			group by tag_id 
 		)
 		select 
 			tags.metadata ->> 'name' as "name",
@@ -104,8 +108,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 		left join stats on stats.relay_id = relays.tag_id
 		left join tags on tags.id = relays.tag_id 
 		where stats.relay_id = tag_id 
-		order by stats.block_count DESC
-	`)
+		order by stats.block_count DESC`)
 	if err != nil {
 		logger.Errorf("failed to prepare overallStatsQuery: %v", err)
 		return nil, err
@@ -210,6 +213,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 		from (
 			select * 
 			from relays_blocks
+			where relays_blocks.block_root not in (select bt.blockroot from blocks_tags bt where bt.tag_id='invalid-relay-reward') 
 			order by relays_blocks.value desc
 			limit 15
 		) as relays_blocks 
@@ -264,27 +268,55 @@ func relaysUpdater(wg *sync.WaitGroup) {
 func epochUpdater(wg *sync.WaitGroup) {
 	firstRun := true
 	for {
-		var latestFinalized uint64
-		err := db.WriterDb.Get(&latestFinalized, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
+		// latest epoch acording to the node
+		var epochNode uint64
+		err := db.WriterDb.Get(&epochNode, "SELECT headepoch FROM network_liveness order by headepoch desc LIMIT 1")
 		if err != nil {
-			logger.Errorf("error retrieving latest finalized epoch from the database: %v", err)
+			logger.Errorf("error retrieving latest node epoch from the database: %v", err)
 		} else {
-			cacheKey := fmt.Sprintf("%d:frontend:latestFinalized", utils.Config.Chain.Config.DepositChainID)
-			err := cache.TieredCache.SetUint64(cacheKey, latestFinalized, time.Hour*24)
+			cacheKey := fmt.Sprintf("%d:frontend:latestNodeEpoch", utils.Config.Chain.Config.DepositChainID)
+			err := cache.TieredCache.SetUint64(cacheKey, epochNode, time.Hour*24)
 			if err != nil {
-				logger.Errorf("error caching latestFinalizedEpoch: %v", err)
+				logger.Errorf("error caching latestNodeEpoch: %v", err)
 			}
 		}
 
+		// latest finalized epoch acording to the node
+		var latestNodeFinalized uint64
+		err = db.WriterDb.Get(&latestNodeFinalized, "SELECT finalizedepoch FROM network_liveness order by headepoch desc LIMIT 1")
+		if err != nil {
+			logger.Errorf("error retrieving latest node finalized epoch from the database: %v", err)
+		} else {
+			cacheKey := fmt.Sprintf("%d:frontend:latestNodeFinalizedEpoch", utils.Config.Chain.Config.DepositChainID)
+			err := cache.TieredCache.SetUint64(cacheKey, latestNodeFinalized, time.Hour*24)
+			if err != nil {
+				logger.Errorf("error caching latestNodeFinalized: %v", err)
+			}
+		}
+
+		// latest exported epoch
 		var epoch uint64
 		err = db.WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM blocks")
 		if err != nil {
-			logger.Errorf("error retrieving latest epoch from the database: %v", err)
+			logger.Errorf("error retrieving latest exported epoch from the database: %v", err)
 		} else {
 			cacheKey := fmt.Sprintf("%d:frontend:latestEpoch", utils.Config.Chain.Config.DepositChainID)
 			err := cache.TieredCache.SetUint64(cacheKey, epoch, time.Hour*24)
 			if err != nil {
 				logger.Errorf("error caching latestEpoch: %v", err)
+			}
+		}
+
+		// latest exportered finalized epoch
+		var latestFinalized uint64
+		err = db.WriterDb.Get(&latestFinalized, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
+		if err != nil {
+			logger.Errorf("error retrieving latest exported finalized epoch from the database: %v", err)
+		} else {
+			cacheKey := fmt.Sprintf("%d:frontend:latestFinalized", utils.Config.Chain.Config.DepositChainID)
+			err := cache.TieredCache.SetUint64(cacheKey, epoch, time.Hour*24)
+			if err != nil {
+				logger.Errorf("error caching latestFinalizedEpoch: %v", err)
 			}
 			if firstRun {
 				logger.Info("initialized epoch updater")
@@ -722,7 +754,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		for i := len(epochHistory) - 1; i >= 0; i-- {
 			if epochHistory[i].Finalized {
 				data.CurrentFinalizedEpoch = epochHistory[i].Epoch
-				data.FinalityDelay = data.CurrentEpoch - epoch
+				data.FinalityDelay = FinalizationDelay()
 				data.AverageBalance = string(utils.FormatBalance(uint64(epochHistory[i].AverageValidatorBalance), currency))
 				break
 			}
@@ -757,6 +789,30 @@ func LatestEpoch() uint64 {
 	return 0
 }
 
+func LatestNodeEpoch() uint64 {
+	cacheKey := fmt.Sprintf("%d:frontend:latestNodeEpoch", utils.Config.Chain.Config.DepositChainID)
+
+	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
+		return wanted
+	} else {
+		logger.Errorf("error retrieving latestNodeEpoch from cache: %v", err)
+	}
+
+	return 0
+}
+
+func LatestNodeFinalizedEpoch() uint64 {
+	cacheKey := fmt.Sprintf("%d:frontend:latestNodeFinalizedEpoch", utils.Config.Chain.Config.DepositChainID)
+
+	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
+		return wanted
+	} else {
+		logger.Errorf("error retrieving latestNodeFinalizedEpoch from cache: %v", err)
+	}
+
+	return 0
+}
+
 // LatestFinalizedEpoch will return the most recent epoch that has been finalized.
 func LatestFinalizedEpoch() uint64 {
 	cacheKey := fmt.Sprintf("%d:frontend:latestFinalized", utils.Config.Chain.Config.DepositChainID)
@@ -783,7 +839,7 @@ func LatestSlot() uint64 {
 
 //FinalizationDelay will return the current Finalization Delay
 func FinalizationDelay() uint64 {
-	return LatestEpoch() - LatestFinalizedEpoch()
+	return LatestNodeEpoch() - LatestNodeFinalizedEpoch()
 }
 
 // LatestProposedSlot will return the latest proposed slot
@@ -908,7 +964,7 @@ func LatestState() *types.LatestState {
 	data.CurrentSlot = LatestSlot()
 	data.CurrentFinalizedEpoch = LatestFinalizedEpoch()
 	data.LastProposedSlot = LatestProposedSlot()
-	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
+	data.FinalityDelay = FinalizationDelay()
 	data.IsSyncing = IsSyncing()
 	data.UsdRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("USD"))
 	data.UsdTruncPrice = utils.KFormatterEthPrice(data.UsdRoundPrice)

@@ -155,12 +155,10 @@
         <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Status</small></span>
         {{ .Status | formatValidatorStatus }}
       </div>
-      {{ if gtf .AttestationInclusionEffectiveness 0 }}
-        <div style="width: 8.32rem" class="m-3 position-relative">
-          <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Effectiveness</small></span>
-          {{ .AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness }}
-        </div>
-      {{ end }}
+      <div style="width: 8.32rem" class="m-3 position-relative">
+        <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Effectiveness</small></span>
+        {{ .AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness }}
+      </div>
     </div>
     {{ template "validatorOverviewCount" . }}
   {{ end }}
@@ -203,7 +201,9 @@
       <div class="col">
         <div class="px-2 mx-auto" style="max-width: 50rem;">
           <div class="p-2 text-justify">
-            This validator has exited the system during epoch <a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a> and is no longer validating. There is no need to keep the validator running anymore. Funds will be withdrawable after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span
+            This validator has exited the system during epoch <a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a> and is no longer validating. There is no need to keep the validator running anymore.
+            <span data-toggle="tooltip" title="Please note that the withdraw functionality has not been implemented by ACD yet."
+              >Funds will be withdrawable after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span></span
             >.
           </div>
           {{ if .Slashed }}<div class="p-2">Slashed by {{ .SlashedBy | formatValidator }} at Slot {{ .SlashedAt | formatBlockSlot }}, Reason: {{ .SlashedFor }}</div>{{ end }}

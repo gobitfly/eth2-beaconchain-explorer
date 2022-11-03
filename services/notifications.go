@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"firebase.google.com/go/messaging"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
@@ -677,6 +678,10 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 			attachments := []types.EmailAttachment{}
 
 			var msg types.Email
+
+			if utils.Config.Chain.Name != "mainnet" {
+				msg.Body += template.HTML(fmt.Sprintf("<b>Notice: This email contains notifications for the %s network!</b><br>", utils.Config.Chain.Name))
+			}
 
 			for event, ns := range userNotifications {
 				if len(msg.Body) > 0 {
@@ -1363,7 +1368,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 					pa.epoch,
 					pa.status,
 					v.pubkey as pubkey,
-					exec_block_number 
+					COALESCE(exec_block_number, 0) as exec_block_number 
 				FROM 
 				(SELECT 
 					v.validatorindex as validatorindex, 
@@ -1371,19 +1376,26 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 					FROM validators v
 					WHERE pubkey = ANY($3)
 				) v
-				INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch >= ($1 - 5) 
+				INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch >= ($1 - 5) AND pa.epoch <= $1 
 				INNER JOIN blocks ON blocks.slot = pa.proposerslot 
-				WHERE pa.status = $2 AND pa.epoch >= ($1 - 5)`, latestEpoch, status, pq.ByteaArray(keys))
+				WHERE pa.status = $2 AND pa.epoch >= ($1 - 5) AND pa.epoch <= $1`, latestEpoch, status, pq.ByteaArray(keys))
 		if err != nil {
 			return err
 		}
 
-		if status == 1 { // if proposed
-			var blockList = []uint64{}
-			for _, data := range partial {
+		events = append(events, partial...)
+	}
+
+	// Get Execution reward for proposed blocks
+	if status == 1 { // if proposed
+		var blockList = []uint64{}
+		for _, data := range events {
+			if data.ExecBlock != 0 {
 				blockList = append(blockList, data.ExecBlock)
 			}
+		}
 
+		if len(blockList) > 0 {
 			blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, 10000)
 			if err != nil {
 				logger.WithError(err).Errorf("can not load blocks from bigtable for notification")
@@ -1393,17 +1405,23 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 			for _, block := range blocks {
 				execBlockNrToExecBlockMap[block.GetNumber()] = block
 			}
+			relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
+			if err != nil {
+				return err
+			}
 
-			for i = 0; i < len(partial); i++ {
-				execData, found := execBlockNrToExecBlockMap[partial[i].ExecBlock]
+			for j := 0; j < len(events); j++ {
+				execData, found := execBlockNrToExecBlockMap[events[j].ExecBlock]
 				if found {
 					reward := utils.Eth1TotalReward(execData)
-					partial[i].ExecRewardETH = float64(int64(eth.WeiToEth(reward)*100000)) / 100000
+					relayData, found := relaysData[common.BytesToHash(execData.Hash)]
+					if found {
+						reward = relayData.MevBribe.BigInt()
+					}
+					events[j].ExecRewardETH = float64(int64(eth.WeiToEth(reward)*100000)) / 100000
 				}
 			}
 		}
-
-		events = append(events, partial...)
 	}
 
 	for _, event := range events {
@@ -2142,6 +2160,8 @@ func (n *ethClientNotification) GetInfo(includeUrl bool) string {
 			url = "https://github.com/rocket-pool/smartnode-install/releases"
 		case "MEV-Boost":
 			url = "https://github.com/flashbots/mev-boost/releases"
+		case "Lodestar":
+			url = "https://github.com/chainsafe/lodestar/releases"
 		default:
 			url = "https://beaconcha.in/ethClients"
 		}
@@ -2182,6 +2202,8 @@ func (n *ethClientNotification) GetInfoMarkdown() string {
 		url = "https://github.com/rocket-pool/smartnode-install/releases"
 	case "MEV-Boost":
 		url = "https://github.com/flashbots/mev-boost/releases"
+	case "Lodestar":
+		url = "https://github.com/chainsafe/lodestar/releases"
 	default:
 		url = "https://beaconcha.in/ethClients"
 	}

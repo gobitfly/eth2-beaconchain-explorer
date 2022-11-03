@@ -57,6 +57,8 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 				pageData.RocketpoolSmartnode.IsUserSubscribed = true
 			case "mev-boost":
 				pageData.MevBoost.IsUserSubscribed = true
+			case "lodestar":
+				pageData.Lodestar.IsUserSubscribed = true
 			default:
 				continue
 			}

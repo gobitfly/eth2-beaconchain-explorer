@@ -144,7 +144,7 @@ func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDat
 	if err != nil {
 		return nil, err
 	}
-	relaysData, err := getRelayDataForIndexedBlocks(blocks)
+	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
 	if err != nil {
 		return nil, err
 	}

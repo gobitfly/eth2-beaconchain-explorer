@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	geth_types "github.com/ethereum/go-ethereum/core/types"
+	itypes "github.com/gobitfly/eth-rewards/types"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 )
@@ -611,7 +612,8 @@ type BlockPageData struct {
 	ProposerSlashings []*BlockPageProposerSlashing
 	SyncCommittee     []uint64 // TODO: Setting it to contain the validator index
 
-	Tags TagMetadataSlice `db:"tags"`
+	Tags       TagMetadataSlice `db:"tags"`
+	IsValidMev bool             `db:"is_valid_mev"`
 }
 
 func (u *BlockPageData) MarshalJSON() ([]byte, error) {
@@ -942,13 +944,14 @@ type ValidatorProposerSlashing struct {
 }
 
 type ValidatorHistory struct {
-	Epoch             uint64        `db:"epoch" json:"epoch,omitempty"`
-	BalanceChange     sql.NullInt64 `db:"balancechange" json:"balance_change,omitempty"`
-	AttesterSlot      sql.NullInt64 `db:"attestatation_attesterslot" json:"attester_slot,omitempty"`
-	InclusionSlot     sql.NullInt64 `db:"attestation_inclusionslot" json:"inclusion_slot,omitempty"`
-	AttestationStatus uint64        `db:"attestation_status" json:"attestation_status,omitempty"`
-	ProposalStatus    sql.NullInt64 `db:"proposal_status" json:"proposal_status,omitempty"`
-	ProposalSlot      sql.NullInt64 `db:"proposal_slot" json:"proposal_slot,omitempty"`
+	Epoch             uint64                       `db:"epoch" json:"epoch,omitempty"`
+	BalanceChange     sql.NullInt64                `db:"balancechange" json:"balance_change,omitempty"`
+	AttesterSlot      sql.NullInt64                `db:"attestatation_attesterslot" json:"attester_slot,omitempty"`
+	InclusionSlot     sql.NullInt64                `db:"attestation_inclusionslot" json:"inclusion_slot,omitempty"`
+	AttestationStatus uint64                       `db:"attestation_status" json:"attestation_status,omitempty"`
+	ProposalStatus    sql.NullInt64                `db:"proposal_status" json:"proposal_status,omitempty"`
+	ProposalSlot      sql.NullInt64                `db:"proposal_slot" json:"proposal_slot,omitempty"`
+	IncomeDetails     *itypes.ValidatorEpochIncome `db:"-" json:"income_details,omitempty"`
 }
 
 type ValidatorSlashing struct {
@@ -1641,6 +1644,7 @@ type Eth1BlockPageData struct {
 	Reward                *big.Int
 	MevReward             *big.Int
 	MevBribe              *big.Int
+	IsValidMev            bool
 	MevRecipientFormatted template.HTML
 	TxFees                *big.Int
 	GasUsage              template.HTML

@@ -999,10 +999,11 @@ CREATE TABLE blocks_tags (
 	blockroot bytea NOT NULL,
 	tag_id varchar NOT NULL,
 	PRIMARY KEY (slot, blockroot, tag_id),
-	FOREIGN KEY (slot,blockroot) REFERENCES blocks(slot,blockroot),
+	FOREIGN KEY (slot, blockroot) REFERENCES blocks(slot, blockroot),
 	FOREIGN KEY (tag_id) REFERENCES tags(id)
 );
 CREATE INDEX idx_blocks_tags_slot ON blocks_tags (slot);
+CREATE INDEX idx_blocks_tags_tag_id ON blocks_tags (tag_id);
 
 CREATE TABLE relays (
 	tag_id varchar NOT NULL,

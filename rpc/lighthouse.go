@@ -335,7 +335,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 			defer wg.Done()
 			start := time.Now()
 			var err error
-			validatorBalances1d, err = lc.getBalancesForEpoch(epoch1d)
+			validatorBalances1d, err = lc.GetBalancesForEpoch(epoch1d)
 			if err != nil {
 				logrus.Errorf("error retrieving validator balances for epoch %v (1d): %v", epoch1d, err)
 				return
@@ -347,7 +347,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 			defer wg.Done()
 			start := time.Now()
 			var err error
-			validatorBalances7d, err = lc.getBalancesForEpoch(epoch7d)
+			validatorBalances7d, err = lc.GetBalancesForEpoch(epoch7d)
 			if err != nil {
 				logrus.Errorf("error retrieving validator balances for epoch %v (7d): %v", epoch7d, err)
 				return
@@ -359,7 +359,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 			defer wg.Done()
 			start := time.Now()
 			var err error
-			validatorBalances31d, err = lc.getBalancesForEpoch(epoch31d)
+			validatorBalances31d, err = lc.GetBalancesForEpoch(epoch31d)
 			if err != nil {
 				logrus.Errorf("error retrieving validator balances for epoch %v (31d): %v", epoch31d, err)
 				return
@@ -446,6 +446,10 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 	wg.Wait()
 	logger.Printf("retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
 
+	if data.ValidatorAssignmentes == nil {
+		return data, fmt.Errorf("no assignments for epoch %v", epoch)
+	}
+
 	// Fill up missed and scheduled blocks
 	for slot, proposer := range data.ValidatorAssignmentes.ProposerAssignments {
 		_, found := data.Blocks[slot]
@@ -496,7 +500,7 @@ func uint64List(li []uint64Str) []uint64 {
 	return out
 }
 
-func (lc *LighthouseClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64, error) {
+func (lc *LighthouseClient) GetBalancesForEpoch(epoch int64) (map[uint64]uint64, error) {
 
 	if epoch < 0 {
 		epoch = 0

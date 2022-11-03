@@ -23,6 +23,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
+
+	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
 func FormatMessageToHtml(message string) template.HTML {
@@ -130,15 +132,58 @@ func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 	return FormatBalanceChange(balance, currency)
 }
 
-func FormatBalanceChangeFormated(balance *int64, currencyName string) template.HTML {
+func FormatBalanceChangeFormated(balance *int64, currencyName string, details *itypes.ValidatorEpochIncome) template.HTML {
+
+	income := ""
+	if details != nil {
+
+		income += fmt.Sprintf("Att. Source: %s GWei<br/>", FormatAddCommasFormated(float64(int64(details.AttestationSourceReward)-int64(details.AttestationSourcePenalty)), 0))
+		income += fmt.Sprintf("Att. Target: %s GWei<br/>", FormatAddCommasFormated(float64(int64(details.AttestationTargetReward)-int64(details.AttestationTargetPenalty)), 0))
+		income += fmt.Sprintf("Att. Head Vote: %s GWei<br/>", FormatAddCommasFormated(float64(details.AttestationHeadReward), 0))
+
+		if details.FinalityDelayPenalty > 0 {
+			income += fmt.Sprintf("Finality Delay Penalty: %s GWei<br/>", FormatAddCommasFormated(float64(details.FinalityDelayPenalty)*-1, 0))
+		}
+
+		if details.ProposerSlashingInclusionReward > 0 {
+			income += fmt.Sprintf("Proposer Slashing Inc. Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.ProposerSlashingInclusionReward), 0))
+		}
+
+		if details.ProposerAttestationInclusionReward > 0 {
+			income += fmt.Sprintf("Proposer Att. Inc. Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.ProposerAttestationInclusionReward), 0))
+		}
+
+		if details.ProposerSyncInclusionReward > 0 {
+			income += fmt.Sprintf("Proposer Sync Inc. Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.ProposerSyncInclusionReward), 0))
+		}
+
+		if details.SyncCommitteeReward > 0 {
+			income += fmt.Sprintf("Sync Comm. Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.SyncCommitteeReward), 0))
+		}
+
+		if details.SyncCommitteePenalty > 0 {
+			income += fmt.Sprintf("Sync Comm. Penalty: %s GWei<br/>", FormatAddCommasFormated(float64(details.SyncCommitteePenalty)*-1, 0))
+		}
+
+		if details.SlashingReward > 0 {
+			income += fmt.Sprintf("Slashing Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.SlashingReward), 0))
+		}
+
+		if details.SlashingPenalty > 0 {
+			income += fmt.Sprintf("Slashing Penalty: %s GWei<br/>", FormatAddCommasFormated(float64(details.SlashingPenalty)*-1, 0))
+		}
+
+		income += fmt.Sprintf("Total: %s GWei", FormatAddCommasFormated(float64(details.TotalClRewards()), 0))
+	}
+
 	if currencyName == "ETH" {
 		if balance == nil || *balance == 0 {
 			return template.HTML("<span class=\"float-right\">0 GWei</span>")
 		}
 		if *balance < 0 {
-			return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\">%s GWei</span>", FormatAddCommasFormated(float64(*balance), 0)))
+			return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger float-right\">%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
 		}
-		return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\">+%s GWei</span>", FormatAddCommasFormated(float64(*balance), 0)))
+		return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success float-right\">+%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
 	} else {
 		if balance == nil {
 			return template.HTML("<span class=\"float-right\">0 " + currencyName + "</span>")
@@ -883,10 +928,9 @@ func FormatValidatorName(name string) template.HTML {
 }
 
 func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
-
 	tooltipText := "The attestation inclusion effectiveness should be 80% or higher to minimize reward penalties."
 	if eff == 0 {
-		return ""
+		return template.HTML(`<span class="text-danger" data-toggle="tooltip" title="Validator did not attest during the last 100 epochs"> N/A <i class="fas fa-frown"></i>`)
 	} else if eff >= 100 {
 		return template.HTML(fmt.Sprintf(`<span class="text-success" data-toggle="tooltip" title="%s"> %.0f%% - Perfect <i class="fas fa-grin-stars"></i>`, tooltipText, eff))
 	} else if eff > 80 {

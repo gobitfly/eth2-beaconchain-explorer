@@ -65,6 +65,7 @@ type EthClientServicesPageData struct {
 	Erigon              EthClients
 	RocketpoolSmartnode EthClients
 	MevBoost            EthClients
+	Lodestar            EthClients
 	Banner              string
 	CsrfField           template.HTML
 }
@@ -247,6 +248,7 @@ func updateEthClient() {
 	ethClients.Prysm.ClientReleaseVersion, ethClients.Prysm.ClientReleaseDate = prepareEthClientData("/prysmaticlabs/prysm", "Prysm", curTime)
 	ethClients.Nimbus.ClientReleaseVersion, ethClients.Nimbus.ClientReleaseDate = prepareEthClientData("/status-im/nimbus-eth2", "Nimbus", curTime)
 	ethClients.Lighthouse.ClientReleaseVersion, ethClients.Lighthouse.ClientReleaseDate = prepareEthClientData("/sigp/lighthouse", "Lighthouse", curTime)
+	ethClients.Lodestar.ClientReleaseVersion, ethClients.Lodestar.ClientReleaseDate = prepareEthClientData("/chainsafe/lodestar", "Lodestar", curTime)
 
 	ethClients.RocketpoolSmartnode.ClientReleaseVersion, ethClients.RocketpoolSmartnode.ClientReleaseDate = prepareEthClientData("/rocket-pool/smartnode-install", "Rocketpool", curTime)
 	ethClients.MevBoost.ClientReleaseVersion, ethClients.MevBoost.ClientReleaseDate = prepareEthClientData("/flashbots/mev-boost", "MEV-Boost", curTime)
@@ -278,7 +280,7 @@ func ClientsUpdated() bool {
 	return true
 }
 
-//GetUpdatedClients returns a slice of latest updated clients or empty slice if no updates
+// GetUpdatedClients returns a slice of latest updated clients or empty slice if no updates
 func GetUpdatedClients() []clientUpdateInfo {
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
