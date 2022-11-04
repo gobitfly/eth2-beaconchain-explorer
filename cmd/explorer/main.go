@@ -104,7 +104,7 @@ func main() {
 			Name:     cfg.Frontend.ReaderDatabase.Name,
 			Host:     cfg.Frontend.ReaderDatabase.Host,
 			Port:     cfg.Frontend.ReaderDatabase.Port,
-		}, cfg.Frontend.SessionSecret)
+		})
 	}()
 
 	wg.Add(1)
