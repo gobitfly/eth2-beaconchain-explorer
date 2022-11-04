@@ -28,9 +28,10 @@ var epochBlacklist = make(map[uint64]uint64)
 var saveEpochMux = &sync.Mutex{}
 var fullCheckRunning = uint64(0)
 
+var Client *rpc.Client
+
 // Start will start the export of data from rpc into the database
 func Start(client rpc.Client) error {
-	go performanceDataUpdater()
 	go networkLivenessUpdater(client)
 	go eth1DepositsExporter()
 	go genesisDepositsExporter()
@@ -491,6 +492,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 
 	startGetEpochData := time.Now()
 	logger.Printf("retrieving data for epoch %v", epoch)
+
 	data, err := client.GetEpochData(epoch, false)
 	if err != nil {
 		return fmt.Errorf("error retrieving epoch data: %v", err)
@@ -571,12 +573,13 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 			}
 			return nil
 		})
+
 		err = g.Wait()
 		if err != nil {
 			logger.Errorf("error during bigtable export: %v", err)
 			return
 		}
-		err = db.SaveEpoch(data)
+		err = db.SaveEpoch(data, client)
 		if err != nil {
 			logger.Errorf("error saving epoch data: %v", err)
 			return
@@ -609,193 +612,6 @@ func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
 		}
 	}
 	return nil
-}
-
-func performanceDataUpdater() {
-	for {
-		logger.Info("updating validator performance data")
-		err := updateValidatorPerformance()
-
-		if err != nil {
-			logger.Errorf("error updating validator performance data: %v", err)
-		} else {
-			logger.Info("validator performance data update completed")
-		}
-		time.Sleep(time.Hour)
-	}
-}
-
-func updateValidatorPerformance() error {
-	start := time.Now()
-	defer func() {
-		metrics.TaskDuration.WithLabelValues("update_validator_performance").Observe(time.Since(start).Seconds())
-	}()
-	tx, err := db.WriterDb.Beginx()
-	if err != nil {
-		return fmt.Errorf("error starting db transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec("TRUNCATE validator_performance")
-	if err != nil {
-		return fmt.Errorf("error truncating validator performance table: %w", err)
-	}
-
-	var currentEpoch int64
-
-	err = tx.Get(&currentEpoch, "SELECT MAX(epoch) FROM epochs")
-	if err != nil {
-		return fmt.Errorf("error retrieving latest epoch: %w", err)
-	}
-
-	lastDayEpoch := currentEpoch - 225
-	lastWeekEpoch := currentEpoch - 225*7
-	lastMonthEpoch := currentEpoch - 225*31
-
-	if lastDayEpoch < 0 {
-		lastDayEpoch = 0
-	}
-	if lastWeekEpoch < 0 {
-		lastWeekEpoch = 0
-	}
-	if lastMonthEpoch < 0 {
-		lastMonthEpoch = 0
-	}
-
-	var balances []types.Validator
-	err = tx.Select(&balances, `
-		SELECT 
-			   validatorindex,
-			   pubkey,
-       		   activationepoch,
-		       COALESCE(balance, 0) AS balance, 
-			   COALESCE(balanceactivation, 0) AS balanceactivation, 
-			   COALESCE(balance1d, 0) AS balance1d, 
-			   COALESCE(balance7d, 0) AS balance7d, 
-			   COALESCE(balance31d , 0) AS balance31d
-		FROM validators`)
-	if err != nil {
-		return fmt.Errorf("error retrieving validator performance data: %w", err)
-	}
-
-	deposits := []struct {
-		Publickey []byte
-		Epoch     int64
-		Amount    int64
-	}{}
-
-	err = tx.Select(&deposits, `SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'`)
-	if err != nil {
-		return fmt.Errorf("error retrieving validator deposits data: %w", err)
-	}
-
-	depositsMap := make(map[string]map[int64]int64)
-	for _, d := range deposits {
-		if _, exists := depositsMap[fmt.Sprintf("%x", d.Publickey)]; !exists {
-			depositsMap[fmt.Sprintf("%x", d.Publickey)] = make(map[int64]int64)
-		}
-		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
-	}
-
-	data := make([]*types.ValidatorPerformance, 0, len(balances))
-
-	for _, balance := range balances {
-
-		var earningsTotal int64
-		var earningsLastDay int64
-		var earningsLastWeek int64
-		var earningsLastMonth int64
-		var totalDeposits int64
-
-		if int64(balance.ActivationEpoch) < currentEpoch {
-			for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
-				totalDeposits += deposit
-
-				if epoch > int64(balance.ActivationEpoch) {
-					earningsTotal -= deposit
-				}
-				if epoch > lastDayEpoch && epoch >= int64(balance.ActivationEpoch) {
-					earningsLastDay -= deposit
-				}
-				if epoch > lastWeekEpoch && epoch >= int64(balance.ActivationEpoch) {
-					earningsLastWeek -= deposit
-				}
-				if epoch > lastMonthEpoch && epoch >= int64(balance.ActivationEpoch) {
-					earningsLastMonth -= deposit
-				}
-			}
-
-			if int64(balance.ActivationEpoch) > lastDayEpoch {
-				balance.Balance1d = balance.BalanceActivation
-			}
-			if int64(balance.ActivationEpoch) > lastWeekEpoch {
-				balance.Balance7d = balance.BalanceActivation
-			}
-			if int64(balance.ActivationEpoch) > lastMonthEpoch {
-				balance.Balance31d = balance.BalanceActivation
-			}
-
-			earningsTotal += int64(balance.Balance) - balance.BalanceActivation.Int64
-			earningsLastDay += int64(balance.Balance) - balance.Balance1d.Int64
-			earningsLastWeek += int64(balance.Balance) - balance.Balance7d.Int64
-			earningsLastMonth += int64(balance.Balance) - balance.Balance31d.Int64
-		}
-
-		data = append(data, &types.ValidatorPerformance{
-			Rank:            0,
-			Index:           balance.Index,
-			PublicKey:       nil,
-			Name:            "",
-			Balance:         balance.Balance,
-			Performance1d:   earningsLastDay,
-			Performance7d:   earningsLastWeek,
-			Performance31d:  earningsLastMonth,
-			Performance365d: earningsTotal,
-		})
-	}
-
-	sort.Slice(data, func(i, j int) bool {
-		return data[i].Performance7d > data[j].Performance7d
-	})
-
-	batchSize := 5000
-
-	rank7d := 0
-	for b := 0; b < len(data); b += batchSize {
-
-		start := b
-		end := b + batchSize
-		if len(data) < end {
-			end = len(data)
-		}
-
-		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*7)
-
-		for i, d := range data[start:end] {
-			rank7d++
-
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*7+1, i*7+2, i*7+3, i*7+4, i*7+5, i*7+6, i*7+7))
-			valueArgs = append(valueArgs, d.Index)
-			valueArgs = append(valueArgs, d.Balance)
-			valueArgs = append(valueArgs, d.Performance1d)
-			valueArgs = append(valueArgs, d.Performance7d)
-			valueArgs = append(valueArgs, d.Performance31d)
-			valueArgs = append(valueArgs, d.Performance365d)
-			valueArgs = append(valueArgs, rank7d)
-		}
-
-		stmt := fmt.Sprintf(`		
-			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d)
-			VALUES %s`, strings.Join(valueStrings, ","))
-
-		_, err := tx.Exec(stmt, valueArgs...)
-		if err != nil {
-			return err
-		}
-	}
-
-	return tx.Commit()
 }
 
 func finalityCheckpointsUpdater(client rpc.Client) {

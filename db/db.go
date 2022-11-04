@@ -16,11 +16,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
 	"github.com/patrickmn/go-cache"
 
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
+
+	"eth2-exporter/rpc"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -691,7 +694,7 @@ func SaveBlock(block *types.Block) error {
 }
 
 // SaveEpoch will stave the epoch data into the database
-func SaveEpoch(data *types.EpochData) error {
+func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 	// Check if we need to export the epoch
 	hasher := sha1.New()
 	slots := make([]uint64, 0, len(data.Blocks))
@@ -754,7 +757,7 @@ func SaveEpoch(data *types.EpochData) error {
 			}
 			defer validatorsTx.Rollback()
 
-			err = saveValidators(data, validatorsTx)
+			err = saveValidators(data, validatorsTx, client)
 			if err != nil {
 				logger.Errorf("error saving validators to db: %w", err)
 			}
@@ -762,6 +765,14 @@ func SaveEpoch(data *types.EpochData) error {
 			if err != nil {
 				logger.Errorf("error updating queue deposits cache: %w", err)
 			}
+
+			if data.Epoch%9 == 0 { // update the validator performance every hour
+				err = updateValidatorPerformance(validatorsTx)
+				if err != nil {
+					logger.Errorf("error updating validator performance: %w", err)
+				}
+			}
+
 			err = validatorsTx.Commit()
 			if err != nil {
 				logger.Errorf("error committing validators tx: %w", err)
@@ -954,7 +965,7 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) er
 	return nil
 }
 
-func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
+func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_validators").Observe(time.Since(start).Seconds())
@@ -997,7 +1008,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 	}
 
 	var latestBlock uint64
-	err := WriterDb.Get(&latestBlock, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
+	err := WriterDb.Get(&latestBlock, "SELECT COALESCE(MAX(lastattestationslot), 0) FROM validators")
 	if err != nil {
 		return err
 	}
@@ -1306,26 +1317,50 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx) error {
 		ActivationEpoch uint64
 	}{}
 
-	err = tx.Select(&newValidators, "SELECT validatorindex, activationepoch FROM validators WHERE balanceactivation IS NULL")
+	err = tx.Select(&newValidators, "SELECT validatorindex, activationepoch FROM validators WHERE balanceactivation IS NULL ORDER BY activationepoch LIMIT 10000")
 	if err != nil {
 		return err
 	}
 
+	balanceCache := make(map[uint64]map[uint64]uint64)
+	currentActivationEpoch := uint64(0)
 	for _, newValidator := range newValidators {
 
-		if newValidator.ActivationEpoch == 0 || newValidator.ActivationEpoch > data.Epoch {
+		if newValidator.ActivationEpoch > data.Epoch {
 			continue
 		}
+
+		if newValidator.ActivationEpoch != currentActivationEpoch {
+			logger.Infof("removing epoch %v from the activation epoch balance cache", currentActivationEpoch)
+			delete(balanceCache, currentActivationEpoch) // remove old items from the map
+			currentActivationEpoch = newValidator.ActivationEpoch
+		}
+
 		balance, err := BigtableClient.GetValidatorBalanceHistory([]uint64{newValidator.Validatorindex}, newValidator.ActivationEpoch, 1)
 
 		if err != nil {
 			return err
 		}
 
+		foundBalance := uint64(0)
 		if balance[newValidator.Validatorindex] == nil || len(balance[newValidator.Validatorindex]) == 0 {
-			return fmt.Errorf("no activation epoch balance found for validator %v for epoch %v", newValidator.Validatorindex, newValidator.ActivationEpoch)
+			logger.Errorf("no activation epoch balance found for validator %v for epoch %v in bigtable, trying node", newValidator.Validatorindex, newValidator.ActivationEpoch)
+
+			if balanceCache[newValidator.ActivationEpoch] == nil {
+				balances, err := client.GetBalancesForEpoch(int64(newValidator.ActivationEpoch))
+				if err != nil {
+					return fmt.Errorf("error retrieving balances for epoch %d: %v", newValidator.ActivationEpoch, err)
+				}
+				balanceCache[newValidator.ActivationEpoch] = balances
+			}
+			foundBalance = balanceCache[newValidator.ActivationEpoch][newValidator.Validatorindex]
+		} else {
+			foundBalance = balance[newValidator.Validatorindex][0].Balance
 		}
-		_, err = tx.Exec("update validators set balanceactivation = $1 WHERE validatorindex = $2 AND balanceactivation IS NULL;", balance[newValidator.Validatorindex][0].Balance, newValidator.Validatorindex)
+
+		logger.Infof("retrieved activation epoch balance of %v for validator %v", foundBalance, newValidator.Validatorindex)
+
+		_, err = tx.Exec("update validators set balanceactivation = $1 WHERE validatorindex = $2 AND balanceactivation IS NULL;", foundBalance, newValidator.Validatorindex)
 		if err != nil {
 			return err
 		}
@@ -1404,6 +1439,29 @@ func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx
 	}
 
 	return nil
+}
+
+func GetRelayDataForIndexedBlocks(blocks []*types.Eth1BlockIndexed) (map[common.Hash]types.RelaysData, error) {
+	var execBlockHashes [][]byte
+	var relaysData []types.RelaysData
+
+	for _, block := range blocks {
+		execBlockHashes = append(execBlockHashes, block.Hash)
+	}
+	// try to get mev rewards from relys_blocks table
+	err := ReaderDb.Select(&relaysData,
+		`SELECT proposer_fee_recipient, value, exec_block_hash, tag_id, builder_pubkey FROM relays_blocks WHERE relays_blocks.exec_block_hash = ANY($1)`,
+		pq.ByteaArray(execBlockHashes),
+	)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+	var relaysDataMap = make(map[common.Hash]types.RelaysData)
+	for _, relayData := range relaysData {
+		relaysDataMap[common.BytesToHash(relayData.ExecBlockHash)] = relayData
+	}
+
+	return relaysDataMap, nil
 }
 
 func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
@@ -2138,4 +2196,177 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 	}
 
 	return res, nil
+}
+
+func updateValidatorPerformance(tx *sqlx.Tx) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("update_validator_performance").Observe(time.Since(start).Seconds())
+	}()
+
+	var currentEpoch int64
+
+	err := tx.Get(&currentEpoch, "SELECT MAX(epoch) FROM epochs")
+	if err != nil {
+		return fmt.Errorf("error retrieving latest epoch: %w", err)
+	}
+
+	lastDayEpoch := currentEpoch - 225
+	lastWeekEpoch := currentEpoch - 225*7
+	lastMonthEpoch := currentEpoch - 225*31
+
+	if lastDayEpoch < 0 {
+		lastDayEpoch = 0
+	}
+	if lastWeekEpoch < 0 {
+		lastWeekEpoch = 0
+	}
+	if lastMonthEpoch < 0 {
+		lastMonthEpoch = 0
+	}
+
+	var balances []types.Validator
+	err = tx.Select(&balances, `
+		SELECT 
+			   validatorindex,
+			   pubkey,
+       		   activationepoch,
+		       COALESCE(balance, 0) AS balance, 
+			   COALESCE(balanceactivation, 0) AS balanceactivation, 
+			   COALESCE(balance1d, 0) AS balance1d, 
+			   COALESCE(balance7d, 0) AS balance7d, 
+			   COALESCE(balance31d , 0) AS balance31d
+		FROM validators`)
+	if err != nil {
+		return fmt.Errorf("error retrieving validator performance data: %w", err)
+	}
+
+	deposits := []struct {
+		Publickey []byte
+		Epoch     int64
+		Amount    int64
+	}{}
+
+	err = tx.Select(&deposits, `SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'`)
+	if err != nil {
+		return fmt.Errorf("error retrieving validator deposits data: %w", err)
+	}
+
+	depositsMap := make(map[string]map[int64]int64)
+	for _, d := range deposits {
+		if _, exists := depositsMap[fmt.Sprintf("%x", d.Publickey)]; !exists {
+			depositsMap[fmt.Sprintf("%x", d.Publickey)] = make(map[int64]int64)
+		}
+		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
+	}
+
+	data := make([]*types.ValidatorPerformance, 0, len(balances))
+
+	for _, balance := range balances {
+
+		var earningsTotal int64
+		var earningsLastDay int64
+		var earningsLastWeek int64
+		var earningsLastMonth int64
+		var totalDeposits int64
+
+		if int64(balance.ActivationEpoch) < currentEpoch {
+			for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
+				totalDeposits += deposit
+
+				if epoch > int64(balance.ActivationEpoch) {
+					earningsTotal -= deposit
+				}
+				if epoch > lastDayEpoch && epoch >= int64(balance.ActivationEpoch) {
+					earningsLastDay -= deposit
+				}
+				if epoch > lastWeekEpoch && epoch >= int64(balance.ActivationEpoch) {
+					earningsLastWeek -= deposit
+				}
+				if epoch > lastMonthEpoch && epoch >= int64(balance.ActivationEpoch) {
+					earningsLastMonth -= deposit
+				}
+			}
+
+			if int64(balance.ActivationEpoch) > lastDayEpoch {
+				balance.Balance1d = balance.BalanceActivation
+			}
+			if int64(balance.ActivationEpoch) > lastWeekEpoch {
+				balance.Balance7d = balance.BalanceActivation
+			}
+			if int64(balance.ActivationEpoch) > lastMonthEpoch {
+				balance.Balance31d = balance.BalanceActivation
+			}
+
+			earningsTotal += int64(balance.Balance) - balance.BalanceActivation.Int64
+			earningsLastDay += int64(balance.Balance) - balance.Balance1d.Int64
+			earningsLastWeek += int64(balance.Balance) - balance.Balance7d.Int64
+			earningsLastMonth += int64(balance.Balance) - balance.Balance31d.Int64
+		}
+
+		data = append(data, &types.ValidatorPerformance{
+			Rank:            0,
+			Index:           balance.Index,
+			PublicKey:       nil,
+			Name:            "",
+			Balance:         balance.Balance,
+			Performance1d:   earningsLastDay,
+			Performance7d:   earningsLastWeek,
+			Performance31d:  earningsLastMonth,
+			Performance365d: earningsTotal,
+		})
+	}
+
+	sort.Slice(data, func(i, j int) bool {
+		return data[i].Performance7d > data[j].Performance7d
+	})
+
+	batchSize := 5000
+
+	rank7d := 0
+	for b := 0; b < len(data); b += batchSize {
+
+		start := b
+		end := b + batchSize
+		if len(data) < end {
+			end = len(data)
+		}
+
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*7)
+
+		for i, d := range data[start:end] {
+			rank7d++
+
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*7+1, i*7+2, i*7+3, i*7+4, i*7+5, i*7+6, i*7+7))
+			valueArgs = append(valueArgs, d.Index)
+			valueArgs = append(valueArgs, d.Balance)
+			valueArgs = append(valueArgs, d.Performance1d)
+			valueArgs = append(valueArgs, d.Performance7d)
+			valueArgs = append(valueArgs, d.Performance31d)
+			valueArgs = append(valueArgs, d.Performance365d)
+			valueArgs = append(valueArgs, rank7d)
+		}
+
+		stmt := fmt.Sprintf(`		
+			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d)
+			VALUES %s
+			ON CONFLICT (validatorindex) DO UPDATE SET 
+			balance             = excluded.balance, 
+			performance1d  = excluded.performance1d,
+			performance7d  = excluded.performance7d,
+			performance31d       = excluded.performance31d,
+			performance365d           = excluded.performance365d,
+			rank7d     = excluded.rank7d;			
+			`, strings.Join(valueStrings, ","))
+
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+
+		logger.Infof("saving validator performance batch %v completed", b)
+	}
+
+	return tx.Commit()
 }

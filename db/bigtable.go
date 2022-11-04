@@ -12,17 +12,20 @@ import (
 	"time"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
+	itypes "github.com/gobitfly/eth-rewards/types"
+	"github.com/golang/protobuf/proto"
 	"google.golang.org/api/option"
 )
 
 var BigtableClient *Bigtable
 
 const (
-	DEFAULT_FAMILY            = "f"
-	VALIDATOR_BALANCES_FAMILY = "vb"
-	ATTESTATIONS_FAMILY       = "at"
-	PROPOSALS_FAMILY          = "pr"
-	SYNC_COMMITTEES_FAMILY    = "sc"
+	DEFAULT_FAMILY               = "f"
+	VALIDATOR_BALANCES_FAMILY    = "vb"
+	ATTESTATIONS_FAMILY          = "at"
+	PROPOSALS_FAMILY             = "pr"
+	SYNC_COMMITTEES_FAMILY       = "sc"
+	INCOME_DETAILS_COLUMN_FAMILY = "id"
 
 	max_block_number = 1000000000
 	max_epoch        = 1000000000
@@ -879,6 +882,117 @@ func (bigtable *Bigtable) GetValidatorProposalHistory(validators []uint64, start
 				})
 			}
 
+		}
+		return true
+	}, gcp_bigtable.LimitRows(limit), gcp_bigtable.RowFilter(filter))
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[uint64]*itypes.ValidatorEpochIncome) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	start := time.Now()
+	ts := gcp_bigtable.Timestamp(utils.EpochToTime(epoch).UnixMicro())
+
+	mut := gcp_bigtable.NewMutation()
+
+	muts := 0
+	for i, rewardDetails := range rewards {
+		muts++
+
+		data, err := proto.Marshal(rewardDetails)
+
+		if err != nil {
+			return err
+		}
+
+		mut.Set(INCOME_DETAILS_COLUMN_FAMILY, fmt.Sprintf("%d", i), ts, data)
+
+		if muts%100000 == 0 {
+			err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch)), mut)
+
+			if err != nil {
+				return err
+			}
+			mut = gcp_bigtable.NewMutation()
+		}
+	}
+	err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch)), mut)
+
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("exported validator income details for epoch %v to bigtable in %v", epoch, time.Since(start))
+	return nil
+}
+
+func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, startEpoch uint64, limit int64) (map[uint64]map[uint64]*itypes.ValidatorEpochIncome, error) {
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch))
+	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
+	res := make(map[uint64]map[uint64]*itypes.ValidatorEpochIncome, len(validators))
+
+	if len(validators) == 0 {
+		return res, nil
+	}
+
+	columnFilters := make([]gcp_bigtable.Filter, 0, len(validators))
+	for _, validator := range validators {
+		columnFilters = append(columnFilters, gcp_bigtable.ColumnFilter(fmt.Sprintf("%d", validator)))
+	}
+
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
+		gcp_bigtable.InterleaveFilters(columnFilters...),
+	)
+
+	if len(columnFilters) == 1 { // special case to retrieve data for one validators
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
+			columnFilters[0],
+		)
+	}
+	if len(columnFilters) == 0 { // special case to retrieve data for all validators
+		filter = gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY)
+	}
+
+	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, rangeEnd), func(r gcp_bigtable.Row) bool {
+		for _, ri := range r[INCOME_DETAILS_COLUMN_FAMILY] {
+			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, INCOME_DETAILS_COLUMN_FAMILY+":"), 10, 64)
+			if err != nil {
+				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
+				return false
+			}
+
+			keySplit := strings.Split(r.Key(), ":")
+
+			epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
+			if err != nil {
+				logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
+				return false
+			}
+
+			incomeDetails := &itypes.ValidatorEpochIncome{}
+			err = proto.Unmarshal(ri.Value, incomeDetails)
+			if err != nil {
+				logger.Errorf("error decoding validator income data for row %v: %v", r.Key(), err)
+				return false
+			}
+
+			if res[validator] == nil {
+				res[validator] = make(map[uint64]*itypes.ValidatorEpochIncome, limit)
+			}
+
+			res[validator][max_epoch-epoch] = incomeDetails
 		}
 		return true
 	}, gcp_bigtable.LimitRows(limit), gcp_bigtable.RowFilter(filter))

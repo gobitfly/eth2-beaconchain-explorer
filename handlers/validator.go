@@ -27,6 +27,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
+
+	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
 var validatorEditFlash = "edit_validator_flash"
@@ -532,12 +534,23 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
-	err = db.ReaderDb.Get(&validatorPageData.SyncCount, `SELECT count(*)*$1 FROM sync_committees WHERE validatorindex = $2`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod*utils.Config.Chain.Config.SlotsPerEpoch, index)
+	var syncPeriods []struct {
+		Period     uint64 `db:"period"`
+		FirstEpoch uint64 `db:"firstepoch"`
+		LastEpoch  uint64 `db:"lastepoch"`
+	}
+
+	err = db.ReaderDb.Select(&syncPeriods, `
+		SELECT period as period, (period*$1) as firstepoch, ((period+1)*$1)-1 as lastepoch
+		FROM sync_committees 
+		WHERE validatorindex = $2
+		ORDER BY period desc`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, index)
 	if err != nil {
-		logger.Errorf("error retrieving syncCount for validator %v: %v", index, err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).Errorf("error getting sync participation count data of sync-assignments")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	validatorPageData.SyncCount = uint64(len(syncPeriods)) * utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
 
 	if validatorPageData.SyncCount > 0 {
 		// get syncStats from validator_stats
@@ -545,6 +558,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			ParticipatedSync uint64 `db:"participated_sync"`
 			MissedSync       uint64 `db:"missed_sync"`
 			OrphanedSync     uint64 `db:"orphaned_sync"`
+			ScheduledSync    uint64
 		}{}
 		if lastStatsDay > 0 {
 			err = db.ReaderDb.Get(&syncStats, "select coalesce(sum(participated_sync), 0) as participated_sync, coalesce(sum(missed_sync), 0) as missed_sync, coalesce(sum(orphaned_sync), 0) as orphaned_sync from validator_stats where validatorindex = $1", index)
@@ -554,10 +568,34 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-
+		if latestEpoch := services.LatestEpoch(); latestEpoch <= syncPeriods[0].LastEpoch {
+			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, latestEpoch, int64(latestEpoch-syncPeriods[0].FirstEpoch))
+			if err != nil {
+				logger.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			for _, r := range res[index] {
+				slotTime := utils.SlotToTime(r.Slot)
+				if r.Status == 0 && time.Since(slotTime) > time.Minute {
+					r.Status = 2
+				}
+				switch r.Status {
+				case 0:
+					syncStats.ScheduledSync++
+				case 1:
+					syncStats.ParticipatedSync++
+				case 2:
+					syncStats.MissedSync++
+				case 3:
+					syncStats.OrphanedSync++
+				}
+			}
+		}
 		validatorPageData.ParticipatedSyncCount = syncStats.ParticipatedSync
 		validatorPageData.MissedSyncCount = syncStats.MissedSync
 		validatorPageData.OrphanedSyncCount = syncStats.OrphanedSync
+		validatorPageData.ScheduledSyncCount = syncStats.ScheduledSync
 		validatorPageData.SyncCount = validatorPageData.ParticipatedSyncCount + validatorPageData.MissedSyncCount + validatorPageData.OrphanedSyncCount
 		validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.SyncCount-validatorPageData.MissedSyncCount) / float64(validatorPageData.SyncCount)
 	}
@@ -1256,6 +1294,17 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
+	var incomeDetails map[uint64]map[uint64]*itypes.ValidatorEpochIncome
+	g.Go(func() error {
+		var err error
+		incomeDetails, err = db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{index}, currentEpoch-start, 12)
+		if err != nil {
+			logger.Errorf("error retrieving validator income details history from bigtable: %v", err)
+			return err
+		}
+		return nil
+	})
+
 	var attestationHistory map[uint64][]*types.ValidatorAttestation
 	g.Go(func() error {
 		var err error
@@ -1318,6 +1367,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			ProposalSlot:   sql.NullInt64{Int64: 0, Valid: false},
 		}
 
+		if incomeDetails[index] != nil {
+			h.IncomeDetails = incomeDetails[index][balanceHistory[index][i].Epoch]
+		}
+
 		if attestationsMap[balanceHistory[index][i].Epoch] != nil {
 			h.AttesterSlot = sql.NullInt64{Int64: int64(attestationsMap[balanceHistory[index][i].Epoch].AttesterSlot), Valid: true}
 			h.InclusionSlot = sql.NullInt64{Int64: int64(attestationsMap[balanceHistory[index][i].Epoch].InclusionSlot), Valid: true}
@@ -1359,7 +1412,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		if b.BalanceChange.Valid {
 			tableData = append(tableData, []interface{}{
 				utils.FormatEpoch(b.Epoch),
-				utils.FormatBalanceChangeFormated(&b.BalanceChange.Int64, currency),
+				utils.FormatBalanceChangeFormated(&b.BalanceChange.Int64, currency, b.IncomeDetails),
 				template.HTML(""),
 				template.HTML(events),
 			})
@@ -1554,7 +1607,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		WHERE validatorindex = $2
 		ORDER BY period desc`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, validatorIndex)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting new countData of sync-assignments")
+		logger.WithError(err).Errorf("error getting sync tab count data of sync-assignments")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -1575,7 +1628,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		// if ordering is ascending, reverse sync period slice & swap start and end epoch of each period
 		if ascOrdering {
 			utils.ReverseSlice(syncPeriods)
-			for i, _ := range syncPeriods {
+			for i := range syncPeriods {
 				syncPeriods[i].StartEpoch, syncPeriods[i].EndEpoch = syncPeriods[i].EndEpoch, syncPeriods[i].StartEpoch
 			}
 		}
@@ -1649,7 +1702,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		// note that the limit may be negative for either call, which results in the function fetching epochs for the absolute limit value in ascending ordering
 		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, firstShownEpoch, int64(limit), ascOrdering)
 		if err != nil {
-			logger.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
+			logger.Errorf("error retrieving validator sync duty data from bigtable: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -1657,7 +1710,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		if nextPeriodLimit != 0 {
 			nextPeriodSyncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, lastShownEpoch, nextPeriodLimit, ascOrdering)
 			if err != nil {
-				logger.Errorf("error retrieving second validator sync participations data from bigtable: %v", err)
+				logger.Errorf("error retrieving second validator sync duty data from bigtable: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}

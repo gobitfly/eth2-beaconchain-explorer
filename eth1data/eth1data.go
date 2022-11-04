@@ -33,7 +33,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 
 		data := wanted.(*types.Eth1TxData)
 		if data.BlockNumber != 0 {
-			err := db.ReaderDb.Get(data.Epoch,
+			err := db.ReaderDb.Get(&data.Epoch,
 				`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
 				data.BlockNumber)
 			if err != nil {

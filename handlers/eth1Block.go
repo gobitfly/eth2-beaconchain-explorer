@@ -91,6 +91,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		blockPageData.ExecutionData = eth1BlockPageData
+		blockPageData.ExecutionData.IsValidMev = blockPageData.IsValidMev
 
 		data.HeaderAd = true
 		data.Data = blockPageData
@@ -236,7 +237,7 @@ func GetExecutionBlockPageData(number uint64) (*types.Eth1BlockPageData, error) 
 		MevRecipient []byte          `db:"proposer_fee_recipient"`
 		MevBribe     types.WeiString `db:"value"`
 	}
-	// try to get mev rewards from relys_blocks table
+	// try to get mev rewards from relays_blocks table
 	err = db.ReaderDb.Get(&relaysData, `SELECT proposer_fee_recipient, value FROM relays_blocks WHERE relays_blocks.exec_block_hash = $1 limit 1`, block.Hash)
 	if err == nil {
 		eth1BlockPageData.MevBribe = relaysData.MevBribe.BigInt()

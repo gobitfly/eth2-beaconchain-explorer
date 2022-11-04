@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/erc20"
 	"eth2-exporter/rpc"
 	"eth2-exporter/types"
+	"eth2-exporter/version"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -51,17 +52,23 @@ func main() {
 
 	enableBalanceUpdater := flag.Bool("balances.enabled", false, "Enable balance update process")
 	enableFullBalanceUpdater := flag.Bool("balances.full.enabled", false, "Enable full balance update process")
-	balanceUpdaterPrefix := flag.String("balances.prefix", "", "Prefix to use for fetching balance updates")
 	balanceUpdaterBatchSize := flag.Int("balances.batch", 1000, "Batch size for balance updates")
 
 	tokenPriceExport := flag.Bool("token.price.enabled", false, "Enable token export process")
 	tokenPriceExportList := flag.String("token.price.list", "", "Tokenlist path to use for the token price export")
 	tokenPriceExportFrequency := flag.Duration("token.price.frequency", time.Hour, "Token price export interval")
 
-	bigtableProject := flag.String("bigtable.project", "", "ID of the BigTable project")
-	bigtableInstance := flag.String("bigtable.instance", "", "ID of the BigTable instance")
+	bigtableProject := flag.String("bigtable.project", "", "Bigtable project")
+	bigtableInstance := flag.String("bigtable.instance", "", "Bigtable instance")
+
+	versionFlag := flag.Bool("version", false, "Print version and exit")
 
 	flag.Parse()
+	if *versionFlag {
+		fmt.Println(version.Version)
+		return
+	}
+
 	if erigonEndpoint == nil || *erigonEndpoint == "" {
 		logrus.Fatal("no erigon node url provided")
 	}
@@ -90,6 +97,7 @@ func main() {
 	} else {
 		logrus.Fatalf("unsupported network name %v provided", *network)
 	}
+	balanceUpdaterPrefix := chainId + ":B:"
 
 	nodeChainId, err := client.GetNativeClient().ChainID(context.Background())
 	if err != nil {
@@ -124,9 +132,9 @@ func main() {
 	// }
 	// return
 	if *enableFullBalanceUpdater {
-		ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
+		ProcessMetadataUpdates(bt, client, balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
 		return
-		// currentKey := *balanceUpdaterPrefix // "1:00028ebf7d36c5779c1deddf3ba72761fd46c8aa"
+		// currentKey := balanceUpdaterPrefix // "1:00028ebf7d36c5779c1deddf3ba72761fd46c8aa"
 		// for {
 		// 	keys, pairs, err := bt.GetMetadata(currentKey, *balanceUpdaterBatchSize)
 		// 	if err != nil {
@@ -250,7 +258,7 @@ func main() {
 		}
 
 		if *enableBalanceUpdater {
-			ProcessMetadataUpdates(bt, client, *balanceUpdaterPrefix, *balanceUpdaterBatchSize, 10)
+			ProcessMetadataUpdates(bt, client, balanceUpdaterPrefix, *balanceUpdaterBatchSize, 10)
 		}
 
 		logrus.Infof("index run completed")

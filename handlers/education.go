@@ -13,7 +13,7 @@ func EducationServices(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/educationServices", "Ethereum 2.0 Education Services Overview")
+	data := InitPageData(w, r, "services", "/educationServices", "Ethereum Education Services Overview")
 
 	err = educationServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {

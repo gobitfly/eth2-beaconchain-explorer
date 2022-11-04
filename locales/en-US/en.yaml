@@ -11,7 +11,7 @@ p1_text: 'The Ethereum Beacon Chain is currently undergoing genesis.
 p2_title: "When is genesis reached?"
 p2_text:
   'Genesis will occur once enough deposits have been made to the deposit contract
-  <a href="/validators/eth1deposits" class="text-truncate text-monospace">
+  <a href="/validators/initiated-deposits" class="text-truncate text-monospace">
   0x00000000219ab540356cbb839cbe05303d7705fa</a>.
   Each deposit is registered by the beacon chain after a block delay of <i>2048</i>
   Ethereum 1.0 blocks. The earliest possible genesis time and the estimated genesis

@@ -79,7 +79,7 @@ func fetchDeliveredPayloads(r types.Relay, offset uint64) ([]BidTrace, error) {
 	err = json.NewDecoder(resp.Body).Decode(&payloads)
 
 	if err != nil {
-		r.Logger.Errorf("error decoding delivered payloads: %v", err)
+		r.Logger.Tracef("error decoding delivered payloads: %v", err)
 		return nil, err
 	}
 
@@ -96,7 +96,7 @@ func exportRelayBlocks(r types.Relay) error {
 
 	err = retrieveAndInsertPayloadsFromRelay(r, lastUsage.BlockSlot, 0)
 	if err != nil {
-		r.Logger.Errorf("failed to retrieve and insert new payloads: %v", err)
+		r.Logger.Tracef("failed to retrieve and insert new payloads: %v", err)
 		return err
 	}
 
@@ -144,7 +144,7 @@ func retrieveAndInsertPayloadsFromRelay(r types.Relay, low_bound uint64, high_bo
 
 		resp, err := fetchDeliveredPayloads(r, offset)
 		if err != nil {
-			r.Logger.Errorf("failed to fetch payloads: %v", err)
+			r.Logger.Tracef("failed to fetch payloads: %v", err)
 			return err
 		}
 

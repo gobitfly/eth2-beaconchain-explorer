@@ -28,7 +28,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		HeaderAd: false,
 		Meta: &types.Meta{
 			Title:       fullTitle,
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
+			Description: "beaconcha.in makes the Ethereum accessible to non-technical end users",
 			Path:        path,
 			GATag:       utils.Config.Frontend.GATag,
 			NoTrack:     false,
