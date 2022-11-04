@@ -160,11 +160,12 @@ func notificationsSender() {
 func notificationSender() {
 	for {
 		start := time.Now()
-		ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 
 		conn, err := db.FrontendReaderDB.Conn(ctx)
 		if err != nil {
 			logger.WithError(err).Error("error creating connection")
+			cancel()
 			continue
 		}
 
@@ -176,6 +177,7 @@ func notificationSender() {
 			if err != nil {
 				logger.WithError(err).Error("error returning connection to connection pool")
 			}
+			cancel()
 			continue
 		}
 
@@ -200,6 +202,7 @@ func notificationSender() {
 			if err != nil {
 				logger.WithError(err).Error("error returning connection to connection pool")
 			}
+			cancel()
 			continue
 		}
 
@@ -215,6 +218,7 @@ func notificationSender() {
 		if err != nil {
 			logger.WithError(err).Error("error returning connection to connection pool")
 		}
+		cancel()
 
 		time.Sleep(time.Second * 30)
 	}

@@ -2336,7 +2336,11 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		if strings.Contains(err.Error(), "no partition of relation") {
 			tx.Rollback()
 
-			db.CreateNewStatsMetaPartition()
+			now := time.Now()
+			nowTs := now.Unix()
+			var day int = int(nowTs / 86400)
+			db.CreateNewStatsMetaPartition(day)
+
 			tx, err = db.NewTransaction()
 			if err != nil {
 				logger.Errorf("could not transact | %v", err)

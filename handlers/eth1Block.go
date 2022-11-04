@@ -91,6 +91,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		blockPageData.ExecutionData = eth1BlockPageData
+		blockPageData.ExecutionData.IsValidMev = blockPageData.IsValidMev
 
 		data.HeaderAd = true
 		data.Data = blockPageData
