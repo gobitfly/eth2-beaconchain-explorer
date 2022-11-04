@@ -645,7 +645,7 @@ func CreateNewStatsMetaPartition() error {
 		return err
 	}
 
-	_, err = tx.Exec("CREATE INDEX CONCURRENTLY idx_" + partitionName + "_user_machine ON " + partitionName + " (user_id, machine)")
+	_, err = tx.Exec("CREATE INDEX idx_" + partitionName + "_user_machine ON " + partitionName + " (user_id, machine)")
 	if err != nil {
 		logger.Errorf("error creating index %v", err)
 		return err
