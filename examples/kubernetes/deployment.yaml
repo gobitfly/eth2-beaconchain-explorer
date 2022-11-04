@@ -1,5 +1,5 @@
 # See full list of environment variables:
-# https://github.com/gnosischain/gbc-explorer/blob/update-upstream/types/config.go#L8
+# https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/types/config.go#L8
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -61,7 +61,7 @@ spec:
         #       mountPath: /gbc/bigtable
         #       readOnly: false
         - name: explorer
-          image: ghcr.io/gnosischain/gbc-explorer:update-upstream
+          image: !!!CHANGEME!!! set registry/project:tag
           imagePullPolicy: 'Always' # or use IfNotPresent if you stick to a specific version
           command: ["./explorer"]
           args: ["--config", "/gbc/config/explorer.config.yml"]
@@ -97,9 +97,9 @@ spec:
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: "/tmp/credentials.json"
             # See full list of environment variables:
-            # https://github.com/gnosischain/gbc-explorer/blob/update-upstream/types/config.go#L8
+            # https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/types/config.go#L8
         - name: statistics
-          image: ghcr.io/gnosischain/gbc-explorer:update-upstream
+          image: !!!CHANGEME!!! set registry/project:tag
           imagePullPolicy: 'Always'
           command: ["./statistics"]
           args: ["--config", "/gbc/config/explorer.config.yml"]
@@ -132,7 +132,43 @@ spec:
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: "/tmp/credentials.json"
             # See full list of environment variables:
-            # https://github.com/gnosischain/gbc-explorer/blob/update-upstream/types/config.go#L8
+            # https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/types/config.go#L8
+        ######################################################################################################################
+        ## frontend-data-updater is a mandatory service to run, it's responsible for updating info on deposit charts
+        ## See: https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/cmd/frontend-data-updater/main.go#L70
+        ##
+        ######################################################################################################################
+        - name: data-updater
+          image: !!!CHANGEME!!! set registry/project:tag
+          imagePullPolicy: 'Always'
+          command: ["./frontend-data-updater"]
+          args: ["--config", "/gbc/config/explorer.config.yml"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 250Mi
+            limits:
+              cpu: 500m
+              memory: 500Mi
+          volumeMounts:
+            - name: explorer-data
+              mountPath: /gbc
+              readOnly: false
+            - name: explorer-config
+              mountPath: /gbc/config/config.yml
+              subPath: config.yml
+            - name: explorer-config
+              mountPath: /gbc/config/imprint.html
+              subPath: imprint.html
+            - name: explorer
+              mountPath: /gbc/config/explorer.config.yml
+              subPath: explorer.config.yml
+            - name: explorer
+              mountPath: /tmp/credentials.json
+              subPath: credentials.json
+          env:
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/tmp/credentials.json"
       volumes:
         - name: explorer-config
           configMap:

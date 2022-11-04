@@ -192,7 +192,7 @@ data:
     # assert EPOCHS_PER_SYNC_COMMITTEE_PERIOD * SLOTS_PER_EPOCH <= SLOTS_PER_HISTORICAL_ROOT
     EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 512
   tables.sql: |
-    # Taken from https://github.com/gnosischain/gbc-explorer/blob/update-upstream/tables.sql
+    # Taken from https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/tables.sql
     create extension pg_trgm; /* trigram extension for faster text-search */
 
     /*
