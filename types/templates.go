@@ -363,6 +363,7 @@ type ValidatorPageData struct {
 	LongestAttestationStreak            uint64
 	IsRocketpool                        bool
 	Rocketpool                          *RocketpoolValidatorPageData
+	NoAds                               bool
 }
 
 type RocketpoolValidatorPageData struct {
@@ -426,7 +427,7 @@ type ChartDataPoint struct {
 	Color string  `json:"color"`
 }
 
-//ValidatorRank is a struct for validator rank data
+// ValidatorRank is a struct for validator rank data
 type ValidatorRank struct {
 	Rank int64 `db:"rank" json:"rank"`
 }
