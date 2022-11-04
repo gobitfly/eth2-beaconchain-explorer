@@ -417,7 +417,7 @@ func main() {
 			router.HandleFunc("/search", handlers.Search).Methods("POST")
 			router.HandleFunc("/search/{type}/{search}", handlers.SearchAhead).Methods("GET")
 			router.HandleFunc("/faq", handlers.Faq).Methods("GET")
-			router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
+			// router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
 			router.HandleFunc("/poap", handlers.Poap).Methods("GET")
 			router.HandleFunc("/poap/data", handlers.PoapData).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
