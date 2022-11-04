@@ -34,18 +34,24 @@
         window.addEventListener("resize", function (e) {
           var id = $("#revive-banner").find("ins").attr("data-revive-zoneid")
 
-          if (e.target.innerWidth < 820 && id !== "17") {
+          if (e.target.innerWidth < 820) {
             // change to mobile
-            $("#revive-banner").find("ins").attr("data-revive-zoneid", "17")
-            refreshAd()
-          } else if (e.target.innerWidth < 1140 && id !== "18") {
+            if (id !== "17") {
+              $("#revive-banner").find("ins").attr("data-revive-zoneid", "17")
+              refreshAd()
+            }
+          } else if (e.target.innerWidth < 1140) {
             // change to tablet
-            $("#revive-banner").find("ins").attr("data-revive-zoneid", "18")
-            refreshAd()
-          } else if (id !== "16") {
+            if (id !== "18") {
+              $("#revive-banner").find("ins").attr("data-revive-zoneid", "18")
+              refreshAd()
+            }
+          } else {
             // change to desktop
-            $("#revive-banner").find("ins").attr("data-revive-zoneid", "16")
-            refreshAd()
+            if (id !== "16") {
+              $("#revive-banner").find("ins").attr("data-revive-zoneid", "16")
+              refreshAd()
+            }
           }
         })
       })
