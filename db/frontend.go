@@ -20,7 +20,7 @@ import (
 var FrontendReaderDB *sqlx.DB
 var FrontendWriterDB *sqlx.DB
 
-func MustInitFrontendDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, sessionSecret string) {
+func MustInitFrontendDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) {
 	FrontendWriterDB, FrontendReaderDB = mustInitDB(writer, reader)
 }
 
@@ -618,37 +618,41 @@ func InsertStatsMeta(tx *sql.Tx, userID uint64, data *types.StatsMeta) (uint64, 
 	return id, err
 }
 
-func CreateNewStatsMetaPartition() error {
-
-	now := time.Now()
-	nowTs := now.Unix()
-	var day int = int(nowTs / 86400)
-
+func CreateNewStatsMetaPartition(day int) error {
 	partitionName := "stats_meta_" + strconv.Itoa(day)
-	logger.Info("creating new partition table " + partitionName)
 
-	tx, err := FrontendWriterDB.Begin()
+	tx, err := FrontendWriterDB.Beginx()
 	if err != nil {
 		logger.Errorf("error starting tx for creating partition %v", err)
 		return err
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec("CREATE TABLE " + partitionName + " PARTITION OF stats_meta_p FOR VALUES IN (" + strconv.Itoa(day) + ")")
+	var exists bool
+	err = tx.Get(&exists, `SELECT EXISTS (SELECT FROM pg_tables WHERE  schemaname = 'public' AND tablename  = $1);`, partitionName)
 	if err != nil {
-		logger.Errorf("error creating partition %v", err)
-		return err
-	}
-	_, err = tx.Exec("CREATE UNIQUE INDEX " + partitionName + "_user_id_created_trunc_process_machine_key ON public." + partitionName + " USING btree (user_id, created_trunc, process, machine)")
-	if err != nil {
-		logger.Errorf("error creating index %v", err)
+		logger.Errorf("error checking if partition %s already exists: %v", partitionName, err)
 		return err
 	}
 
-	_, err = tx.Exec("CREATE INDEX CONCURRENTLY idx_" + partitionName + "_user_machine ON " + partitionName + " (user_id, machine)")
-	if err != nil {
-		logger.Errorf("error creating index %v", err)
-		return err
+	if !exists {
+		logger.Infof("creating partition %s", partitionName)
+		_, err = tx.Exec("CREATE TABLE " + partitionName + " PARTITION OF stats_meta_p FOR VALUES IN (" + strconv.Itoa(day) + ")")
+		if err != nil {
+			logger.Errorf("error creating partition %v", err)
+			return err
+		}
+		_, err = tx.Exec("CREATE UNIQUE INDEX " + partitionName + "_user_id_created_trunc_process_machine_key ON public." + partitionName + " USING btree (user_id, created_trunc, process, machine)")
+		if err != nil {
+			logger.Errorf("error creating index %v", err)
+			return err
+		}
+
+		_, err = tx.Exec("CREATE INDEX idx_" + partitionName + "_user_machine ON " + partitionName + " (user_id, machine)")
+		if err != nil {
+			logger.Errorf("error creating index %v", err)
+			return err
+		}
 	}
 
 	err = tx.Commit()
