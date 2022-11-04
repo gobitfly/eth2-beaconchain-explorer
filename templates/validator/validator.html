@@ -1,4 +1,6 @@
 {{ define "js" }}
+  <script src="/js/requestInterval.js"></script>
+  <script src="/js/vue.min.js"></script>
   <script>
     window.addEventListener("popstate", function (event) {
       event.preventDefault()
@@ -83,6 +85,7 @@
     <div class="container mt-2 validator-content">
       {{ template "flashMessage" . }}
       {{ template "validatorHeading" . }}
+      {{ if not .NoAds }}{{ template "bannerValidator" }}{{ end }}
       <div class="row align-items-stretch">
         <div class="col-lg-8 px-lg-2 my-2">
           <div class="card d-flex flex-column justify-content-center h-100 py-0 px-0 card-body">

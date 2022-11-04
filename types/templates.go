@@ -363,6 +363,7 @@ type ValidatorPageData struct {
 	LongestAttestationStreak            uint64
 	IsRocketpool                        bool
 	Rocketpool                          *RocketpoolValidatorPageData
+	NoAds                               bool
 }
 
 type RocketpoolValidatorPageData struct {
