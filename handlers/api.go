@@ -333,7 +333,62 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 		blockSlot = int64(services.LatestSlot())
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT * FROM blocks WHERE slot = $1 OR blockroot = $2", blockSlot, blockRootHash)
+	if len(blockRootHash) != 32 {
+		// blockRootHash is required for the SQL statement below, if none has passed we retrieve it manually
+		err := db.ReaderDb.Get(&blockRootHash, `SELECT blockroot FROM blocks WHERE slot = $1`, blockSlot)
+
+		if err != nil || len(blockRootHash) != 32 {
+			sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+			return
+		}
+	}
+
+	rows, err := db.ReaderDb.Query(`
+	SELECT
+		blocks.epoch,
+		blocks.slot,
+		blocks.blockroot,
+		blocks.parentroot,
+		blocks.stateroot,
+		blocks.signature,
+		blocks.randaoreveal,
+		blocks.graffiti,
+		blocks.graffiti_text,
+		blocks.eth1data_depositroot,
+		blocks.eth1data_depositcount,
+		blocks.eth1data_blockhash,
+		blocks.proposerslashingscount,
+		blocks.attesterslashingscount,
+		blocks.attestationscount,
+		blocks.depositscount,
+		blocks.voluntaryexitscount,
+		blocks.proposer,
+		blocks.status,
+		blocks.syncaggregate_bits,
+		blocks.syncaggregate_signature,
+		blocks.syncaggregate_participation,
+		blocks.exec_parent_hash,
+		blocks.exec_fee_recipient,
+		blocks.exec_state_root,
+		blocks.exec_receipts_root,
+		blocks.exec_logs_bloom,
+		blocks.exec_random,
+		blocks.exec_block_number,
+		blocks.exec_gas_limit,
+		blocks.exec_gas_used,
+		blocks.exec_timestamp,
+		blocks.exec_extra_data,
+		blocks.exec_base_fee_per_gas,
+		blocks.exec_block_hash,     
+		blocks.exec_transactions_count,
+		ba.votes
+	FROM
+		blocks
+	LEFT JOIN
+		(SELECT beaconblockroot, sum(array_length(validators, 1)) AS votes FROM blocks_attestations GROUP BY beaconblockroot) ba ON (blocks.blockroot = ba.beaconblockroot)
+	WHERE
+		blocks.blockroot = $1;`, blockRootHash)
+
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return

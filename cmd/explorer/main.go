@@ -402,6 +402,8 @@ func main() {
 			router.HandleFunc("/validators/included-deposits", handlers.Eth2Deposits).Methods("GET")
 			router.HandleFunc("/validators/included-deposits/data", handlers.Eth2DepositsData).Methods("GET")
 
+			router.HandleFunc("/heatmap", handlers.Heatmap).Methods("GET")
+
 			router.HandleFunc("/dashboard", handlers.Dashboard).Methods("GET")
 			router.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST")
 
