@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"firebase.google.com/go/messaging"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 )
@@ -494,4 +496,19 @@ type Eth1AddressSearchItem struct {
 	Address string `json:"address"`
 	Name    string `json:"name"`
 	Token   string `json:"token"`
+}
+
+type RawMempoolResponse struct {
+	Pending map[string]map[int]RawMempoolTransaction `json:"pending"`
+}
+
+type RawMempoolTransaction struct {
+	Hash      common.Hash     `json:"hash"`
+	From      *common.Address `json:"from"`
+	To        *common.Address `json:"to"`
+	Value     *hexutil.Big    `json:"value"`
+	Gas       *hexutil.Big    `json:"gas"`
+	GasFeeCap *hexutil.Big    `json:"maxFeePerGas,omitempty"`
+	GasPrice  *hexutil.Big    `json:"gasPrice"`
+	Nonce     *hexutil.Uint64 `json:"nonce"`
 }
