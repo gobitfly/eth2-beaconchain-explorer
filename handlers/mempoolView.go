@@ -1,24 +1,20 @@
 package handlers
 
 import (
-	"encoding/json"
+	"eth2-exporter/services"
 	"eth2-exporter/templates"
+	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
 	"math/big"
 	"net/http"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/sirupsen/logrus"
-
-	gethRPC "github.com/ethereum/go-ethereum/rpc"
 )
 
 func MempoolView(w http.ResponseWriter, r *http.Request) {
-
-	rawMempoolData := _fetchRawMempoolData()
-	formatedData := formatToHtml(rawMempoolData)
+	mempool := services.LatestMempoolTransactions()
+	formatedData := formatToHtml(mempool)
 
 	var err error
 	var mempoolViewTemplate = templates.GetTemplate("layout.html", "mempoolview.html")
@@ -37,22 +33,6 @@ func MempoolView(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// this function connects to RPC and requests raw memory pool data. TODO: Local Cache Implementation
-func _fetchRawMempoolData() json.RawMessage {
-
-	client, err := gethRPC.Dial(utils.Config.Eth1GethEndpoint)
-	if err != nil {
-		logrus.Error("Can't Connect to Node: ", err)
-	}
-	var raw json.RawMessage
-
-	err = client.Call(&raw, "txpool_content")
-	if err != nil {
-		logrus.Error("Node rpc command error: ", err)
-	}
-	return raw
-}
-
 // This is a helper function. It replaces Nil or empty receiver Address with a string in case case of a new contract creation.
 // This function catches the Nil exception
 func _isContractCreation(tx *common.Address) string {
@@ -64,16 +44,10 @@ func _isContractCreation(tx *common.Address) string {
 
 // This Function formats each Transaction into Html string.
 // This makes all calculations faster, reducing browser's rendering time.
-func formatToHtml(content json.RawMessage) []formatedTx {
-
-	rawMempoolData := RawMempoolResponse{}
-	err := json.Unmarshal(content, &rawMempoolData)
-	if err != nil {
-		logrus.Error("JSON Unmarshalling failed: ", err)
-	}
+func formatToHtml(content *types.RawMempoolResponse) []formatedTx {
 
 	var htmlFormatedData []formatedTx
-	for _, pendingData := range rawMempoolData.Pending {
+	for _, pendingData := range content.Pending {
 		for _, tx := range pendingData {
 			htmlFormatedData = append(htmlFormatedData, formatedTx{Hash: template.HTML(tx.Hash.String()),
 				From:  utils.FormatAddressAll(tx.From.Bytes(), "", false, "address", "", int(12), int(12), true),
@@ -83,19 +57,6 @@ func formatToHtml(content json.RawMessage) []formatedTx {
 		}
 	}
 	return htmlFormatedData
-}
-
-type RawMempoolResponse struct {
-	Pending map[string]map[int]rawTransaction
-}
-
-type rawTransaction struct {
-	Hash      common.Hash     `json:"hash"`
-	From      *common.Address `json:"from"`
-	To        *common.Address `json:"to"`
-	Value     *hexutil.Big    `json:"value"`
-	Gas       *hexutil.Big    `json:"gas"`
-	GasFeeCap *hexutil.Big    `json:"maxFeePerGas,omitempty"`
 }
 
 type formatedTx struct {
