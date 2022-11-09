@@ -82,7 +82,7 @@
               </div>
               <div class="d-flex align-items-center">
                 <span style="max-width: 150px;" class="h6 font-weight-normal mb-0 text-truncate">
-                  <a href="/validators/eth1leaderboard" class="text-primary text-truncate">
+                  <a href="/validators/deposit-leaderboard" class="text-primary text-truncate">
                     <i class="fas fa-medal"></i>
                     {{ if len .Stats.TopDepositors }}0x{{ (index .Stats.TopDepositors 0).Address }}{{ end }}
                   </a>
@@ -100,7 +100,7 @@
               </div>
               <div class="d-flex align-items-center">
                 <span style="max-width: 150px;" class="h6 font-weight-normal mb-0 text-truncate">
-                  <a href="/validators/eth1leaderboard" class="text-primary text-truncate">
+                  <a href="/validators/deposit-leaderboard" class="text-primary text-truncate">
                     <i class="fas fa-medal"></i>
                     {{ if len .Stats.TopDepositors }}0x{{ (index .Stats.TopDepositors 1).Address }}{{ end }}
                   </a>
