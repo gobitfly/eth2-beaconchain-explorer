@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
 	"html/template"
 	"math/big"
 	"net/http"
@@ -14,7 +15,7 @@ import (
 
 func MempoolView(w http.ResponseWriter, r *http.Request) {
 	mempool := services.LatestMempoolTransactions()
-	formatedData := formatToHtml(mempool)
+	formatedData := formatToTable(mempool)
 
 	var err error
 	var mempoolViewTemplate = templates.GetTemplate("layout.html", "mempoolview.html")
@@ -44,26 +45,33 @@ func _isContractCreation(tx *common.Address) string {
 
 // This Function formats each Transaction into Html string.
 // This makes all calculations faster, reducing browser's rendering time.
-func formatToHtml(content *types.RawMempoolResponse) []formatedTx {
+func formatToTable(content *types.RawMempoolResponse) *types.DataTableResponse {
+	dataTable := &types.DataTableResponse{}
 
-	var htmlFormatedData []formatedTx
 	for _, pendingData := range content.Pending {
 		for _, tx := range pendingData {
-			htmlFormatedData = append(htmlFormatedData, formatedTx{Hash: template.HTML(tx.Hash.String()),
-				From:  utils.FormatAddressAll(tx.From.Bytes(), "", false, "address", "", int(12), int(12), true),
-				To:    template.HTML(_isContractCreation(tx.To)),
-				Value: utils.FormatAmount((*big.Int)(tx.Value), "ETH", 5),
-				Gas:   utils.FormatAmountFormated(tx.Gas.ToInt(), "GWei", 5, 0, true, true, false)})
+			dataTable.Data = append(dataTable.Data, []any{
+				// TODO: link to tx page once it has a mempool view implemented
+				template.HTML(fmt.Sprintf(`<span class="text-monospace" >%v</span>`, tx.Hash.String())),
+				utils.FormatAddressAll(tx.From.Bytes(), "", false, "address", "", int(12), int(12), true),
+				_isContractCreation(tx.To),
+				utils.FormatAmount((*big.Int)(tx.Value), "ETH", 5),
+				utils.FormatAddCommasFormated(float64(tx.Gas.ToInt().Int64()), 0),
+				utils.FormatAmountFormated(tx.GasPrice.ToInt(), "GWei", 5, 0, true, true, false),
+				tx.Nonce.ToInt(),
+			})
 		}
 	}
-	return htmlFormatedData
+	return dataTable
 }
 
-type formatedTx struct {
-	Hash      template.HTML `json:"hash"`
-	From      template.HTML `json:"from"`
-	To        template.HTML `default:"Empty address"`
-	Value     template.HTML `json:"value"`
-	Gas       template.HTML `json:"gas"`
-	GasFeeCap template.HTML `json:"maxFeePerGas,omitempty"`
-}
+// type formatedTx struct {
+// 	Hash      template.HTML `json:"hash"`
+// 	From      template.HTML `json:"from"`
+// 	To        template.HTML `default:"Empty address"`
+// 	Value     template.HTML `json:"value"`
+// 	Gas       template.HTML `json:"gas"`
+// 	GasFeeCap template.HTML `json:"maxFeePerGas,omitempty"`
+// 	GasPrice  template.HTML `json:"gasPrice"`
+// 	Nonce     template.HTML `json:"nonce"`
+// }

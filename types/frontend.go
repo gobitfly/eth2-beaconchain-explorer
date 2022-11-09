@@ -510,5 +510,5 @@ type RawMempoolTransaction struct {
 	Gas       *hexutil.Big    `json:"gas"`
 	GasFeeCap *hexutil.Big    `json:"maxFeePerGas,omitempty"`
 	GasPrice  *hexutil.Big    `json:"gasPrice"`
-	Nonce     *hexutil.Uint64 `json:"nonce"`
+	Nonce     *hexutil.Big    `json:"nonce"`
 }

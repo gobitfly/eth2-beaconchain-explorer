@@ -3,18 +3,32 @@
   <script type="text/javascript" src="/js/datatable_input.js"></script>
 
   <script>
-    $("#example").DataTable({
+    $("#mempool").DataTable({
       searching: true,
       ordering: false,
-      pageLength: 10,
+      pageLength: 25,
+      data: {{ .Data }},
+      deferRender: true,
+      ordering: true,
+      order: [[5, 'desc']],
       language: {
         paginate: {
           previous: "<",
           next: ">",
         },
       },
+      columnDefs: [
+        {
+          targets: [0, 1, 2, 3, 4, 6],
+          orderable: false
+        },
+        {
+          targets: 5,
+          orderable: true,
+        }
+      ],
     })
-    document.getElementById("example-body").classList.remove("d-none")
+    document.getElementById("mempool-body").classList.remove("d-none")
   </script>
 {{ end }}
 
@@ -44,29 +58,23 @@
         </div>
       </div>
 
-      <div class="card card-header">
-        <div class="card-body px-0 py-3">
-          <div class="table-responsive px-0 py-1">
-            <table class="table dataTable table-sm" id="example" style="width:100%">
+      <div class="card my-3 py-3">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table dataTable table-sm" id="mempool" style="width:100%">
               <thead>
                 <tr role="row">
                   <th>Hash</th>
-                  <th>Value</th>
                   <th>From</th>
                   <th>To</th>
-                  <th>Gas</th>
+                  <th>Value</th>
+                  <th>Gas Limit</th>
+                  <th>Gas Price</th>
+                  <th>Nonce</th>
                 </tr>
               </thead>
-              <tbody id="example-body" class="d-none">
-                {{ range . }}
-                  <tr>
-                    <td><a href="tx/{{ .Hash }}">{{ .Hash }}</a></td>
-                    <td>{{ .Value }}</td>
-                    <td>{{ .From }}</td>
-                    <td>{{ .To }}</td>
-                    <td>{{ .Gas }}</td>
-                  </tr>
-                {{ end }}
+              <tbody id="mempool-body" class="d-none">
+                
               </tbody>
             </table>
           </div>
