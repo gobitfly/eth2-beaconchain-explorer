@@ -771,7 +771,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	// 	return
 	// }
 
-	machines, err := db.GetStatsMachine(user.UserID)
+	machines, err := db.BigtableClient.GetMachineMetricsMachineNames(user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving user machines: %v ", user.UserID, err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

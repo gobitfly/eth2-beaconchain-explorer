@@ -20,12 +20,13 @@ import (
 var BigtableClient *Bigtable
 
 const (
-	DEFAULT_FAMILY               = "f"
-	VALIDATOR_BALANCES_FAMILY    = "vb"
-	ATTESTATIONS_FAMILY          = "at"
-	PROPOSALS_FAMILY             = "pr"
-	SYNC_COMMITTEES_FAMILY       = "sc"
-	INCOME_DETAILS_COLUMN_FAMILY = "id"
+	DEFAULT_FAMILY                = "f"
+	VALIDATOR_BALANCES_FAMILY     = "vb"
+	ATTESTATIONS_FAMILY           = "at"
+	PROPOSALS_FAMILY              = "pr"
+	SYNC_COMMITTEES_FAMILY        = "sc"
+	INCOME_DETAILS_COLUMN_FAMILY  = "id"
+	MACHINE_METRICS_COLUMN_FAMILY = "mm"
 
 	max_block_number = 1000000000
 	max_epoch        = 1000000000
@@ -40,6 +41,7 @@ type Bigtable struct {
 	tableBlocks          *gcp_bigtable.Table
 	tableMetadataUpdates *gcp_bigtable.Table
 	tableMetadata        *gcp_bigtable.Table
+	tableMachineMetrics  *gcp_bigtable.Table
 
 	chainId string
 }
@@ -63,6 +65,7 @@ func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
 		tableMetadataUpdates: btClient.Open("metadata_updates"),
 		tableMetadata:        btClient.Open("metadata"),
 		tableBeaconchain:     btClient.Open("beaconchain"),
+		tableMachineMetrics:  btClient.Open("machine_metrics"),
 		chainId:              chainId,
 	}
 
@@ -76,6 +79,252 @@ func (bigtable *Bigtable) Close() {
 
 func (bigtable *Bigtable) GetClient() *gcp_bigtable.Client {
 	return bigtable.client
+}
+
+func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machine string, data []byte) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	rowKeyData := fmt.Sprintf("u:%s:p:%s:m:%v", reversePaddedUserID(userID), process, machine)
+
+	ts := gcp_bigtable.Now()
+	lastInsert, err := bigtable.lastMachineMetricInsert(ctx, rowKeyData)
+	if err != nil {
+		return err
+	}
+	if lastInsert.Time().Add(59 * time.Second).After(ts.Time()) {
+		return fmt.Errorf("rate limit, last metric insert was less than 1 min ago")
+	}
+
+	dataMut := gcp_bigtable.NewMutation()
+	dataMut.Set(MACHINE_METRICS_COLUMN_FAMILY, "v1", ts, data)
+
+	err = bigtable.tableMachineMetrics.Apply(
+		ctx,
+		rowKeyData,
+		dataMut,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (bigtable *Bigtable) lastMachineMetricInsert(ctx context.Context, rowKey string) (gcp_bigtable.Timestamp, error) {
+	row, err := bigtable.tableMachineMetrics.ReadRow(ctx, rowKey)
+	if err != nil {
+		return 0, err
+	}
+	colData, found := row[MACHINE_METRICS_COLUMN_FAMILY]
+	if found && len(colData) > 0 {
+		return colData[0].Timestamp, nil
+	}
+	return 0, nil
+}
+
+func (bigtable Bigtable) getMachineMetricNamesMap(userID uint64, searchDepth int) (map[string]bool, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	rangePrefix := fmt.Sprintf("u:%s:p:", reversePaddedUserID(userID))
+
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
+		gcp_bigtable.LatestNFilter(searchDepth),
+		gcp_bigtable.TimestampRangeFilter(time.Now().Add(time.Duration(searchDepth*-1)*time.Minute), time.Now()),
+	)
+
+	machineNames := make(map[string]bool)
+
+	err := bigtable.tableMachineMetrics.ReadRows(ctx, gcp_bigtable.PrefixRange(rangePrefix), func(r gcp_bigtable.Row) bool {
+		success, _, machine, _ := machineMetricRowParts(r.Key())
+		if !success {
+			return false
+		}
+		machineNames[machine] = true
+
+		return true
+	}, gcp_bigtable.RowFilter(filter))
+	if err != nil {
+		return machineNames, err
+	}
+
+	return machineNames, nil
+}
+
+func (bigtable Bigtable) GetMachineMetricsMachineNames(userID uint64) ([]string, error) {
+	names, err := bigtable.getMachineMetricNamesMap(userID, 300)
+	if err != nil {
+		return nil, err
+	}
+
+	result := []string{}
+	for key := range names {
+		result = append(result, key)
+	}
+
+	return result, nil
+}
+
+func (bigtable Bigtable) GetMachineMetricsMachineCount(userID uint64) (uint64, error) {
+	names, err := bigtable.getMachineMetricNamesMap(userID, 15)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(len(names)), nil
+}
+
+// todo generics?
+func (bigtable Bigtable) GetMachineMetricsSystem(userID uint64, limit, offset int) ([]*types.MachineMetricSystem, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	rangePrefix := fmt.Sprintf("u:%s:p:%s:m:", reversePaddedUserID(userID), "system")
+	res := make([]*types.MachineMetricSystem, 0)
+
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
+		gcp_bigtable.LatestNFilter(limit),
+		gcp_bigtable.CellsPerRowOffsetFilter(offset),
+	)
+	gapSize := getMachineStatsGap(uint64(limit))
+	err := bigtable.tableMachineMetrics.ReadRows(ctx, gcp_bigtable.PrefixRange(rangePrefix), func(r gcp_bigtable.Row) bool {
+		success, _, machine, _ := machineMetricRowParts(r.Key())
+		if !success {
+			return false
+		}
+		var count = -1
+		for _, ri := range r[MACHINE_METRICS_COLUMN_FAMILY] {
+			count++
+			if count%gapSize != 0 {
+				continue
+			}
+			obj := &types.MachineMetricSystem{}
+			err := proto.Unmarshal(ri.Value, obj)
+			if err != nil {
+				return false
+			}
+			obj.Machine = &machine
+
+			res = append(res, obj)
+		}
+		return true
+	}, gcp_bigtable.RowFilter(filter))
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// todo generics?
+func (bigtable Bigtable) GetMachineMetricsNode(userID uint64, limit, offset int) ([]*types.MachineMetricNode, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	rangePrefix := fmt.Sprintf("u:%s:p:%s:m:", reversePaddedUserID(userID), "beaconnode")
+	res := make([]*types.MachineMetricNode, 0)
+
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
+		gcp_bigtable.LatestNFilter(limit),
+		gcp_bigtable.CellsPerRowOffsetFilter(offset),
+	)
+	gapSize := getMachineStatsGap(uint64(limit))
+	err := bigtable.tableMachineMetrics.ReadRows(ctx, gcp_bigtable.PrefixRange(rangePrefix), func(r gcp_bigtable.Row) bool {
+		success, _, machine, _ := machineMetricRowParts(r.Key())
+		if !success {
+			return false
+		}
+		var count = -1
+		for _, ri := range r[MACHINE_METRICS_COLUMN_FAMILY] {
+			count++
+			if count%gapSize != 0 {
+				continue
+			}
+
+			obj := &types.MachineMetricNode{}
+			err := proto.Unmarshal(ri.Value, obj)
+			if err != nil {
+				return false
+			}
+			obj.Machine = &machine
+
+			res = append(res, obj)
+		}
+		return true
+	}, gcp_bigtable.RowFilter(filter))
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// todo generics?
+func (bigtable Bigtable) GetMachineMetricsValidator(userID uint64, limit, offset int) ([]*types.MachineMetricValidator, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	rangePrefix := fmt.Sprintf("u:%s:p:%s:m:", reversePaddedUserID(userID), "validator")
+	res := make([]*types.MachineMetricValidator, 0)
+
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
+		gcp_bigtable.LatestNFilter(limit),
+		gcp_bigtable.CellsPerRowOffsetFilter(offset),
+	)
+	gapSize := getMachineStatsGap(uint64(limit))
+
+	err := bigtable.tableMachineMetrics.ReadRows(ctx, gcp_bigtable.PrefixRange(rangePrefix), func(r gcp_bigtable.Row) bool {
+		success, _, machine, _ := machineMetricRowParts(r.Key())
+		if !success {
+			return false
+		}
+		var count = -1
+		for _, ri := range r[MACHINE_METRICS_COLUMN_FAMILY] {
+			count++
+			if count%gapSize != 0 {
+				continue
+			}
+			obj := &types.MachineMetricValidator{}
+			err := proto.Unmarshal(ri.Value, obj)
+			if err != nil {
+				return false
+			}
+			obj.Machine = &machine
+
+			res = append(res, obj)
+		}
+		return true
+	}, gcp_bigtable.RowFilter(filter))
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func machineMetricRowParts(r string) (bool, uint64, string, string) {
+	keySplit := strings.Split(r, ":")
+
+	userID, err := strconv.ParseUint(keySplit[1], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing slot from row key %v: %v", r, err)
+		return false, 0, "", ""
+	}
+	userID = ^uint64(0) - userID
+
+	machine := ""
+	if len(keySplit) >= 6 {
+		machine = keySplit[5]
+	}
+
+	process := keySplit[3]
+
+	return true, userID, machine, process
 }
 
 func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*types.Validator) error {
@@ -1000,6 +1249,10 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 	}
 
 	return res, nil
+}
+
+func reversePaddedUserID(userID uint64) string {
+	return fmt.Sprintf("%09d", ^uint64(0)-userID)
 }
 
 func reversedPaddedEpoch(epoch uint64) string {
