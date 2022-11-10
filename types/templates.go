@@ -363,6 +363,7 @@ type ValidatorPageData struct {
 	LongestAttestationStreak            uint64
 	IsRocketpool                        bool
 	Rocketpool                          *RocketpoolValidatorPageData
+	NoAds                               bool
 }
 
 type RocketpoolValidatorPageData struct {
@@ -426,7 +427,7 @@ type ChartDataPoint struct {
 	Color string  `json:"color"`
 }
 
-//ValidatorRank is a struct for validator rank data
+// ValidatorRank is a struct for validator rank data
 type ValidatorRank struct {
 	Rank int64 `db:"rank" json:"rank"`
 }
@@ -889,6 +890,19 @@ type ChartsPageDataChart struct {
 	Path   string
 	Data   *GenericChartData
 	Height int
+}
+
+type HeatmapData struct {
+	// BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
+	// Earnings       ValidatorEarnings                `json:"earnings"`
+	// Validators     [][]interface{}                  `json:"validators"`
+	Csrf           string `json:"csrf"`
+	ValidatorLimit int    `json:"valLimit"`
+	Epochs         []uint64
+	Validators     []uint64
+	IncomeData     [][3]int64
+	MinIncome      int64
+	MaxIncome      int64
 }
 
 // DashboardData is a struct to hold data for the dashboard-page

@@ -186,6 +186,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := r.FormValue("email")
+	email = strings.ToLower(email)
 	pwd := r.FormValue("password")
 
 	user := struct {

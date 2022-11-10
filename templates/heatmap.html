@@ -1,0 +1,90 @@
+{{ define "js" }}
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/modules/heatmap.js"></script>
+  <script src="https://code.highcharts.com/modules/exporting.js"></script>
+  <script src="https://code.highcharts.com/modules/data.js"></script>
+  <script src="https://code.highcharts.com/modules/boost-canvas.js"></script>
+  <script src="https://code.highcharts.com/modules/boost.js"></script>
+  <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+  <script src="/js/highcharts/highcharts-global-options.js"></script>
+
+  <script>
+      const temp = "{{ .ValidatorLimit }}";
+      if(!isNaN(temp)) {
+            VALLIMIT = parseInt(temp);
+      }
+
+      function getPointCategoryName(point, dimension) {
+          var series = point.series,
+              isY = dimension === 'y',
+              axis = series[isY ? 'yAxis' : 'xAxis'];
+          return axis.categories[point[isY ? 'y' : 'x']];
+      }
+
+      Highcharts.chart('container', {
+        chart: {
+            type: 'heatmap',
+            height: 750,
+        },
+        boost: {
+            useGPUTranslations: true
+        },
+        title: {
+            text: 'Validator Attestation Income History',
+            align: 'left',
+            x: 40
+        },
+        xAxis: {
+            title: {
+              text: 'Epoch'
+            },
+            categories: {{.Epochs}}
+        },
+        yAxis: {
+            title: {
+              text: 'Validator'
+            },
+            categories: {{.Validators}},
+            reversed: true,
+        },
+        colorAxis: {
+            min: {{.MinIncome}},
+            max: {{.MaxIncome}},
+            startOnTick: false,
+            endOnTick: false,
+            labels: {
+                format: '{value} GWei'
+            },
+            minColor: '#c4463a',
+            maxColor: '#3060cf',
+        },
+        tooltip: {
+        formatter: function () {
+            return 'Epoch <b>' + getPointCategoryName(this.point, 'x') + '</b> <br>Validator <b>' +
+              getPointCategoryName(this.point, 'y') + '</b><br>Income <b>' + this.point.value + ' GWei</b>';
+        }
+    },
+        series: [{
+          data: {{.IncomeData}},
+            boostThreshold: 100,
+            borderWidth: 0,
+            nullColor: '#EFEFEF',
+            turboThreshold: Number.MAX_VALUE // #3404, remove after 4.0.5 release
+        }]
+
+});
+</script>
+{{ end }}
+
+{{ define "css" }}
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2 outer-container" style="min-width:300px;">
+      <figure class="highcharts-figure">
+        <div id="container"></div>
+      </figure>
+    </div>
+  {{ end }}
+{{ end }}

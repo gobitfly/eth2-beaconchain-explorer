@@ -10,7 +10,10 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math/rand"
 	"net/http"
+	"sort"
+	"time"
 
 	"strconv"
 	"strings"
@@ -50,6 +53,93 @@ func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, e
 	}
 
 	return validators, nil
+}
+
+func Heatmap(w http.ResponseWriter, r *http.Request) {
+
+	var heatmapTemplate = templates.GetTemplate("layout.html", "heatmap.html")
+
+	w.Header().Set("Content-Type", "text/html")
+	validatorLimit := getUserPremium(r).MaxValidators
+
+	heatmapData := types.HeatmapData{}
+	heatmapData.ValidatorLimit = validatorLimit
+
+	min := 1
+	max := 400000
+
+	validatorCount := 100
+	count, err := strconv.Atoi(r.URL.Query().Get("count"))
+	if err == nil && count > 0 && count <= 1000 {
+		validatorCount = count
+	}
+
+	validatorMap := make(map[uint64]bool)
+	for len(validatorMap) < validatorCount {
+		validatorMap[uint64(rand.Intn(max-min)+min)] = true
+	}
+	validators := make([]uint64, 0, len(validatorMap))
+	for key := range validatorMap {
+		validators = append(validators, key)
+	}
+	sort.Slice(validators, func(i, j int) bool { return validators[i] < validators[j] })
+
+	validatorsCatagoryMap := make(map[uint64]int)
+	for index, validator := range validators {
+		validatorsCatagoryMap[validator] = index
+	}
+	heatmapData.Validators = validators
+
+	endEpoch := services.LatestFinalizedEpoch()
+	epochs := make([]uint64, 0, 100)
+	epochsCatagoryMap := make(map[uint64]int)
+	for e := endEpoch - 99; e <= endEpoch; e++ {
+		epochs = append(epochs, e)
+		epochsCatagoryMap[e] = len(epochs) - 1
+
+	}
+	heatmapData.Epochs = epochs
+
+	start := time.Now()
+	incomeData, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validators, endEpoch, 100)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error loading validator income history data")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
+	heatmapData.IncomeData = make([][3]int64, 0, validatorCount*100)
+	for validator, epochs := range incomeData {
+		for epoch, income := range epochs {
+			income := int64(income.AttestationHeadReward+income.AttestationSourceReward+income.AttestationTargetReward) - int64(income.AttestationSourcePenalty+income.AttestationTargetPenalty)
+			if income > heatmapData.MaxIncome {
+				heatmapData.MaxIncome = income
+			}
+			if income < heatmapData.MinIncome {
+				heatmapData.MinIncome = income
+			}
+			heatmapData.IncomeData = append(heatmapData.IncomeData, [3]int64{int64(epochsCatagoryMap[epoch]), int64(validatorsCatagoryMap[validator]), income})
+		}
+	}
+	sort.Slice(heatmapData.IncomeData, func(i, j int) bool {
+		if heatmapData.IncomeData[i][0] != heatmapData.IncomeData[j][0] {
+			return heatmapData.IncomeData[i][0] < heatmapData.IncomeData[j][0]
+		}
+		return heatmapData.IncomeData[i][1] < heatmapData.IncomeData[j][1]
+	})
+
+	logger.Infof("retrieved income history of %v validators in %v", len(incomeData), time.Since(start))
+
+	data := InitPageData(w, r, "dashboard", "/heatmap", "Validator Heatmap")
+	data.HeaderAd = true
+	data.Data = heatmapData
+
+	err = heatmapTemplate.ExecuteTemplate(w, "layout", data)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error executing template")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
 }
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
