@@ -1,0 +1,723 @@
+{{ define "js"}}
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="https://code.highcharts.com/modules/heatmap.js"></script>
+<script src="https://code.highcharts.com/modules/data.js"></script>
+<script src="/js/highcharts-global-options.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+<script async src="/js/revive.min.js"></script>
+<script src="/js/requestInterval.js"></script>
+
+<script>
+
+	var data = {{.}}
+
+	var dataArr = [];
+
+	data.forEach((e) => {
+		var t = new Date(e.ts * 1000)
+		dataArr.push([new Date(t.toDateString()).getTime(), t.getHours(), e.fast / 1e9])
+	})
+	console.log(dataArr)
+	Highcharts.chart('gaspricehistory_heatmap', {
+		chart: {
+			type: 'heatmap',
+			height: '600px'
+		},
+
+		title: {
+			text: ''
+		},
+
+
+		xAxis: {
+			type: 'datetime',
+			labels: {
+				align: 'left',
+				x: 5,
+				y: 14,
+				format: '{value: %m-%e %A}'
+			},
+			showLastLabel: true,
+			tickLength: 1
+		},
+
+		yAxis: {
+			title: {
+				text: null
+			},
+			labels: {
+				format: '{value}:00'
+			},
+			minPadding: 0,
+			maxPadding: 0,
+			startOnTick: false,
+			endOnTick: false,
+			tickWidth: 1,
+			reversed: true
+		},
+
+		colorAxis: {
+			labels: {
+				format: '{value:.1f}'
+			},
+			maxColor: '#ff4c2c',
+			minColor: '#ffffff',
+			startOnTick: false,
+			endOnTick: false,
+		},
+
+		series: [{
+			data: dataArr,
+			borderWidth: 0,
+			nullColor: '#EFEFEF',
+			colsize: 24 * 36e5, // one day
+			tooltip: {
+				headerFormat: 'GasPrice<br/>',
+				pointFormat: '{point.x:%e %b, %Y} {point.y}:00: <b>{point.value:.1f} GWei</b>'
+			},
+			dataLabels: {
+				enabled: true,
+				style: {
+                    fontWeight: 'normal'
+                },
+				format: "{point.value:.1f}"
+			}
+		}],
+		credits: {
+			href: "https://www.etherchain.org/tools/gasnow",
+			text: "etherchain.org"
+		}
+
+	});
+
+	var app = new Vue({
+		el: '#app',
+		delimiters: ['${', '}'], // Standard vuejs template syntax conflicts with golang template syntax
+		components: {
+		},
+		data: {
+			// default values so the page does not error on load
+			page: { "code": 200, "data": { "rapid": 112778916426, "fast": 83000000000, "standard": 65990594109, "slow": 50000000000, "timestamp": 1634199354298 } },
+			updateIn: -1,
+			progress: 0,
+			gasUsed: [
+				{
+					"title": "ETH",
+					"icon": "/img/defi/ethereum.png",
+					"tag": [
+						"Native"
+					],
+					"tx": [
+						{
+							"name": "Transfer",
+							"gas": 21000
+						}
+					]
+				},
+				{
+					"title": "USDT",
+					"icon": "/img/usdt.png",
+					"tag": [
+						"ERC20"
+					],
+					"tx": [
+						{
+							"name": "Transfer",
+							"gas": 46109,
+							"url": "https://etherchain.org/tx/0x060babb87d37e81a2d97244f2866709e4ee19b27b93a5b7356be048cd193eaed"
+						}
+					]
+				},
+				{
+					"title": "USDC",
+					"icon": "/img/usdc.png",
+					"tag": [
+						"ERC20"
+					],
+					"tx": [
+						{
+							"name": "Transfer",
+							"gas": 48481,
+							"url": "https://etherchain.org/tx/0x8f771b091c96d1ccb852c5df1ed4aff93755a4f4a5e922f000770c9646528ef6"
+						}
+					]
+				},
+				{
+					"title": "DAI",
+					"icon": "/img/defi/dai.png",
+					"tag": [
+						"ERC20"
+					],
+					"tx": [
+						{
+							"name": "Transfer",
+							"gas": 34718,
+							"url": "https://etherchain.org/tx/0x8f58ccac094237196f8fe2c0fb980faa80dd41d0c051ab692251e96a53cd19ef"
+						}
+					]
+				},
+				{
+					"title": "Uniswap v3",
+					"icon": "/img/defi/uniswap.png",
+					"tag": [
+						"DEX"
+					],
+					"tx": [
+						{
+							"name": "Swap",
+							"gas": 129830,
+							"url": "https://etherchain.org/tx/0x5e1b0897800e005d02e9051aec269cedea73b2f59f7b208ae460b4027ebac575"
+						},
+						{
+							"name": "Add Liquidity",
+							"gas": 445784,
+							"url": "https://etherchain.org/tx/0xc4d202633c8e27e41216b348f64f1f2c7f21cd6a79c2a457f0f920aefb616bbf"
+						},
+						{
+							"name": "Remove Liquidity",
+							"gas": 221722,
+							"url": "https://etherchain.org/tx/0xaa83ff4c83ad5ef62213b54c8774992661fb3864657edd85ed6991011af3cdbe"
+						}
+					]
+				},
+				{
+					"title": "Uniswap v2",
+					"icon": "/img/defi/uniswap.png",
+					"tag": [
+						"DEX"
+					],
+					"tx": [
+						{
+							"name": "Swap",
+							"gas": 105657,
+							"url": "https://etherchain.org/tx/0xdf5a48258d3b43899dcaa3e05754f0a70279fcfaf98746fad81fbb5bef8ce6c5"
+						},
+						{
+							"name": "Add Liquidity",
+							"gas": 131820,
+							"url": "https://etherchain.org/tx/0x814104644915370c9bcf23dd834a61839f3c4b6a225086b54fa3a3b0621bf249"
+						},
+						{
+							"name": "Remove Liquidity",
+							"gas": 180244,
+							"url": "https://etherchain.org/tx/0xce0110cc934d1ed69efd7fabe4ba38ba557f57c614ed6137bc11d28b72f4bf39"
+						}
+					]
+				},
+				{
+					"title": "1inch",
+					"icon": "/img/defi/1inch.png",
+					"tag": [
+						"DEX"
+					],
+					"tx": [
+						{
+							"name": "Swap",
+							"gas": 104108,
+							"url": "https://etherchain.org/tx/0x3b5c243f02e8eded9b25a258b381429de83e1854d4eaafce456f79a04ffd4890"
+						}
+					]
+				},
+				{
+					"title": "SushiSwap",
+					"icon": "/img/defi/sushiswap.png",
+					"tag": [
+						"DEX"
+					],
+					"tx": [
+						{
+							"name": "Swap",
+							"gas": 109253,
+							"url": "https://etherchain.org/tx/0xcf8ba925887ca185f8cd98fa986f728012b1f7b47f82d6a258ea9ac2aed8c811"
+						}
+					]
+				},
+				{
+					"title": "0x",
+					"icon": "/img/defi/0x.png",
+					"tag": [
+						"DEX"
+					],
+					"tx": [
+						{
+							"name": "Swap",
+							"gas": 114931,
+							"url": "https://etherchain.org/tx/0x0860f56786601da581dfe5f431583827136356b967b42482d37593fa00adfdc6"
+						}
+					]
+				},
+				{
+					"title": "Curve",
+					"icon": "/img/defi/curve.png",
+					"tag": [
+						"Dex"
+					],
+					"tx": [
+						{
+							"name": "Swap",
+							"gas": 114651,
+							"url": "https://etherchain.org/tx/0x3b585927cf4e2c603fc4eef295c60ad6bcb446dfc9e44d8ec78072f6e7c52f14"
+						},
+						{
+							"name": "AddLiquidity",
+							"gas": 182725,
+							"url": "https://etherchain.org/tx/0x07ccba5e6f38c007c4795e1f8200b41931f18d7e4fa1dae2213493feaca5cc77"
+						},
+						{
+							"name": "RemoveLiquidityOneCoin",
+							"gas": 162054,
+							"url": "https://etherchain.org/tx/0x4fefbfb2e260f2f0dc7d24d486e6f3ceedd17a90198dd45595dda8890cf878ac"
+						}
+					]
+				},
+				{
+					"title": "Polygon(Matic)",
+					"icon": "/img/defi/matic.png",
+					"tag": [
+						"Layer2"
+					],
+					"tx": [
+						{
+							"name": "Deposit L1->L2",
+							"gas": 100712,
+							"url": "https://etherchain.org/tx/0x4c32d72ce839e67a360f2dba1d6b9bcb4607cc9652ddaf245c708534dcbe1608"
+						},
+						{
+							"name": "Withdraw L2->L1",
+							"gas": 267085,
+							"url": "https://etherchain.org/tx/0xbfaf3ab325112add5b0932a7c1b3387ccb6a498118963456c4c5958f9db82c73"
+						}
+					]
+				},
+				{
+					"title": "zkSync",
+					"icon": "/img/defi/zksync.jpg",
+					"tag": [
+						"Layer2"
+					],
+					"tx": [
+						{
+							"name": "Deposit L1->L2",
+							"gas": 58952,
+							"url": "https://etherchain.org/tx/0xe16b21b5c8eb3ee61e15663502c7bec3a982e5ca2187ff98f7fe72e094b80386"
+						},
+						{
+							"name": "Withdraw L2->L1",
+							"gas": 61772,
+							"url": "https://zkscan.io/explorer/transactions/0x360f44a7f1881c2fc2afebdae5f6dec5b4e6f6cd398ce12e9ea47391998fc12a"
+						}
+					]
+				},
+				{
+					"title": "Loopring",
+					"icon": "/img/defi/loopring.webp",
+					"tag": [
+						"Layer2"
+					],
+					"tx": [
+						{
+							"name": "Deposit L1->L2",
+							"gas": 73298,
+							"url": "https://etherchain.org/tx/0xf7bcda493e68e63ea4be233022576ea08692a4ca48b010f280a61054012e498b"
+						},
+						{
+							"name": "Withdraw L2->L1",
+							"gas": 85679,
+							"url": "https://etherchain.org/tx/0x221b0c69f52c036893819487a90b16e89f3681aa25947e0eb358319351f9835b"
+						}
+					]
+				},
+				{
+					"title": "Compound",
+					"icon": "/img/defi/compound.png",
+					"tag": [
+						"Lending"
+					],
+					"tx": [
+						{
+							"name": "Deposit USDC",
+							"gas": 193404,
+							"url": "https://etherchain.org/tx/0x32f2e79436c3d542f0316043ecb91dc78a2791b1d6c4746b3986e53673c2269b"
+						},
+						{
+							"name": "Borrow USDC",
+							"gas": 332745,
+							"url": "https://etherchain.org/tx/0x1691f02114226dfdac93e6dc28cd8ee93c21c834463679685830da767776cd71"
+						},
+						{
+							"name": "Repay USDC",
+							"gas": 177875,
+							"url": "https://etherchain.org/tx/0x730c8162759f10cc9f7a44bd5bc2779eb1d27f1eaf8ed3e47e1353462d656ec5"
+						},
+						{
+							"name": "Withdraw USDC",
+							"gas": 203573,
+							"url": "https://etherchain.org/tx/0x7aedc53924727ecfcf14b448777890c7d93966b646f396aa258eb8ce5b3a201b"
+						},
+						{
+							"name": "Deposit ETH",
+							"gas": 160537,
+							"url": "https://etherchain.org/tx/0xe3e82e90763cff73132ff68cb77361d0514cc2ad55a290a2ed13816395241071"
+						},
+						{
+							"name": "Withdraw ETH",
+							"gas": 138300,
+							"url": "https://etherchain.org/tx/0x550902ce5e3dd7fc07c637cee68a1c82cacbec61df90b3a8f71c7ac34e457437"
+						}
+					]
+				},
+				{
+					"title": "AAVE",
+					"icon": "/img/defi/aave.png",
+					"tag": [
+						"Lending"
+					],
+					"tx": [
+						{
+							"name": "Deposit USDC",
+							"gas": 186695,
+							"url": "https://etherchain.org/tx/0xf0e49ed9f898b90f28528d6c3a5fd055e32e51c46c9cb28348fdfbae68751a4b"
+						},
+						{
+							"name": "Borrow USDC",
+							"gas": 269145,
+							"url": "https://etherchain.org/tx/0xfdda54cf8e612ee39e4a65d4987df41524ddd88f22a934a8ddefa0302a8935d8"
+						},
+						{
+							"name": "Repay USDC",
+							"gas": 210337,
+							"url": "https://etherchain.org/tx/0x9d424ad44891a092bd6ca00dc2f3de03e8a20b277b2dbd30add5c412448e4ff1"
+						},
+						{
+							"name": "Withdraw USDC",
+							"gas": 204977,
+							"url": "https://etherchain.org/tx/0x5c1818db2b9d992d2b79c729f0aed66329a6ee02fa62f32c03e3220e035a2501"
+						},
+						{
+							"name": "Deposit ETH",
+							"gas": 190595,
+							"url": "https://etherchain.org/tx/0xea4afe0faecada55fdf9f73e9aad7e91e8ba5af7a6d9c25a9c0ea5403b9ab870"
+						},
+						{
+							"name": "Withdraw ETH",
+							"gas": 251833,
+							"url": "https://etherchain.org/tx/0x67fec4b263c6c3755dd348d798784a209b7db06f1c92f5428282aab8fd965190"
+						}
+					]
+				},
+				{
+					"title": "Maker",
+					"icon": "/img/defi/maker.png",
+					"tag": [
+						"Lending"
+					],
+					"tx": [
+						{
+							"name": "Borrow",
+							"gas": 207200,
+							"url": "https://kovan.etherscan.io/tx/0xada8d75b7c55ef62ea3865cc205326d618cb21ec8adfdd6e94d81a59a0200c22"
+						},
+						{
+							"name": "Repay",
+							"gas": 182495,
+							"url": "https://kovan.etherscan.io/tx/0xd65ff4a7056a8fa987cdf31cd403982eb7ec9da4355782fb2d9847343041f2bc"
+						},
+						{
+							"name": "Open Vault",
+							"gas": 595976,
+							"url": "https://kovan.etherscan.io/tx/0xc2dac2be456f589b87b51c32c785b70e045bfdd592953ebcad1beab274c20a26"
+						}
+					]
+				},
+				{
+					"title": "Tornado.Cash",
+					"icon": "/img/defi/tornado_cash.png",
+					"tag": [
+						"Anonymous-Transfer"
+					],
+					"tx": [
+						{
+							"name": "Deposit",
+							"gas": 952910,
+							"url": "https://etherchain.org/tx/0xecd116e2d7701801b64321d671ac1b82d0d58b35390dfc4c92e6142ea579d9ff"
+						},
+						{
+							"name": "Withdraw",
+							"gas": 366978,
+							"url": "https://etherchain.org/tx/0x86240e07d4bd38d015c79dad768551611b58554998dbc7cb63e2b3fbf7a50915"
+						}
+					]
+				},
+				{
+					"title": "OpenSea",
+					"icon": "/img/defi/opensea.webp",
+					"tag": [
+						"NFT"
+					],
+					"tx": [
+						{
+							"name": "Register Account",
+							"gas": 389335,
+							"url": "https://etherchain.org/tx/0x3c52625c44e8435fcb43c33bc199de9ae95d7c8abfbc72f5f45b1fe5f2e8588c"
+						},
+						{
+							"name": "Post NFT",
+							"gas": 0
+						},
+						{
+							"name": "Buy NFT",
+							"gas": 189873,
+							"url": "https://etherchain.org/tx/0x4cbd1df48af864df822bab77759551e5ea7b2c8e635cfb4f231489a03225ac6e"
+						},
+						{
+							"name": "Cancel Order",
+							"gas": 74468,
+							"url": "https://etherchain.org/tx/0x7a37d86bfe77aea4d6947f07e05177e9cf7ef0a53284cc737d87fb26fd4e0a07"
+						}
+					]
+				}
+			]
+		},
+		filters: {
+			fromNow(date) {
+				return moment(date).fromNow();
+			},
+			toFixed(number, digits) {
+				return number.toFixed(digits)
+			},
+			toTerra(number) {
+				return (number / 1e12).toFixed(1)
+			},
+			toPercentage(number, digits) {
+				return (number * 100).toFixed(digits)
+			},
+			formatETH(number, digits) {
+				return (number / 1e18).toFixed(digits)
+			},
+			formatGasUsed(number) {
+				return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+			},
+			formatUSD(number) {
+				if (typeof Intl !== 'undefined') {
+					return new Intl.NumberFormat('en-US', { style: 'currency', currencyDisplay: 'narrowSymbol', currency: 'USD' }).format(number)
+				}
+				return number.toFixed(2)
+			},
+			toGasPriceUsd(number, gasUsed, price) {
+				number = number / 1e18 * price * gasUsed
+				if (typeof Intl !== 'undefined') {
+					return new Intl.NumberFormat('en-US', { style: 'currency', currencyDisplay: 'narrowSymbol', currency: 'USD' }).format(number)
+				}
+				return number.toFixed(2)
+			},
+			formatGWei(number, digits) {
+				return (number / 1e9).toFixed(digits)
+			}
+		},
+		created: function () {
+			this.tick();
+			setInterval(function () {
+				this.tick();
+			}.bind(this), 1000);
+		},
+		methods: {
+			tick: function () {
+				if (this.updateIn <= 0) {
+					$.getJSON('/api/gasnow', function (response) {
+						this.page = response;
+
+						document.title = (response.data.rapid / 1e9).toFixed(0) + "-" + (response.data.fast / 1e9).toFixed(0) + " GWei | Ethereum (ETH) Mainnet - GasNow - etherchain.org - " + new Date().getFullYear();
+					}.bind(this));
+					this.updateIn = 5;
+					this.progress = 0;
+				} else {
+					this.updateIn--;
+					this.progress = Math.round((5 - this.updateIn) * 100 / 5)
+				}
+			}
+		}
+	})
+</script>
+{{end}}
+
+{{ define "css"}}
+<style>
+	[v-cloak] {
+		visibility: hidden;
+	}
+</style>
+{{end}}
+
+{{ define "content"}}
+<div class="container mt-2">
+	<div id="app" v-cloak>
+		<div class="my-3">
+			<div class="d-md-flex py-2 justify-content-md-between">
+				<h1 class="h4 mb-1 mb-md-0">
+					<span class="ml-1 mr-1"><i class="fas fa-gas-pump mr-2"></i>GasNow Gas Price Estimation</span>
+				</h1>
+				<nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center"
+					aria-label="breadcrumb">
+					{{template "BuyCrypto"}}
+					{{template "GamingCrypto"}}
+					{{template "ExchangeCrypto"}}
+					<ol style="white-space: nowrap;padding:0; background-color:transparent;"
+						class="breadcrumb font-size-1 flex-nowrap mb-0"
+						style="padding:0; background-color:transparent;">
+						<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+						<li class="breadcrumb-item">Tools</li>
+						<li class="breadcrumb-item active" aria-current="page">Gas Price Oracle</li>
+					</ol>
+				</nav>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-md-12">
+				<p><span class="fas fa-lightbulb mr-1"></span> INFO: This tool predicts the ETH gas price based on
+					pending
+					transactions in the ETH mempool. This method was pioneered by the now closed service 'GasNow'. An
+					GasNow API compatible <a href="/api/gasnow">API endpoint</a> for this data is also
+					available.</p>
+			</div>
+		</div>
+		
+		<div class="row justify-content-center">
+			<div class="col-12">
+				{{ template "GasNowReviveAd" }}
+			</div>
+		</div>
+		<div class="row">
+			<div class="col">
+				<hr>
+			</div>
+			<div class="col-auto">
+				<h5>Gas Price</h5>
+			</div>
+			<div class="col">
+				<hr>
+			</div>
+		</div>
+		<div class="card-group">
+			<div data-toggle="tooltip" data-placement="top" title="The median gas price of the current mining block"
+				class="card text-center card-outline-info m-2">
+				<div class="card-header card-outline-info">
+					<i class="fas fa-rocket mr-1"></i>Rapid
+				</div>
+				<div class="card-body card-block">
+					<h4 class="card-title">${ page.data.rapid | formatGWei(0) } GWei</h4>
+					<p class="card-text text-muted text-center">${ page.data.rapid | toGasPriceUsd(21000,
+						page.data.priceUSD)} | 15 Seconds</p>
+				</div>
+			</div>
+			<div data-toggle="tooltip" data-placement="top" title="The tail gas price of the current mining block"
+				class="card text-center card-outline-info m-2">
+				<div class="card-header card-outline-info">
+					<i class="fas fa-plane mr-1"></i>Fast
+				</div>
+				<div class="card-body card-block">
+					<h4 class="card-title">${ page.data.fast | formatGWei(0) } GWei</h4>
+					<p class="card-text text-muted text-center">${ page.data.fast | toGasPriceUsd(21000,
+						page.data.priceUSD)} | 1 Minute</p>
+				</div>
+			</div>
+			<div data-toggle="tooltip" data-placement="top"
+				title="The gas price of the 500th transaction in the pending queue"
+				class="card text-center card-outline-info m-2">
+				<div class="card-header card-outline-info">
+					<i class="fas fa-car-side mr-1"></i>Standard
+				</div>
+				<div class="card-body card-block">
+					<h4 class="card-title">${ page.data.standard | formatGWei(0) } GWei</h4>
+					<p class="card-text text-muted text-center">${ page.data.standard | toGasPriceUsd(21000,
+						page.data.priceUSD)} | 3 Minutes</p>
+				</div>
+			</div>
+			<div data-toggle="tooltip" data-placement="top"
+				title="The gas price of the 1000th transaction in the pending queue"
+				class="card text-center card-outline-info m-2">
+				<div class="card-header card-outline-info">
+					<i class="fas fa-bicycle mr-1"></i>Slow
+				</div>
+				<div class="card-body card-block">
+					<h4 class="card-title">${ page.data.slow | formatGWei(0) } GWei</h4>
+					<p class="card-text text-muted text-center">${ page.data.slow | toGasPriceUsd(21000,
+						page.data.priceUSD)} | > 10 Minutes</p>
+				</div>
+			</div>
+		</div>
+		<div class="progress">
+			<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+				v-bind:style="'width: ' +progress + '%'" v-bind:aria-valuenow="progress" aria-valuemin="0"
+				aria-valuemax="5">Update in: ${updateIn}s
+			</div>
+		</div>
+		<div class="partner w-100 d-flex mt-3 justify-content-center">
+			<!-- Coinzilla Banner 728x90 -->
+			<script async src="https://coinzillatag.com/lib/display.js"></script>
+			<div class="coinzilla" data-zone="C-1635efda351897cb722"></div>
+			<script>
+				window.coinzilla_display = window.coinzilla_display || [];
+				var c_display_preferences = {};
+				c_display_preferences.zone = "1635efda351897cb722";
+				c_display_preferences.width = "728";
+				c_display_preferences.height = "90";
+				coinzilla_display.push(c_display_preferences);
+			</script>
+		</div>
+		<div class="row mt-5">
+			<div class="col">
+				<hr>
+			</div>
+			<div class="col-auto">
+				<h5>Estimated Cost of Transactions</h5>
+			</div>
+			<div class="col">
+				<hr>
+			</div>
+		</div>
+		<div style="height: 300px !important; overflow: scroll;">
+			<table class="table">
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Label</th>
+						<th>Interaction</th>
+						<th>Gas Used</th>
+						<th>Rapid</th>
+						<th>Fast</th>
+					</tr>
+				</thead>
+				<tbody>
+					<template v-for="(item, index) in gasUsed">
+						<template v-for="(itemTx, indexTx) in item.tx">
+							<tr>
+								<td><img height="20" width="20" class="mr-1 mb-1" v-bind:src="item.icon">${item.title}
+								</td>
+								<td><span class="badge badge-success">${item.tag[0]}</span></td>
+								<td>${itemTx.name}</td>
+								<td>${itemTx.gas | formatGasUsed}</td>
+								<td>${page.data.rapid | toGasPriceUsd(itemTx.gas, page.data.priceUSD)}</td>
+								<td>${page.data.fast | toGasPriceUsd(itemTx.gas, page.data.priceUSD)}</td>
+							</tr>
+						</template>
+					</template>
+				</tbody>
+			</table>
+		</div>
+	</div>
+	<div class="row mt-5">
+		<div class="col">
+			<hr>
+		</div>
+		<div class="col-auto">
+			<h5>Gas Price History</h5>
+		</div>
+		<div class="col">
+			<hr>
+		</div>
+	</div>
+	<div id="gaspricehistory_heatmap"></div>
+</div>
+{{end}}

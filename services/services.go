@@ -43,9 +43,6 @@ func Init() {
 	ready.Add(1)
 	go latestBlockUpdater(ready)
 
-	// ready.Add(1)
-	// go gasNowUpdater()
-
 	ready.Add(1)
 	go slotVizUpdater(ready)
 
@@ -66,6 +63,9 @@ func Init() {
 
 	ready.Add(1)
 	go mempoolUpdater(ready)
+
+	ready.Add(1)
+	go gasNowUpdater(ready)
 
 	ready.Wait()
 }
@@ -1136,6 +1136,11 @@ func getGasNowData() (*types.GasNowPageData, error) {
 
 	gpoData.Data.Standard = pendingTxs[standardIndex].GasPrice()
 	gpoData.Data.Slow = pendingTxs[slowIndex].GasPrice()
+
+	err = db.BigtableClient.SaveGasNowHistory(gpoData.Data.Slow, gpoData.Data.Standard, gpoData.Data.Fast, gpoData.Data.Rapid)
+	if err != nil {
+		logrus.WithError(err).Error("error updating gas now history")
+	}
 
 	// gpoData.RapidUSD = gpoData.Rapid * 21000 * params.GWei / params.Ether * usd
 	// gpoData.FastUSD = gpoData.Fast * 21000 * params.GWei / params.Ether * usd
