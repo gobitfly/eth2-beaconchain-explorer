@@ -2410,7 +2410,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 	err = db.BigtableClient.SaveMachineMetric(parsedMeta.Process, userData.ID, machine, data)
 	if err != nil {
 		logger.Errorf("Could not store stats | %v", err)
-		sendErrorResponse(w, r.URL.String(), "could not store stats")
+		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("could not store stats: %v", err))
 		return false
 	}
 	return true

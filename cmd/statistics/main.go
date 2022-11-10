@@ -118,14 +118,6 @@ func main() {
 func statisticsLoop() {
 	for {
 
-		// create stats parition on users table
-		now := time.Now()
-		nowTs := now.Unix()
-		var day int = int(nowTs / 86400)
-
-		db.CreateNewStatsMetaPartition(day)
-		db.CreateNewStatsMetaPartition(day + 1)
-
 		latestEpoch, err := db.GetLatestEpoch()
 		if err != nil {
 			logrus.Errorf("error retreiving latest epoch from the db: %v", err)
