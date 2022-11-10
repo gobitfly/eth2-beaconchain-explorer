@@ -64,6 +64,9 @@ func Init() {
 	ready.Add(1)
 	go statsUpdater(ready)
 
+	ready.Add(1)
+	go mempoolUpdater(ready)
+
 	ready.Wait()
 }
 
@@ -854,6 +857,17 @@ func LatestProposedSlot() uint64 {
 	return 0
 }
 
+func LatestMempoolTransactions() *types.RawMempoolResponse {
+	wanted := &types.RawMempoolResponse{}
+	cacheKey := fmt.Sprintf("%d:frontend:mempool", utils.Config.Chain.Config.DepositChainID)
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*60, wanted); err == nil {
+		return wanted.(*types.RawMempoolResponse)
+	} else {
+		logger.Errorf("error retrieving latestProposedSlot from cache: %v", err)
+	}
+	return &types.RawMempoolResponse{}
+}
+
 // LatestIndexPageData returns the latest index page data
 func LatestIndexPageData() *types.IndexPageData {
 	wanted := &types.IndexPageData{}
@@ -1154,4 +1168,37 @@ func (tx *rpcTransaction) UnmarshalJSON(msg []byte) error {
 		return err
 	}
 	return json.Unmarshal(msg, &tx.txExtraInfo)
+}
+
+func mempoolUpdater(wg *sync.WaitGroup) {
+	firstRun := true
+	for {
+		client, err := geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
+		if err != nil {
+			logrus.Error("Can't connect to geth node: ", err)
+			time.Sleep(time.Second * 30)
+			continue
+		}
+
+		var mempoolTx types.RawMempoolResponse
+
+		err = client.Call(&mempoolTx, "txpool_content")
+		if err != nil {
+			logrus.Error("Error calling txpool_content request: ", err)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		cacheKey := fmt.Sprintf("%d:frontend:mempool", utils.Config.Chain.Config.DepositChainID)
+		err = cache.TieredCache.Set(cacheKey, mempoolTx, time.Hour*24)
+		if err != nil {
+			logger.Errorf("error caching relaysData: %v", err)
+		}
+		if firstRun {
+			logger.Info("initialized mempool updater")
+			wg.Done()
+			firstRun = false
+		}
+		time.Sleep(time.Second * 10)
+	}
 }

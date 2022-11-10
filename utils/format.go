@@ -534,7 +534,7 @@ func FormatName(name string, trunc_opt ...bool) template.HTML {
 }
 
 func AddCopyButton(element template.HTML, copyContent string) template.HTML {
-	return element + " " + template.HTML(CopyButton(copyContent))
+	return template.HTML(fmt.Sprintf(`<span title="%s" data-toggle="tooltip">%v<span>`, copyContent, element)) + " " + template.HTML(CopyButton(copyContent))
 }
 
 func CopyButton(clipboardText interface{}) string {
