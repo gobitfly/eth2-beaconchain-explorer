@@ -543,6 +543,14 @@ func reversePaddedBigtableTimestamp(timestamp *timestamppb.Timestamp) string {
 	return fmt.Sprintf("%019d", MAX_INT-timestamp.Seconds)
 }
 
+func reversePaddedBigtableTimestampMinute(timestamp *timestamppb.Timestamp) string {
+	if timestamp == nil {
+		log.Fatalf("unknown timestamp: %v", timestamp)
+	}
+	time.Now().Unix()
+	return fmt.Sprintf("%019d", MAX_INT-(timestamp.Seconds-(timestamp.Seconds%60)))
+}
+
 func reversePaddedIndex(i int, maxValue int) string {
 	if i > maxValue {
 		logrus.Fatal("padded index %v is greater than the max index of %v", maxValue)
@@ -3264,4 +3272,73 @@ func (bigtable *Bigtable) markBalanceUpdate(address []byte, token []byte, mutati
 
 		cache.Set(balanceUpdateCacheKey, true, time.Hour*48)
 	}
+}
+
+var (
+	GASNOW_RAPID_COLUMN    = "RAPI"
+	GASNOW_FAST_COLUMN     = "FAST"
+	GASNOW_STANDARD_COLUMN = "STAN"
+	GASNOW_SLOW_COLUMN     = "SLOW"
+)
+
+func (bigtable *Bigtable) SaveGasNowHistory(slow, standard, rapid, fast *big.Int) error {
+	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
+	defer done()
+
+	ts := gcp_bigtable.Now()
+	row := fmt.Sprintf("%s:GASNOW:%s", bigtable.chainId, reversePaddedBigtableTimestampMinute(timestamppb.New(ts.Time())))
+
+	mut := gcp_bigtable.NewMutation()
+	mut.Set(DEFAULT_FAMILY, GASNOW_SLOW_COLUMN, ts, slow.Bytes())
+	mut.Set(DEFAULT_FAMILY, GASNOW_STANDARD_COLUMN, ts, standard.Bytes())
+	mut.Set(DEFAULT_FAMILY, GASNOW_FAST_COLUMN, ts, fast.Bytes())
+	mut.Set(DEFAULT_FAMILY, GASNOW_RAPID_COLUMN, ts, rapid.Bytes())
+
+	err := bigtable.tableMetadata.Apply(ctx, row, mut)
+	if err != nil {
+		return fmt.Errorf("error saving gas now history to bigtable. err: %w", err)
+	}
+	return nil
+}
+
+func (bigtable *Bigtable) GetGasNowHistory() {
+
+	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
+	defer done()
+	ts := time.Now()
+
+	week := time.Hour * 24 * 7
+	lastWeek := ts.Add(-week)
+
+	start := fmt.Sprintf("%s:GASNOW:%s", bigtable.chainId, reversePaddedBigtableTimestampMinute(timestamppb.New(ts)))
+	end := fmt.Sprintf("%s:GASNOW:%s", bigtable.chainId, reversePaddedBigtableTimestampMinute(timestamppb.New(lastWeek)))
+
+	rowRange := gcp_bigtable.NewRange(start, end)
+	famFilter := gcp_bigtable.FamilyFilter(DEFAULT_FAMILY)
+	filter := gcp_bigtable.RowFilter(famFilter)
+
+	history := make([]types.GasNowHistory, 0)
+
+	scanner := func(row gcp_bigtable.Row) bool {
+		if len(row[DEFAULT_FAMILY]) < 4 {
+			logrus.Errorf("error reading row: %+v", row)
+			return false
+		}
+		// columns are returned alphabetically so fast, rapid, slow, standard should be the order
+		history = append(history, types.GasNowHistory{
+			Ts:       row[DEFAULT_FAMILY][0].Timestamp.Time(),
+			Fast:     new(big.Int).SetBytes(row[DEFAULT_FAMILY][0].Value),
+			Rapid:    new(big.Int).SetBytes(row[DEFAULT_FAMILY][1].Value),
+			Slow:     new(big.Int).SetBytes(row[DEFAULT_FAMILY][2].Value),
+			Standard: new(big.Int).SetBytes(row[DEFAULT_FAMILY][3].Value),
+		})
+		return true
+	}
+
+	err := bigtable.tableMetadata.ReadRows(ctx, rowRange, scanner, filter)
+	if err != nil {
+		logrus.WithError(err).Error("error getting gas now history to bigtable")
+		return
+	}
+
 }
