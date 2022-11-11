@@ -147,20 +147,6 @@
       </noscript>
 
       <!-- Banner start -->
-      {{ if .ShowHomeAlert }}
-      <div class="info-banner-container alert-banner-container">
-        <div class="info-banner-content container">
-          <div class="info-banner-center">
-            <div class="info-banner-search">
-              <div class="search-container">
-                {{ .HomeAlertMessage }}
-            </div>
-          </div>
-        </div>
-      </div>
-      {{ end }}
-
-      <!-- Banner start -->
       <div {{ if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register")) }}style="display:none;"{{ end }} class="info-banner-container">
         <div class="info-banner-content container">
           <div id="banner-stats" class="info-banner-left">
@@ -563,9 +549,9 @@
                 </a>
               </li>
               <!-- <li class="nav-item {{ if eq .Active "services" }}active{{ end }} dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">  
                                 <span class="nav-icon"><i class="fas fa-tools"></i></span>
-                                <span class="nav-text">Services</span>
+                                <span class="nav-text">Services</span> 
                             </a>
                             <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                                 <a class="dropdown-item" href="/stakingServices">
@@ -754,15 +740,15 @@
         </div> -->
 
         <!-- Discount banner
-            <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;">
+            <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;"> 
                 <span class="d-none d-md-block">
                 <span>
-                    <span>
+                    <span>  
                         Use voucher code
-                    </span>
+                    </span> 
                         <span>
                             <a style="color: #66bce9;">BEACONCHAIN</a>
-                        </span>
+                        </span> 
                         <span>
                             to get 69.42% off on the
                         </span>

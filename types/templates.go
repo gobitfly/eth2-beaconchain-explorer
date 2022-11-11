@@ -45,8 +45,6 @@ type PageData struct {
 	Debug          bool
 	DebugTemplates []string
 	DebugSession   map[string]interface{}
-	ShowHomeAlert  bool
-	HomeAlertMessage string
 }
 
 type PageRates struct {

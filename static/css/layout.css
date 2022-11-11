@@ -473,9 +473,3 @@ label.btn.btn-light:hover {
 .tooltip-inner {
   max-width: none;
 }
-
-.alert-banner-container {
-  position: inherit;
-  background: #ee7112;
-  color: #191919;
-}
