@@ -145,6 +145,8 @@ type Config struct {
 		PoolsUpdater struct {
 			Enabled bool `yaml:"enabled" envconfig:"FRONTEND_POOLS_UPDATER"`
 		} `yaml:"poolsUpdater"`
+		ShowHomeAlert           bool `yaml:"showHomeAlert" envconfig:"SHOW_HOME_ALERT"`
+		HomeAlertMessage        string `yaml:"homeAlertMessage" envconfig:"HOME_ALERT_MESSAGE"`
 	} `yaml:"frontend"`
 	Metrics struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`

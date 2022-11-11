@@ -88,4 +88,8 @@ type ChainConfig struct {
 	MaxTransactionsPerPayload               uint64 `yaml:"MAX_TRANSACTIONS_PER_PAYLOAD"`
 	BytesPerLogsBloom                       uint64 `yaml:"BYTES_PER_LOGS_BLOOM"`
 	MaxExtraDataBytes                       uint64 `yaml:"MAX_EXTRA_DATA_BYTES"`
+
+	// alerts/notifications in homepage
+	ShowHomeAlert                       uint64 `yaml:"SHOW_HOME_ALERT"`
+	HomeAlertMessage                    uint64 `yaml:"HOME_ALERT_MESSAGE"`
 }
