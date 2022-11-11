@@ -534,7 +534,7 @@ func FormatName(name string, trunc_opt ...bool) template.HTML {
 }
 
 func AddCopyButton(element template.HTML, copyContent string) template.HTML {
-	return element + " " + template.HTML(CopyButton(copyContent))
+	return template.HTML(fmt.Sprintf(`<span title="%s" data-toggle="tooltip">%v<span>`, copyContent, element)) + " " + template.HTML(CopyButton(copyContent))
 }
 
 func CopyButton(clipboardText interface{}) string {
@@ -738,15 +738,15 @@ func FormatValidatorStatus(status string) template.HTML {
 	} else if status == "active_online" {
 		return "<b>Active</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
 	} else if status == "active_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Active</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 finalized epochs\"><b>Active</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
 	} else if status == "exiting_online" {
 		return "<b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
 	} else if status == "exiting_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 finalized epochs\"><b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
 	} else if status == "slashing_online" {
 		return "<b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
 	} else if status == "slashing_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 finalized epochs\"><b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
 	} else if status == "exited" {
 		return "<span><b>Exited</b></span>"
 	} else if status == "slashed" {
