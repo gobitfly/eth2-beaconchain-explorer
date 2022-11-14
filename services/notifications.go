@@ -1371,7 +1371,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 
 		err = db.WriterDb.Select(&partial, `
 				SELECT 
-					v.validatorindex, 
+					DISTINCT v.validatorindex, 
 					pa.epoch,
 					pa.status,
 					v.pubkey as pubkey,
