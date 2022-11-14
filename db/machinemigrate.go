@@ -52,26 +52,30 @@ func (bigtable *Bigtable) MigrateMachineStatsFromDBToBigtable(fromDay, toDay int
 
 	logrus.Infof("Migrating Machine Data from day [%v, %v]", fromDay, toDay)
 
-	logrus.Infof("Migrating system data")
-	err = bigtable.migrateSystem(ctx, limit, fromDay, toDay, sleep)
-	if err != nil {
-		return err
-	}
-	logrus.Infof("System data migration completed")
+	for day := fromDay; day <= toDay; day++ {
+		logrus.Infof("Day %v", day)
 
-	logrus.Infof("Migrating node data")
-	err = bigtable.migrateNode(ctx, limit, fromDay, toDay, sleep)
-	if err != nil {
-		return err
-	}
-	logrus.Infof("Node data migration completed")
+		logrus.Infof("Migrating system data")
+		err = bigtable.migrateSystem(ctx, limit, day, day, sleep)
+		if err != nil {
+			return err
+		}
+		logrus.Infof("System data migration completed")
 
-	logrus.Infof("Migrating validator data")
-	err = bigtable.migrateValidator(ctx, limit, fromDay, toDay, sleep)
-	if err != nil {
-		return err
+		logrus.Infof("Migrating node data")
+		err = bigtable.migrateNode(ctx, limit, day, day, sleep)
+		if err != nil {
+			return err
+		}
+		logrus.Infof("Node data migration completed")
+
+		logrus.Infof("Migrating validator data")
+		err = bigtable.migrateValidator(ctx, limit, day, day, sleep)
+		if err != nil {
+			return err
+		}
+		logrus.Infof("Validator data migration completed")
 	}
-	logrus.Infof("Validator data migration completed")
 
 	logrus.Infof("\n\n=== Data migration completed ===")
 	return nil

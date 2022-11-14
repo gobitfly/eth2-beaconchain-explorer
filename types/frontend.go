@@ -134,6 +134,15 @@ type EventNameDesc struct {
 	Event EventName
 }
 
+type MachineMetricSystemUser struct {
+	UserID                    uint64
+	Machine                   string
+	CurrentData               *MachineMetricSystem
+	CurrentDataInsertTs       int64
+	FiveMinuteOldData         *MachineMetricSystem
+	FiveMinuteOldDataInsertTs int64
+}
+
 // this is the source of truth for the validator events that are supported by the user/notification page
 var AddWatchlistEvents = []EventNameDesc{
 	{

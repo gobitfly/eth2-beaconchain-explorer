@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	gcp_bigtable "cloud.google.com/go/bigtable"
 	"firebase.google.com/go/messaging"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
@@ -2269,135 +2270,146 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 	return nil
 }
 
+type MachineEvents struct {
+	SubscriptionID  uint64         `db:"id"`
+	UserID          uint64         `db:"user_id"`
+	MachineName     string         `db:"machine"`
+	UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
+	EventThreshold  float64        `db:"event_threshold"`
+}
+
 func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
+	nowTs := time.Now().Unix()
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineOfflineEventName,
-		`
-	SELECT 
-		us.user_id,
-		max(us.id) as id,
-		ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
-		machine
-	FROM users_subscriptions us
-	JOIN (
-		SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p 
-		WHERE day >= $3 
-		group by user_id, machine
-	) v on v.user_id = us.user_id 
-	WHERE us.event_name = $1 AND us.created_epoch <= $2 
-	AND us.event_filter = v.machine 
-	AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL)
-	AND v.created_trunc < now() - interval '4 minutes' AND v.created_trunc > now() - interval '1 hours'
-	group by us.user_id, machine
-	`)
+		func(_ *MachineEvents, machineData *types.MachineMetricSystemUser) bool {
+			if machineData.CurrentDataInsertTs < nowTs-4*60 {
+				return true
+			}
+			return false
+		},
+	)
+}
+
+func isDataUp2Date(machineData *types.MachineMetricSystemUser) bool {
+	nowTs := time.Now().Unix()
+	if machineData.CurrentDataInsertTs < nowTs-60*60 { // only if data is up 2 date (last hour)
+		return false
+	}
+	return true
 }
 
 func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineDiskAlmostFullEventName,
-		`SELECT 
-			us.user_id,
-			max(us.id) as id,
-			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
-			machine
-		FROM users_subscriptions us 
-		INNER JOIN stats_meta_p v ON us.user_id = v.user_id
-		INNER JOIN stats_system sy ON v.id = sy.meta_id
-		WHERE us.event_name = $1 AND us.created_epoch <= $2 
-		AND v.day >= $3 
-		AND v.machine = us.event_filter 
-		AND (us.last_sent_epoch < ($2 - 750) OR us.last_sent_epoch IS NULL)
-		AND sy.disk_node_bytes_free::decimal / (sy.disk_node_bytes_total + 1) < event_threshold
-		AND v.created_trunc > NOW() - INTERVAL '1 hours' 
-		group by us.user_id, machine
-	`)
+		func(subscribeData *MachineEvents, machineData *types.MachineMetricSystemUser) bool {
+			if !isDataUp2Date(machineData) {
+				return false
+			}
+
+			percentFull := float64(machineData.CurrentData.DiskNodeBytesFree) / float64(machineData.CurrentData.DiskNodeBytesTotal+1)
+			if percentFull < subscribeData.EventThreshold {
+				return true
+			}
+			return false
+		},
+	)
 }
 
 func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineCpuLoadEventName,
-		`SELECT 
-			max(us.id) as id,
-			us.user_id,
-			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
-			machine 
-		FROM users_subscriptions us 
-		INNER JOIN (
-			SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p
-			where process = 'system' AND day >= $3 
-			group by user_id, machine
-		) v ON us.user_id = v.user_id 
-		WHERE v.machine = us.event_filter 
-		AND us.event_name = $1 AND us.created_epoch <= $2 
-		AND (us.last_sent_epoch < ($2 - 10) OR us.last_sent_epoch IS NULL)
-		AND v.created_trunc > now() - interval '45 minutes' 
-		AND event_threshold < (SELECT 
-			1 - (cpu_node_idle_seconds_total::decimal - lag(cpu_node_idle_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) / (cpu_node_system_seconds_total::decimal - lag(cpu_node_system_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) as cpu_load 
-			FROM stats_system as sy 
-			INNER JOIN stats_meta_p m on meta_id = m.id 
-			WHERE m.id = meta_id 
-			AND m.day >= $3 
-			AND m.user_id = v.user_id 
-			AND m.machine = us.event_filter 
-			ORDER BY sy.id desc
-			LIMIT 1
-		) 
-		group by us.user_id, machine;
-	`)
+		func(subscribeData *MachineEvents, machineData *types.MachineMetricSystemUser) bool {
+			if !isDataUp2Date(machineData) {
+				return false
+			}
+
+			if machineData.FiveMinuteOldData == nil { // no compare data found (5 min old data)
+				return false
+			}
+
+			idle := float64(machineData.CurrentData.CpuNodeIdleSecondsTotal) - float64(machineData.FiveMinuteOldData.CpuNodeIdleSecondsTotal)
+			total := float64(machineData.CurrentData.CpuNodeSystemSecondsTotal) - float64(machineData.FiveMinuteOldData.CpuNodeSystemSecondsTotal)
+			percentLoad := float64(1) - (idle / total)
+
+			if percentLoad > subscribeData.EventThreshold {
+				//logrus.Infof("percent load %v | threshold %v | idle %v | total %v", percentLoad, subscribeData.EventThreshold, idle, total)
+				return true
+			}
+			return false
+		},
+	)
 }
 
 func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineMemoryUsageEventName,
-		`SELECT 
-			max(us.id) as id,
-			us.user_id,
-			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
-			machine 
-		FROM users_subscriptions us 
-		INNER JOIN (
-			SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p
-			where process = 'system' AND day >= $3 
-			group by user_id, machine
-		) v ON us.user_id = v.user_id 
-		WHERE v.machine = us.event_filter 
-		AND us.event_name = $1 AND us.created_epoch <= $2
-		AND (us.last_sent_epoch < ($2 - 10) OR us.last_sent_epoch IS NULL)
-		AND v.created_trunc > now() - interval '1 hours' 
-		AND event_threshold < (SELECT avg(usage) FROM (SELECT 
-		1 - ((memory_node_bytes_free + memory_node_bytes_cached + memory_node_bytes_buffers) / memory_node_bytes_total::decimal) as usage
-		FROM stats_system as sy 
-		INNER JOIN stats_meta_p m on meta_id = m.id 
-		WHERE m.id = meta_id 
-		AND m.day >= $3 
-		AND m.user_id = v.user_id 
-		AND m.machine = us.event_filter 
-		ORDER BY sy.id desc
-		LIMIT 5
-		) p) 
-		group by us.user_id, machine;
-	`)
+		func(subscribeData *MachineEvents, machineData *types.MachineMetricSystemUser) bool {
+			if !isDataUp2Date(machineData) {
+				return false
+			}
+
+			memFree := float64(machineData.CurrentData.MemoryNodeBytesFree) + float64(machineData.CurrentData.MemoryNodeBytesCached) + float64(machineData.CurrentData.MemoryNodeBytesBuffers)
+			memTotal := float64(machineData.CurrentData.MemoryNodeBytesTotal)
+			memUsage := float64(1) - (memFree / memTotal)
+
+			if memUsage > subscribeData.EventThreshold {
+				//logrus.Infof("memUsage %v | threshold %v | memFree %v | memTotal %v", memUsage, subscribeData.EventThreshold, memFree, memTotal)
+				return true
+			}
+			return false
+		},
+	)
 }
 
-func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName, query string) error {
+func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName, fullfillsNotifyCondition func(subscribeData *MachineEvents, machineData *types.MachineMetricSystemUser) bool) error {
 	latestEpoch := LatestFinalizedEpoch()
 	if latestEpoch == 0 {
 		return nil
 	}
 
-	var dbResult []struct {
-		SubscriptionID  uint64         `db:"id"`
-		UserID          uint64         `db:"user_id"`
-		MachineName     string         `db:"machine"`
-		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
-	}
-
-	now := time.Now()
-	nowTs := now.Unix()
-	var day int = int(nowTs/86400) - 1 // -1 so we have no issue on partition table change
-
-	err := db.FrontendWriterDB.Select(&dbResult, query, eventName, latestEpoch, day)
+	var allSubscribed []MachineEvents
+	err := db.FrontendWriterDB.Select(&allSubscribed,
+		`SELECT 
+			us.user_id,
+			max(us.id) as id,
+			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
+			event_filter as machine,
+			COALESCE(event_threshold, 0) as event_threshold
+		FROM users_subscriptions us 
+		WHERE us.event_name = $1 AND us.created_epoch <= $2 
+		AND (us.last_sent_epoch < ($2 - 750) OR us.last_sent_epoch IS NULL)
+		group by us.user_id, machine, event_threshold`,
+		eventName, latestEpoch)
 	if err != nil {
 		return err
 	}
 
-	for _, r := range dbResult {
+	rowKeys := gcp_bigtable.RowList{}
+	for _, data := range allSubscribed {
+		rowKeys = append(rowKeys, db.GetMachineRowKey(data.UserID, "system", data.MachineName))
+	}
+
+	machineDataOfSubscribed, err := db.BigtableClient.GetMachineMetricsSystemForNotifications(rowKeys)
+	if err != nil {
+		return err
+	}
+
+	var result []MachineEvents
+	for _, data := range allSubscribed {
+		machineMap, found := machineDataOfSubscribed[data.UserID]
+		if !found {
+			continue
+		}
+		currentMachineData, found := machineMap[data.MachineName]
+		if !found {
+			continue
+		}
+
+		//logrus.Infof("currentMachineData %v | %v | %v | %v", currentMachine.CurrentDataInsertTs, currentMachine.CompareDataInsertTs, currentMachine.UserID, currentMachine.Machine)
+		if fullfillsNotifyCondition(&data, currentMachineData) {
+			result = append(result, data)
+		}
+	}
+
+	for _, r := range result {
+
 		n := &monitorMachineNotification{
 			SubscriptionID:  r.SubscriptionID,
 			MachineName:     r.MachineName,
@@ -2406,7 +2418,7 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 			Epoch:           latestEpoch,
 			UnsubscribeHash: r.UnsubscribeHash,
 		}
-
+		//logrus.Infof("notify %v %v", eventName, n)
 		if _, exists := notificationsByUserID[r.UserID]; !exists {
 			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
 		}

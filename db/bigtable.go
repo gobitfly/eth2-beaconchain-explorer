@@ -176,13 +176,58 @@ func (bigtable Bigtable) GetMachineMetricsMachineCount(userID uint64) (uint64, e
 	return uint64(len(names)), nil
 }
 
-// todo generics?
+func (bigtable Bigtable) GetMachineMetricsNode(userID uint64, limit, offset int) ([]*types.MachineMetricNode, error) {
+	return getMachineMetrics(bigtable, "beaconnode", userID, limit, offset,
+		func(data []byte, machine string) *types.MachineMetricNode {
+			obj := &types.MachineMetricNode{}
+			err := proto.Unmarshal(data, obj)
+			if err != nil {
+				return nil
+			}
+			obj.Machine = &machine
+			return obj
+		},
+	)
+}
+
+func (bigtable Bigtable) GetMachineMetricsValidator(userID uint64, limit, offset int) ([]*types.MachineMetricValidator, error) {
+	return getMachineMetrics(bigtable, "validator", userID, limit, offset,
+		func(data []byte, machine string) *types.MachineMetricValidator {
+			obj := &types.MachineMetricValidator{}
+			err := proto.Unmarshal(data, obj)
+			if err != nil {
+				return nil
+			}
+			obj.Machine = &machine
+			return obj
+		},
+	)
+}
+
 func (bigtable Bigtable) GetMachineMetricsSystem(userID uint64, limit, offset int) ([]*types.MachineMetricSystem, error) {
+	return getMachineMetrics(bigtable, "system", userID, limit, offset,
+		func(data []byte, machine string) *types.MachineMetricSystem {
+			obj := &types.MachineMetricSystem{}
+			err := proto.Unmarshal(data, obj)
+			if err != nil {
+				return nil
+			}
+			obj.Machine = &machine
+			return obj
+		},
+	)
+}
+
+func GetMachineRowKey(userID uint64, process string, machine string) string {
+	return fmt.Sprintf("u:%s:p:%s:m:%s", reversePaddedUserID(userID), process, machine)
+}
+
+func getMachineMetrics[T types.MachineMetricSystem | types.MachineMetricNode | types.MachineMetricValidator](bigtable Bigtable, process string, userID uint64, limit, offset int, marshler func(data []byte, machine string) *T) ([]*T, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
-	rangePrefix := fmt.Sprintf("u:%s:p:%s:m:", reversePaddedUserID(userID), "system")
-	res := make([]*types.MachineMetricSystem, 0)
+	rangePrefix := fmt.Sprintf("u:%s:p:%s:m:", reversePaddedUserID(userID), process)
+	res := make([]*T, 0)
 
 	filter := gcp_bigtable.ChainFilters(
 		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
@@ -201,102 +246,82 @@ func (bigtable Bigtable) GetMachineMetricsSystem(userID uint64, limit, offset in
 			if count%gapSize != 0 {
 				continue
 			}
+
+			obj := marshler(ri.Value, machine)
+			if obj == nil {
+				return false
+			}
+
+			res = append(res, obj)
+		}
+		return true
+	}, gcp_bigtable.RowFilter(filter))
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// Returns a map[userID]map[machineName]machineData
+// machineData contains the latest machine data in CurrentData
+// and 5 minute old data in fiveMinuteOldData (defined in limit)
+// as well as the insert timestamps of both
+func (bigtable Bigtable) GetMachineMetricsSystemForNotifications(rowKeys gcp_bigtable.RowList) (map[uint64]map[string]*types.MachineMetricSystemUser, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*200))
+	defer cancel()
+
+	res := make(map[uint64]map[string]*types.MachineMetricSystemUser) // userID -> machine -> data
+
+	limit := 5
+
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
+		gcp_bigtable.LatestNFilter(limit),
+	)
+
+	err := bigtable.tableMachineMetrics.ReadRows(ctx, rowKeys, func(r gcp_bigtable.Row) bool {
+		success, userID, machine, _ := machineMetricRowParts(r.Key())
+		if !success {
+			return false
+		}
+
+		count := 0
+		for _, ri := range r[MACHINE_METRICS_COLUMN_FAMILY] {
+
 			obj := &types.MachineMetricSystem{}
 			err := proto.Unmarshal(ri.Value, obj)
 			if err != nil {
 				return false
 			}
-			obj.Machine = &machine
 
-			res = append(res, obj)
-		}
-		return true
-	}, gcp_bigtable.RowFilter(filter))
-	if err != nil {
-		return nil, err
-	}
+			if _, found := res[userID]; !found {
+				res[userID] = make(map[string]*types.MachineMetricSystemUser)
+			}
 
-	return res, nil
-}
+			last, found := res[userID][machine]
 
-// todo generics?
-func (bigtable Bigtable) GetMachineMetricsNode(userID uint64, limit, offset int) ([]*types.MachineMetricNode, error) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancel()
-
-	rangePrefix := fmt.Sprintf("u:%s:p:%s:m:", reversePaddedUserID(userID), "beaconnode")
-	res := make([]*types.MachineMetricNode, 0)
-
-	filter := gcp_bigtable.ChainFilters(
-		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
-		gcp_bigtable.LatestNFilter(limit),
-		gcp_bigtable.CellsPerRowOffsetFilter(offset),
-	)
-	gapSize := getMachineStatsGap(uint64(limit))
-	err := bigtable.tableMachineMetrics.ReadRows(ctx, gcp_bigtable.PrefixRange(rangePrefix), func(r gcp_bigtable.Row) bool {
-		success, _, machine, _ := machineMetricRowParts(r.Key())
-		if !success {
-			return false
-		}
-		var count = -1
-		for _, ri := range r[MACHINE_METRICS_COLUMN_FAMILY] {
+			if found && count == limit-1 {
+				res[userID][machine] = &types.MachineMetricSystemUser{
+					UserID:                    userID,
+					Machine:                   machine,
+					CurrentData:               last.CurrentData,
+					FiveMinuteOldData:         obj,
+					CurrentDataInsertTs:       last.CurrentDataInsertTs,
+					FiveMinuteOldDataInsertTs: ri.Timestamp.Time().Unix(),
+				}
+			} else {
+				res[userID][machine] = &types.MachineMetricSystemUser{
+					UserID:                    userID,
+					Machine:                   machine,
+					CurrentData:               obj,
+					FiveMinuteOldData:         nil,
+					CurrentDataInsertTs:       ri.Timestamp.Time().Unix(),
+					FiveMinuteOldDataInsertTs: 0,
+				}
+			}
 			count++
-			if count%gapSize != 0 {
-				continue
-			}
 
-			obj := &types.MachineMetricNode{}
-			err := proto.Unmarshal(ri.Value, obj)
-			if err != nil {
-				return false
-			}
-			obj.Machine = &machine
-
-			res = append(res, obj)
-		}
-		return true
-	}, gcp_bigtable.RowFilter(filter))
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
-}
-
-// todo generics?
-func (bigtable Bigtable) GetMachineMetricsValidator(userID uint64, limit, offset int) ([]*types.MachineMetricValidator, error) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancel()
-
-	rangePrefix := fmt.Sprintf("u:%s:p:%s:m:", reversePaddedUserID(userID), "validator")
-	res := make([]*types.MachineMetricValidator, 0)
-
-	filter := gcp_bigtable.ChainFilters(
-		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
-		gcp_bigtable.LatestNFilter(limit),
-		gcp_bigtable.CellsPerRowOffsetFilter(offset),
-	)
-	gapSize := getMachineStatsGap(uint64(limit))
-
-	err := bigtable.tableMachineMetrics.ReadRows(ctx, gcp_bigtable.PrefixRange(rangePrefix), func(r gcp_bigtable.Row) bool {
-		success, _, machine, _ := machineMetricRowParts(r.Key())
-		if !success {
-			return false
-		}
-		var count = -1
-		for _, ri := range r[MACHINE_METRICS_COLUMN_FAMILY] {
-			count++
-			if count%gapSize != 0 {
-				continue
-			}
-			obj := &types.MachineMetricValidator{}
-			err := proto.Unmarshal(ri.Value, obj)
-			if err != nil {
-				return false
-			}
-			obj.Machine = &machine
-
-			res = append(res, obj)
 		}
 		return true
 	}, gcp_bigtable.RowFilter(filter))
