@@ -3,6 +3,7 @@ package main
 import (
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
@@ -64,6 +65,8 @@ func main() {
 				logrus.Fatal(err)
 			}
 			if int64(head.FinalizedEpoch) <= *epoch {
+
+				services.ReportStatus("rewardsExporter", "Running", nil)
 				time.Sleep(time.Second * 12)
 				continue
 			}

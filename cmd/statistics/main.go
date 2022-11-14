@@ -2,6 +2,7 @@ package main
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
@@ -165,6 +166,7 @@ func statisticsLoop() {
 				}
 			}
 		}
+		services.ReportStatus("statistics", "Running", nil)
 		time.Sleep(time.Minute)
 	}
 }
@@ -172,6 +174,7 @@ func statisticsLoop() {
 func poolsLoop() {
 	for {
 		db.UpdatePoolInfo()
+		services.ReportStatus("poolInfoUpdater", "Running", nil)
 		time.Sleep(time.Minute * 10)
 	}
 }
