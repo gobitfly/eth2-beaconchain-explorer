@@ -429,7 +429,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	countTotal := uint64(0)
-	qry = "SELECT count(*) as total FROM validators"
+	qry = "SELECT MAX(validatorindex) + 1 as total FROM validators"
 	err = db.ReaderDb.Get(&countTotal, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators total count: %v", err)
