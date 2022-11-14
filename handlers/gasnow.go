@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"fmt"
@@ -74,8 +75,16 @@ func GasNowData(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 
-	err := j.Encode(services.LatestGasNowData())
+	gasnowData := services.LatestGasNowData()
+	currency := GetCurrency(r)
+	if currency == "ETH" {
+		currency = "USD"
+	}
 
+	gasnowData.Data.Price = price.GetEthPrice(currency)
+	gasnowData.Data.Currency = currency
+
+	err := j.Encode(services.LatestGasNowData())
 	if err != nil {
 		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
 	}

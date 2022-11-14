@@ -504,10 +504,10 @@
 				}
 				return number.toFixed(2)
 			},
-			toGasPriceUsd(number, gasUsed, price) {
+			toGasPrice(number, gasUsed, price, curr) {
 				number = number / 1e18 * price * gasUsed
 				if (typeof Intl !== 'undefined') {
-					return new Intl.NumberFormat('en-US', { style: 'currency', currencyDisplay: 'narrowSymbol', currency: 'USD' }).format(number)
+					return new Intl.NumberFormat('en-US', { style: 'currency', currencyDisplay: 'narrowSymbol', currency: curr !== "ETH" ? curr : "USD" }).format(number)
 				}
 				return number.toFixed(2)
 			},
@@ -525,7 +525,7 @@
 			tick: function () {
 				if (this.updateIn <= 0) {
 					$.getJSON('/gasnow/data', function (response) {
-						console.log('gasnow data', response)
+						// console.log('gasnow data', response)
 						this.page = response;
 
 						document.title = (response.data.rapid / 1e9).toFixed(0) + "-" + (response.data.fast / 1e9).toFixed(0) + " GWei | Ethereum (ETH) Mainnet - GasNow - etherchain.org - " + new Date().getFullYear();
@@ -606,8 +606,8 @@
 				</div>
 				<div class="card-body card-block">
 					<h4 class="card-title">${ page.data.rapid | formatGWei(0) } GWei</h4>
-					<p class="card-text text-muted text-center">{{if .Mainnet}} ${ page.data.rapid | toGasPriceUsd(21000,
-						page.data.priceUSD)} |{{ end }} 15 Seconds</p>
+					<p class="card-text text-muted text-center">{{if .Mainnet}} ${ page.data.rapid | toGasPrice(21000,
+						page.data.price, page.data.currency)} |{{ end }} 15 Seconds</p>
 				</div>
 			</div>
 			<div data-toggle="tooltip" data-placement="top" title="The tail gas price of the current mining block"
@@ -617,8 +617,8 @@
 				</div>
 				<div class="card-body card-block">
 					<h4 class="card-title">${ page.data.fast | formatGWei(0) } GWei</h4>
-					<p class="card-text text-muted text-center">{{if .Mainnet }} ${ page.data.fast | toGasPriceUsd(21000,
-						page.data.priceUSD)} |{{end}} 1 Minute</p>
+					<p class="card-text text-muted text-center">{{if .Mainnet }} ${ page.data.fast | toGasPrice(21000,
+						page.data.price, page.data.currency)} |{{end}} 1 Minute</p>
 				</div>
 			</div>
 			<div data-toggle="tooltip" data-placement="top"
@@ -629,8 +629,8 @@
 				</div>
 				<div class="card-body card-block">
 					<h4 class="card-title">${ page.data.standard | formatGWei(0) } GWei</h4>
-					<p class="card-text text-muted text-center">{{ if .Mainnet }} ${ page.data.standard | toGasPriceUsd(21000,
-						page.data.priceUSD)} |{{ end }} 3 Minutes</p>
+					<p class="card-text text-muted text-center">{{ if .Mainnet }} ${ page.data.standard | toGasPrice(21000,
+						page.data.price, page.data.currency)} |{{ end }} 3 Minutes</p>
 				</div>
 			</div>
 			<div data-toggle="tooltip" data-placement="top"
@@ -641,8 +641,8 @@
 				</div>
 				<div class="card-body card-block">
 					<h4 class="card-title">${ page.data.slow | formatGWei(0) } GWei</h4>
-					<p class="card-text text-muted text-center">{{if .Mainnet}}${ page.data.slow | toGasPriceUsd(21000,
-						page.data.priceUSD)} |{{end}} > 10 Minutes</p>
+					<p class="card-text text-muted text-center">{{if .Mainnet}}${ page.data.slow | toGasPrice(21000,
+						page.data.price, page.data.currency)} |{{end}} > 10 Minutes</p>
 				</div>
 			</div>
 		</div>
@@ -698,8 +698,8 @@
 								<td><span class="badge badge-success">${item.tag[0]}</span></td>
 								<td>${itemTx.name}</td>
 								<td>${itemTx.gas | formatGasUsed}</td>
-								<td>${page.data.rapid | toGasPriceUsd(itemTx.gas, page.data.priceUSD)}</td>
-								<td>${page.data.fast | toGasPriceUsd(itemTx.gas, page.data.priceUSD)}</td>
+								<td>${page.data.rapid | toGasPrice(itemTx.gas, page.data.price, page.data.currency)}</td>
+								<td>${page.data.fast | toGasPrice(itemTx.gas, page.data.price, page.data.currency)}</td>
 							</tr>
 						</template>
 					</template>
