@@ -584,6 +584,8 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 			logger.Errorf("error saving epoch data: %v", err)
 			return
 		}
+
+		services.ReportStatus("epochExporter", "Running", nil)
 	}()
 	return nil
 }

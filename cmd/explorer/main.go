@@ -231,6 +231,13 @@ func main() {
 	}
 
 	if cfg.Frontend.Enabled {
+
+		if cfg.Frontend.OnlyAPI {
+			services.ReportStatus("api", "Running", nil)
+		} else {
+			services.ReportStatus("frontend", "Running", nil)
+		}
+
 		router := mux.NewRouter()
 
 		apiV1Router := router.PathPrefix("/api/v1").Subrouter()
@@ -537,7 +544,6 @@ func main() {
 			legalFs := http.FileServer(http.Dir(utils.Config.Frontend.LegalDir))
 			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", legalFs))
 			router.PathPrefix("/").Handler(http.FileServer(http.FS(static.Files)))
-
 		}
 
 		if utils.Config.Metrics.Enabled {

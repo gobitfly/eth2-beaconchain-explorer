@@ -153,6 +153,8 @@ func notificationsSender() {
 
 		logger.WithField("notifications", len(notifications)).WithField("duration", time.Since(start)).Info("notifications completed")
 		metrics.TaskDuration.WithLabelValues("service_notifications").Observe(time.Since(start).Seconds())
+
+		ReportStatus("notification-collector", "Running", nil)
 		time.Sleep(time.Second * 120)
 	}
 }
@@ -220,6 +222,7 @@ func notificationSender() {
 		}
 		cancel()
 
+		ReportStatus("notification-sender", "Running", nil)
 		time.Sleep(time.Second * 30)
 	}
 }
