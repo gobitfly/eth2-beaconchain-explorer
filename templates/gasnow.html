@@ -1,12 +1,12 @@
-{{ define "js"}}
-<script src="https://code.highcharts.com/highcharts.js"></script>
-<script src="https://code.highcharts.com/modules/heatmap.js"></script>
-<script src="https://code.highcharts.com/modules/data.js"></script>
-<script src="/js/highcharts-global-options.js"></script>
+{{ define "js" }}
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/modules/heatmap.js"></script>
+  <script src="https://code.highcharts.com/modules/data.js"></script>
+  <script src="/js/highcharts-global-options.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
-<script async src="/js/revive.min.js"></script>
-<script src="/js/requestInterval.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <script async src="/js/revive.min.js"></script>
+  <script src="/js/requestInterval.js"></script>
 
 <script>
 
@@ -540,120 +540,92 @@
 		}
 	})
 </script>
-{{end}}
+{{ end }}
 
-{{ define "css"}}
-<style>
-	[v-cloak] {
-		visibility: hidden;
-	}
-</style>
-{{end}}
+{{ define "css" }}
+  <style>
+    [v-cloak] {
+      visibility: hidden;
+    }
+  </style>
+{{ end }}
 
-{{ define "content"}}
-<div class="container mt-2">
-	<div id="app" v-cloak>
-		<div class="my-3">
-			<div class="d-md-flex py-2 justify-content-md-between">
-				<h1 class="h4 mb-1 mb-md-0">
-					<span class="ml-1 mr-1"><i class="fas fa-gas-pump mr-2"></i>GasNow Gas Price Estimation</span>
-				</h1>
-				<nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center"
-					aria-label="breadcrumb">
-<!-- ads placeholder -->
-					<ol style="white-space: nowrap;padding:0; background-color:transparent;"
-						class="breadcrumb font-size-1 flex-nowrap mb-0"
-						style="padding:0; background-color:transparent;">
-						<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-						<li class="breadcrumb-item">Tools</li>
-						<li class="breadcrumb-item active" aria-current="page">Gas Price Oracle</li>
-					</ol>
-				</nav>
-			</div>
-		</div>
+{{ define "content" }}
+  <div class="container mt-2">
+    <div id="app" v-cloak>
+      <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+          <h1 class="h4 mb-1 mb-md-0">
+            <span class="ml-1 mr-1"><i class="fas fa-gas-pump mr-2"></i>GasNow Gas Price Estimation</span>
+          </h1>
+          <nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
+            <!-- ads placeholder -->
+            <ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0" style="padding:0; background-color:transparent;">
+              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+              <li class="breadcrumb-item">Tools</li>
+              <li class="breadcrumb-item active" aria-current="page">Gas Price Oracle</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
 
-		<div class="row">
-			<div class="col-md-12">
-				<p><span class="fas fa-lightbulb mr-1"></span> INFO: This tool predicts the ETH gas price based on
-					pending
-					transactions in the ETH mempool. This method was pioneered by the now closed service 'GasNow'. An
-					GasNow API compatible <a href="/api/gasnow">API endpoint</a> for this data is also
-					available.</p>
-			</div>
-		</div>
-		
-		<div class="row justify-content-center">
-			<div class="col-12">
-				<!-- ads placeholder -->
-			</div>
-		</div>
-		<div class="row">
-			<div class="col">
-				<hr>
-			</div>
-			<div class="col-auto">
-				<h5>Gas Price</h5>
-			</div>
-			<div class="col">
-				<hr>
-			</div>
-		</div>
-		<div class="card-group">
-			<div data-toggle="tooltip" data-placement="top" title="The median gas price of the current mining block"
-				class="card text-center card-outline-info m-2">
-				<div class="card-header card-outline-info">
-					<i class="fas fa-rocket mr-1"></i>Rapid
-				</div>
-				<div class="card-body card-block">
-					<h4 class="card-title">${ page.data.rapid | formatGWei(0) } GWei</h4>
-					<p class="card-text text-muted text-center">{{if .Mainnet}} ${ page.data.rapid | toGasPrice(21000,
-						page.data.price, page.data.currency)} |{{ end }} 15 Seconds</p>
-				</div>
-			</div>
-			<div data-toggle="tooltip" data-placement="top" title="The tail gas price of the current mining block"
-				class="card text-center card-outline-info m-2">
-				<div class="card-header card-outline-info">
-					<i class="fas fa-plane mr-1"></i>Fast
-				</div>
-				<div class="card-body card-block">
-					<h4 class="card-title">${ page.data.fast | formatGWei(0) } GWei</h4>
-					<p class="card-text text-muted text-center">{{if .Mainnet }} ${ page.data.fast | toGasPrice(21000,
-						page.data.price, page.data.currency)} |{{end}} 1 Minute</p>
-				</div>
-			</div>
-			<div data-toggle="tooltip" data-placement="top"
-				title="The gas price of the 500th transaction in the pending queue"
-				class="card text-center card-outline-info m-2">
-				<div class="card-header card-outline-info">
-					<i class="fas fa-car-side mr-1"></i>Standard
-				</div>
-				<div class="card-body card-block">
-					<h4 class="card-title">${ page.data.standard | formatGWei(0) } GWei</h4>
-					<p class="card-text text-muted text-center">{{ if .Mainnet }} ${ page.data.standard | toGasPrice(21000,
-						page.data.price, page.data.currency)} |{{ end }} 3 Minutes</p>
-				</div>
-			</div>
-			<div data-toggle="tooltip" data-placement="top"
-				title="The gas price of the 1000th transaction in the pending queue"
-				class="card text-center card-outline-info m-2">
-				<div class="card-header card-outline-info">
-					<i class="fas fa-bicycle mr-1"></i>Slow
-				</div>
-				<div class="card-body card-block">
-					<h4 class="card-title">${ page.data.slow | formatGWei(0) } GWei</h4>
-					<p class="card-text text-muted text-center">{{if .Mainnet}}${ page.data.slow | toGasPrice(21000,
-						page.data.price, page.data.currency)} |{{end}} > 10 Minutes</p>
-				</div>
-			</div>
-		</div>
-		<div class="progress">
-			<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
-				v-bind:style="'width: ' +progress + '%'" v-bind:aria-valuenow="progress" aria-valuemin="0"
-				aria-valuemax="5">Update in: ${updateIn}s
-			</div>
-		</div>
-		<!-- Coinzilla Banner 728x90 -->
-		<!-- <div class="partner w-100 d-flex mt-3 justify-content-center">
+      <div class="row">
+        <div class="col-md-12">
+          <p><span class="fas fa-lightbulb mr-1"></span> INFO: This tool predicts the ETH gas price based on pending transactions in the ETH mempool. This method was pioneered by the now closed service 'GasNow'. An GasNow API compatible <a href="/api/gasnow">API endpoint</a> for this data is also available.</p>
+        </div>
+      </div>
+
+      <div class="row justify-content-center">
+        <div class="col-12">
+          <!-- ads placeholder -->
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <hr />
+        </div>
+        <div class="col-auto">
+          <h5>Gas Price</h5>
+        </div>
+        <div class="col">
+          <hr />
+        </div>
+      </div>
+      <div class="card-group">
+        <div data-toggle="tooltip" data-placement="top" title="The median gas price of the current mining block" class="card text-center card-outline-info m-2">
+          <div class="card-header card-outline-info"><i class="fas fa-rocket mr-1"></i>Rapid</div>
+          <div class="card-body card-block">
+            <h4 class="card-title">${ page.data.rapid | formatGWei(0) } GWei</h4>
+            <p class="card-text text-muted text-center">{{ if .Mainnet }}${ page.data.rapid | toGasPrice(21000, page.data.price, page.data.currency)} |{{ end }} 15 Seconds</p>
+          </div>
+        </div>
+        <div data-toggle="tooltip" data-placement="top" title="The tail gas price of the current mining block" class="card text-center card-outline-info m-2">
+          <div class="card-header card-outline-info"><i class="fas fa-plane mr-1"></i>Fast</div>
+          <div class="card-body card-block">
+            <h4 class="card-title">${ page.data.fast | formatGWei(0) } GWei</h4>
+            <p class="card-text text-muted text-center">{{ if .Mainnet }}${ page.data.fast | toGasPrice(21000, page.data.price, page.data.currency)} |{{ end }} 1 Minute</p>
+          </div>
+        </div>
+        <div data-toggle="tooltip" data-placement="top" title="The gas price of the 500th transaction in the pending queue" class="card text-center card-outline-info m-2">
+          <div class="card-header card-outline-info"><i class="fas fa-car-side mr-1"></i>Standard</div>
+          <div class="card-body card-block">
+            <h4 class="card-title">${ page.data.standard | formatGWei(0) } GWei</h4>
+            <p class="card-text text-muted text-center">{{ if .Mainnet }}${ page.data.standard | toGasPrice(21000, page.data.price, page.data.currency)} |{{ end }} 3 Minutes</p>
+          </div>
+        </div>
+        <div data-toggle="tooltip" data-placement="top" title="The gas price of the 1000th transaction in the pending queue" class="card text-center card-outline-info m-2">
+          <div class="card-header card-outline-info"><i class="fas fa-bicycle mr-1"></i>Slow</div>
+          <div class="card-body card-block">
+            <h4 class="card-title">${ page.data.slow | formatGWei(0) } GWei</h4>
+            <p class="card-text text-muted text-center">{{ if .Mainnet }}${ page.data.slow | toGasPrice(21000, page.data.price, page.data.currency)} |{{ end }} > 10 Minutes</p>
+          </div>
+        </div>
+      </div>
+      <div class="progress">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" v-bind:style="'width: ' +progress + '%'" v-bind:aria-valuenow="progress" aria-valuemin="0" aria-valuemax="5">Update in: ${updateIn}s</div>
+      </div>
+      <!-- Coinzilla Banner 728x90 -->
+      <!-- <div class="partner w-100 d-flex mt-3 justify-content-center">
 			<script async src="https://coinzillatag.com/lib/display.js"></script>
 			<div class="coinzilla" data-zone="C-1635efda351897cb722"></div>
 			<script>
@@ -665,60 +637,59 @@
 				coinzilla_display.push(c_display_preferences);
 			</script>
 		</div> -->
-		{{ if .Mainnet }}
-		<div class="row mt-5">
-			<div class="col">
-				<hr>
-			</div>
-			<div class="col-auto">
-				<h5>Estimated Cost of Transactions</h5>
-			</div>
-			<div class="col">
-				<hr>
-			</div>
-		</div>
-		<div style="height: 300px !important; overflow: scroll;">
-			<table class="table">
-				<thead>
-					<tr>
-						<th>Name</th>
-						<th>Label</th>
-						<th>Interaction</th>
-						<th>Gas Used</th>
-						<th>Rapid</th>
-						<th>Fast</th>
-					</tr>
-				</thead>
-				<tbody>
-					<template v-for="(item, index) in gasUsed">
-						<template v-for="(itemTx, indexTx) in item.tx">
-							<tr>
-								<td><img height="20" width="20" class="mr-1 mb-1" v-bind:src="item.icon">${item.title}
-								</td>
-								<td><span class="badge badge-success">${item.tag[0]}</span></td>
-								<td>${itemTx.name}</td>
-								<td>${itemTx.gas | formatGasUsed}</td>
-								<td>${page.data.rapid | toGasPrice(itemTx.gas, page.data.price, page.data.currency)}</td>
-								<td>${page.data.fast | toGasPrice(itemTx.gas, page.data.price, page.data.currency)}</td>
-							</tr>
-						</template>
-					</template>
-				</tbody>
-			</table>
-		</div>
-		{{ end }}
-	</div>
-	<div class="row mt-5">
-		<div class="col">
-			<hr>
-		</div>
-		<div class="col-auto">
-			<h5>Gas Price History</h5>
-		</div>
-		<div class="col">
-			<hr>
-		</div>
-	</div>
-	<div id="gaspricehistory_heatmap"></div>
-</div>
-{{end}}
+      {{ if .Mainnet }}
+        <div class="row mt-5">
+          <div class="col">
+            <hr />
+          </div>
+          <div class="col-auto">
+            <h5>Estimated Cost of Transactions</h5>
+          </div>
+          <div class="col">
+            <hr />
+          </div>
+        </div>
+        <div style="height: 300px !important; overflow: scroll;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Label</th>
+                <th>Interaction</th>
+                <th>Gas Used</th>
+                <th>Rapid</th>
+                <th>Fast</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="(item, index) in gasUsed">
+                <template v-for="(itemTx, indexTx) in item.tx">
+                  <tr>
+                    <td><img height="20" width="20" class="mr-1 mb-1" v-bind:src="item.icon" />${item.title}</td>
+                    <td><span class="badge badge-success">${item.tag[0]}</span></td>
+                    <td>${itemTx.name}</td>
+                    <td>${itemTx.gas | formatGasUsed}</td>
+                    <td>${page.data.rapid | toGasPrice(itemTx.gas, page.data.price, page.data.currency)}</td>
+                    <td>${page.data.fast | toGasPrice(itemTx.gas, page.data.price, page.data.currency)}</td>
+                  </tr>
+                </template>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      {{ end }}
+    </div>
+    <div class="row mt-5">
+      <div class="col">
+        <hr />
+      </div>
+      <div class="col-auto">
+        <h5>Gas Price History</h5>
+      </div>
+      <div class="col">
+        <hr />
+      </div>
+    </div>
+    <div id="gaspricehistory_heatmap"></div>
+  </div>
+{{ end }}
