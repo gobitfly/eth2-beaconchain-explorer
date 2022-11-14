@@ -485,7 +485,7 @@ $(document).ready(function () {
           if (type == "sort" || type == "type") return data ? data[0] : -1
           var d = data.split("_")
           var s = d[0].charAt(0).toUpperCase() + d[0].slice(1)
-          if (d[1] === "offline") return `<span style="display:none">${d[1]}</span><span data-toggle="tooltip" data-placement="top" title="No attestation in the last 2 epochs">${s} <i class="fas fa-power-off fa-sm text-danger"></i></span>`
+          if (d[1] === "offline") return `<span style="display:none">${d[1]}</span><span data-toggle="tooltip" data-placement="top" title="No attestation in the last 2 finalized epochs">${s} <i class="fas fa-power-off fa-sm text-danger"></i></span>`
           if (d[1] === "online") return `<span style="display:none">${d[1]}</span><span>${s} <i class="fas fa-power-off fa-sm text-success"></i></span>`
           return `<span>${s}</span>`
         },

@@ -264,6 +264,7 @@ func relaysUpdater(wg *sync.WaitGroup) {
 			wg.Done()
 			firstRun = false
 		}
+		ReportStatus("relaysUpdater", "Running", nil)
 		time.Sleep(time.Minute)
 	}
 }
@@ -327,6 +328,7 @@ func epochUpdater(wg *sync.WaitGroup) {
 				firstRun = false
 			}
 		}
+		ReportStatus("epochUpdater", "Running", nil)
 		time.Sleep(time.Second)
 	}
 }
@@ -356,6 +358,7 @@ func slotUpdater(wg *sync.WaitGroup) {
 				firstRun = false
 			}
 		}
+		ReportStatus("slotUpdater", "Running", nil)
 		time.Sleep(time.Second)
 	}
 }
@@ -381,6 +384,7 @@ func poolsUpdater(wg *sync.WaitGroup) {
 			wg.Done()
 			firstRun = false
 		}
+		ReportStatus("poolsUpdater", "Running", nil)
 		time.Sleep(time.Minute * 10)
 	}
 }
@@ -435,6 +439,7 @@ func latestProposedSlotUpdater(wg *sync.WaitGroup) {
 				firstRun = false
 			}
 		}
+		ReportStatus("latestProposedSlotUpdater", "Running", nil)
 		time.Sleep(time.Second)
 	}
 }
@@ -463,6 +468,7 @@ func indexPageDataUpdater(wg *sync.WaitGroup) {
 			wg.Done()
 			firstRun = false
 		}
+		ReportStatus("indexPageDataUpdater", "Running", nil)
 		time.Sleep(time.Second * 10)
 	}
 }
@@ -489,6 +495,7 @@ func slotVizUpdater(wg *sync.WaitGroup) {
 				}
 			}
 		}
+		ReportStatus("slotVizUpdater", "Running", nil)
 		time.Sleep(time.Second)
 	}
 }
@@ -840,7 +847,7 @@ func LatestSlot() uint64 {
 	return 0
 }
 
-//FinalizationDelay will return the current Finalization Delay
+// FinalizationDelay will return the current Finalization Delay
 func FinalizationDelay() uint64 {
 	return LatestNodeEpoch() - LatestNodeFinalizedEpoch()
 }
@@ -1199,6 +1206,7 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 			wg.Done()
 			firstRun = false
 		}
+		ReportStatus("mempoolUpdater", "Running", nil)
 		time.Sleep(time.Second * 10)
 	}
 }
