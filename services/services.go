@@ -318,7 +318,7 @@ func epochUpdater(wg *sync.WaitGroup) {
 			logger.Errorf("error retrieving latest exported finalized epoch from the database: %v", err)
 		} else {
 			cacheKey := fmt.Sprintf("%d:frontend:latestFinalized", utils.Config.Chain.Config.DepositChainID)
-			err := cache.TieredCache.SetUint64(cacheKey, epoch, time.Hour*24)
+			err := cache.TieredCache.SetUint64(cacheKey, latestFinalized, time.Hour*24)
 			if err != nil {
 				logger.Errorf("error caching latestFinalizedEpoch: %v", err)
 			}
