@@ -24,7 +24,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	address := template.HTMLEscapeString(vars["address"])
-	isValid := utils.IsValidEth1Address(address)
+	isValid := utils.IsEth1Address(address)
 	if !isValid {
 		data := InitPageData(w, r, "blockchain", "/address", "not found")
 		err := templates.GetTemplate("layout.html", "sprites.html", "execution/addressNotFound.html").ExecuteTemplate(w, "layout", data)
