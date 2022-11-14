@@ -361,14 +361,15 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 					validators.status AS state,
 					COALESCE(cnt.total_count, 0) as total_count
 			FROM validators
-			INNER JOIN matched_validators ON validators.pubkey = matched_validators.pubkey
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			LEFT JOIN (SELECT MAX(validatorindex) + 1
 						FROM validators
 						LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 						%s %s
     					%s) cnt(total_count) ON true
-			%s
+			
+						WHERE validators.pubkey IN (SELECT pubkey FROM matched_validators)
+						%s
 			ORDER BY %s %s
 			LIMIT $%d OFFSET $%d`, searchQry, dataQuery.StateFilter, addAnd, countWhere, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir, len(args)-1, len(args))
 
