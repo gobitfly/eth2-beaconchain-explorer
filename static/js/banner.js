@@ -139,7 +139,7 @@ function updateBanner() {
           var statusHtml = `
           <a data-toggle="tooltip" title="The explorer is currently syncing with the network" id="banner-status" style="white-space: nowrap;" class="mr-2" href="/"><i class="fas fa-sync"></i> <span>|</span></a>
             `
-          document.getElementById('banner-home').remove()
+          document.getElementById("banner-home").remove()
           document.getElementById("banner-stats").insertAdjacentHTML("afterbegin", statusHtml)
         }
       } else {
