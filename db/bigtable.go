@@ -26,6 +26,7 @@ const (
 	PROPOSALS_FAMILY             = "pr"
 	SYNC_COMMITTEES_FAMILY       = "sc"
 	INCOME_DETAILS_COLUMN_FAMILY = "id"
+	SERIES_FAMILY                = "series"
 
 	max_block_number = 1000000000
 	max_epoch        = 1000000000

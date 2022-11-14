@@ -935,7 +935,7 @@ func LatestGasNowData() *types.GasNowPageData {
 	wanted := &types.GasNowPageData{}
 	cacheKey := fmt.Sprintf("%d:frontend:gasNow", utils.Config.Chain.Config.DepositChainID)
 
-	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, &wanted); err == nil {
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, wanted); err == nil {
 		return wanted.(*types.GasNowPageData)
 	} else {
 		logger.Errorf("error retrieving gasNow from cache: %v", err)

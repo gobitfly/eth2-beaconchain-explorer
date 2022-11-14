@@ -524,7 +524,8 @@
 		methods: {
 			tick: function () {
 				if (this.updateIn <= 0) {
-					$.getJSON('/api/gasnow', function (response) {
+					$.getJSON('/gasnow/data', function (response) {
+						console.log('gasnow data', response)
 						this.page = response;
 
 						document.title = (response.data.rapid / 1e9).toFixed(0) + "-" + (response.data.fast / 1e9).toFixed(0) + " GWei | Ethereum (ETH) Mainnet - GasNow - etherchain.org - " + new Date().getFullYear();
@@ -559,9 +560,7 @@
 				</h1>
 				<nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center"
 					aria-label="breadcrumb">
-					{{template "BuyCrypto"}}
-					{{template "GamingCrypto"}}
-					{{template "ExchangeCrypto"}}
+<!-- ads placeholder -->
 					<ol style="white-space: nowrap;padding:0; background-color:transparent;"
 						class="breadcrumb font-size-1 flex-nowrap mb-0"
 						style="padding:0; background-color:transparent;">
@@ -585,7 +584,7 @@
 		
 		<div class="row justify-content-center">
 			<div class="col-12">
-				{{ template "GasNowReviveAd" }}
+				<!-- ads placeholder -->
 			</div>
 		</div>
 		<div class="row">
@@ -607,8 +606,8 @@
 				</div>
 				<div class="card-body card-block">
 					<h4 class="card-title">${ page.data.rapid | formatGWei(0) } GWei</h4>
-					<p class="card-text text-muted text-center">${ page.data.rapid | toGasPriceUsd(21000,
-						page.data.priceUSD)} | 15 Seconds</p>
+					<p class="card-text text-muted text-center">{{if .Mainnet}} ${ page.data.rapid | toGasPriceUsd(21000,
+						page.data.priceUSD)} |{{ end }} 15 Seconds</p>
 				</div>
 			</div>
 			<div data-toggle="tooltip" data-placement="top" title="The tail gas price of the current mining block"
@@ -618,8 +617,8 @@
 				</div>
 				<div class="card-body card-block">
 					<h4 class="card-title">${ page.data.fast | formatGWei(0) } GWei</h4>
-					<p class="card-text text-muted text-center">${ page.data.fast | toGasPriceUsd(21000,
-						page.data.priceUSD)} | 1 Minute</p>
+					<p class="card-text text-muted text-center">{{if .Mainnet }} ${ page.data.fast | toGasPriceUsd(21000,
+						page.data.priceUSD)} |{{end}} 1 Minute</p>
 				</div>
 			</div>
 			<div data-toggle="tooltip" data-placement="top"
@@ -630,8 +629,8 @@
 				</div>
 				<div class="card-body card-block">
 					<h4 class="card-title">${ page.data.standard | formatGWei(0) } GWei</h4>
-					<p class="card-text text-muted text-center">${ page.data.standard | toGasPriceUsd(21000,
-						page.data.priceUSD)} | 3 Minutes</p>
+					<p class="card-text text-muted text-center">{{ if .Mainnet }} ${ page.data.standard | toGasPriceUsd(21000,
+						page.data.priceUSD)} |{{ end }} 3 Minutes</p>
 				</div>
 			</div>
 			<div data-toggle="tooltip" data-placement="top"
@@ -642,8 +641,8 @@
 				</div>
 				<div class="card-body card-block">
 					<h4 class="card-title">${ page.data.slow | formatGWei(0) } GWei</h4>
-					<p class="card-text text-muted text-center">${ page.data.slow | toGasPriceUsd(21000,
-						page.data.priceUSD)} | > 10 Minutes</p>
+					<p class="card-text text-muted text-center">{{if .Mainnet}}${ page.data.slow | toGasPriceUsd(21000,
+						page.data.priceUSD)} |{{end}} > 10 Minutes</p>
 				</div>
 			</div>
 		</div>
@@ -653,8 +652,8 @@
 				aria-valuemax="5">Update in: ${updateIn}s
 			</div>
 		</div>
-		<div class="partner w-100 d-flex mt-3 justify-content-center">
-			<!-- Coinzilla Banner 728x90 -->
+		<!-- Coinzilla Banner 728x90 -->
+		<!-- <div class="partner w-100 d-flex mt-3 justify-content-center">
 			<script async src="https://coinzillatag.com/lib/display.js"></script>
 			<div class="coinzilla" data-zone="C-1635efda351897cb722"></div>
 			<script>
@@ -665,7 +664,8 @@
 				c_display_preferences.height = "90";
 				coinzilla_display.push(c_display_preferences);
 			</script>
-		</div>
+		</div> -->
+		{{ if .Mainnet }}
 		<div class="row mt-5">
 			<div class="col">
 				<hr>
@@ -706,6 +706,7 @@
 				</tbody>
 			</table>
 		</div>
+		{{ end }}
 	</div>
 	<div class="row mt-5">
 		<div class="col">
