@@ -19,7 +19,7 @@ import (
 
 const searchValidatorsResultLimit = 300
 
-var transactionLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{0,64}$`)
+var transactionLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
 var searchLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
 var thresholdHexLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{5,96}$`)
 
@@ -134,7 +134,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if transactionLikeRE.MatchString(strings.ToLower(strings.Replace(search, "0x", "", -1))) {
 			txHash, txHashErr := hex.DecodeString(strings.ToLower(strings.Replace(search, "0x", "", -1)))
 			if txHashErr != nil {
-				logger.Errorf("error parsing txHash when s: %w", txHashErr)
+				logger.Errorf("error parsing txHash %v: %w", search, txHashErr)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
@@ -144,7 +144,6 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				WHERE txhash = $1
 				ORDER BY block_slot LIMIT 10`, txHash)
 		}
-
 	case "epochs":
 		result = &types.SearchAheadEpochsResult{}
 		err = db.ReaderDb.Select(result, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")
