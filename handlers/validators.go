@@ -363,7 +363,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			FROM validators
 			INNER JOIN matched_validators ON validators.pubkey = matched_validators.pubkey
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			LEFT JOIN (SELECT count(*)
+			LEFT JOIN (SELECT MAX(validatorindex) + 1
 						FROM validators
 						LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 						%s %s
