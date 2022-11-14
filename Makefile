@@ -1,6 +1,5 @@
 GITCOMMIT=`git describe --always`
-GITDATESHORT=`TZ=UTC git show -s --date=iso-strict-local --format=%cd --date=format:'%Y%m%d%H%M' HEAD`
-VERSION=v${GITDATESHORT}_${GITCOMMIT}
+VERSION=$$(git describe 2>/dev/null || echo "0.0.0-${GITCOMMIT}")
 GITDATE=`TZ=UTC git show -s --date=iso-strict-local --format=%cd HEAD`
 BUILDDATE=`date -u +"%Y-%m-%dT%H:%M:%S%:z"`
 PACKAGE=eth2-exporter
