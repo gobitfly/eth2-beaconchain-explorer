@@ -67,14 +67,15 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			CurrentPriceFormatted: GetCurrentPriceFormatted(r),
 			CurrentSymbol:         GetCurrencySymbol(r),
 		},
-		Mainnet:         utils.Config.Chain.Config.ConfigName == "mainnet",
-		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,
-		ClientsUpdated:  ethclients.ClientsUpdated(),
-		ChainConfig:     utils.Config.Chain.Config,
-		Lang:            "en-US",
-		NoAds:           user.Authenticated && user.Subscription != "",
-		Debug:           utils.Config.Frontend.Debug,
-		GasNow:          services.LatestGasNowData(),
+		Mainnet:            utils.Config.Chain.Config.ConfigName == "mainnet",
+		DepositContract:    utils.Config.Indexer.Eth1DepositContractAddress,
+		ClientsUpdated:     ethclients.ClientsUpdated(),
+		ChainConfig:        utils.Config.Chain.Config,
+		Lang:               "en-US",
+		NoAds:              user.Authenticated && user.Subscription != "",
+		Debug:              utils.Config.Frontend.Debug,
+		GasNow:             services.LatestGasNowData(),
+		ShowSyncingMessage: services.IsSyncing(),
 	}
 
 	if utils.Config.Frontend.Debug {
