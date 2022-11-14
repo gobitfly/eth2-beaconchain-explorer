@@ -2124,7 +2124,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		data[i] = types.Transfer{
 			From:   from,
 			To:     to,
-			Amount: utils.FormatBytesAmount(t.Value, "Ether"),
+			Amount: utils.FormatBytesAmount(t.Value, "Ether", 8),
 		}
 	}
 	return data, nil

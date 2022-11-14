@@ -137,19 +137,20 @@ function updateBanner() {
         var bannerHandle = document.getElementById("banner-status")
         if (!bannerHandle) {
           var statusHtml = `
-            <div id="banner-status" class="info-item d-flex mr-3">
-              <div class="info-item-body">
-                <i class="fas fa-sync" data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network"></i>
-              </div>
-            </div>
+          <a id="banner-status" style="white-space: nowrap;" class="mr-2" href="/"><i class="fas fa-sync" data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network"></i> <span>|</span></a>
             `
-          document.getElementById("banner-stats").insertAdjacentHTML("beforeend", statusHtml)
+          document.getElementById('banner-home').remove()
+          document.getElementById("banner-stats").insertAdjacentHTML("afterbegin", statusHtml)
         }
       } else {
         // delete sync if it exists otherwise do nothing
         var statusHandle = document.getElementById("banner-status")
         if (statusHandle) {
+          var homeHtml = `
+          <a id="banner-home" style="white-space: nowrap;" class="mr-2" href="/"><i class="fas fa-home"></i> <span>|</span></a>
+          `
           statusHandle.remove()
+          document.getElementById("banner-stats").insertAdjacentHTML("afterbegin", homeHtml)
         }
       }
     })

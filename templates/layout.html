@@ -150,7 +150,11 @@
       <div {{ if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register")) }}style="display:none;"{{ end }} class="info-banner-container">
         <div class="info-banner-content container">
           <div id="banner-stats" class="info-banner-left">
-            <a style="white-space: nowrap;" class="mr-2" href="/"><i class="fas fa-home"></i> <span>|</span></a>
+            {{ if .ShowSyncingMessage }}
+            <a data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network" id="banner-status" style="white-space: nowrap;" class="mr-2" href="/"><i class="fas fa-sync" data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network"></i> <span>|</span></a>
+            {{ else }}
+            <a id="banner-home" style="white-space: nowrap;" class="mr-2" href="/"><i class="fas fa-home"></i> <span>|</span></a>
+            {{ end }}
             <div data-toggle="tooltip" title="" data-original-title="Epoch" id="banner-epoch" class="info-item d-flex mr-2 mr-lg-3">
               <div class="info-item-header mr-1">
                 <span class="item-icon"><i class="fas fa-history"></i></span>
@@ -184,6 +188,14 @@
                   </div>
                 </div>
               </div>
+            {{ else }}
+            <div data-toggle="tooltip" title="" data-original-title="Gas Price" class="d-none d-lg-block">
+              <div id="banner-slot" class="info-item d-flex mr-2 mr-lg-3">
+                <div class="info-item-body">
+					          <a id="banner-gpo-data" href="/gasnow"><i class="fas fa-gas-pump mr-1"></i>{{formatBalanceWei .GasNow.Data.Fast "GWei" 0 }}</a>
+                </div>
+              </div>
+            </div>
             {{ end }}
             {{ if not .ShowSyncingMessage }}
               {{ if gt .FinalizationDelay 3 }}
@@ -198,11 +210,7 @@
                 </div>
               {{ end }}
             {{ end }}
-            {{ if .ShowSyncingMessage }}
-              <div data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network" id="banner-status" class="info-item d-flex mr-1 mr-lg-3">
-                <div class="info-item-body"><i class="fas fa-sync"></i></div>
-              </div>
-            {{ end }}
+            
           </div>
           <!-- Fill content -->
           <!-- <div class="d-flex flex-fill"></div> -->
@@ -217,6 +225,7 @@
             </div>
           </div>
           <div class="info-banner-right">
+            {{ if .Mainnet }}
             <div class="dropdown">
               <a class="btn btn-transparent btn-sm dropdown-toggle currency-dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                 <div id="currencyFlagDropdown">
@@ -272,6 +281,7 @@
                 </a>
               </div>
             </div>
+            {{ end }}
             <!--<div class="dropdown">
                         <a class="btn btn-transparent btn-sm dropdown-toggle" id="langDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <i class="fas fa-globe m-0 p-0"></i>
@@ -684,6 +694,10 @@
                       <a class="dropdown-item" href="/tools/unitConverter">
                         <span class="nav-icon"><i class="fas fa-sync"></i></span>
                         <span class="nav-text ml-3">Unit Converter</span>
+                      </a>
+        							<a class="dropdown-item" href="/gasnow">
+                        <span class="nav-icon"><i class="fad fa-gas-pump"></i></span>
+                        <span class="nav-text ml-3">GasNow</span>
                       </a>
                     </div>
                     <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">

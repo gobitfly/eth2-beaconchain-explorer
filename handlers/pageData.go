@@ -74,6 +74,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		Lang:            "en-US",
 		NoAds:           user.Authenticated && user.Subscription != "",
 		Debug:           utils.Config.Frontend.Debug,
+		GasNow:          services.LatestGasNowData(),
 	}
 
 	if utils.Config.Frontend.Debug {
