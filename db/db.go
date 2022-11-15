@@ -127,7 +127,7 @@ func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepos
 
 var searchLikeHash = regexp.MustCompile(`^0?x?[0-9a-fA-F]{2,96}`) // only search for pubkeys if string consists of 96 hex-chars
 
-func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdEpoch uint64) ([]*types.EthOneDepositsData, uint64, error) {
+func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsData, uint64, error) {
 	deposits := []*types.EthOneDepositsData{}
 
 	if orderDir != "desc" && orderDir != "asc" {
@@ -202,9 +202,9 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 				CASE 
 					WHEN exitepoch <= $3 then 'exited'
 					WHEN activationepoch > $3 then 'pending'
-					WHEN slashed and activationepoch < $3 and (lastattestationslot / $5 < $4 OR lastattestationslot is null) then 'slashing_offline'
+					WHEN slashed and activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'slashing_offline'
 					WHEN slashed then 'slashing_online'
-					WHEN activationepoch < $3 and (lastattestationslot / $5 < $4 OR lastattestationslot is null) then 'active_offline'
+					WHEN activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'active_offline'
 					ELSE 'active_online'
 				END AS state
 				FROM validators
@@ -212,15 +212,15 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		ON
 			v.pubkey = eth1.publickey
 		WHERE
-			ENCODE(eth1.publickey, 'hex') LIKE LOWER($6)
-			OR ENCODE(eth1.withdrawal_credentials, 'hex') LIKE LOWER($6)
-			OR ENCODE(eth1.from_address, 'hex') LIKE LOWER($6)
-			OR ENCODE(tx_hash, 'hex') LIKE LOWER($6)
-			OR CAST(eth1.block_number AS text) LIKE LOWER($6)
+			ENCODE(eth1.publickey, 'hex') LIKE LOWER($5)
+			OR ENCODE(eth1.withdrawal_credentials, 'hex') LIKE LOWER($5)
+			OR ENCODE(eth1.from_address, 'hex') LIKE LOWER($5)
+			OR ENCODE(tx_hash, 'hex') LIKE LOWER($5)
+			OR CAST(eth1.block_number AS text) LIKE LOWER($5)
 		ORDER BY %s %s
 		LIMIT $1
 		OFFSET $2`, orderBy, orderDir)
-		err = ReaderDb.Select(&deposits, wholeQuery, length, start, latestEpoch, validatorOnlineThresholdEpoch, utils.Config.Chain.Config.SlotsPerEpoch, query+"%")
+		err = ReaderDb.Select(&deposits, wholeQuery, length, start, latestEpoch, validatorOnlineThresholdSlot, query+"%")
 	} else {
 		err = ReaderDb.Select(&deposits, fmt.Sprintf(`
 		SELECT 
@@ -245,9 +245,9 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 				CASE 
 					WHEN exitepoch <= $3 then 'exited'
 					WHEN activationepoch > $3 then 'pending'
-					WHEN slashed and activationepoch < $3 and (lastattestationslot / $5 < $4 OR lastattestationslot is null) then 'slashing_offline'
+					WHEN slashed and activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'slashing_offline'
 					WHEN slashed then 'slashing_online'
-					WHEN activationepoch < $3 and (lastattestationslot / $5 < $4 OR lastattestationslot is null) then 'active_offline'
+					WHEN activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'active_offline'
 					ELSE 'active_online'
 				END AS state
 				FROM validators
@@ -256,7 +256,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			v.pubkey = eth1.publickey
 		ORDER BY %s %s
 		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, validatorOnlineThresholdEpoch, utils.Config.Chain.Config.SlotsPerEpoch)
+		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, validatorOnlineThresholdSlot)
 	}
 	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
@@ -1013,12 +1013,10 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		return err
 	}
 
-	var lastFinalizedEpoch uint64
-	err = WriterDb.Get(&lastFinalizedEpoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
-	if err != nil {
-		return err
+	thresholdSlot := latestBlock - 64
+	if latestBlock < 64 {
+		thresholdSlot = 0
 	}
-	thresholdEpoch := utils.GetValidatorOfflineThresholdEpoch(lastFinalizedEpoch)
 
 	latestEpoch := latestBlock / 32
 	farFutureEpoch := uint64(18446744073709551615)
@@ -1038,6 +1036,196 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 			v.ActivationEpoch = maxSqlNumber
 		}
 	}
+
+	// var currentState []*types.Validator
+	// err = tx.Select(&currentState, "SELECT * FROM validators;")
+
+	// if err != nil {
+	// 	return err
+	// }
+
+	// currentStateMap := make(map[uint64]*types.Validator, len(currentState))
+
+	// for _, v := range currentState {
+	// 	currentStateMap[v.Index] = v
+	// }
+
+	// var queries strings.Builder
+	// updates := 0
+	// for _, v := range data.Validators {
+	// 	c := currentStateMap[v.Index]
+
+	// 	if c == nil {
+	// 		logger.Infof("validator %v is new", v.Index)
+
+	// 		_, err = tx.Exec(`INSERT INTO validators (
+	// 			validatorindex,
+	// 			pubkey,
+	// 			withdrawableepoch,
+	// 			withdrawalcredentials,
+	// 			balance,
+	// 			effectivebalance,
+	// 			slashed,
+	// 			activationeligibilityepoch,
+	// 			activationepoch,
+	// 			exitepoch,
+	// 			balance1d,
+	// 			balance7d,
+	// 			balance31d,
+	// 			pubkeyhex,
+	// 			status,
+	// 			lastattestationslot
+	// 		)
+	// 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);`,
+	// 			v.Index,
+	// 			v.PublicKey,
+	// 			v.WithdrawableEpoch,
+	// 			v.WithdrawalCredentials,
+	// 			v.Balance,
+	// 			v.EffectiveBalance,
+	// 			v.Slashed,
+	// 			v.ActivationEligibilityEpoch,
+	// 			v.ActivationEpoch,
+	// 			v.ExitEpoch,
+	// 			v.Balance1d,
+	// 			v.Balance7d,
+	// 			v.Balance31d,
+	// 			fmt.Sprintf("%x", v.PublicKey),
+	// 			v.Status,
+	// 			v.LastAttestationSlot,
+	// 		)
+
+	// 		if err != nil {
+	// 			logger.Errorf("error saving new validator %v: %v", v.Index, err)
+	// 		}
+	// 	} else {
+	// 		// status                     =
+	// 		// CASE
+	// 		// WHEN EXCLUDED.exitepoch <= %[1]d AND EXCLUDED.slashed THEN 'slashed'
+	// 		// WHEN EXCLUDED.exitepoch <= %[1]d THEN 'exited'
+	// 		// WHEN EXCLUDED.activationeligibilityepoch = 9223372036854775807 THEN 'deposited'
+	// 		// WHEN EXCLUDED.activationepoch > %[1]d THEN 'pending'
+	// 		// WHEN EXCLUDED.slashed AND EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'slashing_offline'
+	// 		// WHEN EXCLUDED.slashed THEN 'slashing_online'
+	// 		// WHEN EXCLUDED.exitepoch < 9223372036854775807 AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'exiting_offline'
+	// 		// WHEN EXCLUDED.exitepoch < 9223372036854775807 THEN 'exiting_online'
+	// 		// WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline'
+	// 		// ELSE 'active_online'
+	// 		// END
+
+	// 		offline := false
+
+	// 		lastSeen := c.LastAttestationSlot.Int64
+	// 		if v.LastAttestationSlot.Int64 > lastSeen {
+	// 			lastSeen = v.LastAttestationSlot.Int64
+	// 		}
+
+	// 		if lastSeen < int64(thresholdSlot) {
+	// 			offline = true
+	// 		}
+
+	// 		if v.ExitEpoch <= latestEpoch && v.Slashed {
+	// 			v.Status = "slashed"
+	// 		} else if v.ExitEpoch <= latestEpoch {
+	// 			v.Status = "exited"
+	// 		} else if v.ActivationEligibilityEpoch == 9223372036854775807 {
+	// 			v.Status = "deposited"
+	// 		} else if v.ActivationEpoch > latestEpoch {
+	// 			v.Status = "pending"
+	// 		} else if v.Slashed && v.ActivationEpoch < latestEpoch && offline {
+	// 			v.Status = "slashing_offline"
+	// 		} else if v.Slashed {
+	// 			v.Status = "slashing_online"
+	// 		} else if v.ExitEpoch < 9223372036854775807 && offline {
+	// 			v.Status = "exiting_offline"
+	// 		} else if v.ExitEpoch < 9223372036854775807 {
+	// 			v.Status = "exiting_online"
+	// 		} else if v.ActivationEpoch < latestEpoch && offline {
+	// 			v.Status = "active_offline"
+	// 		} else {
+	// 			v.Status = "active_online"
+	// 		}
+
+	// 		if c.LastAttestationSlot != v.LastAttestationSlot && v.LastAttestationSlot.Valid {
+	// 			// logger.Infof("LastAttestationSlot changed for validator %v from %v to %v", v.Index, c.LastAttestationSlot.Int64, v.LastAttestationSlot.Int64)
+
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET lastattestationslot = %d WHERE validatorindex = %d;\n", v.LastAttestationSlot.Int64, c.Index))
+	// 			updates++
+	// 		}
+
+	// 		if c.Status != v.Status {
+	// 			logger.Infof("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET status = '%s' WHERE validatorindex = %d;\n", v.Status, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.Balance != v.Balance {
+	// 			// logger.Infof("Balance changed for validator %v from %v to %v", v.Index, c.Balance, v.Balance)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET balance = %d WHERE validatorindex = %d;\n", v.Balance, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.EffectiveBalance != v.EffectiveBalance {
+	// 			// logger.Infof("EffectiveBalance changed for validator %v from %v to %v", v.Index, c.EffectiveBalance, v.EffectiveBalance)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET effectivebalance = %d WHERE validatorindex = %d;\n", v.EffectiveBalance, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.Slashed != v.Slashed {
+	// 			logger.Infof("Slashed changed for validator %v from %v to %v", v.Index, c.Slashed, v.Slashed)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET slashed = %v WHERE validatorindex = %d;\n", v.Slashed, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.ActivationEligibilityEpoch != v.ActivationEligibilityEpoch {
+	// 			logger.Infof("ActivationEligibilityEpoch changed for validator %v from %v to %v", v.Index, c.ActivationEligibilityEpoch, v.ActivationEligibilityEpoch)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET activationeligibilityepoch = %d WHERE validatorindex = %d;\n", v.ActivationEligibilityEpoch, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.ActivationEpoch != v.ActivationEpoch {
+	// 			logger.Infof("ActivationEpoch changed for validator %v from %v to %v", v.Index, c.ActivationEpoch, v.ActivationEpoch)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET activationepoch = %d WHERE validatorindex = %d;\n", v.ActivationEpoch, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.ExitEpoch != v.ExitEpoch {
+	// 			logger.Infof("ExitEpoch changed for validator %v from %v to %v", v.Index, c.ExitEpoch, v.ExitEpoch)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET exitepoch = %d WHERE validatorindex = %d;\n", v.ExitEpoch, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.WithdrawableEpoch != v.WithdrawableEpoch {
+	// 			logger.Infof("WithdrawableEpoch changed for validator %v from %v to %v", v.Index, c.WithdrawableEpoch, v.WithdrawableEpoch)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET withdrawableepoch = %d WHERE validatorindex = %d;\n", v.WithdrawableEpoch, c.Index))
+	// 			updates++
+	// 		}
+	// 		if !bytes.Equal(c.WithdrawalCredentials, v.WithdrawalCredentials) {
+	// 			logger.Infof("WithdrawalCredentials changed for validator %v from %x to %x", v.Index, c.WithdrawalCredentials, v.WithdrawalCredentials)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET withdrawalcredentials = '\\%x' WHERE validatorindex = %d;\n", v.WithdrawalCredentials, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.Balance1d != v.Balance1d {
+	// 			// logger.Infof("Balance1d changed for validator %v from %v to %v", v.Index, c.Balance1d, v.Balance1d)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET balance1d = %d WHERE validatorindex = %d;\n", v.Balance1d.Int64, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.Balance7d != v.Balance7d {
+	// 			// logger.Infof("Balance7d changed for validator %v from %v to %v", v.Index, c.Balance7d, v.Balance7d)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET balance7d = %d WHERE validatorindex = %d;\n", v.Balance7d.Int64, c.Index))
+	// 			updates++
+	// 		}
+	// 		if c.Balance31d != v.Balance31d {
+	// 			// logger.Infof("Balance31d changed for validator %v from %v to %v", v.Index, c.Balance31d, v.Balance31d)
+	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET balance31d = %d WHERE validatorindex = %d;\n", v.Balance31d.Int64, c.Index))
+	// 			updates++
+	// 		}
+	// 	}
+	// }
+
+	// updateStart := time.Now()
+	// logger.Infof("applying %v update queries", updates)
+	// _, err = tx.Exec(queries.String())
+
+	// logger.Infof("update completed, took %v", time.Since(updateStart))
+
+	// if err != nil {
+	// 	logger.Errorf("error executing validator update query: %v", err)
+	// 	return err
+	// }
 
 	batchSize := 4000 // max parameters: 65535
 	for b := 0; b < len(validators); b += batchSize {
@@ -1107,14 +1295,14 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 					WHEN EXCLUDED.exitepoch <= %[1]d THEN 'exited'
 					WHEN EXCLUDED.activationeligibilityepoch = 9223372036854775807 THEN 'deposited'
 					WHEN EXCLUDED.activationepoch > %[1]d THEN 'pending'
-					WHEN EXCLUDED.slashed AND EXCLUDED.activationepoch < %[1]d AND GREATEST(COALESCE(validators.lastattestationslot / %[4]d, 0), EXCLUDED.lastattestationslot / %[4]d) < %[2]d THEN 'slashing_offline'
+					WHEN EXCLUDED.slashed AND EXCLUDED.activationepoch < %[1]d AND GREATEST(COALESCE(validators.lastattestationslot, 0), EXCLUDED.lastattestationslot) < %[2]d THEN 'slashing_offline'
 					WHEN EXCLUDED.slashed THEN 'slashing_online'
-					WHEN EXCLUDED.exitepoch < 9223372036854775807 AND GREATEST(COALESCE(validators.lastattestationslot / %[4]d, 0), EXCLUDED.lastattestationslot / %[4]d) < %[2]d THEN 'exiting_offline'
+					WHEN EXCLUDED.exitepoch < 9223372036854775807 AND GREATEST(COALESCE(validators.lastattestationslot, 0), EXCLUDED.lastattestationslot) < %[2]d THEN 'exiting_offline'
 					WHEN EXCLUDED.exitepoch < 9223372036854775807 THEN 'exiting_online'
-					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(COALESCE(validators.lastattestationslot / %[4]d, 0), EXCLUDED.lastattestationslot / %[4]d) < %[2]d THEN 'active_offline' 
+					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(COALESCE(validators.lastattestationslot, 0), EXCLUDED.lastattestationslot) < %[2]d THEN 'active_offline' 
 					ELSE 'active_online'
 					END`,
-			latestEpoch, thresholdEpoch, strings.Join(valueStrings, ","), utils.Config.Chain.Config.SlotsPerEpoch)
+			latestEpoch, thresholdSlot, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err
