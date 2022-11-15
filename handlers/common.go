@@ -21,6 +21,20 @@ import (
 
 var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
 
+func GetValidatorOnlineThresholdSlot() uint64 {
+	latestProposedSlot := services.LatestProposedSlot()
+	threshold := utils.Config.Chain.Config.SlotsPerEpoch * 2
+
+	var validatorOnlineThresholdSlot uint64
+	if latestProposedSlot < 1 || latestProposedSlot < threshold {
+		validatorOnlineThresholdSlot = 0
+	} else {
+		validatorOnlineThresholdSlot = latestProposedSlot - threshold
+	}
+
+	return validatorOnlineThresholdSlot
+}
+
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
 func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, error) {
 	validatorsPQArray := pq.Array(validators)

@@ -906,13 +906,3 @@ func ReverseSlice[S ~[]E, E any](s S) {
 		s[i], s[j] = s[j], s[i]
 	}
 }
-
-// validator has to be appear offline if they did not attest during the last two finalized epochs
-func GetValidatorOfflineThresholdEpoch(lastFinalizedEpoch uint64) uint64 {
-	thresholdEpoch := lastFinalizedEpoch
-	if thresholdEpoch > 0 {
-		thresholdEpoch -= 1
-	}
-
-	return thresholdEpoch
-}
