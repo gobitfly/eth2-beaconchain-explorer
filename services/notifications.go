@@ -2283,7 +2283,7 @@ func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineOfflineEventName, 120,
 		// notify condition
 		func(_ *MachineEvents, machineData *types.MachineMetricSystemUser) bool {
-			if machineData.CurrentDataInsertTs < nowTs-4*60 {
+			if machineData.CurrentDataInsertTs < nowTs-4*60 && machineData.CurrentDataInsertTs > nowTs-90*60 {
 				return true
 			}
 			return false
