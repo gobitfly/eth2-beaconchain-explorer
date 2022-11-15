@@ -1479,7 +1479,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 		for _, v := range dataArr {
 			t := hex.EncodeToString(v.Pubkey)
 			subs := subMap[t]
-			lastSeenEpoch := uint64(v.LastAttestationSlot.Int64 / 32)
+			lastSeenEpoch := uint64(v.LastAttestationSlot.Int64 / int64(utils.Config.Chain.Config.SlotsPerEpoch))
 			if latestExportedEpoch < lastSeenEpoch {
 				continue
 			}
