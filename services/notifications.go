@@ -1207,68 +1207,6 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 	return nil
 }
 
-type validatorBalanceDecreasedNotification struct {
-	ValidatorIndex     uint64
-	ValidatorPublicKey string
-	StartEpoch         uint64
-	EndEpoch           uint64
-	StartBalance       uint64
-	EndBalance         uint64
-	SubscriptionID     uint64
-	EventFilter        string
-	UnsubscribeHash    sql.NullString
-}
-
-func (n *validatorBalanceDecreasedNotification) GetLatestState() string {
-	return ""
-}
-
-func (n *validatorBalanceDecreasedNotification) GetUnsubscribeHash() string {
-	if n.UnsubscribeHash.Valid {
-		return n.UnsubscribeHash.String
-	}
-	return ""
-}
-
-func (n *validatorBalanceDecreasedNotification) GetEmailAttachment() *types.EmailAttachment {
-	return nil
-}
-
-func (n *validatorBalanceDecreasedNotification) GetSubscriptionID() uint64 {
-	return n.SubscriptionID
-}
-
-func (n *validatorBalanceDecreasedNotification) GetEpoch() uint64 {
-	return n.StartEpoch
-}
-
-func (n *validatorBalanceDecreasedNotification) GetEventName() types.EventName {
-	return types.ValidatorBalanceDecreasedEventName
-}
-
-func (n *validatorBalanceDecreasedNotification) GetInfo(includeUrl bool) string {
-	balance := float64(n.EndBalance) / 1e9
-	diff := float64(n.StartBalance-n.EndBalance) / 1e9
-
-	generalPart := fmt.Sprintf(`The balance of validator %[1]v decreased for 3 consecutive epochs by %.9[2]f ETH to %.9[3]f ETH from epoch %[4]v to epoch %[5]v.`, n.ValidatorIndex, diff, balance, n.StartEpoch, n.EndEpoch)
-	if includeUrl {
-		return generalPart + getUrlPart(n.ValidatorIndex)
-	}
-	return generalPart
-}
-
-func (n *validatorBalanceDecreasedNotification) GetTitle() string {
-	return "Validator Balance Decreased"
-}
-
-func (n *validatorBalanceDecreasedNotification) GetEventFilter() string {
-	return n.EventFilter
-}
-
-func (n *validatorBalanceDecreasedNotification) GetInfoMarkdown() string {
-	return n.GetInfo(false)
-}
-
 func getUrlPart(validatorIndex uint64) string {
 	return fmt.Sprintf(` For more information visit: https://%[2]s/validator/%[1]v`, validatorIndex, utils.Config.Frontend.SiteDomain)
 }
