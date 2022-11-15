@@ -204,15 +204,15 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		ON
 			v.pubkey = eth1.publickey
 		WHERE
-			ENCODE(eth1.publickey, 'hex') LIKE LOWER($5)
-			OR ENCODE(eth1.withdrawal_credentials, 'hex') LIKE LOWER($5)
-			OR ENCODE(eth1.from_address, 'hex') LIKE LOWER($5)
-			OR ENCODE(tx_hash, 'hex') LIKE LOWER($5)
-			OR CAST(eth1.block_number AS text) LIKE LOWER($5)
+			ENCODE(eth1.publickey, 'hex') LIKE LOWER($3)
+			OR ENCODE(eth1.withdrawal_credentials, 'hex') LIKE LOWER($3)
+			OR ENCODE(eth1.from_address, 'hex') LIKE LOWER($3)
+			OR ENCODE(tx_hash, 'hex') LIKE LOWER($3)
+			OR CAST(eth1.block_number AS text) LIKE LOWER($3)
 		ORDER BY %s %s
 		LIMIT $1
 		OFFSET $2`, orderBy, orderDir)
-		err = ReaderDb.Select(&deposits, wholeQuery, length, start, latestEpoch, validatorOnlineThresholdSlot, query+"%")
+		err = ReaderDb.Select(&deposits, wholeQuery, length, start, query+"%")
 	} else {
 		err = ReaderDb.Select(&deposits, fmt.Sprintf(`
 		SELECT 
@@ -240,7 +240,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			v.pubkey = eth1.publickey
 		ORDER BY %s %s
 		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, validatorOnlineThresholdSlot)
+		OFFSET $2`, orderBy, orderDir), length, start)
 	}
 	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
