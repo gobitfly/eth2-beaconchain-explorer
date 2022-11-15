@@ -2280,7 +2280,8 @@ type MachineEvents struct {
 
 func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	nowTs := time.Now().Unix()
-	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineOfflineEventName,
+	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineOfflineEventName, 120,
+		// notify condition
 		func(_ *MachineEvents, machineData *types.MachineMetricSystemUser) bool {
 			if machineData.CurrentDataInsertTs < nowTs-4*60 {
 				return true
@@ -2290,7 +2291,7 @@ func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.
 	)
 }
 
-func isDataUp2Date(machineData *types.MachineMetricSystemUser) bool {
+func isMachineDataRecent(machineData *types.MachineMetricSystemUser) bool {
 	nowTs := time.Now().Unix()
 	if machineData.CurrentDataInsertTs < nowTs-60*60 { // only if data is up 2 date (last hour)
 		return false
@@ -2299,14 +2300,16 @@ func isDataUp2Date(machineData *types.MachineMetricSystemUser) bool {
 }
 
 func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineDiskAlmostFullEventName,
+	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineDiskAlmostFullEventName, 750,
+		// notify condition
 		func(subscribeData *MachineEvents, machineData *types.MachineMetricSystemUser) bool {
-			if !isDataUp2Date(machineData) {
+			if !isMachineDataRecent(machineData) {
 				return false
 			}
 
-			percentFull := float64(machineData.CurrentData.DiskNodeBytesFree) / float64(machineData.CurrentData.DiskNodeBytesTotal+1)
-			if percentFull < subscribeData.EventThreshold {
+			percentFree := float64(machineData.CurrentData.DiskNodeBytesFree) / float64(machineData.CurrentData.DiskNodeBytesTotal+1)
+			if percentFree < subscribeData.EventThreshold {
+				//logrus.Infof("disk percent full %v | threshold %v | free %v | total %v", percentFree, subscribeData.EventThreshold, machineData.CurrentData.DiskNodeBytesFree, machineData.CurrentData.DiskNodeBytesTotal)
 				return true
 			}
 			return false
@@ -2315,9 +2318,10 @@ func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map
 }
 
 func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineCpuLoadEventName,
+	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineCpuLoadEventName, 10,
+		// notify condition
 		func(subscribeData *MachineEvents, machineData *types.MachineMetricSystemUser) bool {
-			if !isDataUp2Date(machineData) {
+			if !isMachineDataRecent(machineData) {
 				return false
 			}
 
@@ -2330,7 +2334,7 @@ func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.
 			percentLoad := float64(1) - (idle / total)
 
 			if percentLoad > subscribeData.EventThreshold {
-				//logrus.Infof("percent load %v | threshold %v | idle %v | total %v", percentLoad, subscribeData.EventThreshold, idle, total)
+				//logrus.Infof("cpu percent load %v | threshold %v | idle %v | total %v", percentLoad, subscribeData.EventThreshold, idle, total)
 				return true
 			}
 			return false
@@ -2339,9 +2343,10 @@ func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.
 }
 
 func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineMemoryUsageEventName,
+	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineMemoryUsageEventName, 10,
+		// notify condition
 		func(subscribeData *MachineEvents, machineData *types.MachineMetricSystemUser) bool {
-			if !isDataUp2Date(machineData) {
+			if !isMachineDataRecent(machineData) {
 				return false
 			}
 
@@ -2358,7 +2363,12 @@ func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[ty
 	)
 }
 
-func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName, fullfillsNotifyCondition func(subscribeData *MachineEvents, machineData *types.MachineMetricSystemUser) bool) error {
+func collectMonitoringMachine(
+	notificationsByUserID map[uint64]map[types.EventName][]types.Notification,
+	eventName types.EventName,
+	epochWaitInBetween int,
+	notifyConditionFullfilled func(subscribeData *MachineEvents, machineData *types.MachineMetricSystemUser) bool,
+) error {
 	latestEpoch := LatestFinalizedEpoch()
 	if latestEpoch == 0 {
 		return nil
@@ -2374,9 +2384,9 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 			COALESCE(event_threshold, 0) as event_threshold
 		FROM users_subscriptions us 
 		WHERE us.event_name = $1 AND us.created_epoch <= $2 
-		AND (us.last_sent_epoch < ($2 - 750) OR us.last_sent_epoch IS NULL)
+		AND (us.last_sent_epoch < ($2 - $3) OR us.last_sent_epoch IS NULL)
 		group by us.user_id, machine, event_threshold`,
-		eventName, latestEpoch)
+		eventName, latestEpoch, epochWaitInBetween)
 	if err != nil {
 		return err
 	}
@@ -2386,7 +2396,7 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 		rowKeys = append(rowKeys, db.GetMachineRowKey(data.UserID, "system", data.MachineName))
 	}
 
-	machineDataOfSubscribed, err := db.BigtableClient.GetMachineMetricsSystemForNotifications(rowKeys)
+	machineDataOfSubscribed, err := db.BigtableClient.GetMachineMetricsForNotifications(rowKeys)
 	if err != nil {
 		return err
 	}
@@ -2403,7 +2413,7 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 		}
 
 		//logrus.Infof("currentMachineData %v | %v | %v | %v", currentMachine.CurrentDataInsertTs, currentMachine.CompareDataInsertTs, currentMachine.UserID, currentMachine.Machine)
-		if fullfillsNotifyCondition(&data, currentMachineData) {
+		if notifyConditionFullfilled(&data, currentMachineData) {
 			result = append(result, data)
 		}
 	}

@@ -88,7 +88,7 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	rowKeyData := fmt.Sprintf("u:%s:p:%s:m:%v", reversePaddedUserID(userID), process, machine)
 
 	ts := gcp_bigtable.Now()
-	lastInsert, err := bigtable.lastMachineMetricInsert(ctx, rowKeyData)
+	lastInsert, err := bigtable.getLastMachineMetricInsertTs(ctx, rowKeyData)
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	return nil
 }
 
-func (bigtable *Bigtable) lastMachineMetricInsert(ctx context.Context, rowKey string) (gcp_bigtable.Timestamp, error) {
+func (bigtable *Bigtable) getLastMachineMetricInsertTs(ctx context.Context, rowKey string) (gcp_bigtable.Timestamp, error) {
 	row, err := bigtable.tableMachineMetrics.ReadRow(ctx, rowKey)
 	if err != nil {
 		return 0, err
@@ -218,10 +218,6 @@ func (bigtable Bigtable) GetMachineMetricsSystem(userID uint64, limit, offset in
 	)
 }
 
-func GetMachineRowKey(userID uint64, process string, machine string) string {
-	return fmt.Sprintf("u:%s:p:%s:m:%s", reversePaddedUserID(userID), process, machine)
-}
-
 func getMachineMetrics[T types.MachineMetricSystem | types.MachineMetricNode | types.MachineMetricValidator](bigtable Bigtable, process string, userID uint64, limit, offset int, marshler func(data []byte, machine string) *T) ([]*T, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -263,11 +259,15 @@ func getMachineMetrics[T types.MachineMetricSystem | types.MachineMetricNode | t
 	return res, nil
 }
 
+func GetMachineRowKey(userID uint64, process string, machine string) string {
+	return fmt.Sprintf("u:%s:p:%s:m:%s", reversePaddedUserID(userID), process, machine)
+}
+
 // Returns a map[userID]map[machineName]machineData
 // machineData contains the latest machine data in CurrentData
 // and 5 minute old data in fiveMinuteOldData (defined in limit)
 // as well as the insert timestamps of both
-func (bigtable Bigtable) GetMachineMetricsSystemForNotifications(rowKeys gcp_bigtable.RowList) (map[uint64]map[string]*types.MachineMetricSystemUser, error) {
+func (bigtable Bigtable) GetMachineMetricsForNotifications(rowKeys gcp_bigtable.RowList) (map[uint64]map[string]*types.MachineMetricSystemUser, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*200))
 	defer cancel()
 
