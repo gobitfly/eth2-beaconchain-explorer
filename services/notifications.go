@@ -1431,14 +1431,15 @@ func (n *validatorProposalNotification) GetInfoMarkdown() string {
 }
 
 func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
-	var latestExportedEpoch uint64
+	var latestExportedSlot uint64
 
 	// we use the latest exported epoch because that's what the lastattestationslot column is based upon
-
-	err := db.ReaderDb.Get(&latestExportedEpoch, `select epoch from epochs where eligibleether <> 0 order by epoch desc limit 1`)
+	err := db.ReaderDb.Get(&latestExportedSlot, `SELECT COALESCE(MAX(lastattestationslot), 0) FROM validators`)
 	if err != nil {
 		logger.Infof("failed to get last exported epoch: %v", err)
 	}
+
+	latestExportedEpoch := latestExportedSlot / utils.Config.Chain.Config.SlotsPerEpoch
 
 	_, subMap, err := db.GetSubsForEventFilter(eventName)
 	if err != nil {

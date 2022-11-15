@@ -198,15 +198,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			eth1_deposits as eth1
 		LEFT JOIN
 			(
-				SELECT pubkey,
-				CASE 
-					WHEN exitepoch <= $3 then 'exited'
-					WHEN activationepoch > $3 then 'pending'
-					WHEN slashed and activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'slashing_offline'
-					WHEN slashed then 'slashing_online'
-					WHEN activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'active_offline'
-					ELSE 'active_online'
-				END AS state
+				SELECT pubkey, status AS state
 				FROM validators
 			) as v
 		ON
@@ -241,15 +233,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			eth1_deposits as eth1
 			LEFT JOIN
 			(
-				SELECT pubkey,
-				CASE 
-					WHEN exitepoch <= $3 then 'exited'
-					WHEN activationepoch > $3 then 'pending'
-					WHEN slashed and activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'slashing_offline'
-					WHEN slashed then 'slashing_online'
-					WHEN activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'active_offline'
-					ELSE 'active_online'
-				END AS state
+				SELECT pubkey, status AS state
 				FROM validators
 			) as v
 		ON
