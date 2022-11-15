@@ -1273,69 +1273,6 @@ func getUrlPart(validatorIndex uint64) string {
 	return fmt.Sprintf(` For more information visit: https://%[2]s/validator/%[1]v`, validatorIndex, utils.Config.Frontend.SiteDomain)
 }
 
-// collectValidatorBalanceDecreasedNotifications finds all validators whose balance decreased for 3 consecutive epochs
-// and creates notifications for all subscriptions which have not been notified about the validator since the last time its balance increased.
-// It looks 10 epochs back for when the balance increased the last time, this means if the explorer is not running for 10 epochs it is possible
-// that no new notification is sent even if there was a balance-increase.
-func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	latestEpoch := LatestFinalizedEpoch()
-	if latestEpoch < 3 {
-		return nil
-	}
-	dbResult, err := db.GetValidatorsBalanceDecrease(latestEpoch)
-	if err != nil {
-		return err
-	}
-
-	query := ""
-	resultsLen := len(dbResult)
-	for i, event := range dbResult {
-		query += fmt.Sprintf(`SELECT %d as ref, id, user_id, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash from users_subscriptions where event_name = $1 AND event_filter = '%s'  AND (last_sent_epoch > $2 OR last_sent_epoch IS NULL) AND created_epoch <= $2`, i, event.Pubkey)
-		if i < resultsLen-1 {
-			query += " UNION "
-		}
-	}
-	if query == "" {
-		return nil
-	}
-	var subscribers []struct {
-		Ref             uint64         `db:"ref"`
-		Id              uint64         `db:"id"`
-		UserId          uint64         `db:"user_id"`
-		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
-	}
-
-	err = db.FrontendWriterDB.Select(&subscribers, query, types.ValidatorBalanceDecreasedEventName, latestEpoch)
-	if err != nil {
-		return err
-	}
-
-	for _, sub := range subscribers {
-		event := dbResult[sub.Ref]
-		n := &validatorBalanceDecreasedNotification{
-			SubscriptionID:  sub.Id,
-			ValidatorIndex:  event.ValidatorIndex,
-			StartEpoch:      latestEpoch - 3,
-			EndEpoch:        latestEpoch,
-			StartBalance:    event.StartBalance,
-			EndBalance:      event.EndBalance,
-			EventFilter:     event.Pubkey,
-			UnsubscribeHash: sub.UnsubscribeHash,
-		}
-
-		if _, exists := notificationsByUserID[sub.UserId]; !exists {
-			notificationsByUserID[sub.UserId] = map[types.EventName][]types.Notification{}
-		}
-		if _, exists := notificationsByUserID[sub.UserId][n.GetEventName()]; !exists {
-			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
-		}
-		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
-		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
-	}
-
-	return nil
-}
-
 func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
 	latestEpoch := LatestFinalizedEpoch()
 
