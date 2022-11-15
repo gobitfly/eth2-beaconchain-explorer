@@ -38,6 +38,9 @@ func Init() {
 	go slotUpdater(ready)
 
 	ready.Add(1)
+	go blockUpdater(ready)
+
+	ready.Add(1)
 	go latestProposedSlotUpdater(ready)
 
 	ready.Add(1)
@@ -66,6 +69,9 @@ func Init() {
 
 	ready.Add(1)
 	go mempoolUpdater(ready)
+
+	ready.Add(1)
+	go burnUpdater(ready)
 
 	ready.Wait()
 }
@@ -359,6 +365,36 @@ func slotUpdater(wg *sync.WaitGroup) {
 			}
 		}
 		ReportStatus("slotUpdater", "Running", nil)
+		time.Sleep(time.Second)
+	}
+}
+
+func blockUpdater(wg *sync.WaitGroup) {
+	firstRun := true
+
+	for {
+		var slot uint64
+		err := db.WriterDb.Get(&slot, "SELECT COALESCE(MAX(slot), 0) FROM blocks where slot < $1 and status = 2", utils.TimeToSlot(uint64(time.Now().Add(time.Second*10).Unix())))
+
+		if err != nil {
+			logger.Errorf("error retrieving latest slot from the database: %v", err)
+
+			if err.Error() == "sql: database is closed" {
+				logger.Fatalf("error retrieving latest slot from the database: %v", err)
+			}
+		} else {
+			cacheKey := fmt.Sprintf("%d:frontend:block", utils.Config.Chain.Config.DepositChainID)
+			err := cache.TieredCache.SetUint64(cacheKey, slot, time.Hour*24)
+			if err != nil {
+				logger.Errorf("error caching latest block: %v", err)
+			}
+			if firstRun {
+				logger.Info("initialized block updater")
+				wg.Done()
+				firstRun = false
+			}
+		}
+		ReportStatus("blockUpdater", "Running", nil)
 		time.Sleep(time.Second)
 	}
 }
@@ -847,6 +883,17 @@ func LatestSlot() uint64 {
 	return 0
 }
 
+func LatestBlock() uint64 {
+	cacheKey := fmt.Sprintf("%d:frontend:block", utils.Config.Chain.Config.DepositChainID)
+
+	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
+		return wanted
+	} else {
+		logger.Errorf("error retrieving slot from cache: %v", err)
+	}
+	return 0
+}
+
 // FinalizationDelay will return the current Finalization Delay
 func FinalizationDelay() uint64 {
 	return LatestNodeEpoch() - LatestNodeFinalizedEpoch()
@@ -870,9 +917,20 @@ func LatestMempoolTransactions() *types.RawMempoolResponse {
 	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*60, wanted); err == nil {
 		return wanted.(*types.RawMempoolResponse)
 	} else {
-		logger.Errorf("error retrieving latestProposedSlot from cache: %v", err)
+		logger.Errorf("error retrieving mempool data from cache: %v", err)
 	}
 	return &types.RawMempoolResponse{}
+}
+
+func LatestBurnData() *types.BurnPageData {
+	wanted := &types.BurnPageData{}
+	cacheKey := fmt.Sprintf("%d:frontend:burn", utils.Config.Chain.Config.DepositChainID)
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*60, wanted); err == nil {
+		return wanted.(*types.BurnPageData)
+	} else {
+		logger.Errorf("error retrieving burn data from cache: %v", err)
+	}
+	return &types.BurnPageData{}
 }
 
 // LatestIndexPageData returns the latest index page data
@@ -1209,4 +1267,97 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 		ReportStatus("mempoolUpdater", "Running", nil)
 		time.Sleep(time.Second * 10)
 	}
+}
+
+func burnUpdater(wg *sync.WaitGroup) {
+	firstRun := true
+	for {
+		data, err := getBurnPageData()
+		if err != nil {
+			logger.Errorf("error retrieving index page data: %v", err)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+		cacheKey := fmt.Sprintf("%d:frontend:burn", utils.Config.Chain.Config.DepositChainID)
+		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
+		if err != nil {
+			logger.Errorf("error caching relaysData: %v", err)
+		}
+		if firstRun {
+			logger.Infof("initialized burn updater")
+			wg.Done()
+			firstRun = false
+		}
+		time.Sleep(time.Second * 10)
+	}
+}
+
+func getBurnPageData() (*types.BurnPageData, error) {
+	data := &types.BurnPageData{}
+
+	// Retrieve the total amount of burned Ether
+	err := db.ReaderDb.Get(&data.TotalBurned, "select sum(value) from statistics where indicator = 'BURNED_FEES';")
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving total burned amount from statistics table: %v", err)
+	}
+
+	cutOff := time.Time{}
+	err = db.ReaderDb.Get(&cutOff, "select (select max(time) from statistics where indicator = 'BURNED_FEES') + interval '24 hours';")
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving cutoff date from statistics table: %v", err)
+	}
+
+	additionalBurned := float64(0)
+	err = db.ReaderDb.Get(&additionalBurned, "select sum(burnedfees) from blocks where time >= $1 and type = 'B'", cutOff)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving additional burned eth from blocks table: %v", err)
+	}
+	data.TotalBurned += additionalBurned
+
+	err = db.ReaderDb.Get(&data.BurnRate1h, "select sum(burnedfees) / 60 from blocks where time >= NOW() - interval '1 hour' and type = 'B'")
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving burn rate (1h) from blocks table: %v", err)
+	}
+	err = db.ReaderDb.Get(&data.Emission, "select (sum(baseblockreward) - sum(burnedfees)) / 60 from blocks where time >= NOW() - interval '1 hour' and (type = 'B' or type = 'U')")
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving emission (1h) from blocks table: %v", err)
+	}
+	err = db.ReaderDb.Get(&data.BurnRate24h, "select sum(burnedfees) / (60 * 24) from blocks where time >= NOW() - interval '24 hours' and type = 'B'")
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving burn rate (24h) from blocks table: %v", err)
+	}
+
+	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(gasUsed * 100 / gasLimit) from blocks where time >= NOW() - interval '24 hours' and type = 'B'")
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving block utilization from blocks table: %v", err)
+	}
+
+	err = db.ReaderDb.Select(&data.Blocks, "SELECT ENCODE(hash::bytea, 'hex')  AS hash, number, gaslimit, gasused, miningreward, tx_count, time, basefeepergas, burnedfees FROM blocks WHERE number > $1 and type = 'B' order by time desc", LatestBlock()-1000)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving burn view chart data from blocks table: %v", err)
+	}
+
+	err = db.ReaderDb.Get(&data.Price, "SELECT price_usd as price from network_stats order by time desc limit 1;")
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving price from the network_stats table %v", err)
+	}
+
+	if len(data.Blocks) > 100 {
+		if data.Blocks[0].BaseFeePerGas < data.Blocks[100].BaseFeePerGas {
+			data.BaseFeeTrend = -1
+		} else if data.Blocks[0].BaseFeePerGas == data.Blocks[100].BaseFeePerGas {
+			data.BaseFeeTrend = 0
+		} else {
+			data.BaseFeeTrend = 1
+		}
+	} else {
+		data.BaseFeeTrend = 1
+	}
+
+	for _, b := range data.Blocks {
+		if b.Number > 12965000 {
+			b.GasTarget = b.GasTarget / 2
+		}
+	}
+	return data, nil
 }
