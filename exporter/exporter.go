@@ -36,7 +36,7 @@ func Start(client rpc.Client) error {
 	go eth1DepositsExporter()
 	go genesisDepositsExporter()
 	go checkSubscriptions()
-
+	go cleanupOldMachineStats() // todo: remove once migrated
 	go syncCommitteesExporter(client)
 	if utils.Config.SSVExporter.Enabled {
 		go ssvExporter()
