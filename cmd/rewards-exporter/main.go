@@ -15,6 +15,7 @@ import (
 	geth_rpc "github.com/ethereum/go-ethereum/rpc"
 
 	eth_rewards "github.com/gobitfly/eth-rewards"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/prysmaticlabs/prysm/v3/api/client/beacon"
 	"github.com/sirupsen/logrus"
 )
