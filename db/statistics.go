@@ -11,7 +11,7 @@ import (
 	"github.com/lib/pq"
 )
 
-func WriteStatisticsForDay(day uint64) error {
+func WriteValidatorStatisticsForDay(day uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
@@ -31,7 +31,7 @@ func WriteStatisticsForDay(day uint64) error {
 	}
 
 	if lastEpoch > latestDbEpoch {
-		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed", lastEpoch)
+		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed. LatestDB: %v", lastEpoch, latestDbEpoch)
 	}
 
 	start := time.Now()
@@ -369,4 +369,42 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		day BETWEEN $2 AND $3
 	order by day;`, queryValidatorsArr, lowerBoundDay, upperBoundDay)
 	return result, err
+}
+
+func WriteChartSeriesForDay(day uint64) error {
+	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
+	firstEpoch := day * epochsPerDay
+	lastEpoch := (day+1)*epochsPerDay - 1
+	// firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
+	// lastSlot := (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+
+	startDate := utils.EpochToTime(firstEpoch)
+	// endDate := utils.EpochToTime(lastEpoch)
+
+	logger.Infof("exporting chart_series for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
+
+	latestDbEpoch, err := GetLatestEpoch()
+	if err != nil {
+		return err
+	}
+
+	if lastEpoch > latestDbEpoch {
+		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed. LatestDB: %v", lastEpoch, latestDbEpoch)
+	}
+
+	logger.Println("Exporting BURNED_FEES")
+	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) SELECT $1, 'BURNED_FEES', COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) FROM blocks WHERE epoch >= $2 AND epoch <= $3 ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", startDate, firstEpoch, lastEpoch)
+	if err != nil {
+		return fmt.Errorf("error calculating BURNED_FEES chart_series: %w", err)
+	}
+
+	logger.Infof("marking day export as completed in the status table")
+	_, err = WriterDb.Exec("insert into chart_series_status (day, status) values ($1, true)", day)
+	if err != nil {
+		return err
+	}
+
+	logger.Println("chart_series export completed")
+
+	return nil
 }
