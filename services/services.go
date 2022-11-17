@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"html/template"
 	"math"
+	"math/big"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -38,16 +39,13 @@ func Init() {
 	go slotUpdater(ready)
 
 	ready.Add(1)
-	go blockUpdater(ready)
-
-	ready.Add(1)
 	go latestProposedSlotUpdater(ready)
 
 	ready.Add(1)
 	go latestBlockUpdater(ready)
 
-	// ready.Add(1)
-	// go gasNowUpdater()
+	ready.Add(1)
+	go gasNowUpdater(ready)
 
 	ready.Add(1)
 	go slotVizUpdater(ready)
@@ -365,36 +363,6 @@ func slotUpdater(wg *sync.WaitGroup) {
 			}
 		}
 		ReportStatus("slotUpdater", "Running", nil)
-		time.Sleep(time.Second)
-	}
-}
-
-func blockUpdater(wg *sync.WaitGroup) {
-	firstRun := true
-
-	for {
-		var slot uint64
-		err := db.WriterDb.Get(&slot, "SELECT COALESCE(MAX(slot), 0) FROM blocks where slot < $1 and status = 2", utils.TimeToSlot(uint64(time.Now().Add(time.Second*10).Unix())))
-
-		if err != nil {
-			logger.Errorf("error retrieving latest slot from the database: %v", err)
-
-			if err.Error() == "sql: database is closed" {
-				logger.Fatalf("error retrieving latest slot from the database: %v", err)
-			}
-		} else {
-			cacheKey := fmt.Sprintf("%d:frontend:block", utils.Config.Chain.Config.DepositChainID)
-			err := cache.TieredCache.SetUint64(cacheKey, slot, time.Hour*24)
-			if err != nil {
-				logger.Errorf("error caching latest block: %v", err)
-			}
-			if firstRun {
-				logger.Info("initialized block updater")
-				wg.Done()
-				firstRun = false
-			}
-		}
-		ReportStatus("blockUpdater", "Running", nil)
 		time.Sleep(time.Second)
 	}
 }
@@ -878,18 +846,7 @@ func LatestSlot() uint64 {
 	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
 		return wanted
 	} else {
-		logger.Errorf("error retrieving slot from cache: %v", err)
-	}
-	return 0
-}
-
-func LatestBlock() uint64 {
-	cacheKey := fmt.Sprintf("%d:frontend:block", utils.Config.Chain.Config.DepositChainID)
-
-	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
-		return wanted
-	} else {
-		logger.Errorf("error retrieving slot from cache: %v", err)
+		logger.Errorf("error retrieving latest slot from cache: %v", err)
 	}
 	return 0
 }
@@ -1295,52 +1252,104 @@ func burnUpdater(wg *sync.WaitGroup) {
 func getBurnPageData() (*types.BurnPageData, error) {
 	data := &types.BurnPageData{}
 
+	latestEpoch := LatestEpoch()
+	latestBlock := LatestEth1BlockNumber()
+
 	// Retrieve the total amount of burned Ether
-	err := db.ReaderDb.Get(&data.TotalBurned, "select sum(value) from statistics where indicator = 'BURNED_FEES';")
+	err := db.ReaderDb.Get(&data.TotalBurned, "select sum(value) from chart_series where indicator = 'BURNED_FEES';")
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving total burned amount from statistics table: %v", err)
+		return nil, fmt.Errorf("error retrieving total burned amount from chart_series table: %v", err)
 	}
 
 	cutOff := time.Time{}
-	err = db.ReaderDb.Get(&cutOff, "select (select max(time) from statistics where indicator = 'BURNED_FEES') + interval '24 hours';")
+	err = db.ReaderDb.Get(&cutOff, "select (select max(time) from chart_series where indicator = 'BURNED_FEES') + interval '24 hours';")
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving cutoff date from statistics table: %v", err)
+		return nil, fmt.Errorf("error retrieving cutoff date from chart_series table: %v", err)
 	}
 
+	cutOffEpoch := utils.TimeToEpoch(cutOff)
+
+	// var blockLastHour uint64
+	// db.ReaderDb.Get(&blockLastHour, "select ")
+
+	// var blockLastDay uint64
+	// db.ReaderDb.Get(&blockLastDay)
+
 	additionalBurned := float64(0)
-	err = db.ReaderDb.Get(&additionalBurned, "select sum(burnedfees) from blocks where time >= $1 and type = 'B'", cutOff)
+	err = db.ReaderDb.Get(&additionalBurned, "select SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) as burnedfees from blocks where epoch >= $1", cutOffEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving additional burned eth from blocks table: %v", err)
 	}
 	data.TotalBurned += additionalBurned
 
-	err = db.ReaderDb.Get(&data.BurnRate1h, "select sum(burnedfees) / 60 from blocks where time >= NOW() - interval '1 hour' and type = 'B'")
+	err = db.ReaderDb.Get(&data.BurnRate1h, "select SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60 as burnedfees from blocks where epoch >= $1", latestEpoch-10)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (1h) from blocks table: %v", err)
 	}
-	err = db.ReaderDb.Get(&data.Emission, "select (sum(baseblockreward) - sum(burnedfees)) / 60 from blocks where time >= NOW() - interval '1 hour' and (type = 'B' or type = 'U')")
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving emission (1h) from blocks table: %v", err)
-	}
-	err = db.ReaderDb.Get(&data.BurnRate24h, "select sum(burnedfees) / (60 * 24) from blocks where time >= NOW() - interval '24 hours' and type = 'B'")
+
+	data.Emission = 5
+
+	// err = db.ReaderDb.Get(&data.Emission, "select (sum(baseblockreward) - SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric)) / 60 as burnedfees from blocks where epoch >= $1", latestEpoch-10)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error retrieving emission (1h) from blocks table: %v", err)
+	// }
+	err = db.ReaderDb.Get(&data.BurnRate24h, "select SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24) as burnedfees from blocks where epoch >= $1", latestEpoch-225)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (24h) from blocks table: %v", err)
 	}
+	logger.Infof("Latest Epoch: %v", latestEpoch)
 
-	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(gasUsed * 100 / gasLimit) from blocks where time >= NOW() - interval '24 hours' and type = 'B'")
+	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(exec_gas_used::numeric * 100 / exec_gas_limit) from blocks where epoch >= $1 and exec_gas_used > 0 and exec_gas_limit > 0 group by slot order by slot desc ", latestEpoch-225)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block utilization from blocks table: %v", err)
 	}
 
-	err = db.ReaderDb.Select(&data.Blocks, "SELECT ENCODE(hash::bytea, 'hex')  AS hash, number, gaslimit, gasused, miningreward, tx_count, time, basefeepergas, burnedfees FROM blocks WHERE number > $1 and type = 'B' order by time desc", LatestBlock()-1000)
+	blocks, err := db.BigtableClient.GetBlocksDescending(latestBlock, 1000)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving burn view chart data from blocks table: %v", err)
+		return nil, err
 	}
 
-	err = db.ReaderDb.Get(&data.Price, "SELECT price_usd as price from network_stats order by time desc limit 1;")
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving price from the network_stats table %v", err)
+	data.Blocks = make([]*types.BurnPageDataBlock, 0, 1000)
+	for _, blk := range blocks {
+
+		blockNumber := blk.GetNumber()
+		baseFee := new(big.Int).SetBytes(blk.GetBaseFee())
+		// gasHalf := float64(blk.GetGasLimit()) / 2.0
+		txReward := new(big.Int).SetBytes(blk.GetTxReward())
+
+		burned := new(big.Int).Mul(baseFee, big.NewInt(int64(blk.GetGasUsed())))
+		// burnedPercentage := float64(0.0)
+		if len(txReward.Bits()) != 0 {
+			txBurnedBig := new(big.Float).SetInt(burned)
+			txBurnedBig.Quo(txBurnedBig, new(big.Float).SetInt(txReward))
+			// burnedPercentage, _ = txBurnedBig.Float64()
+		}
+
+		blockReward := new(big.Int).Add(utils.Eth1BlockReward(blockNumber, blk.GetDifficulty()), new(big.Int).Add(txReward, new(big.Int).SetBytes(blk.GetUncleReward())))
+
+		data.Blocks = append(data.Blocks, &types.BurnPageDataBlock{
+			Number:        int64(blockNumber),
+			Hash:          string(blk.Hash),
+			GasTarget:     int64(blk.GasLimit),
+			GasUsed:       int64(blk.GasUsed),
+			Txn:           int(blk.TransactionCount),
+			Age:           blk.Time.AsTime(),
+			BaseFeePerGas: float64(baseFee.Int64()),
+			BurnedFees:    float64(burned.Int64()),
+			Rewards:       float64(blockReward.Int64()),
+		})
 	}
+
+	// err = db.ReaderDb.Select(&data.Blocks, "SELECT ENCODE(exec_block_hash::bytea, 'hex')  AS hash, exec_block_number as number, exec_gas_limit as gaslimit, exec_gas_used as gasused, miningreward, exec_transactions_count as tx_count, exec_timestamp as time, exec_base_fee_per_gas as basefeepergas,  (exec_base_fee_per_gas::numeric * exec_gas_used::numeric) as burnedfees FROM blocks WHERE exec_block_number > $1 order by exec_timestamp desc", LatestBlock()-1000)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error retrieving burn view chart data from blocks table: %v", err)
+	// }
+
+	// price is defined in the handler
+	// err = db.ReaderDb.Get(&data.Price, "SELECT price_usd as price from network_stats order by time desc limit 1;")
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error retrieving price from the network_stats table %v", err)
+	// }
 
 	if len(data.Blocks) > 100 {
 		if data.Blocks[0].BaseFeePerGas < data.Blocks[100].BaseFeePerGas {
