@@ -1,13 +1,13 @@
 {{ define "js"}}
-<script src="https://code.highcharts.com/stock/highstock.js"></script>
-<script src="https://code.highcharts.com/modules/exporting.js"></script>
-<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+<script src="/js/highcharts/highstock.min.js"></script>
+<script src="/js/highcharts/exporting.min.js"></script>
+<script src="/js/highcharts/offline-exporting.min.js"></script>
 
 
 <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
-<script src="/js/highcharts-vue.min.js"></script>
-<script src="https://code.highcharts.com/highcharts-more.js"></script>
-<script src="/js/highcharts-global-options.js"></script>
+<script src="/js/highcharts/highcharts-vue.min.js"></script>
+<script src="/js/highcharts/highcharts-more.min.js"></script>
+<script src="/js/highcharts/highcharts-global-options.js"></script>
 <script>
     var app = new Vue({
         el: '#app',
@@ -218,7 +218,7 @@
         },
         filters: {
             fromNow(date) {
-                return moment(date).fromNow();
+                return getRelativeTime(luxon.DateTime.fromISO(date));
             },
             toFixed(number, digits) {
                 return number.toFixed(digits)
@@ -296,7 +296,8 @@
         }
     })
 </script>
-{{end}} {{ define "css"}}
+{{end}} 
+{{ define "css"}}
 
 <style>
     .hero-container {
@@ -451,34 +452,9 @@
         }
     }
 </style>
-<script>
-    // (function(){
-    //   if(typeof _bsa !== 'undefined' && _bsa) {
-    //     _bsa.init('custom', 'CK7IVKJY', 'placement:wwwetherchainorg', { target: '.native-js', template: `
-    //   <a href="##link##" class="native-banner" style="background: linear-gradient(-30deg, ##backgroundColor##E5, ##backgroundColor##E5 45%, ##backgroundColor## 45%) #fff;">
-    //     <div class="native-main">
-    //       <img class="native-img" img src="##logo##">
-    //       <div class="native-details" style="color: ##textColor##">
-    //         <span class="native-company">Sponsored by ##company##</span>
-    //         <span class="native-desc">##description##</span>
-    //       </div>
-    //       <span class="native-cta" style="color: ##ctaTextColor##; background-color: ##ctaBackgroundColor##;">##callToAction##</span>
-    //     </div>
-    //   </a>`, }
-    //       );
-    //   }
-    // })();
-</script>
-<script type="text/javascript">
-    (function () {
-        var bsa_optimize = document.createElement('script');
-        bsa_optimize.type = 'text/javascript';
-        bsa_optimize.async = true;
-        bsa_optimize.src = 'https://cdn4.buysellads.net/pub/etherchain.js?' + (new Date() - new Date() % 600000);
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(bsa_optimize);
-    })();
-</script>
-{{end}} {{ define "content"}}
+
+{{end}} 
+{{ define "content"}}
 <div class="container mt-2">
     <div id="app" v-cloak>
         <div class="hero-container my-5">
@@ -2021,19 +1997,6 @@
                 </div>
             </div>
         </div>
-        <div class="partner w-100 d-flex mt-2 justify-content-center">
-            <!-- Coinzilla Banner 728x90 -->
-            <script async src="https://coinzillatag.com/lib/display.js"></script>
-            <div class="coinzilla" data-zone="C-1635efda351897cb722"></div>
-            <script>
-                window.coinzilla_display = window.coinzilla_display || [];
-                var c_display_preferences = {};
-                c_display_preferences.zone = "1635efda351897cb722";
-                c_display_preferences.width = "728";
-                c_display_preferences.height = "90";
-                coinzilla_display.push(c_display_preferences);
-            </script>
-        </div>
         <div class="row">
             <!-- <div class="col-12 mt-2">
                 <a class="no-highlight justify-content-center d-none d-md-flex" href=""><img class="img-fluid" src="" alt=""/></a>
@@ -2082,10 +2045,6 @@
                     </table>
                 </div>
             </div>
-        </div>
-        <!-- ATF Banner -->
-        <div class="my-3 d-flex justify-content-center align-items-center">
-            <div id="bsa-zone_1576176496261-7_123456"></div>
         </div>
     </div>
 </div>
