@@ -1770,4 +1770,5 @@ type BurnPageData struct {
 	BlockUtilization float64              `json:"block_utilization"`
 	Emission         float64              `json:"emission"`
 	Price            float64              `json:"price_usd"`
+	Currency         string               `json:"currency"`
 }

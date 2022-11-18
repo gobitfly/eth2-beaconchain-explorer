@@ -1231,7 +1231,7 @@ func burnUpdater(wg *sync.WaitGroup) {
 	for {
 		data, err := getBurnPageData()
 		if err != nil {
-			logger.Errorf("error retrieving index page data: %v", err)
+			logger.Errorf("error retrieving burn page data: %v", err)
 			time.Sleep(time.Second * 10)
 			continue
 		}
@@ -1276,13 +1276,13 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	// db.ReaderDb.Get(&blockLastDay)
 
 	additionalBurned := float64(0)
-	err = db.ReaderDb.Get(&additionalBurned, "select SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) as burnedfees from blocks where epoch >= $1", cutOffEpoch)
+	err = db.ReaderDb.Get(&additionalBurned, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) as burnedfees from blocks where epoch >= $1", cutOffEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving additional burned eth from blocks table: %v", err)
 	}
 	data.TotalBurned += additionalBurned
 
-	err = db.ReaderDb.Get(&data.BurnRate1h, "select SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60 as burnedfees from blocks where epoch >= $1", latestEpoch-10)
+	err = db.ReaderDb.Get(&data.BurnRate1h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60, 0) as burnedfees from blocks where epoch >= $1", latestEpoch-10)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (1h) from blocks table: %v", err)
 	}
@@ -1293,11 +1293,10 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	// if err != nil {
 	// 	return nil, fmt.Errorf("error retrieving emission (1h) from blocks table: %v", err)
 	// }
-	err = db.ReaderDb.Get(&data.BurnRate24h, "select SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24) as burnedfees from blocks where epoch >= $1", latestEpoch-225)
+	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", latestEpoch-225)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (24h) from blocks table: %v", err)
 	}
-	logger.Infof("Latest Epoch: %v", latestEpoch)
 
 	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(exec_gas_used::numeric * 100 / exec_gas_limit) from blocks where epoch >= $1 and exec_gas_used > 0 and exec_gas_limit > 0 group by slot order by slot desc ", latestEpoch-225)
 	if err != nil {
@@ -1308,6 +1307,8 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// db.BigAdminClient
 
 	data.Blocks = make([]*types.BurnPageDataBlock, 0, 1000)
 	for _, blk := range blocks {
