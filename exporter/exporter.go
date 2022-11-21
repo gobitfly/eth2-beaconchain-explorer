@@ -36,7 +36,7 @@ func Start(client rpc.Client) error {
 	go eth1DepositsExporter()
 	go genesisDepositsExporter()
 	go checkSubscriptions()
-	go cleanupOldMachineStats()
+	go cleanupOldMachineStats() // todo: remove once migrated
 	go syncCommitteesExporter(client)
 	if utils.Config.SSVExporter.Enabled {
 		go ssvExporter()
@@ -584,6 +584,8 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 			logger.Errorf("error saving epoch data: %v", err)
 			return
 		}
+
+		services.ReportStatus("epochExporter", "Running", nil)
 	}()
 	return nil
 }

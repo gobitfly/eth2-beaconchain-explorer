@@ -1,0 +1,89 @@
+syntax = "proto3";
+package types;
+
+option go_package = "./types";
+
+message MachineMetricSystem {
+    uint64 timestamp = 1;
+    string exporter_version = 2;
+
+    // system
+    uint64 cpu_cores = 3;
+    uint64 cpu_threads = 4;
+
+    uint64 cpu_node_system_seconds_total = 5;
+    uint64 cpu_node_user_seconds_total = 6;
+    uint64 cpu_node_iowait_seconds_total = 7;
+    uint64 cpu_node_idle_seconds_total = 8;
+
+    uint64 memory_node_bytes_total = 9;
+    uint64 memory_node_bytes_free = 10;
+    uint64 memory_node_bytes_cached = 11;
+    uint64 memory_node_bytes_buffers = 12;
+
+    uint64 disk_node_bytes_total = 13;
+    uint64 disk_node_bytes_free = 14;
+    uint64 disk_node_io_seconds = 15;
+    uint64 disk_node_reads_total = 16;
+    uint64 disk_node_writes_total = 17;
+
+    uint64 network_node_bytes_total_receive = 18;
+    uint64 network_node_bytes_total_transmit = 19;
+
+    uint64 misc_node_boot_ts_seconds = 20;
+    string misc_os = 21;
+
+    // do not store in bigtable but include them in generated model
+    optional string machine = 22; 
+}
+
+message MachineMetricValidator {
+    uint64 timestamp = 1;
+    string exporter_version = 2;
+
+    // process
+    uint64 cpu_process_seconds_total = 3;
+    uint64 memory_process_bytes = 4;
+    string client_name = 5;
+    string client_version = 6;
+    uint64 client_build = 7;
+    bool sync_eth2_fallback_configured = 8;
+    bool sync_eth2_fallback_connected = 9;
+
+    // validator
+    uint64 validator_total = 10;
+    uint64 validator_active = 11;
+
+    // do not store in bigtable but include them in generated model
+    optional string machine = 12; 
+}
+
+message MachineMetricNode {
+    uint64 timestamp = 1;
+    string exporter_version = 2;
+
+    // process
+    uint64 cpu_process_seconds_total = 3;
+    uint64 memory_process_bytes = 4;
+    string client_name = 5;
+    string client_version = 6;
+    uint64 client_build = 7;
+    bool sync_eth2_fallback_configured = 8;
+    bool sync_eth2_fallback_connected = 9;
+
+    // node
+    uint64 disk_beaconchain_bytes_total = 10;
+    uint64 network_libp2p_bytes_total_receive = 11;
+    uint64 network_libp2p_bytes_total_transmit = 12;
+    uint64 network_peers_connected = 13;
+    bool sync_eth1_connected = 14;
+    bool sync_eth2_synced = 15;
+    uint64 sync_beacon_head_slot = 16;
+    bool sync_eth1_fallback_configured = 17;
+    bool sync_eth1_fallback_connected = 18;
+
+    // do not store in bigtable but include them in generated model
+    optional string machine = 19; 
+}
+
+

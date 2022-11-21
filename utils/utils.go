@@ -457,6 +457,11 @@ func IsValidEth1Address(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1AddressRE.MatchString(s)
 }
 
+// IsEth1Address verifies whether a string represents an eth1-address. In contrast to IsValidEth1Address, this also returns true for the 0x0 address
+func IsEth1Address(s string) bool {
+	return eth1AddressRE.MatchString(s)
+}
+
 // IsValidEth1Tx verifies whether a string represents a valid eth1-tx-hash.
 func IsValidEth1Tx(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1TxRE.MatchString(s)
@@ -900,14 +905,4 @@ func ReverseSlice[S ~[]E, E any](s S) {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
 	}
-}
-
-// validator has to be appear offline if they did not attest during the last two finalized epochs
-func GetValidatorOfflineThresholdEpoch(lastFinalizedEpoch uint64) uint64 {
-	thresholdEpoch := lastFinalizedEpoch
-	if thresholdEpoch > 0 {
-		thresholdEpoch -= 1
-	}
-
-	return thresholdEpoch
 }

@@ -3,6 +3,7 @@ package exporter
 import (
 	"context"
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"sort"
@@ -206,6 +207,8 @@ DBCHECK:
 				}
 			}
 		}
+
+		services.ReportStatus("ethstoreExporter", "Running", nil)
 		<-t.C
 	}
 }

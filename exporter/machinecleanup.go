@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// todo: remove once migrated
 func cleanupOldMachineStats() {
 	if !utils.Config.Frontend.CleanupOldMachineStats {
 		return
