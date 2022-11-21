@@ -11,10 +11,14 @@ import (
 	"fmt"
 	"html/template"
 	"math"
+	"math/big"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	itypes "github.com/gobitfly/eth-rewards/types"
+	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/sirupsen/logrus"
@@ -63,6 +67,9 @@ func Init() {
 
 	ready.Add(1)
 	go mempoolUpdater(ready)
+
+	ready.Add(1)
+	go burnUpdater(ready)
 
 	ready.Add(1)
 	go gasNowUpdater(ready)
@@ -842,7 +849,7 @@ func LatestSlot() uint64 {
 	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
 		return wanted
 	} else {
-		logger.Errorf("error retrieving slot from cache: %v", err)
+		logger.Errorf("error retrieving latest slot from cache: %v", err)
 	}
 	return 0
 }
@@ -870,9 +877,20 @@ func LatestMempoolTransactions() *types.RawMempoolResponse {
 	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*60, wanted); err == nil {
 		return wanted.(*types.RawMempoolResponse)
 	} else {
-		logger.Errorf("error retrieving latestProposedSlot from cache: %v", err)
+		logger.Errorf("error retrieving mempool data from cache: %v", err)
 	}
 	return &types.RawMempoolResponse{}
+}
+
+func LatestBurnData() *types.BurnPageData {
+	wanted := &types.BurnPageData{}
+	cacheKey := fmt.Sprintf("%d:frontend:burn", utils.Config.Chain.Config.DepositChainID)
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*60, wanted); err == nil {
+		return wanted.(*types.BurnPageData)
+	} else {
+		logger.Errorf("error retrieving burn data from cache: %v", err)
+	}
+	return &types.BurnPageData{}
 }
 
 // LatestIndexPageData returns the latest index page data
@@ -1215,6 +1233,196 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 			firstRun = false
 		}
 		ReportStatus("mempoolUpdater", "Running", nil)
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 1)
 	}
+}
+
+func burnUpdater(wg *sync.WaitGroup) {
+	firstRun := true
+	for {
+		data, err := getBurnPageData()
+		if err != nil {
+			logger.Errorf("error retrieving burn page data: %v", err)
+			time.Sleep(time.Second * 30)
+			continue
+		}
+		cacheKey := fmt.Sprintf("%d:frontend:burn", utils.Config.Chain.Config.DepositChainID)
+		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
+		if err != nil {
+			logger.Errorf("error caching relaysData: %v", err)
+		}
+		if firstRun {
+			logger.Infof("initialized burn updater")
+			wg.Done()
+			firstRun = false
+		}
+		time.Sleep(time.Second * 30)
+	}
+}
+
+func getBurnPageData() (*types.BurnPageData, error) {
+	data := &types.BurnPageData{}
+	start := time.Now()
+
+	latestEpoch := LatestEpoch()
+	latestBlock := LatestEth1BlockNumber()
+
+	// Retrieve the total amount of burned Ether
+	err := db.ReaderDb.Get(&data.TotalBurned, "select sum(value) from chart_series where indicator = 'BURNED_FEES';")
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving total burned amount from chart_series table: %v", err)
+	}
+
+	cutOff := time.Time{}
+	err = db.ReaderDb.Get(&cutOff, "select (select max(time) from chart_series where indicator = 'BURNED_FEES') + interval '24 hours';")
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving cutoff date from chart_series table: %v", err)
+	}
+
+	cutOffEpoch := utils.TimeToEpoch(cutOff)
+
+	// var blockLastHour uint64
+	// db.ReaderDb.Get(&blockLastHour, "select ")
+
+	// var blockLastDay uint64
+	// db.ReaderDb.Get(&blockLastDay)
+
+	additionalBurned := float64(0)
+	err = db.ReaderDb.Get(&additionalBurned, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) as burnedfees from blocks where epoch >= $1", cutOffEpoch)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving additional burned eth from blocks table: %v", err)
+	}
+	data.TotalBurned += additionalBurned
+
+	err = db.ReaderDb.Get(&data.BurnRate1h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60, 0) as burnedfees from blocks where epoch >= $1", latestEpoch-10)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving burn rate (1h) from blocks table: %v", err)
+	}
+
+	// err = db.ReaderDb.Get(&data.Emission, "select total_rewards_wei as emission from eth_store_stats order by day desc limit 1")
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error retrieving emission (24h): %v", err)
+	// }
+
+	// swap this for GetEpochIncomeHistory in the future
+	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, latestEpoch, 10)
+	if err != nil {
+		logger.WithError(err).Error("error getting validator income history")
+	}
+
+	total := &itypes.ValidatorEpochIncome{}
+
+	for _, epochs := range income {
+		// logger.Infof("epochs: %+v", epochs)
+		for _, details := range epochs {
+			// logger.Infof("income: %+v", details)
+			total.AttestationHeadReward += details.AttestationHeadReward
+			total.AttestationSourceReward += details.AttestationSourceReward
+			total.AttestationSourcePenalty += details.AttestationSourcePenalty
+			total.AttestationTargetReward += details.AttestationTargetReward
+			total.AttestationTargetPenalty += details.AttestationTargetPenalty
+			total.FinalityDelayPenalty += details.FinalityDelayPenalty
+			total.ProposerSlashingInclusionReward += details.ProposerSlashingInclusionReward
+			total.ProposerAttestationInclusionReward += details.ProposerAttestationInclusionReward
+			total.ProposerSyncInclusionReward += details.ProposerSyncInclusionReward
+			total.SyncCommitteeReward += details.SyncCommitteeReward
+			total.SyncCommitteePenalty += details.SyncCommitteePenalty
+			total.SlashingReward += details.SlashingReward
+			total.SlashingPenalty += details.SlashingPenalty
+			total.TxFeeRewardWei = utils.AddBigInts(total.TxFeeRewardWei, details.TxFeeRewardWei)
+		}
+	}
+
+	rewards := decimal.NewFromBigInt(new(big.Int).SetBytes(total.TxFeeRewardWei), 0)
+
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.AttestationHeadReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.AttestationSourceReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.AttestationTargetReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.ProposerSlashingInclusionReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.ProposerAttestationInclusionReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.ProposerSyncInclusionReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.SyncCommitteeReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.SlashingReward)))
+
+	rewards = rewards.Sub(decimal.NewFromInt(int64(total.AttestationTargetPenalty)))
+	rewards = rewards.Sub(decimal.NewFromInt(int64(total.FinalityDelayPenalty)))
+	rewards = rewards.Sub(decimal.NewFromInt(int64(total.SyncCommitteePenalty)))
+	rewards = rewards.Sub(decimal.NewFromInt(int64(total.AttestationSourcePenalty)))
+	rewards = rewards.Sub(decimal.NewFromInt(int64(total.SlashingPenalty)))
+
+	rewards = rewards.Div(decimal.NewFromInt(64))
+
+	logger.Infof("burn rate per min: %v emission per min: %v", data.BurnRate1h, rewards.InexactFloat64())
+	// emission per minute
+	data.Emission = rewards.InexactFloat64() - data.BurnRate1h
+
+	logger.Infof("calculated emission: %v", data.Emission)
+
+	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", latestEpoch-225)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving burn rate (24h) from blocks table: %v", err)
+	}
+
+	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(exec_gas_used::numeric * 100 / exec_gas_limit) from blocks where epoch >= $1 and exec_gas_used > 0 and exec_gas_limit > 0 group by slot order by slot desc ", latestEpoch-225)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving block utilization from blocks table: %v", err)
+	}
+
+	blocks, err := db.BigtableClient.GetBlocksDescending(latestBlock, 1000)
+	if err != nil {
+		return nil, err
+	}
+
+	// db.BigAdminClient
+
+	data.Blocks = make([]*types.BurnPageDataBlock, 0, 1000)
+	for _, blk := range blocks {
+
+		blockNumber := blk.GetNumber()
+		baseFee := new(big.Int).SetBytes(blk.GetBaseFee())
+		// gasHalf := float64(blk.GetGasLimit()) / 2.0
+		txReward := new(big.Int).SetBytes(blk.GetTxReward())
+
+		burned := new(big.Int).Mul(baseFee, big.NewInt(int64(blk.GetGasUsed())))
+		// burnedPercentage := float64(0.0)
+		if len(txReward.Bits()) != 0 {
+			txBurnedBig := new(big.Float).SetInt(burned)
+			txBurnedBig.Quo(txBurnedBig, new(big.Float).SetInt(txReward))
+			// burnedPercentage, _ = txBurnedBig.Float64()
+		}
+
+		blockReward := new(big.Int).Add(utils.Eth1BlockReward(blockNumber, blk.GetDifficulty()), new(big.Int).Add(txReward, new(big.Int).SetBytes(blk.GetUncleReward())))
+
+		data.Blocks = append(data.Blocks, &types.BurnPageDataBlock{
+			Number:        int64(blockNumber),
+			Hash:          string(blk.Hash),
+			GasTarget:     int64(blk.GasLimit),
+			GasUsed:       int64(blk.GasUsed),
+			Txn:           int(blk.TransactionCount),
+			Age:           blk.Time.AsTime(),
+			BaseFeePerGas: float64(baseFee.Int64()),
+			BurnedFees:    float64(burned.Int64()),
+			Rewards:       float64(blockReward.Int64()),
+		})
+	}
+
+	if len(data.Blocks) > 100 {
+		if data.Blocks[0].BaseFeePerGas < data.Blocks[100].BaseFeePerGas {
+			data.BaseFeeTrend = -1
+		} else if data.Blocks[0].BaseFeePerGas == data.Blocks[100].BaseFeePerGas {
+			data.BaseFeeTrend = 0
+		} else {
+			data.BaseFeeTrend = 1
+		}
+	} else {
+		data.BaseFeeTrend = 1
+	}
+
+	for _, b := range data.Blocks {
+		if b.Number > 12965000 {
+			b.GasTarget = b.GasTarget / 2
+		}
+	}
+	logger.Infof("epoch burn page export took: %v seconds", time.Since(start).Seconds())
+	return data, nil
 }

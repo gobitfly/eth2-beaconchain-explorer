@@ -101,6 +101,11 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 	heatmapData.Epochs = epochs
 
 	start := time.Now()
+	if len(validators) == 0 {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error no validators provided")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
 	incomeData, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validators, endEpoch, 100)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error loading validator income history data")

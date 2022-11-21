@@ -1056,3 +1056,20 @@ CREATE INDEX idx_validator_queue_deposits_block_slot ON validator_queue_deposits
 CREATE UNIQUE INDEX idx_validator_queue_deposits_validatorindex ON validator_queue_deposits USING btree (validatorindex);
 
 create table service_status (name text not null, executable_name text not null, version text not null, pid int not null, status text not null, metadata jsonb, last_update timestamp not null, primary key (name, executable_name, version, pid));
+
+DROP TABLE IF EXISTS chart_series;
+CREATE TABLE chart_series (
+    "time" timestamp without time zone NOT NULL,
+    indicator character varying(50) NOT NULL,
+    value numeric NOT NULL,
+    primary key ("time", indicator)
+);
+
+drop table if exists chart_series_status;
+create table chart_series_status
+(
+    day    int     not null,
+    status boolean not null,
+    primary key (day)
+);
+
