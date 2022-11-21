@@ -916,3 +916,7 @@ func GetValidatorOfflineThresholdEpoch(lastFinalizedEpoch uint64) uint64 {
 
 	return thresholdEpoch
 }
+
+func AddBigInts(a, b []byte) []byte {
+	return new(big.Int).Add(new(big.Int).SetBytes(a), new(big.Int).SetBytes(b)).Bytes()
+}

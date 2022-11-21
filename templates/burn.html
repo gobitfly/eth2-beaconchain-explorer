@@ -258,6 +258,7 @@
             tick: function () {
                 if (this.updateIn <= 0) {
                     $.getJSON('/burn/data', function (response) {
+                        // console.log('burn data', response)
                         this.page = response;
                         this.chartOptions.series[0].data = [];
                         // this.chartOptions.series[1].data = [];
@@ -276,7 +277,7 @@
                         }
                         this.page.blocks = this.page.blocks.slice(0, 100);
                         let emission = Math.round(this.page.emission / 1e18 * 10) / 10;
-
+                        // console.log('emission: ', emission)
                         this.chartOptionsMonetaryPolicy.series[0].data = [emission];
 
                         if (emission < -12) {
@@ -292,11 +293,11 @@
                             this.chartOptionsMonetaryPolicy.yAxis.plotBands[2].to = 12;
                         }
                     }.bind(this));
-                    this.updateIn = 15;
+                    this.updateIn = 30;
                     this.progress = 0;
                 } else {
                     this.updateIn--;
-                    this.progress = Math.round((15 - this.updateIn) * 100 / 15)
+                    this.progress = Math.round((30 - this.updateIn) * 100 / 30)
                 }
             }
         }
@@ -2015,7 +2016,7 @@
                     <div class="progress">
                         <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
                              v-bind:style="'width: ' +progress + '%'" v-bind:aria-valuenow="progress" aria-valuemin="0"
-                             aria-valuemax="15">Update in: ${updateIn}s
+                             aria-valuemax="30">Update in: ${updateIn}s
                         </div>
                     </div>
                 </h3>

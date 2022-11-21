@@ -1087,6 +1087,11 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(queryIndices) == 0 {
+		sendErrorResponse(w, r.URL.String(), "no validators provided")
+		return
+	}
+
 	history, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(queryIndices, services.LatestEpoch(), 101)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")

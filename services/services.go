@@ -17,6 +17,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	itypes "github.com/gobitfly/eth-rewards/types"
+	"github.com/shopspring/decimal"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/sirupsen/logrus"
 
@@ -1232,7 +1235,7 @@ func burnUpdater(wg *sync.WaitGroup) {
 		data, err := getBurnPageData()
 		if err != nil {
 			logger.Errorf("error retrieving burn page data: %v", err)
-			time.Sleep(time.Second * 10)
+			time.Sleep(time.Second * 30)
 			continue
 		}
 		cacheKey := fmt.Sprintf("%d:frontend:burn", utils.Config.Chain.Config.DepositChainID)
@@ -1245,12 +1248,13 @@ func burnUpdater(wg *sync.WaitGroup) {
 			wg.Done()
 			firstRun = false
 		}
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 30)
 	}
 }
 
 func getBurnPageData() (*types.BurnPageData, error) {
 	data := &types.BurnPageData{}
+	start := time.Now()
 
 	latestEpoch := LatestEpoch()
 	latestBlock := LatestEth1BlockNumber()
@@ -1287,12 +1291,65 @@ func getBurnPageData() (*types.BurnPageData, error) {
 		return nil, fmt.Errorf("error retrieving burn rate (1h) from blocks table: %v", err)
 	}
 
-	data.Emission = 5
-
-	// err = db.ReaderDb.Get(&data.Emission, "select (sum(baseblockreward) - SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric)) / 60 as burnedfees from blocks where epoch >= $1", latestEpoch-10)
+	// err = db.ReaderDb.Get(&data.Emission, "select total_rewards_wei as emission from eth_store_stats order by day desc limit 1")
 	// if err != nil {
-	// 	return nil, fmt.Errorf("error retrieving emission (1h) from blocks table: %v", err)
+	// 	return nil, fmt.Errorf("error retrieving emission (24h): %v", err)
 	// }
+
+	// swap this for GetEpochIncomeHistory in the future
+	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, latestEpoch, 10)
+	if err != nil {
+		logger.WithError(err).Error("error getting validator income history")
+	}
+
+	total := &itypes.ValidatorEpochIncome{}
+
+	for _, epochs := range income {
+		// logger.Infof("epochs: %+v", epochs)
+		for _, details := range epochs {
+			// logger.Infof("income: %+v", details)
+			total.AttestationHeadReward += details.AttestationHeadReward
+			total.AttestationSourceReward += details.AttestationSourceReward
+			total.AttestationSourcePenalty += details.AttestationSourcePenalty
+			total.AttestationTargetReward += details.AttestationTargetReward
+			total.AttestationTargetPenalty += details.AttestationTargetPenalty
+			total.FinalityDelayPenalty += details.FinalityDelayPenalty
+			total.ProposerSlashingInclusionReward += details.ProposerSlashingInclusionReward
+			total.ProposerAttestationInclusionReward += details.ProposerAttestationInclusionReward
+			total.ProposerSyncInclusionReward += details.ProposerSyncInclusionReward
+			total.SyncCommitteeReward += details.SyncCommitteeReward
+			total.SyncCommitteePenalty += details.SyncCommitteePenalty
+			total.SlashingReward += details.SlashingReward
+			total.SlashingPenalty += details.SlashingPenalty
+			total.TxFeeRewardWei = utils.AddBigInts(total.TxFeeRewardWei, details.TxFeeRewardWei)
+		}
+	}
+
+	rewards := decimal.NewFromBigInt(new(big.Int).SetBytes(total.TxFeeRewardWei), 0)
+
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.AttestationHeadReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.AttestationSourceReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.AttestationTargetReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.ProposerSlashingInclusionReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.ProposerAttestationInclusionReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.ProposerSyncInclusionReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.SyncCommitteeReward)))
+	rewards = rewards.Add(decimal.NewFromInt(int64(total.SlashingReward)))
+
+	rewards = rewards.Sub(decimal.NewFromInt(int64(total.AttestationTargetPenalty)))
+	rewards = rewards.Sub(decimal.NewFromInt(int64(total.FinalityDelayPenalty)))
+	rewards = rewards.Sub(decimal.NewFromInt(int64(total.SyncCommitteePenalty)))
+	rewards = rewards.Sub(decimal.NewFromInt(int64(total.AttestationSourcePenalty)))
+	rewards = rewards.Sub(decimal.NewFromInt(int64(total.SlashingPenalty)))
+
+	rewards = rewards.Div(decimal.NewFromInt(64))
+
+	logger.Infof("burn rate per min: %v emission per min: %v", data.BurnRate1h, rewards.InexactFloat64())
+	// emission per minute
+	data.Emission = rewards.InexactFloat64() - data.BurnRate1h
+
+	logger.Infof("calculated emission: %v", data.Emission)
+
 	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", latestEpoch-225)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (24h) from blocks table: %v", err)
@@ -1341,17 +1398,6 @@ func getBurnPageData() (*types.BurnPageData, error) {
 		})
 	}
 
-	// err = db.ReaderDb.Select(&data.Blocks, "SELECT ENCODE(exec_block_hash::bytea, 'hex')  AS hash, exec_block_number as number, exec_gas_limit as gaslimit, exec_gas_used as gasused, miningreward, exec_transactions_count as tx_count, exec_timestamp as time, exec_base_fee_per_gas as basefeepergas,  (exec_base_fee_per_gas::numeric * exec_gas_used::numeric) as burnedfees FROM blocks WHERE exec_block_number > $1 order by exec_timestamp desc", LatestBlock()-1000)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("error retrieving burn view chart data from blocks table: %v", err)
-	// }
-
-	// price is defined in the handler
-	// err = db.ReaderDb.Get(&data.Price, "SELECT price_usd as price from network_stats order by time desc limit 1;")
-	// if err != nil {
-	// 	return nil, fmt.Errorf("error retrieving price from the network_stats table %v", err)
-	// }
-
 	if len(data.Blocks) > 100 {
 		if data.Blocks[0].BaseFeePerGas < data.Blocks[100].BaseFeePerGas {
 			data.BaseFeeTrend = -1
@@ -1369,5 +1415,6 @@ func getBurnPageData() (*types.BurnPageData, error) {
 			b.GasTarget = b.GasTarget / 2
 		}
 	}
+	logger.Infof("epoch burn page export took: %v seconds", time.Since(start).Seconds())
 	return data, nil
 }
