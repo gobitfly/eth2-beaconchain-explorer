@@ -93,6 +93,7 @@ func chartsPageDataUpdater(wg *sync.WaitGroup) {
 			firstun = false
 		}
 		if latestEpoch == 0 {
+			ReportStatus("chartsPageDataUpdater", "Running", nil)
 			time.Sleep(time.Second * 60 * 10)
 		}
 	}

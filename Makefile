@@ -1,6 +1,5 @@
 GITCOMMIT=`git describe --always`
-GITDATESHORT=`TZ=UTC git show -s --date=iso-strict-local --format=%cd --date=format:'%Y%m%d%H%M' HEAD`
-VERSION=v${GITDATESHORT}_${GITCOMMIT}
+VERSION=`git describe --always --tags`
 GITDATE=`TZ=UTC git show -s --date=iso-strict-local --format=%cd HEAD`
 BUILDDATE=`date -u +"%Y-%m-%dT%H:%M:%S%:z"`
 PACKAGE=eth2-exporter
@@ -35,3 +34,6 @@ rewards-exporter:
 
 eth1indexer:
 	go build --ldflags=${LDFLAGS} -o bin/eth1indexer cmd/eth1indexer/main.go
+
+machine-migrator:
+	go build --ldflags=${LDFLAGS} -o bin/machine-migrator cmd/machinemigrator/main.go

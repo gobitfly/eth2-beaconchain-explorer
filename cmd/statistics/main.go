@@ -2,6 +2,7 @@ package main
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
@@ -118,6 +119,7 @@ func main() {
 func statisticsLoop() {
 	for {
 
+		// todo: remove once migrated
 		// create stats parition on users table
 		now := time.Now()
 		nowTs := now.Unix()
@@ -125,6 +127,7 @@ func statisticsLoop() {
 
 		db.CreateNewStatsMetaPartition(day)
 		db.CreateNewStatsMetaPartition(day + 1)
+		// ^=======
 
 		latestEpoch, err := db.GetLatestEpoch()
 		if err != nil {
@@ -165,6 +168,7 @@ func statisticsLoop() {
 				}
 			}
 		}
+		services.ReportStatus("statistics", "Running", nil)
 		time.Sleep(time.Minute)
 	}
 }
@@ -172,6 +176,7 @@ func statisticsLoop() {
 func poolsLoop() {
 	for {
 		db.UpdatePoolInfo()
+		services.ReportStatus("poolInfoUpdater", "Running", nil)
 		time.Sleep(time.Minute * 10)
 	}
 }

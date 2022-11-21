@@ -1,0 +1,22 @@
+{{ define "js" }}
+{{ end }}
+
+{{ define "css" }}
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+    <section>
+      <div class="container">
+        <div style="padding-top: 2rem;" class="row justify-content-between align-items-center">
+          <div class="col-md-6 mb-5">
+            <h2 style="font-size:1.8rem;">Sorry, the page you are looking for could not be found</h2>
+          </div>
+          <div class="col-md-5 p-3">
+            {{ template "relax_svg" }}
+          </div>
+        </div>
+      </div>
+    </section>
+  {{ end }}
+{{ end }}

@@ -29,6 +29,7 @@ func latestBlockUpdater(wg *sync.WaitGroup) {
 			wg.Done()
 			firstRun = false
 		}
+		ReportStatus("latestBlockUpdater", "Running", nil)
 		time.Sleep(time.Second * 10)
 	}
 }

@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	gcp_bigtable "cloud.google.com/go/bigtable"
 	"firebase.google.com/go/messaging"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
@@ -153,6 +154,8 @@ func notificationsSender() {
 
 		logger.WithField("notifications", len(notifications)).WithField("duration", time.Since(start)).Info("notifications completed")
 		metrics.TaskDuration.WithLabelValues("service_notifications").Observe(time.Since(start).Seconds())
+
+		ReportStatus("notification-collector", "Running", nil)
 		time.Sleep(time.Second * 120)
 	}
 }
@@ -220,6 +223,7 @@ func notificationSender() {
 		}
 		cancel()
 
+		ReportStatus("notification-sender", "Running", nil)
 		time.Sleep(time.Second * 30)
 	}
 }
@@ -1204,133 +1208,8 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 	return nil
 }
 
-type validatorBalanceDecreasedNotification struct {
-	ValidatorIndex     uint64
-	ValidatorPublicKey string
-	StartEpoch         uint64
-	EndEpoch           uint64
-	StartBalance       uint64
-	EndBalance         uint64
-	SubscriptionID     uint64
-	EventFilter        string
-	UnsubscribeHash    sql.NullString
-}
-
-func (n *validatorBalanceDecreasedNotification) GetLatestState() string {
-	return ""
-}
-
-func (n *validatorBalanceDecreasedNotification) GetUnsubscribeHash() string {
-	if n.UnsubscribeHash.Valid {
-		return n.UnsubscribeHash.String
-	}
-	return ""
-}
-
-func (n *validatorBalanceDecreasedNotification) GetEmailAttachment() *types.EmailAttachment {
-	return nil
-}
-
-func (n *validatorBalanceDecreasedNotification) GetSubscriptionID() uint64 {
-	return n.SubscriptionID
-}
-
-func (n *validatorBalanceDecreasedNotification) GetEpoch() uint64 {
-	return n.StartEpoch
-}
-
-func (n *validatorBalanceDecreasedNotification) GetEventName() types.EventName {
-	return types.ValidatorBalanceDecreasedEventName
-}
-
-func (n *validatorBalanceDecreasedNotification) GetInfo(includeUrl bool) string {
-	balance := float64(n.EndBalance) / 1e9
-	diff := float64(n.StartBalance-n.EndBalance) / 1e9
-
-	generalPart := fmt.Sprintf(`The balance of validator %[1]v decreased for 3 consecutive epochs by %.9[2]f ETH to %.9[3]f ETH from epoch %[4]v to epoch %[5]v.`, n.ValidatorIndex, diff, balance, n.StartEpoch, n.EndEpoch)
-	if includeUrl {
-		return generalPart + getUrlPart(n.ValidatorIndex)
-	}
-	return generalPart
-}
-
-func (n *validatorBalanceDecreasedNotification) GetTitle() string {
-	return "Validator Balance Decreased"
-}
-
-func (n *validatorBalanceDecreasedNotification) GetEventFilter() string {
-	return n.EventFilter
-}
-
-func (n *validatorBalanceDecreasedNotification) GetInfoMarkdown() string {
-	return n.GetInfo(false)
-}
-
 func getUrlPart(validatorIndex uint64) string {
 	return fmt.Sprintf(` For more information visit: https://%[2]s/validator/%[1]v`, validatorIndex, utils.Config.Frontend.SiteDomain)
-}
-
-// collectValidatorBalanceDecreasedNotifications finds all validators whose balance decreased for 3 consecutive epochs
-// and creates notifications for all subscriptions which have not been notified about the validator since the last time its balance increased.
-// It looks 10 epochs back for when the balance increased the last time, this means if the explorer is not running for 10 epochs it is possible
-// that no new notification is sent even if there was a balance-increase.
-func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	latestEpoch := LatestFinalizedEpoch()
-	if latestEpoch < 3 {
-		return nil
-	}
-	dbResult, err := db.GetValidatorsBalanceDecrease(latestEpoch)
-	if err != nil {
-		return err
-	}
-
-	query := ""
-	resultsLen := len(dbResult)
-	for i, event := range dbResult {
-		query += fmt.Sprintf(`SELECT %d as ref, id, user_id, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash from users_subscriptions where event_name = $1 AND event_filter = '%s'  AND (last_sent_epoch > $2 OR last_sent_epoch IS NULL) AND created_epoch <= $2`, i, event.Pubkey)
-		if i < resultsLen-1 {
-			query += " UNION "
-		}
-	}
-	if query == "" {
-		return nil
-	}
-	var subscribers []struct {
-		Ref             uint64         `db:"ref"`
-		Id              uint64         `db:"id"`
-		UserId          uint64         `db:"user_id"`
-		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
-	}
-
-	err = db.FrontendWriterDB.Select(&subscribers, query, types.ValidatorBalanceDecreasedEventName, latestEpoch)
-	if err != nil {
-		return err
-	}
-
-	for _, sub := range subscribers {
-		event := dbResult[sub.Ref]
-		n := &validatorBalanceDecreasedNotification{
-			SubscriptionID:  sub.Id,
-			ValidatorIndex:  event.ValidatorIndex,
-			StartEpoch:      latestEpoch - 3,
-			EndEpoch:        latestEpoch,
-			StartBalance:    event.StartBalance,
-			EndBalance:      event.EndBalance,
-			EventFilter:     event.Pubkey,
-			UnsubscribeHash: sub.UnsubscribeHash,
-		}
-
-		if _, exists := notificationsByUserID[sub.UserId]; !exists {
-			notificationsByUserID[sub.UserId] = map[types.EventName][]types.Notification{}
-		}
-		if _, exists := notificationsByUserID[sub.UserId][n.GetEventName()]; !exists {
-			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
-		}
-		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
-		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
-	}
-
-	return nil
 }
 
 func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
@@ -1368,7 +1247,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 
 		err = db.WriterDb.Select(&partial, `
 				SELECT 
-					v.validatorindex, 
+					DISTINCT v.validatorindex, 
 					pa.epoch,
 					pa.status,
 					v.pubkey as pubkey,
@@ -1553,14 +1432,15 @@ func (n *validatorProposalNotification) GetInfoMarkdown() string {
 }
 
 func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
-	var latestExportedEpoch uint64
+	var latestExportedSlot uint64
 
 	// we use the latest exported epoch because that's what the lastattestationslot column is based upon
-
-	err := db.ReaderDb.Get(&latestExportedEpoch, `select epoch from epochs where eligibleether <> 0 order by epoch desc limit 1`)
+	err := db.ReaderDb.Get(&latestExportedSlot, `SELECT COALESCE(MAX(lastattestationslot), 0) FROM validators`)
 	if err != nil {
 		logger.Infof("failed to get last exported epoch: %v", err)
 	}
+
+	latestExportedEpoch := latestExportedSlot / utils.Config.Chain.Config.SlotsPerEpoch
 
 	_, subMap, err := db.GetSubsForEventFilter(eventName)
 	if err != nil {
@@ -1600,7 +1480,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 		for _, v := range dataArr {
 			t := hex.EncodeToString(v.Pubkey)
 			subs := subMap[t]
-			lastSeenEpoch := uint64(v.LastAttestationSlot.Int64 / 32)
+			lastSeenEpoch := uint64(v.LastAttestationSlot.Int64 / int64(utils.Config.Chain.Config.SlotsPerEpoch))
 			if latestExportedEpoch < lastSeenEpoch {
 				continue
 			}
@@ -2266,135 +2146,156 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 	return nil
 }
 
+type MachineEvents struct {
+	SubscriptionID  uint64         `db:"id"`
+	UserID          uint64         `db:"user_id"`
+	MachineName     string         `db:"machine"`
+	UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
+	EventThreshold  float64        `db:"event_threshold"`
+}
+
 func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineOfflineEventName,
-		`
-	SELECT 
-		us.user_id,
-		max(us.id) as id,
-		ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
-		machine
-	FROM users_subscriptions us
-	JOIN (
-		SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p 
-		WHERE day >= $3 
-		group by user_id, machine
-	) v on v.user_id = us.user_id 
-	WHERE us.event_name = $1 AND us.created_epoch <= $2 
-	AND us.event_filter = v.machine 
-	AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL)
-	AND v.created_trunc < now() - interval '4 minutes' AND v.created_trunc > now() - interval '1 hours'
-	group by us.user_id, machine
-	`)
+	nowTs := time.Now().Unix()
+	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineOfflineEventName, 120,
+		// notify condition
+		func(_ *MachineEvents, machineData *types.MachineMetricSystemUser) bool {
+			if machineData.CurrentDataInsertTs < nowTs-5*60 && machineData.CurrentDataInsertTs > nowTs-90*60 {
+				return true
+			}
+			return false
+		},
+	)
+}
+
+func isMachineDataRecent(machineData *types.MachineMetricSystemUser) bool {
+	nowTs := time.Now().Unix()
+	if machineData.CurrentDataInsertTs < nowTs-60*60 { // only if data is up 2 date (last hour)
+		return false
+	}
+	return true
 }
 
 func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineDiskAlmostFullEventName,
-		`SELECT 
-			us.user_id,
-			max(us.id) as id,
-			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
-			machine
-		FROM users_subscriptions us 
-		INNER JOIN stats_meta_p v ON us.user_id = v.user_id
-		INNER JOIN stats_system sy ON v.id = sy.meta_id
-		WHERE us.event_name = $1 AND us.created_epoch <= $2 
-		AND v.day >= $3 
-		AND v.machine = us.event_filter 
-		AND (us.last_sent_epoch < ($2 - 750) OR us.last_sent_epoch IS NULL)
-		AND sy.disk_node_bytes_free::decimal / (sy.disk_node_bytes_total + 1) < event_threshold
-		AND v.created_trunc > NOW() - INTERVAL '1 hours' 
-		group by us.user_id, machine
-	`)
+	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineDiskAlmostFullEventName, 750,
+		// notify condition
+		func(subscribeData *MachineEvents, machineData *types.MachineMetricSystemUser) bool {
+			if !isMachineDataRecent(machineData) {
+				return false
+			}
+
+			percentFree := float64(machineData.CurrentData.DiskNodeBytesFree) / float64(machineData.CurrentData.DiskNodeBytesTotal+1)
+			if percentFree < subscribeData.EventThreshold {
+				//logrus.Infof("disk percent full %v | threshold %v | free %v | total %v", percentFree, subscribeData.EventThreshold, machineData.CurrentData.DiskNodeBytesFree, machineData.CurrentData.DiskNodeBytesTotal)
+				return true
+			}
+			return false
+		},
+	)
 }
 
 func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineCpuLoadEventName,
-		`SELECT 
-			max(us.id) as id,
-			us.user_id,
-			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
-			machine 
-		FROM users_subscriptions us 
-		INNER JOIN (
-			SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p
-			where process = 'system' AND day >= $3 
-			group by user_id, machine
-		) v ON us.user_id = v.user_id 
-		WHERE v.machine = us.event_filter 
-		AND us.event_name = $1 AND us.created_epoch <= $2 
-		AND (us.last_sent_epoch < ($2 - 10) OR us.last_sent_epoch IS NULL)
-		AND v.created_trunc > now() - interval '45 minutes' 
-		AND event_threshold < (SELECT 
-			1 - (cpu_node_idle_seconds_total::decimal - lag(cpu_node_idle_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) / (cpu_node_system_seconds_total::decimal - lag(cpu_node_system_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) as cpu_load 
-			FROM stats_system as sy 
-			INNER JOIN stats_meta_p m on meta_id = m.id 
-			WHERE m.id = meta_id 
-			AND m.day >= $3 
-			AND m.user_id = v.user_id 
-			AND m.machine = us.event_filter 
-			ORDER BY sy.id desc
-			LIMIT 1
-		) 
-		group by us.user_id, machine;
-	`)
+	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineCpuLoadEventName, 10,
+		// notify condition
+		func(subscribeData *MachineEvents, machineData *types.MachineMetricSystemUser) bool {
+			if !isMachineDataRecent(machineData) {
+				return false
+			}
+
+			if machineData.FiveMinuteOldData == nil { // no compare data found (5 min old data)
+				return false
+			}
+
+			idle := float64(machineData.CurrentData.CpuNodeIdleSecondsTotal) - float64(machineData.FiveMinuteOldData.CpuNodeIdleSecondsTotal)
+			total := float64(machineData.CurrentData.CpuNodeSystemSecondsTotal) - float64(machineData.FiveMinuteOldData.CpuNodeSystemSecondsTotal)
+			percentLoad := float64(1) - (idle / total)
+
+			if percentLoad > subscribeData.EventThreshold {
+				//logrus.Infof("cpu percent load %v | threshold %v | idle %v | total %v", percentLoad, subscribeData.EventThreshold, idle, total)
+				return true
+			}
+			return false
+		},
+	)
 }
 
 func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineMemoryUsageEventName,
-		`SELECT 
-			max(us.id) as id,
-			us.user_id,
-			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
-			machine 
-		FROM users_subscriptions us 
-		INNER JOIN (
-			SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p
-			where process = 'system' AND day >= $3 
-			group by user_id, machine
-		) v ON us.user_id = v.user_id 
-		WHERE v.machine = us.event_filter 
-		AND us.event_name = $1 AND us.created_epoch <= $2
-		AND (us.last_sent_epoch < ($2 - 10) OR us.last_sent_epoch IS NULL)
-		AND v.created_trunc > now() - interval '1 hours' 
-		AND event_threshold < (SELECT avg(usage) FROM (SELECT 
-		1 - ((memory_node_bytes_free + memory_node_bytes_cached + memory_node_bytes_buffers) / memory_node_bytes_total::decimal) as usage
-		FROM stats_system as sy 
-		INNER JOIN stats_meta_p m on meta_id = m.id 
-		WHERE m.id = meta_id 
-		AND m.day >= $3 
-		AND m.user_id = v.user_id 
-		AND m.machine = us.event_filter 
-		ORDER BY sy.id desc
-		LIMIT 5
-		) p) 
-		group by us.user_id, machine;
-	`)
+	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineMemoryUsageEventName, 10,
+		// notify condition
+		func(subscribeData *MachineEvents, machineData *types.MachineMetricSystemUser) bool {
+			if !isMachineDataRecent(machineData) {
+				return false
+			}
+
+			memFree := float64(machineData.CurrentData.MemoryNodeBytesFree) + float64(machineData.CurrentData.MemoryNodeBytesCached) + float64(machineData.CurrentData.MemoryNodeBytesBuffers)
+			memTotal := float64(machineData.CurrentData.MemoryNodeBytesTotal)
+			memUsage := float64(1) - (memFree / memTotal)
+
+			if memUsage > subscribeData.EventThreshold {
+				//logrus.Infof("memUsage %v | threshold %v | memFree %v | memTotal %v", memUsage, subscribeData.EventThreshold, memFree, memTotal)
+				return true
+			}
+			return false
+		},
+	)
 }
 
-func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName, query string) error {
+func collectMonitoringMachine(
+	notificationsByUserID map[uint64]map[types.EventName][]types.Notification,
+	eventName types.EventName,
+	epochWaitInBetween int,
+	notifyConditionFullfilled func(subscribeData *MachineEvents, machineData *types.MachineMetricSystemUser) bool,
+) error {
 	latestEpoch := LatestFinalizedEpoch()
 	if latestEpoch == 0 {
 		return nil
 	}
 
-	var dbResult []struct {
-		SubscriptionID  uint64         `db:"id"`
-		UserID          uint64         `db:"user_id"`
-		MachineName     string         `db:"machine"`
-		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
-	}
-
-	now := time.Now()
-	nowTs := now.Unix()
-	var day int = int(nowTs/86400) - 1 // -1 so we have no issue on partition table change
-
-	err := db.FrontendWriterDB.Select(&dbResult, query, eventName, latestEpoch, day)
+	var allSubscribed []MachineEvents
+	err := db.FrontendWriterDB.Select(&allSubscribed,
+		`SELECT 
+			us.user_id,
+			max(us.id) as id,
+			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
+			event_filter as machine,
+			COALESCE(event_threshold, 0) as event_threshold
+		FROM users_subscriptions us 
+		WHERE us.event_name = $1 AND us.created_epoch <= $2 
+		AND (us.last_sent_epoch < ($2 - $3) OR us.last_sent_epoch IS NULL)
+		group by us.user_id, machine, event_threshold`,
+		eventName, latestEpoch, epochWaitInBetween)
 	if err != nil {
 		return err
 	}
 
-	for _, r := range dbResult {
+	rowKeys := gcp_bigtable.RowList{}
+	for _, data := range allSubscribed {
+		rowKeys = append(rowKeys, db.GetMachineRowKey(data.UserID, "system", data.MachineName))
+	}
+
+	machineDataOfSubscribed, err := db.BigtableClient.GetMachineMetricsForNotifications(rowKeys)
+	if err != nil {
+		return err
+	}
+
+	var result []MachineEvents
+	for _, data := range allSubscribed {
+		machineMap, found := machineDataOfSubscribed[data.UserID]
+		if !found {
+			continue
+		}
+		currentMachineData, found := machineMap[data.MachineName]
+		if !found {
+			continue
+		}
+
+		//logrus.Infof("currentMachineData %v | %v | %v | %v", currentMachine.CurrentDataInsertTs, currentMachine.CompareDataInsertTs, currentMachine.UserID, currentMachine.Machine)
+		if notifyConditionFullfilled(&data, currentMachineData) {
+			result = append(result, data)
+		}
+	}
+
+	for _, r := range result {
+
 		n := &monitorMachineNotification{
 			SubscriptionID:  r.SubscriptionID,
 			MachineName:     r.MachineName,
@@ -2403,7 +2304,7 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 			Epoch:           latestEpoch,
 			UnsubscribeHash: r.UnsubscribeHash,
 		}
-
+		//logrus.Infof("notify %v %v", eventName, n)
 		if _, exists := notificationsByUserID[r.UserID]; !exists {
 			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
 		}

@@ -269,8 +269,8 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	var validators []*types.ValidatorsPageDataValidators
 	qry := ""
 	isAll := bool(false)
-	if dataQuery.Search == "" && dataQuery.StateFilter == "" {
-		qry = fmt.Sprintf(`
+	// if dataQuery.Search == "" && dataQuery.StateFilter == "" {
+	qry = fmt.Sprintf(`
 			SELECT
 				validators.validatorindex,
 				validators.pubkey,
@@ -288,97 +288,98 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			ORDER BY %s %s
 			LIMIT $1 OFFSET $2`, dataQuery.OrderBy, dataQuery.OrderDir)
 
-		err = db.ReaderDb.Select(&validators, qry, dataQuery.Length, dataQuery.Start)
-		if err != nil {
-			logger.Errorf("error retrieving validators data: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-			return
-		}
-		isAll = true
-	} else {
-		// for performance-reasons we combine multiple search results with `union`
-		args := []interface{}{}
-		searchQry := ""
-		countWhere := ""
-
-		if dataQuery.Search != "" {
-			args = append(args, "%"+strings.ToLower(dataQuery.Search)+"%")
-			countWhere += fmt.Sprintf(`LOWER(validator_names.name) LIKE $%d`, len(args))
-			searchQry += `SELECT publickey AS pubkey FROM validator_names WHERE ` + countWhere
-		} else {
-			if searchQry != "" {
-				searchQry += " UNION "
-			}
-			searchQry += "SELECT pubkey FROM validators"
-		}
-		if dataQuery.SearchIndex != nil && *dataQuery.SearchIndex != 0 {
-			if searchQry != "" {
-				searchQry += " UNION "
-			}
-			args = append(args, *dataQuery.SearchIndex)
-			searchQry += fmt.Sprintf(`SELECT pubkey FROM validators WHERE validatorindex = $%d`, len(args))
-		}
-		if dataQuery.SearchPubkeyExact != nil {
-			if searchQry != "" {
-				searchQry += " UNION "
-			}
-			args = append(args, *dataQuery.SearchPubkeyExact)
-			searchQry += fmt.Sprintf(`SELECT pubkey FROM validators WHERE pubkeyhex = $%d`, len(args))
-		} else if dataQuery.SearchPubkeyLike != nil {
-			if searchQry != "" {
-				searchQry += " UNION "
-			}
-			args = append(args, *dataQuery.SearchPubkeyLike+"%")
-			searchQry += fmt.Sprintf(`SELECT pubkey FROM validators WHERE pubkeyhex LIKE $%d`, len(args))
-		}
-
-		args = append(args, dataQuery.Length)
-		args = append(args, dataQuery.Start)
-
-		if searchQry == "" {
-			logger.Errorf("error sql statement incomplete (without with statement)")
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-			return
-		}
-
-		addAnd := ""
-		if countWhere != "" {
-			addAnd = "AND"
-		}
-		qry = fmt.Sprintf(`
-			WITH matched_validators AS (%s)
-			SELECT
-					validators.validatorindex,
-					validators.pubkey,
-					validators.withdrawableepoch,
-					validators.balance,
-					validators.effectivebalance,
-					validators.slashed,
-					validators.activationepoch,
-					validators.exitepoch,
-					validators.lastattestationslot,
-					COALESCE(validator_names.name, '') AS name,
-					validators.status AS state,
-					COALESCE(cnt.total_count, 0) as total_count
-			FROM validators
-			INNER JOIN matched_validators ON validators.pubkey = matched_validators.pubkey
-			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			LEFT JOIN (SELECT count(*)
-						FROM validators
-						LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-						%s %s
-    					%s) cnt(total_count) ON true
-			%s
-			ORDER BY %s %s
-			LIMIT $%d OFFSET $%d`, searchQry, dataQuery.StateFilter, addAnd, countWhere, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir, len(args)-1, len(args))
-
-		err = db.ReaderDb.Select(&validators, qry, args...)
-		if err != nil {
-			logger.Errorf("error retrieving validators data (with search): %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-			return
-		}
+	err = db.ReaderDb.Select(&validators, qry, dataQuery.Length, dataQuery.Start)
+	if err != nil {
+		logger.Errorf("error retrieving validators data: %v", err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
 	}
+	isAll = true
+	// } else {
+	// 	// for performance-reasons we combine multiple search results with `union`
+	// 	args := []interface{}{}
+	// 	searchQry := ""
+	// 	countWhere := ""
+
+	// 	if dataQuery.Search != "" {
+	// 		args = append(args, "%"+strings.ToLower(dataQuery.Search)+"%")
+	// 		countWhere += fmt.Sprintf(`LOWER(validator_names.name) LIKE $%d`, len(args))
+	// 		searchQry += `SELECT publickey AS pubkey FROM validator_names WHERE ` + countWhere
+	// 	} else {
+	// 		if searchQry != "" {
+	// 			searchQry += " UNION "
+	// 		}
+	// 		searchQry += "SELECT pubkey FROM validators"
+	// 	}
+	// 	if dataQuery.SearchIndex != nil && *dataQuery.SearchIndex != 0 {
+	// 		if searchQry != "" {
+	// 			searchQry += " UNION "
+	// 		}
+	// 		args = append(args, *dataQuery.SearchIndex)
+	// 		searchQry += fmt.Sprintf(`SELECT pubkey FROM validators WHERE validatorindex = $%d`, len(args))
+	// 	}
+	// 	if dataQuery.SearchPubkeyExact != nil {
+	// 		if searchQry != "" {
+	// 			searchQry += " UNION "
+	// 		}
+	// 		args = append(args, *dataQuery.SearchPubkeyExact)
+	// 		searchQry += fmt.Sprintf(`SELECT pubkey FROM validators WHERE pubkeyhex = $%d`, len(args))
+	// 	} else if dataQuery.SearchPubkeyLike != nil {
+	// 		if searchQry != "" {
+	// 			searchQry += " UNION "
+	// 		}
+	// 		args = append(args, *dataQuery.SearchPubkeyLike+"%")
+	// 		searchQry += fmt.Sprintf(`SELECT pubkey FROM validators WHERE pubkeyhex LIKE $%d`, len(args))
+	// 	}
+
+	// 	args = append(args, dataQuery.Length)
+	// 	args = append(args, dataQuery.Start)
+
+	// 	if searchQry == "" {
+	// 		logger.Errorf("error sql statement incomplete (without with statement)")
+	// 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+	// 		return
+	// 	}
+
+	// 	addAnd := ""
+	// 	if countWhere != "" {
+	// 		addAnd = "AND"
+	// 	}
+	// 	qry = fmt.Sprintf(`
+	// 		WITH matched_validators AS (%s)
+	// 		SELECT
+	// 				validators.validatorindex,
+	// 				validators.pubkey,
+	// 				validators.withdrawableepoch,
+	// 				validators.balance,
+	// 				validators.effectivebalance,
+	// 				validators.slashed,
+	// 				validators.activationepoch,
+	// 				validators.exitepoch,
+	// 				validators.lastattestationslot,
+	// 				COALESCE(validator_names.name, '') AS name,
+	// 				validators.status AS state,
+	// 				COALESCE(cnt.total_count, 0) as total_count
+	// 		FROM validators
+	// 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+	// 		LEFT JOIN (SELECT MAX(validatorindex) + 1
+	// 					FROM validators
+	// 					LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+	// 					%s %s
+	// 					%s) cnt(total_count) ON true
+
+	// 					WHERE validators.pubkey IN (SELECT pubkey FROM matched_validators)
+	// 					%s
+	// 		ORDER BY %s %s
+	// 		LIMIT $%d OFFSET $%d`, searchQry, dataQuery.StateFilter, addAnd, countWhere, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir, len(args)-1, len(args))
+
+	// 	err = db.ReaderDb.Select(&validators, qry, args...)
+	// 	if err != nil {
+	// 		logger.Errorf("error retrieving validators data (with search): %v", err)
+	// 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+	// 		return
+	// 	}
+	// }
 
 	tableData := make([][]interface{}, len(validators))
 	for i, v := range validators {
@@ -429,7 +430,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	countTotal := uint64(0)
-	qry = "SELECT count(*) as total FROM validators"
+	qry = "SELECT MAX(validatorindex) + 1 as total FROM validators"
 	err = db.ReaderDb.Get(&countTotal, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators total count: %v", err)

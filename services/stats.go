@@ -35,6 +35,7 @@ func statsUpdater(wg *sync.WaitGroup) {
 			wg.Done()
 			firstrun = false
 		}
+		ReportStatus("statsUpdater", "Running", nil)
 		time.Sleep(sleepDuration)
 	}
 }

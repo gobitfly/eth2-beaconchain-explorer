@@ -198,29 +198,21 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			eth1_deposits as eth1
 		LEFT JOIN
 			(
-				SELECT pubkey,
-				CASE 
-					WHEN exitepoch <= $3 then 'exited'
-					WHEN activationepoch > $3 then 'pending'
-					WHEN slashed and activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'slashing_offline'
-					WHEN slashed then 'slashing_online'
-					WHEN activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'active_offline'
-					ELSE 'active_online'
-				END AS state
+				SELECT pubkey, status AS state
 				FROM validators
 			) as v
 		ON
 			v.pubkey = eth1.publickey
 		WHERE
-			ENCODE(eth1.publickey, 'hex') LIKE LOWER($5)
-			OR ENCODE(eth1.withdrawal_credentials, 'hex') LIKE LOWER($5)
-			OR ENCODE(eth1.from_address, 'hex') LIKE LOWER($5)
-			OR ENCODE(tx_hash, 'hex') LIKE LOWER($5)
-			OR CAST(eth1.block_number AS text) LIKE LOWER($5)
+			ENCODE(eth1.publickey, 'hex') LIKE LOWER($3)
+			OR ENCODE(eth1.withdrawal_credentials, 'hex') LIKE LOWER($3)
+			OR ENCODE(eth1.from_address, 'hex') LIKE LOWER($3)
+			OR ENCODE(tx_hash, 'hex') LIKE LOWER($3)
+			OR CAST(eth1.block_number AS text) LIKE LOWER($3)
 		ORDER BY %s %s
 		LIMIT $1
 		OFFSET $2`, orderBy, orderDir)
-		err = ReaderDb.Select(&deposits, wholeQuery, length, start, latestEpoch, validatorOnlineThresholdSlot, query+"%")
+		err = ReaderDb.Select(&deposits, wholeQuery, length, start, query+"%")
 	} else {
 		err = ReaderDb.Select(&deposits, fmt.Sprintf(`
 		SELECT 
@@ -241,22 +233,14 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			eth1_deposits as eth1
 			LEFT JOIN
 			(
-				SELECT pubkey,
-				CASE 
-					WHEN exitepoch <= $3 then 'exited'
-					WHEN activationepoch > $3 then 'pending'
-					WHEN slashed and activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'slashing_offline'
-					WHEN slashed then 'slashing_online'
-					WHEN activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'active_offline'
-					ELSE 'active_online'
-				END AS state
+				SELECT pubkey, status AS state
 				FROM validators
 			) as v
 		ON
 			v.pubkey = eth1.publickey
 		ORDER BY %s %s
 		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, validatorOnlineThresholdSlot)
+		OFFSET $2`, orderBy, orderDir), length, start)
 	}
 	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
@@ -786,12 +770,9 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 	}
 
 	logger.Infof("exporting attestation assignments data")
-
-	// only export recent validator balances if the epoch is within the threshold
-	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+10 {
-		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting recent validator balance because epoch is far behind head")
-	} else {
-		logger.Infof("exporting recent validator balance")
+	// only export validator balances for epoch zero (validator_balances_recent is only needed for genesis deposits)
+	if data.Epoch == 0 {
+		logger.Infof("exporting validator balances for epoch 0")
 		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx)
 		if err != nil {
 			return fmt.Errorf("error saving recent validator balances to db: %w", err)
@@ -1959,48 +1940,6 @@ func GetDepositThresholdTime() (*time.Time, error) {
 		return nil, err
 	}
 	return threshold, nil
-}
-
-// GetValidatorsBalanceDecrease returns all validators whose balance decreased for 3 consecutive epochs. It looks 10 epochs back for when the balance increased the last time
-func GetValidatorsBalanceDecrease(epoch uint64) ([]struct {
-	Pubkey         string `db:"pubkey"`
-	ValidatorIndex uint64 `db:"validatorindex"`
-	StartBalance   uint64 `db:"startbalance"`
-	EndBalance     uint64 `db:"endbalance"`
-}, error) {
-
-	var dbResult []struct {
-		Pubkey         string `db:"pubkey"`
-		ValidatorIndex uint64 `db:"validatorindex"`
-		StartBalance   uint64 `db:"startbalance"`
-		EndBalance     uint64 `db:"endbalance"`
-	}
-
-	err := ReaderDb.Select(&dbResult, `
-	SELECT validatorindex, startbalance, endbalance, a.pubkey AS pubkey FROM (
-		SELECT 
-			v.validatorindex,
-			v.pubkeyhex AS pubkey, 
-			vb0.balance AS endbalance, 
-			vb3.balance AS startbalance, 
-			(SELECT MAX(epoch) FROM (
-				SELECT epoch, balance-LAG(balance) OVER (ORDER BY epoch) AS diff
-				FROM validator_balances_recent 
-				WHERE validatorindex = v.validatorindex AND epoch > $1 - 10
-			) b WHERE diff > 0) AS lastbalanceincreaseepoch
-		from validators v
-		INNER JOIN validator_balances_recent vb0 ON v.validatorindex = vb0.validatorindex AND vb0.epoch = $1
-		INNER JOIN validator_balances_recent vb1 ON v.validatorindex = vb1.validatorindex AND vb1.epoch = $1 - 1 AND vb1.balance > vb0.balance
-		INNER JOIN validator_balances_recent vb2 ON v.validatorindex = vb2.validatorindex AND vb2.epoch = $1 - 2 AND vb2.balance > vb1.balance
-		INNER JOIN validator_balances_recent vb3 ON v.validatorindex = vb3.validatorindex AND vb3.epoch = $1 - 3 AND vb3.balance > vb2.balance
-	) a WHERE lastbalanceincreaseepoch IS NOT NULL
-	`, epoch)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return dbResult, nil
 }
 
 // GetValidatorsGotSlashed returns the validators that got slashed after `epoch` either by an attestation violation or a proposer violation
