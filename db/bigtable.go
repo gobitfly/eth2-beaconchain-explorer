@@ -28,6 +28,7 @@ const (
 	INCOME_DETAILS_COLUMN_FAMILY  = "id"
 	STATS_COLUMN_FAMILY           = "stats"
 	MACHINE_METRICS_COLUMN_FAMILY = "mm"
+	SERIES_FAMILY                 = "series"
 
 	SUM_COLUMN = "sum"
 

@@ -109,6 +109,30 @@ func GetEthPrice(currency string) float64 {
 	}
 }
 
+func GetSymbol(currency string) string {
+
+	switch currency {
+	case "EUR":
+		return "€"
+	case "USD":
+		return "$"
+	case "RUB":
+		return "₽"
+	case "CNY":
+		return "¥"
+	case "CAD":
+		return "C$"
+	case "AUD":
+		return "A$"
+	case "JPY":
+		return "¥"
+	case "GBP":
+		return "£"
+	default:
+		return ""
+	}
+}
+
 func GetEthRoundPrice(currency float64) uint64 {
 	ethRoundPrice := uint64(currency)
 	return ethRoundPrice

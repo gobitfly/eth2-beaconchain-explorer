@@ -1,5 +1,10 @@
 package types
 
+import (
+	"math/big"
+	"time"
+)
+
 type ValidatorBalanceStatistic struct {
 	Index                 uint64
 	MinEffectiveBalance   uint64
@@ -32,4 +37,12 @@ type ValidatorProposal struct {
 type ValidatorEffectiveness struct {
 	Validatorindex        uint64  `json:"validatorindex"`
 	AttestationEfficiency float64 `json:"attestation_efficiency"`
+}
+
+type GasNowHistory struct {
+	Ts       time.Time
+	Slow     *big.Int
+	Standard *big.Int
+	Fast     *big.Int
+	Rapid    *big.Int
 }

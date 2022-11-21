@@ -375,6 +375,8 @@ func main() {
 			router.HandleFunc("/mempool", handlers.MempoolView).Methods("GET")
 			router.HandleFunc("/burn", handlers.Burn).Methods("GET")
 			router.HandleFunc("/burn/data", handlers.BurnPageData).Methods("GET")
+			router.HandleFunc("/gasnow", handlers.GasNow).Methods("GET")
+			router.HandleFunc("/gasnow/data", handlers.GasNowData).Methods("GET")
 
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 			router.HandleFunc("/charts", handlers.Charts).Methods("GET")
