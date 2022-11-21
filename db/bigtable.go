@@ -112,7 +112,12 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 }
 
 func (bigtable *Bigtable) getLastMachineMetricInsertTs(ctx context.Context, rowKey string) (gcp_bigtable.Timestamp, error) {
-	row, err := bigtable.tableMachineMetrics.ReadRow(ctx, rowKey)
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
+		gcp_bigtable.LatestNFilter(1),
+	)
+
+	row, err := bigtable.tableMachineMetrics.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
 	if err != nil {
 		return 0, err
 	}
