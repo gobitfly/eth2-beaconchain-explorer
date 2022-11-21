@@ -1,6 +1,6 @@
-# Eth2 Beacon Chain Explorer
+# Ethereum Beacon Chain Explorer
 
-The explorer provides a comprehensive and easy to use interface for the upcoming Eth2 beacon chain. It makes it easy to view proposed blocks, follow attestations and monitor your staking activity.
+The explorer provides a comprehensive and easy to use interface for the upcoming Ethereum beacon chain. It makes it easy to view proposed blocks, follow attestations and monitor your staking activity.
 
 [![Badge](https://github.com/gobitfly/eth2-beaconchain-explorer/workflows/Build/badge.svg)](https://github.com/gobitfly/eth2-beaconchain-explorer/actions?query=workflow%3A%22Build+%26+Publish+Docker+images%22)
 [![Gitter](https://img.shields.io/gitter/room/gobitfly/eth2-beaconchain-explorer?color=%2334D058)](https://gitter.im/gobitfly/beaconchain-explorer?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
@@ -9,42 +9,53 @@ The explorer provides a comprehensive and easy to use interface for the upcoming
 
 ## About
 
-The explorer is built using golang and utilizes a PostgreSQL database for storing and indexing data. In order to avoid the situation we currently have with the Eth1 chain where closed source block explorers dominate the market we decided to make our explorer open source and available for everybody.
+The explorer is built using golang and utilizes a PostgreSQL database for storing and indexing data. In order to avoid the situation we currently have with the Ethereum chain where closed source block explorers dominate the market we decided to make our explorer open source and available for everybody.
 
-### Eth 2.0 Testnet Explorers
+### Ethereum Testnet Explorers
 
-Prysm [beaconcha.in](https://beaconcha.in)<br>
-Lighthouse [lighthouse.beaconcha.in](https://lighthouse.beaconcha.in)
+[Goerli](https://goerli.beaconcha.in)<br>
+[Sepolia](https://sepolia.beaconcha.in)
 
-**Warning:** The explorer is still under heavy active development. More or less everything might change without prior notice and we cannot guarantee any backwards compatibility for now. Once the eth2 ecosystem matures we will be able to provide stronger guarantees about the updatability of the explorer.
+**Warning:** The explorer is still under heavy active development. More or less everything might change without prior notice and we cannot guarantee any backwards compatibility for now. Once the Ethereum ecosystem matures we will be able to provide stronger guarantees about the updatability of the explorer.
 
 ![Site](https://user-images.githubusercontent.com/26490734/120495328-e351f800-c3bc-11eb-92a8-e93fbde24539.png 'Beacon Chain Web Interface Screenshot')
 
 ## Features
 
-- Bootstrap based and mobile first web interface
-- Fast and robust blockchain indexing engine, able to handle missed, duplicate & forked blocks
-- Index page
-  - Auto refresh - Index page data is automatically updated every 15 seconds
-  - Basic chain statistics (current epoch, current slot, active validators, pending validators, staked ether)
-  - Information on the 20 most recent blocks (epoch, slot, time, proposer, hash, number of attestations, deposits, slahsings and voluntary exits)
-- Epochs page
-  - Pageable tabular view of all epochs (epoch, time, blocks, attestations, slashings, exits, finalization status, voting statistics)
-- Blocks page
-  - Pageable tabular view of all blocks (epoch, time, proposer, hash, attestations, slashings, exits)
-- Block page
-  - Basic block info (epoch, slot, status, time, proposer, root hash, parent hash, state root hash, signature, randao reveal, graffiti, eth1 data)
-  - List of attestations included in the block
-  - List of deposits included in the block
-  - List of LMD GHOST votes
-- Validators page
-  - Pageable tabular view of all pending, active and ejected validators
-- Validator page
-  - Basic validator info (index, current balance, current effective balance, status, slashed, active since, exited on)
-  - Historic balance evolution chart
-  - List of proposed and missed blocks
-- Visualizations
-  - Live visualization of blocks being added to the blockchain
+- General
+  - Open Source (GNU General Public License v3.0)
+  - Supports Execution Layer and Consensus Layer
+  - Supports multiple networks
+  - Written in Golang
+
+- Website
+  - [Validator Dashboard](https://beaconcha.in/dashboard) with status, income, balance, attestations, proposals and charts
+  - Overviews about [blocks](https://beaconcha.in/blocks), [slots](https://beaconcha.in/slots), [epochs](https://beaconcha.in/epochs), [transactions](https://beaconcha.in/transactions), [validators](https://beaconcha.in/validators), [slashings](https://beaconcha.in/validators/slashings) and the [mempool](https://beaconcha.in/mempool)
+  - Stats and info about [Rocket Pool](https://beaconcha.in/pools/rocketpool), [staking services](https://beaconcha.in/stakingServices), [MEV relays](https://beaconcha.in/relays) and [Ethereum clients](https://beaconcha.in/user/ethClients)
+  - Leaderboards about [validators](https://beaconcha.in/validators/leaderboard) and [deposits](https://beaconcha.in/validators/deposit-leaderboard)
+  - [Charts](https://beaconcha.in/charts) about various stats
+
+- Monitoring
+  - The monitoring feature analyzes blockchain data and (optionally) data provided by a user's staking setup
+  - Highly configurable [notifications and notification channels](https://beaconcha.in/user/notifications) (mobile push, email, webhooks)
+
+- Tools
+  - [APIs](https://beaconcha.in/api/v1/docs/index.html) for Execution Layer and Consensus Layer
+  - [Ethereum Staking Pool benchmark and overview](https://beaconcha.in/pools)
+  - [Income History](https://beaconcha.in/user/rewards)
+  - [Profit Calculator](https://beaconcha.in/calculator)
+  - Block Visualizer [[1](https://beaconcha.in/vis)] [[2](https://beaconcha.in/charts/slotviz)]
+  - [Unit Converter](https://beaconcha.in/tools/unitConverter)
+  - [Graffiti Wall](https://beaconcha.in/graffitiwall)
+
+- [Beaconcha.in Mobile App](https://beaconcha.in/mobile)
+  - Open Source (GNU General Public License v3.0)
+  - Dashboard with similar info as the website
+  - Notifications about client updates
+  - Advanced Rocket Pool features
+  - Machine stats with charts
+  - Widgets
+  - Themes
 
 ## ToDo
 
