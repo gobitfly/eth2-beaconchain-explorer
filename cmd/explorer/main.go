@@ -373,6 +373,8 @@ func main() {
 			router.HandleFunc("/block/{block}", handlers.Eth1Block).Methods("GET")
 			router.HandleFunc("/tx/{hash}", handlers.Eth1TransactionTx).Methods("GET")
 			router.HandleFunc("/mempool", handlers.MempoolView).Methods("GET")
+			router.HandleFunc("/gasnow", handlers.GasNow).Methods("GET")
+			router.HandleFunc("/gasnow/data", handlers.GasNowData).Methods("GET")
 
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 			router.HandleFunc("/charts", handlers.Charts).Methods("GET")

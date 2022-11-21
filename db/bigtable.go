@@ -20,13 +20,15 @@ import (
 var BigtableClient *Bigtable
 
 const (
-	DEFAULT_FAMILY                = "f"
-	VALIDATOR_BALANCES_FAMILY     = "vb"
-	ATTESTATIONS_FAMILY           = "at"
-	PROPOSALS_FAMILY              = "pr"
-	SYNC_COMMITTEES_FAMILY        = "sc"
-	INCOME_DETAILS_COLUMN_FAMILY  = "id"
-	MACHINE_METRICS_COLUMN_FAMILY = "mm"
+	DEFAULT_FAMILY               = "f"
+	VALIDATOR_BALANCES_FAMILY    = "vb"
+	ATTESTATIONS_FAMILY          = "at"
+	PROPOSALS_FAMILY             = "pr"
+	SYNC_COMMITTEES_FAMILY       = "sc"
+	INCOME_DETAILS_COLUMN_FAMILY = "id"
+	SERIES_FAMILY                = "series"
+  MACHINE_METRICS_COLUMN_FAMILY = "mm"
+
 
 	max_block_number = 1000000000
 	max_epoch        = 1000000000

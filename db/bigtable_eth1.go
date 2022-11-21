@@ -2124,7 +2124,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		data[i] = types.Transfer{
 			From:   from,
 			To:     to,
-			Amount: utils.FormatBytesAmount(t.Value, "Ether"),
+			Amount: utils.FormatBytesAmount(t.Value, "Ether", 8),
 		}
 	}
 	return data, nil
@@ -3264,4 +3264,69 @@ func (bigtable *Bigtable) markBalanceUpdate(address []byte, token []byte, mutati
 
 		cache.Set(balanceUpdateCacheKey, true, time.Hour*48)
 	}
+}
+
+var (
+	GASNOW_RAPID_COLUMN    = "RAPI"
+	GASNOW_FAST_COLUMN     = "FAST"
+	GASNOW_STANDARD_COLUMN = "STAN"
+	GASNOW_SLOW_COLUMN     = "SLOW"
+)
+
+func (bigtable *Bigtable) SaveGasNowHistory(slow, standard, rapid, fast *big.Int) error {
+	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
+	defer done()
+
+	ts := time.Now().Truncate(time.Minute)
+	row := fmt.Sprintf("%s:GASNOW:%s", bigtable.chainId, reversePaddedBigtableTimestamp(timestamppb.New(ts)))
+
+	gcpTs := gcp_bigtable.Time(ts)
+
+	mut := gcp_bigtable.NewMutation()
+	mut.Set(SERIES_FAMILY, GASNOW_SLOW_COLUMN, gcpTs, slow.Bytes())
+	mut.Set(SERIES_FAMILY, GASNOW_STANDARD_COLUMN, gcpTs, standard.Bytes())
+	mut.Set(SERIES_FAMILY, GASNOW_FAST_COLUMN, gcpTs, fast.Bytes())
+	mut.Set(SERIES_FAMILY, GASNOW_RAPID_COLUMN, gcpTs, rapid.Bytes())
+
+	err := bigtable.tableMetadata.Apply(ctx, row, mut)
+	if err != nil {
+		return fmt.Errorf("error saving gas now history to bigtable. err: %w", err)
+	}
+	return nil
+}
+
+func (bigtable *Bigtable) GetGasNowHistory(ts, pastTs time.Time) ([]types.GasNowHistory, error) {
+	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
+	defer done()
+
+	start := fmt.Sprintf("%s:GASNOW:%s", bigtable.chainId, reversePaddedBigtableTimestamp(timestamppb.New(ts)))
+	end := fmt.Sprintf("%s:GASNOW:%s", bigtable.chainId, reversePaddedBigtableTimestamp(timestamppb.New(pastTs)))
+
+	rowRange := gcp_bigtable.NewRange(start, end)
+	famFilter := gcp_bigtable.FamilyFilter(SERIES_FAMILY)
+	filter := gcp_bigtable.RowFilter(famFilter)
+
+	history := make([]types.GasNowHistory, 0)
+
+	scanner := func(row gcp_bigtable.Row) bool {
+		if len(row[SERIES_FAMILY]) < 4 {
+			logrus.Errorf("error reading row: %+v", row)
+			return false
+		}
+		// Columns are returned alphabetically so fast, rapid, slow, standard should be the order
+		history = append(history, types.GasNowHistory{
+			Ts:       row[SERIES_FAMILY][0].Timestamp.Time(),
+			Fast:     new(big.Int).SetBytes(row[SERIES_FAMILY][0].Value),
+			Rapid:    new(big.Int).SetBytes(row[SERIES_FAMILY][1].Value),
+			Slow:     new(big.Int).SetBytes(row[SERIES_FAMILY][2].Value),
+			Standard: new(big.Int).SetBytes(row[SERIES_FAMILY][3].Value),
+		})
+		return true
+	}
+
+	err := bigtable.tableMetadata.ReadRows(ctx, rowRange, scanner, filter)
+	if err != nil {
+		return nil, fmt.Errorf("error getting gas now history to bigtable, err: %w", err)
+	}
+	return history, nil
 }
