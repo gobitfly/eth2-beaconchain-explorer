@@ -1337,20 +1337,20 @@ func getBurnPageData() (*types.BurnPageData, error) {
 
 	rewards := decimal.NewFromBigInt(new(big.Int).SetBytes(total.TxFeeRewardWei), 0)
 
-	rewards = rewards.Add(decimal.NewFromInt(int64(total.AttestationHeadReward)))
-	rewards = rewards.Add(decimal.NewFromInt(int64(total.AttestationSourceReward)))
-	rewards = rewards.Add(decimal.NewFromInt(int64(total.AttestationTargetReward)))
-	rewards = rewards.Add(decimal.NewFromInt(int64(total.ProposerSlashingInclusionReward)))
-	rewards = rewards.Add(decimal.NewFromInt(int64(total.ProposerAttestationInclusionReward)))
-	rewards = rewards.Add(decimal.NewFromInt(int64(total.ProposerSyncInclusionReward)))
-	rewards = rewards.Add(decimal.NewFromInt(int64(total.SyncCommitteeReward)))
-	rewards = rewards.Add(decimal.NewFromInt(int64(total.SlashingReward)))
+	rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.AttestationHeadReward), 0))
+	rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.AttestationSourceReward), 0))
+	rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.AttestationTargetReward), 0))
+	rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.ProposerSlashingInclusionReward), 0))
+	rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.ProposerAttestationInclusionReward), 0))
+	rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.ProposerSyncInclusionReward), 0))
+	rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.SyncCommitteeReward), 0))
+	rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.SlashingReward), 0))
 
-	rewards = rewards.Sub(decimal.NewFromInt(int64(total.AttestationTargetPenalty)))
-	rewards = rewards.Sub(decimal.NewFromInt(int64(total.FinalityDelayPenalty)))
-	rewards = rewards.Sub(decimal.NewFromInt(int64(total.SyncCommitteePenalty)))
-	rewards = rewards.Sub(decimal.NewFromInt(int64(total.AttestationSourcePenalty)))
-	rewards = rewards.Sub(decimal.NewFromInt(int64(total.SlashingPenalty)))
+	rewards = rewards.Sub(decimal.NewFromBigInt(new(big.Int).SetUint64(total.AttestationTargetPenalty), 0))
+	rewards = rewards.Sub(decimal.NewFromBigInt(new(big.Int).SetUint64(total.FinalityDelayPenalty), 0))
+	rewards = rewards.Sub(decimal.NewFromBigInt(new(big.Int).SetUint64(total.SyncCommitteePenalty), 0))
+	rewards = rewards.Sub(decimal.NewFromBigInt(new(big.Int).SetUint64(total.AttestationSourcePenalty), 0))
+	rewards = rewards.Sub(decimal.NewFromBigInt(new(big.Int).SetUint64(total.SlashingPenalty), 0))
 
 	rewards = rewards.Div(decimal.NewFromInt(64))
 
