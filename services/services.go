@@ -2,6 +2,7 @@ package services
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
@@ -1352,11 +1353,11 @@ func getBurnPageData() (*types.BurnPageData, error) {
 
 	rewards = rewards.Div(decimal.NewFromInt(64))
 
-	logger.Infof("burn rate per min: %v emission per min: %v", data.BurnRate1h, rewards.InexactFloat64())
 	// emission per minute
 	data.Emission = rewards.InexactFloat64() - data.BurnRate1h
 
-	logger.Infof("calculated emission: %v", data.Emission)
+	logger.Infof("burn rate per min: %v inflation per min: %v emission: %v", data.BurnRate1h, rewards.InexactFloat64(), data.Emission)
+	// logger.Infof("calculated emission: %v", data.Emission)
 
 	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", latestEpoch-225)
 	if err != nil {
@@ -1395,7 +1396,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 
 		data.Blocks = append(data.Blocks, &types.BurnPageDataBlock{
 			Number:        int64(blockNumber),
-			Hash:          string(blk.Hash),
+			Hash:          hex.EncodeToString(blk.Hash),
 			GasTarget:     int64(blk.GasLimit),
 			GasUsed:       int64(blk.GasUsed),
 			Txn:           int(blk.TransactionCount),
