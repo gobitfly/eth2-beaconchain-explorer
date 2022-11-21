@@ -1,8 +1,8 @@
 {{ define "js"}}
 	<script src="/js/highcharts/highcharts.min.js"></script>
-	<script src="/js/highcharts/modules/exporting.min.js"></script>
-	<script src="/js/highcharts/modules/offline-exporting.min.js"></script>
-	<script src="/js/highcharts/modules/accessibility.min.js"></script>
+	<script src="/js/highcharts/exporting.min.js"></script>
+	<script src="/js/highcharts/offline-exporting.min.js"></script>
+	<script src="/js/highcharts/accessibility.min.js"></script>
 
 	<script>
 		document.getElementById('endDate').valueAsDate = new Date();
@@ -23,7 +23,7 @@
 
             var data = { x: x, y: y, startDate: startDate, endDate: endDate };
 
-            $.post( "/correlations", data, function( result ) {
+            $.post( "/correlations/data", data, function( result ) {
                 if (result && result.status === "ok") {
                     var data = {};
 
@@ -191,7 +191,7 @@
 				<label class="col-sm-2 mb-3 col-form-label" for="x">X Variable:</label>
 				<div class="col-sm-4 mb-3">
 					<select class="form-control" id="x">
-                        {{range .}}
+                        {{range .Data}}
 							<option value="{{.}}">{{.}}</option>
                         {{end}}
 					</select>
@@ -199,7 +199,7 @@
 				<label class="col-sm-2 mb-3 col-form-label" for="y">Y Variable:</label>
 				<div class="col-sm-4 mb-3">
 					<select class="form-control" id="y">
-						{{range .}}
+						{{range .Data}}
 							<option value="{{.}}">{{.}}</option>
 						{{end}}
 					</select>

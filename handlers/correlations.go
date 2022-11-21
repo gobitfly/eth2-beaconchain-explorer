@@ -17,7 +17,7 @@ func Correlations(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "correlations", "/correlations", "Correlations")
 
 	var indicators []string
-	err := db.ReaderDb.Select(&indicators, "SELECT DISTINCT(indicator) AS indicator FROM statistics WHERE time > NOW() - INTERVAL '1 week' ORDER BY indicator;")
+	err := db.ReaderDb.Select(&indicators, "SELECT DISTINCT(indicator) AS indicator FROM chart_series WHERE time > NOW() - INTERVAL '1 week' ORDER BY indicator;")
 
 	if err != nil {
 		logger.Errorf("error retrieving correlation indicators: %v", err)
@@ -25,7 +25,9 @@ func Correlations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var correlationsTemplate = templates.GetTemplate("templates/layout.html", "templates/correlations.html")
+	data.Data = indicators
+
+	var correlationsTemplate = templates.GetTemplate("layout.html", "correlations.html")
 
 	// data := &types.PageData{
 	// 	HeaderAd: true,
@@ -75,7 +77,7 @@ func CorrelationsData(w http.ResponseWriter, r *http.Request) {
 		SELECT indicator, 
 		       value, 
 		       EXTRACT(epoch from date_trunc('day', time)) as time 
-		FROM statistics 
+		FROM chart_series 
 		WHERE (indicator = $1 OR indicator = $2) AND time >= $3 AND time <= $4`,
 		x, y, startDate, endDate)
 	if err != nil {
