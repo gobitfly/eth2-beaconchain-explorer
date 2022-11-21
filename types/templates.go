@@ -1773,3 +1773,15 @@ type BurnPageData struct {
 	Price            float64              `json:"price_usd"`
 	Currency         string               `json:"currency"`
 }
+
+type CorrelationDataResponse struct {
+	Status  string      `json:"status"`
+	Data    interface{} `json:"data"`
+	Message string      `json:"message"`
+}
+
+type CorrelationData struct {
+	Indicator string  `db:"indicator" json:"indicator,omitempty"`
+	Time      float64 `db:"time" json:"time,omitempty"`
+	Value     float64 `db:"value" json:"value,omitempty"`
+}

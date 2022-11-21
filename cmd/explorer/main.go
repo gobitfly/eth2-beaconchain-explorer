@@ -377,6 +377,8 @@ func main() {
 			router.HandleFunc("/burn/data", handlers.BurnPageData).Methods("GET")
 			router.HandleFunc("/gasnow", handlers.GasNow).Methods("GET")
 			router.HandleFunc("/gasnow/data", handlers.GasNowData).Methods("GET")
+			router.HandleFunc("/correlations", handlers.Correlations).Methods("GET")
+			router.HandleFunc("/correlations/data", handlers.CorrelationsData).Methods("GET")
 
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 			router.HandleFunc("/charts", handlers.Charts).Methods("GET")
