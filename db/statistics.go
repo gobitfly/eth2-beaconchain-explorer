@@ -373,27 +373,27 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 
 func WriteChartSeriesForDay(day uint64) error {
 	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
-	firstEpoch := day * epochsPerDay
-	lastEpoch := (day+1)*epochsPerDay - 1
-	// firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
-	// lastSlot := (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+	beaconchainDay := day * epochsPerDay
 
-	startDate := utils.EpochToTime(firstEpoch)
-	// endDate := utils.EpochToTime(lastEpoch)
+	startDate := utils.EpochToTime(beaconchainDay)
+	dateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
 
-	logger.Infof("exporting chart_series for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
+	firstSlot := utils.TimeToSlot(uint64(dateTrunc.Unix()))
+	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.Config.SlotsPerEpoch)
+
+	logger.Infof("exporting chart_series for day %v (slot %v to %v)", day, firstSlot, lastSlot)
 
 	latestDbEpoch, err := GetLatestEpoch()
 	if err != nil {
 		return err
 	}
 
-	if lastEpoch > latestDbEpoch {
-		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed. LatestDB: %v", lastEpoch, latestDbEpoch)
+	if (uint64(lastSlot) / utils.Config.Chain.Config.SlotsPerEpoch) > latestDbEpoch {
+		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed. LatestDB: %v", (uint64(lastSlot) / utils.Config.Chain.Config.SlotsPerEpoch), latestDbEpoch)
 	}
 
 	logger.Println("Exporting BURNED_FEES")
-	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) SELECT $1, 'BURNED_FEES', COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) FROM blocks WHERE epoch >= $2 AND epoch <= $3 ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", startDate, firstEpoch, lastEpoch)
+	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) SELECT $1, 'BURNED_FEES', COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) FROM blocks WHERE  slot >= $2 AND slot < $3 AND exec_base_fee_per_gas > 0 AND exec_gas_used > 0 ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", dateTrunc, firstSlot, lastSlot)
 	if err != nil {
 		return fmt.Errorf("error calculating BURNED_FEES chart_series: %w", err)
 	}
