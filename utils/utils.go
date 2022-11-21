@@ -907,16 +907,6 @@ func ReverseSlice[S ~[]E, E any](s S) {
 	}
 }
 
-// validator has to be appear offline if they did not attest during the last two finalized epochs
-func GetValidatorOfflineThresholdEpoch(lastFinalizedEpoch uint64) uint64 {
-	thresholdEpoch := lastFinalizedEpoch
-	if thresholdEpoch > 0 {
-		thresholdEpoch -= 1
-	}
-
-	return thresholdEpoch
-}
-
 func AddBigInts(a, b []byte) []byte {
 	return new(big.Int).Add(new(big.Int).SetBytes(a), new(big.Int).SetBytes(b)).Bytes()
 }

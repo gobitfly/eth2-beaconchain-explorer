@@ -15,6 +15,7 @@ import (
 	geth_rpc "github.com/ethereum/go-ethereum/rpc"
 
 	eth_rewards "github.com/gobitfly/eth-rewards"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/prysmaticlabs/prysm/v3/api/client/beacon"
 	"github.com/sirupsen/logrus"
 )
@@ -36,6 +37,22 @@ func main() {
 	}
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
+
+	db.MustInitDB(&types.DatabaseConfig{
+		Username: cfg.WriterDatabase.Username,
+		Password: cfg.WriterDatabase.Password,
+		Name:     cfg.WriterDatabase.Name,
+		Host:     cfg.WriterDatabase.Host,
+		Port:     cfg.WriterDatabase.Port,
+	}, &types.DatabaseConfig{
+		Username: cfg.ReaderDatabase.Username,
+		Password: cfg.ReaderDatabase.Password,
+		Name:     cfg.ReaderDatabase.Name,
+		Host:     cfg.ReaderDatabase.Host,
+		Port:     cfg.ReaderDatabase.Port,
+	})
+	defer db.ReaderDb.Close()
+	defer db.WriterDb.Close()
 
 	client, err := beacon.NewClient(*bnAddress)
 	if err != nil {

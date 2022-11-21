@@ -29,6 +29,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mssola/user_agent"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/protobuf/proto"
 
 	itypes "github.com/gobitfly/eth-rewards/types"
 )
@@ -2264,6 +2265,53 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
 }
 
+// todo: replace with above function once migrated
+func ClientStatsBigtable(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+	claims := getAuthClaims(r)
+
+	maxStats := getUserPremium(r).MaxStats
+
+	vars := mux.Vars(r)
+	offset := parseUintWithDefault(vars["offset"], 0)
+	limit := parseUintWithDefault(vars["limit"], 180)
+	timeframe := offset + limit
+	if timeframe > maxStats {
+		limit = maxStats
+		offset = 0
+	}
+
+	system, err := db.BigtableClient.GetMachineMetricsSystem(claims.UserID, int(limit), int(offset))
+	if err != nil {
+		logger.Errorf("sytem stat error : %v", err)
+		sendErrorResponse(w, r.URL.String(), "could not retrieve system stats from db")
+		return
+	}
+
+	validator, err := db.BigtableClient.GetMachineMetricsValidator(claims.UserID, int(limit), int(offset))
+	if err != nil {
+		logger.Errorf("validator stat error : %v", err)
+		sendErrorResponse(w, r.URL.String(), "could not retrieve validator stats from db")
+		return
+	}
+
+	node, err := db.BigtableClient.GetMachineMetricsNode(claims.UserID, int(limit), int(offset))
+	if err != nil {
+		logger.Errorf("node stat error : %v", err)
+		sendErrorResponse(w, r.URL.String(), "could not retrieve beaconnode stats from db")
+		return
+	}
+
+	data := &types.StatsDataStruct{
+		Validator: validator,
+		Node:      node,
+		System:    system,
+	}
+
+	sendOKResponse(j, r.URL.String(), []interface{}{data})
+}
+
 func ClientStatsPostNew(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	apiKey := q.Get("apikey")
@@ -2333,12 +2381,24 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 		return
 	}
 
+	var rateLimitErrs = 0
 	var result bool = false
 	for i := 0; i < len(jsonObjects); i++ {
-		result = insertStats(userData, machine, &jsonObjects[i], w, r)
+		result, err = insertStats(userData, machine, &jsonObjects[i], w, r)
 		if !result {
+			// ignore rate limit errors unless all are rate limit errors
+			if strings.HasPrefix(err.Error(), "ERROR: duplicate key value violates unique constraint") ||
+				strings.HasPrefix(err.Error(), "rate limit") {
+				rateLimitErrs++
+				continue
+			}
 			break
 		}
+	}
+
+	if rateLimitErrs >= len(jsonObjects) {
+		sendErrorWithCodeResponse(w, r.URL.String(), "rate limit too many metric requests, max 1 per user per machine per process", 429)
+		return
 	}
 
 	if result {
@@ -2347,48 +2407,51 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 	}
 }
 
-func insertStats(userData *types.UserWithPremium, machine string, body *map[string]interface{}, w http.ResponseWriter, r *http.Request) bool {
+func insertStats(userData *types.UserWithPremium, machine string, body *map[string]interface{}, w http.ResponseWriter, r *http.Request) (bool, error) {
 
 	var parsedMeta *types.StatsMeta
 	err := mapstructure.Decode(body, &parsedMeta)
 	if err != nil {
 		logger.Errorf("Could not parse stats (meta stats) | %v ", err)
 		sendErrorResponse(w, r.URL.String(), "could not parse meta")
-		return false
+		return false, err
 	}
 
 	parsedMeta.Machine = machine
 
 	if parsedMeta.Version > 2 || parsedMeta.Version <= 0 {
 		sendErrorResponse(w, r.URL.String(), "this version is not supported")
-		return false
+		return false, err
 	}
 
 	if parsedMeta.Process != "validator" && parsedMeta.Process != "beaconnode" && parsedMeta.Process != "slasher" && parsedMeta.Process != "system" {
 		sendErrorResponse(w, r.URL.String(), "unknown process")
-		return false
+		return false, err
 	}
 
 	maxNodes := GetUserPremiumByPackage(userData.Product.String).MaxNodes
 
-	count, err := db.GetStatsMachineCount(userData.ID)
+	count, err := db.BigtableClient.GetMachineMetricsMachineCount(userData.ID)
 	if err != nil {
 		logger.Errorf("Could not get max machine count| %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not get machine count")
-		return false
+		return false, err
 	}
 
 	if count > maxNodes {
 		logger.Errorf("User has reached max machine count | %v", err)
 		sendErrorResponse(w, r.URL.String(), "reached max machine count")
-		return false
+		return false, err
 	}
+
+	// old db
+	// todo: remove once migrated
 
 	tx, err := db.NewTransaction()
 	if err != nil {
 		logger.Errorf("Could not transact | %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not store")
-		return false
+		return false, err
 	}
 	defer tx.Rollback()
 
@@ -2406,19 +2469,23 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 			if err != nil {
 				logger.Errorf("could not transact | %v", err)
 				sendErrorResponse(w, r.URL.String(), "could not store")
-				return false
+				return false, err
 			}
 			id, err = db.InsertStatsMeta(tx, userData.ID, parsedMeta)
 		}
 		if err != nil {
-			if !strings.HasPrefix(err.Error(), "ERROR: duplicate key value violates unique constraint") {
+			if strings.HasPrefix(err.Error(), "ERROR: duplicate key value violates unique constraint") {
+				return false, err
+			} else {
 				logger.Errorf("Could not store stats (meta stats) | %v", err)
+				sendErrorResponse(w, r.URL.String(), "could not store meta")
+				return false, err
 			}
-			sendErrorResponse(w, r.URL.String(), "could not store meta")
-			return false
+
 		}
 	}
 
+	var isSystem = false
 	// Special case for system
 	if parsedMeta.Process == "system" {
 		var parsedResponse *types.StatsSystem
@@ -2427,7 +2494,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		if err != nil {
 			logger.Errorf("Could not parse stats (system stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could not parse system")
-			return false
+			return false, err
 		}
 		_, err := db.InsertStatsSystem(
 			tx,
@@ -2437,88 +2504,164 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		if err != nil {
 			logger.Errorf("Could not store stats (system stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could not store system")
-			return false
+			return false, err
 		}
 
 		err = tx.Commit()
 		if err != nil {
 			logger.Errorf("Could not store (tx commit) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could not store")
-			return false
+			return false, err
 		}
-		return true
+		isSystem = true
 	}
 
-	var parsedGeneral *types.StatsProcess
-	err = mapstructure.Decode(body, &parsedGeneral)
+	if !isSystem {
 
-	if err != nil {
-		logger.Errorf("Could not parse stats (process stats) | %v", err)
-		sendErrorResponse(w, r.URL.String(), "could not parse process")
-		return false
+		var parsedGeneral *types.StatsProcess
+		err = mapstructure.Decode(body, &parsedGeneral)
+
+		if err != nil {
+			logger.Errorf("Could not parse stats (process stats) | %v", err)
+			sendErrorResponse(w, r.URL.String(), "could not parse process")
+			return false, err
+		}
+
+		processGeneralID, err := db.InsertStatsProcessGeneral(
+			tx,
+			id,
+			parsedGeneral,
+		)
+		if err != nil {
+			logger.Errorf("Could not store stats (global process stats) | %v", err)
+			sendErrorResponse(w, r.URL.String(), "could not store global process")
+			return false, err
+		}
+
+		if parsedMeta.Process == "validator" {
+			var parsedValidator *types.StatsAdditionalsValidator
+			err = mapstructure.Decode(body, &parsedValidator)
+
+			if err != nil {
+				logger.Errorf("Could not parse stats (validator stats) | %v", err)
+				sendErrorResponse(w, r.URL.String(), "could not parse validator")
+				return false, err
+			}
+
+			_, err := db.InsertStatsValidator(
+				tx,
+				processGeneralID,
+				parsedValidator,
+			)
+			if err != nil {
+				logger.Errorf("Could not store stats (validatorstats) | %v", err)
+				sendErrorResponse(w, r.URL.String(), "could not store validator")
+				return false, err
+			}
+
+		} else if parsedMeta.Process == "beaconnode" {
+			var parsedNode *types.StatsAdditionalsBeaconnode
+			err = mapstructure.Decode(body, &parsedNode)
+
+			if err != nil {
+				logger.Errorf("Could not parse stats (node stats) | %v", err)
+				sendErrorResponse(w, r.URL.String(), "could not parse node")
+				return false, err
+			}
+
+			_, err := db.InsertStatsBeaconnode(
+				tx,
+				processGeneralID,
+				parsedNode,
+			)
+			if err != nil {
+				logger.Errorf("Could not store stats (beaconnode) | %v", err)
+				sendErrorResponse(w, r.URL.String(), "could not store beaconnode")
+				return false, err
+			}
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			logger.Errorf("Could not store (tx commit) | %v", err)
+			sendErrorResponse(w, r.URL.String(), "could not store")
+			return false, err
+		}
 	}
+	// ^ remove above if migrated
 
-	processGeneralID, err := db.InsertStatsProcessGeneral(
-		tx,
-		id,
-		parsedGeneral,
-	)
-	if err != nil {
-		logger.Errorf("Could not store stats (global process stats) | %v", err)
-		sendErrorResponse(w, r.URL.String(), "could not store global process")
-		return false
-	}
+	// Bigtable
 
-	if parsedMeta.Process == "validator" {
-		var parsedValidator *types.StatsAdditionalsValidator
-		err = mapstructure.Decode(body, &parsedValidator)
-
+	var data []byte
+	if parsedMeta.Process == "system" {
+		var parsedResponse *types.MachineMetricSystem
+		err = DecodeMapStructure(body, &parsedResponse)
+		if err != nil {
+			logger.Errorf("Could not parse stats (system stats) | %v", err)
+			sendErrorResponse(w, r.URL.String(), "could not parse system")
+			return false, err
+		}
+		data, err = proto.Marshal(parsedResponse)
+		if err != nil {
+			logger.Errorf("Could not parse stats (system stats) | %v", err)
+			sendErrorResponse(w, r.URL.String(), "could marshal system")
+			return false, err
+		}
+	} else if parsedMeta.Process == "validator" {
+		var parsedResponse *types.MachineMetricValidator
+		err = DecodeMapStructure(body, &parsedResponse)
 		if err != nil {
 			logger.Errorf("Could not parse stats (validator stats) | %v", err)
-			sendErrorResponse(w, r.URL.String(), "could not parse validator")
-			return false
+			sendErrorResponse(w, r.URL.String(), "could marshal validator")
+			return false, err
 		}
-
-		_, err := db.InsertStatsValidator(
-			tx,
-			processGeneralID,
-			parsedValidator,
-		)
+		data, err = proto.Marshal(parsedResponse)
 		if err != nil {
-			logger.Errorf("Could not store stats (validatorstats) | %v", err)
-			sendErrorResponse(w, r.URL.String(), "could not store validator")
-			return false
+			logger.Errorf("Could not parse stats (validator stats) | %v", err)
+			sendErrorResponse(w, r.URL.String(), "could marshal validator")
+			return false, err
 		}
-
 	} else if parsedMeta.Process == "beaconnode" {
-		var parsedNode *types.StatsAdditionalsBeaconnode
-		err = mapstructure.Decode(body, &parsedNode)
-
+		var parsedResponse *types.MachineMetricNode
+		err = DecodeMapStructure(body, &parsedResponse)
 		if err != nil {
-			logger.Errorf("Could not parse stats (node stats) | %v", err)
-			sendErrorResponse(w, r.URL.String(), "could not parse node")
-			return false
+			logger.Errorf("Could not parse stats (beaconnode stats) | %v", err)
+			sendErrorResponse(w, r.URL.String(), "could not parse beaconnode")
+			return false, err
 		}
-
-		_, err := db.InsertStatsBeaconnode(
-			tx,
-			processGeneralID,
-			parsedNode,
-		)
+		data, err = proto.Marshal(parsedResponse)
 		if err != nil {
-			logger.Errorf("Could not store stats (beaconnode) | %v", err)
-			sendErrorResponse(w, r.URL.String(), "could not store beaconnode")
-			return false
+			logger.Errorf("Could not parse stats (beaconnode stats) | %v", err)
+			sendErrorResponse(w, r.URL.String(), "could not parse beaconnode")
+			return false, err
 		}
 	}
 
-	err = tx.Commit()
+	err = db.BigtableClient.SaveMachineMetric(parsedMeta.Process, userData.ID, machine, data)
 	if err != nil {
-		logger.Errorf("Could not store (tx commit) | %v", err)
-		sendErrorResponse(w, r.URL.String(), "could not store")
-		return false
+		if strings.HasPrefix(err.Error(), "rate limit") {
+			return false, err
+		}
+		logger.Errorf("Could not store stats | %v", err)
+		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("could not store stats: %v", err))
+		return false, err
 	}
-	return true
+	return true, nil
+}
+
+func DecodeMapStructure(input interface{}, output interface{}) error {
+	config := &mapstructure.DecoderConfig{
+		Metadata: nil,
+		Result:   output,
+		TagName:  "json",
+	}
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+
+	return decoder.Decode(input)
 }
 
 // TODO Replace app code to work with new income balance dashboard
@@ -2651,7 +2794,11 @@ func SendErrorResponse(w http.ResponseWriter, route, message string) {
 }
 
 func sendErrorResponse(w http.ResponseWriter, route, message string) {
-	w.WriteHeader(400)
+	sendErrorWithCodeResponse(w, route, message, 400)
+}
+
+func sendErrorWithCodeResponse(w http.ResponseWriter, route, message string, errorcode int) {
+	w.WriteHeader(errorcode)
 	j := json.NewEncoder(w)
 	response := &types.ApiResponse{}
 	response.Status = "ERROR: " + message

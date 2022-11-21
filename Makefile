@@ -1,5 +1,5 @@
 GITCOMMIT=`git describe --always`
-VERSION=$$(git describe 2>/dev/null || echo "0.0.0-${GITCOMMIT}")
+VERSION=`git describe --always --tags`
 GITDATE=`TZ=UTC git show -s --date=iso-strict-local --format=%cd HEAD`
 BUILDDATE=`date -u +"%Y-%m-%dT%H:%M:%S%:z"`
 PACKAGE=eth2-exporter
@@ -34,3 +34,6 @@ rewards-exporter:
 
 eth1indexer:
 	go build --ldflags=${LDFLAGS} -o bin/eth1indexer cmd/eth1indexer/main.go
+
+machine-migrator:
+	go build --ldflags=${LDFLAGS} -o bin/machine-migrator cmd/machinemigrator/main.go

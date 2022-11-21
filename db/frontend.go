@@ -498,6 +498,7 @@ func MobileDeviceSettingsSelect(userID, deviceID uint64) (*sql.Rows, error) {
 	return rows, err
 }
 
+// todo: remove once migrated
 func CleanupOldMachineStats() error {
 	const deleteLIMIT uint64 = 60000 // 200 users make 36000 new inserts per hour
 
@@ -570,37 +571,6 @@ func CleanupOldMachineStats() error {
 	}
 
 	return nil
-}
-
-func GetStatsMachineCount(userID uint64) (uint64, error) {
-	now := time.Now()
-	nowTs := now.Unix()
-	var day int = int(nowTs / 86400)
-
-	var count uint64
-	row := FrontendWriterDB.QueryRow(
-		"SELECT COUNT(DISTINCT sub.machine) as count FROM (SELECT machine from stats_meta_p WHERE day = $2 AND user_id = $1 AND created_trunc + '15 minutes'::INTERVAL > 'now' LIMIT 15) sub",
-		userID, day,
-	)
-	err := row.Scan(&count)
-	return count, err
-}
-
-func GetStatsMachine(userID uint64) ([]string, error) {
-	now := time.Now()
-	nowTs := now.Unix()
-	var day int = int(nowTs / 86400)
-	// log.Println("current day: ", day)
-	// for testing
-	// day := 18893
-	// log.Println("getting machine for day: ", day)
-
-	var machines []string
-	err := FrontendWriterDB.Select(&machines,
-		"SELECT DISTINCT machine from stats_meta_p WHERE day = $2 AND user_id = $1 LIMIT 300",
-		userID, day,
-	)
-	return machines, err
 }
 
 func InsertStatsMeta(tx *sql.Tx, userID uint64, data *types.StatsMeta) (uint64, error) {
@@ -720,29 +690,6 @@ func InsertStatsBeaconnode(tx *sql.Tx, general_id uint64, data *types.StatsAddit
 	return id, err
 }
 
-func NewTransaction() (*sql.Tx, error) {
-	return FrontendWriterDB.Begin()
-}
-
-func getMachineStatsGap(resultCount uint64) int {
-	if resultCount > 20160 { // more than 14 (31)
-		return 8
-	}
-	if resultCount > 10080 { // more than 7 (14)
-		return 7
-	}
-	if resultCount > 2880 { // more than 2 (7)
-		return 5
-	}
-	if resultCount > 1440 { // more than 1 (2)
-		return 4
-	}
-	if resultCount > 770 { // more than 12h
-		return 2
-	}
-	return 1
-}
-
 func getMaxDay(limit uint64) int {
 	now := time.Now()
 	nowTs := now.Unix()
@@ -786,6 +733,31 @@ func GetStatsSystem(userID, limit, offset uint64) (*sql.Rows, error) {
 		userID, limit, offset, gapSize, maxDay,
 	)
 	return row, err
+}
+
+// ^============
+
+func NewTransaction() (*sql.Tx, error) {
+	return FrontendWriterDB.Begin()
+}
+
+func getMachineStatsGap(resultCount uint64) int {
+	if resultCount > 20160 { // more than 14 (31)
+		return 8
+	}
+	if resultCount > 10080 { // more than 7 (14)
+		return 7
+	}
+	if resultCount > 2880 { // more than 2 (7)
+		return 5
+	}
+	if resultCount > 1440 { // more than 1 (2)
+		return 4
+	}
+	if resultCount > 770 { // more than 12h
+		return 2
+	}
+	return 1
 }
 
 func GetHistoricPrices(currency string) (map[uint64]float64, error) {

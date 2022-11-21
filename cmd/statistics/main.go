@@ -173,6 +173,8 @@ func main() {
 
 func statisticsLoop() {
 	for {
+
+		// todo: remove once migrated
 		// create stats parition on users table
 		now := time.Now()
 		nowTs := now.Unix()
@@ -180,6 +182,7 @@ func statisticsLoop() {
 
 		db.CreateNewStatsMetaPartition(day)
 		db.CreateNewStatsMetaPartition(day + 1)
+		// ^=======
 
 		latestEpoch, err := db.GetLatestEpoch()
 		if err != nil {

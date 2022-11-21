@@ -71,9 +71,9 @@ type StatsMeta struct {
 }
 
 type StatsDataStruct struct {
-	Validator []interface{} `json:"validator"`
-	Node      []interface{} `json:"node"`
-	System    []interface{} `json:"system"`
+	Validator interface{} `json:"validator"`
+	Node      interface{} `json:"node"`
+	System    interface{} `json:"system"`
 }
 
 type WidgetResponse struct {
