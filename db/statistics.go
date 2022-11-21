@@ -5,10 +5,12 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/shopspring/decimal"
 )
 
 func WriteValidatorStatisticsForDay(day uint64) error {
@@ -392,8 +394,30 @@ func WriteChartSeriesForDay(day uint64) error {
 		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed. LatestDB: %v", (uint64(lastSlot) / utils.Config.Chain.Config.SlotsPerEpoch), latestDbEpoch)
 	}
 
+	type Fees struct {
+		BaseFee     uint64 `db:"exec_base_fee_per_gas"`
+		ExecGasUsed uint64 `db:"exec_gas_used"`
+	}
+
+	burnedFees := make([]Fees, 0)
+	logger.Infof("exporting from (inc): %v to (not inc): %v", firstSlot, lastSlot)
+	err = ReaderDb.Select(&burnedFees, `SELECT exec_base_fee_per_gas, exec_gas_used FROM blocks WHERE  slot >= $1 AND slot < $2 AND exec_base_fee_per_gas > 0 AND exec_gas_used > 0`, firstSlot, lastSlot)
+	if err != nil {
+		return fmt.Errorf("error getting BURNED_FEES: %w", err)
+	}
+
+	sum := decimal.NewFromInt(0)
+
+	for _, fee := range burnedFees {
+		base := new(big.Int).SetUint64(fee.BaseFee)
+		used := new(big.Int).SetUint64(fee.ExecGasUsed)
+
+		burned := new(big.Int).Mul(base, used)
+		sum = sum.Add(decimal.NewFromBigInt(burned, 0))
+	}
+
 	logger.Println("Exporting BURNED_FEES")
-	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) SELECT $1, 'BURNED_FEES', COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) FROM blocks WHERE  slot >= $2 AND slot < $3 AND exec_base_fee_per_gas > 0 AND exec_gas_used > 0 ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", dateTrunc, firstSlot, lastSlot)
+	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES ($1, 'BURNED_FEES', $2) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", dateTrunc, sum.String())
 	if err != nil {
 		return fmt.Errorf("error calculating BURNED_FEES chart_series: %w", err)
 	}
