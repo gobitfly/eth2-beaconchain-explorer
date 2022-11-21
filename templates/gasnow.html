@@ -512,7 +512,11 @@
 				return number.toFixed(2)
 			},
 			formatGWei(number, digits) {
-				return (number / 1e9).toFixed(digits)
+				let gwei = number / 1e9
+				if (gwei < 1) {
+					return "< 1"
+				}
+				return (gwei).toFixed(digits)
 			}
 		},
 		created: function () {
