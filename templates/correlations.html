@@ -55,7 +55,7 @@
 
                     seriesData = [];
                     for (var key in data) {
-                        seriesData.push({ name: moment(key * 1000).format("YYYY-MM-DD"), x: data[key].x, y: data[key].y, color: getGradientColor("#FF0000", "#0000FF", (key - minDate) / dateRange) });
+                        seriesData.push({ name: luxon.DateTime.fromMillis(key * 1000).toFormat("YYYY-MM-DD"), x: data[key].x, y: data[key].y, color: getGradientColor("#FF0000", "#0000FF", (key - minDate) / dateRange) });
                     }
 
                     chart = new Highcharts.Chart({
