@@ -2309,3 +2309,8 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 
 	return tx.Commit()
 }
+
+func GetBlockNumber(slot uint64) (block uint64, err error) {
+	err = ReaderDb.Select(&block, `SELECT exec_block_number FROM blocks where slot = $1`, slot)
+	return
+}
