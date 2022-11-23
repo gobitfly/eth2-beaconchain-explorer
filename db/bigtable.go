@@ -1238,7 +1238,7 @@ func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[u
 	return nil
 }
 
-func (bigtable *Bigtable) GetEpochIncomeHistory(startEpoch uint64, limit int64) (*itypes.ValidatorEpochIncome, error) {
+func (bigtable *Bigtable) GetEpochIncomeHistoryDescending(startEpoch uint64, limit int64) (*itypes.ValidatorEpochIncome, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
@@ -1268,6 +1268,61 @@ func (bigtable *Bigtable) GetEpochIncomeHistory(startEpoch uint64, limit int64) 
 	}
 
 	return &res, nil
+}
+
+func (bigtable *Bigtable) GetEpochIncomeHistory(epoch uint64) (*itypes.ValidatorEpochIncome, error) {
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	key := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch))
+
+	family := gcp_bigtable.FamilyFilter(STATS_COLUMN_FAMILY)
+	columnFilter := gcp_bigtable.ColumnFilter(SUM_COLUMN)
+	filter := gcp_bigtable.RowFilter(gcp_bigtable.ChainFilters(family, columnFilter))
+
+	row, err := bigtable.tableBeaconchain.ReadRow(ctx, key, filter)
+	if err != nil {
+		return nil, fmt.Errorf("error reading income statistics from bigtable for epoch: %v err: %w", epoch, err)
+	}
+
+	if row != nil {
+		res := itypes.ValidatorEpochIncome{}
+		err := proto.Unmarshal(row[STATS_COLUMN_FAMILY][0].Value, &res)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding income data for row %v: %w", row.Key(), err)
+		}
+		return &res, nil
+	}
+
+	// if there is no result we have to calculate the sum
+	income, err := bigtable.GetValidatorIncomeDetailsHistory([]uint64{}, epoch, 1)
+	if err != nil {
+		logger.WithError(err).Error("error getting validator income history")
+	}
+
+	total := &itypes.ValidatorEpochIncome{}
+
+	for _, epochs := range income {
+		for _, details := range epochs {
+			total.AttestationHeadReward += details.AttestationHeadReward
+			total.AttestationSourceReward += details.AttestationSourceReward
+			total.AttestationSourcePenalty += details.AttestationSourcePenalty
+			total.AttestationTargetReward += details.AttestationTargetReward
+			total.AttestationTargetPenalty += details.AttestationTargetPenalty
+			total.FinalityDelayPenalty += details.FinalityDelayPenalty
+			total.ProposerSlashingInclusionReward += details.ProposerSlashingInclusionReward
+			total.ProposerAttestationInclusionReward += details.ProposerAttestationInclusionReward
+			total.ProposerSyncInclusionReward += details.ProposerSyncInclusionReward
+			total.SyncCommitteeReward += details.SyncCommitteeReward
+			total.SyncCommitteePenalty += details.SyncCommitteePenalty
+			total.SlashingReward += details.SlashingReward
+			total.SlashingPenalty += details.SlashingPenalty
+			total.TxFeeRewardWei = utils.AddBigInts(total.TxFeeRewardWei, details.TxFeeRewardWei)
+		}
+	}
+
+	return total, nil
 }
 
 func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, startEpoch uint64, limit int64) (map[uint64]map[uint64]*itypes.ValidatorEpochIncome, error) {
