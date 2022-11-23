@@ -125,7 +125,7 @@ func main() {
 					logrus.Fatalf("error resetting status for chart series status for day %v: %v", d, err)
 				}
 
-				err = db.WriteChartSeriesForDay(uint64(d))
+				err = db.WriteChartSeriesForDay(int64(d))
 				if err != nil {
 					logrus.Errorf("error exporting chart series from day %v: %v", d, err)
 				}
@@ -153,7 +153,7 @@ func main() {
 				logrus.Fatalf("error resetting status for chart series status for day %v: %v", *statisticsDayToExport, err)
 			}
 
-			err = db.WriteChartSeriesForDay(uint64(*statisticsDayToExport))
+			err = db.WriteChartSeriesForDay(int64(*statisticsDayToExport))
 			if err != nil {
 				logrus.Errorf("error exporting chart series from day %v: %v", *statisticsDayToExport, err)
 			}
@@ -239,7 +239,7 @@ func statisticsLoop() {
 			logrus.Infof("Chart statistics: latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayChart)
 			if lastExportedDayChart <= previousDay || lastExportedDayChart == 0 {
 				for day := lastExportedDayChart; day <= previousDay; day++ {
-					err = db.WriteChartSeriesForDay(day)
+					err = db.WriteChartSeriesForDay(int64(day))
 					if err != nil {
 						logrus.Errorf("error exporting chart series from day %v: %v", day, err)
 					}

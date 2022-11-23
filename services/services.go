@@ -1352,6 +1352,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	rewards = rewards.Sub(decimal.NewFromBigInt(new(big.Int).SetUint64(total.AttestationSourcePenalty), 0))
 	rewards = rewards.Sub(decimal.NewFromBigInt(new(big.Int).SetUint64(total.SlashingPenalty), 0))
 
+	// rewards per min
 	rewards = rewards.Div(decimal.NewFromInt(64))
 
 	// emission per minute
