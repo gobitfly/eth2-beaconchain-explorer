@@ -31,9 +31,11 @@ import (
 
 func main() {
 
+	var chainId string
+
+	flag.StringVar(&chainId, "chainId", "", "Chain Identifier")
 	erigonEndpoint := flag.String("erigon", "", "Erigon archive node enpoint")
 	network := flag.String("network", "", "Network to use for exporting (mainnet or goerli")
-
 	block := flag.Int64("block", 0, "Index a specific block")
 
 	reorgDepth := flag.Int("reorg.depth", 20, "Lookback to check and handle chain reorgs")
@@ -108,14 +110,17 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	chainId := ""
+	if chainId != "" && *network != "" {
+		logrus.Fatalf("only one of both should be provided: chainId, network")
+	}
+
 	if *network == "mainnet" {
 		chainId = "1"
 	} else if *network == "goerli" {
 		chainId = "5"
 	} else if *network == "sepolia" {
 		chainId = "11155111"
-	} else {
+	} else if chainId == "" {
 		logrus.Fatalf("unsupported network name %v provided", *network)
 	}
 	balanceUpdaterPrefix := chainId + ":B:"
