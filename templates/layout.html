@@ -190,13 +190,13 @@
               </div>
             {{ else }}
               {{- if .GasNow }}
-              <div data-toggle="tooltip" title="" data-original-title="Gas Price" class="d-none d-lg-block">
-                <div id="banner-slot" class="info-item d-flex mr-2 mr-lg-3">
-                  <div class="info-item-body">
-                    <a id="banner-gpo-data" href="/gasnow"><i class="fas fa-gas-pump mr-1"></i>{{ formatBalanceWei .GasNow.Data.Fast "GWei" 0 }}</a>
+                <div data-toggle="tooltip" title="" data-original-title="Gas Price" class="d-none d-lg-block">
+                  <div id="banner-slot" class="info-item d-flex mr-2 mr-lg-3">
+                    <div class="info-item-body">
+                      <a id="banner-gpo-data" href="/gasnow"><i class="fas fa-gas-pump mr-1"></i>{{ formatBalanceWei .GasNow.Data.Fast "GWei" 0 }}</a>
+                    </div>
                   </div>
                 </div>
-              </div>
               {{- end }}
             {{ end }}
             {{ if not .ShowSyncingMessage }}
@@ -561,9 +561,9 @@
                 </a>
               </li>
               <!-- <li class="nav-item {{ if eq .Active "services" }}active{{ end }} dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">  
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <span class="nav-icon"><i class="fas fa-tools"></i></span>
-                                <span class="nav-text">Services</span> 
+                                <span class="nav-text">Services</span>
                             </a>
                             <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                                 <a class="dropdown-item" href="/stakingServices">
@@ -760,15 +760,15 @@
         </div> -->
 
         <!-- Discount banner
-            <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;"> 
+            <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;">
                 <span class="d-none d-md-block">
                 <span>
-                    <span>  
+                    <span>
                         Use voucher code
-                    </span> 
+                    </span>
                         <span>
                             <a style="color: #66bce9;">BEACONCHAIN</a>
-                        </span> 
+                        </span>
                         <span>
                             to get 69.42% off on the
                         </span>
