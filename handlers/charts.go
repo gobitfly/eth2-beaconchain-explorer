@@ -6,9 +6,12 @@ import (
 	"eth2-exporter/types"
 	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/gorilla/mux"
 )
+
+const CHART_PREVIEW_POINTS = 100
 
 // Charts uses a go template for presenting the page to show charts
 func Charts(w http.ResponseWriter, r *http.Request) {
@@ -21,6 +24,7 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "stats", "/charts", "Charts")
 
 	chartsPageData := services.LatestChartsPageData()
+
 	if chartsPageData == nil {
 		err := chartsUnavailableTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
@@ -29,6 +33,23 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		return
+	}
+
+	// only display the most recent N entries as a preview
+	for i, ch := range *chartsPageData {
+		if ch != nil && ch.Data != nil {
+			for j, series := range ch.Data.Series {
+				switch series.Data.(type) {
+				case []interface{}:
+					l := len(series.Data.([]interface{}))
+					if l > CHART_PREVIEW_POINTS*2 {
+						(*chartsPageData)[i].Data.Series[j].Data = series.Data.([]interface{})[l-CHART_PREVIEW_POINTS:]
+					}
+				default:
+					logger.Infof("unknown type: %v for chart: %v", reflect.TypeOf(series.Data), ch.Data.Title)
+				}
+			}
+		}
 	}
 
 	data.Data = chartsPageData
@@ -103,7 +124,6 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 
 // SlotViz renders a single page with a d3 slot (block) visualisation
 func SlotViz(w http.ResponseWriter, r *http.Request) {
-
 	var slotVizTemplate = templates.GetTemplate("layout.html", "slotViz.html", "slotVizPage.html")
 
 	w.Header().Set("Content-Type", "text/html")
