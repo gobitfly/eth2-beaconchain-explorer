@@ -459,6 +459,7 @@ func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := r.FormValue("email")
+	email = strings.ToLower(email)
 
 	if !utils.IsValidEmail(email) {
 		utils.SetFlash(w, r, authSessionName, "Error: Invalid email address.")
@@ -523,6 +524,7 @@ func ResendConfirmationPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := r.FormValue("email")
+	email = strings.ToLower(email)
 
 	if !utils.IsValidEmail(email) {
 		utils.SetFlash(w, r, authSessionName, "Error: Invalid email!")
