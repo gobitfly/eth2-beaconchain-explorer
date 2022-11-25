@@ -64,6 +64,9 @@ func NotFound(w http.ResponseWriter, r *http.Request) {
 		"layout.html",
 		"svg/relax.html",
 		"404notfound.html")
+
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusNotFound)
 	data := InitPageData(w, r, "blockchain", r.URL.Path, "Not Found")
 	err := notFoundTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {

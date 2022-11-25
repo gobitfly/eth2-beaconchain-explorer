@@ -1,0 +1,824 @@
+{{ define "js" }}
+  <script src="/js/highcharts/highstock.min.js"></script>
+  <script src="/js/highcharts/exporting.min.js"></script>
+  <script src="/js/highcharts/offline-exporting.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <script src="/js/highcharts/highcharts-vue.min.js"></script>
+  <script src="/js/highcharts/highcharts-more.min.js"></script>
+  <script src="/js/highcharts/highcharts-global-options.js"></script>
+<script>
+    var app = new Vue({
+        el: '#app',
+        delimiters: ['${', '}'], // Standard vuejs template syntax conflicts with golang template syntax
+        components: {
+            highcharts: HighchartsVue.Chart
+        },
+        data: {
+            // default values so the page does not error on load
+            page: {
+                    block_utilization: 0,
+                    blocks: [{
+                        number: 12963277,
+                        hash: "2cab34012bd4c60bcc3854a61fba3d9687302cde270eac69cc0a92809679cb69",
+                        gas_target: 14963304,
+                        gas_used: 14947121,
+                        mining_reward: 2710738803166022000,
+                        tx_count: 259,
+                        time: "2021-08-05T06:00:25Z",
+                        base_fee_per_gas: 0,
+                        burned_fees: 0
+                    }]
+                },
+            updateIn: -1,
+            progress: 0,
+            chartOptions: {
+                rangeSelector: {
+                    enabled: false
+                },
+                navigator: {
+                    enabled: false
+                },
+                scrollbar: {
+                    enabled: false
+                },
+                chart: {
+                    type: 'spline'
+                },
+                title: {
+                    text: ''
+                },
+                subtitle: {},
+                xAxis: {
+                    type: 'linear',
+                    labels: {},
+                },
+                yAxis: [{
+                    title: {
+                        text: 'Base fee (Gwei)'
+                    },
+                    labels: {
+                        formatter: function () {
+                            return (this.value / 1e9).toFixed(1);
+                        }
+                    },
+                    min: 0,
+                    opposite: false
+                }],
+                series: [{
+                    name: "Base fee",
+                    yAxis: 0,
+                    data: []
+                }],
+                legend: {
+                    enabled: true
+                },
+                tooltip: {
+                    formatter: function () {
+                        return this.points.reduce(function (s, point) {
+                            let val = point.y;
+                            if (point.series.name === "Burned") {
+                                val = (val / 1e18).toFixed(1) + " <b>ETH</b>";
+                            }
+                            if (point.series.name === "Base fee") {
+                                val = (val / 1e9).toFixed(1) + " <b>GWei</b>";
+                            }
+
+                            return s + '<br/>' + point.series.name + ': ' +
+                                val;
+                        }, '<b>Block ' + this.x + '</b>');
+                    },
+                    shared: true
+                }
+            },
+            chartOptionsMonetaryPolicy: {
+
+                chart: {
+                    type: 'gauge',
+                    plotBackgroundColor: null,
+                    plotBackgroundImage: null,
+                    plotBorderWidth: 0,
+                    plotShadow: false,
+                },
+                plotOptions: {
+                    gauge: {
+                        // color: '#22',
+                        dataLabels: {
+                            color: 'var(--font-color)',
+                            borderColor: null,
+                            borderWidth: 0,
+                            padding: 0,
+                            borderRadius: 0,
+                            style: {
+                                fontWeight : 'lighter',
+                                fontSize: '14px',
+                            }
+                        },
+                        dial: {
+                            backgroundColor: 'var(--font-color)',
+                        },
+                        pivot: {
+                            backgroundColor: 'var(--font-color)',
+                        }
+                    }
+                },
+
+                title: {
+                    text: 'Current ETH Emission'
+                },
+                navigator: {
+                    enabled: false,
+                },
+                pane: {
+                    startAngle: -150,
+                    endAngle: 150,
+                    background:  [{
+                        backgroundColor: {
+                            linearGradient: {x1: 0, y1: 0, x2: 0, y2: 1},
+                            stops: [
+                                [0, 'var(--shadow-dark)'],
+                                [1, 'var(--shadow-light)']
+                            ]
+                        },
+                        borderWidth: 0,
+                        outerRadius: '109%'
+                    }, {
+                        backgroundColor: {
+                            linearGradient: {x1: 0, y1: 0, x2: 0, y2: 1},
+                            stops: [
+                                [0, 'var(--shadow-light)'],
+                                [1, 'var(--shadow-dark)']
+                            ]
+                        },
+                        borderWidth: 1,
+                        outerRadius: '107%'
+                    }, {
+                        backgroundColor: {
+                            linearGradient: {x1: 0, y1: 0, x2: 0, y2: 0},
+                            stops: [
+                                [0, 'var(--bg-color)'],
+                            ]
+                        }
+                    }, {
+                        backgroundColor: '#DDD',
+                        borderWidth: 0,
+                        outerRadius: '105%',
+                        innerRadius: '103%'
+                    }]
+                },
+
+                // the value axis
+                yAxis: {
+                    min: -12,
+                    max: 12,
+
+                    minorTickInterval: 'auto',
+                    minorTickWidth: 1,
+                    minorTickLength: 10,
+                    minorTickPosition: 'inside',
+                    minorTickColor: '#222',
+
+                    tickPixelInterval: 30,
+                    tickWidth: 2,
+                    tickPosition: 'inside',
+                    tickLength: 10,
+                    tickColor: '#222',
+                    labels: {
+                        step: 2,
+                        rotation: 'auto'
+                    },
+                    title: {
+                        text: 'ETH/min'
+                    },
+                    plotBands: [{
+                        from: -12,
+                        to: 0,
+                        color: '#55BF3B'
+                    }, {
+                        from: 0,
+                        to: 5,
+                        color: '#DDDF0D'
+                    }, {
+                        from: 5,
+                        to: 12,
+                        color: '#DF5353'
+                    }]
+                },
+
+                series: [{
+                    name: 'Current ETH Emission',
+                    data: [0],
+                    tooltip: {
+                        valueSuffix: ' ETH/min'
+                    }
+                }]
+
+            }
+        },
+        mounted() {
+                // console.log('data: ', {{.}})
+                this.page = {{.}}
+        },
+        filters: {
+            fromNow(date) {
+                return getRelativeTime(luxon.DateTime.fromISO(date));
+            },
+            toFixed(number, digits) {
+                return number.toFixed(digits)
+            },
+            toTerra(number) {
+                return (number / 1e12).toFixed(1)
+            },
+            toPercentage(number, digits) {
+                return (number * 100).toFixed(digits)
+            },
+            formatETH(number, digits) {
+                return (number / 1e18).toFixed(digits)
+            },
+            formatUSD(number, currency) {
+                if(!currency) {
+                        currency = "USD"
+                }
+                if(typeof Intl !== 'undefined') {
+                        return new Intl.NumberFormat('en-US', { style:'currency', currencyDisplay: 'narrowSymbol', currency }).format(number)
+                }
+                return number.toFixed(2)
+            },
+            formatGWei(number, digits) {
+                return (number / 1e9).toFixed(digits)
+            }
+        },
+        created: function () {
+            this.tick();
+            setInterval(function () {
+                this.tick();
+            }.bind(this), 1000);
+        },
+        methods: {
+            tick: function () {
+                if (this.updateIn <= 0) {
+                    $.getJSON('/burn/data', function (response) {
+                        // console.log('burn data', response)
+                        this.page = response;
+                        this.chartOptions.series[0].data = [];
+                        // this.chartOptions.series[1].data = [];
+                        let runningAverage = 0
+                        let n = 0
+                        for (let i = this.page.blocks.length - 1; i >= 0; i = i - 1) {
+                                n += 1
+                                runningAverage += this.page.blocks[i].base_fee_per_gas
+                                if (i % 10 === 0) {
+                                        // this.chartOptions.series[0].data.push([this.page.blocks[i].number, this.page.blocks[i].base_fee_per_gas])
+                                        this.chartOptions.series[0].data.push([this.page.blocks[i].number, runningAverage / n])
+                                        runningAverage = 0
+                                        n = 0
+                                }
+                            // this.chartOptions.series[1].data.push([this.page.blocks[i].number, this.page.blocks[i].burned_fees])
+                        }
+                        this.page.blocks = this.page.blocks.slice(0, 100);
+                        let emission = Math.round(this.page.emission / 1e18 * 100) / 100;
+                        // console.log('emission: ', emission)
+                        this.chartOptionsMonetaryPolicy.series[0].data = [emission];
+
+                        if (emission < -12) {
+                            this.chartOptionsMonetaryPolicy.yAxis.min = emission - 2;
+                            this.chartOptionsMonetaryPolicy.yAxis.plotBands[0].from = emission - 2;
+                        } else if (emission > 12) {
+                            this.chartOptionsMonetaryPolicy.yAxis.max = emission + 2;
+                            this.chartOptionsMonetaryPolicy.yAxis.plotBands[2].to = emission + 2;
+                        } else {
+                            this.chartOptionsMonetaryPolicy.yAxis.min = -12;
+                            this.chartOptionsMonetaryPolicy.yAxis.plotBands[0].from = -12;
+                            this.chartOptionsMonetaryPolicy.yAxis.max = 12;
+                            this.chartOptionsMonetaryPolicy.yAxis.plotBands[2].to = 12;
+                        }
+                    }.bind(this));
+                    this.updateIn = 30;
+                    this.progress = 0;
+                } else {
+                    this.updateIn--;
+                    this.progress = Math.round((30 - this.updateIn) * 100 / 30)
+                }
+            }
+        }
+    })
+</script>
+{{ end }}
+{{ define "css" }}
+  <style>
+    .hero-container {
+      position: relative;
+      min-height: 250px;
+      width: 100%;
+      display: flex;
+      flex-direction: row-reverse;
+      align-items: center;
+      justify-content: center;
+      margin: 1rem 0;
+      flex-wrap: wrap;
+    }
+
+    .hero-image {
+      overflow: hidden;
+      flex: 1;
+      max-width: 500px;
+      min-width: 320px;
+      max-height: 400px;
+      min-height: 200px;
+    }
+
+    .hero-image svg {
+      overflow: hidden;
+      width: inherit;
+      height: inherit;
+    }
+
+    .hero-text {
+      font-size: 2rem;
+      flex: 1;
+      min-width: 305px;
+      max-width: 500px;
+      position: relative;
+    }
+
+    .hero-text-background {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      /* bottom: -40%; */
+      transform: scale(0.5) translateY(20%);
+      border-radius: 65% 35% 70% 30% / 50% 50% 50% 50%;
+      background-image: var(--linear-gradient);
+      box-shadow: 5px 15px 30px var(--shadow-light);
+      z-index: -50;
+      -webkit-animation: slide-bottom 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+      animation: slide-bottom 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+      opacity: 0.6;
+    }
+
+    /* ----------------------------------------------
+     * Generated by Animista on 2020-5-27 13:15:6
+     * Licensed under FreeBSD License.
+     * See http://animista.net/license for more info.
+     * w: http://animista.net, t: @cssanimista
+     * ---------------------------------------------- */
+
+    /**
+     * ----------------------------------------
+     * animation slide-bottom
+     * ----------------------------------------
+     */
+    @-webkit-keyframes slide-bottom {
+      0% {
+        -webkit-transform: translateY(0);
+        transform: translateY(0);
+      }
+      100% {
+        -webkit-transform: scale(1.1) translateY(40%);
+        transform: scale(1.1) translateY(40%);
+      }
+    }
+
+    @keyframes slide-bottom {
+      0% {
+        -webkit-transform: translateY(0);
+        transform: translateY(0);
+      }
+      100% {
+        -webkit-transform: scale(1.1) translateY(40%);
+        transform: scale(1.1) translateY(40%);
+      }
+    }
+
+    @media (max-width: 1140px) {
+      .hero-text-background {
+        transform: scale(1) translateY(30%);
+        border-radius: 50%;
+        animation: none;
+        opacity: 0.3;
+      }
+    }
+
+    @media (max-width: 960px) {
+      .hero-image {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+      }
+
+      .hero-container {
+        flex-wrap: nowrap;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 5rem 0;
+      }
+
+      .hero-text {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+      }
+
+      .hero-image svg {
+        opacity: 0.2;
+      }
+
+      .hero-text-background {
+        transform: scale(1) translateY(10%);
+        animation: none;
+        opacity: 0.1;
+      }
+
+      .card .card-header {
+        font-size: 0.8rem !important;
+      }
+
+      .card .card-header h5 {
+        font-size: 0.9rem !important;
+      }
+    }
+
+    [v-cloak] {
+      visibility: hidden;
+    }
+
+    .responsive-border-right {
+      border-right-color: rgb(222, 226, 230);
+      border-right-style: solid;
+      border-right-width: 1px;
+    }
+
+    @media (max-width: 767px) {
+      .responsive-border-right-l {
+        border: hidden;
+      }
+    }
+  </style>
+{{ end }}
+{{ define "content" }}
+  <div class="container mt-2">
+    <div id="app" v-cloak>
+      <div class="hero-container my-5">
+        <div class="hero-image">
+          <svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" viewBox="0 0 207.9572 154.65448" version="1.1" id="svg5" inkscape:version="1.0.2 (e86c8708, 2021-01-15)" sodipodi:docname="drawing_final_resize.svg">
+            <metadata id="metadata3892">
+              <rdf:RDF>
+                <cc:Work rdf:about="">
+                  <dc:format>image/svg+xml</dc:format>
+                  <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+                  <dc:title></dc:title>
+                </cc:Work>
+              </rdf:RDF>
+            </metadata>
+            <sodipodi:namedview id="namedview7" pagecolor="#ffffff" bordercolor="#666666" borderopacity="1.0" inkscape:pageshadow="2" inkscape:pageopacity="0.0" inkscape:pagecheckerboard="0" inkscape:document-units="mm" showgrid="false" inkscape:zoom="1.4594882" inkscape:cx="394.53804" inkscape:cy="193.65855" inkscape:window-width="2560" inkscape:window-height="1395" inkscape:window-x="0" inkscape:window-y="23" inkscape:window-maximized="1" inkscape:current-layer="g862" inkscape:document-rotation="0" inkscape:snap-global="false" fit-margin-top="0" fit-margin-left="0" fit-margin-right="0" fit-margin-bottom="0" />
+            <defs id="defs2">
+              <linearGradient id="8358023a-55f2-438a-90c0-a1f9dd33c109" x1="401.26999" y1="761.32001" x2="401.26999" y2="299.32001" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="gray" stop-opacity="0.25" id="stop379" />
+                <stop offset="0.54" stop-color="gray" stop-opacity="0.12" id="stop381" />
+                <stop offset="1" stop-color="gray" stop-opacity="0.1" id="stop383" />
+              </linearGradient>
+              <linearGradient id="0716a939-3e70-42e2-b2a4-62d4623bb7b7" x1="574.71997" y1="713.31" x2="574.71997" y2="358.20001" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="gray" stop-opacity="0.25" id="stop13006" />
+                <stop offset="0.54" stop-color="gray" stop-opacity="0.12" id="stop13008" />
+                <stop offset="1" stop-color="gray" stop-opacity="0.1" id="stop13010" />
+              </linearGradient>
+              <linearGradient id="246fdb29-47ea-4475-84d7-0cdffd1436cc" x1="2975.3799" y1="757.78003" x2="2975.3799" y2="205.60001" gradientTransform="matrix(-1,0,0,1,5034.258,407.50899)" xlink:href="#0716a939-3e70-42e2-b2a4-62d4623bb7b7" />
+            </defs>
+            <g inkscape:label="Layer 1" inkscape:groupmode="layer" id="layer1" transform="translate(-0.97943375,-141.43455)">
+              <g id="g862" transform="matrix(0.26458333,0,0,0.26458333,-403.52381,-14.458669)">
+                <ellipse cx="1921.8212" cy="1132.0436" rx="392.98999" ry="41.68" fill="#6c63ff" opacity="0.1" id="ellipse394" />
+                <path d="m 1870.3394,1087.3467 c 0,5.92 -0.22,11.75 -0.57,17.1 a 43.2,43.2 0 0 1 -37,40.05 31.61,31.61 0 0 1 -14.85,-1.19 24.59,24.59 0 0 1 -5.74,-2.9 c -21.56,-14.71 -26.4,-29.78 -5.72,-73.54 20.68,-43.76 1.47,-63 1.47,-63 17,-1.29 18.3,55.84 18.3,55.84 4.4,-0.92 8.06,-16.66 8.06,-16.66 4,1.28 -2.48,26.9 -2.48,26.9 0,0 11.08,-0.54 7.61,-41.92 -3.47,-41.38 8.79,-44.67 8.79,-44.67 -10.07,24.17 0.36,42.29 14.46,63.71 5.92,9.04 7.64,24.91 7.67,40.28 z" fill="#ffc950" id="path500" style="fill:#ff7f2a" />
+                <path d="m 1824.3694,1069.0667 c 0,0 -16.48,15 -16.3,35.33 0,0 -3.11,-6.59 -4,-5.85 -0.89,0.74 2.21,22.7 11.45,22.15 -0.03,0 -8.36,-25.63 8.85,-51.63 z" opacity="0.1" id="path502" />
+                <path d="m 1896.4994,1005.7767 c 0,0 -29.11,-3.85 -20.51,48.51 8.6,52.36 -0.4,55.79 -0.4,55.79 0,0 -0.74,-39.54 -24,-48.51 0,0 14.24,27.14 -20.68,61.9 -34.92,34.76 20.11,38.53 20.11,38.53 0,0 26.94,10.14 47.07,-18.05 l 0.6,-0.84 a 57.68,57.68 0 0 0 3.83,-60.33 c -8.56,-16.07 -14.74,-36.26 -15,-40.78 -0.54,-9.73 -5.67,-34.22 8.98,-36.22 z" fill="#ffc950" id="path506" style="fill:#ff7f2a" />
+                <path d="m 1894.1194,1087.3767 c 0,0 3.84,27.8 -15.57,51.61 0,0 -3.29,-11.7 -4.21,-11 -0.92,0.7 -1.12,22.34 -18.31,30.76 0,0 25.27,15.94 39.92,-13.91 14.65,-29.85 -1.83,-57.46 -1.83,-57.46 z" opacity="0.1" id="path508" />
+                <g id="g13497" transform="translate(-37.032575,-21.412605)">
+                  <path
+                    d="m 1950.538,684.38899 a 9.7,9.7 0 0 0 4.27,5.4 c 9.19,6.07 29.17,4.78 31.57,4.78 0.51,0 1.18,0.91 1.92,2.44 3.53,7.28 9,28.62 9.37,33.42 0.49,5.81 5.89,33 14.73,43.13 0.27,0.31 0.54,0.6 0.8,0.87 8.67,8.71 18.84,-0.87 18.84,-0.87 l 1.46,-5.07 c -0.41,2 -0.87,4.33 -1.33,6.94 -0.23,1.31 -0.46,2.7 -0.68,4.13 a 158.29,158.29 0 0 0 -2.07,24.37 88.41,88.41 0 0 0 0.38,8.88 c 0.08,0.82 0.17,1.63 0.28,2.42 a 84.78,84.78 0 0 1 0.66,10.84 c -0.08,21.52 -5.57,48.29 -5.57,48.29 l 0.21,-0.07 c -0.13,0.67 -0.21,1 -0.21,1 l 0.32,-0.1 q -0.23,1.49 -0.44,3.05 c -1.86,13.5 -2.93,30.3 -3.44,40 a 80.1,80.1 0 0 0 0.68,15.32 l 9.76,68.71001 v 32 a 56.5,56.5 0 0 0 1.76,14.38 c 3.18,12.09 0.56,54.29 -0.91,74.31 -0.41,5.46 -0.73,9.28 -0.82,10.38 v 0.33 l 0.28,-0.11 c 0,0.23 0,0.35 0,0.35 a 5.65,5.65 0 0 1 1.3,-0.38 c -3.87,6 -10.88,15.92 -16.27,17.59 a 17.07,17.07 0 0 0 -8.13,5.39 l -0.14,0.19 -0.2,0.28 a 6,6 0 0 0 -1.17,3.06 3.38,3.38 0 0 1 -0.18,-0.59 c -0.41,2.23 0.93,4.27 5.14,5.26 a 34.6,34.6 0 0 0 7.45,0.6 c 14.6,0 40.51,-4.49 43.37,-9.32 v -16.66 l 0.47,0.15 v 0.15 l 1.79,0.59 4.91,-16.48 c 5.89,-4.36 1,-82.39 0,-100.32 -0.9,-16.34 9.21,-81.34001 11,-92.79001 l -0.24,-0.29 0.27,-1.67 a 7.11,7.11 0 0 1 1,0.88 13.07,13.07 0 0 1 1.53,2.26 30.22,30.22 0 0 1 2.17,4.48 c 9.88,24.64 14.33,95.10001 14.33,101.42001 v 66.26 a 69,69 0 0 0 2.7,19.33 82.91,82.91 0 0 1 2.1,10.06 c 0.21,1.33 0.39,2.65 0.56,3.91 0.17,1.26 0.34,2.7 0.47,3.88 0,0.31 0.07,0.61 0.1,0.89 0.03,0.28 0,0.27 0,0.41 0.27,2.61 0.41,4.32 0.41,4.32 a 1,1 0 0 1 0.2,-0.39 l 0.05,0.63 a 1.35,1.35 0 0 1 0.39,-0.62 9.47,9.47 0 0 1 1.32,-1.08 v 8.42 l -0.24,-0.18 v 1.45 c 10.18,7.68 26.75,10 39.47,9.91 8.25,0 14.93,-1 17.25,-2.16 3.32,-1.63 1.5,-5.43 -1.52,-8.34 -2.34,-2.26 -5.39,-4 -7.32,-3.78 -3.22,0.35 -14.23,-12.12 -20,-18.95 l 0.65,-0.29 0.92,-0.4 v -110.48 c 0,0 1.48,-43.62001 5.89,-86.76001 a 153.48,153.48 0 0 0 -7.55,-64.36 l -0.14,-0.41 1.34,0.21 c 1.42,0.22 2.18,0.35 2.18,0.35 0,0 0,-0.34 -0.09,-1 h 0.09 c 0,0 -1.72,-18.71 -1.74,-42.21 0,-26.64 2.25,-59.12 11.56,-77.5 5.36,-10.58 7.15,-19 7,-25.64 a 26.82,26.82 0 0 0 -4.79,-16.4 13,13 0 0 0 -5.51,-4.36 l -0.19,-0.11 h -0.1 a 13.7,13.7 0 0 0 -5.06,-1 h -20.11 a 13.43,13.43 0 0 1 -6.64,-1.75 l -7.87,-4.46 c -2.62,-5.73 -3,-12.83 -2.44,-19.49 0,-0.53 0.1,-1.06 0.15,-1.58 l 0.57,-0.6 c 0.44,-0.47 0.85,-1 1.25,-1.45 a 11.15,11.15 0 0 1 -0.09,1.18 c -0.1,0.63 -0.27,1 -0.54,1.08 4.3,-0.56 9.1,-1.41 11.74,-4.73 0.11,-0.13 0.21,-0.27 0.31,-0.41 a 21.43,21.43 0 0 0 1.93,-4 11.62,11.62 0 0 1 1.47,-2.68 c 0.66,-0.86 1.52,-1.56 2.23,-2.38 l 0.12,-0.14 c 2.53,-3 2.67,-7.3 2.7,-11.22 0.05,-9.52 -0.23,-20 -6.6,-27.14 -5.29,-5.94 -13.73,-8.19 -21.74,-8.45 -8.01,-0.26 -16,1.18 -24,1.22 -5.44,0 -12,-0.09 -15,4.41 -1.47,2.21 -1.65,5.1 -3.25,7.22 -0.92,1.22 -2.33,2.27 -2.41,3.79 a 3.89,3.89 0 0 0 0.52,2 v 0.07 c 1.94,3.82 6.06,6.2 10.36,6.95 a 25.81,25.81 0 0 0 -2,2.76 26.28,26.28 0 0 0 -4,14 c 0,0.58 0,1.15 0.06,1.72 a 26.43,26.43 0 0 0 8.38,17.61 c -0.08,0.56 -0.16,1.12 -0.25,1.67 l 0.18,0.16 q 0.85,0.77 1.77,1.46 l 0.22,0.17 c 0,0.35 0,0.7 0,1 0,0.58 0,1.17 -0.06,1.74 -0.06,0.57 0,0.92 -0.06,1.38 l -0.13,-0.11 -9.77,-8.16 -15.71,-14.54 c 0,0 -39.28,-28.59 -41.25,-15 a 9.79,9.79 0 0 0 1.87,6.78 c 7.21,11 32,20.36 32,20.36 0,0 14.78,15.63 24.67,32.48 -0.35,0.19 -0.7,0.37 -1.07,0.54 -8.8,4.09 -21.64,2.36 -21.64,2.36 -14.83,2.31 -16.17,18.56 -16.09,25.13 0,0.31 0,0.61 0,0.88 0,0.27 0,0.33 0,0.48 l -19.68,-46.21 -0.06,-0.14 a 9.73,9.73 0 0 0 -7.36,-5.78 c -13.16,-2.21 -46.05,-6.82 -43.3,2.89 z m 82.39,449.00001 a 8.57,8.57 0 0 1 0.87,-0.16 l -0.09,0.14 z"
+                    fill="url(#246fdb29-47ea-4475-84d7-0cdffd1436cc)"
+                    id="path13106"
+                    style="fill:url(#246fdb29-47ea-4475-84d7-0cdffd1436cc)" />
+                  <path d="m 2131.258,1123.939 c 0,0 18.64,23.43 22.95,22.95 4.31,-0.48 14.34,9.08 8.61,12 -5.73,2.92 -38.72,4.78 -55,-7.65 v -18.73 z" fill="#aca9c9" id="path13108" style="fill:#2f2e40;fill-opacity:1" />
+                  <path d="m 2037.068,1125.369 c 0,0 -11,19.6 -18.64,22 -7.64,2.4 -14.34,11 -4.3,13.39 10.04,2.39 45.9,-2.87 49.24,-8.61 v -25.35 z" fill="#aca9c9" id="path13110" style="fill:#2f2e40;fill-opacity:1" />
+                  <path
+                    d="m 2023.258,932.81899 9.5,67.78001 v 31.51 a 56.48,56.48 0 0 0 1.72,14.18 c 3.1,11.93 0.55,53.55 -0.89,73.3 -0.47,6.44 -0.83,10.56 -0.83,10.56 6.21,-2.87 32.51,6.21 32.51,6.21 l 2.66,-9.05 2.12,-7.2 c 5.74,-4.3 1,-81.27 0,-99 -0.65,-12.11 4.75,-51.37001 8.21,-74.90001 1,-6.65 1.81,-12 2.3,-15.22 0.31,-2 0.48,-3.11 0.48,-3.11 a 10.47,10.47 0 0 1 2.58,3.11 29.93,29.93 0 0 1 2.11,4.42 c 9.62,24.31 14,93.81001 14,100.00001 v 65.36 a 68.92,68.92 0 0 0 2.63,19.07 100,100 0 0 1 2.59,13.77 c 0.68,5.19 1,9.37 1,9.37 0.48,-2.87 30.12,-15.78 30.12,-15.78 v -109 c 0,0 1.43,-43.00001 5.74,-85.58001 a 152.68,152.68 0 0 0 -5.5,-57.58 c -1.19,-4.07 -2.38,-7.52 -3.41,-10.25 -1.75,-4.65 -3,-7.22 -3,-7.22 h -97.64 c -1.64,0.31 -3,3.61 -4.23,8.62 -0.8,3.36 -1.5,7.48 -2.11,12 -1.81,13.31 -2.85,29.88 -3.35,39.46 a 79.86,79.86 0 0 0 0.69,15.17 z"
+                    fill="#618fd8"
+                    id="path13112"
+                    style="fill:#2f2e40;fill-opacity:1" />
+                  <g opacity="0.1" id="g13120" transform="translate(1241.258,500.24899)">
+                    <path d="M 1006.09,720 V 611 c 0,0 1.43,-43 5.74,-85.58 4.31,-42.58 -12,-75.06 -12,-75.06 h 1.91 c 0,0 16.25,32.51 12,75.06 C 1009.49,567.97 1008,611 1008,611 v 109 c 0,0 -29.64,12.91 -30.12,15.78 0,0 0,-0.64 -0.15,-1.74 6.46,-4.49 28.36,-14.04 28.36,-14.04 z" transform="translate(-113,-92.74)" id="path13114" />
+                    <path d="m 907.37,722.34 a 7.42,7.42 0 0 0 -2.63,0.54 v -0.48 a 17.06,17.06 0 0 1 2.63,-0.06 z" transform="translate(-113,-92.74)" id="path13116" />
+                    <path d="m 940.12,712.84 c 5.74,-4.3 1,-81.27 0,-99 -1,-17.73 11,-93.22 11,-93.22 a 8.34,8.34 0 0 1 1.65,1.7 c -1.76,11.28 -11.6,75.41 -10.73,91.52 1,17.69 5.74,94.66 0,99 l -4.78,16.25 -1.74,-0.58 z" transform="translate(-113,-92.74)" id="path13118" />
+                  </g>
+                  <path d="m 2042.798,739.55899 -10,35.38 c 0,0 -10.52,10 -19.12,0 -8.6,-10 -13.9,-36.81 -14.42,-42.55 -0.52,-5.74 -8.13,-35.38 -11,-35.38 -2.87,0 -31.55,1.91 -34.9,-10 -2.68,-9.58 29.34,-5 42.16,-2.85 a 9.5,9.5 0 0 1 7.17,5.7 l 19.66,46.95 c 0,0 10.41,-12.07 20.45,2.75 z" fill="#f7c4a7" id="path13122" style="fill:#ffb6b9;fill-opacity:1" />
+                  <path d="m 2107.338,657.32899 c 0,0 -12.43,34.9 3.35,47.33 15.78,12.43 -56.43,15.78 -56.43,15.78 l 9.8,-9.32 c 0,0 6.93,-27.49 2.15,-50.44 z" fill="#f7c4a7" id="path13124" style="fill:#ffb6b9;fill-opacity:1" />
+                  <path d="m 2092.038,704.65899 c 0,0 12.67,-3.11 12.67,-6.45 l 11.23,6.45 h 28.21 c 0,0 20.56,11.47 3.35,45.9 -17.21,34.43 -9.56,119 -9.56,119 0,0 -61.19,-11 -111.87,5.74 0,0 7.65,-37.77 4.78,-59.28 -2.87,-21.51 4.78,-51.63 4.78,-51.63 l 4.3,-18.17 c 0,0 -0.24,-17 -17.93,-8.37 0,0 -2.63,-24.62 15.54,-27.49 0,0 21,2.87 27.25,-7.65 0,0.04 13.87,8.17 27.25,1.95 z" opacity="0.1" id="path13126" />
+                  <path d="m 2092.038,703.70899 c 0,0 12.67,-3.11 12.67,-6.45 l 8.23,4.73 a 13,13 0 0 0 6.46,1.72 h 19.73 a 13,13 0 0 1 10.57,5.38 c 4.53,6.37 8.59,18.93 -2.2,40.52 -17.21,34.42 -9.56,119 -9.56,119 0,0 -61.19,-11 -111.87,5.74 0,0 7.65,-37.77 4.78,-59.28 -2.87,-21.51 4.78,-51.56 4.78,-51.56 l 4.3,-18.17 c 0,0 -0.24,-17 -17.93,-8.37 0,0 -2.56,-23.94 14.79,-27.36 a 4.9,4.9 0 0 1 1.47,-0.1 c 3.71,0.39 21,1.64 26.54,-7.73 -0.01,0.01 13.86,8.14 27.24,1.93 z" fill="#e14b5a" id="path13128" style="fill:#6c67fa;fill-opacity:1" />
+                  <path d="m 2140.328,747.20899 c 0,0 -15.3,9.56 -40.16,0 0,0 -27.25,-10 -35.86,-29.64 -8.61,-19.64 43.5,3.35 43.5,3.35 0,0 11,0 14.34,-2.39 3.34,-2.39 26.78,18.16 18.18,28.68 z" opacity="0.1" id="path13130" />
+                  <path d="m 2140.328,745.29899 c 0,0 -15.3,9.56 -40.16,0 0,0 -27.25,-10 -35.86,-29.64 -8.61,-19.64 -28.68,-41.15 -28.68,-41.15 0,0 -34.9,-13.39 -33,-26.77 1.9,-13.38 40.16,14.82 40.16,14.82 l 15.3,14.34 49.72,42.07 c 0,0 11,0 14.34,-2.39 3.34,-2.39 26.78,18.2 18.18,28.72 z" fill="#f7c4a7" id="path13132" style="fill:#ffb6b9;fill-opacity:1" />
+                  <path d="m 2065.748,662.10899 41.11,-3.35 a 94.37,94.37 0 0 0 -4.29,19.47 26.27,26.27 0 0 1 -36.8,1 46.73,46.73 0 0 0 -0.02,-17.12 z" opacity="0.1" id="path13134" />
+                  <ellipse cx="2084.158" cy="658.52899" fill="#f7c4a7" id="circle13136" style="fill:#ffb6b9;fill-opacity:1" rx="26.290394" ry="26.290001" />
+                  <path d="m 2098.588,664.23899 c -1.54,-2.54 1.59,-5.85 0.56,-8.63 -0.95,-2.56 -4.73,-3 -6,-5.39 -1,-1.93 0,-4.3 -0.4,-6.43 -0.57,-2.75 -3.53,-4.46 -6.34,-4.6 -2.81,-0.14 -5.52,0.91 -8.19,1.81 -4.35,1.47 -8.93,2.6 -13.49,2.08 -4.56,-0.52 -9.11,-3 -11.14,-7.07 a 4,4 0 0 1 -0.51,-1.94 c 0.08,-1.5 1.46,-2.53 2.35,-3.73 1.56,-2.09 1.74,-4.94 3.16,-7.12 2.9,-4.44 9.27,-4.33 14.57,-4.35 7.8,0 15.56,-1.46 23.36,-1.2 7.8,0.26 16,2.47 21.17,8.33 6.2,7.05 6.48,17.37 6.43,26.77 0,3.87 -0.16,8.08 -2.63,11.07 -0.72,0.87 -1.6,1.59 -2.29,2.48 -1.5,2 -1.9,4.56 -3.31,6.59 -2.5,3.61 -7.38,4.49 -11.73,5.07 1.28,-0.17 0.22,-8.74 0,-9.53 -0.84,-3.94 -1.75,-3.86 -5.57,-4.21 z" opacity="0.1" id="path13138" />
+                  <path d="m 2098.588,663.28899 c -1.54,-2.54 1.59,-5.85 0.56,-8.63 -0.95,-2.56 -4.73,-3 -6,-5.39 -1,-1.93 0,-4.3 -0.4,-6.43 -0.57,-2.75 -3.53,-4.46 -6.34,-4.6 -2.81,-0.14 -5.52,0.91 -8.19,1.81 -4.35,1.47 -8.93,2.6 -13.49,2.08 -4.56,-0.52 -9.11,-3 -11.14,-7.07 a 4,4 0 0 1 -0.51,-1.94 c 0.08,-1.5 1.46,-2.53 2.35,-3.73 1.56,-2.09 1.74,-4.94 3.16,-7.12 2.9,-4.44 9.27,-4.33 14.57,-4.35 7.8,0 15.56,-1.46 23.36,-1.2 7.8,0.26 16,2.47 21.17,8.33 6.2,7.05 6.48,17.37 6.43,26.77 0,3.87 -0.16,8.08 -2.63,11.07 -0.72,0.87 -1.6,1.59 -2.29,2.48 -1.5,2 -1.9,4.56 -3.31,6.59 -2.5,3.61 -7.38,4.49 -11.73,5.07 1.28,-0.17 0.22,-8.74 0,-9.53 -0.84,-3.99 -1.75,-3.87 -5.57,-4.21 z" fill="#281c1c" id="path13140" />
+                  <path d="m 2140.088,748.40899 c 0,0 -12.91,-33.47 -22.95,-34.42 -10.04,-0.95 19.12,0 19.12,0 l 9.56,17.21 z" opacity="0.1" id="path13142" />
+                  <path d="m 2141.048,748.40899 c 0,0 -12.91,-33.47 -22.95,-34.42 -10.04,-0.95 19.12,0 19.12,0 l 9.56,17.21 z" fill="#e14b5a" id="path13144" style="fill:#6c67fa;fill-opacity:1" />
+                  <path d="m 2162.558,1157.399 a 2.86,2.86 0 0 0 1.64,-1.9 2.81,2.81 0 0 1 -1.64,3.33 c -5.74,2.87 -38.72,4.78 -55,-7.65 v -1.43 c 16.28,12.43 49.26,10.52 55,7.65 z" fill="#ffffff" opacity="0.4" id="path13154" style="fill:#2f2e40;fill-opacity:1" />
+                  <path d="m 2013.878,1159.309 c 10,2.39 45.9,-2.87 49.24,-8.61 v 1.43 c -3.35,5.74 -39.2,11 -49.24,8.61 -4.1,-1 -5.41,-3 -5,-5.19 0.32,1.62 1.82,2.96 5,3.76 z" fill="#ffffff" opacity="0.4" id="path13156" style="fill:#2f2e40;fill-opacity:1" />
+                  <path d="m 2072.198,811.03899 c 0,0 -10.52,-3.35 -13.39,0 -2.87,3.35 -27.4,11.2 -27.4,11.2" opacity="0.1" id="path13158" />
+                  <rect x="-2004.318" y="-679.67902" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13160" />
+                  <rect x="-2004.318" y="-680.75897" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13162" />
+                  <rect x="-2004.318" y="-680.75897" width="51.150002" height="1.08" transform="scale(-1)" opacity="0.1" id="rect13164" />
+                  <rect x="-2004.318" y="-681.83899" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13166" />
+                  <rect x="-2004.318" y="-682.909" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13168" />
+                  <rect x="-2004.318" y="-682.909" width="51.150002" height="1.08" transform="scale(-1)" opacity="0.1" id="rect13170" />
+                  <rect x="-2004.318" y="-683.98901" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13172" />
+                  <rect x="-2004.318" y="-685.05896" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13174" />
+                  <rect x="-2004.318" y="-685.05896" width="51.150002" height="1.08" transform="scale(-1)" opacity="0.1" id="rect13176" />
+                  <rect x="-2004.318" y="-686.13898" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13178" />
+                  <rect x="-2004.318" y="-687.20898" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13180" />
+                  <rect x="-2004.318" y="-687.20898" width="51.150002" height="1.08" transform="scale(-1)" opacity="0.1" id="rect13182" />
+                  <rect x="-2004.318" y="-671.07898" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13184" />
+                  <rect x="-1993.4077" y="775.77191" width="51.150002" height="1.08" transform="rotate(-140.25)" fill="#8ed16f" id="rect13186" />
+                  <rect x="-1954.8381" y="766.07562" width="51.150002" height="1.08" transform="rotate(-140.25)" fill="#8ed16f" id="rect13188" />
+                  <rect x="-2004.318" y="-672.14899" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13190" />
+                  <rect x="-2004.318" y="-672.14899" width="51.150002" height="1.08" transform="scale(-1)" opacity="0.1" id="rect13192" />
+                  <rect x="-2004.318" y="-673.23895" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13194" />
+                  <rect x="-2004.318" y="-674.30902" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13196" />
+                  <rect x="-2004.318" y="-674.30902" width="51.150002" height="1.08" transform="scale(-1)" opacity="0.1" id="rect13198" />
+                  <rect x="-2004.318" y="-675.37903" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13200" />
+                  <rect x="-2004.318" y="-676.45898" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13202" />
+                  <rect x="-2004.318" y="-676.45898" width="51.150002" height="1.08" transform="scale(-1)" opacity="0.1" id="rect13204" />
+                  <rect x="-2004.318" y="-677.52899" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13206" />
+                  <rect x="-2004.318" y="-678.60901" width="51.150002" height="1.08" transform="scale(-1)" fill="#8ed16f" id="rect13208" />
+                  <rect x="-2004.318" y="-678.60901" width="51.150002" height="1.08" transform="scale(-1)" opacity="0.1" id="rect13210" />
+                  <rect x="-2064.1587" y="-353.00717" width="18.639999" height="36.330002" transform="rotate(-169.48)" fill="#8ed16f" id="rect13212" />
+                  <ellipse cx="-334.90747" cy="2055.1104" rx="7.6500001" ry="3.8199999" transform="rotate(-79.48)" fill="#8ed16f" id="ellipse13214" />
+                  <ellipse cx="-334.90747" cy="2055.1104" rx="7.6500001" ry="3.8199999" transform="rotate(-79.48)" opacity="0.1" id="ellipse13216" />
+                  <rect x="-2081.0068" y="-426.56116" width="18.639999" height="36.330002" transform="rotate(-169.48)" fill="#8ed16f" id="rect13218" />
+                  <ellipse cx="-408.45508" cy="2071.9478" rx="7.6500001" ry="3.8199999" transform="rotate(-79.48)" fill="#8ed16f" id="ellipse13220" />
+                  <ellipse cx="-408.45508" cy="2071.9478" rx="7.6500001" ry="3.8199999" transform="rotate(-79.48)" opacity="0.1" id="ellipse13222" />
+                  <rect x="340.76358" y="1947.1486" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13224" />
+                  <ellipse cx="357.48712" cy="1967.2072" rx="3.8291569" ry="7.6683383" transform="rotate(-61.38954)" fill="#8ed16f" id="ellipse13226" style="stroke-width:1.0024" />
+                  <ellipse cx="357.48712" cy="1967.2072" rx="3.8291569" ry="7.6683383" transform="rotate(-61.38954)" opacity="0.1" id="ellipse13228" style="stroke-width:1.0024" />
+                  <rect x="312.55264" y="1895.0079" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13242" />
+                  <ellipse cx="321.63959" cy="1913.1716" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13244" />
+                  <ellipse cx="321.63959" cy="1913.1716" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13246" />
+                  <rect x="1774.5759" y="877.4444" width="18.639999" height="36.330002" transform="rotate(-6.24)" fill="#8ed16f" id="rect13248" />
+                  <ellipse cx="1783.6493" cy="895.61346" rx="3.8199999" ry="7.6500001" transform="rotate(-6.24)" fill="#8ed16f" id="ellipse13250" />
+                  <ellipse cx="1783.6493" cy="895.61346" rx="3.8199999" ry="7.6500001" transform="rotate(-6.24)" opacity="0.1" id="ellipse13252" />
+                  <rect x="1879.3696" y="1087.8391" width="18.639999" height="36.330002" transform="rotate(-6.24)" fill="#8ed16f" id="rect13254" />
+                  <ellipse cx="1888.4518" cy="1106.0092" rx="3.8199999" ry="7.6500001" transform="rotate(-6.24)" fill="#8ed16f" id="ellipse13256" />
+                  <ellipse cx="1888.4518" cy="1106.0092" rx="3.8199999" ry="7.6500001" transform="rotate(-6.24)" opacity="0.1" id="ellipse13258" />
+                  <rect x="177.43401" y="1946.7015" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13260" />
+                  <ellipse cx="186.50624" cy="1964.8665" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13262" />
+                  <ellipse cx="186.50624" cy="1964.8665" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13264" />
+                  <rect x="-178.94359" y="1990.186" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13272" />
+                  <ellipse cx="-169.86133" cy="2008.3508" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13274" />
+                  <ellipse cx="-169.86133" cy="2008.3508" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13276" />
+                  <rect x="-793.65582" y="1822.7418" width="18.639999" height="36.330002" transform="rotate(-79.49)" fill="#8ed16f" id="rect13278" />
+                  <rect x="-793.65582" y="1822.7418" width="18.639999" height="36.330002" transform="rotate(-79.49)" opacity="0.05" id="rect13280" />
+                  <ellipse cx="-784.57074" cy="1840.9136" rx="3.8199999" ry="7.6500001" transform="rotate(-79.49)" fill="#8ed16f" id="ellipse13282" />
+                  <ellipse cx="-784.57074" cy="1840.9136" rx="3.8199999" ry="7.6500001" transform="rotate(-79.49)" opacity="0.1" id="ellipse13284" />
+                  <rect x="-803.85187" y="1828.0371" width="18.639999" height="36.330002" transform="rotate(-79.49)" fill="#8ed16f" id="rect13286" />
+                  <ellipse cx="-794.76855" cy="1846.1991" rx="3.8199999" ry="7.6500001" transform="rotate(-79.49)" fill="#8ed16f" id="ellipse13288" />
+                  <ellipse cx="-794.76855" cy="1846.1991" rx="3.8199999" ry="7.6500001" transform="rotate(-79.49)" opacity="0.1" id="ellipse13290" />
+                  <rect x="-202.4458" y="2045.7578" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13292" />
+                  <ellipse cx="-193.3588" cy="2063.9316" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13294" />
+                  <ellipse cx="-193.3588" cy="2063.9316" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13296" />
+                  <rect x="-833.09515" y="1868.3982" width="18.639999" height="36.330002" transform="rotate(-79.49)" fill="#8ed16f" id="rect13298" />
+                  <rect x="-833.09515" y="1868.3982" width="18.639999" height="36.330002" transform="rotate(-79.49)" opacity="0.05" id="rect13300" />
+                  <ellipse cx="-824.0119" cy="1886.5601" rx="3.8199999" ry="7.6500001" transform="rotate(-79.49)" fill="#8ed16f" id="ellipse13302" />
+                  <ellipse cx="-824.0119" cy="1886.5601" rx="3.8199999" ry="7.6500001" transform="rotate(-79.49)" opacity="0.1" id="ellipse13304" />
+                  <rect x="-843.30298" y="1873.6937" width="18.639999" height="36.330002" transform="rotate(-79.49)" fill="#8ed16f" id="rect13306" />
+                  <ellipse cx="-834.21783" cy="1891.8655" rx="3.8199999" ry="7.6500001" transform="rotate(-79.49)" fill="#8ed16f" id="ellipse13308" />
+                  <ellipse cx="-834.21783" cy="1891.8655" rx="3.8199999" ry="7.6500001" transform="rotate(-79.49)" opacity="0.1" id="ellipse13310" />
+                  <rect x="-148.82709" y="2081.0393" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13312" />
+                  <ellipse cx="-139.74493" cy="2099.1941" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13314" />
+                  <ellipse cx="-139.74493" cy="2099.1941" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13316" />
+                  <rect x="-792.9314" y="1918.4545" width="18.639999" height="36.330002" transform="rotate(-79.49)" fill="#8ed16f" id="rect13318" />
+                  <rect x="-792.9314" y="1918.4545" width="18.639999" height="36.330002" transform="rotate(-79.49)" opacity="0.05" id="rect13320" />
+                  <ellipse cx="-783.84814" cy="1936.6165" rx="3.8199999" ry="7.6500001" transform="rotate(-79.49)" fill="#8ed16f" id="ellipse13322" />
+                  <ellipse cx="-783.84814" cy="1936.6165" rx="3.8199999" ry="7.6500001" transform="rotate(-79.49)" opacity="0.1" id="ellipse13324" />
+                  <rect x="-803.13745" y="1923.7499" width="18.639999" height="36.330002" transform="rotate(-79.49)" fill="#8ed16f" id="rect13326" />
+                  <ellipse cx="-794.05414" cy="1941.9218" rx="3.8199999" ry="7.6500001" transform="rotate(-79.49)" fill="#8ed16f" id="ellipse13328" />
+                  <ellipse cx="-794.05414" cy="1941.9218" rx="3.8199999" ry="7.6500001" transform="rotate(-79.49)" opacity="0.1" id="ellipse13330" />
+                  <g id="g4460-0" transform="translate(-22.3643,-100.63758)">
+                    <path d="m 1739.4212,957.70356 a 11.62,11.62 0 0 1 5.18,-5.15 c -1.69,1.73 -3.41,3.46 -5.18,5.15 z" opacity="0.1" id="path584-71" transform="translate(37.032536,21.412605)" />
+                    <rect x="22.839952" y="2039.4211" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13230-5" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13232-22" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13234-11" />
+                  </g>
+                  <g id="g4460-8" transform="translate(22.302552,-216.45288)">
+                    <path d="m 1739.4212,957.70356 a 11.62,11.62 0 0 1 5.18,-5.15 c -1.69,1.73 -3.41,3.46 -5.18,5.15 z" opacity="0.1" id="path584-2" transform="translate(37.032536,21.412605)" />
+                    <rect x="22.839952" y="2039.4211" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13230-39" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13232-0" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13234-18" />
+                  </g>
+                  <rect x="184.4312" y="2060.0564" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13224-0" />
+                  <ellipse cx="201.53091" cy="2080.634" rx="3.8291569" ry="7.6683383" transform="rotate(-61.38954)" fill="#8ed16f" id="ellipse13226-6" style="stroke-width:1.0024" />
+                  <ellipse cx="201.53091" cy="2080.634" rx="3.8291569" ry="7.6683383" transform="rotate(-61.38954)" opacity="0.1" id="ellipse13228-6" style="stroke-width:1.0024" />
+                  <rect x="156.22026" y="2007.9158" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13242-5" />
+                  <ellipse cx="165.30721" cy="2026.0795" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13244-9" />
+                  <ellipse cx="165.30721" cy="2026.0795" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13246-7" />
+                  <rect x="1778.5403" y="1070.2455" width="18.639999" height="36.330002" transform="rotate(-6.24)" fill="#8ed16f" id="rect13248-2" />
+                  <ellipse cx="1787.6136" cy="1088.4146" rx="3.8199999" ry="7.6500001" transform="rotate(-6.24)" fill="#8ed16f" id="ellipse13250-3" />
+                  <ellipse cx="1787.2513" cy="1086.5693" rx="3.8199999" ry="7.6500001" transform="rotate(-6.24)" opacity="0.1" id="ellipse13252-3" />
+                  <rect x="21.101614" y="2059.6094" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13260-6" />
+                  <ellipse cx="30.173849" cy="2077.7744" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13262-0" />
+                  <ellipse cx="30.173849" cy="2077.7744" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13264-1" />
+                  <g id="g4460-0-2" transform="translate(97.663016,29.563387)">
+                    <path d="m 1739.4212,957.70356 a 11.62,11.62 0 0 1 5.18,-5.15 c -1.69,1.73 -3.41,3.46 -5.18,5.15 z" opacity="0.1" id="path584-71-7" transform="translate(37.032536,21.412605)" />
+                    <rect x="22.839952" y="2039.4211" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13230-5-9" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13232-22-1" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13234-11-0" />
+                  </g>
+                  <g id="g4460-8-2" transform="rotate(90,1939.1391,891.38839)">
+                    <path d="m 1739.4212,957.70356 a 11.62,11.62 0 0 1 5.18,-5.15 c -1.69,1.73 -3.41,3.46 -5.18,5.15 z" opacity="0.1" id="path584-2-5" transform="translate(37.032536,21.412605)" />
+                    <rect x="22.839952" y="2039.4211" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13230-39-4" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13232-0-0" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13234-18-4" />
+                  </g>
+                  <rect x="265.68231" y="2080.1433" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13224-4" />
+                  <ellipse cx="282.84839" cy="2100.4509" rx="3.8291569" ry="7.6683383" transform="rotate(-61.38954)" fill="#8ed16f" id="ellipse13226-1" style="stroke-width:1.0024" />
+                  <ellipse cx="282.84839" cy="2100.4509" rx="3.8291569" ry="7.6683383" transform="rotate(-61.38954)" opacity="0.1" id="ellipse13228-0" style="stroke-width:1.0024" />
+                  <rect x="237.47137" y="2028.0028" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13242-55" />
+                  <ellipse cx="246.55832" cy="2046.1665" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13244-7" />
+                  <ellipse cx="246.55832" cy="2046.1665" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13246-5" />
+                  <rect x="1810.3811" y="1033.1265" width="18.639999" height="36.330002" transform="rotate(-6.24)" fill="#8ed16f" id="rect13248-1" />
+                  <ellipse cx="1815.4956" cy="1054.4739" rx="3.8199999" ry="7.6500001" transform="rotate(-6.24)" opacity="0.1" id="ellipse13252-4" />
+                  <rect x="127.09059" y="2049.9824" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13260-2" />
+                  <ellipse cx="136.16284" cy="2068.1475" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13262-7" />
+                  <ellipse cx="135.30858" cy="2066.5688" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13264-4" />
+                  <g id="g4460-0-4" transform="translate(134.25516,-34.130421)">
+                    <path d="m 1739.4212,957.70356 a 11.62,11.62 0 0 1 5.18,-5.15 c -1.69,1.73 -3.41,3.46 -5.18,5.15 z" opacity="0.1" id="path584-71-6" transform="translate(37.032536,21.412605)" />
+                    <rect x="22.839952" y="2039.4211" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13230-5-5" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13232-22-5" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13234-11-5" />
+                  </g>
+                  <g id="g4460-8-7" transform="translate(26.354517,-61.995046)">
+                    <path d="m 1739.4212,957.70356 a 11.62,11.62 0 0 1 5.18,-5.15 c -1.69,1.73 -3.41,3.46 -5.18,5.15 z" opacity="0.1" id="path584-2-8" transform="translate(37.032536,21.412605)" />
+                    <rect x="3.1195414" y="2022.6796" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13230-39-42" />
+                    <ellipse cx="12.197691" cy="2040.858" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13234-18-0" />
+                  </g>
+                  <rect x="230.72087" y="1935.1807" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13224-6" />
+                  <ellipse cx="247.40523" cy="1955.6052" rx="3.8291569" ry="7.6683383" transform="rotate(-61.38954)" fill="#8ed16f" id="ellipse13226-8" style="stroke-width:1.0024" />
+                  <ellipse cx="247.40523" cy="1955.6052" rx="3.8291569" ry="7.6683383" transform="rotate(-61.38954)" opacity="0.1" id="ellipse13228-60" style="stroke-width:1.0024" />
+                  <rect x="202.50993" y="1883.04" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13242-9" />
+                  <ellipse cx="211.59685" cy="1901.2037" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13244-0" />
+                  <ellipse cx="211.59685" cy="1901.2037" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13246-3" />
+                  <rect x="1660.4979" y="945.76495" width="18.639999" height="36.330002" transform="rotate(-6.24)" fill="#8ed16f" id="rect13248-7" />
+                  <ellipse cx="1669.5713" cy="963.93402" rx="3.8199999" ry="7.6500001" transform="rotate(-6.24)" fill="#8ed16f" id="ellipse13250-1" />
+                  <ellipse cx="1670.7703" cy="969.48193" rx="3.8199999" ry="7.6500001" transform="rotate(-6.24)" opacity="0.1" id="ellipse13252-9" />
+                  <rect x="67.391273" y="1934.7336" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13260-5" />
+                  <ellipse cx="76.463509" cy="1952.8986" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13262-1" />
+                  <ellipse cx="76.463509" cy="1952.8986" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13264-2" />
+                  <g id="g4460-0-7" transform="matrix(1,0,0,-1,157.34125,1788.8642)">
+                    <path d="m 1739.4212,957.70356 a 11.62,11.62 0 0 1 5.18,-5.15 c -1.69,1.73 -3.41,3.46 -5.18,5.15 z" opacity="0.1" id="path584-71-1" transform="translate(37.032536,21.412605)" />
+                    <rect x="22.839952" y="2039.4211" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13230-5-1" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13232-22-0" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13234-11-6" />
+                  </g>
+                  <g id="g4460-8-9" transform="matrix(1,0,0,-1,-40.5957,1787.8914)">
+                    <path d="m 1739.4212,957.70356 a 11.62,11.62 0 0 1 5.18,-5.15 c -1.69,1.73 -3.41,3.46 -5.18,5.15 z" opacity="0.1" id="path584-2-1" transform="translate(37.032536,21.412605)" />
+                    <rect x="22.839952" y="2039.4211" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13230-39-5" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13232-0-8" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13234-18-1" />
+                  </g>
+                  <g id="g4460-0-7-5" transform="matrix(1,0,0,-1,71.347895,1886.2948)">
+                    <path d="m 1739.4212,957.70356 a 11.62,11.62 0 0 1 5.18,-5.15 c -1.69,1.73 -3.41,3.46 -5.18,5.15 z" opacity="0.1" id="path584-71-1-7" transform="translate(37.032536,21.412605)" />
+                    <rect x="22.839952" y="2039.4211" width="18.639999" height="36.330002" transform="rotate(-61.58)" fill="#8ed16f" id="rect13230-5-1-9" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" fill="#8ed16f" id="ellipse13232-22-0-8" />
+                    <ellipse cx="31.918102" cy="2057.5996" rx="3.8199999" ry="7.6500001" transform="rotate(-61.58)" opacity="0.1" id="ellipse13234-11-6-9" />
+                  </g>
+                </g>
+              </g>
+            </g>
+          </svg>
+        </div>
+        <div class="hero-text">
+          <div class="hero-text-background"></div>
+          <h1 class="mt-4 text-center">Watch as ETH gets burned with EIP-1559</h1>
+          <h5 class="text-center">In total ${ page.total_burned | formatETH(1) } ETH have been burned up to now.</h5>
+        </div>
+      </div>
+      <div class="card mt-3">
+        <div class="card-header">
+          <div class="row">
+            <div class="col-md-4 responsive-border-right responsive-border-right-l">
+              <div class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-between">
+                <div class="p-2">
+                  <div class="text-secondary mb-0">
+                    <span><i class="fas fa-gas-pump mr-1"></i>Base fee</span>
+                  </div>
+                  <h5 class="font-weight-normal mb-0">
+                    <span data-toggle="tooltip" data-placement="top" title="The current network base fee" class="mr-3">${ page.blocks[0].base_fee_per_gas | formatGWei(1) }</span> <span style="font-size: .9rem; opacity: .8; font-weight: 300;">GWei</span> <span v-if="page.base_fee_trend === 1" data-toggle="tooltip" data-placement="top" title="Base fee is increasing">⬈</span><span v-if="page.base_fee_trend === -1" data-toggle="tooltip" data-placement="top" title="Base fee is decreasing">⬊</span>
+                    <span data-toggle="tooltip" data-placement="top" title="Base fee is stable" v-if="page.base_fee_trend === 0">—</span>
+                  </h5>
+                </div>
+                <div class="text-right p-2">
+                  <div class="text-secondary mb-0"><i class="fas fa-burn mr-1"></i>Total burned</div>
+                  <h5 class="font-weight-normal mb-0">
+                    <div>
+                      <span data-toggle="tooltip" data-placement="top" title="">${ page.total_burned | formatETH(1) } <span style="font-size: .9rem; opacity: .8; font-weight: 300;">ETH</span></span>
+                    </div>
+                    {{ if .Mainnet }}<div><span style="font-size: .8rem; opacity: .5">${ (page.total_burned / 1e18 * page.price_usd) | formatUSD }</span></div>{{ end }}
+                  </h5>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 responsive-border-right responsive-border-right-l">
+              <div class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-between">
+                <div class="p-2">
+                  <div class="text-secondary mb-0"><i class="fas fa-fire mr-1"></i>Burn rate (1h)</div>
+                  <h5 class="font-weight-normal mb-0">
+                    <span data-toggle="tooltip" data-placement="top" title="">${ page.burn_rate_1_h | formatETH(2) } <span style="font-size: .9rem; opacity: .8; font-weight: 300;">ETH/min</span></span>
+                  </h5>
+                  {{ if .Mainnet }}<div><span style="font-size: .8rem; opacity: .5">${ (page.burn_rate_1_h / 1e18 * page.price_usd) | formatUSD } / min</span></div>{{ end }}
+                </div>
+                <div class="text-right p-2">
+                  <div class="text-secondary mb-0"><i class="fas fa-fire-alt mr-1"></i>Burn rate (24h)</div>
+                  <h5 class="font-weight-normal mb-0">
+                    <span data-toggle="tooltip" data-placement="top" title="">${ page.burn_rate_24_h | formatETH(2) } <span style="font-size: .9rem; opacity: .8; font-weight: 300;">ETH/min</span></span>
+                  </h5>
+                  {{ if .Mainnet }}<div><span style="font-size: .8rem; opacity: .5">${ (page.burn_rate_24_h / 1e18 * page.price_usd) | formatUSD } / min</span></div>{{ end }}
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-between">
+                <div class="p-2">
+                  <div class="text-secondary mb-0"><i class="fas fa-bullseye mr-1"></i>Gas target</div>
+                  <h5 class="font-weight-normal mb-0">
+                    <span data-toggle="tooltip" data-placement="top" title="">${ page.blocks[0].gas_target }</span>
+                  </h5>
+                </div>
+                <div class="text-right p-2">
+                  <div class="text-secondary mb-0"><i class="fas fa-database mr-1"></i>Block utilization</div>
+                  <h5 class="font-weight-normal mb-0">
+                    <span data-toggle="tooltip" data-placement="top" title="">${ page.block_utilization | toFixed(1) } %</span>
+                  </h5>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-lg-8">
+              <highcharts height="600px" :options="chartOptions"></highcharts>
+            </div>
+            <div class="col-lg-4">
+              <highcharts height="600px" :options="chartOptionsMonetaryPolicy"></highcharts>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <!-- <div class="col-12 mt-2">
+                <a class="no-highlight justify-content-center d-none d-md-flex" href=""><img class="img-fluid" src="" alt=""/></a>
+                <a class="no-highlight justify-content-center d-md-none d-flex" href=""><img class="img-fluid" src="" alt=""/></a>
+            </div> -->
+      </div>
+      <div class="card mt-2">
+        <div class="card-header">
+          <h3 class="card-title" style="margin: .5rem 0;">
+            <div class="progress">
+              <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" v-bind:style="'width: ' +progress + '%'" v-bind:aria-valuenow="progress" aria-valuemin="0" aria-valuemax="30">Update in: ${updateIn}s</div>
+            </div>
+          </h3>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Number</th>
+                  <th>Gas Target</th>
+                  <th>Gas Used</th>
+                  <th>Reward</th>
+                  <th>Txs</th>
+                  <th>Age</th>
+                  <th>Base Fee</th>
+                  <th>Burned ETH</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="block in page.blocks">
+                  <td><a v-bind:href="'/block/0x' + block.hash">${ block.number }</a></td>
+                  <td>${ block.gas_target }</td>
+                  <td>${ block.gas_used }</td>
+                  <td><span class="badge badge-pill text-white badge-success">${ block.mining_reward | formatETH(5)} ETH</span></td>
+                  <td>${ block.tx_count }</td>
+                  <td>${ block.time | fromNow }</td>
+                  <td><span class="badge badge-pill text-white badge-info">${ block.base_fee_per_gas | formatGWei(2)} GWei</span></td>
+                  <td><span class="badge badge-pill text-white badge-warning">${ block.burned_fees | formatETH(5)} ETH</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{{ end }}

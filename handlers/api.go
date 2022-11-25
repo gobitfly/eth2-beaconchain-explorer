@@ -1088,6 +1088,11 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(queryIndices) == 0 {
+		sendErrorResponse(w, r.URL.String(), "no validators provided")
+		return
+	}
+
 	history, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(queryIndices, services.LatestEpoch(), 101)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -2212,71 +2217,6 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 		offset = 0
 	}
 
-	validator, err := db.GetStatsValidator(claims.UserID, limit, offset)
-	if err != nil {
-		logger.Errorf("validator stat error : %v", err)
-		sendErrorResponse(w, r.URL.String(), "could not retrieve validator stats from db")
-		return
-	}
-
-	node, err := db.GetStatsNode(claims.UserID, limit, offset)
-	if err != nil {
-		logger.Errorf("node stat error : %v", err)
-		sendErrorResponse(w, r.URL.String(), "could not retrieve beaconnode stats from db")
-		return
-	}
-
-	system, err := db.GetStatsSystem(claims.UserID, limit, offset)
-	if err != nil {
-		logger.Errorf("system stat error : %v", err)
-		sendErrorResponse(w, r.URL.String(), "could not retrieve system stats from db")
-		return
-	}
-
-	dataValidator, err := utils.SqlRowsToJSON(validator)
-	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not parse db results for validator stats")
-		return
-	}
-
-	dataNode, err := utils.SqlRowsToJSON(node)
-	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not parse db results for beaconnode stats")
-		return
-	}
-
-	dataSystem, err := utils.SqlRowsToJSON(system)
-	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not parse db results for system stats")
-		return
-	}
-
-	data := &types.StatsDataStruct{
-		Validator: dataValidator,
-		Node:      dataNode,
-		System:    dataSystem,
-	}
-
-	sendOKResponse(j, r.URL.String(), []interface{}{data})
-}
-
-// todo: replace with above function once migrated
-func ClientStatsBigtable(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	j := json.NewEncoder(w)
-	claims := getAuthClaims(r)
-
-	maxStats := getUserPremium(r).MaxStats
-
-	vars := mux.Vars(r)
-	offset := parseUintWithDefault(vars["offset"], 0)
-	limit := parseUintWithDefault(vars["limit"], 180)
-	timeframe := offset + limit
-	if timeframe > maxStats {
-		limit = maxStats
-		offset = 0
-	}
-
 	system, err := db.BigtableClient.GetMachineMetricsSystem(claims.UserID, int(limit), int(offset))
 	if err != nil {
 		logger.Errorf("sytem stat error : %v", err)
@@ -2438,154 +2378,6 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		sendErrorResponse(w, r.URL.String(), "reached max machine count")
 		return false, err
 	}
-
-	// old db
-	// todo: remove once migrated
-
-	tx, err := db.NewTransaction()
-	if err != nil {
-		logger.Errorf("Could not transact | %v", err)
-		sendErrorResponse(w, r.URL.String(), "could not store")
-		return false, err
-	}
-	defer tx.Rollback()
-
-	id, err := db.InsertStatsMeta(tx, userData.ID, parsedMeta)
-	if err != nil {
-		if strings.Contains(err.Error(), "no partition of relation") {
-			tx.Rollback()
-
-			now := time.Now()
-			nowTs := now.Unix()
-			var day int = int(nowTs / 86400)
-			db.CreateNewStatsMetaPartition(day)
-
-			tx, err = db.NewTransaction()
-			if err != nil {
-				logger.Errorf("could not transact | %v", err)
-				sendErrorResponse(w, r.URL.String(), "could not store")
-				return false, err
-			}
-			id, err = db.InsertStatsMeta(tx, userData.ID, parsedMeta)
-		}
-		if err != nil {
-			if strings.HasPrefix(err.Error(), "ERROR: duplicate key value violates unique constraint") {
-				return false, err
-			} else {
-				logger.Errorf("Could not store stats (meta stats) | %v", err)
-				sendErrorResponse(w, r.URL.String(), "could not store meta")
-				return false, err
-			}
-
-		}
-	}
-
-	var isSystem = false
-	// Special case for system
-	if parsedMeta.Process == "system" {
-		var parsedResponse *types.StatsSystem
-		err = mapstructure.Decode(body, &parsedResponse)
-
-		if err != nil {
-			logger.Errorf("Could not parse stats (system stats) | %v", err)
-			sendErrorResponse(w, r.URL.String(), "could not parse system")
-			return false, err
-		}
-		_, err := db.InsertStatsSystem(
-			tx,
-			id,
-			parsedResponse,
-		)
-		if err != nil {
-			logger.Errorf("Could not store stats (system stats) | %v", err)
-			sendErrorResponse(w, r.URL.String(), "could not store system")
-			return false, err
-		}
-
-		err = tx.Commit()
-		if err != nil {
-			logger.Errorf("Could not store (tx commit) | %v", err)
-			sendErrorResponse(w, r.URL.String(), "could not store")
-			return false, err
-		}
-		isSystem = true
-	}
-
-	if !isSystem {
-
-		var parsedGeneral *types.StatsProcess
-		err = mapstructure.Decode(body, &parsedGeneral)
-
-		if err != nil {
-			logger.Errorf("Could not parse stats (process stats) | %v", err)
-			sendErrorResponse(w, r.URL.String(), "could not parse process")
-			return false, err
-		}
-
-		processGeneralID, err := db.InsertStatsProcessGeneral(
-			tx,
-			id,
-			parsedGeneral,
-		)
-		if err != nil {
-			logger.Errorf("Could not store stats (global process stats) | %v", err)
-			sendErrorResponse(w, r.URL.String(), "could not store global process")
-			return false, err
-		}
-
-		if parsedMeta.Process == "validator" {
-			var parsedValidator *types.StatsAdditionalsValidator
-			err = mapstructure.Decode(body, &parsedValidator)
-
-			if err != nil {
-				logger.Errorf("Could not parse stats (validator stats) | %v", err)
-				sendErrorResponse(w, r.URL.String(), "could not parse validator")
-				return false, err
-			}
-
-			_, err := db.InsertStatsValidator(
-				tx,
-				processGeneralID,
-				parsedValidator,
-			)
-			if err != nil {
-				logger.Errorf("Could not store stats (validatorstats) | %v", err)
-				sendErrorResponse(w, r.URL.String(), "could not store validator")
-				return false, err
-			}
-
-		} else if parsedMeta.Process == "beaconnode" {
-			var parsedNode *types.StatsAdditionalsBeaconnode
-			err = mapstructure.Decode(body, &parsedNode)
-
-			if err != nil {
-				logger.Errorf("Could not parse stats (node stats) | %v", err)
-				sendErrorResponse(w, r.URL.String(), "could not parse node")
-				return false, err
-			}
-
-			_, err := db.InsertStatsBeaconnode(
-				tx,
-				processGeneralID,
-				parsedNode,
-			)
-			if err != nil {
-				logger.Errorf("Could not store stats (beaconnode) | %v", err)
-				sendErrorResponse(w, r.URL.String(), "could not store beaconnode")
-				return false, err
-			}
-		}
-
-		err = tx.Commit()
-		if err != nil {
-			logger.Errorf("Could not store (tx commit) | %v", err)
-			sendErrorResponse(w, r.URL.String(), "could not store")
-			return false, err
-		}
-	}
-	// ^ remove above if migrated
-
-	// Bigtable
 
 	var data []byte
 	if parsedMeta.Process == "system" {

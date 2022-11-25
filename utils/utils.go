@@ -906,3 +906,7 @@ func ReverseSlice[S ~[]E, E any](s S) {
 		s[i], s[j] = s[j], s[i]
 	}
 }
+
+func AddBigInts(a, b []byte) []byte {
+	return new(big.Int).Add(new(big.Int).SetBytes(a), new(big.Int).SetBytes(b)).Bytes()
+}

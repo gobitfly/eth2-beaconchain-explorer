@@ -168,15 +168,15 @@
               {{ end }}
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-3">Value:</div>
-                <div class="col-md-9">{{ formatBytesAmount .Value "Ether" }}</div>
+                <div class="col-md-9">{{ formatBytesAmount .Value "Ether" 8 }}</div>
               </div>
               <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
                 <div class="col-md-3">Transaction Fee:</div>
-                <div class="col-md-9">{{ formatBytesAmount .Gas.TxFee "Ether" }}</div>
+                <div class="col-md-9">{{ formatBytesAmount .Gas.TxFee "Ether" 8 }}</div>
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-3">Effective Gas Price:</div>
-                <div class="col-md-9">{{ formatBytesAmount .Gas.EffectiveFee "GWei" }}</div>
+                <div class="col-md-9">{{ formatBytesAmount .Gas.EffectiveFee "GWei" 8 }}</div>
               </div>
               <div class="collapse" id="collapseExample">
                 <div class="row border-bottom p-3 mx-0">
@@ -195,13 +195,13 @@
                     <div class="col-md-3">Gas Fees:</div>
                     <div class="col-md-9">
                       <span class="text-secondary">Base Block Fee:</span>
-                      <span class="text-black">{{ formatBytesAmount .Gas.BlockBaseFee "GWei" }}</span>
+                      <span class="text-black">{{ formatBytesAmount .Gas.BlockBaseFee "GWei" 8 }}</span>
                       <span class="px-2">|</span>
                       <span class="text-secondary">Max Overall Fee:</span>
-                      <span class="text-black">{{ formatBytesAmount .Gas.MaxFee "GWei" }}</span>
+                      <span class="text-black">{{ formatBytesAmount .Gas.MaxFee "GWei" 8 }}</span>
                       <span class="px-2">|</span>
                       <span class="text-secondary">Max Priority Fee:</span>
-                      <span class="text-black">{{ formatBytesAmount .Gas.MaxPriorityFee "GWei" }}</span>
+                      <span class="text-black">{{ formatBytesAmount .Gas.MaxPriorityFee "GWei" 8 }}</span>
                     </div>
                   </div>
                 {{ end }}

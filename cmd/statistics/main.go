@@ -16,13 +16,34 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type options struct {
+	configPath                string
+	statisticsDayToExport     int64
+	statisticsDaysToExport    string
+	poolsDisabledFlag         bool
+	statisticsValidatorToggle bool
+	statisticsChartToggle     bool
+}
+
+var opt options = options{}
+
 func main() {
 	configPath := flag.String("config", "", "Path to the config file")
 	statisticsDayToExport := flag.Int64("statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
 	statisticsDaysToExport := flag.String("statistics.days", "", "Days to export statistics (will export the day independent if it has been already exported or not")
 	poolsDisabledFlag := flag.Bool("pools.disabled", false, "Disable exporting pools")
+	statisticsValidatorToggle := flag.Bool("validators.enabled", false, "Toggle exporting validator statistics")
+	statisticsChartToggle := flag.Bool("charts.enabled", false, "Toggle exporting chart series")
 
 	flag.Parse()
+
+	opt = options{
+		configPath:                *configPath,
+		statisticsDayToExport:     *statisticsDayToExport,
+		statisticsDaysToExport:    *statisticsDaysToExport,
+		statisticsValidatorToggle: *statisticsChartToggle,
+		poolsDisabledFlag:         *poolsDisabledFlag,
+	}
 
 	logrus.Printf("version: %v, config file path: %v", version.Version, *configPath)
 	cfg := &types.Config{}
@@ -80,28 +101,62 @@ func main() {
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		logrus.Infof("exporting statistics for days %v-%v", firstDay, lastDay)
-		for d := firstDay; d <= lastDay; d++ {
-			_, err := db.WriterDb.Exec("delete from validator_stats_status where day = $1", d)
-			if err != nil {
-				logrus.Fatalf("error resetting status for day %v: %v", d, err)
-			}
 
-			err = db.WriteStatisticsForDay(uint64(d))
-			if err != nil {
-				logrus.Errorf("error exporting stats for day %v: %v", d, err)
+		if *statisticsValidatorToggle {
+			logrus.Infof("exporting validator statistics for days %v-%v", firstDay, lastDay)
+			for d := firstDay; d <= lastDay; d++ {
+				_, err := db.WriterDb.Exec("delete from validator_stats_status where day = $1", d)
+				if err != nil {
+					logrus.Fatalf("error resetting status for day %v: %v", d, err)
+				}
+
+				err = db.WriteValidatorStatisticsForDay(uint64(d))
+				if err != nil {
+					logrus.Errorf("error exporting stats for day %v: %v", d, err)
+				}
 			}
 		}
+
+		if *statisticsChartToggle {
+			logrus.Infof("exporting chart series for days %v-%v", firstDay, lastDay)
+			for d := firstDay; d <= lastDay; d++ {
+				_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", d)
+				if err != nil {
+					logrus.Fatalf("error resetting status for chart series status for day %v: %v", d, err)
+				}
+
+				err = db.WriteChartSeriesForDay(uint64(d))
+				if err != nil {
+					logrus.Errorf("error exporting chart series from day %v: %v", d, err)
+				}
+			}
+		}
+
 		return
 	} else if *statisticsDayToExport >= 0 {
-		_, err := db.WriterDb.Exec("delete from validator_stats_status where day = $1", *statisticsDayToExport)
-		if err != nil {
-			logrus.Fatalf("error resetting status for day %v: %v", *statisticsDayToExport, err)
+
+		if *statisticsValidatorToggle {
+			_, err := db.WriterDb.Exec("delete from validator_stats_status where day = $1", *statisticsDayToExport)
+			if err != nil {
+				logrus.Fatalf("error resetting status for day %v: %v", *statisticsDayToExport, err)
+			}
+
+			err = db.WriteValidatorStatisticsForDay(uint64(*statisticsDayToExport))
+			if err != nil {
+				logrus.Errorf("error exporting stats for day %v: %v", *statisticsDayToExport, err)
+			}
 		}
 
-		err = db.WriteStatisticsForDay(uint64(*statisticsDayToExport))
-		if err != nil {
-			logrus.Errorf("error exporting stats for day %v: %v", *statisticsDayToExport, err)
+		if *statisticsChartToggle {
+			_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", *statisticsDayToExport)
+			if err != nil {
+				logrus.Fatalf("error resetting status for chart series status for day %v: %v", *statisticsDayToExport, err)
+			}
+
+			err = db.WriteChartSeriesForDay(uint64(*statisticsDayToExport))
+			if err != nil {
+				logrus.Errorf("error exporting chart series from day %v: %v", *statisticsDayToExport, err)
+			}
 		}
 		return
 	}
@@ -119,16 +174,6 @@ func main() {
 func statisticsLoop() {
 	for {
 
-		// todo: remove once migrated
-		// create stats parition on users table
-		now := time.Now()
-		nowTs := now.Unix()
-		var day int = int(nowTs / 86400)
-
-		db.CreateNewStatsMetaPartition(day)
-		db.CreateNewStatsMetaPartition(day + 1)
-		// ^=======
-
 		latestEpoch, err := db.GetLatestEpoch()
 		if err != nil {
 			logrus.Errorf("error retreiving latest epoch from the db: %v", err)
@@ -138,7 +183,7 @@ func statisticsLoop() {
 
 		epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
 		if latestEpoch < epochsPerDay {
-			logrus.Infof("skipping exporting validator_stats, first day has not been indexed yet")
+			logrus.Infof("skipping exporting stats, first day has not been indexed yet")
 			time.Sleep(time.Minute)
 			continue
 		}
@@ -150,24 +195,48 @@ func statisticsLoop() {
 			previousDay = currentDay
 		}
 
-		var lastExportedDay uint64
-		err = db.WriterDb.Get(&lastExportedDay, "select COALESCE(max(day), 0) from validator_stats_status where status")
-		if err != nil {
-			logrus.Errorf("error retreiving latest exported day from the db: %v", err)
-		}
-		if lastExportedDay != 0 {
-			lastExportedDay++
+		if opt.statisticsValidatorToggle {
+			var lastExportedDayValidator uint64
+			err = db.WriterDb.Get(&lastExportedDayValidator, "select COALESCE(max(day), 0) from validator_stats_status where status")
+			if err != nil {
+				logrus.Errorf("error retreiving latest exported day from the db: %v", err)
+			}
+			if lastExportedDayValidator != 0 {
+				lastExportedDayValidator++
+			}
+
+			logrus.Infof("Validator Statistics: Latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayValidator)
+			if lastExportedDayValidator <= previousDay || lastExportedDayValidator == 0 {
+				for day := lastExportedDayValidator; day <= previousDay; day++ {
+					err := db.WriteValidatorStatisticsForDay(day)
+					if err != nil {
+						logrus.Errorf("error exporting stats for day %v: %v", day, err)
+					}
+				}
+			}
+
 		}
 
-		logrus.Infof("latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDay)
-		if lastExportedDay <= previousDay || lastExportedDay == 0 {
-			for day := lastExportedDay; day <= previousDay; day++ {
-				err := db.WriteStatisticsForDay(day)
-				if err != nil {
-					logrus.Errorf("error exporting stats for day %v: %v", day, err)
+		if opt.statisticsChartToggle {
+			var lastExportedDayChart uint64
+			err = db.WriterDb.Get(&lastExportedDayChart, "select COALESCE(max(day), 0) from chart_series_status where status")
+			if err != nil {
+				logrus.Errorf("error retreiving latest exported day from the db: %v", err)
+			}
+			if lastExportedDayChart != 0 {
+				lastExportedDayChart++
+			}
+			logrus.Infof("Chart statistics: latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayChart)
+			if lastExportedDayChart <= previousDay || lastExportedDayChart == 0 {
+				for day := lastExportedDayChart; day <= previousDay; day++ {
+					err = db.WriteChartSeriesForDay(day)
+					if err != nil {
+						logrus.Errorf("error exporting chart series from day %v: %v", day, err)
+					}
 				}
 			}
 		}
+
 		services.ReportStatus("statistics", "Running", nil)
 		time.Sleep(time.Minute)
 	}

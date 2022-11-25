@@ -5,13 +5,15 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/shopspring/decimal"
 )
 
-func WriteStatisticsForDay(day uint64) error {
+func WriteValidatorStatisticsForDay(day uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
@@ -31,7 +33,7 @@ func WriteStatisticsForDay(day uint64) error {
 	}
 
 	if lastEpoch > latestDbEpoch {
-		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed", lastEpoch)
+		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed. LatestDB: %v", lastEpoch, latestDbEpoch)
 	}
 
 	start := time.Now()
@@ -369,4 +371,64 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		day BETWEEN $2 AND $3
 	order by day;`, queryValidatorsArr, lowerBoundDay, upperBoundDay)
 	return result, err
+}
+
+func WriteChartSeriesForDay(day uint64) error {
+	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
+	beaconchainDay := day * epochsPerDay
+
+	startDate := utils.EpochToTime(beaconchainDay)
+	dateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
+
+	firstSlot := utils.TimeToSlot(uint64(dateTrunc.Unix()))
+	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.Config.SlotsPerEpoch)
+
+	logger.Infof("exporting chart_series for day %v (slot %v to %v)", day, firstSlot, lastSlot)
+
+	latestDbEpoch, err := GetLatestEpoch()
+	if err != nil {
+		return err
+	}
+
+	if (uint64(lastSlot) / utils.Config.Chain.Config.SlotsPerEpoch) > latestDbEpoch {
+		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed. LatestDB: %v", (uint64(lastSlot) / utils.Config.Chain.Config.SlotsPerEpoch), latestDbEpoch)
+	}
+
+	type Fees struct {
+		BaseFee     uint64 `db:"exec_base_fee_per_gas"`
+		ExecGasUsed uint64 `db:"exec_gas_used"`
+	}
+
+	burnedFees := make([]Fees, 0)
+	logger.Infof("exporting from (inc): %v to (not inc): %v", firstSlot, lastSlot)
+	err = ReaderDb.Select(&burnedFees, `SELECT exec_base_fee_per_gas, exec_gas_used FROM blocks WHERE  slot >= $1 AND slot < $2 AND exec_base_fee_per_gas > 0 AND exec_gas_used > 0`, firstSlot, lastSlot)
+	if err != nil {
+		return fmt.Errorf("error getting BURNED_FEES: %w", err)
+	}
+
+	sum := decimal.NewFromInt(0)
+
+	for _, fee := range burnedFees {
+		base := new(big.Int).SetUint64(fee.BaseFee)
+		used := new(big.Int).SetUint64(fee.ExecGasUsed)
+
+		burned := new(big.Int).Mul(base, used)
+		sum = sum.Add(decimal.NewFromBigInt(burned, 0))
+	}
+
+	logger.Println("Exporting BURNED_FEES")
+	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES ($1, 'BURNED_FEES', $2) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", dateTrunc, sum.String())
+	if err != nil {
+		return fmt.Errorf("error calculating BURNED_FEES chart_series: %w", err)
+	}
+
+	logger.Infof("marking day export as completed in the status table")
+	_, err = WriterDb.Exec("insert into chart_series_status (day, status) values ($1, true)", day)
+	if err != nil {
+		return err
+	}
+
+	logger.Println("chart_series export completed")
+
+	return nil
 }

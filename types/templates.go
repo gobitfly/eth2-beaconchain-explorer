@@ -45,6 +45,7 @@ type PageData struct {
 	Debug          bool
 	DebugTemplates []string
 	DebugSession   map[string]interface{}
+	GasNow         *GasNowPageData
 }
 
 type PageRates struct {
@@ -1747,4 +1748,28 @@ type RelayInfo struct {
 	AverageValue   WeiString      `db:"avg_value"`
 	MaxValue       WeiString      `db:"max_value"`
 	MaxValueSlot   uint64         `db:"max_value_slot"`
+}
+
+type BurnPageDataBlock struct {
+	Number        int64     `json:"number"`
+	Hash          string    `json:"hash"`
+	GasTarget     int64     `json:"gas_target" db:"gaslimit"`
+	GasUsed       int64     `json:"gas_used" db:"gasused"`
+	Rewards       float64   `json:"mining_reward" db:"miningreward"`
+	Txn           int       `json:"tx_count" db:"tx_count"`
+	Age           time.Time `json:"time" db:"time"`
+	BaseFeePerGas float64   `json:"base_fee_per_gas" db:"basefeepergas"`
+	BurnedFees    float64   `json:"burned_fees" db:"burnedfees"`
+}
+
+type BurnPageData struct {
+	TotalBurned      float64              `json:"total_burned"`
+	Blocks           []*BurnPageDataBlock `json:"blocks"`
+	BaseFeeTrend     int                  `json:"base_fee_trend"`
+	BurnRate1h       float64              `json:"burn_rate_1_h"`
+	BurnRate24h      float64              `json:"burn_rate_24_h"`
+	BlockUtilization float64              `json:"block_utilization"`
+	Emission         float64              `json:"emission"`
+	Price            float64              `json:"price_usd"`
+	Currency         string               `json:"currency"`
 }
