@@ -1749,13 +1749,13 @@ func UpdateEpochFinalization(finality_epoch uint64) error {
 	_, err := WriterDb.Exec(`
 	UPDATE epochs
 	SET finalized = true
-	WHERE epoch BETWEEN	(
+	WHERE epoch BETWEEN COALESCE((
 			SELECT epoch
 			FROM   epochs
 			WHERE  finalized = true
 			ORDER  BY epoch DESC
 			LIMIT  1
-		) AND $1 `, finality_epoch)
+		),0) AND $1`, finality_epoch)
 	return err
 }
 
