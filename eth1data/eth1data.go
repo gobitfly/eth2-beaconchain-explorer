@@ -29,7 +29,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	cacheKey := fmt.Sprintf("%d:tx:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
 	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, new(types.Eth1TxData)); err == nil {
 		logger.Infof("retrieved data for tx %v from cache", hash)
-		logger.Info(wanted)
+		logger.Trace(wanted)
 
 		data := wanted.(*types.Eth1TxData)
 		if data.BlockNumber != 0 {
