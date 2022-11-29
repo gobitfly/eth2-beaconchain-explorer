@@ -158,6 +158,8 @@
             var incomeHistory = {{.IncomeHistoryChartData}}
             var executionIncomeHistory = {{ .ExecutionIncomeHistoryData }}
             var currency = {{$.Rates.Currency}}
+            var ethPrice = {{$.Rates.EthPrice}}
+
                 window.addEventListener('load', function () {
                     Highcharts.stockChart('income-chart', {
                         colors: ["#7cb5ec", "#90ed7d", "#f7a35c", "#8085e9", "#f15c80", "#e4d354", "#2b908f", "#f45b5b", "#91e8e1"],
@@ -188,7 +190,6 @@
                                     enabled: false
                                 },
                                 pointInterval: 24 * 3600 * 1000,
-                                // pointIntervalUnit: 'day',
                                 dataGrouping: {
                                     forced: true,
                                     units: [
@@ -210,56 +211,63 @@
                         },
                         yAxis: [{
                             title: {
-                                text: 'Daily Income [' + currency + ']'
+                                text: `Income [${currency}]`
                             },
                             opposite: false,
                             labels: {
-                            formatter: function() {
+                                formatter: function() {
                                     if (currency !== "ETH") {
                                           return this.value.toFixed(2)
                                     }
                                     return this.value.toFixed(5)
-                              },
-
+                                },
                             }
                         }],
                         series: [{
-                            name: "Daily Consensus Income",
+                            name: "Consensus Income",
                             data: incomeHistory,
                             index: 2
                         },
                         {
-                            name: "Daily Execution Income",
+                            name: "Execution Income",
                             data: executionIncomeHistory,
                             index: 1
-                        },
-                            // {
-                            //     name: "Effective Balance",
-                            //     step: true,
-                            //     data: effectiveBalanceHistory
-                            // }
+                        }
                         ],
                         tooltip: {
-                            formatter: function (tooltip) {
-                                var orig = tooltip.defaultFormatter.call(this, tooltip)
-                                var epoch = timeToEpoch(this.x)
-                                orig[0] = `${orig[0]}<span style="font-size:10px">Epoch ${epoch}</span>`
-                                return orig
-                            },
-                            dateTimeLabelFormats: {
-                              day: "%A, %b %e, %Y",
-                              minute: "%A, %b %e",
-                              hour: "%A, %b %e",
-                            },
-                            pointFormatter: function(){
-                                function formatPointValue(n) {
-                                    if (currency !== "ETH") {
-                                        return n.toFixed(2)
+                            split: false,
+                            shared: true,
+                            formatter: (tooltip) => {
+                                let getValueString = (value) => {
+                                    var text = `${value.toFixed(5)} ETH`
+                                    if (this.currency !== "ETH") {
+                                        return `${text} (${(value * ethPrice).toFixed(2)} ${currency})`
                                     }
-                                    return n
+                                    return text
                                 }
 
-                                return '<span style="color:' + this.series.color + '">\u25CF</span> ' + this.series.name + ':<br><b>' + formatPointValue(this.y) + '</b></br>'
+                                var text = ``
+                                var total = 0
+
+                                // date and epochs
+                                const startEpoch = timeToEpoch(tooltip.chart.hoverPoint.x)
+                                const timeForOneDay = 24 * 60* 60 * 1000
+                                const endEpoch = timeToEpoch(tooltip.chart.hoverPoint.x + timeForOneDay) - 1
+                                text += `${new Date(tooltip.chart.hoverPoints[0].x).toLocaleDateString()} (Epochs ${startEpoch} - ${endEpoch})<br/>`;
+
+                                // income
+                                for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
+                                    const value = tooltip.chart.hoverPoints[i].y;
+                                    text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getValueString(value)}<br/>`
+                                    total += value
+                                }
+
+                                // add total if hovered point contains rewards for both EL and CL
+                                if (tooltip.chart.hoverPoints.length > 1) {
+                                    text += `<b>Total:</b> ${getValueString(total)}`
+                                }
+
+                                return text
                             }
                         }
                     });
