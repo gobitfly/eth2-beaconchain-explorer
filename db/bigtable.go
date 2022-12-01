@@ -234,6 +234,9 @@ func getMachineMetrics[T types.MachineMetricSystem | types.MachineMetricNode | t
 
 	rangePrefix := fmt.Sprintf("u:%s:p:%s:m:", reversePaddedUserID(userID), process)
 	res := make([]*T, 0)
+	if offset <= 0 {
+		offset = 1
+	}
 
 	filter := gcp_bigtable.ChainFilters(
 		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
