@@ -27,18 +27,33 @@ var ChartHandlers = map[string]chartHandler{
 	"average_balance":    {4, averageBalanceChartData},
 	"network_liveness":   {5, networkLivenessChartData},
 	"participation_rate": {6, participationRateChartData},
+
 	// "inclusion_distance":             {7, inclusionDistanceChartData},
 	// "incorrect_attestations":         {6, incorrectAttestationsChartData},
 	// "validator_income":               {7, averageDailyValidatorIncomeChartData},
 	// "staking_rewards":                {8, stakingRewardsChartData},
-	"stake_effectiveness":            {9, stakeEffectivenessChartData},
-	"balance_distribution":           {10, balanceDistributionChartData},
-	"effective_balance_distribution": {11, effectiveBalanceDistributionChartData},
-	"performance_distribution_365d":  {12, performanceDistribution365dChartData},
-	"deposits":                       {13, depositsChartData},
-	"graffiti_wordcloud":             {14, graffitiCloudChartData},
-	"pools_distribution":             {15, poolsDistributionChartData},
-	"historic_pool_performance":      {16, historicPoolPerformanceData},
+
+	"stake_effectiveness":                {9, stakeEffectivenessChartData},
+	"balance_distribution":               {10, balanceDistributionChartData},
+	"effective_balance_distribution":     {11, effectiveBalanceDistributionChartData},
+	"performance_distribution_365d":      {12, performanceDistribution365dChartData},
+	"deposits":                           {13, depositsChartData},
+	"graffiti_wordcloud":                 {14, graffitiCloudChartData},
+	"pools_distribution":                 {15, poolsDistributionChartData},
+	"historic_pool_performance":          {16, historicPoolPerformanceData},
+	"execution_burned_fees":              {20, BurnedFeesChartData},
+	"non_failed_tx_gas_usage_chart_data": {21, NonFailedTxGasUsageChartData},
+	"block_count_chart_data":             {22, BlockCountChartData},
+	"block_time_avg_chart_data":          {23, BlockTimeAvgChartData},
+	"total_emission_chart_data":          {24, TotalEmissionChartData},
+	"avg_gas_price":                      {25, AvgGasPrice},
+	"avg_gas_used_chart_data":            {26, AvgGasUsedChartData},
+	"total_gas_used_chart_data":          {27, TotalGasUsedChartData},
+	"avg_gas_limit_chart_data":           {28, AvgGasLimitChartData},
+	"avg_block_util_chart_data":          {29, AvgBlockUtilChartData},
+	"market_cap_chart_data":              {30, MarketCapChartData},
+	"tx_count_chart_data":                {31, TxCountChartData},
+	"avg_block_size_chart_data":          {32, AvgBlockSizeChartData},
 }
 
 // LatestChartsPageData returns the latest chart page data
@@ -68,11 +83,11 @@ func chartsPageDataUpdater(wg *sync.WaitGroup) {
 		}
 		start := time.Now()
 
-		if start.Add(time.Minute * -20).After(utils.EpochToTime(latestEpoch)) {
-			logger.Info("skipping chartsPageDataUpdater because the explorer is syncing")
-			time.Sleep(time.Second * 60)
-			continue
-		}
+		// if start.Add(time.Minute * -20).After(utils.EpochToTime(latestEpoch)) {
+		// 	logger.Info("skipping chartsPageDataUpdater because the explorer is syncing")
+		// 	time.Sleep(time.Second * 60)
+		// 	continue
+		// }
 
 		data, err := getChartsPageData()
 		if err != nil {
@@ -1670,4 +1685,592 @@ func graffitiCloudChartData() (*types.GenericChartData, error) {
 	}
 
 	return chartData, nil
+}
+
+func BurnedFeesChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	rows := []struct {
+		Day        time.Time `db:"time"`
+		BurnedFees float64   `db:"value"`
+	}{}
+
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'BURNED_FEES' ORDER BY time", ts)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(row.Day.UnixMilli()),
+			row.BurnedFees,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Burned Fees",
+		Subtitle:     "Burned Fees tracks how many Ether have been burned since EIP1559 was introduced.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Burned Fees [ETH]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Burned Fees",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func NonFailedTxGasUsageChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	rows := []struct {
+		Day        time.Time `db:"time"`
+		BurnedFees float64   `db:"value"`
+	}{}
+
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'NON_FAILED_TX_GAS_USAGE' ORDER BY time", ts)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(row.Day.UnixMilli()),
+			row.BurnedFees,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Gas Usage (Successful Tx)",
+		Subtitle:     "Gas usage of successful transactions that are not reverted.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Gas Usage [Gas]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Gas Usage",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func BlockCountChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	rows := []struct {
+		Day        time.Time `db:"time"`
+		BurnedFees float64   `db:"value"`
+	}{}
+
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'BLOCK_COUNT' ORDER BY time", ts)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(row.Day.UnixMilli()),
+			row.BurnedFees,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Block Count",
+		Subtitle:     "Number of blocks proposed during the last 24 hours.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Block Count [day]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Block Count",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func BlockTimeAvgChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	rows := []struct {
+		Day        time.Time `db:"time"`
+		BurnedFees float64   `db:"value"`
+	}{}
+
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'BLOCK_TIME_AVG' ORDER BY time", ts)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(row.Day.UnixMilli()),
+			row.BurnedFees,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Block Time (Avg)",
+		Subtitle:     "Average time between blocks over the last 24 hours",
+		XAxisTitle:   "",
+		YAxisTitle:   "Block Time [Avg(day)]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Block Time (Avg)",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func TotalEmissionChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	rows := []struct {
+		Day        time.Time `db:"time"`
+		BurnedFees float64   `db:"value"`
+	}{}
+
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'TOTAL_EMISSION' ORDER BY time", ts)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(row.Day.UnixMilli()),
+			row.BurnedFees,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Total Emission",
+		Subtitle:     "The total amount of newly created Ether subtracted by the burned Ether",
+		XAxisTitle:   "",
+		YAxisTitle:   "Total Emission",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Total Emission",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func AvgGasPrice() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	rows := []struct {
+		Day        time.Time `db:"time"`
+		BurnedFees float64   `db:"value"`
+	}{}
+
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'AVG_GASPRICE' ORDER BY time", ts)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(row.Day.UnixMilli()),
+			row.BurnedFees,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Gas Price (avg)",
+		Subtitle:     "The average gas price for non-EIP1559 transaction.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Gas Price [avg]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Gas Price (avg)",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func AvgGasUsedChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	rows := []struct {
+		Day        time.Time `db:"time"`
+		BurnedFees float64   `db:"value"`
+	}{}
+
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'AVG_GASUSED' ORDER BY time", ts)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(row.Day.UnixMilli()),
+			row.BurnedFees,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Gas Used (avg)",
+		Subtitle:     "The average amount of gas used per day.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Gas Used [avg]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Gas Used (avg)",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func TotalGasUsedChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	rows := []struct {
+		Day        time.Time `db:"time"`
+		BurnedFees float64   `db:"value"`
+	}{}
+
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'TOTAL_GASUSED' ORDER BY time", ts)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(row.Day.UnixMilli()),
+			row.BurnedFees,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Total Gas Used",
+		Subtitle:     "The total amout of daily gas used.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Total Gas Used [day]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Total Gas Used",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func AvgGasLimitChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	rows := []struct {
+		Day        time.Time `db:"time"`
+		BurnedFees float64   `db:"value"`
+	}{}
+
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'AVG_GASLIMIT' ORDER BY time", ts)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(row.Day.UnixMilli()),
+			row.BurnedFees,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Gas Used (avg)",
+		Subtitle:     "The average amount of gas used per day.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Gas Used [avg]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Gas Used (avg)",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func AvgBlockUtilChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	rows := []struct {
+		Day        time.Time `db:"time"`
+		BurnedFees float64   `db:"value"`
+	}{}
+
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'AVG_BLOCK_UTIL' ORDER BY time", ts)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(row.Day.UnixMilli()),
+			row.BurnedFees,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Gas Used (avg)",
+		Subtitle:     "The average amount of gas used per day.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Gas Used [avg]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Gas Used (avg)",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func MarketCapChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	rows := []struct {
+		Day        time.Time `db:"time"`
+		BurnedFees float64   `db:"value"`
+	}{}
+
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'MARKET_CAP' ORDER BY time", ts)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(row.Day.UnixMilli()),
+			row.BurnedFees,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Gas Used (avg)",
+		Subtitle:     "The average amount of gas used per day.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Gas Used [avg]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Gas Used (avg)",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func TxCountChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	rows := []struct {
+		Day        time.Time `db:"time"`
+		BurnedFees float64   `db:"value"`
+	}{}
+
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'TX_COUNT' ORDER BY time", ts)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(row.Day.UnixMilli()),
+			row.BurnedFees,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Gas Used (avg)",
+		Subtitle:     "The average amount of gas used per day.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Gas Used [avg]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Gas Used (avg)",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func AvgBlockSizeChartData() (*types.GenericChartData, error) {
+	return nil, fmt.Errorf("unimplemented")
+}
+
+func PowerConsumptionChartData() (*types.GenericChartData, error) {
+	return nil, fmt.Errorf("unimplemented")
+}
+
+func NewAccountsChartData() (*types.GenericChartData, error) {
+	return nil, fmt.Errorf("unimplemented")
 }
