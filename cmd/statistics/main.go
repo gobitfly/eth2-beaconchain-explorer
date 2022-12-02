@@ -25,7 +25,7 @@ type options struct {
 	statisticsChartToggle     bool
 }
 
-var opt options = options{}
+var opt *options
 
 func main() {
 	configPath := flag.String("config", "", "Path to the config file")
@@ -37,11 +37,12 @@ func main() {
 
 	flag.Parse()
 
-	opt = options{
+	opt = &options{
 		configPath:                *configPath,
 		statisticsDayToExport:     *statisticsDayToExport,
 		statisticsDaysToExport:    *statisticsDaysToExport,
-		statisticsValidatorToggle: *statisticsChartToggle,
+		statisticsChartToggle:     *statisticsChartToggle,
+		statisticsValidatorToggle: *statisticsValidatorToggle,
 		poolsDisabledFlag:         *poolsDisabledFlag,
 	}
 
