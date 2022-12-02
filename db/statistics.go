@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	itypes "github.com/gobitfly/eth-rewards/types"
-
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 )
@@ -427,6 +425,7 @@ func WriteChartSeriesForDay(day int64) error {
 	blocksChan := make(chan *types.Eth1Block, 360)
 	batchSize := int64(360)
 	go func(stream chan *types.Eth1Block) {
+		logger.Infof("querying blocks from %v to %v", firstBlock, lastBlock)
 		for b := int64(lastBlock) - 1; b > int64(firstBlock); b -= batchSize {
 			high := b
 			low := b - batchSize
@@ -434,7 +433,6 @@ func WriteChartSeriesForDay(day int64) error {
 				low = int64(firstBlock - 1)
 			}
 
-			logger.Infof("querying blocks from (incl): %v to (excl): %v", high, low)
 			err := BigtableClient.GetFullBlocksDescending(stream, uint64(high), uint64(low))
 			if err != nil {
 				logger.Errorf("error getting blocks descending high: %v low: %v err: %v", high, low, err)
@@ -470,6 +468,8 @@ func WriteChartSeriesForDay(day int64) error {
 	totalGasLimit := decimal.NewFromInt(0)
 	totalTips := decimal.NewFromInt(0)
 
+	// totalSize := decimal.NewFromInt(0)
+
 	// blockCount := len(blocks)
 
 	// missedBlockCount := (firstSlot - uint64(lastSlot)) - uint64(blockCount)
@@ -486,12 +486,14 @@ func WriteChartSeriesForDay(day int64) error {
 		totalGasLimit = totalGasLimit.Add(decimal.NewFromInt(int64(blk.GasLimit)))
 
 		if prevBlock != nil {
-			avgBlockTime = avgBlockTime.Add(decimal.NewFromInt(blk.Time.AsTime().UnixMicro() - prevBlock.Time.AsTime().UnixMicro())).Div(decimal.NewFromInt(2))
+			avgBlockTime = avgBlockTime.Add(decimal.NewFromInt(prevBlock.Time.AsTime().UnixMicro() - blk.Time.AsTime().UnixMicro())).Div(decimal.NewFromInt(2))
 		}
 
 		totalBaseBlockReward = totalBaseBlockReward.Add(decimal.NewFromBigInt(utils.Eth1BlockReward(blk.Number, blk.Difficulty), 0))
 
 		for _, tx := range blk.Transactions {
+			// for _, itx := range tx.Itx {
+			// }
 			// blk.Time
 			txCount += 1
 			maxFee := decimal.NewFromBigInt(new(big.Int).SetBytes(tx.MaxFeePerGas), 0)
@@ -499,8 +501,7 @@ func WriteChartSeriesForDay(day int64) error {
 			gasUsed := decimal.NewFromBigInt(new(big.Int).SetUint64(tx.GasUsed), 0)
 			gasPrice := decimal.NewFromBigInt(new(big.Int).SetBytes(tx.GasPrice), 0)
 
-			tipFee := decimal.NewFromInt(0)
-
+			var tipFee decimal.Decimal
 			var txFees decimal.Decimal
 			switch tx.Type {
 			case 0:
@@ -549,65 +550,35 @@ func WriteChartSeriesForDay(day int64) error {
 		prevBlock = blk
 	}
 
-	batchSizeIncome := int64(15)
-
-	totalConsensusRewards := decimal.NewFromInt(0)
-	for b := int64(lastEpoch) - 1; b > int64(firstEpoch); b -= batchSizeIncome {
-		total := &itypes.ValidatorEpochIncome{}
-		high := b
-		low := b - batchSizeIncome
-		if int64(firstBlock) > low {
-			low = int64(firstBlock - 1)
-		}
-
-		logger.Infof("querying rewards from (incl): %v to (excl): %v", high, low)
-		income, err := BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, uint64(high), int64(high)-int64(low))
-		if err != nil {
-			logger.WithError(err).Error("error getting validator income history")
-		}
-
-		for _, epochs := range income {
-			// logger.Infof("epochs: %+v", epochs)
-			for _, details := range epochs {
-				// logger.Infof("income: %+v", details)
-				total.AttestationHeadReward += details.AttestationHeadReward
-				total.AttestationSourceReward += details.AttestationSourceReward
-				total.AttestationSourcePenalty += details.AttestationSourcePenalty
-				total.AttestationTargetReward += details.AttestationTargetReward
-				total.AttestationTargetPenalty += details.AttestationTargetPenalty
-				total.FinalityDelayPenalty += details.FinalityDelayPenalty
-				total.ProposerSlashingInclusionReward += details.ProposerSlashingInclusionReward
-				total.ProposerAttestationInclusionReward += details.ProposerAttestationInclusionReward
-				total.ProposerSyncInclusionReward += details.ProposerSyncInclusionReward
-				total.SyncCommitteeReward += details.SyncCommitteeReward
-				total.SyncCommitteePenalty += details.SyncCommitteePenalty
-				total.SlashingReward += details.SlashingReward
-				total.SlashingPenalty += details.SlashingPenalty
-				// total.TxFeeRewardWei = utils.AddBigInts(total.TxFeeRewardWei, details.TxFeeRewardWei)
-			}
-		}
-		// rewards := decimal.NewFromBigInt(new(big.Int).SetBytes(total.TxFeeRewardWei), 0)
-		rewards := decimal.NewFromInt(0)
-
-		rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.AttestationHeadReward), 0))
-		rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.AttestationSourceReward), 0))
-		rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.AttestationTargetReward), 0))
-		rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.ProposerSlashingInclusionReward), 0))
-		rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.ProposerAttestationInclusionReward), 0))
-		rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.ProposerSyncInclusionReward), 0))
-		rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.SyncCommitteeReward), 0))
-		rewards = rewards.Add(decimal.NewFromBigInt(new(big.Int).SetUint64(total.SlashingReward), 0))
-
-		rewards = rewards.Sub(decimal.NewFromBigInt(new(big.Int).SetUint64(total.AttestationTargetPenalty), 0))
-		rewards = rewards.Sub(decimal.NewFromBigInt(new(big.Int).SetUint64(total.FinalityDelayPenalty), 0))
-		rewards = rewards.Sub(decimal.NewFromBigInt(new(big.Int).SetUint64(total.SyncCommitteePenalty), 0))
-		rewards = rewards.Sub(decimal.NewFromBigInt(new(big.Int).SetUint64(total.AttestationSourcePenalty), 0))
-		rewards = rewards.Sub(decimal.NewFromBigInt(new(big.Int).SetUint64(total.SlashingPenalty), 0))
-
-		totalConsensusRewards = totalConsensusRewards.Add(rewards)
+	logger.Infof("exporting consensus rewards from %v to %v", firstEpoch, lastEpoch)
+	historyFirst, err := BigtableClient.GetValidatorBalanceHistory(nil, firstEpoch+1, 1)
+	if err != nil {
+		return err
 	}
 
-	logger.Println("Exporting BURNED_FEES %v", totalBurned.String())
+	sumStartEpoch := decimal.NewFromInt(0)
+	for _, balances := range historyFirst {
+		for _, balance := range balances {
+			sumStartEpoch = sumStartEpoch.Add(decimal.NewFromInt(int64(balance.Balance)))
+		}
+	}
+
+	historyLast, err := BigtableClient.GetValidatorBalanceHistory(nil, uint64(lastEpoch+1), 1)
+	if err != nil {
+		return err
+	}
+
+	sumEndEpoch := decimal.NewFromInt(0)
+	for _, balances := range historyLast {
+		for _, balance := range balances {
+			sumEndEpoch = sumEndEpoch.Add(decimal.NewFromInt(int64(balance.Balance)))
+		}
+	}
+
+	totalConsensusRewards := sumEndEpoch.Sub(sumStartEpoch).Mul(decimal.NewFromInt(1000))
+	logger.Infof("consensus rewards: %v", totalConsensusRewards.String())
+
+	logger.Infof("Exporting BURNED_FEES %v", totalBurned.String())
 	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES ($1, 'BURNED_FEES', $2) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", dateTrunc, totalBurned.String())
 	if err != nil {
 		return fmt.Errorf("error calculating BURNED_FEES chart_series: %w", err)
@@ -624,7 +595,7 @@ func WriteChartSeriesForDay(day int64) error {
 		return fmt.Errorf("error calculating BLOCK_COUNT chart_series: %w", err)
 	}
 
-	logger.Infof("Exporting BLOCK_TIME_AVG %v", avgBlockTime.String())
+	logger.Infof("Exporting BLOCK_TIME_AVG %v", avgBlockTime.Abs().String())
 	err = SaveChartSeriesPoint(dateTrunc, "BLOCK_TIME_AVG", avgBlockTime.String())
 	if err != nil {
 		return fmt.Errorf("error calculating BLOCK_TIME_AVG chart_series: %w", err)
@@ -675,10 +646,12 @@ func WriteChartSeriesForDay(day int64) error {
 		}
 	}
 
-	logger.Infof("Exporting AVG_BLOCK_UTIL %v", totalGasUsed.Div(totalGasLimit))
-	err = SaveChartSeriesPoint(dateTrunc, "AVG_BLOCK_UTIL", totalGasUsed.Div(totalGasLimit))
-	if err != nil {
-		return fmt.Errorf("error calculating AVG_BLOCK_UTIL chart_series: %w", err)
+	if !totalGasLimit.IsZero() {
+		logger.Infof("Exporting AVG_BLOCK_UTIL %v", totalGasUsed.Div(totalGasLimit))
+		err = SaveChartSeriesPoint(dateTrunc, "AVG_BLOCK_UTIL", totalGasUsed.Div(totalGasLimit))
+		if err != nil {
+			return fmt.Errorf("error calculating AVG_BLOCK_UTIL chart_series: %w", err)
+		}
 	}
 
 	logger.Infof("Exporting MARKET_CAP %v", newEmission.Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
@@ -693,9 +666,9 @@ func WriteChartSeriesForDay(day int64) error {
 		return fmt.Errorf("error calculating TX_COUNT chart_series: %w", err)
 	}
 
-	// Not sure how this is currently possible
-	// logger.Infof("Exporting AVG_SIZE %v", avgBlockTime.String())
-	// err = SaveChartSeriesPoint(dateTrunc, "AVG_SIZE", avgBlockTime.String())
+	// Not sure how this is currently possible (where do we store the size, i think this is missing)
+	// logger.Infof("Exporting AVG_SIZE %v", totalSize.div)
+	// err = SaveChartSeriesPoint(dateTrunc, "AVG_SIZE", totalSize.div)
 	// if err != nil {
 	// 	return fmt.Errorf("error calculating AVG_SIZE chart_series: %w", err)
 	// }
