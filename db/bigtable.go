@@ -653,9 +653,9 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
 	res := make(map[uint64][]*types.ValidatorBalance, len(validators))
 
-	if len(validators) == 0 {
-		return res, nil
-	}
+	// if len(validators) == 0 {
+	// 	return res, nil
+	// }
 
 	columnFilters := make([]gcp_bigtable.Filter, 0, len(validators))
 	for _, validator := range validators {
@@ -1325,19 +1325,26 @@ func (bigtable *Bigtable) GetEpochIncomeHistory(epoch uint64) (*itypes.Validator
 	return total, nil
 }
 
+// GetValidatorIncomeDetailsHistory returns the validator income details, which have a garbage collection policy of one day.
 func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, startEpoch uint64, limit int64) (map[uint64]map[uint64]*itypes.ValidatorEpochIncome, error) {
-
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*40))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*180))
 	defer cancel()
 
+	endEpoch := startEpoch - uint64(limit)
+
+	endTime := utils.EpochToTime(endEpoch)
+
+	// if the end time + 25 hours is not after the current time the end epoch is older than 25 hours.
+	if !endTime.Add(time.Hour * 25).After(time.Now()) {
+		return nil, fmt.Errorf("error epoch range is outside of the garbage collection policy (1 day)")
+	}
+
 	rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch))
-	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
+	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch))
+	// logger.Infof("range: %v to %v", rangeStart, rangeEnd)
 	res := make(map[uint64]map[uint64]*itypes.ValidatorEpochIncome, len(validators))
 
 	valLen := len(validators)
-	// if valLen == 0 {
-	// 	return res, nil
-	// }
 
 	// read entire row if you require more than 1000 validators
 	var columnFilters []gcp_bigtable.Filter
@@ -1362,7 +1369,6 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 	if len(columnFilters) == 0 { // special case to retrieve data for all validators
 		filter = gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY)
 	}
-
 	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, rangeEnd), func(r gcp_bigtable.Row) bool {
 		for _, ri := range r[INCOME_DETAILS_COLUMN_FAMILY] {
 			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, INCOME_DETAILS_COLUMN_FAMILY+":"), 10, 64)
@@ -1370,7 +1376,6 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
 				return false
 			}
-
 			keySplit := strings.Split(r.Key(), ":")
 
 			epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
