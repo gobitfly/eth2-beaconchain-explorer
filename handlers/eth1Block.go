@@ -59,7 +59,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number))
-	eth1BlockPageData, err := GetExecutionBlockPageData(number)
+	eth1BlockPageData, err := GetExecutionBlockPageData(number, 10)
 	if err != nil {
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
@@ -117,13 +117,21 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetExecutionBlockPageData(number uint64) (*types.Eth1BlockPageData, error) {
+func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageData, error) {
 	block, err := db.BigtableClient.GetBlockFromBlocksTable(number)
 	if diffToHead := int64(services.LatestEth1BlockNumber()) - int64(number); err != nil && diffToHead < 0 && diffToHead >= -5 {
 		block, _, err = rpc.CurrentErigonClient.GetBlock(int64(number))
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	lenBlockTransactionsUnlimited := int(0)
+	if block != nil {
+		lenBlockTransactionsUnlimited = len(block.Transactions)
+		if limit > 0 && lenBlockTransactionsUnlimited > limit {
+			block.Transactions = block.Transactions[:limit]
+		}
 	}
 
 	// retrieve address names from bigtable
@@ -211,7 +219,7 @@ func GetExecutionBlockPageData(number uint64) (*types.Eth1BlockPageData, error) 
 		Number:        number,
 		PreviousBlock: number - 1,
 		NextBlock:     nextBlock,
-		TxCount:       uint64(len(block.Transactions)),
+		TxCount:       uint64(lenBlockTransactionsUnlimited),
 		UncleCount:    uint64(len(block.Uncles)),
 		Hash:          fmt.Sprintf("%#x", block.Hash),
 		ParentHash:    fmt.Sprintf("%#x", block.ParentHash),

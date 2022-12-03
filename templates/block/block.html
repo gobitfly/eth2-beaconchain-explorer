@@ -4,6 +4,264 @@
   <script type="text/javascript" src="/js/datatable_input.js"></script>
 
   <script>
+    window.onload = function () {
+      setupInfiniteScrollAttestations();
+      setupInfiniteScrollTransactions();
+    };
+
+    function getInfoElementAttestations (text, color) {
+      const att_card = document.createElement('div'); {
+        att_card.classList.add('card', 'my-2');
+        const att_card_body = document.createElement('div'); {
+          att_card_body.classList.add('card-body', 'px-0', 'py-1');
+          const att_row = document.createElement('div'); {
+            att_row.classList.add('row', 'border-bottom', 'p-1', 'mx-0');
+            const att_header = document.createElement('div'); {
+              att_header.classList.add('col-md-12', 'text-center');
+              const att_innerElement = document.createElement('b'); {
+                att_innerElement.style.color = color;
+                att_innerElement.innerHTML = text;
+              }
+              att_header.appendChild(att_innerElement);
+            }
+            att_row.appendChild(att_header);
+          }
+          att_card_body.appendChild(att_row);
+        }
+        att_card.appendChild(att_card_body);
+      }
+      return att_card;
+    }
+
+    function getAttestationElement (element) {
+      const att_card = document.createElement('div'); {
+        att_card.classList.add('card', 'my-2');
+        const att_card_body = document.createElement('div'); {
+          att_card_body.classList.add('card-body', 'px-0', 'py-1');
+          const att_row = document.createElement('div'); {
+            att_row.classList.add('row', 'border-bottom', 'p-1', 'mx-0');
+            const att_header = document.createElement('div'); {
+              att_header.classList.add('col-md-12', 'text-center');
+              const att_innerElement = document.createElement('b'); {
+                att_innerElement.innerHTML = 'Attestation ' + element.BlockIndex;
+              }
+              att_header.appendChild(att_innerElement);
+            }
+            att_row.appendChild(att_header);
+          }
+          att_card_body.appendChild(att_row);
+          const att_slot_row = document.createElement('div'); {
+            att_slot_row.classList.add('row', 'border-bottom', 'p-1', 'mx-0');
+            const att_slot_titleElement = document.createElement('div'); {
+              att_slot_titleElement.classList.add('col-md-2');
+              att_slot_titleElement.innerHTML = '<span data-toggle="tooltip" data-placement="top" title="Slot number to which the validator is attesting">Slot:</span>';
+            }
+            att_slot_row.appendChild(att_slot_titleElement);
+            const att_slot_innerElement = document.createElement('div'); {
+              att_slot_innerElement.classList.add('col-md-10');
+              att_slot_innerElement.innerHTML = '<a href="/slot/' + element.Slot + '">' + element.Slot + '</a>';
+            }
+            att_slot_row.appendChild(att_slot_innerElement);
+          }
+          att_card_body.appendChild(att_slot_row);
+          const att_committee_row = document.createElement('div'); {
+            att_committee_row.classList.add('row', 'border-bottom', 'p-1', 'mx-0');
+            const att_committee_titleElement = document.createElement('div'); {
+              att_committee_titleElement.classList.add('col-md-2');
+              att_committee_titleElement.innerHTML = '<span data-toggle="tooltip" data-placement="top" title="An identifier for a specific committee during a slot">Committee Index:</span>';
+            }
+            att_committee_row.appendChild(att_committee_titleElement);
+            const att_committee_innerElement = document.createElement('div'); {
+              att_committee_innerElement.classList.add('col-md-10');
+              att_committee_innerElement.innerHTML = element.CommitteeIndex;
+            }
+            att_committee_row.appendChild(att_committee_innerElement);
+          }
+          att_card_body.appendChild(att_committee_row);
+          const att_aggregationbits_row = document.createElement('div'); {
+            att_aggregationbits_row.classList.add('row', 'border-bottom', 'p-1', 'mx-0');
+            const att_aggregationbits_titleElement = document.createElement('div'); {
+              att_aggregationbits_titleElement.classList.add('col-md-2');
+              att_aggregationbits_titleElement.innerHTML = '<span data-toggle="tooltip" data-placement="top" title="Represents the aggregated attestation of all participating validators in this attestation">Aggregation Bits:</span>';
+            }
+            att_aggregationbits_row.appendChild(att_aggregationbits_titleElement);
+            const att_aggregationbits_innerElement = document.createElement('div'); {
+              att_aggregationbits_innerElement.classList.add('col-md-10');
+              att_aggregationbits_innerElement.innerHTML = element.AggregationBits;
+            }
+            att_aggregationbits_row.appendChild(att_aggregationbits_innerElement);
+          }
+          att_card_body.appendChild(att_aggregationbits_row);
+          const att_validator_row = document.createElement('div'); {
+            att_validator_row.classList.add('row', 'border-bottom', 'p-1', 'mx-0');
+            const att_validator_titleElement = document.createElement('div'); {
+              att_validator_titleElement.classList.add('col-md-2');
+              att_validator_titleElement.innerHTML = '<span data-toggle="tooltip" data-placement="top" title="Validators who have submitted their attestation and have been included by the block proposer">Validators:</span>';
+            }
+            att_validator_row.appendChild(att_validator_titleElement);
+            const att_validator_innerElement = document.createElement('div'); {
+              att_validator_innerElement.classList.add('col-md-10');
+              att_validator_innerElement.innerHTML = element.Validators;
+            }
+            att_validator_row.appendChild(att_validator_innerElement);
+          }
+          att_card_body.appendChild(att_validator_row);
+          const att_beaconblockroot_row = document.createElement('div'); {
+            att_beaconblockroot_row.classList.add('row', 'border-bottom', 'p-1', 'mx-0');
+            const att_beaconblockroot_titleElement = document.createElement('div'); {
+              att_beaconblockroot_titleElement.classList.add('col-md-2');
+              att_beaconblockroot_titleElement.innerHTML = '<span data-toggle="tooltip" data-placement="top" title="Points to the block to which validators are attesting">Beacon Block Root:</span>';
+            }
+            att_beaconblockroot_row.appendChild(att_beaconblockroot_titleElement);
+            const att_beaconblockroot_innerElement = document.createElement('div'); {
+              att_beaconblockroot_innerElement.classList.add('col-md-10', 'text-monospace', 'text-break');
+              att_beaconblockroot_innerElement.innerHTML = '<a href="/slot/' + element.BeaconBlockRoot + '">0x' + element.BeaconBlockRoot + '</a>';
+            }
+            att_beaconblockroot_row.appendChild(att_beaconblockroot_innerElement);
+          }
+          att_card_body.appendChild(att_beaconblockroot_row);
+          const att_sourceepoch_row = document.createElement('div'); {
+            att_sourceepoch_row.classList.add('row', 'border-bottom', 'p-1', 'mx-0');
+            const att_sourceepoch_titleElement = document.createElement('div'); {
+              att_sourceepoch_titleElement.classList.add('col-md-2');
+              att_sourceepoch_titleElement.innerHTML = '<span data-toggle="tooltip" data-placement="top" title="Points to the latest justified epoch">Source:</span>';
+            }
+            att_sourceepoch_row.appendChild(att_sourceepoch_titleElement);
+            const att_sourceepoch_innerElement = document.createElement('div'); {
+              att_sourceepoch_innerElement.classList.add('col-md-10');
+              att_sourceepoch_innerElement.innerHTML = 'Epoch <a href="/epoch/' + element.SourceEpoch + '">' + element.SourceEpoch + '</a> (<span class="text-monospace text-break"><a href="' + element.SourceRoot + '">0x' + element.SourceRoot + '</a>)</span>';
+            }
+            att_sourceepoch_row.appendChild(att_sourceepoch_innerElement);
+          }
+          att_card_body.appendChild(att_sourceepoch_row);
+          const att_targetepoch_row = document.createElement('div'); {
+            att_targetepoch_row.classList.add('row', 'border-bottom', 'p-1', 'mx-0');
+            const att_targetepoch_titleElement = document.createElement('div'); {
+              att_targetepoch_titleElement.classList.add('col-md-2');
+              att_targetepoch_titleElement.innerHTML = '<span data-toggle="tooltip" data-placement="top" title="Points to the latest epoch boundary">Target:</span>';
+            }
+            att_targetepoch_row.appendChild(att_targetepoch_titleElement);
+            const att_targetepoch_innerElement = document.createElement('div'); {
+              att_targetepoch_innerElement.classList.add('col-md-10');
+              att_targetepoch_innerElement.innerHTML = 'Epoch <a href="/epoch/' + element.TargetEpoch + '">' + element.TargetEpoch + '</a> (<span class="text-monospace text-break"><a href="' + element.TargetRoot + '">0x' + element.TargetRoot + '</a>)</span>';
+            }
+            att_targetepoch_row.appendChild(att_targetepoch_innerElement);
+          }
+          att_card_body.appendChild(att_targetepoch_row);
+          const att_signature_row = document.createElement('div'); {
+            att_signature_row.classList.add('row', 'border-bottom', 'p-1', 'mx-0');
+            const att_signature_titleElement = document.createElement('div'); {
+              att_signature_titleElement.classList.add('col-md-2');
+              att_signature_titleElement.innerHTML = 'Signature:';
+            }
+            att_signature_row.appendChild(att_signature_titleElement);
+            const att_signature_innerElement = document.createElement('div'); {
+              att_signature_innerElement.classList.add('col-md-10', 'text-monospace', 'text-break');
+              att_signature_innerElement.innerHTML = '0x' + element.Signature;
+            }
+            att_signature_row.appendChild(att_signature_innerElement);
+          }
+          att_card_body.appendChild(att_signature_row);
+        }
+        att_card.appendChild(att_card_body);
+      }
+      return att_card;
+    }
+
+    async function setupInfiniteScrollAttestations() {
+      const infLoading = document.getElementById('attestations');
+      if(infLoading) {
+        try {
+          const res = await fetch(`/slot/${encodeURI({{.Slot}})}/attestations`);
+          const data = await res.json();
+
+          for (let i = 1; i < data.length; ++i) {
+            infLoading.appendChild(getAttestationElement(data[i]));
+          }
+        } catch (err) {
+          console.error('error getting lazy attestations: ', err)
+          infLoading.appendChild(getInfoElementAttestations('Error loading attestations...', 'red'));
+        }
+      }
+    }
+
+    function getInfoElementTransactions (text, color) {
+      const txn_tr = document.createElement('tr'); {
+        txn_tr.classList.add('border-bottom');
+        const txn_td = document.createElement('td'); {
+          txn_td.classList.add('border-0');
+          txn_td.colSpan = '7';
+          txn_td.style.color = color;
+          txn_td.style.textAlign = 'center';
+          txn_td.style.fontWeight = 'bold';
+          txn_td.innerHTML = text;
+        }
+        txn_tr.appendChild(txn_td);
+      }
+      return txn_tr;
+    }
+
+    function getTransactionsElement(element) {
+      const txn_tr = document.createElement('tr'); {
+        txn_tr.classList.add('border-bottom');
+        const txn_td_HashFormatted = document.createElement('td'); {
+          txn_td_HashFormatted.classList.add('border-0');
+          txn_td_HashFormatted.innerHTML = element.HashFormatted;
+        }
+        txn_tr.appendChild(txn_td_HashFormatted);
+        const txn_td_Method = document.createElement('td'); {
+          txn_td_Method.classList.add('border-0');
+          txn_td_Method.innerHTML = element.Method;
+        }
+        txn_tr.appendChild(txn_td_Method);
+        const txn_td_FromFormatted = document.createElement('td'); {
+          txn_td_FromFormatted.classList.add('border-0');
+          txn_td_FromFormatted.innerHTML = element.FromFormatted;
+        }
+        txn_tr.appendChild(txn_td_FromFormatted);
+        const txn_td_ToFormatted = document.createElement('td'); {
+          txn_td_ToFormatted.classList.add('border-0');
+          txn_td_ToFormatted.innerHTML = element.ToFormatted;
+        }
+        txn_tr.appendChild(txn_td_ToFormatted);
+        const txn_td_Value = document.createElement('td'); {
+          txn_td_Value.classList.add('border-0');
+          txn_td_Value.innerHTML = element.Value;
+        }
+        txn_tr.appendChild(txn_td_Value);
+        const txn_td_Fee = document.createElement('td'); {
+          txn_td_Fee.classList.add('border-0');
+          txn_td_Fee.innerHTML = element.Fee;
+        }
+        txn_tr.appendChild(txn_td_Fee);
+        const txn_td_GasPrice = document.createElement('td'); {
+          txn_td_GasPrice.classList.add('border-0');
+          txn_td_GasPrice.innerHTML = element.GasPrice;
+        }
+        txn_tr.appendChild(txn_td_GasPrice);
+      }
+      return txn_tr;
+    }
+
+    async function setupInfiniteScrollTransactions() {
+      const infLoading = document.getElementById('transactions_table');
+      if(infLoading) {
+        try {
+          const res = await fetch(`/block/${encodeURI({{.ExecutionData.Number}})}/transactions`);
+          const data = await res.json();
+
+          console.log('got data: ', data)
+
+          for (let i = 10; i < data.length; ++i) {
+            infLoading.appendChild(getTransactionsElement(data[i]));
+          }
+        } catch (err) {
+          console.error('error getting lazy attestations: ', err)
+          infLoading.appendChild(getInfoElementTransactions('Error loading transactions...', 'red'));
+        }
+      }
+    }
+
     $(document).ready(function () {
       let slotNumber = {{ .Slot }}
       var depositsTblOpts = {
