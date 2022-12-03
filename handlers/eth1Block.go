@@ -129,8 +129,12 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 	lenBlockTransactionsUnlimited := int(0)
 	if block != nil {
 		lenBlockTransactionsUnlimited = len(block.Transactions)
-		if limit > 0 && lenBlockTransactionsUnlimited > limit {
-			block.Transactions = block.Transactions[:limit]
+		if limit > 0 {
+			if lenBlockTransactionsUnlimited > limit {
+				block.Transactions = block.Transactions[:limit]
+			} else {
+				block.Transactions = block.Transactions[:0]
+			}
 		}
 	}
 
