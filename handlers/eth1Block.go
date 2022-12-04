@@ -126,18 +126,6 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 		return nil, err
 	}
 
-	lenBlockTransactionsUnlimited := int(0)
-	if block != nil {
-		lenBlockTransactionsUnlimited = len(block.Transactions)
-		if limit > 0 {
-			if lenBlockTransactionsUnlimited > limit {
-				block.Transactions = block.Transactions[:limit]
-			} else {
-				block.Transactions = block.Transactions[:0]
-			}
-		}
-	}
-
 	// retrieve address names from bigtable
 	names := make(map[string]string)
 	names[string(block.Coinbase)] = ""
@@ -213,6 +201,14 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 		})
 	}
 
+	if limit > 0 {
+		if len(txs) > limit {
+			txs = txs[:limit]
+		} else {
+			txs = txs[:0]
+		}
+	}
+
 	burnedEth := new(big.Int).Mul(new(big.Int).SetBytes(block.BaseFee), big.NewInt(int64(block.GasUsed)))
 	blockReward.Add(blockReward, txFees).Add(blockReward, uncleInclusionRewards).Sub(blockReward, burnedEth)
 	nextBlock := number + 1
@@ -223,7 +219,7 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 		Number:        number,
 		PreviousBlock: number - 1,
 		NextBlock:     nextBlock,
-		TxCount:       uint64(lenBlockTransactionsUnlimited),
+		TxCount:       uint64(len(block.Transactions)),
 		UncleCount:    uint64(len(block.Uncles)),
 		Hash:          fmt.Sprintf("%#x", block.Hash),
 		ParentHash:    fmt.Sprintf("%#x", block.ParentHash),
