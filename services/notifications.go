@@ -413,6 +413,26 @@ func collectUserDbNotifications() (map[uint64]map[types.EventName][]types.Notifi
 func queueNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
 	subByEpoch := map[uint64][]uint64{}
 
+	// prevent multiple events being sent with the same subscription id
+	for user, notifications := range notificationsByUserID {
+		for eventType, events := range notifications {
+			filteredEvents := make([]types.Notification, 0)
+
+			for _, ev := range events {
+				isDuplicate := false
+				for _, fe := range filteredEvents {
+					if fe.GetSubscriptionID() == ev.GetSubscriptionID() {
+						isDuplicate = true
+					}
+				}
+				if !isDuplicate {
+					filteredEvents = append(filteredEvents, ev)
+				}
+			}
+			notificationsByUserID[user][eventType] = filteredEvents
+		}
+	}
+
 	err := queueEmailNotifications(notificationsByUserID, useDB)
 	if err != nil {
 		logger.WithError(err).Error("error queuing email notifications")
