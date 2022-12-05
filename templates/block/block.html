@@ -4,10 +4,31 @@
   <script type="text/javascript" src="/js/datatable_input.js"></script>
 
   <script>
-    window.onload = function () {
-      setupInfiniteScrollAttestations();
-      setupInfiniteScrollTransactions();
-    };
+    {
+      var attestations_tab_loaded = false
+      let atab = $('#attestations-tab')
+      if(atab.length > 0) {
+        atab.on('shown.bs.tab', function (event) { if(!attestations_tab_loaded) { setupInfiniteScrollAttestations(); }; attestations_tab_loaded = true; });
+      } else {
+        console.error('error getting #attestations-tab')
+        const att = document.getElementById('attestations');
+        if(att) {
+          att.appendChild(getInfoElementAttestations('Error loading attestations...', 'red'));
+        }
+      }
+
+      var transactions_tab_loaded = false
+      let ttab = $('#transactions-tab')
+      if(ttab.length > 0) {
+        ttab.on('shown.bs.tab', function (event) { if(!transactions_tab_loaded) { setupInfiniteScrollTransactions(); }; transactions_tab_loaded = true; });
+      } else {
+        console.error('error getting #transactions-tab')
+        const att = document.getElementById('transactions_table');
+        if(att) {
+          att.appendChild(getInfoElementTransactions('Error loading attestations...', 'red'));
+        }
+      }
+    }
 
     function getInfoElementAttestations (text, color) {
       const att_card = document.createElement('div'); {
