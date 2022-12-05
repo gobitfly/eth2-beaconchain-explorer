@@ -1349,6 +1349,13 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 
 	logger.Infof("updating validator activation epoch balance completed, took %v", time.Since(s))
 
+	s = time.Now()
+	_, err = tx.Exec("ANALYZE (SKIP_LOCKED) validators;")
+	if err != nil {
+		return err
+	}
+	logger.Infof("analyze of validators table completed, took %v", time.Since(s))
+
 	return nil
 }
 
