@@ -626,8 +626,8 @@ func WriteChartSeriesForDay(day int64) error {
 	}
 
 	if txCount > 0 {
-		logger.Infof("Exporting AVG_GASUSED %v", totalGasUsed.Div(decimal.NewFromInt(txCount)).String())
-		err = SaveChartSeriesPoint(dateTrunc, "AVG_GASUSED", totalGasUsed.Div(decimal.NewFromInt(txCount)).String())
+		logger.Infof("Exporting AVG_GASUSED %v", totalGasUsed.Div(decimal.NewFromInt(blockCount)).String())
+		err = SaveChartSeriesPoint(dateTrunc, "AVG_GASUSED", totalGasUsed.Div(decimal.NewFromInt(blockCount)).String())
 		if err != nil {
 			return fmt.Errorf("error calculating AVG_GASUSED chart_series: %w", err)
 		}

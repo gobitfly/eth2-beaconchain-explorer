@@ -6,7 +6,6 @@ import (
 	"eth2-exporter/types"
 	"fmt"
 	"net/http"
-	"reflect"
 
 	"github.com/gorilla/mux"
 )
@@ -36,21 +35,21 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// only display the most recent N entries as a preview
-	for i, ch := range *chartsPageData {
-		if ch != nil && ch.Data != nil {
-			for j, series := range ch.Data.Series {
-				switch series.Data.(type) {
-				case []interface{}:
-					l := len(series.Data.([]interface{}))
-					if l > CHART_PREVIEW_POINTS*2 {
-						(*chartsPageData)[i].Data.Series[j].Data = series.Data.([]interface{})[l-CHART_PREVIEW_POINTS:]
-					}
-				default:
-					logger.Infof("unknown type: %v for chart: %v", reflect.TypeOf(series.Data), ch.Data.Title)
-				}
-			}
-		}
-	}
+	// for i, ch := range *chartsPageData {
+	// 	if ch != nil && ch.Data != nil {
+	// 		for j, series := range ch.Data.Series {
+	// 			switch series.Data.(type) {
+	// 			case []interface{}:
+	// 				l := len(series.Data.([]interface{}))
+	// 				if l > CHART_PREVIEW_POINTS*2 {
+	// 					(*chartsPageData)[i].Data.Series[j].Data = series.Data.([]interface{})[l-CHART_PREVIEW_POINTS:]
+	// 				}
+	// 			default:
+	// 				logger.Infof("unknown type: %v for chart: %v", reflect.TypeOf(series.Data), ch.Data.Title)
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	data.Data = chartsPageData
 
