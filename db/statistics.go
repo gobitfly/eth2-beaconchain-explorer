@@ -574,8 +574,8 @@ func WriteChartSeriesForDay(day int64) error {
 			sumEndEpoch = sumEndEpoch.Add(decimal.NewFromInt(int64(balance.Balance)))
 		}
 	}
-
-	totalConsensusRewards := sumEndEpoch.Sub(sumStartEpoch).Mul(decimal.NewFromInt(1000))
+	// consensus rewards are in Gwei
+	totalConsensusRewards := sumEndEpoch.Sub(sumStartEpoch)
 	logger.Infof("consensus rewards: %v", totalConsensusRewards.String())
 
 	logger.Infof("Exporting BURNED_FEES %v", totalBurned.String())
@@ -595,13 +595,14 @@ func WriteChartSeriesForDay(day int64) error {
 		return fmt.Errorf("error calculating BLOCK_COUNT chart_series: %w", err)
 	}
 
-	logger.Infof("Exporting BLOCK_TIME_AVG %v", avgBlockTime.Abs().String())
-	err = SaveChartSeriesPoint(dateTrunc, "BLOCK_TIME_AVG", avgBlockTime.String())
+	// convert microseconds to seconds
+	logger.Infof("Exporting BLOCK_TIME_AVG %v", avgBlockTime.Div(decimal.NewFromInt(1e6)).Abs().String())
+	err = SaveChartSeriesPoint(dateTrunc, "BLOCK_TIME_AVG", avgBlockTime.Div(decimal.NewFromInt(1e6)).String())
 	if err != nil {
 		return fmt.Errorf("error calculating BLOCK_TIME_AVG chart_series: %w", err)
 	}
-
-	emission := (totalBaseBlockReward.Add(totalConsensusRewards).Add(totalTips)).Sub(totalBurned)
+	// convert consensus rewards to gwei
+	emission := (totalBaseBlockReward.Add(totalConsensusRewards.Mul(decimal.NewFromInt(1000000000))).Add(totalTips)).Sub(totalBurned)
 	logger.Infof("Exporting TOTAL_EMISSION %v day emission", emission)
 
 	var lastEmission float64
@@ -647,15 +648,15 @@ func WriteChartSeriesForDay(day int64) error {
 	}
 
 	if !totalGasLimit.IsZero() {
-		logger.Infof("Exporting AVG_BLOCK_UTIL %v", totalGasUsed.Div(totalGasLimit))
-		err = SaveChartSeriesPoint(dateTrunc, "AVG_BLOCK_UTIL", totalGasUsed.Div(totalGasLimit))
+		logger.Infof("Exporting AVG_BLOCK_UTIL %v", totalGasUsed.Div(totalGasLimit).Mul(decimal.NewFromInt(100)))
+		err = SaveChartSeriesPoint(dateTrunc, "AVG_BLOCK_UTIL", totalGasUsed.Div(totalGasLimit).Mul(decimal.NewFromInt(100)))
 		if err != nil {
 			return fmt.Errorf("error calculating AVG_BLOCK_UTIL chart_series: %w", err)
 		}
 	}
 
-	logger.Infof("Exporting MARKET_CAP %v", newEmission.Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
-	err = SaveChartSeriesPoint(dateTrunc, "MARKET_CAP", newEmission.Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
+	logger.Infof("Exporting MARKET_CAP: %v", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(72009990.50)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
+	err = SaveChartSeriesPoint(dateTrunc, "MARKET_CAP", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(72009990.50)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
 	if err != nil {
 		return fmt.Errorf("error calculating MARKET_CAP chart_series: %w", err)
 	}
