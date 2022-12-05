@@ -234,7 +234,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	var err error
 	var dbIsCoherent bool
 
-	err = db.ReaderDb.Get(&dbIsCoherent, `
+	err = db.WriterDb.Get(&dbIsCoherent, `
 		select 
 			not (array[false] && array_agg(is_coherent)) as is_coherent
 		from (
@@ -1434,8 +1434,13 @@ func (n *validatorProposalNotification) GetInfoMarkdown() string {
 func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
 	var latestExportedSlot uint64
 
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		logger.Infof("error starting db tx: %v", err)
+		return err
+	}
 	// we use the latest exported epoch because that's what the lastattestationslot column is based upon
-	err := db.ReaderDb.Get(&latestExportedSlot, `SELECT COALESCE(MAX(lastattestationslot), 0) FROM validators`)
+	err = tx.Get(&latestExportedSlot, `SELECT COALESCE(MAX(lastattestationslot), 0) FROM validators`)
 	if err != nil {
 		logger.Infof("failed to get last exported epoch: %v", err)
 	}
@@ -1454,6 +1459,9 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 
 	batchSize := 5000
 	dataLen := len(pubkeys)
+	totalOfflineValidators := 0
+	totalOnlineValidators := 0
+
 	for i := 0; i < dataLen; i += batchSize {
 		var batch [][]byte
 		start := i
@@ -1472,7 +1480,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 			LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`
 			Pubkey              []byte        `db:"pubkey"`
 		}
-		err = db.ReaderDb.Select(&dataArr, `select validatorindex, pubkey, lastattestationslot from validators where pubkey = ANY($1) order by validatorindex`, pq.ByteaArray(batch))
+		err = tx.Select(&dataArr, `select validatorindex, pubkey, lastattestationslot from validators where pubkey = ANY($1) order by validatorindex`, pq.ByteaArray(batch))
 		if err != nil {
 			return fmt.Errorf("failed to query potenitally offline validators: %v", err)
 		}
@@ -1516,6 +1524,11 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 						InternalState:  fmt.Sprint(lastSeenEpoch),
 						EventFilter:    hex.EncodeToString(v.Pubkey),
 					}
+					totalOfflineValidators++
+
+					if totalOfflineValidators > 1000 {
+						logger.Fatalf("retrieved more than 1000 offline validators notifications: %v, exiting", totalOfflineValidators)
+					}
 
 				} else {
 					if sub.State.String == "" || sub.State.String == "-" {
@@ -1542,6 +1555,11 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 						EpochsOffline:  epochsSinceOffline,
 						InternalState:  "-",
 						EventFilter:    hex.EncodeToString(v.Pubkey),
+					}
+					totalOnlineValidators++
+
+					if totalOnlineValidators > 1000 {
+						logger.Fatalf("retrieved more than 1000 online validators notifications: %v, exiting", totalOfflineValidators)
 					}
 				}
 				if _, exists := notificationsByUserID[*sub.UserID]; !exists {
@@ -1614,7 +1632,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 			Pubkey         []byte
 		}
 		var indexPubkeyArr []*indexpubkey
-		err := db.ReaderDb.Select(&indexPubkeyArr, "SELECT validatorindex, pubkey FROM validators WHERE pubkey = ANY($1)", pq.ByteaArray(keys))
+		err := db.WriterDb.Select(&indexPubkeyArr, "SELECT validatorindex, pubkey FROM validators WHERE pubkey = ANY($1)", pq.ByteaArray(keys))
 		if err != nil {
 			return err
 		}
