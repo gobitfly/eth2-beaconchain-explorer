@@ -2,6 +2,7 @@
 cmd/playground
 cmd/monitor
 cmd/explorer/explorer
+cmd/explorer/__debug_bin
 modd.conf
 bin/
 docker/
