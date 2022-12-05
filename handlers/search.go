@@ -210,14 +210,19 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
+
+		indexNumeric, errParse := strconv.ParseInt(search, 10, 64)
+		if errParse != nil {
+			indexNumeric = -1
+		}
 		err = db.ReaderDb.Select(result, `
 			SELECT validatorindex AS index, pubkeyhex AS pubkey
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			WHERE CAST(validatorindex AS text) LIKE $1
-				OR pubkeyhex LIKE LOWER($1)
-				OR LOWER(validator_names.name) LIKE LOWER($2)
-			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
+			WHERE validatorindex = $1
+				OR pubkeyhex LIKE LOWER($2)
+				OR LOWER(validator_names.name) LIKE LOWER($3)
+			ORDER BY index LIMIT 10`, indexNumeric, search+"%", "%"+search+"%")
 	case "indexed_validators_by_eth1_addresses":
 		if len(search) <= 1 {
 			break
