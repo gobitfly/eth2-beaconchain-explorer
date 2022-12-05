@@ -266,7 +266,7 @@ func collectNotifications() (map[uint64]map[types.EventName][]types.Notification
 	}
 	if !dbIsCoherent {
 		logger.Errorf("epochs coherence check failed, aborting.")
-		return nil, fmt.Errorf("epochs coherence check failed, aborting.")
+		return nil, fmt.Errorf("epochs coherence check failed, aborting")
 	}
 
 	// if utils.Config.Notifications.ValidatorBalanceDecreasedNotificationsEnabled {
