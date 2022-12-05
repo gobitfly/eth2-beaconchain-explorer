@@ -294,7 +294,8 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	// Validator Is Offline (missed attestations v2)
 	err = collectOfflineValidatorNotifications(notificationsByUserID, types.ValidatorIsOfflineEventName)
 	if err != nil {
-		logger.Errorf("error collecting %v notifications: %v", types.ValidatorIsOfflineEventName, err)
+		// TODO: better handling of errounous validator offline notification collection
+		logger.Fatalf("error collecting %v notifications: %v", types.ValidatorIsOfflineEventName, err)
 		metrics.Errors.WithLabelValues(string(types.ValidatorIsOfflineEventName)).Inc()
 	}
 	logger.Infof("collecting offline validators took: %v\n", time.Since(start))
@@ -1526,10 +1527,6 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 					}
 					totalOfflineValidators++
 
-					if totalOfflineValidators > 1000 {
-						logger.Fatalf("retrieved more than 1000 offline validators notifications: %v, exiting", totalOfflineValidators)
-					}
-
 				} else {
 					if sub.State.String == "" || sub.State.String == "-" {
 						continue
@@ -1557,10 +1554,6 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 						EventFilter:    hex.EncodeToString(v.Pubkey),
 					}
 					totalOnlineValidators++
-
-					if totalOnlineValidators > 1000 {
-						logger.Fatalf("retrieved more than 1000 online validators notifications: %v, exiting", totalOfflineValidators)
-					}
 				}
 				if _, exists := notificationsByUserID[*sub.UserID]; !exists {
 					notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
@@ -1583,6 +1576,15 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 			}
 		}
 	}
+
+	if totalOfflineValidators > 1000 {
+		return fmt.Errorf("retrieved more than 1000 offline validators notifications: %v, exiting", totalOfflineValidators)
+	}
+
+	if totalOnlineValidators > 1000 {
+		return fmt.Errorf("retrieved more than 1000 online validators notifications: %v, exiting", totalOfflineValidators)
+	}
+
 	return nil
 }
 
