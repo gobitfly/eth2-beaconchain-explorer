@@ -33,27 +33,28 @@ var ChartHandlers = map[string]chartHandler{
 	// "validator_income":               {7, averageDailyValidatorIncomeChartData},
 	// "staking_rewards":                {8, stakingRewardsChartData},
 
-	"stake_effectiveness":                {9, stakeEffectivenessChartData},
-	"balance_distribution":               {10, balanceDistributionChartData},
-	"effective_balance_distribution":     {11, effectiveBalanceDistributionChartData},
-	"performance_distribution_365d":      {12, performanceDistribution365dChartData},
-	"deposits":                           {13, depositsChartData},
-	"graffiti_wordcloud":                 {14, graffitiCloudChartData},
-	"pools_distribution":                 {15, poolsDistributionChartData},
-	"historic_pool_performance":          {16, historicPoolPerformanceData},
-	"execution_burned_fees":              {20, BurnedFeesChartData},
-	"non_failed_tx_gas_usage_chart_data": {21, NonFailedTxGasUsageChartData},
-	"block_count_chart_data":             {22, BlockCountChartData},
-	"block_time_avg_chart_data":          {23, BlockTimeAvgChartData},
-	"total_emission_chart_data":          {24, TotalEmissionChartData},
-	"avg_gas_price":                      {25, AvgGasPrice},
-	"avg_gas_used_chart_data":            {26, AvgGasUsedChartData},
-	"total_gas_used_chart_data":          {27, TotalGasUsedChartData},
-	"avg_gas_limit_chart_data":           {28, AvgGasLimitChartData},
-	"avg_block_util_chart_data":          {29, AvgBlockUtilChartData},
-	"market_cap_chart_data":              {30, MarketCapChartData},
-	"tx_count_chart_data":                {31, TxCountChartData},
-	"avg_block_size_chart_data":          {32, AvgBlockSizeChartData},
+	"stake_effectiveness":            {9, stakeEffectivenessChartData},
+	"balance_distribution":           {10, balanceDistributionChartData},
+	"effective_balance_distribution": {11, effectiveBalanceDistributionChartData},
+	"performance_distribution_365d":  {12, performanceDistribution365dChartData},
+	"deposits":                       {13, depositsChartData},
+	"graffiti_wordcloud":             {14, graffitiCloudChartData},
+	"pools_distribution":             {15, poolsDistributionChartData},
+	"historic_pool_performance":      {16, historicPoolPerformanceData},
+
+	// execution charts start with 20+
+
+	"avg_gas_used_chart_data": {22, AvgGasUsedChartData},
+	"execution_burned_fees":   {23, BurnedFeesChartData},
+	"block_gas_used":          {25, TotalGasUsedChartData},
+	// "non_failed_tx_gas_usage_chart_data": {21, NonFailedTxGasUsageChartData},
+	"block_count_chart_data":    {26, BlockCountChartData},
+	"block_time_avg_chart_data": {27, BlockTimeAvgChartData},
+	// "avg_gas_price":                      {25, AvgGasPrice},
+	"avg_gas_limit_chart_data":  {28, AvgGasLimitChartData},
+	"avg_block_util_chart_data": {29, AvgBlockUtilChartData},
+	"tx_count_chart_data":       {31, TxCountChartData},
+	// "avg_block_size_chart_data":          {32, AvgBlockSizeChartData},
 }
 
 // LatestChartsPageData returns the latest chart page data
@@ -120,6 +121,12 @@ func getChartsPageData() ([]*types.ChartsPageDataChart, error) {
 		Path  string
 		Data  *types.GenericChartData
 		Error error
+	}
+
+	// add charts if it is mainnet
+	if utils.Config.Chain.Config.DepositChainID == 1 {
+		ChartHandlers["total_supply"] = chartHandler{20, TotalEmissionChartData}
+		ChartHandlers["market_cap_chart_data"] = chartHandler{21, MarketCapChartData}
 	}
 
 	wg := sync.WaitGroup{}
@@ -1703,7 +1710,7 @@ func BurnedFeesChartData() (*types.GenericChartData, error) {
 	}
 	ts := utils.EpochToTime(epoch)
 
-	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'BURNED_FEES' ORDER BY time", ts)
+	err := db.ReaderDb.Select(&rows, "SELECT time, Round(value / 1e18, 2) as value FROM chart_series WHERE time < $1 and indicator = 'BURNED_FEES' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
@@ -1719,11 +1726,11 @@ func BurnedFeesChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Burned Fees",
-		Subtitle:     "Burned Fees tracks how many Ether have been burned since EIP1559 was introduced.",
+		Subtitle:     "Evolution of the total number of Ether burned with EIP 1559",
 		XAxisTitle:   "",
 		YAxisTitle:   "Burned Fees [ETH]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "area",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Burned Fees",
@@ -1751,7 +1758,7 @@ func NonFailedTxGasUsageChartData() (*types.GenericChartData, error) {
 	}
 	ts := utils.EpochToTime(epoch)
 
-	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'NON_FAILED_TX_GAS_USAGE' ORDER BY time", ts)
+	err := db.ReaderDb.Select(&rows, "SELECT time, ROUND(value, 0) as value FROM chart_series WHERE time < $1 and indicator = 'NON_FAILED_TX_GAS_USAGE' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
@@ -1766,12 +1773,13 @@ func NonFailedTxGasUsageChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Gas Usage (Successful Tx)",
+		// IsNormalChart: true,
+		Title:        "Gas Usage - Successful Tx",
 		Subtitle:     "Gas usage of successful transactions that are not reverted.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Gas Usage [Gas]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "area",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Gas Usage",
@@ -1789,8 +1797,8 @@ func BlockCountChartData() (*types.GenericChartData, error) {
 	}
 
 	rows := []struct {
-		Day        time.Time `db:"time"`
-		BurnedFees float64   `db:"value"`
+		Day   time.Time `db:"time"`
+		Value float64   `db:"value"`
 	}{}
 
 	epoch := LatestEpoch()
@@ -1799,7 +1807,7 @@ func BlockCountChartData() (*types.GenericChartData, error) {
 	}
 	ts := utils.EpochToTime(epoch)
 
-	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'BLOCK_COUNT' ORDER BY time", ts)
+	err := db.ReaderDb.Select(&rows, "SELECT time, ROUND(value, 0) as value FROM chart_series WHERE time < $1 and indicator = 'BLOCK_COUNT' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
@@ -1809,17 +1817,28 @@ func BlockCountChartData() (*types.GenericChartData, error) {
 	for _, row := range rows {
 		seriesData = append(seriesData, []float64{
 			float64(row.Day.UnixMilli()),
-			row.BurnedFees,
+			row.Value,
 		})
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Block Count",
-		Subtitle:     "Number of blocks proposed during the last 24 hours.",
+		Title:        "Daily Block Count",
+		Subtitle:     "Number of blocks produced (daily)",
 		XAxisTitle:   "",
-		YAxisTitle:   "Block Count [day]",
+		YAxisTitle:   "Block Count [#]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "area",
+		TooltipFormatter: `
+		function (tooltip) {
+			this.point.y = Math.round(this.point.y)
+			var orig = tooltip.defaultFormatter.call(this, tooltip)
+			var epoch = timeToEpoch(this.x)
+			if (epoch > 0) {
+				orig[0] = orig[0] + '<span style="font-size:10px">Epoch ' + epoch + '</span>'
+			}
+			return orig
+		}
+		`,
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Block Count",
@@ -1837,8 +1856,8 @@ func BlockTimeAvgChartData() (*types.GenericChartData, error) {
 	}
 
 	rows := []struct {
-		Day        time.Time `db:"time"`
-		BurnedFees float64   `db:"value"`
+		Day   time.Time `db:"time"`
+		Value float64   `db:"value"`
 	}{}
 
 	epoch := LatestEpoch()
@@ -1847,7 +1866,7 @@ func BlockTimeAvgChartData() (*types.GenericChartData, error) {
 	}
 	ts := utils.EpochToTime(epoch)
 
-	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'BLOCK_TIME_AVG' ORDER BY time", ts)
+	err := db.ReaderDb.Select(&rows, "SELECT time, ROUND(value, 2) as value FROM chart_series WHERE time < $1 and indicator = 'BLOCK_TIME_AVG' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
@@ -1857,7 +1876,7 @@ func BlockTimeAvgChartData() (*types.GenericChartData, error) {
 	for _, row := range rows {
 		seriesData = append(seriesData, []float64{
 			float64(row.Day.UnixMilli()),
-			row.BurnedFees,
+			row.Value,
 		})
 	}
 
@@ -1865,12 +1884,23 @@ func BlockTimeAvgChartData() (*types.GenericChartData, error) {
 		Title:        "Block Time (Avg)",
 		Subtitle:     "Average time between blocks over the last 24 hours",
 		XAxisTitle:   "",
-		YAxisTitle:   "Block Time [Avg(day)]",
+		YAxisTitle:   "Block Time [seconds]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "area",
+		TooltipFormatter: `
+		function (tooltip) {
+			this.point.y = Math.round(this.point.y)
+			var orig = tooltip.defaultFormatter.call(this, tooltip)
+			var epoch = timeToEpoch(this.x)
+			if (epoch > 0) {
+				orig[0] = orig[0] + '<span style="font-size:10px">Epoch ' + epoch + '</span>'
+			}
+			return orig
+		}
+		`,
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Block Time (Avg)",
+				Name: "Block Time (s)",
 				Data: seriesData,
 			},
 		},
@@ -1885,8 +1915,8 @@ func TotalEmissionChartData() (*types.GenericChartData, error) {
 	}
 
 	rows := []struct {
-		Day        time.Time `db:"time"`
-		BurnedFees float64   `db:"value"`
+		Day   time.Time `db:"time"`
+		Value float64   `db:"value"`
 	}{}
 
 	epoch := LatestEpoch()
@@ -1895,7 +1925,7 @@ func TotalEmissionChartData() (*types.GenericChartData, error) {
 	}
 	ts := utils.EpochToTime(epoch)
 
-	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'TOTAL_EMISSION' ORDER BY time", ts)
+	err := db.ReaderDb.Select(&rows, "SELECT time, ROUND(value / 1e18, 5) as value FROM chart_series WHERE time < $1 and indicator = 'TOTAL_EMISSION' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
@@ -1905,23 +1935,35 @@ func TotalEmissionChartData() (*types.GenericChartData, error) {
 	for _, row := range rows {
 		seriesData = append(seriesData, []float64{
 			float64(row.Day.UnixMilli()),
-			row.BurnedFees,
+			72009990.50 + row.Value,
 		})
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Total Emission",
-		Subtitle:     "The total amount of newly created Ether subtracted by the burned Ether",
+		// IsNormalChart: true,
+		Title:        "Total Ether Supply",
+		Subtitle:     "Evolution of the total Ether supply",
 		XAxisTitle:   "",
-		YAxisTitle:   "Total Emission",
+		YAxisTitle:   "Total Supply [ETH]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "area",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Total Emission",
+				Name: "Total Supply",
 				Data: seriesData,
 			},
 		},
+		TooltipFormatter: `
+		function (tooltip) {
+			this.point.y = Math.round(this.point.y * 100000) / 100000
+			var orig = tooltip.defaultFormatter.call(this, tooltip)
+			var epoch = timeToEpoch(this.x)
+			if (epoch > 0) {
+				orig[0] = '<span style="font-size:10px">Epoch ' + epoch + '</span><br />' + orig[0]
+			}
+			return orig
+		}
+		`,
 	}
 
 	return chartData, nil
@@ -1933,8 +1975,8 @@ func AvgGasPrice() (*types.GenericChartData, error) {
 	}
 
 	rows := []struct {
-		Day        time.Time `db:"time"`
-		BurnedFees float64   `db:"value"`
+		Day   time.Time `db:"time"`
+		Value float64   `db:"value"`
 	}{}
 
 	epoch := LatestEpoch()
@@ -1943,7 +1985,7 @@ func AvgGasPrice() (*types.GenericChartData, error) {
 	}
 	ts := utils.EpochToTime(epoch)
 
-	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'AVG_GASPRICE' ORDER BY time", ts)
+	err := db.ReaderDb.Select(&rows, "SELECT time, ROUND(value / 1e9, 2) as value FROM chart_series WHERE time < $1 and indicator = 'AVG_GASPRICE' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
@@ -1953,23 +1995,34 @@ func AvgGasPrice() (*types.GenericChartData, error) {
 	for _, row := range rows {
 		seriesData = append(seriesData, []float64{
 			float64(row.Day.UnixMilli()),
-			row.BurnedFees,
+			row.Value,
 		})
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Gas Price (avg)",
+		Title:        "Average Gas Price",
 		Subtitle:     "The average gas price for non-EIP1559 transaction.",
 		XAxisTitle:   "",
-		YAxisTitle:   "Gas Price [avg]",
+		YAxisTitle:   "Gas Price [GWei]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "area",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Gas Price (avg)",
 				Data: seriesData,
 			},
 		},
+		TooltipFormatter: `
+		function (tooltip) {
+			this.point.y = Math.round(this.point.y * 100000) / 100000
+			var orig = tooltip.defaultFormatter.call(this, tooltip)
+			var epoch = timeToEpoch(this.x)
+			if (epoch > 0) {
+				orig[0] = '<span style="font-size:10px">Epoch ' + epoch + '</span><br />' + orig[0]
+			}
+			return orig
+		}
+		`,
 	}
 
 	return chartData, nil
@@ -2006,15 +2059,15 @@ func AvgGasUsedChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Gas Used (avg)",
-		Subtitle:     "The average amount of gas used per day.",
+		Title:        "Block Gas Usage",
+		Subtitle:     "The average amount of gas used by blocks per day.",
 		XAxisTitle:   "",
-		YAxisTitle:   "Gas Used [avg]",
+		YAxisTitle:   "Block Gas Usage [gas]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "area",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Gas Used (avg)",
+				Name: "Average Gas Used",
 				Data: seriesData,
 			},
 		},
@@ -2029,8 +2082,8 @@ func TotalGasUsedChartData() (*types.GenericChartData, error) {
 	}
 
 	rows := []struct {
-		Day        time.Time `db:"time"`
-		BurnedFees float64   `db:"value"`
+		Day   time.Time `db:"time"`
+		Value float64   `db:"value"`
 	}{}
 
 	epoch := LatestEpoch()
@@ -2049,23 +2102,34 @@ func TotalGasUsedChartData() (*types.GenericChartData, error) {
 	for _, row := range rows {
 		seriesData = append(seriesData, []float64{
 			float64(row.Day.UnixMilli()),
-			row.BurnedFees,
+			row.Value,
 		})
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Total Gas Used",
+		Title:        "Total Gas Usage",
 		Subtitle:     "The total amout of daily gas used.",
 		XAxisTitle:   "",
-		YAxisTitle:   "Total Gas Used [day]",
+		YAxisTitle:   "Total Gas Usage [gas]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "area",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Total Gas Used",
+				Name: "Total Gas Usage",
 				Data: seriesData,
 			},
 		},
+		TooltipFormatter: `
+		function (tooltip) {
+			this.point.y = Math.round(this.point.y)
+			var orig = tooltip.defaultFormatter.call(this, tooltip)
+			var epoch = timeToEpoch(this.x)
+			if (epoch > 0) {
+				orig[0] = '<span style="font-size:10px">Epoch ' + epoch + '</span><br />' + orig[0]
+			}
+			return orig
+		}
+		`,
 	}
 
 	return chartData, nil
@@ -2077,8 +2141,8 @@ func AvgGasLimitChartData() (*types.GenericChartData, error) {
 	}
 
 	rows := []struct {
-		Day        time.Time `db:"time"`
-		BurnedFees float64   `db:"value"`
+		Day   time.Time `db:"time"`
+		Value float64   `db:"value"`
 	}{}
 
 	epoch := LatestEpoch()
@@ -2097,23 +2161,34 @@ func AvgGasLimitChartData() (*types.GenericChartData, error) {
 	for _, row := range rows {
 		seriesData = append(seriesData, []float64{
 			float64(row.Day.UnixMilli()),
-			row.BurnedFees,
+			row.Value,
 		})
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Gas Used (avg)",
-		Subtitle:     "The average amount of gas used per day.",
+		Title:        "Block Gas Limit",
+		Subtitle:     "Evolution of the average block gas limit",
 		XAxisTitle:   "",
-		YAxisTitle:   "Gas Used [avg]",
+		YAxisTitle:   "Gas Limit [gas]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "area",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Gas Used (avg)",
+				Name: "Gas Limit",
 				Data: seriesData,
 			},
 		},
+		TooltipFormatter: `
+		function (tooltip) {
+			this.point.y = Math.round(this.point.y)
+			var orig = tooltip.defaultFormatter.call(this, tooltip)
+			var epoch = timeToEpoch(this.x)
+			if (epoch > 0) {
+				orig[0] = '<span style="font-size:10px">Epoch ' + epoch + '</span><br />' + orig[0]
+			}
+			return orig
+		}
+		`,
 	}
 
 	return chartData, nil
@@ -2150,18 +2225,29 @@ func AvgBlockUtilChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Gas Used (avg)",
-		Subtitle:     "The average amount of gas used per day.",
+		Title:        "Average Block Usage",
+		Subtitle:     "Evolution of the average utilization of Ethereum blocks",
 		XAxisTitle:   "",
-		YAxisTitle:   "Gas Used [avg]",
+		YAxisTitle:   "Block Usage [%]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "spline",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Gas Used (avg)",
+				Name: "Block Usage",
 				Data: seriesData,
 			},
 		},
+		TooltipFormatter: `
+		function (tooltip) {
+			this.point.y = Math.round(this.point.y * 100) / 100
+			var orig = tooltip.defaultFormatter.call(this, tooltip)
+			var epoch = timeToEpoch(this.x)
+			if (epoch > 0) {
+				orig[0] = '<span style="font-size:10px">Epoch ' + epoch + '</span><br />' + orig[0]
+			}
+			return orig
+		}
+		`,
 	}
 
 	return chartData, nil
@@ -2173,8 +2259,8 @@ func MarketCapChartData() (*types.GenericChartData, error) {
 	}
 
 	rows := []struct {
-		Day        time.Time `db:"time"`
-		BurnedFees float64   `db:"value"`
+		Day   time.Time `db:"time"`
+		Value float64   `db:"value"`
 	}{}
 
 	epoch := LatestEpoch()
@@ -2193,23 +2279,34 @@ func MarketCapChartData() (*types.GenericChartData, error) {
 	for _, row := range rows {
 		seriesData = append(seriesData, []float64{
 			float64(row.Day.UnixMilli()),
-			row.BurnedFees,
+			row.Value,
 		})
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Gas Used (avg)",
-		Subtitle:     "The average amount of gas used per day.",
+		Title:        "Market Cap",
+		Subtitle:     "The Evolution of the Ethereum Makret Cap.",
 		XAxisTitle:   "",
-		YAxisTitle:   "Gas Used [avg]",
+		YAxisTitle:   "Market Cap [$]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "area",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Gas Used (avg)",
+				Name: "Market Cap",
 				Data: seriesData,
 			},
 		},
+		TooltipFormatter: `
+		function (tooltip) {
+			this.point.y = Math.round(this.point.y)
+			var orig = tooltip.defaultFormatter.call(this, tooltip)
+			var epoch = timeToEpoch(this.x)
+			if (epoch > 0) {
+				orig[0] = orig[0] + '<span style="font-size:10px">Epoch ' + epoch + '</span>'
+			}
+			return orig
+		}
+		`,
 	}
 
 	return chartData, nil
@@ -2246,18 +2343,29 @@ func TxCountChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Gas Used (avg)",
-		Subtitle:     "The average amount of gas used per day.",
+		Title:        "Transactions",
+		Subtitle:     "The total number of transactions per day",
 		XAxisTitle:   "",
-		YAxisTitle:   "Gas Used [avg]",
+		YAxisTitle:   "Tx Count [#]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "area",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Gas Used (avg)",
+				Name: "Transactions",
 				Data: seriesData,
 			},
 		},
+		TooltipFormatter: `
+		function (tooltip) {
+			this.point.y = Math.round(this.point.y)
+			var orig = tooltip.defaultFormatter.call(this, tooltip)
+			var epoch = timeToEpoch(this.x)
+			if (epoch > 0) {
+				orig[0] = '<span style="font-size:10px">Epoch ' + epoch + '</span><br />' + orig[0]
+			}
+			return orig
+		}
+		`,
 	}
 
 	return chartData, nil
