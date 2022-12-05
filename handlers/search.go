@@ -161,7 +161,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				validatorindex AS index,
 				pubkeyhex AS pubkey
 			FROM validators
-			WHERE validatorindex = $1 || '%' OR pubkeyhex LIKE LOWER($2 || '%')
+			WHERE validatorindex = $1 OR pubkeyhex LIKE LOWER($2 || '%')
 			UNION
 			SELECT
 				validators.validatorindex AS index,
