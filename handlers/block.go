@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"html/template"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -142,7 +143,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 	if blockPageData.ExecBlockNumber.Int64 != 0 && blockPageData.Status == 1 {
 		// slot has corresponding execution block, fetch execution data
-		eth1BlockPageData, err := GetExecutionBlockPageData(uint64(blockPageData.ExecBlockNumber.Int64))
+		eth1BlockPageData, err := GetExecutionBlockPageData(uint64(blockPageData.ExecBlockNumber.Int64), 10)
 		// if err != nil, simply show slot view without block
 		if err == nil {
 			blockPageData.ExecutionData = eth1BlockPageData
@@ -165,6 +166,60 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+}
+
+func getAttestationsData(slot uint64, onlyFirst bool) ([]*types.BlockPageAttestation, error) {
+	limit := ";"
+	if onlyFirst {
+		limit = " LIMIT 1;"
+	}
+
+	var attestations []*types.BlockPageAttestation
+	rows, err := db.ReaderDb.Query(`
+		SELECT
+			block_slot,
+			block_index,
+			aggregationbits,
+			validators,
+			signature,
+			slot,
+			committeeindex,
+			beaconblockroot,
+			source_epoch,
+			source_root,
+			target_epoch,
+			target_root
+		FROM blocks_attestations
+		WHERE block_slot = $1
+		ORDER BY block_index`+limit,
+		slot)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving block attestation data: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		attestation := &types.BlockPageAttestation{}
+
+		err := rows.Scan(
+			&attestation.BlockSlot,
+			&attestation.BlockIndex,
+			&attestation.AggregationBits,
+			&attestation.Validators,
+			&attestation.Signature,
+			&attestation.Slot,
+			&attestation.CommitteeIndex,
+			&attestation.BeaconBlockRoot,
+			&attestation.SourceEpoch,
+			&attestation.SourceRoot,
+			&attestation.TargetEpoch,
+			&attestation.TargetRoot)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning block attestation data: %v", err)
+		}
+		attestations = append(attestations, attestation)
+	}
+	return attestations, nil
 }
 
 func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
@@ -230,54 +285,12 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 	blockPageData.NextSlot = blockPageData.Slot + 1
 	blockPageData.PreviousSlot = blockPageData.Slot - 1
 
-	var attestations []*types.BlockPageAttestation
-	rows, err := db.ReaderDb.Query(`
-		SELECT
-			block_slot,
-			block_index,
-			aggregationbits,
-			validators,
-			signature,
-			slot,
-			committeeindex,
-			beaconblockroot,
-			source_epoch,
-			source_root,
-			target_epoch,
-			target_root
-		FROM blocks_attestations
-		WHERE block_slot = $1
-		ORDER BY block_index`,
-		blockPageData.Slot)
+	blockPageData.Attestations, err = getAttestationsData(blockPageData.Slot, true)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving block attestation data: %v", err)
+		return nil, err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		attestation := &types.BlockPageAttestation{}
-
-		err := rows.Scan(
-			&attestation.BlockSlot,
-			&attestation.BlockIndex,
-			&attestation.AggregationBits,
-			&attestation.Validators,
-			&attestation.Signature,
-			&attestation.Slot,
-			&attestation.CommitteeIndex,
-			&attestation.BeaconBlockRoot,
-			&attestation.SourceEpoch,
-			&attestation.SourceRoot,
-			&attestation.TargetEpoch,
-			&attestation.TargetRoot)
-		if err != nil {
-			return nil, fmt.Errorf("error scanning block attestation data: %v", err)
-		}
-		attestations = append(attestations, attestation)
-	}
-	blockPageData.Attestations = attestations
-
-	rows, err = db.ReaderDb.Query(`
+	rows, err := db.ReaderDb.Query(`
 		SELECT validators
 		FROM blocks_attestations
 		WHERE beaconblockroot = $1`,
@@ -688,6 +701,121 @@ func BlockVoteData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+type transactionsData struct {
+	HashFormatted template.HTML `json:"HashFormatted"`
+	Method        string        `json:"Method"`
+	FromFormatted template.HTML `json:"FromFormatted"`
+	ToFormatted   template.HTML `json:"ToFormatted"`
+	Value         template.HTML `json:"Value"`
+	Fee           template.HTML `json:"Fee"`
+	GasPrice      template.HTML `json:"GasPrice"`
+}
+
+// BlockTransactionsData returns the transactions for a specific slot
+func BlockTransactionsData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	slot, err := strconv.ParseUint(vars["block"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	transactions, err := GetExecutionBlockPageData(slot, 0)
+	if err != nil || transactions == nil {
+		logger.Errorf("error retrieving transactions data for slot %v, err: %v", slot, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	data := make([]*transactionsData, len(transactions.Txs))
+	for i, v := range transactions.Txs {
+		if len(v.Method) == 0 {
+			v.Method = "Transfer"
+		}
+		data[i] = &transactionsData{
+			HashFormatted: v.HashFormatted,
+			Method:        `<span class="badge badge-light">` + v.Method + `</span>`,
+			FromFormatted: v.FromFormatted,
+			ToFormatted:   v.ToFormatted,
+			Value:         utils.FormatAmountFormated(v.Value, "ETH", 5, 0, true, true, false),
+			Fee:           utils.FormatAmountFormated(v.Fee, "ETH", 5, 0, true, true, false),
+			GasPrice:      utils.FormatAmountFormated(v.GasPrice, "GWei", 5, 0, true, true, false),
+		}
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error encoding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+type attestationsData struct {
+	BlockIndex      uint64        `json:"BlockIndex"`
+	Slot            uint64        `json:"Slot"`
+	CommitteeIndex  uint64        `json:"CommitteeIndex"`
+	AggregationBits template.HTML `json:"AggregationBits"`
+	Validators      template.HTML `json:"Validators"`
+	BeaconBlockRoot string        `json:"BeaconBlockRoot"`
+	SourceEpoch     uint64        `json:"SourceEpoch"`
+	SourceRoot      string        `json:"SourceRoot"`
+	TargetEpoch     uint64        `json:"TargetEpoch"`
+	TargetRoot      string        `json:"TargetRoot"`
+	Signature       string        `json:"Signature"`
+}
+
+// BlockAttestationsData returns the attestations for a specific slot
+func BlockAttestationsData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	slot, err := strconv.ParseUint(vars["slot"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	attestations, err := getAttestationsData(slot, false)
+	if err != nil {
+		logger.Errorf("error retrieving attestations data for slot %v, err: %v", slot, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	data := make([]*attestationsData, len(attestations))
+	for i, v := range attestations {
+		var validators template.HTML
+		for _, val := range v.Validators {
+			validators += utils.FormatValidatorInt64(val) + " "
+		}
+		data[i] = &attestationsData{
+			BlockIndex:      v.BlockIndex,
+			Slot:            v.Slot,
+			CommitteeIndex:  v.CommitteeIndex,
+			AggregationBits: utils.FormatBitlist(v.AggregationBits),
+			Validators:      validators,
+			BeaconBlockRoot: fmt.Sprintf("%x", v.BeaconBlockRoot),
+			SourceEpoch:     v.SourceEpoch,
+			SourceRoot:      fmt.Sprintf("%x", v.SourceRoot),
+			TargetEpoch:     v.TargetEpoch,
+			TargetRoot:      fmt.Sprintf("%x", v.TargetRoot),
+			Signature:       fmt.Sprintf("%x", v.Signature),
+		}
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error encoding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // ToWei converts the big.Int wei to its gwei string representation.

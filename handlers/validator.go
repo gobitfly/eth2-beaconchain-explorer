@@ -162,9 +162,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 			latestDeposit := time.Now().Unix()
 			if len(deposits.Eth1Deposits) > 1 {
-				latestDeposit = deposits.Eth1Deposits[len(deposits.Eth1Deposits)-1].BlockTs
 			} else if time.Unix(latestDeposit, 0).Before(utils.SlotToTime(0)) {
-				latestDeposit = utils.SlotToTime(0).Unix()
 				validatorPageData.InclusionDelay = 0
 			}
 
@@ -1071,7 +1069,7 @@ func sanitizeSignature(sig string) ([]byte, error) {
 	sig = strings.Replace(sig, "0x", "", -1)
 	decodedSig, _ := hex.DecodeString(sig)
 	if len(decodedSig) != 65 {
-		return nil, errors.New("Signature is less then 65 bytes")
+		return nil, errors.New("signature is less then 65 bytes")
 	}
 	if decodedSig[crypto.RecoveryIDOffset] == 27 || decodedSig[crypto.RecoveryIDOffset] == 28 {
 		decodedSig[crypto.RecoveryIDOffset] -= 27
@@ -1096,7 +1094,7 @@ func sanitizeMessage(msg string) ([]byte, error) {
 		if strings.Contains(decodedString, subString) {
 			return []byte(decodedString), nil
 		}
-		return nil, errors.New("Beachoncha.in was not found")
+		return nil, errors.New("beachoncha.in was not found")
 
 	}
 }
@@ -1270,16 +1268,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentEpoch := services.LatestEpoch() - 1
-
-	lookBack := uint64(0)
-
-	if currentEpoch >= 10 {
-		lookBack = currentEpoch - 10
-	}
-
-	if lookBack >= start {
-		lookBack = lookBack - start
-	}
 
 	var validatorHistory []*types.ValidatorHistory
 

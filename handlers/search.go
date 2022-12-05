@@ -149,18 +149,24 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		err = db.ReaderDb.Select(result, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")
 	case "validators":
 		// find all validators that have a index, publickey or name like the search-query
+
+		indexNumeric, errParse := strconv.ParseInt(search, 10, 64)
+		if errParse != nil {
+			indexNumeric = -1
+		}
+
 		result = &types.SearchAheadValidatorsResult{}
 		query := `
 			SELECT
 				validatorindex AS index,
 				pubkeyhex AS pubkey
 			FROM validators
-			WHERE CAST(validatorindex AS text) LIKE $1 || '%' OR pubkeyhex LIKE LOWER($1 || '%')
+			WHERE validatorindex = $1 OR pubkeyhex LIKE LOWER($2 || '%')
 			UNION
 			SELECT
 				validators.validatorindex AS index,
 				validators.pubkeyhex AS pubkey
-			FROM validator_names LEFT JOIN validators ON validator_names.name LIKE '%' || $1 || '%' AND validators.pubkey = validator_names.publickey
+			FROM validator_names LEFT JOIN validators ON validator_names.name LIKE '%' || $2 || '%' AND validators.pubkey = validator_names.publickey
 			ORDER BY index
 			LIMIT 10
 		`
@@ -172,14 +178,14 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 					validatorindex AS index,
 					pubkeyhex AS pubkey
 				FROM validators
-				WHERE CAST(validatorindex AS text) LIKE $1 || '%'
-					OR pubkeyhex LIKE LOWER($1 || '%')
+				WHERE validatorindex = $1
+					OR pubkeyhex LIKE LOWER($2 || '%')
 				ORDER BY index
 				LIMIT 10
 		`
 		}
 
-		err = db.ReaderDb.Select(result, query, search)
+		err = db.ReaderDb.Select(result, query, indexNumeric, search)
 	case "eth1_addresses":
 		// start := time.Now()
 		if len(search) <= 1 {
@@ -210,14 +216,19 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
+
+		indexNumeric, errParse := strconv.ParseInt(search, 10, 64)
+		if errParse != nil {
+			indexNumeric = -1
+		}
 		err = db.ReaderDb.Select(result, `
 			SELECT validatorindex AS index, pubkeyhex AS pubkey
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			WHERE CAST(validatorindex AS text) LIKE $1
-				OR pubkeyhex LIKE LOWER($1)
-				OR LOWER(validator_names.name) LIKE LOWER($2)
-			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
+			WHERE validatorindex = $1
+				OR pubkeyhex LIKE LOWER($2)
+				OR LOWER(validator_names.name) LIKE LOWER($3)
+			ORDER BY index LIMIT 10`, indexNumeric, search+"%", "%"+search+"%")
 	case "indexed_validators_by_eth1_addresses":
 		if len(search) <= 1 {
 			break

@@ -59,7 +59,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number))
-	eth1BlockPageData, err := GetExecutionBlockPageData(number)
+	eth1BlockPageData, err := GetExecutionBlockPageData(number, 10)
 	if err != nil {
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
@@ -117,7 +117,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetExecutionBlockPageData(number uint64) (*types.Eth1BlockPageData, error) {
+func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageData, error) {
 	block, err := db.BigtableClient.GetBlockFromBlocksTable(number)
 	if diffToHead := int64(services.LatestEth1BlockNumber()) - int64(number); err != nil && diffToHead < 0 && diffToHead >= -5 {
 		block, _, err = rpc.CurrentErigonClient.GetBlock(int64(number))
@@ -199,6 +199,14 @@ func GetExecutionBlockPageData(number uint64) (*types.Eth1BlockPageData, error) 
 			Reward:         reward,
 			Extra:          string(uncle.Extra),
 		})
+	}
+
+	if limit > 0 {
+		if len(txs) > limit {
+			txs = txs[:limit]
+		} else {
+			txs = txs[:0]
+		}
 	}
 
 	burnedEth := new(big.Int).Mul(new(big.Int).SetBytes(block.BaseFee), big.NewInt(int64(block.GasUsed)))

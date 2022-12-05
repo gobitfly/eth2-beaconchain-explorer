@@ -4,26 +4,28 @@
   </div>
   <div class="table-responsive">
     <table class="table table-sm text-left">
-      <tr style="background-color: var(--bg-color-light);">
-        <th class="border-0">Tx Hash</th>
-        <th class="border-0">Method</th>
-        <th class="border-0">From</th>
-        <th class="border-0">To</th>
-        <th class="border-0">Value</th>
-        <th class="border-0">Tx Fee</th>
-        <th class="border-0">Gas Price</th>
-      </tr>
-      {{ range .Txs }}
-        <tr class="border-bottom">
-          <td class="border-0">{{ .HashFormatted }}</td>
-          <td class="border-0"><span class="badge badge-light">{{ if gt (len .Method ) 0 }}{{ .Method }}{{ else }}Transfer{{ end }}</span></td>
-          <td class="border-0">{{ .FromFormatted }}</td>
-          <td class="border-0">{{ .ToFormatted }}</td>
-          <td class="border-0">{{ formatAmountFormatted .Value "ETH" 5 0 true true false }}</td>
-          <td class="border-0">{{ formatAmountFormatted .Fee "ETH" 5  0 true true false }}</td>
-          <td class="border-0">{{ formatAmountFormatted .GasPrice "GWei" 5 0 true true false }}</td>
+      <tbody id="transactions_table">
+        <tr style="background-color: var(--bg-color-light);">
+          <th class="border-0">Tx Hash</th>
+          <th class="border-0">Method</th>
+          <th class="border-0">From</th>
+          <th class="border-0">To</th>
+          <th class="border-0">Value</th>
+          <th class="border-0">Tx Fee</th>
+          <th class="border-0">Gas Price</th>
         </tr>
-      {{ end }}
+        {{ range .Txs }}
+          <tr class="border-bottom">
+            <td class="border-0">{{ .HashFormatted }}</td>
+            <td class="border-0"><span class="badge badge-light">{{ if gt (len .Method ) 0 }}{{ .Method }}{{ else }}Transfer{{ end }}</span></td>
+            <td class="border-0">{{ .FromFormatted }}</td>
+            <td class="border-0">{{ .ToFormatted }}</td>
+            <td class="border-0">{{ formatAmountFormatted .Value "ETH" 5 0 true true false }}</td>
+            <td class="border-0">{{ formatAmountFormatted .Fee "ETH" 5  0 true true false }}</td>
+            <td class="border-0">{{ formatAmountFormatted .GasPrice "GWei" 5 0 true true false }}</td>
+          </tr>
+        {{ end }}
+      </tbody>
     </table>
   </div>
 {{ end }}

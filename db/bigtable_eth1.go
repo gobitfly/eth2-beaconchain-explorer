@@ -239,7 +239,7 @@ func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
 		}
 
 		lastBlock = c
-		return false
+		return c == 0
 	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
 
 	if err != nil {
@@ -308,7 +308,7 @@ func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
 		}
 
 		lastBlock = c
-		return false
+		return c == 0
 	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
 
 	if err != nil {
