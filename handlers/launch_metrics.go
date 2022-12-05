@@ -6,16 +6,6 @@ import (
 	"net/http"
 )
 
-type sqlBlocks struct {
-	Slot                    uint64
-	Epoch                   uint64
-	Status                  string
-	Globalparticipationrate float64
-	Finalized               bool
-	Justified               bool
-	Previousjustified       bool
-}
-
 // var currentEpoch uint64
 // var currentSlot uint64
 

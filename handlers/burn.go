@@ -59,7 +59,7 @@ func BurnPageData(w http.ResponseWriter, r *http.Request) {
 	err := json.NewEncoder(w).Encode(latestBurn)
 	if err != nil {
 		logger.Errorf("error sending latest burn page data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 }
