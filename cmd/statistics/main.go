@@ -47,6 +47,10 @@ func main() {
 		poolsDisabledFlag:         *poolsDisabledFlag,
 	}
 
+	if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID != 1 {
+		logrus.Infof("Execution charts are currently only available for mainnet")
+	}
+
 	logrus.Printf("version: %v, config file path: %v", version.Version, *configPath)
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
@@ -121,7 +125,7 @@ func main() {
 			}
 		}
 
-		if *statisticsChartToggle {
+		if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID == 1 {
 			logrus.Infof("exporting chart series for days %v-%v", firstDay, lastDay)
 			for d := firstDay; d <= lastDay; d++ {
 				_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", d)
@@ -151,7 +155,7 @@ func main() {
 			}
 		}
 
-		if *statisticsChartToggle {
+		if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID == 1 {
 			_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", *statisticsDayToExport)
 			if err != nil {
 				logrus.Fatalf("error resetting status for chart series status for day %v: %v", *statisticsDayToExport, err)
@@ -230,12 +234,14 @@ func statisticsLoop() {
 			if lastExportedDayChart != 0 {
 				lastExportedDayChart++
 			}
-			logrus.Infof("Chart statistics: latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayChart)
-			if lastExportedDayChart <= previousDay || lastExportedDayChart == 0 {
-				for day := lastExportedDayChart; day <= previousDay; day++ {
-					err = db.WriteChartSeriesForDay(int64(day))
-					if err != nil {
-						logrus.Errorf("error exporting chart series from day %v: %v", day, err)
+			if utils.Config.Chain.Config.DepositChainID == 1 {
+				logrus.Infof("Chart statistics: latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayChart)
+				if lastExportedDayChart <= previousDay || lastExportedDayChart == 0 {
+					for day := lastExportedDayChart; day <= previousDay; day++ {
+						err = db.WriteChartSeriesForDay(int64(day))
+						if err != nil {
+							logrus.Errorf("error exporting chart series from day %v: %v", day, err)
+						}
 					}
 				}
 			}
