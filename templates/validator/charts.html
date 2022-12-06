@@ -237,15 +237,8 @@
                         tooltip: {
                             split: false,
                             shared: true,
+                            useHTML: true,
                             formatter: (tooltip) => {
-                                let getValueString = (value) => {
-                                    var text = `${value.toFixed(5)} ETH`
-                                    if (this.currency !== "ETH") {
-                                        return `${text} (${(value * ethPrice).toFixed(2)} ${currency})`
-                                    }
-                                    return text
-                                }
-
                                 var text = ``
                                 var total = 0
 
@@ -258,13 +251,13 @@
                                 // income
                                 for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
                                     const value = tooltip.chart.hoverPoints[i].y;
-                                    text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getValueString(value)}<br/>`
+                                    text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <span>${tooltip.chart.hoverPoints[i].series.name}:</span> <b style="float:right;">${FormatCurrency(value, currency)}</b><br/>`
                                     total += value
                                 }
 
                                 // add total if hovered point contains rewards for both EL and CL
                                 if (tooltip.chart.hoverPoints.length > 1) {
-                                    text += `<b>Total:</b> ${getValueString(total)}`
+                                    text += `<span style="visibility: hidden;">\u25CF</span>  <span>Total:</span> <strong style="float: right;">${FormatCurrency(total, currency)}</strong><br/>`
                                 }
 
                                 return text
