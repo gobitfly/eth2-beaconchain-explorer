@@ -150,36 +150,34 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "validators":
 		// find all validators that have a index, publickey or name like the search-query
 		result = &types.SearchAheadValidatorsResult{}
-		query := `
-			SELECT
-				validatorindex AS index,
-				pubkeyhex AS pubkey
+		indexNumeric, errParse := strconv.ParseInt(search, 10, 64)
+		if errParse == nil { // search the validator by its index
+			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE validatorindex = $1`, indexNumeric)
+			if err != nil {
+				logger.Errorf("error reading result data: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
+		} else if thresholdHexLikeRE.MatchString(search) {
+			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE pubkeyhex LIKE LOWER($1 || '%')`, search)
+			if err != nil {
+				logger.Errorf("error reading result data: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
+		} else {
+			err = db.ReaderDb.Select(result, `
+			SELECT validatorindex AS index, pubkeyhex AS pubkey
 			FROM validators
-			WHERE CAST(validatorindex AS text) LIKE $1 || '%' OR pubkeyhex LIKE LOWER($1 || '%')
-			UNION
-			SELECT
-				validators.validatorindex AS index,
-				validators.pubkeyhex AS pubkey
-			FROM validator_names LEFT JOIN validators ON validator_names.name LIKE '%' || $1 || '%' AND validators.pubkey = validator_names.publickey
-			ORDER BY index
-			LIMIT 10
-		`
-
-		// its too slow to search for names
-		if thresholdHexLikeRE.MatchString(search) {
-			query = `
-				SELECT
-					validatorindex AS index,
-					pubkeyhex AS pubkey
-				FROM validators
-				WHERE CAST(validatorindex AS text) LIKE $1 || '%'
-					OR pubkeyhex LIKE LOWER($1 || '%')
-				ORDER BY index
-				LIMIT 10
-		`
+			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+			WHERE LOWER(validator_names.name) LIKE LOWER($1)
+			ORDER BY index LIMIT 10`, search+"%")
+			if err != nil {
+				logger.Errorf("error reading result data: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
 		}
-
-		err = db.ReaderDb.Select(result, query, search)
 	case "eth1_addresses":
 		// start := time.Now()
 		if len(search) <= 1 {
@@ -210,14 +208,35 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
-		err = db.ReaderDb.Select(result, `
+		indexNumeric, errParse := strconv.ParseInt(search, 10, 64)
+		if errParse == nil { // search the validator by its index
+			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE validatorindex = $1`, indexNumeric)
+			if err != nil {
+				logger.Errorf("error reading result data: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
+		} else if thresholdHexLikeRE.MatchString(search) {
+			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE pubkeyhex LIKE LOWER($1 || '%')`, search)
+			if err != nil {
+				logger.Errorf("error reading result data: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
+		} else {
+			err = db.ReaderDb.Select(result, `
 			SELECT validatorindex AS index, pubkeyhex AS pubkey
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			WHERE CAST(validatorindex AS text) LIKE $1
-				OR pubkeyhex LIKE LOWER($1)
-				OR LOWER(validator_names.name) LIKE LOWER($2)
-			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
+			WHERE LOWER(validator_names.name) LIKE LOWER($1)
+			ORDER BY index LIMIT 10`, search+"%")
+			if err != nil {
+				logger.Errorf("error reading result data: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
+		}
+
 	case "indexed_validators_by_eth1_addresses":
 		if len(search) <= 1 {
 			break

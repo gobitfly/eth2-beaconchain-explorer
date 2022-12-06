@@ -143,12 +143,27 @@ func notificationsSender() {
 		start := time.Now()
 
 		// Network DB Notifications (network related)
-		notifications := collectNotifications()
+		notifications, err := collectNotifications()
+
+		if err != nil {
+			logger.Errorf("error collection notifications: %v", err)
+			ReportStatus("notification-collector", "Error", nil)
+			time.Sleep(time.Second * 120)
+			continue
+		}
+
 		queueNotifications(notifications, db.FrontendWriterDB)
 
 		// Network DB Notifications (user related)
 		if utils.Config.Notifications.UserDBNotifications {
-			userNotifications := collectUserDbNotifications()
+			userNotifications, err := collectUserDbNotifications()
+			if err != nil {
+				logger.Errorf("error collection user db notifications: %v", err)
+				ReportStatus("notification-collector", "Error", nil)
+				time.Sleep(time.Second * 120)
+				continue
+			}
+
 			queueNotifications(userNotifications, db.FrontendWriterDB)
 		}
 
@@ -228,13 +243,13 @@ func notificationSender() {
 	}
 }
 
-func collectNotifications() map[uint64]map[types.EventName][]types.Notification {
+func collectNotifications() (map[uint64]map[types.EventName][]types.Notification, error) {
 	notificationsByUserID := map[uint64]map[types.EventName][]types.Notification{}
 	start := time.Now()
 	var err error
 	var dbIsCoherent bool
 
-	err = db.ReaderDb.Get(&dbIsCoherent, `
+	err = db.WriterDb.Get(&dbIsCoherent, `
 		select 
 			not (array[false] && array_agg(is_coherent)) as is_coherent
 		from (
@@ -247,11 +262,11 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 
 	if err != nil {
 		logger.Errorf("failed to do epochs table coherence check, aborting: %v", err)
-		return nil
+		return nil, err
 	}
 	if !dbIsCoherent {
 		logger.Errorf("epochs coherence check failed, aborting.")
-		return nil
+		return nil, fmt.Errorf("epochs coherence check failed, aborting")
 	}
 
 	// if utils.Config.Notifications.ValidatorBalanceDecreasedNotificationsEnabled {
@@ -263,140 +278,160 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	logger.Infof("Started collecting notifications")
 	err = collectValidatorGotSlashedNotifications(notificationsByUserID)
 	if err != nil {
-		logger.Errorf("error collecting validator_got_slashed notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_validator_got_slashed").Inc()
+		return nil, fmt.Errorf("error collecting validator_got_slashed notifications: %v", err)
 	}
 	logger.Infof("collecting validator got slashed notifications took: %v\n", time.Since(start))
 
 	// executed Proposals
 	err = collectBlockProposalNotifications(notificationsByUserID, 1, types.ValidatorExecutedProposalEventName)
 	if err != nil {
-		logger.Errorf("error collecting validator_proposal_submitted notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_executed_block_proposal").Inc()
+		return nil, fmt.Errorf("error collecting validator_proposal_submitted notifications: %v", err)
 	}
 	logger.Infof("collecting block proposal proposed notifications took: %v\n", time.Since(start))
 
 	// Missed proposals
 	err = collectBlockProposalNotifications(notificationsByUserID, 2, types.ValidatorMissedProposalEventName)
 	if err != nil {
-		logger.Errorf("error collecting validator_proposal_missed notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_missed_block_proposal").Inc()
+		return nil, fmt.Errorf("error collecting validator_proposal_missed notifications: %v", err)
 	}
 	logger.Infof("collecting block proposal missed notifications took: %v\n", time.Since(start))
 
 	// Missed attestations
 	err = collectAttestationNotifications(notificationsByUserID, 0, types.ValidatorMissedAttestationEventName)
 	if err != nil {
-		logger.Errorf("error collecting validator_attestation_missed notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_missed_attestation").Inc()
+		return nil, fmt.Errorf("error collecting validator_attestation_missed notifications: %v", err)
 	}
 	logger.Infof("collecting attestation notifications took: %v\n", time.Since(start))
 	// Validator Is Offline (missed attestations v2)
 	err = collectOfflineValidatorNotifications(notificationsByUserID, types.ValidatorIsOfflineEventName)
 	if err != nil {
-		logger.Errorf("error collecting %v notifications: %v", types.ValidatorIsOfflineEventName, err)
 		metrics.Errors.WithLabelValues(string(types.ValidatorIsOfflineEventName)).Inc()
+		return nil, fmt.Errorf("error collecting %v notifications: %v", types.ValidatorIsOfflineEventName, err)
 	}
 	logger.Infof("collecting offline validators took: %v\n", time.Since(start))
 
 	// Network liveness
 	err = collectNetworkNotifications(notificationsByUserID, types.NetworkLivenessIncreasedEventName)
 	if err != nil {
-		logger.Errorf("error collecting network notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_network").Inc()
+		return nil, fmt.Errorf("error collecting network notifications: %v", err)
 	}
 	logger.Infof("collecting network notifications took: %v\n", time.Since(start))
 
 	// Rocketpool fee commission alert
 	err = collectRocketpoolComissionNotifications(notificationsByUserID, types.RocketpoolCommissionThresholdEventName)
 	if err != nil {
-		logger.Errorf("error collecting rocketpool commission: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_comission").Inc()
+		return nil, fmt.Errorf("error collecting rocketpool commission: %v", err)
 	}
 	logger.Infof("collecting rocketpool commissions took: %v\n", time.Since(start))
 
 	err = collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID, types.RocketpoolNewClaimRoundStartedEventName)
 	if err != nil {
-		logger.Errorf("error collecting new rocketpool claim round: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_reward_claim").Inc()
+		return nil, fmt.Errorf("error collecting new rocketpool claim round: %v", err)
 	}
 	logger.Infof("collecting rocketpool claim round took: %v\n", time.Since(start))
 
 	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMaxReached)
 	if err != nil {
-		logger.Errorf("error collecting rocketpool max collateral: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_max_reached").Inc()
+		return nil, fmt.Errorf("error collecting rocketpool max collateral: %v", err)
 	}
 	logger.Infof("collecting rocketpool max collateral took: %v\n", time.Since(start))
 
 	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMinReached)
 	if err != nil {
-		logger.Errorf("error collecting rocketpool min collateral: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_min_reached").Inc()
+		return nil, fmt.Errorf("error collecting rocketpool min collateral: %v", err)
 	}
 	logger.Infof("collecting rocketpool min collateral took: %v\n", time.Since(start))
 
 	err = collectSyncCommittee(notificationsByUserID, types.SyncCommitteeSoon)
 	if err != nil {
-		logger.Errorf("error collecting sync committee: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_sync_committee").Inc()
+		return nil, fmt.Errorf("error collecting sync committee: %v", err)
 	}
 	logger.Infof("collecting sync committee took: %v\n", time.Since(start))
 
-	return notificationsByUserID
+	return notificationsByUserID, nil
 }
 
-func collectUserDbNotifications() map[uint64]map[types.EventName][]types.Notification {
+func collectUserDbNotifications() (map[uint64]map[types.EventName][]types.Notification, error) {
 	notificationsByUserID := map[uint64]map[types.EventName][]types.Notification{}
 	var err error
 
 	// Monitoring (premium): machine offline
 	err = collectMonitoringMachineOffline(notificationsByUserID)
 	if err != nil {
-		logger.Errorf("error collecting Eth client offline notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_monitoring_machine_offline").Inc()
+		return nil, fmt.Errorf("error collecting Eth client offline notifications: %v", err)
 	}
 
 	// Monitoring (premium): disk full warnings
 	err = collectMonitoringMachineDiskAlmostFull(notificationsByUserID)
 	if err != nil {
-		logger.Errorf("error collecting Eth client disk full notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_monitoring_machine_disk_almost_full").Inc()
+		return nil, fmt.Errorf("error collecting Eth client disk full notifications: %v", err)
 	}
 
 	// Monitoring (premium): cpu load
 	err = collectMonitoringMachineCPULoad(notificationsByUserID)
 	if err != nil {
-		logger.Errorf("error collecting Eth client cpu notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_monitoring_machine_cpu_load").Inc()
+		return nil, fmt.Errorf("error collecting Eth client cpu notifications: %v", err)
 	}
 
 	// Monitoring (premium): ram
 	err = collectMonitoringMachineMemoryUsage(notificationsByUserID)
 	if err != nil {
-		logger.Errorf("error collecting Eth client memory notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_monitoring_machine_memory_usage").Inc()
+		return nil, fmt.Errorf("error collecting Eth client memory notifications: %v", err)
 	}
 
 	// New ETH clients
 	err = collectEthClientNotifications(notificationsByUserID, types.EthClientUpdateEventName)
 	if err != nil {
-		logger.Errorf("error collecting Eth client notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_eth_client").Inc()
+		return nil, fmt.Errorf("error collecting Eth client notifications: %v", err)
 	}
 
 	//Tax Report
 	err = collectTaxReportNotificationNotifications(notificationsByUserID, types.TaxReportEventName)
 	if err != nil {
-		logger.Errorf("error collecting tax report notifications: %v", err)
 		metrics.Errors.WithLabelValues("notifications_collect_tax_report").Inc()
+		return nil, fmt.Errorf("error collecting tax report notifications: %v", err)
 	}
 
-	return notificationsByUserID
+	return notificationsByUserID, nil
 }
 
 func queueNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
 	subByEpoch := map[uint64][]uint64{}
+
+	// prevent multiple events being sent with the same subscription id
+	for user, notifications := range notificationsByUserID {
+		for eventType, events := range notifications {
+			filteredEvents := make([]types.Notification, 0)
+
+			for _, ev := range events {
+				isDuplicate := false
+				for _, fe := range filteredEvents {
+					if fe.GetSubscriptionID() == ev.GetSubscriptionID() {
+						isDuplicate = true
+					}
+				}
+				if !isDuplicate {
+					filteredEvents = append(filteredEvents, ev)
+				}
+			}
+			notificationsByUserID[user][eventType] = filteredEvents
+		}
+	}
 
 	err := queueEmailNotifications(notificationsByUserID, useDB)
 	if err != nil {
@@ -1434,8 +1469,13 @@ func (n *validatorProposalNotification) GetInfoMarkdown() string {
 func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
 	var latestExportedSlot uint64
 
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		logger.Infof("error starting db tx: %v", err)
+		return err
+	}
 	// we use the latest exported epoch because that's what the lastattestationslot column is based upon
-	err := db.ReaderDb.Get(&latestExportedSlot, `SELECT COALESCE(MAX(lastattestationslot), 0) FROM validators`)
+	err = tx.Get(&latestExportedSlot, `SELECT COALESCE(MAX(lastattestationslot), 0) FROM validators`)
 	if err != nil {
 		logger.Infof("failed to get last exported epoch: %v", err)
 	}
@@ -1454,6 +1494,9 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 
 	batchSize := 5000
 	dataLen := len(pubkeys)
+	totalOfflineValidators := 0
+	totalOnlineValidators := 0
+
 	for i := 0; i < dataLen; i += batchSize {
 		var batch [][]byte
 		start := i
@@ -1472,7 +1515,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 			LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`
 			Pubkey              []byte        `db:"pubkey"`
 		}
-		err = db.ReaderDb.Select(&dataArr, `select validatorindex, pubkey, lastattestationslot from validators where pubkey = ANY($1) order by validatorindex`, pq.ByteaArray(batch))
+		err = tx.Select(&dataArr, `select validatorindex, pubkey, lastattestationslot from validators where pubkey = ANY($1) order by validatorindex`, pq.ByteaArray(batch))
 		if err != nil {
 			return fmt.Errorf("failed to query potenitally offline validators: %v", err)
 		}
@@ -1516,6 +1559,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 						InternalState:  fmt.Sprint(lastSeenEpoch),
 						EventFilter:    hex.EncodeToString(v.Pubkey),
 					}
+					totalOfflineValidators++
 
 				} else {
 					if sub.State.String == "" || sub.State.String == "-" {
@@ -1543,6 +1587,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 						InternalState:  "-",
 						EventFilter:    hex.EncodeToString(v.Pubkey),
 					}
+					totalOnlineValidators++
 				}
 				if _, exists := notificationsByUserID[*sub.UserID]; !exists {
 					notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
@@ -1565,6 +1610,15 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 			}
 		}
 	}
+
+	if totalOfflineValidators > 1000 {
+		return fmt.Errorf("retrieved more than 1000 offline validators notifications: %v, exiting", totalOfflineValidators)
+	}
+
+	if totalOnlineValidators > 1000 {
+		return fmt.Errorf("retrieved more than 1000 online validators notifications: %v, exiting", totalOfflineValidators)
+	}
+
 	return nil
 }
 
@@ -1614,7 +1668,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 			Pubkey         []byte
 		}
 		var indexPubkeyArr []*indexpubkey
-		err := db.ReaderDb.Select(&indexPubkeyArr, "SELECT validatorindex, pubkey FROM validators WHERE pubkey = ANY($1)", pq.ByteaArray(keys))
+		err := db.WriterDb.Select(&indexPubkeyArr, "SELECT validatorindex, pubkey FROM validators WHERE pubkey = ANY($1)", pq.ByteaArray(keys))
 		if err != nil {
 			return err
 		}

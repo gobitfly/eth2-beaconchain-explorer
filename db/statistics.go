@@ -2,6 +2,7 @@ package db
 
 import (
 	"eth2-exporter/metrics"
+	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -373,17 +374,29 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 	return result, err
 }
 
-func WriteChartSeriesForDay(day uint64) error {
-	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
-	beaconchainDay := day * epochsPerDay
+func WriteChartSeriesForDay(day int64) error {
+	startTs := time.Now()
 
-	startDate := utils.EpochToTime(beaconchainDay)
+	if day < 0 {
+		// before the beaconchain
+		return fmt.Errorf("this function does not yet pre-beaconchain blocks")
+	}
+
+	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
+	beaconchainDay := day * int64(epochsPerDay)
+
+	startDate := utils.EpochToTime(uint64(beaconchainDay))
 	dateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
 
+	// inclusive slot
 	firstSlot := utils.TimeToSlot(uint64(dateTrunc.Unix()))
-	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.Config.SlotsPerEpoch)
 
-	logger.Infof("exporting chart_series for day %v (slot %v to %v)", day, firstSlot, lastSlot)
+	epochOffset := firstSlot % utils.Config.Chain.Config.SlotsPerEpoch
+	firstSlot = firstSlot - epochOffset
+	firstEpoch := firstSlot / utils.Config.Chain.Config.SlotsPerEpoch
+	// exclusive slot
+	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.Config.SlotsPerEpoch)
+	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
 
 	latestDbEpoch, err := GetLatestEpoch()
 	if err != nil {
@@ -394,33 +407,284 @@ func WriteChartSeriesForDay(day uint64) error {
 		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed. LatestDB: %v", (uint64(lastSlot) / utils.Config.Chain.Config.SlotsPerEpoch), latestDbEpoch)
 	}
 
-	type Fees struct {
-		BaseFee     uint64 `db:"exec_base_fee_per_gas"`
-		ExecGasUsed uint64 `db:"exec_gas_used"`
-	}
-
-	burnedFees := make([]Fees, 0)
-	logger.Infof("exporting from (inc): %v to (not inc): %v", firstSlot, lastSlot)
-	err = ReaderDb.Select(&burnedFees, `SELECT exec_base_fee_per_gas, exec_gas_used FROM blocks WHERE  slot >= $1 AND slot < $2 AND exec_base_fee_per_gas > 0 AND exec_gas_used > 0`, firstSlot, lastSlot)
+	firstBlock, err := GetBlockNumber(uint64(firstSlot))
 	if err != nil {
-		return fmt.Errorf("error getting BURNED_FEES: %w", err)
+		return fmt.Errorf("error getting block number for slot: %v err: %w", firstSlot, err)
 	}
 
-	sum := decimal.NewFromInt(0)
-
-	for _, fee := range burnedFees {
-		base := new(big.Int).SetUint64(fee.BaseFee)
-		used := new(big.Int).SetUint64(fee.ExecGasUsed)
-
-		burned := new(big.Int).Mul(base, used)
-		sum = sum.Add(decimal.NewFromBigInt(burned, 0))
+	if firstBlock <= 15537394 {
+		return fmt.Errorf("this function does not yet handle pre merge statistics")
 	}
 
-	logger.Println("Exporting BURNED_FEES")
-	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES ($1, 'BURNED_FEES', $2) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", dateTrunc, sum.String())
+	lastBlock, err := GetBlockNumber(uint64(lastSlot))
+	if err != nil {
+		return fmt.Errorf("error getting block number for slot: %v err: %w", lastSlot, err)
+	}
+	logger.Infof("exporting chart_series for day %v ts: %v (slot %v to %v, block %v to %v)", day, dateTrunc, firstSlot, lastSlot, firstBlock, lastBlock)
+
+	blocksChan := make(chan *types.Eth1Block, 360)
+	batchSize := int64(360)
+	go func(stream chan *types.Eth1Block) {
+		logger.Infof("querying blocks from %v to %v", firstBlock, lastBlock)
+		for b := int64(lastBlock) - 1; b > int64(firstBlock); b -= batchSize {
+			high := b
+			low := b - batchSize
+			if int64(firstBlock) > low {
+				low = int64(firstBlock - 1)
+			}
+
+			err := BigtableClient.GetFullBlocksDescending(stream, uint64(high), uint64(low))
+			if err != nil {
+				logger.Errorf("error getting blocks descending high: %v low: %v err: %v", high, low, err)
+			}
+
+		}
+		close(stream)
+	}(blocksChan)
+
+	// logger.Infof("got %v blocks", len(blocks))
+
+	blockCount := int64(0)
+	txCount := int64(0)
+
+	totalBaseFee := decimal.NewFromInt(0)
+	totalGasPrice := decimal.NewFromInt(0)
+	totalTxSavings := decimal.NewFromInt(0)
+	totalTxFees := decimal.NewFromInt(0)
+	totalBurned := decimal.NewFromInt(0)
+	totalGasUsed := decimal.NewFromInt(0)
+
+	legacyTxCount := int64(0)
+	accessListTxCount := int64(0)
+	eip1559TxCount := int64(0)
+	failedTxCount := int64(0)
+	successTxCount := int64(0)
+
+	totalFailedGasUsed := decimal.NewFromInt(0)
+	totalFailedTxFee := decimal.NewFromInt(0)
+
+	totalBaseBlockReward := decimal.NewFromInt(0)
+
+	totalGasLimit := decimal.NewFromInt(0)
+	totalTips := decimal.NewFromInt(0)
+
+	// totalSize := decimal.NewFromInt(0)
+
+	// blockCount := len(blocks)
+
+	// missedBlockCount := (firstSlot - uint64(lastSlot)) - uint64(blockCount)
+
+	var prevBlock *types.Eth1Block
+
+	avgBlockTime := decimal.NewFromInt(0)
+
+	for blk := range blocksChan {
+		// logger.Infof("analyzing block: %v with: %v transactions", blk.Number, len(blk.Transactions))
+		blockCount += 1
+		baseFee := decimal.NewFromBigInt(new(big.Int).SetBytes(blk.BaseFee), 0)
+		totalBaseFee = totalBaseFee.Add(baseFee)
+		totalGasLimit = totalGasLimit.Add(decimal.NewFromInt(int64(blk.GasLimit)))
+
+		if prevBlock != nil {
+			avgBlockTime = avgBlockTime.Add(decimal.NewFromInt(prevBlock.Time.AsTime().UnixMicro() - blk.Time.AsTime().UnixMicro())).Div(decimal.NewFromInt(2))
+		}
+
+		totalBaseBlockReward = totalBaseBlockReward.Add(decimal.NewFromBigInt(utils.Eth1BlockReward(blk.Number, blk.Difficulty), 0))
+
+		for _, tx := range blk.Transactions {
+			// for _, itx := range tx.Itx {
+			// }
+			// blk.Time
+			txCount += 1
+			maxFee := decimal.NewFromBigInt(new(big.Int).SetBytes(tx.MaxFeePerGas), 0)
+			prioFee := decimal.NewFromBigInt(new(big.Int).SetBytes(tx.MaxPriorityFeePerGas), 0)
+			gasUsed := decimal.NewFromBigInt(new(big.Int).SetUint64(tx.GasUsed), 0)
+			gasPrice := decimal.NewFromBigInt(new(big.Int).SetBytes(tx.GasPrice), 0)
+
+			var tipFee decimal.Decimal
+			var txFees decimal.Decimal
+			switch tx.Type {
+			case 0:
+				legacyTxCount += 1
+				totalGasPrice = totalGasPrice.Add(gasPrice)
+				txFees = gasUsed.Mul(gasPrice)
+				tipFee = gasPrice.Sub(baseFee)
+
+			case 1:
+				accessListTxCount += 1
+				totalGasPrice = totalGasPrice.Add(gasPrice)
+				txFees = gasUsed.Mul(gasPrice)
+				tipFee = gasPrice.Sub(baseFee)
+
+			case 2:
+				// priority fee is capped because the base fee is filled first
+				tipFee = decimal.Min(prioFee, maxFee.Sub(baseFee))
+				eip1559TxCount += 1
+				// totalMinerTips = totalMinerTips.Add(tipFee.Mul(gasUsed))
+				txFees = baseFee.Mul(gasUsed).Add(tipFee.Mul(gasUsed))
+				totalTxSavings = totalTxSavings.Add(maxFee.Mul(gasUsed).Sub(baseFee.Mul(gasUsed).Add(tipFee.Mul(gasUsed))))
+
+			default:
+				logger.Fatalf("error unknown tx type %v hash: %x", tx.Status, tx.Hash)
+			}
+			totalTxFees = totalTxFees.Add(txFees)
+
+			switch tx.Status {
+			case 0:
+				failedTxCount += 1
+				totalFailedGasUsed = totalFailedGasUsed.Add(gasUsed)
+				totalFailedTxFee = totalFailedTxFee.Add(txFees)
+			case 1:
+				successTxCount += 1
+			default:
+				logger.Fatalf("error unknown status code %v hash: %x", tx.Status, tx.Hash)
+			}
+			totalGasUsed = totalGasUsed.Add(gasUsed)
+			totalBurned = totalBurned.Add(baseFee.Mul(gasUsed))
+			if blk.Number < 12244000 {
+				totalTips = totalTips.Add(gasUsed.Mul(gasPrice))
+			} else {
+				totalTips = totalTips.Add(gasUsed.Mul(tipFee))
+			}
+		}
+		prevBlock = blk
+	}
+
+	logger.Infof("exporting consensus rewards from %v to %v", firstEpoch, lastEpoch)
+	historyFirst, err := BigtableClient.GetValidatorBalanceHistory(nil, firstEpoch+1, 1)
+	if err != nil {
+		return err
+	}
+
+	sumStartEpoch := decimal.NewFromInt(0)
+	for _, balances := range historyFirst {
+		for _, balance := range balances {
+			sumStartEpoch = sumStartEpoch.Add(decimal.NewFromInt(int64(balance.Balance)))
+		}
+	}
+
+	historyLast, err := BigtableClient.GetValidatorBalanceHistory(nil, uint64(lastEpoch+1), 1)
+	if err != nil {
+		return err
+	}
+
+	sumEndEpoch := decimal.NewFromInt(0)
+	for _, balances := range historyLast {
+		for _, balance := range balances {
+			sumEndEpoch = sumEndEpoch.Add(decimal.NewFromInt(int64(balance.Balance)))
+		}
+	}
+	// consensus rewards are in Gwei
+	totalConsensusRewards := sumEndEpoch.Sub(sumStartEpoch)
+	logger.Infof("consensus rewards: %v", totalConsensusRewards.String())
+
+	logger.Infof("Exporting BURNED_FEES %v", totalBurned.String())
+	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES ($1, 'BURNED_FEES', $2) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", dateTrunc, totalBurned.String())
 	if err != nil {
 		return fmt.Errorf("error calculating BURNED_FEES chart_series: %w", err)
 	}
+
+	logger.Infof("Exporting NON_FAILED_TX_GAS_USAGE %v", totalGasUsed.Sub(totalFailedGasUsed).String())
+	err = SaveChartSeriesPoint(dateTrunc, "NON_FAILED_TX_GAS_USAGE", totalGasUsed.Sub(totalFailedGasUsed).String())
+	if err != nil {
+		return fmt.Errorf("error calculating NON_FAILED_TX_GAS_USAGE chart_series: %w", err)
+	}
+	logger.Infof("Exporting BLOCK_COUNT %v", blockCount)
+	err = SaveChartSeriesPoint(dateTrunc, "BLOCK_COUNT", blockCount)
+	if err != nil {
+		return fmt.Errorf("error calculating BLOCK_COUNT chart_series: %w", err)
+	}
+
+	// convert microseconds to seconds
+	logger.Infof("Exporting BLOCK_TIME_AVG %v", avgBlockTime.Div(decimal.NewFromInt(1e6)).Abs().String())
+	err = SaveChartSeriesPoint(dateTrunc, "BLOCK_TIME_AVG", avgBlockTime.Div(decimal.NewFromInt(1e6)).String())
+	if err != nil {
+		return fmt.Errorf("error calculating BLOCK_TIME_AVG chart_series: %w", err)
+	}
+	// convert consensus rewards to gwei
+	emission := (totalBaseBlockReward.Add(totalConsensusRewards.Mul(decimal.NewFromInt(1000000000))).Add(totalTips)).Sub(totalBurned)
+	logger.Infof("Exporting TOTAL_EMISSION %v day emission", emission)
+
+	var lastEmission float64
+	err = ReaderDb.Get(&lastEmission, "SELECT value FROM chart_series WHERE indicator = 'TOTAL_EMISSION' AND time < $1 ORDER BY time DESC LIMIT 1", dateTrunc)
+	if err != nil {
+		return fmt.Errorf("error getting previous value for TOTAL_EMISSION chart_series: %w", err)
+	}
+
+	newEmission := decimal.NewFromFloat(lastEmission).Add(emission)
+	err = SaveChartSeriesPoint(dateTrunc, "TOTAL_EMISSION", newEmission)
+	if err != nil {
+		return fmt.Errorf("error calculating TOTAL_EMISSION chart_series: %w", err)
+	}
+
+	if totalGasPrice.GreaterThan(decimal.NewFromInt(0)) && decimal.NewFromInt(legacyTxCount).Add(decimal.NewFromInt(accessListTxCount)).GreaterThan(decimal.NewFromInt(0)) {
+		logger.Infof("Exporting AVG_GASPRICE")
+		_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES($1, 'AVG_GASPRICE', $2) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", dateTrunc, totalGasPrice.Div((decimal.NewFromInt(legacyTxCount).Add(decimal.NewFromInt(accessListTxCount)))).String())
+		if err != nil {
+			return fmt.Errorf("error calculating AVG_GASPRICE chart_series err: %w", err)
+		}
+	}
+
+	if txCount > 0 {
+		logger.Infof("Exporting AVG_GASUSED %v", totalGasUsed.Div(decimal.NewFromInt(blockCount)).String())
+		err = SaveChartSeriesPoint(dateTrunc, "AVG_GASUSED", totalGasUsed.Div(decimal.NewFromInt(blockCount)).String())
+		if err != nil {
+			return fmt.Errorf("error calculating AVG_GASUSED chart_series: %w", err)
+		}
+	}
+
+	logger.Infof("Exporting TOTAL_GASUSED %v", totalGasUsed.String())
+	err = SaveChartSeriesPoint(dateTrunc, "TOTAL_GASUSED", totalGasUsed.String())
+	if err != nil {
+		return fmt.Errorf("error calculating TOTAL_GASUSED chart_series: %w", err)
+	}
+
+	if blockCount > 0 {
+		logger.Infof("Exporting AVG_GASLIMIT %v", totalGasLimit.Div(decimal.NewFromInt(blockCount)))
+		err = SaveChartSeriesPoint(dateTrunc, "AVG_GASLIMIT", totalGasLimit.Div(decimal.NewFromInt(blockCount)))
+		if err != nil {
+			return fmt.Errorf("error calculating AVG_GASLIMIT chart_series: %w", err)
+		}
+	}
+
+	if !totalGasLimit.IsZero() {
+		logger.Infof("Exporting AVG_BLOCK_UTIL %v", totalGasUsed.Div(totalGasLimit).Mul(decimal.NewFromInt(100)))
+		err = SaveChartSeriesPoint(dateTrunc, "AVG_BLOCK_UTIL", totalGasUsed.Div(totalGasLimit).Mul(decimal.NewFromInt(100)))
+		if err != nil {
+			return fmt.Errorf("error calculating AVG_BLOCK_UTIL chart_series: %w", err)
+		}
+	}
+
+	logger.Infof("Exporting MARKET_CAP: %v", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(72009990.50)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
+	err = SaveChartSeriesPoint(dateTrunc, "MARKET_CAP", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(72009990.50)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
+	if err != nil {
+		return fmt.Errorf("error calculating MARKET_CAP chart_series: %w", err)
+	}
+
+	logger.Infof("Exporting TX_COUNT %v", txCount)
+	err = SaveChartSeriesPoint(dateTrunc, "TX_COUNT", txCount)
+	if err != nil {
+		return fmt.Errorf("error calculating TX_COUNT chart_series: %w", err)
+	}
+
+	// Not sure how this is currently possible (where do we store the size, i think this is missing)
+	// logger.Infof("Exporting AVG_SIZE %v", totalSize.div)
+	// err = SaveChartSeriesPoint(dateTrunc, "AVG_SIZE", totalSize.div)
+	// if err != nil {
+	// 	return fmt.Errorf("error calculating AVG_SIZE chart_series: %w", err)
+	// }
+
+	// logger.Infof("Exporting POWER_CONSUMPTION %v", avgBlockTime.String())
+	// err = SaveChartSeriesPoint(dateTrunc, "POWER_CONSUMPTION", avgBlockTime.String())
+	// if err != nil {
+	// 	return fmt.Errorf("error calculating POWER_CONSUMPTION chart_series: %w", err)
+	// }
+
+	// logger.Infof("Exporting NEW_ACCOUNTS %v", avgBlockTime.String())
+	// err = SaveChartSeriesPoint(dateTrunc, "NEW_ACCOUNTS", avgBlockTime.String())
+	// if err != nil {
+	// 	return fmt.Errorf("error calculating NEW_ACCOUNTS chart_series: %w", err)
+	// }
 
 	logger.Infof("marking day export as completed in the status table")
 	_, err = WriterDb.Exec("insert into chart_series_status (day, status) values ($1, true)", day)
@@ -428,7 +692,7 @@ func WriteChartSeriesForDay(day uint64) error {
 		return err
 	}
 
-	logger.Println("chart_series export completed")
+	logger.Infof("chart_series export completed: took %v", time.Since(startTs))
 
 	return nil
 }

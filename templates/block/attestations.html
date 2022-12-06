@@ -32,13 +32,13 @@
         <div class="row border-bottom p-1 mx-0">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Points to the latest justified epoch">Source:</span></div>
           <div class="col-md-10">
-            Epoch <a href="/epoch/{{ $attestation.SourceEpoch }}">{{ $attestation.SourceEpoch }}</a> (<span class="text-monospace text-break"><a href="{{ printf "%x" $attestation.SourceRoot }}">0x{{ printf "%x" $attestation.SourceRoot }}</a>)</span>
+            Epoch <a href="/epoch/{{ $attestation.SourceEpoch }}">{{ $attestation.SourceEpoch }}</a> <span class="text-monospace text-break">(<a href="{{ printf "%x" $attestation.SourceRoot }}">0x{{ printf "%x" $attestation.SourceRoot }}</a>)</span>
           </div>
         </div>
         <div class="row border-bottom p-1 mx-0">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Points to the latest epoch boundary">Target:</span></div>
           <div class="col-md-10">
-            Epoch <a href="/epoch/{{ $attestation.TargetEpoch }}">{{ $attestation.TargetEpoch }}</a> (<span class="text-monospace text-break"><a href="{{ printf "%x" $attestation.TargetRoot }}">0x{{ printf "%x" $attestation.TargetRoot }}</a>)</span>
+            Epoch <a href="/epoch/{{ $attestation.TargetEpoch }}">{{ $attestation.TargetEpoch }}</a> <span class="text-monospace text-break">(<a href="{{ printf "%x" $attestation.TargetRoot }}">0x{{ printf "%x" $attestation.TargetRoot }}</a>)</span>
           </div>
         </div>
         <div class="row p-1 mx-0">

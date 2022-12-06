@@ -61,7 +61,7 @@ func main() {
 		Name:     cfg.Frontend.ReaderDatabase.Name,
 		Host:     cfg.Frontend.ReaderDatabase.Host,
 		Port:     cfg.Frontend.ReaderDatabase.Port,
-	}, cfg.Frontend.SessionSecret)
+	})
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
 

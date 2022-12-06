@@ -27,16 +27,6 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	validatorsPageData := types.ValidatorsPageData{}
-	var validators []*types.ValidatorsPageDataValidators
-
-	err := db.ReaderDb.Select(&validators, `SELECT activationepoch, exitepoch, lastattestationslot, slashed FROM validators ORDER BY validatorindex`)
-
-	if err != nil {
-		logger.Errorf("error retrieving validators data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
-
 	validatorsPageData.PendingCount = 0
 	validatorsPageData.ActiveOnlineCount = 0
 	validatorsPageData.ActiveOfflineCount = 0
@@ -53,7 +43,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	var currentStateCounts []*states
 
 	qry := "SELECT status AS statename, COUNT(*) AS statecount FROM validators GROUP BY status"
-	err = db.ReaderDb.Select(&currentStateCounts, qry)
+	err := db.ReaderDb.Select(&currentStateCounts, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

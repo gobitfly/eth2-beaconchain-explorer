@@ -1349,6 +1349,13 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 
 	logger.Infof("updating validator activation epoch balance completed, took %v", time.Since(s))
 
+	s = time.Now()
+	_, err = tx.Exec("ANALYZE (SKIP_LOCKED) validators;")
+	if err != nil {
+		return err
+	}
+	logger.Infof("analyze of validators table completed, took %v", time.Since(s))
+
 	return nil
 }
 
@@ -2308,4 +2315,17 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 	}
 
 	return tx.Commit()
+}
+
+func GetBlockNumber(slot uint64) (block uint64, err error) {
+	err = ReaderDb.Get(&block, `SELECT exec_block_number FROM blocks where slot = $1`, slot)
+	return
+}
+
+func SaveChartSeriesPoint(date time.Time, indicator string, value any) error {
+	_, err := WriterDb.Exec(`INSERT INTO chart_series (time, indicator, value) VALUES($1, $2, $3) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value`, date, indicator, value)
+	if err != nil {
+		return fmt.Errorf("error calculating NON_FAILED_TX_GAS_USAGE chart_series: %w", err)
+	}
+	return err
 }

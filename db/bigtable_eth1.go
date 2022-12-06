@@ -239,7 +239,7 @@ func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
 		}
 
 		lastBlock = c
-		return false
+		return c == 0
 	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
 
 	if err != nil {
@@ -308,7 +308,7 @@ func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
 		}
 
 		lastBlock = c
-		return false
+		return c == 0
 	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
 
 	if err != nil {
@@ -316,35 +316,6 @@ func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
 	}
 
 	return lastBlock, nil
-}
-
-func (bigtable *Bigtable) GetFullBlockFromDataTable(number uint64) (*types.Eth1Block, error) {
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	paddedNumber := reversedPaddedBlockNumber(number)
-
-	row, err := bigtable.tableData.ReadRow(ctx, fmt.Sprintf("%s:%s", bigtable.chainId, paddedNumber))
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(row[DEFAULT_FAMILY]) == 0 { // block not found
-		logger.Errorf("block %v not found in data table", number)
-		return nil, ErrBlockNotFound
-	}
-	blocks := make([]*types.Eth1Block, 0, 1)
-	rowHandler := getFullBlockHandler(&blocks)
-
-	rowHandler(row)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return blocks[0], nil
 }
 
 func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockIndexed, error) {
@@ -446,26 +417,92 @@ func getFullBlockHandler(blocks *[]*types.Eth1Block) func(gcp_bigtable.Row) bool
 
 // GetFullBlockDescending gets blocks starting at block start
 func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.Eth1Block, error) {
-	startPadded := reversedPaddedBlockNumber(start)
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*60))
 	defer cancel()
 
-	prefix := fmt.Sprintf("%s:%s", bigtable.chainId, startPadded)
+	if start < 1 || limit < 1 || limit > start {
+		return nil, fmt.Errorf("invalid block range provided (start: %v, limit: %v)", start, limit)
+	}
 
-	rowRange := gcp_bigtable.InfiniteRange(prefix) //gcp_bigtable.PrefixRange("1:1000000000")
+	startPadded := reversedPaddedBlockNumber(start)
+	endPadded := reversedPaddedBlockNumber(start - limit)
 
-	blocks := make([]*types.Eth1Block, 0, 100)
+	startKey := fmt.Sprintf("%s:%s", bigtable.chainId, startPadded)
+	endKey := fmt.Sprintf("%s:%s", bigtable.chainId, endPadded)
 
-	rowHandler := getFullBlockHandler(&blocks)
+	rowRange := gcp_bigtable.NewRange(startKey, endKey) //gcp_bigtable.PrefixRange("1:1000000000")
+
+	// if limit >= start { // handle retrieval of the first blocks
+	// 	rowRange = gcp_bigtable.InfiniteRange(startKey)
+	// }
+
+	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("data"))
+
+	blocks := make([]*types.Eth1Block, 0, limit)
+
+	rowHandler := func(row gcp_bigtable.Row) bool {
+		block := types.Eth1Block{}
+		err := proto.Unmarshal(row[DEFAULT_FAMILY_BLOCKS][0].Value, &block)
+		if err != nil {
+			logger.Errorf("error could not unmarschal proto object, err: %v", err)
+			return false
+		}
+		blocks = append(blocks, &block)
+		return true
+	}
 
 	startTime := time.Now()
-	err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, gcp_bigtable.LimitRows(int64(limit)))
+	err := bigtable.tableBlocks.ReadRows(ctx, rowRange, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
+	logger.Infof("finished getting blocks from table blocks: %v", time.Since(startTime))
 	return blocks, nil
+}
+
+// GetFullBlockDescending gets blocks starting at block start
+func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block, high, low uint64) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*180))
+	defer cancel()
+
+	if high < 1 || low < 1 || high < low {
+		return fmt.Errorf("invalid block range provided (start: %v, limit: %v)", high, low)
+	}
+
+	highKey := fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(high))
+	lowKey := fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(low))
+
+	// the low key will have a higher reverse padded number
+	rowRange := gcp_bigtable.NewRange(highKey, lowKey) //gcp_bigtable.PrefixRange("1:1000000000")
+
+	// if limit >= start { // handle retrieval of the first blocks
+	// 	rowRange = gcp_bigtable.InfiniteRange(startKey)
+	// }
+
+	// logger.Infof("querying from (excl) %v to (incl) %v", low, high)
+
+	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("data"))
+
+	rowHandler := func(row gcp_bigtable.Row) bool {
+		block := types.Eth1Block{}
+		err := proto.Unmarshal(row[DEFAULT_FAMILY_BLOCKS][0].Value, &block)
+		if err != nil {
+			logger.Errorf("error could not unmarschal proto object, err: %v", err)
+			return false
+		}
+		stream <- &block
+		return true
+	}
+
+	// startTime := time.Now()
+	err := bigtable.tableBlocks.ReadRows(ctx, rowRange, rowHandler, rowFilter)
+	if err != nil {
+		return err
+	}
+
+	// logger.Infof("finished getting blocks from table blocks: %v", time.Since(startTime))
+	return nil
 }
 
 func (bigtable *Bigtable) GetBlocksIndexedMultiple(blockNumbers []uint64, limit uint64) ([]*types.Eth1BlockIndexed, error) {
