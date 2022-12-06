@@ -1087,7 +1087,7 @@ func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
 	d := new(big.Int).Exp(big.NewInt(10), new(big.Int).SetBytes(balance.Metadata.Decimals), nil)
 	balWei := new(big.Float).SetInt(new(big.Int).SetBytes(balance.Balance))
 	balEth := new(big.Float).Quo(balWei, new(big.Float).SetInt(d))
-
+	p := message.NewPrinter(language.English)
 	return template.HTML(p.Sprintf(`
 	<div class="d-flex align-items-center">
 		<svg style="width: 1rem; height: 1rem;">
