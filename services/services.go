@@ -1096,27 +1096,31 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		return nil, err
 	}
 	var raw json.RawMessage
-	var body rpcBlock
 
 	err = client.Call(&raw, "eth_getBlockByNumber", "pending", true)
-
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving pending block data: %v", err)
 	}
 
+	var header *geth_types.Header
+	var body rpcBlock
+
+	err = json.Unmarshal(raw, &header)
+	if err != nil {
+		return nil, err
+	}
 	err = json.Unmarshal(raw, &body)
 	if err != nil {
 		return nil, err
 	}
+	txs := body.Transactions
 
-	logger.Infof("pending block has %v tx", len(body.Transactions))
-
-	sort.Slice(body.Transactions, func(i, j int) bool {
-		return body.Transactions[i].tx.GasPrice().Cmp(body.Transactions[j].tx.GasPrice()) > 0
+	sort.Slice(txs, func(i, j int) bool {
+		return txs[i].tx.GasPrice().Cmp(txs[j].tx.GasPrice()) > 0
 	})
-	if len(body.Transactions) > 1 {
-		medianGasPrice := body.Transactions[len(body.Transactions)/2].tx.GasPrice()
-		tailGasPrice := body.Transactions[len(body.Transactions)-1].tx.GasPrice()
+	if len(txs) > 1 {
+		medianGasPrice := txs[len(txs)/2].tx.GasPrice()
+		tailGasPrice := txs[len(txs)-1].tx.GasPrice()
 
 		gpoData.Data.Rapid = medianGasPrice
 		gpoData.Data.Fast = tailGasPrice
@@ -1151,17 +1155,20 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		return pendingTxs[i].GasPrice().Cmp(pendingTxs[j].GasPrice()) > 0
 	})
 
-	standardIndex := int(math.Max(float64(2*len(body.Transactions)), 500))
-	slowIndex := int(math.Max(float64(5*len(body.Transactions)), 1000))
-	if standardIndex > len(pendingTxs)-1 {
-		standardIndex = len(pendingTxs) - 1
-	}
-	if slowIndex > len(pendingTxs)-1 {
-		slowIndex = len(pendingTxs) - 1
+	standardIndex := int(math.Max(float64(2*len(txs)), 500))
+
+	slowIndex := int(math.Max(float64(5*len(txs)), 1000))
+	if standardIndex < len(pendingTxs) {
+		gpoData.Data.Standard = pendingTxs[standardIndex].GasPrice()
+	} else {
+		gpoData.Data.Standard = header.BaseFee
 	}
 
-	gpoData.Data.Standard = pendingTxs[standardIndex].GasPrice()
-	gpoData.Data.Slow = pendingTxs[slowIndex].GasPrice()
+	if slowIndex < len(pendingTxs) {
+		gpoData.Data.Slow = pendingTxs[slowIndex].GasPrice()
+	} else {
+		gpoData.Data.Slow = header.BaseFee
+	}
 
 	err = db.BigtableClient.SaveGasNowHistory(gpoData.Data.Slow, gpoData.Data.Standard, gpoData.Data.Fast, gpoData.Data.Rapid)
 	if err != nil {
