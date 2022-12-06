@@ -682,7 +682,7 @@ func ApiRocketpoolValidators(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -737,7 +737,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	var nextSyncCommittee []interface{}
 
 	if getValidators {
-		queryIndices, err := parseApiValidatorParam(parsedBody.IndicesOrPubKey, maxValidators)
+		queryIndices, err := parseApiValidatorParamToIndices(parsedBody.IndicesOrPubKey, maxValidators)
 		if err != nil {
 			sendErrorResponse(w, r.URL.String(), err.Error())
 			return
@@ -970,7 +970,7 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -1082,7 +1082,7 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -1154,7 +1154,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -1222,7 +1222,7 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -1253,7 +1253,7 @@ func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -1286,7 +1286,7 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -1328,7 +1328,7 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -1411,7 +1411,7 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	pubkey, index, err := getIndicesFromIndexOrPubkey(vars["indexOrPubkey"], maxValidators)
+	pubkeys, err := parseApiValidatorParamToPubkeys(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -1419,13 +1419,10 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query(
 		`SELECT eth1_deposits.* FROM eth1_deposits 
-		LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey 
-		WHERE validators.validatorindex = ANY($1) OR eth1_deposits.publickey = ANY($2) 
-		GROUP BY tx_hash, merkletree_index`,
-		pq.Array(index),
-		pq.ByteaArray(pubkey),
+		WHERE eth1_deposits.publickey = ANY($1)`, pubkeys,
 	)
 	if err != nil {
+		logger.Error(err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -1450,7 +1447,7 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -1522,7 +1519,7 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -1989,7 +1986,7 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		return
 	}
 
-	queryIndices, err := parseApiValidatorParam(indexOrPubkey, prime.MaxValidators)
+	queryIndices, err := parseApiValidatorParamToIndices(indexOrPubkey, prime.MaxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -2617,7 +2614,7 @@ func sendOKResponse(j *json.Encoder, route string, data []interface{}) {
 	}
 }
 
-func parseApiValidatorParam(origParam string, limit int) (indices []uint64, err error) {
+func parseApiValidatorParamToIndices(origParam string, limit int) (indices []uint64, err error) {
 	var pubkeys pq.ByteaArray
 	params := strings.Split(origParam, ",")
 	if len(params) > limit {
@@ -2656,6 +2653,56 @@ func parseApiValidatorParam(origParam string, limit int) (indices []uint64, err 
 			m[x] = x
 		}
 		for x := range m {
+			queryIndicesDeduped = append(queryIndicesDeduped, x)
+		}
+	}
+
+	if len(queryIndicesDeduped) == 0 {
+		return nil, fmt.Errorf("invalid validator argument, pubkey(s) did not resolve to a validator index")
+	}
+
+	return queryIndicesDeduped, nil
+}
+
+func parseApiValidatorParamToPubkeys(origParam string, limit int) (pubkeys pq.ByteaArray, err error) {
+	var indices pq.Int64Array
+	params := strings.Split(origParam, ",")
+	if len(params) > limit {
+		return nil, fmt.Errorf("only a maximum of 100 query parameters are allowed")
+	}
+	for _, param := range params {
+		if strings.Contains(param, "0x") || len(param) == 96 {
+			pubkey, err := hex.DecodeString(strings.Replace(param, "0x", "", -1))
+			if err != nil {
+				return nil, fmt.Errorf("invalid validator-parameter")
+			}
+			pubkeys = append(pubkeys, pubkey)
+		} else {
+			index, err := strconv.ParseUint(param, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("invalid validator-parameter: %v", param)
+			}
+			indices = append(indices, int64(index))
+		}
+	}
+
+	var queryIndicesDeduped pq.ByteaArray
+	queryIndicesDeduped = append(queryIndicesDeduped, pubkeys...)
+	if len(indices) != 0 {
+		var pubkeysFromIndices pq.ByteaArray
+		err = db.ReaderDb.Select(&pubkeysFromIndices, "SELECT pubkey FROM validators WHERE validatorindex = ANY($1)", indices)
+
+		if err != nil {
+			return nil, err
+		}
+
+		pubkeys = append(pubkeys, pubkeysFromIndices...)
+
+		m := make(map[string][]byte)
+		for _, x := range pubkeys {
+			m[string(x)] = x
+		}
+		for _, x := range m {
 			queryIndicesDeduped = append(queryIndicesDeduped, x)
 		}
 	}
