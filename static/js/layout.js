@@ -514,16 +514,15 @@ function addCommas(number) {
     .replace(/\B(?=(\d{3})+(?!\d))/g, "<span class='thousands-separator'></span>")
 }
 
-
 function FormatCurrency(value, symbol, exchangeRate) {
   var formatted = ""
   if (!symbol) {
-      symbol = 'USD'
+    symbol = "USD"
   }
-  if (symbol && symbol !== 'ETH' && symbol !== 'BTC') {
-      formatted = new Intl.NumberFormat( symbol === 'USD' ? 'en-US' : symbol === 'RUB' ? 'ru-IN' : symbol === 'EUR' ? 'de-DE' : symbol === 'GBP' ? 'en-GB' : symbol === 'CNY' ? 'cn-CN' : {},{ style: 'currency', currency: symbol, maximumFractionDigits: 2 }).format(exchangeRate ? value * exchangeRate : value);
+  if (symbol && symbol !== "ETH" && symbol !== "BTC") {
+    formatted = new Intl.NumberFormat(symbol === "USD" ? "en-US" : symbol === "RUB" ? "ru-IN" : symbol === "EUR" ? "de-DE" : symbol === "GBP" ? "en-GB" : symbol === "CNY" ? "cn-CN" : {}, { style: "currency", currency: symbol, maximumFractionDigits: 2 }).format(exchangeRate ? value * exchangeRate : value)
   } else {
-      formatted = `${new Intl.NumberFormat({},{ maximumFractionDigits: 6 }).format(exchangeRate ? value * exchangeRate : value)} + ${symbol}`;
+    formatted = `${new Intl.NumberFormat({}, { maximumFractionDigits: 6 }).format(exchangeRate ? value * exchangeRate : value)} + ${symbol}`
   }
   return formatted
 }
