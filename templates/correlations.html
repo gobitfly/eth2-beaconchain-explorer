@@ -1,0 +1,230 @@
+{{ define "js" }}
+  <script src="/js/highcharts/highcharts.min.js"></script>
+  <script src="/js/highcharts/exporting.min.js"></script>
+  <script src="/js/highcharts/offline-exporting.min.js"></script>
+  <script src="/js/highcharts/accessibility.min.js"></script>
+
+  <script>
+    document.getElementById("endDate").valueAsDate = new Date()
+
+    var chart = {}
+
+    $(window).resize(function () {
+      if (chart) {
+        chart.setSize($("#chart").width(), $("#chart").width(), false)
+      }
+    })
+
+    $("#generateChart").click(function () {
+      var x = $("#x").find(":selected").text()
+      var y = $("#y").find(":selected").text()
+      var startDate = $("#startDate").val()
+      var endDate = $("#endDate").val()
+
+      var data = { x: x, y: y, startDate: startDate, endDate: endDate }
+
+      $.post("/correlations/data", data, function (result) {
+        if (result && result.status === "ok") {
+          var data = {}
+
+          var minDate = 0
+          var maxDate = 0
+
+          result.data.forEach(function (item) {
+            item.time = parseInt(item.time)
+            if (!data[item.time]) {
+              data[item.time] = {}
+            }
+
+            if (!data[item.time].x && x === item.indicator) {
+              data[item.time].x = parseFloat(item.value)
+            }
+            if (!data[item.time].y && y === item.indicator) {
+              data[item.time].y = parseFloat(item.value)
+            }
+
+            if (!minDate || item.time < minDate) {
+              minDate = item.time
+            }
+            if (!maxDate || item.time > maxDate) {
+              maxDate = item.time
+            }
+          })
+
+          var dateRange = parseFloat(maxDate - minDate)
+
+          seriesData = []
+          for (var key in data) {
+            seriesData.push({ name: luxon.DateTime.fromMillis(key * 1000).toFormat("YYYY-MM-DD"), x: data[key].x, y: data[key].y, color: getGradientColor("#FF0000", "#0000FF", (key - minDate) / dateRange) })
+          }
+
+          chart = new Highcharts.Chart({
+            chart: {
+              zoomType: "x",
+              renderTo: "chart",
+              defaultSeriesType: "scatter",
+            },
+            title: {
+              text: "Correlation between " + x + " and " + y,
+            },
+            subtitle: {
+              text: document.ontouchstart === undefined ? 'Source: <a href="https://www.etherchain.org">etherchain.org</a><br>Click and drag in the plot area to zoom in' : 'Source: <a href="https://www.etherchain.org">etherchain.org</a><br>Pinch the chart to zoom in',
+            },
+            xAxis: {
+              title: {
+                text: x,
+              },
+            },
+            yAxis: {
+              title: {
+                text: y,
+              },
+            },
+            plotOptions: {
+              scatter: {
+                marker: {
+                  radius: 4,
+                  states: {
+                    hover: {
+                      enabled: true,
+                      lineColor: "rgb(100,100,100)",
+                    },
+                  },
+                },
+                states: {
+                  hover: {
+                    marker: {
+                      enabled: false,
+                    },
+                  },
+                },
+              },
+            },
+            series: [
+              {
+                showInLegend: false,
+                turboThreshold: 5000,
+                data: seriesData,
+              },
+            ],
+            tooltip: {
+              headerFormat: "",
+              pointFormat: "Date: <b>{point.name}</b><br/>X: <b>{point.x}</b><br/>Y: <b>{point.y}</b>",
+            },
+          })
+
+          chart.setSize($("#chart").width(), $("#chart").width(), false)
+        }
+      })
+    })
+
+    function getGradientColor(start_color, end_color, percent) {
+      // strip the leading # if it's there
+      start_color = start_color.replace(/^\s*#|\s*$/g, "")
+      end_color = end_color.replace(/^\s*#|\s*$/g, "")
+
+      // convert 3 char codes --> 6, e.g. `E0F` --> `EE00FF`
+      if (start_color.length === 3) {
+        start_color = start_color.replace(/(.)/g, "$1$1")
+      }
+
+      if (end_color.length === 3) {
+        end_color = end_color.replace(/(.)/g, "$1$1")
+      }
+
+      // get colors
+      var start_red = parseInt(start_color.substr(0, 2), 16),
+        start_green = parseInt(start_color.substr(2, 2), 16),
+        start_blue = parseInt(start_color.substr(4, 2), 16)
+
+      var end_red = parseInt(end_color.substr(0, 2), 16),
+        end_green = parseInt(end_color.substr(2, 2), 16),
+        end_blue = parseInt(end_color.substr(4, 2), 16)
+
+      // calculate new color
+      var diff_red = end_red - start_red
+      var diff_green = end_green - start_green
+      var diff_blue = end_blue - start_blue
+
+      diff_red = (diff_red * percent + start_red).toString(16).split(".")[0]
+      diff_green = (diff_green * percent + start_green).toString(16).split(".")[0]
+      diff_blue = (diff_blue * percent + start_blue).toString(16).split(".")[0]
+
+      // ensure 2 digits by color
+      if (diff_red.length == 1) diff_red = "0" + diff_red
+      if (diff_green.length == 1) diff_green = "0" + diff_green
+      if (diff_blue.length == 1) diff_blue = "0" + diff_blue
+
+      return "#" + diff_red + diff_green + diff_blue
+    }
+  </script>
+{{ end }}
+
+{{ define "css" }}
+{{ end }}
+
+{{ define "content" }}
+  <div class="container mt-2">
+    <div class="my-3">
+      <div class="d-md-flex py-2 justify-content-md-between">
+        <h1 class="h4 mb-1 mb-md-0">
+          <span class="ml-1 mr-1"><i class="fas fa-chart-line mr-2"></i>Correlations</span>
+        </h1>
+        <nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
+          <ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0" style="padding:0; background-color:transparent;">
+            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+            <li class="breadcrumb-item">Statistics</li>
+            <li class="breadcrumb-item active" aria-current="page">Correlations</li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+
+    <style>
+      .block-card {
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+      }
+    </style>
+    <form>
+      <div class="form-row">
+        <label class="col-sm-2 mb-3 col-form-label" for="x">X Variable:</label>
+        <div class="col-sm-4 mb-3">
+          <select class="form-control" id="x">
+            {{ range .Data }}
+              <option value="{{ . }}">{{ . }}</option>
+            {{ end }}
+          </select>
+        </div>
+        <label class="col-sm-2 mb-3 col-form-label" for="y">Y Variable:</label>
+        <div class="col-sm-4 mb-3">
+          <select class="form-control" id="y">
+            {{ range .Data }}
+              <option value="{{ . }}">{{ . }}</option>
+            {{ end }}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="col-sm-2 mb-3 col-form-label" for="startDate">Start Date:</label>
+        <div class="col-sm-4 mb-3">
+          <input class="form-control" id="startDate" type="date" value="2015-08-01" />
+        </div>
+        <label class="col-sm-2 mb-3 col-form-label" for="endDate">End Date:</label>
+        <div class="col-sm-4 mb-3">
+          <input class="form-control" id="endDate" type="date" />
+        </div>
+      </div>
+    </form>
+    <div class="row mt-3 text-right">
+      <div class="col-sm-12">
+        <button class="btn btn-outline-success" id="generateChart">Generate Chart</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-12">
+        <div id="chart"></div>
+      </div>
+    </div>
+  </div>
+{{ end }}

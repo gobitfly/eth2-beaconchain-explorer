@@ -13,7 +13,7 @@
         {{range $i, $e := .}}
         chartFns.push(function () {
             {{if .Data.IsNormalChart}}
-            Highcharts.chart('chart-{{$i}}', {
+            Highcharts.chart('chart-{{.Order}}', {
                 chart: {
                     type: {{.Data.Type}},
                 },
@@ -24,7 +24,7 @@
                 },
                 subtitle: {
                     useHTML: true,
-                    text: {{.Data.Subtitle}}{{ if .Data.ShowGapHider }} +' <button class="button btn-secondary btn-xs hide-gaps text-light" data-index="{{$i}}">hide gaps</button>'{{end}}
+                    text: {{.Data.Subtitle}}{{ if .Data.ShowGapHider }} +' <button class="button btn-secondary btn-xs hide-gaps text-light" data-index="{{.Order}}">hide gaps</button>'{{end}}
                 },
                 plotOptions: {
                     column: {stacking: {{.Data.StackingMode}} },
@@ -74,7 +74,7 @@
                     })
                     s.data = d
                 })
-                Highcharts.chart('chart-{{$i}}-nogaps', {
+                Highcharts.chart('chart-{{.Order}}-nogaps', {
                     chart: {type: {{.Data.Type}} },
                     rangeSelector: {enabled: false},
                     title: {
@@ -83,7 +83,7 @@
                     },
                     subtitle: {
                         useHTML: true,
-                        text: {{.Data.Subtitle}} +' <button class="button btn-secondary btn-xs show-gaps" data-index="{{$i}}">show gaps</button>'
+                        text: {{.Data.Subtitle}} +' <button class="button btn-secondary btn-xs show-gaps" data-index="{{.Order}}">show gaps</button>'
                     },
                     plotOptions: {
                         column: {
@@ -126,7 +126,7 @@
             }
             {{end}}
             {{else}}
-            Highcharts.stockChart('chart-{{$i}}', {
+            Highcharts.stockChart('chart-{{.Order}}', {
                 chart: {type: {{.Data.Type}} },
                 rangeSelector: {enabled: false},
                 title: {
@@ -295,24 +295,17 @@
           </nav>
         </div>
       </div>
+      <div id="consensus-charts">
+        <h3>Consensus Charts <a class="text-muted cursor-pointer" href="#consensus-charts" onclick="this.setAttribute('data-clipboard-text', window.location.href + '#consensus-charts')" data-clipboard-text="">#</a></h3>
+        <hr class="mb-4" />
+      </div>
       <div class="row">
         {{ range $i, $e := . }}
-          <div class="col-md-6 mb-4" id="chart-holder-{{ $i }}">
-            <div class="card">
-              <div id="chart-{{ $i }}">
-                <div style="height:400px; display: flex; justify-content: center; align-items:center;">
-                  <svg width="80%" height="80%">
-                    <use xlink:href="#ab83d798-7d25-4111-a4e2-42875f6e6704"></use>
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-          {{ if .Data.IsNormalChart }}
-            <div class="col-md-6 mb-4" id="chart-holder-{{ $i }}-nogaps" style="display:none">
+          {{ if lt .Order 20 }}
+            <div class="col-md-6 mb-4" id="chart-holder-{{ .Order }}">
               <div class="card">
-                <div id="chart-{{ $i }}-nogaps">
-                  <div style="height: 400px; display: flex; justify-content: center; align-items:center;">
+                <div id="chart-{{ .Order }}">
+                  <div style="height:400px; display: flex; justify-content: center; align-items:center;">
                     <svg width="80%" height="80%">
                       <use xlink:href="#ab83d798-7d25-4111-a4e2-42875f6e6704"></use>
                     </svg>
@@ -320,6 +313,19 @@
                 </div>
               </div>
             </div>
+            {{ if .Data.IsNormalChart }}
+              <div class="col-md-6 mb-4" id="chart-holder-{{ .Order }}-nogaps" style="display:none">
+                <div class="card">
+                  <div id="chart-{{ .Order }}-nogaps">
+                    <div style="height: 400px; display: flex; justify-content: center; align-items:center;">
+                      <svg width="80%" height="80%">
+                        <use xlink:href="#ab83d798-7d25-4111-a4e2-42875f6e6704"></use>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {{ end }}
           {{ end }}
         {{ end }}
         <div class="col-md-6 mb-4">
@@ -338,6 +344,42 @@
           </div>
         </div>
       </div>
+      {{ if $.Mainnet }}
+        <div id="execution-charts">
+          <h3>Execution Charts <a class="text-muted cursor-pointer" href="#execution-charts" onclick="this.setAttribute('data-clipboard-text', window.location.href + '#execution-charts')" data-clipboard-text="asdf">#</a></h3>
+          <hr class="mb-4" />
+          <div class="row">
+            {{ range $i, $e := . }}
+              {{ if gt .Order 19 }}
+                <div class="col-md-6 mb-4" id="chart-holder-{{ .Order }}">
+                  <div class="card">
+                    <div id="chart-{{ .Order }}">
+                      <div style="height:400px; display: flex; justify-content: center; align-items:center;">
+                        <svg width="80%" height="80%">
+                          <use xlink:href="#ab83d798-7d25-4111-a4e2-42875f6e6704"></use>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {{ if .Data.IsNormalChart }}
+                  <div class="col-md-6 mb-4" id="chart-holder-{{ .Order }}-nogaps" style="display:none">
+                    <div class="card">
+                      <div id="chart-{{ .Order }}-nogaps">
+                        <div style="height: 400px; display: flex; justify-content: center; align-items:center;">
+                          <svg width="80%" height="80%">
+                            <use xlink:href="#ab83d798-7d25-4111-a4e2-42875f6e6704"></use>
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {{ end }}
+              {{ end }}
+            {{ end }}
+          </div>
+        </div>
+      {{ end }}
     </div>
   {{ end }}
 {{ end }}

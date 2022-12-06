@@ -2,6 +2,7 @@ package main
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -25,7 +26,7 @@ type options struct {
 	statisticsChartToggle     bool
 }
 
-var opt options = options{}
+var opt *options
 
 func main() {
 	configPath := flag.String("config", "", "Path to the config file")
@@ -37,11 +38,12 @@ func main() {
 
 	flag.Parse()
 
-	opt = options{
+	opt = &options{
 		configPath:                *configPath,
 		statisticsDayToExport:     *statisticsDayToExport,
 		statisticsDaysToExport:    *statisticsDaysToExport,
-		statisticsValidatorToggle: *statisticsChartToggle,
+		statisticsChartToggle:     *statisticsChartToggle,
+		statisticsValidatorToggle: *statisticsValidatorToggle,
 		poolsDisabledFlag:         *poolsDisabledFlag,
 	}
 
@@ -88,6 +90,8 @@ func main() {
 
 	db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 
+	price.Init(utils.Config.Chain.Config.DepositChainID)
+
 	if *statisticsDaysToExport != "" {
 		s := strings.Split(*statisticsDaysToExport, "-")
 		if len(s) < 2 {
@@ -125,7 +129,7 @@ func main() {
 					logrus.Fatalf("error resetting status for chart series status for day %v: %v", d, err)
 				}
 
-				err = db.WriteChartSeriesForDay(uint64(d))
+				err = db.WriteChartSeriesForDay(int64(d))
 				if err != nil {
 					logrus.Errorf("error exporting chart series from day %v: %v", d, err)
 				}
@@ -153,7 +157,7 @@ func main() {
 				logrus.Fatalf("error resetting status for chart series status for day %v: %v", *statisticsDayToExport, err)
 			}
 
-			err = db.WriteChartSeriesForDay(uint64(*statisticsDayToExport))
+			err = db.WriteChartSeriesForDay(int64(*statisticsDayToExport))
 			if err != nil {
 				logrus.Errorf("error exporting chart series from day %v: %v", *statisticsDayToExport, err)
 			}
@@ -229,7 +233,7 @@ func statisticsLoop() {
 			logrus.Infof("Chart statistics: latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayChart)
 			if lastExportedDayChart <= previousDay || lastExportedDayChart == 0 {
 				for day := lastExportedDayChart; day <= previousDay; day++ {
-					err = db.WriteChartSeriesForDay(day)
+					err = db.WriteChartSeriesForDay(int64(day))
 					if err != nil {
 						logrus.Errorf("error exporting chart series from day %v: %v", day, err)
 					}

@@ -1160,6 +1160,10 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(queryIndices) == 0 {
+		sendErrorResponse(w, r.URL.String(), "no or invalid validator indicies provided")
+	}
+
 	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), 101)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -2479,6 +2483,10 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	queryOffsetEpoch := uint64(0)
 	if latestEpoch > oneWeekEpochs {
 		queryOffsetEpoch = latestEpoch - oneWeekEpochs
+	}
+
+	if len(queryValidators) == 0 {
+		sendErrorResponse(w, r.URL.String(), "no or invalid validator indicies provided")
 	}
 
 	balances, err := db.BigtableClient.GetValidatorBalanceHistory(queryValidators, latestEpoch, int64(latestEpoch-queryOffsetEpoch))
