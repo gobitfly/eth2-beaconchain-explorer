@@ -507,6 +507,7 @@ function getRelativeTime(tsLuxon) {
     return `${prefix}${duration.days * -1}days  ${duration.hours * -1}hrs ${duration.minutes * -1}mins ${duration.seconds * -1}secs${suffix}`
   }
 }
+
 function addCommas(number) {
   return number
     .toString()
@@ -514,15 +515,10 @@ function addCommas(number) {
     .replace(/\B(?=(\d{3})+(?!\d))/g, "<span class='thousands-separator'></span>")
 }
 
-function FormatCurrency(value, symbol, exchangeRate) {
-  var formatted = ""
-  if (!symbol) {
-    symbol = "USD"
+function getIncomeChartValueString(value, currency, ethPrice) {
+  if (this.currency === "ETH") {
+    return `${value.toFixed(5)} ETH`
   }
-  if (symbol && symbol !== "ETH" && symbol !== "BTC") {
-    formatted = new Intl.NumberFormat(symbol === "USD" ? "en-US" : symbol === "RUB" ? "ru-IN" : symbol === "EUR" ? "de-DE" : symbol === "GBP" ? "en-GB" : symbol === "CNY" ? "cn-CN" : {}, { style: "currency", currency: symbol, maximumFractionDigits: 2 }).format(exchangeRate ? value * exchangeRate : value)
-  } else {
-    formatted = `${new Intl.NumberFormat({}, { maximumFractionDigits: 6 }).format(exchangeRate ? value * exchangeRate : value)} + ${symbol}`
-  }
-  return formatted
+
+  return `${(value / ethPrice).toFixed(5)} ETH (${value.toFixed(2)} ${currency})`
 }

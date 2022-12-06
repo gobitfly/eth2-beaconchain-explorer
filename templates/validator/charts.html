@@ -237,7 +237,6 @@
                         tooltip: {
                             split: false,
                             shared: true,
-                            useHTML: true,
                             formatter: (tooltip) => {
                                 var text = ``
                                 var total = 0
@@ -251,13 +250,13 @@
                                 // income
                                 for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
                                     const value = tooltip.chart.hoverPoints[i].y;
-                                    text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <span>${tooltip.chart.hoverPoints[i].series.name}:</span> <b style="float:right;">${FormatCurrency(value, currency)}</b><br/>`
+                                    text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getIncomeChartValueString(value, currency, ethPrice)}<br/>`
                                     total += value
                                 }
 
                                 // add total if hovered point contains rewards for both EL and CL
                                 if (tooltip.chart.hoverPoints.length > 1) {
-                                    text += `<span style="visibility: hidden;">\u25CF</span>  <span>Total:</span> <strong style="float: right;">${FormatCurrency(total, currency)}</strong><br/>`
+                                    text += `<b>Total:</b> ${getIncomeChartValueString(total, currency, ethPrice)}`
                                 }
 
                                 return text
