@@ -194,9 +194,14 @@ func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	gasnowData.Data.PriceUSD = price.GetEthPrice("USD")
+	gasnowData.Data.Currency = ""
 
-	j := json.NewEncoder(w)
-	sendOKResponse(j, r.URL.String(), []interface{}{gasnowData})
+	err := json.NewEncoder(w).Encode(gasnowData)
+	if err != nil {
+		logger.Errorf("error gasnow data is not defined. The frontend updater might not be running.")
+		sendErrorResponse(w, r.URL.String(), "error gasnow data is currently not available.")
+		return
+	}
 }
 
 func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map[common.Hash]types.RelaysData, beaconDataMap map[uint64]types.ExecBlockProposer) []types.ExecutionBlockApiResponse {
