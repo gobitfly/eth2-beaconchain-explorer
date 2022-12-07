@@ -594,8 +594,8 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		}
 
 		latestChartsPageData := LatestChartsPageData()
-		if latestChartsPageData != nil {
-			for _, c := range *latestChartsPageData {
+		if len(latestChartsPageData) != 0 {
+			for _, c := range latestChartsPageData {
 				if c.Path == "deposits" {
 					data.DepositChart = c
 				} else if c.Path == "deposits_distribution" {

@@ -22,8 +22,8 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 	pageData := &types.EthOneDepositsPageData{}
 
 	latestChartsPageData := services.LatestChartsPageData()
-	if latestChartsPageData != nil {
-		for _, c := range *latestChartsPageData {
+	if len(latestChartsPageData) != 0 {
+		for _, c := range latestChartsPageData {
 			if c.Path == "deposits" {
 				pageData.DepositChart = c
 				break

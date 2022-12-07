@@ -58,12 +58,12 @@ var ChartHandlers = map[string]chartHandler{
 }
 
 // LatestChartsPageData returns the latest chart page data
-func LatestChartsPageData() *[]*types.ChartsPageDataChart {
+func LatestChartsPageData() []*types.ChartsPageDataChart {
 	wanted := &[]*types.ChartsPageDataChart{}
 	cacheKey := fmt.Sprintf("%d:frontend:chartsPageData", utils.Config.Chain.Config.DepositChainID)
 
 	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, wanted); err == nil {
-		return wanted.(*[]*types.ChartsPageDataChart)
+		return *wanted.(*[]*types.ChartsPageDataChart)
 	} else {
 		logger.Errorf("error retrieving chartsPageData from cache: %v", err)
 	}
@@ -340,7 +340,7 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:                           "Staked eEther",
+		Title:                           "Staked Ether",
 		Subtitle:                        "History of daily staked Ether, which is the sum of all Effective Balances.",
 		XAxisTitle:                      "",
 		YAxisTitle:                      "Ether",
@@ -408,12 +408,12 @@ func networkLivenessChartData() (*types.GenericChartData, error) {
 	}
 
 	rows := []struct {
-		Timestamp      uint64
-		HeadEpoch      uint64
-		FinalizedEpoch uint64
+		Day  uint64
+		Diff uint64
+		// FinalizedEpoch uint64
 	}{}
 
-	err := db.ReaderDb.Select(&rows, "SELECT EXTRACT(epoch FROM ts)::INT AS timestamp, headepoch, finalizedepoch FROM network_liveness ORDER BY ts")
+	err := db.ReaderDb.Select(&rows, "SELECT EXTRACT(epoch FROM date_trunc('day', ts))::bigint as day, max(headepoch-finalizedepoch) as diff FROM network_liveness group by day ORDER BY day;")
 	if err != nil {
 		return nil, err
 	}
@@ -421,13 +421,9 @@ func networkLivenessChartData() (*types.GenericChartData, error) {
 	seriesData := [][]float64{}
 
 	for _, row := range rows {
-		// networkliveness := (1 - 4*float64(row.HeadEpoch-2-row.FinalizedEpoch)/100)
-		// if networkliveness < 0 {
-		// 	networkliveness = 0
-		// }
 		seriesData = append(seriesData, []float64{
-			float64(row.Timestamp * 1000),
-			float64(row.HeadEpoch - row.FinalizedEpoch),
+			float64(row.Day * 1000),
+			float64(row.Diff),
 		})
 	}
 
@@ -456,7 +452,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 	}
 
 	rows := []struct {
-		Epoch                   uint64
+		Day                     uint64
 		Globalparticipationrate float64
 	}{}
 
@@ -464,7 +460,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 	if epoch > 0 {
 		epoch--
 	}
-	err := db.ReaderDb.Select(&rows, "SELECT epoch, globalparticipationrate FROM epochs WHERE epoch < $1 ORDER BY epoch", epoch)
+	err := db.ReaderDb.Select(&rows, "SELECT epoch / 225 as day, AVG(globalparticipationrate) as globalparticipationrate FROM epochs WHERE epoch < $1 GROUP BY day ORDER BY day limit 10;", epoch)
 	if err != nil {
 		return nil, err
 	}
@@ -473,7 +469,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 
 	for _, row := range rows {
 		seriesData = append(seriesData, []float64{
-			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
+			float64(utils.EpochToTime((row.Day+1)*225).Unix() * 1000),
 			utils.RoundDecimals(row.Globalparticipationrate*100, 2),
 		})
 	}
@@ -500,9 +496,11 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	// retrieve pool performance from db
 	var performanceDays []types.PerformanceDay
 	err := db.ReaderDb.Select(&performanceDays, `
-		SELECT pool, day, effective_balances_sum_wei, start_balances_sum_wei, end_balances_sum_wei, deposits_sum_wei, apr
+		SELECT pool, day, max(effective_balances_sum_wei) as effective_balances_sum_wei, min(start_balances_sum_wei) as start_balances_sum_wei, max(end_balances_sum_wei) as end_balances_sum_wei, max(deposits_sum_wei) as deposits_sum_wei, AVG(apr) as apr
 		FROM historical_pool_performance
-		ORDER BY day, pool ASC`)
+		where pool IN (select pool from historical_pool_performance group by pool, day, validators order by day desc, validators desc limit 10)
+		GROUP BY pool, day
+		ORDER BY day, pool ASC;`)
 	if err != nil {
 		return nil, fmt.Errorf("error getting historical pool performance: %w", err)
 	}
@@ -996,17 +994,15 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 	}
 
 	rows := []struct {
-		Epoch                 uint64
-		Totalvalidatorbalance uint64
-		Eligibleether         uint64
+		Day           uint64
+		Effectiveness float64
 	}{}
 
 	err := db.ReaderDb.Select(&rows, `
 		SELECT
-			epoch, 
-			COALESCE(totalvalidatorbalance, 0) AS totalvalidatorbalance,
-			COALESCE(eligibleether, 0) AS eligibleether
-		FROM epochs ORDER BY epoch`)
+			epoch / 225 as day,
+			COALESCE(AVG(eligibleether) / AVG(totalvalidatorbalance), 0) as effectiveness
+		FROM epochs where totalvalidatorbalance != 0 AND eligibleether != 0 GROUP BY day ORDER BY day`)
 	if err != nil {
 		return nil, err
 	}
@@ -1014,15 +1010,10 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 	seriesData := [][]float64{}
 
 	for _, row := range rows {
-		if row.Eligibleether == 0 {
-			continue
-		}
-		if row.Totalvalidatorbalance == 0 {
-			continue
-		}
+
 		seriesData = append(seriesData, []float64{
-			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
-			utils.RoundDecimals(100*float64(row.Eligibleether)/float64(row.Totalvalidatorbalance), 2),
+			float64(utils.EpochToTime((row.Day+1)*225).Unix() * 1000),
+			utils.RoundDecimals(100*row.Effectiveness, 2),
 		})
 	}
 
@@ -1725,12 +1716,13 @@ func BurnedFeesChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Burned Fees",
-		Subtitle:     "Evolution of the total number of Ether burned with EIP 1559",
-		XAxisTitle:   "",
-		YAxisTitle:   "Burned Fees [ETH]",
-		StackingMode: "false",
-		Type:         "area",
+		Title:                           "Burned Fees",
+		Subtitle:                        "Evolution of the total number of Ether burned with EIP 1559",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Burned Fees [ETH]",
+		StackingMode:                    "false",
+		Type:                            "area",
+		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Burned Fees",
@@ -1774,12 +1766,13 @@ func NonFailedTxGasUsageChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		// IsNormalChart: true,
-		Title:        "Gas Usage - Successful Tx",
-		Subtitle:     "Gas usage of successful transactions that are not reverted.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Gas Usage [Gas]",
-		StackingMode: "false",
-		Type:         "area",
+		Title:                           "Gas Usage - Successful Tx",
+		Subtitle:                        "Gas usage of successful transactions that are not reverted.",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Gas Usage [Gas]",
+		StackingMode:                    "false",
+		Type:                            "area",
+		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Gas Usage",
@@ -1822,12 +1815,13 @@ func BlockCountChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Daily Block Count",
-		Subtitle:     "Number of blocks produced (daily)",
-		XAxisTitle:   "",
-		YAxisTitle:   "Block Count [#]",
-		StackingMode: "false",
-		Type:         "area",
+		Title:                           "Daily Block Count",
+		Subtitle:                        "Number of blocks produced (daily)",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Block Count [#]",
+		StackingMode:                    "false",
+		Type:                            "area",
+		ColumnDataGroupingApproximation: "average",
 		TooltipFormatter: `
 		function (tooltip) {
 			this.point.y = Math.round(this.point.y)
@@ -1881,12 +1875,13 @@ func BlockTimeAvgChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Block Time (Avg)",
-		Subtitle:     "Average time between blocks over the last 24 hours",
-		XAxisTitle:   "",
-		YAxisTitle:   "Block Time [seconds]",
-		StackingMode: "false",
-		Type:         "area",
+		Title:                           "Block Time (Avg)",
+		Subtitle:                        "Average time between blocks over the last 24 hours",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Block Time [seconds]",
+		StackingMode:                    "false",
+		Type:                            "area",
+		ColumnDataGroupingApproximation: "average",
 		TooltipFormatter: `
 		function (tooltip) {
 			this.point.y = Math.round(this.point.y)
@@ -1941,12 +1936,13 @@ func TotalEmissionChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		// IsNormalChart: true,
-		Title:        "Total Ether Supply",
-		Subtitle:     "Evolution of the total Ether supply",
-		XAxisTitle:   "",
-		YAxisTitle:   "Total Supply [ETH]",
-		StackingMode: "false",
-		Type:         "area",
+		Title:                           "Total Ether Supply",
+		Subtitle:                        "Evolution of the total Ether supply",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Total Supply [ETH]",
+		StackingMode:                    "false",
+		Type:                            "area",
+		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Total Supply",
@@ -2000,12 +1996,13 @@ func AvgGasPrice() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Average Gas Price",
-		Subtitle:     "The average gas price for non-EIP1559 transaction.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Gas Price [GWei]",
-		StackingMode: "false",
-		Type:         "area",
+		Title:                           "Average Gas Price",
+		Subtitle:                        "The average gas price for non-EIP1559 transaction.",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Gas Price [GWei]",
+		StackingMode:                    "false",
+		Type:                            "area",
+		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Gas Price (avg)",
@@ -2059,12 +2056,13 @@ func AvgGasUsedChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Block Gas Usage",
-		Subtitle:     "The average amount of gas used by blocks per day.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Block Gas Usage [gas]",
-		StackingMode: "false",
-		Type:         "area",
+		Title:                           "Block Gas Usage",
+		Subtitle:                        "The average amount of gas used by blocks per day.",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Block Gas Usage [gas]",
+		StackingMode:                    "false",
+		Type:                            "area",
+		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Average Gas Used",
@@ -2107,12 +2105,13 @@ func TotalGasUsedChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Total Gas Usage",
-		Subtitle:     "The total amout of daily gas used.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Total Gas Usage [gas]",
-		StackingMode: "false",
-		Type:         "area",
+		Title:                           "Total Gas Usage",
+		Subtitle:                        "The total amout of daily gas used.",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Total Gas Usage [gas]",
+		StackingMode:                    "false",
+		Type:                            "area",
+		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Total Gas Usage",
@@ -2166,12 +2165,13 @@ func AvgGasLimitChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Block Gas Limit",
-		Subtitle:     "Evolution of the average block gas limit",
-		XAxisTitle:   "",
-		YAxisTitle:   "Gas Limit [gas]",
-		StackingMode: "false",
-		Type:         "area",
+		Title:                           "Block Gas Limit",
+		Subtitle:                        "Evolution of the average block gas limit",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Gas Limit [gas]",
+		StackingMode:                    "false",
+		Type:                            "area",
+		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Gas Limit",
@@ -2225,12 +2225,13 @@ func AvgBlockUtilChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Average Block Usage",
-		Subtitle:     "Evolution of the average utilization of Ethereum blocks",
-		XAxisTitle:   "",
-		YAxisTitle:   "Block Usage [%]",
-		StackingMode: "false",
-		Type:         "spline",
+		Title:                           "Average Block Usage",
+		Subtitle:                        "Evolution of the average utilization of Ethereum blocks",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Block Usage [%]",
+		StackingMode:                    "false",
+		Type:                            "spline",
+		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Block Usage",
@@ -2284,12 +2285,13 @@ func MarketCapChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Market Cap",
-		Subtitle:     "The Evolution of the Ethereum Makret Cap.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Market Cap [$]",
-		StackingMode: "false",
-		Type:         "area",
+		Title:                           "Market Cap",
+		Subtitle:                        "The Evolution of the Ethereum Makret Cap.",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Market Cap [$]",
+		StackingMode:                    "false",
+		Type:                            "area",
+		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Market Cap",
@@ -2343,12 +2345,13 @@ func TxCountChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Transactions",
-		Subtitle:     "The total number of transactions per day",
-		XAxisTitle:   "",
-		YAxisTitle:   "Tx Count [#]",
-		StackingMode: "false",
-		Type:         "area",
+		Title:                           "Transactions",
+		Subtitle:                        "The total number of transactions per day",
+		XAxisTitle:                      "",
+		YAxisTitle:                      "Tx Count [#]",
+		StackingMode:                    "false",
+		Type:                            "area",
+		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Transactions",
