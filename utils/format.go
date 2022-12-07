@@ -1084,17 +1084,18 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 }
 
 func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
-	d := new(big.Int).Exp(big.NewInt(10), new(big.Int).SetBytes(balance.Metadata.Decimals), nil)
+	e := new(big.Int).SetBytes(balance.Metadata.Decimals)
+	d := new(big.Int).Exp(big.NewInt(10), e, nil)
 	balWei := new(big.Float).SetInt(new(big.Int).SetBytes(balance.Balance))
 	balEth := new(big.Float).Quo(balWei, new(big.Float).SetInt(d))
 	p := message.NewPrinter(language.English)
-	return template.HTML(p.Sprintf(`
-	<div class="d-flex align-items-center">
-		<svg style="width: 1rem; height: 1rem;">
-			<use xlink:href="#ethereum-diamond-logo"/>
-		</svg> 
-		<span class="token-holdings">%f</span>
-	</div>`, balEth))
+	return template.HTML(p.Sprintf(fmt.Sprintf(`
+		<div class="d-flex align-items-center">
+			<svg style="width: 1rem; height: 1rem;">
+				<use xlink:href="#ethereum-diamond-logo"/>
+			</svg> 
+			<span class="token-holdings">%%.%df Ether</span>
+		</div>`, e.Int64()), balEth))
 }
 
 func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
