@@ -1,12 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"fmt"
 	"net/http"
-	"reflect"
 
 	"github.com/gorilla/mux"
 )
@@ -35,26 +35,19 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// only display the most recent N entries as a preview
-	for i, ch := range *chartsPageData {
-		if ch != nil && ch.Data != nil {
-			if ch.Order >= 20 && ch.Order <= 30 {
-				for j, series := range ch.Data.Series {
-					switch series.Data.(type) {
-					case []interface{}:
-						l := len(series.Data.([]interface{}))
-						if l > CHART_PREVIEW_POINTS*2 {
-							(*chartsPageData)[i].Data.Series[j].Data = series.Data.([]interface{})[l-CHART_PREVIEW_POINTS:]
-						}
-					default:
-						logger.Infof("unknown type: %v for chart: %v", reflect.TypeOf(series.Data), ch.Data.Title)
-					}
-				}
-			}
-		}
+	cpd := make([]types.ChartsPageDataChart, 0, len(chartsPageData))
+	for i := 0; i < len(chartsPageData); i++ {
+		chartData := *chartsPageData[i]
+		data := *(*chartsPageData[i]).Data
+		chartData.Data = &data
+		cpd = append(cpd, chartData)
 	}
 
-	data.Data = chartsPageData
+	for _, chart := range cpd {
+		chart.Data.Series = nil
+	}
+
+	data.Data = cpd
 
 	err := chartsTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -100,7 +93,7 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var chartData *types.GenericChartData
-	for _, d := range *chartsPageData {
+	for _, d := range chartsPageData {
 		if d.Path == chartVar {
 			chartData = d.Data
 			break
@@ -122,6 +115,35 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+}
+
+func GenericChartData(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	chartVar := vars["chart"]
+
+	w.Header().Set("Content-Type", "application/json")
+
+	chartsPageData := services.LatestChartsPageData()
+	if chartsPageData == nil {
+		logger.Error("error getting chart page data")
+		SendErrorResponse(w, r.URL.String(), "error getting chart page data")
+		return
+	}
+
+	var chartData *types.GenericChartData
+	for _, d := range chartsPageData {
+		if fmt.Sprintf("chart-holder-%d", d.Order) == chartVar {
+			chartData = d.Data
+			break
+		}
+	}
+
+	if chartData == nil {
+		SendErrorResponse(w, r.URL.String(), fmt.Sprintf("error the chart you requested is not available. Chart: %v", chartVar))
+		return
+	}
+
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{chartData.Series})
 }
 
 // SlotViz renders a single page with a d3 slot (block) visualisation
