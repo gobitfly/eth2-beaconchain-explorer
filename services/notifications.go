@@ -532,25 +532,15 @@ func dispatchNotifications(useDB *sqlx.DB) error {
 
 // garbageCollectNotificationQueue deletes entries from the notification queue that have been processed
 func garbageCollectNotificationQueue(useDB *sqlx.DB) error {
-	tx, err := useDB.Beginx()
-	if err != nil {
-		return fmt.Errorf("error beginning transaction")
-	}
-	defer tx.Rollback()
 
-	rows, err := tx.Exec(`DELETE FROM notification_queue where (sent < now() - INTERVAL '30 minutes') OR (created < now() - INTERVAL '1 hour')`)
+	rows, err := useDB.Exec(`DELETE FROM notification_queue where (sent < now() - INTERVAL '30 minutes') OR (created < now() - INTERVAL '1 hour')`)
 	if err != nil {
 		return fmt.Errorf("error deleting from notification_queue %w", err)
 	}
 
 	rowsAffected, _ := rows.RowsAffected()
 
-	logger.Infof("Deleting %v rows from the notification_queue", rowsAffected)
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("error committing transaction")
-	}
+	logger.Infof("Deleted %v rows from the notification_queue", rowsAffected)
 
 	return nil
 }
@@ -612,27 +602,13 @@ func queuePushNotification(notificationsByUserID map[uint64]map[types.EventName]
 				}
 			}
 
-			tx, err := useDB.Beginx()
-			if err != nil {
-				logger.WithError(err).Error("error beginning transaction")
-				return
-			}
-
 			transitPushContent := types.TransitPushContent{
 				Messages: batch,
 			}
 
-			_, err = tx.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES ($1, 'push', $2)`, time.Now(), transitPushContent)
+			_, err = useDB.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES ($1, 'push', $2)`, time.Now(), transitPushContent)
 			if err != nil {
 				logger.WithError(err).Errorf("error writing transit push notification to db")
-				tx.Rollback()
-				return
-			}
-
-			err = tx.Commit()
-			if err != nil {
-				logger.WithError(err).Error("error committing transaction")
-				tx.Rollback()
 				return
 			}
 		}(userTokens, userNotifications)
@@ -657,10 +633,6 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 	logger.Infof("processing %v push notifications", len(notificationQueueItem))
 
 	for _, n := range notificationQueueItem {
-		tx, err := useDB.Beginx()
-		if err != nil {
-			return fmt.Errorf("error beginning transaction")
-		}
 		_, err = notify.SendPushBatch(n.Content.Messages)
 		if err != nil {
 			metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
@@ -669,16 +641,10 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 			metrics.NotificationsSent.WithLabelValues("push", "200").Add(float64(len(n.Content.Messages)))
 		}
 
-		_, err = tx.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
+		_, err = useDB.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
 		if err != nil {
-			tx.Rollback()
 			return fmt.Errorf("error updating sent status for push notification with id: %v, err: %w", n.Id, err)
 		}
-		err = tx.Commit()
-		if err != nil {
-			return fmt.Errorf("error committing transaction")
-		}
-		tx.Rollback()
 	}
 	return nil
 }
@@ -800,12 +766,6 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 				}
 			}
 
-			tx, err := useDB.Beginx()
-			if err != nil {
-				logger.WithError(err).Error("error beginning transaction")
-				return
-			}
-
 			// msg.Body += template.HTML(fmt.Sprintf("<br>Best regards<br>\n%s", utils.Config.Frontend.SiteDomain))
 			msg.SubscriptionManageURL = template.HTML(fmt.Sprintf(`<a href="%v" style="color: white" onMouseOver="this.style.color='#F5B498'" onMouseOut="this.style.color='#FFFFFF'">Manage</a>`, "https://"+utils.Config.Frontend.SiteDomain+"/user/notifications"))
 
@@ -816,17 +776,9 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 				Attachments: attachments,
 			}
 
-			_, err = tx.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES ($1, 'email', $2)`, time.Now(), transitEmailContent)
+			_, err = useDB.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES ($1, 'email', $2)`, time.Now(), transitEmailContent)
 			if err != nil {
 				logger.WithError(err).Errorf("error writing transit email to db")
-				tx.Rollback()
-			}
-
-			err = tx.Commit()
-			if err != nil {
-				logger.WithError(err).Error("error committing transaction")
-				tx.Rollback()
-				return
 			}
 		}(userEmail, userNotifications)
 	}
@@ -850,10 +802,6 @@ func sendEmailNotifications(useDb *sqlx.DB) error {
 	logger.Infof("processing %v email notifications", len(notificationQueueItem))
 
 	for _, n := range notificationQueueItem {
-		tx, err := useDb.Beginx()
-		if err != nil {
-			return fmt.Errorf("error beginning transaction")
-		}
 		err = mail.SendMailRateLimited(n.Content.Address, n.Content.Subject, n.Content.Email, n.Content.Attachments)
 		if err != nil {
 			if !strings.Contains(err.Error(), "rate limit has been exceeded") {
@@ -877,15 +825,9 @@ func sendEmailNotifications(useDb *sqlx.DB) error {
 			// 	return fmt.Errorf("error sending notification-email: %w", err)
 			// }
 		}
-		_, err = tx.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
+		_, err = useDb.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
 		if err != nil {
-			tx.Rollback()
 			return fmt.Errorf("error updating sent status for email notification with id: %v, err: %w", n.Id, err)
-		}
-		err = tx.Commit()
-		if err != nil {
-			tx.Rollback()
-			return fmt.Errorf("error committing transaction")
 		}
 	}
 	return nil
