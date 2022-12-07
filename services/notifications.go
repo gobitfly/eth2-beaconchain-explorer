@@ -1459,7 +1459,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 			LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`
 			Pubkey              []byte        `db:"pubkey"`
 		}
-		err = tx.Select(&dataArr, `select validatorindex, pubkey, lastattestationslot from validators where pubkey = ANY($1) order by validatorindex`, pq.ByteaArray(batch))
+		err = tx.Select(&dataArr, `select validatorindex, pubkey, lastattestationslot from validators where pubkey = ANY($1)`, pq.ByteaArray(batch))
 		if err != nil {
 			return fmt.Errorf("failed to query potenitally offline validators: %v", err)
 		}
