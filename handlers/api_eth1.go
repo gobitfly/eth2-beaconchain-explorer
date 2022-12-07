@@ -186,19 +186,14 @@ func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	gasnowData := services.LatestGasNowData()
-	currency := GetCurrency(r)
-	if currency == "ETH" {
-		currency = "USD"
-	}
 
-	if gasnowData == nil || currency == "" {
+	if gasnowData == nil {
 		logger.Errorf("error gasnow data is not defined. The frontend updater might not be running.")
 		sendErrorResponse(w, r.URL.String(), "error gasnow data is currently not available.")
 		return
 	}
 
-	gasnowData.Data.Price = price.GetEthPrice(currency)
-	gasnowData.Data.Currency = currency
+	gasnowData.Data.PriceUSD = price.GetEthPrice("USD")
 
 	j := json.NewEncoder(w)
 	sendOKResponse(j, r.URL.String(), []interface{}{gasnowData})

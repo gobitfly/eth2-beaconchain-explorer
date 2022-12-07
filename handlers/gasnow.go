@@ -70,8 +70,6 @@ func GasNow(w http.ResponseWriter, r *http.Request) {
 
 func GasNowData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	j := json.NewEncoder(w)
 
@@ -84,7 +82,7 @@ func GasNowData(w http.ResponseWriter, r *http.Request) {
 	gasnowData.Data.Price = price.GetEthPrice(currency)
 	gasnowData.Data.Currency = currency
 
-	err := j.Encode(services.LatestGasNowData())
+	err := j.Encode(gasnowData)
 	if err != nil {
 		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
 	}
