@@ -175,7 +175,6 @@
            const res = await fetch(`${window.location.pathname}/${urlPart}?pageToken=${encodeURI(token)}&a=${params.a}`)
            const data = await res.json()
 
-           console.log('got data: ', data)
 
            if (data && data.data && data.pagingToken && data.pagingToken.length) {
              previousToken = pageToken
