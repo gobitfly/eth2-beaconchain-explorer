@@ -1084,24 +1084,18 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 }
 
 func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
-	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Metadata.Decimals), 0))
-	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
+	e := new(big.Int).SetBytes(balance.Metadata.Decimals)
+	d := new(big.Int).Exp(big.NewInt(10), e, nil)
+	balWei := new(big.Float).SetInt(new(big.Int).SetBytes(balance.Balance))
+	balEth := new(big.Float).Quo(balWei, new(big.Float).SetInt(d))
 	p := message.NewPrinter(language.English)
-	flt, _ := num.Div(mul).Float64()
-	// return template.HTML(p.Sprintf(`
-	// <div class="d-flex align-items-center">
-	// 	<svg style="width: 1rem; height: 1rem;">
-	// 		<use xlink:href="#ethereum-diamond-logo"/>
-	// 	</svg>
-	// 	<span class="token-holdings">%s</span>
-	// </div>`, strconv.FormatFloat(flt, 'f', -1, 64)))
-	return template.HTML(p.Sprintf(`
-	<div class="d-flex align-items-center">
-		<svg style="width: 1rem; height: 1rem;">
-			<use xlink:href="#ethereum-diamond-logo"/>
-		</svg> 
-		<span class="token-holdings">%.18f</span>
-	</div>`, flt))
+	return template.HTML(p.Sprintf(fmt.Sprintf(`
+		<div class="d-flex align-items-center">
+			<svg style="width: 1rem; height: 1rem;">
+				<use xlink:href="#ethereum-diamond-logo"/>
+			</svg> 
+			<span class="token-holdings">%%.%df Ether</span>
+		</div>`, e.Int64()), balEth))
 }
 
 func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
@@ -1110,6 +1104,7 @@ func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
 	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
 	f, _ := num.Div(mul).Float64()
+
 	return template.HTML(p.Sprintf("%s", FormatThousandsEnglish(strconv.FormatFloat(f, 'f', -1, 64))))
 }
 
