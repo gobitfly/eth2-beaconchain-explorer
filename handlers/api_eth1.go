@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -169,6 +170,38 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	sendOKResponse(j, r.URL.String(), []interface{}{results})
+}
+
+// ApiETH1GasNowData godoc
+// @Summary Gets the current estimation for gas prices in GWei.
+// @Tags Execution
+// @Description The response is split into four estimated inclusion speeds rapid (15 seconds), fast (1 minute), standard (3 minutes) and slow (> 10 minutes).
+// @Produce json
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/execution/gasnow [get]
+func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	gasnowData := services.LatestGasNowData()
+	currency := GetCurrency(r)
+	if currency == "ETH" {
+		currency = "USD"
+	}
+
+	if gasnowData == nil || currency == "" {
+		logger.Errorf("error gasnow data is not defined. The frontend updater might not be running.")
+		sendErrorResponse(w, r.URL.String(), "error gasnow data is currently not available.")
+		return
+	}
+
+	gasnowData.Data.Price = price.GetEthPrice(currency)
+	gasnowData.Data.Currency = currency
+
+	j := json.NewEncoder(w)
+	sendOKResponse(j, r.URL.String(), []interface{}{gasnowData})
 }
 
 func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map[common.Hash]types.RelaysData, beaconDataMap map[uint64]types.ExecBlockProposer) []types.ExecutionBlockApiResponse {
