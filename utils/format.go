@@ -1093,7 +1093,7 @@ func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
 		<svg style="width: 1rem; height: 1rem;">
 			<use xlink:href="#ethereum-diamond-logo"/>
 		</svg> 
-		<span class="token-holdings">%v</span>
+		<span class="token-holdings">%f</span>
 	</div>`, balEth))
 }
 
