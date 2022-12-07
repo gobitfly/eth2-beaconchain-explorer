@@ -1474,6 +1474,8 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 		logger.Infof("error starting db tx: %v", err)
 		return err
 	}
+	defer tx.Rollback()
+
 	// we use the latest exported epoch because that's what the lastattestationslot column is based upon
 	err = tx.Get(&latestExportedSlot, `SELECT COALESCE(MAX(lastattestationslot), 0) FROM validators`)
 	if err != nil {
