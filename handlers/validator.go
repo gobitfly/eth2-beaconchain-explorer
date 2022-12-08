@@ -433,7 +433,27 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// add attestationStats that are not yet in validator_stats TODO: Reimplement for bigtable
+		// add attestationStats that are not yet in validator_stats
+		finalizedEpoch := services.LatestFinalizedEpoch()
+		lookback := int64(finalizedEpoch - (lastStatsDay+1)*225)
+		if lookback > 0 {
+			logger.Infof("retrieving attestations not yet in stats, lookback is %v", lookback)
+			attestationsNotInStats, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, finalizedEpoch, lookback)
+			if err != nil {
+				logger.Errorf("error retrieving validator attestations not in stats from bigtable: %v", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			for _, v := range attestationsNotInStats {
+				for _, a := range v {
+					if a.Status == 0 {
+						attestationStats.MissedAttestations++
+					}
+				}
+			}
+		}
+
 		validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
 		validatorPageData.OrphanedAttestationsCount = attestationStats.OrphanedAttestations
 		validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount - validatorPageData.OrphanedAttestationsCount
