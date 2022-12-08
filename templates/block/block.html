@@ -17,17 +17,19 @@
         }
       }
 
-      var transactions_tab_loaded = false
-      let ttab = $('#transactions-tab')
-      if(ttab.length > 0) {
-        ttab.on('shown.bs.tab', function (event) { if(!transactions_tab_loaded) { setupInfiniteScrollTransactions(); }; transactions_tab_loaded = true; });
-      } else {
-        console.error('error getting #transactions-tab')
-        const att = document.getElementById('transactions_table');
-        if(att) {
-          att.appendChild(getInfoElementTransactions('Error loading attestations...', 'red'));
+      {{ if .ExecutionData }}
+        var transactions_tab_loaded = false
+        let ttab = $('#transactions-tab')
+        if(ttab.length > 0) {
+          ttab.on('shown.bs.tab', function (event) { if(!transactions_tab_loaded) { setupInfiniteScrollTransactions(); }; transactions_tab_loaded = true; });
+        } else {
+          console.error('error getting #transactions-tab')
+          const att = document.getElementById('transactions_table');
+          if(att) {
+            att.appendChild(getInfoElementTransactions('Error loading attestations...', 'red'));
+          }
         }
-      }
+      {{ end }}
     }
 
     function getInfoElementAttestations (text, color) {
@@ -190,6 +192,7 @@
       return txn_tr;
     }
 
+    {{ if .ExecutionData }}
     async function setupInfiniteScrollTransactions() {
       const infLoading = document.getElementById('transactions_table');
       if(infLoading) {
@@ -208,6 +211,7 @@
         }
       }
     }
+    {{ end }}
 
     $(document).ready(function () {
       let slotNumber = {{ .Slot }}
