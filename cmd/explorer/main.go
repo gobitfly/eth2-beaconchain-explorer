@@ -69,6 +69,11 @@ func main() {
 		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
 	}
 
+	err = handlers.CheckAndPreloadImprint()
+	if err != nil {
+		logrus.Fatalf("error check / preload imprint: %v", err)
+	}
+
 	wg := &sync.WaitGroup{}
 
 	wg.Add(1)

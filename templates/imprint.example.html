@@ -5,12 +5,14 @@
 {{ end }}
 
 {{ define "content" }}
-  {{ with .Data }}
-    <div>
-      <div class="container mt-2">
+  <div class="container mt-2">
+    <div class="d-md-flex py-2 justify-content-md-between">
+      <div>
         <h2>Imprint</h2>
+        <br />
+        <div>Example, set your own imprint in config.</div>
+        <a href="/" class="btn btn-secondary mt-4">Home</a>
       </div>
-      <a href="/" class="btn btn-primary mt-4">Back</a>
     </div>
-  {{ end }}
+  </div>
 {{ end }}
