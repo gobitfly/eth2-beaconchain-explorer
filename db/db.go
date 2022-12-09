@@ -1763,7 +1763,7 @@ func UpdateEpochFinalization(finality_epoch uint64) error {
 // GetTotalValidatorsCount will return the total-validator-count
 func GetTotalValidatorsCount() (uint64, error) {
 	var totalCount uint64
-	err := ReaderDb.Get(&totalCount, "SELECT COUNT(*) FROM validators")
+	err := ReaderDb.Get(&totalCount, "select coalesce(max(validatorindex) + 1, 0) from validators;")
 	return totalCount, err
 }
 
