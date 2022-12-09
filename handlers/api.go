@@ -2357,12 +2357,12 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 
 	if parsedMeta.Version > 2 || parsedMeta.Version <= 0 {
 		sendErrorResponse(w, r.URL.String(), "this version is not supported")
-		return false, err
+		return false, fmt.Errorf("this version is not supported")
 	}
 
 	if parsedMeta.Process != "validator" && parsedMeta.Process != "beaconnode" && parsedMeta.Process != "slasher" && parsedMeta.Process != "system" {
 		sendErrorResponse(w, r.URL.String(), "unknown process")
-		return false, err
+		return false, fmt.Errorf("unknown process")
 	}
 
 	maxNodes := GetUserPremiumByPackage(userData.Product.String).MaxNodes

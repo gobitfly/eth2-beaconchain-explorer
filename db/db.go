@@ -1530,12 +1530,6 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	}
 	defer stmtProposalAssignments.Close()
 
-	stmtValidatorsLastAttestationSlot, err := tx.Prepare(`UPDATE validators SET lastattestationslot = $1 WHERE validatorindex = ANY($2::int[])`)
-	if err != nil {
-		return err
-	}
-	defer stmtValidatorsLastAttestationSlot.Close()
-
 	slots := make([]uint64, 0, len(blocks))
 	for slot := range blocks {
 		slots = append(slots, slot)
