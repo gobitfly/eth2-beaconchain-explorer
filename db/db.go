@@ -2308,7 +2308,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 		logger.Infof("saving validator performance batch %v completed", b)
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 func GetBlockNumber(slot uint64) (block uint64, err error) {
