@@ -2377,7 +2377,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 	if count > maxNodes {
 		logger.Errorf("User has reached max machine count | %v", err)
 		sendErrorResponse(w, r.URL.String(), "reached max machine count")
-		return false, fmt.Errorf("user has reached max machine count | %v", err)
+		return false, fmt.Errorf("user has reached max machine count")
 	}
 
 	var data []byte
