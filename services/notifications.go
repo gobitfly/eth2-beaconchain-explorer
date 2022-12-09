@@ -1465,6 +1465,10 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 		}
 
 		for _, v := range dataArr {
+			if !v.LastAttestationSlot.Valid {
+				continue
+			}
+
 			t := hex.EncodeToString(v.Pubkey)
 			subs := subMap[t]
 			lastSeenEpoch := uint64(v.LastAttestationSlot.Int64 / int64(utils.Config.Chain.Config.SlotsPerEpoch))
@@ -1490,7 +1494,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 							continue
 						}
 					}
-					logger.Debugf("new event: validator %v detected as offline for %v epochs", v.ValidatorIndex, epochsOffline)
+					logger.Infof("new event: validator %v detected as offline for %v epochs, latestExportedSlot: %v, lastattestationslot: %v, latestExportedEpoch: %v, lastSeenEpoch: %v", v.ValidatorIndex, epochsOffline, latestExportedSlot, v.LastAttestationSlot.Int64, latestExportedEpoch, lastSeenEpoch)
 
 					n = validatorIsOfflineNotification{
 						SubscriptionID: *sub.ID,
@@ -1519,7 +1523,7 @@ func collectOfflineValidatorNotifications(notificationsByUserID map[uint64]map[t
 						// i have no idea what just happened.
 						return fmt.Errorf("this should never happen. couldn't parse state as uint64: %v", err)
 					}
-					logger.Debugf("new event: validator %v detected as online again after %v epochs", v.ValidatorIndex, epochsSinceOffline)
+					logger.Infof("new event: validator %v detected as online again after %v epochs", v.ValidatorIndex, epochsSinceOffline)
 					n = validatorIsOfflineNotification{
 						SubscriptionID: *sub.ID,
 						ValidatorIndex: v.ValidatorIndex,
