@@ -909,7 +909,7 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 							fields := []types.DiscordEmbedField{
 								{
 									Name:   "Epoch",
-									Value:  fmt.Sprintf("[%v](https://%s/%[1]v)", n.GetEpoch(), utils.Config.Frontend.SiteDomain+"/epoch"),
+									Value:  fmt.Sprintf("[%[1]v](https://%[2]s/%[1]v)", n.GetEpoch(), utils.Config.Frontend.SiteDomain+"/epoch"),
 									Inline: false,
 								},
 							}
@@ -1186,7 +1186,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 }
 
 func getUrlPart(validatorIndex uint64) string {
-	return fmt.Sprintf(` For more information visit: https://%[2]s/validator/%[1]v`, validatorIndex, utils.Config.Frontend.SiteDomain)
+	return fmt.Sprintf(`For more information visit: https://%s/validator/%v`, utils.Config.Frontend.SiteDomain, validatorIndex)
 }
 
 func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
@@ -1365,11 +1365,11 @@ func (n *validatorProposalNotification) GetInfo(includeUrl bool) string {
 	var generalPart = ""
 	switch n.Status {
 	case 0:
-		generalPart = fmt.Sprintf(`New scheduled block proposal for Validator %[1]v.`, n.ValidatorIndex)
+		generalPart = fmt.Sprintf(`New scheduled block proposal for Validator %v.`, n.ValidatorIndex)
 	case 1:
-		generalPart = fmt.Sprintf(`Validator %[1]v proposed a new block with %v ETH execution reward.`, n.ValidatorIndex, n.Reward)
+		generalPart = fmt.Sprintf(`Validator %v proposed a new block with %v ETH execution reward.`, n.ValidatorIndex, n.Reward)
 	case 2:
-		generalPart = fmt.Sprintf(`Validator %[1]v missed a block proposal.`, n.ValidatorIndex)
+		generalPart = fmt.Sprintf(`Validator %v missed a block proposal.`, n.ValidatorIndex)
 	}
 
 	if includeUrl {
@@ -1400,7 +1400,7 @@ func (n *validatorProposalNotification) GetInfoMarkdown() string {
 	case 0:
 		generalPart = fmt.Sprintf(`New scheduled block proposal for Validator [%[1]v](https://%[2]v/%[1]v).`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator")
 	case 1:
-		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%v/%[1]v) proposed a new block with %v ETH execution reward.`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator", n.Reward)
+		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[2]v/%[1]v) proposed a new block with %[3]v ETH execution reward.`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator", n.Reward)
 	case 2:
 		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[2]v/%[1]v) missed a block proposal.`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator")
 	}
@@ -1727,13 +1727,13 @@ func (n *validatorIsOfflineNotification) GetInfo(includeUrl bool) string {
 		if includeUrl {
 			return fmt.Sprintf(`Validator <a href="https://%[4]v/validator/%[1]v">%[1]v</a> hasn't attested for %[3]v epochs (since epoch <a href="https://%[4]v/epoch/%[2]v">%[2]v</a>).`, n.ValidatorIndex, n.LastSeenEpoch, n.EpochsOffline, utils.Config.Frontend.SiteDomain)
 		} else {
-			return fmt.Sprintf(`Validator %[1]v hasn't attested for %[3]v epochs (since epoch %[2]v).`, n.ValidatorIndex, n.LastSeenEpoch, n.EpochsOffline)
+			return fmt.Sprintf(`Validator %v hasn't attested for %v epochs (since epoch %v).`, n.ValidatorIndex, n.EpochsOffline, n.LastSeenEpoch)
 		}
 	} else {
 		if includeUrl {
 			return fmt.Sprintf(`Validator <a href="https://%[3]v/validator/%[1]v">%[1]v</a> is back online (was offline for %[2]v epochs).`, n.ValidatorIndex, n.EpochsOffline, utils.Config.Frontend.SiteDomain)
 		} else {
-			return fmt.Sprintf(`Validator %[1]v is back online (was offline for %[2]v epochs).`, n.ValidatorIndex, n.EpochsOffline)
+			return fmt.Sprintf(`Validator %v is back online (was offline for %v epochs).`, n.EpochsOffline, n.ValidatorIndex)
 		}
 	}
 }
@@ -1804,7 +1804,7 @@ func (n *validatorAttestationNotification) GetInfo(includeUrl bool) string {
 		switch n.Status {
 		case 0:
 			generalPart = fmt.Sprintf(`Validator <a href="https://%[3]v/validator/%[1]v">%[1]v</a> missed an attestation at slot <a href="https://%[3]v/slot/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
-			//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
+			//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %v at slot %v.`, n.ValidatorIndex, n.Slot)
 		case 1:
 			generalPart = fmt.Sprintf(`Validator <a href="https://%[3]v/validator/%[1]v">%[1]v</a> submitted a successful attestation for slot  <a href="https://%[3]v/slot/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
 		}
@@ -1812,10 +1812,10 @@ func (n *validatorAttestationNotification) GetInfo(includeUrl bool) string {
 	} else {
 		switch n.Status {
 		case 0:
-			generalPart = fmt.Sprintf(`Validator %[1]v missed an attestation at slot %[2]v.`, n.ValidatorIndex, n.Slot)
-			//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
+			generalPart = fmt.Sprintf(`Validator %v missed an attestation at slot %v.`, n.ValidatorIndex, n.Slot)
+			//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %v at slot %v.`, n.ValidatorIndex, n.Slot)
 		case 1:
-			generalPart = fmt.Sprintf(`Validator %[1]v submitted a successful attestation for slot %[2]v.`, n.ValidatorIndex, n.Slot)
+			generalPart = fmt.Sprintf(`Validator %v submitted a successful attestation for slot %v.`, n.ValidatorIndex, n.Slot)
 		}
 	}
 	return generalPart
@@ -1895,7 +1895,7 @@ func (n *validatorGotSlashedNotification) GetEventName() types.EventName {
 }
 
 func (n *validatorGotSlashedNotification) GetInfo(includeUrl bool) string {
-	generalPart := fmt.Sprintf(`Validator %[1]v has been slashed at epoch %[2]v by validator %[3]v for %[4]s.`, n.ValidatorIndex, n.Epoch, n.Slasher, n.Reason)
+	generalPart := fmt.Sprintf(`Validator %v has been slashed at epoch %v by validator %v for %s.`, n.ValidatorIndex, n.Epoch, n.Slasher, n.Reason)
 	if includeUrl {
 		return generalPart + getUrlPart(n.ValidatorIndex)
 	}
