@@ -1400,7 +1400,7 @@ func (n *validatorProposalNotification) GetInfoMarkdown() string {
 	case 0:
 		generalPart = fmt.Sprintf(`New scheduled block proposal for Validator [%[1]v](https://%[2]v/%[1]v).`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator")
 	case 1:
-		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[2]v/%[1]v) proposed a new block with %v ETH execution reward.`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator", n.Reward)
+		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%v/%[1]v) proposed a new block with %v ETH execution reward.`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator", n.Reward)
 	case 2:
 		generalPart = fmt.Sprintf(`Validator [%[1]v](https://%[2]v/%[1]v) missed a block proposal.`, n.ValidatorIndex, utils.Config.Frontend.SiteDomain+"/validator")
 	}
