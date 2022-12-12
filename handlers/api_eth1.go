@@ -212,12 +212,25 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	address := vars["address"]
 
+	q := r.URL.Query()
+
 	address = strings.Replace(address, "0x", "", -1)
 	address = strings.ToLower(address)
 
 	if !utils.IsValidEth1Address(address) {
 		sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 		return
+	}
+
+	token := q.Get("token")
+
+	if len(token) > 0 {
+		token = strings.Replace(token, "0x", "", -1)
+		token = strings.ToLower(token)
+		if !utils.IsValidEth1Address(token) {
+			sendErrorResponse(w, r.URL.String(), "error invalid token query param. A token address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+			return
+		}
 	}
 
 	response := types.ApiEth1AddressResponse{}
@@ -241,6 +254,11 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 		// 		return
 		// 	}
 		// }
+
+		// if there is a token filter and we are currently not on the right value, skip to the next loop iteration
+		if len(token) > 0 && token != fmt.Sprintf("%x", m.Token) {
+			continue
+		}
 
 		response.Tokens = append(response.Tokens, struct {
 			Address  string  `json:"address"`
