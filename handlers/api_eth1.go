@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
+	"github.com/shopspring/decimal"
 	"golang.org/x/exp/maps"
 )
 
@@ -202,6 +203,104 @@ func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "error gasnow data is currently not available.")
 		return
 	}
+}
+
+func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	vars := mux.Vars(r)
+	address := vars["address"]
+
+	address = strings.Replace(address, "0x", "", -1)
+	address = strings.ToLower(address)
+
+	if !utils.IsValidEth1Address(address) {
+		sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+		return
+	}
+
+	response := types.ApiEth1AddressResponse{}
+
+	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address))
+	if err != nil {
+		logger.Errorf("error retrieving metadata for address: %v route: %v err: %v", address, r.URL.String(), err)
+		sendErrorResponse(w, r.URL.String(), "error could not get metadata for address")
+		return
+	}
+
+	response.Ether = decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.EthBalance.Balance), 0).Div(decimal.NewFromInt(1e18)).String()
+	response.Address = fmt.Sprintf("0x%x", metadata.EthBalance.Address)
+	for _, m := range metadata.Balances {
+		// var price float64
+		// if len(m.Metadata.Price) > 0 {
+		// 	price, err = strconv.ParseFloat(string(m.Metadata.Price), 64)
+		// 	if err != nil {
+		// 		logger.Errorf("error parsing price to float for address: %v route: %v err: %v", address, r.URL.String(), err)
+		// 		sendErrorResponse(w, r.URL.String(), "error could not get metadata for address")
+		// 		return
+		// 	}
+		// }
+
+		response.Tokens = append(response.Tokens, struct {
+			Address  string  `json:"address"`
+			Balance  string  `json:"balance"`
+			Symbol   string  `json:"symbol"`
+			Decimals string  `json:"decimals,omitempty"`
+			Price    float64 `json:"price,omitempty"`
+			Currency string  `json:"currency,omitempty"`
+		}{
+			Address: fmt.Sprintf("0x%x", m.Token),
+			Balance: decimal.NewFromBigInt(new(big.Int).SetBytes(m.Balance), 0).Div(decimal.NewFromBigInt(big.NewInt(1), int32(new(big.Int).SetBytes(m.Metadata.Decimals).Int64()))).String(),
+			Symbol:  m.Metadata.Symbol,
+			// Decimals: decimals.String(),
+			// Price:   price,
+			// Currency: "USD",
+		})
+	}
+
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
+}
+
+func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	results := ""
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
+}
+
+func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	results := ""
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
+}
+
+func ApiEth1AddressBlocks(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	results := ""
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
+}
+
+func ApiEth1AddressUncles(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	results := ""
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
+}
+
+func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	results := ""
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
 }
 
 func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map[common.Hash]types.RelaysData, beaconDataMap map[uint64]types.ExecBlockProposer) []types.ExecutionBlockApiResponse {
