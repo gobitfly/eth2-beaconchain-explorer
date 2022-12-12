@@ -2320,11 +2320,12 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 	var rateLimitErrs = 0
 	var result bool = false
 	for i := 0; i < len(jsonObjects); i++ {
-		result, err = insertStats(userData, machine, &jsonObjects[i], w, r)
-		if !result {
+		err = insertStats(userData, machine, &jsonObjects[i], w, r)
+		result = err != nil
+		if err != nil {
 			// ignore rate limit errors unless all are rate limit errors
-			if strings.HasPrefix(err.Error(), "ERROR: duplicate key value violates unique constraint") ||
-				strings.HasPrefix(err.Error(), "rate limit") {
+			if strings.HasPrefix(err.Error(), "rate limit") {
+				result = true
 				rateLimitErrs++
 				continue
 			}
@@ -2343,26 +2344,26 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 	}
 }
 
-func insertStats(userData *types.UserWithPremium, machine string, body *map[string]interface{}, w http.ResponseWriter, r *http.Request) (bool, error) {
+func insertStats(userData *types.UserWithPremium, machine string, body *map[string]interface{}, w http.ResponseWriter, r *http.Request) error {
 
 	var parsedMeta *types.StatsMeta
 	err := mapstructure.Decode(body, &parsedMeta)
 	if err != nil {
 		logger.Errorf("Could not parse stats (meta stats) | %v ", err)
 		sendErrorResponse(w, r.URL.String(), "could not parse meta")
-		return false, err
+		return err
 	}
 
 	parsedMeta.Machine = machine
 
 	if parsedMeta.Version > 2 || parsedMeta.Version <= 0 {
 		sendErrorResponse(w, r.URL.String(), "this version is not supported")
-		return false, fmt.Errorf("this version is not supported")
+		return fmt.Errorf("this version is not supported")
 	}
 
 	if parsedMeta.Process != "validator" && parsedMeta.Process != "beaconnode" && parsedMeta.Process != "slasher" && parsedMeta.Process != "system" {
 		sendErrorResponse(w, r.URL.String(), "unknown process")
-		return false, fmt.Errorf("unknown process")
+		return fmt.Errorf("unknown process")
 	}
 
 	maxNodes := GetUserPremiumByPackage(userData.Product.String).MaxNodes
@@ -2371,13 +2372,13 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 	if err != nil {
 		logger.Errorf("Could not get max machine count| %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not get machine count")
-		return false, err
+		return err
 	}
 
 	if count > maxNodes {
 		logger.Errorf("User has reached max machine count | %v", err)
 		sendErrorResponse(w, r.URL.String(), "reached max machine count")
-		return false, fmt.Errorf("user has reached max machine count")
+		return fmt.Errorf("user has reached max machine count")
 	}
 
 	var data []byte
@@ -2387,13 +2388,13 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		if err != nil {
 			logger.Errorf("Could not parse stats (system stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could not parse system")
-			return false, err
+			return err
 		}
 		data, err = proto.Marshal(parsedResponse)
 		if err != nil {
 			logger.Errorf("Could not parse stats (system stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could marshal system")
-			return false, err
+			return err
 		}
 	} else if parsedMeta.Process == "validator" {
 		var parsedResponse *types.MachineMetricValidator
@@ -2401,13 +2402,13 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		if err != nil {
 			logger.Errorf("Could not parse stats (validator stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could marshal validator")
-			return false, err
+			return err
 		}
 		data, err = proto.Marshal(parsedResponse)
 		if err != nil {
 			logger.Errorf("Could not parse stats (validator stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could marshal validator")
-			return false, err
+			return err
 		}
 	} else if parsedMeta.Process == "beaconnode" {
 		var parsedResponse *types.MachineMetricNode
@@ -2415,26 +2416,26 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		if err != nil {
 			logger.Errorf("Could not parse stats (beaconnode stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could not parse beaconnode")
-			return false, err
+			return err
 		}
 		data, err = proto.Marshal(parsedResponse)
 		if err != nil {
 			logger.Errorf("Could not parse stats (beaconnode stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could not parse beaconnode")
-			return false, err
+			return err
 		}
 	}
 
 	err = db.BigtableClient.SaveMachineMetric(parsedMeta.Process, userData.ID, machine, data)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "rate limit") {
-			return false, err
+			return err
 		}
 		logger.Errorf("Could not store stats | %v", err)
 		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("could not store stats: %v", err))
-		return false, err
+		return err
 	}
-	return true, nil
+	return nil
 }
 
 func DecodeMapStructure(input interface{}, output interface{}) error {
