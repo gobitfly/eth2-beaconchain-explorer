@@ -294,7 +294,7 @@ func main() {
 
 		// query params: token
 		apiV1Router.HandleFunc("/execution/address/{address}", handlers.ApiEth1Address).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/execution/address/{address}/tx", handlers.ApiEth1AddressTx).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/execution/address/{address}/transactions", handlers.ApiEth1AddressTx).Methods("GET", "OPTIONS")
 		// apiV1Router.HandleFunc("/execution/address/{address}/itx", handlers.ApiEth1AddressItx).Methods("GET", "OPTIONS")
 		// apiV1Router.HandleFunc("/execution/address/{address}/blocks", handlers.ApiEth1AddressBlocks).Methods("GET", "OPTIONS")
 		// apiV1Router.HandleFunc("/execution/address/{address}/uncles", handlers.ApiEth1AddressUncles).Methods("GET", "OPTIONS")

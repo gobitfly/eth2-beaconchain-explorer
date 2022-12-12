@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"math/big"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -219,4 +220,23 @@ type ApiEth1AddressResponse struct {
 		Price    float64 `json:"price,omitempty"`
 		Currency string  `json:"currency,omitempty"`
 	} `json:"tokens"`
+}
+
+type APIEth1AddressTxResponse struct {
+	Transactions []Eth1TransactionParsed
+	Page         string `json:"page"`
+}
+
+type Eth1TransactionParsed struct {
+	Hash               string    `json:"hash,omitempty"`
+	BlockNumber        uint64    `json:"block,omitempty"`
+	Time               time.Time `json:"time,omitempty"`
+	MethodId           string    `json:"method,omitempty"`
+	From               string    `json:"from,omitempty"`
+	To                 string    `json:"to,omitempty"`
+	Value              string    `json:"value,omitempty"`
+	TxFee              string    `json:"fee,omitempty"`
+	GasPrice           string    `json:"gasPrice,omitempty"`
+	IsContractCreation bool      `json:"is_contract_creation,omitempty"`
+	InvokesContract    bool      `json:"invokes_contract,omitempty"`
 }
