@@ -2333,7 +2333,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
 
-	data := InitPageData(w, r, "webhook", "/webhook", "webhook")
+	data := InitPageData(w, r, "webhook", "/webhook", "Webhook configuration")
 	pageData := types.WebhookPageData{}
 
 	ctx, done := ctxt.WithTimeout(ctxt.Background(), time.Second*30)
