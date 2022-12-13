@@ -183,7 +183,7 @@ func main() {
 	if *block != 0 {
 		err = IndexFromNode(bt, client, *block, *block, *concurrencyBlocks)
 		if err != nil {
-			logrus.WithError(err).Fatalf("error indexing from node")
+			logrus.WithError(err).Fatalf("error indexing from node, start: %v end: %v concurrency: %v", *block, *block, *concurrencyBlocks)
 		}
 		err = IndexFromBigtable(bt, *block, *block, transforms, *concurrencyData)
 		if err != nil {
@@ -207,7 +207,7 @@ func main() {
 	if *endBlocks != 0 && *startBlocks < *endBlocks {
 		err = IndexFromNode(bt, client, *startBlocks, *endBlocks, *concurrencyBlocks)
 		if err != nil {
-			logrus.WithError(err).Fatalf("error indexing from node")
+			logrus.WithError(err).Fatalf("error indexing from node, start: %v end: %v concurrency: %v", *startBlocks, *endBlocks, *concurrencyBlocks)
 		}
 		return
 	}
@@ -254,7 +254,7 @@ func main() {
 
 			err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
 			if err != nil {
-				logrus.WithError(err).Fatalf("error indexing from node")
+				logrus.WithError(err).Fatalf("error indexing from node, start: %v end: %v concurrency: %v", int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
 			}
 		}
 
@@ -628,17 +628,15 @@ func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concur
 		g.Go(func() error {
 			blockStartTs := time.Now()
 			bc, timings, err := client.GetBlock(i)
-
 			if err != nil {
-				logrus.Error(err)
-				return err
+				return fmt.Errorf("error getting block: %v from ethereum node err: %w", i, err)
 			}
 
 			dbStart := time.Now()
 			err = bt.SaveBlock(bc)
 			if err != nil {
-				logrus.Error(err)
-				return err
+				return fmt.Errorf("error saving block: %v to bigtable: %w", i, err)
+
 			}
 			current := atomic.AddInt64(&processedBlocks, 1)
 			if current%100 == 0 {
