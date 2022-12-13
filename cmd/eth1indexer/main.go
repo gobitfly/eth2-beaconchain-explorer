@@ -678,7 +678,7 @@ func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk 
 
 			block, err := bt.GetBlockFromBlocksTable(uint64(i))
 			if err != nil {
-				return err
+				return fmt.Errorf("error getting block: %v from bigtable blocks table err: %w", block, err)
 			}
 
 			bulkMutsData := types.BulkMutations{}

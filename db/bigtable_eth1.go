@@ -329,13 +329,22 @@ func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockInd
 	limit := gcp_bigtable.LimitRows(1)
 
 	block := types.Eth1BlockIndexed{}
+
 	rowHandler := func(row gcp_bigtable.Row) bool {
-		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, &block)
+		c, err := strconv.Atoi(strings.Replace(row.Key(), prefix, "", 1))
+		if err != nil {
+			logger.Errorf("error parsing block number from key %v: %v", row.Key(), err)
+			return false
+		}
+
+		c = max_block_number - c
+
+		err = proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, &block)
 		if err != nil {
 			logger.Errorf("error could not unmarschal proto object, err: %v", err)
 		}
 
-		return true
+		return c == 0
 	}
 
 	err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, rowFilter, limit)
