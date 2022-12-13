@@ -108,18 +108,17 @@ func notificationCollector() {
 			queueNotifications(notifications, db.FrontendWriterDB) // this caused the collected notifications to be queuened and sent
 
 			// Network DB Notifications (user related, must only run on one instance ever!!!!)
-			// Todo: re-enable
-			// if utils.Config.Notifications.UserDBNotifications {
-			// 	userNotifications, err := collectUserDbNotifications(epoch)
-			// 	if err != nil {
-			// 		logger.Errorf("error collection user db notifications: %v", err)
-			// 		ReportStatus("notification-collector", "Error", nil)
-			// 		time.Sleep(time.Second * 120)
-			// 		continue
-			// 	}
+			if utils.Config.Notifications.UserDBNotifications {
+				userNotifications, err := collectUserDbNotifications(epoch)
+				if err != nil {
+					logger.Errorf("error collection user db notifications: %v", err)
+					ReportStatus("notification-collector", "Error", nil)
+					time.Sleep(time.Second * 120)
+					continue
+				}
 
-			// 	queueNotifications(userNotifications, db.FrontendWriterDB)
-			// }
+				queueNotifications(userNotifications, db.FrontendWriterDB)
+			}
 
 			logger.
 				WithField("notifications", len(notifications)).
@@ -2462,7 +2461,7 @@ func (n *networkNotification) GetInfo(includeUrl bool) string {
 }
 
 func (n *networkNotification) GetTitle() string {
-	return fmt.Sprint("Beaconchain Network Issues")
+	return "Beaconchain Network Issues"
 }
 
 func (n *networkNotification) GetEventFilter() string {
