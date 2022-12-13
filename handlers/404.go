@@ -48,7 +48,7 @@ func handleHTTPError(err error, handler func(http.ResponseWriter, *http.Request)
 	// If error is 404, use custom handler
 	if errors.Is(err, fs.ErrNotExist) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
-			http.Error(w, "404 page not found", http.StatusForbidden)
+			sendErrorWithCodeResponse(w, r.URL.String(), "404 page not found", 404)
 		} else {
 			handler(w, r)
 		}
