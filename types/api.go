@@ -223,8 +223,8 @@ type ApiEth1AddressResponse struct {
 }
 
 type APIEth1AddressTxResponse struct {
-	Transactions []Eth1TransactionParsed
-	Page         string `json:"page"`
+	Transactions []Eth1TransactionParsed `json:"transactions"`
+	Page         string                  `json:"page"`
 }
 
 type Eth1TransactionParsed struct {
@@ -239,4 +239,19 @@ type Eth1TransactionParsed struct {
 	GasPrice           string    `json:"gasPrice,omitempty"`
 	IsContractCreation bool      `json:"is_contract_creation,omitempty"`
 	InvokesContract    bool      `json:"invokes_contract,omitempty"`
+}
+
+type APIEth1AddressItxResponse struct {
+	InternalTransactions []Eth1InternalTransactionParsed `json:"internal_transactions"`
+	Page                 string                          `json:"page"`
+}
+
+type Eth1InternalTransactionParsed struct {
+	ParentHash  string    `json:"parent"`
+	BlockNumber uint64    `json:"block"`
+	Type        string    `json:"type"`
+	Time        time.Time `json:"time"`
+	From        string    `json:"from"`
+	To          string    `json:"to"`
+	Value       string    `json:"value"`
 }

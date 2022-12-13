@@ -373,8 +373,79 @@ func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	results := ""
-	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
+	vars := mux.Vars(r)
+	address := vars["address"]
+	q := r.URL.Query()
+
+	address = strings.Replace(address, "0x", "", -1)
+	address = strings.ToLower(address)
+
+	if !utils.IsEth1Address(address) {
+		sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+		return
+	}
+
+	response := types.APIEth1AddressItxResponse{}
+
+	filter := q.Get("filter")
+	filters := map[string]string{
+		"":         string(db.FILTER_TIME),
+		"time":     string(db.FILTER_TIME),
+		"received": string(db.FILTER_FROM),
+		"sent":     string(db.FILTER_TO),
+		// "method":   string(db.FILTER_METHOD),
+		// "contract": string(db.FILTER_CONTRACT),
+	}
+
+	filter, ok := filters[filter]
+	if !ok {
+		sendErrorResponse(w, r.URL.String(), "error invalid filter provided. Please provide a valid filter: time (default), received, sent")
+		return
+	}
+
+	prefixFormat := "%d:I:ITX:%s:%s:"
+
+	pageToken := q.Get("page")
+	if len(pageToken) > 0 {
+		token, err := base58.FastBase58Decoding(pageToken)
+		if err != nil {
+			logger.Errorf("error invalid page token provided: %v err: %v", q.Get("page"), err)
+			sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+			return
+		}
+		logger.Infof("decoded token: %s", token)
+		pageToken = fmt.Sprintf(prefixFormat+"%s", utils.Config.Chain.Config.DepositChainID, address, filter, token)
+	}
+
+	if len(pageToken) == 0 {
+		pageToken = fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address, filter)
+	}
+
+	logger.Infof("using page token: %v", pageToken)
+	internalTransactions, lastKey, err := db.BigtableClient.GetEth1ItxForAddress(pageToken, 25)
+	if err != nil {
+		logger.Errorf("error getting transactions for address: %v route: %v err: %v", address, r.URL.String(), err)
+		sendErrorResponse(w, r.URL.String(), "error getting transactions for address")
+		return
+	}
+	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(lastKey, fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address, filter))))
+
+	itxParsed := make([]types.Eth1InternalTransactionParsed, 0, len(internalTransactions))
+
+	for _, itx := range internalTransactions {
+		itxParsed = append(itxParsed, types.Eth1InternalTransactionParsed{
+			ParentHash:  fmt.Sprintf("0x%x", itx.ParentHash),
+			BlockNumber: itx.BlockNumber,
+			Time:        itx.Time.AsTime(),
+			Type:        itx.Type,
+			From:        fmt.Sprintf("0x%x", itx.From),
+			To:          fmt.Sprintf("0x%x", itx.To),
+			Value:       new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(itx.Value)), big.NewFloat(1e18)).String(),
+		})
+	}
+
+	response.InternalTransactions = itxParsed
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
 }
 
 func ApiEth1AddressBlocks(w http.ResponseWriter, r *http.Request) {
