@@ -472,7 +472,7 @@ create table users_app_subscriptions
     id              serial                        not null,
     user_id         int                           not null,
     product_id      character varying(256)        not null,
-    price_micros    int                           not null,
+    price_micros    bigint                        not null,
     currency        character varying(10)         not null,
     created_at      timestamp without time zone   not null,
     updated_at      timestamp without time zone   not null,

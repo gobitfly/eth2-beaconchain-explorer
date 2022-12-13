@@ -2293,7 +2293,7 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Errorf("error reading body | err: %v", err)
+		logger.Warnf("error reading body | err: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not read body")
 		return
 	}
@@ -2304,15 +2304,15 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 		var jsonObject map[string]interface{}
 		err = json.Unmarshal(body, &jsonObject)
 		if err != nil {
-			logger.Errorf("Could not parse stats (meta stats) general | %v ", err)
-			sendErrorResponse(w, r.URL.String(), "capi rate limit reached, one process per machine per user each minute is allowed.")
+			logger.Warnf("Could not parse stats (meta stats) general | %v ", err)
+			sendErrorResponse(w, r.URL.String(), "metrics rate limit reached, one process per machine per user each minute is allowed.")
 			return
 		}
 		jsonObjects = []map[string]interface{}{jsonObject}
 	}
 
 	if len(jsonObjects) >= 10 {
-		logger.Errorf("Max number of stat entries are 10", err)
+		logger.Info("Max number of stat entries are 10", err)
 		sendErrorResponse(w, r.URL.String(), "Max number of stat entries are 10")
 		return
 	}
@@ -2349,7 +2349,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 	var parsedMeta *types.StatsMeta
 	err := mapstructure.Decode(body, &parsedMeta)
 	if err != nil {
-		logger.Errorf("Could not parse stats (meta stats) | %v ", err)
+		logger.Warnf("Could not parse stats (meta stats) | %v ", err)
 		sendErrorResponse(w, r.URL.String(), "could not parse meta")
 		return err
 	}
@@ -2376,7 +2376,6 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 	}
 
 	if count > maxNodes {
-		logger.Errorf("User has reached max machine count | %v", err)
 		sendErrorWithCodeResponse(w, r.URL.String(), "reached max machine count", 402)
 		return fmt.Errorf("user has reached max machine count")
 	}
@@ -2386,7 +2385,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		var parsedResponse *types.MachineMetricSystem
 		err = DecodeMapStructure(body, &parsedResponse)
 		if err != nil {
-			logger.Errorf("Could not parse stats (system stats) | %v", err)
+			logger.Warnf("Could not parse stats (system stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could not parse system")
 			return err
 		}
@@ -2400,7 +2399,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		var parsedResponse *types.MachineMetricValidator
 		err = DecodeMapStructure(body, &parsedResponse)
 		if err != nil {
-			logger.Errorf("Could not parse stats (validator stats) | %v", err)
+			logger.Warnf("Could not parse stats (validator stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could marshal validator")
 			return err
 		}
@@ -2414,7 +2413,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		var parsedResponse *types.MachineMetricNode
 		err = DecodeMapStructure(body, &parsedResponse)
 		if err != nil {
-			logger.Errorf("Could not parse stats (beaconnode stats) | %v", err)
+			logger.Warnf("Could not parse stats (beaconnode stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could not parse beaconnode")
 			return err
 		}
