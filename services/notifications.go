@@ -2477,7 +2477,7 @@ func (n *networkNotification) GetInfoMarkdown() string {
 func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
 	count := 0
 	err := db.WriterDb.Get(&count, `
-		select count(ts) from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '20 minutes';
+		select count(ts) from network_liveness where (headepoch-finalizedepoch) > 3 AND ts > now() - interval '60 minutes';
 	`)
 
 	if err != nil {
@@ -2485,7 +2485,6 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 	}
 
 	if count > 0 {
-
 		var dbResult []struct {
 			SubscriptionID  uint64         `db:"id"`
 			UserID          uint64         `db:"user_id"`
