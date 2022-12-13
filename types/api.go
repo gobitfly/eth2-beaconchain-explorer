@@ -255,3 +255,32 @@ type Eth1InternalTransactionParsed struct {
 	To          string    `json:"to"`
 	Value       string    `json:"value"`
 }
+
+type APIEth1AddressBlockResponse struct {
+	ProducedBlocks []Eth1BlockParsed `json:"blocks"`
+	Page           string            `json:"page"`
+}
+
+type Eth1BlockParsed struct {
+	Hash                     string    `json:"hash,omitempty"`
+	ParentHash               string    `json:"parent_hash,omitempty"`
+	UncleHash                string    `json:"uncle_hash,omitempty"`
+	Coinbase                 string    `json:"coinbase,omitempty"`
+	TxReward                 string    `json:"tx_reward,omitempty"`
+	Difficulty               string    `json:"difficulty,omitempty"`
+	Number                   uint64    `json:"number,omitempty"`
+	GasLimit                 uint64    `json:"gas_limit,omitempty"`
+	GasUsed                  uint64    `json:"gas_used,omitempty"`
+	Time                     time.Time `json:"time,omitempty"`
+	BaseFee                  string    `json:"base_fee,omitempty"`
+	UncleCount               uint64    `json:"uncle_count,omitempty"`
+	TransactionCount         uint64    `json:"transaction_count,omitempty"`
+	InternalTransactionCount uint64    `json:"internal_transaction_count,omitempty"`
+	Mev                      string    `json:"mev,omitempty"`
+	LowestGasPrice           string    `json:"lowest_gas_price,omitempty"`
+	HighestGasPrice          string    `json:"highest_gas_price,omitempty"`
+	// Duration uint64 `json:"duration,omitempty"`
+	UncleReward string `json:"uncle_reward,omitempty"`
+	// BaseFeeChange string `json:"base_fee_change,omitempty"`
+	// BlockUtilizationChange string `json:"block_utilization_change,omitempty"`
+}

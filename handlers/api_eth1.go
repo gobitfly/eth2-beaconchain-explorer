@@ -330,7 +330,6 @@ func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
 			sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 			return
 		}
-		logger.Infof("decoded token: %s", token)
 		pageToken = fmt.Sprintf("%d:I:TX:%s:%s:%s", utils.Config.Chain.Config.DepositChainID, address, filter, token)
 	}
 
@@ -338,7 +337,6 @@ func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
 		pageToken = fmt.Sprintf("%d:I:TX:%s:%s:", utils.Config.Chain.Config.DepositChainID, address, filter)
 	}
 
-	logger.Infof("using page token: %v", pageToken)
 	transactions, lastKey, err := db.BigtableClient.GetEth1TxForAddress(pageToken, 25)
 	if err != nil {
 		logger.Errorf("error getting transactions for address: %v route: %v err: %v", address, r.URL.String(), err)
@@ -413,7 +411,6 @@ func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
 			sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 			return
 		}
-		logger.Infof("decoded token: %s", token)
 		pageToken = fmt.Sprintf(prefixFormat+"%s", utils.Config.Chain.Config.DepositChainID, address, filter, token)
 	}
 
@@ -421,7 +418,6 @@ func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
 		pageToken = fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address, filter)
 	}
 
-	logger.Infof("using page token: %v", pageToken)
 	internalTransactions, lastKey, err := db.BigtableClient.GetEth1ItxForAddress(pageToken, 25)
 	if err != nil {
 		logger.Errorf("error getting transactions for address: %v route: %v err: %v", address, r.URL.String(), err)
@@ -452,8 +448,94 @@ func ApiEth1AddressBlocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	results := ""
-	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
+	vars := mux.Vars(r)
+	address := vars["address"]
+	q := r.URL.Query()
+
+	address = strings.Replace(address, "0x", "", -1)
+	address = strings.ToLower(address)
+
+	if !utils.IsEth1Address(address) {
+		sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+		return
+	}
+
+	response := types.APIEth1AddressBlockResponse{}
+
+	prefixFormat := "%d:I:B:%s:"
+
+	pageToken := q.Get("page")
+	if len(pageToken) > 0 {
+		token, err := base58.FastBase58Decoding(pageToken)
+		if err != nil {
+			logger.Errorf("error invalid page token provided: %v err: %v", q.Get("page"), err)
+			sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+			return
+		}
+		pageToken = fmt.Sprintf(prefixFormat+"%s", utils.Config.Chain.Config.DepositChainID, address, token)
+	}
+
+	if len(pageToken) == 0 {
+		pageToken = fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address)
+	}
+
+	producedBlocks, lastKey, err := db.BigtableClient.GetEth1BlocksForAddress(pageToken, 25)
+	if err != nil {
+		logger.Errorf("error getting transactions for address: %v route: %v err: %v", address, r.URL.String(), err)
+		sendErrorResponse(w, r.URL.String(), "error getting transactions for address")
+		return
+	}
+	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(lastKey, fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address))))
+
+	blocksParsed := make([]types.Eth1BlockParsed, 0, len(producedBlocks))
+
+	for _, blk := range producedBlocks {
+		txReward := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.TxReward)), big.NewFloat(1e18)).String()
+		if txReward == "0" {
+			txReward = ""
+		}
+
+		uncleHash := fmt.Sprintf("0x%x", blk.UncleHash)
+		uncleReward := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.UncleReward)), big.NewFloat(1e18)).String()
+		if uncleReward == "0" {
+			uncleReward = ""
+			uncleHash = ""
+		}
+		// mev := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.Mev)), big.NewFloat(1e18)).String()
+		// if mev == "0" {
+		// 	mev = ""
+		// }
+		difficulty := new(big.Int).SetBytes(blk.Difficulty).String()
+		if difficulty == "0" {
+			difficulty = ""
+		}
+
+		// blkReward := utils.Eth1BlockReward(blk.Number, blk.Difficulty)
+
+		blocksParsed = append(blocksParsed, types.Eth1BlockParsed{
+			Hash:                     fmt.Sprintf("0x%x", blk.Hash),
+			ParentHash:               fmt.Sprintf("0x%x", blk.ParentHash),
+			UncleHash:                uncleHash,
+			Coinbase:                 fmt.Sprintf("0x%x", blk.Coinbase), //new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.Coinbase)), big.NewFloat(1e18)).String(),
+			Difficulty:               difficulty,
+			Number:                   blk.Number,
+			GasLimit:                 blk.GasLimit,
+			GasUsed:                  blk.GasUsed,
+			Time:                     blk.Time.AsTime(),
+			BaseFee:                  new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.BaseFee)), big.NewFloat(1e9)).String(),
+			UncleCount:               blk.UncleCount,
+			TransactionCount:         blk.TransactionCount,
+			InternalTransactionCount: blk.InternalTransactionCount,
+			TxReward:                 txReward,
+			UncleReward:              uncleReward,
+			// Mev:                      mev,
+			// LowestGasPrice:           new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.LowestGasPrice)), big.NewFloat(1e9)).String(),
+			// HighestGasPrice:          new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.HighestGasPrice)), big.NewFloat(1e9)).String(),
+		})
+	}
+
+	response.ProducedBlocks = blocksParsed
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
 }
 
 func ApiEth1AddressUncles(w http.ResponseWriter, r *http.Request) {
@@ -526,10 +608,10 @@ func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map
 			FeeRecipient:       fmt.Sprintf("0x%v", hex.EncodeToString(block.GetCoinbase())),
 			GasLimit:           block.GetGasLimit(),
 			GasUsed:            block.GetGasUsed(),
+			UncleCount:         block.GetUncleCount(),
 			BaseFee:            baseFee,
 			TxCount:            block.GetTransactionCount(),
 			InternalTxCount:    block.GetInternalTransactionCount(),
-			UncleCount:         block.GetUncleCount(),
 			ParentHash:         fmt.Sprintf("0x%v", hex.EncodeToString(block.GetParentHash())),
 			UncleHash:          fmt.Sprintf("0x%v", hex.EncodeToString(block.GetUncleHash())),
 			Difficulty:         difficulty,
