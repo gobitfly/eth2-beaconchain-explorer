@@ -1342,15 +1342,15 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 
 	events := make([]dbResult, 0)
 
-	epochs := make(map[uint64]bool)
+	epochAttested := make(map[uint64]uint64)
+	epochTotal := make(map[uint64]uint64)
 	participationPerEpoch := make(map[uint64]map[uint64]int) // map[validatorindex]map[epoch]attested
 	for validator, history := range attestations {
 		for _, attestation := range history {
-
-			epochs[attestation.Epoch] = true
 			if participationPerEpoch[validator] == nil {
 				participationPerEpoch[validator] = make(map[uint64]int, 4)
 			}
+			epochTotal[attestation.Epoch] = epochTotal[attestation.Epoch] + 1 // count the total attestations for each epoch
 
 			if attestation.Status == 0 {
 
@@ -1375,6 +1375,8 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 				}
 			} else {
 				participationPerEpoch[validator][attestation.Epoch] = 2 // attested
+
+				epochAttested[attestation.Epoch] = epochAttested[attestation.Epoch] + 1 // count the total attested attestation for each epoch (exlude missing)
 			}
 		}
 	}
@@ -1440,17 +1442,30 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 	epochNMinus2 := epoch - 2
 	epochNMinus3 := epoch - 3
 
-	if !epochs[epoch] {
+	if epochTotal[epoch] == 0 {
 		return fmt.Errorf("consistency error, did not retrieve attestation data for epoch %v", epoch)
 	}
-	if !epochs[epochNMinus1] {
+	if epochTotal[epochNMinus1] == 0 {
 		return fmt.Errorf("consistency error, did not retrieve attestation data for epoch %v", epochNMinus1)
 	}
-	if !epochs[epochNMinus2] {
+	if epochTotal[epochNMinus2] == 0 {
 		return fmt.Errorf("consistency error, did not retrieve attestation data for epoch %v", epochNMinus2)
 	}
-	if !epochs[epochNMinus3] {
+	if epochTotal[epochNMinus3] == 0 {
 		return fmt.Errorf("consistency error, did not retrieve attestation data for epoch %v", epochNMinus3)
+	}
+
+	if epochAttested[epoch]*100/epochTotal[epoch] < 60 {
+		return fmt.Errorf("consistency error, did receive more than 60%% of missed attestation in epoch %v (total: %v, attested: %v)", epoch, epochTotal[epoch], epochAttested[epoch])
+	}
+	if epochAttested[epochNMinus1]*100/epochTotal[epochNMinus1] < 60 {
+		return fmt.Errorf("consistency error, did receive more than 60%% of missed attestation in epoch %v (total: %v, attested: %v)", epochNMinus1, epochTotal[epochNMinus1], epochAttested[epochNMinus1])
+	}
+	if epochAttested[epochNMinus2]*100/epochTotal[epochNMinus2] < 60 {
+		return fmt.Errorf("consistency error, did receive more than 60%% of missed attestation in epoch %v (total: %v, attested: %v)", epochNMinus2, epochTotal[epochNMinus2], epochAttested[epochNMinus2])
+	}
+	if epochAttested[epochNMinus3]*100/epochTotal[epochNMinus3] < 60 {
+		return fmt.Errorf("consistency error, did receive more than 60%% of missed attestation in epoch %v (total: %v, attested: %v)", epochNMinus3, epochTotal[epochNMinus3], epochAttested[epochNMinus3])
 	}
 
 	for validator, participation := range participationPerEpoch {
