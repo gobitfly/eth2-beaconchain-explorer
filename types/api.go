@@ -284,3 +284,36 @@ type Eth1BlockParsed struct {
 	// BaseFeeChange string `json:"base_fee_change,omitempty"`
 	// BlockUtilizationChange string `json:"block_utilization_change,omitempty"`
 }
+
+type APIEth1AddressUncleResponse struct {
+	ProducedUncles []Eth1UncleParsed `json:"uncles"`
+	Page           string            `json:"page"`
+}
+
+type Eth1UncleParsed struct {
+	BlockNumber uint64    `json:"block,omitempty"`
+	Number      uint64    `json:"number,omitempty"`
+	GasLimit    uint64    `json:"gas_limit,omitempty"`
+	GasUsed     uint64    `json:"gas_used,omitempty"`
+	BaseFee     string    `json:"base_fee,omitempty"`
+	Difficulty  string    `json:"difficulty,omitempty"`
+	Time        time.Time `json:"time,omitempty"`
+	Reward      string    `json:"reward,omitempty"`
+}
+
+type APIEth1TokenResponse struct {
+	TokenTxs []*Eth1TokenTxParsed `json:"transactions"`
+	Page     string               `json:"page"`
+}
+
+type Eth1TokenTxParsed struct {
+	ParentHash   string    `json:"transaction,omitempty"`
+	BlockNumber  uint64    `json:"block,omitempty"`
+	TokenAddress string    `json:"token_address,omitempty"`
+	Time         time.Time `json:"time,omitempty"`
+	From         string    `json:"from,omitempty"`
+	To           string    `json:"to,omitempty"`
+	Value        string    `json:"value,omitempty"`
+	TokenId      string    `json:"token_id,omitempty"`
+	Operator     string    `json:"operator,omitempty"`
+}

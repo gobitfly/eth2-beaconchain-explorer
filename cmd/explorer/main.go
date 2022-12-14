@@ -297,9 +297,9 @@ func main() {
 		apiV1Router.HandleFunc("/execution/address/{address}/transactions", handlers.ApiEth1AddressTx).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/execution/address/{address}/internalTx", handlers.ApiEth1AddressItx).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/execution/address/{address}/blocks", handlers.ApiEth1AddressBlocks).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/execution/address/{address}/uncles", handlers.ApiEth1AddressUncles).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/execution/address/{address}/uncles", handlers.ApiEth1AddressUncles).Methods("GET", "OPTIONS")
 		// // query params: type={erc20,erc721,erc1155}, address
-		// apiV1Router.HandleFunc("/execution/address/{address}/tokens", handlers.ApiEth1AddressTokens).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/execution/address/{address}/tokens", handlers.ApiEth1AddressTokens).Methods("GET", "OPTIONS")
 
 		// apiV1Router.HandleFunc("/execution/transactions", handlers.ApiEth1Tx).Methods("GET", "OPTIONS")
 		// apiV1Router.HandleFunc("/execution/transaction/{txhash}/itx", handlers.ApiEth1TxItx).Methods("GET", "OPTIONS")

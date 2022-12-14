@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -542,17 +543,216 @@ func ApiEth1AddressUncles(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	results := ""
-	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
+	vars := mux.Vars(r)
+	address := vars["address"]
+	q := r.URL.Query()
+
+	address = strings.Replace(address, "0x", "", -1)
+	address = strings.ToLower(address)
+
+	if !utils.IsEth1Address(address) {
+		sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+		return
+	}
+
+	response := types.APIEth1AddressUncleResponse{}
+
+	prefixFormat := "%d:I:B:%s:"
+
+	pageToken := q.Get("page")
+	if len(pageToken) > 0 {
+		token, err := base58.FastBase58Decoding(pageToken)
+		if err != nil {
+			logger.Errorf("error invalid page token provided: %v err: %v", q.Get("page"), err)
+			sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+			return
+		}
+		pageToken = fmt.Sprintf(prefixFormat+"%s", utils.Config.Chain.Config.DepositChainID, address, token)
+	}
+
+	if len(pageToken) == 0 {
+		pageToken = fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address)
+	}
+
+	producedUncle, lastKey, err := db.BigtableClient.GetEth1UnclesForAddress(pageToken, 25)
+	if err != nil {
+		logger.Errorf("error getting transactions for address: %v route: %v err: %v", address, r.URL.String(), err)
+		sendErrorResponse(w, r.URL.String(), "error getting transactions for address")
+		return
+	}
+	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(lastKey, fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address))))
+
+	unclesParsed := make([]types.Eth1UncleParsed, 0, len(producedUncle))
+
+	for _, uncl := range producedUncle {
+
+		unclesParsed = append(unclesParsed, types.Eth1UncleParsed{
+			BlockNumber: uncl.BlockNumber,
+			Number:      uncl.Number,
+			GasLimit:    uncl.GasLimit,
+			GasUsed:     uncl.GasUsed,
+			BaseFee:     new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(uncl.BaseFee)), big.NewFloat(1e9)).String(),
+			Difficulty:  new(big.Int).SetBytes(uncl.Difficulty).String(),
+			Time:        uncl.Time.AsTime(),
+			Reward:      new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(uncl.Reward)), big.NewFloat(1e18)).String(),
+		})
+	}
+
+	response.ProducedUncles = unclesParsed
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
 }
 
 func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	vars := mux.Vars(r)
+	address := vars["address"]
+	q := r.URL.Query()
 
-	results := ""
-	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
+	address = strings.Replace(address, "0x", "", -1)
+	address = strings.ToLower(address)
+
+	if !utils.IsEth1Address(address) {
+		sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+		return
+	}
+
+	token := q.Get("token")
+	token = strings.ToLower(token)
+	tokens := map[string]string{
+		"":        "ERC20",
+		"token":   "ERC20",
+		"erc20":   "ERC20",
+		"erc721":  "ERC721",
+		"nft":     "ERC721",
+		"erc1155": "ERC1155",
+	}
+
+	selectedToken, ok := tokens[token]
+	if !ok {
+		validTokens := make([]string, 0, len(tokens))
+		for k, v := range tokens {
+			if k == "" {
+				k = fmt.Sprintf("(default %v)", v)
+			}
+			validTokens = append(validTokens, k)
+		}
+		sort.Slice(validTokens, func(i, j int) bool {
+			return strings.Contains("default", validTokens[i]) || validTokens[i] < validTokens[j]
+		})
+		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("error invalid token provided. Please provide a valid tokens: %s", strings.Join(validTokens, ", ")))
+		return
+	}
+
+	response := types.APIEth1TokenResponse{}
+
+	prefixFormat := fmt.Sprintf("%%d:I:%s:%%s:%%s:", selectedToken)
+
+	pageToken := q.Get("page")
+	if len(pageToken) > 0 {
+		token, err := base58.FastBase58Decoding(pageToken)
+		if err != nil {
+			logger.Errorf("error invalid page token provided: %v err: %v", q.Get("page"), err)
+			sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+			return
+		}
+		pageToken = fmt.Sprintf(prefixFormat+"%s", utils.Config.Chain.Config.DepositChainID, address, token)
+	}
+
+	if len(pageToken) == 0 {
+		pageToken = fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address)
+	}
+	pageSize := 25
+	transactions := make([]*types.Eth1TokenTxParsed, 0, pageSize)
+	pageKey := ""
+	switch selectedToken {
+	case "erc721":
+		txs, lastKey, err := db.BigtableClient.GetEth1ERC721ForAddress(pageToken, 25)
+		if err != nil {
+			logger.Errorf("error getting token: %v transactions for address: %v route: %v err: %v", selectedToken, address, r.URL.String(), err)
+			sendErrorResponse(w, r.URL.String(), "error getting transactions for address")
+			return
+		}
+		pageKey = lastKey
+
+		for _, tx := range txs {
+			transactions = append(transactions, &types.Eth1TokenTxParsed{
+				ParentHash:   fmt.Sprintf("0x%x", tx.ParentHash),
+				BlockNumber:  tx.BlockNumber,
+				TokenAddress: fmt.Sprintf("0x%x", tx.TokenAddress),
+				Time:         tx.Time.AsTime(),
+				From:         fmt.Sprintf("0x%x", tx.From),
+				To:           fmt.Sprintf("0x%x", tx.To),
+				TokenId:      new(big.Int).SetBytes(tx.TokenId).String(),
+			})
+		}
+
+	case "erc1155":
+		txs, lastKey, err := db.BigtableClient.GetEth1ERC1155ForAddress(pageToken, 25)
+		if err != nil {
+			logger.Errorf("error getting token: %v transactions for address: %v route: %v err: %v", selectedToken, address, r.URL.String(), err)
+			sendErrorResponse(w, r.URL.String(), "error getting transactions for address")
+			return
+		}
+		pageKey = lastKey
+
+		for _, tx := range txs {
+			transactions = append(transactions, &types.Eth1TokenTxParsed{
+				ParentHash:   fmt.Sprintf("0x%x", tx.ParentHash),
+				BlockNumber:  tx.BlockNumber,
+				TokenAddress: fmt.Sprintf("0x%x", tx.TokenAddress),
+				Time:         tx.Time.AsTime(),
+				From:         fmt.Sprintf("0x%x", tx.From),
+				To:           fmt.Sprintf("0x%x", tx.To),
+				TokenId:      new(big.Int).SetBytes(tx.TokenId).String(),
+				Value:        new(big.Int).SetBytes(tx.Value).String(),
+				Operator:     new(big.Int).SetBytes(tx.Operator).String(),
+			})
+		}
+
+	default:
+		txs, lastKey, err := db.BigtableClient.GetEth1ERC20ForAddress(pageToken, 25)
+		if err != nil {
+			logger.Errorf("error getting token: %v transactions for address: %v route: %v err: %v", selectedToken, address, r.URL.String(), err)
+			sendErrorResponse(w, r.URL.String(), "error getting transactions for token")
+			return
+		}
+		pageKey = lastKey
+		tokenMeta := make(map[string]*types.ERC20Metadata, 25)
+		for _, tx := range txs {
+			_, ok := tokenMeta[string(tx.TokenAddress)]
+			if !ok {
+				metadata, err := db.BigtableClient.GetERC20MetadataForAddress([]byte(address))
+				if err != nil {
+					logger.Errorf("error getting token: %v metadata for address: %v route: %v err: %v", selectedToken, address, r.URL.String(), err)
+					sendErrorResponse(w, r.URL.String(), "error getting transactions for token")
+					return
+				}
+				tokenMeta[string(tx.TokenAddress)] = metadata
+			}
+			value := new(big.Int).SetBytes(tx.Value).String()
+			m, ok := tokenMeta[string(tx.TokenAddress)]
+			if ok {
+				value = utils.FormatErc20Deicmals(tx.Value, m).String()
+			}
+
+			transactions = append(transactions, &types.Eth1TokenTxParsed{
+				ParentHash:   fmt.Sprintf("0x%x", tx.ParentHash),
+				BlockNumber:  tx.BlockNumber,
+				TokenAddress: fmt.Sprintf("0x%x", tx.TokenAddress),
+				Time:         tx.Time.AsTime(),
+				From:         fmt.Sprintf("0x%x", tx.From),
+				To:           fmt.Sprintf("0x%x", tx.To),
+				Value:        value,
+			})
+		}
+	}
+
+	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(pageKey, fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address))))
+
+	response.TokenTxs = transactions
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
 }
 
 func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map[common.Hash]types.RelaysData, beaconDataMap map[uint64]types.ExecBlockProposer) []types.ExecutionBlockApiResponse {
