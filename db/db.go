@@ -769,7 +769,6 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 		return fmt.Errorf("error saving validator proposal assignments to db: %w", err)
 	}
 
-	logger.Infof("exporting attestation assignments data")
 	// only export validator balances for epoch zero (validator_balances_recent is only needed for genesis deposits)
 	if data.Epoch == 0 {
 		logger.Infof("exporting validator balances for epoch 0")
@@ -1983,7 +1982,7 @@ func GetValidatorsGotSlashed(epoch uint64) ([]struct {
 						'Attestation Violation' AS reason
 					FROM blocks_attesterslashings 
 					LEFT JOIN blocks ON blocks_attesterslashings.block_slot = blocks.slot
-					WHERE blocks.status = '1' AND blocks.epoch > $1
+					WHERE blocks.status = '1' AND blocks.epoch = $1
 					UNION ALL
 						SELECT
 							blocks.slot, 
@@ -1993,7 +1992,7 @@ func GetValidatorsGotSlashed(epoch uint64) ([]struct {
 							'Proposer Violation' AS reason 
 						FROM blocks_proposerslashings
 						LEFT JOIN blocks ON blocks_proposerslashings.block_slot = blocks.slot
-						WHERE blocks.status = '1' AND blocks.epoch > $1
+						WHERE blocks.status = '1' AND blocks.epoch = $1
 				) a
 				ORDER BY slashedvalidator, slot
 			)

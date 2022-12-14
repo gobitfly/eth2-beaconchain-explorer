@@ -13,7 +13,6 @@ import (
 var lastAttestationCacheDb *leveldb.DB
 
 func InitLastAttestationCache(path string) error {
-
 	if path == "" {
 		logger.Infof("no last attestation cache path provided, using temporary directory %v", os.TempDir()+"/lastAttestationCache")
 		path = os.TempDir() + "/lastAttestationCache"

@@ -78,9 +78,19 @@ func Init() {
 	ready.Wait()
 }
 
-func InitNotifications() {
-	logger.Infof("starting notifications-sender")
-	go notificationsSender()
+func InitNotifications(pubkeyCachePath string) {
+
+	err := initPubkeyCache(pubkeyCachePath)
+	if err != nil {
+		logger.Fatalf("error initializing pubkey cache path for notifications: %v", err)
+	}
+
+	if utils.Config.Notifications.Sender {
+		logger.Infof("starting notifications-sender")
+		go notificationSender()
+	}
+
+	go notificationCollector()
 }
 
 func getRelaysPageData() (*types.RelaysResp, error) {

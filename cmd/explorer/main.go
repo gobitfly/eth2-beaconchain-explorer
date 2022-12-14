@@ -637,7 +637,7 @@ func main() {
 		}()
 	}
 	if utils.Config.Notifications.Enabled {
-		services.InitNotifications()
+		services.InitNotifications(utils.Config.Notifications.PubkeyCachePath)
 	}
 
 	if utils.Config.Metrics.Enabled {
