@@ -1470,7 +1470,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 
 	for validator, participation := range participationPerEpoch {
 		if participation[epochNMinus3] == 2 && participation[epochNMinus2] == 1 && participation[epochNMinus1] == 1 && participation[epoch] == 1 {
-			// logger.Infof("validator %v detected as offline in epoch %v (did not attest since epoch %v)", validator, epoch, epochNMinus2)
+			logger.Infof("validator %v detected as offline in epoch %v (did not attest since epoch %v)", validator, epoch, epochNMinus2)
 			pubkey, err := GetGetPubkeyForIndex(validator)
 			if err != nil {
 				return err
@@ -1479,7 +1479,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 		}
 
 		if participation[epochNMinus3] == 1 && participation[epochNMinus2] == 1 && participation[epochNMinus1] == 1 && participation[epoch] == 2 {
-			// logger.Infof("validator %v detected as online in epoch %v (attested again in epoch %v)", validator, epoch, epoch)
+			logger.Infof("validator %v detected as online in epoch %v (attested again in epoch %v)", validator, epoch, epoch)
 			pubkey, err := GetGetPubkeyForIndex(validator)
 			if err != nil {
 				return err
@@ -1488,12 +1488,12 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 		}
 	}
 
-	if len(offlineValidators) > 1000 {
-		return fmt.Errorf("retrieved more than 1000 offline validators notifications: %v, exiting", len(offlineValidators))
+	if len(offlineValidators) > 5000 {
+		return fmt.Errorf("retrieved more than 5000 offline validators notifications: %v, exiting", len(offlineValidators))
 	}
 
-	if len(onlineValidators) > 1000 {
-		return fmt.Errorf("retrieved more than 1000 online validators notifications: %v, exiting", len(onlineValidators))
+	if len(onlineValidators) > 5000 {
+		return fmt.Errorf("retrieved more than 5000 online validators notifications: %v, exiting", len(onlineValidators))
 	}
 
 	_, subMap, err = db.GetSubsForEventFilter(types.ValidatorIsOfflineEventName)

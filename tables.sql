@@ -198,6 +198,8 @@ create table validatorqueue_exit
     primary key (index, publickey)
 );
 
+create table epochs_notified (epoch int not null primary key, sentOn timestamp not null);
+
 drop table if exists epochs;
 create table epochs
 (
