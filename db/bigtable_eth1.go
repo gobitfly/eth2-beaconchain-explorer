@@ -166,7 +166,7 @@ func (bigtable *Bigtable) GetBlockFromBlocksTable(number uint64) (*types.Eth1Blo
 	}
 
 	if len(row[DEFAULT_FAMILY_BLOCKS]) == 0 { // block not found
-		logger.Errorf("block %v not found in block table", number)
+		logger.Warnf("block %v not found in block table", number)
 		return nil, ErrBlockNotFound
 	}
 

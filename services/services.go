@@ -1078,7 +1078,7 @@ func gasNowUpdater(wg *sync.WaitGroup) {
 	for {
 		data, err := getGasNowData()
 		if err != nil {
-			logger.Errorf("error retrieving gas now data: %v", err)
+			logger.Warnf("error retrieving gas now data: %v", err)
 			time.Sleep(time.Second * 5)
 			continue
 		}
