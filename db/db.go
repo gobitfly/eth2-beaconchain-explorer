@@ -1476,6 +1476,15 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	}
 	defer stmtTransaction.Close()
 
+	stmtWithdrawals, err := tx.Prepare(`
+	INSERT INTO blocks_withdrawals (block_slot, withdrawal_index, validator_index, recipient_address, amount)
+	VALUES ($1, $2, $3, $4)
+	ON CONFLICT (block_slot, withdrawal_index) DO NOTHING`)
+	if err != nil {
+		return err
+	}
+	defer stmtWithdrawals.Close()
+
 	stmtProposerSlashing, err := tx.Prepare(`
 		INSERT INTO blocks_proposerslashings (block_slot, block_index, block_root, proposerindex, header1_slot, header1_parentroot, header1_stateroot, header1_bodyroot, header1_signature, header2_slot, header2_parentroot, header2_stateroot, header2_bodyroot, header2_signature)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
@@ -1660,6 +1669,12 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 				for i, tx := range payload.Transactions {
 					_, err := stmtTransaction.Exec(b.Slot, i, b.BlockRoot,
 						tx.Raw, tx.TxHash, tx.AccountNonce, tx.Price, tx.GasLimit, tx.Sender, tx.Recipient, tx.Amount, tx.Payload, tx.MaxPriorityFeePerGas, tx.MaxFeePerGas)
+					if err != nil {
+						return fmt.Errorf("error executing stmtTransaction for block %v: %v", b.Slot, err)
+					}
+				}
+				for _, w := range payload.Withdrawals {
+					_, err := stmtWithdrawals.Exec(b.Slot, w.Index, w.Index, w.ValidatorIndex, w.Address, w.Amount)
 					if err != nil {
 						return fmt.Errorf("error executing stmtTransaction for block %v: %v", b.Slot, err)
 					}
