@@ -363,6 +363,7 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 		blocks.attesterslashingscount,
 		blocks.attestationscount,
 		blocks.depositscount,
+		blocks.withdrawalcount, 
 		blocks.voluntaryexitscount,
 		blocks.proposer,
 		blocks.status,
@@ -574,6 +575,34 @@ func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	returnQueryResults(rows, w, r)
+}
+
+// ApiBlockWithdrawals godoc
+// @Summary Get the withdrawals included in a specific block
+// @Tags Block
+// @Description Returns the withdrawals included in a specific block
+// @Produce  json
+// @Param  slot path string true "Block slot"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/block/{slot}/withdrawals [get]
+func ApiBlockWithrdawals(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(r)
+
+	slot, err := strconv.ParseInt(vars["slot"], 10, 64)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "invalid block slot provided")
+		return
+	}
+
+	rows, err := db.ReaderDb.Query("SELECT block_slot, withdrawal_index, validator_index, recipient_address, amount FROM blocks_withdrawals WHERE block_slot = $1 ORDER BY block_index DESC", slot)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	returnQueryResults(rows, w, r)
+
 }
 
 // ApiBlockVoluntaryExits godoc
@@ -2551,7 +2580,6 @@ func getAuthClaims(r *http.Request) *utils.CustomClaims {
 func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 	data, err := utils.SqlRowsToJSON(rows)
-
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not parse db results")
 		return

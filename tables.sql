@@ -207,6 +207,7 @@ create table epochs
     attesterslashingscount  int    not null,
     attestationscount       int    not null,
     depositscount           int    not null,
+    withdrawalcount         int    not null,
     voluntaryexitscount     int    not null,
     validatorscount         int    not null,
     averagevalidatorbalance bigint not null,
@@ -240,6 +241,7 @@ create table blocks
     attesterslashingscount      int     not null,
     attestationscount           int     not null,
     depositscount               int     not null,
+    withdrawalcount             int     not null,
     voluntaryexitscount         int     not null,
     proposer                    int     not null,
     status                      text    not null, /* Can be 0 = scheduled, 1 proposed, 2 missed, 3 orphaned */
@@ -276,7 +278,7 @@ create table blocks_withdrawals
     withdrawal_index   int not null,
     validator_index    int not null,
     recipient_address  bytea not null,
-    amount             bytea not null,
+    amount             bigint not null, -- in GWei
     primary key (block_slot, withdrawal_index),
 );
 

@@ -196,6 +196,7 @@ type IndexPageDataBlocks struct {
 	ParentRoot           []byte        `db:"parentroot" json:"parent_root"`
 	Attestations         uint64        `db:"attestationscount" json:"attestations"`
 	Deposits             uint64        `db:"depositscount" json:"deposits"`
+	Withdrawals          uint64        `db:"withdrawalcount" json:"withdrawals"`
 	Exits                uint64        `db:"voluntaryexitscount" json:"exits"`
 	Proposerslashings    uint64        `db:"proposerslashingscount" json:"proposerslashings"`
 	Attesterslashings    uint64        `db:"attesterslashingscount" json:"attesterslashings"`
@@ -230,6 +231,7 @@ type BlocksPageDataBlocks struct {
 	ParentRoot           []byte        `db:"parentroot" json:"parent_root"`
 	Attestations         uint64        `db:"attestationscount" json:"attestations"`
 	Deposits             uint64        `db:"depositscount" json:"deposits"`
+	Withdrawals          uint64        `db:"withdrawalcount" json:"withdrawals"`
 	Exits                uint64        `db:"voluntaryexitscount" json:"exits"`
 	Proposerslashings    uint64        `db:"proposerslashingscount" json:"proposerslashings"`
 	Attesterslashings    uint64        `db:"attesterslashingscount" json:"attesterslashings"`
@@ -327,6 +329,7 @@ type ValidatorPageData struct {
 	StatusProposedCount                 uint64
 	StatusMissedCount                   uint64
 	DepositsCount                       uint64
+	WithdrawalCount                     uint64
 	SlashingsCount                      uint64
 	PendingCount                        uint64
 	SyncCount                           uint64
@@ -581,6 +584,7 @@ type BlockPageData struct {
 	AttesterSlashingsCount uint64  `db:"attesterslashingscount"`
 	AttestationsCount      uint64  `db:"attestationscount"`
 	DepositsCount          uint64  `db:"depositscount"`
+	WithdrawalCount        uint64  `db:"withdrawalcount"`
 	VoluntaryExitscount    uint64  `db:"voluntaryexitscount"`
 	SlashingsCount         uint64
 	VotesCount             uint64
@@ -604,6 +608,8 @@ type BlockPageData struct {
 	ExecTransactionsCount uint64        `db:"exec_transactions_count"`
 
 	Transactions []*BlockPageTransaction
+
+	Withdrawals []*Withdrawals
 
 	ExecutionData *Eth1BlockPageData
 
@@ -759,6 +765,7 @@ type EpochsPageData struct {
 	AttesterSlashingsCount  uint64  `db:"attesterslashingscount"`
 	AttestationsCount       uint64  `db:"attestationscount"`
 	DepositsCount           uint64  `db:"depositscount"`
+	WithdrawalCount         uint64  `db:"withdrawalcount"`
 	VoluntaryExitsCount     uint64  `db:"voluntaryexitscount"`
 	ValidatorsCount         uint64  `db:"validatorscount"`
 	AverageValidatorBalance uint64  `db:"averagevalidatorbalance"`
@@ -776,6 +783,7 @@ type EpochPageData struct {
 	AttesterSlashingsCount  uint64  `db:"attesterslashingscount"`
 	AttestationsCount       uint64  `db:"attestationscount"`
 	DepositsCount           uint64  `db:"depositscount"`
+	WithdrawalCount         uint64  `db:"withdrawalcount"`
 	VoluntaryExitsCount     uint64  `db:"voluntaryexitscount"`
 	ValidatorsCount         uint64  `db:"validatorscount"`
 	AverageValidatorBalance uint64  `db:"averagevalidatorbalance"`
@@ -1651,6 +1659,7 @@ type Eth1BlockPageData struct {
 	PreviousBlock         uint64
 	NextBlock             uint64
 	TxCount               uint64
+	WithdrawalCount       uint64
 	UncleCount            uint64
 	Hash                  string
 	ParentHash            string

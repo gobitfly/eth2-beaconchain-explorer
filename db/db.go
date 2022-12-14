@@ -785,6 +785,7 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 	attestationsCount := 0
 	depositCount := 0
 	voluntaryExitCount := 0
+	withdrawalCount := 0
 
 	for _, slot := range data.Blocks {
 		for _, b := range slot {
@@ -793,6 +794,7 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 			attestationsCount += len(b.Attestations)
 			depositCount += len(b.Deposits)
 			voluntaryExitCount += len(b.VoluntaryExits)
+			withdrawalCount += len(b.ExecutionPayload.Withdrawals)
 		}
 	}
 
@@ -814,7 +816,8 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 			proposerslashingscount, 
 			attesterslashingscount, 
 			attestationscount, 
-			depositscount, 
+			depositscount,
+			withdrawalcount,
 			voluntaryexitscount, 
 			validatorscount, 
 			averagevalidatorbalance, 
@@ -824,13 +827,14 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 			globalparticipationrate, 
 			votedether
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) 
 		ON CONFLICT (epoch) DO UPDATE SET 
 			blockscount             = excluded.blockscount, 
 			proposerslashingscount  = excluded.proposerslashingscount,
 			attesterslashingscount  = excluded.attesterslashingscount,
 			attestationscount       = excluded.attestationscount,
 			depositscount           = excluded.depositscount,
+			withdrawalcount         = excluded.withdrawalcount,
 			voluntaryexitscount     = excluded.voluntaryexitscount,
 			validatorscount         = excluded.validatorscount,
 			averagevalidatorbalance = excluded.averagevalidatorbalance,
@@ -844,6 +848,7 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 		attesterSlashingsCount,
 		attestationsCount,
 		depositCount,
+		withdrawalCount,
 		voluntaryExitCount,
 		validatorsCount,
 		validatorBalanceAverage.Uint64(),

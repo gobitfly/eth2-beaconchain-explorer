@@ -669,6 +669,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			blocks.parentroot,
 			blocks.attestationscount,
 			blocks.depositscount,
+			blocks.withdrawalcount, 
 			blocks.voluntaryexitscount,
 			blocks.proposerslashingscount,
 			blocks.attesterslashingscount,
