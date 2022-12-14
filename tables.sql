@@ -269,6 +269,19 @@ create index idx_blocks_graffiti_text on blocks using gin (graffiti_text gin_trg
 create index idx_blocks_blockrootstatus on blocks (blockroot, status);
 create index idx_blocks_exec_block_number on blocks (exec_block_number);
 
+drop table blocks_withdrawals;
+create table blocks_withdrawals
+(
+    block_slot         int not null,
+    withdrawal_index   int not null,
+    recipient_address  bytea not null,
+    amount             bytea not null,
+    primary key (block_slot, withdrawal_index),
+);
+
+create index idx_blocks_withdrawals on blocks_withdrawals (recipient_address);
+
+
 drop table if exists blocks_transactions;
 create table blocks_transactions
 (
