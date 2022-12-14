@@ -672,6 +672,16 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 			}
 			txs = append(txs, tx)
 		}
+		withdrawals := make([]*types.Withdrawals, 0, len(payload.Withdrawals))
+		for _, w := range payload.Withdrawals {
+			withdrawals = append(withdrawals, &types.Withdrawals{
+				Index:          uint64(w.Index),
+				ValidatorIndex: uint64(w.ValidatorIndex),
+				Address:        w.Address,
+				Amount:         uint64(w.Amount),
+			})
+		}
+
 		block.ExecutionPayload = &types.ExecutionPayload{
 			ParentHash:    payload.ParentHash,
 			FeeRecipient:  payload.FeeRecipient,
@@ -687,6 +697,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 			BaseFeePerGas: uint64(payload.BaseFeePerGas),
 			BlockHash:     payload.BlockHash,
 			Transactions:  txs,
+			Withdrawals:   withdrawals,
 		}
 	}
 
@@ -1169,20 +1180,28 @@ type SyncAggregate struct {
 // https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockV2
 // https://github.com/ethereum/consensus-specs/blob/v1.1.9/specs/bellatrix/beacon-chain.md#executionpayload
 type ExecutionPayload struct {
-	ParentHash    bytesHexStr   `json:"parent_hash"`
-	FeeRecipient  bytesHexStr   `json:"fee_recipient"`
-	StateRoot     bytesHexStr   `json:"state_root"`
-	ReceiptsRoot  bytesHexStr   `json:"receipts_root"`
-	LogsBloom     bytesHexStr   `json:"logs_bloom"`
-	PrevRandao    bytesHexStr   `json:"prev_randao"`
-	BlockNumber   uint64Str     `json:"block_number"`
-	GasLimit      uint64Str     `json:"gas_limit"`
-	GasUsed       uint64Str     `json:"gas_used"`
-	Timestamp     uint64Str     `json:"timestamp"`
-	ExtraData     bytesHexStr   `json:"extra_data"`
-	BaseFeePerGas uint64Str     `json:"base_fee_per_gas"`
-	BlockHash     bytesHexStr   `json:"block_hash"`
-	Transactions  []bytesHexStr `json:"transactions"`
+	ParentHash    bytesHexStr         `json:"parent_hash"`
+	FeeRecipient  bytesHexStr         `json:"fee_recipient"`
+	StateRoot     bytesHexStr         `json:"state_root"`
+	ReceiptsRoot  bytesHexStr         `json:"receipts_root"`
+	LogsBloom     bytesHexStr         `json:"logs_bloom"`
+	PrevRandao    bytesHexStr         `json:"prev_randao"`
+	BlockNumber   uint64Str           `json:"block_number"`
+	GasLimit      uint64Str           `json:"gas_limit"`
+	GasUsed       uint64Str           `json:"gas_used"`
+	Timestamp     uint64Str           `json:"timestamp"`
+	ExtraData     bytesHexStr         `json:"extra_data"`
+	BaseFeePerGas uint64Str           `json:"base_fee_per_gas"`
+	BlockHash     bytesHexStr         `json:"block_hash"`
+	Transactions  []bytesHexStr       `json:"transactions"`
+	Withdrawals   []WithdrawalPayload `json:"withdrawals"`
+}
+
+type WithdrawalPayload struct {
+	Index          uint64Str   `json:"index"`
+	ValidatorIndex uint64Str   `json:"validator_index"`
+	Address        bytesHexStr `json:"address"`
+	Amount         uint64Str   `json:"amount"`
 }
 
 type AnySignedBlock struct {
