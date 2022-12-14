@@ -274,12 +274,14 @@ create table blocks_withdrawals
 (
     block_slot         int not null,
     withdrawal_index   int not null,
+    validator_index    int not null,
     recipient_address  bytea not null,
     amount             bytea not null,
     primary key (block_slot, withdrawal_index),
 );
 
-create index idx_blocks_withdrawals on blocks_withdrawals (recipient_address);
+create index idx_blocks_withdrawals_recipient on blocks_withdrawals (recipient_address);
+create index idx_blocks_withdrawals_validator_index on blocks_withdrawals (validator_index);
 
 
 drop table if exists blocks_transactions;
