@@ -159,6 +159,14 @@ type ExecutionPayload struct {
 	BaseFeePerGas uint64
 	BlockHash     []byte
 	Transactions  []*Transaction
+	Withdrawals   []*Withdrawals
+}
+
+type Withdrawals struct {
+	Index          uint64
+	ValidatorIndex uint64
+	Address        []byte
+	Amount         uint64
 }
 
 // Eth1Data is a struct to hold the ETH1 data
