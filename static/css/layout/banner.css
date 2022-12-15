@@ -256,11 +256,11 @@ cursor: pointer;
 color: var(--banner-text);
 } */
 
-.search-container {
+.info-banner-search .search-container {
   flex: 1 1 auto;
 }
 
-.search-container form {
+.info-banner-search .search-container form {
   width: 100%;
   justify-content: flex-end;
   padding: 5px 0;

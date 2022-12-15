@@ -1,4 +1,4 @@
-{{ define "recentEpochs" }}
+{{ define "recentEpochs_old" }}
   <div class="card">
     <div class="card-header">
       <h3 class="card-title d-flex justify-content-between align-items-center" style="margin: .5rem 0;">
@@ -42,4 +42,59 @@
       </div>
     </div>
   </div>
+{{ end }}
+
+{{ define "recentEpochs_css" }}
+  <style>
+    #epochs-table {
+      grid-template-columns: repeat(5, auto);
+      grid-template-rows: repeat(11, 2.5rem);
+    }
+
+    @media (min-width: 820px) {
+      #epochs-table {
+        grid-template-rows: repeat(11, 3rem);
+      }
+    }
+  </style>
+{{ end }}
+
+{{ define "recentEpochs" }}
+  <div class="card">
+    <div class="card-header">
+      <h3 class="style-card-header d-flex justify-content-between align-items-center mb-0">
+        <span><i class="fa fa-history"></i> Most recent epochs</span>
+        <a class="btn btn-primary btn-sm float-right text-white style-button" href="/epochs">View more</a>
+      </h3>
+    </div>
+    <div class="card-body p-0">
+      <div role="table" class="style-grid" id="epochs-table">
+        <div class="d-contents" role="rowgroup">
+          <div class="d-contents" role="row">
+            <div class="style-paragraph-6 style-grid-header pl-3" role="columnheader">Epoch</div>
+            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader">Time</div>
+            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader"><span class="d-none d-sm-flex">Final</span></div>
+            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader">Voted</div>
+            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader">Fee Recipient Reward</div>
+          </div>
+        </div>
+        <div class="d-contents" role="rowgroup" v-if="page && page.epochs && page.blocks.length">
+          <div class="d-contents" role="row" v-for="epoch in page.epochs">
+            <div role="cell" class="style-paragraph-1 style-grid-cell ml-2 pl-2 pr-2">
+              <a v-bind:href="'/epoch/' + epoch.epoch" v-html="addCommas(epoch.epoch)"></a>
+            </div>
+            <div role="cell" class="style-paragraph-1 style-grid-cell pr-2">${ epoch.ts | fromNow }</div>
+            <div role="cell" class="style-grid-cell pr-2" v-html="epoch.finalized_formatted"></div>
+            <div role="cell" class="style-grid-cell pr-2" v-html="epoch.globalparticipationrate_formatted"></div>
+            <div role="cell" class="style-paragraph-1 style-grid-cell pr-2" v-html="epoch.exec_reward"></div>
+          </div>
+        </div>
+        <div class="d-contents" role="row" v-else>
+          <div role="cell" style="grid-column: 1 / span 6; text-align: center">börj</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!--  -->
+  <span class="d-none">${updateIn}</span>
 {{ end }}
