@@ -275,24 +275,24 @@ drop table blocks_withdrawals;
 create table blocks_withdrawals
 (
     block_slot         int not null,
-    withdrawal_index   int not null,
-    validator_index    int not null,
-    recipient_address  bytea not null,
+    withdrawalindex    int not null,
+    validatorindex     int not null,
+    address            bytea not null,
     amount             bigint not null, -- in GWei
-    primary key (block_slot, withdrawal_index),
+    primary key (block_slot, withdrawalindex),
 );
 
 create index idx_blocks_withdrawals_recipient on blocks_withdrawals (recipient_address);
-create index idx_blocks_withdrawals_validator_index on blocks_withdrawals (validator_index);
+create index idx_blocks_withdrawals_validatorindex on blocks_withdrawals (validatorindex);
 
 create table blocks_bls_change
 (
     block_slot           int     not null,
-    validator_index      int     not null,
+    validatorindex       int     not null,
     signature            bytea   not null,
     pubkey               bytea   not null,
     address              bytea not null,
-    primary key (validator_index);
+    primary key (block_slot, validatorindex);
 );
 create index idx_blocks_bls_change_pubkey on blocks_bls_change (pubkey);
 create index idx_blocks_bls_change_address on blocks_bls_change (address);

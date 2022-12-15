@@ -1482,13 +1482,22 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	defer stmtTransaction.Close()
 
 	stmtWithdrawals, err := tx.Prepare(`
-	INSERT INTO blocks_withdrawals (block_slot, withdrawal_index, validator_index, recipient_address, amount)
+	INSERT INTO blocks_withdrawals (block_slot, withdrawalindex, validatorindex, recipient_address, amount)
 	VALUES ($1, $2, $3, $4)
 	ON CONFLICT (block_slot, withdrawal_index) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtWithdrawals.Close()
+
+	stmtBLSChange, err := tx.Prepare(`
+	INSERT INTO blocks_bls_change (block_slot, validatorindex, signature, pubkey, address)
+	VALUES ($1, $2, $3, $4, $5)
+	ON CONFLICT (block_slot, validator_index) DO NOTHING`)
+	if err != nil {
+		return err
+	}
+	defer stmtBLSChange.Close()
 
 	stmtProposerSlashing, err := tx.Prepare(`
 		INSERT INTO blocks_proposerslashings (block_slot, block_index, block_root, proposerindex, header1_slot, header1_parentroot, header1_stateroot, header1_bodyroot, header1_signature, header2_slot, header2_parentroot, header2_stateroot, header2_bodyroot, header2_signature)
@@ -1669,7 +1678,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 
 			n := time.Now()
 			logger.Tracef("done, took %v", time.Since(n))
-			logger.Tracef("writing transactions data")
+			logger.Tracef("writing transactions and withdrawal data")
 			if payload := b.ExecutionPayload; payload != nil {
 				for i, tx := range payload.Transactions {
 					_, err := stmtTransaction.Exec(b.Slot, i, b.BlockRoot,
@@ -1695,6 +1704,16 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 				}
 			}
 			blockLog.WithField("duration", time.Since(n)).Tracef("stmtProposerSlashing")
+
+			n = time.Now()
+			logger.Tracef("writing bls change data")
+			for _, bls := range b.SignedBLSToExecutionChange {
+				_, err := stmtBLSChange.Exec(b.Slot, bls.Message.Validatorindex, bls.Signature, bls.Message.BlsPubkey, bls.Message.Address)
+				if err != nil {
+					return fmt.Errorf("error executing stmtBLSChange for block %v: %w", b.Slot, err)
+				}
+			}
+			blockLog.WithField("duration", time.Since(n)).Tracef("stmtBLSChange")
 			t = time.Now()
 
 			for i, as := range b.AttesterSlashings {
