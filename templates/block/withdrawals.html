@@ -3,14 +3,16 @@
     <div class="col-md-12 text-center"><b>Showing {{ .WithdrawalCount }} Withdrawals </b></div>
   </div>
   <div class="table-responsive">
-    <table class="table table-sm text-left">
-      <tbody id="block_withdrawals">
+    <table id="block_withdrawals" class="table table-sm text-left">
+      <thead>
         <tr style="background-color: var(--bg-color-light);">
           <th class="border-0">Index</th>
           <th class="border-0">Validator Index</th>
           <th class="border-0">Recipient Address</th>
           <th class="border-0">Amount</th>
         </tr>
+      </thead>
+      <tbody>
         {{ range .Withdrawals }}
           <tr class="border-bottom">
             <td class="border-0">{{ .Index }}</td>

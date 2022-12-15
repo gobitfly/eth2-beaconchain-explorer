@@ -393,6 +393,7 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 		blocks.blockroot = $1;`, blockRootHash)
 
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -424,6 +425,7 @@ func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_attestations WHERE block_slot = $1 ORDER BY block_index", slot)
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -449,6 +451,7 @@ func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 
 	slot, err := strconv.ParseInt(vars["slot"], 10, 64)
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "invalid block slot provided")
 		return
 	}
@@ -476,6 +479,7 @@ func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query("SELECT e.validatorscount, q.entering_validators_count as beaconchain_entering, q.exiting_validators_count as beaconchain_exiting FROM  epochs e, queue q ORDER BY epoch DESC LIMIT 1 ")
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -507,6 +511,7 @@ func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_attesterslashings WHERE block_slot = $1 ORDER BY block_index DESC", slot)
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -538,6 +543,7 @@ func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_proposerslashings WHERE block_slot = $1 ORDER BY block_index DESC", slot)
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -569,6 +575,7 @@ func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_voluntaryexits WHERE block_slot = $1 ORDER BY block_index DESC", slot)
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -596,14 +603,14 @@ func ApiBlockWithrdawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT block_slot, withdrawalindex, validatorindex, address, amount FROM blocks_withdrawals WHERE block_slot = $1 ORDER BY block_index DESC", slot)
+	rows, err := db.ReaderDb.Query("SELECT block_slot, withdrawalindex, validatorindex, address, amount FROM blocks_withdrawals WHERE block_slot = $1 ORDER BY withdrawalindex", slot)
 	if err != nil {
+		logger.WithError(err).Error("error getting blocks_withdrawals")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
 	defer rows.Close()
 	returnQueryResults(rows, w, r)
-
 }
 
 // ApiBlockVoluntaryExits godoc

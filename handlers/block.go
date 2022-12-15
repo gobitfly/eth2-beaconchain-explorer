@@ -34,6 +34,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		"layout.html",
 		"block/block.html",
 		"block/transactions.html",
+		"block/withdrawals.html",
 		"block/attestations.html",
 		"block/deposits.html",
 		"block/votes.html",

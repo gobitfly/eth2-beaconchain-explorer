@@ -306,41 +306,70 @@
       $("#block_votes").DataTable(votesTblOpts)
 
 
-
-
-    let withdrawalOpts = {
-        processing: true,
-        serverSide: true,
-        ordering: false,
-        stateSave: true,
-        searching: false,
-        ajax: "/slot/" + slotNumber + "/withdrawals",
-        pageLength: 10,
-        pagingType: "input",
-        language: {
-          searchPlaceholder: "Validator",
-          search: "",
-          paginate: {
-            previous: '<i class="fas fa-chevron-left"></i>',
-            next: '<i class="fas fa-chevron-right"></i>',
+      let withdrawalOpts = {
+          processing: true,
+          serverSide: true,
+          ordering: false,
+          // stateSave: true,
+          searching: false,
+          ajax: "/slot/" + slotNumber + "/withdrawals",
+          paging: false,
+          // deferLoading: true,
+          // pageLength: 16,
+          // pagingType: "input",
+          // language: {
+          //   searchPlaceholder: "Validator",
+          //   search: "",
+          //   paginate: {
+          //     previous: '<i class="fas fa-chevron-left"></i>',
+          //     next: '<i class="fas fa-chevron-right"></i>',
+          //   },
+          // },
+          columnDefs: [
+            { 
+              targets: 0,
+              data: null,
+              render: function (data, type, row, meta) { 
+                return row.withdrawalindex
+              },
+            },
+            { 
+              targets: 1,
+              data: null,
+              render: function (data, type, row, meta) { 
+                return row.validatorindex
+              },
+            },
+            { 
+              targets: 2,
+              data: null,
+              render: function (data, type, row, meta) { 
+                return `<a href="/address/${row.address}" class="text-monospace">${row.address}</a>`
+              },
+            },
+            { 
+              targets: 3,
+              data: null,
+              render: function (data, type, row, meta) {
+                row.amount = row.amount / 1000000000
+                return `${row.amount} Ether`
+              },
+            }
+          ],
+          preDrawCallback: function () {
+            try {
+              $("#block_withdrawals").find('[data-toggle="tooltip"]').tooltip("dispose")
+            } catch (e) {
+              console.error(e)
+            }
           },
-        },
-        // columnDefs: [{ targets: [3], className: "white-space-normal" }],
-        preDrawCallback: function () {
-          // this does not always work.. not sure how to solve the staying tooltip
-          try {
-            $("#block_withdrawals").find('[data-toggle="tooltip"]').tooltip("dispose")
-          } catch (e) {
-            console.error(e)
+          drawCallback: function (settings) {
+            formatTimestamps()
+            $("#block_withdrawals").find('[data-toggle="tooltip"]').tooltip()
           }
-        },
-        drawCallback: function (settings) {
-          formatTimestamps()
-          $("#block_withdrawals").find('[data-toggle="tooltip"]').tooltip()
-        },
-      }
+        }
 
-      $("#block_withdrawals").DataTable(withdrawalOpts)
+        $("#block_withdrawals").DataTable(withdrawalOpts)
     })
   </script>
 
@@ -437,9 +466,9 @@
           </li>
         {{ end }}
         {{ if gt .WithdrawalCount 0 }}
-        <li class="nav-item">
-          <a class="nav-link" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawal" aria-selected="false">Withdrawals <span class="badge bg-secondary text-white">{{ .WithdrawalCount }}</span></a>
-        </li>
+          <li class="nav-item">
+            <a class="nav-link" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawal" aria-selected="false">Withdrawals <span class="badge bg-secondary text-white">{{ .WithdrawalCount }}</span></a>
+          </li>
         {{ end }}
       </ul>
       <style>
@@ -478,13 +507,13 @@
             </div>
           </div>
         {{ end }}
-        {{if gt .WithdrawalCount 0 }}
-        <div class="tab-pane fade" id="withdrawals" role="tabpanel" aria-labelledby="withdrawals-tab">
-          <div class="card block-card py-1">
-            {{ template "block_withdrawals" . }}
+        {{ if gt .WithdrawalCount 0 }}
+          <div class="tab-pane fade" id="withdrawals" role="tabpanel" aria-labelledby="withdrawals-tab">
+            <div class="card block-card py-1">
+              {{ template "block_withdrawals" . }}
+            </div>
           </div>
-        </div>
-        {{end}}
+        {{ end }}
         {{ if gt .DepositsCount 0 }}
           <div class="tab-pane fade" id="deposits" role="tabpanel" aria-labelledby="deposits-tab">
             <div class="card block-card">
