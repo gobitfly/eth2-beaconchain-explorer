@@ -137,7 +137,7 @@ func notificationCollector() {
 func notificationSender() {
 	for {
 		start := time.Now()
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
 
 		conn, err := db.FrontendReaderDB.Conn(ctx)
 		if err != nil {
