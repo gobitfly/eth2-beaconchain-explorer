@@ -596,11 +596,12 @@ func ApiBlockWithrdawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT block_slot, withdrawal_index, validator_index, recipient_address, amount FROM blocks_withdrawals WHERE block_slot = $1 ORDER BY block_index DESC", slot)
+	rows, err := db.ReaderDb.Query("SELECT block_slot, withdrawalindex, validatorindex, address, amount FROM blocks_withdrawals WHERE block_slot = $1 ORDER BY block_index DESC", slot)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
+	defer rows.Close()
 	returnQueryResults(rows, w, r)
 
 }

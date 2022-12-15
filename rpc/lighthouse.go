@@ -614,11 +614,12 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 			DepositCount: uint64(parsedBlock.Message.Body.Eth1Data.DepositCount),
 			BlockHash:    utils.MustParseHex(parsedBlock.Message.Body.Eth1Data.BlockHash),
 		},
-		ProposerSlashings: make([]*types.ProposerSlashing, len(parsedBlock.Message.Body.ProposerSlashings)),
-		AttesterSlashings: make([]*types.AttesterSlashing, len(parsedBlock.Message.Body.AttesterSlashings)),
-		Attestations:      make([]*types.Attestation, len(parsedBlock.Message.Body.Attestations)),
-		Deposits:          make([]*types.Deposit, len(parsedBlock.Message.Body.Deposits)),
-		VoluntaryExits:    make([]*types.VoluntaryExit, len(parsedBlock.Message.Body.VoluntaryExits)),
+		ProposerSlashings:          make([]*types.ProposerSlashing, len(parsedBlock.Message.Body.ProposerSlashings)),
+		AttesterSlashings:          make([]*types.AttesterSlashing, len(parsedBlock.Message.Body.AttesterSlashings)),
+		Attestations:               make([]*types.Attestation, len(parsedBlock.Message.Body.Attestations)),
+		Deposits:                   make([]*types.Deposit, len(parsedBlock.Message.Body.Deposits)),
+		VoluntaryExits:             make([]*types.VoluntaryExit, len(parsedBlock.Message.Body.VoluntaryExits)),
+		SignedBLSToExecutionChange: make([]*types.SignedBLSToExecutionChange, len(parsedBlock.Message.Body.SignedBLSToExecutionChange)),
 	}
 
 	epochAssignments, err := lc.GetEpochAssignments(slot / utils.Config.Chain.Config.SlotsPerEpoch)
@@ -822,6 +823,17 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 			Epoch:          uint64(voluntaryExit.Message.Epoch),
 			ValidatorIndex: uint64(voluntaryExit.Message.ValidatorIndex),
 			Signature:      utils.MustParseHex(voluntaryExit.Signature),
+		}
+	}
+
+	for i, blsChange := range parsedBlock.Message.Body.SignedBLSToExecutionChange {
+		block.SignedBLSToExecutionChange[i] = &types.SignedBLSToExecutionChange{
+			Message: types.BLSToExecutionChange{
+				Validatorindex: uint64(blsChange.Message.ValidatorIndex),
+				BlsPubkey:      blsChange.Message.FromBlsPubkey,
+				Address:        blsChange.Message.ToExecutionAddress,
+			},
+			Signature: blsChange.Signature,
 		}
 	}
 
@@ -1180,21 +1192,22 @@ type SyncAggregate struct {
 // https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockV2
 // https://github.com/ethereum/consensus-specs/blob/v1.1.9/specs/bellatrix/beacon-chain.md#executionpayload
 type ExecutionPayload struct {
-	ParentHash    bytesHexStr         `json:"parent_hash"`
-	FeeRecipient  bytesHexStr         `json:"fee_recipient"`
-	StateRoot     bytesHexStr         `json:"state_root"`
-	ReceiptsRoot  bytesHexStr         `json:"receipts_root"`
-	LogsBloom     bytesHexStr         `json:"logs_bloom"`
-	PrevRandao    bytesHexStr         `json:"prev_randao"`
-	BlockNumber   uint64Str           `json:"block_number"`
-	GasLimit      uint64Str           `json:"gas_limit"`
-	GasUsed       uint64Str           `json:"gas_used"`
-	Timestamp     uint64Str           `json:"timestamp"`
-	ExtraData     bytesHexStr         `json:"extra_data"`
-	BaseFeePerGas uint64Str           `json:"base_fee_per_gas"`
-	BlockHash     bytesHexStr         `json:"block_hash"`
-	Transactions  []bytesHexStr       `json:"transactions"`
-	Withdrawals   []WithdrawalPayload `json:"withdrawals"`
+	ParentHash    bytesHexStr   `json:"parent_hash"`
+	FeeRecipient  bytesHexStr   `json:"fee_recipient"`
+	StateRoot     bytesHexStr   `json:"state_root"`
+	ReceiptsRoot  bytesHexStr   `json:"receipts_root"`
+	LogsBloom     bytesHexStr   `json:"logs_bloom"`
+	PrevRandao    bytesHexStr   `json:"prev_randao"`
+	BlockNumber   uint64Str     `json:"block_number"`
+	GasLimit      uint64Str     `json:"gas_limit"`
+	GasUsed       uint64Str     `json:"gas_used"`
+	Timestamp     uint64Str     `json:"timestamp"`
+	ExtraData     bytesHexStr   `json:"extra_data"`
+	BaseFeePerGas uint64Str     `json:"base_fee_per_gas"`
+	BlockHash     bytesHexStr   `json:"block_hash"`
+	Transactions  []bytesHexStr `json:"transactions"`
+	// present only after capella
+	Withdrawals []WithdrawalPayload `json:"withdrawals"`
 }
 
 type WithdrawalPayload struct {
@@ -1202,6 +1215,15 @@ type WithdrawalPayload struct {
 	ValidatorIndex uint64Str   `json:"validator_index"`
 	Address        bytesHexStr `json:"address"`
 	Amount         uint64Str   `json:"amount"`
+}
+
+type SignedBLSToExecutionChange struct {
+	Message struct {
+		ValidatorIndex     uint64Str   `json:"validator_index"`
+		FromBlsPubkey      bytesHexStr `json:"from_bls_pubkey"`
+		ToExecutionAddress bytesHexStr `json:"to_execution_address"`
+	} `json:"message"`
+	Signature bytesHexStr `json:"signature"`
 }
 
 type AnySignedBlock struct {
@@ -1225,6 +1247,9 @@ type AnySignedBlock struct {
 
 			// not present in phase0/altair blocks
 			ExecutionPayload *ExecutionPayload `json:"execution_payload"`
+
+			// present only after capella
+			SignedBLSToExecutionChange []*SignedBLSToExecutionChange `json:"bls_to_execution_changes"`
 		} `json:"body"`
 	} `json:"message"`
 	Signature bytesHexStr `json:"signature"`
