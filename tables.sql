@@ -285,6 +285,17 @@ create table blocks_withdrawals
 create index idx_blocks_withdrawals_recipient on blocks_withdrawals (recipient_address);
 create index idx_blocks_withdrawals_validator_index on blocks_withdrawals (validator_index);
 
+create table blocks_bls_change
+(
+    block_slot           int     not null,
+    validator_index      int     not null,
+    signature            bytea   not null,
+    pubkey               bytea   not null,
+    address              bytea not null,
+    primary key (validator_index);
+);
+create index idx_blocks_bls_change_pubkey on blocks_bls_change (pubkey);
+create index idx_blocks_bls_change_address on blocks_bls_change (address);
 
 drop table if exists blocks_transactions;
 create table blocks_transactions
