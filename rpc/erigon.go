@@ -107,6 +107,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 		Bloom:        block.Bloom().Bytes(),
 		Uncles:       []*types.Eth1Block{},
 		Transactions: []*types.Eth1Transaction{},
+		Withdrawals:  []*types.Eth1Withdrawal{},
 	}
 
 	if block.BaseFee() != nil {
@@ -137,6 +138,18 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 
 	receipts := make([]*geth_types.Receipt, len(block.Transactions()))
 	reqs := make([]rpc.BatchElem, len(block.Transactions()))
+
+	withdrawals := make([]*types.Eth1Withdrawal, 0)
+	// for _, w := range block.Withdrawals() {
+	// 	withdrawals = append(withdrawals, &types.Eth1Withdrawal{
+	// 		Index:          w.Index,
+	// 		ValidatorIndex: w.ValidatorIndex,
+	// 		Address:        w.Address,
+	// 		Amount:         w.Amount,
+	// 	})
+	// }
+
+	c.Withdrawals = withdrawals
 
 	txs := block.Transactions()
 
