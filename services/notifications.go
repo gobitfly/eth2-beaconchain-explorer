@@ -600,7 +600,7 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 	for userID, userNotifications := range notificationsByUserID {
 		userEmail, exists := emailsByUserID[userID]
 		if !exists {
-			logger.Errorf("email notification skipping user %v", userID)
+			logger.Warnf("email notification skipping user %v", userID)
 			// we don't need this metrics as users can now deactivate email notifications and it would increment the counter
 			// metrics.Errors.WithLabelValues("notifications_mail_not_found").Inc()
 			continue
@@ -817,7 +817,7 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 								continue
 							}
 						} else if w.Retries > 5 && !w.LastSent.Valid {
-							logger.Error("error webhook has more than 5 retries and does not have a valid last_sent timestamp")
+							logger.Warn("error webhook has more than 5 retries and does not have a valid last_sent timestamp")
 							continue
 						}
 
