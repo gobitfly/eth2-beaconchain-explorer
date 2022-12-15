@@ -279,10 +279,10 @@ create table blocks_withdrawals
     validatorindex     int not null,
     address            bytea not null,
     amount             bigint not null, -- in GWei
-    primary key (block_slot, withdrawalindex),
+    primary key (block_slot, withdrawalindex)
 );
 
-create index idx_blocks_withdrawals_recipient on blocks_withdrawals (recipient_address);
+create index idx_blocks_withdrawals_recipient on blocks_withdrawals (address);
 create index idx_blocks_withdrawals_validatorindex on blocks_withdrawals (validatorindex);
 
 create table blocks_bls_change
@@ -292,7 +292,7 @@ create table blocks_bls_change
     signature            bytea   not null,
     pubkey               bytea   not null,
     address              bytea not null,
-    primary key (block_slot, validatorindex);
+    primary key (block_slot, validatorindex)
 );
 create index idx_blocks_bls_change_pubkey on blocks_bls_change (pubkey);
 create index idx_blocks_bls_change_address on blocks_bls_change (address);
@@ -976,6 +976,7 @@ CREATE TABLE validator_queue_deposits (
 CREATE INDEX idx_validator_queue_deposits_block_slot ON validator_queue_deposits USING btree (block_slot);
 CREATE UNIQUE INDEX idx_validator_queue_deposits_validatorindex ON validator_queue_deposits USING btree (validatorindex);
 
+drop table service_status;
 create table service_status (name text not null, executable_name text not null, version text not null, pid int not null, status text not null, metadata jsonb, last_update timestamp not null, primary key (name, executable_name, version, pid));
 
 DROP TABLE IF EXISTS chart_series;
