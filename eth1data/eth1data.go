@@ -158,7 +158,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 			meta, err := db.BigtableClient.GetContractMetadata(log.Address.Bytes())
 
 			if err != nil || meta == nil {
-				logger.Errorf("error retrieving abi for contract %v: %v", tx.To(), err)
+				logger.Warnf("error retrieving abi for contract %v: %v", tx.To(), err)
 				eth1Event := &types.Eth1EventData{
 					Address: log.Address,
 					Name:    "",
