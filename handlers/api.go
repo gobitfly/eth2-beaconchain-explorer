@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -1139,10 +1140,13 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidator godoc
-// @Summary Get the balance history (last 100 epochs) of up to 100 validators
+// @Summary Get the balance history of up to 100 validators
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Param  latest_epoch query int false "The latest epoch to consider in the query"
+// @Param  offset query int false "Number of items to skip"
+// @Param  limit query int false "Maximum number of items to return, up to 100"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/balancehistory [get]
@@ -1154,6 +1158,12 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
+	latestEpoch, limit, err := getBalanceHistoryQueryParameters(r.URL.Query())
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), err.Error())
+		return
+	}
+
 	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
@@ -1164,7 +1174,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "no or invalid validator indicies provided")
 	}
 
-	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), 101)
+	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, latestEpoch, limit+1)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -1209,6 +1219,39 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
+}
+
+func getBalanceHistoryQueryParameters(q url.Values) (uint64, int64, error) {
+	onChainLatestEpoch := services.LatestEpoch()
+	defaultLimit := int64(100)
+
+	latestEpoch := onChainLatestEpoch
+	if q.Has("latest_epoch") {
+		var err error
+		latestEpoch, err = strconv.ParseUint(q.Get("latest_epoch"), 10, 64)
+		if err != nil || latestEpoch > onChainLatestEpoch {
+			return 0, 0, fmt.Errorf("invalid latest epoch parameter")
+		}
+	}
+
+	if q.Has("offset") {
+		offset, err := strconv.ParseUint(q.Get("offset"), 10, 64)
+		if err != nil || offset > latestEpoch {
+			return 0, 0, fmt.Errorf("invalid offset parameter")
+		}
+		latestEpoch -= offset
+	}
+
+	limit := defaultLimit
+	if q.Has("limit") {
+		var err error
+		limit, err = strconv.ParseInt(q.Get("limit"), 10, 64)
+		if err != nil || limit > defaultLimit || limit < 1 {
+			return 0, 0, fmt.Errorf("invalid limit parameter")
+		}
+	}
+
+	return latestEpoch, limit, nil
 }
 
 // ApiValidatorPerformance godoc
