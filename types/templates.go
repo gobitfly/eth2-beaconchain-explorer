@@ -183,11 +183,11 @@ type IndexPageDataEpochs struct {
 	GlobalParticipationRate          float64       `json:"globalparticipationrate"`
 	GlobalParticipationRateFormatted template.HTML `json:"globalparticipationrate_formatted"`
 	VotedEther                       uint64        `json:"votedether"`
-	//VotedEtherFormatted              template.HTML `json:"votedether_formatted"`
-	ExecutionReward          *big.Int      `json:"-"`
-	ExecutionRewardFormatted template.HTML `json:"exec_reward"`
-	//EligibleEther                    uint64        `json:"eligibleether"`
-	//EligibleEtherFormatted           template.HTML `json:"eligibleether_formatted"`
+	ExecutionReward                  *big.Int      `json:"-"`
+	ExecutionRewardFormatted         template.HTML `json:"exec_reward"`
+	EligibleEther                    uint64        `db:"eligibleether" json:"-"`
+	ValidatorsCount                  uint64        `db:"validatorscount" json:"-"`
+	AverageValidatorBalance          uint64        `db:"averagevalidatorbalance" json:"-"`
 }
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page

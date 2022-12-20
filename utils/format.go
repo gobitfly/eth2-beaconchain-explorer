@@ -334,25 +334,26 @@ func FormatBlockStatusShort(status uint64) template.HTML {
 
 func FormatBlockStatusStyle(status uint64) template.HTML {
 	if status == 0 {
-		return `<div title="This slot is still scheduled" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-neutral-1"><p class="style-status-tag-text" >S<span class="d-none d-sm-inline">cheduled</span></p></div>`
+		return `<div title="This slot is still scheduled" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-neutral-1"><div class="style-status-tag-text" >S<span class="d-none d-sm-inline">cheduled</span></div></div>`
 	} else if status == 1 {
-		return `<div title="This block has been proposed" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-good"><p class="style-status-tag-text text-white" >P<span class="d-none d-sm-inline">roposed</span></p></div>`
+		return `<div title="This block has been proposed" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-good"><div class="style-status-tag-text text-white" >P<span class="d-none d-sm-inline">roposed</span></div></div>`
 	} else if status == 2 {
-		return `<div title="This block has been proposed" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-bad"><p class="style-status-tag-text" >M<span class="d-none d-sm-inline">issed</span></p></div>`
+		return `<div title="This blocks proposal has been missed" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-bad"><div class="style-status-tag-text" >M<span class="d-none d-sm-inline">issed</span></div></div>`
 	} else if status == 3 {
-		return `<div title="This block has been orphaned" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-neutral-2"><p class="style-status-tag-text text-white" >O<span class="d-none d-sm-inline">rphaned</span></p></div>`
+		return `<div title="This block has been orphaned" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-neutral-2"><div class="style-status-tag-text text-white" >O<span class="d-none d-sm-inline">rphaned</span></div></div>`
 	} else {
-		return `<div title="This shouldn't be possible" data-toggle="tooltip" class="style-badge style-bg-neutral-2"><p class="style-status-tag-text text-white" >?</p></div>`
+		return `<div title="This shouldn't be possible" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-neutral-2"><div class="style-status-tag-text text-white" >?</div></div>`
 	}
 }
 
 func FormatEpochStatus(finalized bool, participationRate float64) template.HTML {
 	if finalized {
-		return `<div title="This epoch is finalized" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-good"><p class="style-status-tag-text text-white" >F<span class="d-none d-sm-inline">inalized</span></p></div>`
+		return `<div title="This epoch is finalized" data-toggle="tooltip" class="style-badge style-bg-good"><div class="style-status-tag-text text-white" ><span class="d-sm-none">FIN</span><span class="d-none d-sm-inline">Finalized</span></div></div>`
 	} else if participationRate > 0.66 && participationRate < 1 {
-		return `<div title="This epoch is not finalized but safe, making a revert unlikely" data-toggle="tooltip" class="style-badge style-bg-neutral-2"><p class="style-status-tag-text text-white" >N<span class="d-none d-sm-inline">ot </span>F<span class="d-none d-sm-inline">inalized (</span>S<span class="d-none d-sm-inline">afe)</span></p></div>`
+		// since the latest epoch in the db always has a participation rate of 1, check for < 1 instead of <= 1
+		return `<div title="This epoch is not finalized but safe, making a revert unlikely" data-toggle="tooltip" class="style-badge style-badge-nfs style-bg-neutral-2"><div class="style-status-tag-text text-white" ><span class="d-sm-none">NFS</span><span class="d-none d-sm-inline">Not finalized (Safe)</span></div></div>`
 	} else {
-		return `<div title="This epoch is not finalized" data-toggle="tooltip" class="style-badge style-bg-neutral-1"><p class="style-status-tag-text" >N<span class="d-none d-sm-inline">ot </span>F<span class="d-none d-sm-inline">inalized</span></p></div>`
+		return `<div title="This epoch is not finalized" data-toggle="tooltip" class="style-badge style-bg-neutral-1"><div class="style-status-tag-text" ><span class="d-sm-none">NF</span><span class="d-none d-sm-inline">Not finalized</span></div></div>`
 	}
 }
 
@@ -856,27 +857,6 @@ func FormatValidator(validator uint64) template.HTML {
 }
 
 func FormatValidatorWithName(validator interface{}, name string) template.HTML {
-	var validatorRead string
-	var validatorLink string
-	switch v := validator.(type) {
-	case []byte:
-		if len(v) > 2 {
-			validatorRead = fmt.Sprintf("0x%x…%x", v[:2], v[len(v)-2:])
-		}
-		validatorLink = fmt.Sprintf("%x", v)
-	default:
-		validatorRead = fmt.Sprintf("%v", v)
-		validatorLink = fmt.Sprintf("%v", v)
-	}
-
-	if name != "" {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i> <a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validatorLink))
-	} else {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i> <a href=\"/validator/%v\">%v</a>", validatorLink, validatorRead))
-	}
-}
-
-func FormatValidatorWithNameAlt(validator interface{}, name string) template.HTML {
 	var validatorRead string
 	var validatorLink string
 	switch v := validator.(type) {

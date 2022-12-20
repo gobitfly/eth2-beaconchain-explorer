@@ -145,6 +145,7 @@
                     if (this.updateIn <= 0) {
                         $.getJSON('/index/data', function (response) {
                             this.page = response;
+                            $('.style-grid [data-toggle="tooltip"]').tooltip()
                         }.bind(this));
                         this.updateIn = 5;
                     } else {
@@ -210,104 +211,125 @@
     :root {
       --style-search-bg: #fff;
       --text-addition: #a5a5a5;
+      --bg-table-header: #f4f2f2;
+      --table-scroll: rgba(52, 58, 64, 0.1);
+      --table-scroll-hover: rgba(52, 58, 64, 0.5);
     }
 
     [data-theme="dark"]:root {
       --style-search-bg: #3e4461;
+      --bg-table-header: #362f32;
+      --table-scroll: rgba(231, 225, 215, 0.1);
+      --table-scroll-hover: rgba(231, 225, 215, 0.5);
     }
 
     .mukta {
-      font-family: "Mukta", sans-serif !important;
+      font-family: "Mukta", sans-serif;
     }
 
     .fs-20 {
-      font-size: 1.25rem !important;
+      font-size: 1.25rem;
     }
 
     .style-title {
-      font-family: "Montserrat", sans-serif !important;
-      font-size: 1.875rem !important;
-      font-weight: 600 !important;
+      font-family: "Montserrat", sans-serif;
+      font-size: 1.875rem;
+      font-weight: 600;
     }
 
     .style-nav1-text {
-      font-family: "Mukta", sans-serif !important;
-      font-size: 0.875rem !important;
-      font-weight: 300 !important;
+      font-family: "Mukta", sans-serif;
+      font-size: 0.875rem;
+      font-weight: 300;
     }
 
     .style-paragraph-1 {
-      font-family: "Mukta", sans-serif !important;
-      font-size: 0.875rem !important;
-      font-weight: 300 !important;
+      font-family: "Mukta", sans-serif;
+      font-size: 0.875rem;
+      font-weight: 300;
     }
 
     .style-paragraph-3 {
-      font-family: "Mukta", sans-serif !important;
-      font-size: 0.75rem !important;
-      font-weight: 300 !important;
+      font-family: "Mukta", sans-serif;
+      font-size: 0.75rem;
+      font-weight: 300;
     }
 
     .style-paragraph-6 {
-      font-family: "Mukta", sans-serif !important;
-      font-size: 0.875rem !important;
-      font-weight: 500 !important;
+      font-family: "Mukta", sans-serif;
+      font-size: 0.875rem;
+      font-weight: 500;
     }
 
     .style-status-tag-text {
-      font-family: "Mukta", sans-serif !important;
-      font-size: 0.75rem;
-      font-weight: 500 !important;
+      font-family: "Mukta", sans-serif;
+      font-size: 0.625rem;
+      font-weight: 500;
     }
 
     .style-hash {
-      font-family: "Roboto Mono" !important;
-      font-size: 0.75rem !important;
-      font-weight: 400 !important;
+      font-family: "Roboto Mono";
+      font-size: 0.75rem;
+      font-weight: 400;
     }
 
     .style-card-header {
-      font-family: "Montserrat", sans-serif !important;
-      font-size: 1rem !important;
-      font-weight: 500 !important;
+      font-family: "Montserrat", sans-serif;
+      font-size: 1rem;
+      font-weight: 500;
     }
 
     .style-button {
-      font-family: "Mukta", sans-serif !important;
-      font-size: 0.75rem !important;
-      font-weight: 500 !important;
+      font-family: "Mukta", sans-serif;
+      font-size: 0.75rem;
+      font-weight: 500;
     }
 
     .style-hero-links {
-      font-family: "Mukta", sans-serif !important;
-      font-size: 1rem !important;
-      font-weight: 500 !important;
+      font-family: "Mukta", sans-serif;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+
+
+    @media (min-width: 640px) {
+      .style-status-tag-text {
+        font-size: 0.75rem !important;
+      }
     }
 
     @media (min-width: 1140px) {
       .style-title {
-        font-size: 2.5rem !important;
+        font-size: 2.5rem;
       }
       .style-nav1-text {
-        font-size: 1.125rem !important;
+        font-size: 1.125rem;
       }
       .style-hero-links {
-        font-size: 1.25rem !important;
+        font-size: 1.25rem;
       }
       .style-card-header {
-        font-size: 1.75rem !important;
+        font-size: 1.75rem;
       }
       .style-button {
-        font-size: 0.875rem !important;
+        font-size: 0.875rem;
       }
     }
 
     .style-badge {
       display: inline-block;
+      white-space: nowrap;
       height: 1rem;
       text-align: center;
-      padding: 0.25rem 0.5rem;
       border-radius: 10.5px;
+      width: 1.3rem;
+    }
+
+    .style-badge .style-status-tag-text {
+      position: relative;
+      top: 50%;
+      transform: translateY(-50%);
     }
 
     .style-bg-good {
@@ -327,35 +349,36 @@
     }
 
     @media (max-width: 639px) {
-      .style-badge {
-        padding: 0.25rem 0.25rem;
-      }
       .style-badge.style-badge-single-char {
         width: 1rem;
         padding: 0;
         border-radius: 50%;
       }
-      .style-badge .style-status-tag-text {
-        transform: translateY(-53%);
-      }
     }
 
-    .style-badge .style-status-tag-text {
-      margin: 0;
-      position: relative;
-      top: 50%;
-      transform: translateY(-50%);
+    @media (min-width: 640px) {
+      .style-badge{
+        width: 5rem;
+      }
+      .style-badge-nfs {
+        width: 7rem;
+      }
     }
 
     .style-grid {
       display: grid;
-      overflow-x: auto;
       white-space: nowrap;
       color: var(--font-color);
+      overflow: scroll;
+      overflow-x: auto;
+      overflow-y: overlay;
     }
 
     .style-grid .style-grid-header {
-      background-color: var(--bg-color-light);
+      background-color: var(--bg-table-header);
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
 
     .style-grid .style-grid-header,
@@ -370,6 +393,20 @@
 
     .style-grid div[role="row"]:last-of-type .style-grid-cell {
       border: 0;
+    }
+
+    .style-grid::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .style-grid::-webkit-scrollbar-thumb {
+      -webkit-border-radius: 10px;
+      border-radius: 10px;
+      background-color: var(--table-scroll);
+      opacity: 0;
+    }
+    .style-grid:hover::-webkit-scrollbar-thumb {
+      background-color: var(--table-scroll-hover);
     }
   </style>
 

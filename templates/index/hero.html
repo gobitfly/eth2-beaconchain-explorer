@@ -1,254 +1,3 @@
-{{ define "hero_old" }}
-  <div class="hero-container">
-    <div class="hero-image">
-      <div id="hero-feed" class="d-none shadow-sm">
-        <ul class="d-flex flex-column align-items-center"></ul>
-        <span class="donate-btn"><img src="/img/gitcoin_logo.svg" style="width: auto; height: 30px;" /></span>
-      </div>
-      {{ if .Countdown.Enabled }}
-        <div class="countdown fade-in-top d-none d-lg-block">
-          <h1 class="countdown-headline" style="margin-bottom: 15px; font-size: 42px; font-weight: 900; letter-spacing: 2px; color: #343a40;">{{ .Countdown.Title }}</h1>
-          <div class="d-flex justify-content-between">
-            <div>
-              <div class="d-flex align-items-center justify-content-between mr-3 mb-1">
-                <h2 class="countdown-epoch" style="font-size: 28px; font-weight: 700; letter-spacing: 3px; color: #343a40; text-align: left;"></h2>
-                <h2 class="countdown-slot" style="font-size: 28px; font-weight: 700; letter-spacing: 3px; color: #343a40; text-align: right;"></h2>
-              </div>
-              <h2 class="countdown-time" style="font-size: 28px; font-weight: 700; letter-spacing: 3px; color: #343a40;"></h2>
-              <span style="color: #343a40;">{{ .Countdown.Info }}</span>
-            </div>
-            <i class="fas fa-hourglass-half fa-7x mt-3 rotated-icon" style="color: #565876;"></i>
-          </div>
-        </div>
-      {{ end }}
-
-      {{ template "woman_walking_svg" }}
-    </div>
-    <div class="hero-text">
-      <div class="hero-text-background"></div>
-      <h1 class="text-center">Open Source Ethereum Explorer</h1>
-      <h5 class="text-center">{{ .Subtitle }}</h5>
-      <h6 class="text-center">
-        <!-- <a href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter</a> | -->
-        <a href="/mobile"><i class="fas fa-mobile-alt mr-2"></i>Mobile App</a> | <a href="https://gitcoin.co/grants/258/beaconchain-open-source-eth2-blockchain-explorer"><img class="mr-1 mb-1" height="16" src="/img/gitcoin_logo.svg" />Gitcoin Grant</a> | <a class="my-1" href="/advertisewithus"><i class="fas fa-ad mr-2"></i>Advertise</a>
-      </h6>
-    </div>
-    {{ if .Countdown.Enabled }}
-      <div class="d-flex d-lg-none align-items-center justify-content-center w-100 mt-2">
-        <div class="d-flex flex-column" style="position: relative; top: 0;">
-          <h1 class="countdown-headline" style="font-size: 24px; font-weight: 700; letter-spacing: 2px; color: #343a40;">{{ .Countdown.Title }}</h1>
-          <h2 class="countdown-time" style="font-size: 18px; font-weight: 700; letter-spacing: 3px; color: #343a40;"></h2>
-        </div>
-      </div>
-    {{ end }}
-  </div>
-
-  <script src="/js/jquery.min.js"></script>
-  <script src="/js/luxon.min.js"></script>
-  <script src="/js/herofeed.js"></script>
-  {{ if .Countdown.Enabled }}
-  <script>
-    let c_epoch = {{$.CurrentEpoch}}, c_slot = {{$.CurrentSlot}}, t = 12
-
-    function updateCountdown() {
-      let time_diff = luxon.DateTime.fromMillis({{.Countdown.Timestamp}}).diff(luxon.DateTime.local())
-      if (time_diff.milliseconds <= 0) { $('.countdown-time').html('00:00:00'); return }
-      time_diff = time_diff.toObject()
-      let time_left = luxon.Duration.fromObject(time_diff).toFormat('MM-dd hh:mm:ss').split(" ")
-      let date = time_left[0].split('-')
-      let m = 'Month', d = 'Day'
-      if (parseInt(date[0]) > 1) m += 's'
-      if (parseInt(date[1]) > 1) d += 's'
-      if (parseInt(date[0]) <= 0) { m=""; date[0]="" }
-      if (parseInt(date[1]) <= 0) { d=""; date[1]="" }
-
-      // $('.countdown-time').html(`${date[0]} ${m} ${date[1]} ${d} ${time_left[1]}`)
-      $('.countdown-time').html(`${date[0]} <span style="font-size: 18px; font-weight: 100; color: #56606a;">${m}</span> ${date[1]} <span style="font-size: 18px; font-weight: 100; color: #56606a;">${d}</span> ${time_left[1]}`)
-
-      if (t <= 0) {
-        fetch('/latestState')
-        .then(res=>res.json().then((data) => {
-          c_epoch = data.currentEpoch
-          c_slot = data.currentSlot
-          t = 12
-        }))
-        t = 60 // prevent sending too many requests
-      }
-
-      let epoch_left = timeToEpoch({{ .Countdown.Timestamp }}) - c_epoch
-      let slots_left = timeToSlot({{ .Countdown.Timestamp }}) - c_slot
-      epoch_left = epoch_left<0 ? 0 : epoch_left
-      slots_left = slots_left<0 ? 0 : slots_left
-
-      // $('.countdown-epoch').html(`${epoch_left} Epoch${epoch_left>1?'s':""} ${slots_left} Slot${slots_left>1?'s':""} left`)
-      $('.countdown-epoch').html(`${epoch_left} <span style="display: block; font-size: 18px; font-weight: 100; color: #56606a;">Epoch${epoch_left>1?'s':""}</span>`)
-      $('.countdown-slot').html(`${slots_left} <span style="display: block; font-size: 18px; font-weight: 100; color: #56606a;">Slot${slots_left>1?'s':""} left</span>`)
-      t = t - 1
-    }
-
-    $(document).ready(() => {
-      updateCountdown()
-      requestAnimationFrame(() => {
-        setInterval(() => {
-          if (document.hasFocus()) {
-            updateCountdown()
-          }
-        }, 1000)
-      })
-    })
-  </script>
-  {{ end }}
-{{ end }}
-
-
-<a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag Shop</a>
-
-{{ define "hero_css_old" }}
-  <style>
-    .hero-container {
-      position: relative;
-      min-height: 250px;
-      width: 100%;
-      display: flex;
-      flex-direction: row-reverse;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
-
-    .hero-image {
-      overflow: hidden;
-      flex: 1;
-      max-width: 500px;
-      min-width: 320px;
-      max-height: 400px;
-      min-height: 200px;
-      position: relative;
-    }
-
-    .hero-image svg {
-      overflow: hidden;
-      width: inherit;
-      height: inherit;
-    }
-
-    .hero-text {
-      font-size: 2rem;
-      flex: 1;
-      min-width: 305px;
-      max-width: 500px;
-      position: relative;
-    }
-
-    .hero-text-background {
-      position: absolute;
-      width: 100%;
-      height: 98%;
-      /* bottom: -40%; */
-      /* transform: scale(.5) translateY(20%); */
-      border-radius: 65% 35% 70% 30% / 50% 50% 50% 50%;
-      background-image: var(--linear-gradient);
-      box-shadow: 5px 15px 30px var(--shadow-light);
-      z-index: -50;
-      -webkit-animation: slide-bottom 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-      animation: slide-bottom 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-      opacity: 0.6;
-    }
-
-    /* ----------------------------------------------
-             * Generated by Animista on 2020-5-27 13:15:6
-             * Licensed under FreeBSD License.
-             * See http://animista.net/license for more info.
-             * w: http://animista.net, t: @cssanimista
-             * ---------------------------------------------- */
-    @-webkit-keyframes slide-bottom {
-      0% {
-        -webkit-transform: translateY(0);
-        transform: translateY(0);
-      }
-
-      100% {
-        -webkit-transform: scale(1) translateY(25%);
-        transform: scale(1) translateY(25%);
-      }
-    }
-
-    @keyframes slide-bottom {
-      0% {
-        -webkit-transform: translateY(0);
-        transform: translateY(0);
-      }
-
-      100% {
-        -webkit-transform: scale(1) translateY(25%);
-        transform: scale(1) translateY(25%);
-      }
-    }
-
-    @media (max-width: 1140px) {
-      .hero-text-background {
-        animation: none;
-        transform: scale(1) translateY(1.5rem);
-        height: calc(100% - 1.5rem);
-        border-radius: 0.5rem;
-        opacity: 0.8;
-      }
-
-      .hero-container {
-        margin-bottom: 50px;
-      }
-    }
-
-    @media (max-width: 960px) {
-      .hero-image {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-      }
-
-      .hero-container {
-        flex-wrap: nowrap;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .hero-text {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-      }
-
-      .hero-image svg {
-        opacity: 0.2;
-      }
-
-      .hero-text-background {
-        transform: scale(1) translateY(10%);
-        animation: none;
-        opacity: 0.1;
-      }
-    }
-
-    @media (max-width: 960px) {
-      .index-stats {
-        font-size: 0.9rem;
-      }
-
-      .index-stats h5,
-      .card-title {
-        font-size: 1rem !important;
-      }
-    }
-
-    [v-cloak] {
-      visibility: hidden;
-    }
-  </style>
-{{ end }}
-
 {{ define "hero_css" }}
   <style>
     #hero-container {
@@ -266,9 +15,6 @@
       }
       #hero-text a {
         color: #66bce9;
-      }
-      #hero-text h1 {
-        white-space: nowrap;
       }
     }
 
@@ -337,7 +83,7 @@
       height: 100%;
     }
     #hero-search-container .fa-search {
-      color: white !important;
+      color: white;
       vertical-align: -0.1rem;
     }
 
@@ -400,7 +146,7 @@
       {{ template "woman_walking_svg" }}
     </div>
     <div id="hero-text">
-      <h1 class="text-center style-title">
+      <h1 class="text-center style-title text-nowrap">
         Open Source <br class="d-sm-none" />
         Ethereum Explorer
       </h1>
@@ -417,7 +163,7 @@
       <h6 class="text-center mt-3 style-hero-links">
         <a class="mr-3" href="/mobile">Mobile App<i class="fas fa-mobile-alt ml-2"></i></a>
         <a class="mr-3" href="https://gitcoin.co/grants/258/beaconchain-open-source-eth2-blockchain-explorer">Gitcoin Grant<img class="ml-2 mb-1" height="16" src="/img/gitcoin_logo.svg" /></a>
-        <a class="my-1" href="/advertisewithus">Advertise<i class="fas fa-ad ml-2"></i></a>
+        <a class="my-1 text-nowrap" href="/advertisewithus">Advertise<i class="fas fa-ad ml-2"></i></a>
       </h6>
     </div>
   </div>

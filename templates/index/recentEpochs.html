@@ -1,49 +1,3 @@
-{{ define "recentEpochs_old" }}
-  <div class="card">
-    <div class="card-header">
-      <h3 class="card-title d-flex justify-content-between align-items-center" style="margin: .5rem 0;">
-        <span> <i class="fas fa-history"></i> Most recent epochs </span>
-        <a class="btn btn-primary btn-sm float-right text-white" href="/epochs">View more</a>
-      </h3>
-    </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Epoch</th>
-              <th>Time</th>
-              <th>Final</th>
-              <th>Eligible (ETH)</th>
-              <th>Voted</th>
-            </tr>
-          </thead>
-          <tbody v-if="page && page.epochs && page.epochs.length">
-            <tr v-for="epoch in page.epochs">
-              <td><a v-bind:href="'/epoch/' + epoch.epoch" v-html="addCommas(epoch.epoch)"></a></td>
-              <td>${ epoch.ts | fromNow }</td>
-              <td v-html="epoch.finalized_formatted"></td>
-              <td v-html="epoch.eligibleether_formatted"></td>
-              <td v-html="epoch.globalparticipationrate_formatted"></td>
-            </tr>
-          </tbody>
-          <tbody v-else>
-            <tr style="height: 430px;" class="justify-content-center">
-              <td></td>
-              <td style="vertical-align: middle;" colspan="3">
-                <div class="img-fluid p-3">
-                  {{ template "professor_svg" }}
-                </div>
-              </td>
-              <td></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-{{ end }}
-
 {{ define "recentEpochs_css" }}
   <style>
     #epochs-table {
@@ -56,15 +10,20 @@
         grid-template-rows: repeat(11, 3rem);
       }
     }
+    @media (min-width: 1140px) {
+      #epochs-table {
+        height: calc(24rem - 1px);
+      }
+    }
   </style>
 {{ end }}
 
 {{ define "recentEpochs" }}
   <div class="card">
     <div class="card-header">
-      <h3 class="style-card-header d-flex justify-content-between align-items-center mb-0">
+      <h3 class="style-card-header d-flex justify-content-between align-items-center mb-0 text-nowrap">
         <span><i class="fa fa-history"></i> Most recent epochs</span>
-        <a class="btn btn-primary btn-sm float-right text-white style-button" href="/epochs">View more</a>
+        <a class="btn btn-primary btn-sm float-right text-white style-button ml-2" href="/epochs">View more</a>
       </h3>
     </div>
     <div class="card-body p-0">
@@ -75,7 +34,7 @@
             <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader">Time</div>
             <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader"><span class="d-none d-sm-flex">Final</span></div>
             <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader">Voted</div>
-            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader">Fee Recipient Reward</div>
+            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader">EL Reward</div>
           </div>
         </div>
         <div class="d-contents" role="rowgroup" v-if="page && page.epochs && page.blocks.length">
@@ -86,7 +45,7 @@
             <div role="cell" class="style-paragraph-1 style-grid-cell pr-2">${ epoch.ts | fromNow }</div>
             <div role="cell" class="style-grid-cell pr-2" v-html="epoch.finalized_formatted"></div>
             <div role="cell" class="style-grid-cell pr-2" v-html="epoch.globalparticipationrate_formatted"></div>
-            <div role="cell" class="style-paragraph-1 style-grid-cell pr-2" v-html="epoch.exec_reward"></div>
+            <div role="cell" class="style-paragraph-1 style-grid-cell mr-2" v-html="epoch.exec_reward"></div>
           </div>
         </div>
         <div class="d-contents" role="row" v-else>
@@ -95,6 +54,4 @@
       </div>
     </div>
   </div>
-  <!--  -->
-  <span class="d-none">${updateIn}</span>
 {{ end }}
