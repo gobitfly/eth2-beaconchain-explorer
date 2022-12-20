@@ -54,6 +54,7 @@ func init() {
 }
 
 func main() {
+	logrus.SetLevel(logrus.TraceLevel)
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
 	flag.Parse()
 
@@ -477,6 +478,8 @@ func main() {
 			router.HandleFunc("/tools/unitConverter", handlers.UnitConverter).Methods("GET")
 
 			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
+
+			router.HandleFunc("/ethstore", handlers.EthStore).Methods("GET")
 
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 			router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("POST")
