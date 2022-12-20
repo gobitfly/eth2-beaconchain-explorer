@@ -25,6 +25,7 @@ import (
 
 	gorillacontext "github.com/gorilla/context"
 	"github.com/gorilla/mux"
+	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mssola/user_agent"
@@ -699,7 +700,7 @@ func ApiRocketpoolValidators(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-Combined validator get, performance, attestationefficency, epoch, historic epoch and rpl
+Combined validator get, performance, attestation efficency, sync committee statistics, epoch, historic epoch and rpl
 Not public documented
 */
 func ApiDashboard(w http.ResponseWriter, r *http.Request) {
@@ -723,7 +724,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 	maxValidators := getUserPremium(r).MaxValidators
 
-	epoch := int64(services.LatestEpoch())
+	epoch := services.LatestEpoch()
 
 	g, _ := errgroup.WithContext(context.Background())
 	var validatorsData []interface{}
@@ -735,6 +736,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	var olderEpochData []interface{}
 	var currentSyncCommittee []interface{}
 	var nextSyncCommittee []interface{}
+	var syncCommitteeStats *SyncCommitteesStats
 
 	if getValidators {
 		queryIndices, err := parseApiValidatorParamToIndices(parsedBody.IndicesOrPubKey, maxValidators)
@@ -750,9 +752,10 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 			})
 
 			g.Go(func() error {
-				validatorEffectivenessData, err = validatorEffectiveness(uint64(epoch)-1, queryIndices)
+				validatorEffectivenessData, err = validatorEffectiveness(epoch-1, queryIndices)
 				return err
 			})
+
 			g.Go(func() error {
 				rocketpoolData, err = getRocketpoolValidators(queryIndices)
 				return err
@@ -764,26 +767,31 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 			})
 
 			g.Go(func() error {
-				period := utils.SyncPeriodOfEpoch(services.LatestEpoch())
+				period := utils.SyncPeriodOfEpoch(epoch)
 				currentSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
 				return err
 			})
 
 			g.Go(func() error {
-				period := utils.SyncPeriodOfEpoch(services.LatestEpoch()) + 1
+				period := utils.SyncPeriodOfEpoch(epoch) + 1
 				nextSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
+				return err
+			})
+
+			g.Go(func() error {
+				syncCommitteeStats, err = getSyncCommitteeStatistics(queryIndices, epoch)
 				return err
 			})
 		}
 	}
 
 	g.Go(func() error {
-		currentEpochData, err = getEpoch(epoch - 1)
+		currentEpochData, err = getEpoch(int64(epoch) - 1)
 		return err
 	})
 
 	g.Go(func() error {
-		olderEpochData, err = getEpoch(epoch - 10)
+		olderEpochData, err = getEpoch(int64(epoch) - 10)
 		return err
 	})
 
@@ -809,6 +817,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 		ExecutionPerformance: executionPerformance,
 		CurrentSyncCommittee: currentSyncCommittee,
 		NextSyncCommittee:    nextSyncCommittee,
+		SyncCommitteesStats:  *syncCommitteeStats,
 	}
 
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
@@ -833,6 +842,113 @@ func getSyncCommitteeFor(validators []uint64, period uint64) ([]interface{}, err
 	}
 	defer rows.Close()
 	return utils.SqlRowsToJSON(rows)
+}
+
+func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitteesStats, error) {
+	r := SyncCommitteesStats{}
+	if epoch < utils.Config.Chain.Config.AltairForkEpoch {
+		// no sync committee duties before altair fork
+		return &r, nil
+	}
+
+	// retrieve active epochs from database per validator
+	var validatorsEpochInfo = []struct {
+		Id              int64  `db:"validatorindex"`
+		ActivationEpoch uint64 `db:"activationepoch"`
+		ExitEpoch       uint64 `db:"exitepoch"`
+	}{}
+
+	query, args, err := sqlx.In(`SELECT validatorindex, activationepoch, exitepoch FROM validators WHERE validatorindex IN (?) ORDER BY validatorindex ASC`, validators)
+	if err != nil {
+		return nil, err
+	}
+	err = db.ReaderDb.Select(&validatorsEpochInfo, db.ReaderDb.Rebind(query), args...)
+	if err != nil {
+		return nil, err
+	}
+
+	// calculate amount of epochs validators have been active in (cap between altair to [epoch])
+	// epochs where X subscribed validators were active also count for X as more validators increase the chance of being part in a sync committee
+	const noExitEpoch = uint64(9223372036854775807)
+	epochsAmount := uint64(0)
+	for _, v := range validatorsEpochInfo {
+		firstSyncEpoch := v.ActivationEpoch
+		if utils.Config.Chain.Config.AltairForkEpoch > v.ActivationEpoch {
+			firstSyncEpoch = utils.Config.Chain.Config.AltairForkEpoch
+		}
+
+		if v.ExitEpoch == noExitEpoch {
+			// validator still active
+			if epoch >= firstSyncEpoch {
+				epochsAmount += epoch - firstSyncEpoch
+			}
+		} else {
+			epochsAmount += v.ExitEpoch - firstSyncEpoch
+		}
+	}
+
+	// translate to slots as GetValidatorSyncDutiesStatistics works with slots
+	slotsAmount := epochsAmount * utils.Config.Chain.Config.SlotsPerEpoch
+
+	// calculate ExpectedSlots based on validatorcount for given epoch
+	// TODO: This is inaccurate as the validatorcount changes over time
+	var totalValidatorsCount uint64
+	err = db.ReaderDb.Get(&totalValidatorsCount, "SELECT validatorscount FROM epochs WHERE epoch = $1", epoch)
+	if err != nil {
+		return nil, err
+	}
+
+	r.ExpectedSlots = uint64((slotsAmount * utils.Config.Chain.Config.SyncCommitteeSize) / totalValidatorsCount)
+
+	var syncPeriods []struct {
+		ValidatorId int64  `db:"validatorindex"`
+		Period      uint64 `db:"period"`
+		FirstEpoch  uint64 `db:"firstepoch"`
+		LastEpoch   uint64 `db:"lastepoch"`
+	}
+
+	query, args, err = sqlx.In(`SELECT validatorindex, period, (period*?) as firstepoch, ((period+1)*?)-1 as lastepoch
+	FROM sync_committees 
+	WHERE validatorindex IN (?)
+	ORDER BY period desc`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, validators)
+	if err != nil {
+		return nil, err
+	}
+	err = db.ReaderDb.Select(&syncPeriods, db.ReaderDb.Rebind(query), args...)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < len(syncPeriods); {
+		firstEpoch := syncPeriods[i].FirstEpoch
+		lastEpoch := syncPeriods[i].LastEpoch
+
+		activeValidators := make([]uint64, 1)
+		activeValidators = append(activeValidators, uint64(syncPeriods[i].ValidatorId))
+
+		// syncPeriods is sorted by periods, we use that to easily find all validators were part of syncPeriods[i]
+		for i++; i < len(syncPeriods); i++ {
+			if syncPeriods[i].Period == syncPeriods[i-1].Period {
+				// still the same period, must be an additional validator
+				activeValidators = append(activeValidators, uint64(syncPeriods[i].ValidatorId))
+			} else {
+				break
+			}
+		}
+
+		// get and accumulate sync committee statistics
+		m, err := db.BigtableClient.GetValidatorSyncDutiesStatistics(activeValidators, lastEpoch, int64(lastEpoch-firstEpoch))
+		if err != nil {
+			return nil, err
+		}
+
+		for _, v := range m {
+			r.ParticipatedSlots += v.ParticipatedSync
+			r.MissedSlots += v.MissedSync
+		}
+	}
+
+	return &r, nil
 }
 
 type Cached struct {
@@ -931,6 +1047,12 @@ func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorE
 	return data, nil
 }
 
+type SyncCommitteesStats struct {
+	ExpectedSlots     uint64 `json:"expected_slots"`
+	ParticipatedSlots uint64 `json:"participated_slots"`
+	MissedSlots       uint64 `json:"missed_slots"`
+}
+
 type DashboardResponse struct {
 	Validators           interface{}                          `json:"validators"`
 	Effectiveness        interface{}                          `json:"effectiveness"`
@@ -941,6 +1063,7 @@ type DashboardResponse struct {
 	ExecutionPerformance []types.ExecutionPerformanceResponse `json:"execution_performance"`
 	CurrentSyncCommittee interface{}                          `json:"current_sync_committee"`
 	NextSyncCommittee    interface{}                          `json:"next_sync_committee"`
+	SyncCommitteesStats  SyncCommitteesStats                  `json:"sync_committees_stats"`
 }
 
 func getEpoch(epoch int64) ([]interface{}, error) {

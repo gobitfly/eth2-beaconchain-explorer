@@ -876,7 +876,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 				return false
 			}
 			slot = max_block_number - slot
-			inclusionSlot := max_block_number - uint64(r[SYNC_COMMITTEES_FAMILY][0].Timestamp)/1000
+			inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
 
 			status := uint64(1)
 			if inclusionSlot == max_block_number {
@@ -953,13 +953,13 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 	res := make(map[uint64]*types.ValidatorSyncDutiesStatistic)
 
 	for validator, duties := range data {
-		for _, duty := range duties {
-			if res[validator] == nil {
-				res[validator] = &types.ValidatorSyncDutiesStatistic{
-					Index: validator,
-				}
+		if res[validator] == nil && len(duties) > 0 {
+			res[validator] = &types.ValidatorSyncDutiesStatistic{
+				Index: validator,
 			}
+		}
 
+		for _, duty := range duties {
 			if duty.Status == 0 {
 				res[validator].MissedSync++
 			} else {
