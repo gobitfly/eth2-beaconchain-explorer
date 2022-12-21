@@ -2321,7 +2321,7 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 	var result bool = false
 	for i := 0; i < len(jsonObjects); i++ {
 		err = insertStats(userData, machine, &jsonObjects[i], w, r)
-		result = err != nil
+		result = err == nil
 		if err != nil {
 			// ignore rate limit errors unless all are rate limit errors
 			if strings.HasPrefix(err.Error(), "rate limit") {
