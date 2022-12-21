@@ -846,8 +846,14 @@ func getSyncCommitteeFor(validators []uint64, period uint64) ([]interface{}, err
 
 func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitteesStats, error) {
 	r := SyncCommitteesStats{}
+
 	if epoch < utils.Config.Chain.Config.AltairForkEpoch {
 		// no sync committee duties before altair fork
+		return &r, nil
+	}
+
+	if len(validators) == 0 {
+		// no validators mean no sync committee duties either
 		return &r, nil
 	}
 
@@ -900,51 +906,69 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 
 	r.ExpectedSlots = uint64((slotsAmount * utils.Config.Chain.Config.SyncCommitteeSize) / totalValidatorsCount)
 
-	var syncPeriods []struct {
-		ValidatorId int64  `db:"validatorindex"`
-		Period      uint64 `db:"period"`
-		FirstEpoch  uint64 `db:"firstepoch"`
-		LastEpoch   uint64 `db:"lastepoch"`
+	// collect aggregated sync committee stats from validator_stats table for all validators
+	var syncStats []struct {
+		Participated int64 `db:"participated"`
+		Missed       int64 `db:"missed"`
 	}
-
-	query, args, err = sqlx.In(`SELECT validatorindex, period, (period*?) as firstepoch, ((period+1)*?)-1 as lastepoch
-	FROM sync_committees 
-	WHERE validatorindex IN (?)
-	ORDER BY period desc`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, validators)
+	query, args, err = sqlx.In(`SELECT COALESCE(SUM(participated_sync), 0) AS participated, COALESCE(SUM(missed_sync), 0) AS missed FROM validator_stats WHERE validatorindex IN (?)`, validators)
 	if err != nil {
 		return nil, err
 	}
-	err = db.ReaderDb.Select(&syncPeriods, db.ReaderDb.Rebind(query), args...)
+	err = db.ReaderDb.Select(&syncStats, db.ReaderDb.Rebind(query), args...)
 	if err != nil {
 		return nil, err
 	}
 
-	for i := 0; i < len(syncPeriods); {
-		firstEpoch := syncPeriods[i].FirstEpoch
-		lastEpoch := syncPeriods[i].LastEpoch
+	r.ParticipatedSlots = uint64(syncStats[0].Participated)
+	r.MissedSlots = uint64(syncStats[0].Missed)
 
-		activeValidators := make([]uint64, 1)
-		activeValidators = append(activeValidators, uint64(syncPeriods[i].ValidatorId))
+	// validator_stats is updated only once a day, everything missing has to be collected from bigtable (which is slower than validator_stats)
+	// check when the last update to validator_stats was
+	var lastExportedDayValidator uint64
+	err = db.WriterDb.Get(&lastExportedDayValidator, "SELECT COALESCE(max(day), 0) FROM validator_stats_status WHERE status")
+	if err != nil {
+		return nil, err
+	}
+	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
+	lastExportedEpoch := (lastExportedDayValidator + 1) * epochsPerDay
 
-		// syncPeriods is sorted by periods, we use that to easily find all validators were part of syncPeriods[i]
-		for i++; i < len(syncPeriods); i++ {
-			if syncPeriods[i].Period == syncPeriods[i-1].Period {
-				// still the same period, must be an additional validator
-				activeValidators = append(activeValidators, uint64(syncPeriods[i].ValidatorId))
-			} else {
-				break
-			}
+	if lastExportedEpoch < epoch {
+		// a sync committee takes abouth 27h so in the span of a day we migh have a maximum of two different sync committees (one being unfinished)
+		// to lower the bigtable workload, we only check for validators that are querried AND in the current or the last sync committee
+		periods := []int64{int64(utils.SyncPeriodOfEpoch(epoch))}
+		if periods[0] > 0 {
+			periods = append(periods, periods[0]-1)
 		}
 
-		// get and accumulate sync committee statistics
-		m, err := db.BigtableClient.GetValidatorSyncDutiesStatistics(activeValidators, lastEpoch, int64(lastEpoch-firstEpoch))
+		var validatorsInSyncCommittees []struct {
+			Validators pq.Int64Array `db:"validators"`
+		}
+		query, args, err = sqlx.In(`SELECT COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators FROM sync_committees WHERE period IN(?) AND validatorindex IN(?)`, periods, validators)
+		if err != nil {
+			return nil, err
+		}
+		err = db.ReaderDb.Select(&validatorsInSyncCommittees, db.ReaderDb.Rebind(query), args...)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, v := range m {
-			r.ParticipatedSlots += v.ParticipatedSync
-			r.MissedSlots += v.MissedSync
+		if len(validatorsInSyncCommittees[0].Validators) > 0 {
+			// get and add up2date sync committee statistics from bigtable
+			vs := []uint64{}
+			for _, v := range validatorsInSyncCommittees[0].Validators {
+				vs = append(vs, uint64(v))
+			}
+
+			m, err := db.BigtableClient.GetValidatorSyncDutiesStatistics(vs, epoch, int64(epoch-lastExportedEpoch))
+			if err != nil {
+				return nil, err
+			}
+
+			for _, v := range m {
+				r.ParticipatedSlots += v.ParticipatedSync
+				r.MissedSlots += v.MissedSync
+			}
 		}
 	}
 
