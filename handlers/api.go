@@ -885,10 +885,10 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 
 		if v.ExitEpoch == noExitEpoch {
 			// validator still active
-			if epoch >= firstSyncEpoch {
+			if epoch > firstSyncEpoch {
 				epochsAmount += epoch - firstSyncEpoch
 			}
-		} else {
+		} else if v.ExitEpoch > firstSyncEpoch {
 			epochsAmount += v.ExitEpoch - firstSyncEpoch
 		}
 	}
@@ -925,13 +925,13 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 
 	// validator_stats is updated only once a day, everything missing has to be collected from bigtable (which is slower than validator_stats)
 	// check when the last update to validator_stats was
-	var lastExportedDayValidator uint64
-	err = db.WriterDb.Get(&lastExportedDayValidator, "SELECT COALESCE(max(day), 0) FROM validator_stats_status WHERE status")
+	var lastExportedDay uint64
+	err = db.WriterDb.Get(&lastExportedDay, "SELECT COALESCE(max(day), 0) FROM validator_stats_status WHERE status")
 	if err != nil {
 		return nil, err
 	}
 	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
-	lastExportedEpoch := (lastExportedDayValidator + 1) * epochsPerDay
+	lastExportedEpoch := (lastExportedDay + 1) * epochsPerDay
 
 	if lastExportedEpoch < epoch {
 		// a sync committee takes abouth 27h so in the span of a day we migh have a maximum of two different sync committees (one being unfinished)
