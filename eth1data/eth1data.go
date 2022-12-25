@@ -154,11 +154,24 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	}
 
 	if len(receipt.Logs) > 0 {
-		for _, log := range receipt.Logs {
-			meta, err := db.BigtableClient.GetContractMetadata(log.Address.Bytes())
+		var wasContractMetadataCached bool
+		type contractMetadataMapEntry struct {
+			err  error
+			meta *types.ContractMetadata
+		}
+		var cmEntry contractMetadataMapEntry
+		contractMetadataCache := make(map[common.Address]contractMetadataMapEntry)
 
-			if err != nil || meta == nil {
-				logger.Warnf("error retrieving abi for contract %v: %v", tx.To(), err)
+		for _, log := range receipt.Logs {
+			if cmEntry, wasContractMetadataCached = contractMetadataCache[log.Address]; !wasContractMetadataCached {
+				cmEntry.meta, cmEntry.err = db.BigtableClient.GetContractMetadata(log.Address.Bytes())
+				contractMetadataCache[log.Address] = cmEntry
+			}
+
+			if cmEntry.err != nil || cmEntry.meta == nil {
+				if !wasContractMetadataCached {
+					logger.Warnf("error retrieving abi for contract %v: %v", tx.To(), cmEntry.err)
+				}
 				eth1Event := &types.Eth1EventData{
 					Address: log.Address,
 					Name:    "",
@@ -168,9 +181,9 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 
 				txPageData.Events = append(txPageData.Events, eth1Event)
 			} else {
-				boundContract := bind.NewBoundContract(*txPageData.To, *meta.ABI, nil, nil, nil)
+				boundContract := bind.NewBoundContract(*txPageData.To, *cmEntry.meta.ABI, nil, nil, nil)
 
-				for name, event := range meta.ABI.Events {
+				for name, event := range cmEntry.meta.ABI.Events {
 					if bytes.Equal(event.ID.Bytes(), log.Topics[0].Bytes()) {
 						logData := make(map[string]interface{})
 						err := boundContract.UnpackLogIntoMap(logData, name, *log)
@@ -187,7 +200,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 							DecodedData: map[string]types.Eth1DecodedEventData{},
 						}
 						typeMap := make(map[string]string)
-						for _, input := range meta.ABI.Events[name].Inputs {
+						for _, input := range cmEntry.meta.ABI.Events[name].Inputs {
 							typeMap[input.Name] = input.Type.String()
 						}
 
@@ -212,7 +225,6 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 				}
 			}
 		}
-
 	}
 
 	if txPageData.BlockNumber != 0 {
