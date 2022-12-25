@@ -186,7 +186,7 @@ func GetTemplateFuncs() template.FuncMap {
 		},
 		"trimTrailingZero": func(num string) string {
 			if strings.Contains(num, ".") {
-				return strings.TrimRight(num, "0")
+				return strings.TrimRight(strings.TrimRight(num, "0"), ".")
 			}
 			return num
 		},
