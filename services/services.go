@@ -1223,6 +1223,7 @@ func (tx *rpcTransaction) UnmarshalJSON(msg []byte) error {
 
 func mempoolUpdater(wg *sync.WaitGroup) {
 	firstRun := true
+	errorCount := 0
 	for {
 		client, err := geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
 		if err != nil {
@@ -1235,9 +1236,16 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 
 		err = client.Call(&mempoolTx, "txpool_content")
 		if err != nil {
-			logrus.Error("Error calling txpool_content request: ", err)
+			errorCount++
+			if errorCount < 5 {
+				logrus.Warn("Error calling txpool_content request: ", err)
+			} else {
+				logrus.Error("Error calling txpool_content request (x%d): ", errorCount, err)
+			}
 			time.Sleep(time.Second * 10)
 			continue
+		} else {
+			errorCount = 0
 		}
 
 		cacheKey := fmt.Sprintf("%d:frontend:mempool", utils.Config.Chain.Config.DepositChainID)
