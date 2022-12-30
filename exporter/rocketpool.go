@@ -932,10 +932,10 @@ func (rp *RocketpoolExporter) UpdateNetworkStats() error {
 		}
 
 		nodeOperatorRewardsPercentRaw, err := rewards.GetNodeOperatorRewardsPercent(rp.API, nil)
-		nodeOperatorRewardsPercent := eth.WeiToEth(nodeOperatorRewardsPercentRaw)
 		if err != nil {
 			return err
 		}
+		nodeOperatorRewardsPercent := eth.WeiToEth(nodeOperatorRewardsPercentRaw)
 
 		rewardsIntervalDays := claimIntervalTime.Seconds() / (60 * 60 * 24)
 		inflationPerDay := eth.WeiToEth(inflationInterval)
