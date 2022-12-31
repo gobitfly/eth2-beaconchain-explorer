@@ -2258,7 +2258,7 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 	}
 
 	for k, v := range tokensToAdd {
-		tokensToAdd[k] = v
+		tokens[k] = v
 	}
 
 	data := make([]*types.Transfer, len(transfers))
