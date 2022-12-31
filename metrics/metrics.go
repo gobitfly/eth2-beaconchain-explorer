@@ -126,9 +126,11 @@ func (r *responseWriterDelegator) WriteHeader(code int) {
 
 func (r *responseWriterDelegator) Write(b []byte) (int, error) {
 	if !r.wroteHeader {
+		logger.Infof("WriteHeader(http.StatusOK) / metrics.go / L-129 >>")
 		r.WriteHeader(http.StatusOK)
 	}
 	n, err := r.ResponseWriter.Write(b)
+	logger.Infof("<< Write / metrics.go / L-133")
 	r.written += int64(n)
 	return n, err
 }

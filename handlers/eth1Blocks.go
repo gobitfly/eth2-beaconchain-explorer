@@ -119,9 +119,11 @@ func getProposerAndStatusFromSlot(startSlot uint64, endSlot uint64) (map[uint64]
 }
 
 func Eth1BlocksHighest(w http.ResponseWriter, r *http.Request) {
+	logrus.Infof("WriteHeader(http.StatusOK) / eth1Blocks.go / L-122 >>")
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/text")
 	w.Write([]byte(fmt.Sprintf("%d", services.LatestEth1BlockNumber())))
+	logrus.Infof("<< Write / eth1Blocks.go / L-126")
 }
 
 func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.DataTableResponse, error) {
