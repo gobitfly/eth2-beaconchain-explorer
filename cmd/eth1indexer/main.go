@@ -220,32 +220,28 @@ func main() {
 		return
 	}
 
-	pauseDuration := time.Second * 14
-
-	for {
+	for ; ; time.Sleep(time.Second * 14) {
 		err := HandleChainReorgs(bt, client, *reorgDepth)
 		if err != nil {
 			logrus.Errorf("error handling chain reorgs: %v", err)
+			continue
 		}
 
 		lastBlockFromNode, err := client.GetLatestEth1BlockNumber()
 		if err != nil {
 			logrus.Errorf("error retrieving latest eth block number: %v", err)
-			time.Sleep(pauseDuration)
 			continue
 		}
 
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 		if err != nil {
 			logrus.Errorf("error retrieving last blocks from blocks table: %v", err)
-			time.Sleep(pauseDuration)
 			continue
 		}
 
 		lastBlockFromDataTable, err := bt.GetLastBlockInDataTable()
 		if err != nil {
 			logrus.Errorf("error retrieving last blocks from data table: %v", err)
-			time.Sleep(pauseDuration)
 			continue
 		}
 
@@ -263,7 +259,6 @@ func main() {
 			err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
 			if err != nil {
 				logrus.WithError(err).Errorf("error indexing from node, start: %v end: %v concurrency: %v", int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
-				time.Sleep(pauseDuration)
 				continue
 			}
 		}
@@ -275,7 +270,6 @@ func main() {
 			err = IndexFromBigtable(bt, int64(lastBlockFromDataTable)-*offsetData, int64(lastBlockFromNode), transforms, *concurrencyData)
 			if err != nil {
 				logrus.WithError(err).Errorf("error indexing from bigtable")
-				time.Sleep(pauseDuration)
 				continue
 			}
 		}
@@ -286,12 +280,9 @@ func main() {
 
 		logrus.Infof("index run completed")
 		services.ReportStatus("eth1indexer", "Running", nil)
-
-		time.Sleep(pauseDuration)
 	}
 
 	// utils.WaitForCtrlC()
-
 }
 
 func UpdateTokenPrices(bt *db.Bigtable, client *rpc.ErigonClient, tokenListPath string) error {
