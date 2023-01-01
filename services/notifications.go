@@ -1114,7 +1114,6 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					webhook.Retries = 0
 				} else {
 					webhook.Retries++
-					i-- // retry
 					var errResp types.ErrorResponse
 
 					if resp != nil {
@@ -1132,6 +1131,8 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					if err != nil {
 						logger.Errorf("error storing failure data in users_webhooks table: %v", err)
 					}
+
+					i-- // retry, IMPORTANT to be at the END of the ELSE, otherwise the wrong index will be used in the commands above!
 				}
 			}
 		}(webhook, notifMap[webhook.ID])
