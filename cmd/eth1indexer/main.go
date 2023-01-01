@@ -220,25 +220,33 @@ func main() {
 		return
 	}
 
+	pauseDuration := time.Second * 14
+
 	for {
 		err := HandleChainReorgs(bt, client, *reorgDepth)
 		if err != nil {
-			logrus.Error(err)
+			logrus.Errorf("error handling chain reorgs: %v", err)
 		}
 
 		lastBlockFromNode, err := client.GetLatestEth1BlockNumber()
 		if err != nil {
-			logrus.Fatalf("error retrieving latest eth block number: %v", err)
+			logrus.Errorf("error retrieving latest eth block number: %v", err)
+			time.Sleep(pauseDuration)
+			continue
 		}
 
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 		if err != nil {
-			logrus.Fatalf("error retrieving last blocks from blocks table: %v", err)
+			logrus.Errorf("error retrieving last blocks from blocks table: %v", err)
+			time.Sleep(pauseDuration)
+			continue
 		}
 
 		lastBlockFromDataTable, err := bt.GetLastBlockInDataTable()
 		if err != nil {
-			logrus.Fatalf("error retrieving last blocks from data table: %v", err)
+			logrus.Errorf("error retrieving last blocks from data table: %v", err)
+			time.Sleep(pauseDuration)
+			continue
 		}
 
 		logrus.WithFields(
@@ -254,7 +262,9 @@ func main() {
 
 			err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
 			if err != nil {
-				logrus.WithError(err).Fatalf("error indexing from node, start: %v end: %v concurrency: %v", int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
+				logrus.WithError(err).Errorf("error indexing from node, start: %v end: %v concurrency: %v", int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
+				time.Sleep(pauseDuration)
+				continue
 			}
 		}
 
@@ -264,7 +274,9 @@ func main() {
 			logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)
 			err = IndexFromBigtable(bt, int64(lastBlockFromDataTable)-*offsetData, int64(lastBlockFromNode), transforms, *concurrencyData)
 			if err != nil {
-				logrus.WithError(err).Fatalf("error indexing from bigtable")
+				logrus.WithError(err).Errorf("error indexing from bigtable")
+				time.Sleep(pauseDuration)
+				continue
 			}
 		}
 
@@ -275,7 +287,7 @@ func main() {
 		logrus.Infof("index run completed")
 		services.ReportStatus("eth1indexer", "Running", nil)
 
-		time.Sleep(time.Second * 14)
+		time.Sleep(pauseDuration)
 	}
 
 	// utils.WaitForCtrlC()
@@ -509,7 +521,8 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 		start := time.Now()
 		keys, pairs, err := bt.GetMetadataUpdates(prefix, lastKey, batchSize)
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Errorf("error retrieving metadata updates from bigtable: %v", err)
+			return
 		}
 
 		if len(keys) == 0 {
@@ -533,14 +546,16 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 			b, err := client.GetBalances(pairs[start:end], 2, 4)
 
 			if err != nil {
-				logrus.Fatalf("error retrieving balances from node: %v", err)
+				logrus.Errorf("error retrieving balances from node: %v", err)
+				return
 			}
 			balances = append(balances, b...)
 		}
 
 		err = bt.SaveBalances(balances, keys)
 		if err != nil {
-			logrus.Fatalf("error saving balances to bigtable: %v", err)
+			logrus.Errorf("error saving balances to bigtable: %v", err)
+			return
 		}
 		// for i, b := range balances {
 
