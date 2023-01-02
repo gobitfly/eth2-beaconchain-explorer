@@ -1238,9 +1238,9 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 		if err != nil {
 			errorCount++
 			if errorCount < 5 {
-				logrus.Warn("Error calling txpool_content request: ", err)
+				logrus.Warnf("Error calling txpool_content request (x%d): %v", errorCount, err)
 			} else {
-				logrus.Error("Error calling txpool_content request (x%d): ", errorCount, err)
+				logrus.Errorf("Error calling txpool_content request (x%d): %v", errorCount, err)
 			}
 			time.Sleep(time.Second * 10)
 			continue
