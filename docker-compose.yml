@@ -17,7 +17,7 @@ services:
             - --goerli # comment this out for mainnet
     postgres:
         image: postgres:12.0
-        container_name: postgres 
+        container_name: postgres
         restart: always
         environment:
             - POSTGRES_PASSWORD=pass
@@ -34,14 +34,14 @@ services:
 
     prysm:
         image: gcr.io/prysmaticlabs/prysm/beacon-chain:latest
-        container_name: prysm 
+        container_name: prysm
         restart: always
         volumes:
             - ./private/eth2_data:/data
             # - ./private/eth2_data/main:/data # use this for mainnet
             - ./private/eth1_node/.ethereum:/eth
         network_mode: host
-        command: 
+        command:
             - --datadir=/data
             - --rpc-host=0.0.0.0
             - --monitoring-host=0.0.0.0
@@ -53,8 +53,8 @@ services:
                 # condition: service_healthy
 
     go:
-        image: golang:1.15
-        container_name: golang 
+        image: golang:1.18
+        container_name: golang
         restart: always
         volumes:
             - ./:/usr/src/app
@@ -70,5 +70,5 @@ services:
         stdin_open: true
         tty: true
 
-volumes: 
+volumes:
     db:
