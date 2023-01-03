@@ -16,11 +16,8 @@ func Imprint(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "imprint", "/imprint", "Imprint")
 	data.HeaderAd = true
 
-	err := getImprintTemplate(getImprintPath()).ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if HandleTemplateError(w, r, getImprintTemplate(getImprintPath()).ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 

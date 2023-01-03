@@ -34,10 +34,8 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
-	err := registerTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if HandleTemplateError(w, r, registerTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -162,10 +160,8 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
-	err := loginTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if HandleTemplateError(w, r, loginTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -366,10 +362,8 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), Email: dbUser.Email, CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
-	err = resetPasswordTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if HandleTemplateError(w, r, resetPasswordTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -439,10 +433,9 @@ func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "register", "/register", "Reset Password")
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
-	err := requestResetPaswordTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+
+	if HandleTemplateError(w, r, requestResetPaswordTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -506,10 +499,8 @@ func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "resendConfirmation", "/resendConfirmation", "Resend Password Reset")
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 
-	err := resendConfirmationTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if HandleTemplateError(w, r, resendConfirmationTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 

@@ -28,10 +28,8 @@ func Eth1Transactions(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "blockchain", "/eth1transactions", "Transactions")
 	data.Data = getTransactionDataStartingWithPageToken("")
 
-	err := eth1TransactionsTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+	if HandleTemplateError(w, r, eth1TransactionsTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 

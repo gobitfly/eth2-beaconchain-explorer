@@ -17,7 +17,6 @@ func MempoolView(w http.ResponseWriter, r *http.Request) {
 	mempool := services.LatestMempoolTransactions()
 	formatedData := formatToTable(mempool)
 
-	var err error
 	var mempoolViewTemplate = templates.GetTemplate("layout.html", "mempoolview.html")
 
 	w.Header().Set("Content-Type", "text/html")
@@ -25,13 +24,9 @@ func MempoolView(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = formatedData
 
-	err = mempoolViewTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if HandleTemplateError(w, r, mempoolViewTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
-
 }
 
 // This is a helper function. It replaces Nil or empty receiver Address with a string in case case of a new contract creation.

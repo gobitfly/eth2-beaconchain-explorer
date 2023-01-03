@@ -60,11 +60,8 @@ func GasNow(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = resRet
 
-	err = gasNowTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		return
+	if HandleTemplateError(w, r, gasNowTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 

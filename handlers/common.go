@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/price"
 	"eth2-exporter/services"
@@ -14,6 +15,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/gorilla/sessions"
 	"github.com/lib/pq"
@@ -338,4 +340,17 @@ func GetDataTableState(user *types.User, session *sessions.Session, tableKey str
 		return nil, fmt.Errorf("error parsing session value into type DataTableSaveState")
 	}
 	return &state, nil
+}
+
+func HandleTemplateError(w http.ResponseWriter, r *http.Request, err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// ignore network related errors
+	if !errors.Is(err, syscall.EPIPE) && !errors.Is(err, syscall.ETIMEDOUT) {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+	}
+	return true
 }

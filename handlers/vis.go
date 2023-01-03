@@ -16,19 +16,13 @@ import (
 func Vis(w http.ResponseWriter, r *http.Request) {
 	var visTemplate = templates.GetTemplate("layout.html", "vis.html")
 
-	var err error
-
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "stats", "/viz", "Visualizations")
 	data.HeaderAd = true
 
-	err = visTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if HandleTemplateError(w, r, visTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -129,11 +123,7 @@ func VisVotes(w http.ResponseWriter, r *http.Request) {
 	data.HeaderAd = true
 	data.Data = &types.VisVotesPageData{ChartData: chartData}
 
-	err = visVotesTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if HandleTemplateError(w, r, visVotesTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }

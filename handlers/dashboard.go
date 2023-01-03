@@ -139,11 +139,8 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 	data.HeaderAd = true
 	data.Data = heatmapData
 
-	err = heatmapTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error executing template")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if HandleTemplateError(w, r, heatmapTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -161,11 +158,8 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	data.HeaderAd = true
 	data.Data = dashboardData
 
-	err := dashboardTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error executing template")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if HandleTemplateError(w, r, dashboardTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 

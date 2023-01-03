@@ -21,12 +21,8 @@ func ValidatorsSlashings(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "validators", "/validators/slashings", "Validator Slashings")
 	data.HeaderAd = true
 
-	err := validatorsSlashingsTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if HandleTemplateError(w, r, validatorsSlashingsTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 

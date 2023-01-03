@@ -34,12 +34,9 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 		SetPageDataTitle(data, fmt.Sprintf("Transaction %v", txHashString))
 		data.Meta.Path = "/tx/" + txHashString
 		logger.Errorf("error parsing tx hash %v: %v", txHashString, err)
-		err = txNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+		if HandleTemplateError(w, r, txNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+			return // an error has occurred and was processed
 		}
 		return
 	}
@@ -50,16 +47,12 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 	txData, err := eth1data.GetEth1Transaction(common.BytesToHash(txHash))
 
 	if err != nil {
-
 		SetPageDataTitle(data, fmt.Sprintf("Transaction 0x%v", txHashString))
 		data.Meta.Path = "/tx/" + txHashString
-		logger.Errorf(" %v", err)
-		err = txNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+		logger.Errorf("%v", err)
 
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+		if HandleTemplateError(w, r, txNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+			return // an error has occurred and was processed
 		}
 		return
 	}
@@ -73,9 +66,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 		err = txTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if HandleTemplateError(w, r, err) {
+		return // an error has occurred and was processed
 	}
 }

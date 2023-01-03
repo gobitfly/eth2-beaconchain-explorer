@@ -26,11 +26,8 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 	chartsPageData := services.LatestChartsPageData()
 
 	if chartsPageData == nil {
-		err := chartsUnavailableTemplate.ExecuteTemplate(w, "layout", data)
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-			return
+		if HandleTemplateError(w, r, chartsUnavailableTemplate.ExecuteTemplate(w, "layout", data)) {
+			return // an error has occurred and was processed
 		}
 		return
 	}
@@ -48,12 +45,8 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data = cpd
-
-	err := chartsTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if HandleTemplateError(w, r, chartsTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -83,11 +76,8 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 
 	chartsPageData := services.LatestChartsPageData()
 	if chartsPageData == nil {
-		err := chartsUnavailableTemplate.ExecuteTemplate(w, "layout", data)
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-			return
+		if HandleTemplateError(w, r, chartsUnavailableTemplate.ExecuteTemplate(w, "layout", data)) {
+			return // an error has occurred and was processed
 		}
 		return
 	}
@@ -109,11 +99,8 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Path = "/charts/" + chartVar
 	data.Data = chartData
 
-	err := genericChartTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if HandleTemplateError(w, r, genericChartTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -158,10 +145,7 @@ func SlotViz(w http.ResponseWriter, r *http.Request) {
 		Epochs:   services.LatestSlotVizMetrics(),
 	}
 	data.Data = slotVizData
-	err := slotVizTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if HandleTemplateError(w, r, slotVizTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }

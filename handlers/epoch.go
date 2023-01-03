@@ -37,12 +37,9 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		SetPageDataTitle(data, fmt.Sprintf("Epoch %v", epochString))
 		data.Meta.Path = "/epoch/" + epochString
 		logger.Errorf("error parsing epoch index %v: %v", epochString, err)
-		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+		if HandleTemplateError(w, r, epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+			return // an error has occurred and was processed
 		}
 		return
 	}
@@ -72,12 +69,8 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		//Epoch not in database -> Show future epoch
 		if epoch > MaxEpochValue {
-			err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-
-			if err != nil {
-				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
+			if HandleTemplateError(w, r, epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+				return // an error has occurred and was processed
 			}
 			return
 		}
@@ -105,13 +98,9 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 		//Render template
 		data.Data = epochPageData
-		err = epochFutureTemplate.ExecuteTemplate(w, "layout", data)
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-			return
+		if HandleTemplateError(w, r, epochFutureTemplate.ExecuteTemplate(w, "layout", data)) {
+			return // an error has occurred and was processed
 		}
-
 		return
 	}
 
@@ -133,12 +122,9 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		ORDER BY blocks.slot DESC`, epoch)
 	if err != nil {
 		logger.Errorf("error epoch blocks data: %v", err)
-		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+		if HandleTemplateError(w, r, epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+			return // an error has occurred and was processed
 		}
 		return
 	}
@@ -185,9 +171,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		err = epochTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if HandleTemplateError(w, r, err) {
+		return // an error has occurred and was processed
 	}
 }

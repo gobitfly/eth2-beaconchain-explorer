@@ -85,12 +85,8 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	data.HeaderAd = true
 	data.Data = validatorsPageData
 
-	err = validatorsTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if HandleTemplateError(w, r, validatorsTemplate.ExecuteTemplate(w, "layout", data)) {
+		return // an error has occurred and was processed
 	}
 }
 
