@@ -36,7 +36,7 @@ func Poap(w http.ResponseWriter, r *http.Request) {
 		PoapClients: poapClients,
 	}
 
-	if HandleTemplateError(w, r, poapTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, poapTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

@@ -49,7 +49,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", 0))
-		if HandleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+		if handleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -58,7 +58,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number))
 	eth1BlockPageData, err := GetExecutionBlockPageData(number, 10)
 	if err != nil {
-		if HandleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+		if handleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -76,7 +76,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logger.Errorf("error retrieving slot page data: %v", err)
 
-			if HandleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+			if handleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
 			return
@@ -87,7 +87,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		data.HeaderAd = true
 		data.Data = blockPageData
 
-		if HandleTemplateError(w, r, blockTemplate.ExecuteTemplate(w, "layout", data)) {
+		if handleTemplateError(w, r, blockTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 	} else {
@@ -96,7 +96,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		data.HeaderAd = true
 		data.Data = eth1BlockPageData
 
-		if HandleTemplateError(w, r, preMergeBlockTemplate.ExecuteTemplate(w, "layout", data)) {
+		if handleTemplateError(w, r, preMergeBlockTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 	}

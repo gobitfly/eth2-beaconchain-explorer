@@ -28,7 +28,7 @@ func Eth1Transactions(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "blockchain", "/eth1transactions", "Transactions")
 	data.Data = getTransactionDataStartingWithPageToken("")
 
-	if HandleTemplateError(w, r, eth1TransactionsTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, eth1TransactionsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

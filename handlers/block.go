@@ -73,7 +73,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if blockSlot == -1 {
 		err = db.ReaderDb.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
 		if blockSlot == -1 {
-			if HandleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+			if handleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
 			return
@@ -89,7 +89,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		data.Meta.Path = "/slot/" + slotOrHash
 		logger.Errorf("error retrieving block data: %v", err)
 
-		if HandleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+		if handleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -103,7 +103,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 		if slot > MaxSlotValue {
 			logger.Errorf("error retrieving blockPageData: %v", err)
-			if HandleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+			if handleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
 		}
@@ -117,7 +117,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		}
 		data.Data = futurePageData
 
-		if HandleTemplateError(w, r, blockFutureTemplate.ExecuteTemplate(w, "layout", data)) {
+		if handleTemplateError(w, r, blockFutureTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -147,7 +147,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		err = blockTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if HandleTemplateError(w, r, err) {
+	if handleTemplateError(w, r, err) != nil {
 		return // an error has occurred and was processed
 	}
 }

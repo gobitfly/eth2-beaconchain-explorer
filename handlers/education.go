@@ -13,7 +13,7 @@ func EducationServices(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "services", "/educationServices", "Ethereum Education Services Overview")
 
-	if HandleTemplateError(w, r, educationServicesTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, educationServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

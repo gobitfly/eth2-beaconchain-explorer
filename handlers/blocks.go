@@ -65,7 +65,7 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data = tableData
-	if HandleTemplateError(w, r, blocksTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, blocksTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

@@ -24,7 +24,7 @@ func MempoolView(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = formatedData
 
-	if HandleTemplateError(w, r, mempoolViewTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, mempoolViewTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

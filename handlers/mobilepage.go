@@ -29,7 +29,7 @@ func MobilePage(w http.ResponseWriter, r *http.Request) {
 	data.Data = pageData
 	data.HeaderAd = true
 
-	if HandleTemplateError(w, r, mobileTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, mobileTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

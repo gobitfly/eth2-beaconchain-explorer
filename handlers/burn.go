@@ -32,12 +32,8 @@ func Burn(w http.ResponseWriter, r *http.Request) {
 	latestBurn.Currency = currency
 
 	data.Data = latestBurn
-
-	err := burnTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		return
+	if handleTemplateError(w, r, burnTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 

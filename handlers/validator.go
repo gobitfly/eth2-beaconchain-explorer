@@ -142,7 +142,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
-				if HandleTemplateError(w, r, validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+				if handleTemplateError(w, r, validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 					return // an error has occurred and was processed
 				}
 				return
@@ -209,7 +209,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				err = validatorTemplate.ExecuteTemplate(w, "layout", data)
 			}
 
-			if HandleTemplateError(w, r, err) {
+			if handleTemplateError(w, r, err) != nil {
 				return // an error has occurred and was processed
 			}
 			return
@@ -261,7 +261,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validators.validatorindex = $1`, index)
 
 	if err == sql.ErrNoRows {
-		if HandleTemplateError(w, r, validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+		if handleTemplateError(w, r, validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -288,7 +288,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error retrieving validator public key %v: %v", index, err)
 
-		if HandleTemplateError(w, r, validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) {
+		if handleTemplateError(w, r, validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -655,7 +655,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		err = validatorTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if HandleTemplateError(w, r, err) {
+	if handleTemplateError(w, r, err) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -1543,7 +1543,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	data.Data = validatorStatsTablePageData
-	if HandleTemplateError(w, r, validatorStatsTableTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, validatorStatsTableTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

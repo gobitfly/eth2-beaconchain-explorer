@@ -16,7 +16,7 @@ func Imprint(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "imprint", "/imprint", "Imprint")
 	data.HeaderAd = true
 
-	if HandleTemplateError(w, r, getImprintTemplate(getImprintPath()).ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, getImprintTemplate(getImprintPath()).ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

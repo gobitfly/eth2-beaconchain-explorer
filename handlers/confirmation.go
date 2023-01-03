@@ -39,7 +39,7 @@ func Confirmation(w http.ResponseWriter, r *http.Request) {
 	data.Data = pageData
 	data.Meta.NoTrack = true
 
-	if HandleTemplateError(w, r, confirmationTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, confirmationTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

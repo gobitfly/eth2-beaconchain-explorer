@@ -342,15 +342,12 @@ func GetDataTableState(user *types.User, session *sessions.Session, tableKey str
 	return &state, nil
 }
 
-func HandleTemplateError(w http.ResponseWriter, r *http.Request, err error) bool {
-	if err == nil {
-		return false
-	}
-
+// used to handle errors constructed by Template.ExecuteTemplate correctly
+func handleTemplateError(w http.ResponseWriter, r *http.Request, err error) error {
 	// ignore network related errors
-	if !errors.Is(err, syscall.EPIPE) && !errors.Is(err, syscall.ETIMEDOUT) {
+	if err != nil && !errors.Is(err, syscall.EPIPE) && !errors.Is(err, syscall.ETIMEDOUT) {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 	}
-	return true
+	return err
 }

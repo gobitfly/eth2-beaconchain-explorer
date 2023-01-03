@@ -85,7 +85,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	data.HeaderAd = true
 	data.Data = validatorsPageData
 
-	if HandleTemplateError(w, r, validatorsTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, validatorsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

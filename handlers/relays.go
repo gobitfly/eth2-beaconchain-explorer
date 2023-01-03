@@ -16,7 +16,7 @@ func Relays(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = relayData
 
-	if HandleTemplateError(w, r, relaysServicesTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, relaysServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

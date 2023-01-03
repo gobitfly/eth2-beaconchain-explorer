@@ -118,7 +118,7 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		Price:            template.HTML(fmt.Sprintf("<span>$%s</span><span>@ %.6f</span>", string(metadata.Price), ethExchangeRate)),
 	}
 
-	if HandleTemplateError(w, r, eth1TokenTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, eth1TokenTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

@@ -30,7 +30,7 @@ func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data = pageData
-	if HandleTemplateError(w, r, advertisewithusTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, advertisewithusTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

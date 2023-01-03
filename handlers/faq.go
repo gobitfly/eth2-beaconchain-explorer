@@ -14,7 +14,7 @@ func Faq(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "faq", "/faq", "FAQ")
 	data.HeaderAd = true
 
-	if HandleTemplateError(w, r, faqTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, faqTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

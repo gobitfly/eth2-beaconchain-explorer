@@ -21,7 +21,7 @@ func Eth2Deposits(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "eth2Deposits", "/deposits/eth2", "Included Deposits")
 	data.HeaderAd = true
 
-	if HandleTemplateError(w, r, eth2DepositsTemplate.ExecuteTemplate(w, "layout", data)) {
+	if handleTemplateError(w, r, eth2DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
