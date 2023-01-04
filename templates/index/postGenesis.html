@@ -15,10 +15,12 @@
 {{ end }}
 
 {{ define "postGenesis" }}
-	<div style="position:relative;" class="card mt-3 index-stats">
+  <div style="position:relative;" class="card mt-3 index-stats">
     {{ if not .ShowSyncingMessage }}
       <div style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; height:1.5rem;" class="progress w-100 style-slots-left" data-placement="bottom" :title="'This epoch is '+ epochCompletePercent +'% complete'">
-        <div :style="'width:' + epochCompletePercent + '%;padding: 0 .3rem;'" class="progress-bar bg-secondary" role="progressbar" :aria-valuenow="scheduledCount" aria-valuemin="0" aria-valuemax="32"><span v-if="scheduledCount > 0">${scheduledCount} / 32 slots left in epoch <span v-html="addCommas(page.current_epoch)"></span></span><span v-else><span v-html="addCommas(page.current_epoch)"></span> epoch complete</span></div>
+        <div :style="'width:' + epochCompletePercent + '%;padding: 0 .3rem;'" class="progress-bar bg-secondary" role="progressbar" :aria-valuenow="scheduledCount" aria-valuemin="0" aria-valuemax="32">
+          <span v-if="scheduledCount > 0">${scheduledCount} / 32 slots left in epoch <span v-html="addCommas(page.current_epoch)"></span></span><span v-else><span v-html="addCommas(page.current_epoch)"></span> epoch complete</span>
+        </div>
       </div>
     {{ end }}
     {{ template "networkStats" $ }}
