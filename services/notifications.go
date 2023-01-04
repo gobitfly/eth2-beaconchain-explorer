@@ -135,6 +135,8 @@ func notificationCollector() {
 }
 
 func notificationSender() {
+	errorGettingAdvisoryLockFromDbCount := 0
+	errorExecutingAdvisoryUnlockCount := 0
 	for {
 		start := time.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
@@ -148,14 +150,21 @@ func notificationSender() {
 
 		_, err = conn.ExecContext(ctx, `SELECT pg_advisory_lock(500)`)
 		if err != nil {
-			logger.WithError(err).Error("error getting advisory lock from db")
+			errorGettingAdvisoryLockFromDbCount++
+			if errorGettingAdvisoryLockFromDbCount <= 3 {
+				logger.WithError(err).Warnf("error (%d) getting advisory lock from db", errorGettingAdvisoryLockFromDbCount)
+			} else {
+				logger.WithError(err).Errorf("error (%d) getting advisory lock from db", errorGettingAdvisoryLockFromDbCount)
+			}
 
 			conn.Close()
 			if err != nil {
-				logger.WithError(err).Error("error returning connection to connection pool")
+				logger.WithError(err).Warn("error returning connection to connection pool (advisory lock)")
 			}
 			cancel()
 			continue
+		} else {
+			errorGettingAdvisoryLockFromDbCount = 0
 		}
 
 		logger.Info("lock obtained")
@@ -174,13 +183,21 @@ func notificationSender() {
 		unlocked := false
 		rows, err := conn.QueryContext(ctx, `SELECT pg_advisory_unlock(500)`)
 		if err != nil {
-			logger.WithError(err).Error("error executing advisory unlock")
+			errorExecutingAdvisoryUnlockCount++
+			if errorExecutingAdvisoryUnlockCount <= 3 {
+				logger.WithError(err).Warnf("error (%d) executing advisory unlock", errorExecutingAdvisoryUnlockCount)
+			} else {
+				logger.WithError(err).Errorf("error (%d) executing advisory unlock", errorExecutingAdvisoryUnlockCount)
+			}
+
 			conn.Close()
 			if err != nil {
-				logger.WithError(err).Error("error returning connection to connection pool")
+				logger.WithError(err).Warn("error returning connection to connection pool (advisory unlock)")
 			}
 			cancel()
 			continue
+		} else {
+			errorExecutingAdvisoryUnlockCount = 0
 		}
 
 		for rows.Next() {
@@ -193,7 +210,7 @@ func notificationSender() {
 
 		conn.Close()
 		if err != nil {
-			logger.WithError(err).Error("error returning connection to connection pool")
+			logger.Warn("error returning connection to connection pool")
 		}
 		cancel()
 
@@ -1097,7 +1114,6 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					webhook.Retries = 0
 				} else {
 					webhook.Retries++
-					i-- // retry
 					var errResp types.ErrorResponse
 
 					if resp != nil {
@@ -1115,6 +1131,8 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					if err != nil {
 						logger.Errorf("error storing failure data in users_webhooks table: %v", err)
 					}
+
+					i-- // retry, IMPORTANT to be at the END of the ELSE, otherwise the wrong index will be used in the commands above!
 				}
 			}
 		}(webhook, notifMap[webhook.ID])

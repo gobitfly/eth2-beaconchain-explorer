@@ -96,8 +96,13 @@ var rewardsSubmissionBlockMaps = map[string][]uint64{
 }
 
 func rocketpoolExporter() {
+	endpoint := utils.Config.Eth1GethEndpoint
+	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
+		endpoint = "ws" + endpoint[4:]
+	}
+
 	var err error
-	rpEth1RPRCClient, err = gethRPC.Dial(utils.Config.Eth1GethEndpoint)
+	rpEth1RPRCClient, err = gethRPC.Dial(endpoint)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -932,10 +937,10 @@ func (rp *RocketpoolExporter) UpdateNetworkStats() error {
 		}
 
 		nodeOperatorRewardsPercentRaw, err := rewards.GetNodeOperatorRewardsPercent(rp.API, nil)
-		nodeOperatorRewardsPercent := eth.WeiToEth(nodeOperatorRewardsPercentRaw)
 		if err != nil {
 			return err
 		}
+		nodeOperatorRewardsPercent := eth.WeiToEth(nodeOperatorRewardsPercentRaw)
 
 		rewardsIntervalDays := claimIntervalTime.Seconds() / (60 * 60 * 24)
 		inflationPerDay := eth.WeiToEth(inflationInterval)

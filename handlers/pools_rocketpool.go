@@ -22,12 +22,8 @@ func PoolsRocketpool(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "pools/rocketpool", "/pools/rocketpool", "Rocketpool")
 	data.HeaderAd = true
 
-	err := poolsRocketpoolTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if handleTemplateError(w, r, poolsRocketpoolTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 

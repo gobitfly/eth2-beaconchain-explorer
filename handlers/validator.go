@@ -141,11 +141,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
-				err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-				if err != nil {
-					logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-					http.Error(w, "Internal server error", http.StatusInternalServerError)
-					return
+
+				if handleTemplateError(w, r, validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+					return // an error has occurred and was processed
 				}
 				return
 			}
@@ -210,12 +208,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			} else {
 				err = validatorTemplate.ExecuteTemplate(w, "layout", data)
 			}
-			if err != nil {
-				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
 
+			if handleTemplateError(w, r, err) != nil {
+				return // an error has occurred and was processed
+			}
 			return
 		}
 	} else {
@@ -265,11 +261,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validators.validatorindex = $1`, index)
 
 	if err == sql.ErrNoRows {
-		err = validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+		if handleTemplateError(w, r, validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			return // an error has occurred and was processed
 		}
 		return
 	} else if err != nil {
@@ -295,12 +288,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error retrieving validator public key %v: %v", index, err)
 
-		err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+		if handleTemplateError(w, r, validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			return // an error has occurred and was processed
 		}
 		return
 	}
@@ -666,10 +655,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		err = validatorTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if handleTemplateError(w, r, err) != nil {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -1556,14 +1543,9 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	data.Data = validatorStatsTablePageData
-	err = validatorStatsTableTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if handleTemplateError(w, r, validatorStatsTableTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
-
 }
 
 // ValidatorSync retrieves one page of sync duties of a specific validator for DataTable.

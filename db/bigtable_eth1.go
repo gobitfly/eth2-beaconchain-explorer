@@ -2211,7 +2211,9 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 	}
 
 	names := make(map[string]string)
+	namesToAdd := make(map[string]string)
 	tokens := make(map[string]*types.ERC20Metadata)
+	tokensToAdd := make(map[string]*types.ERC20Metadata)
 	// init
 	for _, t := range transfers {
 		names[string(t.From)] = ""
@@ -2228,7 +2230,7 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 				return err
 			}
 			mux.Lock()
-			names[address] = name
+			namesToAdd[address] = name
 			mux.Unlock()
 			return nil
 		})
@@ -2241,7 +2243,7 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 				return err
 			}
 			mux.Lock()
-			tokens[address] = metadata
+			tokensToAdd[address] = metadata
 			mux.Unlock()
 			return nil
 		})
@@ -2249,6 +2251,14 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 	err = g.Wait()
 	if err != nil {
 		return nil, err
+	}
+
+	for k, v := range namesToAdd {
+		names[k] = v
+	}
+
+	for k, v := range tokensToAdd {
+		tokens[k] = v
 	}
 
 	data := make([]*types.Transfer, len(transfers))

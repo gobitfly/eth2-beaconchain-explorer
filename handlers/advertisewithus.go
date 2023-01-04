@@ -28,13 +28,10 @@ func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
-	data.Data = pageData
 
-	err = advertisewithusTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	data.Data = pageData
+	if handleTemplateError(w, r, advertisewithusTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 
