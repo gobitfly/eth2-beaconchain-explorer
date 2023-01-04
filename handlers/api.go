@@ -34,7 +34,7 @@ import (
 	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
-// @title Beaconcha.in ETH2 API
+// @title beaconcha.in Ethereum API
 // @version 1.0
 // @description High performance API for querying information about the Ethereum beacon chain
 // @description The API is currently free to use. A fair use policy applies. Calls are rate limited to
