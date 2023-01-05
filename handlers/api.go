@@ -184,19 +184,9 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	vars := mux.Vars(r)
-
-	day, err := strconv.ParseInt(vars["day"], 10, 64)
-	if err != nil && vars["day"] != "latest" {
-		sendErrorResponse(w, r.URL.String(), "invalid day provided")
-		return
-	}
-
-	if vars["day"] == "latest" {
-		day = (int64(services.LatestFinalizedEpoch()) / 225) - 1
-	}
-
-	rows, err := db.ReaderDb.Query(`
+	var err error
+	var rows *sql.Rows
+	query := `
 		SELECT 
 			day, 
 			effective_balances_sum_wei, 
@@ -210,7 +200,20 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 			(select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7) as avgAPR7d,
 			(select avg(apr) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31) as avgAPR31d
 		FROM eth_store_stats e
-		WHERE day = $1 AND validator = -1;`, day)
+		WHERE validator = -1 `
+
+	vars := mux.Vars(r)
+	if vars["day"] == "latest" {
+		rows, err = db.ReaderDb.Query(query + ` ORDER BY day DESC LIMIT 1;`)
+	} else {
+		day, e := strconv.ParseInt(vars["day"], 10, 64)
+		if e != nil {
+			sendErrorResponse(w, r.URL.String(), "invalid day provided")
+			return
+		}
+		rows, err = db.ReaderDb.Query(query+` AND day = $1;`, day)
+	}
+
 	if err != nil {
 		logger.Errorf("error retrieving eth.store data: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
