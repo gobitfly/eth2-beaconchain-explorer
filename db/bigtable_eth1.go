@@ -2123,31 +2123,39 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 	}
 
 	names := make(map[string]string)
-	// init
-	for _, t := range transfers {
-		names[string(t.From)] = ""
-		names[string(t.To)] = ""
-	}
+	{
+		forNames := make(map[string]string)
+		for _, t := range transfers {
+			forNames[string(t.From)] = ""
+			forNames[string(t.To)] = ""
+		}
 
-	g := new(errgroup.Group)
-	g.SetLimit(25)
-	for address := range names {
-		address := address
-		g.Go(func() error {
-			name, err := bigtable.GetAddressName([]byte(address))
-			if err != nil {
-				return err
+		g := new(errgroup.Group)
+		g.SetLimit(25)
+		for address := range forNames {
+			address := address
+			if len(address) > 0 {
+				g.Go(func() error {
+					name, err := bigtable.GetAddressName([]byte(address))
+					if err != nil {
+						return err
+					}
+					mux.Lock()
+					names[address] = name
+					mux.Unlock()
+					return nil
+				})
+			} else {
+				mux.Lock()
+				names[address] = ""
+				mux.Unlock()
 			}
-			mux.Lock()
-			names[address] = name
-			mux.Unlock()
-			return nil
-		})
-	}
+		}
 
-	err = g.Wait()
-	if err != nil {
-		return nil, err
+		err = g.Wait()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	data := make([]types.Transfer, len(transfers))
