@@ -1767,9 +1767,13 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 
 	// retrieve metadata
 	names := make(map[string]string)
-	for _, t := range transactions {
-		names[string(t.From)] = ""
-		names[string(t.To)] = ""
+	for k, t := range transactions {
+		if t != nil {
+			names[string(t.From)] = ""
+			names[string(t.To)] = ""
+		} else {
+			logrus.WithField("index", k).WithField("len(transactions)", len(transactions)).WithField("pageToken", pageToken).Error("error, found nil transactions")
+		}
 	}
 	names, _, err = BigtableClient.GetAddressesNamesArMetadata(&names, nil)
 	if err != nil {
