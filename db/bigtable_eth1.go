@@ -29,10 +29,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
-	"github.com/golang/protobuf/proto"
 	"github.com/karlseguin/ccache/v2"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 var ErrBlockNotFound = errors.New("block not found")

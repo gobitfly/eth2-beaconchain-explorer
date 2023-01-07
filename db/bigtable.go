@@ -13,8 +13,8 @@ import (
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
 	itypes "github.com/gobitfly/eth-rewards/types"
-	"github.com/golang/protobuf/proto"
 	"google.golang.org/api/option"
+	"google.golang.org/protobuf/proto"
 )
 
 var BigtableClient *Bigtable
