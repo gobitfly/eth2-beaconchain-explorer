@@ -68,6 +68,8 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
+
 	_, err = stmt.Exec(
 		ethStoreDay.Day,
 		-1,

@@ -134,6 +134,8 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 		logger.Errorf("failed to prepare overallStatsQuery: %v", err)
 		return nil, err
 	}
+	defer overallStatsQuery.Close()
+
 	dayInSlots := 24 * 60 * 60 / utils.Config.Chain.Config.SecondsPerSlot
 
 	tmp := [3]types.RelayInfoContainer{{Days: 7}, {Days: 31}, {Days: 180}}
