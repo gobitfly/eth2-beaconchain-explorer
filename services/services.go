@@ -1227,7 +1227,7 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 	for {
 		client, err := geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
 		if err != nil {
-			logrus.Error("Can't connect to geth node: ", err)
+			logrus.Error("can't connect to geth node: ", err)
 			time.Sleep(time.Second * 30)
 			continue
 		}
@@ -1238,9 +1238,9 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 		if err != nil {
 			errorCount++
 			if errorCount < 5 {
-				logrus.Warnf("Error calling txpool_content request (x%d): %v", errorCount, err)
+				logrus.Warnf("error calling txpool_content request (x%d): %v", errorCount, err)
 			} else {
-				logrus.Errorf("Error calling txpool_content request (x%d): %v", errorCount, err)
+				logrus.Errorf("error calling txpool_content request (x%d): %v", errorCount, err)
 			}
 			time.Sleep(time.Second * 10)
 			continue

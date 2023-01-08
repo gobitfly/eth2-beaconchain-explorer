@@ -2,16 +2,19 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"strconv"
 	"time"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
-	gocache "github.com/patrickmn/go-cache"
+	"github.com/coocood/freecache"
 	"github.com/sirupsen/logrus"
 )
 
 // Tiered cache is a cache implementation combining a
 type tieredCache struct {
-	localGoCache gocache.Cache
+	localGoCache *freecache.Cache
 	remoteCache  RemoteCache
 }
 
@@ -37,12 +40,12 @@ func MustInitTieredCache(redisAddress string) {
 
 	TieredCache = &tieredCache{
 		remoteCache:  remoteCache,
-		localGoCache: *gocache.New(time.Hour, time.Minute),
+		localGoCache: freecache.NewCache(100 * 1024 * 1024), // 100 MB
 	}
 }
 
 func MustInitTieredCacheBigtable(client *gcp_bigtable.Client, chainId string) {
-	localCache := *gocache.New(time.Hour, time.Minute)
+	localCache := freecache.NewCache(100 * 1024 * 1024) // 100 MB
 
 	cache := InitBigtableCache(client, chainId)
 
@@ -57,15 +60,15 @@ func (cache *tieredCache) SetString(key, value string, expiration time.Duration)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	cache.localGoCache.Set(key, value, expiration)
+	cache.localGoCache.Set([]byte(key), []byte(value), int(expiration.Seconds()))
 	return cache.remoteCache.SetString(ctx, key, value, expiration)
 }
 
 func (cache *tieredCache) GetStringWithLocalTimeout(key string, localExpiration time.Duration) (string, error) {
 	// try to retrieve the key from the local cache
-	wanted, found := cache.localGoCache.Get(key)
-	if found {
-		return wanted.(string), nil
+	wanted, err := cache.localGoCache.Get([]byte(key))
+	if err == nil {
+		return string(wanted), nil
 	}
 
 	// retrieve the key from the remote cache
@@ -77,7 +80,7 @@ func (cache *tieredCache) GetStringWithLocalTimeout(key string, localExpiration 
 		return "", err
 	}
 
-	cache.localGoCache.Set(key, value, localExpiration)
+	cache.localGoCache.Set([]byte(key), []byte(value), int(localExpiration.Seconds()))
 	return value, nil
 }
 
@@ -85,16 +88,20 @@ func (cache *tieredCache) SetUint64(key string, value uint64, expiration time.Du
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	cache.localGoCache.Set(key, value, expiration)
+	cache.localGoCache.Set([]byte(key), []byte(fmt.Sprintf("%d", value)), int(expiration.Seconds()))
 	return cache.remoteCache.SetUint64(ctx, key, value, expiration)
 }
 
 func (cache *tieredCache) GetUint64WithLocalTimeout(key string, localExpiration time.Duration) (uint64, error) {
 
 	// try to retrieve the key from the local cache
-	wanted, found := cache.localGoCache.Get(key)
-	if found {
-		return wanted.(uint64), nil
+	wanted, err := cache.localGoCache.Get([]byte(key))
+	if err == nil {
+		returnValue, err := strconv.ParseUint(string(wanted), 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return returnValue, nil
 	}
 
 	// retrieve the key from the remote cache
@@ -106,7 +113,7 @@ func (cache *tieredCache) GetUint64WithLocalTimeout(key string, localExpiration 
 		return 0, err
 	}
 
-	cache.localGoCache.Set(key, value, localExpiration)
+	cache.localGoCache.Set([]byte(key), []byte(fmt.Sprintf("%d", value)), int(localExpiration.Seconds()))
 	return value, nil
 }
 
@@ -119,9 +126,14 @@ func (cache *tieredCache) Set(key string, value interface{}, expiration time.Dur
 
 func (cache *tieredCache) GetWithLocalTimeout(key string, localExpiration time.Duration, returnValue interface{}) (interface{}, error) {
 	// try to retrieve the key from the local cache
-	wanted, found := cache.localGoCache.Get(key)
-	if found {
-		return wanted, nil
+	wanted, err := cache.localGoCache.Get([]byte(key))
+	if err == nil {
+		err = json.Unmarshal([]byte(wanted), returnValue)
+		if err != nil {
+			logrus.Warnf("error unmarshalling data for key %v: %v", key, err)
+			return nil, err
+		}
+		return returnValue, nil
 	}
 
 	// retrieve the key from the remote cache
@@ -133,6 +145,11 @@ func (cache *tieredCache) GetWithLocalTimeout(key string, localExpiration time.D
 		return nil, err
 	}
 
-	cache.localGoCache.Set(key, value, localExpiration)
+	valueMarshal, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+
+	cache.localGoCache.Set([]byte(key), valueMarshal, int(localExpiration.Seconds()))
 	return value, nil
 }
