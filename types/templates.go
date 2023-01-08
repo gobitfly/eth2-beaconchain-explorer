@@ -27,6 +27,7 @@ type PageData struct {
 	User                  *User
 	Data                  interface{}
 	Version               string
+	Year                  int
 	ChainSlotsPerEpoch    uint64
 	ChainSecondsPerSlot   uint64
 	ChainGenesisTimestamp uint64
