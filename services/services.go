@@ -1226,12 +1226,19 @@ func (tx *rpcTransaction) UnmarshalJSON(msg []byte) error {
 func mempoolUpdater(wg *sync.WaitGroup) {
 	firstRun := true
 	errorCount := 0
+
+	var client *geth_rpc.Client
+
 	for {
-		client, err := geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
-		if err != nil {
-			logrus.Error("can't connect to geth node: ", err)
-			time.Sleep(time.Second * 30)
-			continue
+		var err error
+
+		if client == nil {
+			client, err = geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
+			if err != nil {
+				logrus.Error("can't connect to geth node: ", err)
+				time.Sleep(time.Second * 30)
+				continue
+			}
 		}
 
 		var mempoolTx types.RawMempoolResponse
@@ -1261,7 +1268,7 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 			firstRun = false
 		}
 		ReportStatus("mempoolUpdater", "Running", nil)
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Second * 5)
 	}
 }
 
