@@ -674,25 +674,13 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		if epochLowerBound = 0; epoch > 1600 {
 			epochLowerBound = epoch - 1600
 		}
-		var epochHistory []*types.IndexPageEpochHistory
+		var epochHistory []*types.IndexPageDataEpochs
 		err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized, averagevalidatorbalance FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving staked ether history: %v", err)
 		}
 
-		if len(epochHistory) > 0 {
-			for i := len(epochHistory) - 1; i >= 0; i-- {
-				if epochHistory[i].Finalized {
-					data.CurrentFinalizedEpoch = epochHistory[i].Epoch
-					data.FinalityDelay = FinalizationDelay()
-					data.AverageBalance = string(utils.FormatBalance(uint64(epochHistory[i].AverageValidatorBalance), currency))
-					break
-				}
-			}
-
-			data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther, currency))
-			data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
-		}
+		setEpochHistoryData(data, epochHistory)
 	}
 
 	epochsMap := make(map[uint64]*types.IndexPageDataEpochs)
@@ -796,13 +784,13 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			if relayDatum, blockHasMEV := relayData[common.BytesToHash(block.Hash)]; blockHasMEV {
 				epochsMap[epochNum].ExecutionReward = new(big.Int).Add(epochsMap[epochNum].ExecutionReward, relayDatum.MevBribe.BigInt())
 				if slotInMap {
-					slot.ExecutionRewardFormatted = utils.NewFormat(relayDatum.MevBribe.BigInt(), "ETH", 5, 2, 1)
+					slot.ExecutionRewardFormatted = utils.NewFormat(relayDatum.MevBribe.BigInt(), "ETH", 5, 1)
 					slot.ExecutionRewardRecipient = utils.FormatAddressWithLimits(relayDatum.MevRecipient, "", false, "address", 15, 20, false)
 				}
 			} else {
 				epochsMap[epochNum].ExecutionReward = new(big.Int).Add(epochsMap[epochNum].ExecutionReward, new(big.Int).SetBytes(block.TxReward))
 				if slotInMap {
-					slot.ExecutionRewardFormatted = utils.NewFormat(new(big.Int).SetBytes(block.TxReward), "ETH", 5, 2, 1)
+					slot.ExecutionRewardFormatted = utils.NewFormat(new(big.Int).SetBytes(block.TxReward), "ETH", 5, 1)
 					slot.ExecutionRewardRecipient = utils.FormatAddressWithLimits(block.Coinbase, "", false, "address", 15, 20, false)
 				}
 			}
@@ -838,7 +826,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 
 	for _, e := range epochs {
-		e.ExecutionRewardFormatted = utils.NewFormat(e.ExecutionReward, "ETH", 4, 0, 1)
+		e.ExecutionRewardFormatted = utils.NewFormat(e.ExecutionReward, "ETH", 5, 1)
 	}
 	data.Epochs = epochs
 
@@ -889,6 +877,25 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.GasPriceHistory = gasPriceData
 
 	return data, nil
+}
+
+func setEpochHistoryData(data *types.IndexPageData, epochHistory []*types.IndexPageDataEpochs) {
+	if len(epochHistory) == 0 {
+		return
+	}
+
+	for i := len(epochHistory) - 1; i >= 0; i-- {
+		if epochHistory[i].Finalized {
+			data.CurrentFinalizedEpoch = epochHistory[i].Epoch
+			data.FinalityDelay = FinalizationDelay()
+			data.AverageBalance = string(utils.FormatBalance(uint64(epochHistory[i].AverageValidatorBalance), "ETH"))
+			break
+		}
+	}
+
+	data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther, "ETH"))
+	data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
+
 }
 
 // LatestEpoch will return the latest epoch

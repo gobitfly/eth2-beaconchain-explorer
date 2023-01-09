@@ -338,7 +338,7 @@ func FormatBlockStatusStyle(status uint64) template.HTML {
 	} else if status == 1 {
 		return `<div title="This block has been proposed" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-good"><div class="style-status-tag-text text-white" >P<span class="d-none d-sm-inline">roposed</span></div></div>`
 	} else if status == 2 {
-		return `<div title="This blocks proposal has been missed" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-bad"><div class="style-status-tag-text" >M<span class="d-none d-sm-inline">issed</span></div></div>`
+		return `<div title="This block proposal has been missed" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-bad"><div class="style-status-tag-text" >M<span class="d-none d-sm-inline">issed</span></div></div>`
 	} else if status == 3 {
 		return `<div title="This block has been orphaned" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-neutral-2"><div class="style-status-tag-text text-white" >O<span class="d-none d-sm-inline">rphaned</span></div></div>`
 	} else {
