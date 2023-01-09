@@ -28,6 +28,8 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+
+	_ "net/http/pprof"
 )
 
 func main() {
