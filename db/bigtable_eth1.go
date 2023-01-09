@@ -2145,10 +2145,6 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 					mux.Unlock()
 					return nil
 				})
-			} else {
-				mux.Lock()
-				names[address] = ""
-				mux.Unlock()
 			}
 		}
 
