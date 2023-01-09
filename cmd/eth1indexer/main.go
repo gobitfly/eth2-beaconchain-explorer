@@ -686,6 +686,7 @@ func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk 
 	processedBlocks := int64(0)
 
 	cache := ccache.New(ccache.Configure().MaxSize(1000000).ItemsToPrune(500))
+	defer cache.Stop()
 
 	logrus.Infof("fetching blocks from %d to %d", start, end)
 	for i := start; i <= end; i++ {
