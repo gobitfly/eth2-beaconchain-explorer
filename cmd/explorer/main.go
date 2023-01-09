@@ -54,7 +54,6 @@ func init() {
 }
 
 func main() {
-	logrus.SetLevel(logrus.TraceLevel)
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
 	flag.Parse()
 

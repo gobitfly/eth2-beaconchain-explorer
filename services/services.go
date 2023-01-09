@@ -507,7 +507,7 @@ func ethStoreStatisticsDataUpdater(wg *sync.WaitGroup) {
 		cacheKey := fmt.Sprintf("%d:frontend:ethStoreStatistics", utils.Config.Chain.Config.DepositChainID)
 		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
 		if err != nil {
-			logger.Errorf("error caching indexPageData: %v", err)
+			logger.Errorf("error caching ETH.STORE statistics data: %v", err)
 		}
 		if firstRun {
 			firstRun = false
@@ -547,7 +547,6 @@ func slotVizUpdater(wg *sync.WaitGroup) {
 }
 
 func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
-
 	var ethStoreDays []types.EthStoreDay
 	err := db.ReaderDb.Select(&ethStoreDays, `
 		SELECT
@@ -567,20 +566,20 @@ func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
 	totalRewards := [][]float64{}
 	aprs := [][]float64{}
 	for _, stat := range ethStoreDays {
-		ts := utils.EpochToTime(stat.Day * 225)
+		ts := float64(utils.EpochToTime(stat.Day*225).Unix()) * 1000
 
 		effectiveBalances = append(effectiveBalances, []float64{
-			float64(ts.Unix()) * 1000,
+			ts,
 			stat.EffectiveBalancesSum.Div(decimal.NewFromInt(1e18)).Round(0).InexactFloat64(),
 		})
 
 		totalRewards = append(totalRewards, []float64{
-			float64(ts.Unix()) * 1000,
+			ts,
 			stat.TotalRewardsWei.Div(decimal.NewFromInt(1e18)).Round(6).InexactFloat64(),
 		})
 
 		aprs = append(aprs, []float64{
-			float64(ts.Unix()) * 1000,
+			ts,
 			stat.APR.Mul(decimal.NewFromInt(100)).Round(3).InexactFloat64(),
 		})
 	}
@@ -991,9 +990,9 @@ func LatestEthStoreStatistics() *types.EthStoreStatistics {
 	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*60, wanted); err == nil {
 		return wanted.(*types.EthStoreStatistics)
 	} else {
-		logger.Errorf("error retrieving burn data from cache: %v", err)
+		logger.Errorf("error retrieving ETH.STORE statistics data from cache: %v", err)
 	}
-	return wanted
+	return &types.EthStoreStatistics{}
 }
 
 // LatestIndexPageData returns the latest index page data
