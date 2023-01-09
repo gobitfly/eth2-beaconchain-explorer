@@ -42,26 +42,18 @@ var saveValidatorsMux = &sync.Mutex{}
 func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 	// The golang sql driver does not properly implement PingContext
 	// therefore we use a timer to catch db connection timeouts
-	endTimeoutDetection := make(chan bool)
 	dbConnectionTimeout := time.NewTimer(15 * time.Second)
 
 	go func() {
-		for {
-			select {
-			case <-dbConnectionTimeout.C:
-				logger.Fatalf("timeout while connecting to %s", dataBaseName)
-			case <-endTimeoutDetection:
-				return
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
+		<-dbConnectionTimeout.C
+		logger.Fatalf("timeout while connecting to %s", dataBaseName)
 	}()
+
 	err := dbConn.Ping()
 	if err != nil {
 		logger.Fatalf("unable to Ping %s: %s", dataBaseName, err)
 	}
 
-	endTimeoutDetection <- true
 	dbConnectionTimeout.Stop()
 }
 
