@@ -233,7 +233,7 @@
 
         <button type="button" class="collapsible">What is ETH.STORE?</button>
         <div class="content">
-          <p>ETH.STORE (Ether <strong>St</strong>aking <strong>O</strong>ffered <strong>R</strong>at<strong>e</strong>) is a transparent Ethereum staking reward reference rate. It represents the average financial return validators on the Ethereum network have achieved in a 24-hour period as published on https://staking.ethermine.org/statistics.</p>
+          <p>ETH.STORE (Ether <strong>St</strong>aking <strong>O</strong>ffered <strong>R</strong>at<strong>e</strong>) is a transparent Ethereum staking reward reference rate. It represents the average financial return validators on the Ethereum network have achieved in a 24-hour period as published on <a href="/ethstore">beaconcha.in</a>.</p>
         </div>
 
         <button type="button" class="collapsible">How are active validators counted by ETH.STORE?</button>
@@ -250,10 +250,10 @@
         <div class="content">
           <p>Total staking rewards consists of consensus rewards and transaction fees:</p>
           <ol>
-            <li>Consensus rewards: Rewards received by validators for proposing and attesting in accordance with the consensus rules of the Ethereum protocol</li>
-            <li>Transaction fees: Fees received by validators for processing transactions on the Ethereum network</li>
+            <li>Consensus rewards: Rewards received by validators for proposing and attesting in accordance with the consensus rules of the Ethereum protocol.</li>
+            <li>Transaction fees: Fees received by validators for processing transactions on the Ethereum network.</li>
           </ol>
-          <p>Total staking rewards equals the sum of consensus rewards and transaction fees</p>
+          <p>Total staking rewards equals the sum of consensus rewards and transaction fees.</p>
         </div>
 
         <button type="button" class="collapsible">How can I reproduce the ETH.STORE calculation on my own?</button>
@@ -269,7 +269,7 @@
               <tbody>
                 <tr>
                   <td>Start epoch (SE):</td>
-                  <td>First epoch after 1200 UTC every day</td>
+                  <td>First epoch after 12:00 UTC every day</td>
                 </tr>
                 <tr>
                   <td>End epoch (EE):</td>
@@ -323,15 +323,15 @@
                 </tr>
                 <tr>
                   <td>Sum rewards (RS):</td>
-                  <td>{{ .Data.YesterdayRewards }} Ether</td>
+                  <td>{{ formatThousandsFancy .Data.YesterdayRewards }} Ether</td>
                 </tr>
                 <tr>
                   <td>Sum effective balances (EB):</td>
-                  <td>{{ .Data.YesterdayEffectiveBalance }} Ether</td>
+                  <td>{{ formatThousandsFancy .Data.YesterdayEffectiveBalance }} Ether</td>
                 </tr>
                 <tr>
                   <td>ETH.STORE:</td>
-                  <td>{{ .Data.ProjectedAPR }} % = ({{ .Data.YesterdayRewards }} / ({{ .Data.YesterdayEffectiveBalance }})) * 365</td>
+                  <td>{{ .Data.ProjectedAPR }} % = ({{ .Data.YesterdayRewards }} / ({{ formatThousandsFancy .Data.YesterdayEffectiveBalance }})) * 365</td>
                 </tr>
               </tbody>
             </table>

@@ -147,6 +147,10 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%.0f\n", i)
 		},
+		"formatThousandsFancy": func(i float64) string {
+			p := message.NewPrinter(language.English)
+			return p.Sprintf("%v\n", i)
+		},
 		"formatThousandsInt": func(i int) string {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%d", i)
