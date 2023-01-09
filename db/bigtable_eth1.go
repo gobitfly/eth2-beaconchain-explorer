@@ -603,6 +603,9 @@ func TimestampToBigtableTimeDesc(ts time.Time) string {
 }
 
 func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations, table *gcp_bigtable.Table) error {
+	ctx, done := context.WithTimeout(context.Background(), time.Minute*5)
+	defer done()
+
 	length := 10000
 	numMutations := len(mutations.Muts)
 	numKeys := len(mutations.Keys)
@@ -616,8 +619,7 @@ func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations, table *gcp_b
 		start := offset * length
 		end := offset*length + length
 		// logger.Infof("writing from: %v to %v arr len:  %v", start, end, len(mutations.Keys))
-		ctx, done := context.WithTimeout(context.Background(), time.Second*30)
-		defer done()
+
 		// startTime := time.Now()
 		errs, err := table.ApplyBulk(ctx, mutations.Keys[start:end], mutations.Muts[start:end])
 		for _, e := range errs {
@@ -633,9 +635,6 @@ func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations, table *gcp_b
 
 	if (iterations * length) < numKeys {
 		start := iterations * length
-
-		ctx, done := context.WithTimeout(context.Background(), time.Second*30)
-		defer done()
 		// startTime := time.Now()
 		errs, err := table.ApplyBulk(ctx, mutations.Keys[start:], mutations.Muts[start:])
 		if err != nil {
