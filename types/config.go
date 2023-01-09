@@ -170,6 +170,10 @@ type Config struct {
 	MevBoostRelayExporter struct {
 		Enabled bool `yaml:"enabled" envconfig:"MEVBOOSTRELAY_EXPORTER_ENABLED"`
 	} `yaml:"mevBoostRelayExporter"`
+	Pprof struct {
+		Enabled bool   `yaml:"enabled" envconfig:"PPROF_ENABLED"`
+		Port    string `yaml:"port" envconfig:"PPROF_PORT"`
+	} `yaml:"pprof"`
 }
 
 type DatabaseConfig struct {
