@@ -80,6 +80,14 @@ func main() {
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
 
+	// enable pprof endpoint if requested
+	if utils.Config.Pprof.Enabled {
+		go func() {
+			logrus.Infof("starting pprof http server on port %s", utils.Config.Pprof.Port)
+			logrus.Info(http.ListenAndServe(fmt.Sprintf("localhost:%s", utils.Config.Pprof.Port), nil))
+		}()
+	}
+
 	db.MustInitDB(&types.DatabaseConfig{
 		Username: cfg.WriterDatabase.Username,
 		Password: cfg.WriterDatabase.Password,
