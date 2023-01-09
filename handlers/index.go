@@ -11,34 +11,6 @@ import (
 
 // Index will return the main "index" page using a go template
 func Index(w http.ResponseWriter, r *http.Request) {
-
-	/* var indexTemplateFiles = []string{
-		"layout.html",
-		"index/index.html",
-		"index/depositProgress.html",
-		"index/depositChart.html",
-		"index/genesis.html",
-		"index/hero.html",
-		"index/networkStats.html",
-		"index/participationWarning.html",
-		"index/postGenesis.html",
-		"index/preGenesis.html",
-		"index/recentBlocks.html",
-		"index/recentEpochs.html",
-		"index/genesisCountdown.html",
-		"index/depositDistribution.html",
-		"components/banner.html",
-		"svg/bricks.html",
-		"svg/professor.html",
-		"svg/timeline.html",
-		"svg/womanWalking.html",
-		"components/rocket.html",
-		"slotViz.html",
-	}
-
-	var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
-		indexTemplateFiles...,
-	)) */
 	var indexTemplate = templates.GetTemplate(
 		"layout.html",
 		"index/index.html",

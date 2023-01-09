@@ -883,7 +883,6 @@ func setEpochHistoryData(data *types.IndexPageData, epochHistory []*types.IndexP
 
 	data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther, "ETH"))
 	data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
-
 }
 
 // LatestEpoch will return the latest epoch
