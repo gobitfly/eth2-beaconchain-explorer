@@ -655,19 +655,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 	minEpoch := epochs[len(epochs)-1].Epoch
 
-	if len(epochs) > 0 {
-		for i := len(epochs) - 1; i >= 0; i-- {
-			if epochs[i].Finalized {
-				data.CurrentFinalizedEpoch = epochs[i].Epoch
-				data.FinalityDelay = FinalizationDelay()
-				data.AverageBalance = string(utils.FormatBalance(uint64(epochs[i].AverageValidatorBalance), currency))
-				break
-			}
-		}
-
-		data.StakedEther = string(utils.FormatBalance(epochs[len(epochs)-1].EligibleEther, currency))
-		data.ActiveValidators = epochs[len(epochs)-1].ValidatorsCount
-	}
+	setEpochHistoryData(data, epochs)
 
 	if data.CurrentFinalizedEpoch == 0 {
 		var epochLowerBound uint64
