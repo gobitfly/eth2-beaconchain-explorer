@@ -25,11 +25,11 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/coocood/freecache"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
-	"github.com/karlseguin/ccache/v2"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -735,7 +735,7 @@ func (bigtable *Bigtable) DeleteRowsWithPrefix(prefix string) {
 // Family: f
 // Column: <chainID>:B:<reversePaddedBlockNumber>
 // Cell:   nil
-func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
 
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
@@ -912,7 +912,7 @@ func CalculateTxFeeFromTransaction(tx *types.Eth1Transaction, blockBaseFee *big.
 }
 
 // TransformTx extracts transactions from bigtable more specifically from the table blocks.
-func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
 
@@ -1032,7 +1032,7 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *ccache.Cache)
 // Family: f
 // Column: <chainID>:ITX:<HASH>:<paddedITXIndex>
 // Cell:   nil
-func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
 
@@ -1143,7 +1143,7 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *ccache.Cache
 // Family: f
 // Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
 // Cell:   nil
-func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
 
@@ -1294,7 +1294,7 @@ func (bigtable *Bigtable) TransformERC20(blk *types.Eth1Block, cache *ccache.Cac
 // Family: f
 // Column: <chainID>:ERC721:<txHash>:<paddedLogIndex>
 // Cell:   nil
-func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
 
@@ -1444,7 +1444,7 @@ func (bigtable *Bigtable) TransformERC721(blk *types.Eth1Block, cache *ccache.Ca
 // Family: f
 // Column: <chainID>:ERC1155:<txHash>:<paddedLogIndex>
 // Cell:   nil
-func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
 
@@ -1594,7 +1594,7 @@ func (bigtable *Bigtable) TransformERC1155(blk *types.Eth1Block, cache *ccache.C
 // Column: <chainID>:U:<reversePaddedNumber>
 // Cell:   nil
 // Example lookup: "1:I:U:ea674fdde714fd979de3edf0f56aa9716b898ec8:TIME:" returns mainnet uncles mined by ethermine in desc order
-func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
 
@@ -3311,17 +3311,17 @@ func prefixSuccessor(prefix string, pos int) string {
 	return string(ans)
 }
 
-func (bigtable *Bigtable) markBalanceUpdate(address []byte, token []byte, mutations *types.BulkMutations, cache *ccache.Cache) {
-	balanceUpdateKey := fmt.Sprintf("%s:B:%x", bigtable.chainId, address)                // format is B: for balance update as chainid:prefix:address (token id will be encoded as column name)
-	balanceUpdateCacheKey := fmt.Sprintf("%s:B:%x:%x", bigtable.chainId, address, token) // format is B: for balance update as chainid:prefix:address (token id will be encoded as column name)
-	if cache.Get(balanceUpdateCacheKey) == nil {
+func (bigtable *Bigtable) markBalanceUpdate(address []byte, token []byte, mutations *types.BulkMutations, cache *freecache.Cache) {
+	balanceUpdateKey := fmt.Sprintf("%s:B:%x", bigtable.chainId, address)                        // format is B: for balance update as chainid:prefix:address (token id will be encoded as column name)
+	balanceUpdateCacheKey := []byte(fmt.Sprintf("%s:B:%x:%x", bigtable.chainId, address, token)) // format is B: for balance update as chainid:prefix:address (token id will be encoded as column name)
+	if _, err := cache.Get(balanceUpdateCacheKey); err != nil {
 		mut := gcp_bigtable.NewMutation()
 		mut.Set(DEFAULT_FAMILY, fmt.Sprintf("%x", token), gcp_bigtable.Timestamp(0), []byte{})
 
 		mutations.Keys = append(mutations.Keys, balanceUpdateKey)
 		mutations.Muts = append(mutations.Muts, mut)
 
-		cache.Set(balanceUpdateCacheKey, true, time.Hour*48)
+		cache.Set(balanceUpdateCacheKey, []byte{0x1}, int((time.Hour * 48).Seconds()))
 	}
 }
 
