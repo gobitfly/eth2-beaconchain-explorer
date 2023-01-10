@@ -577,8 +577,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		if latestEpoch := services.LatestEpoch(); latestEpoch <= syncPeriods[0].LastEpoch {
-			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, latestEpoch, int64(latestEpoch-syncPeriods[0].FirstEpoch))
+		finalizedEpoch := services.LatestFinalizedEpoch()
+		lookback := int64(finalizedEpoch - (lastStatsDay+1)*225)
+		if lookback > 0 {
+			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, finalizedEpoch, lookback)
 			if err != nil {
 				logger.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
