@@ -590,8 +590,8 @@ func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
 		APRs:                      aprs,
 		ProjectedAPR:              ethStoreDays[daysLastIndex].APR.Mul(decimal.NewFromInt(100)).InexactFloat64(),
 		StartEpoch:                ethStoreDays[daysLastIndex].Day * 225,
-		YesterdayRewards:          ethStoreDays[daysLastIndex].TotalRewardsWei.InexactFloat64(),
-		YesterdayEffectiveBalance: ethStoreDays[daysLastIndex].EffectiveBalancesSum.InexactFloat64(),
+		YesterdayRewards:          ethStoreDays[daysLastIndex].TotalRewardsWei.Div(decimal.NewFromInt(1e18)).InexactFloat64(),
+		YesterdayEffectiveBalance: ethStoreDays[daysLastIndex].EffectiveBalancesSum.Div(decimal.NewFromInt(1e18)).InexactFloat64(),
 		YesterdayTs:               utils.EpochToTime(ethStoreDays[daysLastIndex].Day * 225).Unix(),
 	}
 
