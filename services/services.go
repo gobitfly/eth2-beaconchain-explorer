@@ -1094,7 +1094,7 @@ func gasNowUpdater(wg *sync.WaitGroup) {
 			wg.Done()
 			firstRun = false
 		}
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 15)
 	}
 }
 
@@ -1291,7 +1291,7 @@ func burnUpdater(wg *sync.WaitGroup) {
 			wg.Done()
 			firstRun = false
 		}
-		time.Sleep(time.Second * 30)
+		time.Sleep(time.Minute)
 	}
 }
 
