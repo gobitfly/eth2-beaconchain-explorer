@@ -876,7 +876,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 				return false
 			}
 			slot = max_block_number - slot
-			inclusionSlot := max_block_number - uint64(r[SYNC_COMMITTEES_FAMILY][0].Timestamp)/1000
+			inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
 
 			status := uint64(1)
 			if inclusionSlot == max_block_number {
