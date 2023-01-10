@@ -1320,7 +1320,7 @@ func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorAttestationEffectiveness godoc
-// @Summary Get the current performance of up to 100 validators
+// @Summary DEPRECIATED - USE /attestationefficiency (Get the current performance of up to 100 validators)
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
