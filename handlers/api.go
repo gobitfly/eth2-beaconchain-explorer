@@ -34,9 +34,9 @@ import (
 	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
-// @title Beaconcha.in ETH2 API
+// @title Beaconcha.in API Documentation
 // @version 1.0
-// @description High performance API for querying information about the Ethereum beacon chain
+// @description High performance API for querying information about Ethereum
 // @description The API is currently free to use. A fair use policy applies. Calls are rate limited to
 // @description 10 requests / 1 minute / IP. All API results are cached for 1 minute.
 // @description If you required a higher usage plan please checkout https://beaconcha.in/pricing.
@@ -45,6 +45,20 @@ import (
 // @description Key as a query string parameter: `curl https://beaconcha.in/api/v1/block/1?apikey=<your_key>`
 // @description
 // @description Key in a request header:  `curl -H 'apikey: <your_key>' https://beaconcha.in/api/v1/block/1`
+// @tag.name Epoch
+// @tag.description consensus layer information about epochs
+// @tag.docs.url https://example.com
+// @tag.name Slot
+// @tag.description consensus layer information about slots
+// @tag.name Validator
+// @tag.description consensus layer information about validators
+// @tag.name Execution
+// @tag.description execution layer information about addresses, blocks and transactions
+// @tag.name ETH.STORE
+// @tag.name Rocketpool
+// @tag.name Graffitiwall
+// @tag.name Misc
+// @tag.name
 // @securitydefinitions.oauth2.accessCode OAuthAccessCode
 // @tokenurl https://beaconcha.in/user/token
 // @authorizationurl https://beaconcha.in/user/authorize
@@ -54,8 +68,8 @@ import (
 
 // ApiHealthz godoc
 // @Summary Health of the explorer
-// @Tags Health
-// @Description Health endpoint for montitoring if the explorer is in sync
+// @Tags Health,Misc
+// @Description Health endpoint for monitoring if the explorer is in sync
 // @Produce  text/plain
 // @Success 200 {object} types.ApiResponse
 // @Router /api/healthz [get]
@@ -140,7 +154,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 
 // ApiHealthzLoadbalancer godoc
 // @Summary Health of the explorer-api regarding having a healthy connection to the database
-// @Tags Health
+// @Tags Health, Misc
 // @Description Health endpoint for montitoring if the explorer-api
 // @Produce  text/plain
 // @Success 200 {object} types.ApiResponse
@@ -269,7 +283,7 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r)
 }
 
-// ApiEpochBlocks godoc
+// ApiEpochSlots godoc
 // @Summary Get epoch blocks by epoch number
 // @Tags Epoch
 // @Description Returns all blocks for a specified epoch
@@ -277,8 +291,8 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 // @Param  epoch path string true "Epoch number or the string latest"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/epoch/{epoch}/blocks [get]
-func ApiEpochBlocks(w http.ResponseWriter, r *http.Request) {
+// @Router /api/v1/epoch/{epoch}/slots [get]
+func ApiEpochSlots(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -304,16 +318,16 @@ func ApiEpochBlocks(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r)
 }
 
-// ApiBlock godoc
+// ApiSlots godoc
 // @Summary Get block
-// @Tags Block
+// @Tags Slot
 // @Description Returns a block by its slot or root hash
 // @Produce  json
 // @Param  slotOrHash path string true "Block slot or root hash or the string latest"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/block/{slotOrHash} [get]
-func ApiBlock(w http.ResponseWriter, r *http.Request) {
+// @Router /api/v1/slot/{slotOrHash} [get]
+func ApiSlots(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -400,16 +414,16 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r)
 }
 
-// ApiBlockAttestations godoc
+// ApiSlotAttestations godoc
 // @Summary Get the attestations included in a specific block
-// @Tags Block
+// @Tags Slot
 // @Description Returns the attestations included in a specific block
 // @Produce  json
 // @Param  slot path string true "Block slot"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/block/{slot}/attestations [get]
-func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
+// @Router /api/v1/slot/{slot}/attestations [get]
+func ApiSlotAttestations(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -431,16 +445,16 @@ func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r)
 }
 
-// ApiBlockDeposits godoc
+// ApiSlotDeposits godoc
 // @Summary Get the deposits included in a specific block
-// @Tags Block
+// @Tags Slot
 // @Description Returns the deposits included in a specific block
 // @Produce  json
 // @Param  slot path string true "Block slot"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/block/{slot}/deposits [get]
-func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
+// @Router /api/v1/slot/{slot}/deposits [get]
+func ApiSlotDeposits(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -464,7 +478,7 @@ func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 
 // ApiValidatorQueue godoc
 // @Summary Get the current validator queue
-// @Tags Block
+// @Tags Validator
 // @Description Returns the current number of validators entering and exiting the beacon chain
 // @Produce  json
 // @Success 200 {object} types.ApiResponse
@@ -483,16 +497,16 @@ func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r)
 }
 
-// ApiBlockAttesterSlashings godoc
+// ApiSlotAttesterSlashings godoc
 // @Summary Get the attester slashings included in a specific block
-// @Tags Block
+// @Tags Slot
 // @Description Returns the attester slashings included in a specific block
 // @Produce  json
 // @Param  slot path string true "Block slot"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/block/{slot}/attesterslashings [get]
-func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
+// @Router /api/v1/slot/{slot}/attesterslashings [get]
+func ApiSlotAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -514,16 +528,16 @@ func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r)
 }
 
-// ApiBlockProposerSlashings godoc
+// ApiSlotProposerSlashings godoc
 // @Summary Get the proposer slashings included in a specific block
-// @Tags Block
+// @Tags Slot
 // @Description Returns the proposer slashings included in a specific block
 // @Produce  json
 // @Param  slot path string true "Block slot"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/block/{slot}/proposerslashings [get]
-func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
+// @Router /api/v1/slot/{slot}/proposerslashings [get]
+func ApiSlotProposerSlashings(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -545,16 +559,16 @@ func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r)
 }
 
-// ApiBlockVoluntaryExits godoc
+// ApiSlotVoluntaryExits godoc
 // @Summary Get the voluntary exits included in a specific block
-// @Tags Block
+// @Tags Slot
 // @Description Returns the voluntary exits included in a specific block
 // @Produce  json
 // @Param  slot path string true "Block slot"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/block/{slot}/voluntaryexits [get]
-func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
+// @Router /api/v1/slot/{slot}/voluntaryexits [get]
+func ApiSlotVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -576,7 +590,7 @@ func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r)
 }
 
-// ApiBlockVoluntaryExits godoc
+// ApiSlotVoluntaryExits godoc
 // @Summary Get the sync-committee for a sync-period
 // @Tags SyncCommittee
 // @Description Returns the sync-committee for a sync-period. Validators are sorted by sync-committee-index.
@@ -605,36 +619,6 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.ReaderDb.Query(`SELECT period, period*$2 AS start_epoch, (period+1)*$2-1 AS end_epoch, ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators FROM sync_committees WHERE period = $1 GROUP BY period`, period, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod)
 	if err != nil {
 		logger.WithError(err).WithField("url", r.URL.String()).Errorf("error querying db")
-		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
-		return
-	}
-	defer rows.Close()
-
-	returnQueryResults(rows, w, r)
-}
-
-// ApiEth1Deposit godoc
-// @Summary Get an eth1 deposit by its eth1 transaction hash
-// @Tags Eth1
-// @Produce  json
-// @Param  txhash path string true "Eth1 transaction hash"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/eth1deposit/{txhash} [get]
-func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
-
-	w.Header().Set("Content-Type", "application/json")
-
-	vars := mux.Vars(r)
-
-	eth1TxHash, err := hex.DecodeString(strings.Replace(vars["txhash"], "0x", "", -1))
-	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "invalid eth1 tx hash provided")
-		return
-	}
-
-	rows, err := db.ReaderDb.Query("SELECT * FROM eth1_deposits WHERE tx_hash = $1", eth1TxHash)
-	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}

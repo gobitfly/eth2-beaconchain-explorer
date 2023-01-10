@@ -24,6 +24,36 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+// ApiEth1Deposit godoc
+// @Summary Get an eth1 deposit by its eth1 transaction hash
+// @Tags Execution
+// @Produce  json
+// @Param  txhash path string true "Eth1 transaction hash"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/eth1deposit/{txhash} [get]
+func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+
+	eth1TxHash, err := hex.DecodeString(strings.Replace(vars["txhash"], "0x", "", -1))
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "invalid eth1 tx hash provided")
+		return
+	}
+
+	rows, err := db.ReaderDb.Query("SELECT * FROM eth1_deposits WHERE tx_hash = $1", eth1TxHash)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, w, r)
+}
+
 // ApiETH1ExecBlocks godoc
 // @Summary Get execution blocks
 // @Tags Execution
@@ -207,6 +237,16 @@ func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ApiEth1Address godoc
+// @Summary Gets information about an ethereum address.
+// @Tags Execution
+// @Description Returns the ether balance and any token balances for a given ethereum address.
+// @Produce json
+// @Param address path string true "provide an ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters"
+// @Param token query string false "filter for a specific token by providing a ethereum token contract address"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/execution/address/{address} [get]
 func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -222,7 +262,6 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 		return
 	}
-
 	token := q.Get("token")
 
 	if len(token) > 0 {
