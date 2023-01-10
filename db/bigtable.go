@@ -832,7 +832,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validatorIndex ui
 }
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, startEpoch uint64, limit int64) (map[uint64][]*types.ValidatorSyncParticipation, error) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
 	defer cancel()
 
 	rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
