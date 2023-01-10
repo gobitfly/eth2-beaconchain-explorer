@@ -464,7 +464,19 @@ label.btn.btn-light:hover {
   --theme-ethereum-teal: #27cfe2;
   --theme-ethereum-green: #88e03f;
   --theme-ethereum-yellow: #ffef79;
+  --statistics-blue: #378ef0;
+  --statistics-orange: #fb8c13;
+  --statistics-purple: #a145f8;
+  --theme-bg-color-secondary: #e1d8d8;
+  --theme-bg-card-body: #ebe7e7;
 }
+
+[data-theme="dark"]:root {
+  --theme-bg-color-secondary: #413938;
+  --theme-bg-card-body: rgba(92,78,78,0.333333);
+}
+
+:root
 
 .thousands-separator:before{
   content: ",";
