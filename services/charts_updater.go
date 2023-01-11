@@ -494,7 +494,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 
 func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	// retrieve pool performance from db
-	var performanceDays []types.PerformanceDay
+	var performanceDays []types.EthStoreDay
 	err := db.ReaderDb.Select(&performanceDays, `
 		SELECT pool, day, max(effective_balances_sum_wei) as effective_balances_sum_wei, min(start_balances_sum_wei) as start_balances_sum_wei, max(end_balances_sum_wei) as end_balances_sum_wei, max(deposits_sum_wei) as deposits_sum_wei, AVG(apr) as apr
 		FROM historical_pool_performance

@@ -32,13 +32,14 @@ func Init(chainId uint64) {
 }
 
 func updateEthPrice(chainId uint64) {
+	errorRetrievingEthPriceCount := 0
 	for {
-		fetchPrice(chainId)
+		fetchPrice(chainId, &errorRetrievingEthPriceCount)
 		time.Sleep(time.Minute)
 	}
 }
 
-func fetchPrice(chainId uint64) {
+func fetchPrice(chainId uint64, errorRetrievingEthPriceCount *int) {
 	if chainId != 1 {
 		ethPrice = &EthPrice{
 			Ethereum: struct {
@@ -63,12 +64,19 @@ func fetchPrice(chainId uint64) {
 		}
 		return
 	}
+
 	client := &http.Client{Timeout: time.Second * 10}
 	resp, err := client.Get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd%2Ceur%2Crub%2Ccny%2Ccad%2Cjpy%2Cgbp%2Caud")
-
 	if err != nil {
-		logger.Errorf("error retrieving ETH price: %v", err)
+		*errorRetrievingEthPriceCount++
+		if *errorRetrievingEthPriceCount <= 3 { // warn 3 times, before throwing errors starting with the fourth time
+			logger.Warnf("error (%d) retrieving ETH price: %v", *errorRetrievingEthPriceCount, err)
+		} else {
+			logger.Errorf("error (%d) retrieving ETH price: %v", *errorRetrievingEthPriceCount, err)
+		}
 		return
+	} else {
+		*errorRetrievingEthPriceCount = 0
 	}
 
 	ethPriceMux.Lock()
@@ -76,7 +84,6 @@ func fetchPrice(chainId uint64) {
 	defer resp.Body.Close()
 
 	err = json.NewDecoder(resp.Body).Decode(&ethPrice)
-
 	if err != nil {
 		logger.Errorf("error decoding ETH price json response to struct: %v", err)
 		return

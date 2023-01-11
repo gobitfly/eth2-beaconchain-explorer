@@ -118,13 +118,9 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		Price:            template.HTML(fmt.Sprintf("<span>$%s</span><span>@ %.6f</span>", string(metadata.Price), ethExchangeRate)),
 	}
 
-	err = eth1TokenTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if handleTemplateError(w, r, eth1TokenTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
-
 }
 
 func Eth1TokenTransfers(w http.ResponseWriter, r *http.Request) {

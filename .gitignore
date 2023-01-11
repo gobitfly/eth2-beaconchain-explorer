@@ -27,3 +27,4 @@ static/monaco-editor
 tokenlists/
 lastAttestationCache
 cmd/forkwatch
+**/.DS_Store

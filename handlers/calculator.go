@@ -28,10 +28,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "stats", "/calculator", "Staking calculator")
 	data.Data = calculatorPageData
 
-	err = stakingCalculatorTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if handleTemplateError(w, r, stakingCalculatorTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
