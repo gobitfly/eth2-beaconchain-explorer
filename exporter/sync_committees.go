@@ -68,7 +68,7 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 	}
 
 	firstEpoch := utils.FirstEpochOfSyncPeriod(p)
-	lastEpoch := firstEpoch + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod
+	lastEpoch := firstEpoch + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod - 1
 
 	logger.Infof("exporting sync committee assignments for period %v (epoch %v to %v)", p, firstEpoch, lastEpoch)
 
@@ -86,7 +86,7 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 		validatorsU64[i] = idxU64
 	}
 
-	start := time.Now()
+	// start := time.Now()
 	firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 	lastSlot := lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch + utils.Config.Chain.Config.SlotsPerEpoch - 1
 	logger.Infof("exporting sync committee assignments for period %v (epoch %v to %v, slot %v to %v) to bigtable", p, firstEpoch, lastEpoch, firstSlot, lastSlot)
