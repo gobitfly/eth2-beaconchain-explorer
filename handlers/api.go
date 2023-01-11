@@ -305,10 +305,10 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 // ApiEpochSlots godoc
 // @Summary Get epoch blocks by epoch number, latest or finalized
 // @Tags Epoch
-// @Description Returns all blocks for a specified epoch
+// @Description Returns all slots for a specified epoch
 // @Produce  json
 // @Param  epoch path string true "Epoch number, the string latest or string finalized"
-// @Success 200 {object} types.ApiResponse{data=types.APIEpochSlotResponse}
+// @Success 200 {object} types.ApiResponse{data=[]types.APISlotResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/epoch/{epoch}/slots [get]
 func ApiEpochSlots(w http.ResponseWriter, r *http.Request) {
@@ -346,20 +346,19 @@ func ApiEpochSlots(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	returnQueryResultsAsArray(rows, w, r)
 }
 
 // ApiSlots godoc
-// @Summary Get block
+// @Summary Get a slot by its slot number or root hash
 // @Tags Slot
-// @Description Returns a block by its slot or root hash
+// @Description Returns a slot by its slot number or root hash or the latest slot with string latest
 // @Produce  json
-// @Param  slotOrHash path string true "Block slot or root hash or the string latest"
-// @Success 200 {object} types.ApiResponse
+// @Param  slotOrHash path string true "Slot or root hash or the string latest"
+// @Success 200 {object} types.ApiResponse{data=types.APISlotResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/slot/{slotOrHash} [get]
 func ApiSlots(w http.ResponseWriter, r *http.Request) {
-
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
@@ -446,12 +445,12 @@ func ApiSlots(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiSlotAttestations godoc
-// @Summary Get the attestations included in a specific block
+// @Summary Get the attestations included in a specific slot
 // @Tags Slot
-// @Description Returns the attestations included in a specific block
+// @Description Returns the attestations included in a specific slot
 // @Produce  json
-// @Param  slot path string true "Block slot"
-// @Success 200 {object} types.ApiResponse
+// @Param  slot path string true "Slot"
+// @Success 200 {object} types.ApiResponse{data=[]types.APIAttestationResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/slot/{slot}/attestations [get]
 func ApiSlotAttestations(w http.ResponseWriter, r *http.Request) {
@@ -461,8 +460,22 @@ func ApiSlotAttestations(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	slot, err := strconv.ParseInt(vars["slot"], 10, 64)
-	if err != nil {
+	if err != nil && vars["slot"] != "latest" {
 		sendErrorResponse(w, r.URL.String(), "invalid block slot provided")
+		return
+	}
+
+	if vars["slot"] == "latest" {
+		slot = int64(services.LatestSlot())
+	}
+
+	if slot > int64(services.LatestSlot()) {
+		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("slot is in the future. The latest slot is %v", services.LatestSlot()))
+		return
+	}
+
+	if slot < 0 {
+		sendErrorResponse(w, r.URL.String(), "slot must be a positive number")
 		return
 	}
 
@@ -473,72 +486,19 @@ func ApiSlotAttestations(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
-}
-
-// ApiSlotDeposits godoc
-// @Summary Get the deposits included in a specific block
-// @Tags Slot
-// @Description Returns the deposits included in a specific block
-// @Produce  json
-// @Param  slot path string true "Block slot"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/slot/{slot}/deposits [get]
-func ApiSlotDeposits(w http.ResponseWriter, r *http.Request) {
-
-	w.Header().Set("Content-Type", "application/json")
-
-	vars := mux.Vars(r)
-
-	slot, err := strconv.ParseInt(vars["slot"], 10, 64)
-	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "invalid block slot provided")
-		return
-	}
-
-	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_deposits WHERE block_slot = $1 ORDER BY block_index DESC", slot)
-	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
-		return
-	}
-	defer rows.Close()
-
-	returnQueryResults(rows, w, r)
-}
-
-// ApiValidatorQueue godoc
-// @Summary Get the current validator queue
-// @Tags Validator
-// @Description Returns the current number of validators entering and exiting the beacon chain
-// @Produce  json
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/validators/queue [get]
-func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	rows, err := db.ReaderDb.Query("SELECT e.validatorscount, q.entering_validators_count as beaconchain_entering, q.exiting_validators_count as beaconchain_exiting FROM  epochs e, queue q ORDER BY epoch DESC LIMIT 1 ")
-	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
-		return
-	}
-	defer rows.Close()
-
-	returnQueryResults(rows, w, r)
+	returnQueryResultsAsArray(rows, w, r)
 }
 
 // ApiSlotAttesterSlashings godoc
-// @Summary Get the attester slashings included in a specific block
+// @Summary Get the attester slashings included in a specific slot
 // @Tags Slot
-// @Description Returns the attester slashings included in a specific block
+// @Description Returns the attester slashings included in a specific slot
 // @Produce  json
-// @Param  slot path string true "Block slot"
-// @Success 200 {object} types.ApiResponse
+// @Param  slot path string true "Slot"
+// @Success 200 {object} types.ApiResponse{data=[]types.APIAttesterSlashingResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/slot/{slot}/attesterslashings [get]
 func ApiSlotAttesterSlashings(w http.ResponseWriter, r *http.Request) {
-
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
@@ -556,16 +516,70 @@ func ApiSlotAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	returnQueryResultsAsArray(rows, w, r)
+}
+
+// ApiSlotDeposits godoc
+// @Summary Get the deposits included in a specific block
+// @Tags Slot
+// @Description Returns the deposits included in a specific block
+// @Produce  json
+// @Param  slot path string true "Block slot"
+// @Param  limit query string false "Limit the number of results"
+// @Param offset query string false "Offset the number of results"
+// @Success 200 {object} types.ApiResponse{[]APIAttestationResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/slot/{slot}/deposits [get]
+func ApiSlotDeposits(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	q := r.URL.Query()
+
+	limitQuery := q.Get("limit")
+	offsetQuery := q.Get("offset")
+
+	limit, err := strconv.ParseInt(limitQuery, 10, 64)
+	if err != nil {
+		limit = 100
+	}
+
+	offset, err := strconv.ParseInt(offsetQuery, 10, 64)
+	if err != nil {
+		offset = 0
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	if limit > (100+offset) || limit <= 0 || limit <= offset {
+		limit = 100 + offset
+	}
+
+	slot, err := strconv.ParseInt(vars["slot"], 10, 64)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "invalid block slot provided")
+		return
+	}
+
+	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_deposits WHERE block_slot = $1 ORDER BY block_index DESC limit $2 offset $3", slot, limit, offset)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResultsAsArray(rows, w, r)
 }
 
 // ApiSlotProposerSlashings godoc
-// @Summary Get the proposer slashings included in a specific block
+// @Summary Get the proposer slashings included in a specific slot
 // @Tags Slot
-// @Description Returns the proposer slashings included in a specific block
+// @Description Returns the proposer slashings included in a specific slot
 // @Produce  json
-// @Param  slot path string true "Block slot"
-// @Success 200 {object} types.ApiResponse
+// @Param  slot path string true "Slot"
+// @Success 200 {object} types.ApiResponse{data=[]APIProposerSlashingResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/slot/{slot}/proposerslashings [get]
 func ApiSlotProposerSlashings(w http.ResponseWriter, r *http.Request) {
@@ -587,7 +601,7 @@ func ApiSlotProposerSlashings(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	returnQueryResultsAsArray(rows, w, r)
 }
 
 // ApiSlotVoluntaryExits godoc
@@ -596,7 +610,7 @@ func ApiSlotProposerSlashings(w http.ResponseWriter, r *http.Request) {
 // @Description Returns the voluntary exits included in a specific block
 // @Produce  json
 // @Param  slot path string true "Block slot"
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiResponse{data=[]types.APIVoluntaryExitResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/slot/{slot}/voluntaryexits [get]
 func ApiSlotVoluntaryExits(w http.ResponseWriter, r *http.Request) {
@@ -618,7 +632,7 @@ func ApiSlotVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	returnQueryResultsAsArray(rows, w, r)
 }
 
 // ApiSlotVoluntaryExits godoc
@@ -650,6 +664,27 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.ReaderDb.Query(`SELECT period, period*$2 AS start_epoch, (period+1)*$2-1 AS end_epoch, ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators FROM sync_committees WHERE period = $1 GROUP BY period`, period, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod)
 	if err != nil {
 		logger.WithError(err).WithField("url", r.URL.String()).Errorf("error querying db")
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, w, r)
+}
+
+// ApiValidatorQueue godoc
+// @Summary Get the current validator queue
+// @Tags Validator
+// @Description Returns the current number of validators entering and exiting the beacon chain
+// @Produce  json
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/validator/queue [get]
+func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	rows, err := db.ReaderDb.Query("SELECT e.validatorscount, q.entering_validators_count as beaconchain_entering, q.exiting_validators_count as beaconchain_exiting FROM  epochs e, queue q ORDER BY epoch DESC LIMIT 1 ")
+	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}

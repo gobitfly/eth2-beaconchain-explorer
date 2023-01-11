@@ -340,7 +340,7 @@ type APIEpochResponse struct {
 	VotedEther              uint64 `json:"votedether"`
 }
 
-type APIEpochSlotResponse struct {
+type APISlotResponse struct {
 	Attestationscount          uint64  `json:"attestationscount"`
 	Attesterslashingscount     uint64  `json:"attesterslashingscount"`
 	Blockroot                  string  `json:"blockroot"`
@@ -377,4 +377,81 @@ type APIEpochSlotResponse struct {
 	SyncaggregateParticipation float64 `json:"syncaggregate_participation"`
 	SyncaggregateSignature     string  `json:"syncaggregate_signature"`
 	Voluntaryexitscount        uint64  `json:"voluntaryexitscount"`
+}
+
+type APIAttestationResponse struct {
+	Aggregationbits string  `json:"aggregationbits"`
+	Beaconblockroot string  `json:"beaconblockroot"`
+	BlockIndex      int64   `json:"block_index"`
+	BlockRoot       string  `json:"block_root"`
+	BlockSlot       int64   `json:"block_slot"`
+	Committeeindex  int64   `json:"committeeindex"`
+	Signature       string  `json:"signature"`
+	Slot            int64   `json:"slot"`
+	SourceEpoch     int64   `json:"source_epoch"`
+	SourceRoot      string  `json:"source_root"`
+	TargetEpoch     int64   `json:"target_epoch"`
+	TargetRoot      string  `json:"target_root"`
+	Validators      []int64 `json:"validators"`
+}
+
+type APIDepositResponse struct {
+	Amount                uint64 `json:"amount"`
+	BlockIndex            uint64 `json:"block_index"`
+	BlockRoot             string `json:"block_root"`
+	BlockSlot             uint64 `json:"block_slot"`
+	Proof                 string `json:"proof"`
+	Publickey             string `json:"publickey"`
+	Signature             string `json:"signature"`
+	Withdrawalcredentials string `json:"withdrawalcredentials"`
+}
+
+type APIAttesterSlashingResponse struct {
+	Attestation1_beaconblockroot string   `json:"attestation1_beaconblockroot"`
+	Attestation1_index           uint64   `json:"attestation1_index"`
+	Attestation1_indices         []uint64 `json:"attestation1_indices"`
+	Attestation1_signature       string   `json:"attestation1_signature"`
+	Attestation1_slot            uint64   `json:"attestation1_slot"`
+	Attestation1_source_epoch    uint64   `json:"attestation1_source_epoch"`
+	Attestation1_source_root     string   `json:"attestation1_source_root"`
+	Attestation1_target_epoch    uint64   `json:"attestation1_target_epoch"`
+	Attestation1_target_root     string   `json:"attestation1_target_root"`
+	Attestation2_beaconblockroot string   `json:"attestation2_beaconblockroot"`
+	Attestation2_index           uint64   `json:"attestation2_index"`
+	Attestation2_indices         []uint64 `json:"attestation2_indices"`
+	Attestation2_signature       string   `json:"attestation2_signature"`
+	Attestation2_slot            uint64   `json:"attestation2_slot"`
+	Attestation2_source_epoch    uint64   `json:"attestation2_source_epoch"`
+	Attestation2_source_root     string   `json:"attestation2_source_root"`
+	Attestation2_target_epoch    uint64   `json:"attestation2_target_epoch"`
+	Attestation2_target_root     string   `json:"attestation2_target_root"`
+	BlockIndex                   uint64   `json:"block_index"`
+	BlockRoot                    string   `json:"block_root"`
+	BlockSlot                    uint64   `json:"block_slot"`
+}
+
+type APIProposerSlashingResponse struct {
+	BlockIndex        uint64 `json:"block_index"`
+	BlockRoot         string `json:"block_root"`
+	BlockSlot         uint64 `json:"block_slot"`
+	Header1Bodyroot   string `json:"header1_bodyroot"`
+	Header1Parentroot string `json:"header1_parentroot"`
+	Header1Signature  string `json:"header1_signature"`
+	Header1Slot       uint64 `json:"header1_slot"`
+	Header1Stateroot  string `json:"header1_stateroot"`
+	Header2Bodyroot   string `json:"header2_bodyroot"`
+	Header2Parentroot string `json:"header2_parentroot"`
+	Header2Signature  string `json:"header2_signature"`
+	Header2Slot       uint64 `json:"header2_slot"`
+	Header2Stateroot  string `json:"header2_stateroot"`
+	ProposerIndex     uint64 `json:"proposerindex"`
+}
+
+type APIVoluntaryExitResponse struct {
+	BlockIndex     uint64 `json:"block_index"`
+	BlockRoot      string `json:"block_root"`
+	BlockSlot      uint64 `json:"block_slot"`
+	Epoch          uint64 `json:"epoch"`
+	Signature      string `json:"signature"`
+	ValidatorIndex uint64 `json:"validatorindex"`
 }
