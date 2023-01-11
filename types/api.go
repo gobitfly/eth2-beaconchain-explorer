@@ -462,3 +462,41 @@ type APISyncCommitteeResponse struct {
 	StartEpoch uint64   `json:"start_epoch"`
 	Validators []uint64 `json:"validators"`
 }
+
+type APIRocketpoolStatsResponse struct {
+	ClaimIntervalTime      string  `json:"claim_interval_time"`
+	ClaimIntervalTimeStart int64   `json:"claim_interval_time_start"`
+	CurrentNodeDemand      float64 `json:"current_node_demand"`
+	CurrentNodeFee         float64 `json:"current_node_fee"`
+	EffectiveRPLStaked     float64 `json:"effective_rpl_staked"`
+	MinipoolCount          int64   `json:"minipool_count"`
+	NodeCount              int64   `json:"node_count"`
+	NodeOperatorRewards    float64 `json:"node_operator_rewards"`
+	OdaoMemberCount        int64   `json:"odao_member_count"`
+	RethApr                float64 `json:"reth_apr"`
+	RethExchangeRate       float64 `json:"reth_exchange_rate"`
+	RethSupply             float64 `json:"reth_supply"`
+	RplPrice               int64   `json:"rpl_price"`
+	TotalEthBalance        float64 `json:"total_eth_balance"`
+	TotalEthStaking        float64 `json:"total_eth_staking"`
+}
+
+type ApiRocketpoolValidatorResponse struct {
+	ClaimedSmoothingPool   float64 `json:"claimed_smoothing_pool"`
+	Index                  uint64  `json:"index"`
+	MinipoolAddress        string  `json:"minipool_address"`
+	MinipoolDepositType    string  `json:"minipool_deposit_type"`
+	MinipoolNodeFee        float64 `json:"minipool_node_fee"`
+	MinipoolStatus         string  `json:"minipool_status"`
+	MinipoolStatusTime     uint64  `json:"minipool_status_time"`
+	NodeAddress            string  `json:"node_address"`
+	NodeMaxRplStake        float64 `json:"node_max_rpl_stake"`
+	NodeMinRplStake        float64 `json:"node_min_rpl_stake"`
+	NodeRplStake           float64 `json:"node_rpl_stake"`
+	NodeTimezoneLocation   string  `json:"node_timezone_location"`
+	PenaltyCount           uint64  `json:"penalty_count"`
+	RplCumulativeRewards   float64 `json:"rpl_cumulative_rewards"`
+	SmoothingPoolOptedIn   bool    `json:"smoothing_pool_opted_in"`
+	UnclaimedRplRewards    float64 `json:"unclaimed_rpl_rewards"`
+	UnclaimedSmoothingPool float64 `json:"unclaimed_smoothing_pool"`
+}

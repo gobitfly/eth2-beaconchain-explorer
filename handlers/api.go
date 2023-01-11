@@ -699,7 +699,7 @@ func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 // @Summary Get global rocketpool network statistics
 // @Tags Rocketpool
 // @Produce  json
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiResponse{data=types.APIRocketpoolStatsResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/rocketpool/stats [get]
 func ApiRocketpoolStats(w http.ResponseWriter, r *http.Request) {
@@ -723,7 +723,7 @@ func ApiRocketpoolStats(w http.ResponseWriter, r *http.Request) {
 // @Tags Rocketpool
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Produce  json
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiResponse{data=types.ApiRocketpoolValidatorResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/rocketpool/validator/{indexOrPubkey} [get]
 func ApiRocketpoolValidators(w http.ResponseWriter, r *http.Request) {
