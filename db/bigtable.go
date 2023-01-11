@@ -13,8 +13,8 @@ import (
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
 	itypes "github.com/gobitfly/eth-rewards/types"
-	"github.com/golang/protobuf/proto"
 	"google.golang.org/api/option"
+	"google.golang.org/protobuf/proto"
 )
 
 var BigtableClient *Bigtable
@@ -832,7 +832,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validatorIndex ui
 }
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, startEpoch uint64, limit int64) (map[uint64][]*types.ValidatorSyncParticipation, error) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
 	defer cancel()
 
 	rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
@@ -876,7 +876,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 				return false
 			}
 			slot = max_block_number - slot
-			inclusionSlot := max_block_number - uint64(r[SYNC_COMMITTEES_FAMILY][0].Timestamp)/1000
+			inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
 
 			status := uint64(1)
 			if inclusionSlot == max_block_number {

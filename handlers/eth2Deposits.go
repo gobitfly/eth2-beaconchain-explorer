@@ -21,12 +21,8 @@ func Eth2Deposits(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "eth2Deposits", "/deposits/eth2", "Included Deposits")
 	data.HeaderAd = true
 
-	err := eth2DepositsTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if handleTemplateError(w, r, eth2DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 

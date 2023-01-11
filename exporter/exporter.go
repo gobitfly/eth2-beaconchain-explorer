@@ -578,6 +578,8 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 			logger.Errorf("error during bigtable export: %v", err)
 			return
 		}
+
+		// at this point all epoch data has been written to bigtable
 		err = db.SaveEpoch(data, client)
 		if err != nil {
 			logger.Errorf("error saving epoch data: %v", err)

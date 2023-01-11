@@ -2,11 +2,19 @@ package services
 
 import (
 	"encoding/json"
+	"eth2-exporter/db"
+	"eth2-exporter/utils"
+	"eth2-exporter/version"
+	"os"
+	"time"
 )
 
 // Report the status of a particular service, will add current Pid and executable name
 func ReportStatus(name, status string, metadata *json.RawMessage) {
-	/* pid := os.Getpid()
+	if !utils.Config.ReportServiceStatus {
+		return
+	}
+	pid := os.Getpid()
 	execName, err := os.Executable()
 	if err != nil {
 		execName = "Unknown"
@@ -24,5 +32,5 @@ func ReportStatus(name, status string, metadata *json.RawMessage) {
 
 	if err != nil {
 		logger.Errorf("error reporting service status: %v", err)
-	} */
+	}
 }

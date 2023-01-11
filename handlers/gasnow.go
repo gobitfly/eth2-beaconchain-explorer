@@ -60,30 +60,32 @@ func GasNow(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = resRet
 
-	err = gasNowTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		return
+	if handleTemplateError(w, r, gasNowTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 
 func GasNowData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	j := json.NewEncoder(w)
-
 	gasnowData := services.LatestGasNowData()
+	if gasnowData == nil {
+		logger.Error("error obtaining latest gas now data 'nil'")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
 	currency := GetCurrency(r)
 	if currency == "ETH" {
 		currency = "USD"
 	}
-
 	gasnowData.Data.Price = price.GetEthPrice(currency)
 	gasnowData.Data.Currency = currency
 
-	err := j.Encode(gasnowData)
+	err := json.NewEncoder(w).Encode(gasnowData)
 	if err != nil {
 		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
 	}
 }

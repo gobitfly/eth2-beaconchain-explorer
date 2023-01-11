@@ -74,12 +74,25 @@ func Init() {
 	ready.Add(1)
 	go gasNowUpdater(ready)
 
+	ready.Add(1)
+	go ethStoreStatisticsDataUpdater(ready)
+
 	ready.Wait()
 }
 
-func InitNotifications() {
-	logger.Infof("starting notifications-sender")
-	go notificationsSender()
+func InitNotifications(pubkeyCachePath string) {
+
+	err := initPubkeyCache(pubkeyCachePath)
+	if err != nil {
+		logger.Fatalf("error initializing pubkey cache path for notifications: %v", err)
+	}
+
+	if utils.Config.Notifications.Sender {
+		logger.Infof("starting notifications-sender")
+		go notificationSender()
+	}
+
+	go notificationCollector()
 }
 
 func getRelaysPageData() (*types.RelaysResp, error) {
@@ -123,6 +136,8 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 		logger.Errorf("failed to prepare overallStatsQuery: %v", err)
 		return nil, err
 	}
+	defer overallStatsQuery.Close()
+
 	dayInSlots := 24 * 60 * 60 / utils.Config.Chain.Config.SecondsPerSlot
 
 	tmp := [3]types.RelayInfoContainer{{Days: 7}, {Days: 31}, {Days: 180}}
@@ -480,6 +495,31 @@ func indexPageDataUpdater(wg *sync.WaitGroup) {
 	}
 }
 
+func ethStoreStatisticsDataUpdater(wg *sync.WaitGroup) {
+	firstRun := true
+	for {
+		data, err := getEthStoreStatisticsData()
+		if err != nil {
+			logger.Errorf("error retrieving ETH.STORE statistics data: %v", err)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		cacheKey := fmt.Sprintf("%d:frontend:ethStoreStatistics", utils.Config.Chain.Config.DepositChainID)
+		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
+		if err != nil {
+			logger.Errorf("error caching ETH.STORE statistics data: %v", err)
+		}
+		if firstRun {
+			firstRun = false
+			wg.Done()
+			logger.Info("initialized ETH.STORE statistics data updater")
+		}
+		ReportStatus("ethStoreStatistics", "Running", nil)
+		time.Sleep(time.Second * 90)
+	}
+}
+
 func slotVizUpdater(wg *sync.WaitGroup) {
 	firstRun := true
 
@@ -505,6 +545,58 @@ func slotVizUpdater(wg *sync.WaitGroup) {
 		ReportStatus("slotVizUpdater", "Running", nil)
 		time.Sleep(time.Second)
 	}
+}
+
+func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
+	var ethStoreDays []types.EthStoreDay
+	err := db.ReaderDb.Select(&ethStoreDays, `
+		SELECT
+			day,
+			apr,
+			effective_balances_sum_wei,
+			total_rewards_wei
+		FROM eth_store_stats
+		WHERE validator = -1
+		ORDER BY DAY ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("error getting eth store stats from db: %v", err)
+	}
+	daysLastIndex := len(ethStoreDays) - 1
+
+	effectiveBalances := [][]float64{}
+	totalRewards := [][]float64{}
+	aprs := [][]float64{}
+	for _, stat := range ethStoreDays {
+		ts := float64(utils.EpochToTime(stat.Day*225).Unix()) * 1000
+
+		effectiveBalances = append(effectiveBalances, []float64{
+			ts,
+			stat.EffectiveBalancesSum.Div(decimal.NewFromInt(1e18)).Round(0).InexactFloat64(),
+		})
+
+		totalRewards = append(totalRewards, []float64{
+			ts,
+			stat.TotalRewardsWei.Div(decimal.NewFromInt(1e18)).Round(6).InexactFloat64(),
+		})
+
+		aprs = append(aprs, []float64{
+			ts,
+			stat.APR.Mul(decimal.NewFromInt(100)).Round(3).InexactFloat64(),
+		})
+	}
+
+	data := &types.EthStoreStatistics{
+		EffectiveBalances:         effectiveBalances,
+		TotalRewards:              totalRewards,
+		APRs:                      aprs,
+		ProjectedAPR:              ethStoreDays[daysLastIndex].APR.Mul(decimal.NewFromInt(100)).InexactFloat64(),
+		StartEpoch:                ethStoreDays[daysLastIndex].Day * 225,
+		YesterdayRewards:          ethStoreDays[daysLastIndex].TotalRewardsWei.Div(decimal.NewFromInt(1e18)).InexactFloat64(),
+		YesterdayEffectiveBalance: ethStoreDays[daysLastIndex].EffectiveBalancesSum.Div(decimal.NewFromInt(1e18)).InexactFloat64(),
+		YesterdayTs:               utils.EpochToTime(ethStoreDays[daysLastIndex].Day * 225).Unix(),
+	}
+
+	return data, nil
 }
 
 func getIndexPageData() (*types.IndexPageData, error) {
@@ -826,14 +918,11 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.ChurnRate = *GetLatestStats().ValidatorChurnLimit
 
 	// get eth.store
-	err = db.ReaderDb.Get(&data.EthStore, `
-		SELECT apr
-		FROM eth_store_stats e
-		WHERE validator = -1 AND day = (SELECT MAX(day) FROM eth_store_stats);`)
-
+	ethstore, err := getEthStoreStatisticsData()
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving eth store for index page: %v", err)
 	}
+	data.EthStore = ethstore.ProjectedAPR / 100
 
 	// get gas price history
 	now = time.Now().Truncate(time.Minute)
@@ -860,7 +949,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	for ts, fast := range group {
 		gasPriceData = append(gasPriceData, []float64{float64(ts * 1000), math.Round(fast/1e4) / 1e5})
 	}
-
 	sort.SliceStable(gasPriceData, func(i int, j int) bool {
 		return gasPriceData[i][0] < gasPriceData[j][0]
 	})
@@ -986,6 +1074,17 @@ func LatestBurnData() *types.BurnPageData {
 		logger.Errorf("error retrieving burn data from cache: %v", err)
 	}
 	return &types.BurnPageData{}
+}
+
+func LatestEthStoreStatistics() *types.EthStoreStatistics {
+	wanted := &types.EthStoreStatistics{}
+	cacheKey := fmt.Sprintf("%d:frontend:ethStoreStatistics", utils.Config.Chain.Config.DepositChainID)
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*60, wanted); err == nil {
+		return wanted.(*types.EthStoreStatistics)
+	} else {
+		logger.Errorf("error retrieving ETH.STORE statistics data from cache: %v", err)
+	}
+	return &types.EthStoreStatistics{}
 }
 
 // LatestIndexPageData returns the latest index page data
@@ -1162,7 +1261,7 @@ func gasNowUpdater(wg *sync.WaitGroup) {
 	for {
 		data, err := getGasNowData()
 		if err != nil {
-			logger.Errorf("error retrieving gas now data: %v", err)
+			logger.Warnf("error retrieving gas now data: %v", err)
 			time.Sleep(time.Second * 5)
 			continue
 		}
@@ -1176,7 +1275,7 @@ func gasNowUpdater(wg *sync.WaitGroup) {
 			wg.Done()
 			firstRun = false
 		}
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 15)
 	}
 }
 
@@ -1307,21 +1406,36 @@ func (tx *rpcTransaction) UnmarshalJSON(msg []byte) error {
 
 func mempoolUpdater(wg *sync.WaitGroup) {
 	firstRun := true
+	errorCount := 0
+
+	var client *geth_rpc.Client
+
 	for {
-		client, err := geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
-		if err != nil {
-			logrus.Error("Can't connect to geth node: ", err)
-			time.Sleep(time.Second * 30)
-			continue
+		var err error
+
+		if client == nil {
+			client, err = geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
+			if err != nil {
+				logrus.Error("can't connect to geth node: ", err)
+				time.Sleep(time.Second * 30)
+				continue
+			}
 		}
 
 		var mempoolTx types.RawMempoolResponse
 
 		err = client.Call(&mempoolTx, "txpool_content")
 		if err != nil {
-			logrus.Error("Error calling txpool_content request: ", err)
+			errorCount++
+			if errorCount < 5 {
+				logrus.Warnf("error calling txpool_content request (x%d): %v", errorCount, err)
+			} else {
+				logrus.Errorf("error calling txpool_content request (x%d): %v", errorCount, err)
+			}
 			time.Sleep(time.Second * 10)
 			continue
+		} else {
+			errorCount = 0
 		}
 
 		cacheKey := fmt.Sprintf("%d:frontend:mempool", utils.Config.Chain.Config.DepositChainID)
@@ -1335,7 +1449,7 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 			firstRun = false
 		}
 		ReportStatus("mempoolUpdater", "Running", nil)
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Second * 5)
 	}
 }
 
@@ -1358,7 +1472,7 @@ func burnUpdater(wg *sync.WaitGroup) {
 			wg.Done()
 			firstRun = false
 		}
-		time.Sleep(time.Second * 30)
+		time.Sleep(time.Minute)
 	}
 }
 

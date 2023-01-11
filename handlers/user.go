@@ -141,11 +141,8 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	session.Values["subscription"] = premiumPkg
 	session.Save(r, w)
 
-	err = userTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if handleTemplateError(w, r, userTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -290,11 +287,8 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	data.Data = userNotificationsData
 	data.User = user
 
-	err = notificationTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if handleTemplateError(w, r, notificationTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -893,11 +887,8 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		data.DebugTemplates = notificationCenterParts
 	}
 
-	err = notificationsCenterTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if handleTemplateError(w, r, notificationsCenterTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -2333,7 +2324,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
 
-	data := InitPageData(w, r, "webhook", "/webhook", "webhook")
+	data := InitPageData(w, r, "webhook", "/webhook", "Webhook configuration")
 	pageData := types.WebhookPageData{}
 
 	ctx, done := ctxt.WithTimeout(ctxt.Background(), time.Second*30)
@@ -2557,11 +2548,8 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = pageData
 
-	err = webhookTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if handleTemplateError(w, r, webhookTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 

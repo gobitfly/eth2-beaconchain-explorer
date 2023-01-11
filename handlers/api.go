@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,7 +35,7 @@ import (
 	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
-// @title Beaconcha.in ETH2 API
+// @title beaconcha.in Ethereum API
 // @version 1.0
 // @description High performance API for querying information about the Ethereum beacon chain
 // @description The API is currently free to use. A fair use policy applies. Calls are rate limited to
@@ -184,19 +185,9 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	vars := mux.Vars(r)
-
-	day, err := strconv.ParseInt(vars["day"], 10, 64)
-	if err != nil && vars["day"] != "latest" {
-		sendErrorResponse(w, r.URL.String(), "invalid day provided")
-		return
-	}
-
-	if vars["day"] == "latest" {
-		day = (int64(services.LatestFinalizedEpoch()) / 225) - 1
-	}
-
-	rows, err := db.ReaderDb.Query(`
+	var err error
+	var rows *sql.Rows
+	query := `
 		SELECT 
 			day, 
 			effective_balances_sum_wei, 
@@ -210,7 +201,20 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 			(select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7) as avgAPR7d,
 			(select avg(apr) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31) as avgAPR31d
 		FROM eth_store_stats e
-		WHERE day = $1 AND validator = -1;`, day)
+		WHERE validator = -1 `
+
+	vars := mux.Vars(r)
+	if vars["day"] == "latest" {
+		rows, err = db.ReaderDb.Query(query + ` ORDER BY day DESC LIMIT 1;`)
+	} else {
+		day, e := strconv.ParseInt(vars["day"], 10, 64)
+		if e != nil {
+			sendErrorResponse(w, r.URL.String(), "invalid day provided")
+			return
+		}
+		rows, err = db.ReaderDb.Query(query+` AND day = $1;`, day)
+	}
+
 	if err != nil {
 		logger.Errorf("error retrieving eth.store data: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -1139,10 +1143,13 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidator godoc
-// @Summary Get the balance history (last 100 epochs) of up to 100 validators
+// @Summary Get the balance history of up to 100 validators
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Param  latest_epoch query int false "The latest epoch to consider in the query"
+// @Param  offset query int false "Number of items to skip"
+// @Param  limit query int false "Maximum number of items to return, up to 100"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/balancehistory [get]
@@ -1154,6 +1161,12 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
+	latestEpoch, limit, err := getBalanceHistoryQueryParameters(r.URL.Query())
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), err.Error())
+		return
+	}
+
 	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
@@ -1164,7 +1177,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "no or invalid validator indicies provided")
 	}
 
-	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), 101)
+	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, latestEpoch, limit+1)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -1209,6 +1222,39 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
+}
+
+func getBalanceHistoryQueryParameters(q url.Values) (uint64, int64, error) {
+	onChainLatestEpoch := services.LatestEpoch()
+	defaultLimit := int64(100)
+
+	latestEpoch := onChainLatestEpoch
+	if q.Has("latest_epoch") {
+		var err error
+		latestEpoch, err = strconv.ParseUint(q.Get("latest_epoch"), 10, 64)
+		if err != nil || latestEpoch > onChainLatestEpoch {
+			return 0, 0, fmt.Errorf("invalid latest epoch parameter")
+		}
+	}
+
+	if q.Has("offset") {
+		offset, err := strconv.ParseUint(q.Get("offset"), 10, 64)
+		if err != nil || offset > latestEpoch {
+			return 0, 0, fmt.Errorf("invalid offset parameter")
+		}
+		latestEpoch -= offset
+	}
+
+	limit := defaultLimit
+	if q.Has("limit") {
+		var err error
+		limit, err = strconv.ParseInt(q.Get("limit"), 10, 64)
+		if err != nil || limit > defaultLimit || limit < 1 {
+			return 0, 0, fmt.Errorf("invalid limit parameter")
+		}
+	}
+
+	return latestEpoch, limit, nil
 }
 
 // ApiValidatorPerformance godoc
@@ -1274,7 +1320,7 @@ func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorAttestationEffectiveness godoc
-// @Summary Get the current performance of up to 100 validators
+// @Summary DEPRECIATED - USE /attestationefficiency (Get the current performance of up to 100 validators)
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
@@ -2293,7 +2339,7 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Errorf("error reading body | err: %v", err)
+		logger.Warnf("error reading body | err: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not read body")
 		return
 	}
@@ -2304,15 +2350,15 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 		var jsonObject map[string]interface{}
 		err = json.Unmarshal(body, &jsonObject)
 		if err != nil {
-			logger.Errorf("Could not parse stats (meta stats) general | %v ", err)
-			sendErrorResponse(w, r.URL.String(), "capi rate limit reached, one process per machine per user each minute is allowed.")
+			logger.Warnf("Could not parse stats (meta stats) general | %v ", err)
+			sendErrorResponse(w, r.URL.String(), "metrics rate limit reached, one process per machine per user each minute is allowed.")
 			return
 		}
 		jsonObjects = []map[string]interface{}{jsonObject}
 	}
 
 	if len(jsonObjects) >= 10 {
-		logger.Errorf("Max number of stat entries are 10", err)
+		logger.Info("Max number of stat entries are 10", err)
 		sendErrorResponse(w, r.URL.String(), "Max number of stat entries are 10")
 		return
 	}
@@ -2321,7 +2367,7 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 	var result bool = false
 	for i := 0; i < len(jsonObjects); i++ {
 		err = insertStats(userData, machine, &jsonObjects[i], w, r)
-		result = err != nil
+		result = err == nil
 		if err != nil {
 			// ignore rate limit errors unless all are rate limit errors
 			if strings.HasPrefix(err.Error(), "rate limit") {
@@ -2349,7 +2395,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 	var parsedMeta *types.StatsMeta
 	err := mapstructure.Decode(body, &parsedMeta)
 	if err != nil {
-		logger.Errorf("Could not parse stats (meta stats) | %v ", err)
+		logger.Warnf("Could not parse stats (meta stats) | %v ", err)
 		sendErrorResponse(w, r.URL.String(), "could not parse meta")
 		return err
 	}
@@ -2376,7 +2422,6 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 	}
 
 	if count > maxNodes {
-		logger.Errorf("User has reached max machine count | %v", err)
 		sendErrorWithCodeResponse(w, r.URL.String(), "reached max machine count", 402)
 		return fmt.Errorf("user has reached max machine count")
 	}
@@ -2386,7 +2431,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		var parsedResponse *types.MachineMetricSystem
 		err = DecodeMapStructure(body, &parsedResponse)
 		if err != nil {
-			logger.Errorf("Could not parse stats (system stats) | %v", err)
+			logger.Warnf("Could not parse stats (system stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could not parse system")
 			return err
 		}
@@ -2400,7 +2445,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		var parsedResponse *types.MachineMetricValidator
 		err = DecodeMapStructure(body, &parsedResponse)
 		if err != nil {
-			logger.Errorf("Could not parse stats (validator stats) | %v", err)
+			logger.Warnf("Could not parse stats (validator stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could marshal validator")
 			return err
 		}
@@ -2414,7 +2459,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		var parsedResponse *types.MachineMetricNode
 		err = DecodeMapStructure(body, &parsedResponse)
 		if err != nil {
-			logger.Errorf("Could not parse stats (beaconnode stats) | %v", err)
+			logger.Warnf("Could not parse stats (beaconnode stats) | %v", err)
 			sendErrorResponse(w, r.URL.String(), "could not parse beaconnode")
 			return err
 		}

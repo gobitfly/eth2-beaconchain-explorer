@@ -207,3 +207,16 @@ func (e *DiscordReq) Scan(value interface{}) error {
 func (a DiscordReq) Value() (driver.Value, error) {
 	return json.Marshal(a)
 }
+
+type ApiEth1AddressResponse struct {
+	Address string `json:"address"`
+	Ether   string `json:"ether"`
+	Tokens  []struct {
+		Address  string  `json:"address"`
+		Balance  string  `json:"balance"`
+		Symbol   string  `json:"symbol"`
+		Decimals string  `json:"decimals,omitempty"`
+		Price    float64 `json:"price,omitempty"`
+		Currency string  `json:"currency,omitempty"`
+	} `json:"tokens"`
+}

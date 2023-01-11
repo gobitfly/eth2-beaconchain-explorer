@@ -44,11 +44,8 @@ func Correlations(w http.ResponseWriter, r *http.Request) {
 	// 	GPO:          services.LatestGasNowData(),
 	// }
 
-	err = correlationsTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		return
+	if handleTemplateError(w, r, correlationsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 

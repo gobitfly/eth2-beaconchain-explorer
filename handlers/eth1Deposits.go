@@ -38,12 +38,8 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 	data.HeaderAd = true
 	data.Data = pageData
 
-	err := eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if handleTemplateError(w, r, eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -155,12 +151,8 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
-	err := eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if handleTemplateError(w, r, eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 
