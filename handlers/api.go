@@ -605,11 +605,11 @@ func ApiSlotProposerSlashings(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiSlotVoluntaryExits godoc
-// @Summary Get the voluntary exits included in a specific block
+// @Summary Get the voluntary exits included in a specific slot
 // @Tags Slot
-// @Description Returns the voluntary exits included in a specific block
+// @Description Returns the voluntary exits included in a specific slot
 // @Produce  json
-// @Param  slot path string true "Block slot"
+// @Param  slot path string true "Slot"
 // @Success 200 {object} types.ApiResponse{data=[]types.APIVoluntaryExitResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/slot/{slot}/voluntaryexits [get]
@@ -635,13 +635,15 @@ func ApiSlotVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 	returnQueryResultsAsArray(rows, w, r)
 }
 
-// ApiSlotVoluntaryExits godoc
+// ApiSyncCommittee godoc
 // @Summary Get the sync-committee for a sync-period
 // @Tags SyncCommittee
 // @Description Returns the sync-committee for a sync-period. Validators are sorted by sync-committee-index.
+// @Description Sync committees where introduced in the Altair hardfork. Peroids before the hardfork do not contain sync-committees.
+// @Description For mainnet sync-committes first started after epoch 74240 (period 290) and each sync-committee is active for 256 epochs.
 // @Produce json
 // @Param period path string true "Period ('latest' for latest period or 'next' for next period in the future)"
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiResponse{data=types.APISyncCommitteeResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/sync_committee/{period} [get]
 func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {

@@ -455,3 +455,10 @@ type APIVoluntaryExitResponse struct {
 	Signature      string `json:"signature"`
 	ValidatorIndex uint64 `json:"validatorindex"`
 }
+
+type APISyncCommitteeResponse struct {
+	EndEpoch   uint64   `json:"end_epoch"`
+	Period     uint64   `json:"period"`
+	StartEpoch uint64   `json:"start_epoch"`
+	Validators []uint64 `json:"validators"`
+}
