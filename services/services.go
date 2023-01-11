@@ -653,7 +653,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
 	}
-	minEpoch := epochs[len(epochs)-1].Epoch
 
 	setEpochHistoryData(data, epochs)
 
@@ -711,6 +710,9 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		if slotsMap[slot.Slot] == nil || len(slot.BlockRoot) > len(slotsMap[slot.Slot].BlockRoot) {
 			slotsMap[slot.Slot] = slot
 		}
+		if slot.ExecutionBlockNumber > data.CurrentBlock {
+			data.CurrentBlock = slot.ExecutionBlockNumber
+		}
 	}
 
 	// set block struct values
@@ -736,24 +738,23 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		}
 	}
 
-	// get highest and lowest exec block number contained in the slots/epochs shown on this page
-	blockNumStats := struct {
-		Min uint64 `db:"min"`
-		Max uint64 `db:"max"`
-	}{}
-	err = db.ReaderDb.Get(&blockNumStats, `
-		SELECT MIN(b.exec_block_number) as min, MAX(b.exec_block_number) as max
+	// if there is no el block in the last 15 slots, get max block num from db
+	if data.CurrentBlock == 0 {
+		var max uint64
+		err = db.ReaderDb.Get(&max, `
+		SELECT MAX(b.exec_block_number) as max
 		FROM blocks b
-		WHERE b.slot < $1 AND b.epoch >= $2 AND b.exec_block_number != 0`, cutoffSlot, minEpoch)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving min and max block num for landing page: %v", err)
+		WHERE b.slot < $1`, cutoffSlot)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving max block num for landing page: %v", err)
+		}
+		data.CurrentBlock = max
 	}
-	data.CurrentBlock = blockNumStats.Max
 
 	// check if there even are any el blocks
-	if blockNumStats.Min != 0 {
+	if data.CurrentBlock != 0 {
 		// get el block data from bigtable
-		elBlocks, err := db.BigtableClient.GetBlocksDescending(blockNumStats.Max, (blockNumStats.Max-blockNumStats.Min)+1)
+		elBlocks, err := db.BigtableClient.GetBlocksDescending(data.CurrentBlock, 320)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving el block data for landing page: %v", err)
 		}
@@ -768,18 +769,20 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		for _, block := range elBlocks {
 			slotNum := utils.TimeToSlot(uint64(block.Time.AsTime().Unix()))
 			epochNum := utils.EpochOfSlot(slotNum)
-			slot, slotInMap := slotsMap[slotNum]
-			if relayDatum, blockHasMEV := relayData[common.BytesToHash(block.Hash)]; blockHasMEV {
-				epochsMap[epochNum].ExecutionReward = new(big.Int).Add(epochsMap[epochNum].ExecutionReward, relayDatum.MevBribe.BigInt())
-				if slotInMap {
-					slot.ExecutionRewardFormatted = utils.NewFormat(relayDatum.MevBribe.BigInt(), "ETH", 5, 1)
-					slot.ExecutionRewardRecipient = utils.FormatAddressWithLimits(relayDatum.MevRecipient, "", false, "address", 15, 20, false)
-				}
-			} else {
-				epochsMap[epochNum].ExecutionReward = new(big.Int).Add(epochsMap[epochNum].ExecutionReward, new(big.Int).SetBytes(block.TxReward))
-				if slotInMap {
-					slot.ExecutionRewardFormatted = utils.NewFormat(new(big.Int).SetBytes(block.TxReward), "ETH", 5, 1)
-					slot.ExecutionRewardRecipient = utils.FormatAddressWithLimits(block.Coinbase, "", false, "address", 15, 20, false)
+			if _, epochInMap := epochsMap[epochNum]; epochInMap {
+				slot, slotInMap := slotsMap[slotNum]
+				if relayDatum, blockHasMEV := relayData[common.BytesToHash(block.Hash)]; blockHasMEV {
+					epochsMap[epochNum].ExecutionReward = new(big.Int).Add(epochsMap[epochNum].ExecutionReward, relayDatum.MevBribe.BigInt())
+					if slotInMap {
+						slot.ExecutionRewardFormatted = utils.NewFormat(relayDatum.MevBribe.BigInt(), "ETH", 5, 1)
+						slot.ExecutionRewardRecipient = utils.FormatAddressWithLimits(relayDatum.MevRecipient, "", false, "address", 15, 20, false)
+					}
+				} else {
+					epochsMap[epochNum].ExecutionReward = new(big.Int).Add(epochsMap[epochNum].ExecutionReward, new(big.Int).SetBytes(block.TxReward))
+					if slotInMap {
+						slot.ExecutionRewardFormatted = utils.NewFormat(new(big.Int).SetBytes(block.TxReward), "ETH", 5, 1)
+						slot.ExecutionRewardRecipient = utils.FormatAddressWithLimits(block.Coinbase, "", false, "address", 15, 20, false)
+					}
 				}
 			}
 		}

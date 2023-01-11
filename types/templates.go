@@ -192,16 +192,16 @@ type IndexPageDataEpochs struct {
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page
 type IndexPageDataBlocks struct {
-	Epoch                    uint64        `json:"-"`
-	Slot                     uint64        `json:"slot"`
-	Ts                       time.Time     `json:"ts"`
-	Proposer                 uint64        `db:"proposer" json:"-"`
-	ProposerFormatted        template.HTML `json:"proposer_formatted"`
-	Status                   uint64        `db:"status" json:"-"`
-	StatusFormatted          template.HTML `json:"status_formatted"`
-	ProposerName             string        `db:"name" json:"-"`
-	ExecutionBlockNumber     int           `db:"exec_block_number" json:"exec_block_number"`
-	ExecutionReward          *big.Int      `json:"-"`
+	Epoch                uint64        `json:"-"`
+	Slot                 uint64        `json:"slot"`
+	Ts                   time.Time     `json:"ts"`
+	Proposer             uint64        `db:"proposer" json:"-"`
+	ProposerFormatted    template.HTML `json:"proposer_formatted"`
+	Status               uint64        `db:"status" json:"-"`
+	StatusFormatted      template.HTML `json:"status_formatted"`
+	ProposerName         string        `db:"name" json:"-"`
+	ExecutionBlockNumber uint64        `db:"exec_block_number" json:"exec_block_number"`
+	//ExecutionReward          *big.Int      `json:"-"`
 	ExecutionRewardFormatted template.HTML `json:"exec_reward"`
 	ExecutionRewardRecipient template.HTML `json:"exec_reward_recipient"`
 	BlockRoot                []byte        `db:"blockroot" json:"-"`
