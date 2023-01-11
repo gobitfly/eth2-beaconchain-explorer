@@ -918,14 +918,11 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.ChurnRate = *GetLatestStats().ValidatorChurnLimit
 
 	// get eth.store
-	err = db.ReaderDb.Get(&data.EthStore, `
-		SELECT apr
-		FROM eth_store_stats e
-		WHERE validator = -1 AND day = (SELECT MAX(day) FROM eth_store_stats);`)
-
+	ethstore, err := getEthStoreStatisticsData()
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving eth store for index page: %v", err)
 	}
+	data.EthStore = ethstore.ProjectedAPR / 100
 
 	// get gas price history
 	now = time.Now().Truncate(time.Minute)
