@@ -1,7 +1,6 @@
 package services
 
 import (
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/cache"
@@ -619,17 +618,9 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 
 	// has genesis occurred
-	if now.After(startSlotTime) {
-		data.Genesis = true
-	} else {
-		data.Genesis = false
-	}
+	data.Genesis = now.After(startSlotTime)
 	// show the transition view one hour before the first slot and until epoch 30 is reached
-	if now.Add(time.Hour*24).After(startSlotTime) && now.Before(genesisTransition) {
-		data.GenesisPeriod = true
-	} else {
-		data.GenesisPeriod = false
-	}
+	data.GenesisPeriod = now.Add(time.Hour*24).After(startSlotTime) && now.Before(genesisTransition)
 
 	if startSlotTime == time.Unix(0, 0) {
 		data.Genesis = false
@@ -644,34 +635,64 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 	data.ScheduledCount = scheduledCount
 
+	// get epochs from db
 	var epochs []*types.IndexPageDataEpochs
-	err = db.ReaderDb.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
+	err = db.ReaderDb.Select(&epochs, `
+		SELECT 
+			epoch, 
+			finalized, 
+			globalparticipationrate, 
+			votedether,
+
+			eligibleether,
+			validatorscount,
+			averagevalidatorbalance
+		FROM epochs 
+		ORDER BY epochs DESC 
+		LIMIT 10`)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
 	}
-	epochsMap := make(map[uint64]bool)
-	for _, epoch := range epochs {
-		epoch.Ts = utils.EpochToTime(epoch.Epoch)
-		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
-		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther, currency)
-		epoch.EligibleEtherFormatted = utils.FormatEligibleBalance(epoch.EligibleEther, currency)
-		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate, currency)
-		epochsMap[epoch.Epoch] = true
+
+	setEpochHistoryData(data, epochs)
+
+	if data.CurrentFinalizedEpoch == 0 {
+		var epochLowerBound uint64
+		if epochLowerBound = 0; epoch > 1600 {
+			epochLowerBound = epoch - 1600
+		}
+		var epochHistory []*types.IndexPageDataEpochs
+		err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized, averagevalidatorbalance FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving staked ether history: %v", err)
+		}
+
+		setEpochHistoryData(data, epochHistory)
 	}
 
-	var blocks []*types.IndexPageDataBlocks
-	err = db.ReaderDb.Select(&blocks, `
+	epochsMap := make(map[uint64]*types.IndexPageDataEpochs)
+	// set epoch struct values and add to map
+	for _, epoch := range epochs {
+		// since the latest epoch in the db always has a participation rate of 1, check for < 1 instead of <= 1
+		if data.EpochParticipationRate == 0 && epoch.GlobalParticipationRate < 1 {
+			data.EpochParticipationRate = epoch.GlobalParticipationRate
+		}
+		epoch.Ts = utils.EpochToTime(epoch.Epoch)
+		epoch.FinalizedFormatted = utils.FormatEpochStatus(epoch.Finalized, epoch.GlobalParticipationRate)
+		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRateStyle(epoch.VotedEther, epoch.GlobalParticipationRate, currency)
+		epoch.ExecutionReward = big.NewInt(0)
+		epochsMap[epoch.Epoch] = epoch
+	}
+
+	// get slots from db
+	// it may be possible for multiple slots to have the same block number, which is why more than 10 slots are selected
+	var slots []*types.IndexPageDataBlocks
+	err = db.ReaderDb.Select(&slots, `
 		SELECT
 			blocks.epoch,
 			blocks.slot,
 			blocks.proposer,
 			blocks.blockroot,
-			blocks.parentroot,
-			blocks.attestationscount,
-			blocks.depositscount,
-			blocks.voluntaryexitscount,
-			blocks.proposerslashingscount,
-			blocks.attesterslashingscount,
 			blocks.status,
 			COALESCE(blocks.exec_block_number, 0) AS exec_block_number,
 			COALESCE(validator_names.name, '') AS name
@@ -679,119 +700,192 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		WHERE blocks.slot < $1
-		ORDER BY blocks.slot DESC LIMIT 20`, cutoffSlot)
+		ORDER BY blocks.slot DESC LIMIT 15`, cutoffSlot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index block data: %v", err)
 	}
-
-	blocksMap := make(map[uint64]*types.IndexPageDataBlocks)
-	for _, block := range blocks {
-		if blocksMap[block.Slot] == nil || len(block.BlockRoot) > len(blocksMap[block.Slot].BlockRoot) {
-			blocksMap[block.Slot] = block
+	// keep slots with higher blockroot length
+	slotsMap := make(map[uint64]*types.IndexPageDataBlocks)
+	for _, slot := range slots {
+		if slotsMap[slot.Slot] == nil || len(slot.BlockRoot) > len(slotsMap[slot.Slot].BlockRoot) {
+			slotsMap[slot.Slot] = slot
+		}
+		if slot.ExecutionBlockNumber > data.CurrentBlock {
+			data.CurrentBlock = slot.ExecutionBlockNumber
 		}
 	}
-	blocks = make([]*types.IndexPageDataBlocks, 0, len(blocks))
-	for _, b := range blocksMap {
-		blocks = append(blocks, b)
-	}
-	sort.Slice(blocks, func(i, j int) bool {
-		return blocks[i].Slot > blocks[j].Slot
-	})
-	data.Blocks = blocks
 
-	if len(data.Blocks) > 15 {
-		data.Blocks = data.Blocks[:15]
-	}
+	// set block struct values
+	for _, slot := range slotsMap {
+		slot.StatusFormatted = utils.FormatBlockStatusStyle(slot.Status)
+		slot.ProposerFormatted = utils.FormatValidatorWithName(slot.Proposer, slot.ProposerName)
+		slot.ExecutionRewardFormatted = template.HTML("-")
+		slot.ExecutionRewardRecipient = template.HTML("-")
+		slot.Ts = utils.SlotToTime(slot.Slot)
 
-	for _, block := range data.Blocks {
-		block.StatusFormatted = utils.FormatBlockStatus(block.Status)
-		block.ProposerFormatted = utils.FormatValidatorWithName(block.Proposer, block.ProposerName)
-		block.BlockRootFormatted = fmt.Sprintf("%x", block.BlockRoot)
-
-		if !epochsMap[block.Epoch] {
-			epochs = append(epochs, &types.IndexPageDataEpochs{
-				Epoch:                            block.Epoch,
-				Ts:                               utils.EpochToTime(block.Epoch),
+		// it may be possible for the slot to be in a epoch not selected in the previous epoch query (e.g. a new epoch started in the meanwhile)
+		if _, containsEpoch := epochsMap[slot.Epoch]; !containsEpoch {
+			epochsMap[slot.Epoch] = &types.IndexPageDataEpochs{
+				Epoch:                            slot.Epoch,
+				Ts:                               utils.EpochToTime(slot.Epoch),
 				Finalized:                        false,
-				FinalizedFormatted:               utils.FormatYesNo(false),
-				EligibleEther:                    0,
-				EligibleEtherFormatted:           utils.FormatEligibleBalance(0, "ETH"),
+				FinalizedFormatted:               utils.FormatEpochStatus(false, 0),
 				GlobalParticipationRate:          0,
-				GlobalParticipationRateFormatted: utils.FormatGlobalParticipationRate(0, 1, ""),
+				GlobalParticipationRateFormatted: utils.FormatGlobalParticipationRateStyle(0, 1, ""),
+				ExecutionReward:                  big.NewInt(0),
 				VotedEther:                       0,
-				VotedEtherFormatted:              "",
-			})
-			epochsMap[block.Epoch] = true
+			}
 		}
+	}
+
+	// if there is no el block in the last 15 slots, get max block num from db
+	if data.CurrentBlock == 0 {
+		var max uint64
+		err = db.ReaderDb.Get(&max, `
+		SELECT MAX(b.exec_block_number) as max
+		FROM blocks b
+		WHERE b.slot < $1`, cutoffSlot)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving max block num for landing page: %v", err)
+		}
+		data.CurrentBlock = max
+	}
+
+	// check if there even are any el blocks
+	if data.CurrentBlock != 0 {
+		// get el block data from bigtable
+		elBlocks, err := db.BigtableClient.GetBlocksDescending(data.CurrentBlock, 320)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving el block data for landing page: %v", err)
+		}
+
+		// get relay data for all blocks
+		relayData, err := db.GetRelayDataForIndexedBlocks(elBlocks)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving relay data for blocks for landing page: %v", err)
+		}
+
+		// sum up or set reward for epochs and slots respectively
+		for _, block := range elBlocks {
+			slotNum := utils.TimeToSlot(uint64(block.Time.AsTime().Unix()))
+			epochNum := utils.EpochOfSlot(slotNum)
+			if _, epochInMap := epochsMap[epochNum]; epochInMap {
+				slot, slotInMap := slotsMap[slotNum]
+				if relayDatum, blockHasMEV := relayData[common.BytesToHash(block.Hash)]; blockHasMEV {
+					epochsMap[epochNum].ExecutionReward = new(big.Int).Add(epochsMap[epochNum].ExecutionReward, relayDatum.MevBribe.BigInt())
+					if slotInMap {
+						slot.ExecutionRewardFormatted = utils.NewFormat(relayDatum.MevBribe.BigInt(), "ETH", 5, 1)
+						slot.ExecutionRewardRecipient = utils.FormatAddressWithLimits(relayDatum.MevRecipient, "", false, "address", 15, 20, false)
+					}
+				} else {
+					epochsMap[epochNum].ExecutionReward = new(big.Int).Add(epochsMap[epochNum].ExecutionReward, new(big.Int).SetBytes(block.TxReward))
+					if slotInMap {
+						slot.ExecutionRewardFormatted = utils.NewFormat(new(big.Int).SetBytes(block.TxReward), "ETH", 5, 1)
+						slot.ExecutionRewardRecipient = utils.FormatAddressWithLimits(block.Coinbase, "", false, "address", 15, 20, false)
+					}
+				}
+			}
+		}
+	}
+
+	// convert slotsMap to slice
+	slots = make([]*types.IndexPageDataBlocks, 0, len(slots))
+	for _, s := range slotsMap {
+		slots = append(slots, s)
+	}
+	sort.Slice(slots, func(i, j int) bool {
+		return slots[i].Slot > slots[j].Slot
+	})
+
+	if len(slots) > 10 {
+		slots = slots[:10]
+	}
+
+	data.Blocks = slots
+
+	// convert epochsMap to slice
+	epochs = make([]*types.IndexPageDataEpochs, 0, len(epochs))
+	for _, e := range epochsMap {
+		epochs = append(epochs, e)
 	}
 	sort.Slice(epochs, func(i, j int) bool {
 		return epochs[i].Epoch > epochs[j].Epoch
 	})
 
+	if len(epochs) > 10 {
+		epochs = epochs[:10]
+	}
+
+	for _, e := range epochs {
+		e.ExecutionRewardFormatted = utils.NewFormat(e.ExecutionReward, "ETH", 5, 1)
+	}
 	data.Epochs = epochs
 
-	if len(data.Epochs) > 15 {
-		data.Epochs = data.Epochs[:15]
-	}
+	// not utilized in design prototype
+	//data.Subtitle = template.HTML(utils.Config.Frontend.SiteSubtitle)
+	data.ChurnRate = *GetLatestStats().ValidatorChurnLimit
 
-	if data.GenesisPeriod {
-		for _, blk := range blocks {
-			if blk.Status != 0 {
-				data.CurrentSlot = blk.Slot
-			}
-		}
-	} else if len(blocks) > 0 {
-		data.CurrentSlot = blocks[0].Slot
-	}
+	// get eth.store
+	err = db.ReaderDb.Get(&data.EthStore, `
+		SELECT apr
+		FROM eth_store_stats e
+		WHERE validator = -1 AND day = (SELECT MAX(day) FROM eth_store_stats);`)
 
-	for _, block := range data.Blocks {
-		block.Ts = utils.SlotToTime(block.Slot)
-	}
-	queueCount := struct {
-		EnteringValidators uint64 `db:"entering_validators_count"`
-		ExitingValidators  uint64 `db:"exiting_validators_count"`
-	}{}
-	err = db.ReaderDb.Get(&queueCount, "SELECT entering_validators_count, exiting_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
-	if err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("error retrieving validator queue count: %v", err)
-	}
-	data.EnteringValidators = queueCount.EnteringValidators
-	data.ExitingValidators = queueCount.ExitingValidators
-
-	var epochLowerBound uint64
-	if epochLowerBound = 0; epoch > 1600 {
-		epochLowerBound = epoch - 1600
-	}
-	var epochHistory []*types.IndexPageEpochHistory
-	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized, averagevalidatorbalance FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving staked ether history: %v", err)
+		return nil, fmt.Errorf("error retrieving eth store for index page: %v", err)
 	}
 
-	if len(epochHistory) > 0 {
-		for i := len(epochHistory) - 1; i >= 0; i-- {
-			if epochHistory[i].Finalized {
-				data.CurrentFinalizedEpoch = epochHistory[i].Epoch
-				data.FinalityDelay = FinalizationDelay()
-				data.AverageBalance = string(utils.FormatBalance(uint64(epochHistory[i].AverageValidatorBalance), currency))
-				break
-			}
-		}
+	// get gas price history
+	now = time.Now().Truncate(time.Minute)
+	lastThreeDays := time.Now().Truncate(time.Minute).Add(-time.Hour * 24 * 3)
 
-		data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther, currency))
-		data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
+	history, err := db.BigtableClient.GetGasNowHistory(now, lastThreeDays)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving gas price history: %v", err)
 	}
 
-	data.StakedEtherChartData = make([][]float64, len(epochHistory))
-	data.ActiveValidatorsChartData = make([][]float64, len(epochHistory))
-	for i, history := range epochHistory {
-		data.StakedEtherChartData[i] = []float64{float64(utils.EpochToTime(history.Epoch).Unix() * 1000), float64(history.EligibleEther) / 1000000000}
-		data.ActiveValidatorsChartData[i] = []float64{float64(utils.EpochToTime(history.Epoch).Unix() * 1000), float64(history.ValidatorsCount)}
+	group := make(map[int64]float64, 0)
+	count := make(map[int64]int, 0)
+	for i := 0; i < len(history); i++ {
+		ts := history[i].Ts.Truncate(time.Hour).Unix()
+		group[ts] += float64(history[i].Fast.Int64())
+		count[ts]++
+	}
+	for ts, sum := range group {
+		group[ts] = sum / float64(count[ts])
 	}
 
-	data.Subtitle = template.HTML(utils.Config.Frontend.SiteSubtitle)
+	gasPriceData := [][]float64{}
+
+	for ts, fast := range group {
+		gasPriceData = append(gasPriceData, []float64{float64(ts * 1000), math.Round(fast/1e4) / 1e5})
+	}
+
+	sort.SliceStable(gasPriceData, func(i int, j int) bool {
+		return gasPriceData[i][0] < gasPriceData[j][0]
+	})
+
+	data.GasPriceHistory = gasPriceData
 
 	return data, nil
+}
+
+func setEpochHistoryData(data *types.IndexPageData, epochHistory []*types.IndexPageDataEpochs) {
+	if len(epochHistory) == 0 {
+		return
+	}
+
+	for i := len(epochHistory) - 1; i >= 0; i-- {
+		if epochHistory[i].Finalized {
+			data.CurrentFinalizedEpoch = epochHistory[i].Epoch
+			data.FinalityDelay = FinalizationDelay()
+			data.AverageBalance = string(utils.FormatBalance(uint64(epochHistory[i].AverageValidatorBalance), "ETH"))
+			break
+		}
+	}
+
+	data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther, "ETH"))
+	data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
 }
 
 // LatestEpoch will return the latest epoch
@@ -905,36 +999,36 @@ func LatestIndexPageData() *types.IndexPageData {
 		logger.Errorf("error retrieving indexPageData from cache: %v", err)
 	}
 	return &types.IndexPageData{
-		NetworkName:               "",
-		DepositContract:           "",
-		ShowSyncingMessage:        false,
-		CurrentEpoch:              0,
-		CurrentFinalizedEpoch:     0,
-		CurrentSlot:               0,
-		ScheduledCount:            0,
-		FinalityDelay:             0,
-		ActiveValidators:          0,
-		EnteringValidators:        0,
-		ExitingValidators:         0,
-		StakedEther:               "",
-		AverageBalance:            "",
-		DepositedTotal:            0,
-		DepositThreshold:          0,
-		ValidatorsRemaining:       0,
-		NetworkStartTs:            0,
-		MinGenesisTime:            0,
-		Blocks:                    []*types.IndexPageDataBlocks{},
-		Epochs:                    []*types.IndexPageDataEpochs{},
-		StakedEtherChartData:      [][]float64{},
-		ActiveValidatorsChartData: [][]float64{},
-		Subtitle:                  "",
-		Genesis:                   false,
-		GenesisPeriod:             false,
-		Mainnet:                   false,
-		DepositChart:              &types.ChartsPageDataChart{},
-		DepositDistribution:       &types.ChartsPageDataChart{},
-		Countdown:                 nil,
-		SlotVizData:               types.SlotVizPageData{},
+		NetworkName:           "",
+		DepositContract:       "",
+		ShowSyncingMessage:    false,
+		CurrentEpoch:          0,
+		CurrentFinalizedEpoch: 0,
+		CurrentBlock:          0,
+		ScheduledCount:        0,
+		FinalityDelay:         0,
+		ActiveValidators:      0,
+		EnteringValidators:    0,
+		ExitingValidators:     0,
+		StakedEther:           "",
+		AverageBalance:        "",
+		DepositedTotal:        0,
+		DepositThreshold:      0,
+		ValidatorsRemaining:   0,
+		NetworkStartTs:        0,
+		MinGenesisTime:        0,
+		Blocks:                []*types.IndexPageDataBlocks{},
+		Epochs:                []*types.IndexPageDataEpochs{},
+		//StakedEtherChartData:      [][]float64{},
+		//ActiveValidatorsChartData: [][]float64{},
+		Subtitle:            "",
+		Genesis:             false,
+		GenesisPeriod:       false,
+		Mainnet:             false,
+		DepositChart:        &types.ChartsPageDataChart{},
+		DepositDistribution: &types.ChartsPageDataChart{},
+		Countdown:           nil,
+		SlotVizData:         types.SlotVizPageData{},
 	}
 }
 

@@ -1,49 +1,183 @@
+{{ define "networkStats_css" }}
+  <style>
+    #pg-grid {
+      padding: 0.375rem;
+      display: grid;
+      white-space: nowrap;
+      grid-auto-columns: minmax(0, 1fr);
+      grid-template-areas:
+        "epoch block"
+        "part active"
+        "staked ethstore"
+        "churn price"
+        "chart chart";
+    }
+    #pg-epoch {
+      grid-area: epoch;
+    }
+    #pg-block {
+      grid-area: block;
+    }
+    #pg-part {
+      grid-area: part;
+    }
+    #pg-active {
+      grid-area: active;
+    }
+    #pg-staked {
+      grid-area: staked;
+    }
+    #pg-ethstore {
+      grid-area: ethstore;
+    }
+    #pg-churn {
+      grid-area: churn;
+    }
+    #pg-price {
+      grid-area: price;
+    }
+    #pg-chart {
+      min-height: 0;
+      grid-area: chart;
+    }
+    #pg-grid .pg-grid-item {
+      border-bottom: 1px solid var(--border-color);
+      padding-left: 0.375rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: 5rem;
+    }
+
+    @media (min-width: 820px) {
+      #pg-grid {
+        grid-template-areas:
+          "epoch block  staked ethstore"
+          "part  active churn  price"
+          "chart chart  chart  chart";
+      }
+    }
+
+    @media (min-width: 1140px) {
+      #pg-grid {
+        padding: 0;
+        grid-template-areas:
+          "epoch block staked ethstore chart chart"
+          "part active churn price chart chart";
+      }
+      #pg-grid .pg-grid-item {
+        padding-left: 1.6rem;
+      }
+      #pg-grid .pg-grid-item:nth-of-type(n + 5) {
+        border-bottom: 0;
+      }
+      #pg-grid .pg-grid-item:nth-of-type(2n) {
+        border-right: 1px solid var(--border-color);
+      }
+      #pg-tablesrow {
+        flex-direction: row-reverse;
+      }
+    }
+
+    .style-slots-left {
+      font-family: "Mukta", sans-serif !important;
+      font-size: 0.8rem !important;
+      font-weight: 300 !important;
+    }
+    .style-stats-name {
+      font-family: "Mukta", sans-serif !important;
+      font-size: 1rem !important;
+      font-weight: 300 !important;
+    }
+
+    .style-stats-value {
+      font-family: "Mukta", sans-serif !important;
+      font-size: 1.25rem !important;
+      font-weight: 500 !important;
+    }
+
+    @media (min-width: 400px) and (max-width: 1140px) {
+      .style-stats-name {
+        font-size: 1.25rem !important;
+      }
+      .style-stats-value {
+        font-size: 1.5rem !important;
+      }
+    }
+
+    @media (min-width: 1440px) {
+      .style-stats-name {
+        font-size: 1.25rem !important;
+      }
+      .style-stats-value {
+        font-size: 1.5rem !important;
+      }
+
+      .style-slots-left {
+        font-size: 0.75rem !important;
+      }
+    }
+  </style>
+{{ end }}
+
 {{ define "networkStats" }}
-  <div class="col-md-4 responsive-border-right responsive-border-right-l">
-    <div class="d-flex justify-content-between">
-      <div class="p-2">
-        <div class="text-secondary mb-0">Epoch</div>
-        <h5 class="font-weight-normal mb-0"><span data-toggle="tooltip" data-placement="top" title="The most recent epoch" v-html="addCommas(page.current_epoch)"></span> / <span data-toggle="tooltip" data-placement="top" title="The most recent finalized epoch" v-html="addCommas(page.current_finalized_epoch)"></span></h5>
-      </div>
-      <div class="text-right p-2">
-        <div class="text-secondary mb-0">Current Slot</div>
-        <h5 class="font-weight-normal mb-0">
-          <span data-toggle="tooltip" data-placement="top" title="The most recent slot" v-html="addCommas(page.current_slot)"></span>
-        </h5>
-      </div>
+  <div id="pg-grid">
+    <div id="pg-epoch" class="pg-grid-item">
+      <div class="style-stats-name">Epoch</div>
+      <h5 class="style-stats-value mb-0">
+        <span span data-toggle="tooltip" data-placement="top" title="The most recent epoch" v-html="addCommas(page.current_epoch)"></span>
+      </h5>
     </div>
-  </div>
-  <div class="col-md-4 responsive-border-right responsive-border-right-l">
-    <div class="d-flex justify-content-between">
-      <div class="p-2">
-        <div class="text-secondary mb-0">Active Validators</div>
-        <h5 class="font-weight-normal mb-0">
-          <span data-toggle="tooltip" data-placement="top" title="The number of currently active validators" v-html="addCommas(page.active_validators)"></span>
-        </h5>
-      </div>
-      <div class="text-right p-2">
-        <div class="text-secondary mb-0">Pending Validators</div>
-        <h5 class="font-weight-normal mb-0">
-          <span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to enter the active validator set" v-html="addCommas(page.entering_validators)"></span>
-          / <span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to exit the active validator set" v-html="addCommas(page.exiting_validators)"></span>
-        </h5>
-      </div>
+    <div id="pg-block" class="pg-grid-item">
+      <div class="style-stats-name">Block</div>
+      <h5 class="style-stats-value mb-0">
+        <span data-toggle="tooltip" data-placement="top" title="The most recent block" v-html="addCommas(page.current_block)"></span>
+      </h5>
     </div>
-  </div>
-  <div class="col-md-4">
-    <div class="d-flex justify-content-between">
-      <div class="p-2">
-        <div class="text-secondary mb-0">Staked Ether</div>
-        <h5 class="font-weight-normal mb-0">
-          <span data-toggle="tooltip" data-placement="top" title="The sum of all effective balances" v-html="addCommas(page.staked_ether)"></span>
-        </h5>
-      </div>
-      <div class="text-right p-2">
-        <div class="text-secondary mb-0">Average Balance</div>
-        <h5 class="font-weight-normal mb-0">
-          <span data-toggle="tooltip" data-placement="top" title="The average current balance of all validators staked" v-html="addCommas(page.average_balance)"></span>
-        </h5>
-      </div>
+    <div id="pg-staed" class="pg-grid-item">
+      <div class="style-stats-name">Staked Ether</div>
+      <h5 class="style-stats-value mb-0">
+        <span data-toggle="tooltip" data-placement="top" title="The sum of all effective balances" v-html="addCommas(page.staked_ether)"></span>
+      </h5>
+    </div>
+    <div id="pg-ethstore" class="pg-grid-item">
+      <div class="style-stats-name">ETH.STORE</div>
+      <h5 class="style-stats-value mb-0"><span data-toggle="tooltip" data-placement="top" title="The daily average APR of validators across the entire Ethereum staking network" v-html="(page.eth_store*100).toFixed(2)+'%'"></span></h5>
+    </div>
+    <div id="pg-part" class="pg-grid-item">
+      <div class="style-stats-name">Epoch Participation</div>
+      <h5 class="style-stats-value mb-0">
+        <span data-toggle="tooltip" data-placement="top" title="The percentage of validators exptected to attest to slots" v-html="(page.epoch_participation_rate*100).toFixed(0)+'%'"></span>
+      </h5>
+    </div>
+    <div id="pg-active" class="pg-grid-item">
+      <div class="style-stats-name">Active Validators</div>
+      <h5 class="style-stats-value mb-0">
+        <span data-toggle="tooltip" data-placement="top" title="The number of currently active validators" v-html="addCommas(page.active_validators)"></span>
+      </h5>
+    </div>
+    <div id="pg-churn" class="pg-grid-item">
+      <div class="style-stats-name">Churn Rate</div>
+      <h5 class="style-stats-value mb-0"><span data-toggle="tooltip" data-placement="top" title="The rate at which validators can enter or leave the system" v-html="page.churn_rate + '%'"></span></h5>
+    </div>
+    <div id="pg-price" class="pg-grid-item">
+      <div class="style-stats-name">Gas Price</div>
+      <h5 class="style-stats-value mb-0">
+        <span data-toggle="tooltip" data-placement="top" title="The tail gas price of the current block">
+          {{- if .GasNow }}
+            {{ if ge (bigIntCmp .GasNow.Data.Fast 1E9) 0 }}
+              {{ formatBalanceWei .GasNow.Data.Fast "GWei" 0 }}
+            {{ else }}
+              < 1 Gwei
+            {{ end }}
+          {{- else }}
+            -
+          {{- end }}
+        </span>
+      </h5>
+    </div>
+    <div id="pg-chart">
+      <highcharts :constructor-type="'stockChart'" :options="chartOptions"></highcharts>
     </div>
   </div>
 {{ end }}

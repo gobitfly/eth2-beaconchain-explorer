@@ -1,68 +1,71 @@
+{{ define "recentBlocks_css" }}
+  <style>
+    #blocks-table {
+      grid-template-columns: repeat(5, auto);
+      grid-template-rows: repeat(11, 2.5rem);
+    }
+
+    @media (min-width: 640px) {
+      #blocks-table {
+        grid-template-columns: repeat(6, auto);
+      }
+    }
+    @media (min-width: 820px) {
+      #blocks-table {
+        grid-template-rows: repeat(11, 3rem);
+      }
+    }
+    @media (min-width: 1140px) {
+      #blocks-table {
+        height: calc(24rem - 1px);
+      }
+    }
+  </style>
+{{ end }}
+
 {{ define "recentBlocks" }}
   <div class="card">
     <div class="card-header">
-      <h3 class="card-title d-flex justify-content-between align-items-center" style="margin: .5rem 0;">
+      <h3 class="style-card-header d-flex justify-content-between align-items-center mb-0 text-nowrap">
         <span><i class="fa fa-cubes"></i> Most recent blocks</span>
-        <a class="btn btn-primary btn-sm float-right text-white" href="/blocks">View more</a>
+        <a class="btn btn-primary btn-sm float-right text-white style-button ml-2" href="/blocks">View more</a>
       </h3>
     </div>
     <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Epoch</th>
-              <th>Slot</th>
-              <th data-toggle="tooltip" title="Execution Layer Block Number">Block</th>
-              <th>Status</th>
-              <th>Time</th>
-              <th>Proposer</th>
-              <!-- <th>Root Hash</th> -->
-              <!-- <th data-toggle="tooltip" title="Attestations">Att</th> -->
-              <!-- <th>Deposits</th>
-          <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
-          <th>Exits</th> -->
-            </tr>
-          </thead>
-          <tbody v-if="page && page.blocks && page.blocks.length">
-            <tr v-for="block in page.blocks">
-              <td><a v-bind:href="'/epoch/' + block.epoch" v-html="addCommas(block.epoch)"></a></td>
-              <td><a v-bind:href="'/slot/' + block.slot" v-html="addCommas(block.slot)"></a></td>
-              <td v-if="block.exec_block_number === 0">
-                <span style="background: #e7e1d7" class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">-</span>
-              </td>
-              <td v-else><a v-bind:href="'/block/' + block.exec_block_number" v-html="addCommas(block.exec_block_number)"></a></td>
-              <td v-if="block.slot === 0">
-                <span style="background: #e7e1d7" class="badge text-dark">Genesis</span>
-              </td>
-              <td v-else v-html="block.status_formatted"></td>
-              <td>${ block.ts | fromNow }</td>
-              <td v-if="block.slot !== 0" v-html="block.proposer_formatted"></td>
-              <td v-else>N/A</td>
-              <!-- <td class="text-monospace">
-            <a v-if="block.status === 1 || block.status === 3" v-bind:href="'/block/' + block.block_root_formatted">0x${ block.block_root_formatted.substr(0, 6) }...</a>
-            <a v-if="block.status === 0 || block.status === 2">N/A</a>
-          </td> -->
-              <!-- <td>${ block.attestations }</td> -->
-              <!-- <td>${ block.deposits }</td>
-          <td>${ block.proposerslashings } / ${ block.attesterslashings }</td>
-          <td>${ block.exits }</td> -->
-            </tr>
-          </tbody>
-          <tbody v-else>
-            <tr style="height: 430px;">
-              <td></td>
-              <td style="vertical-align: middle;" colspan="4">
-                <div class="img-fluid mx-auto p-3 d-flex align-items-center" style="max-height: 400px; width: auto; overflow: hidden;">
-                  {{ template "timeline_svg" }}
-                </div>
-              </td>
-              <td></td>
-            </tr>
-          </tbody>
-        </table>
-        <small style="position: absolute; right: 0;" class="float-right pt-md-0 pt-2 m-2"> Next update in ${updateIn}s</small>
+      <div role="table" class="style-grid" id="blocks-table">
+        <div class="d-contents" role="rowgroup">
+          <div class="d-contents" role="row">
+            <div class="style-paragraph-6 style-grid-header pl-3" role="columnheader">Block</div>
+            <div class="style-paragraph-6 style-grid-header pr-2 d-none d-sm-flex" role="columnheader">Slot</div>
+            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader"><span class="d-none d-sm-flex">Status</span></div>
+            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader">Proposer</div>
+            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader">EL Reward</div>
+            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader">Reward Recipient</div>
+          </div>
+        </div>
+        <div class="d-contents" role="rowgroup" v-if="page && page.blocks && page.blocks.length">
+          <div class="d-contents" role="row" v-for="block in page.blocks">
+            <div role="cell" class="style-paragraph-1 style-grid-cell ml-2 pl-2 pr-2">
+              <a v-if="block.exec_block_number != 0" v-bind:href="'/block/' + block.exec_block_number" v-html="addCommas(block.exec_block_number)"></a>
+              <span v-else>-</span>
+            </div>
+            <div role="cell" class="style-grid-cell d-none d-sm-flex pr-2">
+              <div class="d-flex flex-column">
+                <a class="style-paragraph-1" style="margin-bottom: -0.3rem" v-bind:href="'/slot/' + block.slot" v-html="addCommas(block.slot)"></a>
+                <span class="style-paragraph-3" style="color:var(--text-addition)">${ block.ts | fromNow }</span>
+              </div>
+            </div>
+            <div role="cell" class="style-grid-cell pr-2" v-html="block.status_formatted"></div>
+            <div role="cell" class="style-paragraph-1 style-grid-cell pr-2" v-html="block.proposer_formatted"></div>
+            <div role="cell" class="style-paragraph-1 style-grid-cell pr-2" v-html="block.exec_reward"></div>
+            <div role="cell" class="style-hash style-grid-cell mr-2" v-html="block.exec_reward_recipient"></div>
+          </div>
+        </div>
+        <div class="d-contents" role="row" v-else>
+          <div role="cell" style="grid-column: 1 / span 6; text-align: center">börj</div>
+        </div>
       </div>
     </div>
   </div>
+  <span class="d-none">${updateIn}</span>
 {{ end }}

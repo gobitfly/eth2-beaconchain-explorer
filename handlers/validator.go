@@ -808,7 +808,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 		orderDir = "desc"
 	}
 
-	var blocks []*types.IndexPageDataBlocks
+	var blocks []*types.OldIndexPageDataBlocks
 	err = db.ReaderDb.Select(&blocks, `
 		SELECT 
 			blocks.epoch, 

@@ -134,36 +134,40 @@ type StatsTopDepositors struct {
 
 // IndexPageData is a struct to hold info for the main web page
 type IndexPageData struct {
-	NetworkName               string `json:"networkName"`
-	DepositContract           string `json:"depositContract"`
-	ShowSyncingMessage        bool
-	CurrentEpoch              uint64                 `json:"current_epoch"`
-	CurrentFinalizedEpoch     uint64                 `json:"current_finalized_epoch"`
-	CurrentSlot               uint64                 `json:"current_slot"`
-	ScheduledCount            uint8                  `json:"scheduled_count"`
-	FinalityDelay             uint64                 `json:"finality_delay"`
-	ActiveValidators          uint64                 `json:"active_validators"`
-	EnteringValidators        uint64                 `json:"entering_validators"`
-	ExitingValidators         uint64                 `json:"exiting_validators"`
-	StakedEther               string                 `json:"staked_ether"`
-	AverageBalance            string                 `json:"average_balance"`
-	DepositedTotal            float64                `json:"deposit_total"`
-	DepositThreshold          float64                `json:"deposit_threshold"`
-	ValidatorsRemaining       float64                `json:"validators_remaining"`
-	NetworkStartTs            int64                  `json:"network_start_ts"`
-	MinGenesisTime            int64                  `json:"minGenesisTime"`
-	Blocks                    []*IndexPageDataBlocks `json:"blocks"`
-	Epochs                    []*IndexPageDataEpochs `json:"epochs"`
-	StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
-	ActiveValidatorsChartData [][]float64            `json:"active_validators_chart_data"`
-	Subtitle                  template.HTML          `json:"subtitle"`
-	Genesis                   bool                   `json:"genesis"`
-	GenesisPeriod             bool                   `json:"genesis_period"`
-	Mainnet                   bool                   `json:"mainnet"`
-	DepositChart              *ChartsPageDataChart
-	DepositDistribution       *ChartsPageDataChart
-	Countdown                 interface{}
-	SlotVizData               SlotVizPageData `json:"slotVizData"`
+	NetworkName           string `json:"networkName"`
+	DepositContract       string `json:"depositContract"`
+	ShowSyncingMessage    bool
+	CurrentEpoch          uint64                 `json:"current_epoch"`
+	CurrentFinalizedEpoch uint64                 `json:"current_finalized_epoch"`
+	CurrentBlock          uint64                 `json:"current_block"`
+	ScheduledCount        uint8                  `json:"scheduled_count"`
+	FinalityDelay         uint64                 `json:"finality_delay"`
+	ActiveValidators      uint64                 `json:"active_validators"`
+	EnteringValidators    uint64                 `json:"entering_validators"`
+	ExitingValidators     uint64                 `json:"exiting_validators"`
+	StakedEther           string                 `json:"staked_ether"`
+	AverageBalance        string                 `json:"average_balance"`
+	DepositedTotal        float64                `json:"deposit_total"`
+	DepositThreshold      float64                `json:"deposit_threshold"`
+	ValidatorsRemaining   float64                `json:"validators_remaining"`
+	NetworkStartTs        int64                  `json:"network_start_ts"`
+	MinGenesisTime        int64                  `json:"minGenesisTime"`
+	Blocks                []*IndexPageDataBlocks `json:"blocks"`
+	Epochs                []*IndexPageDataEpochs `json:"epochs"`
+	GasPriceHistory       [][]float64            `json:"gas_price_history"`
+	//StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
+	//ActiveValidatorsChartData [][]float64            `json:"active_validators_chart_data"`
+	Subtitle               template.HTML `json:"subtitle"`
+	Genesis                bool          `json:"genesis"`
+	GenesisPeriod          bool          `json:"genesis_period"`
+	Mainnet                bool          `json:"mainnet"`
+	DepositChart           *ChartsPageDataChart
+	DepositDistribution    *ChartsPageDataChart
+	Countdown              interface{}
+	SlotVizData            SlotVizPageData `json:"slotVizData"`
+	EpochParticipationRate float64         `json:"epoch_participation_rate"`
+	EthStore               float64         `json:"eth_store"`
+	ChurnRate              uint64          `json:"churn_rate"`
 }
 
 type SlotVizPageData struct {
@@ -176,16 +180,35 @@ type IndexPageDataEpochs struct {
 	Ts                               time.Time     `json:"ts"`
 	Finalized                        bool          `json:"finalized"`
 	FinalizedFormatted               template.HTML `json:"finalized_formatted"`
-	EligibleEther                    uint64        `json:"eligibleether"`
-	EligibleEtherFormatted           template.HTML `json:"eligibleether_formatted"`
 	GlobalParticipationRate          float64       `json:"globalparticipationrate"`
 	GlobalParticipationRateFormatted template.HTML `json:"globalparticipationrate_formatted"`
 	VotedEther                       uint64        `json:"votedether"`
-	VotedEtherFormatted              template.HTML `json:"votedether_formatted"`
+	ExecutionReward                  *big.Int      `json:"-"`
+	ExecutionRewardFormatted         template.HTML `json:"exec_reward"`
+	EligibleEther                    uint64        `db:"eligibleether" json:"-"`
+	ValidatorsCount                  uint64        `db:"validatorscount" json:"-"`
+	AverageValidatorBalance          uint64        `db:"averagevalidatorbalance" json:"-"`
 }
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page
 type IndexPageDataBlocks struct {
+	Epoch                uint64        `json:"-"`
+	Slot                 uint64        `json:"slot"`
+	Ts                   time.Time     `json:"ts"`
+	Proposer             uint64        `db:"proposer" json:"-"`
+	ProposerFormatted    template.HTML `json:"proposer_formatted"`
+	Status               uint64        `db:"status" json:"-"`
+	StatusFormatted      template.HTML `json:"status_formatted"`
+	ProposerName         string        `db:"name" json:"-"`
+	ExecutionBlockNumber uint64        `db:"exec_block_number" json:"exec_block_number"`
+	//ExecutionReward          *big.Int      `json:"-"`
+	ExecutionRewardFormatted template.HTML `json:"exec_reward"`
+	ExecutionRewardRecipient template.HTML `json:"exec_reward_recipient"`
+	BlockRoot                []byte        `db:"blockroot" json:"-"`
+}
+
+// OldIndexPageDataBlocks is a struct to hold detail data for the old main web page, which for some reason is used in the validator and epoch handler
+type OldIndexPageDataBlocks struct {
 	Epoch                uint64        `json:"epoch"`
 	Slot                 uint64        `json:"slot"`
 	Ts                   time.Time     `json:"ts"`
@@ -206,15 +229,6 @@ type IndexPageDataBlocks struct {
 	Graffiti             []byte        `db:"graffiti"`
 	ProposerName         string        `db:"name"`
 	ExecutionBlockNumber int           `db:"exec_block_number" json:"exec_block_number"`
-}
-
-// IndexPageEpochHistory is a struct to hold the epoch history for the main web page
-type IndexPageEpochHistory struct {
-	Epoch                   uint64 `db:"epoch"`
-	ValidatorsCount         uint64 `db:"validatorscount"`
-	EligibleEther           uint64 `db:"eligibleether"`
-	Finalized               bool   `db:"finalized"`
-	AverageValidatorBalance uint64 `db:"averagevalidatorbalance"`
 }
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page
@@ -784,7 +798,7 @@ type EpochPageData struct {
 	GlobalParticipationRate float64 `db:"globalparticipationrate"`
 	VotedEther              uint64  `db:"votedether"`
 
-	Blocks []*IndexPageDataBlocks
+	Blocks []*OldIndexPageDataBlocks
 
 	SyncParticipationRate float64
 	Ts                    time.Time

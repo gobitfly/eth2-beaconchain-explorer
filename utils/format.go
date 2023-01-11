@@ -332,6 +332,31 @@ func FormatBlockStatusShort(status uint64) template.HTML {
 	}
 }
 
+func FormatBlockStatusStyle(status uint64) template.HTML {
+	if status == 0 {
+		return `<div title="This slot is still scheduled" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-neutral-1"><div class="style-status-tag-text" >S<span class="d-none d-sm-inline">cheduled</span></div></div>`
+	} else if status == 1 {
+		return `<div title="This block has been proposed" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-good"><div class="style-status-tag-text text-white" >P<span class="d-none d-sm-inline">roposed</span></div></div>`
+	} else if status == 2 {
+		return `<div title="This block proposal has been missed" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-bad"><div class="style-status-tag-text" >M<span class="d-none d-sm-inline">issed</span></div></div>`
+	} else if status == 3 {
+		return `<div title="This block has been orphaned" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-neutral-2"><div class="style-status-tag-text text-white" >O<span class="d-none d-sm-inline">rphaned</span></div></div>`
+	} else {
+		return `<div title="This shouldn't be possible" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-neutral-2"><div class="style-status-tag-text text-white" >?</div></div>`
+	}
+}
+
+func FormatEpochStatus(finalized bool, participationRate float64) template.HTML {
+	if finalized {
+		return `<div title="This epoch is finalized" data-toggle="tooltip" class="style-badge style-bg-good"><div class="style-status-tag-text text-white" ><span class="d-sm-none">FIN</span><span class="d-none d-sm-inline">Finalized</span></div></div>`
+	} else if participationRate > 0.66 && participationRate < 1 {
+		// since the latest epoch in the db always has a participation rate of 1, check for < 1 instead of <= 1
+		return `<div title="This epoch is not finalized but safe, making a revert unlikely" data-toggle="tooltip" class="style-badge style-badge-nfs style-bg-neutral-2"><div class="style-status-tag-text text-white" ><span class="d-sm-none">NFS</span><span class="d-none d-sm-inline">Not finalized (Safe)</span></div></div>`
+	} else {
+		return `<div title="This epoch is not finalized" data-toggle="tooltip" class="style-badge style-bg-neutral-1"><div class="style-status-tag-text" ><span class="d-sm-none">NF</span><span class="d-none d-sm-inline">Not finalized</span></div></div>`
+	}
+}
+
 func FormatTransactionType(txnType uint8) string {
 	switch txnType {
 	case 0:
@@ -458,11 +483,27 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 	tpl := `
 	<div style="position:relative;width:inherit;height:inherit;">
 	  %.0[1]f <small class="text-muted ml-3">(%[2]v)</small>
-	  <div class="progress" style="position:absolute;bottom:-6px;width:100%%;height:4px;">
+	  <div class="progress" style="position:absolute;width:100%%;height:4px;">
 		<div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div>
 	  </div>
 	</div>`
 	return template.HTML(p.Sprintf(tpl, float64(e)/1e9*price.GetEthPrice(currency), rr))
+}
+
+func FormatGlobalParticipationRateStyle(voted uint64, participationRate float64, currency string) template.HTML {
+	if voted == 0 {
+		return `<span class="style-paragraph-1">Calculating...</span>`
+	}
+	p := message.NewPrinter(language.English)
+	rr := fmt.Sprintf("%.2f%%", participationRate*100)
+	tpl := `
+	<div style="position:relative;width:inherit;height:inherit;">
+		<span class="style-paragraph-1">%.0[1]f</span><span class="style-paragraph-3 ml-3">(%[2]v)
+	  <div class="progress" style="width:100%%;height:4px;">
+		<div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div>
+	  </div>
+	</div>`
+	return template.HTML(p.Sprintf(tpl, float64(voted)/1e9*price.GetEthPrice(currency), rr))
 }
 
 func FormatEtherValue(symbol string, ethPrice *big.Float, currentPrice template.HTML) template.HTML {
@@ -830,9 +871,9 @@ func FormatValidatorWithName(validator interface{}, name string) template.HTML {
 	}
 
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i> <a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validatorLink))
+		return template.HTML(fmt.Sprintf("<a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validatorLink))
 	} else {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i> <a href=\"/validator/%v\">%v</a>", validatorLink, validatorRead))
+		return template.HTML(fmt.Sprintf("<a href=\"/validator/%v\">%v</a>", validatorLink, validatorRead))
 	}
 }
 

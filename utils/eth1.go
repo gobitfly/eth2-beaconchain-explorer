@@ -266,7 +266,7 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 	var displayUnit string
 	var unitDigits int
 	if unit == "ETH" {
-		displayUnit = " Ether"
+		displayUnit = " ETH"
 		unitDigits = 18
 	} else if unit == "GWei" {
 		displayUnit = " GWei"
@@ -314,6 +314,7 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 					digits -= l
 				}
 			}
+
 		} else if l == unitDigits { // there is only post comma part and no leading zeros has to be added
 			postComma = strings.TrimRight(s, "0")
 		} else if l != 0 { // there is only post comma part and leading zeros as to be added
@@ -331,6 +332,98 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 		}
 		tooltip += `"`
 	}
+
+	// limit floating part
+	if len(postComma) > digits {
+		postComma = postComma[:digits]
+	}
+
+	// set floating point
+	if len(postComma) > 0 {
+		preComma += "." + postComma
+	}
+
+	// done, convert to HTML & return
+	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, preComma, displayUnit))
+}
+
+// NewFormat returns a new HTML-formatted string representing the given Wei big.Int amount, with the specified number of digits after the decimal point and number of digits hidden on mobile views.
+//
+// Parameters:
+//   - `amount` : the Wei(!) amount to be formatted.
+//   - `unit` : the unit in which the amount should be formatted. Supported values are ETH and GWei.
+//   - `digits` : the number of digits after the decimal point to be displayed.
+//   - `maxPreCommaDigitsBeforeTrim` : the maximum number of digits before the decimal point that should be displayed before trimming excess decimal digits. If this is set to 0, no digits are trimmed.
+//
+// **NOTE** Every number is rounded down
+//
+// TODO Replace every formatAmount with this
+func NewFormat(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int) template.HTML {
+	if amount == nil {
+		return template.HTML(`NA`)
+	}
+
+	// define display unit & digits used per unit max
+	var displayUnit string
+	var unitDigits int
+	// if more units are added, make sure to add them in the godoc
+	switch unit {
+	case "ETH":
+		displayUnit = " ETH"
+		unitDigits = 18
+	case "GWei":
+		displayUnit = " GWei"
+		unitDigits = 9
+	default:
+		displayUnit = " Wei"
+		unitDigits = 0
+	}
+
+	// Initialize preComma and postComma variables to "0"
+	preComma := "0"
+	postComma := "0"
+
+	s := amount.String()
+	l := len(s)
+
+	// Check if there is a part of the amount before the decimal point
+	if l > int(unitDigits) {
+		// Calculate length of preComma part
+		l -= unitDigits
+		// Set preComma to part of the string before the decimal point
+		preComma = s[:l]
+		// Set postComma to part of the string after the decimal point, after removing trailing zeros
+		postComma = strings.TrimRight(s[l:], "0")
+
+		// Check if the preComma part exceeds the maximum number of digits before the decimal point
+		if maxPreCommaDigitsBeforeTrim > 0 && l > maxPreCommaDigitsBeforeTrim {
+			// Reduce the number of digits after the decimal point by the excess number of digits in the preComma part
+			l -= maxPreCommaDigitsBeforeTrim
+			if digits < l {
+				digits = 0
+			} else {
+				digits -= l
+			}
+		}
+		// Check if there is only a part of the amount after the decimal point, and no leading zeros need to be added
+	} else if l == unitDigits {
+		// Set postComma to part of the string after the decimal point, after removing trailing zeros
+		postComma = strings.TrimRight(s, "0")
+		// Check if there is only a part of the amount after the decimal point, and leading zeros need to be added
+	} else if l != 0 {
+		// Use fmt package to add leading zeros to the string
+		d := fmt.Sprintf("%%0%dd", unitDigits-l)
+		// Set postComma to resulting string, after removing trailing zeros
+		postComma = strings.TrimRight(fmt.Sprintf(d, 0)+s, "0")
+	}
+
+	// tooltip
+	var tooltip string
+	tooltip = ` data-toggle="tooltip" data-placement="top" title="` + preComma
+	if len(postComma) > 0 {
+		tooltip += `.` + postComma
+	}
+	tooltip += `"`
 
 	// limit floating part
 	if len(postComma) > digits {
