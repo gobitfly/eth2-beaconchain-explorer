@@ -35,7 +35,7 @@ import (
 )
 
 // @title Beaconcha.in API Documentation
-// @version 1.0
+// @version 1.1
 // @description High performance API for querying information about Ethereum
 // @description The API is currently free to use. A fair use policy applies. Calls are rate limited to
 // @description 10 requests / 1 minute / IP. All API results are cached for 1 minute.
@@ -46,19 +46,25 @@ import (
 // @description
 // @description Key in a request header:  `curl -H 'apikey: <your_key>' https://beaconcha.in/api/v1/block/1`
 // @tag.name Epoch
-// @tag.description consensus layer information about epochs
+// @tag.description Consensus layer information about epochs
 // @tag.docs.url https://example.com
 // @tag.name Slot
-// @tag.description consensus layer information about slots
+// @tag.description Consensus layer information about slots
 // @tag.name Validator
-// @tag.description consensus layer information about validators
+// @tag.description Consensus layer information about validators
+// @tag.name SyncCommittee
 // @tag.name Execution
-// @tag.description execution layer information about addresses, blocks and transactions
+// @tag.description layer information about addresses, blocks and transactions
 // @tag.name ETH.STORE
+// @tag.description is the transparent Ethereum staking reward reference rate.
+// @tag.docs.url https://staking.ethermine.org/statistics
+// @tag.docs.description More info
 // @tag.name Rocketpool
-// @tag.name Graffitiwall
+// @tag.description validator statistics
+// @tag.docs.url https://rocketpool.net
+// @tag.docs.description More info
 // @tag.name Misc
-// @tag.name
+// @tag.name User
 // @securitydefinitions.oauth2.accessCode OAuthAccessCode
 // @tokenurl https://beaconcha.in/user/token
 // @authorizationurl https://beaconcha.in/user/authorize
@@ -68,7 +74,7 @@ import (
 
 // ApiHealthz godoc
 // @Summary Health of the explorer
-// @Tags Health,Misc
+// @Tags Misc
 // @Description Health endpoint for monitoring if the explorer is in sync
 // @Produce  text/plain
 // @Success 200 {object} types.ApiResponse
@@ -154,7 +160,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 
 // ApiHealthzLoadbalancer godoc
 // @Summary Health of the explorer-api regarding having a healthy connection to the database
-// @Tags Health, Misc
+// @Tags Misc
 // @Description Health endpoint for montitoring if the explorer-api
 // @Produce  text/plain
 // @Success 200 {object} types.ApiResponse
@@ -236,16 +242,16 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiEpoch godoc
-// @Summary Get epoch by number
+// @Summary Get epoch by number, latest, finalized
 // @Tags Epoch
 // @Description Returns information for a specified epoch by the epoch number or an epoch tag (can be latest or finalized)
 // @Produce  json
-// @Param  epoch path string true "Epoch number or the string latest"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
+// @Param  epoch path string true "Epoch number, the string latest or the string finalized"
+// @Success 200 {object} types.ApiResponse{data=types.APIEpochResponse} "Success"
+// @Failure 400 {object} types.ApiResponse "Failure"
+// @Failure 500 {object} types.ApiResponse "Server Error"
 // @Router /api/v1/epoch/{epoch} [get]
 func ApiEpoch(w http.ResponseWriter, r *http.Request) {
-
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
@@ -257,25 +263,38 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if vars["epoch"] == "latest" {
-		err = db.ReaderDb.Get(&epoch, "SELECT MAX(epoch) FROM epochs")
-		if err != nil {
-			sendErrorResponse(w, r.URL.String(), "unable to retrieve latest epoch number")
-			return
-		}
+		// err = db.ReaderDb.Get(&epoch, "SELECT MAX(epoch) FROM epochs")
+		// if err != nil {
+		// 	sendErrorResponse(w, r.URL.String(), "unable to retrieve latest epoch number")
+		// 	return
+		// }
+		epoch = int64(services.LatestEpoch())
 	}
 
 	if vars["epoch"] == "finalized" {
 		epoch = int64(services.LatestFinalizedEpoch())
 	}
 
+	if epoch > int64(services.LatestEpoch()) {
+		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("epoch is in the future. The latest epoch is %v", services.LatestEpoch()))
+		return
+	}
+
+	if epoch < 0 {
+		sendErrorResponse(w, r.URL.String(), "epoch must be a positive number")
+		return
+	}
+
 	rows, err := db.ReaderDb.Query(`SELECT *, 
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '0') as scheduledblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '1') as proposedblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '2') as missedblocks,
-		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '3') as orphanedblocks
-		FROM epochs WHERE epoch = $1`, epoch)
+		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '3') as orphanedblocks,
+		(SELECT $2) as ts
+		FROM epochs WHERE epoch = $1`, epoch, utils.EpochToTime(uint64(epoch)).Unix())
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		logger.WithError(err).Error("error retrieving epoch data")
+		sendServerErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
 	defer rows.Close()
@@ -284,22 +303,20 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiEpochSlots godoc
-// @Summary Get epoch blocks by epoch number
+// @Summary Get epoch blocks by epoch number, latest or finalized
 // @Tags Epoch
 // @Description Returns all blocks for a specified epoch
 // @Produce  json
-// @Param  epoch path string true "Epoch number or the string latest"
-// @Success 200 {object} types.ApiResponse
+// @Param  epoch path string true "Epoch number, the string latest or string finalized"
+// @Success 200 {object} types.ApiResponse{data=types.APIEpochSlotResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/epoch/{epoch}/slots [get]
 func ApiEpochSlots(w http.ResponseWriter, r *http.Request) {
-
 	w.Header().Set("Content-Type", "application/json")
-
 	vars := mux.Vars(r)
 
 	epoch, err := strconv.ParseInt(vars["epoch"], 10, 64)
-	if err != nil && vars["epoch"] != "latest" {
+	if err != nil && vars["epoch"] != "latest" && vars["epoch"] != "finalized" {
 		sendErrorResponse(w, r.URL.String(), "invalid epoch provided")
 		return
 	}
@@ -308,9 +325,23 @@ func ApiEpochSlots(w http.ResponseWriter, r *http.Request) {
 		epoch = int64(services.LatestEpoch())
 	}
 
+	if vars["epoch"] == "finalized" {
+		epoch = int64(services.LatestFinalizedEpoch())
+	}
+
+	if epoch > int64(services.LatestEpoch()) {
+		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("epoch is in the future. The latest epoch is %v", services.LatestEpoch()))
+		return
+	}
+
+	if epoch < 0 {
+		sendErrorResponse(w, r.URL.String(), "epoch must be a positive number")
+		return
+	}
+
 	rows, err := db.ReaderDb.Query("SELECT * FROM blocks WHERE epoch = $1 ORDER BY slot", epoch)
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		sendServerErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
 	defer rows.Close()
@@ -1525,7 +1556,7 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 
 // ApiGraffitiwall godoc
 // @Summary Get all pixels that have been painted until now on the graffitiwall
-// @Tags Graffitiwall
+// @Tags Misc
 // @Produce  json
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
@@ -1546,7 +1577,7 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 
 // ApiChart godoc
 // @Summary Returns charts from the page https://beaconcha.in/charts as PNG
-// @Tags Charts
+// @Tags Misc
 // @Produce  json
 // @Param  chart path string true "Chart name (see https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/services/charts_updater.go#L20 for all available names)"
 // @Success 200 {object} types.ApiResponse
@@ -2572,6 +2603,10 @@ func SendErrorResponse(w http.ResponseWriter, route, message string) {
 
 func sendErrorResponse(w http.ResponseWriter, route, message string) {
 	sendErrorWithCodeResponse(w, route, message, 400)
+}
+
+func sendServerErrorResponse(w http.ResponseWriter, route, message string) {
+	sendErrorWithCodeResponse(w, route, message, 500)
 }
 
 func sendErrorWithCodeResponse(w http.ResponseWriter, route, message string, errorcode int) {
