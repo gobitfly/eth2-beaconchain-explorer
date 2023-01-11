@@ -1606,9 +1606,15 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//remove all future sync periods
+	latestEpoch := services.LatestEpoch()
+	for syncPeriods[0].EndEpoch > services.LatestEpoch() {
+		syncPeriods = syncPeriods[1:]
+	}
+
 	// set latest epoch of this validators latest sync period to current epoch if latest sync epoch has yet to happen
 	var diffToLatestEpoch uint64 = 0
-	if latestEpoch := services.LatestFinalizedEpoch(); latestEpoch < syncPeriods[0].StartEpoch {
+	if latestEpoch < syncPeriods[0].StartEpoch {
 		diffToLatestEpoch = syncPeriods[0].StartEpoch - latestEpoch
 		syncPeriods[0].StartEpoch = latestEpoch
 	}
