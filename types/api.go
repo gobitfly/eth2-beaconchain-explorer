@@ -564,3 +564,11 @@ type ApiValidatorIncomeHistoryResponse struct {
 	ValidatorIndex uint64 `json:"validatorindex"`
 	Week           uint64 `json:"week"`
 }
+
+type ApiValidatorBalanceHistoryResponse struct {
+	Balance          uint64 `json:"balance"`
+	EffectiveBalance uint64 `json:"effectivebalance"`
+	Epoch            uint64 `json:"epoch"`
+	Validatorindex   uint64 `json:"validatorindex"`
+	Week             uint64 `json:"week"`
+}

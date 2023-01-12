@@ -1258,7 +1258,7 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 // @Param  latest_epoch query int false "The latest epoch to consider in the query"
 // @Param  offset query int false "Number of items to skip"
 // @Param  limit query int false "Maximum number of items to return, up to 100"
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiResponse{data=[]ApiValidatorBalanceHistoryResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/balancehistory [get]
 func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
@@ -1285,7 +1285,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "no or invalid validator indicies provided")
 	}
 
-	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, latestEpoch, limit+1)
+	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, latestEpoch, limit)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
