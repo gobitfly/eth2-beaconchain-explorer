@@ -1126,23 +1126,45 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  eth1address path string true "Eth1 address from which the validator deposits were sent"
-// @Success 200 {object} types.ApiResponse
+// @Param limit query string false "Limit the number of results (default: 2000)"
+// @Param offset query string false "Offset the results (default: 0)"
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorEth1Response}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/eth1/{eth1address} [get]
 func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	q := r.URL.Query()
+	limitQuery := q.Get("limit")
+	offsetQuery := q.Get("offset")
+
+	limit, err := strconv.ParseInt(limitQuery, 10, 64)
+	if err != nil {
+		limit = 2000
+	}
+
+	offset, err := strconv.ParseInt(offsetQuery, 10, 64)
+	if err != nil {
+		offset = 0
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	if limit > (2000+offset) || limit <= 0 || limit <= offset {
+		limit = 2000 + offset
+	}
 
 	vars := mux.Vars(r)
 
 	eth1Address, err := hex.DecodeString(strings.Replace(vars["address"], "0x", "", -1))
-
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "invalid eth1 address provided")
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT publickey, validatorindex, valid_signature FROM eth1_deposits LEFT JOIN validators ON eth1_deposits.publickey = validators.pubkey WHERE from_address = $1 GROUP BY publickey, validatorindex, valid_signature ORDER BY validatorindex;", eth1Address)
+	rows, err := db.ReaderDb.Query("SELECT publickey, validatorindex, valid_signature FROM eth1_deposits LEFT JOIN validators ON eth1_deposits.publickey = validators.pubkey WHERE from_address = $1 GROUP BY publickey, validatorindex, valid_signature ORDER BY validatorindex OFFSET $2 LIMIT $3;", eth1Address, limit, offset)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return

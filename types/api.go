@@ -547,3 +547,9 @@ type ApiValidatorDailyStatsResponse struct {
 	StartBalance          uint64 `json:"start_balance"`
 	StartEffectiveBalance uint64 `json:"start_effective_balance"`
 }
+
+type ApiValidatorEth1Response struct {
+	PublicKey      string `json:"public_key"`
+	ValidSignature bool   `json:"valid_signature"`
+	ValidatorIndex uint64 `json:"validator_index"`
+}
