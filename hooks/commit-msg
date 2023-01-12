@@ -1,0 +1,6 @@
+#!/bin/bash
+
+if ! grep -iqE "(\(BIDS-[1-9][0-9]*|NOBIDS)\)" "$1"; then
+    echo "Aborting commit! You must use (BIDS-xxx), or (NOBIDS) if no JIRA Issue available, anywhere in your commit message." >&2
+    exit 1
+fi

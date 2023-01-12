@@ -47,7 +47,11 @@ func (cfs *customFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func handleHTTPError(err error, handler func(http.ResponseWriter, *http.Request), w http.ResponseWriter, r *http.Request) {
 	// If error is 404, use custom handler
 	if errors.Is(err, fs.ErrNotExist) {
-		handler(w, r)
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			sendErrorWithCodeResponse(w, r.URL.String(), "404 page not found", 404)
+		} else {
+			handler(w, r)
+		}
 		return
 	}
 	// otherwise serve http error

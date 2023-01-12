@@ -122,7 +122,10 @@ func accessTokenGetClaims(tokenStringFull string, validate bool) (*CustomClaims,
 	})
 
 	if err != nil && validate {
-		logger.Errorf("Error parsing jwt token: %v %v", err, token)
+		if !strings.Contains(err.Error(), "token is expired") {
+			logger.Warnf("Error parsing jwt token: %v %v", err, token)
+		}
+
 		return nil, err
 	}
 

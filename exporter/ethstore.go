@@ -68,6 +68,8 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
+
 	_, err = stmt.Exec(
 		ethStoreDay.Day,
 		-1,
@@ -169,7 +171,7 @@ DBCHECK:
 
 			// set every existing day in db to false in export map
 			if ethStoreDayCount > 0 {
-				var ethStoreDays []types.PerformanceDay
+				var ethStoreDays []types.EthStoreDay
 				err = ese.DB.Select(&ethStoreDays, `
 						SELECT day 
 						FROM eth_store_stats WHERE validator = -1`)

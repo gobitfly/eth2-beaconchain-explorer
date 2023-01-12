@@ -441,10 +441,10 @@ type UserWebhookSubscriptions struct {
 
 type NotificationChannel string
 
-var NotificationChannelLabels map[NotificationChannel]string = map[NotificationChannel]string{
+var NotificationChannelLabels map[NotificationChannel]template.HTML = map[NotificationChannel]template.HTML{
 	EmailNotificationChannel:          "Email Notification",
 	PushNotificationChannel:           "Push Notification",
-	WebhookNotificationChannel:        "Webhook Notification",
+	WebhookNotificationChannel:        `Webhook Notification (<a href="/user/webhooks">configure</a>)`,
 	WebhookDiscordNotificationChannel: "Discord Notification",
 }
 
