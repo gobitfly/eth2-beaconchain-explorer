@@ -553,3 +553,14 @@ type ApiValidatorEth1Response struct {
 	ValidSignature bool   `json:"valid_signature"`
 	ValidatorIndex uint64 `json:"validator_index"`
 }
+
+type ApiValidatorIncomeHistoryResponse struct {
+	Income struct {
+		AttestationSourceReward uint64 `json:"attestation_source_reward"`
+		AttestationTargetReward uint64 `json:"attestation_target_reward"`
+		AttestationHeadReward   uint64 `json:"attestation_head_reward"`
+	} `json:"income"`
+	Epoch          uint64 `json:"epoch"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+	Week           uint64 `json:"week"`
+}
