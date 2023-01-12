@@ -20,11 +20,17 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
+	genesisTs := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+	epochsOnGenesisDay := uint64(utils.TimeToEpoch(time.Date(genesisTs.Year(), genesisTs.Month(), genesisTs.Day()+1, 0, 0, 0, 0, genesisTs.Location())))
 	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
-	firstEpoch := day * epochsPerDay
-	lastEpoch := (day+1)*epochsPerDay - 1
-	// firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
-	// lastSlot := (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+
+	firstEpoch, lastEpoch := uint64(0), uint64(0)
+	if day > 0 {
+		firstEpoch += epochsOnGenesisDay + ((day - 1) * epochsPerDay)
+		lastEpoch = firstEpoch + epochsPerDay - 1
+	} else {
+		lastEpoch = firstEpoch + epochsOnGenesisDay - 1
+	}
 
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
@@ -94,7 +100,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	start = time.Now()
 	logger.Infof("exporting missed_attestations statistics")
-	ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, lastEpoch, lastEpoch-firstEpoch)
+	ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, lastEpoch, lastEpoch-firstEpoch+1)
 	if err != nil {
 		return err
 	}

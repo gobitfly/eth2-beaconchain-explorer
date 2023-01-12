@@ -913,18 +913,17 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
-
+func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, lastEpoch uint64, amount uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
 	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
 
-	for i := startEpoch; i >= startEpoch-endEpoch; i-- {
-		data, err := bigtable.GetValidatorAttestationHistory(validators, i, 1)
+	for i := uint64(0); i < amount; i++ {
+		data, err := bigtable.GetValidatorAttestationHistory(validators, lastEpoch-i, 1)
 
 		if err != nil {
 			return nil, err
 		}
 
-		logger.Infof("retrieved attestation history for epoch %v", i)
+		logger.Infof("retrieved attestation history for epoch %v", lastEpoch-i)
 
 		for validator, attestations := range data {
 			for _, attestation := range attestations {
@@ -1016,9 +1015,11 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 
-	// logger.Info(startEpoch, endEpoch)
 	rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch)) // Reverse as keys are sorted in descending order
-	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-1))
+	rangeEnd := ""
+	if startEpoch > 0 {
+		rangeEnd = fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-1))
+	}
 
 	res := make(map[uint64]*types.ValidatorBalanceStatistic)
 	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, rangeEnd), func(r gcp_bigtable.Row) bool {
@@ -1059,7 +1060,6 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 				}
 			}
 
-			// logger.Info(epoch, startEpoch)
 			if epoch == startEpoch {
 				res[validator].StartBalance = balance
 				res[validator].StartEffectiveBalance = effectiveBalance
@@ -1452,9 +1452,13 @@ func reversePaddedUserID(userID uint64) string {
 }
 
 func reversedPaddedEpoch(epoch uint64) string {
-	return fmt.Sprintf("%09d", max_block_number-epoch)
+	if epoch == 0 {
+		return fmt.Sprintf("%d", 9999999999) // keep lexicographical order for special case of epoch 0
+	}
+	return fmt.Sprintf("%09d", max_epoch-epoch)
 }
 
 func reversedPaddedSlot(slot uint64) string {
+	// TODO: This has the same problem as reversedPaddedEpoch for slot 0
 	return fmt.Sprintf("%09d", max_block_number-slot)
 }
