@@ -67,6 +67,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 	lastEpoch, err := db.GetLatestEpoch()
 
 	if err != nil {
+		logger.WithError(err).Errorf("error retrieving latest epoch from the db error: %v", err)
 		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", http.StatusServiceUnavailable)
 		return
 	}
@@ -83,8 +84,8 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 	}
 
 	epochTime := utils.EpochToTime(lastEpoch)
-	if epochTime.Before(time.Now().Add(time.Minute * -13)) {
-		http.Error(w, "Internal server error: last epoch in db is more than 13 minutes old", http.StatusServiceUnavailable)
+	if epochTime.Before(time.Now().Add(time.Minute * -20)) {
+		http.Error(w, "Internal server error: last epoch in db is more than 20 minutes old", http.StatusServiceUnavailable)
 		return
 	}
 
