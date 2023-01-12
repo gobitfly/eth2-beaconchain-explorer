@@ -500,3 +500,50 @@ type ApiRocketpoolValidatorResponse struct {
 	UnclaimedRplRewards    float64 `json:"unclaimed_rpl_rewards"`
 	UnclaimedSmoothingPool float64 `json:"unclaimed_smoothing_pool"`
 }
+
+type ApiValidatorQueueResponse struct {
+	BeaconchainEntering uint64 `json:"beaconchain_entering"`
+	BeaconchainExiting  uint64 `json:"beaconchain_exiting"`
+	ValidatorsCount     uint64 `json:"validators_count"`
+}
+
+type APIValidatorResponse struct {
+	ActivationEligibilityEpoch uint64 `json:"activation_eligibility_epoch"`
+	ActivationEpoch            uint64 `json:"activation_epoch"`
+	Balance                    uint64 `json:"balance"`
+	EffectiveBalance           uint64 `json:"effective_balance"`
+	ExitEpoch                  uint64 `json:"exit_epoch"`
+	LastAttestationSlot        uint64 `json:"last_attestation_slot"`
+	Name                       string `json:"name"`
+	Pubkey                     string `json:"pubkey"`
+	Slashed                    bool   `json:"slashed"`
+	Status                     string `json:"status"`
+	ValidatorIndex             uint64 `json:"validator_index"`
+	WithdrawableEpoch          uint64 `json:"withdrawable_epoch"`
+	WithdrawalCredentials      string `json:"withdrawal_credentials"`
+}
+
+type ApiValidatorDailyStatsResponse struct {
+	ValidatorIndex        uint64 `json:"validator_index"`
+	AttesterSlashings     uint64 `json:"attester_slashings"`
+	Day                   uint64 `json:"day"`
+	Deposits              uint64 `json:"deposits"`
+	DepositsAmount        uint64 `json:"deposits_amount"`
+	EndBalance            uint64 `json:"end_balance"`
+	EndEffectiveBalance   uint64 `json:"end_effective_balance"`
+	MaxBalance            uint64 `json:"max_balance"`
+	MaxEffectiveBalance   uint64 `json:"max_effective_balance"`
+	MinBalance            uint64 `json:"min_balance"`
+	MinEffectiveBalance   uint64 `json:"min_effective_balance"`
+	MissedAttestations    uint64 `json:"missed_attestations"`
+	MissedBlocks          uint64 `json:"missed_blocks"`
+	MissedSync            uint64 `json:"missed_sync"`
+	OrphanedAttestations  uint64 `json:"orphaned_attestations"`
+	OrphanedBlocks        uint64 `json:"orphaned_blocks"`
+	OrphanedSync          uint64 `json:"orphaned_sync"`
+	ParticipatedSync      uint64 `json:"participated_sync"`
+	ProposedBlocks        uint64 `json:"proposed_blocks"`
+	ProposerSlashings     uint64 `json:"proposer_slashings"`
+	StartBalance          uint64 `json:"start_balance"`
+	StartEffectiveBalance uint64 `json:"start_effective_balance"`
+}

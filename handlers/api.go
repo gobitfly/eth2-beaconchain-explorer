@@ -579,7 +579,7 @@ func ApiSlotDeposits(w http.ResponseWriter, r *http.Request) {
 // @Description Returns the proposer slashings included in a specific slot
 // @Produce  json
 // @Param  slot path string true "Slot"
-// @Success 200 {object} types.ApiResponse{data=[]APIProposerSlashingResponse}
+// @Success 200 {object} types.ApiResponse{data=[]types.APIProposerSlashingResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/slot/{slot}/proposerslashings [get]
 func ApiSlotProposerSlashings(w http.ResponseWriter, r *http.Request) {
@@ -679,9 +679,9 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Description Returns the current number of validators entering and exiting the beacon chain
 // @Produce  json
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiResponse{data=types.ApiValidatorQueueResponse}
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/validator/queue [get]
+// @Router /api/v1/validators/queue [get]
 func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -1012,7 +1012,7 @@ func getEpoch(epoch int64) ([]interface{}, error) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiResponse{data=[]types.APIValidatorResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey} [get]
 func ApiValidator(w http.ResponseWriter, r *http.Request) {
@@ -1035,7 +1035,7 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	returnQueryResultsAsArray(rows, w, r)
 }
 
 // ApiValidatorDailyStats godoc
@@ -1043,13 +1043,47 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  index path string true "Validator index"
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorDailyStatsResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/stats/{index} [get]
 func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
+	q := r.URL.Query()
+
+	latestEpoch := services.LatestEpoch()
+
+	latestDay := latestEpoch / 225
+
+	startDay := int64(-1)
+	endDay := int64(latestDay)
+
+	if q.Get("end_day") != "" {
+		end, err := strconv.ParseInt(q.Get("end_day"), 10, 64)
+		if err != nil {
+			sendErrorResponse(w, r.URL.String(), "invalid end_day parameter")
+			return
+		}
+		if end < endDay {
+			endDay = end
+		}
+	}
+
+	if q.Get("start_day") != "" {
+		start, err := strconv.ParseInt(q.Get("start_day"), 10, 64)
+		if err != nil {
+			sendErrorResponse(w, r.URL.String(), "invalid start_day parameter")
+			return
+		}
+		if start < endDay {
+			sendErrorResponse(w, r.URL.String(), "start_day must be less than end_day")
+			return
+		}
+		if start > startDay {
+			startDay = start
+		}
+	}
 
 	index := vars["index"]
 
@@ -1077,14 +1111,14 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 		COALESCE(participated_sync, 0) AS participated_sync,
 		COALESCE(missed_sync, 0) AS missed_sync,
 		COALESCE(orphaned_sync, 0) AS orphaned_sync
-	FROM validator_stats WHERE validatorindex = $1 ORDER BY day DESC`, index)
+	FROM validator_stats WHERE validatorindex = $1 and day <= $2 and day >= $3 ORDER BY day DESC`, index, endDay, startDay)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	returnQueryResultsAsArray(rows, w, r)
 }
 
 // ApiValidatorByEth1Address godoc
