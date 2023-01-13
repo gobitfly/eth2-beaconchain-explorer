@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/hex"
@@ -324,6 +325,24 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if deposit.ValidSignature {
 			validatorPageData.Eth1DepositAddress = deposit.FromAddress
 			break
+		}
+	}
+
+	// check for multiple withdrawal credentials
+	credentials := make([][]byte, 0)
+	for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
+		credentials = append(credentials, deposit.WithdrawalCredentials)
+	}
+	for _, deposit := range validatorPageData.Deposits.Eth2Deposits {
+		credentials = append(credentials, deposit.Withdrawalcredentials)
+	}
+	if len(credentials) > 1 {
+		c := credentials[0]
+		for i := 1; i < len(credentials); i++ {
+			if !bytes.Equal(c, credentials[i]) {
+				validatorPageData.ShowWithdrawalWarning = true
+				break
+			}
 		}
 	}
 

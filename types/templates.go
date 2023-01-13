@@ -366,6 +366,7 @@ type ValidatorPageData struct {
 	IsRocketpool                        bool
 	Rocketpool                          *RocketpoolValidatorPageData
 	NoAds                               bool
+	ShowWithdrawalWarning               bool
 }
 
 type RocketpoolValidatorPageData struct {
