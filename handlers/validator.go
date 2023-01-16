@@ -138,8 +138,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				logger.Errorf("error getting validator-deposits from db: %v", err)
 			}
 			validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
+			validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
-
 				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
@@ -328,23 +328,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// check for multiple withdrawal credentials
-	credentials := make([][]byte, 0)
-	for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
-		credentials = append(credentials, deposit.WithdrawalCredentials)
-	}
-	for _, deposit := range validatorPageData.Deposits.Eth2Deposits {
-		credentials = append(credentials, deposit.Withdrawalcredentials)
-	}
-	if len(credentials) > 1 {
-		c := credentials[0]
-		for i := 1; i < len(credentials); i++ {
-			if !bytes.Equal(c, credentials[i]) {
-				validatorPageData.ShowWithdrawalWarning = true
-				break
-			}
-		}
-	}
+	validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
@@ -679,6 +663,35 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if handleTemplateError(w, r, err) != nil {
 		return // an error has occurred and was processed
 	}
+}
+
+// Returns true if there are more than one different withdrawal credentials within both Eth1Deposits and Eth2Deposits
+func hasMultipleWithdrawalCredentials(deposits *types.ValidatorDeposits) bool {
+	credential := make([]byte, 0)
+
+	// check Eth1Deposits
+	for _, deposit := range deposits.Eth1Deposits {
+		if len(credential) == 0 {
+			credential = deposit.WithdrawalCredentials
+		} else {
+			if !bytes.Equal(credential, deposit.WithdrawalCredentials) {
+				return true
+			}
+		}
+	}
+
+	// check Eth2Deposits
+	for _, deposit := range deposits.Eth2Deposits {
+		if len(credential) == 0 {
+			credential = deposit.Withdrawalcredentials
+		} else {
+			if !bytes.Equal(credential, deposit.Withdrawalcredentials) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // ValidatorDeposits returns a validator's deposits in json
