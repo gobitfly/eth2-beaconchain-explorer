@@ -175,10 +175,10 @@ type ExecutionPayload struct {
 }
 
 type Withdrawals struct {
-	Index          uint64
-	ValidatorIndex uint64
-	Address        []byte
-	Amount         uint64
+	Index          uint64 `json:"index"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+	Address        []byte `json:"address"`
+	Amount         uint64 `json:"amount"`
 }
 
 // Eth1Data is a struct to hold the ETH1 data

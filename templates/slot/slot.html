@@ -214,7 +214,8 @@
     {{ end }}
 
     $(document).ready(function () {
-      let slotNumber = {{ .Slot }}
+      let slotNumber = {{ .Slot }} || 0
+      console.log('slotnumber', slotNumber)
       var depositsTblOpts = {
         processing: true,
         serverSide: true,
@@ -274,7 +275,7 @@
         stateSave: true,
         searching: true,
         ajax: "/slot/" + slotNumber + "/votes",
-        pageLength: 10,
+        pageLength: 16,
         pagingType: "input",
         language: {
           searchPlaceholder: "Validator",
@@ -316,7 +317,7 @@
           ajax: "/slot/" + slotNumber + "/withdrawals",
           paging: false,
           // deferLoading: true,
-          // pageLength: 16,
+          pageLength: 10,
           // pagingType: "input",
           // language: {
           //   searchPlaceholder: "Validator",
@@ -326,37 +327,38 @@
           //     next: '<i class="fas fa-chevron-right"></i>',
           //   },
           // },
-          columnDefs: [
-            { 
-              targets: 0,
-              data: null,
-              render: function (data, type, row, meta) { 
-                return row.withdrawalindex
-              },
-            },
-            { 
-              targets: 1,
-              data: null,
-              render: function (data, type, row, meta) { 
-                return row.validatorindex
-              },
-            },
-            { 
-              targets: 2,
-              data: null,
-              render: function (data, type, row, meta) { 
-                return `<a href="/address/${row.address}" class="text-monospace">${row.address}</a>`
-              },
-            },
-            { 
-              targets: 3,
-              data: null,
-              render: function (data, type, row, meta) {
-                row.amount = row.amount / 1000000000
-                return `${row.amount} Ether`
-              },
-            }
-          ],
+          // columnDefs: [
+          //   { 
+          //     targets: 0,
+          //     data: null,
+          //     render: function (data, type, row, meta) {
+          //       console.log('row', row)
+          //       return row.index
+          //     },
+          //   },
+          //   { 
+          //     targets: 1,
+          //     data: null,
+          //     render: function (data, type, row, meta) { 
+          //       return row.validatorindex
+          //     },
+          //   },
+          //   { 
+          //     targets: 2,
+          //     data: null,
+          //     render: function (data, type, row, meta) { 
+          //       return `<a href="/address/${row.address}" class="text-monospace">${row.address}</a>`
+          //     },
+          //   },
+          //   { 
+          //     targets: 3,
+          //     data: null,
+          //     render: function (data, type, row, meta) {
+          //       row.amount = row.amount / 1000000000
+          //       return `${row.amount} Ether`
+          //     },
+          //   }
+          // ],
           preDrawCallback: function () {
             try {
               $("#block_withdrawals").find('[data-toggle="tooltip"]').tooltip("dispose")
@@ -370,6 +372,7 @@
           }
         }
 
+        console.log($("#block_withdrawals"), withdrawalOpts)
         $("#block_withdrawals").DataTable(withdrawalOpts)
     })
   </script>

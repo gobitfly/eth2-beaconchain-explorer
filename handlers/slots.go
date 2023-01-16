@@ -16,9 +16,9 @@ import (
 )
 
 // Blocks will return information about blocks using a go template
-func Blocks(w http.ResponseWriter, r *http.Request) {
+func Slots(w http.ResponseWriter, r *http.Request) {
 
-	var blocksTemplate = templates.GetTemplate("layout.html", "blocks.html")
+	var blocksTemplate = templates.GetTemplate("layout.html", "slots.html")
 
 	w.Header().Set("Content-Type", "text/html")
 	q := r.URL.Query()
@@ -30,7 +30,7 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Error("error getting user session")
 	}
 
-	state, err := GetDataTableState(user, session, "blocks")
+	state, err := GetDataTableState(user, session, "slots")
 	if err != nil {
 		logger.WithError(err).Error("error getting stored table state")
 	}
@@ -57,7 +57,7 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 
 	search = strings.Replace(search, "0x", "", -1)
 
-	tableData, err := GetBlocksTableData(0, start, length, search, searchForEmpty)
+	tableData, err := GetSlotsTableData(0, start, length, search, searchForEmpty)
 	if err != nil {
 		logger.Errorf("error rendering blocks table data: %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -71,7 +71,7 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 }
 
 // BlocksData will return information about blocks
-func BlocksData(w http.ResponseWriter, r *http.Request) {
+func SlotsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -105,7 +105,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData, err := GetBlocksTableData(draw, start, length, search, searchForEmpty)
+	tableData, err := GetSlotsTableData(draw, start, length, search, searchForEmpty)
 	if err != nil {
 		logger.Errorf("error rendering blocks table data: %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -120,7 +120,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetBlocksTableData(draw, start, length uint64, search string, searchForEmpty bool) (*types.DataTableResponse, error) {
+func GetSlotsTableData(draw, start, length uint64, search string, searchForEmpty bool) (*types.DataTableResponse, error) {
 	var totalCount uint64
 	var filteredCount uint64
 	var blocks []*types.BlocksPageDataBlocks
@@ -153,7 +153,7 @@ func GetBlocksTableData(draw, start, length uint64, search string, searchForEmpt
 				blocks.blockroot, 
 				blocks.parentroot, 
 				blocks.attestationscount, 
-				blocks.depositscount, 
+				blocks.depositscount,
 				blocks.withdrawalcount, 
 				blocks.voluntaryexitscount, 
 				blocks.proposerslashingscount, 
@@ -284,7 +284,7 @@ func GetBlocksTableData(draw, start, length uint64, search string, searchForEmpt
 				utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
 				template.HTML("N/A"),
 				b.Attestations,
-				b.Deposits,
+				template.HTML(fmt.Sprintf("%v / %v", b.Deposits, b.Withdrawals)),
 				fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
 				b.Exits,
 				b.Votes,
@@ -299,7 +299,7 @@ func GetBlocksTableData(draw, start, length uint64, search string, searchForEmpt
 				utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
 				utils.FormatValidatorWithName(b.Proposer, b.ProposerName),
 				b.Attestations,
-				b.Deposits,
+				template.HTML(fmt.Sprintf("%v / %v", b.Deposits, b.Withdrawals)),
 				fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
 				b.Exits,
 				b.Votes,

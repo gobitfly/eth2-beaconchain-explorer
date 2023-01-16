@@ -2361,3 +2361,14 @@ func SaveChartSeriesPoint(date time.Time, indicator string, value any) error {
 	}
 	return err
 }
+
+func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
+	var withdrawals []*types.Withdrawals
+
+	err := ReaderDb.Select(&withdrawals, "SELECT withdrawalindex as index, validatorindex, address, amount FROM blocks_withdrawals WHERE block_slot = $1 ORDER BY withdrawalindex", slot)
+	if err != nil {
+		return nil, fmt.Errorf("error getting blocks_withdrawals: %w", err)
+	}
+
+	return withdrawals, nil
+}
