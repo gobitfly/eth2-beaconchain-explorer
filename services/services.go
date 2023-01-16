@@ -564,6 +564,10 @@ func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
 	}
 	daysLastIndex := len(ethStoreDays) - 1
 
+	if daysLastIndex < 0 {
+		return nil, fmt.Errorf("no eth store stats found in db")
+	}
+
 	effectiveBalances := [][]float64{}
 	totalRewards := [][]float64{}
 	aprs := [][]float64{}

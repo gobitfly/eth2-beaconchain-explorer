@@ -28,7 +28,7 @@
                     formatTimestamps('#deposits')
                 },
                 language: {
-                    searchPlaceholder: 'Address / Validator Key / Tx Hash',
+                    searchPlaceholder: 'Address | Val. Key | Withd. Cred. | Tx Hash',
                     search: '',
                     paginate: {
                         previous: '<i class="fas fa-chevron-left"></i>',
@@ -133,13 +133,14 @@
             <table class="table" id="deposits">
               <thead>
                 <tr>
-                  <th>Eth Address</th>
+                  <th>Address</th>
                   <th>Validator Key</th>
+                  <th>Withdrawal Credential</th>
                   <th>Amount</th>
-                  <th>Eth TxHash</th>
+                  <th>Tx Hash</th>
                   <th>Time</th>
-                  <th>Eth Block</th>
-                  <th>Eth Validator State</th>
+                  <th>Block</th>
+                  <th>Validator State</th>
                   <th>Valid Signature</th>
                 </tr>
               </thead>

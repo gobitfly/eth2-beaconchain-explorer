@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"eth2-exporter/cache"
 	"eth2-exporter/erc1155"
@@ -1706,28 +1707,21 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*ty
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressesNamesArMetadata(inputName *map[string]string, inputMetadata *map[string]*types.ERC20Metadata) (map[string]string, map[string]*types.ERC20Metadata, error) {
-	outputName := make(map[string]string)
+func (bigtable *Bigtable) GetAddressesNamesArMetadata(names *map[string]string, inputMetadata *map[string]*types.ERC20Metadata) (map[string]string, map[string]*types.ERC20Metadata, error) {
 	outputMetadata := make(map[string]*types.ERC20Metadata)
 
 	g := new(errgroup.Group)
 	g.SetLimit(25)
 	mux := sync.Mutex{}
 
-	if inputName != nil {
-		for address := range *inputName {
-			address := address
-			g.Go(func() error {
-				name, err := bigtable.GetAddressName([]byte(address))
-				if err != nil {
-					return err
-				}
-				mux.Lock()
-				outputName[address] = name
-				mux.Unlock()
-				return nil
-			})
-		}
+	if names != nil {
+		g.Go(func() error {
+			err := bigtable.GetAddressNames(*names)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 	}
 
 	if inputMetadata != nil {
@@ -1751,7 +1745,7 @@ func (bigtable *Bigtable) GetAddressesNamesArMetadata(inputName *map[string]stri
 		return nil, nil, err
 	}
 
-	return outputName, outputMetadata, nil
+	return *names, outputMetadata, nil
 }
 
 func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search string, pageToken string) (*types.DataTableResponse, error) {
@@ -2126,35 +2120,14 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 	}
 
 	names := make(map[string]string)
-	{
-		forNames := make(map[string]string)
-		for _, t := range transfers {
-			forNames[string(t.From)] = ""
-			forNames[string(t.To)] = ""
-		}
+	for _, t := range transfers {
+		names[string(t.From)] = ""
+		names[string(t.To)] = ""
+	}
 
-		g := new(errgroup.Group)
-		g.SetLimit(25)
-		for address := range forNames {
-			address := address
-			if len(address) > 0 {
-				g.Go(func() error {
-					name, err := bigtable.GetAddressName([]byte(address))
-					if err != nil {
-						return err
-					}
-					mux.Lock()
-					names[address] = name
-					mux.Unlock()
-					return nil
-				})
-			}
-		}
-
-		err = g.Wait()
-		if err != nil {
-			return nil, err
-		}
+	err = bigtable.GetAddressNames(names)
+	if err != nil {
+		return nil, err
 	}
 
 	data := make([]types.Transfer, len(transfers))
@@ -2218,7 +2191,6 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 	}
 
 	names := make(map[string]string)
-	namesToAdd := make(map[string]string)
 	tokens := make(map[string]*types.ERC20Metadata)
 	tokensToAdd := make(map[string]*types.ERC20Metadata)
 	// init
@@ -2229,19 +2201,14 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 	}
 	g := new(errgroup.Group)
 	g.SetLimit(25)
-	for address := range names {
-		address := address
-		g.Go(func() error {
-			name, err := bigtable.GetAddressName([]byte(address))
-			if err != nil {
-				return err
-			}
-			mux.Lock()
-			namesToAdd[address] = name
-			mux.Unlock()
-			return nil
-		})
-	}
+	g.Go(func() error {
+		err := bigtable.GetAddressNames(names)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
 	for address := range tokens {
 		address := address
 		g.Go(func() error {
@@ -2258,10 +2225,6 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 	err = g.Wait()
 	if err != nil {
 		return nil, err
-	}
-
-	for k, v := range namesToAdd {
-		names[k] = v
 	}
 
 	for k, v := range tokensToAdd {
@@ -2919,6 +2882,30 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	wanted := string(row[ACCOUNT_METADATA_FAMILY][0].Value)
 	err = cache.TieredCache.SetString(cacheKey, wanted, time.Hour)
 	return wanted, err
+}
+
+func (bigtable *Bigtable) GetAddressNames(addresses map[string]string) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	keys := make([]string, 0, len(addresses))
+
+	for address := range addresses {
+		keys = append(keys, fmt.Sprintf("%s:%x", bigtable.chainId, address))
+	}
+
+	filter := gcp_bigtable.ChainFilters(gcp_bigtable.FamilyFilter(ACCOUNT_METADATA_FAMILY), gcp_bigtable.ColumnFilter(ACCOUNT_COLUMN_NAME))
+
+	keyPrefix := fmt.Sprintf("%s:", bigtable.chainId)
+	err := bigtable.tableMetadata.ReadRows(ctx, gcp_bigtable.RowList(keys), func(r gcp_bigtable.Row) bool {
+		address := strings.TrimPrefix(r.Key(), keyPrefix)
+		addressBytes, _ := hex.DecodeString(address)
+		addresses[string(addressBytes)] = string(r[ACCOUNT_METADATA_FAMILY][0].Value)
+
+		return true
+	}, gcp_bigtable.RowFilter(filter))
+
+	return err
 }
 
 func (bigtable *Bigtable) SaveAddressName(address []byte, name string) error {

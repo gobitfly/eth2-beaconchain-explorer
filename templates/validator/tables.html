@@ -289,6 +289,7 @@
             <tr>
               <th>From Address</th>
               <th>Tx Hash</th>
+              <th><span data-toggle="tooltip" title="Withdrawal Credential">Withdrawal Cred.</span></th>
               <th>Block</th>
               <th>Time</th>
               <th>Amount</th>
@@ -300,6 +301,13 @@
               <tr>
                 <td>{{ formatEth1Address $deposit.FromAddress }}</td>
                 <td>{{ formatEth1TxHash $deposit.TxHash }}</td>
+                <td>
+                  {{ if $.Data.ShowWithdrawalWarning }}
+                    <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="At least one deposit to your validator has different withdrawal credentials!"></i></span>
+                  {{ end }}
+                  {{ formatWithdawalCredentials $deposit.WithdrawalCredentials }}
+                  <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash $deposit.WithdrawalCredentials false }}"></i>
+                </td>
                 <td>{{ formatEth1Block $deposit.BlockNumber }}</td>
                 <td>{{ formatTimestamp $deposit.BlockTs }}</td>
                 <td>{{ formatDepositAmount $deposit.Amount $.Rates.Currency }}</td>
@@ -440,7 +448,7 @@
                 <th>Time</th>
                 <th>Amount</th>
                 <!-- <th>Proof</th> -->
-                <th>Withdrawal Credentials</th>
+                <th>Withdrawal Credential</th>
                 <th>Signature</th>
               </tr>
             </thead>
@@ -453,6 +461,9 @@
                   <td>{{ formatDepositAmount $deposit.Amount $.Rates.Currency }}</td>
                   <!-- <td>{{ formatHash $deposit.Proof }}</td> -->
                   <td>
+                    {{ if $.Data.ShowWithdrawalWarning }}
+                      <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="At least one deposit to your validator has different withdrawal credentials!"></i></span>
+                    {{ end }}
                     {{ formatWithdawalCredentials $deposit.Withdrawalcredentials }}
                     <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash $deposit.Withdrawalcredentials false }}"></i>
                   </td>

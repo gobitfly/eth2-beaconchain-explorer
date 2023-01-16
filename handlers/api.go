@@ -2294,6 +2294,16 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
 }
 
+// ClientStatsPost godoc
+// @Summary Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
+// @Tags User
+// @Produce json
+// @Param apikey query string true "User API key, can be found on https://beaconcha.in/user/settings"
+// @Param machine query string false "Name your device if you have multiple devices you want to monitor"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Router /api/v1/client/metrics [POST]
 func ClientStatsPostNew(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	apiKey := q.Get("apikey")
@@ -2306,17 +2316,6 @@ func ClientStatsPostNew(w http.ResponseWriter, r *http.Request) {
 	clientStatsPost(w, r, apiKey, machine)
 }
 
-// ClientStatsPost godoc
-// @Summary Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
-// @Tags User
-// @Produce json
-// @Param apiKey query string true "User API key, can be found on https://beaconcha.in/user/settings"
-// @Param machine query string false "Name your device if you have multiple devices you want to monitor"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Failure 500 {object} types.ApiResponse
-// @Security ApiKeyAuth
-// @Router /api/v1/client/metrics [POST]
 func ClientStatsPostOld(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
