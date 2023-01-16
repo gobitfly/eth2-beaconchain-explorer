@@ -80,12 +80,13 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 	orderByMap := map[string]string{
 		"0": "from_address",
 		"1": "publickey",
-		"2": "amount",
-		"3": "tx_hash",
-		"4": "block_ts",
-		"5": "block_number",
-		"6": "state",
-		"7": "valid_signature",
+		"2": "withdrawal_credential",
+		"3": "amount",
+		"4": "tx_hash",
+		"5": "block_ts",
+		"6": "block_number",
+		"7": "state",
+		"8": "valid_signature",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -113,6 +114,7 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
 			utils.FormatPublicKey(d.PublicKey),
+			utils.FormatWithdawalCredentials(d.WithdrawalCredentials),
 			utils.FormatDepositAmount(d.Amount, currency),
 			utils.FormatEth1TxHash(d.TxHash),
 			utils.FormatTimestamp(d.BlockTs.Unix()),
