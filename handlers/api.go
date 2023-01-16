@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,7 +35,7 @@ import (
 	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
-// @title Beaconcha.in ETH2 API
+// @title beaconcha.in Ethereum API
 // @version 1.0
 // @description High performance API for querying information about the Ethereum beacon chain
 // @description The API is currently free to use. A fair use policy applies. Calls are rate limited to
@@ -184,19 +185,9 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	vars := mux.Vars(r)
-
-	day, err := strconv.ParseInt(vars["day"], 10, 64)
-	if err != nil && vars["day"] != "latest" {
-		sendErrorResponse(w, r.URL.String(), "invalid day provided")
-		return
-	}
-
-	if vars["day"] == "latest" {
-		day = (int64(services.LatestFinalizedEpoch()) / 225) - 1
-	}
-
-	rows, err := db.ReaderDb.Query(`
+	var err error
+	var rows *sql.Rows
+	query := `
 		SELECT 
 			day, 
 			effective_balances_sum_wei, 
@@ -210,7 +201,20 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 			(select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7) as avgAPR7d,
 			(select avg(apr) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31) as avgAPR31d
 		FROM eth_store_stats e
-		WHERE day = $1 AND validator = -1;`, day)
+		WHERE validator = -1 `
+
+	vars := mux.Vars(r)
+	if vars["day"] == "latest" {
+		rows, err = db.ReaderDb.Query(query + ` ORDER BY day DESC LIMIT 1;`)
+	} else {
+		day, e := strconv.ParseInt(vars["day"], 10, 64)
+		if e != nil {
+			sendErrorResponse(w, r.URL.String(), "invalid day provided")
+			return
+		}
+		rows, err = db.ReaderDb.Query(query+` AND day = $1;`, day)
+	}
+
 	if err != nil {
 		logger.Errorf("error retrieving eth.store data: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -1176,10 +1180,13 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidator godoc
-// @Summary Get the balance history (last 100 epochs) of up to 100 validators
+// @Summary Get the balance history of up to 100 validators
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Param  latest_epoch query int false "The latest epoch to consider in the query"
+// @Param  offset query int false "Number of items to skip"
+// @Param  limit query int false "Maximum number of items to return, up to 100"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/balancehistory [get]
@@ -1191,6 +1198,12 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
+	latestEpoch, limit, err := getBalanceHistoryQueryParameters(r.URL.Query())
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), err.Error())
+		return
+	}
+
 	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
@@ -1201,7 +1214,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "no or invalid validator indicies provided")
 	}
 
-	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), 101)
+	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, latestEpoch, limit+1)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -1246,6 +1259,39 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
+}
+
+func getBalanceHistoryQueryParameters(q url.Values) (uint64, int64, error) {
+	onChainLatestEpoch := services.LatestEpoch()
+	defaultLimit := int64(100)
+
+	latestEpoch := onChainLatestEpoch
+	if q.Has("latest_epoch") {
+		var err error
+		latestEpoch, err = strconv.ParseUint(q.Get("latest_epoch"), 10, 64)
+		if err != nil || latestEpoch > onChainLatestEpoch {
+			return 0, 0, fmt.Errorf("invalid latest epoch parameter")
+		}
+	}
+
+	if q.Has("offset") {
+		offset, err := strconv.ParseUint(q.Get("offset"), 10, 64)
+		if err != nil || offset > latestEpoch {
+			return 0, 0, fmt.Errorf("invalid offset parameter")
+		}
+		latestEpoch -= offset
+	}
+
+	limit := defaultLimit
+	if q.Has("limit") {
+		var err error
+		limit, err = strconv.ParseInt(q.Get("limit"), 10, 64)
+		if err != nil || limit > defaultLimit || limit < 1 {
+			return 0, 0, fmt.Errorf("invalid limit parameter")
+		}
+	}
+
+	return latestEpoch, limit, nil
 }
 
 // ApiValidatorPerformance godoc
@@ -1311,7 +1357,7 @@ func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorAttestationEffectiveness godoc
-// @Summary Get the current performance of up to 100 validators
+// @Summary DEPRECIATED - USE /attestationefficiency (Get the current performance of up to 100 validators)
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
@@ -2285,6 +2331,16 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
 }
 
+// ClientStatsPost godoc
+// @Summary Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
+// @Tags User
+// @Produce json
+// @Param apikey query string true "User API key, can be found on https://beaconcha.in/user/settings"
+// @Param machine query string false "Name your device if you have multiple devices you want to monitor"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Router /api/v1/client/metrics [POST]
 func ClientStatsPostNew(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	apiKey := q.Get("apikey")
@@ -2297,17 +2353,6 @@ func ClientStatsPostNew(w http.ResponseWriter, r *http.Request) {
 	clientStatsPost(w, r, apiKey, machine)
 }
 
-// ClientStatsPost godoc
-// @Summary Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
-// @Tags User
-// @Produce json
-// @Param apiKey query string true "User API key, can be found on https://beaconcha.in/user/settings"
-// @Param machine query string false "Name your device if you have multiple devices you want to monitor"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Failure 500 {object} types.ApiResponse
-// @Security ApiKeyAuth
-// @Router /api/v1/client/metrics [POST]
 func ClientStatsPostOld(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
@@ -2358,7 +2403,7 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 	var result bool = false
 	for i := 0; i < len(jsonObjects); i++ {
 		err = insertStats(userData, machine, &jsonObjects[i], w, r)
-		result = err != nil
+		result = err == nil
 		if err != nil {
 			// ignore rate limit errors unless all are rate limit errors
 			if strings.HasPrefix(err.Error(), "rate limit") {

@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -406,7 +407,11 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 		defer wg.Done()
 		data.EpochParticipationStats, err = lc.GetValidatorParticipation(epoch)
 		if err != nil {
-			logger.Errorf("error retrieving epoch participation statistics for epoch %v: %v", epoch, err)
+			if strings.HasSuffix(err.Error(), "can't be retrieved as it hasn't finished yet") {
+				logger.Warnf("error retrieving epoch participation statistics for epoch %v: %v", epoch, err)
+			} else {
+				logger.Errorf("error retrieving epoch participation statistics for epoch %v: %v", epoch, err)
+			}
 			data.EpochParticipationStats = &types.ValidatorParticipation{
 				Epoch:                   epoch,
 				GlobalParticipationRate: 1.0,

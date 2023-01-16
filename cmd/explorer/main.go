@@ -480,6 +480,8 @@ func main() {
 
 			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
 
+			router.HandleFunc("/ethstore", handlers.EthStore).Methods("GET")
+
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 			router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("POST")
 
@@ -639,7 +641,7 @@ func main() {
 		}()
 	}
 	if utils.Config.Notifications.Enabled {
-		services.InitNotifications()
+		services.InitNotifications(utils.Config.Notifications.PubkeyCachePath)
 	}
 
 	if utils.Config.Metrics.Enabled {

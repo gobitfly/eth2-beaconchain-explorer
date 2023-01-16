@@ -1017,7 +1017,7 @@ func FormatFloat(num float64, precision int) string {
 	return string(r)
 }
 
-func FormatNotificationChannel(ch types.NotificationChannel) string {
+func FormatNotificationChannel(ch types.NotificationChannel) template.HTML {
 	label, ok := types.NotificationChannelLabels[ch]
 	if !ok {
 		return ""

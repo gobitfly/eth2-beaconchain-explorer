@@ -74,11 +74,8 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if blockSlot == -1 {
 		err = db.ReaderDb.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
 		if blockSlot == -1 {
-			err := blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-			if err != nil {
-				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
+			if handleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+				return // an error has occurred and was processed
 			}
 			return
 		}
@@ -92,12 +89,9 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		data.Meta.Path = "/slot/" + slotOrHash
 		logger.Errorf("error retrieving block data: %v", err)
-		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+		if handleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			return // an error has occurred and was processed
 		}
 		return
 	}
@@ -110,12 +104,8 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 		if slot > MaxSlotValue {
 			logger.Errorf("error retrieving blockPageData: %v", err)
-			err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-
-			if err != nil {
-				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
+			if handleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+				return // an error has occurred and was processed
 			}
 		}
 
@@ -128,13 +118,9 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		}
 		data.Data = futurePageData
 
-		err = blockFutureTemplate.ExecuteTemplate(w, "layout", data)
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+		if handleTemplateError(w, r, blockFutureTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			return // an error has occurred and was processed
 		}
-
 		return
 	} else if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -162,10 +148,8 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		err = blockTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if handleTemplateError(w, r, err) != nil {
+		return // an error has occurred and was processed
 	}
 }
 

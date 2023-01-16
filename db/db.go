@@ -39,32 +39,37 @@ var logger = logrus.StandardLogger().WithField("module", "db")
 var epochsCache = cache.New(time.Hour, time.Minute)
 var saveValidatorsMux = &sync.Mutex{}
 
+func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
+	// The golang sql driver does not properly implement PingContext
+	// therefore we use a timer to catch db connection timeouts
+	dbConnectionTimeout := time.NewTimer(15 * time.Second)
+
+	go func() {
+		<-dbConnectionTimeout.C
+		logger.Fatalf("timeout while connecting to %s", dataBaseName)
+	}()
+
+	err := dbConn.Ping()
+	if err != nil {
+		logger.Fatalf("unable to Ping %s: %s", dataBaseName, err)
+	}
+
+	dbConnectionTimeout.Stop()
+}
+
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {
 	dbConnWriter, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", writer.Username, writer.Password, writer.Host, writer.Port, writer.Name))
 	if err != nil {
 		logger.Fatal(err)
 	}
 
-	// The golang sql driver does not properly implement PingContext
-	// therefore we use a timer to catch db connection timeouts
-	dbConnectionTimeout := time.NewTimer(15 * time.Second)
-	go func() {
-		<-dbConnectionTimeout.C
-		logger.Fatalf("timeout while connecting to the database")
-	}()
-	err = dbConnWriter.Ping()
-	if err != nil {
-		logger.Fatal(err)
-	}
-	dbConnectionTimeout.Stop()
-
+	dbTestConnection(dbConnWriter, "database")
 	dbConnWriter.SetConnMaxIdleTime(time.Second * 30)
 	dbConnWriter.SetConnMaxLifetime(time.Second * 60)
 	dbConnWriter.SetMaxOpenConns(200)
 	dbConnWriter.SetMaxIdleConns(200)
 
 	if reader == nil {
-
 		return dbConnWriter, dbConnWriter
 	}
 
@@ -73,19 +78,7 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 		logger.Fatal(err)
 	}
 
-	// The golang sql driver does not properly implement PingContext
-	// therefore we use a timer to catch db connection timeouts
-	dbConnectionTimeout = time.NewTimer(15 * time.Second)
-	go func() {
-		<-dbConnectionTimeout.C
-		logger.Fatalf("timeout while connecting to the read replica database")
-	}()
-	err = dbConnReader.Ping()
-	if err != nil {
-		logger.Fatal(err)
-	}
-	dbConnectionTimeout.Stop()
-
+	dbTestConnection(dbConnReader, "read replica database")
 	dbConnReader.SetConnMaxIdleTime(time.Second * 30)
 	dbConnReader.SetConnMaxLifetime(time.Second * 60)
 	dbConnReader.SetMaxOpenConns(200)
