@@ -2372,3 +2372,34 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 
 	return withdrawals, nil
 }
+
+// GetAddressWithdrawals returns the withdrawals for an address
+func GetAddressWithdrawals(address []byte, limit uint64, offset uint64) ([]*types.Withdrawals, error) {
+	var withdrawals []*types.Withdrawals
+	if limit == 0 {
+		limit = 100
+	}
+
+	if limit > (offset + 100) {
+		limit = offset + 100
+	}
+
+	err := ReaderDb.Select(&withdrawals, "SELECT block_slot as slot, withdrawalindex as index, validatorindex, address, amount FROM blocks_withdrawals WHERE address = $1 ORDER BY withdrawalindex desc limit $2 offset $3", address, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
+	}
+
+	return withdrawals, nil
+}
+
+// GetAddressWithdrawalsTotal returns the total withdrawals for an address
+func GetAddressWithdrawalsTotal(address []byte) (uint64, error) {
+	var total uint64
+
+	err := ReaderDb.Get(&total, "SELECT sum(amount) as total FROM blocks_withdrawals WHERE address = $1", address)
+	if err != nil {
+		return 0, fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
+	}
+
+	return total, nil
+}

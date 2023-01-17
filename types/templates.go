@@ -1440,19 +1440,21 @@ type DataTableSaveStateColumns struct {
 }
 
 type Eth1AddressPageData struct {
-	Address           string `json:"address"`
-	QRCode            string `json:"qr_code_base64"`
-	QRCodeInverse     string
-	Metadata          *Eth1AddressMetadata
-	BlocksMinedTable  *DataTableResponse
-	UnclesMinedTable  *DataTableResponse
-	TransactionsTable *DataTableResponse
-	InternalTxnsTable *DataTableResponse
-	Erc20Table        *DataTableResponse
-	Erc721Table       *DataTableResponse
-	Erc1155Table      *DataTableResponse
-	EtherValue        template.HTML
-	Tabs              []Eth1AddressPageTabs
+	Address            string `json:"address"`
+	QRCode             string `json:"qr_code_base64"`
+	QRCodeInverse      string
+	Metadata           *Eth1AddressMetadata
+	WithdrawalsSummary template.HTML
+	BlocksMinedTable   *DataTableResponse
+	UnclesMinedTable   *DataTableResponse
+	TransactionsTable  *DataTableResponse
+	InternalTxnsTable  *DataTableResponse
+	Erc20Table         *DataTableResponse
+	Erc721Table        *DataTableResponse
+	Erc1155Table       *DataTableResponse
+	WithdrawalsTable   *DataTableResponse
+	EtherValue         template.HTML
+	Tabs               []Eth1AddressPageTabs
 }
 
 type Eth1AddressPageTabs struct {

@@ -7,10 +7,11 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"html/template"
 	"math/big"
 	"net/http"
+	"strconv"
 	"strings"
-	"text/template"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
@@ -51,7 +52,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	g := new(errgroup.Group)
-	g.SetLimit(7)
+	g.SetLimit(9)
 
 	txns := &types.DataTableResponse{}
 	internal := &types.DataTableResponse{}
@@ -60,6 +61,8 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	erc1155 := &types.DataTableResponse{}
 	blocksMined := &types.DataTableResponse{}
 	unclesMined := &types.DataTableResponse{}
+	withdrawals := &types.DataTableResponse{}
+	withdrawalSummary := template.HTML("0")
 
 	g.Go(func() error {
 		var err error
@@ -116,6 +119,42 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		addressWithdrawals, err := db.GetAddressWithdrawals(addressBytes, 25, 0)
+		if err != nil {
+			return err
+		}
+
+		withdrawalsData := make([][]interface{}, 0, len(addressWithdrawals))
+		for _, w := range addressWithdrawals {
+			withdrawalsData = append(withdrawalsData, []interface{}{
+				template.HTML(fmt.Sprintf("%v", w.Index)),
+				template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
+				template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
+				template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
+				template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+			})
+		}
+
+		withdrawals = &types.DataTableResponse{
+			Draw:         1,
+			RecordsTotal: uint64(len(withdrawalsData)),
+			// RecordsFiltered: uint64(len(withdrawals)),
+			Data:        withdrawalsData,
+			PagingToken: fmt.Sprintf("%v", 25),
+		}
+
+		return nil
+	})
+	g.Go(func() error {
+		sumWithdrawals, err := db.GetAddressWithdrawalsTotal(addressBytes)
+		if err != nil {
+			return err
+		}
+		withdrawalSummary = template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(sumWithdrawals), big.NewInt(1e9)), "ETH", 6)))
 		return nil
 	})
 	// }
@@ -192,20 +231,31 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	if withdrawals != nil && len(withdrawals.Data) != 0 {
+		tabs = append(tabs, types.Eth1AddressPageTabs{
+			Id:   "withdrawals",
+			Href: "#withdrawals",
+			Text: "Withdrawals",
+			Data: withdrawals,
+		})
+	}
+
 	data.Data = types.Eth1AddressPageData{
-		Address:           address,
-		QRCode:            pngStr,
-		QRCodeInverse:     pngStrInverse,
-		Metadata:          metadata,
-		TransactionsTable: txns,
-		InternalTxnsTable: internal,
-		Erc20Table:        erc20,
-		Erc721Table:       erc721,
-		Erc1155Table:      erc1155,
-		BlocksMinedTable:  blocksMined,
-		UnclesMinedTable:  unclesMined,
-		EtherValue:        utils.FormatEtherValue(symbol, ethPrice, GetCurrentPriceFormatted(r)),
-		Tabs:              tabs,
+		Address:            address,
+		QRCode:             pngStr,
+		QRCodeInverse:      pngStrInverse,
+		Metadata:           metadata,
+		WithdrawalsSummary: withdrawalSummary,
+		TransactionsTable:  txns,
+		InternalTxnsTable:  internal,
+		Erc20Table:         erc20,
+		Erc721Table:        erc721,
+		Erc1155Table:       erc1155,
+		WithdrawalsTable:   withdrawals,
+		BlocksMinedTable:   blocksMined,
+		UnclesMinedTable:   unclesMined,
+		EtherValue:         utils.FormatEtherValue(symbol, ethPrice, GetCurrentPriceFormatted(r)),
+		Tabs:               tabs,
 	}
 
 	if handleTemplateError(w, r, eth1AddressTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -279,6 +329,63 @@ func Eth1AddressUnclesMined(w http.ResponseWriter, r *http.Request) {
 	data, err := db.BigtableClient.GetAddressUnclesMinedTableData(address, search, pageToken)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 block table data")
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+}
+
+func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+	vars := mux.Vars(r)
+	address := strings.Replace(vars["address"], "0x", "", -1)
+	address = strings.ToLower(address)
+
+	pageToken, err := strconv.ParseUint(q.Get("pageToken"), 10, 64)
+	if err != nil {
+		logger.WithError(err).Errorf("error parsing page token")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
+	withdrawals, err := db.GetAddressWithdrawals(common.HexToAddress(address).Bytes(), uint64(pageToken+25), uint64(pageToken))
+	if err != nil {
+		logger.WithError(err).Errorf("error getting eth1 block table data")
+	}
+
+	tableData := make([][]interface{}, len(withdrawals))
+	for i, w := range withdrawals {
+		tableData[i] = []interface{}{
+			template.HTML(fmt.Sprintf("%v", w.Index)),
+			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+		}
+	}
+
+	nextPageToken := pageToken + 25
+	if len(withdrawals) < 25 {
+		nextPageToken = 0
+	}
+
+	next := ""
+	if nextPageToken != 0 {
+		next = fmt.Sprintf("%d", nextPageToken)
+	}
+
+	data := &types.DataTableResponse{
+		// Draw: draw,
+		// RecordsTotal:    ,
+		// RecordsFiltered: ,
+		Data:        tableData,
+		PagingToken: next,
 	}
 
 	err = json.NewEncoder(w).Encode(data)
