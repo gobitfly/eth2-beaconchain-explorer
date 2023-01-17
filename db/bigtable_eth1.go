@@ -672,10 +672,13 @@ func (bigtable *Bigtable) DeleteRowsWithPrefix(prefix string) {
 		rr := gcp_bigtable.InfiniteRange(prefix)
 
 		rowsToDelete := make([]string, 0, 10000)
-		bigtable.tableData.ReadRows(ctx, rr, func(r gcp_bigtable.Row) bool {
+		err := bigtable.tableData.ReadRows(ctx, rr, func(r gcp_bigtable.Row) bool {
 			rowsToDelete = append(rowsToDelete, r.Key())
 			return true
 		})
+		if err != nil {
+			logger.WithError(err).WithField("prefix", prefix).Errorf("error reading rows in bigtable_eth1 / DeleteRowsWithPrefix")
+		}
 		mut := gcp_bigtable.NewMutation()
 		mut.DeleteRow()
 
@@ -1685,7 +1688,7 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*ty
 		return data, "", nil
 	}
 
-	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1TransactionIndexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
@@ -1696,6 +1699,11 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*ty
 
 		return true
 	})
+	if err != nil {
+		logger.WithError(err).WithField("prefix", prefix).WithField("limit", limit).Errorf("error reading rows in bigtable_eth1 / GetEth1TxForAddress")
+		return nil, "", err
+	}
+
 	// logger.Infof("adding keys: %+v", keys)
 	// logger.Infof("adding indexes: %+v", indexes)
 	for _, key := range keys {
@@ -1844,7 +1852,7 @@ func (bigtable *Bigtable) GetEth1BlocksForAddress(prefix string, limit int64) ([
 		return data, "", nil
 	}
 
-	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1BlockIndexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
@@ -1855,6 +1863,11 @@ func (bigtable *Bigtable) GetEth1BlocksForAddress(prefix string, limit int64) ([
 
 		return true
 	})
+	if err != nil {
+		logger.WithError(err).WithField("prefix", prefix).WithField("limit", limit).Errorf("error reading rows in bigtable_eth1 / GetEth1BlocksForAddress")
+		return nil, "", err
+	}
+
 	// logger.Infof("adding keys: %+v", keys)
 	// logger.Infof("adding indexes: %+v", indexes)
 	for _, key := range keys {
@@ -1929,7 +1942,7 @@ func (bigtable *Bigtable) GetEth1UnclesForAddress(prefix string, limit int64) ([
 		return data, "", nil
 	}
 
-	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1UncleIndexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
@@ -1940,6 +1953,11 @@ func (bigtable *Bigtable) GetEth1UnclesForAddress(prefix string, limit int64) ([
 
 		return true
 	})
+	if err != nil {
+		logger.WithError(err).WithField("prefix", prefix).WithField("limit", limit).Errorf("error reading rows in bigtable_eth1 / GetEth1UnclesForAddress")
+		return nil, "", err
+	}
+
 	// logger.Infof("adding keys: %+v", keys)
 	// logger.Infof("adding indexes: %+v", indexes)
 	for _, key := range keys {
@@ -2007,7 +2025,7 @@ func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, address []byte, li
 		return data, "", nil
 	}
 
-	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1InternalTransactionIndexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
@@ -2022,6 +2040,10 @@ func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, address []byte, li
 		keysMap[row.Key()] = b
 		return true
 	})
+	if err != nil {
+		logger.WithError(err).WithField("prefix", prefix).WithField("limit", limit).WithField("address", address).Errorf("error reading rows in bigtable_eth1 / GetEth1ItxForAddress")
+		return nil, "", err
+	}
 
 	for _, key := range keys {
 		if d := keysMap[key]; d != nil {
@@ -2289,7 +2311,7 @@ func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]
 		return data, "", nil
 	}
 
-	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1ERC20Indexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
@@ -2299,6 +2321,10 @@ func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]
 		keysMap[row.Key()] = b
 		return true
 	})
+	if err != nil {
+		logger.WithError(err).WithField("prefix", prefix).WithField("limit", limit).Errorf("error reading rows in bigtable_eth1 / GetEth1ERC20ForAddress")
+		return nil, "", err
+	}
 
 	for _, key := range keys {
 		data = append(data, keysMap[key])
@@ -2398,7 +2424,7 @@ func (bigtable *Bigtable) GetEth1ERC721ForAddress(prefix string, limit int64) ([
 		return data, "", nil
 	}
 
-	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1ERC721Indexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
@@ -2408,6 +2434,10 @@ func (bigtable *Bigtable) GetEth1ERC721ForAddress(prefix string, limit int64) ([
 		keysMap[row.Key()] = b
 		return true
 	})
+	if err != nil {
+		logger.WithError(err).WithField("prefix", prefix).WithField("limit", limit).Errorf("error reading rows in bigtable_eth1 / GetEth1ERC721ForAddress")
+		return nil, "", err
+	}
 
 	for _, key := range keys {
 		data = append(data, keysMap[key])
@@ -2480,7 +2510,7 @@ func (bigtable *Bigtable) GetEth1ERC1155ForAddress(prefix string, limit int64) (
 		return data, "", nil
 	}
 
-	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.ETh1ERC1155Indexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
@@ -2490,6 +2520,10 @@ func (bigtable *Bigtable) GetEth1ERC1155ForAddress(prefix string, limit int64) (
 		keysMap[row.Key()] = b
 		return true
 	})
+	if err != nil {
+		logger.WithError(err).WithField("prefix", prefix).WithField("limit", limit).Errorf("error reading rows in bigtable_eth1 / GetEth1ERC1155ForAddress")
+		return nil, "", err
+	}
 
 	for _, key := range keys {
 		data = append(data, keysMap[key])
@@ -3164,7 +3198,7 @@ func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*type
 		return data, "", nil
 	}
 
-	bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1ERC20Indexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
 
@@ -3175,6 +3209,11 @@ func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*type
 
 		return true
 	})
+	if err != nil {
+		logger.WithError(err).WithField("prefix", prefix).WithField("limit", limit).Errorf("error reading rows in bigtable_eth1 / GetEth1TxForToken")
+		return nil, "", err
+	}
+
 	// logger.Infof("adding keys: %+v", keys)
 	// logger.Infof("adding indexes: %+v", indexes)
 	for _, key := range keys {
