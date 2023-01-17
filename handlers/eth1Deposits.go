@@ -22,8 +22,8 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 	pageData := &types.EthOneDepositsPageData{}
 
 	latestChartsPageData := services.LatestChartsPageData()
-	if latestChartsPageData != nil {
-		for _, c := range *latestChartsPageData {
+	if len(latestChartsPageData) != 0 {
+		for _, c := range latestChartsPageData {
 			if c.Path == "deposits" {
 				pageData.DepositChart = c
 				break
@@ -38,12 +38,8 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 	data.HeaderAd = true
 	data.Data = pageData
 
-	err := eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if handleTemplateError(w, r, eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 
@@ -84,12 +80,13 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 	orderByMap := map[string]string{
 		"0": "from_address",
 		"1": "publickey",
-		"2": "amount",
-		"3": "tx_hash",
-		"4": "block_ts",
-		"5": "block_number",
-		"6": "state",
-		"7": "valid_signature",
+		"2": "withdrawal_credential",
+		"3": "amount",
+		"4": "tx_hash",
+		"5": "block_ts",
+		"6": "block_number",
+		"7": "state",
+		"8": "valid_signature",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -117,6 +114,7 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
 			utils.FormatPublicKey(d.PublicKey),
+			utils.FormatWithdawalCredentials(d.WithdrawalCredentials),
 			utils.FormatDepositAmount(d.Amount, currency),
 			utils.FormatEth1TxHash(d.TxHash),
 			utils.FormatTimestamp(d.BlockTs.Unix()),
@@ -155,12 +153,8 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
-	err := eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	if handleTemplateError(w, r, eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }
 

@@ -38,16 +38,15 @@ func GetTemplate(files ...string) *template.Template {
 
 	templateCacheMux.RLock()
 	if templateCache[name] != nil {
-		templateCacheMux.RUnlock()
+		defer templateCacheMux.RUnlock()
 		return templateCache[name]
 	}
 	templateCacheMux.RUnlock()
 
 	tmpl := template.Must(template.New(name).Funcs(template.FuncMap(templateFuncs)).ParseFS(Files, files...))
 	templateCacheMux.Lock()
+	defer templateCacheMux.Unlock()
 	templateCache[name] = tmpl
-	templateCacheMux.Unlock()
-
 	return templateCache[name]
 }
 
@@ -96,15 +95,14 @@ func AddTemplateFile(tmpl *template.Template, path string) *template.Template {
 
 	templateCacheMux.RLock()
 	if templateCache[name] != nil {
-		templateCacheMux.RUnlock()
+		defer templateCacheMux.RUnlock()
 		return templateCache[name]
 	}
 	templateCacheMux.RUnlock()
 
 	tmpl = template.Must(tmpl.ParseFiles(path))
 	templateCacheMux.Lock()
+	defer templateCacheMux.Unlock()
 	templateCache[name] = tmpl
-	templateCacheMux.Unlock()
-
 	return templateCache[name]
 }

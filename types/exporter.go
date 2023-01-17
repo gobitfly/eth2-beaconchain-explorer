@@ -294,9 +294,9 @@ type Eth2Deposit struct {
 	Signature             []byte `db:"signature"`
 }
 
-// PerformanceDay is a struct to hold performance data for a specific beaconchain-day.
+// EthStoreDay is a struct to hold performance data for a specific beaconchain-day.
 // All fields use Gwei unless specified otherwise by the field name
-type PerformanceDay struct {
+type EthStoreDay struct {
 	Pool                   string          `db:"pool"`
 	Day                    uint64          `db:"day"`
 	EffectiveBalancesSum   decimal.Decimal `db:"effective_balances_sum_wei"`

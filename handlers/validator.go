@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/hex"
@@ -137,15 +138,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				logger.Errorf("error getting validator-deposits from db: %v", err)
 			}
 			validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
+			validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
-
 				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
-				err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-				if err != nil {
-					logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-					http.Error(w, "Internal server error", http.StatusInternalServerError)
-					return
+
+				if handleTemplateError(w, r, validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+					return // an error has occurred and was processed
 				}
 				return
 			}
@@ -210,12 +209,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			} else {
 				err = validatorTemplate.ExecuteTemplate(w, "layout", data)
 			}
-			if err != nil {
-				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
 
+			if handleTemplateError(w, r, err) != nil {
+				return // an error has occurred and was processed
+			}
 			return
 		}
 	} else {
@@ -265,11 +262,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validators.validatorindex = $1`, index)
 
 	if err == sql.ErrNoRows {
-		err = validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+		if handleTemplateError(w, r, validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			return // an error has occurred and was processed
 		}
 		return
 	} else if err != nil {
@@ -295,12 +289,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error retrieving validator public key %v: %v", index, err)
 
-		err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+		if handleTemplateError(w, r, validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			return // an error has occurred and was processed
 		}
 		return
 	}
@@ -337,6 +327,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+
+	validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
@@ -433,7 +425,27 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// add attestationStats that are not yet in validator_stats TODO: Reimplement for bigtable
+		// add attestationStats that are not yet in validator_stats
+		finalizedEpoch := services.LatestFinalizedEpoch()
+		lookback := int64(finalizedEpoch - (lastStatsDay+1)*225)
+		if lookback > 0 {
+			logger.Infof("retrieving attestations not yet in stats, lookback is %v", lookback)
+			attestationsNotInStats, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, finalizedEpoch, lookback)
+			if err != nil {
+				logger.Errorf("error retrieving validator attestations not in stats from bigtable: %v", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			for _, v := range attestationsNotInStats {
+				for _, a := range v {
+					if a.Status == 0 {
+						attestationStats.MissedAttestations++
+					}
+				}
+			}
+		}
+
 		validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
 		validatorPageData.OrphanedAttestationsCount = attestationStats.OrphanedAttestations
 		validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount - validatorPageData.OrphanedAttestationsCount
@@ -568,8 +580,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		if latestEpoch := services.LatestEpoch(); latestEpoch <= syncPeriods[0].LastEpoch {
-			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, latestEpoch, int64(latestEpoch-syncPeriods[0].FirstEpoch))
+		finalizedEpoch := services.LatestFinalizedEpoch()
+		lookback := int64(finalizedEpoch - (lastStatsDay+1)*225)
+		if lookback > 0 {
+			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, finalizedEpoch, lookback)
 			if err != nil {
 				logger.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -646,11 +660,38 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		err = validatorTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if handleTemplateError(w, r, err) != nil {
+		return // an error has occurred and was processed
 	}
+}
+
+// Returns true if there are more than one different withdrawal credentials within both Eth1Deposits and Eth2Deposits
+func hasMultipleWithdrawalCredentials(deposits *types.ValidatorDeposits) bool {
+	credential := make([]byte, 0)
+
+	// check Eth1Deposits
+	for _, deposit := range deposits.Eth1Deposits {
+		if len(credential) == 0 {
+			credential = deposit.WithdrawalCredentials
+		} else {
+			if !bytes.Equal(credential, deposit.WithdrawalCredentials) {
+				return true
+			}
+		}
+	}
+
+	// check Eth2Deposits
+	for _, deposit := range deposits.Eth2Deposits {
+		if len(credential) == 0 {
+			credential = deposit.Withdrawalcredentials
+		} else {
+			if !bytes.Equal(credential, deposit.Withdrawalcredentials) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // ValidatorDeposits returns a validator's deposits in json
@@ -1536,14 +1577,9 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	data.Data = validatorStatsTablePageData
-	err = validatorStatsTableTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if handleTemplateError(w, r, validatorStatsTableTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
-
 }
 
 // ValidatorSync retrieves one page of sync duties of a specific validator for DataTable.
@@ -1602,9 +1638,15 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//remove all future sync periods
+	latestEpoch := services.LatestEpoch()
+	for syncPeriods[0].EndEpoch > services.LatestEpoch() {
+		syncPeriods = syncPeriods[1:]
+	}
+
 	// set latest epoch of this validators latest sync period to current epoch if latest sync epoch has yet to happen
 	var diffToLatestEpoch uint64 = 0
-	if latestEpoch := services.LatestEpoch(); latestEpoch < syncPeriods[0].StartEpoch {
+	if latestEpoch < syncPeriods[0].StartEpoch {
 		diffToLatestEpoch = syncPeriods[0].StartEpoch - latestEpoch
 		syncPeriods[0].StartEpoch = latestEpoch
 	}

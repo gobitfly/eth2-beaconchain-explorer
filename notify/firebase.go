@@ -3,6 +3,7 @@ package notify
 import (
 	"context"
 	"eth2-exporter/utils"
+	"strings"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"
@@ -39,8 +40,12 @@ func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, err
 		return nil, err
 	}
 	for _, response := range result.Responses {
-		if !response.Success {
-			logger.Errorf("firebase error %v %v", response.Error, response.MessageID)
+		if !response.Success && response.Error != nil {
+			// Ignore https://stackoverflow.com/questions/58308835/using-firebase-for-notifications-getting-app-instance-has-been-unregistered
+			// Errors since they indicate that the user token is expired
+			if !strings.Contains(response.Error.Error(), "registration-token-not-registered") {
+				logger.Errorf("firebase error %v %v", response.Error, response.MessageID)
+			}
 		}
 	}
 

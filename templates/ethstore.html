@@ -1,0 +1,524 @@
+{{ define "css" }}
+
+  <style>
+    h1 {
+      font-weight: bold;
+    }
+
+    h3 {
+      font-size: 1.1em;
+      opacity: 0.8;
+    }
+
+    .subline {
+      padding-top: 12px;
+    }
+
+    .feature-entry {
+      padding-bottom: 25px;
+      padding-top: 25px;
+    }
+
+    .feature-text-container {
+      font-size: 95%;
+    }
+
+    .feature-text {
+      display: block;
+      width: 200px;
+
+      text-align: center;
+      margin: auto;
+    }
+
+    .feature-icon {
+      padding-bottom: 13px;
+      font-size: 180%;
+    }
+    .stat {
+      font-size: 1.8rem !important;
+    }
+
+    .title-head {
+      padding-top: 25px;
+      padding-bottom: 20px;
+      padding-left: 0;
+      font-size: 1.5rem;
+      text-align: center;
+    }
+
+    .collapsible {
+      background-color: var(--theme-bg-color-secondary) !important;
+      color: var(--body-color);
+      cursor: pointer;
+      padding-top: 18px;
+      padding-bottom: 18px;
+      padding-left: 23px;
+      padding-right: 23px;
+      width: 100%;
+      border: none !important;
+      text-align: left;
+      outline: none !important;
+
+      font-family: "Barlow", sans-serif;
+      font-size: 1.1em;
+    }
+
+    .content {
+      width: 100%;
+    }
+
+    .container .active,
+    .collapsible:hover {
+      background-color: var(--theme-bg-color-secondary);
+    }
+
+    .content {
+      margin-bottom: 17px;
+      max-height: 0;
+      overflow: hidden;
+
+      opacity: 1;
+      transition: max-height 0.3s ease-out;
+      background-color: var(--theme-bg-card-body);
+
+      padding-left: 23px;
+      padding-right: 23px;
+      letter-spacing: 0.65px;
+    }
+
+    .collapsible:after {
+      content: "＋";
+      /* Unicode character for "plus" sign (+) */
+      /* https://unicodeplus.com/U+FF0B */
+      font-size: 13px;
+      float: right;
+      margin-left: 5px;
+      color: var(--theme-header-font-color);
+      font-weight: bolder;
+    }
+
+    .container .active:after {
+      /* Unicode character for "minus" sign (-) */
+      /* https://unicodeplus.com/U+FF0D */
+      content: "－";
+      color: var(--theme-header-font-color);
+      font-weight: bolder;
+    }
+
+    button.focus,
+    button:focus,
+    button:active,
+    button:active:hover {
+      box-shadow: none !important;
+    }
+
+    button {
+      background: none;
+      box-shadow: none !important;
+    }
+
+    p {
+      margin-top: 12px;
+    }
+
+    .img-header {
+      margin-top: 38px;
+      width: 100%;
+      background-image: url(/images/faq-header.svg);
+      background-size: cover;
+      height: 0;
+      padding: 0;
+      /* reset */
+      padding-bottom: calc(65%);
+    }
+
+    td,
+    th {
+      padding-right: 20px;
+    }
+
+    .feature-text-container,
+    .feature-text {
+      color: var(--theme-header-font-color);
+    }
+
+    .row > * {
+      flex-shrink: 0;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .content thead th {
+      background-color: unset;
+    }
+  </style>
+{{ end }}
+
+{{ define "content" }}
+
+  <div class="container">
+    <div class="explain-container my-3">
+      <div style="text-align: center;">
+        <div>
+          <h1>ETH.STORE</h1>
+          <h3 class="subline">The Transparent Ethereum Staking Reward Reference Rate</h3>
+        </div>
+      </div>
+      <section class="my-5">
+        <div class="row justify-content-center align-items-center">
+          <div class="row justify-content-center align-items-stretch text-center">
+            <div class="col-md-4 mb-3 mb-md-0 feature-entry">
+              <div class="h1">
+                <h1 class="stat"><span aria-ethereum-date="{{ .Data.YesterdayTs }}" aria-ethereum-date-format="dd MMMM yyyy"></span></h1>
+              </div>
+              <div class="h5 text-muted feature-text-container">
+                <span class="feature-text"> Last Reward Day </span>
+                <span class="feature-text" style="opacity: 0.75; font-size: 0.82em;">Start 12:00:23 UTC, Duration 24h</span>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3 mb-md-0 feature-entry">
+              <div class="h1">
+                <h1 class="stat" title="{{ .Data.ProjectedAPR }}%">
+                  {{ round .Data.ProjectedAPR
+                    3
+                  }}
+                  % p.a.
+                </h1>
+              </div>
+              <div class="h5 text-muted feature-text-container">
+                <span class="feature-text"> ETH.STORE </span>
+                <span class="feature-text" style="opacity: 0.75; font-size: 0.82em;">based on last reward day</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="income-history">
+        <div id="income-chart" style="width: 95%; margin: 0 auto; height: 400px">
+          {{ template "bar_chart_svg" . }}
+        </div>
+      </section>
+
+      <section style="padding-top: 35px; padding-bottom: 25px;">
+        <div class="row justify-content-center align-items-center">
+          <div class="row justify-content-center align-items-stretch text-center">
+            <div class="col-md-4 mb-3 mb-md-0 feature-entry">
+              <div class="h1 feature-icon">
+                <svg height="40px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
+                  <path fill="var(--body-color)" d="M384 160C366.3 160 352 145.7 352 128C352 110.3 366.3 96 384 96H544C561.7 96 576 110.3 576 128V288C576 305.7 561.7 320 544 320C526.3 320 512 305.7 512 288V205.3L342.6 374.6C330.1 387.1 309.9 387.1 297.4 374.6L191.1 269.3L54.63 406.6C42.13 419.1 21.87 419.1 9.372 406.6C-3.124 394.1-3.124 373.9 9.372 361.4L169.4 201.4C181.9 188.9 202.1 188.9 214.6 201.4L320 306.7L466.7 159.1L384 160z" />
+                </svg>
+              </div>
+              <div class="h5 text-muted feature-text-container" style="padding-top: 10px;">
+                <span class="feature-text"> Represents the daily average earnings of validators across the entire Ethereum staking network </span>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3 mb-md-0 feature-entry">
+              <div class="h1 feature-icon">
+                <svg height="40px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                  <path fill="var(--body-color)" d="M500.3 443.7l-119.7-119.7c27.22-40.41 40.65-90.9 33.46-144.7C401.8 87.79 326.8 13.32 235.2 1.723C99.01-15.51-15.51 99.01 1.724 235.2c11.6 91.64 86.08 166.7 177.6 178.9c53.8 7.189 104.3-6.236 144.7-33.46l119.7 119.7c15.62 15.62 40.95 15.62 56.57 0C515.9 484.7 515.9 459.3 500.3 443.7zM79.1 208c0-70.58 57.42-128 128-128s128 57.42 128 128c0 70.58-57.42 128-128 128S79.1 278.6 79.1 208z" />
+                </svg>
+              </div>
+              <div class="h5 text-muted feature-text-container" style="padding-top: 10px;">
+                <span class="feature-text"> ETH.STORE is transparent, fair and easily auditable </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="my-5">
+        <h1 class="title-head">ETH.STORE Explained</h1>
+
+        <button type="button" class="collapsible">What is ETH.STORE?</button>
+        <div class="content">
+          <p>ETH.STORE (Ether <strong>St</strong>aking <strong>O</strong>ffered <strong>R</strong>at<strong>e</strong>) is a transparent Ethereum staking reward reference rate. It represents the average financial return validators on the Ethereum network have achieved in a 24-hour period as published on <a href="/ethstore">beaconcha.in</a>.</p>
+        </div>
+
+        <button type="button" class="collapsible">How are active validators counted by ETH.STORE?</button>
+        <div class="content">
+          <p>All validators that stayed in the active state during the entire reward day are counted. New validators joining or exiting mid day are excluded.</p>
+        </div>
+
+        <button type="button" class="collapsible">How long is a reward day and when does it start?</button>
+        <div class="content">
+          <p>Each reward day starts at 12:00:23 UTC and lasts for 24 hours (or exactly 225 beaconchain epochs).</p>
+        </div>
+
+        <button type="button" class="collapsible">How are total rewards calculated in ETH.STORE?</button>
+        <div class="content">
+          <p>Total staking rewards consists of consensus rewards and transaction fees:</p>
+          <ol>
+            <li>Consensus rewards: Rewards received by validators for proposing and attesting in accordance with the consensus rules of the Ethereum protocol.</li>
+            <li>Transaction fees: Fees received by validators for processing transactions on the Ethereum network.</li>
+          </ol>
+          <p>Total staking rewards equals the sum of consensus rewards and transaction fees.</p>
+        </div>
+
+        <button type="button" class="collapsible">How can I reproduce the ETH.STORE calculation on my own?</button>
+        <div class="content">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Start epoch (SE):</td>
+                  <td>First epoch after 12:00 UTC every day</td>
+                </tr>
+                <tr>
+                  <td>End epoch (EE):</td>
+                  <td>SE + 225</td>
+                </tr>
+                <tr>
+                  <td>Active validators (VS):</td>
+                  <td>Validators that have been active from start SE to end EE [SE,EE)</td>
+                </tr>
+                <tr>
+                  <td>Sum rewards (RS):</td>
+                  <td>Sum of all rewards (consensus, tx) in VS that have been generated in epochs [SE,EE)</td>
+                </tr>
+                <tr>
+                  <td>Sum effective balances (EB):</td>
+                  <td>Sum of all effective balances at epoch SE of all validators in VS</td>
+                </tr>
+                <tr>
+                  <td>ETH.STORE:</td>
+                  <td>(RS/EB)*365</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <br />
+          <p>
+            Calculations for <strong><span aria-ethereum-date="{{ .Data.YesterdayTs }}" aria-ethereum-date-format="dd MMMM yyyy"></span> 12:00:23 UTC - <span aria-ethereum-date="{{ addI64 .Data.YesterdayTs 86400 }}" aria-ethereum-date-format="dd MMMM yyyy"></span> 12:00:22 UTC:</strong>
+          </p>
+
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Start epoch (SE):</td>
+                  <td>Epoch {{ .Data.StartEpoch }}</td>
+                </tr>
+                <tr>
+                  <td>End epoch (EE):</td>
+                  <td>Epoch {{ addUI64 .Data.StartEpoch 225 }}</td>
+                </tr>
+                <tr>
+                  <td>Active validators (VS):</td>
+                  <td>in timeframe [{{ .Data.StartEpoch }},{{ addUI64 .Data.StartEpoch 225 }})</td>
+                </tr>
+                <tr>
+                  <td>Sum rewards (RS):</td>
+                  <td>{{ formatThousandsFancy .Data.YesterdayRewards }} Ether</td>
+                </tr>
+                <tr>
+                  <td>Sum effective balances (EB):</td>
+                  <td>{{ formatThousandsFancy .Data.YesterdayEffectiveBalance }} Ether</td>
+                </tr>
+                <tr>
+                  <td>ETH.STORE:</td>
+                  <td>{{ .Data.ProjectedAPR }} % = ({{ formatThousandsFancy .Data.YesterdayRewards }} / ({{ formatThousandsFancy .Data.YesterdayEffectiveBalance }})) * 365</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <button type="button" class="collapsible">Is the ETH.STORE code Open-Source?</button>
+        <div class="content">
+          <p>Yes, you can run the calculations yourself with our open source ETH.STORE tool and verify the integrity of the ETH.STORE listed here. Check out <a href="https://github.com/gobitfly/eth.store/" target="_blank">ETH.STORE on Github</a>.</p>
+        </div>
+      </section>
+
+      <div style="padding-bottom: 5vh;"></div>
+    </div>
+  </div>
+{{ end }}
+
+{{ define "js" }}
+  <script src="/js/highcharts/highstock.min.js"></script>
+  <script src="/js/highcharts/highcharts-global-options.js"></script>
+  <script>
+	var coll = document.getElementsByClassName("collapsible");
+	var i;
+
+	for (i = 0; i < coll.length; i++) {
+		coll[i].addEventListener("click", function () {
+			click(this)
+		});
+	}
+
+	function click(element) {
+		element.classList.toggle("active");
+		var content = element.nextElementSibling;
+		if (content.style.maxHeight) {
+			content.style.maxHeight = null;
+		} else {
+			content.style.maxHeight = (content.scrollHeight + 35) + "px";
+		}
+	}
+
+	var hash = window.location.hash
+	if (hash) {
+		const el = document.getElementById(hash.substr(1))
+		if (el && el.nodeName == "H1") {
+			var next = el.nextElementSibling
+			while (next && next.nodeName != "H1") {
+				if (next.nodeName == "BUTTON") {
+					click(next)
+				}
+				next = next.nextElementSibling
+			}
+
+		} else if (el && el.nodeName == "BUTTON") {
+			click(el)
+		}
+	}
+	Highcharts.stockChart('income-chart', {
+		rangeSelector: {
+			enabled: false
+		},
+		scrollbar: {
+			enabled: false
+		},
+		navigator: {
+			enabled: true
+		},
+		chart: {
+			type: 'column',
+			backgroundColor: "rgba(0,0,0,0.0)",
+		},
+		legend: {
+			enabled: true,
+			legend: {
+        enabled: true,
+        itemHoverStyle: {
+          color: 'var(--body-color)'
+        },
+        itemHiddenStyle: {
+          color: 'var(--shadow-light)'
+        }
+		  },
+		},
+		xAxis: {
+			range: 32 * 24 * 60 * 60 * 1000,
+			type: 'datetime',
+			crosshair: true
+		},
+		tooltip: {
+			style: {
+				color: 'var(--body-color)',
+				fontSize: '120%',
+				lineHeight: '22px',
+				fontFamily: "'Inter', sans-serif",
+			},
+			backgroundColor: 'var(--bg-color-nav-pool)',
+			borderColor: 'var(--shadow-light)',
+			shared: true,
+			useHTML: true,
+
+				split: false,
+			formatter: function () {
+				var add = ``
+
+				for (var i = 0; i < this.points.length; i++) {
+					if (this.points[i].series.name == "Total Staking Rewards") {
+						add += `<span style="color:${this.points[i].series.color};display: inline-block; width: 200px;">${this.points[i].series.name}: </span><b>${Highcharts.numberFormat(this.points[i].y, 6)} ETH</b><br/>`
+					} else if (this.points[i].series.name == "ETH.STORE") {
+						add += `<span style="color: ${this.points[i].series.color}; display: inline-block; width: 200px;">${this.points[i].series.name}: </span><b>${this.points[i].y.toFixed(3)} % p.a.</b><br/>`
+					} else {
+						add += `<span style="color: ${this.points[i].series.color}; display: inline-block; width: 200px;">${this.points[i].series.name}: </span><b>${Highcharts.numberFormat(this.points[i].y, 0)} ETH</b><br/>`
+					}
+				}
+				return `${new Intl.DateTimeFormat(navigator.language || 'en-US', { dateStyle: 'long' }).format(new Date(this.x))}<br/>` + add
+			}
+		},
+		yAxis: [{
+			title: {
+				text: 'Total Staking Rewards (ETH)'
+			},
+			opposite: false,
+			labels: {
+				formatter: function () {
+					return this.value.toFixed(0)
+				},
+			},
+		},
+		{
+			title: {
+				text: 'ETH.STORE (% p.a.)'
+			},
+			opposite: false,
+			labels: {
+				formatter: function () {
+					return (this.value).toFixed(1) + '%'
+				},
+			},
+			opposite: true,
+		},
+		{
+			title: {
+				enabled: false,
+				text: 'Total Effective Balance'
+			},
+
+			opposite: false,
+			labels: {
+				enabled: false,
+				formatter: function () {
+					return (this.value / 1000000).toFixed(0) + "M Ether"
+				},
+			},
+			opposite: true,
+		},
+		],
+		navigator: {
+			series: {
+				type: 'line'
+			}
+		},
+		series: [
+			{
+				name: 'Total Staking Rewards',
+				data: {{ .TotalRewards }},
+				negativeColor: '#f82e2e',
+				color: 'var(--statistics-blue)',
+				yAxis: 0
+			},
+			{
+				name: 'Total Effective Balance',
+				visible: false,
+				data: {{ .EffectiveBalances }},
+				color: 'var(--statistics-purple)',
+				negativeColor: '#384a32',
+				yAxis: 2
+			},
+			{
+				name: 'ETH.STORE',
+				data: {{ .APRs}},
+				color: 'var(--statistics-orange)',
+				negativeColor: '#384a32',
+				type: 'spline',
+				lineWidth: 6,
+				yAxis: 1
+			},
+
+
+		]
+	})
+  </script>
+{{ end }}

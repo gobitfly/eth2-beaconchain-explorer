@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -18,8 +19,8 @@ func main() {
 
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
 
-	start := flag.Int("start", 1, "Start epoch")
-	end := flag.Int("end", 1, "End epoch")
+	start := flag.Uint64("start", 1, "Start epoch")
+	end := flag.Uint64("end", 1, "End epoch")
 
 	flag.Parse()
 
@@ -51,6 +52,38 @@ func main() {
 		i := i
 
 		logrus.Infof("exporting epoch %v", i)
+
+		logrus.Infof("deleting existing epoch data")
+		err := bt.DeleteEpoch(i)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		firstSlot := i * utils.Config.Chain.Config.SlotsPerEpoch
+		lastSlot := (i+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+
+		c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", firstSlot), i)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		validatorsU64 := make([]uint64, len(c.Validators))
+		for i, idxStr := range c.Validators {
+			idxU64, err := strconv.ParseUint(idxStr, 10, 64)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			validatorsU64[i] = idxU64
+		}
+
+		logrus.Infof("saving sync assignments for %v validators", len(validatorsU64))
+
+		err = db.BigtableClient.SaveSyncCommitteesAssignments(firstSlot, lastSlot, validatorsU64)
+		if err != nil {
+			logrus.Fatalf("error saving sync committee assignments: %v", err)
+		}
+		logrus.Infof("exported sync committee assignments for epoch %v to bigtable in %v", i)
+
 		data, err := rpcClient.GetEpochData(uint64(i), true)
 		if err != nil {
 			logrus.Fatal(err)

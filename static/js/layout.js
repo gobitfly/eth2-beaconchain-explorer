@@ -507,9 +507,18 @@ function getRelativeTime(tsLuxon) {
     return `${prefix}${duration.days * -1}days  ${duration.hours * -1}hrs ${duration.minutes * -1}mins ${duration.seconds * -1}secs${suffix}`
   }
 }
+
 function addCommas(number) {
   return number
     .toString()
     .replace(/,/g, "")
     .replace(/\B(?=(\d{3})+(?!\d))/g, "<span class='thousands-separator'></span>")
+}
+
+function getIncomeChartValueString(value, currency, ethPrice) {
+  if (this.currency === "ETH") {
+    return `${value.toFixed(5)} ETH`
+  }
+
+  return `${(value / ethPrice).toFixed(5)} ETH (${value.toFixed(2)} ${currency})`
 }

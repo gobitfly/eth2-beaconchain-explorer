@@ -17,23 +17,23 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/coocood/freecache"
 	"github.com/ethereum/go-ethereum/common"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/karlseguin/ccache/v2"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+
+	_ "net/http/pprof"
 )
 
 func main() {
-
 	erigonEndpoint := flag.String("erigon", "", "Erigon archive node enpoint")
-	network := flag.String("network", "", "Network to use for exporting (mainnet or goerli")
-
 	block := flag.Int64("block", 0, "Index a specific block")
 
 	reorgDepth := flag.Int("reorg.depth", 20, "Lookback to check and handle chain reorgs")
@@ -82,6 +82,14 @@ func main() {
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
 
+	// enable pprof endpoint if requested
+	if utils.Config.Pprof.Enabled {
+		go func() {
+			logrus.Infof("starting pprof http server on port %s", utils.Config.Pprof.Port)
+			logrus.Info(http.ListenAndServe(fmt.Sprintf("localhost:%s", utils.Config.Pprof.Port), nil))
+		}()
+	}
+
 	db.MustInitDB(&types.DatabaseConfig{
 		Username: cfg.WriterDatabase.Username,
 		Password: cfg.WriterDatabase.Password,
@@ -116,20 +124,8 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	chainId := ""
-	if *network == "mainnet" {
-		chainId = "1"
-	} else if *network == "goerli" {
-		chainId = "5"
-	} else if *network == "sepolia" {
-		chainId = "11155111"
-	} else if *network == "gnosis" {
-		chainId = "100"
-	} else if *network == "chiado" {
-		chainId = "10200"
-	} else {
-		logrus.Fatalf("unsupported network name %v provided", *network)
-	}
+	chainId := strconv.FormatUint(utils.Config.Chain.Config.DepositChainID, 10)
+
 	balanceUpdaterPrefix := chainId + ":B:"
 
 	nodeChainId, err := client.GetNativeClient().ChainID(context.Background())
@@ -199,18 +195,21 @@ func main() {
 		// }
 	}
 
-	transforms := make([]func(blk *types.Eth1Block, cache *ccache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
+	transforms := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
 	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
+
+	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 
 	if *block != 0 {
 		err = IndexFromNode(bt, client, *block, *block, *concurrencyBlocks)
 		if err != nil {
-			logrus.WithError(err).Fatalf("error indexing from node")
+			logrus.WithError(err).Fatalf("error indexing from node, start: %v end: %v concurrency: %v", *block, *block, *concurrencyBlocks)
 		}
-		err = IndexFromBigtable(bt, *block, *block, transforms, *concurrencyData)
+		err = IndexFromBigtable(bt, *block, *block, transforms, *concurrencyData, cache)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from bigtable")
 		}
+		cache.Clear()
 
 		logrus.Infof("indexing of block %v completed", *block)
 		return
@@ -229,38 +228,43 @@ func main() {
 	if *endBlocks != 0 && *startBlocks < *endBlocks {
 		err = IndexFromNode(bt, client, *startBlocks, *endBlocks, *concurrencyBlocks)
 		if err != nil {
-			logrus.WithError(err).Fatalf("error indexing from node")
+			logrus.WithError(err).Fatalf("error indexing from node, start: %v end: %v concurrency: %v", *startBlocks, *endBlocks, *concurrencyBlocks)
 		}
 		return
 	}
 
 	if *endData != 0 && *startData < *endData {
-		err = IndexFromBigtable(bt, int64(*startData), int64(*endData), transforms, *concurrencyData)
+		err = IndexFromBigtable(bt, int64(*startData), int64(*endData), transforms, *concurrencyData, cache)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from bigtable")
 		}
+		cache.Clear()
 		return
 	}
 
-	for {
+	for ; ; time.Sleep(time.Second * 14) {
 		err := HandleChainReorgs(bt, client, *reorgDepth)
 		if err != nil {
-			logrus.Error(err)
+			logrus.Errorf("error handling chain reorgs: %v", err)
+			continue
 		}
 
 		lastBlockFromNode, err := client.GetLatestEth1BlockNumber()
 		if err != nil {
-			logrus.Fatalf("error retrieving latest eth block number: %v", err)
+			logrus.Errorf("error retrieving latest eth block number: %v", err)
+			continue
 		}
 
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 		if err != nil {
-			logrus.Fatalf("error retrieving last blocks from blocks table: %v", err)
+			logrus.Errorf("error retrieving last blocks from blocks table: %v", err)
+			continue
 		}
 
 		lastBlockFromDataTable, err := bt.GetLastBlockInDataTable()
 		if err != nil {
-			logrus.Fatalf("error retrieving last blocks from data table: %v", err)
+			logrus.Errorf("error retrieving last blocks from data table: %v", err)
+			continue
 		}
 
 		logrus.WithFields(
@@ -276,7 +280,8 @@ func main() {
 
 			err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
 			if err != nil {
-				logrus.WithError(err).Fatalf("error indexing from node")
+				logrus.WithError(err).Errorf("error indexing from node, start: %v end: %v concurrency: %v", int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
+				continue
 			}
 		}
 
@@ -284,10 +289,13 @@ func main() {
 			// transforms = append(transforms, bt.TransformTx)
 
 			logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)
-			err = IndexFromBigtable(bt, int64(lastBlockFromDataTable)-*offsetData, int64(lastBlockFromNode), transforms, *concurrencyData)
+			err = IndexFromBigtable(bt, int64(lastBlockFromDataTable)-*offsetData, int64(lastBlockFromNode), transforms, *concurrencyData, cache)
 			if err != nil {
-				logrus.WithError(err).Fatalf("error indexing from bigtable")
+				logrus.WithError(err).Errorf("error indexing from bigtable")
+				cache.Clear()
+				continue
 			}
+			cache.Clear()
 		}
 
 		if *enableBalanceUpdater {
@@ -296,12 +304,9 @@ func main() {
 
 		logrus.Infof("index run completed")
 		services.ReportStatus("eth1indexer", "Running", nil)
-
-		time.Sleep(time.Second * 14)
 	}
 
 	// utils.WaitForCtrlC()
-
 }
 
 func UpdateTokenPrices(bt *db.Bigtable, client *rpc.ErigonClient, tokenListPath string) error {
@@ -531,7 +536,8 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 		start := time.Now()
 		keys, pairs, err := bt.GetMetadataUpdates(prefix, lastKey, batchSize)
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Errorf("error retrieving metadata updates from bigtable: %v", err)
+			return
 		}
 
 		if len(keys) == 0 {
@@ -555,14 +561,16 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 			b, err := client.GetBalances(pairs[start:end], 2, 4)
 
 			if err != nil {
-				logrus.Fatalf("error retrieving balances from node: %v", err)
+				logrus.Errorf("error retrieving balances from node: %v", err)
+				return
 			}
 			balances = append(balances, b...)
 		}
 
 		err = bt.SaveBalances(balances, keys)
 		if err != nil {
-			logrus.Fatalf("error saving balances to bigtable: %v", err)
+			logrus.Errorf("error saving balances to bigtable: %v", err)
+			return
 		}
 		// for i, b := range balances {
 
@@ -650,17 +658,15 @@ func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concur
 		g.Go(func() error {
 			blockStartTs := time.Now()
 			bc, timings, err := client.GetBlock(i)
-
 			if err != nil {
-				logrus.Error(err)
-				return err
+				return fmt.Errorf("error getting block: %v from ethereum node err: %w", i, err)
 			}
 
 			dbStart := time.Now()
 			err = bt.SaveBlock(bc)
 			if err != nil {
-				logrus.Error(err)
-				return err
+				return fmt.Errorf("error saving block: %v to bigtable: %w", i, err)
+
 			}
 			current := atomic.AddInt64(&processedBlocks, 1)
 			if current%100 == 0 {
@@ -684,7 +690,7 @@ func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concur
 	return g.Wait()
 }
 
-func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), concurrency int64) error {
+func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), concurrency int64, cache *freecache.Cache) error {
 	g := new(errgroup.Group)
 	g.SetLimit(int(concurrency))
 
@@ -693,8 +699,6 @@ func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk 
 
 	processedBlocks := int64(0)
 
-	cache := ccache.New(ccache.Configure().MaxSize(1000000).ItemsToPrune(500))
-
 	logrus.Infof("fetching blocks from %d to %d", start, end)
 	for i := start; i <= end; i++ {
 		i := i
@@ -702,7 +706,7 @@ func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk 
 
 			block, err := bt.GetBlockFromBlocksTable(uint64(i))
 			if err != nil {
-				return err
+				return fmt.Errorf("error getting block: %v from bigtable blocks table err: %w", block, err)
 			}
 
 			bulkMutsData := types.BulkMutations{}

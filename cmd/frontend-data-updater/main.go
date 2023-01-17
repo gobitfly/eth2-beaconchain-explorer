@@ -12,6 +12,9 @@ import (
 
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
+
+	"net/http"
+	_ "net/http/pprof"
 )
 
 func main() {
@@ -26,14 +29,13 @@ func main() {
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
 
-	// ctx, done := context.WithTimeout(context.Background(), time.Second*30)
-	// defer done()
-	// db.MustInitBigtableAdmin(ctx, cfg.Bigtable.Project, cfg.Bigtable.Instance)
-
-	// err = db.BigAdminClient.SetupBigtableCache()
-	// if err != nil {
-	// 	logrus.Fatalf("error setting up bigtable cache err: %v", err)
-	// }
+	// enable pprof endpoint if requested
+	if utils.Config.Pprof.Enabled {
+		go func() {
+			logrus.Infof("starting pprof http server on port %s", utils.Config.Pprof.Port)
+			logrus.Info(http.ListenAndServe(fmt.Sprintf("localhost:%s", utils.Config.Pprof.Port), nil))
+		}()
+	}
 
 	_, err = db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 	if err != nil {

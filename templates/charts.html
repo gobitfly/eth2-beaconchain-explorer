@@ -9,13 +9,19 @@
   <script src="/js/highcharts/drilldown.min.js"></script>
 
     <script>
-        var chartFns = []
+        var chartFns = {}
         {{range $i, $e := .}}
-        chartFns.push(function () {
+        chartFns['chart-holder-{{.Order}}'] = function (series) {
             {{if .Data.IsNormalChart}}
             Highcharts.chart('chart-{{.Order}}', {
                 chart: {
                     type: {{.Data.Type}},
+                    animation: false,
+                },
+                boost: {
+                  enabled: true,
+                  seriesThreshold: 30,
+                  usePreallocated:true,
                 },
                 rangeSelector: {enabled: false},
                 title: {
@@ -54,7 +60,7 @@
                     opposite: false
                 }],
                 legend: {enabled: false},
-                series: {{.Data.Series}},
+                series: series,
                 navigator: {enabled: false},
                 scrollbar: {enabled: false},
                 tooltip: {
@@ -64,7 +70,6 @@
             })
             {{ if .Data.ShowGapHider }}
             {
-                var series = {{.Data.Series}}
                 var xAxisCategories = []
                 series.forEach(s => {
                     var d = []
@@ -127,8 +132,11 @@
             {{end}}
             {{else}}
             Highcharts.stockChart('chart-{{.Order}}', {
-                chart: {type: {{.Data.Type}} },
-                rangeSelector: {enabled: false},
+                chart: {
+                  type: {{.Data.Type}},
+                  animation: false,
+                },
+                rangeSelector: { enabled: false },
                 title: {
                     useHTML: true,
                     text: '<a href="charts/{{.Path}}">{{.Data.Title}}</a>',
@@ -139,11 +147,13 @@
                         stacking: {{.Data.StackingMode}},
                         dataGrouping: {
                             {{ if .Data.ColumnDataGroupingApproximation }}approximation: {{.Data.ColumnDataGroupingApproximation}},{{end}}
+                            groupPixelWidth: 20,
                         },
                         dataLabels: {
                             enabled: {{ .Data.DataLabelsEnabled }},
                             {{ if .Data.DataLabelsFormatter }} formatter: {{ .Data.DataLabelsFormatter }}, {{end}}
-                        }
+                        },
+                        boostThreshold: 20,
                     },
                     wordcloud: {
                         rotation: {
@@ -157,6 +167,11 @@
                         events: {
                             {{ if .Data.PlotOptionsSeriesEventsClick }}click: {{.Data.PlotOptionsSeriesEventsClick}},{{end}}
                         },
+                        dataGrouping: {
+                            {{ if .Data.ColumnDataGroupingApproximation }}approximation: {{.Data.ColumnDataGroupingApproximation}},{{end}}
+                            groupPixelWidth: 20,
+                        },
+                        boostThreshold: 20,
                     },
                 },
                 xAxis: {
@@ -173,7 +188,7 @@
                     title: {text: {{.Data.YAxisTitle}} },
                     opposite: false,
                 }],
-                series: {{.Data.Series}},
+                series: series,
                 navigator: {enabled: false},
                 scrollbar: {enabled: false},
                 tooltip: {
@@ -194,8 +209,18 @@
                 }
             })
             {{end}}
-        })
+        }
         {{end}}
+
+
+        function fetchChart(chartHolderId) {
+          return new Promise((resolve, reject) => {
+            fetch(`/charts/${chartHolderId}/data`)
+            .then(res => res.json())
+            .then(resolve)
+            .catch(reject)
+          })
+        }
 
         $(document).ready(function () {
             function allDone() {
@@ -210,13 +235,45 @@
                     $('#chart-holder-' + idx + '-nogaps').hide()
                 })
             }
-            ;(function renderChart() {
-                if (!chartFns.length) return allDone()
-                var fn = chartFns.shift()
-                fn()
-                requestAnimationFrame(renderChart)
-            })()
+            let optionsScroll = {
+              root: null,
+              rootMargin: '100px',
+              threshold: 0
+            }
+
+
+            const renderedTargets = {}
+
+            const handleTableEnd = (entries, observer) => {
+              for (let i = 0; i < entries.length; i++) {
+                const entry = entries[i];
+                if (entry.isIntersecting && entry.target && entry.target.id) {
+                  if(!renderedTargets[entry.target.id]) {
+                    if (chartFns[entry.target.id]) {
+                      fetchChart(entry.target.id).then((result) => {
+                        requestAnimationFrame(() => chartFns[entry.target.id](result.data))
+                      }).catch(err => {
+                        console.error('error fetching and rendering chart err:', err)
+                      })
+                    }
+                    renderedTargets[entry.target.id] = true
+                  }
+                }
+              }
+            }
+
+            let observerScroll = new IntersectionObserver(handleTableEnd, optionsScroll)
+            const keys = Object.keys(chartFns)
+            for (let i = 0; i < keys.length; i++) {
+              if(document.getElementById(keys[i])) {
+                observerScroll.observe(document.getElementById(keys[i]))
+              } else {
+                console.error('no element with key:', keys[i], 'found')
+              }
+            }
         })
+
+
     </script>
 {{ end }}
 

@@ -27,6 +27,7 @@ type PageData struct {
 	User                  *User
 	Data                  interface{}
 	Version               string
+	Year                  int
 	ChainSlotsPerEpoch    uint64
 	ChainSecondsPerSlot   uint64
 	ChainGenesisTimestamp uint64
@@ -365,6 +366,7 @@ type ValidatorPageData struct {
 	IsRocketpool                        bool
 	Rocketpool                          *RocketpoolValidatorPageData
 	NoAds                               bool
+	ShowWithdrawalWarning               bool
 }
 
 type RocketpoolValidatorPageData struct {
@@ -1784,4 +1786,15 @@ type CorrelationData struct {
 	Indicator string  `db:"indicator" json:"indicator,omitempty"`
 	Time      float64 `db:"time" json:"time,omitempty"`
 	Value     float64 `db:"value" json:"value,omitempty"`
+}
+
+type EthStoreStatistics struct {
+	EffectiveBalances         [][]float64
+	TotalRewards              [][]float64
+	APRs                      [][]float64
+	YesterdayRewards          float64
+	YesterdayEffectiveBalance float64
+	ProjectedAPR              float64
+	YesterdayTs               int64
+	StartEpoch                uint64
 }

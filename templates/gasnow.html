@@ -18,7 +18,7 @@
 		var t = new Date(e.ts * 1000)
 		dataArr.push([new Date(t.toDateString()).getTime(), t.getHours(), e.fast / 1e9])
 	})
-	console.log(dataArr)
+	// console.log(dataArr)
 	Highcharts.chart('gaspricehistory_heatmap', {
 		chart: {
 			type: 'heatmap',
@@ -505,9 +505,10 @@
 				return number.toFixed(2)
 			},
 			toGasPrice(number, gasUsed, price, curr) {
+
 				number = number / 1e18 * price * gasUsed
 				if (typeof Intl !== 'undefined') {
-					return new Intl.NumberFormat('en-US', { style: 'currency', currencyDisplay: 'narrowSymbol', currency: curr !== "ETH" ? curr : "USD" }).format(number)
+					return new Intl.NumberFormat('en-US', { style: 'currency', currencyDisplay: 'narrowSymbol', currency: curr && curr !== "ETH" ? curr : "USD" }).format(number)
 				}
 				return number.toFixed(2)
 			},
@@ -575,7 +576,7 @@
 
       <div class="row">
         <div class="col-md-12">
-          <p><span class="fas fa-lightbulb mr-1"></span> INFO: This tool predicts the ETH gas price based on pending transactions in the ETH mempool. This method was pioneered by the now closed service 'GasNow'. An GasNow API compatible <a href="/api/gasnow">API endpoint</a> for this data is also available.</p>
+          <p><span class="fas fa-lightbulb mr-1"></span> INFO: This tool predicts the ETH gas price based on pending transactions in the ETH mempool. This method was pioneered by the now closed service 'GasNow'. An GasNow API compatible <a href="/api/v1/execution/gasnow">API endpoint</a> for this data is also available.</p>
         </div>
       </div>
 

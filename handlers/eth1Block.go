@@ -49,11 +49,8 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", 0))
-		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-		if err != nil {
-			logger.Errorf("a error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+		if handleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			return // an error has occurred and was processed
 		}
 		return
 	}
@@ -61,11 +58,8 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number))
 	eth1BlockPageData, err := GetExecutionBlockPageData(number, 10)
 	if err != nil {
-		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-		if err != nil {
-			logger.Errorf("a error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+		if handleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			return // an error has occurred and was processed
 		}
 		return
 	}
@@ -82,11 +76,8 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logger.Errorf("error retrieving slot page data: %v", err)
 
-			err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-			if err != nil {
-				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
+			if handleTemplateError(w, r, blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+				return // an error has occurred and was processed
 			}
 			return
 		}
@@ -96,23 +87,17 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		data.HeaderAd = true
 		data.Data = blockPageData
 
-		err = blockTemplate.ExecuteTemplate(w, "layout", data)
-
-		if err != nil {
-			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+		if handleTemplateError(w, r, blockTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			return // an error has occurred and was processed
 		}
 	} else {
 		// Pre  Merge PoW Block
 		data := InitPageData(w, r, "block", "/block", fmt.Sprintf("Block %d", eth1BlockPageData.Number))
 		data.HeaderAd = true
 		data.Data = eth1BlockPageData
-		err = preMergeBlockTemplate.ExecuteTemplate(w, "layout", data)
-		if err != nil {
-			logger.Errorf("c error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+
+		if handleTemplateError(w, r, preMergeBlockTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			return // an error has occurred and was processed
 		}
 	}
 }

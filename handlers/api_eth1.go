@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -17,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
+	"github.com/shopspring/decimal"
 	"golang.org/x/exp/maps"
 )
 
@@ -169,6 +171,154 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	sendOKResponse(j, r.URL.String(), []interface{}{results})
+}
+
+// ApiETH1GasNowData godoc
+// @Summary Gets the current estimation for gas prices in GWei.
+// @Tags Execution
+// @Description The response is split into four estimated inclusion speeds rapid (15 seconds), fast (1 minute), standard (3 minutes) and slow (> 10 minutes).
+// @Produce json
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/execution/gasnow [get]
+func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	gasnowData := services.LatestGasNowData()
+
+	if gasnowData == nil {
+		logger.Errorf("error gasnow data is not defined. The frontend updater might not be running.")
+		sendErrorResponse(w, r.URL.String(), "error gasnow data is currently not available.")
+		return
+	}
+
+	gasnowData.Data.PriceUSD = price.GetEthPrice("USD")
+	gasnowData.Data.Currency = ""
+
+	err := json.NewEncoder(w).Encode(gasnowData)
+	if err != nil {
+		logger.Errorf("error gasnow data is not defined. The frontend updater might not be running.")
+		sendErrorResponse(w, r.URL.String(), "error gasnow data is currently not available.")
+		return
+	}
+}
+
+func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	vars := mux.Vars(r)
+	address := vars["address"]
+
+	q := r.URL.Query()
+
+	address = strings.Replace(address, "0x", "", -1)
+	address = strings.ToLower(address)
+
+	if !utils.IsValidEth1Address(address) {
+		sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+		return
+	}
+
+	token := q.Get("token")
+
+	if len(token) > 0 {
+		token = strings.Replace(token, "0x", "", -1)
+		token = strings.ToLower(token)
+		if !utils.IsValidEth1Address(token) {
+			sendErrorResponse(w, r.URL.String(), "error invalid token query param. A token address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+			return
+		}
+	}
+
+	response := types.ApiEth1AddressResponse{}
+
+	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address))
+	if err != nil {
+		logger.Errorf("error retrieving metadata for address: %v route: %v err: %v", address, r.URL.String(), err)
+		sendErrorResponse(w, r.URL.String(), "error could not get metadata for address")
+		return
+	}
+
+	response.Ether = decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.EthBalance.Balance), 0).Div(decimal.NewFromInt(1e18)).String()
+	response.Address = fmt.Sprintf("0x%x", metadata.EthBalance.Address)
+	for _, m := range metadata.Balances {
+		// var price float64
+		// if len(m.Metadata.Price) > 0 {
+		// 	price, err = strconv.ParseFloat(string(m.Metadata.Price), 64)
+		// 	if err != nil {
+		// 		logger.Errorf("error parsing price to float for address: %v route: %v err: %v", address, r.URL.String(), err)
+		// 		sendErrorResponse(w, r.URL.String(), "error could not get metadata for address")
+		// 		return
+		// 	}
+		// }
+
+		// if there is a token filter and we are currently not on the right value, skip to the next loop iteration
+		if len(token) > 0 && token != fmt.Sprintf("%x", m.Token) {
+			continue
+		}
+
+		response.Tokens = append(response.Tokens, struct {
+			Address  string  `json:"address"`
+			Balance  string  `json:"balance"`
+			Symbol   string  `json:"symbol"`
+			Decimals string  `json:"decimals,omitempty"`
+			Price    float64 `json:"price,omitempty"`
+			Currency string  `json:"currency,omitempty"`
+		}{
+			Address: fmt.Sprintf("0x%x", m.Token),
+			Balance: decimal.NewFromBigInt(new(big.Int).SetBytes(m.Balance), 0).Div(decimal.NewFromBigInt(big.NewInt(1), int32(new(big.Int).SetBytes(m.Metadata.Decimals).Int64()))).String(),
+			Symbol:  m.Metadata.Symbol,
+			// Decimals: decimals.String(),
+			// Price:   price,
+			// Currency: "USD",
+		})
+	}
+
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
+}
+
+func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	results := ""
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
+}
+
+func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	results := ""
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
+}
+
+func ApiEth1AddressBlocks(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	results := ""
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
+}
+
+func ApiEth1AddressUncles(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	results := ""
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
+}
+
+func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	results := ""
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{results})
 }
 
 func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map[common.Hash]types.RelaysData, beaconDataMap map[uint64]types.ExecBlockProposer) []types.ExecutionBlockApiResponse {

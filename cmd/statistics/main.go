@@ -47,10 +47,6 @@ func main() {
 		poolsDisabledFlag:         *poolsDisabledFlag,
 	}
 
-	if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID != 1 {
-		logrus.Infof("Execution charts are currently only available for mainnet")
-	}
-
 	logrus.Printf("version: %v, config file path: %v", version.Version, *configPath)
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
@@ -59,6 +55,10 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
+
+	if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID != 1 {
+		logrus.Infof("Execution charts are currently only available for mainnet")
+	}
 
 	db.MustInitDB(&types.DatabaseConfig{
 		Username: cfg.WriterDatabase.Username,
