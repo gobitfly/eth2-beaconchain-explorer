@@ -412,13 +412,11 @@
                     </span>
                   </div>
                   <div class="overview-col">
-                    <span class="">
-                      Total Withdrawals
-                    </span>
+                    <span class=""> Total Withdrawals </span>
                   </div>
                   <div class="overview-col">
                     <span class="">
-                     {{ .Data.WithdrawalsSummary }}
+                      {{ .Data.WithdrawalsSummary }}
                     </span>
                   </div>
                 </div>
@@ -481,10 +479,10 @@
             </div>
           {{ end }}
           {{ if len .Data.WithdrawalsTable.Data }}
-          <div class="tab-pane fade" id="withdrawals" role="tabpanel" aria-labelledby="withdrawals-tab">
-            {{ template "AddressWithdrawalsGrid" .Data.WithdrawalsTable }}
-          </div>
-        {{ end }}
+            <div class="tab-pane fade" id="withdrawals" role="tabpanel" aria-labelledby="withdrawals-tab">
+              {{ template "AddressWithdrawalsGrid" .Data.WithdrawalsTable }}
+            </div>
+          {{ end }}
         </div>
       </div>
     </div>
