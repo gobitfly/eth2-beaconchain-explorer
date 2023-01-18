@@ -1423,9 +1423,9 @@ func (bigtable *Bigtable) DeleteEpoch(epoch uint64) error {
 	}
 	keys = append(keys, fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch)))
 
-	for _, k := range keys {
-		logger.Info(k)
-	}
+	// for _, k := range keys {
+	// 	logger.Info(k)
+	// }
 
 	// Delete all of those keys
 	mutsDelete := &types.BulkMutations{

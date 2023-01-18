@@ -703,13 +703,17 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	if data.DepositChart != nil && data.DepositChart.Data != nil && data.DepositChart.Data.Series != nil {
 		series := data.DepositChart.Data.Series
 		if len(series) > 2 {
-			points := series[1].Data.([][]float64)
-			periodDays := float64(len(points))
-			avgDepositPerDay := data.DepositedTotal / periodDays
-			daysUntilThreshold := (data.DepositThreshold - data.DepositedTotal) / avgDepositPerDay
-			estimatedTimeToThreshold := time.Now().Add(time.Hour * 24 * time.Duration(daysUntilThreshold))
-			if estimatedTimeToThreshold.After(time.Unix(data.NetworkStartTs, 0)) {
-				data.NetworkStartTs = estimatedTimeToThreshold.Add(time.Duration(int64(utils.Config.Chain.Config.GenesisDelay) * 1000 * 1000 * 1000)).Unix()
+			points, ok := series[1].Data.([][]float64)
+			if !ok {
+				logger.Error("error parsing deposit chart data could not convert  series to [][]float64 series: %+v", series[1].Data)
+			} else {
+				periodDays := float64(len(points))
+				avgDepositPerDay := data.DepositedTotal / periodDays
+				daysUntilThreshold := (data.DepositThreshold - data.DepositedTotal) / avgDepositPerDay
+				estimatedTimeToThreshold := time.Now().Add(time.Hour * 24 * time.Duration(daysUntilThreshold))
+				if estimatedTimeToThreshold.After(time.Unix(data.NetworkStartTs, 0)) {
+					data.NetworkStartTs = estimatedTimeToThreshold.Add(time.Duration(int64(utils.Config.Chain.Config.GenesisDelay) * 1000 * 1000 * 1000)).Unix()
+				}
 			}
 		}
 	}
