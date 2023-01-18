@@ -508,6 +508,14 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
 }
 
+func FormatHashWithCopy(hash []byte) template.HTML {
+	copyBtn := CopyButton(hex.EncodeToString(hash))
+	if len(hash) == 0 {
+		return "N/A"
+	}
+	return template.HTML(fmt.Sprintf(`<span>%v</span> %v`, FormatHash(hash), copyBtn))
+}
+
 func FormatWithdawalCredentials(hash []byte) template.HTML {
 	if len(hash) != 32 {
 		return "INVALID CREDENTIALS"

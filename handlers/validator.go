@@ -535,7 +535,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("slashing data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
-	startEffectiveness := time.Now()
 	eff := []*types.ValidatorEffectiveness{}
 	if !utils.Config.Frontend.Debug {
 		eff, err = db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, validatorPageData.Epoch-1)
@@ -546,7 +545,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// TODO: remove this
-	logger.Infof("finished getting validator effectiveness, elapsed: %v s", time.Since(startEffectiveness))
 	if len(eff) > 1 {
 		logger.Errorf("error retrieving validator effectiveness: invalid length %v", len(eff))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -683,6 +681,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 // Returns true if there are more than one different withdrawal credentials within both Eth1Deposits and Eth2Deposits
 func hasMultipleWithdrawalCredentials(deposits *types.ValidatorDeposits) bool {
 	credential := make([]byte, 0)
+
+	if deposits == nil {
+		return false
+	}
 
 	// check Eth1Deposits
 	for _, deposit := range deposits.Eth1Deposits {

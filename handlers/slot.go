@@ -239,7 +239,8 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			exec_block_number,
 			jsonb_agg(tags.metadata) as tags,
 			COALESCE(not 'invalid-relay-reward'=ANY(array_agg(tags.id)), true) as is_valid_mev,
-			COALESCE(validator_names.name, '') AS name
+			COALESCE(validator_names.name, '') AS name,
+			(SELECT count(*) from blocks_bls_change where block_slot = $1) as bls_change_count
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
@@ -261,6 +262,8 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		return nil, err
 	}
 	blockPageData.Slot = uint64(blockSlot)
+
+	logger.Infof("bls change count: %v", blockPageData.BLSChangeCount)
 
 	blockPageData.Ts = utils.SlotToTime(blockPageData.Slot)
 	if blockPageData.ExecTimestamp.Valid {
@@ -814,7 +817,6 @@ func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	logger.Infof("slot: %v", slot)
 	withdrawals, err := db.GetSlotWithdrawals(slot)
 	if err != nil {
 		logger.Errorf("error retrieving withdrawals data for slot %v, err: %v", slot, err)
@@ -834,6 +836,46 @@ func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 	data := &types.DataTableResponse{
 		Draw:         1,
 		RecordsTotal: uint64(len(withdrawals)),
+		// RecordsFiltered: uint64(len(withdrawals)),
+		Data: tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error encoding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func SlotBlsChangeData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(r)
+
+	slot, err := strconv.ParseUint(vars["slot"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	blsChange, err := db.GetSlotBLSChange(slot)
+	if err != nil {
+		logger.Errorf("error retrieving blsChange data for slot %v, err: %v", slot, err)
+	}
+
+	tableData := make([][]interface{}, 0, len(blsChange))
+	for _, c := range blsChange {
+		tableData = append(tableData, []interface{}{
+			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(c.Validatorindex))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(c.Signature))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(c.BlsPubkey))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(c.Address, nil, "", false, false, true))),
+		})
+	}
+
+	data := &types.DataTableResponse{
+		Draw:         1,
+		RecordsTotal: uint64(len(blsChange)),
 		// RecordsFiltered: uint64(len(withdrawals)),
 		Data: tableData,
 	}

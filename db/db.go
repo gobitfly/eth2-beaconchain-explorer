@@ -2457,3 +2457,14 @@ func GetValidatorWithdrawalsCount(validator uint64) (uint64, error) {
 
 	return count, nil
 }
+
+func GetSlotBLSChange(slot uint64) ([]*types.BLSChange, error) {
+	var change []*types.BLSChange
+
+	err := ReaderDb.Select(&change, "SELECT validatorindex, signature, pubkey, address FROM blocks_bls_change WHERE block_slot = $1 ORDER BY validatorindex", slot)
+	if err != nil {
+		return nil, fmt.Errorf("error getting blocks_bls_change: %w", err)
+	}
+
+	return change, nil
+}

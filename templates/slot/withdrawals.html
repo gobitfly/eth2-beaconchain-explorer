@@ -13,14 +13,26 @@
         </tr>
       </thead>
       <tbody>
-        {{ range .Withdrawals }}
-          <tr class="border-bottom">
-            <td class="border-0">{{ .Index }}</td>
-            <td class="border-0">{{ .ValidatorIndex }}</td>
-            <td class="border-0">{{ .Address }}</td>
-            <td class="border-0">{{ .Amount }}</td>
-          </tr>
-        {{ end }}
+      </tbody>
+    </table>
+  </div>
+{{ end }}
+
+{{ define "block_blsChange" }}
+  <div class="row p-1 mx-0">
+    <div class="col-md-12 text-center"><b>Showing {{ .BLSChangeCount }} address changes </b></div>
+  </div>
+  <div class="table-responsive">
+    <table id="block_blsChange" class="table table-sm text-left">
+      <thead>
+        <tr style="background-color: var(--bg-color-light);">
+          <th class="border-0">Validator Index</th>
+          <th class="border-0">Signature</th>
+          <th class="border-0">BLS Public Key</th>
+          <th class="border-0">New Withdrawal Address</th>
+        </tr>
+      </thead>
+      <tbody>
       </tbody>
     </table>
   </div>

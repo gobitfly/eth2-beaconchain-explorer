@@ -587,6 +587,7 @@ type BlockPageData struct {
 	AttestationsCount      uint64  `db:"attestationscount"`
 	DepositsCount          uint64  `db:"depositscount"`
 	WithdrawalCount        uint64  `db:"withdrawalcount"`
+	BLSChangeCount         uint64  `db:"bls_change_count"`
 	VoluntaryExitscount    uint64  `db:"voluntaryexitscount"`
 	SlashingsCount         uint64
 	VotesCount             uint64
@@ -1808,4 +1809,12 @@ type EthStoreStatistics struct {
 	ProjectedAPR              float64
 	YesterdayTs               int64
 	StartEpoch                uint64
+}
+
+type BLSChange struct {
+	Slot           uint64 `db:"slot" json:"slot,omitempty"`
+	Validatorindex uint64 `db:"validatorindex" json:"validatorindex,omitempty"`
+	BlsPubkey      []byte `db:"pubkey" json:"pubkey,omitempty"`
+	Address        []byte `db:"address" json:"address,omitempty"`
+	Signature      []byte `db:"signature" json:"signature,omitempty"`
 }
