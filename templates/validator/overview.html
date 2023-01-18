@@ -135,11 +135,11 @@
   {{ with .Data }}
     <!-- Validator Lifecycle State Diagram -->
     <div class="overview-container d-flex flex-wrap justify-content-center">
-      <div style="width: 90px;" class="m-3 position-relative">
+      <div style="width: 100px;" class="m-3 position-relative">
         <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>{{ if gtf .RankPercentage 0.0 }}{{ if gtf .RankPercentage 0.001 }}Rank {{ formatPercentageWithGPrecision .RankPercentage 3 }} %{{ else }}Top 0.1%{{ end }}{{ else }}Rank{{ end }}</small></span>
         <a class="no-highlight" href="/validators/leaderboard">
-          <i class="fas fa-medal"></i>
-          <span id="validatorRank" style="font-weight: bold; font-size:18px;">{{ if gt .Rank7d 0 }}{{ .Rank7d }}{{ else }}N/A{{ end }}</span>
+          <i style="font-size: 16px;" class="fas fa-medal"></i>
+          <span id="validatorRank" style="font-weight: bold; font-size:16px;">{{ if gt .Rank7d 0 }}{{ .Rank7d }}{{ else }}N/A{{ end }}</span>
         </a>
       </div>
       <div class="m-3 position-relative">
@@ -234,7 +234,7 @@
       <span id="depositCount" style="cursor: pointer;" data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="fas fa-wallet"></i> {{ .DepositsCount }}</span>
     </div>
     <div class="mx-3">
-      <span id="withdrawalCount" style="cursor: pointer;" data-toggle="tooltip" title="Withdrawals processed for this validator"><i class="fas fa-money-bill"></i> {{ .WithdrawalCount }}</span>
+      <span id="withdrawalCount" style="cursor: pointer;" data-toggle="tooltip" title="Withdrawals processed for this validator"><i class="fas fa-money-bill"></i> {{ .WithdrawalCount }}</span> {{if not .Withdrawable}}<span data-toggle="tooltip" title="To receive payouts you need a 0x01 withdrawal address"><i class="text-warning fas fa-exclamation-triangle"></i></span>{{end}}
     </div>
     <!--
     <div class="mx-3">

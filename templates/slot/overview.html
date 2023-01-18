@@ -290,6 +290,10 @@
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of validator withdrawals which have been included in this block by the block proposer">Withdrawals:</span></div>
           <div class="col-md-10"><b>{{ formatAddCommas .WithdrawalCount }}</b></div>
         </div>
+        <div class="row border-bottom p-3 mx-0">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of validators that changed their withdrawal address from 0x00 to 0x01">BLS Address Changes:</span></div>
+          <div class="col-md-10"><b>{{ formatAddCommas .BLSChangeCount }}</b></div>
+        </div>
       {{ end }}
     </div>
   {{ end }}

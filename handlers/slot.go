@@ -263,8 +263,6 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 	}
 	blockPageData.Slot = uint64(blockSlot)
 
-	logger.Infof("bls change count: %v", blockPageData.BLSChangeCount)
-
 	blockPageData.Ts = utils.SlotToTime(blockPageData.Slot)
 	if blockPageData.ExecTimestamp.Valid {
 		blockPageData.ExecTime = time.Unix(int64(blockPageData.ExecTimestamp.Int64), 0)

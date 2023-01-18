@@ -245,6 +245,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.activationepoch,
 			validators.exitepoch,
 			validators.lastattestationslot,
+			validators.withdrawalcredentials,
 			COALESCE(validator_names.name, '') AS name,
 			COALESCE(validator_pool.pool, '') AS pool,
 			COALESCE(validators.balance, 0) AS balance,
@@ -339,6 +340,22 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.WithdrawalCount = withdrawalsCount
 
 	validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
+	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x00}) {
+		blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
+		if err != nil {
+			logger.Errorf("error getting validator bls change from db: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if blsChange != nil {
+			validatorPageData.Withdrawable = true
+			validatorPageData.BLSChange = blsChange
+		}
+
+	} else {
+		validatorPageData.Withdrawable = true
+	}
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
@@ -1046,8 +1063,9 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, 0, len(withdrawals))
 	for _, w := range withdrawals {
 		tableData = append(tableData, []interface{}{
-			template.HTML(fmt.Sprintf("%v", w.Index)),
+			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatTimeFromNow(utils.SlotToTime(w.Slot)))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
 		})

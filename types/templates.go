@@ -294,6 +294,7 @@ type ValidatorPageData struct {
 	ValidatorIndex                      uint64 `db:"validatorindex"`
 	PublicKey                           []byte `db:"pubkey"`
 	WithdrawableEpoch                   uint64 `db:"withdrawableepoch"`
+	WithdrawCredentials                 []byte `db:"withdrawalcredentials"`
 	CurrentBalance                      uint64 `db:"balance"`
 	BalanceActivation                   uint64 `db:"balanceactivation"`
 	Balance7d                           uint64 `db:"balance7d"`
@@ -370,6 +371,8 @@ type ValidatorPageData struct {
 	Rocketpool                          *RocketpoolValidatorPageData
 	NoAds                               bool
 	ShowWithdrawalWarning               bool
+	BLSChange                           *BLSChange
+	Withdrawable                        bool
 }
 
 type RocketpoolValidatorPageData struct {

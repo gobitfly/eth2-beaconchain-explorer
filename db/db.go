@@ -2366,6 +2366,9 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 
 	err := ReaderDb.Select(&withdrawals, "SELECT withdrawalindex as index, validatorindex, address, amount FROM blocks_withdrawals WHERE block_slot = $1 ORDER BY withdrawalindex", slot)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return withdrawals, nil
+		}
 		return nil, fmt.Errorf("error getting blocks_withdrawals: %w", err)
 	}
 
@@ -2385,6 +2388,9 @@ func GetAddressWithdrawals(address []byte, limit uint64, offset uint64) ([]*type
 
 	err := ReaderDb.Select(&withdrawals, "SELECT block_slot as slot, withdrawalindex as index, validatorindex, address, amount FROM blocks_withdrawals WHERE address = $1 ORDER BY withdrawalindex desc limit $2 offset $3", address, limit, offset)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return withdrawals, nil
+		}
 		return nil, fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
 	}
 
@@ -2403,6 +2409,9 @@ func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64) ([]*
 
 	err := ReaderDb.Select(&withdrawals, "SELECT block_slot as slot, withdrawalindex as index, validatorindex, address, amount FROM blocks_withdrawals WHERE validatorindex = $1 ORDER BY withdrawalindex desc limit $2 offset $3", validator, limit, offset)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return withdrawals, nil
+		}
 		return nil, fmt.Errorf("error getting blocks_withdrawals for validator: %d: %w", validator, err)
 	}
 
@@ -2415,6 +2424,9 @@ func GetAddressWithdrawalsTotal(address []byte) (uint64, error) {
 
 	err := ReaderDb.Get(&total, "SELECT sum(amount) as total FROM blocks_withdrawals WHERE address = $1", address)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
 		return 0, fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
 	}
 
@@ -2426,6 +2438,9 @@ func GetValidatorWithdrawalsTotal(validator uint64) (uint64, error) {
 
 	err := ReaderDb.Get(&total, "SELECT sum(amount) as total FROM blocks_withdrawals WHERE validatorindex = $1", validator)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
 		return 0, fmt.Errorf("error getting blocks_withdrawals for validator: %d: %w", validator, err)
 	}
 
@@ -2437,6 +2452,9 @@ func GetValidatorWithdrawalsCount(validator uint64) (uint64, error) {
 
 	err := ReaderDb.Get(&count, "SELECT count(*) FROM blocks_withdrawals WHERE validatorindex = $1", validator)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
 		return 0, fmt.Errorf("error getting blocks_withdrawals count for validator: %d: %w", validator, err)
 	}
 
@@ -2448,6 +2466,23 @@ func GetSlotBLSChange(slot uint64) ([]*types.BLSChange, error) {
 
 	err := ReaderDb.Select(&change, "SELECT validatorindex, signature, pubkey, address FROM blocks_bls_change WHERE block_slot = $1 ORDER BY validatorindex", slot)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return change, nil
+		}
+		return nil, fmt.Errorf("error getting blocks_bls_change: %w", err)
+	}
+
+	return change, nil
+}
+
+func GetValidatorBLSChange(validatorindex uint64) (*types.BLSChange, error) {
+	change := &types.BLSChange{}
+
+	err := ReaderDb.Get(change, "SELECT block_slot as slot, signature, pubkey, address FROM blocks_bls_change WHERE validatorindex = $1 ORDER BY block_slot", validatorindex)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("error getting blocks_bls_change: %w", err)
 	}
 

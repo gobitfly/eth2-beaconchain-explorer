@@ -155,8 +155,9 @@
     <table class="table" style="margin-top: 0 !important;" id="withdrawal-table" width="100%">
       <thead>
         <tr>
-          <th>Index</th>
+          <th>Epoch</th>
           <th>Slot</th>
+          <th>Time</th>
           <th>Recipient Address</th>
           <th>Amount</th>
         </tr>
@@ -203,21 +204,6 @@
                         }
                     },
                     columnDefs: [
-                        // {
-                        //     targets: 1,
-                        //     data: '1',
-                        //     "orderable": false
-                        // },
-                        // {
-                        //     targets: 3,
-                        //     data: '3',
-                        //     "orderable": false
-                        // },
-                        // {
-                        //     targets: 4,
-                        //     data: '4',
-                        //     "orderable": false
-                        // },
                     ],
                     drawCallback: function(settings) {
                         // formatTimestamps()
@@ -359,7 +345,7 @@
 {{ define "validatorDepositsTable" }}
   {{ with .Data }}
     <div class="table-eth1">
-      <h4 class="my-3">Ethereum Deposits</h4>
+      <h4 class="my-3">Execution Layer</h4>
       <h6 class="">This table displays the deposits made to the Ethereum staking deposit contract.</h6>
       <div class="table-responsive card card-body p-0">
         <table class="table" style="margin-top: 0 !important;" id="deposits-eth1-table" width="100%">
@@ -399,7 +385,7 @@
       <i class="fas fa-arrow-down"></i>
     </div>
     <div class="table-eth2">
-      <h4 class="my-3">Beaconchain Deposits</h4>
+      <h4 class="my-3">Consensus Layer</h4>
       {{ if not .Deposits.Eth2Deposits }}
         <h6 class="">No beacon chain deposits found for this validator. It takes <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{ .InclusionDelay }} hours</a> for a deposit to be processed by the beacon chain.</h6>
         <div class="wip d-flex justify-content-center p-3">
@@ -554,6 +540,43 @@
         </div>
       {{ end }}
     </div>
+    {{ if .BLSChange }}
+    <div class="table-bls-change my-3">
+      <h4 class="my-3">BLS Address Changes</h4>
+      <h6>This table displays the BLS address change made to set the ethereum withdraw address.</h6>
+      <div class="table-responsive card card-body p-0">
+        <table class="table" style="margin-top: 0 !important;" id="deposits-eth1-table" width="100%">
+          <thead>
+            <tr>
+              <th>Epoch</th>
+              <th>Slot</th>
+              <th>Signature</th>
+              <th>BLS Pubkey</th>
+              <th>Address</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>{{epochOfSlot .BLSChange.Slot | formatEpoch}}</td>
+                <td>{{formatBlockSlot .BLSChange.Slot}}</td>
+                <td>
+                  {{formatHash .BLSChange.Signature true}}
+                  <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.Signature false }}"></i>
+                </td>
+                <td>
+                  {{formatHash .BLSChange.BlsPubkey true}}
+                  <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.BlsPubkey false }}"></i>
+                </td>
+                <td>
+                  {{formatAddressAsLink .BLSChange.Address "" false false}}
+                </td>
+              </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{ end }}
   {{ end }}
 {{ end }}
 
