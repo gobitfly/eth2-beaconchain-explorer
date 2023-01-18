@@ -536,16 +536,16 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// start = time.Now()
 
 	startEffectiveness := time.Now()
-	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, validatorPageData.Epoch-1)
-	if err != nil {
-		logger.Errorf("error retrieving validator effectiveness: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	eff := []*types.ValidatorEffectiveness{}
+	if !utils.Config.Frontend.Debug {
+		eff, err = db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, validatorPageData.Epoch-1)
+		if err != nil {
+			logger.Errorf("error retrieving validator effectiveness: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 	}
 	// TODO: remove this
-	if utils.Config.Frontend.Debug {
-		eff = []*types.ValidatorEffectiveness{}
-	}
 	logger.Infof("finished getting validator effectiveness, elapsed: %v s", time.Since(startEffectiveness))
 	if len(eff) > 1 {
 		logger.Errorf("error retrieving validator effectiveness: invalid length %v", len(eff))
