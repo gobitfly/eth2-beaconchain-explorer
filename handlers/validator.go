@@ -14,6 +14,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net/http"
 	"sort"
 	"strconv"
@@ -328,6 +329,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// get validator withdrawals
+	withdrawalsCount, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
+	if err != nil {
+		logger.Errorf("error getting validator withdrawals count from db: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	validatorPageData.WithdrawalCount = withdrawalsCount
+
 	validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
@@ -465,7 +475,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.ExecutionIncomeHistoryData, err = getExecutionChartData([]uint64{index}, currency)
 		return err
 	})
-
 	err = g.Wait()
 	if err != nil {
 		logger.Errorf("failed to generate income history chart data for validator view: %v", err)
@@ -475,7 +484,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	// logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
-
 	earnings, err := GetValidatorEarnings([]uint64{index}, GetCurrency(r))
 	if err != nil {
 		logger.Errorf("error retrieving validator earnings: %v", err)
@@ -526,13 +534,16 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	// logger.Infof("slashing data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
-
-	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, validatorPageData.Epoch-1)
-	if err != nil {
-		logger.Errorf("error retrieving validator effectiveness: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	logger.Infof("getting validator effectiveness")
+	startEffectiveness := time.Now()
+	// eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, validatorPageData.Epoch-1)
+	// if err != nil {
+	// 	logger.Errorf("error retrieving validator effectiveness: %v", err)
+	// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
+	// 	return
+	// }
+	eff := []types.ValidatorEffectiveness{}
+	logger.Infof("finished getting validator effectiveness, elapsed: %v s", time.Since(startEffectiveness))
 	if len(eff) > 1 {
 		logger.Errorf("error retrieving validator effectiveness: invalid length %v", len(eff))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -651,6 +662,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logger.Infof("got validator page data")
 	data.Data = validatorPageData
 
 	if utils.IsApiRequest(r) {
@@ -972,6 +984,74 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		Draw:            draw,
 		RecordsTotal:    totalCount,
 		RecordsFiltered: totalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// ValidatorWithdrawals returns a validators withdrawals in json
+func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	q := r.URL.Query()
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	length := uint64(10)
+
+	withdrawalCount, err := db.GetValidatorWithdrawalsCount(index)
+	if err != nil {
+		logger.Errorf("error retrieving validator withdrawals count: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	withdrawals, err := db.GetValidatorWithdrawals(index, length, start)
+	if err != nil {
+		logger.Errorf("error retrieving validator withdrawals: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	tableData := make([][]interface{}, 0, len(withdrawals))
+	for _, w := range withdrawals {
+		tableData = append(tableData, []interface{}{
+			template.HTML(fmt.Sprintf("%v", w.Index)),
+			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+		})
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    withdrawalCount,
+		RecordsFiltered: withdrawalCount,
 		Data:            tableData,
 	}
 

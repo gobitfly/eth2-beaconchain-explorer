@@ -2406,6 +2406,24 @@ func GetAddressWithdrawals(address []byte, limit uint64, offset uint64) ([]*type
 	return withdrawals, nil
 }
 
+func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64) ([]*types.Withdrawals, error) {
+	var withdrawals []*types.Withdrawals
+	if limit == 0 {
+		limit = 100
+	}
+
+	if limit > (offset + 100) {
+		limit = offset + 100
+	}
+
+	err := ReaderDb.Select(&withdrawals, "SELECT block_slot as slot, withdrawalindex as index, validatorindex, address, amount FROM blocks_withdrawals WHERE validatorindex = $1 ORDER BY withdrawalindex desc limit $2 offset $3", validator, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("error getting blocks_withdrawals for validator: %d: %w", validator, err)
+	}
+
+	return withdrawals, nil
+}
+
 // GetAddressWithdrawalsTotal returns the total withdrawals for an address
 func GetAddressWithdrawalsTotal(address []byte) (uint64, error) {
 	var total uint64
@@ -2416,4 +2434,26 @@ func GetAddressWithdrawalsTotal(address []byte) (uint64, error) {
 	}
 
 	return total, nil
+}
+
+func GetValidatorWithdrawalsTotal(validator uint64) (uint64, error) {
+	var total uint64
+
+	err := ReaderDb.Get(&total, "SELECT sum(amount) as total FROM blocks_withdrawals WHERE validatorindex = $1", validator)
+	if err != nil {
+		return 0, fmt.Errorf("error getting blocks_withdrawals for validator: %d: %w", validator, err)
+	}
+
+	return total, nil
+}
+
+func GetValidatorWithdrawalsCount(validator uint64) (uint64, error) {
+	var count uint64
+
+	err := ReaderDb.Get(&count, "SELECT count(*) FROM blocks_withdrawals WHERE validatorindex = $1", validator)
+	if err != nil {
+		return 0, fmt.Errorf("error getting blocks_withdrawals count for validator: %d: %w", validator, err)
+	}
+
+	return count, nil
 }

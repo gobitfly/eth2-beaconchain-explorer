@@ -150,6 +150,84 @@
     </script>
 {{ end }}
 
+{{ define "validatorWithdrawalTable" }}
+  <div class="table-responsive">
+    <table class="table" style="margin-top: 0 !important;" id="withdrawal-table" width="100%">
+      <thead>
+        <tr>
+          <th>Index</th>
+          <th>Slot</th>
+          <th>Recipient Address</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+    <script>
+        var index = {{.Index}}
+        window.addEventListener('load', function() {
+            var activeTab = $('#chartTabs .active')
+            var initializedWithdrawalTable = false
+
+            if (activeTab.attr('id') === 'withdrawal-tab') {
+                initializedWithdrawalTable = true
+                createWithdrawalTable()
+            }
+
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+                if (e.target.id === 'withdrawal-tab' && !initializedWithdrawalTable) {
+                    initializedWithdrawalTable = true
+                    createWithdrawalTable()
+                }
+            });
+
+            function createWithdrawalTable() {
+                $('#withdrawal-table').DataTable({
+                    processing: true,
+                    serverSide: true,
+                    stateSave: true,
+                    ordering: true,
+                    order: [[0, 'desc']],
+                    lengthChange: false,
+                    searching: false,
+                    ajax: '/validator/' + index + '/withdrawals',
+                    pagingType: 'input',
+                    pageLength: 10,
+                    language: {
+                        // searchPlaceholder: 'Search by Epoch Number',
+                        search: '',
+                        paginate: {
+                            previous: '<i class="fas fa-chevron-left"></i>',
+                            next: '<i class="fas fa-chevron-right"></i>'
+                        }
+                    },
+                    columnDefs: [
+                        // {
+                        //     targets: 1,
+                        //     data: '1',
+                        //     "orderable": false
+                        // },
+                        // {
+                        //     targets: 3,
+                        //     data: '3',
+                        //     "orderable": false
+                        // },
+                        // {
+                        //     targets: 4,
+                        //     data: '4',
+                        //     "orderable": false
+                        // },
+                    ],
+                    drawCallback: function(settings) {
+                        // formatTimestamps()
+                    },
+                })
+            }
+        })
+    </script>
+{{ end }}
+
 {{ define "validatorSyncTable" }}
   <div class="table-responsive">
     <table class="table" style="margin-top: 0 !important;" id="sync-table" width="100%">

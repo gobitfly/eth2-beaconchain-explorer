@@ -293,7 +293,7 @@ create table blocks_bls_change
     validatorindex       int     not null,
     signature            bytea   not null,
     pubkey               bytea   not null,
-    address              bytea not null,
+    address              bytea   not null,
     primary key (block_slot, validatorindex)
 );
 create index idx_blocks_bls_change_pubkey on blocks_bls_change (pubkey);
