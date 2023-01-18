@@ -131,7 +131,6 @@ func (bigtable *Bigtable) SaveBlock(block *types.Eth1Block) error {
 }
 
 func (bigtable *Bigtable) SaveBlocks(block *types.Eth1Block) error {
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
@@ -154,7 +153,6 @@ func (bigtable *Bigtable) SaveBlocks(block *types.Eth1Block) error {
 }
 
 func (bigtable *Bigtable) GetBlockFromBlocksTable(number uint64) (*types.Eth1Block, error) {
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
@@ -181,22 +179,21 @@ func (bigtable *Bigtable) GetBlockFromBlocksTable(number uint64) (*types.Eth1Blo
 	return bc, nil
 }
 
-func (bigtable *Bigtable) CheckForGapsInBlocksTable(lookback int) (gapFound bool, start int, end int, err error) {
-
+func (bigtable *Bigtable) CheckForGapsInBlocksTable(lookback int) (gapFound bool, start uint64, end uint64, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	prefix := bigtable.chainId + ":"
-	previous := 0
+	previous := uint64(0)
 	i := 0
 	err = bigtable.tableBlocks.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
-		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
+		c, err := strconv.ParseUint(strings.Replace(r.Key(), prefix, "", 1), 10, 64)
 
 		if err != nil {
 			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
 			return false
 		}
-		c = max_block_number - c
+		c = convertReversedPaddedBlockNumber(c)
 
 		if c%10000 == 0 {
 			logger.Infof("scanning, currently at block %v", c)
@@ -219,21 +216,20 @@ func (bigtable *Bigtable) CheckForGapsInBlocksTable(lookback int) (gapFound bool
 	return gapFound, start, end, err
 }
 
-func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
-
+func (bigtable *Bigtable) GetLastBlockInBlocksTable() (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	prefix := bigtable.chainId + ":"
-	lastBlock := 0
+	lastBlock := uint64(0)
 	err := bigtable.tableBlocks.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
-		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
+		c, err := strconv.ParseUint(strings.Replace(r.Key(), prefix, "", 1), 10, 64)
 
 		if err != nil {
 			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
 			return false
 		}
-		c = max_block_number - c
+		c = convertReversedPaddedBlockNumber(c)
 
 		if c%10000 == 0 {
 			logger.Infof("scanning, currently at block %v", c)
@@ -251,21 +247,20 @@ func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
 }
 
 func (bigtable *Bigtable) CheckForGapsInDataTable(lookback int) error {
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	prefix := bigtable.chainId + ":B:"
-	previous := 0
+	previous := uint64(0)
 	i := 0
 	err := bigtable.tableData.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
-		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
+		c, err := strconv.ParseUint(strings.Replace(r.Key(), prefix, "", 1), 10, 64)
 
 		if err != nil {
 			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
 			return false
 		}
-		c = max_block_number - c
+		c = convertReversedPaddedBlockNumber(c)
 
 		if c%10000 == 0 {
 			logger.Infof("scanning, currently at block %v", c)
@@ -288,21 +283,20 @@ func (bigtable *Bigtable) CheckForGapsInDataTable(lookback int) error {
 	return nil
 }
 
-func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
-
+func (bigtable *Bigtable) GetLastBlockInDataTable() (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	prefix := bigtable.chainId + ":B:"
-	lastBlock := 0
+	lastBlock := uint64(0)
 	err := bigtable.tableData.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
-		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
+		c, err := strconv.ParseUint(strings.Replace(r.Key(), prefix, "", 1), 10, 64)
 
 		if err != nil {
 			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
 			return false
 		}
-		c = max_block_number - c
+		c = convertReversedPaddedBlockNumber(c)
 
 		if c%10000 == 0 {
 			logger.Infof("scanning, currently at block %v", c)
@@ -332,13 +326,13 @@ func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockInd
 	block := types.Eth1BlockIndexed{}
 
 	rowHandler := func(row gcp_bigtable.Row) bool {
-		c, err := strconv.Atoi(strings.Replace(row.Key(), prefix, "", 1))
+		c, err := strconv.ParseUint(strings.Replace(row.Key(), prefix, "", 1), 10, 64)
 		if err != nil {
 			logger.Errorf("error parsing block number from key %v: %v", row.Key(), err)
 			return false
 		}
 
-		c = max_block_number - c
+		c = convertReversedPaddedBlockNumber(c)
 
 		err = proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, &block)
 		if err != nil {
@@ -580,7 +574,18 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 }
 
 func reversedPaddedBlockNumber(blockNumber uint64) string {
+	if blockNumber == 0 {
+		// keep lexicographical order for special case of block number 0
+		return fmt.Sprintf("%d", (max_block_number*10)-1)
+	}
 	return fmt.Sprintf("%09d", max_block_number-blockNumber)
+}
+
+func convertReversedPaddedBlockNumber(reversePaddedBlockNumber uint64) uint64 {
+	if reversePaddedBlockNumber == (max_block_number*10)-1 {
+		return 0
+	}
+	return max_block_number - reversePaddedBlockNumber
 }
 
 func reversePaddedBigtableTimestamp(timestamp *timestamppb.Timestamp) string {

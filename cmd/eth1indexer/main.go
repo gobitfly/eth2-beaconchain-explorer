@@ -267,7 +267,7 @@ func main() {
 			},
 		).Infof("last blocks")
 
-		if lastBlockFromBlocksTable < int(lastBlockFromNode) {
+		if lastBlockFromBlocksTable < lastBlockFromNode {
 			logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable, lastBlockFromNode)
 
 			err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
@@ -277,7 +277,7 @@ func main() {
 			}
 		}
 
-		if lastBlockFromDataTable < int(lastBlockFromNode) {
+		if lastBlockFromDataTable < lastBlockFromNode {
 			// transforms = append(transforms, bt.TransformTx)
 
 			logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)

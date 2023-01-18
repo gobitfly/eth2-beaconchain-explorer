@@ -95,7 +95,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error: could not retrieve latest block number from the blocks table", http.StatusServiceUnavailable)
 		return
 	}
-	blockBlocksTable, err := db.BigtableClient.GetBlockFromBlocksTable(uint64(numberBlocksTable))
+	blockBlocksTable, err := db.BigtableClient.GetBlockFromBlocksTable(numberBlocksTable)
 	if err != nil {
 		logger.Errorf("could not retrieve latest block from the blocks table: %v", err)
 		http.Error(w, "Internal server error: could not retrieve latest block from the blocks table", http.StatusServiceUnavailable)
@@ -114,7 +114,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if numberDataTable < numberBlocksTable-32 {
+	if numberBlocksTable >= 32 && numberDataTable < numberBlocksTable-32 {
 		http.Error(w, "Internal server error: data table is lagging behind the blocks table (check eth1 indexer)", http.StatusServiceUnavailable)
 		return
 	}
