@@ -114,7 +114,7 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
 			utils.FormatPublicKey(d.PublicKey),
-			utils.FormatWithdawalCredentials(d.WithdrawalCredentials),
+			utils.FormatWithdawalCredentials(d.WithdrawalCredentials, true),
 			utils.FormatDepositAmount(d.Amount, currency),
 			utils.FormatEth1TxHash(d.TxHash),
 			utils.FormatTimestamp(d.BlockTs.Unix()),
