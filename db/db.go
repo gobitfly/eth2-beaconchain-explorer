@@ -2375,6 +2375,11 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 	return withdrawals, nil
 }
 
+func GetEpochWithdrawalsTotal(epoch uint64) (total uint64, err error) {
+	err = ReaderDb.Get(&total, `SELECT sum(amount) FROM blocks_withdrawals WHERE block_slot >= $1 AND block_slot < $2`, epoch*utils.Config.Chain.Config.SlotsPerEpoch, (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch)
+	return
+}
+
 // GetAddressWithdrawals returns the withdrawals for an address
 func GetAddressWithdrawals(address []byte, limit uint64, offset uint64) ([]*types.Withdrawals, error) {
 	var withdrawals []*types.Withdrawals
