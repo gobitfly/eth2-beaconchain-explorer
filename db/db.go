@@ -805,6 +805,11 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 
 	validatorBalanceAverage := new(big.Int).Div(validatorBalanceSum, new(big.Int).SetInt64(int64(validatorsCount)))
 
+	finalized := false
+	if data.Epoch == 0 {
+		finalized = true
+	}
+
 	_, err = tx.Exec(`
 		INSERT INTO epochs (
 			epoch, 
@@ -849,7 +854,7 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 		validatorsCount,
 		validatorBalanceAverage.Uint64(),
 		validatorBalanceSum.Uint64(),
-		false,
+		finalized,
 		data.EpochParticipationStats.EligibleEther,
 		data.EpochParticipationStats.GlobalParticipationRate,
 		data.EpochParticipationStats.VotedEther)
