@@ -849,7 +849,6 @@ func getSyncCommitteeFor(validators []uint64, period uint64) ([]interface{}, err
 }
 
 func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitteesStats, error) {
-
 	r := SyncCommitteesStats{}
 
 	if epoch < utils.Config.Chain.Config.AltairForkEpoch {
@@ -881,27 +880,27 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 		return nil, err
 	}
 
-	// we need all related and unique timeframes (start and exit sync period) for all validators
+	// we need all related and unique timeframes (activation and exit sync period) for all validators
 	const noExitEpoch = uint64(9223372036854775807)
-	uniqueValiPeriods := make(map[uint64]bool)
-	uniqueValiPeriods[utils.SyncPeriodOfEpoch(epoch)] = true
+	uniquePeriods := make(map[uint64]bool)
+	uniquePeriods[utils.SyncPeriodOfEpoch(epoch)] = true
 	for _, v := range validatorsEpochInfo {
-		// start epoch
+		// activation epoch
 		firstSyncEpoch := v.ActivationEpoch
 		if utils.Config.Chain.Config.AltairForkEpoch > v.ActivationEpoch {
 			firstSyncEpoch = utils.Config.Chain.Config.AltairForkEpoch
 		}
-		uniqueValiPeriods[utils.SyncPeriodOfEpoch(firstSyncEpoch)] = true
+		uniquePeriods[utils.SyncPeriodOfEpoch(firstSyncEpoch)] = true
 
 		// exit epoch (if any)
 		if v.ExitEpoch != noExitEpoch && v.ExitEpoch > firstSyncEpoch {
-			uniqueValiPeriods[utils.SyncPeriodOfEpoch(v.ExitEpoch)] = true
+			uniquePeriods[utils.SyncPeriodOfEpoch(v.ExitEpoch)] = true
 		}
 	}
 
 	// transform map to slice; this will be used to query sync_committees_count_per_validator
-	timeStampSlice := make([]uint64, 0, len(uniqueValiPeriods))
-	for ts := range uniqueValiPeriods {
+	timeStampSlice := make([]uint64, 0, len(uniquePeriods))
+	for ts := range uniquePeriods {
 		timeStampSlice = append(timeStampSlice, ts)
 	}
 
@@ -926,14 +925,23 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 		periodInfoMap[pl.Period] = pl.CountSoFar
 	}
 
-	// calculate expected committies for all validators
+	// calculate expected committies for every single validator and aggregate them
 	expectedCommitties := 0.0
 	for _, vi := range validatorsEpochInfo {
-		if vi.ExitEpoch == noExitEpoch {
-			expectedCommitties += periodInfoMap[utils.SyncPeriodOfEpoch(epoch)] - periodInfoMap[utils.SyncPeriodOfEpoch(vi.ActivationEpoch)]
-		} else {
-			expectedCommitties += periodInfoMap[utils.SyncPeriodOfEpoch(vi.ExitEpoch)] - periodInfoMap[utils.SyncPeriodOfEpoch(vi.ActivationEpoch)]
+		if _, found := periodInfoMap[utils.SyncPeriodOfEpoch(vi.ActivationEpoch)]; !found {
+			return nil, fmt.Errorf("required period not found")
 		}
+
+		lastEpoch := vi.ExitEpoch
+		if vi.ExitEpoch == noExitEpoch {
+			lastEpoch = epoch
+		}
+
+		if _, found := periodInfoMap[utils.SyncPeriodOfEpoch(lastEpoch)]; !found {
+			return nil, fmt.Errorf("required period not found")
+		}
+
+		expectedCommitties += periodInfoMap[utils.SyncPeriodOfEpoch(lastEpoch)] - periodInfoMap[utils.SyncPeriodOfEpoch(vi.ActivationEpoch)]
 	}
 
 	// transform committees to slots
