@@ -108,6 +108,13 @@ create table sync_committees
     primary key (period, validatorindex, committeeindex)
 );
 
+drop table if exists sync_committees_luck;
+create table sync_committees_luck (
+	period int not null unique,
+	luck_agg float8 not null,
+    primary key (period)
+);
+
 drop table if exists validator_balances_recent;
 create table validator_balances_recent
 (
