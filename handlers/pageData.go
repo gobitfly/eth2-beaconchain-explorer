@@ -37,6 +37,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		Data:                  &types.Empty{},
 		User:                  user,
 		Version:               version.Version,
+		Year:                  time.Now().UTC().Year(),
 		ChainSlotsPerEpoch:    utils.Config.Chain.Config.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.Config.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,

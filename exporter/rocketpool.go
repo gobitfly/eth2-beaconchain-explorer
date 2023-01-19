@@ -1737,6 +1737,9 @@ func GetClaimStatus(rp *rocketpool.RocketPool, nodeAddress common.Address) (uncl
 
 		var bitmap *big.Int
 		bitmap, err = rp.RocketStorage.GetUint(nil, crypto.Keccak256Hash([]byte("rewards.interval.claimed"), nodeAddress.Bytes(), bucketBytes[:]))
+		if err != nil {
+			return
+		}
 
 		for j := uint64(0); j < 256; j++ {
 			targetIndex := i*256 + j

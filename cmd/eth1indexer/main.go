@@ -22,12 +22,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coocood/freecache"
 	"github.com/ethereum/go-ethereum/common"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/karlseguin/ccache/v2"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+
+	_ "net/http/pprof"
 )
 
 func main() {
@@ -79,6 +81,14 @@ func main() {
 	}
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
+
+	// enable pprof endpoint if requested
+	if utils.Config.Pprof.Enabled {
+		go func() {
+			logrus.Infof("starting pprof http server on port %s", utils.Config.Pprof.Port)
+			logrus.Info(http.ListenAndServe(fmt.Sprintf("localhost:%s", utils.Config.Pprof.Port), nil))
+		}()
+	}
 
 	db.MustInitDB(&types.DatabaseConfig{
 		Username: cfg.WriterDatabase.Username,
@@ -177,18 +187,21 @@ func main() {
 		// }
 	}
 
-	transforms := make([]func(blk *types.Eth1Block, cache *ccache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
+	transforms := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
 	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
+
+	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 
 	if *block != 0 {
 		err = IndexFromNode(bt, client, *block, *block, *concurrencyBlocks)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from node, start: %v end: %v concurrency: %v", *block, *block, *concurrencyBlocks)
 		}
-		err = IndexFromBigtable(bt, *block, *block, transforms, *concurrencyData)
+		err = IndexFromBigtable(bt, *block, *block, transforms, *concurrencyData, cache)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from bigtable")
 		}
+		cache.Clear()
 
 		logrus.Infof("indexing of block %v completed", *block)
 		return
@@ -213,10 +226,11 @@ func main() {
 	}
 
 	if *endData != 0 && *startData < *endData {
-		err = IndexFromBigtable(bt, int64(*startData), int64(*endData), transforms, *concurrencyData)
+		err = IndexFromBigtable(bt, int64(*startData), int64(*endData), transforms, *concurrencyData, cache)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from bigtable")
 		}
+		cache.Clear()
 		return
 	}
 
@@ -267,11 +281,13 @@ func main() {
 			// transforms = append(transforms, bt.TransformTx)
 
 			logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)
-			err = IndexFromBigtable(bt, int64(lastBlockFromDataTable)-*offsetData, int64(lastBlockFromNode), transforms, *concurrencyData)
+			err = IndexFromBigtable(bt, int64(lastBlockFromDataTable)-*offsetData, int64(lastBlockFromNode), transforms, *concurrencyData, cache)
 			if err != nil {
 				logrus.WithError(err).Errorf("error indexing from bigtable")
+				cache.Clear()
 				continue
 			}
+			cache.Clear()
 		}
 
 		if *enableBalanceUpdater {
@@ -666,7 +682,7 @@ func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concur
 	return g.Wait()
 }
 
-func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk *types.Eth1Block, cache *ccache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), concurrency int64) error {
+func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), concurrency int64, cache *freecache.Cache) error {
 	g := new(errgroup.Group)
 	g.SetLimit(int(concurrency))
 
@@ -674,8 +690,6 @@ func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk 
 	lastTickTs := time.Now()
 
 	processedBlocks := int64(0)
-
-	cache := ccache.New(ccache.Configure().MaxSize(1000000).ItemsToPrune(500))
 
 	logrus.Infof("fetching blocks from %d to %d", start, end)
 	for i := start; i <= end; i++ {

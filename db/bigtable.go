@@ -13,8 +13,8 @@ import (
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
 	itypes "github.com/gobitfly/eth-rewards/types"
-	"github.com/golang/protobuf/proto"
 	"google.golang.org/api/option"
+	"google.golang.org/protobuf/proto"
 )
 
 var BigtableClient *Bigtable
@@ -615,14 +615,10 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*t
 					return fmt.Errorf("error getting sync_committee participants: bitLen != valLen: %v != %v", bitLen, valLen)
 				}
 				for i, valIndex := range b.SyncAggregate.SyncCommitteeValidators {
-
-					if utils.BitAtVector(b.SyncAggregate.SyncCommitteeBits, i) {
-
-						if dutiesBySlot[b.Slot] == nil {
-							dutiesBySlot[b.Slot] = make(map[uint64]bool)
-						}
-						dutiesBySlot[b.Slot][valIndex] = true
+					if dutiesBySlot[b.Slot] == nil {
+						dutiesBySlot[b.Slot] = make(map[uint64]bool)
 					}
+					dutiesBySlot[b.Slot][valIndex] = utils.BitAtVector(b.SyncAggregate.SyncCommitteeBits, i)
 				}
 			}
 		}
@@ -634,8 +630,12 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*t
 	}
 	for slot, validators := range dutiesBySlot {
 		mut := gcp_bigtable.NewMutation()
-		for validator := range validators {
-			mut.Set(SYNC_COMMITTEES_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((max_block_number-slot)*1000), []byte{})
+		for validator, participated := range validators {
+			if participated {
+				mut.Set(SYNC_COMMITTEES_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((max_block_number-slot)*1000), []byte{})
+			} else {
+				mut.Set(SYNC_COMMITTEES_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp(0), []byte{})
+			}
 		}
 		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(slot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(slot)), mut)
 
@@ -832,7 +832,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validatorIndex ui
 }
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, startEpoch uint64, limit int64) (map[uint64][]*types.ValidatorSyncParticipation, error) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
 	defer cancel()
 
 	rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
@@ -1407,6 +1407,44 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 	}
 
 	return res, nil
+}
+
+// Deletes all block data from bigtable
+func (bigtable *Bigtable) DeleteEpoch(epoch uint64) error {
+
+	// First receive all keys that were written by this block (entities & indices)
+	keys := make([]string, 0, 33)
+	startSlot := epoch * utils.Config.Chain.Config.SlotsPerEpoch
+	endSlot := (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+
+	logger.Infof("deleting epoch %v (slot %v to %v)", epoch, startSlot, endSlot)
+	for slot := startSlot; slot <= endSlot; slot++ {
+		keys = append(keys, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(slot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(slot)))
+	}
+	keys = append(keys, fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch)))
+
+	// for _, k := range keys {
+	// 	logger.Info(k)
+	// }
+
+	// Delete all of those keys
+	mutsDelete := &types.BulkMutations{
+		Keys: make([]string, 0, len(keys)),
+		Muts: make([]*gcp_bigtable.Mutation, 0, len(keys)),
+	}
+	for _, key := range keys {
+		mutDelete := gcp_bigtable.NewMutation()
+		mutDelete.DeleteRow()
+		mutsDelete.Keys = append(mutsDelete.Keys, key)
+		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+	}
+
+	err := bigtable.WriteBulk(mutsDelete, bigtable.tableBeaconchain)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func reversePaddedUserID(userID uint64) string {

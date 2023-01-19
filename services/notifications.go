@@ -135,8 +135,6 @@ func notificationCollector() {
 }
 
 func notificationSender() {
-	errorGettingAdvisoryLockFromDbCount := 0
-	errorExecutingAdvisoryUnlockCount := 0
 	for {
 		start := time.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
@@ -150,12 +148,7 @@ func notificationSender() {
 
 		_, err = conn.ExecContext(ctx, `SELECT pg_advisory_lock(500)`)
 		if err != nil {
-			errorGettingAdvisoryLockFromDbCount++
-			if errorGettingAdvisoryLockFromDbCount <= 3 {
-				logger.WithError(err).Warnf("error (%d) getting advisory lock from db", errorGettingAdvisoryLockFromDbCount)
-			} else {
-				logger.WithError(err).Errorf("error (%d) getting advisory lock from db", errorGettingAdvisoryLockFromDbCount)
-			}
+			logger.WithError(err).Errorf("error getting advisory lock from db")
 
 			conn.Close()
 			if err != nil {
@@ -163,8 +156,6 @@ func notificationSender() {
 			}
 			cancel()
 			continue
-		} else {
-			errorGettingAdvisoryLockFromDbCount = 0
 		}
 
 		logger.Info("lock obtained")
@@ -183,12 +174,7 @@ func notificationSender() {
 		unlocked := false
 		rows, err := conn.QueryContext(ctx, `SELECT pg_advisory_unlock(500)`)
 		if err != nil {
-			errorExecutingAdvisoryUnlockCount++
-			if errorExecutingAdvisoryUnlockCount <= 3 {
-				logger.WithError(err).Warnf("error (%d) executing advisory unlock", errorExecutingAdvisoryUnlockCount)
-			} else {
-				logger.WithError(err).Errorf("error (%d) executing advisory unlock", errorExecutingAdvisoryUnlockCount)
-			}
+			logger.WithError(err).Errorf("error executing advisory unlock")
 
 			conn.Close()
 			if err != nil {
@@ -196,8 +182,6 @@ func notificationSender() {
 			}
 			cancel()
 			continue
-		} else {
-			errorExecutingAdvisoryUnlockCount = 0
 		}
 
 		for rows.Next() {
