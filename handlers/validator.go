@@ -365,19 +365,17 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
-	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x00}) {
-		blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
-		if err != nil {
-			logger.Errorf("error getting validator bls change from db: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
+	blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
+	if err != nil {
+		logger.Errorf("error getting validator bls change from db: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-		if blsChange != nil {
-			validatorPageData.Withdrawable = true
-			validatorPageData.BLSChange = blsChange
-		}
-
+	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x00}) && blsChange != nil {
+		validatorPageData.Withdrawable = true
+		validatorPageData.BLSChange = blsChange
+		validatorPageData.WithdrawCredentials = blsChange.Address
 	} else {
 		validatorPageData.Withdrawable = true
 	}
