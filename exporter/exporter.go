@@ -68,7 +68,7 @@ func Start(client rpc.Client) error {
 			logger.Fatal(err)
 		}
 
-		for epoch := uint64(1); epoch <= head.HeadEpoch; epoch++ {
+		for epoch := uint64(0); epoch <= head.HeadEpoch; epoch++ {
 			err := ExportEpoch(epoch, client)
 
 			if err != nil {

@@ -867,14 +867,18 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 		return fmt.Errorf("error committing db transaction: %w", err)
 	}
 
+	lookback := uint64(0)
+	if data.Epoch > 3 {
+		lookback = data.Epoch - 3
+	}
 	// delete duplicate scheduled slots
-	_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", data.Epoch-3, []byte{0x0})
+	_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", lookback, []byte{0x0})
 	if err != nil {
 		return fmt.Errorf("error cleaning up blocks table: %w", err)
 	}
 
 	// delete duplicate missed blocks
-	_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", data.Epoch-3, []byte{0x1})
+	_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", lookback, []byte{0x1})
 	if err != nil {
 		return fmt.Errorf("error cleaning up blocks table: %w", err)
 	}
@@ -2376,7 +2380,7 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 }
 
 func GetEpochWithdrawalsTotal(epoch uint64) (total uint64, err error) {
-	err = ReaderDb.Get(&total, `SELECT sum(amount) FROM blocks_withdrawals WHERE block_slot >= $1 AND block_slot < $2`, epoch*utils.Config.Chain.Config.SlotsPerEpoch, (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch)
+	err = ReaderDb.Get(&total, `SELECT COALESCE(sum(amount), 0) as sum FROM blocks_withdrawals WHERE block_slot >= $1 AND block_slot < $2`, epoch*utils.Config.Chain.Config.SlotsPerEpoch, (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch)
 	return
 }
 
