@@ -149,7 +149,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	withdrawalTotal, err := db.GetEpochWithdrawalsTotal(epoch)
 	if err != nil {
-		logger.Errorf("error epoch withdrawals total: %v", err)
+		logger.Errorf("error getting epoch withdrawals total: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}

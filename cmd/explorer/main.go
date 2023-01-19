@@ -29,6 +29,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	_ "eth2-exporter/docs"
+	_ "net/http/pprof"
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
@@ -55,6 +56,7 @@ func init() {
 
 func main() {
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
+
 	flag.Parse()
 
 	cfg := &types.Config{}
@@ -72,6 +74,13 @@ func main() {
 	err = handlers.CheckAndPreloadImprint()
 	if err != nil {
 		logrus.Fatalf("error check / preload imprint: %v", err)
+	}
+
+	if utils.Config.Pprof.Enabled {
+		go func() {
+			logrus.Infof("starting pprof http server on port %s", utils.Config.Pprof.Port)
+			logrus.Info(http.ListenAndServe(fmt.Sprintf("localhost:%s", utils.Config.Pprof.Port), nil))
+		}()
 	}
 
 	wg := &sync.WaitGroup{}

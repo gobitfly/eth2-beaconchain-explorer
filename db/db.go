@@ -962,6 +962,16 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		metrics.TaskDuration.WithLabelValues("db_save_validators").Observe(time.Since(start).Seconds())
 	}()
 
+	var genesisBalances map[uint64][]*types.ValidatorBalance
+
+	if data.Epoch == 0 {
+		var err error
+		genesisBalances, err = BigtableClient.GetValidatorBalanceHistory([]uint64{}, 0, 1)
+		if err != nil {
+			return err
+		}
+	}
+
 	validators := data.Validators
 
 	validatorsByIndex := make(map[uint64]*types.Validator, len(data.Validators))
@@ -1300,16 +1310,8 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 
 	balanceCache := make(map[uint64]map[uint64]uint64)
 	currentActivationEpoch := uint64(0)
-	newValidatorsLen := len(newValidators)
 
 	// get genesis balances of all validators for performance
-	var genesisBalances map[uint64][]*types.ValidatorBalance
-	if newValidatorsLen > 0 && newValidators[0].ActivationEpoch == 0 {
-		genesisBalances, err = BigtableClient.GetValidatorBalanceHistory([]uint64{}, 0, 1)
-		if err != nil {
-			return err
-		}
-	}
 
 	for _, newValidator := range newValidators {
 		if newValidator.ActivationEpoch > data.Epoch {

@@ -510,6 +510,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		logger.Infof("acquired saveEpochMux lock for epoch %v", data.Epoch)
 		// export epoch data to bigtable
 		g := new(errgroup.Group)
+		g.SetLimit(7)
 		g.Go(func() error {
 			err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
 			if err != nil {
