@@ -362,6 +362,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// TODO: switch 16 to config paramter
 		timeToWithdrawal := time.Now().Add(time.Second * time.Duration(positions/16*utils.Config.Chain.Config.SecondsPerSlot))
 		validatorPageData.EstimatedNextWithdrawal = utils.FormatTimeFromNow(timeToWithdrawal)
+	} else {
+		validatorPageData.EstimatedNextWithdrawal = template.HTML("N/A")
 	}
 
 	validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
