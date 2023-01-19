@@ -42,7 +42,7 @@ var gethRequestEntityTooLargeRE = regexp.MustCompile("413 Request Entity Too Lar
 // If a reorg of the eth1-chain happened within these 100 blocks it will delete
 // removed deposits.
 func eth1DepositsExporter() {
-	eth1DepositContractAddress = common.HexToAddress(utils.Config.Indexer.Eth1DepositContractAddress)
+	eth1DepositContractAddress = common.HexToAddress(utils.Config.Chain.Config.DepositContractAddress)
 	eth1DepositContractFirstBlock = utils.Config.Indexer.Eth1DepositContractFirstBlock
 
 	rpcClient, err := gethRPC.Dial(utils.Config.Eth1GethEndpoint)
