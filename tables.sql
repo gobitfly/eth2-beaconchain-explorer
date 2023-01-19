@@ -287,6 +287,7 @@ create table blocks_withdrawals
 create index idx_blocks_withdrawals_recipient on blocks_withdrawals (address);
 create index idx_blocks_withdrawals_validatorindex on blocks_withdrawals (validatorindex);
 
+drop table if exists blocks_bls_change;
 create table blocks_bls_change
 (
     block_slot           int     not null,
