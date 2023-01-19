@@ -780,10 +780,10 @@ ov
 
 {{ define "AddressWithdrawalsGrid" }}
   <div id="withdrawals-table" style="display: grid; grid-template-columns: repeat(5, minmax(min-content, 1fr)); overflow-x: auto;">
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Index</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Epoch</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Slot</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Time</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Validator</div>
-    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Address</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Amount</div>
     {{ if len .Data }}
       {{ range $i, $row := .Data }}
