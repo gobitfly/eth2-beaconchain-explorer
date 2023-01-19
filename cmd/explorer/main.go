@@ -79,7 +79,7 @@ func main() {
 	if utils.Config.Pprof.Enabled {
 		go func() {
 			logrus.Infof("starting pprof http server on port %s", utils.Config.Pprof.Port)
-			logrus.Info(http.ListenAndServe(fmt.Sprintf("localhost:%s", utils.Config.Pprof.Port), nil))
+			logrus.Info(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%s", utils.Config.Pprof.Port), nil))
 		}()
 	}
 
