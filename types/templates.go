@@ -373,6 +373,7 @@ type ValidatorPageData struct {
 	ShowWithdrawalWarning               bool
 	BLSChange                           *BLSChange
 	Withdrawable                        bool
+	EstimatedNextWithdrawal             template.HTML
 }
 
 type RocketpoolValidatorPageData struct {

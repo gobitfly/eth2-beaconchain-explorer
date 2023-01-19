@@ -339,6 +339,31 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 	validatorPageData.WithdrawalCount = withdrawalsCount
 
+	recentWithdrawalIndex, err := db.GetMostRecentWithdrawalValidator()
+	if err != nil {
+		logger.Errorf("error retrieving most recent withdrawal index: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// position := (highestIndex % *stats.UniqueValidatorCount)
+	positions := uint64(0)
+	canCalculateNextWithdrawal := true
+	if validatorPageData.Index > recentWithdrawalIndex {
+		positions = validatorPageData.Index - recentWithdrawalIndex
+	} else if stats != nil && stats.TotalValidatorCount != nil && stats.ActiveValidatorCount != nil && *stats.TotalValidatorCount > recentWithdrawalIndex {
+		positions = (*stats.TotalValidatorCount - recentWithdrawalIndex + validatorPageData.Index) * (*stats.ActiveValidatorCount / *stats.TotalValidatorCount)
+	} else {
+		logger.Errorf("error calculating next validator withdrawal time stats: %v recent: %v", stats, recentWithdrawalIndex)
+		canCalculateNextWithdrawal = false
+	}
+
+	if canCalculateNextWithdrawal {
+		// TODO: switch 16 to config paramter
+		timeToWithdrawal := time.Now().Add(time.Second * time.Duration(positions/16*utils.Config.Chain.Config.SecondsPerSlot))
+		validatorPageData.EstimatedNextWithdrawal = utils.FormatTimeFromNow(timeToWithdrawal)
+	}
+
 	validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
 	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x00}) {
 		blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
@@ -1889,3 +1914,25 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// func ValidatorWithdrawalEstimation(w http.ResponseWriter, r *http.Request) {
+// 	w.Header().Set("Content-Type", "application/json")
+
+// 	vars := mux.Vars(r)
+// 	validatorIndex, err := strconv.ParseUint(vars["index"], 10, 64)
+// 	if err != nil {
+// 		logger.Errorf("error parsing validator index: %v", err)
+// 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	// q := r.URL.Query()
+
+// 	highestIndex, err := db.GetMostRecentWithdrawalIndex()
+// 	if err != nil {
+// 		logger.Errorf("error retrieving most recent withdrawal index: %v", err)
+// 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// }

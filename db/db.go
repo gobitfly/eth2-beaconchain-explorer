@@ -2477,6 +2477,20 @@ func GetValidatorWithdrawalsCount(validator uint64) (uint64, error) {
 	return count, nil
 }
 
+func GetMostRecentWithdrawalValidator() (uint64, error) {
+	var validatorindex uint64
+
+	err := ReaderDb.Get(&validatorindex, "SELECT validatorindex FROM blocks_withdrawals order by withdrawalindex desc limit 1;")
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("error getting most recent blocks_withdrawals validatorindex: %w", err)
+	}
+
+	return validatorindex, nil
+}
+
 func GetSlotBLSChange(slot uint64) ([]*types.BLSChange, error) {
 	var change []*types.BLSChange
 
