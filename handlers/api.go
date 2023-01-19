@@ -951,7 +951,7 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 	// calculate ParticipatedSlots and MissedSlots
 
 	// collect aggregated sync committee stats from validator_stats table for all validators
-	var syncStats []struct {
+	var syncStats struct {
 		Participated int64 `db:"participated"`
 		Missed       int64 `db:"missed"`
 	}
@@ -959,13 +959,13 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 	if err != nil {
 		return nil, err
 	}
-	err = db.ReaderDb.Select(&syncStats, db.ReaderDb.Rebind(query), args...)
+	err = db.ReaderDb.Get(&syncStats, db.ReaderDb.Rebind(query), args...)
 	if err != nil {
 		return nil, err
 	}
 
-	r.ParticipatedSlots = uint64(syncStats[0].Participated)
-	r.MissedSlots = uint64(syncStats[0].Missed)
+	r.ParticipatedSlots = uint64(syncStats.Participated)
+	r.MissedSlots = uint64(syncStats.Missed)
 
 	// validator_stats is updated only once a day, everything missing has to be collected from bigtable (which is slower than validator_stats)
 	// check when the last update to validator_stats was
@@ -985,22 +985,22 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 			periods = append(periods, periods[0]-1)
 		}
 
-		var validatorsInSyncCommittees []struct {
+		var validatorsInSyncCommittees struct {
 			Validators pq.Int64Array `db:"validators"`
 		}
 		query, args, err = sqlx.In(`SELECT COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators FROM sync_committees WHERE period IN(?) AND validatorindex IN(?)`, periods, validators)
 		if err != nil {
 			return nil, err
 		}
-		err = db.ReaderDb.Select(&validatorsInSyncCommittees, db.ReaderDb.Rebind(query), args...)
+		err = db.ReaderDb.Get(&validatorsInSyncCommittees, db.ReaderDb.Rebind(query), args...)
 		if err != nil {
 			return nil, err
 		}
 
-		if len(validatorsInSyncCommittees[0].Validators) > 0 {
+		if len(validatorsInSyncCommittees.Validators) > 0 {
 			// get and add up2date sync committee statistics from bigtable
 			vs := []uint64{}
-			for _, v := range validatorsInSyncCommittees[0].Validators {
+			for _, v := range validatorsInSyncCommittees.Validators {
 				vs = append(vs, uint64(v))
 			}
 
