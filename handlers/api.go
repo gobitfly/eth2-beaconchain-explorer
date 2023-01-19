@@ -849,6 +849,7 @@ func getSyncCommitteeFor(validators []uint64, period uint64) ([]interface{}, err
 }
 
 func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitteesStats, error) {
+
 	r := SyncCommitteesStats{}
 
 	if epoch < utils.Config.Chain.Config.AltairForkEpoch {
@@ -861,7 +862,10 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 		return &r, nil
 	}
 
-	// retrieve active epochs from database per validator
+	////
+	// calculate expected slots
+
+	// retrieve activation and exit epochs from database per validator
 	var validatorsEpochInfo = []struct {
 		Id              int64  `db:"validatorindex"`
 		ActivationEpoch uint64 `db:"activationepoch"`
@@ -877,38 +881,66 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 		return nil, err
 	}
 
-	// calculate amount of epochs validators have been active in (cap between altair to [epoch])
-	// epochs where X subscribed validators were active also count for X as more validators increase the chance of being part in a sync committee
+	// we need all related and unique timeframes (start and exit sync period) for all validators
 	const noExitEpoch = uint64(9223372036854775807)
-	epochsAmount := uint64(0)
+	uniqueValiPeriods := make(map[uint64]bool)
+	uniqueValiPeriods[utils.SyncPeriodOfEpoch(epoch)] = true
 	for _, v := range validatorsEpochInfo {
+		// start epoch
 		firstSyncEpoch := v.ActivationEpoch
 		if utils.Config.Chain.Config.AltairForkEpoch > v.ActivationEpoch {
 			firstSyncEpoch = utils.Config.Chain.Config.AltairForkEpoch
 		}
+		uniqueValiPeriods[utils.SyncPeriodOfEpoch(firstSyncEpoch)] = true
 
-		if v.ExitEpoch == noExitEpoch {
-			// validator still active
-			if epoch > firstSyncEpoch {
-				epochsAmount += epoch - firstSyncEpoch
-			}
-		} else if v.ExitEpoch > firstSyncEpoch {
-			epochsAmount += v.ExitEpoch - firstSyncEpoch
+		// exit epoch (if any)
+		if v.ExitEpoch != noExitEpoch && v.ExitEpoch > firstSyncEpoch {
+			uniqueValiPeriods[utils.SyncPeriodOfEpoch(v.ExitEpoch)] = true
 		}
 	}
 
-	// translate to slots as GetValidatorSyncDutiesStatistics works with slots
-	slotsAmount := epochsAmount * utils.Config.Chain.Config.SlotsPerEpoch
+	// transform map to slice; this will be used to query sync_committees_count_per_validator
+	timeStampSlice := make([]uint64, 0, len(uniqueValiPeriods))
+	for ts := range uniqueValiPeriods {
+		timeStampSlice = append(timeStampSlice, ts)
+	}
 
-	// calculate ExpectedSlots based on validatorcount for given epoch
-	// TODO: This is inaccurate as the validatorcount changes over time
-	var totalValidatorsCount uint64
-	err = db.ReaderDb.Get(&totalValidatorsCount, "SELECT validatorscount FROM epochs WHERE epoch = $1", epoch)
+	// get aggregated count for all relevant committees from sync_committees_count_per_validator
+	var countStatistics []struct {
+		Period     uint64  `db:"period"`
+		CountSoFar float64 `db:"count_so_far"`
+	}
+
+	query, args, errs := sqlx.In(`SELECT period, count_so_far FROM sync_committees_count_per_validator WHERE period IN (?) ORDER BY period ASC`, timeStampSlice)
+	if errs != nil {
+		return nil, errs
+	}
+	err = db.ReaderDb.Select(&countStatistics, db.ReaderDb.Rebind(query), args...)
 	if err != nil {
 		return nil, err
 	}
 
-	r.ExpectedSlots = uint64((slotsAmount * utils.Config.Chain.Config.SyncCommitteeSize) / totalValidatorsCount)
+	// transform query result to map for easy access
+	periodInfoMap := make(map[uint64]float64)
+	for _, pl := range countStatistics {
+		periodInfoMap[pl.Period] = pl.CountSoFar
+	}
+
+	// calculate expected committies for all validators
+	expectedCommitties := 0.0
+	for _, vi := range validatorsEpochInfo {
+		if vi.ExitEpoch == noExitEpoch {
+			expectedCommitties += periodInfoMap[utils.SyncPeriodOfEpoch(epoch)] - periodInfoMap[utils.SyncPeriodOfEpoch(vi.ActivationEpoch)]
+		} else {
+			expectedCommitties += periodInfoMap[utils.SyncPeriodOfEpoch(vi.ExitEpoch)] - periodInfoMap[utils.SyncPeriodOfEpoch(vi.ActivationEpoch)]
+		}
+	}
+
+	// transform committees to slots
+	r.ExpectedSlots = uint64(expectedCommitties * float64(utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod*utils.Config.Chain.Config.SlotsPerEpoch))
+
+	////
+	// calculate ParticipatedSlots and MissedSlots
 
 	// collect aggregated sync committee stats from validator_stats table for all validators
 	var syncStats []struct {

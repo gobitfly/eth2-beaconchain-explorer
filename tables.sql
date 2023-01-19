@@ -108,10 +108,10 @@ create table sync_committees
     primary key (period, validatorindex, committeeindex)
 );
 
-drop table if exists sync_committees_luck;
-create table sync_committees_luck (
+drop table if exists sync_committees_count_per_validator;
+create table sync_committees_count_per_validator (
 	period int not null unique,
-	luck_agg float8 not null,
+	count_so_far float8 not null,
     primary key (period)
 );
 
