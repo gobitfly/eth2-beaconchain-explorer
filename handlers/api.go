@@ -1116,9 +1116,9 @@ func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorE
 }
 
 type SyncCommitteesStats struct {
-	ExpectedSlots     uint64 `json:"expected_slots"`
-	ParticipatedSlots uint64 `json:"participated_slots"`
-	MissedSlots       uint64 `json:"missed_slots"`
+	ExpectedSlots     uint64 `json:"expectedSlots"`
+	ParticipatedSlots uint64 `json:"participatedSlots"`
+	MissedSlots       uint64 `json:"missedSlots"`
 }
 
 type DashboardResponse struct {
