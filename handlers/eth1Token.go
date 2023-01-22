@@ -61,8 +61,9 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := g.Wait(); err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		if handleTemplateError(w, r, "eth1Token.go / Eth1Token / g.Wait()", err) != nil {
+			return // an error has occurred and was processed
+		}
 		return
 	}
 

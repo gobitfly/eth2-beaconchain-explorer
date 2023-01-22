@@ -122,8 +122,9 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	} else if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		if handleTemplateError(w, r, "block.go / Block / GetSlotPageData", err) != nil {
+			return // an error has occurred and was processed
+		}
 		return
 	}
 

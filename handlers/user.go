@@ -212,7 +212,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 
 	err = authorizeTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template [user.go / UserAuthorizeConfirm] for %v route: %v", r.URL.String(), err)
 		callback := appData.RedirectURI + "?error=temporarily_unaviable&error_description=err_template&state=" + state
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
