@@ -47,7 +47,7 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = poolData
 
-	if handleTemplateError(w, r, poolsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "pools.go / Pools", poolsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

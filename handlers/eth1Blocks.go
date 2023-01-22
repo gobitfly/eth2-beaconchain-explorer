@@ -24,7 +24,7 @@ func Eth1Blocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "blockchain", "/eth1blocks", "Ethereum Blocks")
-	if handleTemplateError(w, r, eth1BlocksTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "eth1Blocks.go / Eth1Blocks", eth1BlocksTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

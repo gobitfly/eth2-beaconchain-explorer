@@ -118,7 +118,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		DisplayStart:    start,
 	}
 
-	if handleTemplateError(w, r, epochsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "epochs.go / Done", epochsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

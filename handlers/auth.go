@@ -34,7 +34,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
-	if handleTemplateError(w, r, registerTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "auth.go / Register", registerTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -160,7 +160,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
-	if handleTemplateError(w, r, loginTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "auth.go / Login", loginTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -362,7 +362,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), Email: dbUser.Email, CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
-	if handleTemplateError(w, r, resetPasswordTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "auth.go / ResetPassword", resetPasswordTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -434,7 +434,7 @@ func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
-	if handleTemplateError(w, r, requestResetPaswordTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "auth.go / RequestResetPassword", requestResetPaswordTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -499,7 +499,7 @@ func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "resendConfirmation", "/resendConfirmation", "Resend Password Reset")
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 
-	if handleTemplateError(w, r, resendConfirmationTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "auth.go / ResendConfirmation", resendConfirmationTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

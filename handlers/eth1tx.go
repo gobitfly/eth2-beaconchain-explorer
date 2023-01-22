@@ -35,7 +35,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 		data.Meta.Path = "/tx/" + txHashString
 		logger.Errorf("error parsing tx hash %v: %v", txHashString, err)
 
-		if handleTemplateError(w, r, txNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "eth1tx.go / Eth1TransactionTx / decodeString", txNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -51,7 +51,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 		data.Meta.Path = "/tx/" + txHashString
 		logger.Errorf("error getting eth1 transaction data: %v", err)
 
-		if handleTemplateError(w, r, txNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "eth1tx.go / Eth1TransactionTx / GetEth1Transaction", txNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -66,7 +66,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 		err = txTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if handleTemplateError(w, r, err) != nil {
+	if handleTemplateError(w, r, "eth1tx.go / Eth1TransactionTx / Done", err) != nil {
 		return // an error has occurred and was processed
 	}
 }

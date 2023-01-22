@@ -55,7 +55,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	// 	Selector: "slotsViz",
 	// }
 
-	if handleTemplateError(w, r, indexTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "index.go / Index", indexTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

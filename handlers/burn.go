@@ -32,7 +32,7 @@ func Burn(w http.ResponseWriter, r *http.Request) {
 	latestBurn.Currency = currency
 
 	data.Data = latestBurn
-	if handleTemplateError(w, r, burnTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "burn.go / Burn", burnTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

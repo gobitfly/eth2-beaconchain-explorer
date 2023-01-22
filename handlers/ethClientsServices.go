@@ -67,7 +67,7 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data = pageData
-	if handleTemplateError(w, r, ethClientsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "ethClientsServices.go / EthClientsServices", ethClientsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

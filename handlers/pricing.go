@@ -56,7 +56,7 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = pageData
 
-	if handleTemplateError(w, r, pricingTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "pricing.go / Pricing", pricingTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -112,7 +112,7 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = pageData
 
-	if handleTemplateError(w, r, mobilePricingTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "pricing.go / MobilePricing", mobilePricingTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

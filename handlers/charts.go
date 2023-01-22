@@ -26,7 +26,7 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 	chartsPageData := services.LatestChartsPageData()
 
 	if chartsPageData == nil {
-		if handleTemplateError(w, r, chartsUnavailableTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "charts.go / Charts / LatestChartsPageData", chartsUnavailableTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -45,7 +45,7 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data = cpd
-	if handleTemplateError(w, r, chartsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "charts.go / Charts / Done", chartsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -76,7 +76,7 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 
 	chartsPageData := services.LatestChartsPageData()
 	if chartsPageData == nil {
-		if handleTemplateError(w, r, chartsUnavailableTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "charts.go / GenericChart / LatestChartsPageData", chartsUnavailableTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -99,7 +99,7 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Path = "/charts/" + chartVar
 	data.Data = chartData
 
-	if handleTemplateError(w, r, genericChartTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "charts.go / GenericChart / Done", genericChartTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -145,7 +145,7 @@ func SlotViz(w http.ResponseWriter, r *http.Request) {
 		Epochs:   services.LatestSlotVizMetrics(),
 	}
 	data.Data = slotVizData
-	if handleTemplateError(w, r, slotVizTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "charts.go / SlotViz", slotVizTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
