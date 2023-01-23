@@ -835,6 +835,8 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 			EventLabel: ev.Desc,
 			EventName:  ev.Event,
 			Active:     false,
+			Warning:    ev.Warning,
+			Info:       ev.Info,
 		})
 	}
 

@@ -25,10 +25,10 @@
                   <div class="form-check form-check-inline w-100">
                     <label for="watchlist_{{ $event.EventName }}" class="form-check-label mr-auto font-weight-normal py-2">
                       {{ $event.EventLabel }}
-                      {{ if eq $event.EventName "validator_attestation_missed" }}
-                        <i data-toggle="tooltip" title="Will trigger every epoch (6.4 minutes) during downtime" class="fas fa-exclamation-circle text-warning"></i>
-                      {{ else if eq $event.EventName "validator_is_offline" }}
-                        <i data-toggle="tooltip" data-html="true" title="<div class='text-left'>Will trigger a notifcation:<br><ul><li>Once you have been offline for 3 epochs</li><li>Every 32 Epochs (~3 hours) during your downtime</li><li>Once you are back online again</li></ul></div>" class="fas fa-question-circle"></i>
+                      {{ if $event.Warning }}
+                        {{ $event.Warning }}
+                      {{ else if $event.Info }}
+                        {{ $event.Info }}
                       {{ end }}
                     </label>
                     <input {{ if $event.Active }}checked{{ end }} name="{{ $event.EventName }}" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="watchlist_{{ $event.EventName }}" />

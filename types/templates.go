@@ -1368,7 +1368,9 @@ type WebhookPageData struct {
 type EventNameCheckbox struct {
 	EventLabel string
 	EventName
-	Active bool
+	Active  bool
+	Warning template.HTML
+	Info    template.HTML
 }
 
 type PoolsResp struct {

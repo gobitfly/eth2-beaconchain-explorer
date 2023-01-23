@@ -2413,6 +2413,30 @@ func GetAddressWithdrawals(address []byte, limit uint64, offset uint64) ([]*type
 	return withdrawals, nil
 }
 
+func GetEpochWithdrawals(epoch uint64) ([]*types.WithdrawalsNotification, error) {
+	var withdrawals []*types.WithdrawalsNotification
+
+	err := ReaderDb.Select(&withdrawals, `
+	SELECT 
+		block_slot as slot, 
+		withdrawalindex as index, 
+		validatorindex, 
+		address, 
+		amount
+		v.pubkey as pubkey
+	FROM blocks_withdrawals
+	LEFT JOIN validators v on v.index = blocks_withdrawals.validatorindex
+	WHERE block_slot >= $1 AND block_slot < $2 ORDER BY withdrawalindex`, epoch*utils.Config.Chain.Config.SlotsPerEpoch, (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error getting blocks_withdrawals: %w", err)
+	}
+
+	return withdrawals, nil
+}
+
 func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64) ([]*types.Withdrawals, error) {
 	var withdrawals []*types.Withdrawals
 	if limit == 0 {

@@ -259,6 +259,13 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 	}
 	logger.Infof("collecting validator got slashed notifications took: %v\n", time.Since(start))
 
+	err = collectWithdrawalNotifications(notificationsByUserID, epoch)
+	if err != nil {
+		metrics.Errors.WithLabelValues("notifications_collect_validator_withdrawal").Inc()
+		return nil, fmt.Errorf("error collecting withdrawal notifications: %v", err)
+	}
+	logger.Infof("collecting withdrawal notifications took: %v\n", time.Since(start))
+
 	err = collectNetworkNotifications(notificationsByUserID, types.NetworkLivenessIncreasedEventName)
 	if err != nil {
 		metrics.Errors.WithLabelValues("notifications_collect_network").Inc()
@@ -1884,6 +1891,126 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 		}
 		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
 		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
+	}
+
+	return nil
+}
+
+type validatorWithdrawalNotification struct {
+	SubscriptionID  uint64
+	ValidatorIndex  uint64
+	Epoch           uint64
+	Slot            uint64
+	Amount          uint64
+	Address         []byte
+	EventFilter     string
+	UnsubscribeHash sql.NullString
+}
+
+func (n *validatorWithdrawalNotification) GetLatestState() string {
+	return ""
+}
+
+func (n *validatorWithdrawalNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
+}
+
+func (n *validatorWithdrawalNotification) GetEmailAttachment() *types.EmailAttachment {
+	return nil
+}
+
+func (n *validatorWithdrawalNotification) GetSubscriptionID() uint64 {
+	return n.SubscriptionID
+}
+
+func (n *validatorWithdrawalNotification) GetEpoch() uint64 {
+	return n.Epoch
+}
+
+func (n *validatorWithdrawalNotification) GetEventName() types.EventName {
+	return types.ValidatorGotSlashedEventName
+}
+
+func (n *validatorWithdrawalNotification) GetInfo(includeUrl bool) string {
+	generalPart := fmt.Sprintf(`A withdrawal of %v has been processed for validator %v.`, utils.FormatCurrentBalance(n.Amount, "ETH"), n.ValidatorIndex)
+	if includeUrl {
+		return generalPart + getUrlPart(n.ValidatorIndex)
+	}
+	return generalPart
+}
+
+func (n *validatorWithdrawalNotification) GetTitle() string {
+	return "Withdrawal Processed"
+}
+
+func (n *validatorWithdrawalNotification) GetEventFilter() string {
+	return n.EventFilter
+}
+
+func (n *validatorWithdrawalNotification) GetInfoMarkdown() string {
+	generalPart := fmt.Sprintf(`A withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during in slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/%[4]v).`, n.ValidatorIndex, utils.FormatCurrentBalance(n.Amount, "ETH"), n.Slot, utils.FormatHash(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
+	return generalPart
+}
+
+func collectWithdrawalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, epoch uint64) error {
+	type dbResult struct {
+		Slot           uint64 `json:"slot,omitempty"`
+		Index          uint64 `json:"index"`
+		ValidatorIndex uint64 `json:"validatorindex"`
+		Address        []byte `json:"address"`
+		Amount         uint64 `json:"amount"`
+		Pubkey         []byte `json:"pubkey"`
+	}
+
+	_, subMap, err := db.GetSubsForEventFilter(types.ValidatorReceivedWithdrawalEventName)
+	if err != nil {
+		return fmt.Errorf("error getting subscriptions for missted attestations %w", err)
+	}
+
+	events, err := db.GetEpochWithdrawals(epoch)
+	if err != nil {
+		return fmt.Errorf("error getting withdrawals from database, err: %w", err)
+	}
+
+	logger.Infof("retrieved %v events", len(events))
+
+	for _, event := range events {
+		subscribers, ok := subMap[hex.EncodeToString(event.Pubkey)]
+		if ok {
+			for _, sub := range subscribers {
+				if sub.UserID == nil || sub.ID == nil {
+					return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+				}
+				if sub.LastEpoch != nil {
+					lastSentEpoch := *sub.LastEpoch
+					if lastSentEpoch >= epoch || epoch < sub.CreatedEpoch {
+						continue
+					}
+				}
+				logger.Infof("creating %v notification for validator %v in epoch %v", types.ValidatorReceivedWithdrawalEventName, event.Index, epoch)
+				n := &validatorWithdrawalNotification{
+					SubscriptionID:  *sub.ID,
+					ValidatorIndex:  event.Index,
+					Epoch:           epoch,
+					Slot:            event.Slot,
+					Amount:          event.Amount,
+					Address:         event.Address,
+					EventFilter:     hex.EncodeToString(event.Pubkey),
+					UnsubscribeHash: sub.UnsubscribeHash,
+				}
+				if _, exists := notificationsByUserID[*sub.UserID]; !exists {
+					notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
+				}
+				if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
+					notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
+				}
+				notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
+				metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
+			}
+		}
 	}
 
 	return nil

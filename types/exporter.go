@@ -182,6 +182,15 @@ type Withdrawals struct {
 	Amount         uint64 `json:"amount"`
 }
 
+type WithdrawalsNotification struct {
+	Slot           uint64 `json:"slot,omitempty"`
+	Index          uint64 `json:"index"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+	Address        []byte `json:"address"`
+	Amount         uint64 `json:"amount"`
+	Pubkey         []byte `json:"pubkey"`
+}
+
 // Eth1Data is a struct to hold the ETH1 data
 type Eth1Data struct {
 	DepositRoot  []byte
