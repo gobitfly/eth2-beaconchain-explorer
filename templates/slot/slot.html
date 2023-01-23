@@ -508,12 +508,12 @@
           </div>
         {{ end }}
         {{ if gt .BLSChangeCount 0 }}
-        <div class="tab-pane fade" id="blsChange" role="tabpanel" aria-labelledby="blsChange-tab">
-          <div class="card block-card py-1">
-            {{ template "block_blsChange" . }}
+          <div class="tab-pane fade" id="blsChange" role="tabpanel" aria-labelledby="blsChange-tab">
+            <div class="card block-card py-1">
+              {{ template "block_blsChange" . }}
+            </div>
           </div>
-        </div>
-      {{ end }}
+        {{ end }}
         {{ if gt .DepositsCount 0 }}
           <div class="tab-pane fade" id="deposits" role="tabpanel" aria-labelledby="deposits-tab">
             <div class="card block-card">
