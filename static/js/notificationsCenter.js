@@ -1,6 +1,6 @@
 var csrfToken = ""
 
-const VALIDATOR_EVENTS = ["validator_attestation_missed", "validator_proposal_missed", "validator_proposal_submitted", "validator_got_slashed", "validator_synccommittee_soon", "validator_is_offline", "validator_received_withdrawal"]
+const VALIDATOR_EVENTS = ["validator_attestation_missed", "validator_proposal_missed", "validator_proposal_submitted", "validator_got_slashed", "validator_synccommittee_soon", "validator_is_offline", "validator_withdrawal"]
 
 // const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
 
@@ -577,7 +577,7 @@ function loadValidatorsData(data) {
                   case "validator_is_offline":
                     badgeColor = "badge-light"
                     break
-                  case "validator_received_withdrawal":
+                  case "validator_withdrawal":
                     badgeColor = "badge-light"
                 }
                 notifications += `<span style="font-size: 12px; font-weight: 500;" class="badge badge-pill ${badgeColor} ${textColor} badge-custom-size mr-1 my-1">${n.replace("validator", "").replaceAll("_", " ")}</span>`

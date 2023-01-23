@@ -43,6 +43,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		"validator/heading.html",
 		"validator/tables.html",
 		"validator/modals.html",
+		"modals.html",
 		"validator/overview.html",
 		"validator/charts.html",
 		"validator/countdown.html",
@@ -313,6 +314,23 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	validatorPageData.Watchlist = watchlist
+
+	if data.User.Authenticated {
+		events := make([]types.EventNameCheckbox, 0)
+		for _, ev := range types.AddWatchlistEvents {
+			events = append(events, types.EventNameCheckbox{
+				EventLabel: ev.Desc,
+				EventName:  ev.Event,
+				Active:     false,
+				Warning:    ev.Warning,
+				Info:       ev.Info,
+			})
+		}
+		validatorPageData.AddValidatorWatchlistModal = &types.AddValidatorWatchlistModal{
+			Events:         events,
+			ValidatorIndex: validatorPageData.Index,
+		}
+	}
 
 	deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
 	if err != nil {

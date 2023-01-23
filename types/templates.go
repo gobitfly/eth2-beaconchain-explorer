@@ -374,6 +374,7 @@ type ValidatorPageData struct {
 	BLSChange                           *BLSChange
 	Withdrawable                        bool
 	EstimatedNextWithdrawal             template.HTML
+	AddValidatorWatchlistModal          *AddValidatorWatchlistModal
 }
 
 type RocketpoolValidatorPageData struct {
@@ -1392,7 +1393,7 @@ type PoolInfo struct {
 
 type AddValidatorWatchlistModal struct {
 	CsrfField       template.HTML
-	ValidatorIndex  int64
+	ValidatorIndex  uint64
 	ValidatorPubkey string
 	Events          []EventNameCheckbox
 }

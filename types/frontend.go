@@ -26,7 +26,7 @@ const (
 	ValidatorGotSlashedEventName                     EventName = "validator_got_slashed"
 	ValidatorDidSlashEventName                       EventName = "validator_did_slash"
 	ValidatorIsOfflineEventName                      EventName = "validator_is_offline"
-	ValidatorReceivedWithdrawalEventName             EventName = "validator_received_withdrawal"
+	ValidatorReceivedWithdrawalEventName             EventName = "validator_withdrawal"
 	ValidatorReceivedDepositEventName                EventName = "validator_received_deposit"
 	NetworkSlashingEventName                         EventName = "network_slashing"
 	NetworkValidatorActivationQueueFullEventName     EventName = "network_validator_activation_queue_full"

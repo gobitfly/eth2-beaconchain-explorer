@@ -41,7 +41,6 @@ import (
 // the epochs_notified sql table is used to keep track of already notified epochs
 // before collecting notifications several db consistency checks are done
 func notificationCollector() {
-
 	for {
 		latestFinalizedEpoch := LatestFinalizedEpoch()
 
@@ -77,7 +76,7 @@ func notificationCollector() {
 			var exported uint64
 			err := db.WriterDb.Get(&exported, "SELECT COUNT(*) FROM epochs WHERE epoch <= $1 AND epoch >= $2", epoch, epoch-3)
 			if err != nil {
-				logger.Errorf("error retrieving export statuf of epoch %v: %v", epoch, err)
+				logger.Errorf("error retrieving export status of epoch %v: %v", epoch, err)
 				ReportStatus("notification-collector", "Error", nil)
 				break
 			}
@@ -105,7 +104,7 @@ func notificationCollector() {
 				break
 			}
 
-			queueNotifications(notifications, db.FrontendWriterDB) // this caused the collected notifications to be queuened and sent
+			queueNotifications(notifications, db.FrontendWriterDB) // this caused the collected notifications to be queued and sent
 
 			// Network DB Notifications (user related, must only run on one instance ever!!!!)
 			if utils.Config.Notifications.UserDBNotifications {
@@ -176,7 +175,7 @@ func notificationSender() {
 		if err != nil {
 			logger.WithError(err).Errorf("error executing advisory unlock")
 
-			conn.Close()
+			err = conn.Close()
 			if err != nil {
 				logger.WithError(err).Warn("error returning connection to connection pool (advisory unlock)")
 			}
@@ -1955,28 +1954,22 @@ func (n *validatorWithdrawalNotification) GetInfoMarkdown() string {
 	return generalPart
 }
 
+// collectWithdrawalNotifications collects all notifications validator withdrawals
 func collectWithdrawalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, epoch uint64) error {
-	type dbResult struct {
-		Slot           uint64 `json:"slot,omitempty"`
-		Index          uint64 `json:"index"`
-		ValidatorIndex uint64 `json:"validatorindex"`
-		Address        []byte `json:"address"`
-		Amount         uint64 `json:"amount"`
-		Pubkey         []byte `json:"pubkey"`
-	}
 
+	// get all users that are subscribed to this event (scale: a few thousand rows depending on how many users we have)
 	_, subMap, err := db.GetSubsForEventFilter(types.ValidatorReceivedWithdrawalEventName)
 	if err != nil {
-		return fmt.Errorf("error getting subscriptions for missted attestations %w", err)
+		return fmt.Errorf("error getting subscriptions for missed attestations %w", err)
 	}
 
+	// get all the withdrawal events for a specific epoch. Will be at most X per slot (currently 16 on mainnet, which is 32 * 16 per epoch; 512 rows).
 	events, err := db.GetEpochWithdrawals(epoch)
 	if err != nil {
 		return fmt.Errorf("error getting withdrawals from database, err: %w", err)
 	}
 
 	logger.Infof("retrieved %v events", len(events))
-
 	for _, event := range events {
 		subscribers, ok := subMap[hex.EncodeToString(event.Pubkey)]
 		if ok {
