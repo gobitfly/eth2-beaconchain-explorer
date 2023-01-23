@@ -504,91 +504,84 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		return fmt.Errorf("error retrieving epoch data: no validators received for epoch")
 	}
 
-	go func() {
-		saveEpochMux.Lock()
-		defer saveEpochMux.Unlock()
-		logger.Infof("acquired saveEpochMux lock for epoch %v", data.Epoch)
-		// export epoch data to bigtable
-		g := new(errgroup.Group)
-		g.SetLimit(7)
-		g.Go(func() error {
-			err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
-			if err != nil {
-				return fmt.Errorf("error exporting validator balances to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			err = db.BigtableClient.SaveAttestationAssignments(epoch, data.ValidatorAssignmentes.AttestorAssignments)
-			if err != nil {
-				return fmt.Errorf("error exporting attestation assignments to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			err = db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
-			if err != nil {
-				return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			err = db.BigtableClient.SaveAttestations(data.Blocks)
-			if err != nil {
-				return fmt.Errorf("error exporting attestations to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			err = db.BigtableClient.SaveProposals(data.Blocks)
-			if err != nil {
-				return fmt.Errorf("error exporting proposals to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			err = db.BigtableClient.SaveSyncComitteeDuties(data.Blocks)
-			if err != nil {
-				return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			attestedSlots := make(map[uint64]uint64)
-			for _, blockkv := range data.Blocks {
-				for _, block := range blockkv {
-					for _, attestation := range block.Attestations {
-						for _, validator := range attestation.Attesters {
-							if block.Slot > attestedSlots[validator] {
-								attestedSlots[validator] = block.Slot
-							}
+	// export epoch data to bigtable
+	g := new(errgroup.Group)
+	g.SetLimit(7)
+	g.Go(func() error {
+		err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
+		if err != nil {
+			return fmt.Errorf("error exporting validator balances to bigtable: %v", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		err = db.BigtableClient.SaveAttestationAssignments(epoch, data.ValidatorAssignmentes.AttestorAssignments)
+		if err != nil {
+			return fmt.Errorf("error exporting attestation assignments to bigtable: %v", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		err = db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
+		if err != nil {
+			return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		err = db.BigtableClient.SaveAttestations(data.Blocks)
+		if err != nil {
+			return fmt.Errorf("error exporting attestations to bigtable: %v", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		err = db.BigtableClient.SaveProposals(data.Blocks)
+		if err != nil {
+			return fmt.Errorf("error exporting proposals to bigtable: %v", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		err = db.BigtableClient.SaveSyncComitteeDuties(data.Blocks)
+		if err != nil {
+			return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		attestedSlots := make(map[uint64]uint64)
+		for _, blockkv := range data.Blocks {
+			for _, block := range blockkv {
+				for _, attestation := range block.Attestations {
+					for _, validator := range attestation.Attesters {
+						if block.Slot > attestedSlots[validator] {
+							attestedSlots[validator] = block.Slot
 						}
 					}
 				}
 			}
-
-			err = services.SetLastAttestationSlots(attestedSlots)
-			if err != nil {
-				return fmt.Errorf("error settings last attestation slots for epoch %v: %v", data.Epoch, err)
-			}
-			return nil
-		})
-
-		err = g.Wait()
-		if err != nil {
-			logger.Errorf("error during bigtable export: %v", err)
-			return
 		}
 
-		// at this point all epoch data has been written to bigtable
-		err = db.SaveEpoch(data, client)
+		err = services.SetLastAttestationSlots(attestedSlots)
 		if err != nil {
-			logger.Errorf("error saving epoch data: %v", err)
-			return
+			return fmt.Errorf("error settings last attestation slots for epoch %v: %v", data.Epoch, err)
 		}
+		return nil
+	})
 
-		services.ReportStatus("epochExporter", "Running", nil)
-	}()
+	err = g.Wait()
+	if err != nil {
+		return fmt.Errorf("error during bigtable export: %w", err)
+	}
+
+	// at this point all epoch data has been written to bigtable
+	err = db.SaveEpoch(data, client)
+	if err != nil {
+		return fmt.Errorf("error saving epoch data: %w", err)
+	}
+
+	services.ReportStatus("epochExporter", "Running", nil)
 	return nil
 }
 
