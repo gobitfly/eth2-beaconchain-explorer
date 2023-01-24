@@ -66,6 +66,7 @@ import (
 // @tag.docs.description More info
 // @tag.name Misc
 // @tag.name User
+// @tag.description provided for Oauth applications (public OAuth support is a work in progress).
 // @securitydefinitions.oauth2.accessCode OAuthAccessCode
 // @tokenurl https://beaconcha.in/user/token
 // @authorizationurl https://beaconcha.in/user/authorize
@@ -1258,7 +1259,7 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 // @Param  latest_epoch query int false "The latest epoch to consider in the query"
 // @Param  offset query int false "Number of items to skip"
 // @Param  limit query int false "Maximum number of items to return, up to 100"
-// @Success 200 {object} types.ApiResponse{data=[]ApiValidatorBalanceHistoryResponse}
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorBalanceHistoryResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/balancehistory [get]
 func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
@@ -1370,7 +1371,7 @@ func getBalanceHistoryQueryParameters(q url.Values) (uint64, int64, error) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorPerformanceResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/performance [get]
 func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
@@ -1393,7 +1394,7 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	returnQueryResultsAsArray(rows, w, r)
 }
 
 // ApiValidatorExecutionPerformance godoc
@@ -1401,7 +1402,7 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorExecutionPerformanceResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/execution/performance [get]
 func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
@@ -1533,7 +1534,7 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 // @Summary Get the current top 100 performing validators (using the income over the last 7 days)
 // @Tags Validator
 // @Produce  json
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorPerformanceResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/leaderboard [get]
 func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
@@ -1551,7 +1552,7 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	returnQueryResultsAsArray(rows, w, r)
 }
 
 // ApiValidatorDeposits godoc
@@ -1559,11 +1560,10 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorDepositsResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/deposits [get]
 func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
-
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
@@ -1594,7 +1594,7 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiResponse{[]types.ApiValidatorAttestationsResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/attestations [get]
 func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
@@ -1663,11 +1663,12 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorProposals godoc
-// @Summary Get all proposed blocks during the last 100 epochs for up to 100 validators
+// @Summary Get all proposed blocks during the last 100 epochs for up to 100 validators. Optionally set the epoch query parameter to look back further.
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} types.ApiResponse
+// @Param  epoch query string false "Page the result by epoch"
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorProposalsResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/proposals [get]
 func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
@@ -1676,42 +1677,116 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
+	q := r.URL.Query()
+
+	epochQuery := uint64(0)
+	if q.Get("epoch") == "" {
+		epochQuery = services.LatestEpoch()
+	} else {
+		var err error
+		epochQuery, err = strconv.ParseUint(q.Get("epoch"), 10, 64)
+		if err != nil {
+			sendErrorResponse(w, r.URL.String(), err.Error())
+			return
+		}
+	}
 
 	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
 	}
+	if epochQuery < 100 {
+		epochQuery = 100
+	}
 
-	rows, err := db.ReaderDb.Query("SELECT blocks.* FROM blocks LEFT JOIN validators on validators.validatorindex = blocks.proposer WHERE (proposer = ANY($1)) AND epoch > $2 ORDER BY proposer, epoch desc, slot desc LIMIT 100", pq.Array(queryIndices), services.LatestEpoch()-100)
+	rows, err := db.ReaderDb.Query(`
+	SELECT 
+		b.epoch,
+		b.slot,
+		b.blockroot,
+		b.parentroot,
+		b.stateroot,
+		b.signature,
+		b.attestationscount,
+		b.attesterslashingscount,
+		b.depositscount,
+		b.eth1data_blockhash,
+		b.eth1data_depositcount,
+		b.eth1data_depositroot,
+		b.exec_base_fee_per_gas,
+		b.exec_block_hash,
+		b.exec_block_number,
+		b.exec_extra_data,
+		b.exec_fee_recipient,
+		b.exec_gas_limit,
+		b.exec_gas_used,
+		b.exec_logs_bloom,
+		b.exec_parent_hash,
+		b.exec_random,
+		b.exec_receipts_root,
+		b.exec_state_root,
+		b.exec_timestamp,
+		b.exec_transactions_count,
+		b.graffiti,
+		b.graffiti_text,
+		b.proposer,
+		b.proposerslashingscount,
+		b.randaoreveal,
+		b.status,
+		b.syncaggregate_bits,
+		b.syncaggregate_participation,
+		b.syncaggregate_signature,
+		b.voluntaryexitscount
+	FROM blocks as b 
+	LEFT JOIN validators ON validators.validatorindex = b.proposer 
+	WHERE (proposer = ANY($1)) and epoch <= $2 AND epoch >= $3 
+	ORDER BY proposer, epoch desc, slot desc`, pq.Array(queryIndices), epochQuery, epochQuery-100)
 	if err != nil {
+		logger.Errorf("could not retrieve db results: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
-	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	returnQueryResultsAsArray(rows, w, r)
 }
 
 // ApiGraffitiwall godoc
-// @Summary Get all pixels that have been painted until now on the graffitiwall
+// @Summary Get the most recent pixels that have been painted during the last 1000 slots. Optionally set the slot query parameter to look back further.
 // @Tags Misc
 // @Produce  json
+// @Param slot query string false "Slot to query"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/graffitiwall [get]
 func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	q := r.URL.Query()
+	slotQuery := uint64(0)
+	if q.Get("epoch") == "" {
+		slotQuery = services.LatestSlot()
+	} else {
+		var err error
+		slotQuery, err = strconv.ParseUint(q.Get("slot"), 10, 64)
+		if err != nil {
+			logger.Errorf("invalid slot provided: %v", err)
+			sendErrorResponse(w, r.URL.String(), "invalid slot provided")
+			return
+		}
+	}
+	if slotQuery < 1000 {
+		slotQuery = 1000
+	}
 
-	rows, err := db.ReaderDb.Query("SELECT x, y, color, slot, validator FROM graffitiwall ORDER BY x, y LIMIT 1000000")
+	rows, err := db.ReaderDb.Query("SELECT x, y, color, slot, validator FROM graffitiwall where slot <= $1 and slot => $1 ORDER BY slot", slotQuery, slotQuery-1000)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	returnQueryResultsAsArray(rows, w, r)
 }
 
 // ApiChart godoc

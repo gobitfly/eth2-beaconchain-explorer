@@ -572,3 +572,86 @@ type ApiValidatorBalanceHistoryResponse struct {
 	Validatorindex   uint64 `json:"validatorindex"`
 	Week             uint64 `json:"week"`
 }
+
+type ApiValidatorPerformanceResponse struct {
+	Balance         uint64 `json:"balance"`
+	Performance1d   uint64 `json:"performance1d"`
+	Performance31d  uint64 `json:"performance31d"`
+	Performance365d uint64 `json:"performance365d"`
+	Performance7d   uint64 `json:"performance7d"`
+	Rank7d          uint64 `json:"rank7d"`
+	Validatorindex  uint64 `json:"validatorindex"`
+}
+
+type ApiValidatorExecutionPerformanceResponse struct {
+	Performance1d  uint64 `json:"performance1d"`
+	Performance7d  uint64 `json:"performance7d"`
+	Performance31d uint64 `json:"performance31d"`
+	Validatorindex uint64 `json:"validatorindex"`
+}
+
+type ApiValidatorDepositsResponse struct {
+	Amount                uint64 `json:"amount"`
+	BlockNumber           uint64 `json:"block_number"`
+	BlockTs               uint64 `json:"block_ts"`
+	FromAddress           string `json:"from_address"`
+	MerkletreeIndex       string `json:"merkletree_index"`
+	Publickey             string `json:"publickey"`
+	Removed               bool   `json:"removed"`
+	Signature             string `json:"signature"`
+	TxHash                string `json:"tx_hash"`
+	TxIndex               uint64 `json:"tx_index"`
+	TxInput               string `json:"tx_input"`
+	ValidSignature        bool   `json:"valid_signature"`
+	WithdrawalCredentials string `json:"withdrawal_credentials"`
+}
+
+type ApiValidatorAttestationsResponse struct {
+	Attesterslot   uint64 `json:"attesterslot"`
+	Committeeindex uint64 `json:"committeeindex"`
+	Epoch          uint64 `json:"epoch"`
+	Inclusionslot  uint64 `json:"inclusionslot"`
+	Status         uint64 `json:"status"`
+	Validatorindex uint64 `json:"validatorindex"`
+	Week           uint64 `json:"week"`
+}
+
+// convert this json object to a golang struct called ApiValidatorProposalsResponse
+type ApiValidatorProposalsResponse struct {
+	Attestationscount          uint64  `db:"attestationscount" json:"attestationscount"`
+	Attesterslashingscount     uint64  `db:"attesterslashingscount" json:"attesterslashingscount"`
+	Blockroot                  string  `db:"blockroot" json:"blockroot"`
+	Depositscount              uint64  `db:"depositscount" json:"depositscount"`
+	Epoch                      uint64  `db:"epoch" json:"epoch"`
+	Eth1dataBlockhash          string  `db:"eth1data_blockhash" json:"eth1data_blockhash"`
+	Eth1dataDepositcount       uint64  `db:"eth1data_depositcount" json:"eth1data_depositcount"`
+	Eth1dataDepositroot        string  `db:"eth1data_depositroot" json:"eth1data_depositroot"`
+	ExecBaseFeePerGas          *uint64 `db:"exec_base_fee_per_gas" json:"exec_base_fee_per_gas,omitempty"`
+	ExecBlockHash              *string `db:"exec_block_hash" json:"exec_block_hash,omitempty"`
+	ExecBlockNumber            *uint64 `db:"exec_block_number" json:"exec_block_number,omitempty"`
+	ExecExtra_data             *string `db:"exec_extra_data" json:"exec_extra_data,omitempty"`
+	ExecFeeRecipient           *string `db:"exec_fee_recipient" json:"exec_fee_recipient,omitempty"`
+	ExecGasLimit               *uint64 `db:"exec_gas_limit" json:"exec_gas_limit,omitempty"`
+	ExecGasUsed                *uint64 `db:"exec_gas_used" json:"exec_gas_used,omitempty"`
+	ExecLogsBloom              *string `db:"exec_logs_bloom" json:"exec_logs_bloom,omitempty"`
+	ExecParentHash             *string `db:"exec_parent_hash" json:"exec_parent_hash,omitempty"`
+	ExecRandom                 *string `db:"exec_random" json:"exec_random,omitempty"`
+	ExecReceiptsRoot           *string `db:"exec_receipts_root" json:"exec_receipts_root,omitempty"`
+	ExecStateRoot              *string `db:"exec_state_root" json:"exec_state_root,omitempty"`
+	ExecTimestamp              *uint64 `db:"exec_timestamp" json:"exec_timestamp,omitempty"`
+	ExecTransactionsCount      *uint64 `db:"exec_transactions_count" json:"exec_transactions_count,omitempty"`
+	Graffiti                   string  `db:"graffiti" json:"graffiti"`
+	GraffitiText               string  `db:"graffiti_text" json:"graffiti_text"`
+	Parentroot                 string  `db:"parentroot" json:"parentroot"`
+	Proposer                   uint64  `db:"proposer" json:"proposer"`
+	Proposerslashingscount     uint64  `db:"proposerslashingscount" json:"proposerslashingscount"`
+	Randaoreveal               string  `db:"randaoreveal" json:"randaoreveal"`
+	Signature                  string  `db:"signature" json:"signature"`
+	Slot                       uint64  `db:"slot" json:"slot"`
+	Stateroot                  string  `db:"stateroot" json:"stateroot"`
+	Status                     string  `db:"status" json:"status"`
+	SyncaggregateBits          string  `db:"syncaggregate_bits" json:"syncaggregate_bits"`
+	SyncaggregateParticipation float64 `db:"syncaggregate_participation" json:"syncaggregate_participation"`
+	SyncaggregateSignature     string  `db:"syncaggregate_signature" json:"syncaggregate_signature"`
+	Voluntaryexitscount        uint64  `db:"voluntaryexitscount" json:"voluntaryexitscount"`
+}

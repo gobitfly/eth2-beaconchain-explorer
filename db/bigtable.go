@@ -658,8 +658,8 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 
 	end := int64(startEpoch) - limit
 
-	if end == 0 {
-		end += 1
+	if end <= 0 {
+		end = 1
 	}
 
 	rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch))
