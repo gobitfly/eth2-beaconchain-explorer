@@ -36,7 +36,6 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		SetPageDataTitle(data, fmt.Sprintf("Epoch %v", epochString))
 		data.Meta.Path = "/epoch/" + epochString
-		logger.Errorf("error parsing epoch index %v: %v", epochString, err)
 
 		if handleTemplateError(w, r, "epoch.go", "Epoch", "parse epochString", epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
@@ -156,10 +155,15 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	err = db.ReaderDb.Get(&epochPageData.PreviousEpoch, "SELECT epoch FROM epochs WHERE epoch < $1 ORDER BY epoch DESC LIMIT 1", epochPageData.Epoch)
-	if err != nil {
-		logger.Errorf("error retrieving previous epoch for epoch %v: %v", epochPageData.Epoch, err)
+
+	if epochPageData.Epoch == 0 {
 		epochPageData.PreviousEpoch = 0
+	} else {
+		err = db.ReaderDb.Get(&epochPageData.PreviousEpoch, "SELECT epoch FROM epochs WHERE epoch < $1 ORDER BY epoch DESC LIMIT 1", epochPageData.Epoch)
+		if err != nil {
+			logger.Errorf("error retrieving previous epoch for epoch %v: %v", epochPageData.Epoch, err)
+			epochPageData.PreviousEpoch = 0
+		}
 	}
 
 	data.Data = epochPageData
