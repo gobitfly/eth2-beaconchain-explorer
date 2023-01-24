@@ -38,7 +38,7 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 	data.HeaderAd = true
 	data.Data = pageData
 
-	if handleTemplateError(w, r, eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "eth1Depostis.go", "Eth1Deposits", "", eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -153,7 +153,7 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
-	if handleTemplateError(w, r, eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "eth1Deposits.go", "Eth1DepositsLeaderboard", "", eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

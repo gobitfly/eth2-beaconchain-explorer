@@ -13,7 +13,7 @@ func UnitConverter(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "unitConverter", "/unitConerter", "Unit Converter")
 
-	if handleTemplateError(w, r, unitConverterTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "unitConverter.go", "UnitConverter", "", unitConverterTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

@@ -141,7 +141,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	session.Values["subscription"] = premiumPkg
 	session.Save(r, w)
 
-	if handleTemplateError(w, r, userTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "user.go", "UserSettings", "", userTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -212,7 +212,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 
 	err = authorizeTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template [user.go / UserAuthorizeConfirm] for %v route: %v", r.URL.String(), err)
 		callback := appData.RedirectURI + "?error=temporarily_unaviable&error_description=err_template&state=" + state
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
@@ -287,7 +287,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	data.Data = userNotificationsData
 	data.User = user
 
-	if handleTemplateError(w, r, notificationTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "user.go", "UserNotifications", "", notificationTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -887,7 +887,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		data.DebugTemplates = notificationCenterParts
 	}
 
-	if handleTemplateError(w, r, notificationsCenterTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "user.go", "UserNotificationsCenter", "", notificationsCenterTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -2548,7 +2548,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = pageData
 
-	if handleTemplateError(w, r, webhookTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "user.go", "NotificationWebhookPage", "", webhookTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
