@@ -659,6 +659,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 // Returns true if there are more than one different withdrawal credentials within both Eth1Deposits and Eth2Deposits
 func hasMultipleWithdrawalCredentials(deposits *types.ValidatorDeposits) bool {
+
+	if deposits == nil {
+		return false
+	}
+
 	credential := make([]byte, 0)
 
 	// check Eth1Deposits
