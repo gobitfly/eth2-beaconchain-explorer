@@ -198,8 +198,12 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 			consensus_rewards_sum_wei,
 			total_rewards_wei,
 			apr,
-			(select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7) as avgAPR7d,
-			(select avg(apr) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31) as avgAPR31d
+			(select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgAPR7d,
+			(select avg(consensus_rewards_sum_wei) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgconsensus_rewards7d_wei,
+			(select avg(tx_fees_sum_wei) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgtx_fees7d_wei,
+			(select avg(apr) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgAPR31d,
+			(select avg(consensus_rewards_sum_wei) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgconsensus_rewards31d_wei,
+			(select avg(tx_fees_sum_wei) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgtx_fees31d_wei
 		FROM eth_store_stats e
 		WHERE validator = -1 `
 
