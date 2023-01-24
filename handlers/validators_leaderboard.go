@@ -21,7 +21,7 @@ func ValidatorsLeaderboard(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "validators", "/validators/leaderboard", "Validator Staking Leaderboard")
 	data.HeaderAd = true
 
-	if handleTemplateError(w, r, "validators_leaderboard.go / ValidatorsLeaderboard", validatorsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "validators_leaderboard.go", "ValidatorsLeaderboard", "", validatorsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

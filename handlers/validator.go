@@ -143,7 +143,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
-				if handleTemplateError(w, r, "validator.go / Validator / GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+				if handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 					return // an error has occurred and was processed
 				}
 				return
@@ -210,7 +210,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				err = validatorTemplate.ExecuteTemplate(w, "layout", data)
 			}
 
-			if handleTemplateError(w, r, "validator.go / Validator / Done (no index)", err) != nil {
+			if handleTemplateError(w, r, "validator.go", "Validator", "Done (no index)", err) != nil {
 				return // an error has occurred and was processed
 			}
 			return
@@ -262,7 +262,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validators.validatorindex = $1`, index)
 
 	if err == sql.ErrNoRows {
-		if handleTemplateError(w, r, "validator.go / Validator / no rows", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "validator.go", "Validator", "no rows", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -286,14 +286,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData.Epoch = services.LatestEpoch()
 	validatorPageData.Index = index
-	if err != nil {
-		logger.Errorf("error retrieving validator public key %v: %v", index, err)
-
-		if handleTemplateError(w, r, "validator.go / Validator / unknown", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
-			return // an error has occurred and was processed
-		}
-		return
-	}
 
 	filter := db.WatchlistFilter{
 		UserId:         data.User.UserID,
@@ -660,7 +652,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		err = validatorTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if handleTemplateError(w, r, "validator.go / Validator / Done", err) != nil {
+	if handleTemplateError(w, r, "validator.go", "Validator", "Done", err) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -1577,7 +1569,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	data.Data = validatorStatsTablePageData
-	if handleTemplateError(w, r, "validator.go / ValidatorStatsTable", validatorStatsTableTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "validator.go", "ValidatorStatsTable", "", validatorStatsTableTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

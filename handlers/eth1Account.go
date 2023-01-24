@@ -28,7 +28,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	if !isValid {
 		data := InitPageData(w, r, "blockchain", "/address", "not found")
 
-		if handleTemplateError(w, r, "eth1Account.go / Eth1Address / not valid", templates.GetTemplate("layout.html", "sprites.html", "execution/addressNotFound.html").ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "not valid", templates.GetTemplate("layout.html", "sprites.html", "execution/addressNotFound.html").ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -121,7 +121,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	if err := g.Wait(); err != nil {
-		if handleTemplateError(w, r, "eth1Account.go / Block / g.Wait()", err) != nil {
+		if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "g.Wait()", err) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -209,7 +209,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		Tabs:              tabs,
 	}
 
-	if handleTemplateError(w, r, "eth1Account.go / Eth1Address / Done", eth1AddressTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "Done", eth1AddressTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

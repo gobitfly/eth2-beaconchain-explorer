@@ -15,7 +15,7 @@ func EthStore(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "services", "/ethstore", "ETH.STORE Statistics")
 	data.Data = services.LatestEthStoreStatistics()
 
-	if handleTemplateError(w, r, "eth1Token.go / EthStore", ethStoreTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "ethstore.go", "EthStore", "", ethStoreTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

@@ -139,7 +139,7 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 	data.HeaderAd = true
 	data.Data = heatmapData
 
-	if handleTemplateError(w, r, "dashboard.go / Heatmap", heatmapTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "dashboard.go", "Heatmap", "", heatmapTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -158,7 +158,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	data.HeaderAd = true
 	data.Data = dashboardData
 
-	if handleTemplateError(w, r, "dashboard.go / Dashboard", dashboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "dashboard.go", "Dashboard", "", dashboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

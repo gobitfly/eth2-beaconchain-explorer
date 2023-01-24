@@ -73,7 +73,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if blockSlot == -1 {
 		err = db.ReaderDb.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
 		if blockSlot == -1 {
-			if handleTemplateError(w, r, "block.go / Block / blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			if handleTemplateError(w, r, "block.go", "Block", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
 			return
@@ -85,16 +85,6 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err != nil {
-		data.Meta.Path = "/slot/" + slotOrHash
-		logger.Errorf("error retrieving block data: %v", err)
-
-		if handleTemplateError(w, r, "block.go / Block / unknown", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
-			return // an error has occurred and was processed
-		}
-		return
-	}
-
 	blockPageData, err := GetSlotPageData(uint64(blockSlot))
 	if err == sql.ErrNoRows {
 		slot := uint64(blockSlot)
@@ -103,7 +93,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 		if slot > MaxSlotValue {
 			logger.Errorf("error retrieving blockPageData: %v", err)
-			if handleTemplateError(w, r, "block.go / Block / MaxSlotValue", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			if handleTemplateError(w, r, "block.go", "Block", "MaxSlotValue", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
 		}
@@ -117,12 +107,12 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		}
 		data.Data = futurePageData
 
-		if handleTemplateError(w, r, "block.go / Block / ErrNoRows", blockFutureTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "block.go", "Block", "ErrNoRows", blockFutureTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
 	} else if err != nil {
-		if handleTemplateError(w, r, "block.go / Block / GetSlotPageData", err) != nil {
+		if handleTemplateError(w, r, "block.go", "Block", "GetSlotPageData", err) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -148,7 +138,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		err = blockTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if handleTemplateError(w, r, "block.go / Block / ApiRequest", err) != nil {
+	if handleTemplateError(w, r, "block.go", "Block", "ApiRequest", err) != nil {
 		return // an error has occurred and was processed
 	}
 }

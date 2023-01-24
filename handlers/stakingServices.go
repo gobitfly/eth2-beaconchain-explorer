@@ -30,7 +30,7 @@ func StakingServices(w http.ResponseWriter, r *http.Request) {
 	pageData.NoAds = data.NoAds
 	data.Data = pageData
 
-	if handleTemplateError(w, r, "stakingServices.go / StakingServices", stakingServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "stakingServices.go", "StakingServices", "", stakingServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

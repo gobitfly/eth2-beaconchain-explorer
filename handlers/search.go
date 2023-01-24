@@ -48,7 +48,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		data := InitPageData(w, r, "search", "/search", "")
 		data.HeaderAd = true
 
-		if handleTemplateError(w, r, "search.go / Search", searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "search.go", "Search", "", searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 	}

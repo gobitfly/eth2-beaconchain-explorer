@@ -28,7 +28,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "stats", "/calculator", "Staking calculator")
 	data.Data = calculatorPageData
 
-	if handleTemplateError(w, r, "calculator.go / StakingCalculator", stakingCalculatorTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "calculator.go", "StakingCalculator", "", stakingCalculatorTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

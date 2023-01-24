@@ -60,7 +60,7 @@ func GasNow(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = resRet
 
-	if handleTemplateError(w, r, "gasnow.go / GasNow", gasNowTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "gasnow.go", "GasNow", "", gasNowTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
