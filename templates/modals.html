@@ -6,7 +6,9 @@
     <div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
       <div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
         <form id="add-validator-watchlist-form" method="post" action="/watchlist/add">
-          {{ .CsrfField }}
+          {{ if .CsrfField }}
+            {{ .CsrfField }}
+          {{ end }}
           <div class="mb-1 mb-sm-4 custom-remove-modal-close">
             <button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
           </div>

@@ -362,7 +362,9 @@
       <!-- Edit Validator Modals -->
       {{ template "validatorEditModal"  . }}
       <!-- Add Validator to Watchlist Modal -->
-      {{ template "AddValidatorWatchlistModal" .AddValidatorWatchlistModal }}
+      {{ if .User.Authenticated}}
+        {{ template "AddValidatorWatchlistModal" .AddValidatorWatchlistModal }}
+      {{ end }}
 
     </div>
   {{ end }}
