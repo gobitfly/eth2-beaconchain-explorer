@@ -396,7 +396,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.Withdrawable = true
 		validatorPageData.BLSChange = blsChange
 		validatorPageData.WithdrawCredentials = blsChange.Address
-	} else {
+	}
+
+	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
 		validatorPageData.Withdrawable = true
 	}
 
@@ -595,16 +597,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("slashing data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
-	eff := []*types.ValidatorEffectiveness{}
-	if !utils.Config.Frontend.Debug {
-		eff, err = db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, validatorPageData.Epoch-1)
-		if err != nil {
-			logger.Errorf("error retrieving validator effectiveness: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
+	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, validatorPageData.Epoch-1)
+	if err != nil {
+		logger.Errorf("error retrieving validator effectiveness: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
-	// TODO: remove this
 	if len(eff) > 1 {
 		logger.Errorf("error retrieving validator effectiveness: invalid length %v", len(eff))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

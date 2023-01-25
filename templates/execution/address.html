@@ -498,25 +498,13 @@
       <a class="nav-link border-bottom-radius-0 active" href="#transactions" id="transaction-tab" data-toggle="tab" role="tab" aria-controls="transactions" aria-selected="true">Transactions</a>
     </li>
     {{ range $i, $row := .Data.Tabs }}
-      <li style="margin: 0;" class="nav-item {{ if gt $i 0 }}d-none d-lg-inline{{ end }}" role="presentation">
+      <li style="margin: 0;" class="nav-item" role="presentation">
         <a class="nav-link border-bottom-radius-0 " href="{{ $row.Href }}" id="{{ $row.Id }}-tab" data-toggle="tab" role="tab" aria-controls="{{ $row.Id }}" aria-selected="false">{{ $row.Text }}</a>
-      </li>
-    {{ end }}
-    {{ if gt (len .Data.Tabs) 1 }}
-      <li class="nav-item dropdown d-lg-none">
-        <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-expanded="false">More</a>
-        <div class="dropdown-menu dropdown-menu-right">
-          {{ range $j, $row := .Data.Tabs }}
-            {{ if gt $j 0 }}
-              <a class="dropdown-item" href="{{ $row.Href }}" id="{{ $row.Id }}-dropdown-tab" data-toggle="tab" role="tab" aria-controls="{{ $row.Id }}" aria-selected="false">{{ $row.Text }}</a>
-            {{ end }}
-          {{ end }}
-        </div>
       </li>
     {{ end }}
   </ul>
 {{ end }}
-ov
+
 {{ define "AddressTransactionsTableGrid" }}
   <div id="transactions-table" style="display: grid; grid-template-columns: repeat(5, minmax(max-content, 1fr)) max-content repeat(2, minmax(max-content, 1fr)); overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Hash</span></div>
