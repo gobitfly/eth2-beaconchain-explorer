@@ -203,7 +203,7 @@
               {{ if gt .FinalizationDelay 3 }}
                 <div data-toggle="tooltip" title="" data-original-title="Finality: the last finalized epoch was {{ .FinalizationDelay }} epochs ago" id="banner-fin" class="info-item d-flex mr-2 mr-lg-3">
                   <div class="info-item-header mr-1">
-                    <span class="item-icon"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{ .FinalizationDelay }} epochs ago"></i></span>
+                    <span class="item-icon"><i class="fas fa-exclamation-triangle"></i></span>
                   </div>
                   <div class="info-item-body text-warning">
                     <span id="banner-fin-data">{{ .FinalizationDelay }}</span>

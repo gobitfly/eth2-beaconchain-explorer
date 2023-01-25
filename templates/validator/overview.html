@@ -161,7 +161,7 @@
         <span style="top:-1.2rem; white-space: nowrap;" class="text-muted font-weight-lighter position-absolute"><small>Next Withdrawal</small></span>
         {{ if not .Withdrawable }}
           <span class="d-block font-weight-bold"
-            >N/A <span data-toggle="tooltip" title="To receive payouts you need a 0x01 withdrawal credentials"><i class="text-warning fas fa-exclamation-triangle"></i></span
+            >N/A <span data-toggle="tooltip" title="To receive payouts you need 0x01 withdrawal credentials"><i class="text-warning fas fa-exclamation-triangle"></i></span
           ></span>
           <span class="d-block" style="font-size: 0.8rem; color: gray">
             <span>to {{ formatHash .WithdrawCredentials true }}</span>
