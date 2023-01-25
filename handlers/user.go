@@ -2570,6 +2570,12 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 
 	urlForm := r.FormValue("url")
 
+	if !utils.IsValidUrl(urlForm) {
+		utils.SetFlash(w, r, authSessionName, "Error: The URL provided is invalid.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
+		return
+	}
+
 	destination := "webhook"
 
 	validatorIsOffline := r.FormValue(string(types.ValidatorIsOfflineEventName)) == "on"
@@ -2665,21 +2671,7 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	urlValid := ""
-
-	urlParsed, err := url.Parse(urlForm)
-	if err != nil {
-		logger.WithError(err).Errorf("could not parse url: %v", urlForm)
-		utils.SetFlash(w, r, authSessionName, "Error: The URL provided is invalid.")
-		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
-		return
-	}
-
-	if urlParsed != nil {
-		urlValid = urlForm
-	}
-
-	_, err = tx.Exec(`INSERT INTO users_webhooks (user_id, url, event_names, destination) VALUES ($1, $2, $3, $4)`, user.UserID, urlValid, pq.StringArray(eventNames), destination)
+	_, err = tx.Exec(`INSERT INTO users_webhooks (user_id, url, event_names, destination) VALUES ($1, $2, $3, $4)`, user.UserID, urlForm, pq.StringArray(eventNames), destination)
 	if err != nil {
 		logger.WithError(err).Errorf("error inserting a new webhook for user")
 		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding your webhook, please try again in a bit.")
