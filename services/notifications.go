@@ -266,33 +266,43 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 	}
 	logger.Infof("collecting network notifications took: %v\n", time.Since(start))
 
-	err = collectRocketpoolComissionNotifications(notificationsByUserID, types.RocketpoolCommissionThresholdEventName)
-	if err != nil {
-		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_comission").Inc()
-		return nil, fmt.Errorf("error collecting rocketpool commission: %v", err)
-	}
-	logger.Infof("collecting rocketpool commissions took: %v\n", time.Since(start))
+	// Rocketpool
+	{
+		var ts int64
+		err = db.WriterDb.Get(&ts, `SELECT id FROM rocketpool_network_stats LIMIT 1;`)
 
-	err = collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID, types.RocketpoolNewClaimRoundStartedEventName)
-	if err != nil {
-		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_reward_claim").Inc()
-		return nil, fmt.Errorf("error collecting new rocketpool claim round: %v", err)
-	}
-	logger.Infof("collecting rocketpool claim round took: %v\n", time.Since(start))
+		if err == nil || !errors.Is(err, sql.ErrNoRows) {
+			err = collectRocketpoolComissionNotifications(notificationsByUserID, types.RocketpoolCommissionThresholdEventName)
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_comission").Inc()
+				return nil, fmt.Errorf("error collecting rocketpool commission: %v", err)
+			}
+			logger.Infof("collecting rocketpool commissions took: %v\n", time.Since(start))
 
-	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMaxReached, epoch)
-	if err != nil {
-		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_max_reached").Inc()
-		return nil, fmt.Errorf("error collecting rocketpool max collateral: %v", err)
-	}
-	logger.Infof("collecting rocketpool max collateral took: %v\n", time.Since(start))
+			err = collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID, types.RocketpoolNewClaimRoundStartedEventName)
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_reward_claim").Inc()
+				return nil, fmt.Errorf("error collecting new rocketpool claim round: %v", err)
+			}
+			logger.Infof("collecting rocketpool claim round took: %v\n", time.Since(start))
 
-	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMinReached, epoch)
-	if err != nil {
-		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_min_reached").Inc()
-		return nil, fmt.Errorf("error collecting rocketpool min collateral: %v", err)
+			err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMaxReached, epoch)
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_max_reached").Inc()
+				return nil, fmt.Errorf("error collecting rocketpool max collateral: %v", err)
+			}
+			logger.Infof("collecting rocketpool max collateral took: %v\n", time.Since(start))
+
+			err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMinReached, epoch)
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_min_reached").Inc()
+				return nil, fmt.Errorf("error collecting rocketpool min collateral: %v", err)
+			}
+			logger.Infof("collecting rocketpool min collateral took: %v\n", time.Since(start))
+		} else {
+			logger.Infof("skipped the collecting of rocketpool notifications, because rocketpool_network_stats is empty")
+		}
 	}
-	logger.Infof("collecting rocketpool min collateral took: %v\n", time.Since(start))
 
 	err = collectSyncCommittee(notificationsByUserID, types.SyncCommitteeSoon, epoch)
 	if err != nil {
