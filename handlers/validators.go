@@ -174,7 +174,6 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	orderByMap := map[string]string{
 		"0": "pubkey",
 		"1": "validatorindex",
-		"2": "balance",
 		"3": "state",
 		"4": "activationepoch",
 		"5": "exitepoch",
