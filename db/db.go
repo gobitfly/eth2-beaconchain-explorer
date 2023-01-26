@@ -251,7 +251,7 @@ func GetEth1DepositsCount() (uint64, error) {
 	return deposits, nil
 }
 
-func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, orderDir string, latestEpoch uint64) ([]*types.EthOneDepositLeaderboardData, uint64, error) {
+func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthOneDepositLeaderboardData, uint64, error) {
 	deposits := []*types.EthOneDepositLeaderboardData{}
 
 	if orderDir != "desc" && orderDir != "asc" {
@@ -282,62 +282,30 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 	var totalCount uint64
 	if query != "" {
 		err = ReaderDb.Get(&totalCount, `
-		SELECT
-			COUNT(from_address)
-			FROM
-				(
-					SELECT
-						from_address
-					FROM
-						eth1_deposits as eth1
-					WHERE
-					ENCODE(eth1.from_address, 'hex') LIKE LOWER($1)
-						GROUP BY from_address
-				) as count
-		`, query+"%")
+		SELECT COUNT(*) FROM eth1_deposits_aggregated WHERE ENCODE(from_address, 'hex') LIKE LOWER($1)`, query+"%")
 	} else {
-		err = ReaderDb.Get(&totalCount, "SELECT COUNT(*) FROM (SELECT from_address FROM eth1_deposits GROUP BY from_address) as count")
+		err = ReaderDb.Get(&totalCount, "SELECT COUNT(*) FROM eth1_deposits_aggregated AS count")
 	}
 	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
 
-	err = ReaderDb.Select(&deposits, fmt.Sprintf(`
-		SELECT
-			eth1.from_address,
-			SUM(eth1.amount) as amount,
-			SUM(eth1.validcount) AS validcount,
-			SUM(eth1.invalidcount) AS invalidcount,
-			COUNT(CASE WHEN v.slashed = 't' THEN 1 END) AS slashedcount,
-			COUNT(v.pubkey) AS totalcount,
-			COUNT(CASE WHEN v.slashed = 'f' AND v.exitepoch > $3 AND v.activationepoch < $3 THEN 1 END) as activecount,
-			COUNT(CASE WHEN v.activationepoch > $3 THEN 1 END) AS pendingcount,
-			COUNT(CASE WHEN v.slashed = 'f' AND v.exitepoch < $3 THEN 1 END) AS voluntary_exit_count
-		FROM (
-			SELECT 
-				from_address,
-				publickey,
-				SUM(amount) AS amount,
-				COUNT(CASE WHEN valid_signature = 't' THEN 1 END) AS validcount,
-				COUNT(CASE WHEN valid_signature = 'f' THEN 1 END) AS invalidcount
-			FROM eth1_deposits
-			GROUP BY from_address, publickey
-		) eth1
-		LEFT JOIN (
-			SELECT 
-				pubkey,
-				slashed,
-				exitepoch,
-				activationepoch,
-				COALESCE(validator_names.name, '') AS name
-			FROM validators
-			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		) v ON v.pubkey = eth1.publickey
-		WHERE ENCODE(eth1.from_address, 'hex') LIKE LOWER($4)
-		GROUP BY eth1.from_address
-		ORDER BY %s %s
-		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, query+"%")
+	if query != "" {
+		err = ReaderDb.Select(&deposits, fmt.Sprintf(`
+			SELECT from_address, amount, validcount, invalidcount, slashedcount, totalcount, activecount, pendingcount, voluntary_exit_count
+			FROM eth1_deposits_aggregated
+			WHERE ENCODE(from_address, 'hex') LIKE LOWER($3)
+			ORDER BY %s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start, query+"%")
+	} else {
+		err = ReaderDb.Select(&deposits, fmt.Sprintf(`
+			SELECT from_address, amount, validcount, invalidcount, slashedcount, totalcount, activecount, pendingcount, voluntary_exit_count
+			FROM eth1_deposits_aggregated
+			ORDER BY %s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start)
+	}
 	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
