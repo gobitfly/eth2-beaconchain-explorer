@@ -914,3 +914,7 @@ func ReverseSlice[S ~[]E, E any](s S) {
 func AddBigInts(a, b []byte) []byte {
 	return new(big.Int).Add(new(big.Int).SetBytes(a), new(big.Int).SetBytes(b)).Bytes()
 }
+
+func EpochsPerDay() uint64 {
+	return (24 * 60 * 60) / Config.Chain.Config.SlotsPerEpoch / Config.Chain.Config.SecondsPerSlot
+}

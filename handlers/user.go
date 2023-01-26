@@ -7,6 +7,7 @@ import (
 	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
+	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -934,7 +935,6 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		SELECT 
 			validators.validatorindex as index,
 			users_validators_tags.validator_publickey as publickey,
-			COALESCE (MAX(validators.balance), 0) as balance,
 			ARRAY_REMOVE(ARRAY_AGG(users_subscriptions.event_name order by users_subscriptions.event_name asc), NULL) as events
 		FROM users_validators_tags
 		LEFT JOIN users_subscriptions
@@ -949,6 +949,31 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error retrieving subscriptions for users: %v validators: %v", user.UserID, err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
+	}
+
+	indices := make([]uint64, 0, len(wl))
+	for _, vali := range wl {
+		if vali.Index != nil {
+			indices = append(indices, *vali.Index)
+		}
+	}
+
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), 1)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
+	for _, validator := range wl {
+		for balanceIndex, balance := range balances {
+			if len(balance) == 0 {
+				continue
+			}
+			if *validator.Index == balanceIndex {
+				validator.Balance = balance[0].Balance
+			}
+		}
 	}
 
 	tableData := make([][]interface{}, 0, len(wl))

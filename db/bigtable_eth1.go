@@ -461,13 +461,13 @@ func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.
 		return true
 	}
 
-	startTime := time.Now()
+	// startTime := time.Now()
 	err := bigtable.tableBlocks.ReadRows(ctx, rowRange, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Infof("finished getting blocks from table blocks: %v", time.Since(startTime))
+	// logger.Infof("finished getting blocks from table blocks: %v", time.Since(startTime))
 	return blocks, nil
 }
 
@@ -530,13 +530,13 @@ func (bigtable *Bigtable) GetBlocksIndexedMultiple(blockNumbers []uint64, limit 
 
 	rowHandler := getBlockHandler(&blocks)
 
-	startTime := time.Now()
+	// startTime := time.Now()
 	err := bigtable.tableData.ReadRows(ctx, rowList, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
+	// logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
 	return blocks, nil
 }
 
@@ -569,13 +569,13 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 
 	rowHandler := getBlockHandler(&blocks)
 
-	startTime := time.Now()
+	// startTime := time.Now()
 	err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
+	// logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
 	return blocks, nil
 }
 

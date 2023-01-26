@@ -1003,7 +1003,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		thresholdSlot = 0
 	}
 
-	latestEpoch := latestBlock / 32
+	latestEpoch := latestBlock / utils.Config.Chain.Config.SlotsPerEpoch
 	farFutureEpoch := uint64(18446744073709551615)
 	maxSqlNumber := uint64(9223372036854775807)
 
@@ -1219,15 +1219,6 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 			valueArgs = append(valueArgs, v.LastAttestationSlot.Int64)
 		}
 
-		// 		update users as u set -- postgres FTW
-		//   email = u2.email,
-		//   first_name = u2.first_name,
-		//   last_name = u2.last_name
-		// from (values
-		//   (1, 'hollis@weimann.biz', 'Hollis', 'Connell'),
-		//   (2, 'robert@duncan.info', 'Robert', 'Duncan')
-		// ) as u2(id, email, first_name, last_name)
-		// where u2.id = u.id;
 		stmt := fmt.Sprintf(`
 			UPDATE validators AS v SET
 			balance = v2.balance,
@@ -1242,25 +1233,6 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 			WHERE v2.validatorindex = v.validatorindex;
 	`, strings.Join(valueStrings, ","))
 
-		// stmt := fmt.Sprintf(`
-		// 	INSERT INTO validators (
-		// 		validatorindex,
-		// 		balance,
-		// 		effectivebalance,
-		// 		balance1d,
-		// 		balance7d,
-		// 		balance31d,
-		// 		lastattestationslot
-		// 	)
-		// 	VALUES %[1]s
-		// 	ON CONFLICT (validatorindex) DO UPDATE SET
-		// 		balance                    = EXCLUDED.balance,
-		// 		effectivebalance           = EXCLUDED.effectivebalance,
-		// 		balance1d                  = EXCLUDED.balance1d,
-		// 		balance7d                  = EXCLUDED.balance7d,
-		// 		balance31d                 = EXCLUDED.balance31d,
-		// 		lastattestationslot        = GREATEST(validators.lastattestationslot, EXCLUDED.lastattestationslot)`,
-		// 	strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			logger.Error(err)
@@ -2129,9 +2101,9 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 		return fmt.Errorf("error retrieving latest epoch: %w", err)
 	}
 
-	lastDayEpoch := currentEpoch - 225
-	lastWeekEpoch := currentEpoch - 225*7
-	lastMonthEpoch := currentEpoch - 225*31
+	lastDayEpoch := currentEpoch - int64(utils.EpochsPerDay())
+	lastWeekEpoch := currentEpoch - int64(utils.EpochsPerDay())*7
+	lastMonthEpoch := currentEpoch - int64(utils.EpochsPerDay())*31
 
 	if lastDayEpoch < 0 {
 		lastDayEpoch = 0
@@ -2149,14 +2121,79 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 			   validatorindex,
 			   pubkey,
        		   activationepoch,
-		       COALESCE(balance, 0) AS balance, 
-			   COALESCE(balanceactivation, 0) AS balanceactivation, 
-			   COALESCE(balance1d, 0) AS balance1d, 
-			   COALESCE(balance7d, 0) AS balance7d, 
-			   COALESCE(balance31d , 0) AS balance31d
+			   COALESCE(balanceactivation, 0) AS balanceactivation
 		FROM validators`)
 	if err != nil {
 		return fmt.Errorf("error retrieving validator performance data: %w", err)
+	}
+
+	latestBalances, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(latestEpoch), 1)
+	if err != nil {
+		return fmt.Errorf("error getting validator balance data in updateValidatorPerformance: %v", err)
+	}
+	for _, validator := range balances {
+		for balanceIndex, balance := range latestBalances {
+			if len(balance) == 0 {
+				continue
+			}
+			if validator.Index == balanceIndex {
+				validator.Balance = balance[0].Balance
+			}
+		}
+	}
+
+	balances1d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastDayEpoch), 1)
+	if err != nil {
+		return fmt.Errorf("error getting validator Balance1d data in updateValidatorPerformance: %v", err)
+	}
+	for _, validator := range balances {
+		for balanceIndex, balance := range balances1d {
+			if len(balance) == 0 {
+				continue
+			}
+			if validator.Index == balanceIndex {
+				validator.Balance1d = sql.NullInt64{
+					Int64: int64(balance[0].Balance),
+					Valid: true,
+				}
+			}
+		}
+	}
+
+	balances7d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastWeekEpoch), 1)
+	if err != nil {
+		return fmt.Errorf("error getting validator Balance7d data in updateValidatorPerformance: %v", err)
+	}
+	for _, validator := range balances {
+		for balanceIndex, balance := range balances7d {
+			if len(balance) == 0 {
+				continue
+			}
+			if validator.Index == balanceIndex {
+				validator.Balance7d = sql.NullInt64{
+					Int64: int64(balance[0].Balance),
+					Valid: true,
+				}
+			}
+		}
+	}
+
+	balances31d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastMonthEpoch), 1)
+	if err != nil {
+		return fmt.Errorf("error getting validator Balance31d data in updateValidatorPerformance: %v", err)
+	}
+	for _, validator := range balances {
+		for balanceIndex, balance := range balances31d {
+			if len(balance) == 0 {
+				continue
+			}
+			if validator.Index == balanceIndex {
+				validator.Balance31d = sql.NullInt64{
+					Int64: int64(balance[0].Balance),
+					Valid: true,
+				}
+			}
+		}
 	}
 
 	deposits := []struct {
