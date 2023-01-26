@@ -1488,7 +1488,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	defer stmtTransaction.Close()
 
 	stmtWithdrawals, err := tx.Prepare(`
-	INSERT INTO blocks_withdrawals (block_slot, withdrawalindex, validatorindex, address, amount)
+	INSERT INTO blocks_withdrawals (block_slot, block_root, withdrawalindex, validatorindex, address, amount)
 	VALUES ($1, $2, $3, $4, $5)
 	ON CONFLICT (block_slot, withdrawalindex) DO NOTHING`)
 	if err != nil {
@@ -1497,7 +1497,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	defer stmtWithdrawals.Close()
 
 	stmtBLSChange, err := tx.Prepare(`
-	INSERT INTO blocks_bls_change (block_slot, validatorindex, signature, pubkey, address)
+	INSERT INTO blocks_bls_change (block_slot, block_root, validatorindex, signature, pubkey, address)
 	VALUES ($1, $2, $3, $4, $5)
 	ON CONFLICT (block_slot, validatorindex) DO NOTHING`)
 	if err != nil {
@@ -1697,7 +1697,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 					}
 				}
 				for _, w := range payload.Withdrawals {
-					_, err := stmtWithdrawals.Exec(b.Slot, w.Index, w.ValidatorIndex, w.Address, w.Amount)
+					_, err := stmtWithdrawals.Exec(b.Slot, b.BlockRoot, w.Index, w.ValidatorIndex, w.Address, w.Amount)
 					if err != nil {
 						return fmt.Errorf("error executing stmtTransaction for block %v: %v", b.Slot, err)
 					}
@@ -1717,7 +1717,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 			n = time.Now()
 			logger.Tracef("writing bls change data")
 			for _, bls := range b.SignedBLSToExecutionChange {
-				_, err := stmtBLSChange.Exec(b.Slot, bls.Message.Validatorindex, bls.Signature, bls.Message.BlsPubkey, bls.Message.Address)
+				_, err := stmtBLSChange.Exec(b.Slot, b.BlockRoot, bls.Message.Validatorindex, bls.Signature, bls.Message.BlsPubkey, bls.Message.Address)
 				if err != nil {
 					return fmt.Errorf("error executing stmtBLSChange for block %v: %w", b.Slot, err)
 				}
