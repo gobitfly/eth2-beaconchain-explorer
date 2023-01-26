@@ -33,7 +33,7 @@ func UpdatePoolInfo() {
 		metrics.TaskDuration.WithLabelValues("service_pools_updater").Observe(time.Since(start).Seconds())
 	}()
 
-	if time.Now().Sub(lastUpdateTime).Hours() > 3 { // query db every 3 hour
+	if time.Since(lastUpdateTime).Hours() > 3 { // query db every 3 hour
 		var err error
 		// tx, err := DB.Begin()
 		// if err != nil {
