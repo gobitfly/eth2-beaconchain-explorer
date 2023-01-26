@@ -129,8 +129,8 @@ func eth1DepositsExporter() {
 
 		if len(depositsToSave) > 0 {
 			err = aggregateDeposits()
-			logger.WithError(err).Errorf("error saving eth1-deposits-leaderboard")
 			if err != nil {
+				logger.WithError(err).Errorf("error saving eth1-deposits-leaderboard")
 				time.Sleep(time.Second * 5)
 				continue
 			}
