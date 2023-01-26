@@ -1054,8 +1054,8 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 				v.PublicKey,
 				v.WithdrawableEpoch,
 				v.WithdrawalCredentials,
-				v.Balance,
-				v.EffectiveBalance,
+				0,
+				0,
 				v.Slashed,
 				v.ActivationEligibilityEpoch,
 				v.ActivationEpoch,
@@ -1197,7 +1197,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		logger.Infof("update completed, took %v", time.Since(updateStart))
 	}
 
-	batchSize := 9000 // max parameters: 65535
+	batchSize := 30000 // max parameters: 65535
 	for b := 0; b < len(validators); b += batchSize {
 		start := b
 		end := b + batchSize
@@ -1205,31 +1205,21 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 			end = len(validators)
 		}
 
-		numArgs := 7
+		numArgs := 2
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
 		for i, v := range validators[start:end] {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d::int, $%d::bigint, $%d::bigint, $%d::bigint, $%d::bigint, $%d::bigint, $%d::int)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7))
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d::int, $%d::int)", i*numArgs+1, i*numArgs+2))
 			valueArgs = append(valueArgs, v.Index)
-			valueArgs = append(valueArgs, v.Balance)
-			valueArgs = append(valueArgs, v.EffectiveBalance)
-			valueArgs = append(valueArgs, v.Balance1d.Int64)
-			valueArgs = append(valueArgs, v.Balance7d.Int64)
-			valueArgs = append(valueArgs, v.Balance31d.Int64)
 			valueArgs = append(valueArgs, v.LastAttestationSlot.Int64)
 		}
 
 		stmt := fmt.Sprintf(`
 			UPDATE validators AS v SET
-			balance = v2.balance,
-			effectivebalance = v2.effectivebalance,
-			balance1d = v2.balance1d,
-			balance7d = v2.balance7d,
-			balance31d = v2.balance31d,
 			lastattestationslot = GREATEST(v.lastattestationslot, v2.lastattestationslot)
 			FROM (VALUES
 				%[1]s
-			) AS v2(validatorindex, balance, effectivebalance, balance1d, balance7d, balance31d, lastattestationslot)
+			) AS v2(validatorindex, lastattestationslot)
 			WHERE v2.validatorindex = v.validatorindex;
 	`, strings.Join(valueStrings, ","))
 
