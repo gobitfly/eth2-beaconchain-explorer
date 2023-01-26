@@ -256,6 +256,26 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	logger.Infof("export completed, took %v", time.Since(start))
 
 	start = time.Now()
+	logger.Infof("exporting withdrawals and withdrawals_amount statistics")
+	withdrawalsQuery := `
+		insert into validator_stats (validatorindex, day, deposits, deposits_amount) 
+		(
+			select validatorindex, $3, count(*), sum(amount)
+			from blocks_withdrawals
+			inner join blocks on blocks_withdrawals.block_root = blocks.blockroot
+			where block_slot >= $1 * 32 and block_slot <= $2 * 32 and blocks.status = '1'
+			group by validatorindex
+		) 
+		on conflict (validatorindex, day) do
+			update set withdrawals = excluded.withdrawals, 
+			withdrawals_amount = excluded.withdrawals_amount;`
+	_, err = tx.Exec(withdrawalsQuery, firstEpoch, lastEpoch, day)
+	if err != nil {
+		return err
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	start = time.Now()
 	logger.Infof("marking day export as completed in the status table")
 	_, err = tx.Exec("insert into validator_stats_status (day, status) values ($1, true)", day)
 	if err != nil {
@@ -336,11 +356,21 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 				from validators
 				where validatorindex = ANY($1))
 	),
+	current_withdrawals as (
+		select
+			coalesce(SUM(amount),0) as withdrawal_amount,
+			(select day from _today) as day
+		from blocks_withdrawals
+		where 
+			block_slot > (select (day) * 225 * 32 from _today) 
+			AND
+			validatorindex = ANY($1))
+	),
 	history as (
-		select day, coalesce(lag(end_balance) over (order by day), start_balance) as start_balance, end_balance as end_balance, deposits_amount
+		select day, coalesce(lag(end_balance) over (order by day), start_balance) as start_balance, end_balance as end_balance, deposits_amount, withdrawal_amount
 		from (
 			select 
-				day, COALESCE(SUM(start_balance),0) AS start_balance, COALESCE(SUM(end_balance),0) AS end_balance, COALESCE(SUM(deposits_amount), 0) AS deposits_amount
+				day, COALESCE(SUM(start_balance),0) AS start_balance, COALESCE(SUM(end_balance),0) AS end_balance, COALESCE(SUM(deposits_amount), 0) AS deposits_amount,  COALESCE(SUM(withdrawal_amount), 0) as withdrawals_amount
 			FROM validator_stats
 			WHERE validatorindex = ANY($1) AND
 				day BETWEEN ($2 - 1) AND $3
@@ -356,12 +386,13 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		GROUP BY day
 	)
 	select * from (
-		select day, end_balance - start_balance - deposits_amount as diff, start_balance, end_balance, deposits_amount from (
+		select day, end_balance + withdrawal_amount - start_balance - deposits_amount as diff, start_balance, end_balance, deposits_amount, withdrawal_amount from (
 			select 
 				coalesce(history.day, 0) + coalesce(current_balances.day, 0) as day,
 				coalesce(history.start_balance,0) + coalesce(today.start_balance,0) as start_balance,
 				coalesce(history.end_balance,0) + coalesce(current_balances.end_balance,0) as end_balance,
 				coalesce(history.deposits_amount,0) + coalesce(current_deposits.deposits_amount,0) as deposits_amount
+				coalesce(history.withdrawal_amount,0) + coalesce(current_withdrawals.withdrawal_amount,0) as withdrawal_amount
 			from history
 			full outer join current_balances on current_balances.day = history.day
 			left join current_deposits on current_balances.day = current_deposits.day
