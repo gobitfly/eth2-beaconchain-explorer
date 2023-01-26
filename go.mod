@@ -7,6 +7,7 @@ require (
 	cloud.google.com/go/secretmanager v1.5.0
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/Gurpartap/storekit-go v0.0.0-20201205024111-36b6cd5c6a21
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/awa/go-iap v1.3.7
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ethereum/go-ethereum v1.10.23
@@ -16,6 +17,7 @@ require (
 	github.com/gobitfly/eth.store v0.0.0-20221012115129-3b4606992669
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/protobuf v1.5.2
+	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/context v1.1.1
 	github.com/gorilla/csrf v1.7.0
 	github.com/gorilla/mux v1.8.0
@@ -244,7 +246,6 @@ require (
 	github.com/jackc/pgtype v1.3.0
 	github.com/jackc/puddle v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/karlseguin/ccache/v2 v2.0.8
 	github.com/klauspost/compress v1.15.9
 	github.com/klauspost/cpuid/v2 v2.0.14 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect

@@ -34,6 +34,7 @@ import (
 	"golang.org/x/text/message"
 	"gopkg.in/yaml.v3"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/kataras/i18n"
@@ -478,6 +479,21 @@ var emailRE = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](
 // IsValidEmail verifies whether a string represents a valid email-address.
 func IsValidEmail(s string) bool {
 	return emailRE.MatchString(s)
+}
+
+// IsValidUrl verifies whether a string represents a valid Url.
+func IsValidUrl(s string) bool {
+	u, err := url.ParseRequestURI(s)
+	if err != nil {
+		return false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	if len(u.Host) == 0 {
+		return false
+	}
+	return govalidator.IsURL(s)
 }
 
 // RoundDecimals rounds (nearest) a number to the specified number of digits after comma
