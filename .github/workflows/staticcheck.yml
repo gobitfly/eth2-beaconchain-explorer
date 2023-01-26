@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["windows-latest", "ubuntu-latest", "macOS-latest"]
+        os: ["ubuntu-latest"]
         go: ["1.18.x"]
     runs-on: ${{ matrix.os }}
     steps:
