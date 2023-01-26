@@ -184,18 +184,13 @@ func (lc *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 	for _, validator := range parsedValidators.Data {
 		switch validator.Status {
 		case "pending_initialized":
-			break
 		case "pending_queued":
 			activatingValidatorCount += 1
-			break
 		case "active_ongoing":
-			break
 		case "active_exiting", "active_slashed":
 			exitingValidatorCount += exitingValidatorCount
 		case "exited_unslashed", "exited_slashed":
-			break
 		case "withdrawal_possible", "withdrawal_done":
-			break
 		default:
 			return nil, fmt.Errorf("unrecognized validator status (validator %d): %s", validator.Index, validator.Status)
 		}
@@ -498,7 +493,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 }
 
 func uint64List(li []uint64Str) []uint64 {
-	out := make([]uint64, len(li), len(li))
+	out := make([]uint64, len(li))
 	for i, v := range li {
 		out[i] = uint64(v)
 	}
@@ -536,7 +531,7 @@ func (lc *LighthouseClient) GetBalancesForEpoch(epoch int64) (map[uint64]uint64,
 func (lc *LighthouseClient) GetBlockByBlockroot(blockroot []byte) (*types.Block, error) {
 	resHeaders, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/0x%x", lc.endpoint, blockroot))
 	if err != nil {
-		if err == notFoundErr {
+		if err == errNotFound {
 			// no block found
 			return &types.Block{}, nil
 		}
@@ -569,7 +564,7 @@ func (lc *LighthouseClient) GetBlockByBlockroot(blockroot []byte) (*types.Block,
 func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 	resHeaders, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/%d", lc.endpoint, slot))
 	if err != nil {
-		if err == notFoundErr {
+		if err == errNotFound {
 			// no block found
 			return []*types.Block{}, nil
 		}
@@ -916,7 +911,7 @@ func (lc *LighthouseClient) GetSyncCommittee(stateID string, epoch uint64) (*Sta
 	return &parsedSyncCommittees.Data, nil
 }
 
-var notFoundErr = errors.New("not found 404")
+var errNotFound = errors.New("not found 404")
 
 func (lc *LighthouseClient) get(url string) ([]byte, error) {
 	// t0 := time.Now()
@@ -933,7 +928,7 @@ func (lc *LighthouseClient) get(url string) ([]byte, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
-			return nil, notFoundErr
+			return nil, errNotFound
 		}
 		return nil, fmt.Errorf("error-response: %s", data)
 	}
@@ -950,7 +945,7 @@ func (s *bytesHexStr) UnmarshalText(b []byte) error {
 	if len(b) >= 2 && b[0] == '0' && b[1] == 'x' {
 		b = b[2:]
 	}
-	out := make([]byte, len(b)/2, len(b)/2)
+	out := make([]byte, len(b)/2)
 	hex.Decode(out, b)
 	*s = out
 	return nil

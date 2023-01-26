@@ -36,8 +36,8 @@ func SendHTMLMail(to, subject string, msg types.Email, attachment []types.EmailA
 		fmt.Println("Email Attachments will not work with SMTP server")
 		err = SendMailSMTP(to, body.Bytes())
 	} else if utils.Config.Frontend.Mail.Mailgun.PrivateKey != "" {
-		err = renderer.ExecuteTemplate(&body, "layout", MailTemplate{Mail: msg, Domain: utils.Config.Frontend.SiteDomain})
-		content := string(body.Bytes())
+		_ = renderer.ExecuteTemplate(&body, "layout", MailTemplate{Mail: msg, Domain: utils.Config.Frontend.SiteDomain})
+		content := body.String()
 		err = SendMailMailgun(to, subject, content, createTextMessage(msg), attachment)
 	} else {
 		logrus.Errorf("error sending reset-email: invalid config for mail-service", err)

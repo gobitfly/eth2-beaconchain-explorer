@@ -605,44 +605,6 @@ func getAddressesOrIndicesFromAddressIndexOrPubkey(search string, max int) ([][]
 	return resultAddresses, nil, nil
 }
 
-// careful, result contains pubkeys even if index could be resolved
-// deduplication must happen higher up
-func getIndicesFromIndexOrPubkey(search string, max int) ([][]byte, []uint64, error) {
-	individuals := strings.Split(search, ",")
-	if len(individuals) > max {
-		return nil, nil, fmt.Errorf("only a maximum of %v query parameters are allowed", max)
-	}
-
-	var indices []uint64
-	var pubkeys [][]byte
-	for _, individual := range individuals {
-		addInPub, err := parseFromAddressIndexOrPubkey(individual)
-		if err != nil {
-			return nil, nil, err
-		}
-		if len(addInPub.Pubkey) > 0 {
-			pubkeys = append(pubkeys, addInPub.Pubkey)
-		} else if addInPub.Index > 0 {
-			indices = append(indices, addInPub.Index)
-		}
-	}
-
-	// resolve pubkeys to index
-	if len(pubkeys) > 0 {
-		indicesFromPubkeys, err := resolveIndices(pubkeys)
-		if err != nil {
-			return nil, nil, err
-		}
-		indices = append(indices, indicesFromPubkeys...)
-	}
-
-	if len(indices) > 0 {
-		return pubkeys, indices, nil
-	}
-
-	return pubkeys, nil, nil
-}
-
 func parseFromAddressIndexOrPubkey(search string) (types.AddressIndexOrPubkey, error) {
 	if strings.Contains(search, "0x") && len(search) == 42 {
 		address, err := hex.DecodeString(search[2:])

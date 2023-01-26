@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
 	geth_rpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -68,7 +67,7 @@ func (client *GethClient) GetNativeClient() *ethclient.Client {
 	return client.ethClient
 }
 
-func (client *GethClient) GetRPCClient() *rpc.Client {
+func (client *GethClient) GetRPCClient() *geth_rpc.Client {
 	return client.rpcClient
 }
 
@@ -134,7 +133,7 @@ func (client *GethClient) GetBlock(number int64) (*types.Eth1Block, *types.GetBl
 	}
 
 	receipts := make([]*geth_types.Receipt, len(block.Transactions()))
-	reqs := make([]rpc.BatchElem, len(block.Transactions()))
+	reqs := make([]geth_rpc.BatchElem, len(block.Transactions()))
 
 	txs := block.Transactions()
 
@@ -174,7 +173,7 @@ func (client *GethClient) GetBlock(number int64) (*types.Eth1Block, *types.GetBl
 	}
 
 	for i := range reqs {
-		reqs[i] = rpc.BatchElem{
+		reqs[i] = geth_rpc.BatchElem{
 			Method: "eth_getTransactionReceipt",
 			Args:   []interface{}{txs[i].Hash().String()},
 			Result: &receipts[i],
@@ -245,7 +244,7 @@ func (client *GethClient) TraceGeth(blockHash common.Hash) ([]*GethTraceCallResu
 }
 
 func (client *GethClient) GetBalances(pairs []string) ([]*types.Eth1AddressBalance, error) {
-	batchElements := make([]rpc.BatchElem, 0, len(pairs))
+	batchElements := make([]geth_rpc.BatchElem, 0, len(pairs))
 
 	ret := make([]*types.Eth1AddressBalance, len(pairs))
 
@@ -270,7 +269,7 @@ func (client *GethClient) GetBalances(pairs []string) ([]*types.Eth1AddressBalan
 		}
 
 		if token == "00" {
-			batchElements = append(batchElements, rpc.BatchElem{
+			batchElements = append(batchElements, geth_rpc.BatchElem{
 				Method: "eth_getBalance",
 				Args:   []interface{}{common.HexToAddress(address), "latest"},
 				Result: &result,
@@ -283,7 +282,7 @@ func (client *GethClient) GetBalances(pairs []string) ([]*types.Eth1AddressBalan
 				Data: common.Hex2Bytes("70a08231000000000000000000000000" + address),
 			}
 
-			batchElements = append(batchElements, rpc.BatchElem{
+			batchElements = append(batchElements, geth_rpc.BatchElem{
 				Method: "eth_call",
 				Args:   []interface{}{toCallArg(msg), "latest"},
 				Result: &result,

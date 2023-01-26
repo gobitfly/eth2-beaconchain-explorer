@@ -121,7 +121,7 @@ func getPoolInfo() {
 
 		}
 	}
-	logger.Infof("pool update for loop took %f seconds", time.Now().Sub(loopstart).Seconds())
+	logger.Infof("pool update for loop took %f seconds", time.Since(loopstart).Seconds())
 }
 
 func getPoolIncome(poolAddress string, poolName string) {
