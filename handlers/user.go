@@ -35,7 +35,6 @@ func UserAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := getUser(r)
 		if !user.Authenticated {
-			logger.Errorf("User not authorized")
 			utils.SetFlash(w, r, authSessionName, "Error: Please login first")
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
@@ -187,7 +186,6 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 
 	if !user.Authenticated {
-		logger.Errorf("User not authorized")
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
