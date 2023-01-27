@@ -358,19 +358,19 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 	),
 	current_withdrawals as (
 		select
-			coalesce(SUM(amount),0) as withdrawal_amount,
+			coalesce(SUM(amount),0) as withdrawals_amount,
 			(select day from _today) as day
 		from blocks_withdrawals
 		where 
 			block_slot > (select (day) * 225 * 32 from _today) 
 			AND
-			validatorindex = ANY($1))
+			validatorindex = ANY($1)
 	),
 	history as (
-		select day, coalesce(lag(end_balance) over (order by day), start_balance) as start_balance, end_balance as end_balance, deposits_amount, withdrawal_amount
+		select day, coalesce(lag(end_balance) over (order by day), start_balance) as start_balance, end_balance as end_balance, deposits_amount, withdrawals_amount
 		from (
 			select 
-				day, COALESCE(SUM(start_balance),0) AS start_balance, COALESCE(SUM(end_balance),0) AS end_balance, COALESCE(SUM(deposits_amount), 0) AS deposits_amount,  COALESCE(SUM(withdrawal_amount), 0) as withdrawals_amount
+				day, COALESCE(SUM(start_balance),0) AS start_balance, COALESCE(SUM(end_balance),0) AS end_balance, COALESCE(SUM(deposits_amount), 0) AS deposits_amount,  COALESCE(SUM(withdrawals_amount), 0) as withdrawals_amount
 			FROM validator_stats
 			WHERE validatorindex = ANY($1) AND
 				day BETWEEN ($2 - 1) AND $3
@@ -386,16 +386,17 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		GROUP BY day
 	)
 	select * from (
-		select day, end_balance + withdrawal_amount - start_balance - deposits_amount as diff, start_balance, end_balance, deposits_amount, withdrawal_amount from (
+		select day, end_balance + withdrawals_amount - start_balance - deposits_amount as diff, start_balance, end_balance, deposits_amount, withdrawals_amount from (
 			select 
 				coalesce(history.day, 0) + coalesce(current_balances.day, 0) as day,
 				coalesce(history.start_balance,0) + coalesce(today.start_balance,0) as start_balance,
 				coalesce(history.end_balance,0) + coalesce(current_balances.end_balance,0) as end_balance,
-				coalesce(history.deposits_amount,0) + coalesce(current_deposits.deposits_amount,0) as deposits_amount
-				coalesce(history.withdrawal_amount,0) + coalesce(current_withdrawals.withdrawal_amount,0) as withdrawal_amount
+				coalesce(history.deposits_amount,0) + coalesce(current_deposits.deposits_amount,0) as deposits_amount,
+				coalesce(history.withdrawals_amount,0) + coalesce(current_withdrawals.withdrawals_amount,0) as withdrawals_amount
 			from history
 			full outer join current_balances on current_balances.day = history.day
 			left join current_deposits on current_balances.day = current_deposits.day
+			left join current_withdrawals on current_balances.day = current_withdrawals.day
 			full join today on current_balances.day = today.day
 		) as foo 
 	) as foo2 
