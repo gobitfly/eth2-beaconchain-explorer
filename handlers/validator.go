@@ -140,7 +140,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				logger.Errorf("error getting validator-deposits from db: %v", err)
 			}
 			validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
-			validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
+			validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(deposits)
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
 				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
@@ -714,16 +714,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 // Returns true if there are more than one different withdrawal credentials within both Eth1Deposits and Eth2Deposits
 func hasMultipleWithdrawalCredentials(deposits *types.ValidatorDeposits) bool {
+	if deposits == nil {
+		return false
+	}
+
 	credential := make([]byte, 0)
 
 	// check Eth1Deposits
 	for _, deposit := range deposits.Eth1Deposits {
 		if len(credential) == 0 {
 			credential = deposit.WithdrawalCredentials
-		} else {
-			if !bytes.Equal(credential, deposit.WithdrawalCredentials) {
-				return true
-			}
+		} else if !bytes.Equal(credential, deposit.WithdrawalCredentials) {
+			return true
 		}
 	}
 
@@ -731,10 +733,8 @@ func hasMultipleWithdrawalCredentials(deposits *types.ValidatorDeposits) bool {
 	for _, deposit := range deposits.Eth2Deposits {
 		if len(credential) == 0 {
 			credential = deposit.Withdrawalcredentials
-		} else {
-			if !bytes.Equal(credential, deposit.Withdrawalcredentials) {
-				return true
-			}
+		} else if !bytes.Equal(credential, deposit.Withdrawalcredentials) {
+			return true
 		}
 	}
 
