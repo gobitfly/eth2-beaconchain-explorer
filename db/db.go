@@ -2377,13 +2377,13 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 
 	err := ReaderDb.Select(&withdrawals, `
 	SELECT 
-	w.withdrawalindex as index, 
-	w.validatorindex, address, 
+	withdrawalindex as index, 
+	validatorindex, 
+	address, 
 	amount 
 	FROM 
-		blocks_withdrawals w
-	LEFT JOIN blocks b ON b.blockroot = w.block_root 
-	WHERE w.block_slot = $1 AND b.status = '1'
+		blocks_withdrawals
+	WHERE block_slot = $1
 	ORDER BY w.withdrawalindex`, slot)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -2394,6 +2394,16 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 
 	return withdrawals, nil
 }
+
+// SELECT
+// w.withdrawalindex as index,
+// w.validatorindex, address,
+// amount
+// FROM
+// 	blocks_withdrawals w
+// LEFT JOIN blocks b ON b.blockroot = w.block_root
+// WHERE w.block_slot = $1 AND b.status = '1'
+// ORDER BY w.withdrawalindex
 
 func GetEpochWithdrawalsTotal(epoch uint64) (total uint64, err error) {
 	err = ReaderDb.Get(&total, `SELECT COALESCE(sum(amount), 0) as sum FROM blocks_withdrawals WHERE block_slot >= $1 AND block_slot < $2`, epoch*utils.Config.Chain.Config.SlotsPerEpoch, (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch)
