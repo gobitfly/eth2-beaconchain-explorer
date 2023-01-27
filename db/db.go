@@ -1489,7 +1489,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 
 	stmtWithdrawals, err := tx.Prepare(`
 	INSERT INTO blocks_withdrawals (block_slot, block_root, withdrawalindex, validatorindex, address, amount)
-	VALUES ($1, $2, $3, $4, $5)
+	VALUES ($1, $2, $3, $4, $5, $6)
 	ON CONFLICT (block_slot, withdrawalindex) DO NOTHING`)
 	if err != nil {
 		return err
@@ -1498,7 +1498,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 
 	stmtBLSChange, err := tx.Prepare(`
 	INSERT INTO blocks_bls_change (block_slot, block_root, validatorindex, signature, pubkey, address)
-	VALUES ($1, $2, $3, $4, $5)
+	VALUES ($1, $2, $3, $4, $5, $6)
 	ON CONFLICT (block_slot, validatorindex) DO NOTHING`)
 	if err != nil {
 		return err
@@ -2375,7 +2375,16 @@ func SaveChartSeriesPoint(date time.Time, indicator string, value any) error {
 func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 	var withdrawals []*types.Withdrawals
 
-	err := ReaderDb.Select(&withdrawals, "SELECT withdrawalindex as index, validatorindex, address, amount FROM blocks_withdrawals WHERE block_slot = $1 ORDER BY withdrawalindex", slot)
+	err := ReaderDb.Select(&withdrawals, `
+	SELECT 
+	w.withdrawalindex as index, 
+	w.validatorindex, address, 
+	amount 
+	FROM 
+		blocks_withdrawals w
+	LEFT JOIN blocks b ON b.blockroot = w.block_root 
+	WHERE w.block_slot = $1 AND b.status = '1'
+	ORDER BY w.withdrawalindex`, slot)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil
@@ -2447,7 +2456,16 @@ func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64) ([]*
 		limit = offset + 100
 	}
 
-	err := ReaderDb.Select(&withdrawals, "SELECT block_slot as slot, withdrawalindex as index, validatorindex, address, amount FROM blocks_withdrawals WHERE validatorindex = $1 ORDER BY withdrawalindex desc limit $2 offset $3", validator, limit, offset)
+	err := ReaderDb.Select(&withdrawals, `
+	SELECT 
+		block_slot as slot, 
+		withdrawalindex as index, 
+		validatorindex, 
+		address, 
+		amount 
+	FROM blocks_withdrawals 
+	WHERE validatorindex = $1 
+	ORDER BY withdrawalindex desc limit $2 offset $3`, validator, limit, offset)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil
@@ -2504,7 +2522,13 @@ func GetValidatorWithdrawalsCount(validator uint64) (uint64, error) {
 func GetMostRecentWithdrawalValidator() (uint64, error) {
 	var validatorindex uint64
 
-	err := ReaderDb.Get(&validatorindex, "SELECT validatorindex FROM blocks_withdrawals order by withdrawalindex desc limit 1;")
+	err := ReaderDb.Get(&validatorindex, `
+	SELECT 
+		validatorindex 
+	FROM 
+		blocks_withdrawals 
+	ORDER BY 
+		withdrawalindex DESC limit 1;`)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
@@ -2541,4 +2565,55 @@ func GetValidatorBLSChange(validatorindex uint64) (*types.BLSChange, error) {
 	}
 
 	return change, nil
+}
+
+func GetWithdrawableValidatorCount(epoch uint64) (uint64, error) {
+	var count uint64
+
+	err := ReaderDb.Get(&count, `
+	SELECT 
+		count(*) 
+	FROM 
+		validators 
+	WHERE 
+		withdrawalcredentials LIKE '\x01' || '%'::bytea AND (effectivebalance == $1 AND balance > $1 OR withdrawableepoch <= $2 AND balance > 0);`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("error getting withdrawable validator count: %w", err)
+	}
+
+	return count, nil
+}
+
+func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
+	var count uint64
+
+	err := ReaderDb.Get(&count, `
+	SELECT 
+		count(*) 
+	FROM 
+		validators 
+	WHERE 
+		withdrawalcredentials LIKE '\x01' || '%'::bytea 
+		AND 
+		(effectivebalance == $1 AND balance > $1 OR withdrawableepoch <= $2 AND balance > 0)
+		AND (
+			(
+				$3 > $4 AND validatorindex < $4 AND validatorindex > $3
+			)
+			OR
+			(
+				$3 < $4 AND validatorindex > $4 and validatorindex < $3
+			)
+		);`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch, validatorindex, cursor)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("error getting withdrawable validator count: %w", err)
+	}
+
+	return count, nil
 }
