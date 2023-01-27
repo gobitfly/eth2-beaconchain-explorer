@@ -29,6 +29,7 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 	"gopkg.in/yaml.v3"
@@ -159,7 +160,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatStringThousands": FormatThousandsEnglish,
 		"derefString":           DerefString,
 		"trLang":                TrLang,
-		"firstCharToUpper":      func(s string) string { return strings.Title(s) },
+		"firstCharToUpper":      func(s string) string { return cases.Title(language.English).String(s) },
 		"eqsp": func(a, b *string) bool {
 			if a != nil && b != nil {
 				return *a == *b
@@ -929,4 +930,8 @@ func ReverseSlice[S ~[]E, E any](s S) {
 
 func AddBigInts(a, b []byte) []byte {
 	return new(big.Int).Add(new(big.Int).SetBytes(a), new(big.Int).SetBytes(b)).Bytes()
+}
+
+func EpochsPerDay() uint64 {
+	return (24 * 60 * 60) / Config.Chain.Config.SlotsPerEpoch / Config.Chain.Config.SecondsPerSlot
 }

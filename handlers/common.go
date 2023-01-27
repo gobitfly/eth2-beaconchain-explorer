@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -41,9 +42,9 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, error) {
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := int64(services.LatestEpoch())
-	lastDayEpoch := latestEpoch - 225
-	lastWeekEpoch := latestEpoch - 225*7
-	lastMonthEpoch := latestEpoch - 225*31
+	lastDayEpoch := latestEpoch - int64(utils.EpochsPerDay())
+	lastWeekEpoch := latestEpoch - int64(utils.EpochsPerDay())*7
+	lastMonthEpoch := latestEpoch - int64(utils.EpochsPerDay())*31
 
 	if lastDayEpoch < 0 {
 		lastDayEpoch = 0
@@ -58,17 +59,87 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	balances := []*types.Validator{}
 
 	err := db.ReaderDb.Select(&balances, `SELECT 
-			   COALESCE(balance, 0) AS balance, 
-			   COALESCE(balanceactivation, 0) AS balanceactivation, 
-			   COALESCE(balance1d, 0) AS balance1d, 
-			   COALESCE(balance7d, 0) AS balance7d, 
-			   COALESCE(balance31d , 0) AS balance31d,
+				validatorindex,
+			    COALESCE(balanceactivation, 0) AS balanceactivation, 
        			activationepoch,
        			pubkey
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
+	}
+
+	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), 1)
+	if err != nil {
+		logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
+		return nil, err
+	}
+	for _, validator := range balances {
+		for balanceIndex, balance := range latestBalances {
+			if len(balance) == 0 {
+				continue
+			}
+			if validator.Index == balanceIndex {
+				validator.Balance = balance[0].Balance
+			}
+		}
+	}
+
+	balances1d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastDayEpoch), 1)
+	if err != nil {
+		logger.Errorf("error getting validator Balance1d data in GetValidatorEarnings: %v", err)
+		return nil, err
+	}
+	for _, validator := range balances {
+		for balanceIndex, balance := range balances1d {
+			if len(balance) == 0 {
+				continue
+			}
+			if validator.Index == balanceIndex {
+				validator.Balance1d = sql.NullInt64{
+					Int64: int64(balance[0].Balance),
+					Valid: true,
+				}
+			}
+		}
+	}
+
+	balances7d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastWeekEpoch), 1)
+	if err != nil {
+		logger.Errorf("error getting validator Balance7d data in GetValidatorEarnings: %v", err)
+		return nil, err
+	}
+	for _, validator := range balances {
+		for balanceIndex, balance := range balances7d {
+			if len(balance) == 0 {
+				continue
+			}
+			if validator.Index == balanceIndex {
+				validator.Balance7d = sql.NullInt64{
+					Int64: int64(balance[0].Balance),
+					Valid: true,
+				}
+			}
+		}
+	}
+
+	balances31d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastMonthEpoch), 1)
+	if err != nil {
+		logger.Errorf("error getting validator Balance31d data in GetValidatorEarnings: %v", err)
+		return nil, err
+	}
+	for _, validator := range balances {
+		for balanceIndex, balance := range balances31d {
+			if len(balance) == 0 {
+				continue
+			}
+			if validator.Index == balanceIndex {
+				validator.Balance31d = sql.NullInt64{
+					Int64: int64(balance[0].Balance),
+					Valid: true,
+				}
+			}
+		}
 	}
 
 	deposits := []struct {
