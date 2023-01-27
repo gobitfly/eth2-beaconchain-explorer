@@ -1490,7 +1490,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	stmtWithdrawals, err := tx.Prepare(`
 	INSERT INTO blocks_withdrawals (block_slot, block_root, withdrawalindex, validatorindex, address, amount)
 	VALUES ($1, $2, $3, $4, $5, $6)
-	ON CONFLICT (block_slot, withdrawalindex) DO NOTHING`)
+	ON CONFLICT (block_slot, block_root) DO NOTHING`)
 	if err != nil {
 		return err
 	}
@@ -1499,7 +1499,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	stmtBLSChange, err := tx.Prepare(`
 	INSERT INTO blocks_bls_change (block_slot, block_root, validatorindex, signature, pubkey, address)
 	VALUES ($1, $2, $3, $4, $5, $6)
-	ON CONFLICT (block_slot, validatorindex) DO NOTHING`)
+	ON CONFLICT (block_slot, block_root) DO NOTHING`)
 	if err != nil {
 		return err
 	}
