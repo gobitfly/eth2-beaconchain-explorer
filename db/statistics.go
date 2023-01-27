@@ -393,6 +393,12 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 
 			result[len(result)-1].EndBalance.Int64 = int64(balanceSum)
 			result[len(result)-1].EndBalance.Valid = true
+
+			startBalance := int64(0)
+			if result[len(result)-1].StartBalance.Valid {
+				startBalance = result[len(result)-1].StartBalance.Int64
+			}
+			result[len(result)-1].Income = result[len(result)-1].EndBalance.Int64 - startBalance
 		}
 	}
 	return result, err
