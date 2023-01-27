@@ -269,9 +269,16 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 	// Rocketpool
 	{
 		var ts int64
-		err = db.WriterDb.Get(&ts, `SELECT id FROM rocketpool_network_stats LIMIT 1;`)
+		err = db.ReaderDb.Get(&ts, `SELECT id FROM rocketpool_network_stats LIMIT 1;`)
 
-		if err == nil || !errors.Is(err, sql.ErrNoRows) {
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				logger.Infof("skipped the collecting of rocketpool notifications, because rocketpool_network_stats is empty")
+			} else {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_notifications").Inc()
+				return nil, fmt.Errorf("error collecting rocketpool notifications: %v", err)
+			}
+		} else {
 			err = collectRocketpoolComissionNotifications(notificationsByUserID, types.RocketpoolCommissionThresholdEventName)
 			if err != nil {
 				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_comission").Inc()
@@ -299,8 +306,6 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 				return nil, fmt.Errorf("error collecting rocketpool min collateral: %v", err)
 			}
 			logger.Infof("collecting rocketpool min collateral took: %v\n", time.Since(start))
-		} else {
-			logger.Infof("skipped the collecting of rocketpool notifications, because rocketpool_network_stats is empty")
 		}
 	}
 
