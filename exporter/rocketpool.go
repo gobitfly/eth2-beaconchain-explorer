@@ -633,7 +633,7 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 
 		bytes, err := DownloadRewardsFile(fmt.Sprintf("rp-rewards-%v-%v.json", utils.Config.Chain.Name, missingInterval.Index), missingInterval.Index.Uint64(), missingInterval.MerkleTreeCID, true)
 		if err != nil {
-			return fmt.Errorf("can not download reward file %v. Error %v", missingInterval.Index, err)
+			return fmt.Errorf("can not download reward file %v, error: %w", missingInterval.Index, err)
 		}
 
 		proofWrapper, err := getRewardsData(bytes)
@@ -814,7 +814,7 @@ func (rp *RocketpoolExporter) getRocketpoolRewardTrees() (map[uint64]RewardsFile
 	for _, data := range jsonData {
 		allRewards[data.ID], err = getRewardsData(data.Data)
 		if err != nil {
-			return allRewards, fmt.Errorf("can parsing reward tree data to struct for interval %v. Error %v", data.ID, err)
+			return allRewards, fmt.Errorf("can parsing reward tree data to struct for interval %v. Error %w", data.ID, err)
 		}
 	}
 	return allRewards, nil
@@ -1186,7 +1186,7 @@ func (rp *RocketpoolExporter) SaveRewardTrees() error {
 	for _, rewardTree := range rp.RocketpoolRewardTreesDownloadQueue {
 		_, err = tx.Exec(`INSERT INTO rocketpool_reward_tree (id, data) VALUES($1, $2) ON CONFLICT DO NOTHING`, rewardTree.ID, rewardTree.Data)
 		if err != nil {
-			return fmt.Errorf("can not store reward file %v. Error %v", rewardTree.ID, err)
+			return fmt.Errorf("can not store reward file %v. Error %w", rewardTree.ID, err)
 		}
 	}
 
@@ -1789,7 +1789,7 @@ func CalculateLifetimeNodeRewardsAllLegacy(rp *rocketpool.RocketPool, intervalSi
 	// Get the event logs
 	logs, err := eth.GetLogs(rp, addressFilter, topicFilter, intervalSize, nil, maxBlockNumber, nil)
 	if err != nil {
-		return nil, fmt.Errorf("can not load lifetime rewards: %v", err)
+		return nil, fmt.Errorf("can not load lifetime rewards: %w", err)
 	}
 
 	// Iterate over the logs and sum the amount

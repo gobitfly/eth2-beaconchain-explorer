@@ -460,7 +460,7 @@ func GetLatestEpoch() (uint64, error) {
 	err := WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 
 	if err != nil {
-		return 0, fmt.Errorf("error retrieving latest epoch from DB: %v", err)
+		return 0, fmt.Errorf("error retrieving latest epoch from DB: %w", err)
 	}
 
 	return epoch, nil
@@ -472,7 +472,7 @@ func GetAllEpochs() ([]uint64, error) {
 	err := WriterDb.Select(&epochs, "SELECT epoch FROM epochs ORDER BY epoch")
 
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving all epochs from DB: %v", err)
+		return nil, fmt.Errorf("error retrieving all epochs from DB: %w", err)
 	}
 
 	return epochs, nil
@@ -485,7 +485,7 @@ func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.Mini
 	err := WriterDb.Select(&blocks, "SELECT epoch, slot, blockroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND blockroot != '\x01' ORDER BY slot DESC", startEpoch, endEpoch)
 
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving last blocks (%v-%v) from DB: %v", startEpoch, endEpoch, err)
+		return nil, fmt.Errorf("error retrieving last blocks (%v-%v) from DB: %w", startEpoch, endEpoch, err)
 	}
 
 	return blocks, nil
@@ -564,7 +564,7 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalB
 
 	tx, err := WriterDb.Begin()
 	if err != nil {
-		return fmt.Errorf("error starting db transactions: %v", err)
+		return fmt.Errorf("error starting db transactions: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -599,7 +599,7 @@ func SetBlockStatus(blocks []*types.CanonBlock) error {
 
 	tx, err := WriterDb.Begin()
 	if err != nil {
-		return fmt.Errorf("error starting db transactions: %v", err)
+		return fmt.Errorf("error starting db transactions: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -659,12 +659,12 @@ func SaveBlock(block *types.Block) error {
 	err = saveBlocks(blocksMap, tx)
 	if err != nil {
 		logger.Fatalf("error saving blocks to db: %v", err)
-		return fmt.Errorf("error saving blocks to db: %v", err)
+		return fmt.Errorf("error saving blocks to db: %w", err)
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("error committing db transaction: %v", err)
+		return fmt.Errorf("error committing db transaction: %w", err)
 	}
 
 	return nil
@@ -752,7 +752,7 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 
 			err = validatorsTx.Commit()
 			if err != nil {
-				logger.Errorf("error committing validators tx: %w", err)
+				logger.Errorf("error committing validators tx: %v", err)
 			}
 		}()
 	}
@@ -931,7 +931,7 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) er
 				_, err = stmtGraffitiwall.Exec(x, y, color, block.Slot, block.Proposer)
 
 				if err != nil {
-					return fmt.Errorf("error executing graffitiwall statement: %v", err)
+					return fmt.Errorf("error executing graffitiwall statement: %w", err)
 				}
 			}
 		}
@@ -1317,7 +1317,7 @@ func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint6
 	for slot, validator := range assignments {
 		_, err := stmt.Exec(epoch, validator, slot, 0)
 		if err != nil {
-			return fmt.Errorf("error executing save validator proposal assignment statement: %v", err)
+			return fmt.Errorf("error executing save validator proposal assignment statement: %w", err)
 		}
 	}
 
@@ -1838,7 +1838,7 @@ func GetPendingValidatorCount() (uint64, error) {
 	count := uint64(0)
 	err := ReaderDb.Get(&count, "SELECT entering_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
 	if err != nil && err != sql.ErrNoRows {
-		return 0, fmt.Errorf("error retrieving validator queue count: %v", err)
+		return 0, fmt.Errorf("error retrieving validator queue count: %w", err)
 	}
 	return count, nil
 }
@@ -2119,7 +2119,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 
 	latestBalances, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(latestEpoch), 1)
 	if err != nil {
-		return fmt.Errorf("error getting validator balance data in updateValidatorPerformance: %v", err)
+		return fmt.Errorf("error getting validator balance data in updateValidatorPerformance: %w", err)
 	}
 	for _, validator := range balances {
 		for balanceIndex, balance := range latestBalances {
@@ -2134,7 +2134,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 
 	balances1d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastDayEpoch), 1)
 	if err != nil {
-		return fmt.Errorf("error getting validator Balance1d data in updateValidatorPerformance: %v", err)
+		return fmt.Errorf("error getting validator Balance1d data in updateValidatorPerformance: %w", err)
 	}
 	for _, validator := range balances {
 		for balanceIndex, balance := range balances1d {
@@ -2152,7 +2152,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 
 	balances7d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastWeekEpoch), 1)
 	if err != nil {
-		return fmt.Errorf("error getting validator Balance7d data in updateValidatorPerformance: %v", err)
+		return fmt.Errorf("error getting validator Balance7d data in updateValidatorPerformance: %w", err)
 	}
 	for _, validator := range balances {
 		for balanceIndex, balance := range balances7d {
@@ -2170,7 +2170,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 
 	balances31d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastMonthEpoch), 1)
 	if err != nil {
-		return fmt.Errorf("error getting validator Balance31d data in updateValidatorPerformance: %v", err)
+		return fmt.Errorf("error getting validator Balance31d data in updateValidatorPerformance: %w", err)
 	}
 	for _, validator := range balances {
 		for balanceIndex, balance := range balances31d {
@@ -2297,12 +2297,12 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d)
 			VALUES %s
 			ON CONFLICT (validatorindex) DO UPDATE SET 
-			balance             = excluded.balance, 
-			performance1d  = excluded.performance1d,
-			performance7d  = excluded.performance7d,
-			performance31d       = excluded.performance31d,
-			performance365d           = excluded.performance365d,
-			rank7d     = excluded.rank7d;			
+			balance         = excluded.balance, 
+			performance1d   = excluded.performance1d,
+			performance7d   = excluded.performance7d,
+			performance31d  = excluded.performance31d,
+			performance365d = excluded.performance365d,
+			rank7d          = excluded.rank7d;			
 			`, strings.Join(valueStrings, ","))
 
 		_, err := tx.Exec(stmt, valueArgs...)
