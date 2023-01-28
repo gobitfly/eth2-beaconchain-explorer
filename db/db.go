@@ -1490,7 +1490,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	stmtWithdrawals, err := tx.Prepare(`
 	INSERT INTO blocks_withdrawals (block_slot, block_root, withdrawalindex, validatorindex, address, amount)
 	VALUES ($1, $2, $3, $4, $5, $6)
-	ON CONFLICT (block_slot, block_root) DO NOTHING`)
+	ON CONFLICT (block_slot, block_root, withdrawalindex) DO NOTHING`)
 	if err != nil {
 		return err
 	}
@@ -1499,7 +1499,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	stmtBLSChange, err := tx.Prepare(`
 	INSERT INTO blocks_bls_change (block_slot, block_root, validatorindex, signature, pubkey, address)
 	VALUES ($1, $2, $3, $4, $5, $6)
-	ON CONFLICT (block_slot, block_root) DO NOTHING`)
+	ON CONFLICT (block_slot, block_root, validatorindex) DO NOTHING`)
 	if err != nil {
 		return err
 	}
@@ -2376,15 +2376,16 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 	var withdrawals []*types.Withdrawals
 
 	err := ReaderDb.Select(&withdrawals, `
-	SELECT 
-	withdrawalindex as index, 
-	validatorindex, 
-	address, 
-	amount 
-	FROM 
-		blocks_withdrawals
-	WHERE block_slot = $1
-	ORDER BY w.withdrawalindex`, slot)
+		SELECT
+		w.withdrawalindex as index,
+		w.validatorindex, address,
+		w.amount
+		FROM
+			blocks_withdrawals w
+		LEFT JOIN blocks b ON b.blockroot = w.block_root
+		WHERE w.block_slot = $1 AND b.status = '1'
+		ORDER BY w.withdrawalindex
+	`, slot)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil
@@ -2395,18 +2396,13 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 	return withdrawals, nil
 }
 
-// SELECT
-// w.withdrawalindex as index,
-// w.validatorindex, address,
-// amount
-// FROM
-// 	blocks_withdrawals w
-// LEFT JOIN blocks b ON b.blockroot = w.block_root
-// WHERE w.block_slot = $1 AND b.status = '1'
-// ORDER BY w.withdrawalindex
-
 func GetEpochWithdrawalsTotal(epoch uint64) (total uint64, err error) {
-	err = ReaderDb.Get(&total, `SELECT COALESCE(sum(amount), 0) as sum FROM blocks_withdrawals WHERE block_slot >= $1 AND block_slot < $2`, epoch*utils.Config.Chain.Config.SlotsPerEpoch, (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch)
+	err = ReaderDb.Get(&total, `
+	SELECT 
+		COALESCE(sum(w.amount), 0) as sum 
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	WHERE w.block_slot >= $1 AND w.block_slot < $2`, epoch*utils.Config.Chain.Config.SlotsPerEpoch, (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch)
 	return
 }
 
@@ -2421,7 +2417,16 @@ func GetAddressWithdrawals(address []byte, limit uint64, offset uint64) ([]*type
 		limit = offset + 100
 	}
 
-	err := ReaderDb.Select(&withdrawals, "SELECT block_slot as slot, withdrawalindex as index, validatorindex, address, amount FROM blocks_withdrawals WHERE address = $1 ORDER BY withdrawalindex desc limit $2 offset $3", address, limit, offset)
+	err := ReaderDb.Select(&withdrawals, `
+	SELECT 
+		w.block_slot as slot, 
+		w.withdrawalindex as index, 
+		w.validatorindex, 
+		w.address, 
+		w.amount 
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	WHERE w.address = $1 ORDER BY w.withdrawalindex desc limit $2 offset $3`, address, limit, offset)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil
@@ -2437,15 +2442,16 @@ func GetEpochWithdrawals(epoch uint64) ([]*types.WithdrawalsNotification, error)
 
 	err := ReaderDb.Select(&withdrawals, `
 	SELECT 
-		block_slot as slot, 
-		withdrawalindex as index, 
-		validatorindex, 
-		address, 
-		amount
+		w.block_slot as slot, 
+		w.withdrawalindex as index, 
+		w.validatorindex, 
+		w.address, 
+		w.amount
 		v.pubkey as pubkey
-	FROM blocks_withdrawals
-	LEFT JOIN validators v on v.index = blocks_withdrawals.validatorindex
-	WHERE block_slot >= $1 AND block_slot < $2 ORDER BY withdrawalindex`, epoch*utils.Config.Chain.Config.SlotsPerEpoch, (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch)
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	LEFT JOIN validators v on v.index = w.validatorindex
+	WHERE w.block_slot >= $1 AND w.block_slot < $2 ORDER BY w.withdrawalindex`, epoch*utils.Config.Chain.Config.SlotsPerEpoch, (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -2468,14 +2474,15 @@ func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64) ([]*
 
 	err := ReaderDb.Select(&withdrawals, `
 	SELECT 
-		block_slot as slot, 
-		withdrawalindex as index, 
-		validatorindex, 
-		address, 
-		amount 
-	FROM blocks_withdrawals 
+		w.block_slot as slot, 
+		w.withdrawalindex as index, 
+		w.validatorindex, 
+		w.address, 
+		w.amount 
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	WHERE validatorindex = $1 
-	ORDER BY withdrawalindex desc limit $2 offset $3`, validator, limit, offset)
+	ORDER BY w.withdrawalindex desc limit $2 offset $3`, validator, limit, offset)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil
@@ -2490,7 +2497,12 @@ func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64) ([]*
 func GetAddressWithdrawalsTotal(address []byte) (uint64, error) {
 	var total uint64
 
-	err := ReaderDb.Get(&total, "SELECT sum(amount) as total FROM blocks_withdrawals WHERE address = $1", address)
+	err := ReaderDb.Get(&total, `
+	SELECT 
+		sum(w.amount) as total
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	WHERE w.address = $1`, address)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
@@ -2504,12 +2516,16 @@ func GetAddressWithdrawalsTotal(address []byte) (uint64, error) {
 func GetValidatorWithdrawalsTotal(validator uint64) (uint64, error) {
 	var total uint64
 
-	err := ReaderDb.Get(&total, "SELECT sum(amount) as total FROM blocks_withdrawals WHERE validatorindex = $1", validator)
+	err := ReaderDb.Get(&total, `
+		SELECT sum(w.amount) as total 
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+		WHERE w.validatorindex = $1`, validator)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
 		}
-		return 0, fmt.Errorf("error getting blocks_withdrawals for validator: %d: %w", validator, err)
+		return 0, fmt.Errorf("error getting total blocks_withdrawals for validator: %d: %w", validator, err)
 	}
 
 	return total, nil
@@ -2518,12 +2534,16 @@ func GetValidatorWithdrawalsTotal(validator uint64) (uint64, error) {
 func GetValidatorWithdrawalsCount(validator uint64) (uint64, error) {
 	var count uint64
 
-	err := ReaderDb.Get(&count, "SELECT count(*) FROM blocks_withdrawals WHERE validatorindex = $1", validator)
+	err := ReaderDb.Get(&count, `
+	SELECT count(*) 
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	WHERE w.validatorindex = $1`, validator)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
 		}
-		return 0, fmt.Errorf("error getting blocks_withdrawals count for validator: %d: %w", validator, err)
+		return 0, fmt.Errorf("error getting validator blocks_withdrawals count for validator: %d: %w", validator, err)
 	}
 
 	return count, nil
@@ -2534,9 +2554,10 @@ func GetMostRecentWithdrawalValidator() (uint64, error) {
 
 	err := ReaderDb.Get(&validatorindex, `
 	SELECT 
-		validatorindex 
+		w.validatorindex 
 	FROM 
-		blocks_withdrawals 
+		blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	ORDER BY 
 		withdrawalindex DESC limit 1;`)
 	if err != nil {
@@ -2552,12 +2573,21 @@ func GetMostRecentWithdrawalValidator() (uint64, error) {
 func GetSlotBLSChange(slot uint64) ([]*types.BLSChange, error) {
 	var change []*types.BLSChange
 
-	err := ReaderDb.Select(&change, "SELECT validatorindex, signature, pubkey, address FROM blocks_bls_change WHERE block_slot = $1 ORDER BY validatorindex", slot)
+	err := ReaderDb.Select(&change, `
+	SELECT 
+		bls.validatorindex, 
+		bls.signature, 
+		bls.pubkey, 
+		bls.address 
+	FROM blocks_bls_change bls 
+	INNER JOIN blocks b ON b.blockroot = bls.block_root AND b.status = '1'
+	WHERE block_slot = $1
+	ORDER BY bls.validatorindex`, slot)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return change, nil
 		}
-		return nil, fmt.Errorf("error getting blocks_bls_change: %w", err)
+		return nil, fmt.Errorf("error getting slot blocks_bls_change: %w", err)
 	}
 
 	return change, nil
@@ -2566,12 +2596,21 @@ func GetSlotBLSChange(slot uint64) ([]*types.BLSChange, error) {
 func GetValidatorBLSChange(validatorindex uint64) (*types.BLSChange, error) {
 	change := &types.BLSChange{}
 
-	err := ReaderDb.Get(change, "SELECT block_slot as slot, signature, pubkey, address FROM blocks_bls_change WHERE validatorindex = $1 ORDER BY block_slot", validatorindex)
+	err := ReaderDb.Get(change, `
+	SELECT 
+		bls.block_slot as slot, 
+		bls.signature, 
+		bls.pubkey, 
+		bls.address 
+	FROM blocks_bls_change bls
+	INNER JOIN blocks b ON b.blockroot = bls.block_root AND b.status = '1'
+	WHERE validatorindex = $1 
+	ORDER BY bls.block_slot`, validatorindex)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("error getting blocks_bls_change: %w", err)
+		return nil, fmt.Errorf("error getting validator blocks_bls_change: %w", err)
 	}
 
 	return change, nil
@@ -2586,7 +2625,7 @@ func GetWithdrawableValidatorCount(epoch uint64) (uint64, error) {
 	FROM 
 		validators 
 	WHERE 
-		withdrawalcredentials LIKE '\x01' || '%'::bytea AND (effectivebalance == $1 AND balance > $1 OR withdrawableepoch <= $2 AND balance > 0);`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
+		withdrawalcredentials LIKE '\x01' || '%'::bytea AND (effectivebalance = $1 AND balance > $1 OR withdrawableepoch <= $2 AND balance > 0);`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
@@ -2608,21 +2647,23 @@ func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor 
 	WHERE 
 		withdrawalcredentials LIKE '\x01' || '%'::bytea 
 		AND 
-		(effectivebalance == $1 AND balance > $1 OR withdrawableepoch <= $2 AND balance > 0)
+		(effectivebalance = $1 AND balance > $1) OR (withdrawableepoch <= $2 AND balance > 0)
+		AND
+		validatorindex > $4 AND validatorindex < $3
 		AND (
 			(
-				$3 > $4 AND validatorindex < $4 AND validatorindex > $3
+				$3::int > $4 AND validatorindex > $4 AND validatorindex < $3
 			)
 			OR
 			(
-				$3 < $4 AND validatorindex > $4 and validatorindex < $3
+				$3::int < $4 AND (validatorindex > $4 OR validatorindex < $3)
 			)
 		);`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch, validatorindex, cursor)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
 		}
-		return 0, fmt.Errorf("error getting withdrawable validator count: %w", err)
+		return 0, fmt.Errorf("error getting withdrawable validator count from cursor: %w", err)
 	}
 
 	return count, nil
