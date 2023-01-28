@@ -284,7 +284,7 @@ create table blocks_withdrawals
     validatorindex     int not null,
     address            bytea not null,
     amount             bigint not null, -- in GWei
-    primary key (block_slot, block_root)
+    primary key (block_slot, block_root, withdrawalindex)
 );
 
 create index idx_blocks_withdrawals_recipient on blocks_withdrawals (address);
@@ -299,7 +299,7 @@ create table blocks_bls_change
     signature            bytea   not null,
     pubkey               bytea   not null,
     address              bytea   not null,
-    primary key (block_slot, block_root)
+    primary key (block_slot, block_root, validatorindex)
 );
 create index idx_blocks_bls_change_pubkey on blocks_bls_change (pubkey);
 create index idx_blocks_bls_change_address on blocks_bls_change (address);
