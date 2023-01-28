@@ -1160,12 +1160,13 @@ func GetLatestStats() *types.Stats {
 				DepositCount: 0,
 			},
 		},
-		InvalidDepositCount:   new(uint64),
-		UniqueValidatorCount:  new(uint64),
-		TotalValidatorCount:   new(uint64),
-		ActiveValidatorCount:  new(uint64),
-		PendingValidatorCount: new(uint64),
-		ValidatorChurnLimit:   new(uint64),
+		InvalidDepositCount:            new(uint64),
+		UniqueValidatorCount:           new(uint64),
+		TotalValidatorCount:            new(uint64),
+		ActiveValidatorCount:           new(uint64),
+		PendingValidatorCount:          new(uint64),
+		ValidatorChurnLimit:            new(uint64),
+		LatestValidatorWithdrawalIndex: new(uint64),
 	}
 }
 

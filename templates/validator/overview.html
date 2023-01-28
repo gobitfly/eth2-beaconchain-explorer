@@ -157,22 +157,7 @@
           ></span>
         </div>
       </div>
-      <div class="m-3 position-relative" style="flex-basis: 4rem; white-space: nowrap;">
-        <span style="top:-1.2rem; white-space: nowrap;" class="text-muted font-weight-lighter position-absolute"><small>Next Withdrawal</small></span>
-        {{ if not .Withdrawable }}
-          <span class="d-block font-weight-bold"
-            >N/A <span data-toggle="tooltip" title="To receive payouts you need 0x01 withdrawal credentials"><i class="text-warning fas fa-exclamation-triangle"></i></span
-          ></span>
-          <span class="d-block" style="font-size: 0.8rem; color: gray">
-            <span>to {{ formatHash .WithdrawCredentials true }}</span>
-          </span>
-        {{ else }}
-          <span class="d-block font-weight-bold">{{ .EstimatedNextWithdrawal }}</span>
-          <span class="d-block" style="font-size: 0.8rem; color: gray">
-            <span>to <a href="/address/0x{{ encodeToString .WithdrawCredentials }}">{{ formatHash .WithdrawCredentials true }}</a></span>
-          </span>
-        {{ end }}
-      </div>
+
       <div class="m-3 position-relative" style="flex-basis: 4rem; white-space: nowrap;">
         <span style="top:-1.2rem; white-space: nowrap;" class="text-muted font-weight-lighter position-absolute"><small>Effectiveness</small></span>
         {{ .AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness }}
@@ -250,7 +235,13 @@
       <span id="depositCount" style="cursor: pointer;" data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="fas fa-wallet"></i> {{ .DepositsCount }}</span>
     </div>
     <div class="mx-3">
-      <span id="withdrawalCount" style="cursor: pointer;" data-toggle="tooltip" title="Withdrawals processed for this validator"><i class="fas fa-money-bill"></i> {{ .WithdrawalCount }}</span>
+      <span id="withdrawalCount" style="cursor: pointer;" data-toggle="tooltip" title="Withdrawals processed for this validator">
+        <i class="fas fa-money-bill"></i>
+        <span> {{ .WithdrawalCount }} </span>
+        {{ if not .IsWithdrawableAddress }}
+          <span data-toggle="tooltip" title="To receive payouts you need 0x01 withdrawal credentials"><i class="text-warning fas fa-exclamation-triangle"></i></span>
+        {{ end }}
+      </span>
     </div>
     <!--
     <div class="mx-3">

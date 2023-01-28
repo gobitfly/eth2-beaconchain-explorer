@@ -119,13 +119,15 @@ type LatestState struct {
 }
 
 type Stats struct {
-	TopDepositors         *[]StatsTopDepositors
-	InvalidDepositCount   *uint64 `db:"count"`
-	UniqueValidatorCount  *uint64 `db:"count"`
-	TotalValidatorCount   *uint64 `db:"count"`
-	ActiveValidatorCount  *uint64 `db:"count"`
-	PendingValidatorCount *uint64 `db:"count"`
-	ValidatorChurnLimit   *uint64
+	TopDepositors                  *[]StatsTopDepositors
+	InvalidDepositCount            *uint64 `db:"count"`
+	UniqueValidatorCount           *uint64 `db:"count"`
+	TotalValidatorCount            *uint64 `db:"count"`
+	ActiveValidatorCount           *uint64 `db:"count"`
+	PendingValidatorCount          *uint64 `db:"count"`
+	ValidatorChurnLimit            *uint64
+	LatestValidatorWithdrawalIndex *uint64 `db:"index"`
+	WithdrawableValidatorCount     *uint64 `db:"count"`
 }
 
 type StatsTopDepositors struct {
@@ -372,9 +374,10 @@ type ValidatorPageData struct {
 	NoAds                               bool
 	ShowWithdrawalWarning               bool
 	BLSChange                           *BLSChange
-	Withdrawable                        bool
+	IsWithdrawableAddress               bool
 	EstimatedNextWithdrawal             template.HTML
 	AddValidatorWatchlistModal          *AddValidatorWatchlistModal
+	NextWithdrawalRow                   [][]interface{}
 }
 
 type RocketpoolValidatorPageData struct {
@@ -460,11 +463,12 @@ type ValidatorBalanceHistory struct {
 
 // ValidatorBalanceHistory is a struct for the validator income history data
 type ValidatorIncomeHistory struct {
-	Day           int64         `db:"day"` // day can be -1 which is pre-genesis
-	Income        int64         `db:"diff"`
-	EndBalance    sql.NullInt64 `db:"end_balance"`
-	StartBalance  sql.NullInt64 `db:"start_balance"`
-	DepositAmount sql.NullInt64 `db:"deposits_amount"`
+	Day              int64         `db:"day"` // day can be -1 which is pre-genesis
+	Income           int64         `db:"diff"`
+	EndBalance       sql.NullInt64 `db:"end_balance"`
+	StartBalance     sql.NullInt64 `db:"start_balance"`
+	DepositAmount    sql.NullInt64 `db:"deposits_amount"`
+	WithdrawalAmount sql.NullInt64 `db:"withdrawals_amount"`
 }
 
 type ValidatorBalanceHistoryChartData struct {
@@ -1822,6 +1826,7 @@ type EthStoreStatistics struct {
 
 type BLSChange struct {
 	Slot           uint64 `db:"slot" json:"slot,omitempty"`
+	BlockRoot      []byte `db:"block_rot" json:"blockroot,omitempty"`
 	Validatorindex uint64 `db:"validatorindex" json:"validatorindex,omitempty"`
 	BlsPubkey      []byte `db:"pubkey" json:"pubkey,omitempty"`
 	Address        []byte `db:"address" json:"address,omitempty"`

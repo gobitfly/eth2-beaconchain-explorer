@@ -67,6 +67,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData := types.ValidatorPageData{}
 
 	stats := services.GetLatestStats()
+	// stats, _ := services.CalculateStats()
 	churnRate := stats.ValidatorChurnLimit
 	if churnRate == nil {
 		churnRate = new(uint64)
@@ -357,33 +358,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 	validatorPageData.WithdrawalCount = withdrawalsCount
 
-	recentWithdrawalIndex, err := db.GetMostRecentWithdrawalValidator()
-	if err != nil {
-		logger.Errorf("error retrieving most recent withdrawal index: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	// position := (highestIndex % *stats.UniqueValidatorCount)
-	positions := uint64(0)
-	canCalculateNextWithdrawal := true
-	if validatorPageData.Index > recentWithdrawalIndex {
-		positions = validatorPageData.Index - recentWithdrawalIndex
-	} else if stats != nil && stats.TotalValidatorCount != nil && stats.ActiveValidatorCount != nil && *stats.TotalValidatorCount > recentWithdrawalIndex {
-		positions = (*stats.TotalValidatorCount - recentWithdrawalIndex + validatorPageData.Index) * (*stats.ActiveValidatorCount / *stats.TotalValidatorCount)
-	} else {
-		logger.Errorf("error calculating next validator withdrawal time stats: %v recent: %v", stats, recentWithdrawalIndex)
-		canCalculateNextWithdrawal = false
-	}
-
-	if canCalculateNextWithdrawal {
-		// TODO: switch 16 to config paramter
-		timeToWithdrawal := time.Now().Add(time.Second * time.Duration(positions/16*utils.Config.Chain.Config.SecondsPerSlot))
-		validatorPageData.EstimatedNextWithdrawal = utils.FormatTimeFromNow(timeToWithdrawal)
-	} else {
-		validatorPageData.EstimatedNextWithdrawal = template.HTML("N/A")
-	}
-
 	validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
 	blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
 	if err != nil {
@@ -391,15 +365,37 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	validatorPageData.BLSChange = blsChange
 
 	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x00}) && blsChange != nil {
-		validatorPageData.Withdrawable = true
-		validatorPageData.BLSChange = blsChange
-		validatorPageData.WithdrawCredentials = blsChange.Address
+		validatorPageData.IsWithdrawableAddress = true
 	}
 
 	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
-		validatorPageData.Withdrawable = true
+		validatorPageData.IsWithdrawableAddress = true
+	}
+
+	// only calculate the expected next withdrawal if the validator is eligible
+	if stats != nil && stats.LatestValidatorWithdrawalIndex != nil && stats.TotalValidatorCount != nil && validatorPageData.IsWithdrawableAddress && (validatorPageData.CurrentBalance > 0 && validatorPageData.WithdrawableEpoch <= validatorPageData.Epoch || validatorPageData.EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.Config.MaxEffectiveBalance) {
+		distance, err := db.GetWithdrawableCountFromCursor(validatorPageData.Epoch, validatorPageData.Index, *stats.LatestValidatorWithdrawalIndex)
+		if err != nil {
+			logger.WithError(err).Error("error getting withdrawable validator count from cursor")
+		}
+
+		timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
+
+		tableData := make([][]interface{}, 0, 1)
+		tableData = append(tableData, []interface{}{
+			template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
+			template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
+			template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
+			template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, "-")),
+			template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(validatorPageData.CurrentBalance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
+		})
+
+		validatorPageData.NextWithdrawalRow = tableData
+	} else {
+		logger.Infof("IS NOT WITHDRAWABLE credentials: %x IsWithdrawableAddress: %v CurrentBalance: %v WithdrawableEpoch: %v Epoch: %v EffectiveBalance: %v CurrentBalance: %v MaxEff: %v", validatorPageData.WithdrawCredentials, validatorPageData.IsWithdrawableAddress, validatorPageData.CurrentBalance, validatorPageData.WithdrawableEpoch, validatorPageData.Epoch, validatorPageData.EffectiveBalance, utils.Config.Chain.Config.MaxEffectiveBalance, validatorPageData.CurrentBalance, utils.Config.Chain.Config.MaxEffectiveBalance)
 	}
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
@@ -459,9 +455,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	} else {
 		validatorPageData.UnmissedBlocksPercentage = 1.0
 	}
-
-	// logger.Infof("propoals data retrieved, elapsed: %v", time.Since(start))
-	// start = time.Now()
 
 	// Every validator is scheduled to issue an attestation once per epoch
 	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
@@ -1102,6 +1095,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tableData := make([][]interface{}, 0, len(withdrawals))
+
 	for _, w := range withdrawals {
 		tableData = append(tableData, []interface{}{
 			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),

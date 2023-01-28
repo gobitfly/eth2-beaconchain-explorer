@@ -40,6 +40,10 @@ func statsUpdater(wg *sync.WaitGroup) {
 	}
 }
 
+func CalculateStats() (*types.Stats, error) {
+	return calculateStats()
+}
+
 func calculateStats() (*types.Stats, error) {
 	stats := types.Stats{}
 
@@ -86,6 +90,21 @@ func calculateStats() (*types.Stats, error) {
 	}
 
 	stats.ValidatorChurnLimit = &validatorChurnLimit
+
+	LatestValidatorWithdrawalIndex, err := db.GetMostRecentWithdrawalValidator()
+	if err != nil {
+		logger.WithError(err).Error("error getting most recent withdrawal validator index")
+	}
+
+	stats.LatestValidatorWithdrawalIndex = &LatestValidatorWithdrawalIndex
+
+	epoch := LatestEpoch()
+	WithdrawableValidatorCount, err := db.GetWithdrawableValidatorCount(epoch)
+	if err != nil {
+		logger.WithError(err).Error("error getting withdrawable validator count")
+	}
+
+	stats.WithdrawableValidatorCount = &WithdrawableValidatorCount
 
 	return &stats, nil
 }
