@@ -63,13 +63,14 @@ func SendPushBatch(messages []*messaging.Message) error {
 		}
 
 		resultSuccessCount += result.SuccessCount
-		resultFailureCount = result.FailureCount
+		resultFailureCount += result.FailureCount
 
 		newMessages := make([]*messaging.Message, 0, resultFailureCount)
 		if resultFailureCount > 0 {
 			for i, response := range result.Responses {
 				if isRelevantError(response) {
 					newMessages = append(newMessages, currentMessages[i])
+					resultFailureCount--
 				}
 			}
 		}
@@ -84,6 +85,7 @@ func SendPushBatch(messages []*messaging.Message) error {
 		for _, response := range result.Responses {
 			if isRelevantError(response) {
 				logger.WithError(response.Error).WithField("MessageID", response.MessageID).Errorf("firebase error")
+				resultFailureCount++
 			}
 		}
 	}
