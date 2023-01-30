@@ -4,6 +4,7 @@ import (
 	"context"
 	"eth2-exporter/utils"
 	"strings"
+	"time"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"
@@ -13,11 +14,22 @@ import (
 
 var logger = logrus.New().WithField("module", "notify").WithField("service", "firebase")
 
-func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, error) {
+func isRelevantError(response *messaging.SendResponse) bool {
+	if !response.Success && response.Error != nil {
+		// Ignore https://stackoverflow.com/questions/58308835/using-firebase-for-notifications-getting-app-instance-has-been-unregistered
+		// Errors since they indicate that the user token is expired
+		if !strings.Contains(response.Error.Error(), "registration-token-not-registered") {
+			return true
+		}
+	}
+	return false
+}
+
+func SendPushBatch(messages []*messaging.Message) error {
 	credentialsPath := utils.Config.Notifications.FirebaseCredentialsPath
 	if credentialsPath == "" {
 		logger.Errorf("firebase credentials path not provided, disabling push notifications")
-		return nil, nil
+		return nil
 	}
 
 	ctx := context.Background()
@@ -25,30 +37,57 @@ func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, err
 	app, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
 		logger.Errorf("error initializing app:  %v", err)
-		return nil, err
+		return err
 	}
 
 	client, err := app.Messaging(ctx)
 	if err != nil {
 		logger.Errorf("error initializing messaging: %v", err)
-		return nil, err
+		return err
 	}
 
-	result, err := client.SendAll(context.Background(), messages)
-	if err != nil {
-		logger.Errorf("error sending push notifications: %v", err)
-		return nil, err
+	var waitBeforeTryInSeconds = []time.Duration{0, 2, 4, 8, 16}
+	var resultSuccessCount, resultFailureCount int = 0, 0
+	var result *messaging.BatchResponse
+
+	currentMessages := messages
+	tries := 0
+	for _, s := range waitBeforeTryInSeconds {
+		time.Sleep(s * time.Second)
+		tries++
+
+		result, err = client.SendAll(context.Background(), currentMessages)
+		if err != nil {
+			logger.Errorf("error sending push notifications: %v", err)
+			return err
+		}
+
+		resultSuccessCount += result.SuccessCount
+		resultFailureCount = result.FailureCount
+
+		newMessages := make([]*messaging.Message, 0, resultFailureCount)
+		if resultFailureCount > 0 {
+			for i, response := range result.Responses {
+				if isRelevantError(response) {
+					newMessages = append(newMessages, currentMessages[i])
+				}
+			}
+		}
+
+		currentMessages = newMessages
+		if len(currentMessages) == 0 {
+			break // no more messages to be proceeded
+		}
 	}
-	for _, response := range result.Responses {
-		if !response.Success && response.Error != nil {
-			// Ignore https://stackoverflow.com/questions/58308835/using-firebase-for-notifications-getting-app-instance-has-been-unregistered
-			// Errors since they indicate that the user token is expired
-			if !strings.Contains(response.Error.Error(), "registration-token-not-registered") {
-				logger.Errorf("firebase error %v %v", response.Error, response.MessageID)
+
+	if len(currentMessages) > 0 {
+		for _, response := range result.Responses {
+			if isRelevantError(response) {
+				logger.WithError(response.Error).WithField("MessageID", response.MessageID).Errorf("firebase error")
 			}
 		}
 	}
 
-	logger.Infof("Successfully send %v firebase notifications. Successful: %v | Failed: %v", len(messages), result.SuccessCount, result.FailureCount)
-	return result, nil
+	logger.Infof("Sent %d firebase notifications in %d of %d tries. Successful: %d | Failed: %d", len(messages), tries, len(waitBeforeTryInSeconds), resultSuccessCount, resultFailureCount)
+	return nil
 }

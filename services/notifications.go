@@ -588,7 +588,7 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 	logger.Infof("processing %v push notifications", len(notificationQueueItem))
 
 	for _, n := range notificationQueueItem {
-		_, err = notify.SendPushBatch(n.Content.Messages)
+		err = notify.SendPushBatch(n.Content.Messages)
 		if err != nil {
 			metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
 			logger.WithError(err).Error("error sending firebase batch job")
