@@ -512,7 +512,7 @@ func (client *ErigonClient) GetBalances(pairs []*types.Eth1AddressBalance, addre
 
 	for i, el := range batchElements {
 		if el.Error != nil {
-			logrus.Errorf("error in batch call: %v", el.Error)
+			logrus.Warnf("error in batch call: %v", el.Error) // PPR: are smart contracts that pretend to implement the erc20 standard but are somehow buggy
 		}
 
 		res := strings.TrimPrefix(*el.Result.(*string), "0x")
