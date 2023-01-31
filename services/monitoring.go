@@ -37,7 +37,7 @@ func startClDataMonitoringService() {
 
 		// retrieve the max attestationslot from the validators table and check that it is not older than 15 minutes
 		var maxAttestationSlot uint64
-		err := db.WriterDb.Get(&maxAttestationSlot, "SELECT MAX(attestationslot) FROM validators;")
+		err := db.WriterDb.Get(&maxAttestationSlot, "SELECT MAX(lastattestationslot) FROM validators;")
 		if err != nil {
 			logger.Errorf("error retrieving max attestation slot from validators table: %w", err)
 			continue
@@ -73,7 +73,7 @@ func startClDataMonitoringService() {
 			continue
 		}
 
-		if time.Since(utils.SlotToTime(maxEpoch)) > time.Minute*15 {
+		if time.Since(utils.EpochToTime(maxEpoch)) > time.Minute*15 {
 			errorMsg := fmt.Errorf("error: max epoch in epochs table is older than 15 minutes: %v", time.Since(utils.SlotToTime(maxAttestationSlot)))
 			logger.Error(errorMsg)
 			ReportStatus(name, errorMsg.Error(), nil)

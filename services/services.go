@@ -77,7 +77,6 @@ func Init() {
 
 	ready.Add(1)
 	go ethStoreStatisticsDataUpdater(ready)
-	go gasNowUpdater(ready)
 
 	ready.Add(1)
 	go startMonitoringService(ready)
