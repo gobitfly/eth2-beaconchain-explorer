@@ -664,7 +664,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
 		genesisDelay := time.Duration(int64(utils.Config.Chain.Config.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
 
-		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+		minGenesisTime := time.Unix(int64(utils.Config.Chain.Config.MinGenesisTime), 0)
 
 		data.MinGenesisTime = minGenesisTime.Unix()
 		data.NetworkStartTs = minGenesisTime.Add(genesisDelay).Unix()
