@@ -249,7 +249,7 @@ func startServicesMonitoringService() {
 			"indexPageDataUpdater",
 			"latestBlockUpdater",
 			"notification-collector",
-			"notification-sender",
+			//"notification-sender", //exclude for now as the sender is only running on mainnet
 			"relaysUpdater",
 			"ethstoreExporter",
 			"statsUpdater",
