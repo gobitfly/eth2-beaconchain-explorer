@@ -166,6 +166,57 @@ func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 	}, nil
 }
 
+// GetChainHead gets the chain head from Lighthouse
+func (lc *LighthouseClient) GetChainHeadFromHeaders() (*types.ChainHead, error) {
+	headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers", lc.endpoint))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving chain head: %v", err)
+	}
+
+	var parsedHeader StandardBeaconHeadersResponse
+	err = json.Unmarshal(headResp, &parsedHeader)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing chain head: %v", err)
+	}
+
+	if len(parsedHeader.Data) == 0 {
+		return nil, fmt.Errorf("error no headers available")
+	}
+
+	currentHeader := parsedHeader.Data[len(parsedHeader.Data)-1]
+
+	id := currentHeader.Header.Message.StateRoot
+	if currentHeader.Header.Message.Slot == 0 {
+		id = "genesis"
+	}
+
+	finalityResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/finality_checkpoints", lc.endpoint, id))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
+	}
+
+	var parsedFinality StandardFinalityCheckpointsResponse
+	err = json.Unmarshal(finalityResp, &parsedFinality)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing finality checkpoints of head: %v", err)
+	}
+
+	return &types.ChainHead{
+		HeadSlot:                   uint64(currentHeader.Header.Message.Slot),
+		HeadEpoch:                  uint64(currentHeader.Header.Message.Slot) / utils.Config.Chain.Config.SlotsPerEpoch,
+		HeadBlockRoot:              utils.MustParseHex(currentHeader.Root),
+		FinalizedSlot:              uint64(parsedFinality.Data.Finalized.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
+		FinalizedEpoch:             uint64(parsedFinality.Data.Finalized.Epoch),
+		FinalizedBlockRoot:         utils.MustParseHex(parsedFinality.Data.Finalized.Root),
+		JustifiedSlot:              uint64(parsedFinality.Data.CurrentJustified.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
+		JustifiedEpoch:             uint64(parsedFinality.Data.CurrentJustified.Epoch),
+		JustifiedBlockRoot:         utils.MustParseHex(parsedFinality.Data.CurrentJustified.Root),
+		PreviousJustifiedSlot:      uint64(parsedFinality.Data.PreviousJustified.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
+		PreviousJustifiedEpoch:     uint64(parsedFinality.Data.PreviousJustified.Epoch),
+		PreviousJustifiedBlockRoot: utils.MustParseHex(parsedFinality.Data.PreviousJustified.Root),
+	}, nil
+}
+
 func (lc *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 	// pre-filter the status, to return much less validators, thus much faster!
 	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/head/validators?status=pending_queued,active_exiting,active_slashed", lc.endpoint))
@@ -1009,6 +1060,23 @@ func Uint64Unmarshal(v *uint64, b []byte) error {
 
 type StandardBeaconHeaderResponse struct {
 	Data struct {
+		Root      string `json:"root"`
+		Canonical bool   `json:"canonical"`
+		Header    struct {
+			Message struct {
+				Slot          uint64Str `json:"slot"`
+				ProposerIndex uint64Str `json:"proposer_index"`
+				ParentRoot    string    `json:"parent_root"`
+				StateRoot     string    `json:"state_root"`
+				BodyRoot      string    `json:"body_root"`
+			} `json:"message"`
+			Signature string `json:"signature"`
+		} `json:"header"`
+	} `json:"data"`
+}
+
+type StandardBeaconHeadersResponse struct {
+	Data []struct {
 		Root      string `json:"root"`
 		Canonical bool   `json:"canonical"`
 		Header    struct {

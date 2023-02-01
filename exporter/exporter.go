@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -25,7 +24,6 @@ var logger = logrus.New().WithField("module", "exporter")
 // This is a workaround for a bug in the prysm archive node that causes epochs without blocks
 // to not be archived properly (see https://github.com/prysmaticlabs/prysm/issues/4165)
 var epochBlacklist = make(map[uint64]uint64)
-var saveEpochMux = &sync.Mutex{}
 var fullCheckRunning = uint64(0)
 
 var Client *rpc.Client
@@ -53,7 +51,7 @@ func Start(client rpc.Client) error {
 	}
 	// wait until the beacon-node is available
 	for {
-		_, err := client.GetChainHead()
+		_, err := client.GetChainHeadFromHeaders()
 		if err == nil {
 			break
 		}
@@ -63,7 +61,7 @@ func Start(client rpc.Client) error {
 
 	if utils.Config.Indexer.FullIndexOnStartup {
 		logger.Printf("performing one time full db reindex")
-		head, err := client.GetChainHead()
+		head, err := client.GetChainHeadFromHeaders()
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -79,13 +77,13 @@ func Start(client rpc.Client) error {
 
 	if utils.Config.Indexer.FixCanonOnStartup {
 		logger.Printf("performing one time full canon check")
-		head, err := client.GetChainHead()
+		head, err := client.GetChainHeadFromHeaders()
 		if err != nil {
 			logger.Fatal(err)
 		}
 
-		for epoch := head.HeadEpoch - 1; epoch >= 0; epoch-- {
-			blocks, err := client.GetBlockStatusByEpoch(epoch)
+		for epoch := int64(head.HeadEpoch) - 1; epoch >= 0; epoch-- {
+			blocks, err := client.GetBlockStatusByEpoch(uint64(epoch))
 			if err != nil {
 				logger.Errorf("error retrieving block status: %v", err)
 				continue
@@ -131,7 +129,7 @@ func Start(client rpc.Client) error {
 
 	if utils.Config.Indexer.CheckAllBlocksOnStartup {
 		// Make sure that all blocks are correct by comparing all block hashes in the database to the ones we have in the node
-		head, err := client.GetChainHead()
+		head, err := client.GetChainHeadFromHeaders()
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -208,7 +206,7 @@ func Start(client rpc.Client) error {
 
 	if utils.Config.Indexer.UpdateAllEpochStatistics {
 		// Update all epoch statistics
-		head, err := client.GetChainHead()
+		head, err := client.GetChainHeadFromHeaders()
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -270,7 +268,7 @@ func doFullCheck(client rpc.Client, lookback uint64) {
 	logger.Infof("checking for new blocks/epochs to export")
 
 	// Use the chain head as our current point of reference
-	head, err := client.GetChainHead()
+	head, err := client.GetChainHeadFromHeaders()
 	if err != nil {
 		logger.Errorf("error retrieving chain head: %v", err)
 		return
