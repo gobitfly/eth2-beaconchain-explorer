@@ -2070,6 +2070,8 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 	var blks []sqlBlocks = []sqlBlocks{}
 	if latestEpoch > 4 {
 		latestEpoch = latestEpoch - 4
+	} else {
+		latestEpoch = 0
 	}
 
 	err := ReaderDb.Select(&blks, `
@@ -2502,7 +2504,7 @@ func GetAddressWithdrawalsTotal(address []byte) (uint64, error) {
 
 	err := ReaderDb.Get(&total, `
 	SELECT 
-		sum(w.amount) as total
+		COALESCE(sum(w.amount), 0) as total
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	WHERE w.address = $1`, address)
