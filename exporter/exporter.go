@@ -655,7 +655,7 @@ func networkLivenessUpdater(client rpc.Client) {
 	slotDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot)
 
 	for {
-		head, err := client.GetChainHead()
+		head, err := client.GetChainHeadFromHeaders()
 		if err != nil {
 			logger.Errorf("error getting chainhead when exporting networkliveness: %v", err)
 			time.Sleep(slotDuration)
