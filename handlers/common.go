@@ -69,20 +69,22 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, err
 	}
 
+	balancesMap := make(map[uint64]*types.Validator, len(balances))
+
+	for _, balance := range balances {
+		balancesMap[balance.Index] = balance
+	}
+
 	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), 1)
 	if err != nil {
 		logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
 		return nil, err
 	}
-	for _, validator := range balances {
-		for balanceIndex, balance := range latestBalances {
-			if len(balance) == 0 {
-				continue
-			}
-			if validator.Index == balanceIndex {
-				validator.Balance = balance[0].Balance
-			}
+	for balanceIndex, balance := range latestBalances {
+		if len(balance) == 0 {
+			continue
 		}
+		balancesMap[balanceIndex].Balance = balance[0].Balance
 	}
 
 	balances1d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastDayEpoch), 1)
@@ -90,17 +92,13 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		logger.Errorf("error getting validator Balance1d data in GetValidatorEarnings: %v", err)
 		return nil, err
 	}
-	for _, validator := range balances {
-		for balanceIndex, balance := range balances1d {
-			if len(balance) == 0 {
-				continue
-			}
-			if validator.Index == balanceIndex {
-				validator.Balance1d = sql.NullInt64{
-					Int64: int64(balance[0].Balance),
-					Valid: true,
-				}
-			}
+	for balanceIndex, balance := range balances1d {
+		if len(balance) == 0 {
+			continue
+		}
+		balancesMap[balanceIndex].Balance1d = sql.NullInt64{
+			Int64: int64(balance[0].Balance),
+			Valid: true,
 		}
 	}
 
@@ -109,17 +107,13 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		logger.Errorf("error getting validator Balance7d data in GetValidatorEarnings: %v", err)
 		return nil, err
 	}
-	for _, validator := range balances {
-		for balanceIndex, balance := range balances7d {
-			if len(balance) == 0 {
-				continue
-			}
-			if validator.Index == balanceIndex {
-				validator.Balance7d = sql.NullInt64{
-					Int64: int64(balance[0].Balance),
-					Valid: true,
-				}
-			}
+	for balanceIndex, balance := range balances7d {
+		if len(balance) == 0 {
+			continue
+		}
+		balancesMap[balanceIndex].Balance7d = sql.NullInt64{
+			Int64: int64(balance[0].Balance),
+			Valid: true,
 		}
 	}
 
@@ -128,17 +122,13 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		logger.Errorf("error getting validator Balance31d data in GetValidatorEarnings: %v", err)
 		return nil, err
 	}
-	for _, validator := range balances {
-		for balanceIndex, balance := range balances31d {
-			if len(balance) == 0 {
-				continue
-			}
-			if validator.Index == balanceIndex {
-				validator.Balance31d = sql.NullInt64{
-					Int64: int64(balance[0].Balance),
-					Valid: true,
-				}
-			}
+	for balanceIndex, balance := range balances31d {
+		if len(balance) == 0 {
+			continue
+		}
+		balancesMap[balanceIndex].Balance31d = sql.NullInt64{
+			Int64: int64(balance[0].Balance),
+			Valid: true,
 		}
 	}
 
@@ -168,7 +158,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	var apr float64
 	var totalDeposits int64
 
-	for _, balance := range balances {
+	for _, balance := range balancesMap {
 		if int64(balance.ActivationEpoch) >= latestEpoch {
 			continue
 		}

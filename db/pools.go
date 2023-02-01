@@ -24,8 +24,7 @@ type PoolStatsData struct {
 	ValidatorIndex uint64 `db:"validatorindex" json:"validatorindex"`
 }
 
-var lastUpdateTime time.Time
-var latestEpoch uint64
+var lastUpdateTimePools time.Time
 
 func UpdatePoolInfo() {
 	start := time.Now()
@@ -33,22 +32,18 @@ func UpdatePoolInfo() {
 		metrics.TaskDuration.WithLabelValues("service_pools_updater").Observe(time.Since(start).Seconds())
 	}()
 
-	if time.Since(lastUpdateTime).Hours() > 3 { // query db every 3 hour
-		var err error
+	if time.Since(lastUpdateTimePools).Hours() > 3 { // query db every 3 hour
 		// tx, err := DB.Begin()
 		// if err != nil {
 		// 	logger.Errorf("error connecting to db %v", err)
 		// 	return
 		// }
 		// defer tx.Rollback()
-		latestEpoch, err = GetLatestEpoch()
-		if err != nil {
-			logger.Errorf("error getting latest epoch %v", err)
-		}
+
 		deleteOldChartEntries()
 		getPoolInfo()
 
-		lastUpdateTime = time.Now()
+		lastUpdateTimePools = time.Now()
 		logger.Infoln("Updated Pool Info")
 	}
 
@@ -147,7 +142,14 @@ func getPoolIncome(poolAddress string, poolName string) {
 
 func getValidatorEarnings(validators []uint64, poolName string) {
 	validatorsPQArray := pq.Array(validators)
-	latestEpoch := int64(latestEpoch)
+
+	latestEpochUint, err := GetLatestEpoch()
+	if err != nil {
+		logger.Errorf("error getting latest epoch %v", err)
+		return
+	}
+
+	latestEpoch := int64(latestEpochUint)
 	lastDayEpoch := latestEpoch - int64(utils.EpochsPerDay())
 	lastWeekEpoch := latestEpoch - int64(utils.EpochsPerDay())*7
 	lastMonthEpoch := latestEpoch - int64(utils.EpochsPerDay())*31
@@ -172,7 +174,7 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 
 	balances := []*types.Validator{}
 
-	err := ReaderDb.Select(&balances, `SELECT 
+	err = ReaderDb.Select(&balances, `SELECT 
 			    validatorindex,
 			    COALESCE(balanceactivation, 0) AS balanceactivation, 
        			activationepoch,
@@ -184,20 +186,22 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		return
 	}
 
+	balancesMap := make(map[uint64]*types.Validator, len(balances))
+
+	for _, balance := range balances {
+		balancesMap[balance.Index] = balance
+	}
+
 	latestBalances, err := BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), 1)
 	if err != nil {
 		logger.Errorf("error getting validator balance data in getValidatorEarnings: %v", err)
 		return
 	}
-	for _, validator := range balances {
-		for balanceIndex, balance := range latestBalances {
-			if len(balance) == 0 {
-				continue
-			}
-			if validator.Index == balanceIndex {
-				validator.Balance = balance[0].Balance
-			}
+	for balanceIndex, balance := range latestBalances {
+		if len(balance) == 0 {
+			continue
 		}
+		balancesMap[balanceIndex].Balance = balance[0].Balance
 	}
 
 	balances1d, err := BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastDayEpoch), 1)
@@ -205,17 +209,13 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		logger.Errorf("error getting validator Balance1d data in getValidatorEarnings: %v", err)
 		return
 	}
-	for _, validator := range balances {
-		for balanceIndex, balance := range balances1d {
-			if len(balance) == 0 {
-				continue
-			}
-			if validator.Index == balanceIndex {
-				validator.Balance1d = sql.NullInt64{
-					Int64: int64(balance[0].Balance),
-					Valid: true,
-				}
-			}
+	for balanceIndex, balance := range balances1d {
+		if len(balance) == 0 {
+			continue
+		}
+		balancesMap[balanceIndex].Balance1d = sql.NullInt64{
+			Int64: int64(balance[0].Balance),
+			Valid: true,
 		}
 	}
 
@@ -224,17 +224,13 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		logger.Errorf("error getting validator Balance7d data in getValidatorEarnings: %v", err)
 		return
 	}
-	for _, validator := range balances {
-		for balanceIndex, balance := range balances7d {
-			if len(balance) == 0 {
-				continue
-			}
-			if validator.Index == balanceIndex {
-				validator.Balance7d = sql.NullInt64{
-					Int64: int64(balance[0].Balance),
-					Valid: true,
-				}
-			}
+	for balanceIndex, balance := range balances7d {
+		if len(balance) == 0 {
+			continue
+		}
+		balancesMap[balanceIndex].Balance7d = sql.NullInt64{
+			Int64: int64(balance[0].Balance),
+			Valid: true,
 		}
 	}
 
@@ -243,17 +239,13 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		logger.Errorf("error getting validator Balance31d data in getValidatorEarnings: %v", err)
 		return
 	}
-	for _, validator := range balances {
-		for balanceIndex, balance := range balances31d {
-			if len(balance) == 0 {
-				continue
-			}
-			if validator.Index == balanceIndex {
-				validator.Balance31d = sql.NullInt64{
-					Int64: int64(balance[0].Balance),
-					Valid: true,
-				}
-			}
+	for balanceIndex, balance := range balances31d {
+		if len(balance) == 0 {
+			continue
+		}
+		balancesMap[balanceIndex].Balance31d = sql.NullInt64{
+			Int64: int64(balance[0].Balance),
+			Valid: true,
 		}
 	}
 
@@ -288,7 +280,7 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 	var earningsInPeriod int64
 	var earningsInPeriodBalance int64
 
-	for _, balance := range balances {
+	for _, balance := range balancesMap {
 
 		if int64(balance.ActivationEpoch) > latestEpoch {
 			continue
@@ -338,9 +330,16 @@ func updateChartDB(poolName string, epoch int64, income int64, balance int64) {
 }
 
 func deleteOldChartEntries() {
-	latestEpoch := int64(latestEpoch)
+
+	latestEpochUint, err := GetLatestEpoch()
+	if err != nil {
+		logger.Errorf("error getting latest epoch %v", err)
+		return
+	}
+
+	latestEpoch := int64(latestEpochUint)
 	sixMonthsOld := latestEpoch - int64(utils.EpochsPerDay())*31*6
-	_, err := WriterDb.Exec(`
+	_, err = WriterDb.Exec(`
 		DELETE FROM staking_pools_chart
 		WHERE epoch <= $1
 	`, sixMonthsOld)

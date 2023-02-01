@@ -711,7 +711,7 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 				logger.Errorf("error updating queue deposits cache: %w", err)
 			}
 
-			if data.Epoch%9 == 0 { // update the validator performance every hour
+			if data.Epoch%1 == 0 { // update the validator performance every hour
 				err = updateValidatorPerformance(validatorsTx)
 				if err != nil {
 					logger.Errorf("error updating validator performance: %w", err)
@@ -2073,7 +2073,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 		lastMonthEpoch = 0
 	}
 
-	var balances []types.Validator
+	var balances []*types.Validator
 	err = tx.Select(&balances, `
 		SELECT 
 			   validatorindex,
@@ -2085,72 +2085,70 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 		return fmt.Errorf("error retrieving validator performance data: %w", err)
 	}
 
-	latestBalances, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(latestEpoch), 1)
+	balancesMap := make(map[uint64]*types.Validator, len(balances))
+
+	for _, balance := range balances {
+		balancesMap[balance.Index] = balance
+	}
+
+	logger.Infof("retrieving validator balances for epoch %v", currentEpoch)
+	latestBalances, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(currentEpoch), 1)
 	if err != nil {
 		return fmt.Errorf("error getting validator balance data in updateValidatorPerformance: %w", err)
 	}
-	for _, validator := range balances {
-		for balanceIndex, balance := range latestBalances {
-			if len(balance) == 0 {
-				continue
-			}
-			if validator.Index == balanceIndex {
-				validator.Balance = balance[0].Balance
-			}
+	logger.Infof("retrieved %v validator balances for epoch %v", len(latestBalances), currentEpoch)
+	for balanceIndex, balance := range latestBalances {
+		if len(balance) == 0 {
+			continue
 		}
+		balancesMap[balanceIndex].Balance = balance[0].Balance
 	}
 
+	logger.Infof("retrieving validator balances for epoch %v", lastDayEpoch)
 	balances1d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastDayEpoch), 1)
 	if err != nil {
 		return fmt.Errorf("error getting validator Balance1d data in updateValidatorPerformance: %w", err)
 	}
-	for _, validator := range balances {
-		for balanceIndex, balance := range balances1d {
-			if len(balance) == 0 {
-				continue
-			}
-			if validator.Index == balanceIndex {
-				validator.Balance1d = sql.NullInt64{
-					Int64: int64(balance[0].Balance),
-					Valid: true,
-				}
-			}
+	logger.Infof("retrieved %v validator balances for epoch %v", len(balances1d), lastDayEpoch)
+	for balanceIndex, balance := range balances1d {
+		if len(balance) == 0 {
+			continue
+		}
+		balancesMap[balanceIndex].Balance1d = sql.NullInt64{
+			Int64: int64(balance[0].Balance),
+			Valid: true,
 		}
 	}
 
+	logger.Infof("retrieving validator balances for epoch %v", lastWeekEpoch)
 	balances7d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastWeekEpoch), 1)
 	if err != nil {
 		return fmt.Errorf("error getting validator Balance7d data in updateValidatorPerformance: %w", err)
 	}
-	for _, validator := range balances {
-		for balanceIndex, balance := range balances7d {
-			if len(balance) == 0 {
-				continue
-			}
-			if validator.Index == balanceIndex {
-				validator.Balance7d = sql.NullInt64{
-					Int64: int64(balance[0].Balance),
-					Valid: true,
-				}
-			}
+	logger.Infof("retrieved %v validator balances for epoch %v", len(balances7d), lastWeekEpoch)
+	for balanceIndex, balance := range balances7d {
+		if len(balance) == 0 {
+			continue
+		}
+		balancesMap[balanceIndex].Balance7d = sql.NullInt64{
+			Int64: int64(balance[0].Balance),
+			Valid: true,
 		}
 	}
 
+	logger.Infof("retrieving validator balances for epoch %v", lastMonthEpoch)
 	balances31d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastMonthEpoch), 1)
 	if err != nil {
 		return fmt.Errorf("error getting validator Balance31d data in updateValidatorPerformance: %w", err)
 	}
-	for _, validator := range balances {
-		for balanceIndex, balance := range balances31d {
-			if len(balance) == 0 {
-				continue
-			}
-			if validator.Index == balanceIndex {
-				validator.Balance31d = sql.NullInt64{
-					Int64: int64(balance[0].Balance),
-					Valid: true,
-				}
-			}
+	logger.Infof("retrieved %v validator balances for epoch %v", len(balances31d), lastMonthEpoch)
+	for balanceIndex, balance := range balances31d {
+		if len(balance) == 0 {
+			continue
+		}
+		balancesMap[balanceIndex].Balance31d = sql.NullInt64{
+			Int64: int64(balance[0].Balance),
+			Valid: true,
 		}
 	}
 
@@ -2175,7 +2173,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 
 	data := make([]*types.ValidatorPerformance, 0, len(balances))
 
-	for _, balance := range balances {
+	for _, balance := range balancesMap {
 
 		var earningsTotal int64
 		var earningsLastDay int64
