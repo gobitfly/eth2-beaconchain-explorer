@@ -78,6 +78,9 @@ func Init() {
 	ready.Add(1)
 	go ethStoreStatisticsDataUpdater(ready)
 
+	ready.Add(1)
+	go startMonitoringService(ready)
+
 	ready.Wait()
 }
 
