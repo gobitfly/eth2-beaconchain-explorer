@@ -239,10 +239,10 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 			ValidSignature:        validSignature,
 		})
 	}
-
+	logger.Infof("b")
 	headers, txs, err := eth1BatchRequestHeadersAndTxs(blocksToFetch, txsToFetch)
 	if err != nil {
-		return depositsToSave, fmt.Errorf("error getting eth1-blocks: %w", err)
+		return depositsToSave, fmt.Errorf("error getting eth1-blocks: %w\nblocks to fetch: %v\n tx to fetch: %v", err, blocksToFetch, txsToFetch)
 	}
 
 	for _, d := range depositsToSave {
