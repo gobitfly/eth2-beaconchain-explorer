@@ -540,7 +540,7 @@ func reversePaddedBigtableTimestamp(timestamp *timestamppb.Timestamp) string {
 
 func reversePaddedIndex(i int, maxValue int) string {
 	if i > maxValue {
-		logrus.Fatal("padded index %v is greater than the max index of %v", maxValue)
+		logrus.Fatalf("padded index %v is greater than the max index of %v", i, maxValue)
 	}
 	length := fmt.Sprintf("%d", len(fmt.Sprintf("%d", maxValue))-1)
 	fmtStr := "%0" + length + "d"

@@ -39,7 +39,7 @@ func startClDataMonitoringService() {
 		var maxAttestationSlot uint64
 		err := db.WriterDb.Get(&maxAttestationSlot, "SELECT MAX(lastattestationslot) FROM validators;")
 		if err != nil {
-			logger.Errorf("error retrieving max attestation slot from validators table: %w", err)
+			logger.Errorf("error retrieving max attestation slot from validators table: %v", err)
 			continue
 		}
 
@@ -54,7 +54,7 @@ func startClDataMonitoringService() {
 		var maxSlot uint64
 		err = db.WriterDb.Get(&maxSlot, "SELECT MAX(slot) FROM blocks;")
 		if err != nil {
-			logger.Errorf("error retrieving max slot from blocks table: %w", err)
+			logger.Errorf("error retrieving max slot from blocks table: %v", err)
 			continue
 		}
 
@@ -69,7 +69,7 @@ func startClDataMonitoringService() {
 		var maxEpoch uint64
 		err = db.WriterDb.Get(&maxEpoch, "SELECT MAX(epoch) FROM epochs;")
 		if err != nil {
-			logger.Errorf("error retrieving max slot from blocks table: %w", err)
+			logger.Errorf("error retrieving max slot from blocks table: %v", err)
 			continue
 		}
 

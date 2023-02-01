@@ -69,7 +69,7 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 
 	pngStr, pngStrInverse, err := utils.GenerateQRCodeForAddress(token)
 	if err != nil {
-		logger.WithError(err).Error("error generating qr code for address %v", token)
+		logger.WithError(err).Errorf("error generating qr code for address %v", token)
 	}
 
 	if len(metadata.Price) == 0 {

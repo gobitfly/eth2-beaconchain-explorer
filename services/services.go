@@ -708,7 +708,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		if len(series) > 2 {
 			points, ok := series[1].Data.([][]float64)
 			if !ok {
-				logger.Error("error parsing deposit chart data could not convert  series to [][]float64 series: %+v", series[1].Data)
+				logger.Errorf("error parsing deposit chart data could not convert  series to [][]float64 series: %+v", series[1].Data)
 			} else {
 				periodDays := float64(len(points))
 				avgDepositPerDay := data.DepositedTotal / periodDays

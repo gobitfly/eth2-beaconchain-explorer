@@ -40,7 +40,7 @@ func SendHTMLMail(to, subject string, msg types.Email, attachment []types.EmailA
 		content := body.String()
 		err = SendMailMailgun(to, subject, content, createTextMessage(msg), attachment)
 	} else {
-		logrus.Errorf("error sending reset-email: invalid config for mail-service", err)
+		logrus.Error("error sending reset-email: invalid config for mail-service")
 		err = nil
 	}
 	return err

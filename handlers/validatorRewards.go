@@ -42,14 +42,14 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 			from information_schema.columns 
 			where table_name = 'price'`)
 	if err != nil {
-		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
+		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %v", err)
 	}
 
 	var minTime time.Time
 	err = db.ReaderDb.Get(&minTime,
 		`select ts from price order by ts asc limit 1`)
 	if err != nil {
-		logger.Errorf("error getting min ts: %w", err)
+		logger.Errorf("error getting min ts: %v", err)
 	}
 
 	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), MinDateTimestamp: uint64(minTime.Unix()), ShowSubscriptions: data.User.Authenticated}
@@ -64,7 +64,7 @@ func getUserRewardSubscriptions(uid uint64) [][]string {
 	err := db.FrontendWriterDB.Select(&dbResp,
 		`select * from users_subscriptions where event_name=$1 AND user_id=$2`, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName), uid)
 	if err != nil {
-		logger.Errorf("error getting prices: %w", err)
+		logger.Errorf("error getting prices: %v", err)
 	}
 
 	res := make([][]string, len(dbResp))
@@ -91,7 +91,7 @@ func isValidCurrency(currency string) bool {
 		from information_schema.columns 
 		where table_name = 'price' AND column_name=$1;`, currency)
 	if err != nil {
-		logger.Errorf("error checking currency: %w", err)
+		logger.Errorf("error checking currency: %v", err)
 		return false
 	}
 
