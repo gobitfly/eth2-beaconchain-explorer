@@ -51,8 +51,18 @@ func Start(client rpc.Client) error {
 	}
 	// wait until the beacon-node is available
 	for {
-		_, err := client.GetChainHeadFromHeaders()
+		head, err := client.GetChainHeadFromHeaders()
 		if err == nil {
+			logger.Infof("Beacon node is available with head slot: ", head.HeadSlot)
+
+			// if we are still waiting for genesis export epoch 0
+			if head.HeadSlot == 0 {
+				err := ExportEpoch(0, client)
+				if err != nil {
+					logger.Errorf("error exporting epoch 0 for genesis", err)
+				}
+			}
+
 			break
 		}
 		logger.Errorf("beacon-node seems to be unavailable: %v", err)
