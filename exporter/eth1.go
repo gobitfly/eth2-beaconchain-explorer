@@ -239,7 +239,7 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 			ValidSignature:        validSignature,
 		})
 	}
-	logger.Infof("b")
+
 	headers, txs, err := eth1BatchRequestHeadersAndTxs(blocksToFetch, txsToFetch)
 	if err != nil {
 		return depositsToSave, fmt.Errorf("error getting eth1-blocks: %w\nblocks to fetch: %v\n tx to fetch: %v", err, blocksToFetch, txsToFetch)
@@ -366,13 +366,24 @@ func eth1BatchRequestHeadersAndTxs(blocksToFetch []uint64, txsToFetch []string) 
 		errors = append(errors, err)
 	}
 
-	if len(elems) == 0 {
+	lenElems := len(elems)
+
+	if lenElems == 0 {
 		return headers, txs, nil
 	}
 
-	ioErr := eth1RPCClient.BatchCall(elems)
-	if ioErr != nil {
-		return nil, nil, ioErr
+	for i := 0; (i * 100) < lenElems; i++ {
+		start := (i * 100)
+		end := start + 100
+
+		if end > lenElems {
+			end = lenElems
+		}
+
+		ioErr := eth1RPCClient.BatchCall(elems[start:end])
+		if ioErr != nil {
+			return nil, nil, ioErr
+		}
 	}
 
 	for _, e := range errors {

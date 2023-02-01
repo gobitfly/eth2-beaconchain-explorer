@@ -51,7 +51,7 @@ func Start(client rpc.Client) error {
 	}
 	// wait until the beacon-node is available
 	for {
-		head, err := client.GetChainHeadFromHeaders()
+		head, err := client.GetChainHead()
 		if err == nil {
 			logger.Infof("Beacon node is available with head slot: %v", head.HeadSlot)
 
@@ -71,7 +71,7 @@ func Start(client rpc.Client) error {
 
 	if utils.Config.Indexer.FullIndexOnStartup {
 		logger.Printf("performing one time full db reindex")
-		head, err := client.GetChainHeadFromHeaders()
+		head, err := client.GetChainHead()
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -87,7 +87,7 @@ func Start(client rpc.Client) error {
 
 	if utils.Config.Indexer.FixCanonOnStartup {
 		logger.Printf("performing one time full canon check")
-		head, err := client.GetChainHeadFromHeaders()
+		head, err := client.GetChainHead()
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -139,7 +139,7 @@ func Start(client rpc.Client) error {
 
 	if utils.Config.Indexer.CheckAllBlocksOnStartup {
 		// Make sure that all blocks are correct by comparing all block hashes in the database to the ones we have in the node
-		head, err := client.GetChainHeadFromHeaders()
+		head, err := client.GetChainHead()
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -216,7 +216,7 @@ func Start(client rpc.Client) error {
 
 	if utils.Config.Indexer.UpdateAllEpochStatistics {
 		// Update all epoch statistics
-		head, err := client.GetChainHeadFromHeaders()
+		head, err := client.GetChainHead()
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -278,7 +278,7 @@ func doFullCheck(client rpc.Client, lookback uint64) {
 	logger.Infof("checking for new blocks/epochs to export")
 
 	// Use the chain head as our current point of reference
-	head, err := client.GetChainHeadFromHeaders()
+	head, err := client.GetChainHead()
 	if err != nil {
 		logger.Errorf("error retrieving chain head: %v", err)
 		return
@@ -665,7 +665,7 @@ func networkLivenessUpdater(client rpc.Client) {
 	slotDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot)
 
 	for {
-		head, err := client.GetChainHeadFromHeaders()
+		head, err := client.GetChainHead()
 		if err != nil {
 			logger.Errorf("error getting chainhead when exporting networkliveness: %v", err)
 			time.Sleep(slotDuration)
