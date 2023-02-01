@@ -298,5 +298,11 @@ func startServicesMonitoringService() {
 		if !hasError {
 			ReportStatus(name, "OK", nil)
 		}
+
+		_, err = db.WriterDb.Exec("DELETE FROM service_status WHERE last_update < NOW() - INTERVAL '1 WEEK'")
+
+		if err != nil {
+			logger.Errorf("error cleaning up service_status table")
+		}
 	}
 }
