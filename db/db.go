@@ -2068,6 +2068,9 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 	}
 
 	var blks []sqlBlocks = []sqlBlocks{}
+	if latestEpoch > 4 {
+		latestEpoch = latestEpoch - 4
+	}
 
 	err := ReaderDb.Select(&blks, `
 	SELECT
@@ -2087,7 +2090,7 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 		left join epochs e on e.epoch = b.epoch
 	WHERE b.epoch >= $1
 	ORDER BY slot desc;
-`, latestEpoch-4)
+`, latestEpoch)
 	if err != nil {
 		return nil, err
 	}
