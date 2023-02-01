@@ -1171,6 +1171,28 @@ func GetLatestStats() *types.Stats {
 	}
 }
 
+var globalNotificationMessage = template.HTML("")
+var globalNotificationMessageTs time.Time
+var globalNotificationMux = &sync.Mutex{}
+
+func GlobalNotificationMessage() template.HTML {
+	globalNotificationMux.Lock()
+	defer globalNotificationMux.Unlock()
+
+	if time.Since(globalNotificationMessageTs) > time.Minute*10 {
+		globalNotificationMessageTs = time.Now()
+
+		err := db.FrontendWriterDB.Get(&globalNotificationMessage, "SELECT content FROM global_notifications WHERE target = 'web'")
+
+		if err != nil {
+			logger.Errorf("error updating global notification message: %v", err)
+			globalNotificationMessage = ""
+			return globalNotificationMessage
+		}
+	}
+	return globalNotificationMessage
+}
+
 // IsSyncing returns true if the chain is still syncing
 func IsSyncing() bool {
 	return time.Now().Add(time.Minute * -10).After(utils.EpochToTime(LatestEpoch()))
