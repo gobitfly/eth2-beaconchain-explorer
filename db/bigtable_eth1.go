@@ -373,58 +373,6 @@ func getBlockHandler(blocks *[]*types.Eth1BlockIndexed) func(gcp_bigtable.Row) b
 	}
 }
 
-func getFullBlockHandler(blocks *[]*types.Eth1Block) func(gcp_bigtable.Row) bool {
-	return func(row gcp_bigtable.Row) bool {
-		// startTime := time.Now()
-		block := types.Eth1Block{}
-		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, &block)
-		if err != nil {
-			logger.Errorf("error could not unmarschal proto object, err: %v", err)
-		}
-		if len(row[DEFAULT_FAMILY]) > 1 {
-			logs := make(map[string][]*types.Eth1Log, 100)
-			itxs := make(map[string][]*types.Eth1InternalTransaction, 100)
-			for _, item := range row[DEFAULT_FAMILY][1:] {
-				if strings.HasPrefix(item.Column, "d:itx") {
-					hash := strings.Split(item.Column, ":")[2]
-					itx := types.Eth1InternalTransaction{}
-					err := proto.Unmarshal(item.Value, &itx)
-					if err != nil {
-						logger.Errorf("error could not unmarschal proto object, err: %v", err)
-					}
-					itxs[hash] = append(itxs[hash], &itx)
-				}
-				if strings.HasPrefix(item.Column, "d:log") {
-					hash := strings.Split(item.Column, ":")[2]
-					log := types.Eth1Log{}
-					err := proto.Unmarshal(item.Value, &log)
-					if err != nil {
-						logger.Errorf("error could not unmarschal proto object, err: %v", err)
-					}
-					logs[hash] = append(logs[hash], &log)
-				}
-				if strings.HasPrefix(item.Column, "d:tx") {
-					hash := strings.Split(item.Column, ":")[3]
-					tx := types.Eth1Transaction{}
-					err := proto.Unmarshal(item.Value, &tx)
-					if err != nil {
-						logger.Errorf("error could not unmarschal proto object, err: %v", err)
-					}
-					tx.Logs = logs[hash]
-					tx.Itx = itxs[hash]
-					block.Transactions = append(block.Transactions, &tx)
-				}
-			}
-
-		}
-
-		*blocks = append(*blocks, &block)
-		// logger.Infof("finished processing row from table stefan: %v", time.Since(startTime))
-
-		return true
-	}
-}
-
 // GetFullBlockDescending gets blocks starting at block start
 func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.Eth1Block, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*60))
@@ -461,13 +409,13 @@ func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.
 		return true
 	}
 
-	startTime := time.Now()
+	// startTime := time.Now()
 	err := bigtable.tableBlocks.ReadRows(ctx, rowRange, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Infof("finished getting blocks from table blocks: %v", time.Since(startTime))
+	// logger.Infof("finished getting blocks from table blocks: %v", time.Since(startTime))
 	return blocks, nil
 }
 
@@ -530,13 +478,13 @@ func (bigtable *Bigtable) GetBlocksIndexedMultiple(blockNumbers []uint64, limit 
 
 	rowHandler := getBlockHandler(&blocks)
 
-	startTime := time.Now()
+	// startTime := time.Now()
 	err := bigtable.tableData.ReadRows(ctx, rowList, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
+	// logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
 	return blocks, nil
 }
 
@@ -569,13 +517,13 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 
 	rowHandler := getBlockHandler(&blocks)
 
-	startTime := time.Now()
+	// startTime := time.Now()
 	err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
+	// logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
 	return blocks, nil
 }
 

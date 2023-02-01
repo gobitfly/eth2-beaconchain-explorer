@@ -34,3 +34,6 @@ rewards-exporter:
 
 eth1indexer:
 	go build --ldflags=${LDFLAGS} -o bin/eth1indexer cmd/eth1indexer/main.go
+
+addhooks:
+	git config core.hooksPath hooks

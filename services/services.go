@@ -78,6 +78,9 @@ func Init() {
 	ready.Add(1)
 	go ethStoreStatisticsDataUpdater(ready)
 
+	ready.Add(1)
+	go startMonitoringService(ready)
+
 	ready.Wait()
 }
 
@@ -572,7 +575,7 @@ func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
 	totalRewards := [][]float64{}
 	aprs := [][]float64{}
 	for _, stat := range ethStoreDays {
-		ts := float64(utils.EpochToTime(stat.Day*225).Unix()) * 1000
+		ts := float64(utils.EpochToTime(stat.Day*utils.EpochsPerDay()).Unix()) * 1000
 
 		effectiveBalances = append(effectiveBalances, []float64{
 			ts,
@@ -595,10 +598,10 @@ func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
 		TotalRewards:              totalRewards,
 		APRs:                      aprs,
 		ProjectedAPR:              ethStoreDays[daysLastIndex].APR.Mul(decimal.NewFromInt(100)).InexactFloat64(),
-		StartEpoch:                ethStoreDays[daysLastIndex].Day * 225,
+		StartEpoch:                ethStoreDays[daysLastIndex].Day * utils.EpochsPerDay(),
 		YesterdayRewards:          ethStoreDays[daysLastIndex].TotalRewardsWei.Div(decimal.NewFromInt(1e18)).InexactFloat64(),
 		YesterdayEffectiveBalance: ethStoreDays[daysLastIndex].EffectiveBalancesSum.Div(decimal.NewFromInt(1e18)).InexactFloat64(),
-		YesterdayTs:               utils.EpochToTime(ethStoreDays[daysLastIndex].Day * 225).Unix(),
+		YesterdayTs:               utils.EpochToTime(ethStoreDays[daysLastIndex].Day * utils.EpochsPerDay()).Unix(),
 	}
 
 	return data, nil
@@ -1494,12 +1497,12 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	logger.Infof("burn rate per min: %v inflation per min: %v emission: %v", data.BurnRate1h, rewards.InexactFloat64(), data.Emission)
 	// logger.Infof("calculated emission: %v", data.Emission)
 
-	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", latestEpoch-225)
+	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", latestEpoch-utils.EpochsPerDay())
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (24h) from blocks table: %v", err)
 	}
 
-	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(exec_gas_used::numeric * 100 / exec_gas_limit) from blocks where epoch >= $1 and exec_gas_used > 0 and exec_gas_limit > 0", latestEpoch-225)
+	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(exec_gas_used::numeric * 100 / exec_gas_limit) from blocks where epoch >= $1 and exec_gas_used > 0 and exec_gas_limit > 0", latestEpoch-utils.EpochsPerDay())
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block utilization from blocks table: %v", err)
 	}

@@ -62,6 +62,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var index uint64
 	var err error
 
+	epoch := services.LatestEpoch()
+
 	validatorPageData := types.ValidatorPageData{}
 
 	stats := services.GetLatestStats()
@@ -138,7 +140,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				logger.Errorf("error getting validator-deposits from db: %v", err)
 			}
 			validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
-			validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
+			validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(deposits)
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
 				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
@@ -238,7 +240,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.pubkey,
 			validators.validatorindex,
 			validators.withdrawableepoch,
-			validators.effectivebalance,
 			validators.slashed,
 			validators.activationeligibilityepoch,
 			validators.activationepoch,
@@ -246,13 +247,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.lastattestationslot,
 			COALESCE(validator_names.name, '') AS name,
 			COALESCE(validator_pool.pool, '') AS pool,
-			COALESCE(validators.balance, 0) AS balance,
 			COALESCE(validator_performance.rank7d, 0) AS rank7d,
 			COALESCE(validator_performance_count.total_count, 0) AS rank_count,
 			validators.status,
 			COALESCE(validators.balanceactivation, 0) AS balanceactivation,
-			COALESCE(validators.balance7d, 0) AS balance7d,
-			COALESCE(validators.balance31d, 0) AS balance31d,
 			COALESCE((SELECT ARRAY_AGG(tag) FROM validator_tags WHERE publickey = validators.pubkey),'{}') AS tags
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
@@ -270,6 +268,63 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error getting validator for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
+	}
+
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, epoch, 1)
+	if err != nil {
+		logger.Errorf("error getting validator balance data for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	for balanceIndex, balance := range balances {
+		if len(balance) == 0 {
+			continue
+		}
+		if validatorPageData.ValidatorIndex == balanceIndex {
+			validatorPageData.CurrentBalance = balance[0].Balance
+			validatorPageData.EffectiveBalance = balance[0].EffectiveBalance
+		}
+	}
+
+	epoch7d := int64(epoch) - int64(utils.EpochsPerDay())*7
+	if epoch7d < 0 {
+		epoch7d = 0
+	}
+	balances7d, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, uint64(epoch7d), 1)
+	if err != nil {
+		logger.Errorf("error getting validator balance data for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	for balanceIndex, balance := range balances7d {
+		if len(balance) == 0 {
+			continue
+		}
+		if validatorPageData.ValidatorIndex == balanceIndex {
+			validatorPageData.Balance7d = balance[0].Balance
+		}
+	}
+
+	epoch31d := int64(epoch) - int64(utils.EpochsPerDay())*31
+	if epoch31d < 0 {
+		epoch31d = 0
+	}
+	balances31d, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, uint64(epoch31d), 1)
+	if err != nil {
+		logger.Errorf("error getting validator balance data for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	for balanceIndex, balance := range balances31d {
+		if len(balance) == 0 {
+			continue
+		}
+		if validatorPageData.ValidatorIndex == balanceIndex {
+			validatorPageData.Balance31d = balance[0].Balance
+		}
 	}
 
 	if validatorPageData.Pool != "" {
@@ -419,7 +474,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 		// add attestationStats that are not yet in validator_stats
 		finalizedEpoch := services.LatestFinalizedEpoch()
-		lookback := int64(finalizedEpoch - (lastStatsDay+1)*225)
+		lookback := int64(finalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
 		if lookback > 0 {
 			logger.Infof("retrieving attestations not yet in stats, lookback is %v", lookback)
 			attestationsNotInStats, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, finalizedEpoch, lookback)
@@ -573,7 +628,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		finalizedEpoch := services.LatestFinalizedEpoch()
-		lookback := int64(finalizedEpoch - (lastStatsDay+1)*225)
+		lookback := int64(finalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
 		if lookback > 0 {
 			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, finalizedEpoch, lookback)
 			if err != nil {
@@ -659,16 +714,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 // Returns true if there are more than one different withdrawal credentials within both Eth1Deposits and Eth2Deposits
 func hasMultipleWithdrawalCredentials(deposits *types.ValidatorDeposits) bool {
+	if deposits == nil {
+		return false
+	}
+
 	credential := make([]byte, 0)
 
 	// check Eth1Deposits
 	for _, deposit := range deposits.Eth1Deposits {
 		if len(credential) == 0 {
 			credential = deposit.WithdrawalCredentials
-		} else {
-			if !bytes.Equal(credential, deposit.WithdrawalCredentials) {
-				return true
-			}
+		} else if !bytes.Equal(credential, deposit.WithdrawalCredentials) {
+			return true
 		}
 	}
 
@@ -676,10 +733,8 @@ func hasMultipleWithdrawalCredentials(deposits *types.ValidatorDeposits) bool {
 	for _, deposit := range deposits.Eth2Deposits {
 		if len(credential) == 0 {
 			credential = deposit.Withdrawalcredentials
-		} else {
-			if !bytes.Equal(credential, deposit.Withdrawalcredentials) {
-				return true
-			}
+		} else if !bytes.Equal(credential, deposit.Withdrawalcredentials) {
+			return true
 		}
 	}
 

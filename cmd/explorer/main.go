@@ -509,6 +509,8 @@ func main() {
 
 			router.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribeByHash).Methods("GET")
 
+			router.HandleFunc("/monitoring/{module}", handlers.Monitoring).Methods("GET", "OPTIONS")
+
 			// router.HandleFunc("/user/validators", handlers.UserValidators).Methods("GET")
 
 			signUpRouter := router.PathPrefix("/").Subrouter()

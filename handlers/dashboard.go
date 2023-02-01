@@ -364,8 +364,6 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.validatorindex,
 			validators.pubkey,
 			validators.withdrawableepoch,
-			validators.balance,
-			validators.effectivebalance,
 			validators.slashed,
 			validators.activationeligibilityepoch,
 			validators.lastattestationslot,
@@ -386,6 +384,25 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
+	}
+
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(filterArr, services.LatestEpoch(), 1)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
+	for _, validator := range validators {
+		for balanceIndex, balance := range balances {
+			if len(balance) == 0 {
+				continue
+			}
+			if validator.ValidatorIndex == balanceIndex {
+				validator.CurrentBalance = balance[0].Balance
+				validator.EffectiveBalance = balance[0].EffectiveBalance
+			}
+		}
 	}
 
 	tableData := make([][]interface{}, len(validators))

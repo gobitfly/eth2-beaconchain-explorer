@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/price"
+	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -173,7 +174,6 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	orderByMap := map[string]string{
 		"0": "pubkey",
 		"1": "validatorindex",
-		"2": "balance",
 		"3": "state",
 		"4": "activationepoch",
 		"5": "exitepoch",
@@ -254,15 +254,12 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 
 	var validators []*types.ValidatorsPageDataValidators
 	qry := ""
-	isAll := bool(false)
 	// if dataQuery.Search == "" && dataQuery.StateFilter == "" {
 	qry = fmt.Sprintf(`
 			SELECT
 				validators.validatorindex,
 				validators.pubkey,
 				validators.withdrawableepoch,
-				validators.balance,
-				validators.effectivebalance,
 				validators.slashed,
 				validators.activationepoch,
 				validators.exitepoch,
@@ -280,92 +277,31 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
-	isAll = true
-	// } else {
-	// 	// for performance-reasons we combine multiple search results with `union`
-	// 	args := []interface{}{}
-	// 	searchQry := ""
-	// 	countWhere := ""
 
-	// 	if dataQuery.Search != "" {
-	// 		args = append(args, "%"+strings.ToLower(dataQuery.Search)+"%")
-	// 		countWhere += fmt.Sprintf(`LOWER(validator_names.name) LIKE $%d`, len(args))
-	// 		searchQry += `SELECT publickey AS pubkey FROM validator_names WHERE ` + countWhere
-	// 	} else {
-	// 		if searchQry != "" {
-	// 			searchQry += " UNION "
-	// 		}
-	// 		searchQry += "SELECT pubkey FROM validators"
-	// 	}
-	// 	if dataQuery.SearchIndex != nil && *dataQuery.SearchIndex != 0 {
-	// 		if searchQry != "" {
-	// 			searchQry += " UNION "
-	// 		}
-	// 		args = append(args, *dataQuery.SearchIndex)
-	// 		searchQry += fmt.Sprintf(`SELECT pubkey FROM validators WHERE validatorindex = $%d`, len(args))
-	// 	}
-	// 	if dataQuery.SearchPubkeyExact != nil {
-	// 		if searchQry != "" {
-	// 			searchQry += " UNION "
-	// 		}
-	// 		args = append(args, *dataQuery.SearchPubkeyExact)
-	// 		searchQry += fmt.Sprintf(`SELECT pubkey FROM validators WHERE pubkeyhex = $%d`, len(args))
-	// 	} else if dataQuery.SearchPubkeyLike != nil {
-	// 		if searchQry != "" {
-	// 			searchQry += " UNION "
-	// 		}
-	// 		args = append(args, *dataQuery.SearchPubkeyLike+"%")
-	// 		searchQry += fmt.Sprintf(`SELECT pubkey FROM validators WHERE pubkeyhex LIKE $%d`, len(args))
-	// 	}
+	indices := make([]uint64, len(validators))
+	for i, validator := range validators {
+		indices[i] = validator.ValidatorIndex
+	}
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), 1)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
 
-	// 	args = append(args, dataQuery.Length)
-	// 	args = append(args, dataQuery.Start)
+	for _, validator := range validators {
+		for balanceIndex, balance := range balances {
+			if len(balance) == 0 {
+				continue
+			}
+			if validator.ValidatorIndex == balanceIndex {
+				validator.CurrentBalance = balance[0].Balance
+				validator.EffectiveBalance = balance[0].EffectiveBalance
+			}
+		}
+	}
 
-	// 	if searchQry == "" {
-	// 		logger.Errorf("error sql statement incomplete (without with statement)")
-	// 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-	// 		return
-	// 	}
-
-	// 	addAnd := ""
-	// 	if countWhere != "" {
-	// 		addAnd = "AND"
-	// 	}
-	// 	qry = fmt.Sprintf(`
-	// 		WITH matched_validators AS (%s)
-	// 		SELECT
-	// 				validators.validatorindex,
-	// 				validators.pubkey,
-	// 				validators.withdrawableepoch,
-	// 				validators.balance,
-	// 				validators.effectivebalance,
-	// 				validators.slashed,
-	// 				validators.activationepoch,
-	// 				validators.exitepoch,
-	// 				validators.lastattestationslot,
-	// 				COALESCE(validator_names.name, '') AS name,
-	// 				validators.status AS state,
-	// 				COALESCE(cnt.total_count, 0) as total_count
-	// 		FROM validators
-	// 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-	// 		LEFT JOIN (SELECT MAX(validatorindex) + 1
-	// 					FROM validators
-	// 					LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-	// 					%s %s
-	// 					%s) cnt(total_count) ON true
-
-	// 					WHERE validators.pubkey IN (SELECT pubkey FROM matched_validators)
-	// 					%s
-	// 		ORDER BY %s %s
-	// 		LIMIT $%d OFFSET $%d`, searchQry, dataQuery.StateFilter, addAnd, countWhere, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir, len(args)-1, len(args))
-
-	// 	err = db.ReaderDb.Select(&validators, qry, args...)
-	// 	if err != nil {
-	// 		logger.Errorf("error retrieving validators data (with search): %v", err)
-	// 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-	// 		return
-	// 	}
-	// }
+	isAll := true
 
 	tableData := make([][]interface{}, len(validators))
 	for i, v := range validators {
