@@ -51,11 +51,11 @@ func checkSubscriptions() {
 				if strings.Contains(err.Error(), "expired") {
 					err = db.SetSubscriptionToExpired(nil, receipt.ID)
 					if err != nil {
-						logger.Errorf("subscription set expired failed for [%v]: %w", receipt.ID, err)
+						logger.Errorf("subscription set expired failed for [%v]: %v", receipt.ID, err)
 					}
 					continue
 				}
-				logger.Warnf("subscription verification failed in service for [%v]: %w", receipt.ID, err)
+				logger.Warnf("subscription verification failed in service for [%v]: %v", receipt.ID, err)
 				continue
 			}
 

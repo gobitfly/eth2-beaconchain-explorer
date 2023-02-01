@@ -1985,7 +1985,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	err := json.Unmarshal(gorillacontext.Get(r, utils.JsonBodyNakedKey).([]byte), &parsedBase)
 
 	if err != nil {
-		logger.Errorf("error parsing body | err: %v %v", err)
+		logger.Errorf("error parsing body | err: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not parse body")
 		return
 	}

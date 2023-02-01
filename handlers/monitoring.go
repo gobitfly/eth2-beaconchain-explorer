@@ -53,7 +53,7 @@ func Monitoring(w http.ResponseWriter, r *http.Request) {
 		_, err = fmt.Fprint(w, status)
 
 		if err != nil {
-			logger.Debugf("error writing status: %w", err)
+			logger.Debugf("error writing status: %v", err)
 		}
 	} else {
 		http.Error(w, status, http.StatusInternalServerError)

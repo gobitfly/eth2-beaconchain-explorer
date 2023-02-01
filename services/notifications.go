@@ -1120,7 +1120,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					if resp != nil {
 						b, err := io.ReadAll(resp.Body)
 						if err != nil {
-							logger.Error("error reading body for discord webhook response: %v", err)
+							logger.Errorf("error reading body for discord webhook response: %v", err)
 						} else {
 							errResp.Body = string(b)
 						}

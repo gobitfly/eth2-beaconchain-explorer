@@ -718,7 +718,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 			if event == string(types.NetworkLivenessIncreasedEventName) {
 				networkData, err = getUserNetworkEvents(user.UserID)
 				if err != nil {
-					logger.Errorf("error retrieving network data for users: %v ", user.UserID, err)
+					logger.Errorf("error retrieving network data for user %v: %v ", user.UserID, err)
 					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 					return
 				}
@@ -766,7 +766,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 	machines, err := db.BigtableClient.GetMachineMetricsMachineNames(user.UserID)
 	if err != nil {
-		logger.Errorf("error retrieving user machines: %v ", user.UserID, err)
+		logger.Errorf("error retrieving user machines for user %v: %v ", user.UserID, err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -790,7 +790,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 			user_id = $1
 	`, user.UserID)
 	if err != nil {
-		logger.Errorf("error retrieving notification channels: %v ", user.UserID, err)
+		logger.Errorf("error retrieving notification channels for user %v: %v ", user.UserID, err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -1723,7 +1723,7 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Errorf("Max number bundle subscribe is 100", err)
+		logger.Error("Max number bundle subscribe is 100")
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
@@ -1775,7 +1775,7 @@ func MultipleUsersNotificationsSubscribeWeb(w http.ResponseWriter, r *http.Reque
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Errorf("Max number bundle subscribe is 100", err)
+		logger.Error("Max number bundle subscribe is 100")
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
@@ -1949,7 +1949,7 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Errorf("Max number bundle unsubscribe is 100", err)
+		logger.Error("Max number bundle unsubscribe is 100")
 		sendErrorResponse(w, r.URL.String(), "Max number bundle unsubscribe is 100")
 		return
 	}

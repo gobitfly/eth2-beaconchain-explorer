@@ -242,7 +242,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			} else {
-				logger.Error("error could not parse datatable state from session, state: %+v", state)
+				logger.Errorf("error could not parse datatable state from session, state: %+v", state)
 			}
 			delete(session.Values, k)
 		}

@@ -129,7 +129,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	pngStr, pngStrInverse, err := utils.GenerateQRCodeForAddress(addressBytes)
 	if err != nil {
-		logger.WithError(err).Error("error generating qr code for address %v", address)
+		logger.WithError(err).Errorf("error generating qr code for address %v", address)
 	}
 
 	ef := new(big.Float).SetInt(new(big.Int).SetBytes(metadata.EthBalance.Balance))

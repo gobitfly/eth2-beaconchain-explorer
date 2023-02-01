@@ -82,7 +82,7 @@ func main() {
 		if err != nil {
 			logrus.Fatalf("error saving sync committee assignments: %v", err)
 		}
-		logrus.Infof("exported sync committee assignments for epoch %v to bigtable in %v", i)
+		logrus.Infof("exported sync committee assignments to bigtable in %v", i)
 
 		data, err := rpcClient.GetEpochData(uint64(i), true)
 		if err != nil {

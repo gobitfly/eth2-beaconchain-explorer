@@ -661,7 +661,7 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 
 	cachedEpochKey, found := epochsCache.Get(fmt.Sprintf("%v", data.Epoch))
 	if found && epochCacheKey == cachedEpochKey.(string) {
-		logger.Infof("skipping export of epoch %v as it did not change compared to the previous export run")
+		logger.Infof("skipping export of epoch %v as it did not change compared to the previous export run", data.Epoch)
 		return nil
 	}
 
@@ -697,24 +697,24 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 
 			validatorsTx, err := WriterDb.Beginx()
 			if err != nil {
-				logger.Errorf("error starting validators tx: %w", err)
+				logger.Errorf("error starting validators tx: %v", err)
 				return
 			}
 			defer validatorsTx.Rollback()
 
 			err = saveValidators(data, validatorsTx, client)
 			if err != nil {
-				logger.Errorf("error saving validators to db: %w", err)
+				logger.Errorf("error saving validators to db: %v", err)
 			}
 			err = updateQueueDeposits()
 			if err != nil {
-				logger.Errorf("error updating queue deposits cache: %w", err)
+				logger.Errorf("error updating queue deposits cache: %v", err)
 			}
 
-			if data.Epoch%1 == 0 { // update the validator performance every hour
+			if data.Epoch%9 == 0 { // update the validator performance every hour
 				err = updateValidatorPerformance(validatorsTx)
 				if err != nil {
-					logger.Errorf("error updating validator performance: %w", err)
+					logger.Errorf("error updating validator performance: %v", err)
 				}
 			}
 
