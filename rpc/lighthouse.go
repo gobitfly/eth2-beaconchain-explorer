@@ -356,19 +356,22 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool) (*types.EpochData, error) {
 	wg := &sync.WaitGroup{}
 	mux := &sync.Mutex{}
-	var err error
 
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
 	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validators", lc.endpoint, epoch*utils.Config.Chain.Config.SlotsPerEpoch))
-	if err != nil {
+	if err != nil && epoch == 0 {
+		validatorsResp, err = lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%v/validators", lc.endpoint, "genesis"))
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving validators for genesis: %v", err)
+		}
+	} else if err != nil {
 		return nil, fmt.Errorf("error retrieving validators for epoch %v: %v", epoch, err)
 	}
 
 	var parsedValidators StandardValidatorsResponse
 	err = json.Unmarshal(validatorsResp, &parsedValidators)
-
 	if err != nil {
 		return nil, fmt.Errorf("error parsing epoch validators: %v", err)
 	}
@@ -476,7 +479,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 	data.Blocks = make(map[uint64]map[string]*types.Block)
 
 	for slot := epoch * utils.Config.Chain.Config.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch-1; slot++ {
-		if slot == 0 || utils.SlotToTime(slot).After(time.Now()) { // Currently slot 0 returns all blocks, also skip asking for future blocks
+		if slot != 0 && utils.SlotToTime(slot).After(time.Now()) { // don't export slots that have not occured yet
 			continue
 		}
 		wg.Add(1)
@@ -567,7 +570,12 @@ func (lc *LighthouseClient) GetBalancesForEpoch(epoch int64) (map[uint64]uint64,
 	validatorBalances := make(map[uint64]uint64)
 
 	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validator_balances", lc.endpoint, epoch*int64(utils.Config.Chain.Config.SlotsPerEpoch)))
-	if err != nil {
+	if err != nil && epoch == 0 {
+		resp, err = lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/genesis/validator_balances", lc.endpoint))
+		if err != nil {
+			return validatorBalances, err
+		}
+	} else if err != nil {
 		return validatorBalances, err
 	}
 
@@ -618,22 +626,46 @@ func (lc *LighthouseClient) GetBlockByBlockroot(blockroot []byte) (*types.Block,
 
 // GetBlocksBySlot will get the blocks by slot from Lighthouse RPC api
 func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
+	var parsedHeaders *StandardBeaconHeaderResponse
+
 	resHeaders, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/%d", lc.endpoint, slot))
-	if err != nil {
+	if err != nil && slot == 0 {
+		headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers", lc.endpoint))
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving chain head: %v", err)
+		}
+
+		var parsedHeader StandardBeaconHeadersResponse
+		err = json.Unmarshal(headResp, &parsedHeader)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing chain head: %v", err)
+		}
+
+		if len(parsedHeader.Data) == 0 {
+			return nil, fmt.Errorf("error no headers available")
+		}
+
+		parsedHeaders = &StandardBeaconHeaderResponse{
+			Data: parsedHeader.Data[len(parsedHeader.Data)-1],
+		}
+
+	} else if err != nil {
 		if err == notFoundErr {
 			// no block found
 			return []*types.Block{}, nil
 		}
 		return nil, fmt.Errorf("error retrieving headers at slot %v: %v", slot, err)
 	}
-	var parsedHeaders StandardBeaconHeaderResponse
-	err = json.Unmarshal(resHeaders, &parsedHeaders)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing header-response at slot %v: %v", slot, err)
+
+	if parsedHeaders == nil {
+		err = json.Unmarshal(resHeaders, &parsedHeaders)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing header-response at slot %v: %v", slot, err)
+		}
 	}
 
 	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blocks/%s", lc.endpoint, parsedHeaders.Data.Root))
-	if err != nil {
+	if err != nil && slot == 0 {
 		return nil, fmt.Errorf("error retrieving block data at slot %v: %v", slot, err)
 	}
 
@@ -644,7 +676,7 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		return nil, fmt.Errorf("error parsing block-response at slot %v: %v", slot, err)
 	}
 
-	block, err := lc.blockFromResponse(&parsedHeaders, &parsedResponse)
+	block, err := lc.blockFromResponse(parsedHeaders, &parsedResponse)
 	if err != nil {
 		return nil, err
 	}

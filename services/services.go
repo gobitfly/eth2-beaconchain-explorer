@@ -526,7 +526,7 @@ func slotVizUpdater(wg *sync.WaitGroup) {
 
 	for {
 		latestEpoch := LatestEpoch()
-		if latestEpoch > 0 {
+		if latestEpoch >= 0 {
 			epochData, err := db.GetSlotVizData(latestEpoch)
 			if err != nil {
 				logger.Errorf("error retrieving slot viz data from database: %v latest epoch: %v", err, latestEpoch)

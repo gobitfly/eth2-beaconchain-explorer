@@ -53,13 +53,13 @@ func Start(client rpc.Client) error {
 	for {
 		head, err := client.GetChainHeadFromHeaders()
 		if err == nil {
-			logger.Infof("Beacon node is available with head slot: ", head.HeadSlot)
+			logger.Infof("Beacon node is available with head slot: %v", head.HeadSlot)
 
 			// if we are still waiting for genesis export epoch 0
 			if head.HeadSlot == 0 {
 				err := ExportEpoch(0, client)
 				if err != nil {
-					logger.Errorf("error exporting epoch 0 for genesis", err)
+					logger.Errorf("error exporting genesis information for epoch 0 err: %v", err)
 				}
 			}
 
