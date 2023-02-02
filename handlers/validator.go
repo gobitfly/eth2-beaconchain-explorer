@@ -389,7 +389,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
 			template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 			template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
-			template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, "-")),
+			template.HTML(fmt.Sprintf(`<a href="/address/0x%x"><span class="text-muted">%s</span></a>`, utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials), utils.FormatHash(validatorPageData.WithdrawCredentials))),
 			template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(validatorPageData.CurrentBalance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
 		})
 
