@@ -1851,23 +1851,24 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	q := r.URL.Query()
 	slotQuery := uint64(0)
-	if q.Get("epoch") == "" {
+	if q.Get("slot") == "" {
 		slotQuery = services.LatestSlot()
 	} else {
 		var err error
 		slotQuery, err = strconv.ParseUint(q.Get("slot"), 10, 64)
 		if err != nil {
-			logger.Errorf("invalid slot provided: %v", err)
+			logger.WithError(err).Errorf("invalid slot provided: %v", err)
 			sendErrorResponse(w, r.URL.String(), "invalid slot provided")
 			return
 		}
 	}
-	if slotQuery < 1000 {
-		slotQuery = 1000
+	if slotQuery < 10000 {
+		slotQuery = 10000
 	}
-
-	rows, err := db.ReaderDb.Query("SELECT x, y, color, slot, validator FROM graffitiwall where slot <= $1 and slot => $1 ORDER BY slot", slotQuery, slotQuery-1000)
+	logger.Infof("slot query: %v", slotQuery)
+	rows, err := db.ReaderDb.Query("SELECT x, y, color, slot, validator FROM graffitiwall WHERE slot <= $1 AND slot >= $2 ORDER BY slot desc", slotQuery, slotQuery-10000)
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
