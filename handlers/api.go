@@ -299,7 +299,7 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '1') as proposedblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '2') as missedblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '3') as orphanedblocks,
-		(SELECT $2) as ts
+		(SELECT to_timestamp($2)) as ts
 		FROM epochs WHERE epoch = $1`, epoch, utils.EpochToTime(uint64(epoch)).Unix())
 	if err != nil {
 		logger.WithError(err).Error("error retrieving epoch data")
@@ -1839,7 +1839,7 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiGraffitiwall godoc
-// @Summary Get the most recent pixels that have been painted during the last 1000 slots. Optionally set the slot query parameter to look back further.
+// @Summary Get the most recent pixels that have been painted during the last 10000 slots. Optionally set the slot query parameter to look back further.
 // @Tags Misc
 // @Produce  json
 // @Param slot query string false "Slot to query"
@@ -1851,23 +1851,23 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	q := r.URL.Query()
 	slotQuery := uint64(0)
-	if q.Get("epoch") == "" {
+	if q.Get("slot") == "" {
 		slotQuery = services.LatestSlot()
 	} else {
 		var err error
 		slotQuery, err = strconv.ParseUint(q.Get("slot"), 10, 64)
 		if err != nil {
-			logger.Errorf("invalid slot provided: %v", err)
+			logger.WithError(err).Errorf("invalid slot provided: %v", err)
 			sendErrorResponse(w, r.URL.String(), "invalid slot provided")
 			return
 		}
 	}
-	if slotQuery < 1000 {
-		slotQuery = 1000
+	if slotQuery < 10000 {
+		slotQuery = 10000
 	}
-
-	rows, err := db.ReaderDb.Query("SELECT x, y, color, slot, validator FROM graffitiwall where slot <= $1 and slot => $1 ORDER BY slot", slotQuery, slotQuery-1000)
+	rows, err := db.ReaderDb.Query("SELECT x, y, color, slot, validator FROM graffitiwall WHERE slot <= $1 AND slot >= $2 ORDER BY slot desc", slotQuery, slotQuery-10000)
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
