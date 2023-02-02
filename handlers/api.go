@@ -1024,7 +1024,6 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 
 	err = db.ReaderDb.Select(&data, "SELECT validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch, '0x' || encode(withdrawalcredentials, 'hex') as withdrawalcredentials, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, COALESCE(validator_names.name, '') AS name FROM validators LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(queryIndices))
 	if err != nil {
-		logger.Error(err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
