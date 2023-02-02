@@ -509,9 +509,11 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 }
 
 func formatWithdrawalHash(hash []byte) template.HTML {
-	colorClass := "text-warning"
+	var colorClass string
 	if hash[0] == 0x01 {
 		colorClass = "text-success"
+	} else {
+		colorClass = "text-warning"
 	}
 
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace %s\">%#x</span><span class=\"text-monospace\">%x…%x</span>", colorClass, hash[:1], hash[1:2], hash[len(hash)-2:]))
