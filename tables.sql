@@ -458,6 +458,7 @@ create table users
     register_ts             timestamp without time zone,
     api_key                 character varying(256) unique,
     stripe_customer_id      character varying(256) unique,
+    user_group              varchar(10),
     primary key (id, email)
 );
 
@@ -983,3 +984,10 @@ create table chart_series_status
     primary key (day)
 );
 
+
+drop table if exists global_notifications;
+create table global_notifications
+(
+    target varchar(20) not null primary key, 
+    content text not null
+);
