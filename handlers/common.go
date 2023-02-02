@@ -81,7 +81,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, err
 	}
 	for balanceIndex, balance := range latestBalances {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance = balance[0].Balance
@@ -93,7 +93,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, err
 	}
 	for balanceIndex, balance := range balances1d {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance1d = sql.NullInt64{
@@ -108,7 +108,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, err
 	}
 	for balanceIndex, balance := range balances7d {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance7d = sql.NullInt64{
@@ -123,7 +123,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, err
 	}
 	for balanceIndex, balance := range balances31d {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance31d = sql.NullInt64{

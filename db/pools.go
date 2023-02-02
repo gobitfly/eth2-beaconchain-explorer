@@ -198,7 +198,7 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		return
 	}
 	for balanceIndex, balance := range latestBalances {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance = balance[0].Balance
@@ -210,7 +210,7 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		return
 	}
 	for balanceIndex, balance := range balances1d {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance1d = sql.NullInt64{
@@ -225,7 +225,7 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		return
 	}
 	for balanceIndex, balance := range balances7d {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance7d = sql.NullInt64{
@@ -240,7 +240,7 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		return
 	}
 	for balanceIndex, balance := range balances31d {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance31d = sql.NullInt64{
