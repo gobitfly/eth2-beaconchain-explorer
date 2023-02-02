@@ -1865,7 +1865,6 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 	if slotQuery < 10000 {
 		slotQuery = 10000
 	}
-	logger.Infof("slot query: %v", slotQuery)
 	rows, err := db.ReaderDb.Query("SELECT x, y, color, slot, validator FROM graffitiwall WHERE slot <= $1 AND slot >= $2 ORDER BY slot desc", slotQuery, slotQuery-10000)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
