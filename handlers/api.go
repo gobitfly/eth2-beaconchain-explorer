@@ -199,7 +199,7 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 // @Description For each 24-hour period the datapoint is denoted by the number of days that have passed since genesis for that period (= beaconchain-day)
 // @Description See https://github.com/gobitfly/eth.store for further information.
 // @Produce json
-// @Param day path string true "The beaconchain-day (periods of 225 epochs) to get the the ETH.STORE for. Must be a number or the string 'latest'."
+// @Param day path string true "The beaconchain-day (periods of <(24 * 60 * 60) // SlotsPerEpoch // SecondsPerSlot> epochs) to get the the ETH.STORE for. Must be a number or the string 'latest'."
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/ethstore/{day} [get]
@@ -219,8 +219,12 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 			consensus_rewards_sum_wei,
 			total_rewards_wei,
 			apr,
-			(select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7) as avgAPR7d,
-			(select avg(apr) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31) as avgAPR31d
+			(select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgAPR7d,
+			(select avg(consensus_rewards_sum_wei) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgconsensus_rewards7d_wei,
+			(select avg(tx_fees_sum_wei) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgtx_fees7d_wei,
+			(select avg(apr) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgAPR31d,
+			(select avg(consensus_rewards_sum_wei) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgconsensus_rewards31d_wei,
+			(select avg(tx_fees_sum_wei) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgtx_fees31d_wei
 		FROM eth_store_stats e
 		WHERE validator = -1 `
 
@@ -775,6 +779,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	var parsedBody types.DashboardRequest
 	err = json.Unmarshal(body, &parsedBody)
 	if err != nil {
+		logger.Error(err)
 		getValidators = false
 	}
 
@@ -967,13 +972,48 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 }
 
 func validators(queryIndices []uint64) ([]interface{}, error) {
-	rows, err := db.ReaderDb.Query("SELECT validators.validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, validators.balance, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, validator_names.name, performance1d, performance7d, performance31d, performance365d, rank7d FROM validators LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validators.validatorindex = ANY($1) ORDER BY validators.validatorindex", pq.Array(queryIndices))
+	rows, err := db.ReaderDb.Query("SELECT validators.validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, validator_names.name, performance1d, performance7d, performance31d, performance365d, rank7d FROM validators LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validators.validatorindex = ANY($1) ORDER BY validators.validatorindex", pq.Array(queryIndices))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	return utils.SqlRowsToJSON(rows)
+	data, err := utils.SqlRowsToJSON(rows)
+
+	if err != nil {
+		return nil, err
+	}
+
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), 1)
+	if err != nil {
+		return nil, err
+	}
+
+	for balanceIndex, balance := range balances {
+		if len(balance) == 0 {
+			continue
+		}
+		for _, entry := range data {
+			eMap, ok := entry.(map[string]interface{})
+			if !ok {
+				logger.Errorf("error converting validator data to map[string]interface{}")
+				continue
+			}
+
+			validatorIndex, ok := eMap["validatorindex"].(int64)
+
+			if !ok {
+				logger.Errorf("error converting validatorindex to int64")
+				continue
+			}
+			if int64(balanceIndex) == validatorIndex {
+				eMap["balance"] = balance[0].Balance
+				eMap["effectivebalance"] = balance[0].EffectiveBalance
+			}
+		}
+	}
+
+	return data, nil
 }
 
 func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorEffectiveness, error) {
@@ -1033,14 +1073,61 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, balance, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, validator_names.name FROM validators LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(queryIndices))
+	data := make([]*ApiValidatorResponse, 0)
+
+	err = db.ReaderDb.Select(&data, "SELECT validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch, '0x' || encode(withdrawalcredentials, 'hex') as withdrawalcredentials, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, validator_names.name FROM validators LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(queryIndices))
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
-	defer rows.Close()
 
-	returnQueryResultsAsArray(rows, w, r)
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), 1)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not retrieve validator balance data")
+		return
+	}
+
+	for _, validator := range data {
+		for balanceIndex, balance := range balances {
+			if len(balance) == 0 {
+				continue
+			}
+			if validator.Validatorindex == int64(balanceIndex) {
+				validator.Balance = int64(balance[0].Balance)
+				validator.Effectivebalance = int64(balance[0].EffectiveBalance)
+			}
+		}
+	}
+	j := json.NewEncoder(w)
+	response := &types.ApiResponse{}
+	response.Status = "OK"
+
+	if len(data) == 1 {
+		response.Data = data[0]
+	} else {
+		response.Data = data
+	}
+	err = j.Encode(response)
+
+	if err != nil {
+		logger.Errorf("error serializing json data for API %v route: %v", r.URL, err)
+	}
+}
+
+type ApiValidatorResponse struct {
+	Activationeligibilityepoch int64  `json:"activationeligibilityepoch"`
+	Activationepoch            int64  `json:"activationepoch"`
+	Balance                    int64  `json:"balance"`
+	Effectivebalance           int64  `json:"effectivebalance"`
+	Exitepoch                  int64  `json:"exitepoch"`
+	Lastattestationslot        int64  `json:"lastattestationslot"`
+	Name                       string `json:"name"`
+	Pubkey                     string `json:"pubkey"`
+	Slashed                    bool   `json:"slashed"`
+	Status                     string `json:"status"`
+	Validatorindex             int64  `json:"validatorindex"`
+	Withdrawableepoch          int64  `json:"withdrawableepoch"`
+	Withdrawalcredentials      string `json:"withdrawalcredentials"`
 }
 
 // ApiValidatorDailyStats godoc
@@ -2081,7 +2168,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	err := json.Unmarshal(gorillacontext.Get(r, utils.JsonBodyNakedKey).([]byte), &parsedBase)
 
 	if err != nil {
-		logger.Errorf("error parsing body | err: %v %v", err)
+		logger.Errorf("error parsing body | err: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not parse body")
 		return
 	}
@@ -2214,10 +2301,10 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		epoch = 0
 	}
 	prime := getUserPremium(r)
-	if !prime.WidgetSupport {
-		sendErrorResponse(w, r.URL.String(), "feature only available for premium users")
-		return
-	}
+	// if !prime.WidgetSupport {
+	// 	sendErrorResponse(w, r.URL.String(), "feature only available for premium users")
+	// 	return
+	// }
 
 	queryIndices, err := parseApiValidatorParamToIndices(indexOrPubkey, prime.MaxValidators)
 	if err != nil {
@@ -2234,7 +2321,6 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		validatorRows, err = db.ReaderDb.Query(
 			`SELECT 
 					validators.pubkey, 
-					effectivebalance, 
 					slashed, 
 					activationeligibilityepoch, 
 					activationepoch, 
@@ -2273,6 +2359,35 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not parse db results")
 		return
+	}
+
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, uint64(epoch), 1)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "error retrieving validator balance data")
+		return
+	}
+
+	for balanceIndex, balance := range balances {
+		if len(balance) == 0 {
+			continue
+		}
+		for _, entry := range generalData {
+			eMap, ok := entry.(map[string]interface{})
+			if !ok {
+				logger.Errorf("error converting validator data to map[string]interface{}")
+				continue
+			}
+
+			validatorIndex, ok := eMap["validatorindex"].(int64)
+
+			if !ok {
+				logger.Errorf("error converting validatorindex to int64")
+				continue
+			}
+			if int64(balanceIndex) == validatorIndex {
+				eMap["effectivebalance"] = balance[0].EffectiveBalance
+			}
+		}
 	}
 
 	efficiencyData, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
@@ -2477,6 +2592,16 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
 }
 
+// ClientStatsPost godoc
+// @Summary Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
+// @Tags User
+// @Produce json
+// @Param apikey query string true "User API key, can be found on https://beaconcha.in/user/settings"
+// @Param machine query string false "Name your device if you have multiple devices you want to monitor"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Router /api/v1/client/metrics [POST]
 func ClientStatsPostNew(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	apiKey := q.Get("apikey")
@@ -2489,17 +2614,6 @@ func ClientStatsPostNew(w http.ResponseWriter, r *http.Request) {
 	clientStatsPost(w, r, apiKey, machine)
 }
 
-// ClientStatsPost godoc
-// @Summary Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
-// @Tags User
-// @Produce json
-// @Param apiKey query string true "User API key, can be found on https://beaconcha.in/user/settings"
-// @Param machine query string false "Name your device if you have multiple devices you want to monitor"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Failure 500 {object} types.ApiResponse
-// @Security ApiKeyAuth
-// @Router /api/v1/client/metrics [POST]
 func ClientStatsPostOld(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 

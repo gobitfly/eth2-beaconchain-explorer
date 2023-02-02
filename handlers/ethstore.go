@@ -15,11 +15,7 @@ func EthStore(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "services", "/ethstore", "ETH.STORE Statistics")
 	data.Data = services.LatestEthStoreStatistics()
 
-	err := ethStoreTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if handleTemplateError(w, r, "ethstore.go", "EthStore", "", ethStoreTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }

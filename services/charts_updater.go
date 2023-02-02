@@ -8,11 +8,12 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"hash/fnv"
+	"math"
 	"sort"
 	"sync"
 	"time"
 
-	mathutil "github.com/prysmaticlabs/prysm/v3/math"
+	"github.com/aybabtme/uniplot/histogram"
 )
 
 type chartHandler struct {
@@ -460,7 +461,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 	if epoch > 0 {
 		epoch--
 	}
-	err := db.ReaderDb.Select(&rows, "SELECT epoch / 225 as day, AVG(globalparticipationrate) as globalparticipationrate FROM epochs WHERE epoch < $1 GROUP BY day ORDER BY day limit 10;", epoch)
+	err := db.ReaderDb.Select(&rows, "SELECT epoch / $2 as day, AVG(globalparticipationrate) as globalparticipationrate FROM epochs WHERE epoch < $1 GROUP BY day ORDER BY day limit 10;", epoch, utils.EpochsPerDay())
 	if err != nil {
 		return nil, err
 	}
@@ -469,7 +470,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 
 	for _, row := range rows {
 		seriesData = append(seriesData, []float64{
-			float64(utils.EpochToTime((row.Day+1)*225).Unix() * 1000),
+			float64(utils.EpochToTime((row.Day+1)*utils.EpochsPerDay()).Unix() * 1000),
 			utils.RoundDecimals(row.Globalparticipationrate*100, 2),
 		})
 	}
@@ -580,413 +581,6 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 
 	return chartData, nil
 }
-func inclusionDistanceChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
-
-	latestEpoch := LatestEpoch()
-	epochOffset := uint64(0)
-	maxEpochs := 1 * 24 * 3600 / (utils.Config.Chain.Config.SlotsPerEpoch * utils.Config.Chain.Config.SecondsPerSlot)
-	if latestEpoch > maxEpochs {
-		epochOffset = latestEpoch - maxEpochs
-	}
-
-	rows := []struct {
-		Epoch             uint64
-		Inclusiondistance float64
-	}{}
-
-	err := db.ReaderDb.Select(&rows, `
-		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
-		from attestation_assignments_p a
-		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
-		where a.week >= $1 / 1575 a.epoch > $1 and a.inclusionslot > 0
-		group by a.epoch
-		order by a.epoch asc`, epochOffset)
-	if err != nil {
-		return nil, err
-	}
-
-	seriesData := [][]float64{}
-
-	for _, row := range rows {
-		seriesData = append(seriesData, []float64{
-			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
-			utils.RoundDecimals(row.Inclusiondistance, 2),
-		})
-	}
-
-	chartData := &types.GenericChartData{
-		Title:        "Average Inclusion Distance (last 24h)",
-		Subtitle:     "Inclusion Distance measures how long it took to include attestations in slots.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Average Inclusion Distance [slots]",
-		StackingMode: "false",
-		Type:         "line",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "Average Inclusion Distance",
-				Data: seriesData,
-			},
-		},
-	}
-
-	return chartData, nil
-}
-
-func votingDistributionChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
-
-	latestEpoch := LatestEpoch()
-	epochOffset := uint64(0)
-	maxEpochs := 7 * 3600 * 24 / (utils.Config.Chain.Config.SlotsPerEpoch * utils.Config.Chain.Config.SecondsPerSlot)
-	if latestEpoch > maxEpochs {
-		epochOffset = latestEpoch - maxEpochs
-	}
-
-	rows := []struct {
-		Epoch             uint64
-		Inclusiondistance float64
-	}{}
-
-	err := db.ReaderDb.Select(&rows, `
-		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
-		from attestation_assignments_p a
-		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
-		where a.inclusionslot > 0 and a.epoch > $1and a.week >= $1 / 1575
-		group by a.epoch
-		order by a.epoch asc`, epochOffset)
-	if err != nil {
-		return nil, err
-	}
-
-	seriesData := [][]float64{}
-
-	for _, row := range rows {
-		seriesData = append(seriesData, []float64{
-			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
-			utils.RoundDecimals(row.Inclusiondistance, 2),
-		})
-	}
-
-	chartData := &types.GenericChartData{
-		Title:        "Average Inclusion Distance (last 7 days)",
-		Subtitle:     "Inclusion Distance measures how long it took to include attestations in slots.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Average Inclusion Distance [slots]",
-		StackingMode: "false",
-		Type:         "line",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "Average Inclusion Distance",
-				Data: seriesData,
-			},
-		},
-	}
-
-	return chartData, nil
-}
-
-func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
-
-	rows := []struct {
-		Epoch           uint64
-		Validatorscount uint64
-		Rewards         int64
-	}{}
-
-	err := db.ReaderDb.Select(&rows, `
-		with
-			firstdeposits as (
-				select distinct
-				v.activationepoch as epoch,
-					sum(v.balanceactivation) over (order by v.activationepoch asc) as amount
-				from validators v
-				order by v.activationepoch
-			),
-			extradeposits as (
-				select distinct
-					(d.block_slot/32)-1 AS epoch,
-					sum(d.amount) over (
-						order by d.block_slot/32 asc
-					) as amount
-				from validators
-					inner join blocks_deposits d
-						on d.publickey = validators.pubkey
-						and d.block_slot/32 > validators.activationepoch
-				order by epoch
-			)
-		select 
-			e.epoch,
-			e.validatorscount,
-			e.totalvalidatorbalance-coalesce(fd.amount,0)-coalesce(ed.amount,0) as rewards
-		from epochs e
-			left join firstdeposits fd on fd.epoch = (
-				select epoch from firstdeposits where epoch <= e.epoch order by epoch desc limit 1
-			)
-			left join extradeposits ed on fd.epoch = (
-				select epoch from extradeposits where epoch <= e.epoch order by epoch desc limit 1
-			)
-		order by epoch`)
-	if err != nil {
-		return nil, err
-	}
-
-	seriesData := [][]float64{}
-
-	var rewards int64
-	var day float64
-	validatorsCount := uint64(0)
-	prevDayRewards := int64(0)
-	prevDay := float64(utils.EpochToTime(0).Truncate(time.Hour*24).Unix() * 1000)
-	for _, row := range rows {
-		validatorsCount = row.Validatorscount
-		rewards = row.Rewards
-		day = float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-		if day != prevDay {
-			// data for previous day
-			seriesData = append(seriesData, []float64{
-				prevDay,
-				utils.RoundDecimals(float64(rewards-prevDayRewards)/float64(validatorsCount)/1e9, 4),
-			})
-			prevDayRewards = row.Rewards
-			prevDay = day
-		}
-	}
-	// data for current day
-	seriesData = append(seriesData, []float64{
-		day,
-		utils.RoundDecimals(float64(rewards-prevDayRewards)/float64(validatorsCount)/1e9, 4),
-	})
-
-	chartData := &types.GenericChartData{
-		Title:        "Validator Income",
-		Subtitle:     "Average Daily Validator Income.",
-		XAxisTitle:   "",
-		YAxisTitle:   "Average Daily Validator Income [ETH/day]",
-		StackingMode: "false",
-		Type:         "column",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "Average Daily Validator Income",
-				Data: seriesData,
-			},
-		},
-	}
-
-	return chartData, nil
-}
-
-func stakingRewardsChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
-
-	rows := []struct {
-		Epoch   uint64
-		Rewards int64
-	}{}
-
-	err := db.ReaderDb.Select(&rows, `
-		with
-			firstdeposits as (
-				select distinct
-				v.activationepoch as epoch,
-					sum(v.balanceactivation) over (order by v.activationepoch asc) as amount
-				from validators v
-				order by v.activationepoch
-			),
-			extradeposits as (
-				select distinct
-					(d.block_slot/32)-1 AS epoch,
-					sum(d.amount) over (
-						order by d.block_slot/32 asc
-					) as amount
-				from validators
-					inner join blocks_deposits d
-						on d.publickey = validators.pubkey
-						and d.block_slot/32 > validators.activationepoch
-				order by epoch
-			)
-		select 
-			e.epoch,
-			e.totalvalidatorbalance-coalesce(fd.amount,0)-coalesce(ed.amount,0) as rewards
-		from epochs e
-			left join firstdeposits fd on fd.epoch = (
-				select epoch from firstdeposits where epoch <= e.epoch order by epoch desc limit 1
-			)
-			left join extradeposits ed on ed.epoch = (
-				select epoch from extradeposits where epoch <= e.epoch order by epoch desc limit 1
-			)
-		order by epoch`)
-	if err != nil {
-		return nil, err
-	}
-
-	seriesData := [][]float64{}
-
-	var rewards float64
-	var day float64
-	prevDay := float64(utils.EpochToTime(0).Truncate(time.Hour*24).Unix() * 1000)
-	for _, row := range rows {
-		rewards = utils.RoundDecimals(float64(row.Rewards)/1e9, 4)
-		day = float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-		if day != prevDay {
-			// data for previous day
-			seriesData = append(seriesData, []float64{
-				prevDay,
-				rewards,
-			})
-			prevDay = day
-		}
-	}
-	// data for current day
-	seriesData = append(seriesData, []float64{
-		day,
-		rewards,
-	})
-
-	chartData := &types.GenericChartData{
-		Title:        "Staking Rewards",
-		Subtitle:     "Total Accumulated Staking Rewards",
-		XAxisTitle:   "",
-		YAxisTitle:   "Staking Rewards [ETH]",
-		StackingMode: "false",
-		Type:         "line",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "Staking Rewards",
-				Data: seriesData,
-			},
-		},
-	}
-
-	return chartData, nil
-}
-
-func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
-
-	rows := []struct {
-		Epoch                   uint64
-		Eligibleether           uint64
-		Votedether              uint64
-		Validatorscount         uint64
-		Finalitydelay           uint64
-		Globalparticipationrate float64
-		Totalvalidatorbalance   uint64
-	}{}
-
-	// note: eligibleether might not be correct, need to check what exactly the node returns
-	// for the reward-calculation we need the sum of all effective balances
-	err := db.ReaderDb.Select(&rows, `
-		with
-			extradeposits as (
-				select
-					(d.block_slot/32) as epoch,
-					sum(d.amount) as amount
-					from validators
-				inner join blocks_deposits d 
-					on d.publickey = validators.pubkey
-					and (d.block_slot/32) > validators.activationepoch
-				group by epoch
-			)
-		select 
-			epochs.epoch, eligibleether, votedether, validatorscount, globalparticipationrate,
-			coalesce(totalvalidatorbalance - coalesce(ed.amount,0),0) as totalvalidatorbalance
-		from epochs
-			left join extradeposits ed on epochs.epoch = ed.epoch
-			left join network_liveness nl on epochs.epoch = nl.headepoch
-		order by epoch;`)
-	if err != nil {
-		return nil, err
-	}
-
-	seriesData := [][]float64{}
-	avgDailyValidatorIncomeSeries := [][]float64{}
-
-	// see: https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/beacon-chain.md#rewards-and-penalties-1
-	maxEffectiveBalance := uint64(32e9)
-	baseRewardFactor := uint64(64)
-	baseRewardPerEpoch := uint64(4)
-	proposerRewardQuotient := uint64(8)
-	slotsPerDay := 3600 * 24 / utils.Config.Chain.Config.SecondsPerSlot
-	epochsPerDay := slotsPerDay / utils.Config.Chain.Config.SlotsPerEpoch
-	minAttestationInclusionDelay := uint64(1) // epochs
-	minEpochsToInactivityPenalty := uint64(4) // epochs
-	// inactivityPenaltyQuotient := uint6(33554432) // 2**25
-
-	var prevTotalvalidatorbalance uint64
-	var prevDay float64
-	for _, row := range rows {
-		if row.Eligibleether == 0 {
-			continue
-		}
-		baseReward := maxEffectiveBalance * baseRewardFactor / mathutil.IntegerSquareRoot(row.Eligibleether) / baseRewardPerEpoch
-		// Micro-incentives for matching FFG source, FFG target, and head
-		rewardPerEpoch := int64(3 * baseReward * row.Votedether / row.Eligibleether)
-		// Proposer and inclusion delay micro-rewards
-		proposerReward := baseReward / proposerRewardQuotient
-		attesters := float64(row.Validatorscount/32) * row.Globalparticipationrate
-		rewardPerEpoch += int64(attesters * float64(proposerReward*(utils.Config.Chain.Config.SlotsPerEpoch/row.Validatorscount)))
-		rewardPerEpoch += int64((baseReward - proposerReward) / minAttestationInclusionDelay)
-
-		// inactivity-penalty
-		if row.Finalitydelay > minEpochsToInactivityPenalty {
-			rewardPerEpoch -= int64(baseReward * baseRewardPerEpoch)
-			// if the validator is slashed
-			// rewardPerEpoch -=  maxEffectiveBalance*finality_delay/inactivityPenaltyQuotient
-		}
-
-		ts := float64(utils.EpochToTime(row.Epoch).Unix() * 1000)
-		rewardPerDay := rewardPerEpoch * int64(epochsPerDay)
-		seriesData = append(seriesData, []float64{
-			ts,
-			float64(rewardPerDay) / 1e9,
-		})
-
-		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-		if prevDay != day && prevTotalvalidatorbalance != 0 {
-			avgDailyValidatorIncomeSeries = append(avgDailyValidatorIncomeSeries, []float64{
-				day,
-				float64(int64(prevTotalvalidatorbalance)-int64(row.Totalvalidatorbalance)) / float64(row.Validatorscount) / 1e9,
-			})
-		}
-		if prevDay != day {
-			prevDay = day
-			prevTotalvalidatorbalance = row.Totalvalidatorbalance
-		}
-	}
-
-	chartData := &types.GenericChartData{
-		Title:        "Average Daily Validator Income",
-		Subtitle:     "",
-		XAxisTitle:   "",
-		YAxisTitle:   "Average Daily Validator Income [ETH/day]",
-		StackingMode: "false",
-		Type:         "line",
-		Series: []*types.GenericChartDataSeries{
-			// {
-			// 	Name: "Estimated Daily Validator Income",
-			// 	Data: seriesData,
-			// },
-			{
-				Name: "Average Daily Validator Income",
-				Data: avgDailyValidatorIncomeSeries,
-			},
-		},
-	}
-
-	return chartData, nil
-}
 
 func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 	if LatestEpoch() == 0 {
@@ -1000,9 +594,9 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 
 	err := db.ReaderDb.Select(&rows, `
 		SELECT
-			epoch / 225 as day,
+			epoch / $1 as day,
 			COALESCE(AVG(eligibleether) / AVG(totalvalidatorbalance), 0) as effectiveness
-		FROM epochs where totalvalidatorbalance != 0 AND eligibleether != 0 GROUP BY day ORDER BY day`)
+		FROM epochs where totalvalidatorbalance != 0 AND eligibleether != 0 GROUP BY day ORDER BY day`, utils.EpochsPerDay())
 	if err != nil {
 		return nil, err
 	}
@@ -1012,7 +606,7 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 	for _, row := range rows {
 
 		seriesData = append(seriesData, []float64{
-			float64(utils.EpochToTime((row.Day+1)*225).Unix() * 1000),
+			float64(utils.EpochToTime((row.Day+1)*utils.EpochsPerDay()).Unix() * 1000),
 			utils.RoundDecimals(100*row.Effectiveness, 2),
 		})
 	}
@@ -1036,72 +630,39 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 }
 
 func balanceDistributionChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
+	epoch := LatestEpoch()
+	if epoch == 0 {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
 	}
 
-	tx, err := db.WriterDb.Beginx()
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	var currentEpoch uint64
-	err = tx.Get(&currentEpoch, "select max(epoch) from epochs")
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{}, epoch, 1)
 	if err != nil {
 		return nil, err
 	}
 
-	rows := []struct {
-		MaxBalance float64
-		Count      float64
-	}{}
+	currentBalances := make([]float64, 0, len(balances))
 
-	err = tx.Select(&rows, `
-		with
-			stats as (
-				select 
-					min(balance) as min,
-					max(balance) as max
-				from validators 
-			),
-			balances as (
-				select balance
-				from validators
-			),
-			histogram as (
-				select 
-					case
-						when min = max then 0
-						else width_bucket(balance, min, max, 999) 
-					end as bucket,
-					max(balance) as max,
-					count(*)
-				from  balances, stats
-				group by bucket
-				order by bucket
-			)
-		select max/1e9 as maxbalance, count
-		from histogram`)
-	if err != nil {
-		return nil, err
+	for _, balance := range balances {
+		if len(balance) == 0 {
+			continue
+		}
+		currentBalances = append(currentBalances, float64(balance[0].Balance)/1e6)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, err
-	}
-	seriesData := make([][]float64, len(rows))
+	bins := int(math.Sqrt(float64(len(currentBalances)))) + 1
+	hist := histogram.Hist(bins, currentBalances)
 
-	for i, row := range rows {
-		seriesData[i] = []float64{row.MaxBalance, row.Count}
+	seriesData := make([][]float64, len(hist.Buckets))
+
+	for i, row := range hist.Buckets {
+		seriesData[i] = []float64{row.Max, float64(row.Count)}
 	}
 
 	chartData := &types.GenericChartData{
 		IsNormalChart:        true,
 		ShowGapHider:         true,
 		Title:                "Balance Distribution",
-		Subtitle:             fmt.Sprintf("Histogram of Balances at epoch %d.", currentEpoch),
+		Subtitle:             fmt.Sprintf("Histogram of Balances at epoch %d.", epoch),
 		XAxisTitle:           "Balance",
 		YAxisTitle:           "# of Validators",
 		XAxisLabelsFormatter: `function(){ return this.value+'ETH' }`,
@@ -1119,275 +680,44 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 }
 
 func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
+	epoch := LatestEpoch()
+	if epoch == 0 {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
 	}
 
-	tx, err := db.WriterDb.Beginx()
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	var currentEpoch uint64
-	err = tx.Get(&currentEpoch, "select max(epoch) from epochs")
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{}, epoch, 1)
 	if err != nil {
 		return nil, err
 	}
 
-	rows := []struct {
-		MaxBalance float64
-		Count      float64
-	}{}
+	effectiveBalances := make([]float64, 0, len(balances))
 
-	err = tx.Select(&rows, `
-		with
-			stats as (
-				select 
-					min(effectivebalance) as min,
-					max(effectivebalance) as max
-				from validators
-			),
-			balances as (
-				select effectivebalance
-				from validators
-			),
-			histogram as (
-				select 
-					case
-						when min = max then 0
-						else width_bucket(effectivebalance, min, max, 999) 
-					end as bucket,
-					max(effectivebalance) as max,
-					count(*)
-				from  balances, stats
-				group by bucket
-				order by bucket
-			)
-		select max/1e9 as maxbalance, count
-		from histogram`)
-	if err != nil {
-		return nil, err
+	for _, balance := range balances {
+		if len(balance) == 0 {
+			continue
+		}
+		effectiveBalances = append(effectiveBalances, float64(balance[0].EffectiveBalance)/1e6)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, err
-	}
-	seriesData := make([][]float64, len(rows))
+	bins := int(math.Sqrt(float64(len(effectiveBalances)))) + 1
+	hist := histogram.Hist(bins, effectiveBalances)
 
-	for i, row := range rows {
-		seriesData[i] = []float64{row.MaxBalance, row.Count}
+	seriesData := make([][]float64, len(hist.Buckets))
+
+	for i, row := range hist.Buckets {
+		seriesData[i] = []float64{row.Max, float64(row.Count)}
 	}
 
 	chartData := &types.GenericChartData{
 		IsNormalChart:        true,
 		ShowGapHider:         true,
 		Title:                "Effective Balance Distribution",
-		Subtitle:             fmt.Sprintf("Histogram of Effective Balances at epoch %d.", currentEpoch),
+		Subtitle:             fmt.Sprintf("Histogram of Effective Balances at epoch %d.", epoch),
 		XAxisTitle:           "Effective Balance",
 		YAxisTitle:           "# of Validators",
 		XAxisLabelsFormatter: `function(){ return this.value+'ETH' }`,
 		StackingMode:         "false",
 		Type:                 "column",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "# of Validators",
-				Data: seriesData,
-			},
-		},
-	}
-
-	return chartData, nil
-}
-
-func performanceDistribution1dChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
-
-	var err error
-
-	rows := []struct {
-		MaxPerformance float64
-		Count          float64
-	}{}
-
-	err = db.ReaderDb.Select(&rows, `
-		with
-			stats as (
-				select 
-					min(performance1d) as min,
-					max(performance1d) as max
-				from validator_performance
-			),
-			histogram as (
-				select 
-					width_bucket(performance1d, min, max, 9999) as bucket,
-					max(performance1d) as max,
-					count(*) as cnt
-				from  validator_performance, stats
-				group by bucket
-				order by bucket
-			)
-		select max/1e9 as maxperformance, cnt as count
-		from histogram`)
-	if err != nil {
-		return nil, err
-	}
-
-	seriesData := make([][]float64, len(rows))
-
-	for i, row := range rows {
-		seriesData[i] = []float64{row.MaxPerformance, row.Count}
-	}
-
-	chartData := &types.GenericChartData{
-		IsNormalChart: true,
-		ShowGapHider:  true,
-		Title:         "Income Distribution (1 day)",
-		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last day at epoch %d.", LatestEpoch()),
-		XAxisTitle:    "Income",
-		XAxisLabelsFormatter: `function(){
-  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
-  return '<span style="color:var(--success)">'+this.value+'ETH<span>'
-}
-`,
-		YAxisTitle:   "# of Validators",
-		StackingMode: "false",
-		Type:         "column",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "# of Validators",
-				Data: seriesData,
-			},
-		},
-	}
-
-	return chartData, nil
-}
-
-func performanceDistribution7dChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
-
-	var err error
-
-	rows := []struct {
-		MaxPerformance float64
-		Count          float64
-	}{}
-
-	err = db.ReaderDb.Select(&rows, `
-		with
-			stats as (
-				select 
-					min(performance7d) as min,
-					max(performance7d) as max
-				from validator_performance
-			),
-			histogram as (
-				select 
-					width_bucket(performance7d, min, max, 9999) as bucket,
-					max(performance7d) as max,
-					count(*) as cnt
-				from  validator_performance, stats
-				group by bucket
-				order by bucket
-			)
-		select max/1e9 as maxperformance, cnt as count
-		from histogram`)
-	if err != nil {
-		return nil, err
-	}
-
-	seriesData := make([][]float64, len(rows))
-
-	for i, row := range rows {
-		seriesData[i] = []float64{row.MaxPerformance, row.Count}
-	}
-
-	chartData := &types.GenericChartData{
-		IsNormalChart: true,
-		ShowGapHider:  true,
-		Title:         "Income Distribution (7 days)",
-		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 7 days at epoch %d.", LatestEpoch()),
-		XAxisTitle:    "Income",
-		XAxisLabelsFormatter: `function(){
-  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
-  return '<span style="color:var(--success)">'+this.value+'ETH<span>'
-}
-`,
-		YAxisTitle:   "# of Validators",
-		StackingMode: "false",
-		Type:         "column",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "# of Validators",
-				Data: seriesData,
-			},
-		},
-	}
-
-	return chartData, nil
-}
-
-func performanceDistribution31dChartData() (*types.GenericChartData, error) {
-	if LatestEpoch() == 0 {
-		return nil, fmt.Errorf("chart-data not available pre-genesis")
-	}
-
-	var err error
-
-	rows := []struct {
-		MaxPerformance float64
-		Count          float64
-	}{}
-
-	err = db.ReaderDb.Select(&rows, `
-		with
-			stats as (
-				select 
-					min(performance31d) as min,
-					max(performance31d) as max
-				from validator_performance
-			),
-			histogram as (
-				select 
-					width_bucket(performance31d, min, max, 9999) as bucket,
-					max(performance31d) as max,
-					count(*) as cnt
-				from  validator_performance, stats
-				group by bucket
-				order by bucket
-			)
-		select max/1e9 as maxperformance, cnt as count
-		from histogram`)
-	if err != nil {
-		return nil, err
-	}
-
-	seriesData := make([][]float64, len(rows))
-
-	for i, row := range rows {
-		seriesData[i] = []float64{row.MaxPerformance, row.Count}
-	}
-
-	chartData := &types.GenericChartData{
-		IsNormalChart: true,
-		ShowGapHider:  true,
-		Title:         "Income Distribution (31 days)",
-		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 31 days at epoch %d.", LatestEpoch()),
-		XAxisTitle:    "Income",
-		XAxisLabelsFormatter: `function(){
-  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
-  return '<span style="color:var(--success)">'+this.value+'ETH<span>'
-}
-`,
-		YAxisTitle:   "# of Validators",
-		StackingMode: "false",
-		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "# of Validators",
@@ -1564,16 +894,6 @@ func depositsChartData() (*types.GenericChartData, error) {
 
 func poolsDistributionChartData() (*types.GenericChartData, error) {
 	var err error
-
-	type drillSeriesData struct {
-		Name string      `json:"name"`
-		ID   string      `json:"id"`
-		Data [][2]string `json:"data"`
-	}
-
-	type drilldown struct {
-		Series []drillSeriesData `json:"series"`
-	}
 
 	type seriesDataItem struct {
 		Name      string `json:"name"`

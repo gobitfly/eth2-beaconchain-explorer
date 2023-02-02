@@ -7,6 +7,7 @@ import (
 	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
+	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -35,7 +36,6 @@ func UserAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := getUser(r)
 		if !user.Authenticated {
-			logger.Errorf("User not authorized")
 			utils.SetFlash(w, r, authSessionName, "Error: Please login first")
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
@@ -141,7 +141,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	session.Values["subscription"] = premiumPkg
 	session.Save(r, w)
 
-	if handleTemplateError(w, r, userTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "user.go", "UserSettings", "", userTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -187,7 +187,6 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 
 	if !user.Authenticated {
-		logger.Errorf("User not authorized")
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -212,7 +211,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 
 	err = authorizeTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template [user.go / UserAuthorizeConfirm] for %v route: %v", r.URL.String(), err)
 		callback := appData.RedirectURI + "?error=temporarily_unaviable&error_description=err_template&state=" + state
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
@@ -287,7 +286,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	data.Data = userNotificationsData
 	data.User = user
 
-	if handleTemplateError(w, r, notificationTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "user.go", "UserNotifications", "", notificationTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -719,7 +718,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 			if event == string(types.NetworkLivenessIncreasedEventName) {
 				networkData, err = getUserNetworkEvents(user.UserID)
 				if err != nil {
-					logger.Errorf("error retrieving network data for users: %v ", user.UserID, err)
+					logger.Errorf("error retrieving network data for user %v: %v ", user.UserID, err)
 					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 					return
 				}
@@ -767,7 +766,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 	machines, err := db.BigtableClient.GetMachineMetricsMachineNames(user.UserID)
 	if err != nil {
-		logger.Errorf("error retrieving user machines: %v ", user.UserID, err)
+		logger.Errorf("error retrieving user machines for user %v: %v ", user.UserID, err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -791,7 +790,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 			user_id = $1
 	`, user.UserID)
 	if err != nil {
-		logger.Errorf("error retrieving notification channels: %v ", user.UserID, err)
+		logger.Errorf("error retrieving notification channels for user %v: %v ", user.UserID, err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -887,7 +886,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		data.DebugTemplates = notificationCenterParts
 	}
 
-	if handleTemplateError(w, r, notificationsCenterTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "user.go", "UserNotificationsCenter", "", notificationsCenterTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -934,7 +933,6 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		SELECT 
 			validators.validatorindex as index,
 			users_validators_tags.validator_publickey as publickey,
-			COALESCE (MAX(validators.balance), 0) as balance,
 			ARRAY_REMOVE(ARRAY_AGG(users_subscriptions.event_name order by users_subscriptions.event_name asc), NULL) as events
 		FROM users_validators_tags
 		LEFT JOIN users_subscriptions
@@ -949,6 +947,31 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error retrieving subscriptions for users: %v validators: %v", user.UserID, err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
+	}
+
+	indices := make([]uint64, 0, len(wl))
+	for _, vali := range wl {
+		if vali.Index != nil {
+			indices = append(indices, *vali.Index)
+		}
+	}
+
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), 1)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
+	for _, validator := range wl {
+		for balanceIndex, balance := range balances {
+			if len(balance) == 0 {
+				continue
+			}
+			if *validator.Index == balanceIndex {
+				validator.Balance = balance[0].Balance
+			}
+		}
 	}
 
 	tableData := make([][]interface{}, 0, len(wl))
@@ -1700,7 +1723,7 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Errorf("Max number bundle subscribe is 100", err)
+		logger.Error("Max number bundle subscribe is 100")
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
@@ -1752,7 +1775,7 @@ func MultipleUsersNotificationsSubscribeWeb(w http.ResponseWriter, r *http.Reque
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Errorf("Max number bundle subscribe is 100", err)
+		logger.Error("Max number bundle subscribe is 100")
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
@@ -1926,7 +1949,7 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Errorf("Max number bundle unsubscribe is 100", err)
+		logger.Error("Max number bundle unsubscribe is 100")
 		sendErrorResponse(w, r.URL.String(), "Max number bundle unsubscribe is 100")
 		return
 	}
@@ -2012,7 +2035,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 
 			err = db.DeleteAllSubscription(user.UserID, utils.GetNetwork(), eventName)
 			if err != nil {
-				logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+				logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 				return false
 			}
@@ -2548,7 +2571,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = pageData
 
-	if handleTemplateError(w, r, webhookTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "user.go", "NotificationWebhookPage", "", webhookTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -2569,6 +2592,12 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	// const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
 
 	urlForm := r.FormValue("url")
+
+	if !utils.IsValidUrl(urlForm) {
+		utils.SetFlash(w, r, authSessionName, "Error: The URL provided is invalid.")
+		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
+		return
+	}
 
 	destination := "webhook"
 
@@ -2665,21 +2694,7 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	urlValid := ""
-
-	urlParsed, err := url.Parse(urlForm)
-	if err != nil {
-		logger.WithError(err).Errorf("could not parse url: %v", urlForm)
-		utils.SetFlash(w, r, authSessionName, "Error: The URL provided is invalid.")
-		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
-		return
-	}
-
-	if urlParsed != nil {
-		urlValid = urlForm
-	}
-
-	_, err = tx.Exec(`INSERT INTO users_webhooks (user_id, url, event_names, destination) VALUES ($1, $2, $3, $4)`, user.UserID, urlValid, pq.StringArray(eventNames), destination)
+	_, err = tx.Exec(`INSERT INTO users_webhooks (user_id, url, event_names, destination) VALUES ($1, $2, $3, $4)`, user.UserID, urlForm, pq.StringArray(eventNames), destination)
 	if err != nil {
 		logger.WithError(err).Errorf("error inserting a new webhook for user")
 		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding your webhook, please try again in a bit.")

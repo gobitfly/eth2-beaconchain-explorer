@@ -77,6 +77,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		Debug:              utils.Config.Frontend.Debug,
 		GasNow:             services.LatestGasNowData(),
 		ShowSyncingMessage: services.IsSyncing(),
+		GlobalNotification: services.GlobalNotificationMessage(),
 	}
 
 	if utils.Config.Frontend.Debug {

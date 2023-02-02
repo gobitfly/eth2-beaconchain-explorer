@@ -23,15 +23,17 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 
 	distributionData, err := services.ChartHandlers["pools_distribution"].DataFunc()
 	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		if handleTemplateError(w, r, "pools.go", "Pools", "pools_distribution", err) != nil {
+			return // an error has occurred and was processed
+		}
 		return
 	}
 
 	performanceData, err := services.ChartHandlers["historic_pool_performance"].DataFunc()
 	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		if handleTemplateError(w, r, "pools.go", "Pools", "historic_pool_performance", err) != nil {
+			return // an error has occurred and was processed
+		}
 		return
 	}
 
@@ -47,7 +49,7 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = poolData
 
-	if handleTemplateError(w, r, poolsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "pools.go", "Pools", "Done", poolsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

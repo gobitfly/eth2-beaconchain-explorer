@@ -21,7 +21,7 @@ func Vis(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "stats", "/viz", "Visualizations")
 	data.HeaderAd = true
 
-	if handleTemplateError(w, r, visTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "vis.go", "Vis", "", visTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -123,7 +123,7 @@ func VisVotes(w http.ResponseWriter, r *http.Request) {
 	data.HeaderAd = true
 	data.Data = &types.VisVotesPageData{ChartData: chartData}
 
-	if handleTemplateError(w, r, visVotesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "vis.go", "VisVotes", "", visVotesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

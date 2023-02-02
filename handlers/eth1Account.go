@@ -28,7 +28,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	if !isValid {
 		data := InitPageData(w, r, "blockchain", "/address", "not found")
 
-		if handleTemplateError(w, r, templates.GetTemplate("layout.html", "sprites.html", "execution/addressNotFound.html").ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "not valid", templates.GetTemplate("layout.html", "sprites.html", "execution/addressNotFound.html").ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -121,14 +121,15 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	if err := g.Wait(); err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "g.Wait()", err) != nil {
+			return // an error has occurred and was processed
+		}
 		return
 	}
 
 	pngStr, pngStrInverse, err := utils.GenerateQRCodeForAddress(addressBytes)
 	if err != nil {
-		logger.WithError(err).Error("error generating qr code for address %v", address)
+		logger.WithError(err).Errorf("error generating qr code for address %v", address)
 	}
 
 	ef := new(big.Float).SetInt(new(big.Int).SetBytes(metadata.EthBalance.Balance))
@@ -208,7 +209,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		Tabs:              tabs,
 	}
 
-	if handleTemplateError(w, r, eth1AddressTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "Done", eth1AddressTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

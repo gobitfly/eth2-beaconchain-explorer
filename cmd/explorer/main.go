@@ -522,6 +522,8 @@ func main() {
 
 			router.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribeByHash).Methods("GET")
 
+			router.HandleFunc("/monitoring/{module}", handlers.Monitoring).Methods("GET", "OPTIONS")
+
 			// router.HandleFunc("/user/validators", handlers.UserValidators).Methods("GET")
 
 			signUpRouter := router.PathPrefix("/").Subrouter()
@@ -595,8 +597,15 @@ func main() {
 			authRouter.Use(csrfHandler)
 
 			if utils.Config.Frontend.Debug {
+				// serve files from local directory when debugging, instead of from go embed file
 				templatesHandler := http.FileServer(http.Dir("templates"))
 				router.PathPrefix("/templates").Handler(http.StripPrefix("/templates/", templatesHandler))
+
+				cssHandler := http.FileServer(http.Dir("static/css"))
+				router.PathPrefix("/css").Handler(http.StripPrefix("/css/", cssHandler))
+
+				jsHandler := http.FileServer(http.Dir("static/js"))
+				router.PathPrefix("/js").Handler(http.StripPrefix("/js/", jsHandler))
 			}
 			legalFs := http.Dir(utils.Config.Frontend.LegalDir)
 			//router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", http.FileServer(legalFs)))

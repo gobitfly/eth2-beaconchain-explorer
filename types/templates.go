@@ -40,13 +40,14 @@ type PageData struct {
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
 	// IsUserClientUpdated   func(uint64) bool
-	ChainConfig    ChainConfig
-	Lang           string
-	NoAds          bool
-	Debug          bool
-	DebugTemplates []string
-	DebugSession   map[string]interface{}
-	GasNow         *GasNowPageData
+	ChainConfig        ChainConfig
+	Lang               string
+	NoAds              bool
+	Debug              bool
+	DebugTemplates     []string
+	DebugSession       map[string]interface{}
+	GasNow             *GasNowPageData
+	GlobalNotification template.HTML
 }
 
 type PageRates struct {
@@ -366,6 +367,7 @@ type ValidatorPageData struct {
 	IsRocketpool                        bool
 	Rocketpool                          *RocketpoolValidatorPageData
 	NoAds                               bool
+	ShowWithdrawalWarning               bool
 }
 
 type RocketpoolValidatorPageData struct {
