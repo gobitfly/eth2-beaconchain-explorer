@@ -1112,6 +1112,14 @@ func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
 	return template.HTML(p.Sprintf("%s", FormatThousandsEnglish(strconv.FormatFloat(f, 'f', -1, 64))))
 }
 
+func FormatErc20Deicmals(balance []byte, metadata *types.ERC20Metadata) decimal.Decimal {
+	decimals := new(big.Int).SetBytes(metadata.Decimals)
+	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
+	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance), 0)
+
+	return num.Div(mul)
+}
+
 func FormatTokenName(balance *types.Eth1AddressBalance) template.HTML {
 	logo := ""
 	if len(balance.Metadata.Logo) != 0 {
