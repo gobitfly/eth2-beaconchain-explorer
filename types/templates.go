@@ -1832,3 +1832,7 @@ type BLSChange struct {
 	Address        []byte `db:"address" json:"address,omitempty"`
 	Signature      []byte `db:"signature" json:"signature,omitempty"`
 }
+
+type WithdrawalsPageData struct {
+	Stats *Stats
+}

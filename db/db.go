@@ -2401,6 +2401,72 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 	return withdrawals, nil
 }
 
+func GetTotalWithdrawals() (total uint64, err error) {
+	err = ReaderDb.Get(&total, `
+	SELECT withdrawalindex
+	FROM
+		blocks_withdrawals
+	order by withdrawalindex desc limit 1`)
+	return
+}
+
+func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string) ([]*types.Withdrawals, error) {
+	withdrawals := []*types.Withdrawals{}
+
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+	columns := []string{"block_slot", "withdrawalindex", "validatorindex", "address", "amount"}
+	hasColumn := false
+	for _, column := range columns {
+		if orderBy == column {
+			hasColumn = true
+		}
+	}
+	if !hasColumn {
+		orderBy = "block_slot"
+	}
+
+	if query != "" {
+		err := ReaderDb.Select(&withdrawals, fmt.Sprintf(`
+			SELECT 
+				w.block_slot as slot,
+				w.withdrawalindex as index,
+				w.validatorindex,
+				w.address,
+				w.amount
+			FROM blocks_withdrawals w
+			INNER JOIN blocks ON w.block_root = b.blockroot AND b.status = '1'
+			WHERE w.validatorindex LIKE $3 || '%%
+				OR withdrawalcredentials LIKE $3 || '%%'::bytea
+				OR CAST(block_slot as varchar) LIKE $3 || '%%'
+			ORDER BY %s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start, strings.ToLower(query))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := ReaderDb.Select(&withdrawals, fmt.Sprintf(`
+			SELECT 
+				w.block_slot as slot,
+				w.withdrawalindex as index,
+				w.validatorindex,
+				w.address,
+				w.amount
+			FROM blocks_withdrawals w
+			INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
+			ORDER BY %s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return withdrawals, nil
+}
+
 func GetEpochWithdrawalsTotal(epoch uint64) (total uint64, err error) {
 	err = ReaderDb.Get(&total, `
 	SELECT 

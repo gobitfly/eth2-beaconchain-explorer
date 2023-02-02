@@ -508,6 +508,15 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
 }
 
+// WithdrawalCredentialsToAddress converts
+func WithdrawalCredentialsToAddress(credentials []byte) []byte {
+	if len(credentials) > 12 && bytes.Equal(credentials[:1], []byte{0x01}) {
+		return credentials[12:]
+	}
+
+	return credentials
+}
+
 func FormatHashWithCopy(hash []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(hash))
 	if len(hash) == 0 {
