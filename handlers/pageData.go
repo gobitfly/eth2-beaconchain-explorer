@@ -175,5 +175,10 @@ func getUserSession(r *http.Request) (*types.User, *sessions.Session, error) {
 		u.Subscription = ""
 		return u, session, nil
 	}
+	u.UserGroup, ok = session.Values["user_group"].(string)
+	if !ok {
+		u.UserGroup = ""
+		return u, session, nil
+	}
 	return u, session, nil
 }

@@ -16,6 +16,7 @@ import (
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -192,9 +193,10 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		Confirmed bool   `db:"email_confirmed"`
 		ProductID string `db:"product_id"`
 		Active    bool   `db:"active"`
+		UserGroup string `db:"user_group"`
 	}{}
 
-	err = db.FrontendWriterDB.Get(&user, "SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
+	err = db.FrontendWriterDB.Get(&user, "SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active, COALESCE(user_group, '') AS user_group FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
 	if err != nil {
 		logger.Errorf("error retrieving password for user %v: %v", email, err)
 		session.AddFlash("Error: Invalid email or password!")
@@ -225,6 +227,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	session.Values["authenticated"] = true
 	session.Values["user_id"] = user.ID
 	session.Values["subscription"] = user.ProductID
+	session.Values["user_group"] = user.UserGroup
 
 	// save datatable state settings from anon session
 	dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
@@ -250,7 +253,15 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	// session.AddFlash("Successfully logged in")
 
 	session.Save(r, w)
-	logger.Println("login succeeded with session", session.Values["authenticated"], session.Values["user_id"], session.Values["subscription"])
+
+	logger.WithFields(
+		logrus.Fields{
+			"authenticated": session.Values["authenticated"],
+			"user_id":       session.Values["user_id"],
+			"subscription":  session.Values["subscription"],
+			"user_group":    session.Values["user_group"],
+		},
+	).Info("login succeeded with session")
 
 	redirectURI, RedirectExists := session.Values["oauth_redirect_uri"]
 

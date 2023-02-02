@@ -556,6 +556,8 @@ func main() {
 			authRouter.HandleFunc("/watchlist/update", handlers.UserModalManageNotificationModal).Methods("POST")
 			authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications/bundled/subscribe", handlers.MultipleUsersNotificationsSubscribeWeb).Methods("POST", "OPTIONS")
+			authRouter.HandleFunc("/global_notification", handlers.UserGlobalNotification).Methods("GET")
+			authRouter.HandleFunc("/global_notification", handlers.UserGlobalNotificationPost).Methods("POST")
 
 			authRouter.HandleFunc("/notifications-center", handlers.UserNotificationsCenter).Methods("GET")
 			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")

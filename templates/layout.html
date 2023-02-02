@@ -301,6 +301,9 @@
                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
                   <a class="dropdown-item" href="/user/notifications">Notifications</a>
                   <a class="dropdown-item" href="/user/settings">Settings</a>
+                  {{ if eq .User.UserGroup "ADMIN" }}
+                    <a class="dropdown-item" href="/user/global_notification">Global Notification</a>
+                  {{ end }}
                   <a data-no-instant class="dropdown-item" href="/logout">Logout</a>
                 </div>
               </div>
@@ -758,32 +761,6 @@
       </nav>
       <main>
         {{ .GlobalNotification }}
-        <!-- <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;">
-          <span class="d-none d-md-block">
-            <span>
-              <span>
-                <a style="color: #ff6600;" href="https://blog.ethereum.org/2022/08/24/mainnet-merge-announcement" target="_blank">The Merge</a>
-              </span>
-              on Sep. 14th,
-              <span>
-                <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=Nx-jYgI0QVI" target="_blank">on YouTube</a>
-              </span>
-              hosted by
-              <span>
-                <a style="color: #ff6600;" href="https://discord.io/ethstaker" target="_blank">Ethstaker</a>
-              </span>
-            </span>
-          </span>
-          <span class="d-md-none p-1" style="font-size: 90%;">
-            <span>
-              <span> <a style="color: #ff6600;" href="https://blog.ethereum.org/2022/08/24/mainnet-merge-announcement" target="_blank">The Merge</a> </span>, on Sep. 14th,
-              <span style="color: #ff6600;">
-                <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=Nx-jYgI0QVI" target="_blank">on YouTube</a>
-              </span>
-            </span>
-          </span>
-        </div> -->
-
         <!-- Discount banner
             <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;">
                 <span class="d-none d-md-block">
