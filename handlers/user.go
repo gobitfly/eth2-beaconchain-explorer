@@ -2903,3 +2903,83 @@ func UsersNotificationChannels(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 }
+
+// UserSettings renders the user-template
+func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
+	var userTemplate = templates.GetTemplate("layout.html", "user/global_notification.html")
+
+	w.Header().Set("Content-Type", "text/html")
+
+	user, _, err := getUserSession(r)
+	if err != nil {
+		logger.Errorf("error retrieving session: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if user.UserGroup != "ADMIN" {
+		http.Error(w, "Insufficient privilleges", http.StatusUnauthorized)
+		return
+	}
+
+	globalNotificationMessage := ""
+
+	err = db.FrontendWriterDB.Get(&globalNotificationMessage, "SELECT content FROM global_notifications WHERE target = 'web'")
+
+	if err != nil {
+		logger.Errorf("error retrieving globalNotificationMessage: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	pageData := &struct {
+		CsrfField                 template.HTML
+		GlobalNotificationMessage string
+	}{}
+	pageData.GlobalNotificationMessage = globalNotificationMessage
+	pageData.CsrfField = csrf.TemplateField(r)
+
+	data := InitPageData(w, r, "user", "/user/global_notification", "Global Notification")
+	data.HeaderAd = true
+	data.Data = pageData
+	data.User = user
+
+	if handleTemplateError(w, r, "user.go", "UserGlobalNotification", "", userTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
+	}
+}
+
+// LoginPost handles authenticating the user.
+func UserGlobalNotificationPost(w http.ResponseWriter, r *http.Request) {
+	user, _, err := getUserSession(r)
+	if err != nil {
+		logger.Errorf("error retrieving session: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if user.UserGroup != "ADMIN" {
+		http.Error(w, "Insufficient privilleges", http.StatusUnauthorized)
+		return
+	}
+
+	err = r.ParseForm()
+	if err != nil {
+		logger.Errorf("error parsing form: %v", err)
+		http.Redirect(w, r, "/user/global_notification", http.StatusSeeOther)
+		return
+	}
+
+	globalNotificationContent := r.FormValue("globalNotificationContent")
+
+	_, err = db.FrontendWriterDB.Exec("UPDATE global_notifications SET content = $1 WHERE target = 'web'", globalNotificationContent)
+
+	if err != nil {
+		logger.Errorf("error setting globalNotificationMessage: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Index(w, r)
+	http.Redirect(w, r, "/user/global_notification", http.StatusSeeOther)
+}
