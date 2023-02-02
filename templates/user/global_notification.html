@@ -10,7 +10,7 @@
         {{ .CsrfField }}
         <div class="mb-3">
           <label for="globalNotificationContent" class="form-label">Notification content (HTML)</label>
-          <textarea class="form-control" id="globalNotificationContent" name="globalNotificationContent" rows="20">{{.GlobalNotificationMessage}}</textarea>
+          <textarea class="form-control" id="globalNotificationContent" name="globalNotificationContent" rows="20">{{ .GlobalNotificationMessage }}</textarea>
           <div id="emailHelp" class="form-text">Any notification update will take around 10 minutes to become visible on the site. Please ensure that the HTML is valid. There are no sanity checks!</div>
         </div>
         <button type="submit" class="btn btn-primary float-right">Save</button>
