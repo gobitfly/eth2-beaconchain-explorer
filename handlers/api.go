@@ -1839,7 +1839,7 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiGraffitiwall godoc
-// @Summary Get the most recent pixels that have been painted during the last 1000 slots. Optionally set the slot query parameter to look back further.
+// @Summary Get the most recent pixels that have been painted during the last 10000 slots. Optionally set the slot query parameter to look back further.
 // @Tags Misc
 // @Produce  json
 // @Param slot query string false "Slot to query"
