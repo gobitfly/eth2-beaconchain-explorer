@@ -827,16 +827,18 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 		return fmt.Errorf("error committing db transaction: %w", err)
 	}
 
-	// delete duplicate scheduled slots
-	_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", data.Epoch-3, []byte{0x0})
-	if err != nil {
-		return fmt.Errorf("error cleaning up blocks table: %w", err)
-	}
+	if data.Epoch >= 3 {
+		// delete duplicate scheduled slots
+		_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", data.Epoch-3, []byte{0x0})
+		if err != nil {
+			return fmt.Errorf("error cleaning up blocks table: %w", err)
+		}
 
-	// delete duplicate missed blocks
-	_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", data.Epoch-3, []byte{0x1})
-	if err != nil {
-		return fmt.Errorf("error cleaning up blocks table: %w", err)
+		// delete duplicate missed blocks
+		_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", data.Epoch-3, []byte{0x1})
+		if err != nil {
+			return fmt.Errorf("error cleaning up blocks table: %w", err)
+		}
 	}
 
 	epochsCache.Set(fmt.Sprintf("%v", data.Epoch), epochCacheKey, cache.DefaultExpiration)

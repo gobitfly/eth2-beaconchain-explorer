@@ -938,6 +938,11 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 				}
 			}
 		}
+
+		if i == 0 {
+			// infinite loop protection for day 0 where startEpoch = endEpoch
+			break
+		}
 	}
 
 	return res, nil
@@ -1016,9 +1021,11 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 
-	// logger.Info(startEpoch, endEpoch)
 	rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch)) // Reverse as keys are sorted in descending order
-	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-1))
+	rangeEnd := ""
+	if startEpoch > 0 {
+		rangeEnd = fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-1)) // -1 needed as rangeEnd is not inclusive
+	}
 
 	res := make(map[uint64]*types.ValidatorBalanceStatistic)
 	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, rangeEnd), func(r gcp_bigtable.Row) bool {
