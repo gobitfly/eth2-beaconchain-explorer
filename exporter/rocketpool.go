@@ -25,7 +25,6 @@ import (
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/klauspost/compress/zstd"
-	"github.com/rocket-pool/rocketpool-go/dao"
 	rpDAO "github.com/rocket-pool/rocketpool-go/dao"
 	rpDAOTrustedNode "github.com/rocket-pool/rocketpool-go/dao/trustednode"
 	"github.com/rocket-pool/rocketpool-go/minipool"
@@ -366,7 +365,7 @@ func GetRewardSnapshotEvent(rp *rocketpool.RocketPool, interval uint64, interval
 		}
 
 		if !found {
-			err = fmt.Errorf("Rewards event for interval %d could not be found.", interval)
+			err = fmt.Errorf("rewards event for interval %d could not be found", interval)
 			return event, err
 		}
 	}
@@ -634,7 +633,7 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 
 		bytes, err := DownloadRewardsFile(fmt.Sprintf("rp-rewards-%v-%v.json", utils.Config.Chain.Name, missingInterval.Index), missingInterval.Index.Uint64(), missingInterval.MerkleTreeCID, true)
 		if err != nil {
-			return fmt.Errorf("can not download reward file %v. Error %v", missingInterval.Index, err)
+			return fmt.Errorf("can not download reward file %v, error: %w", missingInterval.Index, err)
 		}
 
 		proofWrapper, err := getRewardsData(bytes)
@@ -809,13 +808,13 @@ func (rp *RocketpoolExporter) getRocketpoolRewardTrees() (map[uint64]RewardsFile
 	var jsonData []Data
 	err := rp.DB.Select(&jsonData, `SELECT id, data FROM rocketpool_reward_tree`)
 	if err != nil {
-		return allRewards, fmt.Errorf("Can not load claimedInterval tree from database, is it exported? %v", err)
+		return allRewards, fmt.Errorf("can not load claimedInterval tree from database, is it exported? %v", err)
 	}
 
 	for _, data := range jsonData {
 		allRewards[data.ID], err = getRewardsData(data.Data)
 		if err != nil {
-			return allRewards, fmt.Errorf("Can parsing reward tree data to struct for interval %v. Error %v", data.ID, err)
+			return allRewards, fmt.Errorf("can parsing reward tree data to struct for interval %v. Error %w", data.ID, err)
 		}
 	}
 	return allRewards, nil
@@ -1187,7 +1186,7 @@ func (rp *RocketpoolExporter) SaveRewardTrees() error {
 	for _, rewardTree := range rp.RocketpoolRewardTreesDownloadQueue {
 		_, err = tx.Exec(`INSERT INTO rocketpool_reward_tree (id, data) VALUES($1, $2) ON CONFLICT DO NOTHING`, rewardTree.ID, rewardTree.Data)
 		if err != nil {
-			return fmt.Errorf("can not store reward file %v. Error %v", rewardTree.ID, err)
+			return fmt.Errorf("can not store reward file %v. Error %w", rewardTree.ID, err)
 		}
 	}
 
@@ -1295,9 +1294,7 @@ func (rp *RocketpoolExporter) SaveDAOProposalsMemberVotes() error {
 
 	data := []RocketpoolDAOProposalMemberVotes{}
 	for _, val := range rp.DAOProposalsByID {
-		for _, vote := range val.MemberVotes {
-			data = append(data, vote)
-		}
+		data = append(data, val.MemberVotes...)
 	}
 
 	tx, err := db.WriterDb.Beginx()
@@ -1532,8 +1529,8 @@ func NewRocketpoolMinipool(rp *rocketpool.RocketPool, addr []byte) (*RocketpoolM
 	return rpm, nil
 }
 
-func (this *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
-	mp, err := minipool.NewMinipool(rp, common.BytesToAddress(this.Address))
+func (r *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
+	mp, err := minipool.NewMinipool(rp, common.BytesToAddress(r.Address))
 	if err != nil {
 		return err
 	}
@@ -1555,7 +1552,7 @@ func (this *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
 	})
 	wg.Go(func() error {
 		var err error
-		penaltyCount, err = minipool.GetMinipoolPenaltyCount(rp, common.BytesToAddress(this.Address), nil)
+		penaltyCount, err = minipool.GetMinipoolPenaltyCount(rp, common.BytesToAddress(r.Address), nil)
 		return err
 	})
 
@@ -1563,9 +1560,9 @@ func (this *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
 		return err
 	}
 
-	this.Status = status.String()
-	this.StatusTime = statusTime
-	this.PenaltyCount = penaltyCount
+	r.Status = status.String()
+	r.StatusTime = statusTime
+	r.PenaltyCount = penaltyCount
 
 	return nil
 }
@@ -1605,24 +1602,24 @@ type RocketpoolRewards struct {
 	OdaoRpl          *big.Int
 }
 
-func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[uint64]RewardsFile, includeCumulativeRpl bool, legacyClaims map[string]*big.Int) error {
-	stake, err := node.GetNodeRPLStake(rp, common.BytesToAddress(this.Address), nil)
+func (r *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[uint64]RewardsFile, includeCumulativeRpl bool, legacyClaims map[string]*big.Int) error {
+	stake, err := node.GetNodeRPLStake(rp, common.BytesToAddress(r.Address), nil)
 	if err != nil {
 		return err
 	}
-	minStake, err := node.GetNodeMinimumRPLStake(rp, common.BytesToAddress(this.Address), nil)
+	minStake, err := node.GetNodeMinimumRPLStake(rp, common.BytesToAddress(r.Address), nil)
 	if err != nil {
 		return err
 	}
-	maxStake, err := node.GetNodeMaximumRPLStake(rp, common.BytesToAddress(this.Address), nil)
+	maxStake, err := node.GetNodeMaximumRPLStake(rp, common.BytesToAddress(r.Address), nil)
 	if err != nil {
 		return err
 	}
 
 	if len(rewardTrees) > 0 {
-		nodeAddress := common.BytesToAddress(this.Address)
+		nodeAddress := common.BytesToAddress(r.Address)
 
-		this.SmoothingPoolOptedIn, err = node.GetSmoothingPoolRegistrationState(rp, nodeAddress, nil)
+		r.SmoothingPoolOptedIn, err = node.GetSmoothingPoolRegistrationState(rp, nodeAddress, nil)
 		if err != nil {
 			return err
 		}
@@ -1660,7 +1657,7 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[ui
 
 			// Get the unclaimed rewards
 			for _, unclaimedInterval := range unclaimed {
-				rewardData, exists := rewardTrees[unclaimedInterval]
+				rewardData := rewardTrees[unclaimedInterval]
 
 				rewards, exists := rewardData.NodeRewards[nodeAddress]
 
@@ -1671,32 +1668,32 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[ui
 				}
 			}
 
-			this.RPLCumulativeRewards = claimedSum.RplColl
+			r.RPLCumulativeRewards = claimedSum.RplColl
 			if legacyAmount, exists := legacyClaims[nodeAddress.Hex()]; exists {
-				this.RPLCumulativeRewards = this.RPLCumulativeRewards.Add(this.RPLCumulativeRewards, legacyAmount)
+				r.RPLCumulativeRewards = r.RPLCumulativeRewards.Add(r.RPLCumulativeRewards, legacyAmount)
 			}
-			this.ClaimedSmoothingPool = claimedSum.SmoothingPoolEth
-			this.UnclaimedSmoothingPool = unclaimedSum.SmoothingPoolEth
-			this.UnclaimedRPLRewards = unclaimedSum.RplColl
+			r.ClaimedSmoothingPool = claimedSum.SmoothingPoolEth
+			r.UnclaimedSmoothingPool = unclaimedSum.SmoothingPoolEth
+			r.UnclaimedRPLRewards = unclaimedSum.RplColl
 		}
 	}
 
-	if this.RPLCumulativeRewards == nil {
-		this.RPLCumulativeRewards = big.NewInt(0)
+	if r.RPLCumulativeRewards == nil {
+		r.RPLCumulativeRewards = big.NewInt(0)
 	}
-	if this.UnclaimedRPLRewards == nil {
-		this.UnclaimedRPLRewards = big.NewInt(0)
+	if r.UnclaimedRPLRewards == nil {
+		r.UnclaimedRPLRewards = big.NewInt(0)
 	}
-	if this.UnclaimedSmoothingPool == nil {
-		this.UnclaimedSmoothingPool = big.NewInt(0)
+	if r.UnclaimedSmoothingPool == nil {
+		r.UnclaimedSmoothingPool = big.NewInt(0)
 	}
-	if this.ClaimedSmoothingPool == nil {
-		this.ClaimedSmoothingPool = big.NewInt(0)
+	if r.ClaimedSmoothingPool == nil {
+		r.ClaimedSmoothingPool = big.NewInt(0)
 	}
 
-	this.RPLStake = stake
-	this.MinRPLStake = minStake
-	this.MaxRPLStake = maxStake
+	r.RPLStake = stake
+	r.MinRPLStake = minStake
+	r.MaxRPLStake = maxStake
 
 	return nil
 }
@@ -1792,7 +1789,7 @@ func CalculateLifetimeNodeRewardsAllLegacy(rp *rocketpool.RocketPool, intervalSi
 	// Get the event logs
 	logs, err := eth.GetLogs(rp, addressFilter, topicFilter, intervalSize, nil, maxBlockNumber, nil)
 	if err != nil {
-		return nil, fmt.Errorf("can not load lifetime rewards: %v", err)
+		return nil, fmt.Errorf("can not load lifetime rewards: %w", err)
 	}
 
 	// Iterate over the logs and sum the amount
@@ -1891,48 +1888,48 @@ func NewRocketpoolDAOProposal(rp *rocketpool.RocketPool, pid uint64) (*Rocketpoo
 	return p, nil
 }
 
-func (this *RocketpoolDAOProposal) Update(rp *rocketpool.RocketPool) error {
-	pd, err := dao.GetProposalDetails(rp, this.ID, nil)
+func (r *RocketpoolDAOProposal) Update(rp *rocketpool.RocketPool) error {
+	pd, err := rpDAO.GetProposalDetails(rp, r.ID, nil)
 	if err != nil {
 		return err
 	}
-	this.ID = pd.ID
-	this.DAO = pd.DAO
-	this.ProposerAddress = pd.ProposerAddress.Bytes()
-	this.Message = pd.Message
-	this.CreatedTime = time.Unix(int64(pd.CreatedTime), 0)
-	this.StartTime = time.Unix(int64(pd.StartTime), 0)
-	this.EndTime = time.Unix(int64(pd.EndTime), 0)
-	this.ExpiryTime = time.Unix(int64(pd.ExpiryTime), 0)
-	this.VotesRequired = pd.VotesRequired
-	this.VotesFor = pd.VotesFor
-	this.VotesAgainst = pd.VotesAgainst
-	this.MemberVoted = pd.MemberVoted
-	this.MemberSupported = pd.MemberSupported
-	this.IsCancelled = pd.IsCancelled
-	this.IsExecuted = pd.IsExecuted
-	this.Payload = pd.Payload
-	this.State = pd.State.String()
+	r.ID = pd.ID
+	r.DAO = pd.DAO
+	r.ProposerAddress = pd.ProposerAddress.Bytes()
+	r.Message = pd.Message
+	r.CreatedTime = time.Unix(int64(pd.CreatedTime), 0)
+	r.StartTime = time.Unix(int64(pd.StartTime), 0)
+	r.EndTime = time.Unix(int64(pd.EndTime), 0)
+	r.ExpiryTime = time.Unix(int64(pd.ExpiryTime), 0)
+	r.VotesRequired = pd.VotesRequired
+	r.VotesFor = pd.VotesFor
+	r.VotesAgainst = pd.VotesAgainst
+	r.MemberVoted = pd.MemberVoted
+	r.MemberSupported = pd.MemberSupported
+	r.IsCancelled = pd.IsCancelled
+	r.IsExecuted = pd.IsExecuted
+	r.Payload = pd.Payload
+	r.State = pd.State.String()
 
 	// Update member votes
-	this.MemberVotes = []RocketpoolDAOProposalMemberVotes{}
+	r.MemberVotes = []RocketpoolDAOProposalMemberVotes{}
 	members, err := rpDAOTrustedNode.GetMembers(rp, nil)
 	if err != nil {
 		return err
 	}
 	for _, m := range members {
-		memberVoted, err := dao.GetProposalMemberVoted(rp, this.ID, m.Address, nil)
+		memberVoted, err := rpDAO.GetProposalMemberVoted(rp, r.ID, m.Address, nil)
 		if err != nil {
 			return err
 		}
 
-		memberSupported, err := dao.GetProposalMemberSupported(rp, this.ID, m.Address, nil)
+		memberSupported, err := rpDAO.GetProposalMemberSupported(rp, r.ID, m.Address, nil)
 		if err != nil {
 			return err
 		}
 
-		this.MemberVotes = append(this.MemberVotes, RocketpoolDAOProposalMemberVotes{
-			ProposalID: this.ID,
+		r.MemberVotes = append(r.MemberVotes, RocketpoolDAOProposalMemberVotes{
+			ProposalID: r.ID,
 			Address:    m.Address.Bytes(),
 			Voted:      memberVoted,
 			Supported:  memberSupported,
@@ -1962,17 +1959,17 @@ func NewRocketpoolDAOMember(rp *rocketpool.RocketPool, addr []byte) (*Rocketpool
 	return m, nil
 }
 
-func (this *RocketpoolDAOMember) Update(rp *rocketpool.RocketPool) error {
-	d, err := rpDAOTrustedNode.GetMemberDetails(rp, common.BytesToAddress(this.Address), nil)
+func (r *RocketpoolDAOMember) Update(rp *rocketpool.RocketPool) error {
+	d, err := rpDAOTrustedNode.GetMemberDetails(rp, common.BytesToAddress(r.Address), nil)
 	if err != nil {
 		return err
 	}
-	this.ID = d.ID
-	this.URL = d.Url
-	this.JoinedTime = time.Unix(int64(d.JoinedTime), 0)
-	this.LastProposalTime = time.Unix(int64(d.LastProposalTime), 0)
-	this.RPLBondAmount = d.RPLBondAmount
-	this.UnbondedValidatorCount = d.UnbondedValidatorCount
+	r.ID = d.ID
+	r.URL = d.Url
+	r.JoinedTime = time.Unix(int64(d.JoinedTime), 0)
+	r.LastProposalTime = time.Unix(int64(d.LastProposalTime), 0)
+	r.RPLBondAmount = d.RPLBondAmount
+	r.UnbondedValidatorCount = d.UnbondedValidatorCount
 	return nil
 }
 

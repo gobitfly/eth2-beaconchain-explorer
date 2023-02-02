@@ -21,7 +21,7 @@ func StripeRemoveCustomer(customerID string) error {
 	if err == nil {
 		now := time.Now()
 		nowTs := now.Unix()
-		_, err = tx.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE user_id = $5 AND store = 'stripe';",
+		_, _ = tx.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE user_id = $5 AND store = 'stripe';",
 			false, nowTs, nowTs, "stripe_user_deleted", userID,
 		)
 	} else {

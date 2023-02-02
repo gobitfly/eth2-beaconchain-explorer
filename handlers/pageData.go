@@ -77,6 +77,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		Debug:              utils.Config.Frontend.Debug,
 		GasNow:             services.LatestGasNowData(),
 		ShowSyncingMessage: services.IsSyncing(),
+		GlobalNotification: services.GlobalNotificationMessage(),
 	}
 
 	if utils.Config.Frontend.Debug {
@@ -172,6 +173,11 @@ func getUserSession(r *http.Request) (*types.User, *sessions.Session, error) {
 	u.Subscription, ok = session.Values["subscription"].(string)
 	if !ok {
 		u.Subscription = ""
+		return u, session, nil
+	}
+	u.UserGroup, ok = session.Values["user_group"].(string)
+	if !ok {
+		u.UserGroup = ""
 		return u, session, nil
 	}
 	return u, session, nil

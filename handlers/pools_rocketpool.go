@@ -22,7 +22,7 @@ func PoolsRocketpool(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "pools/rocketpool", "/pools/rocketpool", "Rocketpool")
 	data.HeaderAd = true
 
-	if handleTemplateError(w, r, poolsRocketpoolTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "pools_rocketpool.go", "PoolsRocketpool", "", poolsRocketpoolTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

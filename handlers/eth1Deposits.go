@@ -32,13 +32,13 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pageData.Stats = services.GetLatestStats()
-	pageData.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
+	pageData.DepositContract = utils.Config.Chain.Config.DepositContractAddress
 
 	data := InitPageData(w, r, "blockchain", "/deposits/eth1", "Initiated Deposits")
 	data.HeaderAd = true
 	data.Data = pageData
 
-	if handleTemplateError(w, r, eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "eth1Depostis.go", "Eth1Deposits", "", eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -141,7 +141,6 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 
 // Eth1Deposits will return information about deposits using a go template
 func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
-
 	var eth1DepositsLeaderboardTemplate = templates.GetTemplate("layout.html", "eth1DepositsLeaderboard.html")
 
 	w.Header().Set("Content-Type", "text/html")
@@ -153,7 +152,7 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
-	if handleTemplateError(w, r, eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "eth1Deposits.go", "Eth1DepositsLeaderboard", "", eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -208,9 +207,7 @@ func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 
 	orderDir := q.Get("order[0][dir]")
 
-	latestEpoch := services.LatestEpoch()
-
-	deposits, depositCount, err := db.GetEth1DepositsLeaderboard(search, length, start, orderBy, orderDir, latestEpoch)
+	deposits, depositCount, err := db.GetEth1DepositsLeaderboard(search, length, start, orderBy, orderDir)
 	if err != nil {
 		logger.Errorf("GetEth1Deposits error retrieving eth1_deposit leaderboard data: %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

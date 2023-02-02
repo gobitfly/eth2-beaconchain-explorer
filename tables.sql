@@ -462,6 +462,21 @@ create table eth1_deposits
 create index idx_eth1_deposits on eth1_deposits (publickey);
 create index idx_eth1_deposits_from_address on eth1_deposits (from_address);
 
+drop table if exists eth1_deposits_aggregated;
+create table eth1_deposits_aggregated
+(
+    from_address         bytea  not null,
+    amount               bigint not null,
+    validcount           int    not null,
+    invalidcount         int    not null,
+    slashedcount         int    not null,
+    totalcount           int    not null,
+    activecount          int    not null,
+    pendingcount         int    not null,
+    voluntary_exit_count int    not null,
+    primary key (from_address)
+);
+
 drop table if exists users;
 create table users
 (

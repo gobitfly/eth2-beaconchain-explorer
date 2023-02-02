@@ -14,6 +14,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type EventName string
@@ -194,7 +196,7 @@ var NetworkNotificationEvents = []EventNameDesc{
 }
 
 func GetDisplayableEventName(event EventName) string {
-	return strings.Title(strings.ReplaceAll(string(event), "_", " "))
+	return cases.Title(language.English).String(strings.ReplaceAll(string(event), "_", " "))
 }
 
 func EventNameFromString(event string) (EventName, error) {

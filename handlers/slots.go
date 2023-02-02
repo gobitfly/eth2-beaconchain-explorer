@@ -65,7 +65,7 @@ func Slots(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data = tableData
-	if handleTemplateError(w, r, blocksTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "blocks.go", "Blocks", "", blocksTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

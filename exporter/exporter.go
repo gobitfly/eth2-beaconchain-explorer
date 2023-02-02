@@ -619,41 +619,6 @@ func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
 	return nil
 }
 
-func finalityCheckpointsUpdater(client rpc.Client) {
-	t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot))
-	for range t.C {
-		var prevEpoch uint64
-		err := db.WriterDb.Get(&prevEpoch, `select coalesce(max(epoch),1) from finality_checkpoints`)
-		if err != nil {
-			logger.WithError(err).Errorf("error getting last exported finality_checkpoints from db")
-			continue
-		}
-		nextEpoch := prevEpoch + 1
-		checkpoints, err := client.GetFinalityCheckpoints(nextEpoch)
-		if err != nil {
-			logger.WithFields(logrus.Fields{"error": err, "epoch": nextEpoch}).Errorf("error getting finality_checkpoints from client")
-			continue
-		}
-		_, err = db.WriterDb.Exec(`
-			insert into finality_checkpoints (
-				epoch, 
-				current_justified_epoch, current_justified_root, 
-				previous_justified_epoch, previous_justified_root, 
-				finalized_epoch, finalized_root
-			)
-			values ($1, $2, $3, $4, $5, $6, $7)`,
-			nextEpoch,
-			checkpoints.CurrentJustified.Epoch, checkpoints.CurrentJustified.Root,
-			checkpoints.PreviousJustified.Epoch, checkpoints.PreviousJustified.Root,
-			checkpoints.Finalized.Epoch, checkpoints.Finalized.Root,
-		)
-		if err != nil {
-			logger.WithFields(logrus.Fields{"error": err, "epoch": nextEpoch}).Errorf("error inserting finality_checkpoints into db")
-			continue
-		}
-	}
-}
-
 func networkLivenessUpdater(client rpc.Client) {
 	var prevHeadEpoch uint64
 	err := db.WriterDb.Get(&prevHeadEpoch, "SELECT COALESCE(MAX(headepoch), 0) FROM network_liveness")

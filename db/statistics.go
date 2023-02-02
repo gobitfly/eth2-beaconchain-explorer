@@ -341,7 +341,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		select max(day) + 1 as day from validator_stats
 	),
 	current_balances as (
-		select coalesce(sum(balance)) as end_balance, (select day from _today) as day, array_agg(pubkey) as pubkeys
+		select 0 as end_balance, (select day from _today) as day, array_agg(pubkey) as pubkeys
 		from validators
 		where validatorindex = ANY($1)
 	),
@@ -351,7 +351,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 			(select day from _today) as day
 		from blocks_deposits
 		where 
-			block_slot > (select (day) * 225 * 32 from _today) and
+			block_slot > (select (day) * $4 * 32 from _today) and
 			publickey in (select pubkey
 				from validators
 				where validatorindex = ANY($1))
@@ -402,7 +402,37 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 	) as foo2 
 	where diff <> 0  AND
 		day BETWEEN $2 AND $3
-	order by day;`, queryValidatorsArr, lowerBoundDay, upperBoundDay)
+	order by day;`, queryValidatorsArr, lowerBoundDay, upperBoundDay, utils.EpochsPerDay())
+
+	if len(result) > 0 {
+		if result[len(result)-1].EndBalance.Int64 == 0 {
+			epoch, err := GetLatestEpoch()
+			if err != nil {
+				return nil, err
+			}
+			balances, err := BigtableClient.GetValidatorBalanceHistory(validator_indices, epoch, 1)
+			if err != nil {
+				return nil, err
+			}
+
+			balanceSum := uint64(0)
+			for _, balance := range balances {
+				if len(balance) == 0 {
+					continue
+				}
+				balanceSum += balance[0].Balance
+			}
+
+			result[len(result)-1].EndBalance.Int64 = int64(balanceSum)
+			result[len(result)-1].EndBalance.Valid = true
+
+			startBalance := int64(0)
+			if result[len(result)-1].StartBalance.Valid {
+				startBalance = result[len(result)-1].StartBalance.Int64
+			}
+			result[len(result)-1].Income = result[len(result)-1].EndBalance.Int64 - startBalance
+		}
+	}
 	return result, err
 }
 

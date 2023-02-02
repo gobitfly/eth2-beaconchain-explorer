@@ -3,6 +3,7 @@ FROM golang:1.18 AS build-env
 ADD . /src
 WORKDIR /src
 RUN go mod download
+RUN go install github.com/swaggo/swag/cmd/swag@v1.8.3
 RUN make -B all
 
 # final stage

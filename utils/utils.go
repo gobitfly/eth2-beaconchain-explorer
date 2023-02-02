@@ -29,10 +29,12 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 	"gopkg.in/yaml.v3"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/kataras/i18n"
@@ -158,7 +160,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatStringThousands": FormatThousandsEnglish,
 		"derefString":           DerefString,
 		"trLang":                TrLang,
-		"firstCharToUpper":      func(s string) string { return strings.Title(s) },
+		"firstCharToUpper":      func(s string) string { return cases.Title(language.English).String(s) },
 		"eqsp": func(a, b *string) bool {
 			if a != nil && b != nil {
 				return *a == *b
@@ -475,6 +477,21 @@ var emailRE = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](
 // IsValidEmail verifies whether a string represents a valid email-address.
 func IsValidEmail(s string) bool {
 	return emailRE.MatchString(s)
+}
+
+// IsValidUrl verifies whether a string represents a valid Url.
+func IsValidUrl(s string) bool {
+	u, err := url.ParseRequestURI(s)
+	if err != nil {
+		return false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	if len(u.Host) == 0 {
+		return false
+	}
+	return govalidator.IsURL(s)
 }
 
 // RoundDecimals rounds (nearest) a number to the specified number of digits after comma
@@ -923,4 +940,8 @@ func GetTimeToNextWithdrawal(distance uint64) time.Time {
 	}
 
 	return timeToWithdrawal
+}
+
+func EpochsPerDay() uint64 {
+	return (24 * 60 * 60) / Config.Chain.Config.SlotsPerEpoch / Config.Chain.Config.SecondsPerSlot
 }
