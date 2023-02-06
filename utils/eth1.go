@@ -153,7 +153,7 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 			f := digitsLimit / 2              // as this int devision will always cut, we at an odd limit, we will have more digits at the end
 			name = fmt.Sprintf("0x%s…%s", name[:f], name[(l-(digitsLimit-f)):])
 		}
-		name = fmt.Sprintf(`<span class="text-monospace">%s</span>`, name)
+		name = fmt.Sprintf(`<span>%s</span>`, name)
 	} else { // name set
 		tooltip = fmt.Sprintf("%s\n0x%x", name, address) // set tool tip first, as we will change name
 		// limit name if necessary

@@ -11,12 +11,15 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/sessions"
 	"github.com/lib/pq"
 )
@@ -94,7 +97,9 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	var earningsLastDay int64
 	var earningsLastWeek int64
 	var earningsLastMonth int64
-	var apr float64
+	var apr7d float64
+	var apr31d float64
+	var apr365d float64
 	var totalDeposits int64
 
 	for _, balance := range balances {
@@ -138,24 +143,176 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		totalDeposits = 32 * 1e9
 	}
 
-	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
-	if apr < float64(-1) {
-		apr = float64(-1)
+	// retrieve EL Informaion
+	// get all EL blocks
+	var execBlocks []types.ExecBlockProposer
+	/* err = db.ReaderDb.Select(&execBlocks,
+		`SELECT
+			exec_block_number,
+			slot
+			FROM blocks
+		WHERE proposer = ANY($1)
+		AND exec_block_number IS NOT NULL
+		AND exec_block_number > 0
+		ORDER BY exec_block_number ASC`,
+		validatorsPQArray,
+	)
+	if err != nil {
+		return nil, err
+	} */
+
+	blockList := []uint64{}
+	for _, slot := range execBlocks {
+		blockList = append(blockList, slot.ExecBlock)
+	}
+
+	// get EL rewards
+	var blocks []*types.Eth1BlockIndexed
+	var relaysData map[common.Hash]types.RelaysData
+
+	if len(blockList) > 0 {
+		blocks, err = db.BigtableClient.GetBlocksIndexedMultiple(blockList, 10000)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving blocks from bigtable: %v", err)
+		}
+		relaysData, err = db.GetRelayDataForIndexedBlocks(blocks)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving mev relay data: %v", err)
+		}
+	}
+
+	last1dTimestamp := time.Now().Add(-1 * 24 * time.Hour)
+	last7dTimestamp := time.Now().Add(-7 * 24 * time.Hour)
+	last31dTimestamp := time.Now().Add(-31 * 24 * time.Hour)
+	var totalExecutionRewards int64 = 0
+	for _, execBlock := range blocks {
+
+		var elReward *big.Int
+		relayData, ok := relaysData[common.BytesToHash(execBlock.Hash)]
+		if ok {
+			elReward = relayData.MevBribe.BigInt()
+		} else {
+			elReward = big.NewInt(0).SetBytes(execBlock.TxReward)
+		}
+		elReward = elReward.Div(elReward, big.NewInt(1e9))
+
+		execBlockTs := execBlock.Time.AsTime()
+		if execBlockTs.After(last1dTimestamp) {
+			earningsLastDay += elReward.Int64()
+		}
+		if execBlockTs.After(last7dTimestamp) {
+			earningsLastWeek += elReward.Int64()
+		}
+		if execBlockTs.After(last31dTimestamp) {
+			earningsLastMonth += elReward.Int64()
+		}
+		earningsTotal += elReward.Int64()
+		totalExecutionRewards += elReward.Int64()
+	}
+
+	apr7d = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
+	if apr7d < float64(-1) {
+		apr7d = float64(-1)
+	}
+
+	apr31d = (((float64(earningsLastMonth) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 31
+	if apr31d < float64(-1) {
+		apr31d = float64(-1)
+	}
+
+	//TODO: change to true 365d earnings once that information is available in db
+	apr365d = (((float64(earningsTotal) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / float64(utils.DayOfSlot(services.LatestSlot())+1)
+	if apr365d < float64(-1) {
+		apr365d = float64(-1)
 	}
 
 	return &types.ValidatorEarnings{
-		Total:                earningsTotal,
-		LastDay:              earningsLastDay,
-		LastWeek:             earningsLastWeek,
-		LastMonth:            earningsLastMonth,
-		APR:                  apr,
-		TotalDeposits:        totalDeposits,
-		LastDayFormatted:     utils.FormatIncome(earningsLastDay, currency),
-		LastWeekFormatted:    utils.FormatIncome(earningsLastWeek, currency),
-		LastMonthFormatted:   utils.FormatIncome(earningsLastMonth, currency),
-		TotalFormatted:       utils.FormatIncome(earningsTotal, currency),
-		TotalChangeFormatted: utils.FormatIncome(earningsTotal+totalDeposits, currency),
+		Total:                 earningsTotal,
+		LastDay:               earningsLastDay,
+		LastWeek:              earningsLastWeek,
+		LastMonth:             earningsLastMonth,
+		TotalExecutionRewards: totalExecutionRewards,
+		APR:                   apr7d,
+		APR7d:                 apr7d,
+		APR31d:                apr31d,
+		APR365d:               apr365d,
+		TotalDeposits:         totalDeposits,
+		LastDayFormatted:      utils.FormatIncome(earningsLastDay, currency),
+		LastWeekFormatted:     utils.FormatIncome(earningsLastWeek, currency),
+		LastMonthFormatted:    utils.FormatIncome(earningsLastMonth, currency),
+		TotalFormatted:        utils.FormatIncome(earningsTotal, currency),
+		TotalChangeFormatted:  utils.FormatIncome(earningsTotal+totalDeposits, currency),
+		Luck:                  getProposalLuck(execBlocks, len(validators)),
 	}, nil
+}
+
+// getProposalLuck calculates the luck of a given set of proposed blocks for a certain number of validators
+func getProposalLuck(proposedBlocks []types.ExecBlockProposer, validatorsCount int) float64 {
+	// Return 0 if there are no proposed blocks or no validators
+	if len(proposedBlocks) == 0 || validatorsCount == 0 {
+		return 0
+	}
+	// Timeframe constants
+	fiveDays := time.Hour * 24 * 5
+	oneWeek := time.Hour * 24 * 7
+	oneMonth := time.Hour * 24 * 30
+	sixWeeks := time.Hour * 24 * 45
+	twoMonths := time.Hour * 24 * 60
+	threeMonths := time.Hour * 24 * 90
+	fourMonths := time.Hour * 24 * 120
+	fiveMonths := time.Hour * 24 * 150
+
+	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
+	// Calculate the expected number of slot proposals for 30 days
+	expectedSlotProposals := calcExpectedSlotProposals(oneMonth, validatorsCount, activeValidatorsCount)
+
+	// Get the timeframe for which we should consider qualified proposals
+	var proposalTimeframe time.Duration
+	// Time since the first block in the proposed block slice
+	timeSinceFirstBlock := time.Since(utils.SlotToTime(proposedBlocks[0].Slot))
+
+	// Determine the appropriate timeframe based on the time since the first block and the expected slot proposals
+	switch {
+	case timeSinceFirstBlock < fiveDays:
+		proposalTimeframe = fiveDays
+	case timeSinceFirstBlock < oneWeek:
+		proposalTimeframe = oneWeek
+	case timeSinceFirstBlock < oneMonth:
+		proposalTimeframe = oneMonth
+	case timeSinceFirstBlock > fiveMonths && expectedSlotProposals <= 0.75:
+		proposalTimeframe = fiveMonths
+	case timeSinceFirstBlock > fourMonths && expectedSlotProposals <= 1:
+		proposalTimeframe = fourMonths
+	case timeSinceFirstBlock > threeMonths && expectedSlotProposals <= 1.4:
+		proposalTimeframe = threeMonths
+	case timeSinceFirstBlock > twoMonths && expectedSlotProposals <= 2.1:
+		proposalTimeframe = twoMonths
+	case timeSinceFirstBlock > sixWeeks && expectedSlotProposals <= 2.8:
+		proposalTimeframe = sixWeeks
+	default:
+		proposalTimeframe = oneMonth
+	}
+
+	// Recalculate expected slot proposals for the new timeframe
+	expectedSlotProposals = calcExpectedSlotProposals(proposalTimeframe, validatorsCount, activeValidatorsCount)
+	// Cutoff time for proposals to be considered qualified
+	blockProposalCutoffTime := time.Now().Add(-proposalTimeframe)
+
+	// Count the number of qualified proposal
+	qualifiedProposalCount := 0
+	for _, block := range proposedBlocks {
+		if utils.SlotToTime(block.Slot).After(blockProposalCutoffTime) {
+			qualifiedProposalCount++
+		}
+	}
+	// Return the luck as the ratio of qualified proposals to expected slot proposals
+	return float64(qualifiedProposalCount) / expectedSlotProposals
+}
+
+// calcExpectedSlotProposals calculates the expected number of slot proposals for a certain time frame and validator count
+func calcExpectedSlotProposals(timeframe time.Duration, validatorCount int, activeValidatorsCount uint64) float64 {
+	expectedSlots := timeframe.Seconds() / float64(utils.Config.Chain.Config.SecondsPerSlot)
+	return (expectedSlots / float64(activeValidatorsCount)) * float64(validatorCount)
 }
 
 // LatestState will return common information that about the current state of the eth2 chain

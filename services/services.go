@@ -859,7 +859,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 		// sum up or set reward for epochs and slots respectively
 		for _, block := range elBlocks {
-			slotNum := utils.TimeToSlot(uint64(block.Time.AsTime().Unix()))
+			slotNum := utils.TimeToSlot(uint64(block.Time.Seconds))
 			epochNum := utils.EpochOfSlot(slotNum)
 			if _, epochInMap := epochsMap[epochNum]; epochInMap {
 				slot, slotInMap := slotsMap[slotNum]

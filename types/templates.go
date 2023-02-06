@@ -208,7 +208,7 @@ type IndexPageDataBlocks struct {
 	BlockRoot                []byte        `db:"blockroot" json:"-"`
 }
 
-// OldIndexPageDataBlocks is a struct to hold detail data for the old main web page, which for some reason is used in the validator and epoch handler
+// OldIndexPageDataBlocks is a struct to hold detail data for the old main web page, which for some reason is used in the epoch handler
 type OldIndexPageDataBlocks struct {
 	Epoch                uint64        `json:"epoch"`
 	Slot                 uint64        `json:"slot"`
@@ -356,7 +356,11 @@ type ValidatorPageData struct {
 	Rank7d                              int64 `db:"rank7d"`
 	RankCount                           int64 `db:"rank_count"`
 	RankPercentage                      float64
-	Apr                                 float64
+	APR7d                               float64
+	APR31d                              float64
+	APR365d                             float64
+	TotalExecutionRewards               int64
+	Luck                                float64
 	Proposals                           [][]uint64
 	IncomeHistoryChartData              []*ChartDataPoint
 	ExecutionIncomeHistoryData          []*ChartDataPoint
@@ -940,11 +944,16 @@ type DashboardValidatorBalanceHistory struct {
 
 // ValidatorEarnings is a struct to hold the earnings of one or multiple validators
 type ValidatorEarnings struct {
-	Total                   int64         `json:"total"`
-	LastDay                 int64         `json:"lastDay"`
-	LastWeek                int64         `json:"lastWeek"`
-	LastMonth               int64         `json:"lastMonth"`
+	Total     int64 `json:"total"`
+	LastDay   int64 `json:"lastDay"`
+	LastWeek  int64 `json:"lastWeek"`
+	LastMonth int64 `json:"lastMonth"`
+	//TODO: remove field `APR`
 	APR                     float64       `json:"apr"`
+	APR7d                   float64       `json:"apr7d"`
+	APR31d                  float64       `json:"apr31d"`
+	APR365d                 float64       `json:"apr365d"`
+	TotalExecutionRewards   int64         `json:"totalExecutionRewards"`
 	TotalDeposits           int64         `json:"totalDeposits"`
 	EarningsInPeriodBalance int64         `json:"earningsInPeriodBalance"`
 	EarningsInPeriod        int64         `json:"earningsInPeriod"`
@@ -955,6 +964,7 @@ type ValidatorEarnings struct {
 	LastMonthFormatted      template.HTML `json:"lastMonthFormatted"`
 	TotalFormatted          template.HTML `json:"totalFormatted"`
 	TotalChangeFormatted    template.HTML `json:"totalChangeFormatted"`
+	Luck                    float64       `json:"luck"`
 }
 
 // ValidatorAttestationSlashing is a struct to hold data of an attestation-slashing

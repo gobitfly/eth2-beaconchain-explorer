@@ -178,15 +178,15 @@ func FormatBalanceChangeFormated(balance *int64, currencyName string, details *i
 
 	if currencyName == "ETH" {
 		if balance == nil || *balance == 0 {
-			return template.HTML("<span class=\"float-right\">0 GWei</span>")
+			return template.HTML("<span>0 GWei</span>")
 		}
 		if *balance < 0 {
-			return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger float-right\">%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
+			return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger\">%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
 		}
-		return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success float-right\">+%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
+		return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success\">+%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
 	} else {
 		if balance == nil {
-			return template.HTML("<span class=\"float-right\">0 " + currencyName + "</span>")
+			return template.HTML("<span>0 " + currencyName + "</span>")
 		}
 		if *balance == 0 {
 			return template.HTML("pending")
@@ -351,7 +351,7 @@ func FormatEpochStatus(finalized bool, participationRate float64) template.HTML 
 		return `<div title="This epoch is finalized" data-toggle="tooltip" class="style-badge style-bg-good"><div class="style-status-tag-text text-white" ><span class="d-sm-none">FIN</span><span class="d-none d-sm-inline">Finalized</span></div></div>`
 	} else if participationRate > 0.66 && participationRate < 1 {
 		// since the latest epoch in the db always has a participation rate of 1, check for < 1 instead of <= 1
-		return `<div title="This epoch is not finalized but safe, making a revert unlikely" data-toggle="tooltip" class="style-badge style-badge-nfs style-bg-neutral-2"><div class="style-status-tag-text text-white" ><span class="d-sm-none">NFS</span><span class="d-none d-sm-inline">Not finalized (Safe)</span></div></div>`
+		return `<div title="This epoch is not finalized but safe, making a revert unlikely" data-toggle="tooltip" class="style-badge style-badge-long style-bg-neutral-2"><div class="style-status-tag-text text-white" ><span class="d-sm-none">NFS</span><span class="d-none d-sm-inline">Not finalized (Safe)</span></div></div>`
 	} else {
 		return `<div title="This epoch is not finalized" data-toggle="tooltip" class="style-badge style-bg-neutral-1"><div class="style-status-tag-text" ><span class="d-sm-none">NF</span><span class="d-none d-sm-inline">Not finalized</span></div></div>`
 	}
@@ -395,7 +395,7 @@ func FormatDepositAmount(balanceInt uint64, currency string) template.HTML {
 func FormatEffectiveBalance(balanceInt uint64, currency string) template.HTML {
 	exchangeRate := ExchangeRateForCurrency(currency)
 	balance := float64(balanceInt) / float64(1e9)
-	return template.HTML(fmt.Sprintf("%.1f %v", balance*exchangeRate, currency))
+	return template.HTML(fmt.Sprintf("%.0f %v", balance*exchangeRate, currency))
 }
 
 // FormatEpoch will return the epoch formated as html
@@ -773,87 +773,96 @@ func FormatTimestampTs(ts time.Time) template.HTML {
 // pending, active_online, active_offline, exiting_online, exciting_offline, slashing_online, slashing_offline, exited, slashed
 func FormatValidatorStatus(status string) template.HTML {
 	if status == "deposited" || status == "deposited_valid" || status == "deposited_invalid" {
-		return "<span><b>Deposited</b></span>"
+		return "Deposited"
 	} else if status == "pending" {
-		return "<span><b>Pending</b></span>"
+		return "Pending"
 	} else if status == "active_online" {
-		return "<b>Active</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+		return `<span class="text-success">Active</span>`
 	} else if status == "active_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Active</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		return `<span class="text-warning" data-toggle="tooltip" title="No attestation in the last 2 epochs">Active</span>`
 	} else if status == "exiting_online" {
-		return "<b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+		return `Exiting`
 	} else if status == "exiting_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		return `<span class="text-danger" data-toggle="tooltip" title="No attestation in the last 2 epochs">Exiting</span>`
 	} else if status == "slashing_online" {
-		return "<b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+		return `<span class="text-danger">Slashing</span>`
 	} else if status == "slashing_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		return `<span class="text-danger" data-toggle="tooltip" title="No attestation in the last 2 epochs">Slashing</span>`
 	} else if status == "exited" {
-		return "<span><b>Exited</b></span>"
+		return "Exited"
 	} else if status == "slashed" {
-		return "<span><b>Slashed</b></span>"
+		return `<span class="text-danger">Slashed</span>`
 	}
-	return "<b>Unknown</b>"
+	return "Unknown"
 }
 
-func formatPool(tag []string) string {
-	if len(tag) > 1 {
-		tagType := tag[0]
-		tagName := strings.Split(tag[len(tag)-1], " ")
-		if len(tagName) > 1 {
-			_, err := strconv.ParseInt(tagName[len(tagName)-1], 10, 64)
-			if err == nil {
-				name := ""
-				for _, s := range tagName[:len(tagName)-1] {
-					if s == "-" {
-						continue
-					}
-					name += s + " "
+func formatPool(tag string) string {
+	tagName := strings.Split(tag, " ")
+
+	var name string
+	// This is some older code logic, not sure why this is needed
+	if len(tagName) > 1 {
+		_, err := strconv.ParseInt(tagName[len(tagName)-1], 10, 64)
+		if err == nil {
+			name := ""
+			for _, s := range tagName[:len(tagName)-1] {
+				if s == "-" {
+					continue
 				}
-				return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 18px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, name)
+				name += s + " "
 			}
 		}
-		return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 18px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, tag[len(tag)-1])
 	}
-	return ""
-}
 
-func formatSpecialTag(tag string) string {
-	special_tag := strings.Split(tag, ":")
-	if len(special_tag) > 1 {
-		if special_tag[0] == "pool" {
-			return formatPool(special_tag)
-		}
+	if name == "" {
+		name = tag
 	}
-	return fmt.Sprintf(`<span style="font-size: 18px;" class="badge bg-dark text-light mr-1">%s</span>`, tag)
+
+	return fmt.Sprintf(`<a href="/pools" title="This validator is part of a staking-pool." data-toggle="tooltip" class="mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">Pool: %s</a>`, name)
 }
 
 // FormatValidatorTag will return html formated text of a validator-tag.
 // Depending on the tag it will describe the tag in a tooltip and link to more information regarding the tag.
-func FormatValidatorTag(tag string) template.HTML {
+func formatValidatorTag(tag string) string {
 	var result string
-	switch tag {
-	case "rocketpool":
-		result = `<span style="background-color: rgba(240, 149, 45, .2); font-size: 18px;" class="badge-pill mr-1 font-weight-normal" data-toggle="tooltip" title="Rocket Pool Validator"><a style="color: var(--yellow);" href="/pools/rocketpool">Rocket Pool</a></span>`
-	case "ssv":
-		result = `<span style="background-color: rgba(238, 113, 18, .2); font-size: 18px;" class="badge-pill mr-1 font-weight-normal" data-toggle="tooltip" title="Secret Shared Validator"><a style="color: var(--orange);" href="https://github.com/bloxapp/ssv/">SSV</a></span>`
+	switch {
+	case tag == "rocketpool", tag == "pool:rocketpool":
+		result = `<a href="/pools/rocketpool" title="Rocket Pool Validator" data-toggle="tooltip" class="mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">Rocket Pool</a>`
+	case tag == "ssv":
+		result = `<a href="https://github.com/bloxapp/ssv/" title="Secret Shared Validator" data-toggle="tooltip" class=""mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">SSV</a>`
+	case strings.HasPrefix(tag, "pool:"):
+		result = formatPool(tag[5:])
+	case strings.HasPrefix(tag, "name:"):
+		result = fmt.Sprintf(`<span title="This name has been set by the owner of this validator." data-toggle="tooltip" class="mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">%s</span>`, tag[5:])
 	default:
-		result = formatSpecialTag(tag)
+		result = fmt.Sprintf(`<span class="mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">%s</span>`, tag)
 	}
-	return template.HTML(result)
+
+	return result
 }
 
 func FormatValidatorTags(tags []string) template.HTML {
 	str := ""
+	dedupMap := make(map[string]string)
 	for _, tag := range tags {
-		str += string(FormatValidatorTag(tag)) + " "
+		trimmedTag := tag
+		trimmedTag = strings.TrimPrefix(trimmedTag, "pool:")
+		trimmedTag = strings.ReplaceAll(trimmedTag, " ", "")
+		trimmedTag = strings.ToLower(trimmedTag)
+		dedupedTag, ok := dedupMap[trimmedTag]
+		if !ok || tag < dedupedTag {
+			dedupMap[trimmedTag] = tag
+		}
+	}
+	for _, tag := range dedupMap {
+		str += formatValidatorTag(tag) + " "
 	}
 	return template.HTML(str)
 }
 
 // FormatValidator will return html formatted text for a validator
 func FormatValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i><a href=\"/validator/%v\">%v</a>", validator, validator))
+	return template.HTML(fmt.Sprintf("<a href=\"/validator/%v\">%v</a>", validator, validator))
 }
 
 func FormatValidatorWithName(validator interface{}, name string) template.HTML {
@@ -1198,4 +1207,14 @@ func FormatEth1AddressFull(addr common.Address) template.HTML {
 }
 
 func formatNumberInternal(prefix string, postfix string, number *big.Int, decimals int) {
+}
+
+func FormatHeaderHash(address []byte) template.HTML {
+	if l := len(address) * 2; l < 8 {
+		return template.HTML(fmt.Sprintf("0x%x", address))
+	}
+	return template.HTML(fmt.Sprintf(`
+	<h2 class="overflow-auto text-nowrap style-header-account mb-0">
+		0x<span style="color: var(--primary)">%x</span><span data-truncate-middle="%x"></span><span style="color: var(--primary)">%x</span>
+	</h2>`, address[:2], address[2:len(address)-2], address[len(address)-2:]))
 }

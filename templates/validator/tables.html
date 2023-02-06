@@ -5,13 +5,12 @@
         <tr>
           <th>Epoch</th>
           <th>Slot</th>
-          <th>Status</th>
+          <th>Block</th>
           <th>Time</th>
+          <th>Status</th>
+          <th>Execution Reward</th>
           <th>Root Hash</th>
-          <th><span data-toggle="tooltip" data-placement="top" title="Attestations">Att.</span></th>
-          <th><span data-toggle="tooltip" title="Deposits">Dep.</span></th>
-          <th><span data-toggle="tooltip" title="Slashings">Sl.</span> <span data-toggle="tooltip" data-placement="top" title="Proposers">Pro</span>/<span data-toggle="tooltip" data-placement="top" title="Attesters">Att</span></th>
-          <th><span data-toggle="tooltip" title="Exits">Ex.</span></th>
+          <th>Fee Recipient</th>
           <th>Graffiti</th>
         </tr>
       </thead>
@@ -47,13 +46,23 @@
                         "orderable": false
                     },
                     {
+                        targets: 2,
+                        data: '2',
+                        "orderable": false
+                    },
+                    {
                         targets: 3,
                         data: '3',
                         "orderable": false
                     },
                     {
-                        targets: 4,
-                        data: '4',
+                        targets: 5,
+                        data: '5',
+                        "orderable": false
+                    },
+                    {
+                        targets: 6,
+                        data: '6',
                         "orderable": false
                     },
                     {
@@ -472,17 +481,13 @@
 
 {{ define "validatorHistoryTable" }}
   {{ with .Data }}
-    <div class="table-responsive px-0 py-0">
+    <div class="table-responsive">
       <table style="margin-top: 0px !important;" class="table" id="validator-history-table" width="100%">
         <thead>
           <tr>
-            <th rowspan="2">Epoch</th>
-            <th colspan="2">Balance Change</th>
-            <th rowspan="2" data-toggle="tooltip" title="Attestation and block proposal status for a given epoch">Att. & Prop.</th>
-          </tr>
-          <tr style="display:none">
-            <th></th>
-            <th></th>
+            <th>Epoch</th>
+            <th>Balance Change</th>
+            <th>Duty</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -511,20 +516,6 @@
                         next: '<i class="fas fa-chevron-right"></i>'
                     }
                 },
-                columnDefs: [
-                  {
-                    targets: 1,
-                    createdCell: function (td, cellData, rowData, row, col) {
-                      $(td).css("width", "0px")
-                    },
-                  },
-                  {
-                    targets: 2,
-                    createdCell: function (td, cellData, rowData, row, col) {
-                      $(td).css("padding", "0px")
-                    },
-                  },
-                ],
                 drawCallback: function(settings) {
                     formatTimestamps()
                 },
@@ -558,10 +549,10 @@
         </tr>
         <tr>
           <th scope="row">
-            APR <span data-toggle="tooltip" title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i class="far fa-question-circle"></i></span>
+            APR7d <span data-toggle="tooltip" title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i class="far fa-question-circle"></i></span>
           </th>
           <td>
-            <span data-toggle="tooltip" title="{{ formatPercentageWithPrecision .Apr 5 }}%" class="{{ if gtf .Apr 0 }}text-success{{ end }} {{ if gtf  0 .Apr }}text-danger{{ end }}"><b>{{ .Apr | formatPercentage }}%</b></span>
+            <span data-toggle="tooltip" title="{{ formatPercentageWithPrecision .APR7d 5 }}%" class="{{ if gtf .APR7d 0 }}text-success{{ end }} {{ if gtf  0 .APR7d }}text-danger{{ end }}"><b>{{ .APR7d | formatPercentage }}%</b></span>
           </td>
         </tr>
         <tr>
@@ -612,16 +603,6 @@
             </td>
           </tr>
         {{ end }}
-        <!--
-         <tr>
-            <th scope="row">Avg. optimal inclusion distance</th>
-        <tr>
-        <tr>
-            <th scope="row">Attestations (executed/missed)</th>
-        <tr>
-        <tr>
-            <th scope="row">Proposals (executed/missed)</th>
-        <tr> -->
       </tbody>
     </table>
   {{ end }}

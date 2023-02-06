@@ -59,89 +59,370 @@
           document.getElementById("app-style-initial").id = "app-theme"
         }
       </script>
-        <script>
-            function updateLang(lang) {
-                document.cookie = "language=" + lang + ";samesite=strict;path=/"
-                window.location.reload()
-            }
+      <script>
+        function updateLang(lang) {
+            document.cookie = "language=" + lang + ";samesite=strict;path=/"
+            window.location.reload()
+        }
 
-            function updateCurrency(currency) {
-                document.cookie = "currency=" + currency + ";samesite=strict;path=/"
-                window.location.reload(true)
-            }
+        function updateCurrency(currency) {
+            document.cookie = "currency=" + currency + ";samesite=strict;path=/"
+            window.location.reload(true)
+        }
 
-            function getCookie(cname) {
-                var name = cname + "="
-                var ca = document.cookie.split(';')
-                for(var i = 0; i < ca.length; i++) {
-                    var c = ca[i]
-                    while (c.charAt(0) == ' ') {
-                        c = c.substring(1)
-                    }
-                    if (c.indexOf(name) == 0) {
-                        return c.substring(name.length, c.length)
-                    }
+        function getCookie(cname) {
+            var name = cname + "="
+            var ca = document.cookie.split(';')
+            for(var i = 0; i < ca.length; i++) {
+                var c = ca[i]
+                while (c.charAt(0) == ' ') {
+                    c = c.substring(1)
                 }
-                return ""
+                if (c.indexOf(name) == 0) {
+                    return c.substring(name.length, c.length)
+                }
             }
+            return ""
+        }
 
-            window.addEventListener('load', function() {
-                var currentCurrency = getCookie('currency')
+        window.addEventListener('load', function() {
+            var currentCurrency = getCookie('currency')
 
-                if (currentCurrency) {
-                    document.getElementById('currencyDropdown').textContent = currentCurrency
-                    document.getElementById('currencyFlagDropdown').innerHTML = "<img class='currency-flag-dropdown-image' src='/img/" + currentCurrency +  ".svg'>"
-                }
-            })
+            if (currentCurrency) {
+                document.getElementById('currencyDropdown').textContent = currentCurrency
+                document.getElementById('currencyFlagDropdown').innerHTML = "<img class='currency-flag-dropdown-image' src='/img/" + currentCurrency +  ".svg'>"
+            }
+        })
 
-            window.addEventListener('DOMContentLoaded', function () {
-              if ({{.Mainnet}}) {
-                document.getElementById('initialPrice').textContent = ''
-                switch (getCookie('currency')) {
-                  case 'AUD':
-                        document.getElementById('currentCurrencySymbol').textContent = 'A$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.AudTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.AudRoundPrice}}
-                        break
-                  case 'CAD':
-                        document.getElementById('currentCurrencySymbol').textContent = 'C$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CadTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.CadRoundPrice}}
-                        break
-                  case 'CNY':
-                        document.getElementById('currentCurrencySymbol').textContent = '¥'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CnyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.CnyRoundPrice}}
-                        break
-                  case 'EUR':
-                        document.getElementById('currentCurrencySymbol').textContent = '€'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.EurTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.EurRoundPrice}}
-                        break
-                  case 'GBP':
-                        document.getElementById('currentCurrencySymbol').textContent = '£'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.GbpTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.GbpRoundPrice}}
-                        break
-                  case 'JPY':
-                        document.getElementById('currentCurrencySymbol').textContent = '¥'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.JpyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.JpyRoundPrice}}
-                        break
-                  case 'RUB':
-                        document.getElementById('currentCurrencySymbol').textContent = '₽'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.RubTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.RubRoundPrice}}
-                        break
-                  default:
-                        document.getElementById('currentCurrencySymbol').textContent = '$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.UsdTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.UsdRoundPrice}}
-                        break
-                }
-              }
-            })
-        </script> {{ template "css" .Data }}
+        window.addEventListener('DOMContentLoaded', function () {
+          if ({{.Mainnet}}) {
+            document.getElementById('initialPrice').textContent = ''
+            switch (getCookie('currency')) {
+              case 'AUD':
+                    document.getElementById('currentCurrencySymbol').textContent = 'A$'
+                    document.getElementById('currentKFormattedPrice').textContent = {{.Rates.AudTruncPrice}}
+                    document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.AudRoundPrice}}
+                    break
+              case 'CAD':
+                    document.getElementById('currentCurrencySymbol').textContent = 'C$'
+                    document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CadTruncPrice}}
+                    document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.CadRoundPrice}}
+                    break
+              case 'CNY':
+                    document.getElementById('currentCurrencySymbol').textContent = '¥'
+                    document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CnyTruncPrice}}
+                    document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.CnyRoundPrice}}
+                    break
+              case 'EUR':
+                    document.getElementById('currentCurrencySymbol').textContent = '€'
+                    document.getElementById('currentKFormattedPrice').textContent = {{.Rates.EurTruncPrice}}
+                    document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.EurRoundPrice}}
+                    break
+              case 'GBP':
+                    document.getElementById('currentCurrencySymbol').textContent = '£'
+                    document.getElementById('currentKFormattedPrice').textContent = {{.Rates.GbpTruncPrice}}
+                    document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.GbpRoundPrice}}
+                    break
+              case 'JPY':
+                    document.getElementById('currentCurrencySymbol').textContent = '¥'
+                    document.getElementById('currentKFormattedPrice').textContent = {{.Rates.JpyTruncPrice}}
+                    document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.JpyRoundPrice}}
+                    break
+              case 'RUB':
+                    document.getElementById('currentCurrencySymbol').textContent = '₽'
+                    document.getElementById('currentKFormattedPrice').textContent = {{.Rates.RubTruncPrice}}
+                    document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.RubRoundPrice}}
+                    break
+              default:
+                    document.getElementById('currentCurrencySymbol').textContent = '$'
+                    document.getElementById('currentKFormattedPrice').textContent = {{.Rates.UsdTruncPrice}}
+                    document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.UsdRoundPrice}}
+                    break
+            }
+          }
+        })
+      </script> {{ template "css" .Data }}
+      <style>
+        body {
+          min-width: 320px;
+          font-family: "Mukta", sans-serif; 
+        }
+
+        .d-contents {
+          display: contents;
+        }
+
+        :root {
+          --style-search-bg: #fff;
+          --text-addition: #5a5a5a;
+          --bg-table-header: #f4f2f2;
+          --table-scroll: rgba(52, 58, 64, 0.1);
+          --table-scroll-hover: rgba(52, 58, 64, 0.5);
+          --body-color: #000;
+        }
+
+        [data-theme="dark"]:root {
+          --style-search-bg: #3e4461;
+          --text-addition: #a5a5a5;
+          --bg-table-header: #362f32;
+          --table-scroll: rgba(231, 225, 215, 0.1);
+          --table-scroll-hover: rgba(231, 225, 215, 0.5);
+          --body-color: #fff;
+        }
+
+        .mukta {
+          font-family: "Mukta", sans-serif;
+        }
+
+        .fs-20 {
+          font-size: 1.25rem;
+        }
+
+        .style-title {
+          font-family: "Montserrat", sans-serif;
+          font-size: 1.875rem;
+          font-weight: 600;
+        }
+
+        .style-nav1-text {
+          font-family: "Mukta", sans-serif;
+          font-size: 0.875rem;
+          font-weight: 300;
+        }
+
+        .style-paragraph-1 {
+          font-family: "Mukta", sans-serif;
+          font-size: 1rem;
+          font-weight: 300;
+        }
+
+        .style-paragraph-3 {
+          font-family: "Mukta", sans-serif;
+          font-size: 0.75rem;
+          font-weight: 300;
+        }
+
+        .style-paragraph-6 {
+          font-family: "Mukta", sans-serif;
+          font-size: 0.875rem;
+          font-weight: 500;
+        }
+
+        .style-link {
+          font-family: "Mukta", sans-serif;
+          font-size: 0.875rem;
+          font-weight: 300;
+        }
+
+        .style-status-tag-text {
+          font-family: "Mukta", sans-serif;
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+
+        .style-hash {
+          font-family: "Roboto Mono";
+          font-size: 0.875rem;
+          font-weight: 400;
+        }
+
+        .style-card-header {
+          font-family: "Montserrat", sans-serif;
+          font-size: 1rem;
+          font-weight: 500;
+        }
+
+        .style-button {
+          font-family: "Mukta", sans-serif;
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+
+        .style-hero-links {
+          font-family: "Mukta", sans-serif;
+          font-size: 1rem;
+          font-weight: 500;
+        }
+
+        .style-header-account {
+          font-family: "Montserrat", sans-serif;
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+        .style-header-idk {
+          font-family: "Montserrat", sans-serif;
+          font-size: 1.25rem;
+          font-weight: 500;
+        }
+
+        .style-paragraph-topsecret {
+          font-family: "Mukta", sans-serif;
+          font-size: 0.875rem;
+          font-weight: 300;
+        }
+
+        .style-validator-overview-header {
+          font-family: "Mukta", sans-serif;
+          font-size: 0.75rem;
+          font-weight: 300;
+        }
+
+        .style-validator-overview-value {
+          font-family: "Mukta", sans-serif;
+          font-size: 1.125rem;
+          font-weight: 500;
+        }
+
+        @media (min-width: 1140px) {
+          .style-title {
+            font-size: 2.5rem;
+          }
+          .style-nav1-text {
+            font-size: 1.125rem;
+          }
+          .style-hero-links {
+            font-size: 1.25rem;
+          }
+          .style-card-header {
+            font-size: 1.75rem;
+          }
+          .style-button {
+            font-size: 0.875rem;
+          }
+          .style-validator-overview-header {
+            font-size: 1.25rem;
+          }
+          .style-validator-overview-value {
+            font-size: 1.5rem;
+          }
+
+          .style-paragraph-topsecret {
+            font-size: 1rem;
+          }
+        }
+
+        @media (min-width: 640px) {
+          .style-header-account {
+            font-size: 1.125rem;
+          }
+          .style-header-idk {
+            font-size: 1.5rem;
+          }
+        }
+
+        .text-addition {
+          color: var(--text-addition)
+        }
+
+        .style-badge {
+          display: inline-block;
+          white-space: nowrap;
+          height: 1rem;
+          text-align: center;
+          border-radius: 10.5px;
+          width: 1.3rem;
+        }
+
+        .style-badge .style-status-tag-text {
+          position: relative;
+          top: 50%;
+          transform: translateY(-50%);
+        }
+
+        .style-bg-good {
+          background-color: var(--success);
+        }
+
+        .style-bg-neutral-1 {
+          background-color: var(--light);
+        }
+
+        .style-bg-neutral-2 {
+          background-color: var(--dark);
+        }
+
+        .style-bg-bad {
+          background-color: var(--danger);
+        }
+
+        @media (max-width: 639px) {
+          .style-badge.style-badge-single-char {
+            width: 1rem;
+            padding: 0;
+            border-radius: 50%;
+          }
+        }
+
+        @media (min-width: 640px) {
+          .style-badge {
+            width: 5rem;
+          }
+          .style-badge-long {
+            width: 7rem;
+          }
+        }
+
+        .style-grid {
+          display: grid;
+          white-space: nowrap;
+          color: var(--font-color);
+          overflow: scroll;
+          overflow-x: auto;
+          overflow-y: overlay;
+        }
+
+        .style-grid .style-grid-header {
+          background-color: var(--bg-table-header);
+          position: sticky;
+          top: 0;
+          z-index: 1;
+        }
+
+        .style-grid .style-grid-header,
+        .style-grid .style-grid-cell {
+          display: flex;
+          align-items: center;
+        }
+
+        .style-grid .style-grid-cell {
+          border-bottom: 1px solid var(--border-color);
+        }
+
+        .style-grid div[role="row"]:last-of-type .style-grid-cell {
+          border: 0;
+        }
+
+        .style-grid::-webkit-scrollbar {
+          width: 5px;
+          height: 5px;
+        }
+        .style-grid::-webkit-scrollbar-thumb {
+          -webkit-border-radius: 10px;
+          border-radius: 10px;
+          background-color: var(--table-scroll);
+          opacity: 0;
+        }
+        .style-grid:hover::-webkit-scrollbar-thumb {
+          background-color: var(--table-scroll-hover);
+        }
+
+        #validating-overview{
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          grid-template-rows: 4rem;
+          justify-items: center;
+          text-align: center;
+          line-height: 1;
+        }
+
+        @media (min-width: 640px) {
+          #validating-overview{
+            grid-template-columns: repeat(4, 1fr);
+            text-align: left;
+            margin: 0 5%;
+          }
+        }
+      </style>
     </head>
     <header></header>
     <body ontouchstart="">
@@ -218,7 +499,6 @@
 
           </div>
           <!-- Fill content -->
-          <!-- <div class="d-flex flex-fill"></div> -->
           <div class="info-banner-center">
             <div class="info-banner-search">
               <div class="search-container">
@@ -287,15 +567,6 @@
                 </div>
               </div>
             {{ end }}
-            <!--<div class="dropdown">
-                        <a class="btn btn-transparent btn-sm dropdown-toggle" id="langDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fas fa-globe m-0 p-0"></i>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="langDropdown">
-                            <a class="dropdown-item" onClick="updateLang('en-US')">English</a>
-                            <a class="dropdown-item" onClick="updateLang('ru-RU')">Russian</a>
-                        </div>
-                    </div> -->
             {{ if .User.Authenticated }}
               <div class="dropdown">
                 <a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -363,15 +634,6 @@
           </button>
           <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav ml-auto">
-              <!-- <li class="nav-item">
-                            <a ga-outbound="" class="nav-link text-primary"
-                            href="https://gitcoin.co/grants/collections?collection_id=14#">
-                                <span class="nav-icon">
-                                    <img src="/img/gitcoin_logo.svg" style="width: auto; height: 1rem;" class="mb-2">
-                                </span>
-                                <span class="nav-text">Support Ethereum</span>
-                            </a>
-                        </li> -->
               <li class="nav-item {{ if eq .Active "blockchain" }}active{{ end }} dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                   <span class="nav-text">Blockchain</span>
@@ -402,7 +664,6 @@
               </li>
               <li class="nav-item {{ if eq .Active "validators" }}active{{ end }} dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                  <!-- <span class="nav-icon"><i class="fas fa-thumbs-up"></i></span> -->
                   <span class="nav-text">Validators</span>
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdown">
@@ -423,12 +684,6 @@
                     <span class="nav-icon"><i class="fas fa-file-import mr-2"></i></span>
                     <span class="nav-text">Deposit Leaderboard</span>
                   </a>
-                  <!--
-                                <a class="dropdown-item" href="/validators/streakleaderboard">
-                                    <span class="nav-icon"><i class="fas fa-fire mr-2"></i></span>
-                                    <span class="nav-text">Streak Leaderboard</span>
-                                </a>
-                                -->
                   <hr />
                   <a class="dropdown-item" href="/validators/initiated-deposits">
                     <span class="nav-icon"><i class="fas fa-file-signature mr-2"></i></span>
@@ -440,36 +695,6 @@
                   </a>
                 </div>
               </li>
-              <!-- <li class="nav-item {{ if eq .Active "stats" }}active{{ end }} dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="nav-icon"><i class="fas fa-cubes"></i></span>
-                                <span class="nav-text">Stats</span>
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <a class="dropdown-item" href="/charts">
-                                    <span class="nav-icon"><i class="fas fa-chart-bar mr-2"></i></span>
-                                    <span class="nav-text">Charts</span>
-                                </a>
-                                <a class="dropdown-item" href="/calculator">
-                                    <span class="nav-icon"><i class="fas fa-calculator mr-2"></i></span>
-                                    <span class="nav-text">Calculator</span>
-                                </a>
-                                <hr>
-                                <a class="dropdown-item" href="/vis">
-                                    <span class="nav-icon"><i class="fas fa-project-diagram mr-2"></i></span>
-                                    <span class="nav-text">Block Viz</span>
-                                </a>
-                                <a ga-outbound class="dropdown-item" href="https://eth2.ethernodes.org/">
-                                    <span class="nav-icon"><i class="fas fa-network-wired mr-2"></i></span>
-                                    <span class="nav-text">Nodes</span>
-                                </a>
-                                <hr>
-                                <a class="dropdown-item" href="/pools/rocketpool">
-                                    <span class="nav-icon"><i class="fas fa-rocket mr-2"></i></span>
-                                    <span class="nav-text">Rocketpool</span>
-                                </a>
-                            </div>
-                        </li> -->
               <style>
                 .nav-cube {
                   --mainColor: rgba(75, 75, 75, 0.7);
@@ -498,63 +723,6 @@
               </style>
               <li class="nav-item {{ if eq .Active "dashboard" }}active{{ end }}">
                 <a class="nav-link" href="/dashboard">
-                  <!-- <span class="nav-icon">
-                                    <svg style="width: 21px; height: 23px;" xmlns="http://www.w3.org/2000/svg" class="nav-cube" viewBox="80 20 150 100">
-                                        <defs>
-                                            <g id="cube" class="cube-unit">
-                                                <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
-                                                <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
-                                                <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
-                                            </g>
-                                            <g id="cube" class="cube-unit">
-                                                <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
-                                                <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
-                                                <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
-                                            </g>
-
-                                            <g style="transform: scale(0.6)" id="cube-small" class="cube-unit">
-                                                <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
-                                                <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
-                                                <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
-                                            </g>
-                                            <g id="cube" class="cube-unit">
-                                                <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
-                                                <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
-                                                <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
-                                            </g>
-                                        </defs>
-                                        <g class="move"><use href="#cube-small" x="129" y="56"/></g>
-                                        <g style="opacity: .2;">
-                                            <use href="#cube" x="121" y="48"/>
-                                            <use href="#cube" x="121" y="24"/>
-                                            <use href="#cube" x="121" y="0"/>
-                                            <use href="#cube" x="100" y="60"/>
-                                            <use href="#cube" x="100" y="36"/>
-                                            <use href="#cube" x="100" y="12"/>
-                                            <use href="#cube" x="142" y="60"/>
-                                            <use href="#cube" x="142" y="36"/>
-                                            <use href="#cube" x="142" y="12"/>
-                                            <use href="#cube" x="163" y="72"/>
-                                            <use href="#cube" x="163" y="48"/>
-                                            <use href="#cube" x="163" y="24"/>
-                                            <use href="#cube" x="79" y="72"/>
-                                            <use href="#cube" x="79" y="48"/>
-                                            <use href="#cube" x="79" y="24"/>
-                                            <use href="#cube" x="121" y="72"/>
-                                            <use href="#cube" x="121" y="48"/>
-                                            <use href="#cube" x="121" y="24"/>
-                                            <use href="#cube" x="100" y="84"/>
-                                            <use href="#cube" x="100" y="60"/>
-                                            <use href="#cube" x="100" y="36"/>
-                                            <use href="#cube" x="142" y="84"/>
-                                            <use href="#cube" x="142" y="60"/>
-                                            <use href="#cube" x="142" y="36"/>
-                                            <use href="#cube" x="121" y="96"/>
-                                            <use href="#cube" x="121" y="72"/>
-                                            <use href="#cube-small" x="129" y="56"/>
-                                        </g>
-                                    </svg>
-                                </span> -->
                   <span class="nav-text">Dashboard</span>
                 </a>
               </li>
@@ -563,57 +731,11 @@
                   <span class="nav-text">Notifications</span>
                 </a>
               </li>
-              <!-- <li class="nav-item {{ if eq .Active "services" }}active{{ end }} dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="nav-icon"><i class="fas fa-tools"></i></span>
-                                <span class="nav-text">Services</span>
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <a class="dropdown-item" href="/stakingServices">
-                                    <span class="nav-icon"><i class="fas fa-drumstick-bite mr-2"></i></span>
-                                    <span class="nav-text">Staking Services</span>
-                                </a>
-                                <a class="dropdown-item" href="/pools">
-                                    <span class="nav-icon"><i class="fas fa-chart-pie mr-2"></i></span>
-                                    <span class="nav-text">Staking pools</span>
-                                </a>
-                                <a class="dropdown-item" href="/ethClients">
-                                    <span class="nav-icon"><i class="fas fa-desktop mr-2"></i></span>
-                                    <span class="nav-text">Ethereum Clients</span>
-                                </a>
-                                <a class="dropdown-item" href="/rewards">
-                                    <span class="nav-icon"><i class="far fa-money-bill-alt mr-2"></i></span>
-                                    <span class="nav-text">Income History</span>
-                                </a>
-                                <a class="dropdown-item" href="/education">
-                                    <span class="nav-icon"><i class="fa fa-book mr-2"></i></span>
-                                    <span class="nav-text">Educational Material</span>
-                                </a>
-                                <hr>
-                                <a class="dropdown-item" href="https://beaconcha.in/api/v1/docs/index.html">
-                                    <span class="nav-icon"><i class="fas fa-laptop-code mr-2"></i></span>
-                                    <span class="nav-text">API Docs</span>
-                                </a>
-                                <a class="dropdown-item" href="/pricing">
-                                    <span class="nav-icon"><i class="fas fa-laptop-code mr-2"></i></span>
-                                    <span class="nav-text">API Pricing</span>
-                                </a>
-                            </div>
-                        </li> -->
               <li class="nav-item dropdown {{ if eq .Active "more" }}active{{ end }}">
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                  <!-- <span class="nav-icon"><i class="fas fa-info mr-2"></i></span> -->
                   <span class="nav-text">More</span>
                 </a>
                 <div class="dropdown-menu dropdown-menu-right p-sm-2 p-md-4 px-lg-2" aria-labelledby="navbarDropdown">
-                  <!--<a class="dropdown-item" href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121">
-                                    <span class="nav-icon"><i class="fab fa-apple mr-2"></i></span>
-                                    <span class="nav-text">iOS App</span>
-                                </a>
-                                <a class="dropdown-item" href="https://play.google.com/store/apps/details?id=in.beaconcha.mobile">
-                                    <span class="nav-icon"><i class="fab fa-android mr-2"></i></span>
-                                    <span class="nav-text">Android App</span>
-                                </a>-->
 
                   <!-- MEGAMENU -->
                   <div class="d-flex align-content-between flex-wrap flex-lg-nowrap">
@@ -760,79 +882,6 @@
         </div>
       </nav>
       <main>
-        <!-- <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;">
-          <span class="d-none d-md-block">
-            <span>
-              <span>
-                <a style="color: #ff6600;" href="https://blog.ethereum.org/2022/08/24/mainnet-merge-announcement" target="_blank">The Merge</a>
-              </span>
-              on Sep. 14th,
-              <span>
-                <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=Nx-jYgI0QVI" target="_blank">on YouTube</a>
-              </span>
-              hosted by
-              <span>
-                <a style="color: #ff6600;" href="https://discord.io/ethstaker" target="_blank">Ethstaker</a>
-              </span>
-            </span>
-          </span>
-          <span class="d-md-none p-1" style="font-size: 90%;">
-            <span>
-              <span> <a style="color: #ff6600;" href="https://blog.ethereum.org/2022/08/24/mainnet-merge-announcement" target="_blank">The Merge</a> </span>, on Sep. 14th,
-              <span style="color: #ff6600;">
-                <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=Nx-jYgI0QVI" target="_blank">on YouTube</a>
-              </span>
-            </span>
-          </span>
-        </div> -->
-
-        <!-- Discount banner
-            <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;">
-                <span class="d-none d-md-block">
-                <span>
-                    <span>
-                        Use voucher code
-                    </span>
-                        <span>
-                            <a style="color: #66bce9;">BEACONCHAIN</a>
-                        </span>
-                        <span>
-                            to get 69.42% off on the
-                        </span>
-                        <span>
-                            <a href="/premium" style="color: #ff6600;">Mobile app</a>
-                        </span>
-                        <span>
-                            &amp;
-                        </span>
-                        <span>
-                            <a href="/pricing" style="color: #ff6600;">API keys</a>
-                        </span>
-                    </span>
-                </span>
-                <span class="d-md-none p-1" style="font-size: 90%;">
-                    <span>
-                        <span>
-                            Use "<a style="color: #66bce9;">BEACONCHAIN</a>"
-                        </span>
-                         <span>
-                            for a 69.42%
-                        </span>
-                        <span>
-                            <a href="/premium" style="color:#ff6600;">discount
-                            </a>
-                        </span>
-                    </span>
-                </span>
-            </div> -->
-
-        <!-- {{ if .HeaderAd }}
-          <div class="container">
-            <div class="d-flex justify-content-between pt-4 pb-3">
-              <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-            </div>
-          </div>
-        {{ end }} -->
         {{ template "content" . }}
         {{ if not .User.Authenticated }}
           <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index: 999; bottom: 3%; left: 50%; transform: translateX(-50%); width: 100%; justify-content: center; align-items: center;">
@@ -927,6 +976,42 @@
       </script>
       <script src="/js/typeahead.bundle.min.js"></script>
       <script src="/js/layout.js"></script>
+      <script>
+        $("[data-truncate-middle]").each(function (item) {
+          truncateMiddle(this)
+          addEventListener("resize", (event) => {
+            truncateMiddle(this)
+          })
+          addEventListener("copy", (event) => {
+            copyDots(this)
+          })
+        })
+
+        // function for trimming an placing ellipsis in the middle when text is overflowing
+        function truncateMiddle(element) {
+          element.innerHTML = element.getAttribute("data-truncate-middle")
+          const parent = element.parentElement
+          // get ratio of visible width to full width
+          const ratio = parent.offsetWidth / parent.scrollWidth
+          if (ratio < 1) {
+            const removeCount = Math.ceil((parent.innerText.length * (1 - ratio)) / 2) + 1
+            const originalText = element.getAttribute("data-truncate-middle")
+            element.innerHTML = originalText.substr(0, originalText.length / 2 - removeCount) + "…" + originalText.substr(originalText.length / 2 + removeCount)
+          }
+        }
+
+        // function for inserting correct text into clipboard when copying ellipsis of text truncated with 'truncateMiddle()'
+        function copyDots(element) {
+          const selection = document.getSelection()
+          if (selection.toString().includes("…")) {
+            const originalText = element.getAttribute("data-truncate-middle")
+            const diff = originalText.length - (element.innerText.length - 1)
+            const replaceText = selection.toString().replace("…", originalText.substr(originalText.length / 2 - diff / 2, diff))
+            event.clipboardData.setData("text/plain", replaceText)
+            event.preventDefault()
+          }
+        }
+      </script>
       <script src="/js/banner.js"></script>
         <script>
             var currency = {{.Rates.Currency}}

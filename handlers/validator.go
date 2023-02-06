@@ -13,6 +13,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net/http"
 	"sort"
 	"strconv"
@@ -20,6 +21,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
 	"github.com/protolambda/zrnt/eth2/util/math"
@@ -126,11 +128,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				return
 				// err == sql.ErrNoRows -> (no pool set)
 			} else {
-				if validatorPageData.Name == "" {
-					validatorPageData.Name = fmt.Sprintf("Pool: %s", pool)
-				} else {
-					validatorPageData.Name += fmt.Sprintf(" / Pool: %s", pool)
-				}
+				validatorPageData.Pool = pool
 			}
 			deposits, err := db.GetValidatorDeposits(pubKey)
 			if err != nil {
@@ -272,13 +270,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if validatorPageData.Pool != "" {
-		if validatorPageData.Name == "" {
-			validatorPageData.Name = fmt.Sprintf("Pool: %s", validatorPageData.Pool)
-		} else {
-			validatorPageData.Name += fmt.Sprintf(" / Pool: %s", validatorPageData.Pool)
-		}
+		validatorPageData.Tags = append(validatorPageData.Tags, "pool:"+validatorPageData.Pool)
 	}
-
+	if validatorPageData.Name != "" {
+		validatorPageData.Tags = append(validatorPageData.Tags, "name:"+validatorPageData.Name)
+	}
 	if validatorPageData.Rank7d > 0 && validatorPageData.RankCount > 0 {
 		validatorPageData.RankPercentage = float64(validatorPageData.Rank7d) / float64(validatorPageData.RankCount)
 	}
@@ -483,7 +479,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.Income1d = earnings.LastDay
 	validatorPageData.Income7d = earnings.LastWeek
 	validatorPageData.Income31d = earnings.LastMonth
-	validatorPageData.Apr = earnings.APR
+	validatorPageData.APR7d = earnings.APR7d
+	validatorPageData.APR31d = earnings.APR31d
+	validatorPageData.APR365d = earnings.APR365d
+	validatorPageData.TotalExecutionRewards = earnings.TotalExecutionRewards
+	validatorPageData.Luck = earnings.Luck
 
 	// logger.Infof("income data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
@@ -781,12 +781,9 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	orderColumn := q.Get("order[0][column]")
 	orderByMap := map[string]string{
-		"0": "epoch",
-		"2": "status",
-		"5": "attestationscount",
-		"6": "depositscount",
-		"8": "voluntaryexitscount",
-		"9": "graffiti",
+		"0": "slot",
+		"4": "status",
+		"8": "graffiti",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -797,21 +794,23 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 		orderDir = "desc"
 	}
 
-	var blocks []*types.OldIndexPageDataBlocks
-	err = db.ReaderDb.Select(&blocks, `
+	var proposedSlots []struct {
+		Epoch           uint64
+		Slot            uint64
+		BlockRoot       []byte
+		Status          uint64
+		Graffiti        []byte
+		ExecBlockNumber uint64 `db:"exec_block_number"`
+	}
+
+	err = db.ReaderDb.Select(&proposedSlots, `
 		SELECT 
 			blocks.epoch, 
-			blocks.slot, 
-			blocks.proposer, 
-			blocks.blockroot, 
-			blocks.parentroot, 
-			blocks.attestationscount, 
-			blocks.depositscount, 
-			blocks.voluntaryexitscount, 
-			blocks.proposerslashingscount, 
-			blocks.attesterslashingscount, 
+			blocks.slot,
+			blocks.blockroot,
 			blocks.status, 
-			blocks.graffiti 
+			blocks.graffiti,
+			COALESCE(blocks.exec_block_number, 0) AS exec_block_number
 		FROM blocks 
 		WHERE blocks.proposer = $1
 		ORDER BY `+orderBy+` `+orderDir+`
@@ -823,18 +822,62 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]interface{}, len(blocks))
-	for i, b := range blocks {
+	blockList := []uint64{}
+
+	for _, slot := range proposedSlots {
+		if slot.ExecBlockNumber != 0 {
+			blockList = append(blockList, uint64(slot.ExecBlockNumber))
+		}
+	}
+	var execBlocks []*types.Eth1BlockIndexed
+	var relaysData map[common.Hash]types.RelaysData
+	var slotToExecBlock map[uint64]*types.Eth1BlockIndexed
+
+	if len(blockList) > 0 {
+		execBlocks, err = db.BigtableClient.GetBlocksIndexedMultiple(blockList, 10000)
+		if err != nil {
+			logger.Errorf("error retrieving execution blocks data from bigtable: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		slotToExecBlock = make(map[uint64]*types.Eth1BlockIndexed)
+		for _, execBlock := range execBlocks {
+			slotToExecBlock[utils.TimeToSlot(uint64(execBlock.Time.Seconds))] = execBlock
+		}
+
+		relaysData, err = db.GetRelayDataForIndexedBlocks(execBlocks)
+		if err != nil {
+			logger.Errorf("error retrieving mev bribe data from bigtable: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	tableData := make([][]interface{}, len(proposedSlots))
+	for i, b := range proposedSlots {
+
+		execBlockNum := template.HTML("-")
+		execReward := template.HTML("-")
+		execRewardRecipient := template.HTML("-")
+		if execBlock, hasExecBlock := slotToExecBlock[b.Slot]; hasExecBlock {
+			execBlockNum = utils.FormatEth1Block(execBlock.Number)
+			if relayDatum, hasMevBribe := relaysData[common.BytesToHash(execBlock.Hash)]; hasMevBribe {
+				execReward = utils.NewFormat(relayDatum.MevBribe.BigInt(), "ETH", 5, 1)
+				execRewardRecipient = utils.FormatAddressWithLimits(relayDatum.MevRecipient, "", false, "address", 15, 20, false)
+			} else {
+				execReward = utils.NewFormat(new(big.Int).SetBytes(execBlock.TxReward), "ETH", 5, 1)
+				execRewardRecipient = utils.FormatAddressWithLimits(execBlock.Coinbase, "", false, "address", 15, 20, false)
+			}
+		}
 		tableData[i] = []interface{}{
 			utils.FormatEpoch(b.Epoch),
 			utils.FormatBlockSlot(b.Slot),
-			utils.FormatBlockStatus(b.Status),
+			execBlockNum,
 			utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
+			utils.FormatBlockStatus(b.Status),
+			execReward,
 			utils.FormatBlockRoot(b.BlockRoot),
-			b.Attestations,
-			b.Deposits,
-			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
-			b.Exits,
+			execRewardRecipient,
 			utils.FormatGraffiti(b.Graffiti),
 		}
 	}
@@ -1263,20 +1306,21 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	totalCount := uint64(0)
 
+	currentEpoch := services.LatestEpoch()
+
 	// Every validator is scheduled to issue an attestation once per epoch
 	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
 	// Special care needs to be take for exited and pending validators
 	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 {
 		totalCount += activationAndExitEpoch.ExitEpoch - activationAndExitEpoch.ActivationEpoch
 	} else {
-		totalCount += services.LatestEpoch() - activationAndExitEpoch.ActivationEpoch + 1
+		totalCount += currentEpoch - activationAndExitEpoch.ActivationEpoch + 1
 	}
+	currentEpoch--
 
 	if start > 90 {
 		start = 90
 	}
-
-	currentEpoch := services.LatestEpoch() - 1
 
 	var validatorHistory []*types.ValidatorHistory
 
@@ -1332,6 +1376,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// map epochs to proposals
 	proposalMap := make(map[uint64]*types.ValidatorProposal)
 	for _, proposal := range proposalHistory[index] {
 		proposalMap[proposal.Slot/32] = &types.ValidatorProposal{
@@ -1341,6 +1386,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// map epoch to attestation
 	attestationsMap := make(map[uint64]*types.ValidatorAttestation)
 	for _, attestation := range attestationHistory[index] {
 		attestationsMap[attestation.Epoch] = &types.ValidatorAttestation{
@@ -1385,20 +1431,27 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(validatorHistory))
 	for _, b := range validatorHistory {
-		if !b.AttesterSlot.Valid && b.BalanceChange.Int64 < 0 {
-			b.AttestationStatus = 4
-		}
+		// Status 0 == Scheduled
+		// Status 1 == Attested
+		// Status 2 == Missed
+		// Status 3 == Missed (Orphaned), this is never set
+		// Status 4 == Inactivity leak
+		// Status 5 == Inactive
 
-		if !b.AttesterSlot.Valid && b.BalanceChange.Int64 >= 0 {
-			b.AttestationStatus = 5
+		if b.InclusionSlot.Valid && b.InclusionSlot.Int64 != 0 && b.AttestationStatus == 0 {
+			b.AttestationStatus = 1
 		}
 
 		if b.AttesterSlot.Int64 != -1 && b.AttesterSlot.Valid && utils.SlotToTime(uint64(b.AttesterSlot.Int64)).Before(time.Now().Add(time.Minute*-1)) && b.InclusionSlot.Int64 == 0 {
 			b.AttestationStatus = 2
 		}
 
-		if b.InclusionSlot.Valid && b.InclusionSlot.Int64 != 0 && b.AttestationStatus == 0 {
-			b.AttestationStatus = 1
+		if !b.AttesterSlot.Valid && b.BalanceChange.Int64 < 0 {
+			b.AttestationStatus = 4
+		}
+
+		if !b.AttesterSlot.Valid && b.BalanceChange.Int64 >= 0 {
+			b.AttestationStatus = 5
 		}
 
 		events := utils.FormatAttestationStatusShort(b.AttestationStatus)
@@ -1412,7 +1465,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			tableData = append(tableData, []interface{}{
 				utils.FormatEpoch(b.Epoch),
 				utils.FormatBalanceChangeFormated(&b.BalanceChange.Int64, currency, b.IncomeDetails),
-				template.HTML(""),
 				template.HTML(events),
 			})
 		}

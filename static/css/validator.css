@@ -5,11 +5,10 @@
   align-items: center;
   justify-content: center;
   margin: 3rem auto 2rem;
-  font-size: .85rem;
 }
 .validator__lifecycle-content {
   display: flex;
-  max-width: 600px;
+  max-width: 670px;
   width: 100%;
 }
 .validator__lifecycle-node-container {
@@ -22,22 +21,11 @@
   transform: translateX(-50%);
   opacity: 20%;
 }
-.validator__lifecycle-node::before {
-  content: '';
-  position: absolute;
-  opacity: 20%;
-  height: 8px;
-  border-right: solid 1px var(--font-color, black);
-  top: -12px;
-}
 .validator__lifecycle-node {
-  width: 18px;
-  height: 18px;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
+  width: 0.875rem;
+  height: 0.875rem;
   border-radius: 50%;
-  border: solid 4px var(--shadow-light, #00000033);
+  border: solid 0.125rem var(--shadow-light, #00000033);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -63,10 +51,9 @@
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  bottom: -10px;
+  bottom: -1.2rem;
   color: black;
   width: 85%;
-  font-size: 90%;
 }
 .validator__lifecycle-progress-epoch > div {
   display: flex;
@@ -111,6 +98,7 @@
   visibility: hidden;
   position: absolute;
   color: white;
+  font-size: 0.6rem;
 }
 .validator__lifecycle-container .done.validator__lifecycle-deposited .deposit-success,
 .validator__lifecycle-container .failed.validator__lifecycle-deposited .deposit-fail,
@@ -174,20 +162,18 @@
     -webkit-transform: scale(1.5);
   }
 }
-@media screen and (min-width: 960px) {
+@media screen and (min-width: 640px) {
   .validator__lifecycle-container i {
     margin-bottom: 0;
+    font-size: 1.3rem;
   }
   .validator__lifecycle-progress-epoch {
-    bottom: -2px;
+    bottom: -0.8rem;
   }
   .validator__lifecycle-node {
-    width: 24px;
-    height: 24px;
-    border-width: 5px;
-  }
-  .validator__lifecycle-node-header {
-    /* top: -30px; */
+    width: 1.625rem;
+    height: 1.625rem;
+    border-width: 0.25rem;
   }
 }
 /* end validator lifecycle */
