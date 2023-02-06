@@ -557,7 +557,6 @@ func ApiSlotDeposits(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
-		limit = 100
 	}
 
 	offset, err := strconv.ParseInt(offsetQuery, 10, 64)

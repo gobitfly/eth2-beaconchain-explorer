@@ -52,53 +52,53 @@
 
         })
     </script>
-      <script>
-        $(document).ready(function () {
-          $("#included-deposits").DataTable({
-            processing: true,
-            serverSide: true,
-            ordering: true,
-            stateSave: true,
-            order: [[0, "desc"]],
-            searching: true,
-            ajax: "/validators/included-deposits/data",
-            pagingType: "input",
-            language: {
-              searchPlaceholder: "Slot / Validator Key / Withdrawal Credentials",
-              search: "",
-              paginate: {
-                previous: '<i class="fas fa-chevron-left"></i>',
-                next: '<i class="fas fa-chevron-right"></i>',
-              },
+  <script>
+    $(document).ready(function () {
+      $("#included-deposits").DataTable({
+        processing: true,
+        serverSide: true,
+        ordering: true,
+        stateSave: true,
+        order: [[0, "desc"]],
+        searching: true,
+        ajax: "/validators/included-deposits/data",
+        pagingType: "input",
+        language: {
+          searchPlaceholder: "Slot / Validator Key / Withdrawal Credentials",
+          search: "",
+          paginate: {
+            previous: '<i class="fas fa-chevron-left"></i>',
+            next: '<i class="fas fa-chevron-right"></i>',
+          },
+        },
+        drawCallback: function (settings) {
+          $('[data-toggle="tooltip"]').tooltip()
+        },
+        columnDefs: [
+          {
+            targets: 3,
+            data: "3",
+            render: function (data, type, row, meta) {
+              // make the span we get from the backend into a DOM element and extract the text value from it (because clipboard text takes only string, not HTML elements)
+              const clipboardtext = $(row[5]).text()
+              if (clipboardtext.startsWith("0x01")) {
+                data = `<a href="/address/${clipboardtext.replace("010000000000000000000000", "")}">${data}</a>`
+              }
+              return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
             },
-            drawCallback: function (settings) {
-              $('[data-toggle="tooltip"]').tooltip()
+          },
+          {
+            targets: 4,
+            data: "4",
+            render: function (data, type, row, meta) {
+              const clipboardtext = $(row[6]).text()
+              return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
             },
-            columnDefs: [
-              {
-                targets: 3,
-                data: "3",
-                render: function (data, type, row, meta) {
-                  // make the span we get from the backend into a DOM element and extract the text value from it (because clipboard text takes only string, not HTML elements)
-                  const clipboardtext = $(row[5]).text()
-                  if (clipboardtext.startsWith("0x01")) {
-                    data = `<a href="/address/${clipboardtext.replace("010000000000000000000000", "")}">${data}</a>`
-                  }
-                  return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
-                },
-              },
-              {
-                targets: 4,
-                data: "4",
-                render: function (data, type, row, meta) {
-                  const clipboardtext = $(row[6]).text()
-                  return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
-                },
-              },
-            ],
-          })
-        })
-      </script>
+          },
+        ],
+      })
+    })
+  </script>
 {{ end }}
 {{ define "css" }}
   <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
@@ -209,28 +209,28 @@
       <h2 class="my-3 h4">
         <span class="nav-text">Included Deposits</span>
       </h2>
-        <h6>This table displays the deposits received by the Ethereum Beacon Chain.</h6>
-        <div class="card">
-          <div class="card-body px-0 py-2">
-            <div class="table-responsive pt-2">
-              <table class="table" id="included-deposits">
-                <thead>
-                  <tr>
-                    <th>Slot</th>
-                    <th>Validator Key</th>
-                    <th>Amount</th>
-                    <th>Withdrawal Credentials</th>
-                    <th>Signature</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
+      <h6>This table displays the deposits received by the Ethereum Beacon Chain.</h6>
+      <div class="card">
+        <div class="card-body px-0 py-2">
+          <div class="table-responsive pt-2">
+            <table class="table" id="included-deposits">
+              <thead>
+                <tr>
+                  <th>Slot</th>
+                  <th>Validator Key</th>
+                  <th>Amount</th>
+                  <th>Withdrawal Credentials</th>
+                  <th>Signature</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
           </div>
         </div>
-        <div class="d-flex justify-content-between py-2">
-          <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-        </div>
+      </div>
+      <div class="d-flex justify-content-between py-2">
+        <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+      </div>
     </div>
   {{ end }}
 {{ end }}
