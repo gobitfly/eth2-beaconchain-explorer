@@ -529,21 +529,19 @@ func slotVizUpdater(wg *sync.WaitGroup) {
 
 	for {
 		latestEpoch := LatestEpoch()
-		if latestEpoch >= 0 {
-			epochData, err := db.GetSlotVizData(latestEpoch)
+		epochData, err := db.GetSlotVizData(latestEpoch)
+		if err != nil {
+			logger.Errorf("error retrieving slot viz data from database: %v latest epoch: %v", err, latestEpoch)
+		} else {
+			cacheKey := fmt.Sprintf("%d:frontend:slotVizMetrics", utils.Config.Chain.Config.DepositChainID)
+			err = cache.TieredCache.Set(cacheKey, epochData, time.Hour*24)
 			if err != nil {
-				logger.Errorf("error retrieving slot viz data from database: %v latest epoch: %v", err, latestEpoch)
-			} else {
-				cacheKey := fmt.Sprintf("%d:frontend:slotVizMetrics", utils.Config.Chain.Config.DepositChainID)
-				err = cache.TieredCache.Set(cacheKey, epochData, time.Hour*24)
-				if err != nil {
-					logger.Errorf("error caching slotVizMetrics: %v", err)
-				}
-				if firstRun {
-					logger.Info("initialized slotViz metrics")
-					wg.Done()
-					firstRun = false
-				}
+				logger.Errorf("error caching slotVizMetrics: %v", err)
+			}
+			if firstRun {
+				logger.Info("initialized slotViz metrics")
+				wg.Done()
+				firstRun = false
 			}
 		}
 		ReportStatus("slotVizUpdater", "Running", nil)
