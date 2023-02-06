@@ -221,7 +221,7 @@ func (bigtable *Bigtable) CheckForGapsInBlocksTable(lookback int) (gapFound bool
 
 func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	prefix := bigtable.chainId + ":"

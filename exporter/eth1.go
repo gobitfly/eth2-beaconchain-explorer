@@ -420,8 +420,8 @@ func aggregateDeposits() error {
 			SUM(eth1.invalidcount) AS invalidcount,
 			COUNT(CASE WHEN v.status = 'slashed' THEN 1 END) AS slashedcount,
 			COUNT(v.pubkey) AS totalcount,
-			COUNT(CASE WHEN v.status = 'active' THEN 1 END) as activecount,
-			COUNT(CASE WHEN v.status = 'pending' THEN 1 END) AS pendingcount,
+			COUNT(CASE WHEN v.status = 'active_online' OR v.status = 'active_offline' THEN 1 END) as activecount,
+			COUNT(CASE WHEN v.status = 'deposited' THEN 1 END) AS pendingcount,
 			COUNT(CASE WHEN v.status = 'exited' THEN 1 END) AS voluntary_exit_count
 		FROM (
 			SELECT 
