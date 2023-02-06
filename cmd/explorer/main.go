@@ -474,6 +474,8 @@ func main() {
 			router.HandleFunc("/validators/streakleaderboard", handlers.ValidatorsStreakLeaderboard).Methods("GET")
 			router.HandleFunc("/validators/streakleaderboard/data", handlers.ValidatorsStreakLeaderboardData).Methods("GET")
 			router.HandleFunc("/validators/withdrawals", handlers.Withdrawals).Methods("GET")
+			router.HandleFunc("/validators/withdrawals/data", handlers.WithdrawalsData).Methods("GET")
+			router.HandleFunc("/validators/withdrawals/bls", handlers.BLSChangeData).Methods("GET")
 			router.HandleFunc("/validators/initiated-deposits", handlers.Eth1Deposits).Methods("GET")
 			router.HandleFunc("/validators/initiated-deposits/data", handlers.Eth1DepositsData).Methods("GET")
 			router.HandleFunc("/validators/deposit-leaderboard", handlers.Eth1DepositsLeaderboard).Methods("GET")

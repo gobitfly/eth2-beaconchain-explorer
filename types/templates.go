@@ -129,6 +129,13 @@ type Stats struct {
 	ValidatorChurnLimit            *uint64
 	LatestValidatorWithdrawalIndex *uint64 `db:"index"`
 	WithdrawableValidatorCount     *uint64 `db:"count"`
+	// WithdrawableAmount             *uint64 `db:"amount"`
+	PendingBLSChangeValidatorCount *uint64 `db:"count"`
+	NonWithdrawableCount           *uint64 `db:"count"`
+	TotalAmountWithdrawn           *uint64 `db:"amount"`
+	WithdrawalCount                *uint64 `db:"count"`
+	TotalAmountDeposited           *uint64 `db:"amount"`
+	BLSChangeCount                 *uint64 `db:"count"`
 }
 
 type StatsTopDepositors struct {
@@ -1837,4 +1844,11 @@ type BLSChange struct {
 
 type WithdrawalsPageData struct {
 	Stats *Stats
+}
+
+type WithdrawalStats struct {
+	WithdrawalsCount             uint64
+	WithdrawalsTotal             uint64
+	BLSChangeCount               uint64
+	ValidatorsWithBLSCredentials uint64
 }

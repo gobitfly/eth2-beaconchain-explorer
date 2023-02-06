@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"database/sql"
+	"encoding/hex"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -2421,6 +2422,8 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 	}
 
 	if query != "" {
+		bquery, _ := hex.DecodeString(strings.TrimPrefix(query, "0x"))
+
 		err := ReaderDb.Select(&withdrawals, fmt.Sprintf(`
 			SELECT 
 				w.block_slot as slot,
@@ -2429,13 +2432,14 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 				w.address,
 				w.amount
 			FROM blocks_withdrawals w
-			INNER JOIN blocks ON w.block_root = b.blockroot AND b.status = '1'
-			WHERE w.validatorindex LIKE $3 || '%%
-				OR withdrawalcredentials LIKE $3 || '%%'::bytea
+			INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
+			WHERE CAST(w.validatorindex as varchar) LIKE $3 || '%%'
+				OR address LIKE $4 || '%%'::bytea
 				OR CAST(block_slot as varchar) LIKE $3 || '%%'
+				OR CAST(block_slot / 32 as varchar) LIKE $3 || '%%'
 			ORDER BY %s %s
 			LIMIT $1
-			OFFSET $2`, orderBy, orderDir), length, start, strings.ToLower(query))
+			OFFSET $2`, orderBy, orderDir), length, start, strings.ToLower(query), bquery)
 		if err != nil {
 			return nil, err
 		}
@@ -2458,6 +2462,39 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 	}
 
 	return withdrawals, nil
+}
+
+func GetTotalAmountWithdrawn() (uint64, uint64, error) {
+	var res = struct {
+		Sum   uint64 `db:"sum"`
+		Count uint64 `db:"count"`
+	}{}
+	err := ReaderDb.Get(&res, `
+	SELECT 
+		COALESCE(sum(w.amount), 0) as sum,
+		COALESCE(count(*), 0) as count
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'`)
+	return res.Sum, res.Count, err
+}
+
+func GetTotalAmountDeposited() (uint64, error) {
+	var total uint64
+	err := ReaderDb.Get(&total, `
+	SELECT 
+		COALESCE(sum(d.amount), 0) as sum 
+	FROM blocks_deposits d
+	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1'`)
+	return total, err
+}
+
+func GetBLSChangeCount() (uint64, error) {
+	var total uint64
+	err := ReaderDb.Get(&total, `
+	SELECT 
+		COALESCE(count(*), 0) as count 
+	FROM blocks_bls_change`)
+	return total, err
 }
 
 func GetEpochWithdrawalsTotal(epoch uint64) (total uint64, err error) {
@@ -2634,6 +2671,80 @@ func GetMostRecentWithdrawalValidator() (uint64, error) {
 	return validatorindex, nil
 }
 
+func GetTotalBLSChanges() (uint64, error) {
+	var count uint64
+	err := ReaderDb.Get(&count, `
+		SELECT count(*) FROM blocks_bls_change`)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("error getting total blocks_bls_change: %w", err)
+	}
+
+	return count, nil
+}
+
+func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string) ([]*types.BLSChange, error) {
+	blsChange := []*types.BLSChange{}
+
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+	columns := []string{"block_slot", "validatorindex"}
+	hasColumn := false
+	for _, column := range columns {
+		if orderBy == column {
+			hasColumn = true
+		}
+	}
+	if !hasColumn {
+		orderBy = "block_slot"
+	}
+
+	if query != "" {
+
+		bquery, _ := hex.DecodeString(strings.TrimPrefix(query, "0x"))
+		err := ReaderDb.Select(&blsChange, fmt.Sprintf(`
+			SELECT 
+				bls.block_slot as slot,
+				bls.validatorindex,
+				bls.signature,
+				bls.pubkey,
+				bls.address
+			FROM blocks_bls_change bls
+			INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
+			WHERE CAST(bls.validatorindex as varchar) LIKE $3 || '%%'
+				OR pubkey LIKE $4::bytea || '%%'::bytea
+				OR CAST(block_slot as varchar) LIKE $3 || '%%'
+				OR CAST((block_slot / 32) as varchar) LIKE $3 || '%%'
+			ORDER BY bls.%s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start, strings.ToLower(query), bquery)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := ReaderDb.Select(&blsChange, fmt.Sprintf(`
+			SELECT 
+				bls.block_slot as slot,
+				bls.validatorindex,
+				bls.signature,
+				bls.pubkey,
+				bls.address
+			FROM blocks_bls_change bls
+			INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
+			ORDER BY %s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return blsChange, nil
+}
+
 func GetSlotBLSChange(slot uint64) ([]*types.BLSChange, error) {
 	var change []*types.BLSChange
 
@@ -2690,6 +2801,26 @@ func GetWithdrawableValidatorCount(epoch uint64) (uint64, error) {
 		validators 
 	WHERE 
 		withdrawalcredentials LIKE '\x01' || '%'::bytea AND (effectivebalance = $1 AND balance > $1 OR withdrawableepoch <= $2 AND balance > 0);`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("error getting withdrawable validator count: %w", err)
+	}
+
+	return count, nil
+}
+
+func GetPendingBLSChangeValidatorCount() (uint64, error) {
+	var count uint64
+
+	err := ReaderDb.Get(&count, `
+	SELECT 
+		count(*) 
+	FROM 
+		validators 
+	WHERE 
+		withdrawalcredentials LIKE '\x00' || '%'::bytea`)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil

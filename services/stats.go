@@ -106,6 +106,34 @@ func calculateStats() (*types.Stats, error) {
 
 	stats.WithdrawableValidatorCount = &WithdrawableValidatorCount
 
+	PendingBLSChangeValidatorCount, err := db.GetPendingBLSChangeValidatorCount()
+	if err != nil {
+		logger.WithError(err).Error("error getting withdrawable validator count")
+	}
+
+	stats.PendingBLSChangeValidatorCount = &PendingBLSChangeValidatorCount
+
+	TotalAmountWithdrawn, WithdrawalCount, err := db.GetTotalAmountWithdrawn()
+	if err != nil {
+		logger.WithError(err).Error("error getting total amount withdrawn")
+	}
+	stats.TotalAmountWithdrawn = &TotalAmountWithdrawn
+	stats.WithdrawalCount = &WithdrawalCount
+
+	TotalAmountDeposited, err := db.GetTotalAmountDeposited()
+	if err != nil {
+		logger.WithError(err).Error("error getting total deposited")
+	}
+
+	stats.TotalAmountDeposited = &TotalAmountDeposited
+
+	BLSChangeCount, err := db.GetBLSChangeCount()
+	if err != nil {
+		logger.WithError(err).Error("error getting bls change count")
+	}
+
+	stats.BLSChangeCount = &BLSChangeCount
+
 	return &stats, nil
 }
 

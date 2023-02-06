@@ -10,7 +10,7 @@
             var tbl = $('#withdrawals').DataTable({
                 processing: true,
                 serverSide: true,
-                ordering: true,
+                ordering: false,
                 stateSave: true,
                 order: [[2, 'desc']],
                 searching: true,
@@ -27,7 +27,52 @@
                     formatTimestamps('#withdrawals')
                 },
                 language: {
-                    searchPlaceholder: '',
+                    searchPlaceholder: 'Epoch, Slot, Validator, Address',
+                    search: '',
+                    paginate: {
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
+                    }
+                }
+            })
+            if (q) {
+                tbl.search(q);
+                tbl.draw();
+            }
+            // $("#withdrawals_filter > label > input").on('input', function(ev) {
+            //     if (ev && ev.target && ev.target.value) {
+            //         var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+            //         window.history.replaceState(null, 'Eth1Deposits', newUrl)
+            //     } else {
+            //         window.history.replaceState(null, 'Eth1Deposits', window.location.pathname)
+            //     }
+            // })
+
+        })
+        $(document).ready(function() {
+            var usp = new URLSearchParams(window.location.search)
+            var q = usp.get('q')
+            var tbl = $('#blsChange').DataTable({
+                processing: true,
+                serverSide: true,
+                ordering: false,
+                stateSave: true,
+                order: [[2, 'desc']],
+                searching: true,
+                ajax: '/validators/withdrawals/bls',
+                pagingType: 'input',
+                preDrawCallback: function() {
+                    // this does not always work.. not sure how to solve the staying tooltip
+                    try {
+                        $('#blsChange').find('[data-toggle="tooltip"]').tooltip('dispose')
+                    } catch (e) {
+                    }
+                },
+                drawCallback: function(settings) {
+                    formatTimestamps('#blsChange')
+                },
+                language: {
+                    searchPlaceholder: 'Epoch, Slot, Validator, BLS Public Key',
                     search: '',
                     paginate: {
                         previous: '<i class="fas fa-chevron-left"></i>',
@@ -75,11 +120,11 @@
           <div class="card h-100">
             <div class="card-body">
               <div class="d-flex justify-content-between align-item-center">
-                <h2 class="small text-uppercase font-weight-medium text-secondary mr-1">Total</h2>
-                <span class="h6" title="Number of withdrawals Processed">5 Withdrawals</span>
+                <h2 class="small text-uppercase font-weight-medium text-secondary mr-1">Withdrawals</h2>
               </div>
               <div class="d-flex justify-content-between align-items-center">
-                <span class="h6 font-weight-normal mb-0"><b>328 ETH</b> processed</span>
+                <span class="h6 font-weight-normal mb-0" title="Number of withdrawals Processed"><b>{{ formatAddCommas .Stats.WithdrawalCount}}</b> <small>processed</small></span>
+                <span class="h6 font-weight-normal mb-0"><b>{{formatBalance .Stats.TotalAmountWithdrawn "ETH"}}</b> <small>distributed</small></span>
               </div>
             </div>
           </div>
@@ -88,16 +133,11 @@
           <div class="card h-100">
             <div class="card-body">
               <div class="d-flex justify-content-between align-item-center">
-                <h2 class="small text-uppercase font-weight-medium text-secondary mr-1">Exit Withdrawals</h2>
-                <span class="h6" title="Number of deposits made">3 Deposits</span>
+                <h2 class="small text-uppercase font-weight-medium text-secondary mr-1">Validator Counts</h2>
               </div>
-              <div class="d-flex align-items-center">
-                <span style="max-width: 150px;" class="h6 font-weight-normal mb-0 text-truncate">
-                  <a href="/validators/deposit-leaderboard" class="text-primary text-truncate">
-                    <i class="fas fa-medal"></i>
-                    0x12345
-                  </a>
-                </span>
+              <div class="d-flex align-items-center justify-content-between">
+                <span class="h6 font-weight-normal mb-0"><b>{{formatAddCommas .Stats.WithdrawableValidatorCount}}</b> withdrawable</span>
+                <span class="h6 font-weight-normal mb-0"><b>{{formatAddCommas .Stats.ActiveValidatorCount}}</b> active</span>
               </div>
             </div>
           </div>
@@ -106,42 +146,68 @@
           <div class="card h-100">
             <div class="card-body">
               <div class="d-flex align-item-center">
-                <h2 class="small text-uppercase font-weight-medium text-secondary mr-1">Address Changes</h2>
+                <h2 class="small text-uppercase font-weight-medium text-secondary mr-1">BLS Address Changes</h2>
               </div>
               <div class="d-flex justify-content-between align-items-center">
-                <span class="h6 font-weight-normal mb-0"><b>5</b> address changes</span>
-                <span class="h6 font-weight-normal mb-0"><b>328</b> ineligible validators</span>
+                <span class="h6 font-weight-normal mb-0"><b>{{ formatAddCommas .Stats.BLSChangeCount}}</b> changed</span>
+                <span class="h6 font-weight-normal mb-0"><b>{{ formatAddCommas .Stats.PendingBLSChangeValidatorCount}}</b> unchanged</span>
               </div>
             </div>
           </div>
         </div>
       </div>
       <div>
-        {{ template "depositChart" . }}
+        <!-- withdrawalChart -->
       </div>
-      <h6 class="my-2 text-muted">This table displays the deposits made on Ethereum for validators who wish to join the Beacon Chain.</h6>
-      <div class="card">
-        <div class="card-body px-0 py-2">
-          <div class="table-responsive pt-2">
-            <table class="table" id="deposits">
-              <thead>
-                <tr>
-                  <th>Epoch</th>
-                  <th>Slot</th>
-                  <th>Index</th>
-                  <th>Validator</th>
-                  <th>Address</th>
-                  <th>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-              </tbody>
-            </table>
+      <div class="my-3">
+        <h6 class="my-2 text-muted">This table displays partial and full withdrawals.</h6>
+        <div class="card">
+          <div class="card-body px-0 py-2">
+            <div class="table-responsive pt-2">
+              <table class="table" id="withdrawals">
+                <thead>
+                  <tr>
+                    <th>Epoch</th>
+                    <th>Slot</th>
+                    <th>Index</th>
+                    <th>Validator</th>
+                    <th>Time</th>
+                    <th>Address</th>
+                    <th>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
-      <div class="d-flex justify-content-between py-2">
-        <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+      <div class="my-3">
+        <h6 class="my-2 text-muted">This table displays the BLS address changes from <span class="monospace">0x00</span> credentials to <span>0x01</span>.</h6>
+        <div class="card">
+          <div class="card-body px-0 py-2">
+            <div class="table-responsive pt-2">
+              <table class="table" id="blsChange">
+                <thead>
+                  <tr>
+                    <th>Epoch</th>
+                    <th>Slot</th>
+                    <th>Validator</th>
+                    <th>Signature</th>
+                    <th>BLS Public Key</th>
+                    <th>New Withdrawal Address</th>
+                  </tr>
+                </thead>
+                <tbody>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between py-2">
+          <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+        </div>
       </div>
     </div>
   {{ end }}
