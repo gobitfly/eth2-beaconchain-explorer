@@ -65,8 +65,8 @@ func SendPushBatch(messages []*messaging.Message) error {
 		resultSuccessCount += result.SuccessCount
 		resultFailureCount += result.FailureCount
 
-		newMessages := make([]*messaging.Message, 0, resultFailureCount)
-		if resultFailureCount > 0 {
+		newMessages := make([]*messaging.Message, 0, result.FailureCount)
+		if result.FailureCount > 0 {
 			for i, response := range result.Responses {
 				if isRelevantError(response) {
 					newMessages = append(newMessages, currentMessages[i])
