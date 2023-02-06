@@ -649,6 +649,13 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*t
 
 func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startEpoch uint64, limit int64) (map[uint64][]*types.ValidatorBalance, error) {
 
+	valLen := len(validators)
+	getAllThreshold := 1000
+	validatorMap := make(map[uint64]bool, valLen)
+	for _, validatorIndex := range validators {
+		validatorMap[validatorIndex] = true
+	}
+
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
@@ -664,15 +671,14 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 
 	rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch))
 	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(uint64(end)))
-	res := make(map[uint64][]*types.ValidatorBalance, len(validators))
+	res := make(map[uint64][]*types.ValidatorBalance, valLen)
 
-	// if len(validators) == 0 {
-	// 	return res, nil
-	// }
-
-	columnFilters := make([]gcp_bigtable.Filter, 0, len(validators))
-	for _, validator := range validators {
-		columnFilters = append(columnFilters, gcp_bigtable.ColumnFilter(fmt.Sprintf("%d", validator)))
+	columnFilters := []gcp_bigtable.Filter{}
+	if valLen < getAllThreshold {
+		columnFilters = make([]gcp_bigtable.Filter, 0, valLen)
+		for _, validator := range validators {
+			columnFilters = append(columnFilters, gcp_bigtable.ColumnFilter(fmt.Sprintf("%d", validator)))
+		}
 	}
 
 	filter := gcp_bigtable.ChainFilters(
@@ -689,12 +695,20 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 	if len(columnFilters) == 0 { // special case to retrieve data for all validators
 		filter = gcp_bigtable.FamilyFilter(VALIDATOR_BALANCES_FAMILY)
 	}
+
 	handleRow := func(r gcp_bigtable.Row) bool {
 		for _, ri := range r[VALIDATOR_BALANCES_FAMILY] {
 			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, VALIDATOR_BALANCES_FAMILY+":"), 10, 64)
 			if err != nil {
 				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
 				return false
+			}
+
+			// If we requested more than getAllThreshold validators we will
+			// get data for all validators and need to filter out all
+			// unwanted ones
+			if valLen >= getAllThreshold && !validatorMap[validator] {
+				continue
 			}
 
 			keySplit := strings.Split(r.Key(), ":")
