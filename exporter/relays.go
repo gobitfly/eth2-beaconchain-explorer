@@ -120,15 +120,19 @@ func exportRelayBlocks(r types.Relay) error {
 
 func retrieveAndInsertPayloadsFromRelay(r types.Relay, low_bound uint64, high_bound uint64) error {
 	tx, err := db.WriterDb.Begin()
-	defer tx.Rollback()
-	// create a tnx
 	if err != nil {
-		r.Logger.Error("failed to start db transaction")
+		r.Logger.WithFields(logrus.Fields{
+			"file":       "relays.go",
+			"function":   "retrieveAndInsertPayloadsFromRelay",
+			"Relay ID":   r.ID,
+			"low_bound":  low_bound,
+			"high_bound": high_bound,
+		}).WithError(err).Error("failed to start db transaction")
 		return err
 	}
-	var min_slot uint64
+	defer tx.Rollback()
 
-	offset := high_bound
+	var min_slot uint64
 	if low_bound > 10 {
 		min_slot = low_bound - 10
 	}
@@ -139,6 +143,7 @@ func retrieveAndInsertPayloadsFromRelay(r types.Relay, low_bound uint64, high_bo
 		r.Logger.Debugf("loading payloads from %v till genesis", high_bound)
 	}
 
+	offset := high_bound
 	for {
 		r.Logger.Debugf("fetching payloads with offset %v", offset)
 
