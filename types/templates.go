@@ -1021,6 +1021,12 @@ type EthOneDepositsPageData struct {
 	DepositChart    *ChartsPageDataChart
 }
 
+type DepositsPageData struct {
+	*Stats
+	DepositContract string
+	DepositChart    *ChartsPageDataChart
+}
+
 type EthOneDepositLeaderBoardPageData struct {
 	DepositContract string
 }

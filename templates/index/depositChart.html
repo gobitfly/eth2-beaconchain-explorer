@@ -55,7 +55,7 @@
         Highcharts.stockChart('deposit-chart',{
             chart: {
                type: {{.DepositChart.Data.Type}},
-               height: 180,
+               height: 250,
             },
             rangeSelector: {  enabled: false },
             // title: {
@@ -96,7 +96,7 @@
                 opposite: false,
             }],
             series: filteredSeries,
-            navigator: { enabled: false },
+            navigator: { enabled: true },
             scrollbar: { enabled: false },
             tooltip: {
                 // formatter: function(tooltip) {
