@@ -933,18 +933,21 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
+func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
+	if firstEpoch > lastEpoch {
+		return nil, fmt.Errorf("GetValidatorMissedAttestationsCount received an invalid firstEpoch (%d) and lastEpoch (%d) combination", firstEpoch, lastEpoch)
+	}
 
 	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
 
-	for i := startEpoch; i >= startEpoch-endEpoch; i-- {
-		data, err := bigtable.GetValidatorAttestationHistory(validators, i, 1)
+	for e := firstEpoch; e <= lastEpoch; e++ {
+		data, err := bigtable.GetValidatorAttestationHistory(validators, e, 1)
 
 		if err != nil {
 			return nil, err
 		}
 
-		logger.Infof("retrieved attestation history for epoch %v", i)
+		logger.Infof("retrieved attestation history for epoch %v", e)
 
 		for validator, attestations := range data {
 			for _, attestation := range attestations {
@@ -957,11 +960,6 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 					res[validator].MissedAttestations++
 				}
 			}
-		}
-
-		if i == 0 {
-			// infinite loop protection for day 0 where startEpoch = endEpoch
-			break
 		}
 	}
 

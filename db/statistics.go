@@ -94,7 +94,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	start = time.Now()
 	logger.Infof("exporting missed_attestations statistics")
-	ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, lastEpoch, lastEpoch-firstEpoch)
+	ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, firstEpoch, lastEpoch)
 	if err != nil {
 		return err
 	}
