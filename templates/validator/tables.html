@@ -289,9 +289,9 @@
             <tr>
               <th>From Address</th>
               <th>Tx Hash</th>
-              <th><span data-toggle="tooltip" title="Withdrawal Credential">Withdrawal Cred.</span></th>
               <th>Block</th>
               <th>Time</th>
+              <th><span data-toggle="tooltip" title="Withdrawal Credential">Withdrawal Cred.</span></th>
               <th>Amount</th>
               <th>Valid</th>
             </tr>
@@ -301,14 +301,14 @@
               <tr>
                 <td>{{ formatEth1Address $deposit.FromAddress }}</td>
                 <td>{{ formatEth1TxHash $deposit.TxHash }}</td>
+                <td>{{ formatEth1Block $deposit.BlockNumber }}</td>
+                <td>{{ formatTimestamp $deposit.BlockTs }}</td>
                 <td>
                   {{ if $.Data.ShowWithdrawalWarning }}
                     <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="At least one deposit to your validator has different withdrawal credentials!"></i></span>
                   {{ end }}
                   {{ formatWithdawalCredentials $deposit.WithdrawalCredentials true }}
                 </td>
-                <td>{{ formatEth1Block $deposit.BlockNumber }}</td>
-                <td>{{ formatTimestamp $deposit.BlockTs }}</td>
                 <td>{{ formatDepositAmount $deposit.Amount $.Rates.Currency }}</td>
                 <td><span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">{{ $deposit.ValidSignature }}</span></td>
               </tr>
