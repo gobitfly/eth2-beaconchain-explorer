@@ -221,7 +221,7 @@ func (bigtable *Bigtable) CheckForGapsInBlocksTable(lookback int) (gapFound bool
 
 func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	prefix := bigtable.chainId + ":"
@@ -1949,7 +1949,7 @@ func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, search 
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, address []byte, limit int64) ([]*types.Eth1InternalTransactionIndexed, string, error) {
+func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, limit int64) ([]*types.Eth1InternalTransactionIndexed, string, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
@@ -1989,7 +1989,7 @@ func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, address []byte, li
 		return true
 	})
 	if err != nil {
-		logger.WithError(err).WithField("prefix", prefix).WithField("limit", limit).WithField("address", address).Errorf("error reading rows in bigtable_eth1 / GetEth1ItxForAddress")
+		logger.WithError(err).WithField("prefix", prefix).WithField("limit", limit).Errorf("error reading rows in bigtable_eth1 / GetEth1ItxForAddress")
 		return nil, "", err
 	}
 
@@ -2008,7 +2008,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 		pageToken = fmt.Sprintf("%s:I:ITX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
-	transactions, lastKey, err := bigtable.GetEth1ItxForAddress(pageToken, address, 25)
+	transactions, lastKey, err := bigtable.GetEth1ItxForAddress(pageToken, 25)
 	if err != nil {
 		return nil, err
 	}

@@ -1055,6 +1055,7 @@ type User struct {
 	UserID        uint64 `json:"user_id"`
 	Authenticated bool   `json:"authenticated"`
 	Subscription  string `json:"subscription"`
+	UserGroup     string `json:"user_group"`
 }
 
 type UserSubscription struct {

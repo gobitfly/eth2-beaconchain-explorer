@@ -2100,7 +2100,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 	}
 	logger.Infof("retrieved %v validator balances for epoch %v", len(latestBalances), currentEpoch)
 	for balanceIndex, balance := range latestBalances {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance = balance[0].Balance
@@ -2113,7 +2113,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 	}
 	logger.Infof("retrieved %v validator balances for epoch %v", len(balances1d), lastDayEpoch)
 	for balanceIndex, balance := range balances1d {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance1d = sql.NullInt64{
@@ -2129,7 +2129,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 	}
 	logger.Infof("retrieved %v validator balances for epoch %v", len(balances7d), lastWeekEpoch)
 	for balanceIndex, balance := range balances7d {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance7d = sql.NullInt64{
@@ -2145,7 +2145,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 	}
 	logger.Infof("retrieved %v validator balances for epoch %v", len(balances31d), lastMonthEpoch)
 	for balanceIndex, balance := range balances31d {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance31d = sql.NullInt64{

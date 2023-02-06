@@ -20,6 +20,7 @@ import (
 
 	"github.com/gorilla/sessions"
 	"github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 )
 
 var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
@@ -81,7 +82,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, err
 	}
 	for balanceIndex, balance := range latestBalances {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance = balance[0].Balance
@@ -93,7 +94,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, err
 	}
 	for balanceIndex, balance := range balances1d {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance1d = sql.NullInt64{
@@ -108,7 +109,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, err
 	}
 	for balanceIndex, balance := range balances7d {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance7d = sql.NullInt64{
@@ -123,7 +124,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, err
 	}
 	for balanceIndex, balance := range balances31d {
-		if len(balance) == 0 {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance31d = sql.NullInt64{
@@ -407,7 +408,13 @@ func GetDataTableState(user *types.User, session *sessions.Session, tableKey str
 func handleTemplateError(w http.ResponseWriter, r *http.Request, fileIdentifier string, functionIdentifier string, infoIdentifier string, err error) error {
 	// ignore network related errors
 	if err != nil && !errors.Is(err, syscall.EPIPE) && !errors.Is(err, syscall.ETIMEDOUT) {
-		logger.Errorf("error executing template (%v / %v / %v) for %v route: %v", fileIdentifier, functionIdentifier, infoIdentifier, r.URL.String(), err)
+		logger.WithFields(logrus.Fields{
+			"file":       fileIdentifier,
+			"function":   functionIdentifier,
+			"info":       infoIdentifier,
+			"error type": fmt.Sprintf("%T", err),
+			"route":      r.URL.String(),
+		}).WithError(err).Error("error executing template")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 	}
 	return err
