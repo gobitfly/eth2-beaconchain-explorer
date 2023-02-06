@@ -3,98 +3,94 @@
   <script type="text/javascript" src="/js/datatable_input.js"></script>
   <script type="text/javascript" src="/js/highcharts/highstock.min.js"></script>
   <script type="text/javascript" src="/js/highcharts/highcharts-global-options.js"></script>
-    <script>
-        $(document).ready(function() {
-            var usp = new URLSearchParams(window.location.search)
-            var q = usp.get('q')
-            var tbl = $('#withdrawals').DataTable({
-                processing: true,
-                serverSide: true,
-                ordering: false,
-                stateSave: true,
-                order: [[2, 'desc']],
-                searching: true,
-                ajax: '/validators/withdrawals/data',
-                pagingType: 'input',
-                preDrawCallback: function() {
-                    // this does not always work.. not sure how to solve the staying tooltip
-                    try {
-                        $('#withdrawals').find('[data-toggle="tooltip"]').tooltip('dispose')
-                    } catch (e) {
-                    }
-                },
-                drawCallback: function(settings) {
-                    formatTimestamps('#withdrawals')
-                },
-                language: {
-                    searchPlaceholder: 'Epoch, Slot, Validator, Address',
-                    search: '',
-                    paginate: {
-                        previous: '<i class="fas fa-chevron-left"></i>',
-                        next: '<i class="fas fa-chevron-right"></i>'
-                    }
-                }
-            })
-            if (q) {
-                tbl.search(q);
-                tbl.draw();
-            }
-            // $("#withdrawals_filter > label > input").on('input', function(ev) {
-            //     if (ev && ev.target && ev.target.value) {
-            //         var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
-            //         window.history.replaceState(null, 'Eth1Deposits', newUrl)
-            //     } else {
-            //         window.history.replaceState(null, 'Eth1Deposits', window.location.pathname)
-            //     }
-            // })
-
-        })
-        $(document).ready(function() {
-            var usp = new URLSearchParams(window.location.search)
-            var q = usp.get('q')
-            var tbl = $('#blsChange').DataTable({
-                processing: true,
-                serverSide: true,
-                ordering: false,
-                stateSave: true,
-                order: [[2, 'desc']],
-                searching: true,
-                ajax: '/validators/withdrawals/bls',
-                pagingType: 'input',
-                preDrawCallback: function() {
-                    // this does not always work.. not sure how to solve the staying tooltip
-                    try {
-                        $('#blsChange').find('[data-toggle="tooltip"]').tooltip('dispose')
-                    } catch (e) {
-                    }
-                },
-                drawCallback: function(settings) {
-                    formatTimestamps('#blsChange')
-                },
-                language: {
-                    searchPlaceholder: 'Epoch, Slot, Validator, BLS Public Key',
-                    search: '',
-                    paginate: {
-                        previous: '<i class="fas fa-chevron-left"></i>',
-                        next: '<i class="fas fa-chevron-right"></i>'
-                    }
-                }
-            })
-            if (q) {
-                tbl.search(q);
-                tbl.draw();
-            }
-            // $("#withdrawals_filter > label > input").on('input', function(ev) {
-            //     if (ev && ev.target && ev.target.value) {
-            //         var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
-            //         window.history.replaceState(null, 'Eth1Deposits', newUrl)
-            //     } else {
-            //         window.history.replaceState(null, 'Eth1Deposits', window.location.pathname)
-            //     }
-            // })
-
-        })
-    </script>
+  <script>
+    $(document).ready(function () {
+      var usp = new URLSearchParams(window.location.search)
+      var q = usp.get("q")
+      var tbl = $("#withdrawals").DataTable({
+        processing: true,
+        serverSide: true,
+        ordering: false,
+        stateSave: true,
+        order: [[2, "desc"]],
+        searching: true,
+        ajax: "/validators/withdrawals/data",
+        pagingType: "input",
+        preDrawCallback: function () {
+          // this does not always work.. not sure how to solve the staying tooltip
+          try {
+            $("#withdrawals").find('[data-toggle="tooltip"]').tooltip("dispose")
+          } catch (e) {}
+        },
+        drawCallback: function (settings) {
+          formatTimestamps("#withdrawals")
+        },
+        language: {
+          searchPlaceholder: "Epoch, Slot, Validator, Address",
+          search: "",
+          paginate: {
+            previous: '<i class="fas fa-chevron-left"></i>',
+            next: '<i class="fas fa-chevron-right"></i>',
+          },
+        },
+      })
+      if (q) {
+        tbl.search(q)
+        tbl.draw()
+      }
+      // $("#withdrawals_filter > label > input").on('input', function(ev) {
+      //     if (ev && ev.target && ev.target.value) {
+      //         var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+      //         window.history.replaceState(null, 'Eth1Deposits', newUrl)
+      //     } else {
+      //         window.history.replaceState(null, 'Eth1Deposits', window.location.pathname)
+      //     }
+      // })
+    })
+    $(document).ready(function () {
+      var usp = new URLSearchParams(window.location.search)
+      var q = usp.get("q")
+      var tbl = $("#blsChange").DataTable({
+        processing: true,
+        serverSide: true,
+        ordering: false,
+        stateSave: true,
+        order: [[2, "desc"]],
+        searching: true,
+        ajax: "/validators/withdrawals/bls",
+        pagingType: "input",
+        preDrawCallback: function () {
+          // this does not always work.. not sure how to solve the staying tooltip
+          try {
+            $("#blsChange").find('[data-toggle="tooltip"]').tooltip("dispose")
+          } catch (e) {}
+        },
+        drawCallback: function (settings) {
+          formatTimestamps("#blsChange")
+        },
+        language: {
+          searchPlaceholder: "Epoch, Slot, Validator, BLS Public Key",
+          search: "",
+          paginate: {
+            previous: '<i class="fas fa-chevron-left"></i>',
+            next: '<i class="fas fa-chevron-right"></i>',
+          },
+        },
+      })
+      if (q) {
+        tbl.search(q)
+        tbl.draw()
+      }
+      // $("#withdrawals_filter > label > input").on('input', function(ev) {
+      //     if (ev && ev.target && ev.target.value) {
+      //         var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+      //         window.history.replaceState(null, 'Eth1Deposits', newUrl)
+      //     } else {
+      //         window.history.replaceState(null, 'Eth1Deposits', window.location.pathname)
+      //     }
+      // })
+    })
+  </script>
 {{ end }}
 {{ define "css" }}
   <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
@@ -123,8 +119,8 @@
                 <h2 class="small text-uppercase font-weight-medium text-secondary mr-1">Withdrawals</h2>
               </div>
               <div class="d-flex justify-content-between align-items-center">
-                <span class="h6 font-weight-normal mb-0" title="Number of withdrawals Processed"><b>{{ formatAddCommas .Stats.WithdrawalCount}}</b> <small>processed</small></span>
-                <span class="h6 font-weight-normal mb-0"><b>{{formatBalance .Stats.TotalAmountWithdrawn "ETH"}}</b> <small>distributed</small></span>
+                <span class="h6 font-weight-normal mb-0" title="Number of withdrawals Processed"><b>{{ formatAddCommas .Stats.WithdrawalCount }}</b> <small>processed</small></span>
+                <span class="h6 font-weight-normal mb-0"><b>{{ formatBalance .Stats.TotalAmountWithdrawn "ETH" }}</b> <small>distributed</small></span>
               </div>
             </div>
           </div>
@@ -136,8 +132,8 @@
                 <h2 class="small text-uppercase font-weight-medium text-secondary mr-1">Validator Counts</h2>
               </div>
               <div class="d-flex align-items-center justify-content-between">
-                <span class="h6 font-weight-normal mb-0"><b>{{formatAddCommas .Stats.WithdrawableValidatorCount}}</b> withdrawable</span>
-                <span class="h6 font-weight-normal mb-0"><b>{{formatAddCommas .Stats.ActiveValidatorCount}}</b> active</span>
+                <span class="h6 font-weight-normal mb-0"><b>{{ formatAddCommas .Stats.WithdrawableValidatorCount }}</b> withdrawable</span>
+                <span class="h6 font-weight-normal mb-0"><b>{{ formatAddCommas .Stats.ActiveValidatorCount }}</b> active</span>
               </div>
             </div>
           </div>
@@ -149,8 +145,8 @@
                 <h2 class="small text-uppercase font-weight-medium text-secondary mr-1">BLS Address Changes</h2>
               </div>
               <div class="d-flex justify-content-between align-items-center">
-                <span class="h6 font-weight-normal mb-0"><b>{{ formatAddCommas .Stats.BLSChangeCount}}</b> changed</span>
-                <span class="h6 font-weight-normal mb-0"><b>{{ formatAddCommas .Stats.PendingBLSChangeValidatorCount}}</b> unchanged</span>
+                <span class="h6 font-weight-normal mb-0"><b>{{ formatAddCommas .Stats.BLSChangeCount }}</b> changed</span>
+                <span class="h6 font-weight-normal mb-0"><b>{{ formatAddCommas .Stats.PendingBLSChangeValidatorCount }}</b> unchanged</span>
               </div>
             </div>
           </div>
@@ -176,8 +172,7 @@
                     <th>Amount</th>
                   </tr>
                 </thead>
-                <tbody>
-                </tbody>
+                <tbody></tbody>
               </table>
             </div>
           </div>
@@ -199,8 +194,7 @@
                     <th>New Withdrawal Address</th>
                   </tr>
                 </thead>
-                <tbody>
-                </tbody>
+                <tbody></tbody>
               </table>
             </div>
           </div>
