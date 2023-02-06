@@ -33,6 +33,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // the notificationCollector is responsible for collecting & queuing notifications
@@ -266,33 +268,48 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 	}
 	logger.Infof("collecting network notifications took: %v\n", time.Since(start))
 
-	err = collectRocketpoolComissionNotifications(notificationsByUserID, types.RocketpoolCommissionThresholdEventName)
-	if err != nil {
-		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_comission").Inc()
-		return nil, fmt.Errorf("error collecting rocketpool commission: %v", err)
-	}
-	logger.Infof("collecting rocketpool commissions took: %v\n", time.Since(start))
+	// Rocketpool
+	{
+		var ts int64
+		err = db.ReaderDb.Get(&ts, `SELECT id FROM rocketpool_network_stats LIMIT 1;`)
 
-	err = collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID, types.RocketpoolNewClaimRoundStartedEventName)
-	if err != nil {
-		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_reward_claim").Inc()
-		return nil, fmt.Errorf("error collecting new rocketpool claim round: %v", err)
-	}
-	logger.Infof("collecting rocketpool claim round took: %v\n", time.Since(start))
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				logger.Infof("skipped the collecting of rocketpool notifications, because rocketpool_network_stats is empty")
+			} else {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_notifications").Inc()
+				return nil, fmt.Errorf("error collecting rocketpool notifications: %v", err)
+			}
+		} else {
+			err = collectRocketpoolComissionNotifications(notificationsByUserID, types.RocketpoolCommissionThresholdEventName)
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_comission").Inc()
+				return nil, fmt.Errorf("error collecting rocketpool commission: %v", err)
+			}
+			logger.Infof("collecting rocketpool commissions took: %v\n", time.Since(start))
 
-	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMaxReached, epoch)
-	if err != nil {
-		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_max_reached").Inc()
-		return nil, fmt.Errorf("error collecting rocketpool max collateral: %v", err)
-	}
-	logger.Infof("collecting rocketpool max collateral took: %v\n", time.Since(start))
+			err = collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID, types.RocketpoolNewClaimRoundStartedEventName)
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_reward_claim").Inc()
+				return nil, fmt.Errorf("error collecting new rocketpool claim round: %v", err)
+			}
+			logger.Infof("collecting rocketpool claim round took: %v\n", time.Since(start))
 
-	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMinReached, epoch)
-	if err != nil {
-		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_min_reached").Inc()
-		return nil, fmt.Errorf("error collecting rocketpool min collateral: %v", err)
+			err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMaxReached, epoch)
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_max_reached").Inc()
+				return nil, fmt.Errorf("error collecting rocketpool max collateral: %v", err)
+			}
+			logger.Infof("collecting rocketpool max collateral took: %v\n", time.Since(start))
+
+			err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMinReached, epoch)
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_min_reached").Inc()
+				return nil, fmt.Errorf("error collecting rocketpool min collateral: %v", err)
+			}
+			logger.Infof("collecting rocketpool min collateral took: %v\n", time.Since(start))
+		}
 	}
-	logger.Infof("collecting rocketpool min collateral took: %v\n", time.Since(start))
 
 	err = collectSyncCommittee(notificationsByUserID, types.SyncCommitteeSoon, epoch)
 	if err != nil {
@@ -486,7 +503,7 @@ func garbageCollectNotificationQueue(useDB *sqlx.DB) error {
 func getNetwork() string {
 	domainParts := strings.Split(utils.Config.Frontend.SiteDomain, ".")
 	if len(domainParts) >= 3 {
-		return fmt.Sprintf("%s: ", strings.Title(domainParts[0]))
+		return fmt.Sprintf("%s: ", cases.Title(language.English).String(domainParts[0]))
 	}
 	return ""
 }
@@ -571,7 +588,7 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 	logger.Infof("processing %v push notifications", len(notificationQueueItem))
 
 	for _, n := range notificationQueueItem {
-		_, err = notify.SendPushBatch(n.Content.Messages)
+		err = notify.SendPushBatch(n.Content.Messages)
 		if err != nil {
 			metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
 			logger.WithError(err).Error("error sending firebase batch job")
@@ -1103,7 +1120,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					if resp != nil {
 						b, err := io.ReadAll(resp.Body)
 						if err != nil {
-							logger.Error("error reading body for discord webhook response: %v", err)
+							logger.Errorf("error reading body for discord webhook response: %v", err)
 						} else {
 							errResp.Body = string(b)
 						}
@@ -2076,10 +2093,7 @@ func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.
 
 func isMachineDataRecent(machineData *types.MachineMetricSystemUser) bool {
 	nowTs := time.Now().Unix()
-	if machineData.CurrentDataInsertTs < nowTs-60*60 { // only if data is up 2 date (last hour)
-		return false
-	}
-	return true
+	return machineData.CurrentDataInsertTs >= nowTs-60*60
 }
 
 func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, epoch uint64) error {
@@ -2091,11 +2105,7 @@ func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map
 			}
 
 			percentFree := float64(machineData.CurrentData.DiskNodeBytesFree) / float64(machineData.CurrentData.DiskNodeBytesTotal+1)
-			if percentFree < subscribeData.EventThreshold {
-				//logrus.Infof("disk percent full %v | threshold %v | free %v | total %v", percentFree, subscribeData.EventThreshold, machineData.CurrentData.DiskNodeBytesFree, machineData.CurrentData.DiskNodeBytesTotal)
-				return true
-			}
-			return false
+			return percentFree < subscribeData.EventThreshold
 		},
 		epoch,
 	)
@@ -2117,11 +2127,7 @@ func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.
 			total := float64(machineData.CurrentData.CpuNodeSystemSecondsTotal) - float64(machineData.FiveMinuteOldData.CpuNodeSystemSecondsTotal)
 			percentLoad := float64(1) - (idle / total)
 
-			if percentLoad > subscribeData.EventThreshold {
-				//logrus.Infof("cpu percent load %v | threshold %v | idle %v | total %v", percentLoad, subscribeData.EventThreshold, idle, total)
-				return true
-			}
-			return false
+			return percentLoad > subscribeData.EventThreshold
 		},
 		epoch,
 	)
@@ -2139,11 +2145,7 @@ func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[ty
 			memTotal := float64(machineData.CurrentData.MemoryNodeBytesTotal)
 			memUsage := float64(1) - (memFree / memTotal)
 
-			if memUsage > subscribeData.EventThreshold {
-				//logrus.Infof("memUsage %v | threshold %v | memFree %v | memTotal %v", memUsage, subscribeData.EventThreshold, memFree, memTotal)
-				return true
-			}
-			return false
+			return memUsage > subscribeData.EventThreshold
 		},
 		epoch,
 	)
@@ -2371,12 +2373,12 @@ func (n *taxReportNotification) GetEventName() types.EventName {
 }
 
 func (n *taxReportNotification) GetInfo(includeUrl bool) string {
-	generalPart := fmt.Sprint(`Please find attached the income history of your selected validators.`)
+	generalPart := `Please find attached the income history of your selected validators.`
 	return generalPart
 }
 
 func (n *taxReportNotification) GetTitle() string {
-	return fmt.Sprint("Income Report")
+	return "Income Report"
 }
 
 func (n *taxReportNotification) GetEventFilter() string {
@@ -2584,7 +2586,7 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 	case types.RocketpoolCommissionThresholdEventName:
 		return fmt.Sprintf(`The current RPL commission rate of %v has reached your configured threshold.`, n.ExtraData)
 	case types.RocketpoolNewClaimRoundStartedEventName:
-		return fmt.Sprintf(`A new reward round has started. You can now claim your rewards from the previous round.`)
+		return `A new reward round has started. You can now claim your rewards from the previous round.`
 	case types.RocketpoolColleteralMaxReached:
 		return `Your RPL collateral has reached your configured threshold at 150%.`
 	case types.RocketpoolColleteralMinReached:
@@ -2612,9 +2614,9 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 func (n *rocketpoolNotification) GetTitle() string {
 	switch n.EventName {
 	case types.RocketpoolCommissionThresholdEventName:
-		return fmt.Sprintf(`Rocketpool Commission`)
+		return `Rocketpool Commission`
 	case types.RocketpoolNewClaimRoundStartedEventName:
-		return fmt.Sprintf(`Rocketpool Claim Available`)
+		return `Rocketpool Claim Available`
 	case types.RocketpoolColleteralMaxReached:
 		return `Rocketpool Max Collateral`
 	case types.RocketpoolColleteralMinReached:
@@ -2850,7 +2852,7 @@ func (b *BigFloat) Value() (driver.Value, error) {
 
 func (b *BigFloat) Scan(value interface{}) error {
 	if value == nil {
-		return errors.New("Can not cast nil to BigFloat")
+		return errors.New("can not cast nil to BigFloat")
 	}
 
 	switch t := value.(type) {
@@ -2867,7 +2869,7 @@ func (b *BigFloat) Scan(value interface{}) error {
 			return fmt.Errorf("failed to load value to []uint8: %v", value)
 		}
 	default:
-		return fmt.Errorf("Could not scan type %T into BigFloat", t)
+		return fmt.Errorf("could not scan type %T into BigFloat", t)
 	}
 
 	return nil

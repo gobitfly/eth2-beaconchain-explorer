@@ -77,6 +77,9 @@ func Init() {
 	ready.Add(1)
 	go ethStoreStatisticsDataUpdater(ready)
 
+	ready.Add(1)
+	go startMonitoringService(ready)
+
 	ready.Wait()
 }
 
@@ -563,11 +566,15 @@ func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
 	}
 	daysLastIndex := len(ethStoreDays) - 1
 
+	if daysLastIndex < 0 {
+		return nil, fmt.Errorf("no eth store stats found in db")
+	}
+
 	effectiveBalances := [][]float64{}
 	totalRewards := [][]float64{}
 	aprs := [][]float64{}
 	for _, stat := range ethStoreDays {
-		ts := float64(utils.EpochToTime(stat.Day*225).Unix()) * 1000
+		ts := float64(utils.EpochToTime(stat.Day*utils.EpochsPerDay()).Unix()) * 1000
 
 		effectiveBalances = append(effectiveBalances, []float64{
 			ts,
@@ -590,10 +597,10 @@ func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
 		TotalRewards:              totalRewards,
 		APRs:                      aprs,
 		ProjectedAPR:              ethStoreDays[daysLastIndex].APR.Mul(decimal.NewFromInt(100)).InexactFloat64(),
-		StartEpoch:                ethStoreDays[daysLastIndex].Day * 225,
+		StartEpoch:                ethStoreDays[daysLastIndex].Day * utils.EpochsPerDay(),
 		YesterdayRewards:          ethStoreDays[daysLastIndex].TotalRewardsWei.Div(decimal.NewFromInt(1e18)).InexactFloat64(),
 		YesterdayEffectiveBalance: ethStoreDays[daysLastIndex].EffectiveBalancesSum.Div(decimal.NewFromInt(1e18)).InexactFloat64(),
-		YesterdayTs:               utils.EpochToTime(ethStoreDays[daysLastIndex].Day * 225).Unix(),
+		YesterdayTs:               utils.EpochToTime(ethStoreDays[daysLastIndex].Day * utils.EpochsPerDay()).Unix(),
 	}
 
 	return data, nil
@@ -698,13 +705,17 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	if data.DepositChart != nil && data.DepositChart.Data != nil && data.DepositChart.Data.Series != nil {
 		series := data.DepositChart.Data.Series
 		if len(series) > 2 {
-			points := series[1].Data.([][]float64)
-			periodDays := float64(len(points))
-			avgDepositPerDay := data.DepositedTotal / periodDays
-			daysUntilThreshold := (data.DepositThreshold - data.DepositedTotal) / avgDepositPerDay
-			estimatedTimeToThreshold := time.Now().Add(time.Hour * 24 * time.Duration(daysUntilThreshold))
-			if estimatedTimeToThreshold.After(time.Unix(data.NetworkStartTs, 0)) {
-				data.NetworkStartTs = estimatedTimeToThreshold.Add(time.Duration(int64(utils.Config.Chain.Config.GenesisDelay) * 1000 * 1000 * 1000)).Unix()
+			points, ok := series[1].Data.([][]float64)
+			if !ok {
+				logger.Errorf("error parsing deposit chart data could not convert  series to [][]float64 series: %+v", series[1].Data)
+			} else {
+				periodDays := float64(len(points))
+				avgDepositPerDay := data.DepositedTotal / periodDays
+				daysUntilThreshold := (data.DepositThreshold - data.DepositedTotal) / avgDepositPerDay
+				estimatedTimeToThreshold := time.Now().Add(time.Hour * 24 * time.Duration(daysUntilThreshold))
+				if estimatedTimeToThreshold.After(time.Unix(data.NetworkStartTs, 0)) {
+					data.NetworkStartTs = estimatedTimeToThreshold.Add(time.Duration(int64(utils.Config.Chain.Config.GenesisDelay) * 1000 * 1000 * 1000)).Unix()
+				}
 			}
 		}
 	}
@@ -1251,6 +1262,28 @@ func GetLatestStats() *types.Stats {
 	}
 }
 
+var globalNotificationMessage = template.HTML("")
+var globalNotificationMessageTs time.Time
+var globalNotificationMux = &sync.Mutex{}
+
+func GlobalNotificationMessage() template.HTML {
+	globalNotificationMux.Lock()
+	defer globalNotificationMux.Unlock()
+
+	if time.Since(globalNotificationMessageTs) > time.Minute*10 {
+		globalNotificationMessageTs = time.Now()
+
+		err := db.FrontendWriterDB.Get(&globalNotificationMessage, "SELECT content FROM global_notifications WHERE target = 'web'")
+
+		if err != nil {
+			logger.Errorf("error updating global notification message: %v", err)
+			globalNotificationMessage = ""
+			return globalNotificationMessage
+		}
+	}
+	return globalNotificationMessage
+}
+
 // IsSyncing returns true if the chain is still syncing
 func IsSyncing() bool {
 	return time.Now().Add(time.Minute * -10).After(utils.EpochToTime(LatestEpoch()))
@@ -1577,12 +1610,12 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	logger.Infof("burn rate per min: %v inflation per min: %v emission: %v", data.BurnRate1h, rewards.InexactFloat64(), data.Emission)
 	// logger.Infof("calculated emission: %v", data.Emission)
 
-	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", latestEpoch-225)
+	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", latestEpoch-utils.EpochsPerDay())
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (24h) from blocks table: %v", err)
 	}
 
-	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(exec_gas_used::numeric * 100 / exec_gas_limit) from blocks where epoch >= $1 and exec_gas_used > 0 and exec_gas_limit > 0", latestEpoch-225)
+	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(exec_gas_used::numeric * 100 / exec_gas_limit) from blocks where epoch >= $1 and exec_gas_used > 0 and exec_gas_limit > 0", latestEpoch-utils.EpochsPerDay())
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block utilization from blocks table: %v", err)
 	}

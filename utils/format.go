@@ -549,15 +549,30 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
 }
 
-func FormatWithdawalCredentials(hash []byte) template.HTML {
+func formatWithdrawalHash(hash []byte) template.HTML {
+	var colorClass string
+	if hash[0] == 0x01 {
+		colorClass = "text-success"
+	} else {
+		colorClass = "text-warning"
+	}
+
+	return template.HTML(fmt.Sprintf("<span class=\"text-monospace %s\">%#x</span><span class=\"text-monospace\">%x…%x</span>", colorClass, hash[:1], hash[1:2], hash[len(hash)-2:]))
+}
+
+func FormatWithdawalCredentials(hash []byte, addCopyButton bool) template.HTML {
 	if len(hash) != 32 {
 		return "INVALID CREDENTIALS"
 	}
 
 	if hash[0] == 0x01 {
-		return template.HTML(fmt.Sprintf(`<a href="/address/0x%x">%s</a>`, hash[12:], FormatHash(hash)))
+		text := fmt.Sprintf("<a href=\"/address/0x%x\">%s</a>", hash[12:], formatWithdrawalHash(hash))
+		if addCopyButton {
+			text += fmt.Sprintf("<i class=\"fa fa-copy text-muted p-1\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=\"%#x\"></i>", hash)
+		}
+		return template.HTML(text)
 	} else {
-		return FormatHash(hash)
+		return formatWithdrawalHash(hash)
 	}
 }
 
@@ -1158,6 +1173,14 @@ func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
 	return template.HTML(p.Sprintf("%s", FormatThousandsEnglish(strconv.FormatFloat(f, 'f', -1, 64))))
 }
 
+func FormatErc20Deicmals(balance []byte, metadata *types.ERC20Metadata) decimal.Decimal {
+	decimals := new(big.Int).SetBytes(metadata.Decimals)
+	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
+	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance), 0)
+
+	return num.Div(mul)
+}
+
 func FormatTokenName(balance *types.Eth1AddressBalance) template.HTML {
 	logo := ""
 	if len(balance.Metadata.Logo) != 0 {
@@ -1204,9 +1227,6 @@ func FormatTimestampUInt64(ts uint64) template.HTML {
 // FormatEth1AddressFull will return the eth1-address formated as html
 func FormatEth1AddressFull(addr common.Address) template.HTML {
 	return FormatAddress(addr.Bytes(), nil, "", false, false, true)
-}
-
-func formatNumberInternal(prefix string, postfix string, number *big.Int, decimals int) {
 }
 
 func FormatHeaderHash(address []byte) template.HTML {

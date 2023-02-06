@@ -44,7 +44,7 @@ func Correlations(w http.ResponseWriter, r *http.Request) {
 	// 	GPO:          services.LatestGasNowData(),
 	// }
 
-	if handleTemplateError(w, r, correlationsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "correlations.go", "Correlations", "", correlationsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

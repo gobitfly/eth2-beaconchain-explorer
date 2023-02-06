@@ -48,7 +48,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		data := InitPageData(w, r, "search", "/search", "")
 		data.HeaderAd = true
 
-		if handleTemplateError(w, r, searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "search.go", "Search", "", searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 	}
@@ -131,7 +131,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if transactionLikeRE.MatchString(strings.ToLower(strings.Replace(search, "0x", "", -1))) {
 			txHash, txHashErr := hex.DecodeString(strings.ToLower(strings.Replace(search, "0x", "", -1)))
 			if txHashErr != nil {
-				logger.Errorf("error parsing txHash %v: %w", search, txHashErr)
+				logger.Errorf("error parsing txHash %v: %v", search, txHashErr)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}

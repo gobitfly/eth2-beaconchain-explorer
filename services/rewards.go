@@ -123,6 +123,10 @@ func GeneratePdfReport(hist rewardHistory, currency string) []byte {
 
 	sort.Slice(data, func(p, q int) bool {
 		i, err := time.Parse("2006-01-02", data[p][0])
+		if err != nil {
+			return false
+		}
+
 		i2, err := time.Parse("2006-01-02", data[q][0])
 		if err != nil {
 			return false
@@ -283,13 +287,31 @@ func getValidatorDetails(validators []uint64) [][]string {
 	validatorFilter := pq.Array(validators)
 	var data []types.ValidatorPageData
 	err := db.WriterDb.Select(&data,
-		`select validatorindex, balanceactivation, balance, lastattestationslot
+		`select validatorindex, balanceactivation, lastattestationslot
 		 from validators 
 		 where validatorindex=ANY($1)
 		 order by validatorindex asc`, validatorFilter)
 	if err != nil {
 		logger.Errorf("error getting validators Data: %v", err)
 		return [][]string{}
+	}
+
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, LatestEpoch(), 1)
+	if err != nil {
+		logger.Errorf("error getting validator balance data for getValidatorDetails function: %v", err)
+		return [][]string{}
+	}
+
+	for _, validator := range data {
+		for balanceIndex, balance := range balances {
+			if len(balance) == 0 {
+				continue
+			}
+			if validator.ValidatorIndex == balanceIndex {
+				validator.CurrentBalance = balance[0].Balance
+				validator.EffectiveBalance = balance[0].EffectiveBalance
+			}
+		}
 	}
 
 	result := [][]string{}

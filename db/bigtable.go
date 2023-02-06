@@ -652,8 +652,18 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
+	if int64(startEpoch) < limit {
+		return nil, fmt.Errorf("error startEpoch must be larger than the limit, startEpoch: %v, limit: %v", startEpoch, limit)
+	}
+
+	end := int64(startEpoch) - limit
+
+	if end <= 0 {
+		end = 1
+	}
+
 	rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch))
-	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
+	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(uint64(end)))
 	res := make(map[uint64][]*types.ValidatorBalance, len(validators))
 
 	// if len(validators) == 0 {
@@ -679,8 +689,7 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 	if len(columnFilters) == 0 { // special case to retrieve data for all validators
 		filter = gcp_bigtable.FamilyFilter(VALIDATOR_BALANCES_FAMILY)
 	}
-
-	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, rangeEnd), func(r gcp_bigtable.Row) bool {
+	handleRow := func(r gcp_bigtable.Row) bool {
 		for _, ri := range r[VALIDATOR_BALANCES_FAMILY] {
 			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, VALIDATOR_BALANCES_FAMILY+":"), 10, 64)
 			if err != nil {
@@ -716,7 +725,18 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 			})
 		}
 		return true
-	}, gcp_bigtable.LimitRows(limit), gcp_bigtable.RowFilter(filter))
+	}
+
+	if end == 0 {
+		row, err := bigtable.tableBeaconchain.ReadRow(ctx, reversedPaddedEpoch(0), gcp_bigtable.RowFilter(filter))
+		if err != nil {
+			return nil, fmt.Errorf("error getting row for epoch 0, err: %w", err)
+		}
+
+		handleRow(row)
+	}
+
+	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, rangeEnd), handleRow, gcp_bigtable.LimitRows(limit), gcp_bigtable.RowFilter(filter))
 	if err != nil {
 		return nil, err
 	}
@@ -1423,9 +1443,9 @@ func (bigtable *Bigtable) DeleteEpoch(epoch uint64) error {
 	}
 	keys = append(keys, fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch)))
 
-	for _, k := range keys {
-		logger.Info(k)
-	}
+	// for _, k := range keys {
+	// 	logger.Info(k)
+	// }
 
 	// Delete all of those keys
 	mutsDelete := &types.BulkMutations{

@@ -251,7 +251,7 @@ func GetEth1DepositsCount() (uint64, error) {
 	return deposits, nil
 }
 
-func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, orderDir string, latestEpoch uint64) ([]*types.EthOneDepositLeaderboardData, uint64, error) {
+func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthOneDepositLeaderboardData, uint64, error) {
 	deposits := []*types.EthOneDepositLeaderboardData{}
 
 	if orderDir != "desc" && orderDir != "asc" {
@@ -282,62 +282,30 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 	var totalCount uint64
 	if query != "" {
 		err = ReaderDb.Get(&totalCount, `
-		SELECT
-			COUNT(from_address)
-			FROM
-				(
-					SELECT
-						from_address
-					FROM
-						eth1_deposits as eth1
-					WHERE
-					ENCODE(eth1.from_address, 'hex') LIKE LOWER($1)
-						GROUP BY from_address
-				) as count
-		`, query+"%")
+		SELECT COUNT(*) FROM eth1_deposits_aggregated WHERE ENCODE(from_address, 'hex') LIKE LOWER($1)`, query+"%")
 	} else {
-		err = ReaderDb.Get(&totalCount, "SELECT COUNT(*) FROM (SELECT from_address FROM eth1_deposits GROUP BY from_address) as count")
+		err = ReaderDb.Get(&totalCount, "SELECT COUNT(*) FROM eth1_deposits_aggregated AS count")
 	}
 	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
 
-	err = ReaderDb.Select(&deposits, fmt.Sprintf(`
-		SELECT
-			eth1.from_address,
-			SUM(eth1.amount) as amount,
-			SUM(eth1.validcount) AS validcount,
-			SUM(eth1.invalidcount) AS invalidcount,
-			COUNT(CASE WHEN v.slashed = 't' THEN 1 END) AS slashedcount,
-			COUNT(v.pubkey) AS totalcount,
-			COUNT(CASE WHEN v.slashed = 'f' AND v.exitepoch > $3 AND v.activationepoch < $3 THEN 1 END) as activecount,
-			COUNT(CASE WHEN v.activationepoch > $3 THEN 1 END) AS pendingcount,
-			COUNT(CASE WHEN v.slashed = 'f' AND v.exitepoch < $3 THEN 1 END) AS voluntary_exit_count
-		FROM (
-			SELECT 
-				from_address,
-				publickey,
-				SUM(amount) AS amount,
-				COUNT(CASE WHEN valid_signature = 't' THEN 1 END) AS validcount,
-				COUNT(CASE WHEN valid_signature = 'f' THEN 1 END) AS invalidcount
-			FROM eth1_deposits
-			GROUP BY from_address, publickey
-		) eth1
-		LEFT JOIN (
-			SELECT 
-				pubkey,
-				slashed,
-				exitepoch,
-				activationepoch,
-				COALESCE(validator_names.name, '') AS name
-			FROM validators
-			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		) v ON v.pubkey = eth1.publickey
-		WHERE ENCODE(eth1.from_address, 'hex') LIKE LOWER($4)
-		GROUP BY eth1.from_address
-		ORDER BY %s %s
-		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, query+"%")
+	if query != "" {
+		err = ReaderDb.Select(&deposits, fmt.Sprintf(`
+			SELECT from_address, amount, validcount, invalidcount, slashedcount, totalcount, activecount, pendingcount, voluntary_exit_count
+			FROM eth1_deposits_aggregated
+			WHERE ENCODE(from_address, 'hex') LIKE LOWER($3)
+			ORDER BY %s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start, query+"%")
+	} else {
+		err = ReaderDb.Select(&deposits, fmt.Sprintf(`
+			SELECT from_address, amount, validcount, invalidcount, slashedcount, totalcount, activecount, pendingcount, voluntary_exit_count
+			FROM eth1_deposits_aggregated
+			ORDER BY %s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start)
+	}
 	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
@@ -460,7 +428,7 @@ func GetLatestEpoch() (uint64, error) {
 	err := WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 
 	if err != nil {
-		return 0, fmt.Errorf("error retrieving latest epoch from DB: %v", err)
+		return 0, fmt.Errorf("error retrieving latest epoch from DB: %w", err)
 	}
 
 	return epoch, nil
@@ -472,7 +440,7 @@ func GetAllEpochs() ([]uint64, error) {
 	err := WriterDb.Select(&epochs, "SELECT epoch FROM epochs ORDER BY epoch")
 
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving all epochs from DB: %v", err)
+		return nil, fmt.Errorf("error retrieving all epochs from DB: %w", err)
 	}
 
 	return epochs, nil
@@ -485,7 +453,7 @@ func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.Mini
 	err := WriterDb.Select(&blocks, "SELECT epoch, slot, blockroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND blockroot != '\x01' ORDER BY slot DESC", startEpoch, endEpoch)
 
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving last blocks (%v-%v) from DB: %v", startEpoch, endEpoch, err)
+		return nil, fmt.Errorf("error retrieving last blocks (%v-%v) from DB: %w", startEpoch, endEpoch, err)
 	}
 
 	return blocks, nil
@@ -564,7 +532,7 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalB
 
 	tx, err := WriterDb.Begin()
 	if err != nil {
-		return fmt.Errorf("error starting db transactions: %v", err)
+		return fmt.Errorf("error starting db transactions: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -599,7 +567,7 @@ func SetBlockStatus(blocks []*types.CanonBlock) error {
 
 	tx, err := WriterDb.Begin()
 	if err != nil {
-		return fmt.Errorf("error starting db transactions: %v", err)
+		return fmt.Errorf("error starting db transactions: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -659,12 +627,12 @@ func SaveBlock(block *types.Block) error {
 	err = saveBlocks(blocksMap, tx)
 	if err != nil {
 		logger.Fatalf("error saving blocks to db: %v", err)
-		return fmt.Errorf("error saving blocks to db: %v", err)
+		return fmt.Errorf("error saving blocks to db: %w", err)
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("error committing db transaction: %v", err)
+		return fmt.Errorf("error committing db transaction: %w", err)
 	}
 
 	return nil
@@ -693,7 +661,7 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 
 	cachedEpochKey, found := epochsCache.Get(fmt.Sprintf("%v", data.Epoch))
 	if found && epochCacheKey == cachedEpochKey.(string) {
-		logger.Infof("skipping export of epoch %v as it did not change compared to the previous export run")
+		logger.Infof("skipping export of epoch %v as it did not change compared to the previous export run", data.Epoch)
 		return nil
 	}
 
@@ -729,30 +697,30 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 
 			validatorsTx, err := WriterDb.Beginx()
 			if err != nil {
-				logger.Errorf("error starting validators tx: %w", err)
+				logger.Errorf("error starting validators tx: %v", err)
 				return
 			}
 			defer validatorsTx.Rollback()
 
 			err = saveValidators(data, validatorsTx, client)
 			if err != nil {
-				logger.Errorf("error saving validators to db: %w", err)
+				logger.Errorf("error saving validators to db: %v", err)
 			}
 			err = updateQueueDeposits()
 			if err != nil {
-				logger.Errorf("error updating queue deposits cache: %w", err)
+				logger.Errorf("error updating queue deposits cache: %v", err)
 			}
 
 			if data.Epoch%9 == 0 { // update the validator performance every hour
 				err = updateValidatorPerformance(validatorsTx)
 				if err != nil {
-					logger.Errorf("error updating validator performance: %w", err)
+					logger.Errorf("error updating validator performance: %v", err)
 				}
 			}
 
 			err = validatorsTx.Commit()
 			if err != nil {
-				logger.Errorf("error committing validators tx: %w", err)
+				logger.Errorf("error committing validators tx: %v", err)
 			}
 		}()
 	}
@@ -931,7 +899,7 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) er
 				_, err = stmtGraffitiwall.Exec(x, y, color, block.Slot, block.Proposer)
 
 				if err != nil {
-					return fmt.Errorf("error executing graffitiwall statement: %v", err)
+					return fmt.Errorf("error executing graffitiwall statement: %w", err)
 				}
 			}
 		}
@@ -981,10 +949,21 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		}
 	}
 
-	var latestBlock uint64
-	err := WriterDb.Get(&latestBlock, "SELECT COALESCE(MAX(lastattestationslot), 0) FROM validators")
+	var currentState []*types.Validator
+	err := tx.Select(&currentState, "SELECT validatorindex, withdrawableepoch, withdrawalcredentials, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status FROM validators;")
+
 	if err != nil {
 		return err
+	}
+
+	currentStateMap := make(map[uint64]*types.Validator, len(currentState))
+	latestBlock := uint64(0)
+
+	for _, v := range currentState {
+		if uint64(v.LastAttestationSlot.Int64) > latestBlock {
+			latestBlock = uint64(v.LastAttestationSlot.Int64)
+		}
+		currentStateMap[v.Index] = v
 	}
 
 	thresholdSlot := latestBlock - 64
@@ -992,11 +971,15 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		thresholdSlot = 0
 	}
 
-	latestEpoch := latestBlock / 32
+	latestEpoch := latestBlock / utils.Config.Chain.Config.SlotsPerEpoch
 	farFutureEpoch := uint64(18446744073709551615)
 	maxSqlNumber := uint64(9223372036854775807)
 
-	for _, v := range validators {
+	var queries strings.Builder
+	updates := 0
+	for _, v := range data.Validators {
+
+		// exchange farFutureEpoch with the corresponding max sql value
 		if v.WithdrawableEpoch == farFutureEpoch {
 			v.WithdrawableEpoch = maxSqlNumber
 		}
@@ -1009,230 +992,17 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		if v.ActivationEpoch == farFutureEpoch {
 			v.ActivationEpoch = maxSqlNumber
 		}
-	}
 
-	// var currentState []*types.Validator
-	// err = tx.Select(&currentState, "SELECT * FROM validators;")
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	// currentStateMap := make(map[uint64]*types.Validator, len(currentState))
-
-	// for _, v := range currentState {
-	// 	currentStateMap[v.Index] = v
-	// }
-
-	// var queries strings.Builder
-	// updates := 0
-	// for _, v := range data.Validators {
-	// 	c := currentStateMap[v.Index]
-
-	// 	if c == nil {
-	// 		logger.Infof("validator %v is new", v.Index)
-
-	// 		_, err = tx.Exec(`INSERT INTO validators (
-	// 			validatorindex,
-	// 			pubkey,
-	// 			withdrawableepoch,
-	// 			withdrawalcredentials,
-	// 			balance,
-	// 			effectivebalance,
-	// 			slashed,
-	// 			activationeligibilityepoch,
-	// 			activationepoch,
-	// 			exitepoch,
-	// 			balance1d,
-	// 			balance7d,
-	// 			balance31d,
-	// 			pubkeyhex,
-	// 			status,
-	// 			lastattestationslot
-	// 		)
-	// 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);`,
-	// 			v.Index,
-	// 			v.PublicKey,
-	// 			v.WithdrawableEpoch,
-	// 			v.WithdrawalCredentials,
-	// 			v.Balance,
-	// 			v.EffectiveBalance,
-	// 			v.Slashed,
-	// 			v.ActivationEligibilityEpoch,
-	// 			v.ActivationEpoch,
-	// 			v.ExitEpoch,
-	// 			v.Balance1d,
-	// 			v.Balance7d,
-	// 			v.Balance31d,
-	// 			fmt.Sprintf("%x", v.PublicKey),
-	// 			v.Status,
-	// 			v.LastAttestationSlot,
-	// 		)
-
-	// 		if err != nil {
-	// 			logger.Errorf("error saving new validator %v: %v", v.Index, err)
-	// 		}
-	// 	} else {
-	// 		// status                     =
-	// 		// CASE
-	// 		// WHEN EXCLUDED.exitepoch <= %[1]d AND EXCLUDED.slashed THEN 'slashed'
-	// 		// WHEN EXCLUDED.exitepoch <= %[1]d THEN 'exited'
-	// 		// WHEN EXCLUDED.activationeligibilityepoch = 9223372036854775807 THEN 'deposited'
-	// 		// WHEN EXCLUDED.activationepoch > %[1]d THEN 'pending'
-	// 		// WHEN EXCLUDED.slashed AND EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'slashing_offline'
-	// 		// WHEN EXCLUDED.slashed THEN 'slashing_online'
-	// 		// WHEN EXCLUDED.exitepoch < 9223372036854775807 AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'exiting_offline'
-	// 		// WHEN EXCLUDED.exitepoch < 9223372036854775807 THEN 'exiting_online'
-	// 		// WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline'
-	// 		// ELSE 'active_online'
-	// 		// END
-
-	// 		offline := false
-
-	// 		lastSeen := c.LastAttestationSlot.Int64
-	// 		if v.LastAttestationSlot.Int64 > lastSeen {
-	// 			lastSeen = v.LastAttestationSlot.Int64
-	// 		}
-
-	// 		if lastSeen < int64(thresholdSlot) {
-	// 			offline = true
-	// 		}
-
-	// 		if v.ExitEpoch <= latestEpoch && v.Slashed {
-	// 			v.Status = "slashed"
-	// 		} else if v.ExitEpoch <= latestEpoch {
-	// 			v.Status = "exited"
-	// 		} else if v.ActivationEligibilityEpoch == 9223372036854775807 {
-	// 			v.Status = "deposited"
-	// 		} else if v.ActivationEpoch > latestEpoch {
-	// 			v.Status = "pending"
-	// 		} else if v.Slashed && v.ActivationEpoch < latestEpoch && offline {
-	// 			v.Status = "slashing_offline"
-	// 		} else if v.Slashed {
-	// 			v.Status = "slashing_online"
-	// 		} else if v.ExitEpoch < 9223372036854775807 && offline {
-	// 			v.Status = "exiting_offline"
-	// 		} else if v.ExitEpoch < 9223372036854775807 {
-	// 			v.Status = "exiting_online"
-	// 		} else if v.ActivationEpoch < latestEpoch && offline {
-	// 			v.Status = "active_offline"
-	// 		} else {
-	// 			v.Status = "active_online"
-	// 		}
-
-	// 		if c.LastAttestationSlot != v.LastAttestationSlot && v.LastAttestationSlot.Valid {
-	// 			// logger.Infof("LastAttestationSlot changed for validator %v from %v to %v", v.Index, c.LastAttestationSlot.Int64, v.LastAttestationSlot.Int64)
-
-	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET lastattestationslot = %d WHERE validatorindex = %d;\n", v.LastAttestationSlot.Int64, c.Index))
-	// 			updates++
-	// 		}
-
-	// 		if c.Status != v.Status {
-	// 			logger.Infof("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
-	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET status = '%s' WHERE validatorindex = %d;\n", v.Status, c.Index))
-	// 			updates++
-	// 		}
-	// 		if c.Balance != v.Balance {
-	// 			// logger.Infof("Balance changed for validator %v from %v to %v", v.Index, c.Balance, v.Balance)
-	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET balance = %d WHERE validatorindex = %d;\n", v.Balance, c.Index))
-	// 			updates++
-	// 		}
-	// 		if c.EffectiveBalance != v.EffectiveBalance {
-	// 			// logger.Infof("EffectiveBalance changed for validator %v from %v to %v", v.Index, c.EffectiveBalance, v.EffectiveBalance)
-	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET effectivebalance = %d WHERE validatorindex = %d;\n", v.EffectiveBalance, c.Index))
-	// 			updates++
-	// 		}
-	// 		if c.Slashed != v.Slashed {
-	// 			logger.Infof("Slashed changed for validator %v from %v to %v", v.Index, c.Slashed, v.Slashed)
-	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET slashed = %v WHERE validatorindex = %d;\n", v.Slashed, c.Index))
-	// 			updates++
-	// 		}
-	// 		if c.ActivationEligibilityEpoch != v.ActivationEligibilityEpoch {
-	// 			logger.Infof("ActivationEligibilityEpoch changed for validator %v from %v to %v", v.Index, c.ActivationEligibilityEpoch, v.ActivationEligibilityEpoch)
-	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET activationeligibilityepoch = %d WHERE validatorindex = %d;\n", v.ActivationEligibilityEpoch, c.Index))
-	// 			updates++
-	// 		}
-	// 		if c.ActivationEpoch != v.ActivationEpoch {
-	// 			logger.Infof("ActivationEpoch changed for validator %v from %v to %v", v.Index, c.ActivationEpoch, v.ActivationEpoch)
-	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET activationepoch = %d WHERE validatorindex = %d;\n", v.ActivationEpoch, c.Index))
-	// 			updates++
-	// 		}
-	// 		if c.ExitEpoch != v.ExitEpoch {
-	// 			logger.Infof("ExitEpoch changed for validator %v from %v to %v", v.Index, c.ExitEpoch, v.ExitEpoch)
-	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET exitepoch = %d WHERE validatorindex = %d;\n", v.ExitEpoch, c.Index))
-	// 			updates++
-	// 		}
-	// 		if c.WithdrawableEpoch != v.WithdrawableEpoch {
-	// 			logger.Infof("WithdrawableEpoch changed for validator %v from %v to %v", v.Index, c.WithdrawableEpoch, v.WithdrawableEpoch)
-	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET withdrawableepoch = %d WHERE validatorindex = %d;\n", v.WithdrawableEpoch, c.Index))
-	// 			updates++
-	// 		}
-	// 		if !bytes.Equal(c.WithdrawalCredentials, v.WithdrawalCredentials) {
-	// 			logger.Infof("WithdrawalCredentials changed for validator %v from %x to %x", v.Index, c.WithdrawalCredentials, v.WithdrawalCredentials)
-	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET withdrawalcredentials = '\\%x' WHERE validatorindex = %d;\n", v.WithdrawalCredentials, c.Index))
-	// 			updates++
-	// 		}
-	// 		if c.Balance1d != v.Balance1d {
-	// 			// logger.Infof("Balance1d changed for validator %v from %v to %v", v.Index, c.Balance1d, v.Balance1d)
-	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET balance1d = %d WHERE validatorindex = %d;\n", v.Balance1d.Int64, c.Index))
-	// 			updates++
-	// 		}
-	// 		if c.Balance7d != v.Balance7d {
-	// 			// logger.Infof("Balance7d changed for validator %v from %v to %v", v.Index, c.Balance7d, v.Balance7d)
-	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET balance7d = %d WHERE validatorindex = %d;\n", v.Balance7d.Int64, c.Index))
-	// 			updates++
-	// 		}
-	// 		if c.Balance31d != v.Balance31d {
-	// 			// logger.Infof("Balance31d changed for validator %v from %v to %v", v.Index, c.Balance31d, v.Balance31d)
-	// 			queries.WriteString(fmt.Sprintf("UPDATE validators SET balance31d = %d WHERE validatorindex = %d;\n", v.Balance31d.Int64, c.Index))
-	// 			updates++
-	// 		}
-	// 	}
-	// }
-
-	// updateStart := time.Now()
-	// logger.Infof("applying %v update queries", updates)
-	// _, err = tx.Exec(queries.String())
-
-	// logger.Infof("update completed, took %v", time.Since(updateStart))
-
-	// if err != nil {
-	// 	logger.Errorf("error executing validator update query: %v", err)
-	// 	return err
-	// }
-
-	batchSize := 4000 // max parameters: 65535
-	for b := 0; b < len(validators); b += batchSize {
-		start := b
-		end := b + batchSize
-		if len(validators) < end {
-			end = len(validators)
+		if currentStateMap[v.Index] != nil && currentStateMap[v.Index].LastAttestationSlot.Int64 > v.LastAttestationSlot.Int64 {
+			v.LastAttestationSlot.Int64 = currentStateMap[v.Index].LastAttestationSlot.Int64
 		}
 
-		numArgs := 16
-		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*numArgs)
-		for i, v := range validators[start:end] {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10, i*numArgs+11, i*numArgs+12, i*numArgs+13, i*numArgs+14, i*numArgs+15, i*numArgs+16))
-			valueArgs = append(valueArgs, v.Index)
-			valueArgs = append(valueArgs, v.PublicKey)
-			valueArgs = append(valueArgs, v.WithdrawableEpoch)
-			valueArgs = append(valueArgs, v.WithdrawalCredentials)
-			valueArgs = append(valueArgs, v.Balance)
-			valueArgs = append(valueArgs, v.EffectiveBalance)
-			valueArgs = append(valueArgs, v.Slashed)
-			valueArgs = append(valueArgs, v.ActivationEligibilityEpoch)
-			valueArgs = append(valueArgs, v.ActivationEpoch)
-			valueArgs = append(valueArgs, v.ExitEpoch)
-			valueArgs = append(valueArgs, v.Balance1d)
-			valueArgs = append(valueArgs, v.Balance7d)
-			valueArgs = append(valueArgs, v.Balance31d)
-			valueArgs = append(valueArgs, fmt.Sprintf("%x", v.PublicKey))
-			valueArgs = append(valueArgs, v.Status)
-			valueArgs = append(valueArgs, v.LastAttestationSlot)
-		}
-		stmt := fmt.Sprintf(`
-			INSERT INTO validators (
+		c := currentStateMap[v.Index]
+
+		if c == nil {
+			logger.Infof("validator %v is new", v.Index)
+
+			_, err = tx.Exec(`INSERT INTO validators (
 				validatorindex,
 				pubkey,
 				withdrawableepoch,
@@ -1243,42 +1013,187 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 				activationeligibilityepoch,
 				activationepoch,
 				exitepoch,
-				balance1d,
-				balance7d,
-				balance31d,
 				pubkeyhex,
 				status,
 				lastattestationslot
-			) 
-			VALUES %[3]s
-			ON CONFLICT (validatorindex) DO UPDATE SET 
-				withdrawableepoch          = EXCLUDED.withdrawableepoch,
-				balance                    = EXCLUDED.balance,
-				effectivebalance           = EXCLUDED.effectivebalance,
-				slashed                    = EXCLUDED.slashed,
-				activationeligibilityepoch = EXCLUDED.activationeligibilityepoch,
-				activationepoch            = EXCLUDED.activationepoch,
-				exitepoch                  = EXCLUDED.exitepoch,
-				balance1d                  = EXCLUDED.balance1d,
-				balance7d                  = EXCLUDED.balance7d,
-				balance31d                 = EXCLUDED.balance31d,
-				lastattestationslot        = GREATEST(validators.lastattestationslot, EXCLUDED.lastattestationslot),
-				status                     = 
-					CASE 
-					WHEN EXCLUDED.exitepoch <= %[1]d AND EXCLUDED.slashed THEN 'slashed'
-					WHEN EXCLUDED.exitepoch <= %[1]d THEN 'exited'
-					WHEN EXCLUDED.activationeligibilityepoch = 9223372036854775807 THEN 'deposited'
-					WHEN EXCLUDED.activationepoch > %[1]d THEN 'pending'
-					WHEN EXCLUDED.slashed AND EXCLUDED.activationepoch < %[1]d AND GREATEST(COALESCE(validators.lastattestationslot, 0), EXCLUDED.lastattestationslot) < %[2]d THEN 'slashing_offline'
-					WHEN EXCLUDED.slashed THEN 'slashing_online'
-					WHEN EXCLUDED.exitepoch < 9223372036854775807 AND GREATEST(COALESCE(validators.lastattestationslot, 0), EXCLUDED.lastattestationslot) < %[2]d THEN 'exiting_offline'
-					WHEN EXCLUDED.exitepoch < 9223372036854775807 THEN 'exiting_online'
-					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(COALESCE(validators.lastattestationslot, 0), EXCLUDED.lastattestationslot) < %[2]d THEN 'active_offline' 
-					ELSE 'active_online'
-					END`,
-			latestEpoch, thresholdSlot, strings.Join(valueStrings, ","))
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`,
+				v.Index,
+				v.PublicKey,
+				v.WithdrawableEpoch,
+				v.WithdrawalCredentials,
+				0,
+				0,
+				v.Slashed,
+				v.ActivationEligibilityEpoch,
+				v.ActivationEpoch,
+				v.ExitEpoch,
+				fmt.Sprintf("%x", v.PublicKey),
+				v.Status,
+				v.LastAttestationSlot,
+			)
+
+			if err != nil {
+				logger.Errorf("error saving new validator %v: %v", v.Index, err)
+			}
+		} else {
+			// status                     =
+			// CASE
+			// WHEN EXCLUDED.exitepoch <= %[1]d AND EXCLUDED.slashed THEN 'slashed'
+			// WHEN EXCLUDED.exitepoch <= %[1]d THEN 'exited'
+			// WHEN EXCLUDED.activationeligibilityepoch = 9223372036854775807 THEN 'deposited'
+			// WHEN EXCLUDED.activationepoch > %[1]d THEN 'pending'
+			// WHEN EXCLUDED.slashed AND EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'slashing_offline'
+			// WHEN EXCLUDED.slashed THEN 'slashing_online'
+			// WHEN EXCLUDED.exitepoch < 9223372036854775807 AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'exiting_offline'
+			// WHEN EXCLUDED.exitepoch < 9223372036854775807 THEN 'exiting_online'
+			// WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline'
+			// ELSE 'active_online'
+			// END
+
+			offline := false
+
+			lastSeen := c.LastAttestationSlot.Int64
+			if v.LastAttestationSlot.Int64 > lastSeen {
+				lastSeen = v.LastAttestationSlot.Int64
+			}
+
+			if lastSeen < int64(thresholdSlot) {
+				offline = true
+			}
+
+			if v.ExitEpoch <= latestEpoch && v.Slashed {
+				v.Status = "slashed"
+			} else if v.ExitEpoch <= latestEpoch {
+				v.Status = "exited"
+			} else if v.ActivationEligibilityEpoch == 9223372036854775807 {
+				v.Status = "deposited"
+			} else if v.ActivationEpoch > latestEpoch {
+				v.Status = "pending"
+			} else if v.Slashed && v.ActivationEpoch < latestEpoch && offline {
+				v.Status = "slashing_offline"
+			} else if v.Slashed {
+				v.Status = "slashing_online"
+			} else if v.ExitEpoch < 9223372036854775807 && offline {
+				v.Status = "exiting_offline"
+			} else if v.ExitEpoch < 9223372036854775807 {
+				v.Status = "exiting_online"
+			} else if v.ActivationEpoch < latestEpoch && offline {
+				v.Status = "active_offline"
+			} else {
+				v.Status = "active_online"
+			}
+
+			// if c.LastAttestationSlot != v.LastAttestationSlot && v.LastAttestationSlot.Valid {
+			// 	// logger.Infof("LastAttestationSlot changed for validator %v from %v to %v", v.Index, c.LastAttestationSlot.Int64, v.LastAttestationSlot.Int64)
+
+			// 	queries.WriteString(fmt.Sprintf("UPDATE validators SET lastattestationslot = %d WHERE validatorindex = %d;\n", v.LastAttestationSlot.Int64, c.Index))
+			// 	updates++
+			// }
+
+			if c.Status != v.Status {
+				logger.Infof("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
+				queries.WriteString(fmt.Sprintf("UPDATE validators SET status = '%s' WHERE validatorindex = %d;\n", v.Status, c.Index))
+				updates++
+			}
+			// if c.Balance != v.Balance {
+			// 	// logger.Infof("Balance changed for validator %v from %v to %v", v.Index, c.Balance, v.Balance)
+			// 	queries.WriteString(fmt.Sprintf("UPDATE validators SET balance = %d WHERE validatorindex = %d;\n", v.Balance, c.Index))
+			// 	updates++
+			// }
+			// if c.EffectiveBalance != v.EffectiveBalance {
+			// 	// logger.Infof("EffectiveBalance changed for validator %v from %v to %v", v.Index, c.EffectiveBalance, v.EffectiveBalance)
+			// 	queries.WriteString(fmt.Sprintf("UPDATE validators SET effectivebalance = %d WHERE validatorindex = %d;\n", v.EffectiveBalance, c.Index))
+			// 	updates++
+			// }
+			if c.Slashed != v.Slashed {
+				logger.Infof("Slashed changed for validator %v from %v to %v", v.Index, c.Slashed, v.Slashed)
+				queries.WriteString(fmt.Sprintf("UPDATE validators SET slashed = %v WHERE validatorindex = %d;\n", v.Slashed, c.Index))
+				updates++
+			}
+			if c.ActivationEligibilityEpoch != v.ActivationEligibilityEpoch {
+				logger.Infof("ActivationEligibilityEpoch changed for validator %v from %v to %v", v.Index, c.ActivationEligibilityEpoch, v.ActivationEligibilityEpoch)
+				queries.WriteString(fmt.Sprintf("UPDATE validators SET activationeligibilityepoch = %d WHERE validatorindex = %d;\n", v.ActivationEligibilityEpoch, c.Index))
+				updates++
+			}
+			if c.ActivationEpoch != v.ActivationEpoch {
+				logger.Infof("ActivationEpoch changed for validator %v from %v to %v", v.Index, c.ActivationEpoch, v.ActivationEpoch)
+				queries.WriteString(fmt.Sprintf("UPDATE validators SET activationepoch = %d WHERE validatorindex = %d;\n", v.ActivationEpoch, c.Index))
+				updates++
+			}
+			if c.ExitEpoch != v.ExitEpoch {
+				logger.Infof("ExitEpoch changed for validator %v from %v to %v", v.Index, c.ExitEpoch, v.ExitEpoch)
+				queries.WriteString(fmt.Sprintf("UPDATE validators SET exitepoch = %d WHERE validatorindex = %d;\n", v.ExitEpoch, c.Index))
+				updates++
+			}
+			if c.WithdrawableEpoch != v.WithdrawableEpoch {
+				logger.Infof("WithdrawableEpoch changed for validator %v from %v to %v", v.Index, c.WithdrawableEpoch, v.WithdrawableEpoch)
+				queries.WriteString(fmt.Sprintf("UPDATE validators SET withdrawableepoch = %d WHERE validatorindex = %d;\n", v.WithdrawableEpoch, c.Index))
+				updates++
+			}
+			if !bytes.Equal(c.WithdrawalCredentials, v.WithdrawalCredentials) {
+				logger.Infof("WithdrawalCredentials changed for validator %v from %x to %x", v.Index, c.WithdrawalCredentials, v.WithdrawalCredentials)
+				queries.WriteString(fmt.Sprintf("UPDATE validators SET withdrawalcredentials = '\\%x' WHERE validatorindex = %d;\n", v.WithdrawalCredentials, c.Index))
+				updates++
+			}
+			// if c.Balance1d != v.Balance1d {
+			// 	// logger.Infof("Balance1d changed for validator %v from %v to %v", v.Index, c.Balance1d, v.Balance1d)
+			// 	queries.WriteString(fmt.Sprintf("UPDATE validators SET balance1d = %d WHERE validatorindex = %d;\n", v.Balance1d.Int64, c.Index))
+			// 	updates++
+			// }
+			// if c.Balance7d != v.Balance7d {
+			// 	// logger.Infof("Balance7d changed for validator %v from %v to %v", v.Index, c.Balance7d, v.Balance7d)
+			// 	queries.WriteString(fmt.Sprintf("UPDATE validators SET balance7d = %d WHERE validatorindex = %d;\n", v.Balance7d.Int64, c.Index))
+			// 	updates++
+			// }
+			// if c.Balance31d != v.Balance31d {
+			// 	// logger.Infof("Balance31d changed for validator %v from %v to %v", v.Index, c.Balance31d, v.Balance31d)
+			// 	queries.WriteString(fmt.Sprintf("UPDATE validators SET balance31d = %d WHERE validatorindex = %d;\n", v.Balance31d.Int64, c.Index))
+			// 	updates++
+			// }
+		}
+	}
+
+	if updates > 0 {
+		updateStart := time.Now()
+		logger.Infof("applying %v update queries", updates)
+		_, err = tx.Exec(queries.String())
+		if err != nil {
+			logger.Errorf("error executing validator update query: %v", err)
+			return err
+		}
+		logger.Infof("update completed, took %v", time.Since(updateStart))
+	}
+
+	batchSize := 30000 // max parameters: 65535
+	for b := 0; b < len(validators); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(validators) < end {
+			end = len(validators)
+		}
+
+		numArgs := 2
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*numArgs)
+		for i, v := range validators[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d::int, $%d::int)", i*numArgs+1, i*numArgs+2))
+			valueArgs = append(valueArgs, v.Index)
+			valueArgs = append(valueArgs, v.LastAttestationSlot.Int64)
+		}
+
+		stmt := fmt.Sprintf(`
+			UPDATE validators AS v SET
+			lastattestationslot = GREATEST(v.lastattestationslot, v2.lastattestationslot)
+			FROM (VALUES
+				%[1]s
+			) AS v2(validatorindex, lastattestationslot)
+			WHERE v2.validatorindex = v.validatorindex;
+	`, strings.Join(valueStrings, ","))
+
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
+			logger.Error(err)
 			return err
 		}
 
@@ -1370,7 +1285,7 @@ func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint6
 	for slot, validator := range assignments {
 		_, err := stmt.Exec(epoch, validator, slot, 0)
 		if err != nil {
-			return fmt.Errorf("error executing save validator proposal assignment statement: %v", err)
+			return fmt.Errorf("error executing save validator proposal assignment statement: %w", err)
 		}
 	}
 
@@ -1891,7 +1806,7 @@ func GetPendingValidatorCount() (uint64, error) {
 	count := uint64(0)
 	err := ReaderDb.Get(&count, "SELECT entering_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
 	if err != nil && err != sql.ErrNoRows {
-		return 0, fmt.Errorf("error retrieving validator queue count: %v", err)
+		return 0, fmt.Errorf("error retrieving validator queue count: %w", err)
 	}
 	return count, nil
 }
@@ -2144,9 +2059,9 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 		return fmt.Errorf("error retrieving latest epoch: %w", err)
 	}
 
-	lastDayEpoch := currentEpoch - 225
-	lastWeekEpoch := currentEpoch - 225*7
-	lastMonthEpoch := currentEpoch - 225*31
+	lastDayEpoch := currentEpoch - int64(utils.EpochsPerDay())
+	lastWeekEpoch := currentEpoch - int64(utils.EpochsPerDay())*7
+	lastMonthEpoch := currentEpoch - int64(utils.EpochsPerDay())*31
 
 	if lastDayEpoch < 0 {
 		lastDayEpoch = 0
@@ -2158,20 +2073,83 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 		lastMonthEpoch = 0
 	}
 
-	var balances []types.Validator
+	var balances []*types.Validator
 	err = tx.Select(&balances, `
 		SELECT 
 			   validatorindex,
 			   pubkey,
        		   activationepoch,
-		       COALESCE(balance, 0) AS balance, 
-			   COALESCE(balanceactivation, 0) AS balanceactivation, 
-			   COALESCE(balance1d, 0) AS balance1d, 
-			   COALESCE(balance7d, 0) AS balance7d, 
-			   COALESCE(balance31d , 0) AS balance31d
+			   COALESCE(balanceactivation, 0) AS balanceactivation
 		FROM validators`)
 	if err != nil {
 		return fmt.Errorf("error retrieving validator performance data: %w", err)
+	}
+
+	balancesMap := make(map[uint64]*types.Validator, len(balances))
+
+	for _, balance := range balances {
+		balancesMap[balance.Index] = balance
+	}
+
+	logger.Infof("retrieving validator balances for epoch %v", currentEpoch)
+	latestBalances, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(currentEpoch), 1)
+	if err != nil {
+		return fmt.Errorf("error getting validator balance data in updateValidatorPerformance: %w", err)
+	}
+	logger.Infof("retrieved %v validator balances for epoch %v", len(latestBalances), currentEpoch)
+	for balanceIndex, balance := range latestBalances {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
+			continue
+		}
+		balancesMap[balanceIndex].Balance = balance[0].Balance
+	}
+
+	logger.Infof("retrieving validator balances for epoch %v", lastDayEpoch)
+	balances1d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastDayEpoch), 1)
+	if err != nil {
+		return fmt.Errorf("error getting validator Balance1d data in updateValidatorPerformance: %w", err)
+	}
+	logger.Infof("retrieved %v validator balances for epoch %v", len(balances1d), lastDayEpoch)
+	for balanceIndex, balance := range balances1d {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
+			continue
+		}
+		balancesMap[balanceIndex].Balance1d = sql.NullInt64{
+			Int64: int64(balance[0].Balance),
+			Valid: true,
+		}
+	}
+
+	logger.Infof("retrieving validator balances for epoch %v", lastWeekEpoch)
+	balances7d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastWeekEpoch), 1)
+	if err != nil {
+		return fmt.Errorf("error getting validator Balance7d data in updateValidatorPerformance: %w", err)
+	}
+	logger.Infof("retrieved %v validator balances for epoch %v", len(balances7d), lastWeekEpoch)
+	for balanceIndex, balance := range balances7d {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
+			continue
+		}
+		balancesMap[balanceIndex].Balance7d = sql.NullInt64{
+			Int64: int64(balance[0].Balance),
+			Valid: true,
+		}
+	}
+
+	logger.Infof("retrieving validator balances for epoch %v", lastMonthEpoch)
+	balances31d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastMonthEpoch), 1)
+	if err != nil {
+		return fmt.Errorf("error getting validator Balance31d data in updateValidatorPerformance: %w", err)
+	}
+	logger.Infof("retrieved %v validator balances for epoch %v", len(balances31d), lastMonthEpoch)
+	for balanceIndex, balance := range balances31d {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
+			continue
+		}
+		balancesMap[balanceIndex].Balance31d = sql.NullInt64{
+			Int64: int64(balance[0].Balance),
+			Valid: true,
+		}
 	}
 
 	deposits := []struct {
@@ -2195,7 +2173,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 
 	data := make([]*types.ValidatorPerformance, 0, len(balances))
 
-	for _, balance := range balances {
+	for _, balance := range balancesMap {
 
 		var earningsTotal int64
 		var earningsLastDay int64
@@ -2285,12 +2263,12 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d)
 			VALUES %s
 			ON CONFLICT (validatorindex) DO UPDATE SET 
-			balance             = excluded.balance, 
-			performance1d  = excluded.performance1d,
-			performance7d  = excluded.performance7d,
-			performance31d       = excluded.performance31d,
-			performance365d           = excluded.performance365d,
-			rank7d     = excluded.rank7d;			
+			balance         = excluded.balance, 
+			performance1d   = excluded.performance1d,
+			performance7d   = excluded.performance7d,
+			performance31d  = excluded.performance31d,
+			performance365d = excluded.performance365d,
+			rank7d          = excluded.rank7d;			
 			`, strings.Join(valueStrings, ","))
 
 		_, err := tx.Exec(stmt, valueArgs...)

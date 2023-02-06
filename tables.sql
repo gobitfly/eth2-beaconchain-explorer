@@ -429,6 +429,21 @@ create table eth1_deposits
 create index idx_eth1_deposits on eth1_deposits (publickey);
 create index idx_eth1_deposits_from_address on eth1_deposits (from_address);
 
+drop table if exists eth1_deposits_aggregated;
+create table eth1_deposits_aggregated
+(
+    from_address         bytea  not null,
+    amount               bigint not null,
+    validcount           int    not null,
+    invalidcount         int    not null,
+    slashedcount         int    not null,
+    totalcount           int    not null,
+    activecount          int    not null,
+    pendingcount         int    not null,
+    voluntary_exit_count int    not null,
+    primary key (from_address)
+);
+
 drop table if exists users;
 create table users
 (
@@ -443,6 +458,7 @@ create table users
     register_ts             timestamp without time zone,
     api_key                 character varying(256) unique,
     stripe_customer_id      character varying(256) unique,
+    user_group              varchar(10),
     primary key (id, email)
 );
 
@@ -968,3 +984,10 @@ create table chart_series_status
     primary key (day)
 );
 
+
+drop table if exists global_notifications;
+create table global_notifications
+(
+    target varchar(20) not null primary key, 
+    content text not null
+);

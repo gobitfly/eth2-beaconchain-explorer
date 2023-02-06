@@ -16,6 +16,7 @@ import (
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -34,7 +35,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
-	if handleTemplateError(w, r, registerTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "auth.go", "Register", "", registerTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -160,7 +161,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
-	if handleTemplateError(w, r, loginTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "auth.go", "Login", "", loginTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -192,9 +193,10 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		Confirmed bool   `db:"email_confirmed"`
 		ProductID string `db:"product_id"`
 		Active    bool   `db:"active"`
+		UserGroup string `db:"user_group"`
 	}{}
 
-	err = db.FrontendWriterDB.Get(&user, "SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
+	err = db.FrontendWriterDB.Get(&user, "SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active, COALESCE(user_group, '') AS user_group FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
 	if err != nil {
 		logger.Errorf("error retrieving password for user %v: %v", email, err)
 		session.AddFlash("Error: Invalid email or password!")
@@ -225,6 +227,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	session.Values["authenticated"] = true
 	session.Values["user_id"] = user.ID
 	session.Values["subscription"] = user.ProductID
+	session.Values["user_group"] = user.UserGroup
 
 	// save datatable state settings from anon session
 	dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
@@ -242,7 +245,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			} else {
-				logger.Error("error could not parse datatable state from session, state: %+v", state)
+				logger.Errorf("error could not parse datatable state from session, state: %+v", state)
 			}
 			delete(session.Values, k)
 		}
@@ -250,7 +253,15 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	// session.AddFlash("Successfully logged in")
 
 	session.Save(r, w)
-	logger.Println("login succeeded with session", session.Values["authenticated"], session.Values["user_id"], session.Values["subscription"])
+
+	logger.WithFields(
+		logrus.Fields{
+			"authenticated": session.Values["authenticated"],
+			"user_id":       session.Values["user_id"],
+			"subscription":  session.Values["subscription"],
+			"user_group":    session.Values["user_group"],
+		},
+	).Info("login succeeded with session")
 
 	redirectURI, RedirectExists := session.Values["oauth_redirect_uri"]
 
@@ -362,7 +373,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), Email: dbUser.Email, CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
-	if handleTemplateError(w, r, resetPasswordTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "auth.go", "ResetPassword", "", resetPasswordTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -434,7 +445,7 @@ func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
-	if handleTemplateError(w, r, requestResetPaswordTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "auth.go", "RequestResetPassword", "", requestResetPaswordTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -499,7 +510,7 @@ func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "resendConfirmation", "/resendConfirmation", "Resend Password Reset")
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 
-	if handleTemplateError(w, r, resendConfirmationTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "auth.go", "ResendConfirmation", "", resendConfirmationTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
