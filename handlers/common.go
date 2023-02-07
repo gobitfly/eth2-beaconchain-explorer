@@ -48,13 +48,13 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	lastMonthEpoch := latestEpoch - int64(utils.EpochsPerDay())*31
 
 	if lastDayEpoch <= 0 {
-		lastDayEpoch = int64(latestEpoch)
+		lastDayEpoch = 2
 	}
 	if lastWeekEpoch <= 0 {
-		lastWeekEpoch = int64(latestEpoch)
+		lastWeekEpoch = 2
 	}
 	if lastMonthEpoch <= 0 {
-		lastMonthEpoch = int64(latestEpoch)
+		lastMonthEpoch = 2
 	}
 
 	balances := []*types.Validator{}
