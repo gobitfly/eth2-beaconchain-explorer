@@ -1182,7 +1182,7 @@ func GlobalNotificationMessage() template.HTML {
 	if time.Since(globalNotificationMessageTs) > time.Minute*10 {
 		globalNotificationMessageTs = time.Now()
 
-		err := db.FrontendWriterDB.Get(&globalNotificationMessage, "SELECT content FROM global_notifications WHERE target = 'web'")
+		err := db.FrontendWriterDB.Get(&globalNotificationMessage, "SELECT content FROM global_notifications WHERE target = $1 AND enabled", utils.Config.Chain.Name)
 
 		if err != nil {
 			logger.Errorf("error updating global notification message: %v", err)
