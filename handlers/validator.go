@@ -405,9 +405,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		})
 
 		validatorPageData.NextWithdrawalRow = tableData
-	} else {
-		// logger.Infof("IS NOT WITHDRAWABLE credentials: %x IsWithdrawableAddress: %v CurrentBalance: %v WithdrawableEpoch: %v Epoch: %v EffectiveBalance: %v CurrentBalance: %v MaxEff: %v", validatorPageData.WithdrawCredentials, validatorPageData.IsWithdrawableAddress, validatorPageData.CurrentBalance, validatorPageData.WithdrawableEpoch, validatorPageData.Epoch, validatorPageData.EffectiveBalance, utils.Config.Chain.Config.MaxEffectiveBalance, validatorPageData.CurrentBalance, utils.Config.Chain.Config.MaxEffectiveBalance)
 	}
+	// else {
+	// logger.Infof("IS NOT WITHDRAWABLE credentials: %x IsWithdrawableAddress: %v CurrentBalance: %v WithdrawableEpoch: %v Epoch: %v EffectiveBalance: %v CurrentBalance: %v MaxEff: %v", validatorPageData.WithdrawCredentials, validatorPageData.IsWithdrawableAddress, validatorPageData.CurrentBalance, validatorPageData.WithdrawableEpoch, validatorPageData.Epoch, validatorPageData.EffectiveBalance, utils.Config.Chain.Config.MaxEffectiveBalance, validatorPageData.CurrentBalance, utils.Config.Chain.Config.MaxEffectiveBalance)
+	// }
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)

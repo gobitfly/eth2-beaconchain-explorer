@@ -37,24 +37,9 @@
                 }
             })
             {{end}}
-            if (q) {
-                tbl.search(q);
-                tbl.draw();
-            }
-            $("#deposits_filter > label > input").on('input', function(ev) {
-                if (ev && ev.target && ev.target.value) {
-                    var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
-                    window.history.replaceState(null, 'Eth1Deposits', newUrl)
-                } else {
-                    window.history.replaceState(null, 'Eth1Deposits', window.location.pathname)
-                }
-            })
 
-        })
-    </script>
-  <script>
-    $(document).ready(function () {
-      $("#included-deposits").DataTable({
+
+            var tblIncluded = $("#included-deposits").DataTable({
         processing: true,
         serverSide: true,
         ordering: true,
@@ -97,8 +82,47 @@
           },
         ],
       })
-    })
-  </script>
+      if (q) {
+          tblIncluded.search(q);
+          tblIncluded.draw();
+      }
+      $("#included-deposits_filter > label > input").on('input', function(ev) {
+          if (ev && ev.target && ev.target.value) {
+              var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+              q = ev.target.value
+              window.history.replaceState(null, 'Deposits', newUrl)
+          } else {
+              window.history.replaceState(null, 'Deposits', window.location.pathname)
+              q = ""
+          }
+          if(tbl) {
+            tbl.search(q || "");
+            tbl.draw();
+          }
+      })
+
+      if (q) {
+          tbl.search(q);
+          tbl.draw();
+      }
+      $("#initiated-deposits_filter > label > input").on('input', function(ev) {
+          if (ev && ev.target && ev.target.value) {
+              var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+              q = ev.target.value
+              window.history.replaceState(null, 'Deposits', newUrl)
+          } else {
+              window.history.replaceState(null, 'Deposits', window.location.pathname)
+              q = ""
+          }
+          console.log('deleting query', q)
+          if(tblIncluded) {
+              tblIncluded.search(q || "");
+              tblIncluded.draw();
+          }
+      })
+
+        })
+    </script>
 {{ end }}
 {{ define "css" }}
   <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />

@@ -140,7 +140,7 @@ func getEth1BlockAndNext(number uint64) (*types.Eth1Block, uint64, error) {
 		return nil, 0, err
 	}
 	if block == nil {
-		return nil, 0, fmt.Errorf("Block %d not found", number)
+		return nil, 0, fmt.Errorf("block %d not found", number)
 	}
 
 	nextBlock := uint64(0)
