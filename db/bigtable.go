@@ -935,10 +935,16 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 
 func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
 
+	if startEpoch < endEpoch {
+		return nil, fmt.Errorf("error invalid range startEpoch: %v endEpoch: %v", startEpoch, endEpoch)
+	}
+
 	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
 
-	for i := startEpoch; i >= startEpoch-endEpoch; i-- {
-		data, err := bigtable.GetValidatorAttestationHistory(validators, i, 1)
+	rangeEnd := startEpoch - endEpoch
+
+	for i := int64(startEpoch); i >= int64(rangeEnd); i-- {
+		data, err := bigtable.GetValidatorAttestationHistory(validators, uint64(i), 1)
 
 		if err != nil {
 			return nil, err
