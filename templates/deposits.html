@@ -114,7 +114,6 @@
               window.history.replaceState(null, 'Deposits', window.location.pathname)
               q = ""
           }
-          console.log('deleting query', q)
           if(tblIncluded) {
               tblIncluded.search(q || "");
               tblIncluded.draw();
