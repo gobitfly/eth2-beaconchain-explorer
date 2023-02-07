@@ -18,7 +18,7 @@ import (
 // Withdrawals will return information about recent withdrawals
 func Withdrawals(w http.ResponseWriter, r *http.Request) {
 
-	var withdrawalsTemplate = templates.GetTemplate("layout.html", "withdrawals.html")
+	var withdrawalsTemplate = templates.GetTemplate("layout.html", "withdrawals.html", "components/charts.html")
 
 	w.Header().Set("Content-Type", "text/html")
 
