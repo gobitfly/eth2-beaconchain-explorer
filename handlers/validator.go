@@ -64,7 +64,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var index uint64
 	var err error
 
-	epoch := services.LatestEpoch()
+	// epoch := services.LatestEpoch()
 
 	validatorPageData := types.ValidatorPageData{}
 
@@ -274,62 +274,26 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, epoch, 1)
+	earnings, balances, err := GetValidatorEarnings([]uint64{index}, GetCurrency(r))
 	if err != nil {
-		logger.Errorf("error getting validator balance data for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error retrieving validator earnings: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	for balanceIndex, balance := range balances {
-		if len(balance) == 0 {
-			continue
-		}
-		if validatorPageData.ValidatorIndex == balanceIndex {
-			validatorPageData.CurrentBalance = balance[0].Balance
-			validatorPageData.EffectiveBalance = balance[0].EffectiveBalance
-		}
-	}
-
-	epoch7d := int64(epoch) - int64(utils.EpochsPerDay())*7
-	if epoch7d < 0 {
-		epoch7d = 0
-	}
-	balances7d, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, uint64(epoch7d), 1)
-	if err != nil {
-		logger.Errorf("error getting validator balance data for %v route: %v", r.URL.String(), err)
+	validatorPageData.Income1d = earnings.LastDay
+	validatorPageData.Income7d = earnings.LastWeek
+	validatorPageData.Income31d = earnings.LastMonth
+	validatorPageData.Apr = earnings.APR
+	vbalance, ok := balances[validatorPageData.ValidatorIndex]
+	if !ok {
+		logger.Errorf("error retrieving validator balances: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	for balanceIndex, balance := range balances7d {
-		if len(balance) == 0 {
-			continue
-		}
-		if validatorPageData.ValidatorIndex == balanceIndex {
-			validatorPageData.Balance7d = balance[0].Balance
-		}
-	}
-
-	epoch31d := int64(epoch) - int64(utils.EpochsPerDay())*31
-	if epoch31d < 0 {
-		epoch31d = 0
-	}
-	balances31d, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, uint64(epoch31d), 1)
-	if err != nil {
-		logger.Errorf("error getting validator balance data for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	for balanceIndex, balance := range balances31d {
-		if len(balance) == 0 {
-			continue
-		}
-		if validatorPageData.ValidatorIndex == balanceIndex {
-			validatorPageData.Balance31d = balance[0].Balance
-		}
-	}
+	validatorPageData.CurrentBalance = vbalance.Balance
+	validatorPageData.EffectiveBalance = vbalance.EffectiveBalance
 
 	if validatorPageData.Pool != "" {
 		if validatorPageData.Name == "" {
@@ -586,17 +550,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	// logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
-	earnings, err := GetValidatorEarnings([]uint64{index}, GetCurrency(r))
-	if err != nil {
-		logger.Errorf("error retrieving validator earnings: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	validatorPageData.Income1d = earnings.LastDay
-	validatorPageData.Income7d = earnings.LastWeek
-	validatorPageData.Income31d = earnings.LastMonth
-	validatorPageData.Apr = earnings.APR
 
 	// logger.Infof("income data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()

@@ -539,7 +539,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	earnings, err := GetValidatorEarnings(queryValidators, GetCurrency(r))
+	earnings, _, err := GetValidatorEarnings(queryValidators, GetCurrency(r))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator earnings")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

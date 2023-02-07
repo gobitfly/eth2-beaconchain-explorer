@@ -40,21 +40,21 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 }
 
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
-func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, error) {
+func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := int64(services.LatestEpoch())
 	lastDayEpoch := latestEpoch - int64(utils.EpochsPerDay())
 	lastWeekEpoch := latestEpoch - int64(utils.EpochsPerDay())*7
 	lastMonthEpoch := latestEpoch - int64(utils.EpochsPerDay())*31
 
-	if lastDayEpoch < 0 {
-		lastDayEpoch = 0
+	if lastDayEpoch <= 0 {
+		lastDayEpoch = int64(latestEpoch)
 	}
-	if lastWeekEpoch < 0 {
-		lastWeekEpoch = 0
+	if lastWeekEpoch <= 0 {
+		lastWeekEpoch = int64(latestEpoch)
 	}
-	if lastMonthEpoch < 0 {
-		lastMonthEpoch = 0
+	if lastMonthEpoch <= 0 {
+		lastMonthEpoch = int64(latestEpoch)
 	}
 
 	balances := []*types.Validator{}
@@ -67,7 +67,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		logger.Error(err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	balancesMap := make(map[uint64]*types.Validator, len(balances))
@@ -79,19 +79,20 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), 1)
 	if err != nil {
 		logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 	for balanceIndex, balance := range latestBalances {
 		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance = balance[0].Balance
+		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
 	}
 
 	balances1d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastDayEpoch), 1)
 	if err != nil {
 		logger.Errorf("error getting validator Balance1d data in GetValidatorEarnings: %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 	for balanceIndex, balance := range balances1d {
 		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
@@ -106,7 +107,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	balances7d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastWeekEpoch), 1)
 	if err != nil {
 		logger.Errorf("error getting validator Balance7d data in GetValidatorEarnings: %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 	for balanceIndex, balance := range balances7d {
 		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
@@ -121,7 +122,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	balances31d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastMonthEpoch), 1)
 	if err != nil {
 		logger.Errorf("error getting validator Balance31d data in GetValidatorEarnings: %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 	for balanceIndex, balance := range balances31d {
 		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
@@ -141,7 +142,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	err = db.ReaderDb.Select(&deposits, "SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))", validatorsPQArray)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	depositsMap := make(map[string]map[int64]int64)
@@ -217,7 +218,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		LastMonthFormatted:   utils.FormatIncome(earningsLastMonth, currency),
 		TotalFormatted:       utils.FormatIncome(earningsTotal, currency),
 		TotalChangeFormatted: utils.FormatIncome(earningsTotal+totalDeposits, currency),
-	}, nil
+	}, balancesMap, nil
 }
 
 // LatestState will return common information that about the current state of the eth2 chain
