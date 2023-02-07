@@ -878,10 +878,11 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 
 func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedSlots uint64, err error) {
 	// retrieve activation and exit epochs from database per validator
-	var validatorsEpochInfo = []struct {
-		Id              int64  `db:"validatorindex"`
-		ActivationEpoch uint64 `db:"activationepoch"`
-		ExitEpoch       uint64 `db:"exitepoch"`
+	var validatorsInfo = []struct {
+		Id                         int64  `db:"validatorindex"`
+		ActivationEpoch            uint64 `db:"activationepoch"`
+		ExitEpoch                  uint64 `db:"exitepoch"`
+		FirstPossibleSyncCommittee uint64 // calculated
 	}{}
 
 	query, args, err := sqlx.In(`SELECT validatorindex, activationepoch, exitepoch FROM validators WHERE validatorindex IN (?) ORDER BY validatorindex ASC`, validators)
@@ -889,7 +890,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 		return 0, err
 	}
 
-	err = db.ReaderDb.Select(&validatorsEpochInfo, db.ReaderDb.Rebind(query), args...)
+	err = db.ReaderDb.Select(&validatorsInfo, db.ReaderDb.Rebind(query), args...)
 	if err != nil {
 		return 0, err
 	}
@@ -898,17 +899,18 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	const noExitEpoch = uint64(9223372036854775807)
 	uniquePeriods := make(map[uint64]bool)
 	uniquePeriods[utils.SyncPeriodOfEpoch(epoch)] = true
-	for _, v := range validatorsEpochInfo {
+	for i := range validatorsInfo { // we have to use the index as we have to write into slice too
 		// activation epoch
-		firstSyncEpoch := v.ActivationEpoch
-		if utils.Config.Chain.Config.AltairForkEpoch > v.ActivationEpoch {
+		firstSyncEpoch := validatorsInfo[i].ActivationEpoch
+		if utils.Config.Chain.Config.AltairForkEpoch > validatorsInfo[i].ActivationEpoch {
 			firstSyncEpoch = utils.Config.Chain.Config.AltairForkEpoch
 		}
-		uniquePeriods[utils.SyncPeriodOfEpoch(firstSyncEpoch)] = true
+		validatorsInfo[i].FirstPossibleSyncCommittee = utils.SyncPeriodOfEpoch(firstSyncEpoch)
+		uniquePeriods[validatorsInfo[i].FirstPossibleSyncCommittee] = true
 
 		// exit epoch (if any)
-		if v.ExitEpoch != noExitEpoch && v.ExitEpoch > firstSyncEpoch {
-			uniquePeriods[utils.SyncPeriodOfEpoch(v.ExitEpoch)] = true
+		if validatorsInfo[i].ExitEpoch != noExitEpoch && validatorsInfo[i].ExitEpoch > firstSyncEpoch {
+			uniquePeriods[utils.SyncPeriodOfEpoch(validatorsInfo[i].ExitEpoch)] = true
 		}
 	}
 
@@ -941,8 +943,8 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 
 	// calculate expected committies for every single validator and aggregate them
 	expectedCommitties := 0.0
-	for _, vi := range validatorsEpochInfo {
-		if _, found := periodInfoMap[utils.SyncPeriodOfEpoch(vi.ActivationEpoch)]; !found {
+	for _, vi := range validatorsInfo {
+		if _, found := periodInfoMap[vi.FirstPossibleSyncCommittee]; !found {
 			return 0, fmt.Errorf("required period not found")
 		}
 
