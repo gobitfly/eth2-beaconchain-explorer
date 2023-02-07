@@ -486,6 +486,10 @@ label.btn.btn-light:hover {
   max-width: none;
 }
 
+.tooltip {
+  font-variant-ligatures: none;
+}
+
 .custom-remove-modal { 
   position: relative;
   min-width: 280px;
