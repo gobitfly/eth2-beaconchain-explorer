@@ -961,6 +961,7 @@ type ValidatorEarnings struct {
 	LastMonth               int64         `json:"lastMonth"`
 	APR                     float64       `json:"apr"`
 	TotalDeposits           int64         `json:"totalDeposits"`
+	TotalWithdrawals        uint64        `json:"totalWithdrawals"`
 	EarningsInPeriodBalance int64         `json:"earningsInPeriodBalance"`
 	EarningsInPeriod        int64         `json:"earningsInPeriod"`
 	EpochStart              int64         `json:"epochStart"`
@@ -1849,7 +1850,8 @@ type BLSChange struct {
 }
 
 type WithdrawalsPageData struct {
-	Stats *Stats
+	Stats           *Stats
+	WithdrawalChart *ChartsPageDataChart
 }
 
 type WithdrawalStats struct {

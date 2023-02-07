@@ -24,6 +24,16 @@ func Withdrawals(w http.ResponseWriter, r *http.Request) {
 
 	pageData := &types.WithdrawalsPageData{}
 	pageData.Stats = services.GetLatestStats()
+
+	latestChartsPageData := services.LatestChartsPageData()
+	if len(latestChartsPageData) != 0 {
+		for _, c := range latestChartsPageData {
+			if c.Path == "withdrawals" {
+				pageData.WithdrawalChart = c
+				break
+			}
+		}
+	}
 	// var err error
 	// pageData.Stats, err = services.CalculateStats()
 	// if err != nil {

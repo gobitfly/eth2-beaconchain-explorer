@@ -1184,7 +1184,7 @@ func GlobalNotificationMessage() template.HTML {
 
 		err := db.FrontendWriterDB.Get(&globalNotificationMessage, "SELECT content FROM global_notifications WHERE target = 'web'")
 
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			logger.Errorf("error updating global notification message: %v", err)
 			globalNotificationMessage = ""
 			return globalNotificationMessage

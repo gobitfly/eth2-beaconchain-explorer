@@ -39,6 +39,7 @@ var ChartHandlers = map[string]chartHandler{
 	"effective_balance_distribution": {11, effectiveBalanceDistributionChartData},
 	"performance_distribution_365d":  {12, performanceDistribution365dChartData},
 	"deposits":                       {13, depositsChartData},
+	"withdrawals":                    {17, withdrawalsChartData},
 	"graffiti_wordcloud":             {14, graffitiCloudChartData},
 	"pools_distribution":             {15, poolsDistributionChartData},
 	"historic_pool_performance":      {16, historicPoolPerformanceData},
@@ -886,6 +887,63 @@ func depositsChartData() (*types.GenericChartData, error) {
 				Data:  dailyFailedEth1Deposits,
 				Stack: "eth1",
 			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func withdrawalsChartData() (*types.GenericChartData, error) {
+
+	var withdrawals []types.Withdrawals
+
+	err := db.ReaderDb.Select(&withdrawals, `
+			SELECT 
+				w.block_slot as slot,
+				sum(w.amount) as amount
+			FROM blocks_withdrawals w
+			INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
+			GROUP BY w.block_slot
+			ORDER BY block_slot`)
+	if err != nil {
+		return nil, err
+	}
+
+	dailyWithdrawals := [][]float64{}
+
+	for _, row := range withdrawals {
+		day := float64(utils.SlotToTime(row.Slot).Truncate(time.Hour*24).Unix() * 1000)
+
+		if len(dailyWithdrawals) == 0 || dailyWithdrawals[len(dailyWithdrawals)-1][0] != day {
+			dailyWithdrawals = append(dailyWithdrawals, []float64{day, float64(row.Amount / 1e9)})
+		} else {
+			dailyWithdrawals[len(dailyWithdrawals)-1][1] += float64(row.Amount / 1e9)
+		}
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Withdrawals",
+		Subtitle:     "Daily Amount of withdrawals in ETH.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Withdrawals ETH",
+		StackingMode: "normal",
+		Type:         "column",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Withdrawals",
+				Data: dailyWithdrawals,
+				// Stack: "partial",
+			},
+			// {
+			// 	Name:  "Partial Withdrawals",
+			// 	Data:  dailyWithdrawals,
+			// 	Stack: "partial",
+			// },
+			// {
+			// 	Name:  "Full Withdrawals",
+			// 	Data:  dailyWithdrawals,
+			// 	Stack: "full",
+			// },
 		},
 	}
 

@@ -140,7 +140,14 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		Publickey []byte
 	}{}
 
-	err = db.ReaderDb.Select(&deposits, "SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))", validatorsPQArray)
+	err = db.ReaderDb.Select(&deposits, `
+	SELECT 
+		block_slot / 32 AS epoch, 
+		amount, 
+		publickey 
+	FROM blocks_deposits d
+	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' 
+	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -153,12 +160,40 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
 	}
 
+	withdrawals := []struct {
+		Epoch          uint64
+		Amount         uint64
+		ValidatorIndex uint64
+	}{}
+
+	err = db.ReaderDb.Select(&withdrawals, `
+	SELECT 
+		w.validatorindex,
+		w.block_slot / 32 AS epoch, 
+		sum(w.amount) as amount
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	WHERE validatorindex = ANY($1)
+	GROUP BY validatorindex, w.block_slot / 32
+	`, validatorsPQArray)
+	if err != nil {
+		return nil, nil, err
+	}
+	withdrawalsMap := make(map[uint64]map[uint64]uint64)
+	for _, w := range withdrawals {
+		if _, exists := withdrawalsMap[w.ValidatorIndex]; !exists {
+			withdrawalsMap[w.ValidatorIndex] = make(map[uint64]uint64)
+		}
+		withdrawalsMap[w.ValidatorIndex][w.Epoch] += w.Amount
+	}
+
 	var earningsTotal int64
 	var earningsLastDay int64
 	var earningsLastWeek int64
 	var earningsLastMonth int64
 	var apr float64
 	var totalDeposits int64
+	var totalWithdrawals uint64
 
 	for _, balance := range balancesMap {
 		if int64(balance.ActivationEpoch) >= latestEpoch {
@@ -178,6 +213,23 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			}
 			if epoch > lastMonthEpoch && epoch > int64(balance.ActivationEpoch) {
 				earningsLastMonth -= deposit
+			}
+		}
+
+		for epoch, withdrawal := range withdrawalsMap[balance.Index] {
+			totalWithdrawals += withdrawal
+
+			if epoch > balance.ActivationEpoch {
+				earningsTotal += int64(withdrawal)
+			}
+			if epoch > uint64(lastDayEpoch) && epoch > balance.ActivationEpoch {
+				earningsLastDay += int64(withdrawal)
+			}
+			if epoch > uint64(lastWeekEpoch) && epoch > balance.ActivationEpoch {
+				earningsLastWeek += int64(withdrawal)
+			}
+			if epoch > uint64(lastMonthEpoch) && epoch > balance.ActivationEpoch {
+				earningsLastMonth += int64(withdrawal)
 			}
 		}
 
@@ -213,6 +265,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		LastMonth:            earningsLastMonth,
 		APR:                  apr,
 		TotalDeposits:        totalDeposits,
+		TotalWithdrawals:     totalWithdrawals,
 		LastDayFormatted:     utils.FormatIncome(earningsLastDay, currency),
 		LastWeekFormatted:    utils.FormatIncome(earningsLastWeek, currency),
 		LastMonthFormatted:   utils.FormatIncome(earningsLastMonth, currency),
