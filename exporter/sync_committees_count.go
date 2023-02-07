@@ -49,14 +49,14 @@ func exportSyncCommitteesCount() error {
 		}
 	}
 
-	for p := firstPeriod; p <= currentPeriod; p++ {
+	for period := firstPeriod; period <= currentPeriod; period++ {
 		t := time.Now()
-		countSoFar, err = exportSyncCommitteesCountAtPeriod(p, countSoFar)
+		countSoFar, err = exportSyncCommitteesCountAtPeriod(period, countSoFar)
 		if err != nil {
-			return fmt.Errorf("error exporting snyc-committee count at period %v: %w", p, err)
+			return fmt.Errorf("error exporting snyc-committee count at period %v: %w", period, err)
 		}
 		logrus.WithFields(logrus.Fields{
-			"period":   p,
+			"period":   period,
 			"duration": time.Since(t),
 		}).Infof("exported sync_committees_count_per_validator")
 	}
@@ -64,12 +64,12 @@ func exportSyncCommitteesCount() error {
 	return nil
 }
 
-func exportSyncCommitteesCountAtPeriod(p uint64, countSoFar float64) (float64, error) {
-	logger.Infof("exporting sync committee count for period %v", p)
+func exportSyncCommitteesCountAtPeriod(period uint64, countSoFar float64) (float64, error) {
+	logger.Infof("exporting sync committee count for period %v", period)
 
 	count := 0.0
-	if p > 0 {
-		e := utils.FirstEpochOfSyncPeriod(p - 1)
+	if period > 0 {
+		e := utils.FirstEpochOfSyncPeriod(period - 1)
 		totalValidatorsCount := uint64(0)
 		err := db.WriterDb.Get(&totalValidatorsCount, "SELECT validatorscount FROM epochs WHERE epoch = $1", e)
 		if err != nil {
@@ -91,7 +91,7 @@ func exportSyncCommitteesCountAtPeriod(p uint64, countSoFar float64) (float64, e
 			ON CONFLICT (period) DO UPDATE SET
 				period = excluded.period,
 				count_so_far = excluded.count_so_far`,
-			p, count))
+			period, count))
 	if err != nil {
 		return 0, err
 	}

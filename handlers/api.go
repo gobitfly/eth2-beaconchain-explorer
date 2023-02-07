@@ -861,9 +861,22 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 		return &r, nil
 	}
 
-	////
-	// calculate expected slots
+	var err error
 
+	r.ExpectedSlots, err = getExpectedSyncCommitteeSlots(validators, epoch)
+	if err != nil {
+		return nil, err
+	}
+
+	r.ParticipatedSlots, r.MissedSlots, err = getSyncCommitteeSlotsStatistics(validators, epoch)
+	if err != nil {
+		return nil, err
+	}
+
+	return &r, nil
+}
+
+func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedSlots uint64, err error) {
 	// retrieve activation and exit epochs from database per validator
 	var validatorsEpochInfo = []struct {
 		Id              int64  `db:"validatorindex"`
@@ -873,11 +886,12 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 
 	query, args, err := sqlx.In(`SELECT validatorindex, activationepoch, exitepoch FROM validators WHERE validatorindex IN (?) ORDER BY validatorindex ASC`, validators)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
+
 	err = db.ReaderDb.Select(&validatorsEpochInfo, db.ReaderDb.Rebind(query), args...)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// we need all related and unique timeframes (activation and exit sync period) for all validators
@@ -899,9 +913,9 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 	}
 
 	// transform map to slice; this will be used to query sync_committees_count_per_validator
-	timeStampSlice := make([]uint64, 0, len(uniquePeriods))
+	periodSlice := make([]uint64, 0, len(uniquePeriods))
 	for ts := range uniquePeriods {
-		timeStampSlice = append(timeStampSlice, ts)
+		periodSlice = append(periodSlice, ts)
 	}
 
 	// get aggregated count for all relevant committees from sync_committees_count_per_validator
@@ -910,13 +924,13 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 		CountSoFar float64 `db:"count_so_far"`
 	}
 
-	query, args, errs := sqlx.In(`SELECT period, count_so_far FROM sync_committees_count_per_validator WHERE period IN (?) ORDER BY period ASC`, timeStampSlice)
+	query, args, errs := sqlx.In(`SELECT period, count_so_far FROM sync_committees_count_per_validator WHERE period IN (?) ORDER BY period ASC`, periodSlice)
 	if errs != nil {
-		return nil, errs
+		return 0, errs
 	}
 	err = db.ReaderDb.Select(&countStatistics, db.ReaderDb.Rebind(query), args...)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// transform query result to map for easy access
@@ -929,7 +943,7 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 	expectedCommitties := 0.0
 	for _, vi := range validatorsEpochInfo {
 		if _, found := periodInfoMap[utils.SyncPeriodOfEpoch(vi.ActivationEpoch)]; !found {
-			return nil, fmt.Errorf("required period not found")
+			return 0, fmt.Errorf("required period not found")
 		}
 
 		lastEpoch := vi.ExitEpoch
@@ -938,41 +952,42 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 		}
 
 		if _, found := periodInfoMap[utils.SyncPeriodOfEpoch(lastEpoch)]; !found {
-			return nil, fmt.Errorf("required period not found")
+			return 0, fmt.Errorf("required period not found")
 		}
 
 		expectedCommitties += periodInfoMap[utils.SyncPeriodOfEpoch(lastEpoch)] - periodInfoMap[utils.SyncPeriodOfEpoch(vi.ActivationEpoch)]
 	}
 
 	// transform committees to slots
-	r.ExpectedSlots = uint64(expectedCommitties * float64(utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod*utils.Config.Chain.Config.SlotsPerEpoch))
+	expectedSlots = uint64(expectedCommitties * float64(utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod*utils.Config.Chain.Config.SlotsPerEpoch))
 
-	////
-	// calculate ParticipatedSlots and MissedSlots
+	return expectedSlots, nil
+}
 
+func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (participatedSlots uint64, missedSlots uint64, err error) {
 	// collect aggregated sync committee stats from validator_stats table for all validators
 	var syncStats struct {
 		Participated int64 `db:"participated"`
 		Missed       int64 `db:"missed"`
 	}
-	query, args, err = sqlx.In(`SELECT COALESCE(SUM(participated_sync), 0) AS participated, COALESCE(SUM(missed_sync), 0) AS missed FROM validator_stats WHERE validatorindex IN (?)`, validators)
+	query, args, err := sqlx.In(`SELECT COALESCE(SUM(participated_sync), 0) AS participated, COALESCE(SUM(missed_sync), 0) AS missed FROM validator_stats WHERE validatorindex IN (?)`, validators)
 	if err != nil {
-		return nil, err
+		return 0, 0, err
 	}
 	err = db.ReaderDb.Get(&syncStats, db.ReaderDb.Rebind(query), args...)
 	if err != nil {
-		return nil, err
+		return 0, 0, err
 	}
 
-	r.ParticipatedSlots = uint64(syncStats.Participated)
-	r.MissedSlots = uint64(syncStats.Missed)
+	participatedSlots = uint64(syncStats.Participated)
+	missedSlots = uint64(syncStats.Missed)
 
 	// validator_stats is updated only once a day, everything missing has to be collected from bigtable (which is slower than validator_stats)
 	// check when the last update to validator_stats was
 	var lastExportedDay uint64
 	err = db.WriterDb.Get(&lastExportedDay, "SELECT COALESCE(max(day), 0) FROM validator_stats_status WHERE status")
 	if err != nil {
-		return nil, err
+		return 0, 0, err
 	}
 	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
 	lastExportedEpoch := (lastExportedDay + 1) * epochsPerDay
@@ -988,13 +1003,13 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 		var validatorsInSyncCommittees struct {
 			Validators pq.Int64Array `db:"validators"`
 		}
-		query, args, err = sqlx.In(`SELECT COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators FROM sync_committees WHERE period IN(?) AND validatorindex IN(?)`, periods, validators)
+		query, args, err := sqlx.In(`SELECT COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators FROM sync_committees WHERE period IN(?) AND validatorindex IN(?)`, periods, validators)
 		if err != nil {
-			return nil, err
+			return 0, 0, err
 		}
 		err = db.ReaderDb.Get(&validatorsInSyncCommittees, db.ReaderDb.Rebind(query), args...)
 		if err != nil {
-			return nil, err
+			return 0, 0, err
 		}
 
 		if len(validatorsInSyncCommittees.Validators) > 0 {
@@ -1006,17 +1021,17 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 
 			m, err := db.BigtableClient.GetValidatorSyncDutiesStatistics(vs, epoch, int64(epoch-lastExportedEpoch))
 			if err != nil {
-				return nil, err
+				return 0, 0, err
 			}
 
 			for _, v := range m {
-				r.ParticipatedSlots += v.ParticipatedSync
-				r.MissedSlots += v.MissedSync
+				participatedSlots += v.ParticipatedSync
+				missedSlots += v.MissedSync
 			}
 		}
 	}
 
-	return &r, nil
+	return participatedSlots, missedSlots, nil
 }
 
 type Cached struct {
