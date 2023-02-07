@@ -989,5 +989,6 @@ drop table if exists global_notifications;
 create table global_notifications
 (
     target varchar(20) not null primary key, 
-    content text not null
+    content text not null,
+    enabled bool not null
 );
