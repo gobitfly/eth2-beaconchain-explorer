@@ -2401,6 +2401,9 @@ func GetTotalWithdrawals() (total uint64, err error) {
 	FROM
 		blocks_withdrawals
 	order by withdrawalindex desc limit 1`)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
 	return
 }
 
