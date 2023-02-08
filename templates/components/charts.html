@@ -36,17 +36,13 @@
       </svg>
     </div>
     <script>
-        {{if .WithdrawalChart}}
+  {{ with .Data }}
+
+    {{if .WithdrawalChart}}
     var series = {{.WithdrawalChart.Data.Series}}
-    var filteredSeries = []
-    if (series && series.length && series.length > 1) {
-      filteredSeries.push(series[1])
-      // for (let i = 0; i < series.length; i++) {
-      //   if (series && series[i].data && series[i].data.length) {
-      //       filteredSeries.push(series[i])
-      //   }
-      // }
-    }
+    var currency = {{$.Rates.Currency}}
+    var ethPrice = {{$.Rates.EthPrice}}
+   
     window.addEventListener('load', function() {
         Highcharts.stockChart('withdrawal-chart',{
             chart: {
@@ -91,21 +87,25 @@
                 title: { text: {{.WithdrawalChart.Data.YAxisTitle}} },
                 opposite: false,
             }],
-            series: filteredSeries,
+            series: series,
             navigator: { enabled: true },
             scrollbar: { enabled: false },
             tooltip: {
-                // formatter: function(tooltip) {
-                //     var orig = tooltip.defaultFormatter.call(this, tooltip)
-                //     var epoch = timeToEpoch(this.x)
-                //     orig[0] = orig[0]+'<span style="font-size:10px">Epoch '+epoch+'</span>'
-                //     return orig
-                // }
+                useHTML: true,
+                formatter: function(t) {
+                    var text = '<span>'+ Highcharts.dateFormat('%A, %b %e, %Y', this.x) +'</span><br/>';
+                    var income = getIncomeChartValueString(this.y, currency, ethPrice)
+                    text += '<b>'+income+'</b>'
+               
+                    return text;
+                },
+                shared: true
             },
-            legend: {enabled: false}
+            legend: { enabled: false }
         })
     })
-    {{end}}
+    {{ end }}
+    {{ end }}
     </script>
   </div>
 {{ end }}

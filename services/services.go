@@ -1221,6 +1221,9 @@ func gasNowUpdater(wg *sync.WaitGroup) {
 		time.Sleep(time.Second * 15)
 	}
 }
+func GetGasNowData() (*types.GasNowPageData, error) {
+	return getGasNowData()
+}
 
 func getGasNowData() (*types.GasNowPageData, error) {
 	gpoData := &types.GasNowPageData{}
@@ -1232,11 +1235,16 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		return nil, err
 	}
 	var raw json.RawMessage
-
 	err = client.Call(&raw, "eth_getBlockByNumber", "pending", true)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving pending block data: %v", err)
 	}
+
+	// var res map[string]interface{}
+	// err = json.Unmarshal(raw, &res)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	var header *geth_types.Header
 	var body rpcBlock
@@ -1261,7 +1269,8 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		gpoData.Data.Rapid = medianGasPrice
 		gpoData.Data.Fast = tailGasPrice
 	} else {
-		return nil, fmt.Errorf("current pending block contains no tx")
+		gpoData.Data.Rapid = new(big.Int)
+		gpoData.Data.Fast = new(big.Int)
 	}
 
 	err = client.Call(&raw, "txpool_content")

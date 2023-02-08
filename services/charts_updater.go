@@ -841,15 +841,15 @@ func depositsChartData() (*types.GenericChartData, error) {
 
 		if row.Valid {
 			if len(dailySuccessfulEth1Deposits) == 0 || dailySuccessfulEth1Deposits[len(dailySuccessfulEth1Deposits)-1][0] != day {
-				dailySuccessfulEth1Deposits = append(dailySuccessfulEth1Deposits, []float64{day, float64(row.Amount / 1e9)})
+				dailySuccessfulEth1Deposits = append(dailySuccessfulEth1Deposits, []float64{day, float64(row.Amount) / 1e9})
 			} else {
-				dailySuccessfulEth1Deposits[len(dailySuccessfulEth1Deposits)-1][1] += float64(row.Amount / 1e9)
+				dailySuccessfulEth1Deposits[len(dailySuccessfulEth1Deposits)-1][1] += float64(row.Amount) / 1e9
 			}
 		} else {
 			if len(dailyFailedEth1Deposits) == 0 || dailyFailedEth1Deposits[len(dailyFailedEth1Deposits)-1][0] != day {
-				dailyFailedEth1Deposits = append(dailyFailedEth1Deposits, []float64{day, float64(row.Amount / 1e9)})
+				dailyFailedEth1Deposits = append(dailyFailedEth1Deposits, []float64{day, float64(row.Amount) / 1e9})
 			} else {
-				dailyFailedEth1Deposits[len(dailyFailedEth1Deposits)-1][1] += float64(row.Amount / 1e9)
+				dailyFailedEth1Deposits[len(dailyFailedEth1Deposits)-1][1] += float64(row.Amount) / 1e9
 			}
 		}
 	}
@@ -858,9 +858,9 @@ func depositsChartData() (*types.GenericChartData, error) {
 		day := float64(utils.SlotToTime(row.Slot).Truncate(time.Hour*24).Unix() * 1000)
 
 		if len(dailyEth2Deposits) == 0 || dailyEth2Deposits[len(dailyEth2Deposits)-1][0] != day {
-			dailyEth2Deposits = append(dailyEth2Deposits, []float64{day, float64(row.Amount / 1e9)})
+			dailyEth2Deposits = append(dailyEth2Deposits, []float64{day, float64(row.Amount) / 1e9})
 		} else {
-			dailyEth2Deposits[len(dailyEth2Deposits)-1][1] += float64(row.Amount / 1e9)
+			dailyEth2Deposits[len(dailyEth2Deposits)-1][1] += float64(row.Amount) / 1e9
 		}
 	}
 
@@ -893,6 +893,10 @@ func depositsChartData() (*types.GenericChartData, error) {
 	return chartData, nil
 }
 
+// func WithdrawalsChartData() (*types.GenericChartData, error) {
+// 	return withdrawalsChartData()
+// }
+
 func withdrawalsChartData() (*types.GenericChartData, error) {
 
 	var withdrawals []types.Withdrawals
@@ -904,20 +908,22 @@ func withdrawalsChartData() (*types.GenericChartData, error) {
 			FROM blocks_withdrawals w
 			INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
 			GROUP BY w.block_slot
-			ORDER BY block_slot`)
+			ORDER BY block_slot
+`)
 	if err != nil {
 		return nil, err
 	}
 
-	dailyWithdrawals := [][]float64{}
+	// logger.Infof("withdrawals: %+v", withdrawals)
 
+	dailyWithdrawals := [][]float64{}
 	for _, row := range withdrawals {
 		day := float64(utils.SlotToTime(row.Slot).Truncate(time.Hour*24).Unix() * 1000)
 
 		if len(dailyWithdrawals) == 0 || dailyWithdrawals[len(dailyWithdrawals)-1][0] != day {
-			dailyWithdrawals = append(dailyWithdrawals, []float64{day, float64(row.Amount / 1e9)})
+			dailyWithdrawals = append(dailyWithdrawals, []float64{day, float64(row.Amount) / 1e9})
 		} else {
-			dailyWithdrawals[len(dailyWithdrawals)-1][1] += float64(row.Amount / 1e9)
+			dailyWithdrawals[len(dailyWithdrawals)-1][1] += float64(row.Amount) / 1e9
 		}
 	}
 

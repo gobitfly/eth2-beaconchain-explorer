@@ -38,15 +38,15 @@
     <script>
         {{if .DepositChart}}
     var series = {{.DepositChart.Data.Series}}
-    var filteredSeries = []
-    if (series && series.length && series.length > 1) {
-      filteredSeries.push(series[1])
-      // for (let i = 0; i < series.length; i++) {
-      //   if (series && series[i].data && series[i].data.length) {
-      //       filteredSeries.push(series[i])
-      //   }
-      // }
-    }
+    // var filteredSeries = []
+    // if (series && series.length && series.length > 1) {
+    //   filteredSeries.push(series[1])
+    //   // for (let i = 0; i < series.length; i++) {
+    //   //   if (series && series[i].data && series[i].data.length) {
+    //   //       filteredSeries.push(series[i])
+    //   //   }
+    //   // }
+    // }
     // Hide eth2 deposit series
     // if (filteredSeries.length > 1) {
     //     filteredSeries[0].visible = false
@@ -95,7 +95,7 @@
                 title: { text: {{.DepositChart.Data.YAxisTitle}} },
                 opposite: false,
             }],
-            series: filteredSeries,
+            series: series,
             navigator: { enabled: true },
             scrollbar: { enabled: false },
             tooltip: {

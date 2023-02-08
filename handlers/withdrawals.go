@@ -24,6 +24,11 @@ func Withdrawals(w http.ResponseWriter, r *http.Request) {
 
 	pageData := &types.WithdrawalsPageData{}
 	pageData.Stats = services.GetLatestStats()
+	// var err error
+	// pageData.Stats, err = services.CalculateStats()
+	// if err != nil {
+	// 	logger.Errorf("error getting latest stats: %v", err)
+	// }
 
 	latestChartsPageData := services.LatestChartsPageData()
 	if len(latestChartsPageData) != 0 {
@@ -34,10 +39,18 @@ func Withdrawals(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	// var err error
-	// pageData.Stats, err = services.CalculateStats()
+
+	// withdrawalChartData, err := services.WithdrawalsChartData()
 	// if err != nil {
-	// 	logger.Errorf("error getting latest stats: %v", err)
+	// 	logger.Errorf("error getting withdrawal chart data: %v", err)
+	// 	http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+	// 	return
+	// }
+	// pageData.WithdrawalChart = &types.ChartsPageDataChart{
+	// 	Data:   withdrawalChartData,
+	// 	Order:  17,
+	// 	Path:   "withdrawals",
+	// 	Height: 300,
 	// }
 
 	data := InitPageData(w, r, "validators", "/withdrawals", "Validator Withdrawals")

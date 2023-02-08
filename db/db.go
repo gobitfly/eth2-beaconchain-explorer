@@ -2796,20 +2796,21 @@ func GetValidatorBLSChange(validatorindex uint64) (*types.BLSChange, error) {
 
 func GetWithdrawableValidatorCount(epoch uint64) (uint64, error) {
 	var count uint64
-
+	logger.Infof("GETTING WITHDRAWABLE VALIDATOR COUNT for epoch: %v max eff: %v", epoch, utils.Config.Chain.Config.MaxEffectiveBalance)
 	err := ReaderDb.Get(&count, `
 	SELECT 
 		count(*) 
 	FROM 
 		validators 
 	WHERE 
-		withdrawalcredentials LIKE '\x01' || '%'::bytea AND (effectivebalance = $1 AND balance > $1 OR withdrawableepoch <= $2 AND balance > 0);`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
+		withdrawalcredentials LIKE '\x01' || '%'::bytea AND ((effectivebalance = $1 AND balance > $1) OR (withdrawableepoch <= $2 AND balance > 0));`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
 		}
 		return 0, fmt.Errorf("error getting withdrawable validator count: %w", err)
 	}
+	logger.Infof("got withdrawable validator count: %v", count)
 
 	return count, nil
 }
