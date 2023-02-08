@@ -226,7 +226,7 @@
                   <div class="col-md-9">
                     <textarea readonly class="form-control bg-light text-monospace ">{{ .CallData }}</textarea>
                     <div class="mt-2">
-                      <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .CallData }}">Copy Raw Data <i class="fa fa-copy"></i></button>
+                      <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="{{ .CallData }}">Copy Raw Data <i class="fa fa-copy"></i></button>
                     </div>
                   </div>
                 </div>
