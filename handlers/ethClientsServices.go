@@ -37,8 +37,6 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 			switch item {
 			case "geth":
 				pageData.Geth.IsUserSubscribed = true
-			case "openethereum":
-				pageData.OpenEthereum.IsUserSubscribed = true
 			case "nethermind":
 				pageData.Nethermind.IsUserSubscribed = true
 			case "besu":
