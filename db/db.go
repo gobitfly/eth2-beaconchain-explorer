@@ -2796,7 +2796,6 @@ func GetValidatorBLSChange(validatorindex uint64) (*types.BLSChange, error) {
 
 func GetWithdrawableValidatorCount(epoch uint64) (uint64, error) {
 	var count uint64
-	logger.Infof("GETTING WITHDRAWABLE VALIDATOR COUNT for epoch: %v max eff: %v", epoch, utils.Config.Chain.Config.MaxEffectiveBalance)
 	err := ReaderDb.Get(&count, `
 	SELECT 
 		count(*) 
@@ -2810,7 +2809,6 @@ func GetWithdrawableValidatorCount(epoch uint64) (uint64, error) {
 		}
 		return 0, fmt.Errorf("error getting withdrawable validator count: %w", err)
 	}
-	logger.Infof("got withdrawable validator count: %v", count)
 
 	return count, nil
 }

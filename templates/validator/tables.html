@@ -356,15 +356,21 @@
 
 {{ define "validatorDepositsTable" }}
   {{ with .Data }}
-    <div class="table-eth1">
-      {{ if .BLSChange }}
-        <div class="table-bls-change my-3">
-          <h4 class="my-3">Withdrawal Address Change</h4>
-          <span>
-            Your validators withdrawal address has changed to <span>{{ formatAddressAsLink .BLSChange.Address "" false false }}</span>. The change occured during epoch <span>{{ epochOfSlot .BLSChange.Slot | formatEpoch }}</span> <in></in> slot <span>{{ formatBlockSlot .BLSChange.Slot }}</span>. It was signed using your BLS keypair with the corresponding public key <span>{{ formatHash .BLSChange.BlsPubkey true }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.BlsPubkey false }}"></i></span> and the resulting signature
-            <span>{{ formatHash .BLSChange.Signature true }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.Signature false }}"></i></span>.
-          </span>
-        </div>
+    <div>
+      {{ if .WithdrawCredentials }}
+        <h4 class="my-3">Withdrawal Address</h4>
+        <p>
+          <span>Your current withdrawal credentials are: {{formatWithdawalCredentials .WithdrawCredentials true}}</span>
+        </p>
+        {{ if .BLSChange }}
+          <div class="my-3">
+            <p>
+              <span>Your withdrawal credential were changed successfully during epoch <span>{{ epochOfSlot .BLSChange.Slot | formatEpoch }}</span><span> and slot </span><span class="mr-1">{{ formatBlockSlot .BLSChange.Slot }}</span>.</span>
+              The signature included (<span class="mr-1">{{ formatHash .BLSChange.Signature true }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.Signature false }}"></i></span>) was signed by your BLS publickey
+              (<span>{{ formatHash .BLSChange.BlsPubkey true }}</span><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.BlsPubkey false }}"></i>).
+            </p>
+          </div>
+        {{ end }}
       {{ end }}
       <h4 class="my-3">Execution Layer</h4>
       <h6 class="">This table displays the deposits made to the Ethereum staking deposit contract.</h6>
