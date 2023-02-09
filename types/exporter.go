@@ -183,6 +183,12 @@ type Withdrawals struct {
 	Amount         uint64 `json:"amount"`
 }
 
+type WithdrawalsByEpoch struct {
+	Epoch          uint64
+	ValidatorIndex uint64
+	Amount         uint64
+}
+
 type WithdrawalsNotification struct {
 	Slot           uint64 `json:"slot,omitempty"`
 	Index          uint64 `json:"index"`

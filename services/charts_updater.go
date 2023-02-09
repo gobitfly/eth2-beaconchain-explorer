@@ -876,16 +876,19 @@ func depositsChartData() (*types.GenericChartData, error) {
 				Name:  "ETH2",
 				Data:  dailyEth2Deposits,
 				Stack: "eth2",
+				Color: "#66bce9",
 			},
 			{
 				Name:  "ETH1 (success)",
 				Data:  dailySuccessfulEth1Deposits,
 				Stack: "eth1",
+				Color: "#7dc382",
 			},
 			{
 				Name:  "ETH1 (failed)",
 				Data:  dailyFailedEth1Deposits,
 				Stack: "eth1",
+				Color: "#f3454a",
 			},
 		},
 	}

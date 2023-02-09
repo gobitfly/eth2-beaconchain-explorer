@@ -2495,8 +2495,9 @@ func GetBLSChangeCount() (uint64, error) {
 	var total uint64
 	err := ReaderDb.Get(&total, `
 	SELECT 
-		COALESCE(count(*), 0) as count 
-	FROM blocks_bls_change`)
+		COALESCE(count(*), 0) as count
+	FROM blocks_bls_change
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'`)
 	return total, err
 }
 
@@ -2594,6 +2595,35 @@ func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64) ([]*
 		return nil, fmt.Errorf("error getting blocks_withdrawals for validator: %d: %w", validator, err)
 	}
 
+	return withdrawals, nil
+}
+
+func GetValidatorsWithdrawalsByEpoch(validator []uint64, limit uint64, offset uint64) ([]*types.WithdrawalsByEpoch, error) {
+	var withdrawals []*types.WithdrawalsByEpoch
+	if limit == 0 {
+		limit = 100
+	}
+
+	if limit > (offset + 100) {
+		limit = offset + 100
+	}
+
+	err := ReaderDb.Select(&withdrawals, `
+	SELECT 
+		w.validatorindex,
+		w.block_slot / 32 as epoch, 
+		sum(w.amount) as amount
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	WHERE validatorindex = ANY($1)
+	GROUP BY w.validatorindex, w.block_slot / 32
+	ORDER BY w.block_slot / 32 desc limit $2 offset $3`, pq.Array(validator), limit, offset)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return withdrawals, nil
+		}
+		return nil, fmt.Errorf("error getting blocks_withdrawals for validator: %d: %w", validator, err)
+	}
 	return withdrawals, nil
 }
 
@@ -2844,7 +2874,7 @@ func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor 
 	WHERE 
 		withdrawalcredentials LIKE '\x01' || '%'::bytea 
 		AND 
-		(effectivebalance = $1 AND balance > $1) OR (withdrawableepoch <= $2 AND balance > 0)
+		((effectivebalance = $1 AND balance > $1) OR (withdrawableepoch <= $2 AND balance > 0))
 		AND
 		validatorindex > $4 AND validatorindex < $3
 		AND (

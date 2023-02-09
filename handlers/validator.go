@@ -1465,6 +1465,17 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
+	var withdrawals []*types.WithdrawalsByEpoch
+	g.Go(func() error {
+		var err error
+		withdrawals, err = db.GetValidatorsWithdrawalsByEpoch([]uint64{index}, 10, uint64(start))
+		if err != nil {
+			logger.Errorf("error retrieving validator withdrawals by epoch: %v", err)
+			return err
+		}
+		return nil
+	})
+
 	var incomeDetails map[uint64]map[uint64]*itypes.ValidatorEpochIncome
 	g.Go(func() error {
 		var err error
@@ -1498,10 +1509,21 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	err = g.Wait()
+	logger.Infof("GOT WITHDRAWALS: %+v", withdrawals)
 
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
+	}
+
+	withdrawalMap := make(map[uint64]*types.ValidatorWithdrawal)
+	for _, withdrawals := range withdrawals {
+		withdrawalMap[withdrawals.Epoch] = &types.ValidatorWithdrawal{
+			Index:  withdrawals.ValidatorIndex,
+			Epoch:  withdrawals.Epoch,
+			Amount: withdrawals.Amount,
+			Slot:   withdrawals.Epoch * 32,
+		}
 	}
 
 	proposalMap := make(map[uint64]*types.ValidatorProposal)
@@ -1530,12 +1552,19 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		balanceChange := int64(balanceHistory[index][i].Balance) - int64(balanceHistory[index][i+1].Balance)
 
 		h := &types.ValidatorHistory{
-			Epoch:          balanceHistory[index][i].Epoch,
-			BalanceChange:  sql.NullInt64{Int64: balanceChange, Valid: true},
-			AttesterSlot:   sql.NullInt64{Int64: 0, Valid: false},
-			InclusionSlot:  sql.NullInt64{Int64: 0, Valid: false},
-			ProposalStatus: sql.NullInt64{Int64: 0, Valid: false},
-			ProposalSlot:   sql.NullInt64{Int64: 0, Valid: false},
+			Epoch:            balanceHistory[index][i].Epoch,
+			BalanceChange:    sql.NullInt64{Int64: balanceChange, Valid: true},
+			AttesterSlot:     sql.NullInt64{Int64: 0, Valid: false},
+			InclusionSlot:    sql.NullInt64{Int64: 0, Valid: false},
+			ProposalStatus:   sql.NullInt64{Int64: 0, Valid: false},
+			ProposalSlot:     sql.NullInt64{Int64: 0, Valid: false},
+			WithdrawalStatus: sql.NullInt64{Int64: 0, Valid: false},
+			WithdrawalSlot:   sql.NullInt64{Int64: 0, Valid: false},
+		}
+
+		if withdrawalMap[balanceHistory[index][i].Epoch] != nil {
+			h.WithdrawalSlot = sql.NullInt64{Int64: int64(withdrawalMap[balanceHistory[index][i].Epoch].Slot), Valid: true}
+			h.WithdrawalStatus = sql.NullInt64{Int64: 1, Valid: true}
 		}
 
 		if incomeDetails[index] != nil {
@@ -1577,7 +1606,12 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 		if b.ProposalSlot.Valid {
 			block := utils.FormatBlockStatusShort(uint64(b.ProposalStatus.Int64))
-			events += " & " + block
+			events += block
+		}
+
+		if b.WithdrawalSlot.Valid {
+			withdrawal := utils.FormatWithdrawalShort(uint64(b.WithdrawalSlot.Int64))
+			events += withdrawal
 		}
 
 		if b.BalanceChange.Valid {

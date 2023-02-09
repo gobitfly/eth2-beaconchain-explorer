@@ -998,6 +998,8 @@ type ValidatorHistory struct {
 	ProposalStatus    sql.NullInt64                `db:"proposal_status" json:"proposal_status,omitempty"`
 	ProposalSlot      sql.NullInt64                `db:"proposal_slot" json:"proposal_slot,omitempty"`
 	IncomeDetails     *itypes.ValidatorEpochIncome `db:"-" json:"income_details,omitempty"`
+	WithdrawalStatus  sql.NullInt64                `db:"withdrawal_status" json:"withdrawal_status,omitempty"`
+	WithdrawalSlot    sql.NullInt64                `db:"withdrawal_slot" json:"withdrawal_slot,omitempty"`
 }
 
 type ValidatorSlashing struct {
