@@ -326,7 +326,7 @@ func epochUpdater(wg *sync.WaitGroup) {
 
 		// latest exported epoch
 		var epoch uint64
-		err = db.WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM blocks")
+		err = db.WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 		if err != nil {
 			logger.Errorf("error retrieving latest exported epoch from the database: %v", err)
 		} else {
