@@ -52,7 +52,7 @@
                   <div class="d-flex align-items-center">
                     <div style="min-width: 0;">{{ .Hash | formatHashLong }}</div>
                     <div class="ml-2 flex-shrink-1">
-                      <button class="btn btn-dark text-white btn-sm align-bottom" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .Hash }}">
+                      <button class="btn btn-dark text-white btn-sm align-bottom" type="button" id="copy-button" data-toggle="tooltip" title="Copy transaction hash to clipboard" data-clipboard-text="0x{{ printf "%x" .Hash }}">
                         <i class="fa fa-copy"></i>
                       </button>
                     </div>
@@ -226,7 +226,7 @@
                   <div class="col-md-9">
                     <textarea readonly class="form-control bg-light text-monospace ">{{ .CallData }}</textarea>
                     <div class="mt-2">
-                      <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .CallData }}">Copy Raw Data <i class="fa fa-copy"></i></button>
+                      <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy raw data to clipboard" data-clipboard-text="{{ .CallData }}">Copy Raw Data <i class="fa fa-copy"></i></button>
                     </div>
                   </div>
                 </div>
@@ -308,7 +308,7 @@
                     <div class="col-md-9">
                       <textarea readonly class="form-control bg-light text-monospace ">{{ printf "0x%x" .Data }}</textarea>
                       <div class="mt-2">
-                        <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .Data }}">Copy Raw Data <i class="fa fa-copy"></i></button>
+                        <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy raw data to clipboard" data-clipboard-text="0x{{ printf "%x" .Data }}">Copy Raw Data <i class="fa fa-copy"></i></button>
                       </div>
                     </div>
                   </div>
