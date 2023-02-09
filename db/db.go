@@ -2551,11 +2551,11 @@ func GetEpochWithdrawals(epoch uint64) ([]*types.WithdrawalsNotification, error)
 		w.withdrawalindex as index, 
 		w.validatorindex, 
 		w.address, 
-		w.amount
+		w.amount,
 		v.pubkey as pubkey
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-	LEFT JOIN validators v on v.index = w.validatorindex
+	LEFT JOIN validators v on v.validatorindex = w.validatorindex
 	WHERE w.block_slot >= $1 AND w.block_slot < $2 ORDER BY w.withdrawalindex`, epoch*utils.Config.Chain.Config.SlotsPerEpoch, (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch)
 	if err != nil {
 		if err == sql.ErrNoRows {
