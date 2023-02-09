@@ -1509,7 +1509,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	err = g.Wait()
-	logger.Infof("GOT WITHDRAWALS: %+v", withdrawals)
 
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
