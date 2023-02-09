@@ -22,7 +22,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
-	txHashString := strings.Replace(vars["hash"], "0x", "", -1)
+	txHashString := vars["hash"]
 
 	data := InitPageData(w, r, "blockchain", "/tx", "Transaction")
 	data.HeaderAd = true
@@ -41,14 +41,12 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	SetPageDataTitle(data, fmt.Sprintf("Transaction 0x%x", txHash))
-	data.Meta.Path = fmt.Sprintf("/tx/0x%x", txHash)
+	SetPageDataTitle(data, fmt.Sprintf("Transaction %#x", txHash))
+	data.Meta.Path = fmt.Sprintf("/tx/%#x", txHash)
 
 	txData, err := eth1data.GetEth1Transaction(common.BytesToHash(txHash))
 
 	if err != nil {
-		SetPageDataTitle(data, fmt.Sprintf("Transaction 0x%v", txHashString))
-		data.Meta.Path = "/tx/" + txHashString
 		logger.Errorf("error getting eth1 transaction data: %v", err)
 
 		if handleTemplateError(w, r, "eth1tx.go", "Eth1TransactionTx", "GetEth1Transaction", txNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
