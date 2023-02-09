@@ -26,10 +26,12 @@ type Config struct {
 	} `yaml:"bigtable"`
 	LastAttestationCachePath string `yaml:"lastAttestationCachePath" envconfig:"LAST_ATTESTATION_CACHE_PATH"`
 	Chain                    struct {
-		Name             string `yaml:"name" envconfig:"CHAIN_NAME"`
-		GenesisTimestamp uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
-		ConfigPath       string `yaml:"configPath" envconfig:"CHAIN_CONFIG_PATH"`
-		Config           ChainConfig
+		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
+		GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
+		GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
+		DomainBLSToExecutionChange string `yaml:"domainBLSToExecutionChange" envconfig:"CHAIN_DOMAIN_BLS_TO_EXECUTION_CHANGE"`
+		ConfigPath                 string `yaml:"configPath" envconfig:"CHAIN_CONFIG_PATH"`
+		Config                     ChainConfig
 	} `yaml:"chain"`
 	Eth1ErigonEndpoint  string `yaml:"eth1ErigonEndpoint" envconfig:"ETH1_ERIGON_ENDPOINT"`
 	Eth1GethEndpoint    string `yaml:"eth1GethEndpoint" envconfig:"ETH1_GETH_ENDPOINT"`

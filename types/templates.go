@@ -1872,3 +1872,9 @@ type WithdrawalStats struct {
 	BLSChangeCount               uint64
 	ValidatorsWithBLSCredentials uint64
 }
+
+type ChangeWithdrawalCredentialsPageData struct {
+	FlashMessage string
+	CsrfField    template.HTML
+	RecaptchaKey string
+}
