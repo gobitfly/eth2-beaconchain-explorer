@@ -42,7 +42,7 @@
     var series = {{.WithdrawalChart.Data.Series}}
     var currency = {{$.Rates.Currency}}
     var ethPrice = {{$.Rates.EthPrice}}
-   
+
     window.addEventListener('load', function() {
         Highcharts.stockChart('withdrawal-chart',{
             chart: {
@@ -96,7 +96,7 @@
                     var text = '<span>'+ Highcharts.dateFormat('%A, %b %e, %Y', this.x) +'</span><br/>';
                     var income = getIncomeChartValueString(this.y, currency, ethPrice)
                     text += '<b>'+income+'</b>'
-               
+
                     return text;
                 },
                 shared: true
