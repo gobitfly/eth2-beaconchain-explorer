@@ -745,7 +745,7 @@ $(document).ready(function () {
 
   function renderDashboardInfo() {
     var el = document.getElementById("dashboard-info")
-    el.innerText = `Found ${state.validatorsCount.pending} pending, ${state.validatorsCount.active_online + state.validatorsCount.active_offline} active and ${state.validatorsCount.exited} exited validators`
+    el.innerText = `Found ${state.validatorsCount.pending} pending, ${state.validatorsCount.active_online + state.validatorsCount.active_offline} (${state.validatorsCount.active_online} online + ${state.validatorsCount.active_offline} offline) active and ${state.validatorsCount.exited} exited validators`
 
     if (state.validators.length > 0) {
       showSelectedValidator()

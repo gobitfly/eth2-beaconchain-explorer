@@ -44,7 +44,7 @@ var gethRequestEntityTooLargeRE = regexp.MustCompile("413 Request Entity Too Lar
 // If a reorg of the eth1-chain happened within these 100 blocks it will delete
 // removed deposits.
 func eth1DepositsExporter() {
-	eth1DepositContractAddress = common.HexToAddress(utils.Config.Indexer.Eth1DepositContractAddress)
+	eth1DepositContractAddress = common.HexToAddress(utils.Config.Chain.Config.DepositContractAddress)
 	eth1DepositContractFirstBlock = utils.Config.Indexer.Eth1DepositContractFirstBlock
 
 	rpcClient, err := gethRPC.Dial(utils.Config.Eth1GethEndpoint)
@@ -253,7 +253,7 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 
 	headers, txs, err := eth1BatchRequestHeadersAndTxs(blocksToFetch, txsToFetch)
 	if err != nil {
-		return depositsToSave, fmt.Errorf("error getting eth1-blocks: %w", err)
+		return depositsToSave, fmt.Errorf("error getting eth1-blocks: %w\nblocks to fetch: %v\n tx to fetch: %v", err, blocksToFetch, txsToFetch)
 	}
 
 	for _, d := range depositsToSave {
@@ -377,13 +377,24 @@ func eth1BatchRequestHeadersAndTxs(blocksToFetch []uint64, txsToFetch []string) 
 		errors = append(errors, err)
 	}
 
-	if len(elems) == 0 {
+	lenElems := len(elems)
+
+	if lenElems == 0 {
 		return headers, txs, nil
 	}
 
-	ioErr := eth1RPCClient.BatchCall(elems)
-	if ioErr != nil {
-		return nil, nil, ioErr
+	for i := 0; (i * 100) < lenElems; i++ {
+		start := (i * 100)
+		end := start + 100
+
+		if end > lenElems {
+			end = lenElems
+		}
+
+		ioErr := eth1RPCClient.BatchCall(elems[start:end])
+		if ioErr != nil {
+			return nil, nil, ioErr
+		}
 	}
 
 	for _, e := range errors {

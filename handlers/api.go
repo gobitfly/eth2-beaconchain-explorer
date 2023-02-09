@@ -416,6 +416,7 @@ func ApiSlots(w http.ResponseWriter, r *http.Request) {
 		blocks.attesterslashingscount,
 		blocks.attestationscount,
 		blocks.depositscount,
+		blocks.withdrawalcount, 
 		blocks.voluntaryexitscount,
 		blocks.proposer,
 		blocks.status,
@@ -445,6 +446,7 @@ func ApiSlots(w http.ResponseWriter, r *http.Request) {
 		blocks.blockroot = $1;`, blockRootHash)
 
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -490,6 +492,7 @@ func ApiSlotAttestations(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_attestations WHERE block_slot = $1 ORDER BY block_index", slot)
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -514,6 +517,7 @@ func ApiSlotAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 
 	slot, err := strconv.ParseInt(vars["slot"], 10, 64)
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "invalid block slot provided")
 		return
 	}
@@ -550,7 +554,9 @@ func ApiSlotDeposits(w http.ResponseWriter, r *http.Request) {
 
 	limit, err := strconv.ParseInt(limitQuery, 10, 64)
 	if err != nil {
-		limit = 100
+		logger.WithError(err).Error("could not retrieve db results")
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
 	}
 
 	offset, err := strconv.ParseInt(offsetQuery, 10, 64)
@@ -574,6 +580,7 @@ func ApiSlotDeposits(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_deposits WHERE block_slot = $1 ORDER BY block_index DESC limit $2 offset $3", slot, limit, offset)
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -605,6 +612,7 @@ func ApiSlotProposerSlashings(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_proposerslashings WHERE block_slot = $1 ORDER BY block_index DESC", slot)
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -636,6 +644,7 @@ func ApiSlotVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_voluntaryexits WHERE block_slot = $1 ORDER BY block_index DESC", slot)
 	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -644,6 +653,36 @@ func ApiSlotVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 	returnQueryResultsAsArray(rows, w, r)
 }
 
+// ApiBlockWithdrawals godoc
+// @Summary Get the withdrawals included in a specific block
+// @Tags Block
+// @Description Returns the withdrawals included in a specific block
+// @Produce  json
+// @Param  slot path string true "Block slot"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/block/{slot}/withdrawals [get]
+func ApiSlotWithdrawals(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(r)
+
+	slot, err := strconv.ParseInt(vars["slot"], 10, 64)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "invalid block slot provided")
+		return
+	}
+
+	rows, err := db.ReaderDb.Query("SELECT block_slot, withdrawalindex, validatorindex, address, amount FROM blocks_withdrawals WHERE block_slot = $1 ORDER BY withdrawalindex", slot)
+	if err != nil {
+		logger.WithError(err).Error("error getting blocks_withdrawals")
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+	returnQueryResults(rows, w, r)
+}
+
+// ApiBlockVoluntaryExits godoc
 // ApiSyncCommittee godoc
 // @Summary Get the sync-committee for a sync-period
 // @Tags SyncCommittee
@@ -2894,7 +2933,6 @@ func getAuthClaims(r *http.Request) *utils.CustomClaims {
 func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 	data, err := utils.SqlRowsToJSON(rows)
-
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not parse db results")
 		return

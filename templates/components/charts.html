@@ -1,6 +1,6 @@
-{{ define "depositChart" }}
+{{ define "withdrawalChart" }}
   <div style="position:relative;" class="d-flex flex-column justify-content-center">
-    <div id="deposit-chart" class="h-100 text-center">
+    <div id="withdrawal-chart" class="h-100 text-center">
       <svg id="f52ea72b-4bf4-4ca0-b256-883445bd7321" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" style="max-height: 180px;" viewBox="0 0 649.3779 727.77798">
         <path d="M648.20033,259.05824h-3.99878V149.51291A63.40187,63.40187,0,0,0,580.79976,86.111H348.713a63.40184,63.40184,0,0,0-63.402,63.4017V750.48713A63.40181,63.40181,0,0,0,348.71284,813.889H580.79945a63.40185,63.40185,0,0,0,63.402-63.40167V337.0345h3.99884Z" transform="translate(-285.31105 -86.11101)" fill="#e6e6e6" />
         <path d="M583.3578,102.606h-30.295a22.49485,22.49485,0,0,1-20.82715,30.99053H399.2762a22.49484,22.49484,0,0,1-20.82715-30.99061H350.15346a47.34781,47.34781,0,0,0-47.34784,47.34774V750.04628a47.34781,47.34781,0,0,0,47.34777,47.34784H583.3578a47.34781,47.34781,0,0,0,47.34784-47.34778h0V149.95371A47.34777,47.34777,0,0,0,583.3578,102.606Z" transform="translate(-285.31105 -86.11101)" fill="#fff" />
@@ -36,49 +36,40 @@
       </svg>
     </div>
     <script>
-        {{if .DepositChart}}
-    var series = {{.DepositChart.Data.Series}}
-    var filteredSeries = []
-    if (series && series.length && series.length > 1) {
-      filteredSeries.push(series[2])
-      filteredSeries.push(series[1])
-      // for (let i = 0; i < series.length; i++) {
-      //   if (series && series[i].data && series[i].data.length) {
-      //       filteredSeries.push(series[i])
-      //   }
-      // }
-    }
-    // Hide eth2 deposit series
-    // if (filteredSeries.length > 1) {
-    //     filteredSeries[0].visible = false
-    // }
+  {{ with .Data }}
+
+    {{if .WithdrawalChart}}
+    var series = {{.WithdrawalChart.Data.Series}}
+    var currency = {{$.Rates.Currency}}
+    var ethPrice = {{$.Rates.EthPrice}}
+
     window.addEventListener('load', function() {
-        Highcharts.stockChart('deposit-chart',{
+        Highcharts.stockChart('withdrawal-chart',{
             chart: {
-               type: {{.DepositChart.Data.Type}},
+               type: {{.WithdrawalChart.Data.Type}},
                height: 250,
             },
             rangeSelector: {  enabled: false },
             // title: {
             //     enabled: false,
             //     useHTML: true,
-            //     text: '<a href="charts/{{.DepositChart.Path}}">{{.DepositChart.Data.Title}}</a>',
+            //     text: '<a href="charts/{{.WithdrawalChart.Path}}">{{.WithdrawalChart.Data.Title}}</a>',
             // },
             // subtitle: {
             //   enabled: false,
-            //   text: {{.DepositChart.Data.Subtitle}}
+            //   text: {{.WithdrawalChart.Data.Subtitle}}
             //   },
             plotOptions: {
                 column: {
-                    stacking: {{.DepositChart.Data.StackingMode}},
+                    stacking: {{.WithdrawalChart.Data.StackingMode}},
                     dataGrouping: {
-                        {{ if .DepositChart.Data.ColumnDataGroupingApproximation }}approximation: {{.DepositChart.Data.ColumnDataGroupingApproximation}},{{end}}
+                        {{ if .WithdrawalChart.Data.ColumnDataGroupingApproximation }}approximation: {{.WithdrawalChart.Data.ColumnDataGroupingApproximation}},{{end}}
                     }
                 },
                 series: {
-                    {{ if .DepositChart.Data.PlotOptionsSeriesCursor }}cursor: {{.DepositChart.Data.PlotOptionsSeriesCursor}},{{end}}
+                    {{ if .WithdrawalChart.Data.PlotOptionsSeriesCursor }}cursor: {{.WithdrawalChart.Data.PlotOptionsSeriesCursor}},{{end}}
                     events: {
-                        {{ if .DepositChart.Data.PlotOptionsSeriesEventsClick }}click: {{.DepositChart.Data.PlotOptionsSeriesEventsClick}},{{end}}
+                        {{ if .WithdrawalChart.Data.PlotOptionsSeriesEventsClick }}click: {{.WithdrawalChart.Data.PlotOptionsSeriesEventsClick}},{{end}}
                     }
                 }
             },
@@ -93,25 +84,28 @@
                 }
             },
             yAxis: [{
-                title: { text: {{.DepositChart.Data.YAxisTitle}} },
+                title: { text: {{.WithdrawalChart.Data.YAxisTitle}} },
                 opposite: false,
             }],
-            series: filteredSeries,
+            series: series,
             navigator: { enabled: true },
             scrollbar: { enabled: false },
             tooltip: {
+                useHTML: true,
+                formatter: function(t) {
+                    var text = '<span>'+ Highcharts.dateFormat('%A, %b %e, %Y', this.x) +'</span><br/>';
+                    var income = getIncomeChartValueString(this.y, currency, ethPrice)
+                    text += '<b>'+income+'</b>'
+
+                    return text;
+                },
                 shared: true
-                // formatter: function(tooltip) {
-                //     var orig = tooltip.defaultFormatter.call(this, tooltip)
-                //     var epoch = timeToEpoch(this.x)
-                //     orig[0] = orig[0]+'<span style="font-size:10px">Epoch '+epoch+'</span>'
-                //     return orig
-                // }
             },
-            legend: {enabled: false}
+            legend: { enabled: false }
         })
     })
-    {{end}}
+    {{ end }}
+    {{ end }}
     </script>
   </div>
 {{ end }}

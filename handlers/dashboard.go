@@ -344,6 +344,50 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func DashboardWithdrawals(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+	validatorLimit := getUserPremium(r).MaxValidators
+	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	if err != nil {
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+	filter := pq.Array(filterArr)
+
+	proposals := []struct {
+		Slot   uint64
+		Status uint64
+	}{}
+
+	err = db.ReaderDb.Select(&proposals, `
+		SELECT slot, status
+		FROM blocks
+		WHERE proposer = ANY($1)
+		ORDER BY slot`, filter)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving block-proposals")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
+	proposalsResult := make([][]uint64, len(proposals))
+	for i, b := range proposals {
+		proposalsResult[i] = []uint64{
+			uint64(utils.SlotToTime(b.Slot).Unix()),
+			b.Status,
+		}
+	}
+
+	err = json.NewEncoder(w).Encode(proposalsResult)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+}
+
 func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
 
@@ -495,7 +539,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	earnings, err := GetValidatorEarnings(queryValidators, GetCurrency(r))
+	earnings, _, err := GetValidatorEarnings(queryValidators, GetCurrency(r))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator earnings")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

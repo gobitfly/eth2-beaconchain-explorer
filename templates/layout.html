@@ -203,7 +203,7 @@
               {{ if gt .FinalizationDelay 3 }}
                 <div data-toggle="tooltip" title="" data-original-title="Finality: the last finalized epoch was {{ .FinalizationDelay }} epochs ago" id="banner-fin" class="info-item d-flex mr-2 mr-lg-3">
                   <div class="info-item-header mr-1">
-                    <span class="item-icon"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{ .FinalizationDelay }} epochs ago"></i></span>
+                    <span class="item-icon"><i class="fas fa-exclamation-triangle"></i></span>
                   </div>
                   <div class="info-item-body text-warning">
                     <span id="banner-fin-data">{{ .FinalizationDelay }}</span>
@@ -430,13 +430,15 @@
                                 </a>
                                 -->
                   <hr />
-                  <a class="dropdown-item" href="/validators/initiated-deposits">
+                  <a class="dropdown-item" href="/validators/deposits">
                     <span class="nav-icon"><i class="fas fa-file-signature mr-2"></i></span>
-                    <span class="nav-text">Initiated Deposits</span>
+                    <span class="nav-text">Deposits</span>
                   </a>
-                  <a class="dropdown-item" href="/validators/included-deposits">
-                    <span class="nav-icon"><i class="fas fa-clipboard-check mr-2"></i></span>
-                    <span class="nav-text">Included Deposits</span>
+                  <a class="dropdown-item" href="/validators/withdrawals">
+                    <span class="nav-icon">
+                      <i class="fas fa-money-bill mr-2"></i>
+                    </span>
+                    <span class="nav-text">Withdrawals</span>
                   </a>
                 </div>
               </li>

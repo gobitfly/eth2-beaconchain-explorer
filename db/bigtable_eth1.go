@@ -327,7 +327,6 @@ func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockInd
 
 	rowRange := gcp_bigtable.PrefixRange(prefix)
 	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("d"))
-	limit := gcp_bigtable.LimitRows(1)
 
 	block := types.Eth1BlockIndexed{}
 
@@ -348,7 +347,7 @@ func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockInd
 		return c == 0
 	}
 
-	err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, rowFilter, limit)
+	err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, rowFilter)
 	if err != nil {
 		return nil, err
 	}

@@ -529,21 +529,19 @@ func slotVizUpdater(wg *sync.WaitGroup) {
 
 	for {
 		latestEpoch := LatestEpoch()
-		if latestEpoch > 0 {
-			epochData, err := db.GetSlotVizData(latestEpoch)
+		epochData, err := db.GetSlotVizData(latestEpoch)
+		if err != nil {
+			logger.Errorf("error retrieving slot viz data from database: %v latest epoch: %v", err, latestEpoch)
+		} else {
+			cacheKey := fmt.Sprintf("%d:frontend:slotVizMetrics", utils.Config.Chain.Config.DepositChainID)
+			err = cache.TieredCache.Set(cacheKey, epochData, time.Hour*24)
 			if err != nil {
-				logger.Errorf("error retrieving slot viz data from database: %v latest epoch: %v", err, latestEpoch)
-			} else {
-				cacheKey := fmt.Sprintf("%d:frontend:slotVizMetrics", utils.Config.Chain.Config.DepositChainID)
-				err = cache.TieredCache.Set(cacheKey, epochData, time.Hour*24)
-				if err != nil {
-					logger.Errorf("error caching slotVizMetrics: %v", err)
-				}
-				if firstRun {
-					logger.Info("initialized slotViz metrics")
-					wg.Done()
-					firstRun = false
-				}
+				logger.Errorf("error caching slotVizMetrics: %v", err)
+			}
+			if firstRun {
+				logger.Info("initialized slotViz metrics")
+				wg.Done()
+				firstRun = false
 			}
 		}
 		ReportStatus("slotVizUpdater", "Running", nil)
@@ -667,7 +665,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
 		genesisDelay := time.Duration(int64(utils.Config.Chain.Config.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
 
-		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+		minGenesisTime := time.Unix(int64(utils.Config.Chain.Config.MinGenesisTime), 0)
 
 		data.MinGenesisTime = minGenesisTime.Unix()
 		data.NetworkStartTs = minGenesisTime.Add(genesisDelay).Unix()
@@ -772,6 +770,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			blocks.parentroot,
 			blocks.attestationscount,
 			blocks.depositscount,
+			blocks.withdrawalcount, 
 			blocks.voluntaryexitscount,
 			blocks.proposerslashingscount,
 			blocks.attesterslashingscount,
@@ -1162,12 +1161,13 @@ func GetLatestStats() *types.Stats {
 				DepositCount: 0,
 			},
 		},
-		InvalidDepositCount:   new(uint64),
-		UniqueValidatorCount:  new(uint64),
-		TotalValidatorCount:   new(uint64),
-		ActiveValidatorCount:  new(uint64),
-		PendingValidatorCount: new(uint64),
-		ValidatorChurnLimit:   new(uint64),
+		InvalidDepositCount:            new(uint64),
+		UniqueValidatorCount:           new(uint64),
+		TotalValidatorCount:            new(uint64),
+		ActiveValidatorCount:           new(uint64),
+		PendingValidatorCount:          new(uint64),
+		ValidatorChurnLimit:            new(uint64),
+		LatestValidatorWithdrawalIndex: new(uint64),
 	}
 }
 
@@ -1184,7 +1184,7 @@ func GlobalNotificationMessage() template.HTML {
 
 		err := db.FrontendWriterDB.Get(&globalNotificationMessage, "SELECT content FROM global_notifications WHERE target = $1 AND enabled", utils.Config.Chain.Name)
 
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			logger.Errorf("error updating global notification message: %v", err)
 			globalNotificationMessage = ""
 			return globalNotificationMessage
@@ -1221,6 +1221,9 @@ func gasNowUpdater(wg *sync.WaitGroup) {
 		time.Sleep(time.Second * 15)
 	}
 }
+func GetGasNowData() (*types.GasNowPageData, error) {
+	return getGasNowData()
+}
 
 func getGasNowData() (*types.GasNowPageData, error) {
 	gpoData := &types.GasNowPageData{}
@@ -1232,11 +1235,16 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		return nil, err
 	}
 	var raw json.RawMessage
-
 	err = client.Call(&raw, "eth_getBlockByNumber", "pending", true)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving pending block data: %v", err)
 	}
+
+	// var res map[string]interface{}
+	// err = json.Unmarshal(raw, &res)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	var header *geth_types.Header
 	var body rpcBlock
@@ -1261,7 +1269,8 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		gpoData.Data.Rapid = medianGasPrice
 		gpoData.Data.Fast = tailGasPrice
 	} else {
-		return nil, fmt.Errorf("current pending block contains no tx")
+		gpoData.Data.Rapid = new(big.Int)
+		gpoData.Data.Fast = new(big.Int)
 	}
 
 	err = client.Call(&raw, "txpool_content")

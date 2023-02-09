@@ -12,7 +12,37 @@ import (
 	"strings"
 )
 
-// Eth1Deposits will return information about deposits using a go template
+// Deposits will return information about deposits using a go template
+func Deposits(w http.ResponseWriter, r *http.Request) {
+
+	var DepositsTemplate = templates.GetTemplate("layout.html", "deposits.html", "index/depositChart.html")
+
+	w.Header().Set("Content-Type", "text/html")
+
+	pageData := &types.DepositsPageData{}
+
+	latestChartsPageData := services.LatestChartsPageData()
+	if len(latestChartsPageData) != 0 {
+		for _, c := range latestChartsPageData {
+			if c.Path == "deposits" {
+				pageData.DepositChart = c
+				break
+			}
+		}
+	}
+
+	pageData.Stats = services.GetLatestStats()
+	pageData.DepositContract = utils.Config.Chain.Config.DepositContractAddress
+
+	data := InitPageData(w, r, "blockchain", "/deposits", "Deposits")
+	data.HeaderAd = true
+	data.Data = pageData
+
+	if handleTemplateError(w, r, "eth1Depostis.go", "Deposits", "", DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
+	}
+}
+
 func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 
 	var eth1DepositsTemplate = templates.GetTemplate("layout.html", "eth1Deposits.html", "index/depositChart.html")

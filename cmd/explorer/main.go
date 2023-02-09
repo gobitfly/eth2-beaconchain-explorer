@@ -29,6 +29,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	_ "eth2-exporter/docs"
+	_ "net/http/pprof"
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
@@ -55,6 +56,7 @@ func init() {
 
 func main() {
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
+
 	flag.Parse()
 
 	cfg := &types.Config{}
@@ -72,6 +74,13 @@ func main() {
 	err = handlers.CheckAndPreloadImprint()
 	if err != nil {
 		logrus.Fatalf("error check / preload imprint: %v", err)
+	}
+
+	if utils.Config.Pprof.Enabled {
+		go func() {
+			logrus.Infof("starting pprof http server on port %s", utils.Config.Pprof.Port)
+			logrus.Info(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%s", utils.Config.Pprof.Port), nil))
+		}()
 	}
 
 	wg := &sync.WaitGroup{}
@@ -248,6 +257,7 @@ func main() {
 		apiV1Router := router.PathPrefix("/api/v1").Subrouter()
 		router.PathPrefix("/api/v1/docs/").Handler(httpSwagger.WrapHandler)
 		apiV1Router.HandleFunc("/epoch/{epoch}", handlers.ApiEpoch).Methods("GET", "OPTIONS")
+
 		// deprecated use slot
 		apiV1Router.HandleFunc("/epoch/{epoch}/blocks", handlers.ApiEpochSlots).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/epoch/{epoch}/slots", handlers.ApiEpochSlots).Methods("GET", "OPTIONS")
@@ -269,6 +279,8 @@ func main() {
 		apiV1Router.HandleFunc("/slot/{slot}/voluntaryexits", handlers.ApiSlotVoluntaryExits).Methods("GET", "OPTIONS")
 		// deprecated use slot
 		apiV1Router.HandleFunc("/block/{slot}/voluntaryexits", handlers.ApiSlotVoluntaryExits).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/slot/{slot}/withdrawals", handlers.ApiSlotWithdrawals).Methods("GET", "OPTIONS")
+
 		apiV1Router.HandleFunc("/sync_committee/{period}", handlers.ApiSyncCommittee).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/eth1deposit/{txhash}", handlers.ApiEth1Deposit).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/leaderboard", handlers.ApiValidatorLeaderboard).Methods("GET", "OPTIONS")
@@ -384,7 +396,6 @@ func main() {
 			if err != nil {
 				logrus.WithError(err).Error("error decoding csrf auth key falling back to empty csrf key")
 			}
-
 			csrfHandler := csrf.Protect(
 				csrfBytes,
 				csrf.FieldName("CsrfField"),
@@ -396,18 +407,21 @@ func main() {
 			router.HandleFunc("/latestState", handlers.LatestState).Methods("GET")
 			router.HandleFunc("/launchMetrics", handlers.SlotVizMetrics).Methods("GET")
 			router.HandleFunc("/index/data", handlers.IndexPageData).Methods("GET")
-			router.HandleFunc("/slot/{slotOrHash}", handlers.Block).Methods("GET")
-			router.HandleFunc("/slot/{slotOrHash}/deposits", handlers.BlockDepositData).Methods("GET")
-			router.HandleFunc("/slot/{slotOrHash}/votes", handlers.BlockVoteData).Methods("GET")
-			router.HandleFunc("/slot/{slot}/attestations", handlers.BlockAttestationsData).Methods("GET")
-			router.HandleFunc("/slots", handlers.Blocks).Methods("GET")
-			router.HandleFunc("/slots/data", handlers.BlocksData).Methods("GET")
+			router.HandleFunc("/slot/{slotOrHash}", handlers.Slot).Methods("GET")
+			router.HandleFunc("/slot/{slotOrHash}/deposits", handlers.SlotDepositData).Methods("GET")
+			router.HandleFunc("/slot/{slotOrHash}/votes", handlers.SlotVoteData).Methods("GET")
+			router.HandleFunc("/slot/{slot}/attestations", handlers.SlotAttestationsData).Methods("GET")
+			router.HandleFunc("/slot/{slot}/withdrawals", handlers.SlotWithdrawalData).Methods("GET")
+			router.HandleFunc("/slot/{slot}/blsChange", handlers.SlotBlsChangeData).Methods("GET")
+			router.HandleFunc("/slots", handlers.Slots).Methods("GET")
+			router.HandleFunc("/slots/data", handlers.SlotsData).Methods("GET")
 			router.HandleFunc("/blocks", handlers.Eth1Blocks).Methods("GET")
 			router.HandleFunc("/blocks/data", handlers.Eth1BlocksData).Methods("GET")
 			router.HandleFunc("/blocks/highest", handlers.Eth1BlocksHighest).Methods("GET")
 			router.HandleFunc("/address/{address}", handlers.Eth1Address).Methods("GET")
 			router.HandleFunc("/address/{address}/blocks", handlers.Eth1AddressBlocksMined).Methods("GET")
 			router.HandleFunc("/address/{address}/uncles", handlers.Eth1AddressUnclesMined).Methods("GET")
+			router.HandleFunc("/address/{address}/withdrawals", handlers.Eth1AddressWithdrawals).Methods("GET")
 			router.HandleFunc("/address/{address}/transactions", handlers.Eth1AddressTransactions).Methods("GET")
 			router.HandleFunc("/address/{address}/internalTxns", handlers.Eth1AddressInternalTransactions).Methods("GET")
 			router.HandleFunc("/address/{address}/erc20", handlers.Eth1AddressErc20Transactions).Methods("GET")
@@ -441,13 +455,14 @@ func main() {
 			router.HandleFunc("/validator/{index}", handlers.Validator).Methods("GET")
 			router.HandleFunc("/validator/{index}/proposedblocks", handlers.ValidatorProposedBlocks).Methods("GET")
 			router.HandleFunc("/validator/{index}/attestations", handlers.ValidatorAttestations).Methods("GET")
+			router.HandleFunc("/validator/{index}/withdrawals", handlers.ValidatorWithdrawals).Methods("GET")
 			router.HandleFunc("/validator/{index}/sync", handlers.ValidatorSync).Methods("GET")
 			router.HandleFunc("/validator/{index}/history", handlers.ValidatorHistory).Methods("GET")
 			router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
 			router.HandleFunc("/validator/{index}/slashings", handlers.ValidatorSlashings).Methods("GET")
 			router.HandleFunc("/validator/{index}/effectiveness", handlers.ValidatorAttestationInclusionEffectiveness).Methods("GET")
 			router.HandleFunc("/validator/{pubkey}/save", handlers.ValidatorSave).Methods("POST")
-			router.HandleFunc("/validator/{pubkey}/add", handlers.UserValidatorWatchlistAdd).Methods("POST")
+			router.HandleFunc("/watchlist/add", handlers.UsersModalAddValidator).Methods("POST")
 			router.HandleFunc("/validator/{pubkey}/remove", handlers.UserValidatorWatchlistRemove).Methods("POST")
 			router.HandleFunc("/validator/{index}/stats", handlers.ValidatorStatsTable).Methods("GET")
 			router.HandleFunc("/validators", handlers.Validators).Methods("GET")
@@ -458,6 +473,10 @@ func main() {
 			router.HandleFunc("/validators/leaderboard/data", handlers.ValidatorsLeaderboardData).Methods("GET")
 			router.HandleFunc("/validators/streakleaderboard", handlers.ValidatorsStreakLeaderboard).Methods("GET")
 			router.HandleFunc("/validators/streakleaderboard/data", handlers.ValidatorsStreakLeaderboardData).Methods("GET")
+			router.HandleFunc("/validators/withdrawals", handlers.Withdrawals).Methods("GET")
+			router.HandleFunc("/validators/withdrawals/data", handlers.WithdrawalsData).Methods("GET")
+			router.HandleFunc("/validators/withdrawals/bls", handlers.BLSChangeData).Methods("GET")
+			router.HandleFunc("/validators/deposits", handlers.Deposits).Methods("GET")
 			router.HandleFunc("/validators/initiated-deposits", handlers.Eth1Deposits).Methods("GET")
 			router.HandleFunc("/validators/initiated-deposits/data", handlers.Eth1DepositsData).Methods("GET")
 			router.HandleFunc("/validators/deposit-leaderboard", handlers.Eth1DepositsLeaderboard).Methods("GET")

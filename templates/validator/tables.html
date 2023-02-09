@@ -150,6 +150,82 @@
     </script>
 {{ end }}
 
+{{ define "validatorWithdrawalTable" }}
+  <div class="table-responsive">
+    <table class="table" style="margin-top: 0 !important;" id="withdrawal-table" width="100%">
+      <thead>
+        <tr>
+          <th>Epoch</th>
+          <th>Slot</th>
+          <th>Time</th>
+          <th>Recipient Address</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+    <script>
+        var index = {{.Index}}
+        window.addEventListener('load', function() {
+            var activeTab = $('#chartTabs .active')
+            var initializedWithdrawalTable = false
+
+            if (activeTab.attr('id') === 'withdrawal-tab') {
+                initializedWithdrawalTable = true
+                createWithdrawalTable()
+            }
+
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+                if (e.target.id === 'withdrawal-tab' && !initializedWithdrawalTable) {
+                    initializedWithdrawalTable = true
+                    createWithdrawalTable()
+                }
+            });
+
+            function createWithdrawalTable() {
+                $('#withdrawal-table').DataTable({
+                    processing: true,
+                    serverSide: true,
+                    stateSave: true,
+                    ordering: true,
+                    order: [[0, 'desc']],
+                    lengthChange: false,
+                    searching: false,
+                    ajax: {
+                      url: `/validator/${index}/withdrawals`,
+                      dataSrc: function ( { data } ) {
+                        // add the estimate row if it exists
+                        {{ if .NextWithdrawalRow }}
+                          let row = {{.NextWithdrawalRow}}
+                          if (row && row.length) {
+                            data = row.concat(data)
+                          }
+                        {{ end }}
+                        return data
+                      },
+                    },
+                    pagingType: 'input',
+                    pageLength: 10,
+                    language: {
+                        // searchPlaceholder: 'Search by Epoch Number',
+                        search: '',
+                        paginate: {
+                            previous: '<i class="fas fa-chevron-left"></i>',
+                            next: '<i class="fas fa-chevron-right"></i>'
+                        }
+                    },
+                    columnDefs: [
+                    ],
+                    drawCallback: function(settings) {
+                        // formatTimestamps()
+                    },
+                })
+            }
+        })
+    </script>
+{{ end }}
+
 {{ define "validatorSyncTable" }}
   <div class="table-responsive">
     <table class="table" style="margin-top: 0 !important;" id="sync-table" width="100%">
@@ -280,8 +356,22 @@
 
 {{ define "validatorDepositsTable" }}
   {{ with .Data }}
-    <div class="table-eth1">
-      <h4 class="my-3">Ethereum Deposits</h4>
+    <div>
+      {{ if .WithdrawCredentials }}
+        <h4 class="my-3">Withdrawal Address</h4>
+        <p>
+          <span>Your current withdrawal credentials are: {{ formatWithdawalCredentials .WithdrawCredentials true }}</span>
+        </p>
+        {{ if .BLSChange }}
+          <div class="my-3">
+            <p>
+              <span>Your withdrawal credential were changed successfully during epoch <span>{{ epochOfSlot .BLSChange.Slot | formatEpoch }}</span><span> and slot </span><span class="mr-1">{{ formatBlockSlot .BLSChange.Slot }}</span>.</span>
+              The signature included (<span class="mr-1">{{ formatHash .BLSChange.Signature true }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.Signature false }}"></i></span>) was signed by your BLS publickey (<span>{{ formatHash .BLSChange.BlsPubkey true }}</span><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.BlsPubkey false }}"></i>).
+            </p>
+          </div>
+        {{ end }}
+      {{ end }}
+      <h4 class="my-3">Execution Layer</h4>
       <h6 class="">This table displays the deposits made to the Ethereum staking deposit contract.</h6>
       <div class="table-responsive card card-body p-0">
         <table class="table" style="margin-top: 0 !important;" id="deposits-eth1-table" width="100%">
@@ -321,7 +411,7 @@
       <i class="fas fa-arrow-down"></i>
     </div>
     <div class="table-eth2">
-      <h4 class="my-3">Beaconchain Deposits</h4>
+      <h4 class="my-3">Consensus Layer</h4>
       {{ if not .Deposits.Eth2Deposits }}
         <h6 class="">No beacon chain deposits found for this validator. It takes <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{ .InclusionDelay }} hours</a> for a deposit to be processed by the beacon chain.</h6>
         <div class="wip d-flex justify-content-center p-3">

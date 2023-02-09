@@ -145,6 +145,8 @@ create table validator_stats
     proposer_slashings      int,
     deposits                int,
     deposits_amount         bigint,
+    withdrawals             int,
+    withdrawals_amount      bigint,
     primary key (validatorindex, day)
 );
 create index idx_validator_stats_day on validator_stats (day);
@@ -209,6 +211,7 @@ create table epochs
     attesterslashingscount  int    not null,
     attestationscount       int    not null,
     depositscount           int    not null,
+    withdrawalcount         int    not null default 0,
     voluntaryexitscount     int    not null,
     validatorscount         int    not null,
     averagevalidatorbalance bigint not null,
@@ -242,6 +245,7 @@ create table blocks
     attesterslashingscount      int     not null,
     attestationscount           int     not null,
     depositscount               int     not null,
+    withdrawalcount             int     not null default 0,
     voluntaryexitscount         int     not null,
     proposer                    int     not null,
     status                      text    not null, /* Can be 0 = scheduled, 1 proposed, 2 missed, 3 orphaned */
@@ -270,6 +274,35 @@ create index idx_blocks_epoch on blocks (epoch);
 create index idx_blocks_graffiti_text on blocks using gin (graffiti_text gin_trgm_ops);
 create index idx_blocks_blockrootstatus on blocks (blockroot, status);
 create index idx_blocks_exec_block_number on blocks (exec_block_number);
+
+drop table if exists blocks_withdrawals;
+create table blocks_withdrawals
+(
+    block_slot         int not null,
+    block_root         bytea not null,
+    withdrawalindex    int not null,
+    validatorindex     int not null,
+    address            bytea not null,
+    amount             bigint not null, -- in GWei
+    primary key (block_slot, block_root, withdrawalindex)
+);
+
+create index idx_blocks_withdrawals_recipient on blocks_withdrawals (address);
+create index idx_blocks_withdrawals_validatorindex on blocks_withdrawals (validatorindex);
+
+drop table if exists blocks_bls_change;
+create table blocks_bls_change
+(
+    block_slot           int     not null,
+    block_root           bytea   not null,
+    validatorindex       int     not null,
+    signature            bytea   not null,
+    pubkey               bytea   not null,
+    address              bytea   not null,
+    primary key (block_slot, block_root, validatorindex)
+);
+create index idx_blocks_bls_change_pubkey on blocks_bls_change (pubkey);
+create index idx_blocks_bls_change_address on blocks_bls_change (address);
 
 drop table if exists blocks_transactions;
 create table blocks_transactions
@@ -966,6 +999,7 @@ CREATE TABLE validator_queue_deposits (
 CREATE INDEX idx_validator_queue_deposits_block_slot ON validator_queue_deposits USING btree (block_slot);
 CREATE UNIQUE INDEX idx_validator_queue_deposits_validatorindex ON validator_queue_deposits USING btree (validatorindex);
 
+drop table if exists service_status;
 create table service_status (name text not null, executable_name text not null, version text not null, pid int not null, status text not null, metadata jsonb, last_update timestamp not null, primary key (name, executable_name, version, pid));
 
 DROP TABLE IF EXISTS chart_series;
