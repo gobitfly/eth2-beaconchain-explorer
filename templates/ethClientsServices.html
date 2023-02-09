@@ -109,20 +109,6 @@
                     {{ end }}
                   </tr>
                   <tr>
-                    <td data-column="Name"><a href="https://openethereum.org/">Open Ethereum </a></td>
-                    <td data-column="Language">Rust</td>
-                    <td data-column="Network share"><a href="https://ethernodes.org">{{ if .OpenEthereum.NetworkShare }}{{ .OpenEthereum.NetworkShare }}{{ else }}N/a{{ end }}</a></td>
-                    <td data-column="Latest update"><a href="https://github.com/openethereum/openethereum/releases">{{ .OpenEthereum.ClientReleaseVersion }}</a> - {{ .OpenEthereum.ClientReleaseDate }}</td>
-                    <td data-column="Social media">
-                      <a href="https://discord.com/invite/JCuNu3m" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
-                      <a href="https://twitter.com/OpenEthereumOrg" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>
-                    </td>
-                    <td data-column="Support"><a href="https://gitcoin.co/grants/1415/openethereum-ex-parity-client">Gitcoin</a></td>
-                    {{ if $.User.Authenticated }}
-                      <td><input id="openethereum-checkbox" type="checkbox" data-toggle="toggle" {{ if .OpenEthereum.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('openethereum-checkbox', 'eth_client_update', 'openethereum')" /></td>
-                    {{ end }}
-                  </tr>
-                  <tr>
                     <td data-column="Name"><a href="https://besu.hyperledger.org/en/stable/">Besu </a></td>
                     <td data-column="Language">Java</td>
                     <td data-column="Network share"><a href="https://ethernodes.org">{{ if .Besu.NetworkShare }}{{ .Besu.NetworkShare }}{{ else }}N/a{{ end }}</a></td>

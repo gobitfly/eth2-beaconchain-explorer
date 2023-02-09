@@ -2071,8 +2071,6 @@ func (n *ethClientNotification) GetInfo(includeUrl bool) string {
 			url = "https://github.com/ethereum/go-ethereum/releases"
 		case "Nethermind":
 			url = "https://github.com/NethermindEth/nethermind/releases"
-		case "OpenEthereum":
-			url = "https://github.com/openethereum/openethereum/releases"
 		case "Teku":
 			url = "https://github.com/ConsenSys/teku/releases"
 		case "Prysm":
@@ -2113,8 +2111,6 @@ func (n *ethClientNotification) GetInfoMarkdown() string {
 		url = "https://github.com/ethereum/go-ethereum/releases"
 	case "Nethermind":
 		url = "https://github.com/NethermindEth/nethermind/releases"
-	case "OpenEthereum":
-		url = "https://github.com/openethereum/openethereum/releases"
 	case "Teku":
 		url = "https://github.com/ConsenSys/teku/releases"
 	case "Prysm":

@@ -124,7 +124,7 @@
             <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" .Signature }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ printf "%x" .Signature }}"></i></div>
           </div>
           <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Signature verifying the proposer">Randao Reveal:</span></div>
+            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="RANDAO entropy contribution">RANDAO Reveal:</span></div>
             <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" .RandaoReveal }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ printf "%x" .RandaoReveal }}"></i></div>
           </div>
           <div class="row border-bottom p-3 mx-0">
@@ -141,7 +141,7 @@
             <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Received Eth Block headers and Deposit data">Eth Data:</span></div>
             <div class="col-md-10">
               <div class="row p-1">
-                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Hash of the received Eth Block">Block Hash:</span></div>
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Hash of the voted on Eth Block">Block Hash:</span></div>
                 <div class="col-md-10 text-monospace text-break">{{ formatEth1BlockHash .Eth1dataBlockhash }}</div>
               </div>
               <div class="row p-1">
