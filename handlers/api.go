@@ -517,7 +517,6 @@ func ApiSlotAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 
 	slot, err := strconv.ParseInt(vars["slot"], 10, 64)
 	if err != nil {
-		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "invalid block slot provided")
 		return
 	}
@@ -552,16 +551,14 @@ func ApiSlotDeposits(w http.ResponseWriter, r *http.Request) {
 	limitQuery := q.Get("limit")
 	offsetQuery := q.Get("offset")
 
-	limit, err := strconv.ParseInt(limitQuery, 10, 64)
-	if err != nil {
-		logger.WithError(err).Error("could not retrieve db results")
-		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
-		return
-	}
-
 	offset, err := strconv.ParseInt(offsetQuery, 10, 64)
 	if err != nil {
 		offset = 0
+	}
+
+	limit, err := strconv.ParseInt(limitQuery, 10, 64)
+	if err != nil {
+		limit = 100 + offset
 	}
 
 	if offset < 0 {
@@ -1174,6 +1171,8 @@ type ApiValidatorResponse struct {
 // @Tags Validator
 // @Produce  json
 // @Param  index path string true "Validator index"
+// @Param  end_day query string false "End day (default: latest day)"
+// @Param  start_day query string false "Start day (default: 0)"
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorDailyStatsResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/stats/{index} [get]
@@ -1216,7 +1215,11 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	index := vars["index"]
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "invalid validator index")
+		return
+	}
 
 	rows, err := db.ReaderDb.Query(`
 		SELECT 
