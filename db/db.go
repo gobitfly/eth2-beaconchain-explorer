@@ -2496,8 +2496,8 @@ func GetBLSChangeCount() (uint64, error) {
 	err := ReaderDb.Get(&total, `
 	SELECT 
 		COALESCE(count(*), 0) as count
-	FROM blocks_bls_change
-	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'`)
+	FROM blocks_bls_change bls
+	INNER JOIN blocks b ON b.blockroot = bls.block_root AND b.status = '1'`)
 	return total, err
 }
 
