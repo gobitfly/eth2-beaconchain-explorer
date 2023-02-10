@@ -237,9 +237,13 @@ func fixUtf(r rune) rune {
 }
 
 func SyncPeriodOfEpoch(epoch uint64) uint64 {
-	if epoch < Config.Chain.Config.AltairForkEpoch {
+	altairForkEpoch := Config.Chain.Config.AltairForkEpoch
+	logger.Infof("[SyncPeriodOfEpoch] altairForkEpoch is %v", altairForkEpoch)
+	if epoch <= Config.Chain.Config.AltairForkEpoch {
 		return 0
 	}
+	epochsPerSyncCommitteePeriod := Config.Chain.Config.EpochsPerSyncCommitteePeriod
+	logger.Infof("[SyncPeriodOfEpoch] epochsPerSyncCommitteePeriod is %v", epochsPerSyncCommitteePeriod)
 	return epoch / Config.Chain.Config.EpochsPerSyncCommitteePeriod
 }
 

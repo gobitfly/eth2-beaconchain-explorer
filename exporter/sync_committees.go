@@ -3,7 +3,6 @@ package exporter
 import (
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
-	"eth2-exporter/services"
 	"eth2-exporter/utils"
 	"fmt"
 	"strconv"
@@ -34,7 +33,8 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 	for _, p := range dbPeriods {
 		dbPeriodsMap[p] = true
 	}
-	currEpoch := services.LatestFinalizedEpoch() - 1
+	currEpoch := utils.TimeToEpoch(time.Now())
+	logger.Infof("[exportSyncCommittees] currEpoch is %v", currEpoch)
 	lastPeriod := utils.SyncPeriodOfEpoch(uint64(currEpoch)) + 1 // we can look into the future
 	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.Config.AltairForkEpoch)
 	for p := firstPeriod; p <= lastPeriod; p++ {
