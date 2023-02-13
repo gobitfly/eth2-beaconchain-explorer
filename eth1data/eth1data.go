@@ -239,7 +239,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		}
 	}
 
-	// staking deposit information
+	// staking deposit information (only add complete events if any)
 	for _, v := range txPageData.Events {
 		if v.Address == common.HexToAddress(utils.Config.Chain.Config.DepositContractAddress) && strings.HasPrefix(v.Name, "DepositEvent") {
 			var d types.DepositContractInteraction
