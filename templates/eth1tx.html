@@ -119,7 +119,11 @@
                       <div class="col-md-auto">
                         <div class="d-flex flex-wrap">
                           {{ if .TargetIsContract }}
-                            <div class="mr-2 flex-shrink-1"><span class="badge badge-secondary align-middle text-white">Contract</span></div>
+                            {{ if .DepositContractInteractions }}
+                              <div class="mr-2 flex-shrink-1"><span class="badge badge-primary align-middle text-white">Deposit Contract</span></div>
+                            {{ else }}
+                              <div class="mr-2 flex-shrink-1"><span class="badge badge-secondary align-middle text-white">Contract</span></div>
+                            {{ end }}
                           {{ end }}
                           {{ if ne .ToName "" }}
                             <div class="flex-shrink-1"><span class="badge badge-dark align-middle text-white">Name: {{ .ToName }}</span></div>
@@ -160,6 +164,26 @@
                           <span>For</span>
                           <span>{{ .Amount }}</span>
                           <span>{{ .Token }}</span>
+                        </li>
+                      {{ end }}
+                    </ul>
+                  </div>
+                </div>
+              {{ end }}
+              {{ if .DepositContractInteractions }}
+                <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
+                  <div class="col-md-3">Beaconchain Deposits:</div>
+                  <div class="col-md-9">
+                    <ul class="fa-ul mb-0 mt-2">
+                      {{ range $i, $deposit := .DepositContractInteractions }}
+                        <li class="mb-1">
+                          <i class="fa-li fas fa-long-arrow-alt-right"></i>
+                          <span>Deposit of</span>
+                          <span>{{ formatBytesAmount $deposit.Amount "Ether" 8 }}</span>
+                          <span>to Validator</span>
+                          <span>{{ formatPublicKey $deposit.ValidatorPubkey }}</span>
+                          <span>with withdrawal credentials</span>
+                          <span>{{ formatWithdawalCredentials $deposit.WithdrawalCreds true }}</span>
                         </li>
                       {{ end }}
                     </ul>

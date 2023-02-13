@@ -1569,6 +1569,13 @@ type Transfer struct {
 	Amount template.HTML
 	Token  template.HTML
 }
+
+type DepositContractInteraction struct {
+	ValidatorPubkey []byte
+	WithdrawalCreds []byte
+	Amount          []byte
+}
+
 type Eth1TxData struct {
 	From         common.Address
 	To           *common.Address
@@ -1589,22 +1596,23 @@ type Eth1TxData struct {
 		Finalized     bool    `db:"finalized"`
 		Participation float64 `db:"globalparticipationrate"`
 	}
-	TypeFormatted      string
-	Type               uint8
-	Nonce              uint64
-	TxnPosition        uint
-	Hash               common.Hash
-	Value              []byte
-	Receipt            *geth_types.Receipt
-	ErrorMsg           string
-	BlockNumber        int64
-	Timestamp          uint64
-	IsPending          bool
-	TargetIsContract   bool
-	IsContractCreation bool
-	CallData           string
-	Events             []*Eth1EventData
-	Transfers          []*Transfer
+	TypeFormatted               string
+	Type                        uint8
+	Nonce                       uint64
+	TxnPosition                 uint
+	Hash                        common.Hash
+	Value                       []byte
+	Receipt                     *geth_types.Receipt
+	ErrorMsg                    string
+	BlockNumber                 int64
+	Timestamp                   uint64
+	IsPending                   bool
+	TargetIsContract            bool
+	IsContractCreation          bool
+	CallData                    string
+	Events                      []*Eth1EventData
+	Transfers                   []*Transfer
+	DepositContractInteractions []DepositContractInteraction
 }
 
 type Eth1EventData struct {
