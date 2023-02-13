@@ -1036,7 +1036,7 @@ func (lc *LighthouseClient) get(url string) ([]byte, error) {
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, errNotFound
 		}
-		return nil, fmt.Errorf("error-response: %s", data)
+		return nil, fmt.Errorf("url: %v, error-response: %s", url, data)
 	}
 
 	return data, err
