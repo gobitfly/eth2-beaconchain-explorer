@@ -511,15 +511,18 @@ func FormatWithdawalCredentials(hash []byte, addCopyButton bool) template.HTML {
 		return "INVALID CREDENTIALS"
 	}
 
+	var text template.HTML
 	if hash[0] == 0x01 {
-		text := fmt.Sprintf("<a href=\"/address/0x%x\">%s</a>", hash[12:], formatWithdrawalHash(hash))
-		if addCopyButton {
-			text += fmt.Sprintf("<i class=\"fa fa-copy text-muted p-1\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=\"%#x\"></i>", hash)
-		}
-		return template.HTML(text)
+		text = template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\">%s</a>", hash[12:], formatWithdrawalHash(hash)))
 	} else {
-		return formatWithdrawalHash(hash)
+		text = formatWithdrawalHash(hash)
 	}
+
+	if addCopyButton {
+		text += template.HTML(fmt.Sprintf("<i class=\"fa fa-copy text-muted p-1\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=\"%#x\"></i>", hash))
+	}
+
+	return text
 }
 
 func FormatName(name string, trunc_opt ...bool) template.HTML {
