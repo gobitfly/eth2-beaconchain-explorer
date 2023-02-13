@@ -174,13 +174,19 @@
                 <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
                   <div class="col-md-3">Beaconchain Deposits:</div>
                   <div class="col-md-9">
-                    {{ range $i, $deposit := .DepositContractInteractions }}
-                      {{ if gt $i 0 }}
-                        <div class="row border-bottom p-0 mx-0"></div>
+                    <ul class="fa-ul mb-0 mt-2">
+                      {{ range $i, $deposit := .DepositContractInteractions }}
+                        <li class="mb-1">
+                          <i class="fa-li fas fa-long-arrow-alt-right"></i>
+                          <span>Deposit of</span>
+                          <span>{{ formatBytesAmount $deposit.Amount "Ether" 8 }}</span>
+                          <span>to Validator</span>
+                          <span>{{ formatPublicKey $deposit.ValidatorPubkey }}</span>
+                          <span>with withdrawal credentials</span>
+                          <span>{{ formatWithdawalCredentials $deposit.WithdrawalCreds true }}</span>
+                        </li>
                       {{ end }}
-                      Deposit of {{ formatBytesAmount $deposit.Amount "Ether" 8 }} to Validator {{ formatPublicKey $deposit.ValidatorPubkey }} with withdrawal credentials
-                      {{ formatWithdawalCredentials $deposit.WithdrawalCreds true }}
-                    {{ end }}
+                    </ul>
                   </div>
                 </div>
               {{ end }}
