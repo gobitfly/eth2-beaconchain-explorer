@@ -916,8 +916,8 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 
 	// transform map to slice; this will be used to query sync_committees_count_per_validator
 	periodSlice := make([]uint64, 0, len(uniquePeriods))
-	for ts := range uniquePeriods {
-		periodSlice = append(periodSlice, ts)
+	for period := range uniquePeriods {
+		periodSlice = append(periodSlice, period)
 	}
 
 	// get aggregated count for all relevant committees from sync_committees_count_per_validator
