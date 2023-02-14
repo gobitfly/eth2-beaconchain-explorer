@@ -245,14 +245,14 @@
       <h1 class="h4 mb-1 mb-md-0 header-token text-truncate">
         <div class="my-md-3 font-weight-bold">
           <span class="d-flex">
-            <span class="mr-1 d-flex align-items-center">
+            <span class="mr-1 d-flex align-items-center" title={{ .Data.Metadata.Symbol | formatTokenSymbolTitle }}>
               {{ if .Data.Metadata.Logo }}
                 <img class="mr-1" style="height: 1.5rem;" src="data:image/png;base64, {{ toBase64 .Data.Metadata.Logo }}" />
               {{ else }}
                 <i class="fas fa-coins mr-1"></i>
               {{ end }}
               Token
-              {{ if .Data.Metadata.Symbol }}{{ .Data.Metadata.Symbol }}{{ end }}
+              {{ with .Data.Metadata.Symbol | formatTokenSymbol }}{{ . }}{{ end }}
             </span>
             <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
             <span class="d-flex align-items-center"><i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ .Data.Token }}"></i></span>

@@ -40,6 +40,7 @@ import (
 	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/lib/pq"
+	"github.com/mvdan/xurls"
 	"github.com/sirupsen/logrus"
 	"github.com/skip2/go-qrcode"
 )
@@ -207,6 +208,9 @@ func GetTemplateFuncs() template.FuncMap {
 		},
 		"formatEthstoreComparison": FormatEthstoreComparison,
 		"formatPoolPerformance":    FormatPoolPerformance,
+		"formatTokenSymbolTitle":   FormatTokenSymbolTitle,
+		"formatTokenSymbol":        FormatTokenSymbol,
+		"formatTokenSymbolHTML":    FormatTokenSymbolHTML,
 	}
 }
 
@@ -918,6 +922,34 @@ func FormatEthstoreComparison(pool string, val float64) template.HTML {
 
 func FormatPoolPerformance(val float64) template.HTML {
 	return template.HTML(fmt.Sprintf(`<span data-toggle="tooltip" title=%f%%>%s%%</span>`, val, fmt.Sprintf("%.2f", val)))
+}
+
+func FormatTokenSymbolTitle(symbol string) string {
+	urls := xurls.Relaxed.FindAllString(symbol, -1)
+
+	if len(urls) > 0 {
+		return "The token symbol has been hidden because it might be a scam"
+	}
+	return ""
+}
+
+func FormatTokenSymbol(symbol string) string {
+	urls := xurls.Relaxed.FindAllString(symbol, -1)
+	for _, url := range urls {
+		symbol = strings.ReplaceAll(symbol, url, "[hidden-url]")
+	}
+
+	return symbol
+}
+
+func FormatTokenSymbolHTML(tmpl template.HTML) template.HTML {
+	tmplString := (string(tmpl))
+	symbolTitle := FormatTokenSymbolTitle(tmplString)
+
+	tmplString = FormatTokenSymbol(tmplString)
+	tmpl = template.HTML(strings.ReplaceAll(tmplString, `title=""`, fmt.Sprintf(`title="%s"`, symbolTitle)))
+
+	return tmpl
 }
 
 func ReverseSlice[S ~[]E, E any](s S) {

@@ -163,7 +163,7 @@
                           <span>{{ .To }}</span>
                           <span>For</span>
                           <span>{{ .Amount }}</span>
-                          <span>{{ .Token }}</span>
+                          <span>{{ .Token | formatTokenSymbolHTML }}</span>
                         </li>
                       {{ end }}
                     </ul>
