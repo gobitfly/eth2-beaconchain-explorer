@@ -1612,7 +1612,7 @@ func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block, cache *freecach
 // TransformWithdrawals accepts an eth1 block and creates bigtable mutations.
 // It transforms the withdrawals contained within a block, extracts the necessary information to create a view and writes that information to bigtable
 // It writes uncles to table data:
-// Row:    <chainID>:W:<reversePaddedNumber>:<withdrawalIndex>
+// Row:    <chainID>:W:<reversePaddedNumber>:<reversedWithdrawalIndex>
 // Family: f
 // Column: data
 // Cell:   Proto<Eth1WithdrawalIndexed>
@@ -1629,11 +1629,12 @@ func (bigtable *Bigtable) TransformWithdrawals(block *types.Eth1Block, cache *fr
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
 
-	for i, withdrawal := range block.Withdrawals {
-		if i > 16 {
-			return nil, nil, fmt.Errorf("unexpected number of withdrawals in block expected at most 16 but got: %v", i)
-		}
-		iReversed := reversePaddedIndex(i, 10)
+	if len(block.Withdrawals) > int(utils.Config.Chain.Config.MaxWithdrawalsPerPayload) {
+		return nil, nil, fmt.Errorf("unexpected number of withdrawals in block expected at most %v but got: %v", utils.Config.Chain.Config.MaxWithdrawalsPerPayload, len(block.Withdrawals))
+	}
+
+	for _, withdrawal := range block.Withdrawals {
+		iReversed := reversePaddedIndex(int(withdrawal.Index), 10)
 
 		withdrawalIndexed := types.Eth1WithdrawalIndexed{
 			BlockNumber:    block.Number,
