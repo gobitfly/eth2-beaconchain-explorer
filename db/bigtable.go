@@ -993,13 +993,13 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 	res := make(map[uint64]*types.ValidatorSyncDutiesStatistic)
 
 	for validator, duties := range data {
-		for _, duty := range duties {
-			if res[validator] == nil {
-				res[validator] = &types.ValidatorSyncDutiesStatistic{
-					Index: validator,
-				}
+		if res[validator] == nil && len(duties) > 0 {
+			res[validator] = &types.ValidatorSyncDutiesStatistic{
+				Index: validator,
 			}
+		}
 
+		for _, duty := range duties {
 			if duty.Status == 0 {
 				res[validator].MissedSync++
 			} else {

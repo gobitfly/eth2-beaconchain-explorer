@@ -108,6 +108,13 @@ create table sync_committees
     primary key (period, validatorindex, committeeindex)
 );
 
+drop table if exists sync_committees_count_per_validator;
+create table sync_committees_count_per_validator (
+	period int not null unique,
+	count_so_far float8 not null,
+    primary key (period)
+);
+
 drop table if exists validator_balances_recent;
 create table validator_balances_recent
 (
