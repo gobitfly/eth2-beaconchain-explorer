@@ -245,7 +245,7 @@
       <h1 class="h4 mb-1 mb-md-0 header-token text-truncate">
         <div class="my-md-3 font-weight-bold">
           <span class="d-flex">
-            <span class="mr-1 d-flex align-items-center" title={{ .Data.Metadata.Symbol | formatTokenSymbolTitle }}>
+            <span class="mr-1 d-flex align-items-center" title="{{ .Data.Metadata.Symbol | formatTokenSymbolTitle }}">
               {{ if .Data.Metadata.Logo }}
                 <img class="mr-1" style="height: 1.5rem;" src="data:image/png;base64, {{ toBase64 .Data.Metadata.Logo }}" />
               {{ else }}
