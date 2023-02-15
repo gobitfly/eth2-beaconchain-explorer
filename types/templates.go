@@ -1862,6 +1862,8 @@ type BLSChange struct {
 type WithdrawalsPageData struct {
 	Stats           *Stats
 	WithdrawalChart *ChartsPageDataChart
+	Withdrawals     *DataTableResponse
+	BlsChanges      *DataTableResponse
 }
 
 type WithdrawalStats struct {

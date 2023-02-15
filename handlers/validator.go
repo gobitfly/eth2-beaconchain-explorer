@@ -394,7 +394,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
-		if timeToWithdrawal.After(utils.EpochToTime(services.LatestEpoch())) {
+		// it normally takes to epochs to finalize
+		if timeToWithdrawal.After(utils.EpochToTime(services.LatestEpoch() + (services.LatestEpoch() - services.LatestFinalizedEpoch()))) {
 			tableData := make([][]interface{}, 0, 1)
 			tableData = append(tableData, []interface{}{
 				template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
