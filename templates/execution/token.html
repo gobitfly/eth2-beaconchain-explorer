@@ -292,9 +292,12 @@
                     <span>Symbol</span>
                   </div>
                   <div class="overview-col">
-                    <span class="d-flex align-items-center">
-                      {{ if .Data.Metadata.Logo }}
-                        <img class="mr-1" style="height: 1rem;" src="data:image/png;base64, {{ toBase64 .Data.Metadata.Logo }}" /> {{ if .Data.Metadata.Symbol }}{{ .Data.Metadata.Symbol }}{{ end }}
+                    <span class="d-flex align-items-center" title="{{ .Data.Metadata.Symbol | formatTokenSymbolTitle }}">
+                      {{ with .Data.Metadata.Logo }}
+                        <img class="mr-1" style="height: 1rem;" src="data:image/png;base64 , {{ toBase64 . }}" />
+                      {{ end }}
+                      {{ with .Data.Metadata.Symbol | formatTokenSymbol }}
+                        {{ . }}
                       {{ end }}
                     </span>
                   </div>

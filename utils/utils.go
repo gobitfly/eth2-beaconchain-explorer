@@ -928,17 +928,17 @@ func FormatTokenSymbolTitle(symbol string) string {
 	urls := xurls.Relaxed.FindAllString(symbol, -1)
 
 	if len(urls) > 0 {
-		return "The token symbol has been hidden because it might be a scam"
+		return "The token symbol has been hidden as it contains a URL which might be a scam"
 	}
 	return ""
 }
 
 func FormatTokenSymbol(symbol string) string {
 	urls := xurls.Relaxed.FindAllString(symbol, -1)
-	for _, url := range urls {
-		symbol = strings.ReplaceAll(symbol, url, "[hidden-url]")
-	}
 
+	if len(urls) > 0 {
+		return "[hidden-symbol]"
+	}
 	return symbol
 }
 
