@@ -449,7 +449,7 @@ func GetDataTableState(user *types.User, session *sessions.Session, tableKey str
 	if user.Authenticated {
 		state, err := db.GetDataTablesState(user.UserID, tableKey)
 		if err != nil {
-			logger.Errorf("error getting data table state from db: %w", err)
+			logger.Errorf("error getting data table state from db: %v", err)
 			return state
 		}
 		return state
