@@ -14,6 +14,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net/http"
 	"sort"
 	"strconv"
@@ -42,6 +43,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		"validator/heading.html",
 		"validator/tables.html",
 		"validator/modals.html",
+		"modals.html",
 		"validator/overview.html",
 		"validator/charts.html",
 		"validator/countdown.html",
@@ -62,11 +64,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var index uint64
 	var err error
 
-	epoch := services.LatestEpoch()
+	// epoch := services.LatestEpoch()
 
 	validatorPageData := types.ValidatorPageData{}
 
 	stats := services.GetLatestStats()
+	// stats, _ := services.CalculateStats()
 	churnRate := stats.ValidatorChurnLimit
 	if churnRate == nil {
 		churnRate = new(uint64)
@@ -245,6 +248,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.activationepoch,
 			validators.exitepoch,
 			validators.lastattestationslot,
+			validators.withdrawalcredentials,
 			COALESCE(validator_names.name, '') AS name,
 			COALESCE(validator_pool.pool, '') AS pool,
 			COALESCE(validator_performance.rank7d, 0) AS rank7d,
@@ -270,62 +274,26 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, epoch, 1)
+	earnings, balances, err := GetValidatorEarnings([]uint64{index}, GetCurrency(r))
 	if err != nil {
-		logger.Errorf("error getting validator balance data for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error retrieving validator earnings: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	for balanceIndex, balance := range balances {
-		if len(balance) == 0 {
-			continue
-		}
-		if validatorPageData.ValidatorIndex == balanceIndex {
-			validatorPageData.CurrentBalance = balance[0].Balance
-			validatorPageData.EffectiveBalance = balance[0].EffectiveBalance
-		}
-	}
-
-	epoch7d := int64(epoch) - int64(utils.EpochsPerDay())*7
-	if epoch7d < 0 {
-		epoch7d = 0
-	}
-	balances7d, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, uint64(epoch7d), 1)
-	if err != nil {
-		logger.Errorf("error getting validator balance data for %v route: %v", r.URL.String(), err)
+	validatorPageData.Income1d = earnings.LastDay
+	validatorPageData.Income7d = earnings.LastWeek
+	validatorPageData.Income31d = earnings.LastMonth
+	validatorPageData.Apr = earnings.APR
+	vbalance, ok := balances[validatorPageData.ValidatorIndex]
+	if !ok {
+		logger.Errorf("error retrieving validator balances: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	for balanceIndex, balance := range balances7d {
-		if len(balance) == 0 {
-			continue
-		}
-		if validatorPageData.ValidatorIndex == balanceIndex {
-			validatorPageData.Balance7d = balance[0].Balance
-		}
-	}
-
-	epoch31d := int64(epoch) - int64(utils.EpochsPerDay())*31
-	if epoch31d < 0 {
-		epoch31d = 0
-	}
-	balances31d, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, uint64(epoch31d), 1)
-	if err != nil {
-		logger.Errorf("error getting validator balance data for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	for balanceIndex, balance := range balances31d {
-		if len(balance) == 0 {
-			continue
-		}
-		if validatorPageData.ValidatorIndex == balanceIndex {
-			validatorPageData.Balance31d = balance[0].Balance
-		}
-	}
+	validatorPageData.CurrentBalance = vbalance.Balance
+	validatorPageData.EffectiveBalance = vbalance.EffectiveBalance
 
 	if validatorPageData.Pool != "" {
 		if validatorPageData.Name == "" {
@@ -359,6 +327,23 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData.Watchlist = watchlist
 
+	if data.User.Authenticated {
+		events := make([]types.EventNameCheckbox, 0)
+		for _, ev := range types.AddWatchlistEvents {
+			events = append(events, types.EventNameCheckbox{
+				EventLabel: ev.Desc,
+				EventName:  ev.Event,
+				Active:     false,
+				Warning:    ev.Warning,
+				Info:       ev.Info,
+			})
+		}
+		validatorPageData.AddValidatorWatchlistModal = &types.AddValidatorWatchlistModal{
+			Events:         events,
+			ValidatorIndex: validatorPageData.Index,
+		}
+	}
+
 	deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
 	if err != nil {
 		logger.Errorf("error getting validator-deposits from db: %v", err)
@@ -375,7 +360,55 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// get validator withdrawals
+	withdrawalsCount, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
+	if err != nil {
+		logger.Errorf("error getting validator withdrawals count from db: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	validatorPageData.WithdrawalCount = withdrawalsCount
+
 	validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
+	blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
+	if err != nil {
+		logger.Errorf("error getting validator bls change from db: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	validatorPageData.BLSChange = blsChange
+
+	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x00}) && blsChange != nil {
+		validatorPageData.IsWithdrawableAddress = true
+	}
+
+	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
+		validatorPageData.IsWithdrawableAddress = true
+	}
+
+	// only calculate the expected next withdrawal if the validator is eligible
+	if stats != nil && stats.LatestValidatorWithdrawalIndex != nil && stats.TotalValidatorCount != nil && validatorPageData.IsWithdrawableAddress && (validatorPageData.CurrentBalance > 0 && validatorPageData.WithdrawableEpoch <= validatorPageData.Epoch || validatorPageData.EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.Config.MaxEffectiveBalance) {
+		distance, err := db.GetWithdrawableCountFromCursor(validatorPageData.Epoch, validatorPageData.Index, *stats.LatestValidatorWithdrawalIndex)
+		if err != nil {
+			logger.WithError(err).Error("error getting withdrawable validator count from cursor")
+		}
+
+		timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
+
+		tableData := make([][]interface{}, 0, 1)
+		tableData = append(tableData, []interface{}{
+			template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
+			template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
+			template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
+			template.HTML(fmt.Sprintf(`<a href="/address/0x%x"><span class="text-muted">%s</span></a>`, utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials), utils.FormatHash(validatorPageData.WithdrawCredentials))),
+			template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(validatorPageData.CurrentBalance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
+		})
+
+		validatorPageData.NextWithdrawalRow = tableData
+	}
+	// else {
+	// logger.Infof("IS NOT WITHDRAWABLE credentials: %x IsWithdrawableAddress: %v CurrentBalance: %v WithdrawableEpoch: %v Epoch: %v EffectiveBalance: %v CurrentBalance: %v MaxEff: %v", validatorPageData.WithdrawCredentials, validatorPageData.IsWithdrawableAddress, validatorPageData.CurrentBalance, validatorPageData.WithdrawableEpoch, validatorPageData.Epoch, validatorPageData.EffectiveBalance, utils.Config.Chain.Config.MaxEffectiveBalance, validatorPageData.CurrentBalance, utils.Config.Chain.Config.MaxEffectiveBalance)
+	// }
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
@@ -434,9 +467,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	} else {
 		validatorPageData.UnmissedBlocksPercentage = 1.0
 	}
-
-	// logger.Infof("propoals data retrieved, elapsed: %v", time.Since(start))
-	// start = time.Now()
 
 	// Every validator is scheduled to issue an attestation once per epoch
 	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
@@ -512,7 +542,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.ExecutionIncomeHistoryData, err = getExecutionChartData([]uint64{index}, currency)
 		return err
 	})
-
 	err = g.Wait()
 	if err != nil {
 		logger.Errorf("failed to generate income history chart data for validator view: %v", err)
@@ -522,18 +551,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	// logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
-
-	earnings, err := GetValidatorEarnings([]uint64{index}, GetCurrency(r))
-	if err != nil {
-		logger.Errorf("error retrieving validator earnings: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	validatorPageData.Income1d = earnings.LastDay
-	validatorPageData.Income7d = earnings.LastWeek
-	validatorPageData.Income31d = earnings.LastMonth
-	validatorPageData.Apr = earnings.APR
 
 	// logger.Infof("income data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
@@ -698,6 +715,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logger.Infof("got validator page data")
 	data.Data = validatorPageData
 
 	if utils.IsApiRequest(r) {
@@ -719,6 +737,10 @@ func hasMultipleWithdrawalCredentials(deposits *types.ValidatorDeposits) bool {
 	}
 
 	credential := make([]byte, 0)
+
+	if deposits == nil {
+		return false
+	}
 
 	// check Eth1Deposits
 	for _, deposit := range deposits.Eth1Deposits {
@@ -885,7 +907,8 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 			blocks.blockroot, 
 			blocks.parentroot, 
 			blocks.attestationscount, 
-			blocks.depositscount, 
+			blocks.depositscount,
+			blocks.withdrawalcount, 
 			blocks.voluntaryexitscount, 
 			blocks.proposerslashingscount, 
 			blocks.attesterslashingscount, 
@@ -1018,6 +1041,76 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		Draw:            draw,
 		RecordsTotal:    totalCount,
 		RecordsFiltered: totalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// ValidatorWithdrawals returns a validators withdrawals in json
+func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	q := r.URL.Query()
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	length := uint64(10)
+
+	withdrawalCount, err := db.GetValidatorWithdrawalsCount(index)
+	if err != nil {
+		logger.Errorf("error retrieving validator withdrawals count: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	withdrawals, err := db.GetValidatorWithdrawals(index, length, start)
+	if err != nil {
+		logger.Errorf("error retrieving validator withdrawals: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	tableData := make([][]interface{}, 0, len(withdrawals))
+
+	for _, w := range withdrawals {
+		tableData = append(tableData, []interface{}{
+			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatTimeFromNow(utils.SlotToTime(w.Slot)))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+		})
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    withdrawalCount,
+		RecordsFiltered: withdrawalCount,
 		Data:            tableData,
 	}
 
@@ -1372,6 +1465,17 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
+	var withdrawals []*types.WithdrawalsByEpoch
+	g.Go(func() error {
+		var err error
+		withdrawals, err = db.GetValidatorsWithdrawalsByEpoch([]uint64{index}, 10, uint64(start))
+		if err != nil {
+			logger.Errorf("error retrieving validator withdrawals by epoch: %v", err)
+			return err
+		}
+		return nil
+	})
+
 	var incomeDetails map[uint64]map[uint64]*itypes.ValidatorEpochIncome
 	g.Go(func() error {
 		var err error
@@ -1411,6 +1515,16 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	withdrawalMap := make(map[uint64]*types.ValidatorWithdrawal)
+	for _, withdrawals := range withdrawals {
+		withdrawalMap[withdrawals.Epoch] = &types.ValidatorWithdrawal{
+			Index:  withdrawals.ValidatorIndex,
+			Epoch:  withdrawals.Epoch,
+			Amount: withdrawals.Amount,
+			Slot:   withdrawals.Epoch * 32,
+		}
+	}
+
 	proposalMap := make(map[uint64]*types.ValidatorProposal)
 	for _, proposal := range proposalHistory[index] {
 		proposalMap[proposal.Slot/32] = &types.ValidatorProposal{
@@ -1437,12 +1551,19 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		balanceChange := int64(balanceHistory[index][i].Balance) - int64(balanceHistory[index][i+1].Balance)
 
 		h := &types.ValidatorHistory{
-			Epoch:          balanceHistory[index][i].Epoch,
-			BalanceChange:  sql.NullInt64{Int64: balanceChange, Valid: true},
-			AttesterSlot:   sql.NullInt64{Int64: 0, Valid: false},
-			InclusionSlot:  sql.NullInt64{Int64: 0, Valid: false},
-			ProposalStatus: sql.NullInt64{Int64: 0, Valid: false},
-			ProposalSlot:   sql.NullInt64{Int64: 0, Valid: false},
+			Epoch:            balanceHistory[index][i].Epoch,
+			BalanceChange:    sql.NullInt64{Int64: balanceChange, Valid: true},
+			AttesterSlot:     sql.NullInt64{Int64: 0, Valid: false},
+			InclusionSlot:    sql.NullInt64{Int64: 0, Valid: false},
+			ProposalStatus:   sql.NullInt64{Int64: 0, Valid: false},
+			ProposalSlot:     sql.NullInt64{Int64: 0, Valid: false},
+			WithdrawalStatus: sql.NullInt64{Int64: 0, Valid: false},
+			WithdrawalSlot:   sql.NullInt64{Int64: 0, Valid: false},
+		}
+
+		if withdrawalMap[balanceHistory[index][i].Epoch] != nil {
+			h.WithdrawalSlot = sql.NullInt64{Int64: int64(withdrawalMap[balanceHistory[index][i].Epoch].Slot), Valid: true}
+			h.WithdrawalStatus = sql.NullInt64{Int64: 1, Valid: true}
 		}
 
 		if incomeDetails[index] != nil {
@@ -1484,7 +1605,12 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 		if b.ProposalSlot.Valid {
 			block := utils.FormatBlockStatusShort(uint64(b.ProposalStatus.Int64))
-			events += " & " + block
+			events += block
+		}
+
+		if b.WithdrawalSlot.Valid {
+			withdrawal := utils.FormatWithdrawalShort(uint64(b.WithdrawalSlot.Int64))
+			events += withdrawal
 		}
 
 		if b.BalanceChange.Valid {
@@ -1832,3 +1958,25 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// func ValidatorWithdrawalEstimation(w http.ResponseWriter, r *http.Request) {
+// 	w.Header().Set("Content-Type", "application/json")
+
+// 	vars := mux.Vars(r)
+// 	validatorIndex, err := strconv.ParseUint(vars["index"], 10, 64)
+// 	if err != nil {
+// 		logger.Errorf("error parsing validator index: %v", err)
+// 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	// q := r.URL.Query()
+
+// 	highestIndex, err := db.GetMostRecentWithdrawalIndex()
+// 	if err != nil {
+// 		logger.Errorf("error retrieving most recent withdrawal index: %v", err)
+// 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// }

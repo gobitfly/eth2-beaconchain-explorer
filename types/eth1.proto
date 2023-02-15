@@ -26,8 +26,15 @@ message Eth1Block {
     bytes base_fee = 18;
     repeated Eth1Block uncles = 20;
     repeated Eth1Transaction transactions = 21;
+    repeated Eth1Withdrawal withdrawals = 22;
 }
 
+message Eth1Withdrawal {
+    uint64 index = 1;
+    uint64 validator_index = 2;
+    bytes address = 3;
+    bytes amount = 4;
+}
 
 message Eth1Transaction {
     uint32 type = 1;

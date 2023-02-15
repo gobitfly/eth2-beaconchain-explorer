@@ -166,6 +166,57 @@ func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 	}, nil
 }
 
+// GetChainHead gets the chain head from Lighthouse
+func (lc *LighthouseClient) GetChainHeadFromHeaders() (*types.ChainHead, error) {
+	headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers", lc.endpoint))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving chain head: %v", err)
+	}
+
+	var parsedHeader StandardBeaconHeadersResponse
+	err = json.Unmarshal(headResp, &parsedHeader)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing chain head: %v", err)
+	}
+
+	if len(parsedHeader.Data) == 0 {
+		return nil, fmt.Errorf("error no headers available")
+	}
+
+	currentHeader := parsedHeader.Data[len(parsedHeader.Data)-1]
+
+	id := currentHeader.Header.Message.StateRoot
+	if currentHeader.Header.Message.Slot == 0 {
+		id = "genesis"
+	}
+
+	finalityResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/finality_checkpoints", lc.endpoint, id))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
+	}
+
+	var parsedFinality StandardFinalityCheckpointsResponse
+	err = json.Unmarshal(finalityResp, &parsedFinality)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing finality checkpoints of head: %v", err)
+	}
+
+	return &types.ChainHead{
+		HeadSlot:                   uint64(currentHeader.Header.Message.Slot),
+		HeadEpoch:                  uint64(currentHeader.Header.Message.Slot) / utils.Config.Chain.Config.SlotsPerEpoch,
+		HeadBlockRoot:              utils.MustParseHex(currentHeader.Root),
+		FinalizedSlot:              uint64(parsedFinality.Data.Finalized.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
+		FinalizedEpoch:             uint64(parsedFinality.Data.Finalized.Epoch),
+		FinalizedBlockRoot:         utils.MustParseHex(parsedFinality.Data.Finalized.Root),
+		JustifiedSlot:              uint64(parsedFinality.Data.CurrentJustified.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
+		JustifiedEpoch:             uint64(parsedFinality.Data.CurrentJustified.Epoch),
+		JustifiedBlockRoot:         utils.MustParseHex(parsedFinality.Data.CurrentJustified.Root),
+		PreviousJustifiedSlot:      uint64(parsedFinality.Data.PreviousJustified.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
+		PreviousJustifiedEpoch:     uint64(parsedFinality.Data.PreviousJustified.Epoch),
+		PreviousJustifiedBlockRoot: utils.MustParseHex(parsedFinality.Data.PreviousJustified.Root),
+	}, nil
+}
+
 func (lc *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 	// pre-filter the status, to return much less validators, thus much faster!
 	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/head/validators?status=pending_queued,active_exiting,active_slashed", lc.endpoint))
@@ -300,19 +351,22 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool) (*types.EpochData, error) {
 	wg := &sync.WaitGroup{}
 	mux := &sync.Mutex{}
-	var err error
 
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
 	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validators", lc.endpoint, epoch*utils.Config.Chain.Config.SlotsPerEpoch))
-	if err != nil {
+	if err != nil && epoch == 0 {
+		validatorsResp, err = lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%v/validators", lc.endpoint, "genesis"))
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving validators for genesis: %v", err)
+		}
+	} else if err != nil {
 		return nil, fmt.Errorf("error retrieving validators for epoch %v: %v", epoch, err)
 	}
 
 	var parsedValidators StandardValidatorsResponse
 	err = json.Unmarshal(validatorsResp, &parsedValidators)
-
 	if err != nil {
 		return nil, fmt.Errorf("error parsing epoch validators: %v", err)
 	}
@@ -420,7 +474,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 	data.Blocks = make(map[uint64]map[string]*types.Block)
 
 	for slot := epoch * utils.Config.Chain.Config.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch-1; slot++ {
-		if slot == 0 || utils.SlotToTime(slot).After(time.Now()) { // Currently slot 0 returns all blocks, also skip asking for future blocks
+		if slot != 0 && utils.SlotToTime(slot).After(time.Now()) { // don't export slots that have not occured yet
 			continue
 		}
 		wg.Add(1)
@@ -511,7 +565,12 @@ func (lc *LighthouseClient) GetBalancesForEpoch(epoch int64) (map[uint64]uint64,
 	validatorBalances := make(map[uint64]uint64)
 
 	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validator_balances", lc.endpoint, epoch*int64(utils.Config.Chain.Config.SlotsPerEpoch)))
-	if err != nil {
+	if err != nil && epoch == 0 {
+		resp, err = lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/genesis/validator_balances", lc.endpoint))
+		if err != nil {
+			return validatorBalances, err
+		}
+	} else if err != nil {
 		return validatorBalances, err
 	}
 
@@ -562,22 +621,46 @@ func (lc *LighthouseClient) GetBlockByBlockroot(blockroot []byte) (*types.Block,
 
 // GetBlocksBySlot will get the blocks by slot from Lighthouse RPC api
 func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
+	var parsedHeaders *StandardBeaconHeaderResponse
+
 	resHeaders, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/%d", lc.endpoint, slot))
-	if err != nil {
+	if err != nil && slot == 0 {
+		headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers", lc.endpoint))
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving chain head: %v", err)
+		}
+
+		var parsedHeader StandardBeaconHeadersResponse
+		err = json.Unmarshal(headResp, &parsedHeader)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing chain head: %v", err)
+		}
+
+		if len(parsedHeader.Data) == 0 {
+			return nil, fmt.Errorf("error no headers available")
+		}
+
+		parsedHeaders = &StandardBeaconHeaderResponse{
+			Data: parsedHeader.Data[len(parsedHeader.Data)-1],
+		}
+
+	} else if err != nil {
 		if err == errNotFound {
 			// no block found
 			return []*types.Block{}, nil
 		}
 		return nil, fmt.Errorf("error retrieving headers at slot %v: %v", slot, err)
 	}
-	var parsedHeaders StandardBeaconHeaderResponse
-	err = json.Unmarshal(resHeaders, &parsedHeaders)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing header-response at slot %v: %v", slot, err)
+
+	if parsedHeaders == nil {
+		err = json.Unmarshal(resHeaders, &parsedHeaders)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing header-response at slot %v: %v", slot, err)
+		}
 	}
 
 	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blocks/%s", lc.endpoint, parsedHeaders.Data.Root))
-	if err != nil {
+	if err != nil && slot == 0 {
 		return nil, fmt.Errorf("error retrieving block data at slot %v: %v", slot, err)
 	}
 
@@ -588,7 +671,7 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		return nil, fmt.Errorf("error parsing block-response at slot %v: %v", slot, err)
 	}
 
-	block, err := lc.blockFromResponse(&parsedHeaders, &parsedResponse)
+	block, err := lc.blockFromResponse(parsedHeaders, &parsedResponse)
 	if err != nil {
 		return nil, err
 	}
@@ -614,11 +697,12 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 			DepositCount: uint64(parsedBlock.Message.Body.Eth1Data.DepositCount),
 			BlockHash:    utils.MustParseHex(parsedBlock.Message.Body.Eth1Data.BlockHash),
 		},
-		ProposerSlashings: make([]*types.ProposerSlashing, len(parsedBlock.Message.Body.ProposerSlashings)),
-		AttesterSlashings: make([]*types.AttesterSlashing, len(parsedBlock.Message.Body.AttesterSlashings)),
-		Attestations:      make([]*types.Attestation, len(parsedBlock.Message.Body.Attestations)),
-		Deposits:          make([]*types.Deposit, len(parsedBlock.Message.Body.Deposits)),
-		VoluntaryExits:    make([]*types.VoluntaryExit, len(parsedBlock.Message.Body.VoluntaryExits)),
+		ProposerSlashings:          make([]*types.ProposerSlashing, len(parsedBlock.Message.Body.ProposerSlashings)),
+		AttesterSlashings:          make([]*types.AttesterSlashing, len(parsedBlock.Message.Body.AttesterSlashings)),
+		Attestations:               make([]*types.Attestation, len(parsedBlock.Message.Body.Attestations)),
+		Deposits:                   make([]*types.Deposit, len(parsedBlock.Message.Body.Deposits)),
+		VoluntaryExits:             make([]*types.VoluntaryExit, len(parsedBlock.Message.Body.VoluntaryExits)),
+		SignedBLSToExecutionChange: make([]*types.SignedBLSToExecutionChange, len(parsedBlock.Message.Body.SignedBLSToExecutionChange)),
 	}
 
 	epochAssignments, err := lc.GetEpochAssignments(slot / utils.Config.Chain.Config.SlotsPerEpoch)
@@ -672,6 +756,16 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 			}
 			txs = append(txs, tx)
 		}
+		withdrawals := make([]*types.Withdrawals, 0, len(payload.Withdrawals))
+		for _, w := range payload.Withdrawals {
+			withdrawals = append(withdrawals, &types.Withdrawals{
+				Index:          uint64(w.Index),
+				ValidatorIndex: uint64(w.ValidatorIndex),
+				Address:        w.Address,
+				Amount:         uint64(w.Amount),
+			})
+		}
+
 		block.ExecutionPayload = &types.ExecutionPayload{
 			ParentHash:    payload.ParentHash,
 			FeeRecipient:  payload.FeeRecipient,
@@ -687,6 +781,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 			BaseFeePerGas: uint64(payload.BaseFeePerGas),
 			BlockHash:     payload.BlockHash,
 			Transactions:  txs,
+			Withdrawals:   withdrawals,
 		}
 	}
 
@@ -814,6 +909,17 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		}
 	}
 
+	for i, blsChange := range parsedBlock.Message.Body.SignedBLSToExecutionChange {
+		block.SignedBLSToExecutionChange[i] = &types.SignedBLSToExecutionChange{
+			Message: types.BLSToExecutionChange{
+				Validatorindex: uint64(blsChange.Message.ValidatorIndex),
+				BlsPubkey:      blsChange.Message.FromBlsPubkey,
+				Address:        blsChange.Message.ToExecutionAddress,
+			},
+			Signature: blsChange.Signature,
+		}
+	}
+
 	return block, nil
 }
 
@@ -930,7 +1036,7 @@ func (lc *LighthouseClient) get(url string) ([]byte, error) {
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, errNotFound
 		}
-		return nil, fmt.Errorf("error-response: %s", data)
+		return nil, fmt.Errorf("url: %v, error-response: %s", url, data)
 	}
 
 	return data, err
@@ -981,6 +1087,23 @@ func Uint64Unmarshal(v *uint64, b []byte) error {
 
 type StandardBeaconHeaderResponse struct {
 	Data struct {
+		Root      string `json:"root"`
+		Canonical bool   `json:"canonical"`
+		Header    struct {
+			Message struct {
+				Slot          uint64Str `json:"slot"`
+				ProposerIndex uint64Str `json:"proposer_index"`
+				ParentRoot    string    `json:"parent_root"`
+				StateRoot     string    `json:"state_root"`
+				BodyRoot      string    `json:"body_root"`
+			} `json:"message"`
+			Signature string `json:"signature"`
+		} `json:"header"`
+	} `json:"data"`
+}
+
+type StandardBeaconHeadersResponse struct {
+	Data []struct {
 		Root      string `json:"root"`
 		Canonical bool   `json:"canonical"`
 		Header    struct {
@@ -1183,6 +1306,24 @@ type ExecutionPayload struct {
 	BaseFeePerGas uint64Str     `json:"base_fee_per_gas"`
 	BlockHash     bytesHexStr   `json:"block_hash"`
 	Transactions  []bytesHexStr `json:"transactions"`
+	// present only after capella
+	Withdrawals []WithdrawalPayload `json:"withdrawals"`
+}
+
+type WithdrawalPayload struct {
+	Index          uint64Str   `json:"index"`
+	ValidatorIndex uint64Str   `json:"validator_index"`
+	Address        bytesHexStr `json:"address"`
+	Amount         uint64Str   `json:"amount"`
+}
+
+type SignedBLSToExecutionChange struct {
+	Message struct {
+		ValidatorIndex     uint64Str   `json:"validator_index"`
+		FromBlsPubkey      bytesHexStr `json:"from_bls_pubkey"`
+		ToExecutionAddress bytesHexStr `json:"to_execution_address"`
+	} `json:"message"`
+	Signature bytesHexStr `json:"signature"`
 }
 
 type AnySignedBlock struct {
@@ -1206,6 +1347,9 @@ type AnySignedBlock struct {
 
 			// not present in phase0/altair blocks
 			ExecutionPayload *ExecutionPayload `json:"execution_payload"`
+
+			// present only after capella
+			SignedBLSToExecutionChange []*SignedBLSToExecutionChange `json:"bls_to_execution_changes"`
 		} `json:"body"`
 	} `json:"message"`
 	Signature bytesHexStr `json:"signature"`

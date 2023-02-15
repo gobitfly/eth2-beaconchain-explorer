@@ -40,21 +40,21 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 }
 
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
-func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, error) {
+func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := int64(services.LatestEpoch())
 	lastDayEpoch := latestEpoch - int64(utils.EpochsPerDay())
 	lastWeekEpoch := latestEpoch - int64(utils.EpochsPerDay())*7
 	lastMonthEpoch := latestEpoch - int64(utils.EpochsPerDay())*31
 
-	if lastDayEpoch < 0 {
-		lastDayEpoch = 0
+	if lastDayEpoch <= 0 {
+		lastDayEpoch = 2
 	}
-	if lastWeekEpoch < 0 {
-		lastWeekEpoch = 0
+	if lastWeekEpoch <= 0 {
+		lastWeekEpoch = 2
 	}
-	if lastMonthEpoch < 0 {
-		lastMonthEpoch = 0
+	if lastMonthEpoch <= 0 {
+		lastMonthEpoch = 2
 	}
 
 	balances := []*types.Validator{}
@@ -67,7 +67,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		logger.Error(err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	balancesMap := make(map[uint64]*types.Validator, len(balances))
@@ -79,19 +79,20 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), 1)
 	if err != nil {
 		logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 	for balanceIndex, balance := range latestBalances {
 		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
 			continue
 		}
 		balancesMap[balanceIndex].Balance = balance[0].Balance
+		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
 	}
 
 	balances1d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastDayEpoch), 1)
 	if err != nil {
 		logger.Errorf("error getting validator Balance1d data in GetValidatorEarnings: %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 	for balanceIndex, balance := range balances1d {
 		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
@@ -106,7 +107,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	balances7d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastWeekEpoch), 1)
 	if err != nil {
 		logger.Errorf("error getting validator Balance7d data in GetValidatorEarnings: %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 	for balanceIndex, balance := range balances7d {
 		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
@@ -121,7 +122,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	balances31d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastMonthEpoch), 1)
 	if err != nil {
 		logger.Errorf("error getting validator Balance31d data in GetValidatorEarnings: %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 	for balanceIndex, balance := range balances31d {
 		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
@@ -139,9 +140,16 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		Publickey []byte
 	}{}
 
-	err = db.ReaderDb.Select(&deposits, "SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))", validatorsPQArray)
+	err = db.ReaderDb.Select(&deposits, `
+	SELECT 
+		block_slot / 32 AS epoch, 
+		amount, 
+		publickey 
+	FROM blocks_deposits d
+	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' 
+	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	depositsMap := make(map[string]map[int64]int64)
@@ -152,12 +160,40 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
 	}
 
+	withdrawals := []struct {
+		Epoch          uint64
+		Amount         uint64
+		ValidatorIndex uint64
+	}{}
+
+	err = db.ReaderDb.Select(&withdrawals, `
+	SELECT 
+		w.validatorindex,
+		w.block_slot / 32 AS epoch, 
+		sum(w.amount) as amount
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	WHERE validatorindex = ANY($1)
+	GROUP BY validatorindex, w.block_slot / 32
+	`, validatorsPQArray)
+	if err != nil {
+		return nil, nil, err
+	}
+	withdrawalsMap := make(map[uint64]map[uint64]uint64)
+	for _, w := range withdrawals {
+		if _, exists := withdrawalsMap[w.ValidatorIndex]; !exists {
+			withdrawalsMap[w.ValidatorIndex] = make(map[uint64]uint64)
+		}
+		withdrawalsMap[w.ValidatorIndex][w.Epoch] += w.Amount
+	}
+
 	var earningsTotal int64
 	var earningsLastDay int64
 	var earningsLastWeek int64
 	var earningsLastMonth int64
 	var apr float64
 	var totalDeposits int64
+	var totalWithdrawals uint64
 
 	for _, balance := range balancesMap {
 		if int64(balance.ActivationEpoch) >= latestEpoch {
@@ -177,6 +213,23 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			}
 			if epoch > lastMonthEpoch && epoch > int64(balance.ActivationEpoch) {
 				earningsLastMonth -= deposit
+			}
+		}
+
+		for epoch, withdrawal := range withdrawalsMap[balance.Index] {
+			totalWithdrawals += withdrawal
+
+			if epoch > balance.ActivationEpoch {
+				earningsTotal += int64(withdrawal)
+			}
+			if epoch > uint64(lastDayEpoch) && epoch > balance.ActivationEpoch {
+				earningsLastDay += int64(withdrawal)
+			}
+			if epoch > uint64(lastWeekEpoch) && epoch > balance.ActivationEpoch {
+				earningsLastWeek += int64(withdrawal)
+			}
+			if epoch > uint64(lastMonthEpoch) && epoch > balance.ActivationEpoch {
+				earningsLastMonth += int64(withdrawal)
 			}
 		}
 
@@ -212,12 +265,13 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		LastMonth:            earningsLastMonth,
 		APR:                  apr,
 		TotalDeposits:        totalDeposits,
+		TotalWithdrawals:     totalWithdrawals,
 		LastDayFormatted:     utils.FormatIncome(earningsLastDay, currency),
 		LastWeekFormatted:    utils.FormatIncome(earningsLastWeek, currency),
 		LastMonthFormatted:   utils.FormatIncome(earningsLastMonth, currency),
 		TotalFormatted:       utils.FormatIncome(earningsTotal, currency),
 		TotalChangeFormatted: utils.FormatIncome(earningsTotal+totalDeposits, currency),
-	}, nil
+	}, balancesMap, nil
 }
 
 // LatestState will return common information that about the current state of the eth2 chain

@@ -56,7 +56,6 @@ type EthClientServicesPageData struct {
 	LastUpdate          time.Time
 	Geth                EthClients
 	Nethermind          EthClients
-	OpenEthereum        EthClients
 	Besu                EthClients
 	Teku                EthClients
 	Prysm               EthClients
@@ -209,8 +208,6 @@ func updateEthClientNetShare() {
 		switch item.Client {
 		case "geth":
 			ethClients.Geth.NetworkShare = share
-		case "openethereum":
-			ethClients.OpenEthereum.NetworkShare = share
 		case "nethermind":
 			ethClients.Nethermind.NetworkShare = share
 		case "besu":
@@ -240,7 +237,6 @@ func updateEthClient() {
 	updateEthClientNetShare()
 	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", "Geth", curTime)
 	ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = prepareEthClientData("/NethermindEth/nethermind", "Nethermind", curTime)
-	ethClients.OpenEthereum.ClientReleaseVersion, ethClients.OpenEthereum.ClientReleaseDate = prepareEthClientData("/openethereum/openethereum", "OpenEthereum", curTime)
 	ethClients.Besu.ClientReleaseVersion, ethClients.Besu.ClientReleaseDate = prepareEthClientData("/hyperledger/besu", "Besu", curTime)
 	ethClients.Erigon.ClientReleaseVersion, ethClients.Erigon.ClientReleaseDate = prepareEthClientData("/ledgerwatch/erigon", "Erigon", curTime)
 
@@ -263,7 +259,7 @@ func update() {
 	}
 }
 
-// GetEthClientData returns a pointer of EthClientServicesPageData
+// GetEthClientData returns a EthClientServicesPageData
 func GetEthClientData() EthClientServicesPageData {
 	ethClientsMux.Lock()
 	defer ethClientsMux.Unlock()

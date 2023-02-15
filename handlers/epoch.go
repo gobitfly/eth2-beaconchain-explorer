@@ -55,6 +55,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 			proposerslashingscount, 
 			attesterslashingscount, 
 			attestationscount, 
+			withdrawalcount,
 			depositscount, 
 			voluntaryexitscount, 
 			validatorscount, 
@@ -110,13 +111,14 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 			blocks.blockroot, 
 			blocks.parentroot, 
 			blocks.attestationscount, 
-			blocks.depositscount, 
+			blocks.depositscount,
+			blocks.withdrawalcount, 
 			blocks.voluntaryexitscount, 
 			blocks.proposerslashingscount, 
 			blocks.attesterslashingscount,
        		blocks.status,
 			blocks.syncaggregate_participation
-		FROM blocks 
+		FROM blocks
 		WHERE epoch = $1
 		ORDER BY blocks.slot DESC`, epoch)
 	if err != nil {
@@ -143,6 +145,15 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 			epochPageData.OrphanedCount += 1
 		}
 	}
+
+	withdrawalTotal, err := db.GetEpochWithdrawalsTotal(epoch)
+	if err != nil {
+		logger.Errorf("error getting epoch withdrawals total: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	epochPageData.WithdrawalTotal = utils.FormatCurrentBalance(withdrawalTotal, GetCurrency(r))
+
 	epochPageData.SyncParticipationRate /= float64(epochPageData.ProposedCount)
 
 	epochPageData.Ts = utils.EpochToTime(epochPageData.Epoch)

@@ -214,7 +214,8 @@
     {{ end }}
 
     $(document).ready(function () {
-      let slotNumber = {{ .Slot }}
+      let slotNumber = {{ .Slot }} || 0
+      console.log('slotnumber', slotNumber)
       var depositsTblOpts = {
         processing: true,
         serverSide: true,
@@ -274,7 +275,7 @@
         stateSave: true,
         searching: true,
         ajax: "/slot/" + slotNumber + "/votes",
-        pageLength: 10,
+        pageLength: 16,
         pagingType: "input",
         language: {
           searchPlaceholder: "Validator",
@@ -304,6 +305,59 @@
       }
 
       $("#block_votes").DataTable(votesTblOpts)
+
+
+      let withdrawalOpts = {
+          processing: true,
+          serverSide: true,
+          ordering: false,
+          info: false,
+          // stateSave: true,
+          searching: false,
+          ajax: "/slot/" + slotNumber + "/withdrawals",
+          paging: false,
+          // deferLoading: true,
+          pageLength: 10,
+          preDrawCallback: function () {
+            try {
+              $("#block_withdrawals").find('[data-toggle="tooltip"]').tooltip("dispose")
+            } catch (e) {
+              console.error(e)
+            }
+          },
+          drawCallback: function (settings) {
+            formatTimestamps()
+            $("#block_withdrawals").find('[data-toggle="tooltip"]').tooltip()
+          }
+        }
+
+        $("#block_withdrawals").DataTable(withdrawalOpts)
+
+        let blsChangeOpts = {
+          processing: true,
+          serverSide: true,
+          ordering: false,
+          info: false,
+          // stateSave: true,
+          searching: false,
+          ajax: "/slot/" + slotNumber + "/blsChange",
+          paging: false,
+          // deferLoading: true,
+          pageLength: 10,
+          preDrawCallback: function () {
+            try {
+              $("#block_blsChange").find('[data-toggle="tooltip"]').tooltip("dispose")
+            } catch (e) {
+              console.error(e)
+            }
+          },
+          drawCallback: function (settings) {
+            formatTimestamps()
+            $("#block_blsChange").find('[data-toggle="tooltip"]').tooltip()
+          }
+        }
+
+        $("#block_blsChange").DataTable(blsChangeOpts)
     })
   </script>
 
@@ -399,6 +453,16 @@
             <a class="nav-link" id="proposer-slashings-tab" data-toggle="tab" href="#proposer-slashings" role="tab" aria-controls="proposer-slashings" aria-selected="false">Proposer Slashings <span class="badge bg-secondary text-white">{{ .ProposerSlashingsCount }}</span></a>
           </li>
         {{ end }}
+        {{ if gt .WithdrawalCount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawal" aria-selected="false">Withdrawals <span class="badge bg-secondary text-white">{{ .WithdrawalCount }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt .BLSChangeCount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="blsChange-tab" data-toggle="tab" href="#blsChange" role="tab" aria-controls="blsChange" aria-selected="false">BLS Change <span class="badge bg-secondary text-white">{{ .BLSChangeCount }}</span></a>
+          </li>
+        {{ end }}
       </ul>
       <style>
         .block-card {
@@ -433,6 +497,20 @@
           <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
             <div class="card block-card py-1">
               {{ template "execution_transactions" .ExecutionData }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt .WithdrawalCount 0 }}
+          <div class="tab-pane fade" id="withdrawals" role="tabpanel" aria-labelledby="withdrawals-tab">
+            <div class="card block-card py-1">
+              {{ template "block_withdrawals" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt .BLSChangeCount 0 }}
+          <div class="tab-pane fade" id="blsChange" role="tabpanel" aria-labelledby="blsChange-tab">
+            <div class="card block-card py-1">
+              {{ template "block_blsChange" . }}
             </div>
           </div>
         {{ end }}

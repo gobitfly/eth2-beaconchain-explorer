@@ -88,4 +88,10 @@ type ChainConfig struct {
 	MaxTransactionsPerPayload               uint64 `yaml:"MAX_TRANSACTIONS_PER_PAYLOAD"`
 	BytesPerLogsBloom                       uint64 `yaml:"BYTES_PER_LOGS_BLOOM"`
 	MaxExtraDataBytes                       uint64 `yaml:"MAX_EXTRA_DATA_BYTES"`
+
+	// capella
+	// https://github.com/ethereum/consensus-specs/blob/dev/presets/minimal/capella.yaml
+	MaxWithdrawalsPerPayload        uint64 `yaml:"MAX_WITHDRAWALS_PER_PAYLOAD"`
+	MaxValidatorsPerWithdrawalSweep uint64 `yaml:"MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP"`
+	MaxBlsToExecutionChange         uint64 `yaml:"MAX_BLS_TO_EXECUTION_CHANGES"`
 }

@@ -16,3 +16,6 @@ var RopstenChainYml string
 
 //go:embed sepolia.chain.yml
 var SepoliaChainYml string
+
+//go:embed testnet.chain.yml
+var TestnetChainYml string

@@ -270,6 +270,10 @@
       setupInfiniteScroll({{.UnclesMinedTable.PagingToken}},'unclesMined-table', 'unclesMined-table-inf-scroll', 'uncles')
     {{ end }}
 
+    {{ if .WithdrawalsTable.PagingToken }}
+      setupInfiniteScroll({{.WithdrawalsTable.PagingToken}},'withdrawals-table', 'withdrawals-table-inf-scroll', 'withdrawals')
+    {{ end }}
+
 
     function setupInfiniteScroll(pageToken, tableID, loadingID, urlPart) {
       var previousToken = ""
@@ -383,7 +387,7 @@
         <div class="tab-content flex-grow-1" id="overview-tab-content">
           <div class="tab-pane fade show active h-100" id="overview" role="tabpanel" aria-labelledby="overview-tab">
             <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card h-100 shadow-none">
-              <div class="card-body p-0 overview-card" style="height: 185px;">
+              <div class="card-body p-0 overview-card" style="height: 250px;">
                 <div style="display: grid; grid-template-columns: 2fr 4fr; grid-template-rows: auto; height: 100%;">
                   <div class="overview-col">
                     <span>Balance</span>
@@ -405,6 +409,14 @@
                   <div class="overview-col">
                     <span class="">
                       {{ len .Data.Metadata.Balances }}
+                    </span>
+                  </div>
+                  <div class="overview-col">
+                    <span class=""> Total Withdrawals </span>
+                  </div>
+                  <div class="overview-col">
+                    <span class="">
+                      {{ .Data.WithdrawalsSummary }}
                     </span>
                   </div>
                 </div>
@@ -466,6 +478,11 @@
               {{ template "AddressErc1155Grid" .Data.Erc1155Table }}
             </div>
           {{ end }}
+          {{ if len .Data.WithdrawalsTable.Data }}
+            <div class="tab-pane fade" id="withdrawals" role="tabpanel" aria-labelledby="withdrawals-tab">
+              {{ template "AddressWithdrawalsGrid" .Data.WithdrawalsTable }}
+            </div>
+          {{ end }}
         </div>
       </div>
     </div>
@@ -481,25 +498,13 @@
       <a class="nav-link border-bottom-radius-0 active" href="#transactions" id="transaction-tab" data-toggle="tab" role="tab" aria-controls="transactions" aria-selected="true">Transactions</a>
     </li>
     {{ range $i, $row := .Data.Tabs }}
-      <li style="margin: 0;" class="nav-item {{ if gt $i 0 }}d-none d-lg-inline{{ end }}" role="presentation">
+      <li style="margin: 0;" class="nav-item" role="presentation">
         <a class="nav-link border-bottom-radius-0 " href="{{ $row.Href }}" id="{{ $row.Id }}-tab" data-toggle="tab" role="tab" aria-controls="{{ $row.Id }}" aria-selected="false">{{ $row.Text }}</a>
-      </li>
-    {{ end }}
-    {{ if gt (len .Data.Tabs) 1 }}
-      <li class="nav-item dropdown d-lg-none">
-        <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-expanded="false">More</a>
-        <div class="dropdown-menu dropdown-menu-right">
-          {{ range $j, $row := .Data.Tabs }}
-            {{ if gt $j 0 }}
-              <a class="dropdown-item" href="{{ $row.Href }}" id="{{ $row.Id }}-dropdown-tab" data-toggle="tab" role="tab" aria-controls="{{ $row.Id }}" aria-selected="false">{{ $row.Text }}</a>
-            {{ end }}
-          {{ end }}
-        </div>
       </li>
     {{ end }}
   </ul>
 {{ end }}
-ov
+
 {{ define "AddressTransactionsTableGrid" }}
   <div id="transactions-table" style="display: grid; grid-template-columns: repeat(5, minmax(max-content, 1fr)) max-content repeat(2, minmax(max-content, 1fr)); overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Hash</span></div>
@@ -761,6 +766,41 @@ ov
   </div>
 {{ end }}
 
+{{ define "AddressWithdrawalsGrid" }}
+  <div id="withdrawals-table" style="display: grid; grid-template-columns: repeat(5, minmax(min-content, 1fr)); overflow-x: auto;">
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Epoch</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Slot</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Time</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Validator</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Amount</div>
+    {{ if len .Data }}
+      {{ range $i, $row := .Data }}
+        {{ range $j, $col := $row }}
+          <div class="tbl-col">
+            <div class="tbl-col-content">{{ $col }}</div>
+          </div>
+        {{ end }}
+      {{ end }}
+      {{ if gt (len .Data) 24 }}
+        <div style="grid-column: 1 / 6;" id="withdrawals-table-inf-scroll" class="d-flex justify-content-center p-2">
+          <span>loading...</span>
+        </div>
+      {{ end }}
+    {{ else }}
+      <div style="grid-column: 1 / 6;" id="withdrawals-table-inf-scroll" class="d-flex justify-content-center p-2">
+        <div class="d-flex justify-content-center align-items-center flex-column">
+          <div class="my-3 mt-5 p-2 pt-5">
+            {{ template "UndrawTree" }}
+          </div>
+          <div>
+            <h5>No entries found.</h5>
+          </div>
+        </div>
+      </div>
+    {{ end }}
+  </div>
+{{ end }}
+
 {{ define "QRCode" }}
   <img class="cursor-pointer qrcode-light" data-toggle="modal" data-target="#qrcode-modal" style="visibility: hidden; margin-bottom: .3rem; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address 0x{{ .Data.Address }}" />
   <img class="cursor-pointer qrcode-dark" data-toggle="modal" data-target="#qrcode-modal" style=" display: none; margin-bottom: .3rem; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{ .Data.QRCodeInverse }}" alt="QR code for address 0x{{ .Data.Address }}" />
@@ -784,7 +824,7 @@ ov
 
 {{ define "AddressTokenBalanceTabContent" }}
   <div style="border-top-left-radius: 0; border-top-right-radius: 0;" class="card shadow-none flex-grow-1">
-    <div class="card-body p-0 pb-1" style="overflow-y: auto; overflow-x: hidden; height: 185px;">
+    <div class="card-body p-0 pb-1" style="overflow-y: auto; overflow-x: hidden; height: 250px;">
       <div class="position: relative" style="display: grid; grid-template-columns: minmax(100px, 1fr) minmax(100px, 1fr);">
         <div style="top:0; z-index: 9;" class="position-sticky token-balance-col overview-header-col">
           <span>Symbol</span>

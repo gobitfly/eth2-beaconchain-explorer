@@ -20,19 +20,20 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 
 	var blockTemplate = templates.GetTemplate(
 		"layout.html",
-		"block/block.html",
-		"block/transactions.html",
-		"block/attestations.html",
-		"block/deposits.html",
-		"block/votes.html",
-		"block/attesterSlashing.html",
-		"block/proposerSlashing.html",
-		"block/exits.html",
-		"block/overview.html",
-		"block/execTransactions.html",
+		"slot/slot.html",
+		"slot/transactions.html",
+		"slot/attestations.html",
+		"slot/deposits.html",
+		"slot/votes.html",
+		"slot/attesterSlashing.html",
+		"slot/proposerSlashing.html",
+		"slot/exits.html",
+		"slot/overview.html",
+		"slot/execTransactions.html",
+		"slot/withdrawals.html",
 	)
-	var blockNotFoundTemplate = templates.GetTemplate("layout.html", "blocknotfound.html")
-	var preMergeBlockTemplate = templates.GetTemplate("layout.html", "execution/block.html", "block/execTransactions.html")
+	var blockNotFoundTemplate = templates.GetTemplate("layout.html", "slotnotfound.html")
+	var preMergeBlockTemplate = templates.GetTemplate("layout.html", "execution/block.html", "slot/execTransactions.html")
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)

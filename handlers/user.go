@@ -834,6 +834,8 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 			EventLabel: ev.Desc,
 			EventName:  ev.Event,
 			Active:     false,
+			Warning:    ev.Warning,
+			Info:       ev.Info,
 		})
 	}
 
@@ -2922,9 +2924,15 @@ func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	globalNotificationMessage := ""
+	type notificationConfig struct {
+		Target  string
+		Content string
+		Enabled bool
+	}
 
-	err = db.FrontendWriterDB.Get(&globalNotificationMessage, "SELECT content FROM global_notifications WHERE target = 'web'")
+	var configs []*notificationConfig
+
+	err = db.FrontendWriterDB.Select(&configs, "SELECT target, content, enabled FROM global_notifications ORDER BY target")
 
 	if err != nil {
 		logger.Errorf("error retrieving globalNotificationMessage: %v", err)
@@ -2933,10 +2941,10 @@ func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pageData := &struct {
-		CsrfField                 template.HTML
-		GlobalNotificationMessage string
+		CsrfField                  template.HTML
+		GlobalNotificationMessages []*notificationConfig
 	}{}
-	pageData.GlobalNotificationMessage = globalNotificationMessage
+	pageData.GlobalNotificationMessages = configs
 	pageData.CsrfField = csrf.TemplateField(r)
 
 	data := InitPageData(w, r, "user", "/user/global_notification", "Global Notification")
@@ -2970,14 +2978,29 @@ func UserGlobalNotificationPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	globalNotificationContent := r.FormValue("globalNotificationContent")
-
-	_, err = db.FrontendWriterDB.Exec("UPDATE global_notifications SET content = $1 WHERE target = 'web'", globalNotificationContent)
-
+	var targets []string
+	err = db.FrontendWriterDB.Select(&targets, "SELECT target FROM global_notifications")
 	if err != nil {
-		logger.Errorf("error setting globalNotificationMessage: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Errorf("error retrieving targets: %v", err)
+		http.Redirect(w, r, "/user/global_notification", http.StatusSeeOther)
 		return
+	}
+
+	for _, target := range targets {
+		content := r.FormValue("content_" + target)
+		enabledText := r.FormValue("enabled_" + target)
+
+		enabled := false
+		if enabledText == "on" {
+			enabled = true
+		}
+		_, err = db.FrontendWriterDB.Exec("UPDATE global_notifications SET content = $1, enabled = $2 WHERE target = $3", content, enabled, target)
+
+		if err != nil {
+			logger.Errorf("error setting globalNotificationMessage: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Index(w, r)

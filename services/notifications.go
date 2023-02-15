@@ -43,7 +43,6 @@ import (
 // the epochs_notified sql table is used to keep track of already notified epochs
 // before collecting notifications several db consistency checks are done
 func notificationCollector() {
-
 	for {
 		latestFinalizedEpoch := LatestFinalizedEpoch()
 
@@ -79,7 +78,7 @@ func notificationCollector() {
 			var exported uint64
 			err := db.WriterDb.Get(&exported, "SELECT COUNT(*) FROM epochs WHERE epoch <= $1 AND epoch >= $2", epoch, epoch-3)
 			if err != nil {
-				logger.Errorf("error retrieving export statuf of epoch %v: %v", epoch, err)
+				logger.Errorf("error retrieving export status of epoch %v: %v", epoch, err)
 				ReportStatus("notification-collector", "Error", nil)
 				break
 			}
@@ -107,7 +106,7 @@ func notificationCollector() {
 				break
 			}
 
-			queueNotifications(notifications, db.FrontendWriterDB) // this caused the collected notifications to be queuened and sent
+			queueNotifications(notifications, db.FrontendWriterDB) // this caused the collected notifications to be queued and sent
 
 			// Network DB Notifications (user related, must only run on one instance ever!!!!)
 			if utils.Config.Notifications.UserDBNotifications {
@@ -178,7 +177,7 @@ func notificationSender() {
 		if err != nil {
 			logger.WithError(err).Errorf("error executing advisory unlock")
 
-			conn.Close()
+			err = conn.Close()
 			if err != nil {
 				logger.WithError(err).Warn("error returning connection to connection pool (advisory unlock)")
 			}
@@ -260,6 +259,13 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 		return nil, fmt.Errorf("error collecting validator_got_slashed notifications: %v", err)
 	}
 	logger.Infof("collecting validator got slashed notifications took: %v\n", time.Since(start))
+
+	err = collectWithdrawalNotifications(notificationsByUserID, epoch)
+	if err != nil {
+		metrics.Errors.WithLabelValues("notifications_collect_validator_withdrawal").Inc()
+		return nil, fmt.Errorf("error collecting withdrawal notifications: %v", err)
+	}
+	logger.Infof("collecting withdrawal notifications took: %v\n", time.Since(start))
 
 	err = collectNetworkNotifications(notificationsByUserID, types.NetworkLivenessIncreasedEventName)
 	if err != nil {
@@ -588,7 +594,7 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 	logger.Infof("processing %v push notifications", len(notificationQueueItem))
 
 	for _, n := range notificationQueueItem {
-		_, err = notify.SendPushBatch(n.Content.Messages)
+		err = notify.SendPushBatch(n.Content.Messages)
 		if err != nil {
 			metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
 			logger.WithError(err).Error("error sending firebase batch job")
@@ -1906,6 +1912,120 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 	return nil
 }
 
+type validatorWithdrawalNotification struct {
+	SubscriptionID  uint64
+	ValidatorIndex  uint64
+	Epoch           uint64
+	Slot            uint64
+	Amount          uint64
+	Address         []byte
+	EventFilter     string
+	UnsubscribeHash sql.NullString
+}
+
+func (n *validatorWithdrawalNotification) GetLatestState() string {
+	return ""
+}
+
+func (n *validatorWithdrawalNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
+}
+
+func (n *validatorWithdrawalNotification) GetEmailAttachment() *types.EmailAttachment {
+	return nil
+}
+
+func (n *validatorWithdrawalNotification) GetSubscriptionID() uint64 {
+	return n.SubscriptionID
+}
+
+func (n *validatorWithdrawalNotification) GetEpoch() uint64 {
+	return n.Epoch
+}
+
+func (n *validatorWithdrawalNotification) GetEventName() types.EventName {
+	return types.ValidatorGotSlashedEventName
+}
+
+func (n *validatorWithdrawalNotification) GetInfo(includeUrl bool) string {
+	generalPart := fmt.Sprintf(`A withdrawal of %v has been processed for validator %v.`, utils.FormatCurrentBalance(n.Amount, "ETH"), n.ValidatorIndex)
+	if includeUrl {
+		return generalPart + getUrlPart(n.ValidatorIndex)
+	}
+	return generalPart
+}
+
+func (n *validatorWithdrawalNotification) GetTitle() string {
+	return "Withdrawal Processed"
+}
+
+func (n *validatorWithdrawalNotification) GetEventFilter() string {
+	return n.EventFilter
+}
+
+func (n *validatorWithdrawalNotification) GetInfoMarkdown() string {
+	generalPart := fmt.Sprintf(`A withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during in slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/%[4]v).`, n.ValidatorIndex, utils.FormatCurrentBalance(n.Amount, "ETH"), n.Slot, utils.FormatHash(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
+	return generalPart
+}
+
+// collectWithdrawalNotifications collects all notifications validator withdrawals
+func collectWithdrawalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, epoch uint64) error {
+
+	// get all users that are subscribed to this event (scale: a few thousand rows depending on how many users we have)
+	_, subMap, err := db.GetSubsForEventFilter(types.ValidatorReceivedWithdrawalEventName)
+	if err != nil {
+		return fmt.Errorf("error getting subscriptions for missed attestations %w", err)
+	}
+
+	// get all the withdrawal events for a specific epoch. Will be at most X per slot (currently 16 on mainnet, which is 32 * 16 per epoch; 512 rows).
+	events, err := db.GetEpochWithdrawals(epoch)
+	if err != nil {
+		return fmt.Errorf("error getting withdrawals from database, err: %w", err)
+	}
+
+	logger.Infof("retrieved %v events", len(events))
+	for _, event := range events {
+		subscribers, ok := subMap[hex.EncodeToString(event.Pubkey)]
+		if ok {
+			for _, sub := range subscribers {
+				if sub.UserID == nil || sub.ID == nil {
+					return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+				}
+				if sub.LastEpoch != nil {
+					lastSentEpoch := *sub.LastEpoch
+					if lastSentEpoch >= epoch || epoch < sub.CreatedEpoch {
+						continue
+					}
+				}
+				logger.Infof("creating %v notification for validator %v in epoch %v", types.ValidatorReceivedWithdrawalEventName, event.Index, epoch)
+				n := &validatorWithdrawalNotification{
+					SubscriptionID:  *sub.ID,
+					ValidatorIndex:  event.Index,
+					Epoch:           epoch,
+					Slot:            event.Slot,
+					Amount:          event.Amount,
+					Address:         event.Address,
+					EventFilter:     hex.EncodeToString(event.Pubkey),
+					UnsubscribeHash: sub.UnsubscribeHash,
+				}
+				if _, exists := notificationsByUserID[*sub.UserID]; !exists {
+					notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
+				}
+				if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
+					notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
+				}
+				notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
+				metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
+			}
+		}
+	}
+
+	return nil
+}
+
 type ethClientNotification struct {
 	SubscriptionID  uint64
 	UserID          uint64
@@ -1951,8 +2071,6 @@ func (n *ethClientNotification) GetInfo(includeUrl bool) string {
 			url = "https://github.com/ethereum/go-ethereum/releases"
 		case "Nethermind":
 			url = "https://github.com/NethermindEth/nethermind/releases"
-		case "OpenEthereum":
-			url = "https://github.com/openethereum/openethereum/releases"
 		case "Teku":
 			url = "https://github.com/ConsenSys/teku/releases"
 		case "Prysm":
@@ -1993,8 +2111,6 @@ func (n *ethClientNotification) GetInfoMarkdown() string {
 		url = "https://github.com/ethereum/go-ethereum/releases"
 	case "Nethermind":
 		url = "https://github.com/NethermindEth/nethermind/releases"
-	case "OpenEthereum":
-		url = "https://github.com/openethereum/openethereum/releases"
 	case "Teku":
 		url = "https://github.com/ConsenSys/teku/releases"
 	case "Prysm":
