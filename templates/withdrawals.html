@@ -12,10 +12,30 @@
         serverSide: true,
         ordering: false,
         stateSave: true,
+        stateSaveCallback: function (settings, data) {
+          data.search.search = ""
+          data.order = []
+          data.columns = []
+          data.start = 0
+          data.key = `${settings.sTableId}`
+          fetch('/tables/state', {
+            method: "POST",
+            body: JSON.stringify(data),
+          })
+          .then(res => res.json())
+          .then(({ status, data }) => {
+            if (status !== "OK") {
+              console.error("error updating table state, err:", data, "status: ", status)
+            }
+          }).catch(err => {
+            console.error("error updating table state, err: ", err)
+          })
+        },
         order: [[2, "desc"]],
         searching: true,
         ajax: "/validators/withdrawals/data",
         pagingType: "input",
+        deferLoading: {{.Withdrawals.RecordsTotal}},
         preDrawCallback: function () {
           // this does not always work.. not sure how to solve the staying tooltip
           try {
@@ -44,10 +64,30 @@
         serverSide: true,
         ordering: false,
         stateSave: true,
+        stateSaveCallback: function (settings, data) {
+          data.search.search = ""
+          data.order = []
+          data.columns = []
+          data.start = 0
+          data.key = `${settings.sTableId}`
+          fetch('/tables/state', {
+            method: "POST",
+            body: JSON.stringify(data),
+          })
+          .then(res => res.json())
+          .then(({ status, data }) => {
+            if (status !== "OK") {
+              console.error("error updating table state, err:", data, "status: ", status)
+            }
+          }).catch(err => {
+            console.error("error updating table state, err: ", err)
+          })
+        },
         order: [[2, "desc"]],
         searching: true,
         ajax: "/validators/withdrawals/bls",
         pagingType: "input",
+        deferLoading: {{.BlsChanges.RecordsTotal}},
         preDrawCallback: function () {
           // this does not always work.. not sure how to solve the staying tooltip
           try {
@@ -186,7 +226,15 @@
                     <th>Amount</th>
                   </tr>
                 </thead>
-                <tbody></tbody>
+                <tbody>
+                  {{ range $i, $row := .Withdrawals.Data }}
+                  <tr>
+                    {{ range $j, $col := $row }}
+                      <td>{{ $col }}</td>
+                    {{ end }}
+                  </tr>
+                {{ end }}
+                </tbody>
               </table>
             </div>
           </div>
@@ -211,7 +259,15 @@
                     <th>New Withdrawal Address</th>
                   </tr>
                 </thead>
-                <tbody></tbody>
+                <tbody>
+                  {{ range $i, $row := .BlsChanges.Data }}
+                  <tr>
+                    {{ range $j, $col := $row }}
+                      <td>{{ $col }}</td>
+                    {{ end }}
+                  </tr>
+                {{ end }}
+                </tbody>
               </table>
             </div>
           </div>

@@ -395,6 +395,9 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// never store the page number
+	settings.Start = 0
+
 	key := settings.Key
 	if len(key) == 0 {
 		logger.Errorf("no key provided")
@@ -439,23 +442,28 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	response.Data = ""
 }
 
-func GetDataTableState(user *types.User, session *sessions.Session, tableKey string) (*types.DataTableSaveState, error) {
+func GetDataTableState(user *types.User, session *sessions.Session, tableKey string) *types.DataTableSaveState {
+	state := types.DataTableSaveState{
+		Start: 0,
+	}
 	if user.Authenticated {
 		state, err := db.GetDataTablesState(user.UserID, tableKey)
 		if err != nil {
-			return nil, err
+			logger.Errorf("error getting data table state from db: %w", err)
+			return state
 		}
-		return state, nil
+		return state
 	}
 	stateRaw, exists := session.Values["table:state:"+utils.GetNetwork()+":"+tableKey]
 	if !exists {
-		return nil, nil
+		return &state
 	}
 	state, ok := stateRaw.(types.DataTableSaveState)
 	if !ok {
-		return nil, fmt.Errorf("error parsing session value into type DataTableSaveState")
+		logger.Errorf("error getting state from session: %+v", stateRaw)
+		return &state
 	}
-	return &state, nil
+	return &state
 }
 
 // used to handle errors constructed by Template.ExecuteTemplate correctly

@@ -30,10 +30,7 @@ func Slots(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Error("error getting user session")
 	}
 
-	state, err := GetDataTableState(user, session, "slots")
-	if err != nil {
-		logger.WithError(err).Error("error getting stored table state")
-	}
+	state := GetDataTableState(user, session, "slots")
 
 	length := uint64(50)
 	start := uint64(0)
