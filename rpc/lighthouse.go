@@ -230,25 +230,14 @@ func (lc *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 		return nil, fmt.Errorf("error parsing queue validators: %v", err)
 	}
 	// TODO: maybe track more status counts in the future?
-	activatingValidatorCount := uint64(0)
-	exitingValidatorCount := uint64(0)
+	statusMap := make(map[string]uint64)
+
 	for _, validator := range parsedValidators.Data {
-		switch validator.Status {
-		case "pending_initialized":
-		case "pending_queued":
-			activatingValidatorCount += 1
-		case "active_ongoing":
-		case "active_exiting", "active_slashed":
-			exitingValidatorCount += exitingValidatorCount
-		case "exited_unslashed", "exited_slashed":
-		case "withdrawal_possible", "withdrawal_done":
-		default:
-			return nil, fmt.Errorf("unrecognized validator status (validator %d): %s", validator.Index, validator.Status)
-		}
+		statusMap[validator.Status] += 1
 	}
 	return &types.ValidatorQueue{
-		Activating: activatingValidatorCount,
-		Exititing:  exitingValidatorCount,
+		Activating: statusMap["pending_queued"],
+		Exiting:    statusMap["active_exiting"] + statusMap["active_slashed"],
 	}, nil
 }
 
