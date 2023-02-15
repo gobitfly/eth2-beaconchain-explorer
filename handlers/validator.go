@@ -610,6 +610,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
+	// sync participation
+	// get all sync periods this validator has been part of
 	var syncPeriods []struct {
 		Period     uint64 `db:"period"`
 		FirstEpoch uint64 `db:"firstepoch"`
@@ -626,10 +628,21 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
+	// remove scheduled committees
+	latestEpoch := services.LatestEpoch()
+	for _, syncPeriod := range syncPeriods {
+		if syncPeriod.FirstEpoch > latestEpoch {
+			syncPeriods = syncPeriods[1:]
+		} else {
+			break
+		}
+	}
+	// expected count of sync duties, this is set later to the actual value
 	validatorPageData.SyncCount = uint64(len(syncPeriods)) * utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
 
 	if validatorPageData.SyncCount > 0 {
-		// get syncStats from validator_stats
+		// get sync stats from validator_stats
 		syncStats := struct {
 			ParticipatedSync uint64 `db:"participated_sync"`
 			MissedSync       uint64 `db:"missed_sync"`
@@ -644,10 +657,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		finalizedEpoch := services.LatestFinalizedEpoch()
-		lookback := int64(finalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
-		if lookback > 0 {
-			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, finalizedEpoch, lookback)
+
+		lastExportedEpoch := (lastStatsDay+1)*utils.EpochsPerDay() - 1
+		// if sync duties of last period haven't fully been exported yet, fetch remaining duties from bigtable
+		if syncPeriods[0].LastEpoch > lastExportedEpoch {
+			lookback := int64(latestEpoch - lastExportedEpoch)
+			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, latestEpoch, lookback)
 			if err != nil {
 				logger.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -674,7 +689,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.MissedSyncCount = syncStats.MissedSync
 		validatorPageData.OrphanedSyncCount = syncStats.OrphanedSync
 		validatorPageData.ScheduledSyncCount = syncStats.ScheduledSync
-		validatorPageData.SyncCount = validatorPageData.ParticipatedSyncCount + validatorPageData.MissedSyncCount + validatorPageData.OrphanedSyncCount
+		// actual sync duty count and percentage
+		validatorPageData.SyncCount = validatorPageData.ParticipatedSyncCount + validatorPageData.MissedSyncCount + validatorPageData.OrphanedSyncCount + syncStats.ScheduledSync
 		validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.SyncCount-validatorPageData.MissedSyncCount) / float64(validatorPageData.SyncCount)
 	}
 
@@ -1811,10 +1827,15 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//remove all future sync periods
 	latestEpoch := services.LatestEpoch()
-	for syncPeriods[0].EndEpoch > services.LatestEpoch() {
-		syncPeriods = syncPeriods[1:]
+
+	//remove scheduled committees
+	for _, syncPeriod := range syncPeriods {
+		if syncPeriod.EndEpoch > latestEpoch {
+			syncPeriods = syncPeriods[1:]
+		} else {
+			break
+		}
 	}
 
 	// set latest epoch of this validators latest sync period to current epoch if latest sync epoch has yet to happen
