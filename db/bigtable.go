@@ -765,7 +765,13 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	defer cancel()
 
 	rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
-	rangeEnd := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
+	var rangeEnd string
+	if startEpoch >= uint64(limit) {
+		rangeEnd = fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
+	} else {
+		rangeEnd = fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(0), "\x00") // add \x00 to rangeEnd so epoch 0 is included
+	}
+
 	res := make(map[uint64][]*types.ValidatorAttestation, len(validators))
 
 	columnFilters := []gcp_bigtable.Filter{}
@@ -870,7 +876,12 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	defer cancel()
 
 	rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
-	rangeEnd := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
+	var rangeEnd string
+	if startEpoch >= uint64(limit) {
+		rangeEnd = fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
+	} else {
+		rangeEnd = fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(0), "\x00") // add \x00 to rangeEnd so epoch 0 is included
+	}
 
 	res := make(map[uint64][]*types.ValidatorSyncParticipation, len(validators))
 
@@ -947,24 +958,21 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
-
-	if startEpoch < endEpoch {
-		return nil, fmt.Errorf("error invalid range startEpoch: %v endEpoch: %v", startEpoch, endEpoch)
+func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
+	if firstEpoch > lastEpoch {
+		return nil, fmt.Errorf("GetValidatorMissedAttestationsCount received an invalid firstEpoch (%d) and lastEpoch (%d) combination", firstEpoch, lastEpoch)
 	}
 
 	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
 
-	rangeEnd := startEpoch - endEpoch
-
-	for i := int64(startEpoch); i >= int64(rangeEnd); i-- {
-		data, err := bigtable.GetValidatorAttestationHistory(validators, uint64(i), 1)
+	for e := firstEpoch; e <= lastEpoch; e++ {
+		data, err := bigtable.GetValidatorAttestationHistory(validators, e, 1)
 
 		if err != nil {
 			return nil, err
 		}
 
-		logger.Infof("retrieved attestation history for epoch %v", i)
+		logger.Infof("retrieved attestation history for epoch %v", e)
 
 		for validator, attestations := range data {
 			for _, attestation := range attestations {
@@ -1056,9 +1064,13 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 
-	// logger.Info(startEpoch, endEpoch)
 	rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch)) // Reverse as keys are sorted in descending order
-	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-1))
+	var rangeEnd string
+	if startEpoch > 0 {
+		rangeEnd = fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-1)) // -1 needed as rangeEnd is not inclusive
+	} else {
+		rangeEnd = fmt.Sprintf("%s:e:b:%s%s", bigtable.chainId, reversedPaddedEpoch(0), "\x00") // add \x00 to rangeEnd so epoch 0 is included
+	}
 
 	res := make(map[uint64]*types.ValidatorBalanceStatistic)
 	err := bigtable.tableBeaconchain.ReadRows(ctx, gcp_bigtable.NewRange(rangeStart, rangeEnd), func(r gcp_bigtable.Row) bool {
@@ -1140,7 +1152,12 @@ func (bigtable *Bigtable) GetValidatorProposalHistory(validators []uint64, start
 	defer cancel()
 
 	rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
-	rangeEnd := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
+	var rangeEnd string
+	if startEpoch >= uint64(limit) {
+		rangeEnd = fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
+	} else {
+		rangeEnd = fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(0), "\x00") // add \x00 to rangeEnd so epoch 0 is included
+	}
 	res := make(map[uint64][]*types.ValidatorProposal, len(validators))
 
 	columnFilters := make([]gcp_bigtable.Filter, 0, len(validators))
@@ -1286,7 +1303,12 @@ func (bigtable *Bigtable) GetEpochIncomeHistoryDescending(startEpoch uint64, lim
 	defer cancel()
 
 	rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch))
-	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
+	var rangeEnd string
+	if startEpoch >= uint64(limit) {
+		rangeEnd = fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
+	} else {
+		rangeEnd = fmt.Sprintf("%s:e:b:%s%s", bigtable.chainId, reversedPaddedEpoch(0), "\x00") // add \x00 to rangeEnd so epoch 0 is included
+	}
 
 	family := gcp_bigtable.FamilyFilter(STATS_COLUMN_FAMILY)
 	columnFilter := gcp_bigtable.ColumnFilter(SUM_COLUMN)
