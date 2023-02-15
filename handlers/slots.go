@@ -37,10 +37,10 @@ func Slots(w http.ResponseWriter, r *http.Request) {
 	search := ""
 	searchForEmpty := false
 
-	if state != nil {
-		length = state.Length
-		start = state.Start
-		// we currently do not set search on state change
+	if state.Length == 0 {
+		length = 50
+	}
+	if state.Search.Search != "" {
 		search = state.Search.Search
 	}
 
