@@ -606,7 +606,7 @@ func SaveValidatorQueue(validators *types.ValidatorQueue) error {
 		ON CONFLICT (ts) DO UPDATE SET
 			entering_validators_count = excluded.entering_validators_count, 
 			exiting_validators_count = excluded.exiting_validators_count`,
-		validators.Activating, validators.Exititing)
+		validators.Activating, validators.Exiting)
 	return err
 }
 

@@ -1947,7 +1947,7 @@ func (n *validatorWithdrawalNotification) GetEpoch() uint64 {
 }
 
 func (n *validatorWithdrawalNotification) GetEventName() types.EventName {
-	return types.ValidatorGotSlashedEventName
+	return types.ValidatorReceivedWithdrawalEventName
 }
 
 func (n *validatorWithdrawalNotification) GetInfo(includeUrl bool) string {
