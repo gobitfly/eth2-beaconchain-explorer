@@ -112,6 +112,7 @@ var EventNames = []EventName{
 	ValidatorDidSlashEventName,
 	ValidatorIsOfflineEventName,
 	ValidatorReceivedDepositEventName,
+	ValidatorReceivedWithdrawalEventName,
 	NetworkSlashingEventName,
 	NetworkValidatorActivationQueueFullEventName,
 	NetworkValidatorActivationQueueNotFullEventName,

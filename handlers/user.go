@@ -2152,7 +2152,7 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 	tx, err := db.FrontendWriterDB.Beginx()
 	if err != nil {
 		//  return fmt.Errorf("error beginning transaction")
-		logger.Errorf("error committing transacton")
+		logger.WithError(err).Errorf("error committing transacton")
 		http.Error(w, "error processing request", 500)
 		return
 	}
@@ -2178,12 +2178,12 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 
 	err = tx.Commit()
 	if err != nil {
-		logger.Errorf("error committing transacton")
+		logger.WithError(err).Errorf("error committing transacton")
 		http.Error(w, "error processing request", 500)
 		return
 	}
 
-	fmt.Fprintf(w, "successfully unsubscribed from %v events", len(hashes))
+	fmt.Fprintf(w, "successfully unsubscribed from %v event(s)", len(hashes))
 }
 
 type UsersNotificationsRequest struct {
