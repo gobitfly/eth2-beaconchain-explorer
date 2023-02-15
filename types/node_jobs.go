@@ -2,6 +2,8 @@ package types
 
 import (
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/attestantio/go-eth2-client/spec/capella"
@@ -37,6 +39,24 @@ type NodeJobInfo struct {
 type NodeJob interface {
 	GetInfo() *NodeJobInfo
 	GetData() interface{}
+}
+
+type RawNodeJob struct {
+	Info    *NodeJobInfo
+	RawData []byte `db:"data"`
+}
+
+func (nj RawNodeJob) ToNodeJob() (NodeJob, error) {
+	switch nj.Info.Type {
+	case BLSToExecutionChangesNodeJobType:
+		jj := &BLSToExecutionChangesNodeJob{
+			Info: nj.Info,
+		}
+		err := json.Unmarshal(nj.RawData, &jj.Data)
+		return jj, err
+	default:
+		return nil, fmt.Errorf("unknown job-type %v", nj.Info.Type)
+	}
 }
 
 type BLSToExecutionChangesNodeJob struct {

@@ -1873,8 +1873,11 @@ type WithdrawalStats struct {
 	ValidatorsWithBLSCredentials uint64
 }
 
-type ChangeWithdrawalCredentialsPageData struct {
+type BroadcastPageData struct {
 	FlashMessage string
-	CsrfField    template.HTML
-	RecaptchaKey string
+	CaptchaId    string
+}
+
+type BroadcastStatusPageData struct {
+	Info *NodeJobInfo
 }
