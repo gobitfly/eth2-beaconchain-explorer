@@ -12,9 +12,11 @@ import (
 	"math/big"
 	"time"
 
+	geth_rpc "github.com/ethereum/go-ethereum/rpc"
+
 	eth_rewards "github.com/gobitfly/eth-rewards"
-	"github.com/gobitfly/eth-rewards/beacon"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/prysmaticlabs/prysm/v3/api/client/beacon"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,6 +26,7 @@ func main() {
 	bnAddress := flag.String("beacon-node-address", "", "Url of the beacon node api")
 	enAddress := flag.String("execution-node-address", "", "Url of the execution node api")
 	epoch := flag.Int64("epoch", -1, "epoch to export (use -1 to export latest finalized epoch)")
+	network := flag.String("network", "", "Config to use (can be mainnet, prater or sepolia")
 
 	flag.Parse()
 
@@ -51,9 +54,17 @@ func main() {
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 
-	client := beacon.NewClient(*bnAddress, time.Second*30)
+	client, err := beacon.NewClient(*bnAddress)
+	if err != nil {
+		logrus.Fatal(err)
+	}
 
 	lc, err := rpc.NewLighthouseClient(*bnAddress, big.NewInt(5))
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	elClient, err := geth_rpc.Dial(*enAddress)
 	if err != nil {
 		logrus.Fatal(err)
 	}
@@ -82,7 +93,7 @@ func main() {
 			start := time.Now()
 			logrus.Infof("retrieving rewards details for epoch %v", *epoch)
 
-			rewards, err := eth_rewards.GetRewardsForEpoch(uint64(*epoch), client, *enAddress)
+			rewards, err := eth_rewards.GetRewardsForEpoch(int(*epoch), client, elClient, *network)
 
 			if err != nil {
 				logrus.Fatalf("error retrieving reward details for epoch %v: %v", *epoch, err)
@@ -100,7 +111,7 @@ func main() {
 	start := time.Now()
 	logrus.Infof("retrieving rewards details for epoch %v", *epoch)
 
-	rewards, err := eth_rewards.GetRewardsForEpoch(uint64(*epoch), client, *enAddress)
+	rewards, err := eth_rewards.GetRewardsForEpoch(int(*epoch), client, elClient, *network)
 
 	if err != nil {
 		logrus.Fatalf("error retrieving reward details for epoch %v: %v", *epoch, err)
