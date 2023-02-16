@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"time"
 
+	_ "github.com/jackc/pgx/v4/stdlib"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -92,11 +94,11 @@ func (njp *NodeJobsProcessor) Run() {
 }
 
 func (njp *NodeJobsProcessor) Process() error {
-	err := db.UpdateNodeJobs(njp.ELAddr, njp.CLAddr)
+	err := db.UpdateNodeJobs()
 	if err != nil {
 		return err
 	}
-	err = db.SubmitNodeJobs(njp.ELAddr, njp.CLAddr)
+	err = db.SubmitNodeJobs()
 	if err != nil {
 		return err
 	}

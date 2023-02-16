@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	ssz "github.com/prysmaticlabs/go-ssz"
 	"github.com/sirupsen/logrus"
 	e2types "github.com/wealdtech/go-eth2-types/v2"
+	ethutil "github.com/wealdtech/go-eth2-util"
 )
 
 func init() {
@@ -26,38 +28,39 @@ func init() {
 	}
 }
 
-func GetNodeJob(id string) (types.NodeJob, error) {
+func GetNodeJob(id string) (*types.NodeJob, error) {
 	if len(id) > 40 {
 		return nil, fmt.Errorf("invalid id")
 	}
-	var rawJob types.RawNodeJob
-	err := WriterDb.Get(&rawJob, `select id, type, status, created_time, submitted_to_node_time, completed_time, data from node_jobs where id = $1`, id)
+	job := types.NodeJob{}
+	err := WriterDb.Get(&job, `select id, type, status, created_time, submitted_to_node_time, completed_time, data from node_jobs where id = $1`, id)
 	if err != nil {
+		fmt.Printf("%+v", job)
 		return nil, err
 	}
-	return rawJob.ToNodeJob()
+	return &job, nil
 }
 
-func UpdateNodeJobs(elEndpoint, clEndpoint string) error {
+func UpdateNodeJobs() error {
 	var err error
-	err = UpdateBLSToExecutionChangesNodeJobs(elEndpoint, clEndpoint)
+	err = UpdateBLSToExecutionChangesNodeJobs()
 	if err != nil {
 		return err
 	}
-	err = UpdateVoluntaryExitNodeJobs(elEndpoint, clEndpoint)
+	err = UpdateVoluntaryExitNodeJobs()
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func SubmitNodeJobs(elEndpoint, clEndpoint string) error {
+func SubmitNodeJobs() error {
 	var err error
-	err = SubmitBLSToExecutionChangesNodeJobs(elEndpoint, clEndpoint)
+	err = SubmitBLSToExecutionChangesNodeJobs()
 	if err != nil {
 		return err
 	}
-	err = SubmitVoluntaryExitNodeJobs(elEndpoint, clEndpoint)
+	err = SubmitVoluntaryExitNodeJobs()
 	if err != nil {
 		return err
 	}
@@ -69,11 +72,9 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 	t := types.BLSToExecutionChangesNodeJobType
 	status := types.PendingNodeJobStatus
 	nj := &types.BLSToExecutionChangesNodeJob{}
-	nj.Info = &types.NodeJobInfo{
-		ID:     id,
-		Type:   t,
-		Status: status,
-	}
+	nj.ID = id
+	nj.Type = t
+	nj.Status = status
 	err := json.Unmarshal(data, &nj.Data)
 	if err != nil {
 		return nil, err
@@ -97,15 +98,17 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 		Pubkey                []byte `db:"pubkey"`
 		WithdrawalCredentials []byte `db:"withdrawalcredentials"`
 	}{}
-	err = WriterDb.Select(&dbValis, `select validatorindex, pubkey, withdrawalcredentials from validators where validatorindex any($1)`, pq.Array(indicesArr))
+	err = WriterDb.Select(&dbValis, `select validatorindex, pubkey, withdrawalcredentials from validators where validatorindex = any($1)`, pq.Array(indicesArr))
 	if err != nil {
 		return nil, err
 	}
 
 	for _, v := range dbValis {
 		op := opsByIndex[v.Index]
-		if !bytes.Equal(op.Message.FromBLSPubkey[:], v.WithdrawalCredentials) {
-			return nil, fmt.Errorf("message.FromBLSPubkey != validator.WithdrawalCredentials for validator with index %v", v.Index)
+		withdrawalCredentials := ethutil.SHA256(op.Message.FromBLSPubkey[:])
+		withdrawalCredentials[0] = byte(0) // BLS_WITHDRAWAL_PREFIX
+		if !bytes.Equal(withdrawalCredentials, v.WithdrawalCredentials) {
+			return nil, fmt.Errorf("message.FromBLSPubkey != validator.WithdrawalCredentials for validator with index %v: %#x != %#x", v.Index, withdrawalCredentials, v.WithdrawalCredentials)
 		}
 		if v.WithdrawalCredentials[0] != 0 {
 			return nil, fmt.Errorf("validator.WithdrawalCredentials[0] != 0 for validator with index %v", v.Index)
@@ -125,15 +128,13 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 	if err != nil {
 		return nil, err
 	}
-	logrus.WithFields(logrus.Fields{"id": nj.Info.ID, "type": nj.Info.Type}).Infof("created job")
+	logrus.WithFields(logrus.Fields{"id": nj.ID, "type": nj.Type}).Infof("created job")
 	return nj, nil
 }
 
-func UpdateBLSToExecutionChangesNodeJobs(elEndpoint, clEndpoint string) error {
+func UpdateBLSToExecutionChangesNodeJobs() error {
 	jobs := []*types.BLSToExecutionChangesNodeJob{}
-	jobType := types.BLSToExecutionChangesNodeJobType
-	jobStatus := types.SubmittedToNodeNodeJobStatus
-	err := WriterDb.Select(&jobs, `select id, type, status, data from node_jobs where type = $1 and status = $2`, jobType, jobStatus)
+	err := WriterDb.Select(&jobs, `select id, type, status, data from node_jobs where type = $1 and status = $2`, types.BLSToExecutionChangesNodeJobType, types.SubmittedToNodeNodeJobStatus)
 	if err != nil {
 		return err
 	}
@@ -157,7 +158,7 @@ func UpdateBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob)
 		Index                 uint64 `db:"validatorindex"`
 		WithdrawalCredentials []byte `db:"withdrawalcredentials"`
 	}{}
-	err := WriterDb.Select(&dbValis, `select validatorindex, withdrawalcredentials from validators where validatorindex any($1)`, pq.Array(indicesArr))
+	err := WriterDb.Select(&dbValis, `select validatorindex, withdrawalcredentials from validators where validatorindex = any($1)`, pq.Array(indicesArr))
 	if err != nil {
 		return err
 	}
@@ -171,25 +172,28 @@ func UpdateBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob)
 		}
 		if len(toCheck) == 0 {
 			// all validatrors have been completed
-			_, err = WriterDb.Exec(`update node_jobs set status = $1 where id = $2`, types.CompletedNodeJobStatus, job.GetInfo().ID)
+			_, err = WriterDb.Exec(`update node_jobs set status = $1 where id = $2`, types.CompletedNodeJobStatus, job.ID)
 			if err != nil {
 				return err
 			}
-			logrus.WithFields(logrus.Fields{"id": job.Info.ID, "type": job.Info.Type, "status": types.CompletedNodeJobStatus}).Infof("updated job")
+			logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type, "status": types.CompletedNodeJobStatus}).Infof("updated job")
 		}
 	}
 	return nil
 }
 
-func SubmitBLSToExecutionChangesNodeJobs(elEndpoint, clEndpoint string) error {
-	jobs := []*types.BLSToExecutionChangesNodeJob{}
-	jobType := types.BLSToExecutionChangesNodeJobType
-	err := WriterDb.Select(&jobs, `select id, type, status, data from node_jobs where type = $1 and status = $2 limit 10-(select count(*) from node_jobs where type = $1 and status = $3)`, jobType, types.PendingNodeJobStatus, types.SubmittedToNodeNodeJobStatus)
+func SubmitBLSToExecutionChangesNodeJobs() error {
+	jobs := []*types.NodeJob{}
+	err := WriterDb.Select(&jobs, `select id, type, status, created_time, submitted_to_node_time, completed_time, data from node_jobs where type = $1 and status = $2 limit 10-(select count(*) from node_jobs where type = $1 and status = $3)`, types.BLSToExecutionChangesNodeJobType, types.PendingNodeJobStatus, types.SubmittedToNodeNodeJobStatus)
 	if err != nil {
 		return err
 	}
 	for _, job := range jobs {
-		err := SubmitBLSToExecutionChangesNodeJob(job, clEndpoint)
+		j, err := job.ToBLSToExecutionChangesNodeJob()
+		if err != nil {
+			return err
+		}
+		err = SubmitBLSToExecutionChangesNodeJob(j)
 		if err != nil {
 			return err
 		}
@@ -197,29 +201,30 @@ func SubmitBLSToExecutionChangesNodeJobs(elEndpoint, clEndpoint string) error {
 	return nil
 }
 
-func SubmitBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob, clEndpoint string) error {
-	data, err := json.Marshal(job.GetData())
+func SubmitBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob) error {
+	data, err := json.Marshal(job.Data)
 	if err != nil {
 		return err
 	}
-	if true {
+	if false {
 		fmt.Printf("DEBUG: not sending bls_to_execution_change because debugging: %+v\n", job)
 		return nil
 	}
 	client := &http.Client{Timeout: time.Second * 10}
-	url := fmt.Sprintf("%s/eth/v1/beacon/pool/bls_to_execution_changes", clEndpoint)
+	url := fmt.Sprintf("%s/eth/v1/beacon/pool/bls_to_execution_changes", utils.Config.NodeJobsProcessor.ClEndpoint)
 	resp, err := client.Post(url, "application/json", bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("http request error: %s", resp.Status)
+		d, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("http request error: %s: %s, data: %s", resp.Status, d, data)
 	}
-	_, err = WriterDb.Exec(`update node_jobs set status = $1 where id = $2`, types.SubmittedToNodeNodeJobStatus, job.GetInfo().ID)
+	_, err = WriterDb.Exec(`update node_jobs set status = $1 where id = $2`, types.SubmittedToNodeNodeJobStatus, job.ID)
 	if err != nil {
 		return err
 	}
-	logrus.WithFields(logrus.Fields{"id": job.Info.ID, "type": job.Info.Type}).Infof("submitted job")
+	logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type}).Infof("submitted job")
 	return nil
 }
 
@@ -230,7 +235,7 @@ func verifyBlsToExecutionChangeSignature(op *capella.SignedBLSToExecutionChange)
 	genesisForkVersion := phase0.Version{}
 	genesisValidatorsRoot := phase0.Root{}
 	copy(genesisForkVersion[:], utils.MustParseHex(utils.Config.Chain.Config.GenesisForkVersion))
-	copy(genesisForkVersion[:], utils.MustParseHex(utils.Config.Chain.GenesisValidatorsRoot))
+	copy(genesisValidatorsRoot[:], utils.MustParseHex(utils.Config.Chain.GenesisValidatorsRoot))
 
 	forkDataRoot, err := (&phase0.ForkData{
 		CurrentVersion:        genesisForkVersion,
@@ -281,38 +286,13 @@ func verifyBlsToExecutionChangeSignature(op *capella.SignedBLSToExecutionChange)
 }
 
 func CreateVoluntaryExitNodeJob(data []byte) (*types.VoluntaryExitsNodeJob, error) {
-	id := uuid.New().String()
-	t := types.VoluntaryExitsNodeJobType
-	status := types.PendingNodeJobStatus
-	nj := &types.VoluntaryExitsNodeJob{}
-	nj.Info = &types.NodeJobInfo{
-		ID:     id,
-		Type:   t,
-		Status: status,
-	}
-
-	err := json.Unmarshal(data, &nj.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	d, err := json.Marshal(nj.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data) values ($1, $2, $3, $4)`, id, t, status, d)
-	if err != nil {
-		return nil, err
-	}
-
 	return nil, nil
 }
 
-func UpdateVoluntaryExitNodeJobs(elEndpoint, clEndpoint string) error {
+func UpdateVoluntaryExitNodeJobs() error {
 	return nil
 }
 
-func SubmitVoluntaryExitNodeJobs(elEndpoint, clEndpoint string) error {
+func SubmitVoluntaryExitNodeJobs() error {
 	return nil
 }
