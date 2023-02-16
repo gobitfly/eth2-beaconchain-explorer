@@ -91,8 +91,6 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 		withdrawalCredentials := utils.SHA256(op.Message.FromBLSPubkey[:])
 		withdrawalCredentials[0] = byte(0)
 		if !bytes.Equal(withdrawalCredentials, v.WithdrawalCredentials) {
-			logger.Infof("%x", withdrawalCredentials)
-			logger.Infof("%x", v.WithdrawalCredentials)
 			return nil, fmt.Errorf("message.FromBLSPubkey != validator.WithdrawalCredentials for validator with index %v", v.Index)
 		}
 		if v.WithdrawalCredentials[0] != 0 {
