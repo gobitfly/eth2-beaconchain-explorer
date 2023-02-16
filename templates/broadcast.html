@@ -1,5 +1,5 @@
 {{ define "js" }}
-<script src="https://www.google.com/recaptcha/api.js" async></script>
+  <script src="https://www.google.com/recaptcha/api.js" async></script>
 {{ end }}
 {{ define "css" }}
 {{ end }}
@@ -23,14 +23,14 @@
           <p><span class="fas fa-lightbulb mr-1"></span> INFO: <a href="https://notes.ethereum.org/@launchpad/withdrawals-faq#">ETH Withdrawals FAQ</a>, <a href="https://notes.ethereum.org/@launchpad/withdrawals-guide">Withdrawals Guide</a>,<a href="https://github.com/wealdtech/ethdo/blob/master/docs/changingwithdrawalcredentials.md">Ethdo guide</a></p>
           <p><span class="fas fa-alert mr-1"></span> WARNING: Once the Withdrawal Credentials have been set to a 0x01 it can not be changed.</p>
           {{ if ne .FlashMessage "" }}
-          <div class="alert container mt-2 {{ if contains .FlashMessage "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
-            <div class="p-2">{{ .FlashMessage | formatHTML }}</div>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-        {{ end }}
-          <form action="/tools/broadcast" method=post>
+            <div class="alert container mt-2 {{ if contains .FlashMessage "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
+              <div class="p-2">{{ .FlashMessage | formatHTML }}</div>
+              <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          {{ end }}
+          <form action="/tools/broadcast" method="post">
             <textarea name="bls_to_execution_changes">[{"message":{"validator_index":"62019","from_bls_pubkey":"0x8562a3e163bfbc20bebbbea2643bdcb8823d36a481ae770ce7eb358c53a78ac5e5074ef1f2506fe1c42d7c36f9dc650f","to_execution_address":"0x0bcededbeea88da966e98dd40796b802d54342cc"},"signature":"0x80f445291542b582cbda37142621461328cdf960bc460e8e4de98530fab5d8cdc052a5b2cb47100a2ddf33555363d6db07b79921b7eddc4922e925a83d747befe02e384c12fb7f13386fe7295ec4330bdd959f130e95a4dc476e27fc31c1ce42"}]</textarea>
             <!--<textarea name="bls_to_execution_changes">Example: 
 
@@ -44,7 +44,7 @@
     "signature": "0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505"
   }
 ]</textarea>-->
-            <input type=submit value=Submit>
+            <input type="submit" value="Submit" />
           </form>
         </div>
       </div>
