@@ -12,8 +12,6 @@ import (
 	"math/big"
 	"time"
 
-	geth_rpc "github.com/ethereum/go-ethereum/rpc"
-
 	eth_rewards "github.com/gobitfly/eth-rewards"
 	"github.com/gobitfly/eth-rewards/beacon"
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -26,7 +24,6 @@ func main() {
 	bnAddress := flag.String("beacon-node-address", "", "Url of the beacon node api")
 	enAddress := flag.String("execution-node-address", "", "Url of the execution node api")
 	epoch := flag.Int64("epoch", -1, "epoch to export (use -1 to export latest finalized epoch)")
-	network := flag.String("network", "", "Config to use (can be mainnet, prater or sepolia")
 
 	flag.Parse()
 
@@ -61,11 +58,6 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	elClient, err := geth_rpc.Dial(*enAddress)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
 	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
@@ -90,7 +82,7 @@ func main() {
 			start := time.Now()
 			logrus.Infof("retrieving rewards details for epoch %v", *epoch)
 
-			rewards, err := eth_rewards.GetRewardsForEpoch(int(*epoch), client, elClient, *network)
+			rewards, err := eth_rewards.GetRewardsForEpoch(uint64(*epoch), client, *enAddress)
 
 			if err != nil {
 				logrus.Fatalf("error retrieving reward details for epoch %v: %v", *epoch, err)
@@ -108,7 +100,7 @@ func main() {
 	start := time.Now()
 	logrus.Infof("retrieving rewards details for epoch %v", *epoch)
 
-	rewards, err := eth_rewards.GetRewardsForEpoch(int(*epoch), client, elClient, *network)
+	rewards, err := eth_rewards.GetRewardsForEpoch(uint64(*epoch), client, *enAddress)
 
 	if err != nil {
 		logrus.Fatalf("error retrieving reward details for epoch %v: %v", *epoch, err)
