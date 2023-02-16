@@ -118,7 +118,7 @@ func CreateBLSToExecutionChangesNodeJob(nj *types.NodeJob) (*types.NodeJob, erro
 		return nil, fmt.Errorf("could not check all validators")
 	}
 
-	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data) values ($1, $2, $3, $4)`, nj.ID, nj.Type, nj.Status, nj.RawData)
+	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data, created_time) values ($1, $2, $3, $4, now())`, nj.ID, nj.Type, nj.Status, nj.RawData)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func UpdateBLSToExecutionChangesNodeJob(job *types.NodeJob) error {
 		}
 		if len(toCheck) == 0 {
 			// all validatrors have been completed
-			_, err = WriterDb.Exec(`update node_jobs set status = $1 where id = $2`, types.CompletedNodeJobStatus, job.ID)
+			_, err = WriterDb.Exec(`update node_jobs set status = $1 completed_time = now() where id = $2`, types.CompletedNodeJobStatus, job.ID)
 			if err != nil {
 				return err
 			}
@@ -215,6 +215,8 @@ func SubmitBLSToExecutionChangesNodeJob(job *types.NodeJob) error {
 		d, _ := ioutil.ReadAll(resp.Body)
 		return fmt.Errorf("http request error: %s: %s, data: %s", resp.Status, d, job.RawData)
 	}
+	job.SubmittedToNodeTime.Time = time.Now()
+	job.SubmittedToNodeTime.Valid = true
 	_, err = WriterDb.Exec(`update node_jobs set status = $1 where id = $2`, types.SubmittedToNodeNodeJobStatus, job.ID)
 	if err != nil {
 		return err
