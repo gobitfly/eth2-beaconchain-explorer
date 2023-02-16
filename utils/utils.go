@@ -944,5 +944,5 @@ func GetTimeToNextWithdrawal(distance uint64) time.Time {
 
 func EpochsPerDay() uint64 {
 	day := time.Hour * 24
-	return uint64(day.Seconds()) / (Config.Chain.Config.SlotsPerEpoch / Config.Chain.Config.SecondsPerSlot)
+	return (uint64(day.Seconds()) / Config.Chain.Config.SlotsPerEpoch) / Config.Chain.Config.SecondsPerSlot
 }
