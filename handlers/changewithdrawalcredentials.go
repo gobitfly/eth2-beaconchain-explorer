@@ -12,7 +12,7 @@ import (
 )
 
 func ChangeWithdrawalCredentials(w http.ResponseWriter, r *http.Request) {
-	var tpl = templates.GetTemplate("layout.html", "changewithdrawalcredentials.html")
+	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "changewithdrawalcredentials.html")
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "tools", "/tools/changewithdrawalcredentials", "Change Withdrawal Credentials")
@@ -36,7 +36,7 @@ func ChangeWithdrawalCredentials(w http.ResponseWriter, r *http.Request) {
 }
 
 func ChangeWithdrawalCredentialsJob(w http.ResponseWriter, r *http.Request) {
-	var tpl = templates.GetTemplate("layout.html", "changewithdrawalcredentialsjob.html")
+	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "changewithdrawalcredentialsjob.html")
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "tools", "/tools/changewithdrawalcredentials", "Change Withdrawal Credentials Job")
