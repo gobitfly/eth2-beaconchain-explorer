@@ -6,8 +6,8 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"io/ioutil"
 	"net/http"
-	"sync"
 	"time"
 
 	capella "github.com/attestantio/go-eth2-client/spec/capella"
@@ -16,29 +16,51 @@ import (
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	ssz "github.com/prysmaticlabs/go-ssz"
+	"github.com/sirupsen/logrus"
 	e2types "github.com/wealdtech/go-eth2-types/v2"
+	ethutil "github.com/wealdtech/go-eth2-util"
 )
 
-func UpdateNodeJobs(elEndpoint, clEndpoint string) error {
+func init() {
+	err := e2types.InitBLS()
+	if err != nil {
+		logrus.Fatalf("error in e2types.InitBLS(): %v", err)
+	}
+}
+
+func GetNodeJob(id string) (*types.NodeJob, error) {
+	if len(id) > 40 {
+		return nil, fmt.Errorf("invalid id")
+	}
+	job := types.NodeJob{}
+	err := WriterDb.Get(&job, `select id, type, status, created_time, submitted_to_node_time, completed_time, data from node_jobs where id = $1`, id)
+	if err != nil {
+		fmt.Printf("%+v", job)
+		return nil, err
+	}
+	return &job, nil
+}
+
+func UpdateNodeJobs() error {
 	var err error
-	err = UpdateBLSToExecutionChangesNodeJobs(elEndpoint, clEndpoint)
+	err = UpdateBLSToExecutionChangesNodeJobs()
 	if err != nil {
 		return err
 	}
-	err = UpdateVoluntaryExitNodeJobs(elEndpoint, clEndpoint)
+	err = UpdateVoluntaryExitNodeJobs()
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func SubmitNodeJobs(elEndpoint, clEndpoint string) error {
+func SubmitNodeJobs() error {
 	var err error
-	err = SubmitBLSToExecutionChangesNodeJobs(elEndpoint, clEndpoint)
+	err = SubmitBLSToExecutionChangesNodeJobs()
 	if err != nil {
 		return err
 	}
-	err = SubmitVoluntaryExitNodeJobs(elEndpoint, clEndpoint)
+	err = SubmitVoluntaryExitNodeJobs()
 	if err != nil {
 		return err
 	}
@@ -46,13 +68,13 @@ func SubmitNodeJobs(elEndpoint, clEndpoint string) error {
 }
 
 func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChangesNodeJob, error) {
-
+	id := uuid.New().String()
+	t := types.BLSToExecutionChangesNodeJobType
+	status := types.PendingNodeJobStatus
 	nj := &types.BLSToExecutionChangesNodeJob{}
-	nj.Info = &types.NodeJobInfo{
-		ID:     uuid.New().String(),
-		Type:   types.BLSToExecutionChangesNodeJobType,
-		Status: types.PendingNodeJobStatus,
-	}
+	nj.ID = id
+	nj.Type = t
+	nj.Status = status
 	err := json.Unmarshal(data, &nj.Data)
 	if err != nil {
 		return nil, err
@@ -62,7 +84,6 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 	opsToCheck := map[uint64]bool{}
 	indicesArr := []uint64{}
 	for _, op := range nj.Data {
-		// #TODO(patrick) fix verifyBlsToExecutionChangeSignature
 		err = verifyBlsToExecutionChangeSignature(op)
 		if err != nil {
 			return nil, err
@@ -83,15 +104,11 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 	}
 
 	for _, v := range dbValis {
-		if v.WithdrawalCredentials[0] == 0x01 {
-			return nil, fmt.Errorf("withdrawal credentials for validator %v were already changed, please remove this validator from the batch and try again ", v.Index)
-		}
 		op := opsByIndex[v.Index]
-
-		withdrawalCredentials := utils.SHA256(op.Message.FromBLSPubkey[:])
-		withdrawalCredentials[0] = byte(0)
+		withdrawalCredentials := ethutil.SHA256(op.Message.FromBLSPubkey[:])
+		withdrawalCredentials[0] = byte(0) // BLS_WITHDRAWAL_PREFIX
 		if !bytes.Equal(withdrawalCredentials, v.WithdrawalCredentials) {
-			return nil, fmt.Errorf("message.FromBLSPubkey != validator.WithdrawalCredentials for validator with index %v", v.Index)
+			return nil, fmt.Errorf("message.FromBLSPubkey != validator.WithdrawalCredentials for validator with index %v: %#x != %#x", v.Index, withdrawalCredentials, v.WithdrawalCredentials)
 		}
 		if v.WithdrawalCredentials[0] != 0 {
 			return nil, fmt.Errorf("validator.WithdrawalCredentials[0] != 0 for validator with index %v", v.Index)
@@ -102,48 +119,31 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 		return nil, fmt.Errorf("could not check all validators")
 	}
 
-	dataEncoded, err := json.Marshal(nj.Data)
+	d, err := json.Marshal(nj.Data)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data) values ($1, $2, $3, $4)`, nj.Info.ID, nj.Info.Type, nj.Info.Status, dataEncoded)
+	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data) values ($1, $2, $3, $4)`, id, t, status, d)
 	if err != nil {
 		return nil, err
 	}
+	logrus.WithFields(logrus.Fields{"id": nj.ID, "type": nj.Type}).Infof("created job")
 	return nj, nil
 }
 
-func GetNodeJob(jobId string) (*types.NodeJobInfo, error) {
-	nji := []*types.NodeJobInfo{}
-	err := WriterDb.Select(&nji, "SELECT id, type, status FROM node_jobs WHERE id = $1 LIMIT 1", jobId)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(nji) == 0 {
-		return nil, fmt.Errorf("job not found")
-	}
-	return nji[0], err
-}
-
-func UpdateBLSToExecutionChangesNodeJobs(elEndpoint, clEndpoint string) error {
+func UpdateBLSToExecutionChangesNodeJobs() error {
 	jobs := []*types.BLSToExecutionChangesNodeJob{}
-	jobType := types.BLSToExecutionChangesNodeJobType
-	jobStatus := types.SubmittedToNodeNodeJobStatus
-	err := WriterDb.Select(&jobs, `select id, type, status, data from node_jobs where type = $1 and status = $2`, jobType, jobStatus)
+	err := WriterDb.Select(&jobs, `select id, type, status, data from node_jobs where type = $1 and status = $2`, types.BLSToExecutionChangesNodeJobType, types.SubmittedToNodeNodeJobStatus)
 	if err != nil {
 		return err
 	}
-
 	for _, job := range jobs {
 		err = UpdateBLSToExecutionChangesNodeJob(job)
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -158,7 +158,7 @@ func UpdateBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob)
 		Index                 uint64 `db:"validatorindex"`
 		WithdrawalCredentials []byte `db:"withdrawalcredentials"`
 	}{}
-	err := WriterDb.Select(&dbValis, `select validatorindex, withdrawalcredentials from validators where validatorindex any($1)`, pq.Array(indicesArr))
+	err := WriterDb.Select(&dbValis, `select validatorindex, withdrawalcredentials from validators where validatorindex = any($1)`, pq.Array(indicesArr))
 	if err != nil {
 		return err
 	}
@@ -171,25 +171,29 @@ func UpdateBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob)
 			return nil
 		}
 		if len(toCheck) == 0 {
-			// all valis have been updated
-			_, err = WriterDb.Exec(`update node_jobs set status = $1 where id = $2`, types.CompletedNodeJobStatus, job.GetInfo().ID)
+			// all validatrors have been completed
+			_, err = WriterDb.Exec(`update node_jobs set status = $1 where id = $2`, types.CompletedNodeJobStatus, job.ID)
 			if err != nil {
 				return err
 			}
+			logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type, "status": types.CompletedNodeJobStatus}).Infof("updated job")
 		}
 	}
 	return nil
 }
 
-func SubmitBLSToExecutionChangesNodeJobs(elEndpoint, clEndpoint string) error {
-	jobs := []*types.BLSToExecutionChangesNodeJob{}
-	jobType := types.BLSToExecutionChangesNodeJobType
-	err := WriterDb.Select(&jobs, `select id, type, status, data from node_jobs where type = $1 and status = $2 limit 10-(select count(*) from node_jobs where type = $1 and status = $3)`, jobType, types.PendingNodeJobStatus, types.SubmittedToNodeNodeJobStatus)
+func SubmitBLSToExecutionChangesNodeJobs() error {
+	jobs := []*types.NodeJob{}
+	err := WriterDb.Select(&jobs, `select id, type, status, created_time, submitted_to_node_time, completed_time, data from node_jobs where type = $1 and status = $2 limit 10-(select count(*) from node_jobs where type = $1 and status = $3)`, types.BLSToExecutionChangesNodeJobType, types.PendingNodeJobStatus, types.SubmittedToNodeNodeJobStatus)
 	if err != nil {
 		return err
 	}
 	for _, job := range jobs {
-		err := SubmitBLSToExecutionChangesNodeJob(job, clEndpoint)
+		j, err := job.ToBLSToExecutionChangesNodeJob()
+		if err != nil {
+			return err
+		}
+		err = SubmitBLSToExecutionChangesNodeJob(j)
 		if err != nil {
 			return err
 		}
@@ -197,68 +201,43 @@ func SubmitBLSToExecutionChangesNodeJobs(elEndpoint, clEndpoint string) error {
 	return nil
 }
 
-func SubmitBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob, clEndpoint string) error {
-	data, err := json.Marshal(job.GetData())
+func SubmitBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob) error {
+	data, err := json.Marshal(job.Data)
 	if err != nil {
 		return err
 	}
-	if true {
+	if false {
 		fmt.Printf("DEBUG: not sending bls_to_execution_change because debugging: %+v\n", job)
 		return nil
 	}
 	client := &http.Client{Timeout: time.Second * 10}
-	url := fmt.Sprintf("%s/eth/v1/beacon/pool/bls_to_execution_changes", clEndpoint)
+	url := fmt.Sprintf("%s/eth/v1/beacon/pool/bls_to_execution_changes", utils.Config.NodeJobsProcessor.ClEndpoint)
 	resp, err := client.Post(url, "application/json", bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("http request error: %s", resp.Status)
+		d, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("http request error: %s: %s, data: %s", resp.Status, d, data)
 	}
-	_, err = WriterDb.Exec(`update node_jobs set status = $1 where id = $2`, types.SubmittedToNodeNodeJobStatus, job.GetInfo().ID)
+	_, err = WriterDb.Exec(`update node_jobs set status = $1 where id = $2`, types.SubmittedToNodeNodeJobStatus, job.ID)
 	if err != nil {
 		return err
 	}
+	logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type}).Infof("submitted job")
 	return nil
 }
 
 // verifyBlsToExecutionChangeSignature verifies the signature of an bls_to_execution_change message
-// #TODO(patrick) fix verifyBlsToExecutionChangeSignature
 // see: https://github.com/wealdtech/ethdo/blob/master/cmd/validator/credentials/set/process.go
 // see: https://github.com/prysmaticlabs/prysm/blob/76ed634f7386609f0d1ee47b703eb0143c995464/beacon-chain/core/blocks/withdrawals.go
-var BLSInitialized = sync.Once{}
-
 func verifyBlsToExecutionChangeSignature(op *capella.SignedBLSToExecutionChange) error {
-
-	BLSInitialized.Do(func() {
-		e2types.InitBLS() //see https://github.com/wealdtech/go-eth2-types/blob/master/README.md?plain=1#L31
-	})
-
-	network := "zhejiang"
-
 	genesisForkVersion := phase0.Version{}
 	genesisValidatorsRoot := phase0.Root{}
-	domainBLSToExecutionChange := utils.MustParseHex("0x0A000000")
-	var forkDataRoot [32]byte
+	copy(genesisForkVersion[:], utils.MustParseHex(utils.Config.Chain.Config.GenesisForkVersion))
+	copy(genesisValidatorsRoot[:], utils.MustParseHex(utils.Config.Chain.GenesisValidatorsRoot))
 
-	switch network {
-	case "mainnet":
-		copy(genesisForkVersion[:], utils.MustParseHex("0x00000000"))
-		copy(genesisValidatorsRoot[:], utils.MustParseHex("0x4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"))
-	case "prater":
-		copy(genesisForkVersion[:], utils.MustParseHex("0x00000069"))
-		copy(genesisValidatorsRoot[:], utils.MustParseHex("0x043db0d9a83813551ee2f33450d23797757d430911a9320530ad8a0eabc43efb"))
-	case "sepolia":
-		copy(genesisForkVersion[:], utils.MustParseHex("0x00000069"))
-		copy(genesisValidatorsRoot[:], utils.MustParseHex("0xd8ea171f3c94aea21ebc42a1ed61052acf3f9209c00e4efbaaddac09ed9b8078"))
-	case "zhejiang":
-		copy(genesisForkVersion[:], utils.MustParseHex("0x00000069"))
-		copy(genesisValidatorsRoot[:], utils.MustParseHex("0x53a92d8f2bb1d85f62d16a156e6ebcd1bcaba652d0900b2c2f387826f3481f6f"))
-	default:
-		return fmt.Errorf("invalid network: %v", network)
-	}
-
-	r, err := (&phase0.ForkData{
+	forkDataRoot, err := (&phase0.ForkData{
 		CurrentVersion:        genesisForkVersion,
 		GenesisValidatorsRoot: genesisValidatorsRoot,
 	}).HashTreeRoot()
@@ -266,8 +245,8 @@ func verifyBlsToExecutionChangeSignature(op *capella.SignedBLSToExecutionChange)
 		return err
 	}
 
-	forkDataRoot = r
 	domain := phase0.Domain{}
+	domainBLSToExecutionChange := utils.MustParseHex(utils.Config.Chain.DomainBLSToExecutionChange)
 	copy(domain[:], domainBLSToExecutionChange[:])
 	copy(domain[4:], forkDataRoot[:])
 
@@ -307,35 +286,13 @@ func verifyBlsToExecutionChangeSignature(op *capella.SignedBLSToExecutionChange)
 }
 
 func CreateVoluntaryExitNodeJob(data []byte) (*types.VoluntaryExitsNodeJob, error) {
-	nj := &types.VoluntaryExitsNodeJob{}
-	nj.Info = &types.NodeJobInfo{
-		ID:     uuid.New().String(),
-		Type:   types.VoluntaryExitsNodeJobType,
-		Status: types.PendingNodeJobStatus,
-	}
-
-	err := json.Unmarshal(data, &nj.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	d, err := json.Marshal(nj.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data) values ($1, $2, $3, $4)`, nj.Info.ID, nj.Info.Type, nj.Info.Status, d)
-	if err != nil {
-		return nil, err
-	}
-
 	return nil, nil
 }
 
-func UpdateVoluntaryExitNodeJobs(elEndpoint, clEndpoint string) error {
+func UpdateVoluntaryExitNodeJobs() error {
 	return nil
 }
 
-func SubmitVoluntaryExitNodeJobs(elEndpoint, clEndpoint string) error {
+func SubmitVoluntaryExitNodeJobs() error {
 	return nil
 }

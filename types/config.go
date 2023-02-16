@@ -178,6 +178,10 @@ type Config struct {
 		Enabled bool   `yaml:"enabled" envconfig:"PPROF_ENABLED"`
 		Port    string `yaml:"port" envconfig:"PPROF_PORT"`
 	} `yaml:"pprof"`
+	NodeJobsProcessor struct {
+		ElEndpoint string `yaml:"elEndpoint" envconfig:"NODE_JOBS_PROCESSOR_EL_ENDPOINT"`
+		ClEndpoint string `yaml:"clEndpoint" envconfig:"NODE_JOBS_PROCESSOR_CL_ENDPOINT"`
+	} `yaml:"nodeJobsProcessor"`
 }
 
 type DatabaseConfig struct {
