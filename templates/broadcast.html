@@ -18,6 +18,7 @@
           </nav>
         </div>
       </div>
+      {{ if not $.NoAds }}{{ template "bannerGeneric" dict "desktop" "52" "mobile" "52" }}{{ end }}
       <div class="row mt-4">
         <div class="col-md-12">
           <p><span class="fas fa-lightbulb mr-1"></span> INFO: <a href="https://notes.ethereum.org/@launchpad/withdrawals-faq#">ETH Withdrawals FAQ</a>, <a href="https://notes.ethereum.org/@launchpad/withdrawals-guide">Withdrawals Guide</a>,<a href="https://github.com/wealdtech/ethdo/blob/master/docs/changingwithdrawalcredentials.md">Ethdo guide</a></p>
@@ -31,21 +32,13 @@
             </div>
           {{ end }}
           <form action="/tools/broadcast" method="post">
-            <textarea name="bls_to_execution_changes">[{"message":{"validator_index":"62019","from_bls_pubkey":"0x8562a3e163bfbc20bebbbea2643bdcb8823d36a481ae770ce7eb358c53a78ac5e5074ef1f2506fe1c42d7c36f9dc650f","to_execution_address":"0x0bcededbeea88da966e98dd40796b802d54342cc"},"signature":"0x80f445291542b582cbda37142621461328cdf960bc460e8e4de98530fab5d8cdc052a5b2cb47100a2ddf33555363d6db07b79921b7eddc4922e925a83d747befe02e384c12fb7f13386fe7295ec4330bdd959f130e95a4dc476e27fc31c1ce42"}]</textarea>
-            <!--<textarea name="bls_to_execution_changes">Example: 
-
-[
-  {
-    "message": {
-      "validator_index": "1",
-      "from_bls_pubkey": "0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a",
-      "to_execution_address": "0xabcf8e0d4e9587369b2301d0790347320302cc09"
-    },
-    "signature": "0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505"
-  }
-]</textarea>-->
-            <input type="submit" value="Submit" />
-          </form>
+            <div class="text-left">
+              <div class="form-group">
+            <textarea name="bls_to_execution_changes" placeholder='[{"message":{"validator_index":"62019","from_bls_pubkey":"0x8562a3e163bfbc20bebbbea2643bdcb8823d36a481ae770ce7eb358c53a78ac5e5074ef1f2506fe1c42d7c36f9dc650f","to_execution_address":"0x0bcededbeea88da966e98dd40796b802d54342cc"},"signature":"0x80f445291542b582cbda37142621461328cdf960bc460e8e4de98530fab5d8cdc052a5b2cb47100a2ddf33555363d6db07b79921b7eddc4922e925a83d747befe02e384c12fb7f13386fe7295ec4330bdd959f130e95a4dc476e27fc31c1ce42"}]'></textarea>
+</div>
+</div>
+<button data-sitekey="{{ .RecaptchaKey }}" data-callback="onSubmit" data-action="submit" type="submit" class="g-recaptcha btn btn-primary text-center">Submit & Broadcast</button>
+</form>
         </div>
       </div>
     </div>

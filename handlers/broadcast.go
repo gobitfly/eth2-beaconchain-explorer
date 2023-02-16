@@ -13,11 +13,12 @@ import (
 )
 
 func Broadcast(w http.ResponseWriter, r *http.Request) {
-	var tpl = templates.GetTemplate("layout.html", "broadcast.html")
+	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "broadcast.html")
 	w.Header().Set("Content-Type", "text/html")
-	pageData := &types.BroadcastPageData{}
 
 	data := InitPageData(w, r, "tools", "/broadcast", "Change Withdrawal Credentials")
+	pageData := &types.BroadcastPageData{}
+	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
 	data.Data = pageData
 	err := tpl.ExecuteTemplate(w, "layout", data)
 	if handleTemplateError(w, r, "broadcast.go", "Broadcast", "", err) != nil {
@@ -45,7 +46,7 @@ func BroadcastPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
-	var tpl = templates.GetTemplate("layout.html", "broadcaststatus.html")
+	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "broadcaststatus.html")
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	jobID := vars["id"]
