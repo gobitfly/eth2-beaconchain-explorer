@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	capella "github.com/attestantio/go-eth2-client/spec/capella"
@@ -45,14 +46,12 @@ func SubmitNodeJobs(elEndpoint, clEndpoint string) error {
 }
 
 func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChangesNodeJob, error) {
-	id := uuid.New().String()
-	t := types.BLSToExecutionChangesNodeJobType
-	status := types.PendingNodeJobStatus
+
 	nj := &types.BLSToExecutionChangesNodeJob{}
 	nj.Info = &types.NodeJobInfo{
-		ID:     id,
-		Type:   t,
-		Status: status,
+		ID:     uuid.New().String(),
+		Type:   types.BLSToExecutionChangesNodeJobType,
+		Status: types.PendingNodeJobStatus,
 	}
 	err := json.Unmarshal(data, &nj.Data)
 	if err != nil {
@@ -64,10 +63,10 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 	indicesArr := []uint64{}
 	for _, op := range nj.Data {
 		// #TODO(patrick) fix verifyBlsToExecutionChangeSignature
-		// err = verifyBlsToExecutionChangeSignature(op)
-		// if err != nil {
-		// 	return nil, err
-		// }
+		err = verifyBlsToExecutionChangeSignature(op)
+		if err != nil {
+			return nil, err
+		}
 		indicesArr = append(indicesArr, uint64(op.Message.ValidatorIndex))
 		opsByIndex[uint64(op.Message.ValidatorIndex)] = op
 		opsToCheck[uint64(op.Message.ValidatorIndex)] = true
@@ -78,7 +77,7 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 		Pubkey                []byte `db:"pubkey"`
 		WithdrawalCredentials []byte `db:"withdrawalcredentials"`
 	}{}
-	err = WriterDb.Select(&dbValis, `select validatorindex, pubkey, withdrawalcredentials from validators where validatorindex any($1)`, pq.Array(indicesArr))
+	err = WriterDb.Select(&dbValis, `select validatorindex, pubkey, withdrawalcredentials from validators where validatorindex = any($1)`, pq.Array(indicesArr))
 	if err != nil {
 		return nil, err
 	}
@@ -97,16 +96,23 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 		return nil, fmt.Errorf("could not check all validators")
 	}
 
-	d, err := json.Marshal(nj.Data)
+	dataEncoded, err := json.Marshal(nj.Data)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data) values ($1, $2, $3, $4)`, id, t, status, d)
+	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data) values ($1, $2, $3, $4)`, nj.Info.ID, nj.Info.Type, nj.Info.Status, dataEncoded)
 	if err != nil {
 		return nil, err
 	}
 	return nj, nil
+}
+
+func GetNodeJob(jobId string) (*types.NodeJobInfo, error) {
+	nji := &types.NodeJobInfo{}
+	err := WriterDb.Get(&nji, "SELECT id, type, status, data FROM node_jobs WHERE id = $1", jobId)
+
+	return nji, err
 }
 
 func UpdateBLSToExecutionChangesNodeJobs(elEndpoint, clEndpoint string) error {
@@ -207,7 +213,14 @@ func SubmitBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob,
 // #TODO(patrick) fix verifyBlsToExecutionChangeSignature
 // see: https://github.com/wealdtech/ethdo/blob/master/cmd/validator/credentials/set/process.go
 // see: https://github.com/prysmaticlabs/prysm/blob/76ed634f7386609f0d1ee47b703eb0143c995464/beacon-chain/core/blocks/withdrawals.go
+var BLSInitialized = sync.Once{}
+
 func verifyBlsToExecutionChangeSignature(op *capella.SignedBLSToExecutionChange) error {
+
+	BLSInitialized.Do(func() {
+		e2types.InitBLS() //see https://github.com/wealdtech/go-eth2-types/blob/master/README.md?plain=1#L31
+	})
+
 	network := "zhejiang"
 
 	genesisForkVersion := phase0.Version{}
@@ -281,14 +294,11 @@ func verifyBlsToExecutionChangeSignature(op *capella.SignedBLSToExecutionChange)
 }
 
 func CreateVoluntaryExitNodeJob(data []byte) (*types.VoluntaryExitsNodeJob, error) {
-	id := uuid.New().String()
-	t := types.VoluntaryExitsNodeJobType
-	status := types.PendingNodeJobStatus
 	nj := &types.VoluntaryExitsNodeJob{}
 	nj.Info = &types.NodeJobInfo{
-		ID:     id,
-		Type:   t,
-		Status: status,
+		ID:     uuid.New().String(),
+		Type:   types.VoluntaryExitsNodeJobType,
+		Status: types.PendingNodeJobStatus,
 	}
 
 	err := json.Unmarshal(data, &nj.Data)
@@ -301,7 +311,7 @@ func CreateVoluntaryExitNodeJob(data []byte) (*types.VoluntaryExitsNodeJob, erro
 		return nil, err
 	}
 
-	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data) values ($1, $2, $3, $4)`, id, t, status, d)
+	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data) values ($1, $2, $3, $4)`, nj.Info.ID, nj.Info.Type, nj.Info.Status, d)
 	if err != nil {
 		return nil, err
 	}

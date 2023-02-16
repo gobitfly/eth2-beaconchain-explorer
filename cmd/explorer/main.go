@@ -508,6 +508,7 @@ func main() {
 			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
 			router.HandleFunc("/tools/unitConverter", handlers.UnitConverter).Methods("GET")
 			router.HandleFunc("/tools/changeWithdrawalCredentials", handlers.ChangeWithdrawalCredentials).Methods("GET")
+			router.HandleFunc("/tools/changeWithdrawalCredentials/{jobID}", handlers.ChangeWithdrawalCredentialsJob).Methods("GET")
 			router.HandleFunc("/tools/changeWithdrawalCredentials", handlers.ChangeWithdrawalCredentialsPost).Methods("POST")
 
 			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
