@@ -266,7 +266,7 @@
                     <td><a href="/slot/{{ .Slot }}">{{ formatAddCommas .Slot }}</a></td>
                     <td class="text-capitalize">{{ formatBlockStatus .Status }}</td>
                     <td aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW">{{ .Ts.Format "2006-01-02T15:04:05" }}</td>
-                    <td><a href="/validator/{{ .Proposer }}">{{ formatAddCommas .Proposer }}</a></td>
+                    <td><a href="/validator/{{ .Proposer }}">{{ .ProposerFormatted }}</a></td>
                     <td class="d-flex align-items-center text-monospace">
                       {{ if eq .Status 1 }}
                         <a href="/slot/{{ printf "%x" .BlockRoot }}">0x{{ printf "%.4x" .BlockRoot }}...</a>

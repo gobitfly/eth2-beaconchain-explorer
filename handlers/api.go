@@ -1205,7 +1205,29 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 }
 
 func validators(queryIndices []uint64) ([]interface{}, error) {
-	rows, err := db.ReaderDb.Query("SELECT validators.validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, COALESCE(validator_names.name, '') AS name, performance1d, performance7d, performance31d, performance365d, rank7d FROM validators LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validators.validatorindex = ANY($1) ORDER BY validators.validatorindex", pq.Array(queryIndices))
+	rows, err := db.ReaderDb.Query(`
+	SELECT 
+		validators.validatorindex,
+		pubkey,
+		withdrawableepoch,
+		withdrawalcredentials,
+		slashed,
+		activationeligibilityepoch,
+		activationepoch,
+		exitepoch,
+		lastattestationslot,
+		status,
+		COALESCE(validator_names.name, '') AS name,
+		performance1d,
+		performance7d,
+		performance31d,
+		performance365d,
+		rank7d
+	FROM validators
+	LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
+	LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey
+	WHERE validators.validatorindex = ANY($1)
+	ORDER BY validators.validatorindex`, pq.Array(queryIndices))
 	if err != nil {
 		return nil, err
 	}
@@ -1315,7 +1337,21 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 
 	data := make([]*ApiValidatorResponse, 0)
 
-	err = db.ReaderDb.Select(&data, "SELECT validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch, '0x' || encode(withdrawalcredentials, 'hex') as withdrawalcredentials, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, COALESCE(validator_names.name, '') AS name FROM validators LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(queryIndices))
+	err = db.ReaderDb.Select(&data, `
+	SELECT 
+		validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch,
+		'0x' || encode(withdrawalcredentials, 'hex') as withdrawalcredentials,
+		slashed,
+		activationeligibilityepoch,
+		activationepoch,
+		exitepoch,
+		lastattestationslot,
+		status,
+		COALESCE(validator_names.name, '') AS name
+	FROM validators
+	LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey
+	WHERE validatorindex = ANY($1)
+	ORDER BY validatorindex`, pq.Array(queryIndices))
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
