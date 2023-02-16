@@ -83,8 +83,13 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 	}
 
 	for _, v := range dbValis {
+		if v.WithdrawalCredentials[0] == 0x01 {
+			return nil, fmt.Errorf("withdrawal credentials for validator %v were already changed, please remove this validator from the batch and try again ", v.Index)
+		}
 		op := opsByIndex[v.Index]
 		if !bytes.Equal(op.Message.FromBLSPubkey[:], v.WithdrawalCredentials) {
+			logger.Infof("%s", op.Message.FromBLSPubkey.String())
+			logger.Infof("%x", v.WithdrawalCredentials)
 			return nil, fmt.Errorf("message.FromBLSPubkey != validator.WithdrawalCredentials for validator with index %v", v.Index)
 		}
 		if v.WithdrawalCredentials[0] != 0 {

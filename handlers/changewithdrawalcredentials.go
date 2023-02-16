@@ -87,7 +87,7 @@ func ChangeWithdrawalCredentialsPost(w http.ResponseWriter, r *http.Request) {
 	job, err := db.CreateBLSToExecutionChangesNodeJob([]byte(jobData))
 	if err != nil {
 		logger.Errorf("error creating a node-job: %v", err)
-		utils.SetFlash(w, r, "info_flash", fmt.Sprintf("Error: Unable to create submission job id: %s", err))
+		utils.SetFlash(w, r, "info_flash", fmt.Sprintf("Error: %s", err))
 		http.Redirect(w, r, "/tools/changeWithdrawalCredentials", http.StatusSeeOther)
 		return
 	}
