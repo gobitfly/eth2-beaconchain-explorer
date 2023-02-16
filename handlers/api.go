@@ -1085,8 +1085,8 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (partici
 	if err != nil {
 		return 0, 0, err
 	}
-	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
-	lastExportedEpoch := (lastExportedDay + 1) * epochsPerDay
+	epochsPerDay := utils.EpochsPerDay()
+	lastExportedEpoch := ((lastExportedDay + 1) * epochsPerDay) - 1
 
 	if lastExportedEpoch < epoch {
 		// a sync committee takes abouth 27h so in the span of a day we migh have a maximum of two different sync committees (one being unfinished)
