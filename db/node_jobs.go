@@ -2,7 +2,6 @@ package db
 
 import (
 	"bytes"
-	"encoding/json"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -11,22 +10,11 @@ import (
 	"time"
 
 	capella "github.com/attestantio/go-eth2-client/spec/capella"
-	phase0 "github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"github.com/pkg/errors"
-	ssz "github.com/prysmaticlabs/go-ssz"
 	"github.com/sirupsen/logrus"
-	e2types "github.com/wealdtech/go-eth2-types/v2"
 	ethutil "github.com/wealdtech/go-eth2-util"
 )
-
-func init() {
-	err := e2types.InitBLS()
-	if err != nil {
-		logrus.Fatalf("error in e2types.InitBLS(): %v", err)
-	}
-}
 
 func GetNodeJob(id string) (*types.NodeJob, error) {
 	if len(id) > 40 {
@@ -37,7 +25,23 @@ func GetNodeJob(id string) (*types.NodeJob, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &job, nil
+	err = job.ParseData()
+	return &job, err
+}
+
+func CreateNodeJob(data []byte) (*types.NodeJob, error) {
+	j, err := types.NewNodeJob(data)
+	if err != nil {
+		return nil, err
+	}
+	switch j.Type {
+	default:
+		return nil, fmt.Errorf("unknown job-type %v", j.Type)
+	case types.BLSToExecutionChangesNodeJobType:
+		return CreateBLSToExecutionChangesNodeJob(j)
+	case types.VoluntaryExitsNodeJobType:
+		return CreateVoluntaryExitNodeJob(j)
+	}
 }
 
 func UpdateNodeJobs() error {
@@ -66,28 +70,19 @@ func SubmitNodeJobs() error {
 	return nil
 }
 
-func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChangesNodeJob, error) {
-	if len(data) > 1e6 {
+func CreateBLSToExecutionChangesNodeJob(nj *types.NodeJob) (*types.NodeJob, error) {
+	if len(nj.RawData) > 1e6 {
 		return nil, fmt.Errorf("data size exceeds maximum")
 	}
-
-	id := uuid.New().String()
-	t := types.BLSToExecutionChangesNodeJobType
-	status := types.PendingNodeJobStatus
-	nj := &types.BLSToExecutionChangesNodeJob{}
-	nj.ID = id
-	nj.Type = t
-	nj.Status = status
-	err := json.Unmarshal(data, &nj.Data)
-	if err != nil {
-		return nil, err
-	}
+	nj.ID = uuid.New().String()
+	nj.Status = types.PendingNodeJobStatus
 
 	opsByIndex := map[uint64]*capella.SignedBLSToExecutionChange{}
 	opsToCheck := map[uint64]bool{}
 	indicesArr := []uint64{}
-	for _, op := range nj.Data {
-		err = verifyBlsToExecutionChangeSignature(op)
+	d, _ := nj.GetBLSToExecutionChangesNodeJobData()
+	for _, op := range *d {
+		err := utils.VerifyBlsToExecutionChangeSignature(op)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +96,7 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 		Pubkey                []byte `db:"pubkey"`
 		WithdrawalCredentials []byte `db:"withdrawalcredentials"`
 	}{}
-	err = WriterDb.Select(&dbValis, `select validatorindex, pubkey, withdrawalcredentials from validators where validatorindex = any($1)`, pq.Array(indicesArr))
+	err := WriterDb.Select(&dbValis, `select validatorindex, pubkey, withdrawalcredentials from validators where validatorindex = any($1)`, pq.Array(indicesArr))
 	if err != nil {
 		return nil, err
 	}
@@ -122,12 +117,7 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 		return nil, fmt.Errorf("could not check all validators")
 	}
 
-	d, err := json.Marshal(nj.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data) values ($1, $2, $3, $4)`, id, t, status, d)
+	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data) values ($1, $2, $3, $4)`, nj.ID, nj.Type, nj.Status, nj.RawData)
 	if err != nil {
 		return nil, err
 	}
@@ -142,11 +132,7 @@ func UpdateBLSToExecutionChangesNodeJobs() error {
 		return err
 	}
 	for _, job := range jobs {
-		blsJob, err := job.ToBLSToExecutionChangesNodeJob()
-		if err != nil {
-			return err
-		}
-		err = UpdateBLSToExecutionChangesNodeJob(blsJob)
+		err = UpdateBLSToExecutionChangesNodeJob(job)
 		if err != nil {
 			return err
 		}
@@ -154,10 +140,14 @@ func UpdateBLSToExecutionChangesNodeJobs() error {
 	return nil
 }
 
-func UpdateBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob) error {
+func UpdateBLSToExecutionChangesNodeJob(job *types.NodeJob) error {
 	toCheck := map[uint64]bool{}
 	indicesArr := []uint64{}
-	for _, op := range job.Data {
+	jobData, ok := job.GetBLSToExecutionChangesNodeJobData()
+	if !ok {
+		return fmt.Errorf("invalid job-data")
+	}
+	for _, op := range *jobData {
 		indicesArr = append(indicesArr, uint64(op.Message.ValidatorIndex))
 		toCheck[uint64(op.Message.ValidatorIndex)] = true
 	}
@@ -198,11 +188,14 @@ func SubmitBLSToExecutionChangesNodeJobs() error {
 		return err
 	}
 	for _, job := range jobs {
-		j, err := job.ToBLSToExecutionChangesNodeJob()
+		err = job.ParseData()
 		if err != nil {
 			return err
 		}
-		err = SubmitBLSToExecutionChangesNodeJob(j)
+		if job.Type != types.BLSToExecutionChangesNodeJobType {
+			return fmt.Errorf("job.Type != %v", types.BLSToExecutionChangesNodeJobType)
+		}
+		err = SubmitBLSToExecutionChangesNodeJob(job)
 		if err != nil {
 			return err
 		}
@@ -210,20 +203,16 @@ func SubmitBLSToExecutionChangesNodeJobs() error {
 	return nil
 }
 
-func SubmitBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob) error {
-	data, err := json.Marshal(job.Data)
-	if err != nil {
-		return err
-	}
+func SubmitBLSToExecutionChangesNodeJob(job *types.NodeJob) error {
 	client := &http.Client{Timeout: time.Second * 10}
 	url := fmt.Sprintf("%s/eth/v1/beacon/pool/bls_to_execution_changes", utils.Config.NodeJobsProcessor.ClEndpoint)
-	resp, err := client.Post(url, "application/json", bytes.NewReader(data))
+	resp, err := client.Post(url, "application/json", bytes.NewReader(job.RawData))
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode != 200 {
 		d, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("http request error: %s: %s, data: %s", resp.Status, d, data)
+		return fmt.Errorf("http request error: %s: %s, data: %s", resp.Status, d, job.RawData)
 	}
 	_, err = WriterDb.Exec(`update node_jobs set status = $1 where id = $2`, types.SubmittedToNodeNodeJobStatus, job.ID)
 	if err != nil {
@@ -233,64 +222,7 @@ func SubmitBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob)
 	return nil
 }
 
-// verifyBlsToExecutionChangeSignature verifies the signature of an bls_to_execution_change message
-// see: https://github.com/wealdtech/ethdo/blob/master/cmd/validator/credentials/set/process.go
-// see: https://github.com/prysmaticlabs/prysm/blob/76ed634f7386609f0d1ee47b703eb0143c995464/beacon-chain/core/blocks/withdrawals.go
-func verifyBlsToExecutionChangeSignature(op *capella.SignedBLSToExecutionChange) error {
-	genesisForkVersion := phase0.Version{}
-	genesisValidatorsRoot := phase0.Root{}
-	copy(genesisForkVersion[:], utils.MustParseHex(utils.Config.Chain.Config.GenesisForkVersion))
-	copy(genesisValidatorsRoot[:], utils.MustParseHex(utils.Config.Chain.GenesisValidatorsRoot))
-
-	forkDataRoot, err := (&phase0.ForkData{
-		CurrentVersion:        genesisForkVersion,
-		GenesisValidatorsRoot: genesisValidatorsRoot,
-	}).HashTreeRoot()
-	if err != nil {
-		return err
-	}
-
-	domain := phase0.Domain{}
-	domainBLSToExecutionChange := utils.MustParseHex(utils.Config.Chain.DomainBLSToExecutionChange)
-	copy(domain[:], domainBLSToExecutionChange[:])
-	copy(domain[4:], forkDataRoot[:])
-
-	root, err := op.Message.HashTreeRoot()
-	if err != nil {
-		return errors.Wrap(err, "failed to generate message root")
-	}
-
-	sigBytes := make([]byte, len(op.Signature))
-	copy(sigBytes, op.Signature[:])
-
-	sig, err := e2types.BLSSignatureFromBytes(sigBytes)
-	if err != nil {
-		return errors.Wrap(err, "invalid signature")
-	}
-
-	container := &phase0.SigningData{
-		ObjectRoot: root,
-		Domain:     domain,
-	}
-	signingRoot, err := ssz.HashTreeRoot(container)
-	if err != nil {
-		return errors.Wrap(err, "failed to generate signing root")
-	}
-
-	pubkeyBytes := make([]byte, len(op.Message.FromBLSPubkey))
-	copy(pubkeyBytes, op.Message.FromBLSPubkey[:])
-	pubkey, err := e2types.BLSPublicKeyFromBytes(pubkeyBytes)
-	if err != nil {
-		return errors.Wrap(err, "invalid public key")
-	}
-	if !sig.Verify(signingRoot[:], pubkey) {
-		return errors.New("signature does not verify")
-	}
-
-	return nil
-}
-
-func CreateVoluntaryExitNodeJob(data []byte) (*types.VoluntaryExitsNodeJob, error) {
+func CreateVoluntaryExitNodeJob(job *types.NodeJob) (*types.NodeJob, error) {
 	return nil, nil
 }
 

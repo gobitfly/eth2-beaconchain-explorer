@@ -15,14 +15,14 @@ func Broadcast(w http.ResponseWriter, r *http.Request) {
 	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "broadcast.html")
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "tools", "/tools/broadcast", "Change Withdrawal Credentials")
+	data := InitPageData(w, r, "tools", "/tools/broadcast", "Broadcast")
 	pageData := &types.BroadcastPageData{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
 
 	var err error
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "info_flash")
 	if err != nil {
-		logger.Errorf("error retrieving flashes for changewithdrawalcredentials %v", err)
+		logger.Errorf("error retrieving flashes for broadcast %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -37,7 +37,7 @@ func Broadcast(w http.ResponseWriter, r *http.Request) {
 func BroadcastPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		logger.Errorf("error parsing form: %v", err)
+		logger.Warnf("error parsing form: %v", err)
 		utils.SetFlash(w, r, "info_flash", "Error: invalid form submitted")
 		http.Redirect(w, r, "/tools/broadcast", http.StatusSeeOther)
 		return
@@ -45,26 +45,25 @@ func BroadcastPost(w http.ResponseWriter, r *http.Request) {
 
 	if len(utils.Config.Frontend.RecaptchaSecretKey) > 0 && len(utils.Config.Frontend.RecaptchaSiteKey) > 0 {
 		if len(r.FormValue("g-recaptcha-response")) == 0 {
+			logger.Warnf("no recaptca response present %v route: %v", r.URL.String(), r.FormValue("g-recaptcha-response"))
 			utils.SetFlash(w, r, "info_flash", "Error: Failed to create request")
-			logger.Errorf("error no recaptca response present %v route: %v", r.URL.String(), r.FormValue("g-recaptcha-response"))
 			http.Redirect(w, r, "/tools/broadcast", http.StatusSeeOther)
 			return
 		}
 
 		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
 		if err != nil || !valid {
+			logger.Warnf("failed validating recaptcha %v route: %v", r.URL.String(), err)
 			utils.SetFlash(w, r, "info_flash", "Error: Failed to create request")
-			logger.Errorf("error validating recaptcha %v route: %v", r.URL.String(), err)
 			http.Redirect(w, r, "/tools/broadcast", http.StatusSeeOther)
 			return
 		}
 	}
 
-	jobData := r.FormValue("inputSignatures")
-
-	job, err := db.CreateBLSToExecutionChangesNodeJob([]byte(jobData))
+	jobData := r.FormValue("message")
+	job, err := db.CreateNodeJob([]byte(jobData))
 	if err != nil {
-		logger.Errorf("error creating a node-job: %v", err)
+		logger.Warnf("failed creating a node-job: %v", err)
 		utils.SetFlash(w, r, "info_flash", fmt.Sprintf("Error: %s", err))
 		http.Redirect(w, r, "/tools/broadcast", http.StatusSeeOther)
 		return
@@ -78,7 +77,7 @@ func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
 	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "broadcaststatus.html")
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "tools", "/tools/broadcast/status", "Change Withdrawal Credentials Job")
+	data := InitPageData(w, r, "tools", "/tools/broadcast/status", "Broadcast Status")
 
 	vars := mux.Vars(r)
 
