@@ -107,7 +107,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	err = db.ReaderDb.Select(&epochPageData.Blocks, `
 		SELECT 
 			blocks.slot, 
-			blocks.proposer, 
+			blocks.proposer,
 			blocks.blockroot, 
 			blocks.parentroot, 
 			blocks.attestationscount, 
@@ -117,8 +117,11 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 			blocks.proposerslashingscount, 
 			blocks.attesterslashingscount,
        		blocks.status,
-			blocks.syncaggregate_participation
+			blocks.syncaggregate_participation,
+			COALESCE(validator_names.name, '') AS name
 		FROM blocks
+		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		WHERE epoch = $1
 		ORDER BY blocks.slot DESC`, epoch)
 	if err != nil {
@@ -132,6 +135,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	for _, block := range epochPageData.Blocks {
 		block.Ts = utils.SlotToTime(block.Slot)
+		block.ProposerFormatted = utils.FormatValidatorWithName(block.Proposer, block.ProposerName)
 
 		switch block.Status {
 		case 0:
