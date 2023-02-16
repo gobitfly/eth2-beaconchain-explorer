@@ -115,7 +115,6 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 }
 
 func GetNodeJob(jobId string) (*types.NodeJobInfo, error) {
-	logger.Info(jobId)
 	nji := []*types.NodeJobInfo{}
 	err := WriterDb.Select(&nji, "SELECT id, type, status FROM node_jobs WHERE id = $1 LIMIT 1", jobId)
 
