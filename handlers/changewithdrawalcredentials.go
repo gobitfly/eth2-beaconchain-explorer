@@ -1,16 +1,6 @@
 package handlers
 
-import (
-	"eth2-exporter/db"
-	"eth2-exporter/templates"
-	"eth2-exporter/types"
-	"eth2-exporter/utils"
-	"fmt"
-	"net/http"
-
-	"github.com/gorilla/mux"
-)
-
+/*
 func ChangeWithdrawalCredentials(w http.ResponseWriter, r *http.Request) {
 	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "changewithdrawalcredentials.html")
 	w.Header().Set("Content-Type", "text/html")
@@ -95,3 +85,4 @@ func ChangeWithdrawalCredentialsPost(w http.ResponseWriter, r *http.Request) {
 	url := fmt.Sprintf("/tools/changeWithdrawalCredentials/%s", job.Info.ID)
 	http.Redirect(w, r, url, http.StatusSeeOther)
 }
+*/

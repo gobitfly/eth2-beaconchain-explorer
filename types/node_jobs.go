@@ -2,6 +2,7 @@ package types
 
 import (
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	"github.com/attestantio/go-eth2-client/spec/capella"
@@ -25,42 +26,52 @@ var NodeJobTypes = []NodeJobType{
 	VoluntaryExitsNodeJobType,
 }
 
-type NodeJobInfo struct {
-	ID            string        `db:"id"`
-	CreatedTime   time.Time     `db:"created_time"`
-	SubmittedTime sql.NullTime  `db:"submitted_time"`
-	CompletedTime sql.NullTime  `db:"completed_time"`
-	Type          NodeJobType   `db:"type"`
-	Status        NodeJobStatus `db:"status"`
+type NodeJob struct {
+	ID                  string        `db:"id"`
+	CreatedTime         time.Time     `db:"created_time"`
+	SubmittedToNodeTime sql.NullTime  `db:"submitted_to_node_time"`
+	CompletedTime       sql.NullTime  `db:"completed_time"`
+	Type                NodeJobType   `db:"type"`
+	Status              NodeJobStatus `db:"status"`
+	Data                []byte        `db:"data"`
 }
 
-type NodeJob interface {
-	GetInfo() *NodeJobInfo
-	GetData() interface{}
+func (nj NodeJob) ToBLSToExecutionChangesNodeJob() (*BLSToExecutionChangesNodeJob, error) {
+	j := &BLSToExecutionChangesNodeJob{}
+	j.ID = nj.ID
+	j.CreatedTime = nj.CreatedTime
+	j.SubmittedToNodeTime = nj.SubmittedToNodeTime
+	j.CompletedTime = nj.CompletedTime
+	j.Type = nj.Type
+	j.Status = nj.Status
+	err := json.Unmarshal(nj.Data, &j.Data)
+	if err != nil {
+		return nil, err
+	}
+	return j, nil
+}
+
+func (nj NodeJob) ToVoluntaryExitsNodeJob() (*VoluntaryExitsNodeJob, error) {
+	j := &VoluntaryExitsNodeJob{}
+	j.ID = nj.ID
+	j.CreatedTime = nj.CreatedTime
+	j.SubmittedToNodeTime = nj.SubmittedToNodeTime
+	j.CompletedTime = nj.CompletedTime
+	j.Type = nj.Type
+	j.Status = nj.Status
+	err := json.Unmarshal(nj.Data, &j.Data)
+	if err != nil {
+		return nil, err
+	}
+	return j, nil
 }
 
 type BLSToExecutionChangesNodeJob struct {
-	Info *NodeJobInfo
-	Data []*capella.SignedBLSToExecutionChange `db:"data"`
-}
-
-func (nj BLSToExecutionChangesNodeJob) GetInfo() *NodeJobInfo {
-	return nj.Info
-}
-
-func (nj BLSToExecutionChangesNodeJob) GetData() interface{} {
-	return nj.Data
+	NodeJob
+	Data []*capella.SignedBLSToExecutionChange `db:"data,json"`
 }
 
 type VoluntaryExitsNodeJob struct {
-	Info *NodeJobInfo
-	Data *phase0.VoluntaryExit `db:"data"`
-}
-
-func (nj VoluntaryExitsNodeJob) GetInfo() *NodeJobInfo {
-	return nj.Info
-}
-
-func (nj VoluntaryExitsNodeJob) GetData() interface{} {
-	return nj.Data
+	NodeJob
+	Data *phase0.VoluntaryExit `db:"data,json"`
 }

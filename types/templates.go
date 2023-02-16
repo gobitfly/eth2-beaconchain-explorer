@@ -1878,3 +1878,12 @@ type ChangeWithdrawalCredentialsPageData struct {
 	CsrfField    template.HTML
 	RecaptchaKey string
 }
+
+type BroadcastPageData struct {
+	FlashMessage string
+	CaptchaId    string
+}
+
+type BroadcastStatusPageData struct {
+	Job *NodeJob
+}
