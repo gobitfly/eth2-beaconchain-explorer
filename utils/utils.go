@@ -995,3 +995,12 @@ func GetTimeToNextWithdrawal(distance uint64) time.Time {
 func EpochsPerDay() uint64 {
 	return (24 * 60 * 60) / Config.Chain.Config.SlotsPerEpoch / Config.Chain.Config.SecondsPerSlot
 }
+
+// SHA256 creates an SHA-256 hash of the supplied data
+func SHA256(data ...[]byte) []byte {
+	hash := sha256.New()
+	for _, d := range data {
+		_, _ = hash.Write(d)
+	}
+	return hash.Sum(nil)
+}

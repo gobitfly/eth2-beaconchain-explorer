@@ -87,8 +87,11 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 			return nil, fmt.Errorf("withdrawal credentials for validator %v were already changed, please remove this validator from the batch and try again ", v.Index)
 		}
 		op := opsByIndex[v.Index]
-		if !bytes.Equal(op.Message.FromBLSPubkey[:], v.WithdrawalCredentials) {
-			logger.Infof("%s", op.Message.FromBLSPubkey.String())
+
+		withdrawalCredentials := utils.SHA256(op.Message.FromBLSPubkey[:])
+		withdrawalCredentials[0] = byte(0)
+		if !bytes.Equal(withdrawalCredentials, v.WithdrawalCredentials) {
+			logger.Infof("%x", withdrawalCredentials)
 			logger.Infof("%x", v.WithdrawalCredentials)
 			return nil, fmt.Errorf("message.FromBLSPubkey != validator.WithdrawalCredentials for validator with index %v", v.Index)
 		}
@@ -114,10 +117,11 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 }
 
 func GetNodeJob(jobId string) (*types.NodeJobInfo, error) {
-	nji := &types.NodeJobInfo{}
-	err := WriterDb.Get(&nji, "SELECT id, type, status, data FROM node_jobs WHERE id = $1", jobId)
+	logger.Info(jobId)
+	nji := []*types.NodeJobInfo{}
+	err := WriterDb.Select(&nji, "SELECT id, type, status, data FROM node_jobs WHERE id = $1 LIMIT 1", jobId)
 
-	return nji, err
+	return nji[0], err
 }
 
 func UpdateBLSToExecutionChangesNodeJobs(elEndpoint, clEndpoint string) error {
