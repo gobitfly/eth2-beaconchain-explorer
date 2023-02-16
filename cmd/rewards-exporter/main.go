@@ -15,8 +15,8 @@ import (
 	geth_rpc "github.com/ethereum/go-ethereum/rpc"
 
 	eth_rewards "github.com/gobitfly/eth-rewards"
+	"github.com/gobitfly/eth-rewards/beacon"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/prysmaticlabs/prysm/v3/api/client/beacon"
 	"github.com/sirupsen/logrus"
 )
 
@@ -54,10 +54,7 @@ func main() {
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 
-	client, err := beacon.NewClient(*bnAddress)
-	if err != nil {
-		logrus.Fatal(err)
-	}
+	client := beacon.NewClient(*bnAddress, time.Second*30)
 
 	lc, err := rpc.NewLighthouseClient(*bnAddress, big.NewInt(5))
 	if err != nil {
