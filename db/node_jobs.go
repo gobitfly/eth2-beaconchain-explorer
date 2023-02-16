@@ -35,7 +35,6 @@ func GetNodeJob(id string) (*types.NodeJob, error) {
 	job := types.NodeJob{}
 	err := WriterDb.Get(&job, `select id, type, status, created_time, submitted_to_node_time, completed_time, data from node_jobs where id = $1`, id)
 	if err != nil {
-		fmt.Printf("%+v", job)
 		return nil, err
 	}
 	return &job, nil
@@ -68,6 +67,10 @@ func SubmitNodeJobs() error {
 }
 
 func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChangesNodeJob, error) {
+	if len(data) > 1e6 {
+		return nil, fmt.Errorf("data size exceeds maximum")
+	}
+
 	id := uuid.New().String()
 	t := types.BLSToExecutionChangesNodeJobType
 	status := types.PendingNodeJobStatus
@@ -108,7 +111,7 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 		withdrawalCredentials := ethutil.SHA256(op.Message.FromBLSPubkey[:])
 		withdrawalCredentials[0] = byte(0) // BLS_WITHDRAWAL_PREFIX
 		if !bytes.Equal(withdrawalCredentials, v.WithdrawalCredentials) {
-			return nil, fmt.Errorf("message.FromBLSPubkey != validator.WithdrawalCredentials for validator with index %v: %#x != %#x", v.Index, withdrawalCredentials, v.WithdrawalCredentials)
+			return nil, fmt.Errorf("message.FromBLSPubkey != validator.WithdrawalCredentials for validator with index %v", v.Index)
 		}
 		if v.WithdrawalCredentials[0] != 0 {
 			return nil, fmt.Errorf("validator.WithdrawalCredentials[0] != 0 for validator with index %v", v.Index)
@@ -128,18 +131,22 @@ func CreateBLSToExecutionChangesNodeJob(data []byte) (*types.BLSToExecutionChang
 	if err != nil {
 		return nil, err
 	}
-	logrus.WithFields(logrus.Fields{"id": nj.ID, "type": nj.Type}).Infof("created job")
+	logrus.WithFields(logrus.Fields{"id": nj.ID, "type": nj.Type}).Infof("created node_job")
 	return nj, nil
 }
 
 func UpdateBLSToExecutionChangesNodeJobs() error {
-	jobs := []*types.BLSToExecutionChangesNodeJob{}
-	err := WriterDb.Select(&jobs, `select id, type, status, data from node_jobs where type = $1 and status = $2`, types.BLSToExecutionChangesNodeJobType, types.SubmittedToNodeNodeJobStatus)
+	jobs := []*types.NodeJob{}
+	err := WriterDb.Select(&jobs, `select id, type, status, created_time, submitted_to_node_time, completed_time, data from node_jobs where type = $1 and status = $2`, types.BLSToExecutionChangesNodeJobType, types.SubmittedToNodeNodeJobStatus)
 	if err != nil {
 		return err
 	}
 	for _, job := range jobs {
-		err = UpdateBLSToExecutionChangesNodeJob(job)
+		blsJob, err := job.ToBLSToExecutionChangesNodeJob()
+		if err != nil {
+			return err
+		}
+		err = UpdateBLSToExecutionChangesNodeJob(blsJob)
 		if err != nil {
 			return err
 		}
@@ -158,6 +165,7 @@ func UpdateBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob)
 		Index                 uint64 `db:"validatorindex"`
 		WithdrawalCredentials []byte `db:"withdrawalcredentials"`
 	}{}
+	logrus.Infof("checking valis %v", indicesArr)
 	err := WriterDb.Select(&dbValis, `select validatorindex, withdrawalcredentials from validators where validatorindex = any($1)`, pq.Array(indicesArr))
 	if err != nil {
 		return err
@@ -176,15 +184,16 @@ func UpdateBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob)
 			if err != nil {
 				return err
 			}
-			logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type, "status": types.CompletedNodeJobStatus}).Infof("updated job")
+			logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type, "status": types.CompletedNodeJobStatus, "validatorIndices": indicesArr}).Infof("updated node_job")
 		}
 	}
 	return nil
 }
 
 func SubmitBLSToExecutionChangesNodeJobs() error {
+	maxSubmittedJobs := 100
 	jobs := []*types.NodeJob{}
-	err := WriterDb.Select(&jobs, `select id, type, status, created_time, submitted_to_node_time, completed_time, data from node_jobs where type = $1 and status = $2 limit 10-(select count(*) from node_jobs where type = $1 and status = $3)`, types.BLSToExecutionChangesNodeJobType, types.PendingNodeJobStatus, types.SubmittedToNodeNodeJobStatus)
+	err := WriterDb.Select(&jobs, `select id, type, status, created_time, submitted_to_node_time, completed_time, data from node_jobs where type = $1 and status = $2 limit $4-(select count(*) from node_jobs where type = $1 and status = $3)`, types.BLSToExecutionChangesNodeJobType, types.PendingNodeJobStatus, types.SubmittedToNodeNodeJobStatus, maxSubmittedJobs)
 	if err != nil {
 		return err
 	}
@@ -206,10 +215,6 @@ func SubmitBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob)
 	if err != nil {
 		return err
 	}
-	if false {
-		fmt.Printf("DEBUG: not sending bls_to_execution_change because debugging: %+v\n", job)
-		return nil
-	}
 	client := &http.Client{Timeout: time.Second * 10}
 	url := fmt.Sprintf("%s/eth/v1/beacon/pool/bls_to_execution_changes", utils.Config.NodeJobsProcessor.ClEndpoint)
 	resp, err := client.Post(url, "application/json", bytes.NewReader(data))
@@ -224,7 +229,7 @@ func SubmitBLSToExecutionChangesNodeJob(job *types.BLSToExecutionChangesNodeJob)
 	if err != nil {
 		return err
 	}
-	logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type}).Infof("submitted job")
+	logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type}).Infof("submitted node_job")
 	return nil
 }
 
