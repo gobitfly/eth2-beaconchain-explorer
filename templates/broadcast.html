@@ -1,22 +1,33 @@
 {{ define "js" }}
   <script src="https://www.google.com/recaptcha/api.js" async></script>
+  <script>
+    function onSubmit(token) {
+      var form = document.getElementById("contact")
+      if (form.reportValidity()) {
+        form.submit()
+      }
+    }
+  </script>
 {{ end }}
+
 {{ define "css" }}
+  <style>
+    @media (min-width: 1140px) {
+      .max-lg-300 {
+        max-width: 300px;
+      }
+    }
+  </style>
 {{ end }}
+
 {{ define "content" }}
   {{ with .Data }}
-    <div class="container my-2">
-      <div class="d-md-flex py-2 justify-content-md-between mb-3">
-        <div class="heading">
-          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-money-bill mr-2"></i>Change Withdrawal Credentials</h1>
-          <nav aria-label="breadcrumb">
-            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-              <li class="breadcrumb-item">Tools</li>
-              <li class="breadcrumb-item active" aria-current="page">Change Withdrawal Credentials</li>
-            </ol>
-          </nav>
-        </div>
+    {{ if ne .FlashMessage "" }}
+      <div class="alert container mt-2 {{ if contains .FlashMessage "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
+        <div class="p-2">{{ .FlashMessage | formatHTML }}</div>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
       {{ if not $.NoAds }}{{ template "bannerGeneric" dict "desktop" "52" "mobile" "52" }}{{ end }}
       <div class="row mt-4">
@@ -39,8 +50,11 @@
 </div>
 <button data-sitekey="{{ .RecaptchaKey }}" data-callback="onSubmit" data-action="submit" type="submit" class="g-recaptcha btn btn-primary text-center">Submit & Broadcast</button>
 </form>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   {{ end }}
 {{ end }}

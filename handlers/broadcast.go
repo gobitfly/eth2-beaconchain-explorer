@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 )
 
 func Broadcast(w http.ResponseWriter, r *http.Request) {
@@ -19,9 +18,22 @@ func Broadcast(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "tools", "/broadcast", "Change Withdrawal Credentials")
 	pageData := &types.BroadcastPageData{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
+	data := InitPageData(w, r, "tools", "/tools/broadcast", "Change Withdrawal Credentials")
+
+	pageData := &types.BroadcastPageData{}
+	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
+
+	var err error
+	pageData.FlashMessage, err = utils.GetFlash(w, r, "info_flash")
+	if err != nil {
+		logger.Errorf("error retrieving flashes for changewithdrawalcredentials %v", err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
 	data.Data = pageData
-	err := tpl.ExecuteTemplate(w, "layout", data)
-	if handleTemplateError(w, r, "broadcast.go", "Broadcast", "", err) != nil {
+	err = tpl.ExecuteTemplate(w, "layout", data)
+	if handleTemplateError(w, r, "broadcast.go", "broadcast", "", err) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -30,38 +42,59 @@ func BroadcastPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		logger.Errorf("error parsing form: %v", err)
-		utils.SetFlash(w, r, "broadcast_flash", "Error: invalid form submitted")
+		utils.SetFlash(w, r, "info_flash", "Error: invalid form submitted")
 		http.Redirect(w, r, "/tools/broadcast", http.StatusSeeOther)
 		return
 	}
-	d := r.FormValue("bls_to_execution_changes")
-	job, err := db.CreateBLSToExecutionChangesNodeJob([]byte(d))
+
+	if len(utils.Config.Frontend.RecaptchaSecretKey) > 0 && len(utils.Config.Frontend.RecaptchaSiteKey) > 0 {
+		if len(r.FormValue("g-recaptcha-response")) == 0 {
+			utils.SetFlash(w, r, "info_flash", "Error: Failed to create request")
+			logger.Errorf("error no recaptca response present %v route: %v", r.URL.String(), r.FormValue("g-recaptcha-response"))
+			http.Redirect(w, r, "/tools/broadcast", http.StatusSeeOther)
+			return
+		}
+
+		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
+		if err != nil || !valid {
+			utils.SetFlash(w, r, "info_flash", "Error: Failed to create request")
+			logger.Errorf("error validating recaptcha %v route: %v", r.URL.String(), err)
+			http.Redirect(w, r, "/tools/broadcast", http.StatusSeeOther)
+			return
+		}
+	}
+
+	jobData := r.FormValue("inputSignatures")
+
+	job, err := db.CreateBLSToExecutionChangesNodeJob([]byte(jobData))
 	if err != nil {
-		logger.WithFields(logrus.Fields{"error": err}).Warnf("failed creating job")
-		utils.SetFlash(w, r, "broadcast_flash", "Error: invalid form submitted")
+		logger.Errorf("error creating a node-job: %v", err)
+		utils.SetFlash(w, r, "info_flash", fmt.Sprintf("Error: %s", err))
 		http.Redirect(w, r, "/tools/broadcast", http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, fmt.Sprintf("/tools/broadcast/status/%v", job.ID), http.StatusSeeOther)
+
+	url := fmt.Sprintf("/tools/broadcast/status/%s", job.ID)
+	http.Redirect(w, r, url, http.StatusSeeOther)
 }
 
 func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
 	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "broadcaststatus.html")
 	w.Header().Set("Content-Type", "text/html")
+
+	data := InitPageData(w, r, "tools", "/tools/broadcast/status", "Change Withdrawal Credentials Job")
+
 	vars := mux.Vars(r)
-	jobID := vars["id"]
-	job, err := db.GetNodeJob(jobID)
+
+	job, err := db.GetNodeJob(vars["jobID"])
 	if err != nil {
-		logger.Errorf("error getting nodeJob: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Errorf("error retrieving job %v", err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
-	data := InitPageData(w, r, "tools", "/broadcast", "Change Withdrawal Credentials")
-	data.Data = types.BroadcastStatusPageData{
-		Job: job,
-	}
+	data.Data = job
 	err = tpl.ExecuteTemplate(w, "layout", data)
-	if handleTemplateError(w, r, "broadcast.go", "Broadcast", "", err) != nil {
+	if handleTemplateError(w, r, "broadcast.go", "broadcast", "", err) != nil {
 		return // an error has occurred and was processed
 	}
 }

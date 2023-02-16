@@ -1,34 +1,33 @@
 {{ define "js" }}
-  <script src="https://www.google.com/recaptcha/api.js" async></script>
 {{ end }}
+
 {{ define "css" }}
+  <style>
+    @media (min-width: 1140px) {
+      .max-lg-300 {
+        max-width: 300px;
+      }
+    }
+  </style>
 {{ end }}
+
 {{ define "content" }}
   {{ with .Data }}
-    <div class="container my-2">
-      <div class="d-md-flex py-2 justify-content-md-between mb-3">
-        <div class="heading">
-          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-money-bill mr-2"></i>Broadcast Status</h1>
-          <nav aria-label="breadcrumb">
-            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-              <li class="breadcrumb-item">Tools</li>
-              <li class="breadcrumb-item active" aria-current="page">Broadcast Status</li>
-            </ol>
-          </nav>
+    <div class="container mt-2">
+      <section class="my-5">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="row justify-content-center">
+              <div class="col-md-12 col-lg-8 text-center">
+                <h1 class="h4 ">Withdrawal Credentials Change Request Job<br/>{{.ID}}</h1>
+                <h2 class="h5">Status: {{.Status}}</h2>
+                <h2 class="h5">Type: {{.Type}}</h2>
+                <h2 class="h5">CreatedTime: {{.CreatedTime}}</h2>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="row mt-4">
-        <div class="col-md-12">
-          <pre>
-ID: {{ .Job.ID }}
-Status: {{ .Job.Status }}
-Type: {{ .Job.Type }}
-CreatedTime: {{ .Job.CreatedTime }}
-          </pre
-          >
-        </div>
-      </div>
+      </section>
     </div>
   {{ end }}
 {{ end }}
