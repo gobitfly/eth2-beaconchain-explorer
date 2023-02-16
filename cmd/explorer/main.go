@@ -507,6 +507,9 @@ func main() {
 			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
 			router.HandleFunc("/tools/unitConverter", handlers.UnitConverter).Methods("GET")
+			router.HandleFunc("/tools/broadcast", handlers.Broadcast).Methods("GET")
+			router.HandleFunc("/tools/broadcast", handlers.BroadcastPost).Methods("POST")
+			router.HandleFunc("/tools/broadcast/status/{jobID}", handlers.BroadcastStatus).Methods("GET")
 
 			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
 
