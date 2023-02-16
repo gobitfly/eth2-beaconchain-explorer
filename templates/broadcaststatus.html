@@ -23,6 +23,9 @@
                 <h2 class="h5">Status: {{ .Status }}</h2>
                 <h2 class="h5">Type: {{ .Type }}</h2>
                 <h2 class="h5">CreatedTime: {{ .CreatedTime }}</h2>
+                {{ if .SubmittedToNodeTime.Valid }}
+                <h2 class="h5">SubmittedToNodeTime: {{ .SubmittedToNodeTime.Time }}</h2>
+                {{ end }}
               </div>
             </div>
           </div>

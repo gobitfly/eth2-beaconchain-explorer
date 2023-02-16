@@ -34,6 +34,7 @@ func CreateNodeJob(data []byte) (*types.NodeJob, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("db.CreateNodeJob: %+v\n", j)
 	switch j.Type {
 	default:
 		return nil, fmt.Errorf("unknown job-type %v", j.Type)
@@ -223,7 +224,7 @@ func SubmitBLSToExecutionChangesNodeJob(job *types.NodeJob) error {
 }
 
 func CreateVoluntaryExitNodeJob(job *types.NodeJob) (*types.NodeJob, error) {
-	return nil, nil
+	return nil, fmt.Errorf("not implemented yet")
 }
 
 func UpdateVoluntaryExitNodeJobs() error {

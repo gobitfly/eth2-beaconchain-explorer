@@ -21,6 +21,7 @@ type NodeJobType string
 
 const BLSToExecutionChangesNodeJobType NodeJobType = "BLS_TO_EXECUTION_CHANGES"
 const VoluntaryExitsNodeJobType NodeJobType = "VOLUNTARY_EXITS"
+const UnknownNodeJobType NodeJobType = "UNKNOWN"
 
 var NodeJobTypes = []NodeJobType{
 	BLSToExecutionChangesNodeJobType,
@@ -64,12 +65,13 @@ func (nj *NodeJob) ParseData() error {
 	{
 		d := VoluntaryExitsNodeJobData{}
 		err := json.Unmarshal(nj.RawData, &d)
-		if err == nil {
+		if err == nil && d.Epoch != 0 {
 			nj.Type = VoluntaryExitsNodeJobType
 			nj.Data = d
 			return nj.SanitizeRawData()
 		}
 	}
+	nj.Type = UnknownNodeJobType
 	return fmt.Errorf("invalid data")
 }
 

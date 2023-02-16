@@ -69,6 +69,7 @@ func BroadcastPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Printf("job: %+v\n", job)
 	url := fmt.Sprintf("/tools/broadcast/status/%s", job.ID)
 	http.Redirect(w, r, url, http.StatusSeeOther)
 }
