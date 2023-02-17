@@ -161,7 +161,7 @@
 
 {{ define "content" }}
   {{ with .Data }}
-    <div class="broadcast container mt-2">
+    <div class="broadcast container mt-12">
       <div class="row">
         <div class="col-md-12">
           {{ if ne .FlashMessage "" }}
@@ -173,6 +173,7 @@
             </div>
           {{ end }}
           {{ if not $.NoAds }}{{ template "bannerGeneric" dict "desktop" "52" "mobile" "52" }}{{ end }}
+          {{ template "withdrawalOverviewRow" .Stats }}
           <section class="my-2">
             <div class="row">
               <div class="col-md-12">

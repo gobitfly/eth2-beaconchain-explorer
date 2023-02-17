@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -12,11 +13,12 @@ import (
 )
 
 func Broadcast(w http.ResponseWriter, r *http.Request) {
-	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "broadcast.html")
+	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "broadcast.html", "validator/withdrawalOverviewRow.html")
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "tools", "/tools/broadcast", "Broadcast")
 	pageData := &types.BroadcastPageData{}
+	pageData.Stats = services.GetLatestStats()
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
 
 	var err error

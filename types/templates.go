@@ -1880,6 +1880,7 @@ type ChangeWithdrawalCredentialsPageData struct {
 }
 
 type BroadcastPageData struct {
+	Stats        *Stats
 	FlashMessage string
 	CaptchaId    string
 	CsrfField    template.HTML
