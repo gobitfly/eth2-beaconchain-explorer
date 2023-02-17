@@ -610,7 +610,7 @@
 
     <script>
         var index = {{.Index}}
-        {{ if and (not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0))) (gt $.LatestFinalizedEpoch .ExitEpoch) }}
+        {{ if not (and (not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0))) (gt $.LatestFinalizedEpoch .ExitEpoch)) }}
         window.addEventListener('load', function() {
             $('#validator-history-table').DataTable({
                 processing: true,
