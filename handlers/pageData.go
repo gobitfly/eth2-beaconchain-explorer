@@ -42,6 +42,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		ChainSecondsPerSlot:   utils.Config.Chain.Config.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 		CurrentEpoch:          services.LatestEpoch(),
+		LatestFinalizedEpoch:  services.LatestFinalizedEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
 		Rates: types.PageRates{

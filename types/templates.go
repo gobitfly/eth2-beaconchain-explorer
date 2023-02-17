@@ -32,6 +32,7 @@ type PageData struct {
 	ChainSecondsPerSlot   uint64
 	ChainGenesisTimestamp uint64
 	CurrentEpoch          uint64
+	LatestFinalizedEpoch  uint64
 	CurrentSlot           uint64
 	FinalizationDelay     uint64
 	Mainnet               bool
