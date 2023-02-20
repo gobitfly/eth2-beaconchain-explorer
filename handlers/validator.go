@@ -617,8 +617,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		FirstEpoch uint64 `db:"firstepoch"`
 		LastEpoch  uint64 `db:"lastepoch"`
 	}
+	tempSyncPeriods := syncPeriods
 
-	err = db.ReaderDb.Select(&syncPeriods, `
+	err = db.ReaderDb.Select(&tempSyncPeriods, `
 		SELECT period as period, (period*$1) as firstepoch, ((period+1)*$1)-1 as lastepoch
 		FROM sync_committees 
 		WHERE validatorindex = $2
@@ -631,10 +632,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	// remove scheduled committees
 	latestEpoch := services.LatestEpoch()
-	for _, syncPeriod := range syncPeriods {
-		if syncPeriod.FirstEpoch > latestEpoch {
-			syncPeriods = syncPeriods[1:]
-		} else {
+	for i, syncPeriod := range tempSyncPeriods {
+		if syncPeriod.FirstEpoch <= latestEpoch {
+			syncPeriods = tempSyncPeriods[i:]
 			break
 		}
 	}
@@ -1815,8 +1815,9 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		StartEpoch uint64 `db:"startepoch"`
 		EndEpoch   uint64 `db:"endepoch"`
 	}
+	tempSyncPeriods := syncPeriods
 
-	err = db.ReaderDb.Select(&syncPeriods, `
+	err = db.ReaderDb.Select(&tempSyncPeriods, `
 		SELECT period as period, (period*$1) as endepoch, ((period+1)*$1)-1 as startepoch
 		FROM sync_committees 
 		WHERE validatorindex = $2
@@ -1830,10 +1831,9 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	latestEpoch := services.LatestEpoch()
 
 	//remove scheduled committees
-	for _, syncPeriod := range syncPeriods {
-		if syncPeriod.EndEpoch > latestEpoch {
-			syncPeriods = syncPeriods[1:]
-		} else {
+	for i, syncPeriod := range tempSyncPeriods {
+		if syncPeriod.EndEpoch <= latestEpoch {
+			syncPeriods = tempSyncPeriods[i:]
 			break
 		}
 	}
