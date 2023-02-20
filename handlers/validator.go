@@ -638,10 +638,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	// expected count of sync duties, this is set later to the actual value
-	validatorPageData.SyncCount = uint64(len(syncPeriods)) * utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
 
-	if validatorPageData.SyncCount > 0 {
+	expectedSyncCount := uint64(len(syncPeriods)) * utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
+
+	if expectedSyncCount > 0 {
 		// get sync stats from validator_stats
 		syncStats := struct {
 			ParticipatedSync uint64 `db:"participated_sync"`
