@@ -82,29 +82,35 @@ func main() {
 				logrus.Fatal(err)
 			}
 			if int64(head.FinalizedEpoch) <= *epoch {
-
+				logrus.Infof("pausing %v <= %v", int64(head.FinalizedEpoch), *epoch)
 				services.ReportStatus("rewardsExporter", "Running", nil)
 				time.Sleep(time.Second * 12)
 				continue
 			}
 
+			if *epoch == -1 {
+				*epoch = int64(head.FinalizedEpoch) - 1
+			}
+
+			for i := *epoch + 1; i <= int64(head.FinalizedEpoch); i++ {
+				start := time.Now()
+				logrus.Infof("retrieving rewards details for epoch %v", i)
+
+				rewards, err := eth_rewards.GetRewardsForEpoch(int(i), client, elClient, *network)
+
+				if err != nil {
+					logrus.Fatalf("error retrieving reward details for epoch %v: %v", i, err)
+				} else {
+					logrus.Infof("retrieved %v reward details for epoch %v in %v", len(rewards), i, time.Since(start))
+				}
+
+				err = bt.SaveValidatorIncomeDetails(uint64(i), rewards)
+				if err != nil {
+					logrus.Fatalf("error saving reward details to bigtable: %v", err)
+				}
+			}
+
 			*epoch = int64(head.FinalizedEpoch)
-
-			start := time.Now()
-			logrus.Infof("retrieving rewards details for epoch %v", *epoch)
-
-			rewards, err := eth_rewards.GetRewardsForEpoch(int(*epoch), client, elClient, *network)
-
-			if err != nil {
-				logrus.Fatalf("error retrieving reward details for epoch %v: %v", *epoch, err)
-			} else {
-				logrus.Infof("retrieved %v reward details for epoch %v in %v", len(rewards), *epoch, time.Since(start))
-			}
-
-			err = bt.SaveValidatorIncomeDetails(uint64(*epoch), rewards)
-			if err != nil {
-				logrus.Fatalf("error saving reward details to bigtable: %v", err)
-			}
 		}
 	}
 
