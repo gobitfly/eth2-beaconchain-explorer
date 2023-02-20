@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	capella "github.com/attestantio/go-eth2-client/spec/capella"
@@ -27,6 +28,36 @@ func GetNodeJob(id string) (*types.NodeJob, error) {
 	}
 	err = job.ParseData()
 	return &job, err
+}
+
+func GetNodeJobValidatorInfos(job *types.NodeJob) ([]types.NodeJobValidatorInfo, error) {
+
+	indicesArr := []uint64{}
+
+	jobData, ok := job.GetBLSToExecutionChangesNodeJobData()
+	if !ok {
+		return nil, fmt.Errorf("invalid job-data")
+	}
+	for _, op := range *jobData {
+		indicesArr = append(indicesArr, uint64(op.Message.ValidatorIndex))
+	}
+	dbValis := []types.NodeJobValidatorInfo{}
+	err := WriterDb.Select(&dbValis, `select validatorindex, pubkey, withdrawalcredentials, exitepoch, status from validators where validatorindex = any($1)`, pq.Array(indicesArr))
+	if err != nil {
+		return nil, err
+	}
+	for i, info := range dbValis {
+		status := "-"
+		if strings.Contains(info.Status, "exit") {
+			status = "Exit"
+		} else if job.Status == types.PendingNodeJobStatus {
+			status = "Pending"
+		} else if info.WithdrawCredentials[0] == 1 {
+			status = "Withdraw credentials set"
+		}
+		dbValis[i].Status = status
+	}
+	return dbValis, nil
 }
 
 func CreateNodeJob(data []byte) (*types.NodeJob, error) {

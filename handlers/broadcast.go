@@ -89,9 +89,34 @@ func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
-	data.Data = job
+
+	pageData := &types.BroadcastStatusPageData{}
+	pageData.Job = job
+	pageData.JobTypeLabel = FormatNodeJobType(job.Type)
+
+	validators, err := db.GetNodeJobValidatorInfos(job)
+	if err != nil {
+		logger.Errorf("error retrieving hib validator infos %v", err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
+	pageData.Validators = &validators
+
+	data.Data = pageData
 	err = tpl.ExecuteTemplate(w, "layout", data)
 	if handleTemplateError(w, r, "broadcast.go", "broadcast", "", err) != nil {
 		return // an error has occurred and was processed
 	}
+}
+
+func FormatNodeJobType(nodeJobType types.NodeJobType) string {
+	label := "Unknown"
+	switch nodeJobType {
+	case types.BLSToExecutionChangesNodeJobType:
+		label = "Set widthdraw address"
+	case types.VoluntaryExitsNodeJobType:
+		label = "Voluntary exit"
+	}
+	return label
 }

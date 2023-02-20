@@ -52,6 +52,14 @@ type NodeJob struct {
 	Data                interface{}   `db:"-"`
 }
 
+type NodeJobValidatorInfo struct {
+	ValidatorIndex      uint64 `db:"validatorindex"`
+	PublicKey           []byte `db:"pubkey"`
+	WithdrawCredentials []byte `db:"withdrawalcredentials"`
+	ExitEpoch           uint64 `db:"exitepoch"`
+	Status              string
+}
+
 func (nj *NodeJob) ParseData() error {
 	{
 		d := BLSToExecutionChangesNodeJobData{}
