@@ -573,6 +573,28 @@ type ApiValidatorBalanceHistoryResponse struct {
 	Week             uint64 `json:"week"`
 }
 
+type ApiValidatorWithdrawalResponse struct {
+	Epoch          uint64 `json:"epoch,omitempty"`
+	Slot           uint64 `json:"slot,omitempty"`
+	BlockRoot      string `json:"blockroot,omitempty"`
+	Index          uint64 `json:"withdrawalindex"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+	Address        string `json:"address"`
+	Amount         uint64 `json:"amount"`
+}
+
+type ApiValidatorBlsChangeResponse struct {
+	Epoch                    uint64 `db:"epoch" json:"epoch,omitempty"`
+	Slot                     uint64 `db:"slot" json:"slot,omitempty"`
+	BlockRoot                string `db:"block_rot" json:"blockroot,omitempty"`
+	Validatorindex           uint64 `db:"validatorindex" json:"validatorindex,omitempty"`
+	BlsPubkey                string `db:"pubkey" json:"bls_pubkey,omitempty"`
+	Signature                string `db:"signature" json:"bls_signature,omitempty"`
+	Address                  string `db:"address" json:"address,omitempty"`
+	WithdrawalCredentialsOld string `db:"withdrawalcredentials_0x00" json:"withdrawalcredentials_0x00,omitempty"`
+	WithdrawalCredentialsNew string `db:"withdrawalcredentials_0x01" json:"withdrawalcredentials_0x01,omitempty"`
+}
+
 type ApiValidatorPerformanceResponse struct {
 	Balance         uint64 `json:"balance"`
 	Performance1d   uint64 `json:"performance1d"`

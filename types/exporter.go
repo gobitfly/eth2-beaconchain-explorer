@@ -176,7 +176,7 @@ type ExecutionPayload struct {
 
 type Withdrawals struct {
 	Slot           uint64 `json:"slot,omitempty"`
-	BlockRoot      uint64 `json:"blockroot,omitempty"`
+	BlockRoot      []byte `json:"blockroot,omitempty"`
 	Index          uint64 `json:"index"`
 	ValidatorIndex uint64 `json:"validatorindex"`
 	Address        []byte `json:"address"`
