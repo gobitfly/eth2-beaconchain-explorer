@@ -19,13 +19,14 @@
           <div class="col-md-12">
             <div class="row justify-content-center">
               <div class="col-md-12 col-lg-8 text-center">
-                <h1 class="h4 ">Withdrawal Credentials Change Request Job<br />{{ .ID }}</h1>
-                <h2 class="h5">Status: {{ .Status }}</h2>
-                <h2 class="h5">Type: {{ .Type }}</h2>
-                <h2 class="h5">CreatedTime: {{ .CreatedTime }}</h2>
+                <h4 class="h4 ">Withdrawal Credentials Change Request Job<br />{{ .ID }}</h4>
+                <h5 class="h5">Status: {{ .Status }}</h5>
+                <h5 class="h5">Type: {{ .Type }}</h5>
+                <h5 class="h5">Created time: {{ .CreatedTime | formatTime }}</h5>
                 {{ if .SubmittedToNodeTime.Valid }}
-                  <h2 class="h5">SubmittedToNodeTime: {{ .SubmittedToNodeTime.Time }}</h2>
+                  <h5 class="h5">SubmittedToNodeTime: {{ .SubmittedToNodeTime.Time }}</h5>
                 {{ end }}
+                <p class="mt-2">Great job on submitting your signature to the beaconchain! To celebrate, we're offering a special promotion: Use promo code <b>shanghaiHF100</b> at checkout to get a one-time 100% discount on your first Mobile App and API purchase. Don't miss out - offer ends April 2023."</p>
               </div>
             </div>
           </div>
