@@ -529,6 +529,8 @@ type ApiValidatorDailyStatsResponse struct {
 	Day                   uint64 `json:"day"`
 	Deposits              uint64 `json:"deposits"`
 	DepositsAmount        uint64 `json:"deposits_amount"`
+	Withdrawals           uint64 `json:"withdrawals"`
+	WithdrawalsAmount     uint64 `json:"withdrawals_amount"`
 	EndBalance            uint64 `json:"end_balance"`
 	EndEffectiveBalance   uint64 `json:"end_effective_balance"`
 	MaxBalance            uint64 `json:"max_balance"`

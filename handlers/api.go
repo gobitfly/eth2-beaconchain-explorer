@@ -1482,6 +1482,8 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 		COALESCE(proposer_slashings, 0) AS proposer_slashings,
 		COALESCE(deposits, 0) AS deposits,
 		COALESCE(deposits_amount, 0) AS deposits_amount,
+		COALESCE(withdrawals, 0) AS withdrawals,
+		COALESCE(withdrawals_amount, 0) AS withdrawals_amount,
 		COALESCE(participated_sync, 0) AS participated_sync,
 		COALESCE(missed_sync, 0) AS missed_sync,
 		COALESCE(orphaned_sync, 0) AS orphaned_sync
