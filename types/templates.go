@@ -1890,5 +1890,6 @@ type BroadcastPageData struct {
 type BroadcastStatusPageData struct {
 	Job          *NodeJob
 	JobTypeLabel string
+	JobTitle     string
 	Validators   *[]NodeJobValidatorInfo
 }

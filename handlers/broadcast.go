@@ -93,6 +93,7 @@ func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
 	pageData := &types.BroadcastStatusPageData{}
 	pageData.Job = job
 	pageData.JobTypeLabel = FormatNodeJobType(job.Type)
+	pageData.JobTitle = FormatNodeJobTitle(job.Type)
 
 	validators, err := db.GetNodeJobValidatorInfos(job)
 	if err != nil {
@@ -114,9 +115,20 @@ func FormatNodeJobType(nodeJobType types.NodeJobType) string {
 	label := "Unknown"
 	switch nodeJobType {
 	case types.BLSToExecutionChangesNodeJobType:
-		label = "Set widthdraw address"
+		label = "Set withdrawal address"
 	case types.VoluntaryExitsNodeJobType:
 		label = "Voluntary exit"
+	}
+	return label
+}
+
+func FormatNodeJobTitle(nodeJobType types.NodeJobType) string {
+	label := "Transaction"
+	switch nodeJobType {
+	case types.BLSToExecutionChangesNodeJobType:
+		label = "Withdrawal Credentials Change Request Job"
+	case types.VoluntaryExitsNodeJobType:
+		label = "Voluntary Exit Request Job"
 	}
 	return label
 }

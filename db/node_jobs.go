@@ -34,12 +34,23 @@ func GetNodeJobValidatorInfos(job *types.NodeJob) ([]types.NodeJobValidatorInfo,
 
 	indicesArr := []uint64{}
 
-	jobData, ok := job.GetBLSToExecutionChangesNodeJobData()
-	if !ok {
-		return nil, fmt.Errorf("invalid job-data")
-	}
-	for _, op := range *jobData {
-		indicesArr = append(indicesArr, uint64(op.Message.ValidatorIndex))
+	if job.Type == types.UnknownNodeJobType {
+		return []types.NodeJobValidatorInfo{}, nil
+	} else if job.Type == types.BLSToExecutionChangesNodeJobType {
+		jobData, ok := job.GetBLSToExecutionChangesNodeJobData()
+		if !ok {
+			return nil, fmt.Errorf("invalid bls to execution job-data")
+		}
+		for _, op := range *jobData {
+			indicesArr = append(indicesArr, uint64(op.Message.ValidatorIndex))
+		}
+	} else {
+		jobData, ok := job.GetVoluntaryExitsNodeJobData()
+		if !ok {
+			return nil, fmt.Errorf("invalid voluntary exit job-data")
+		}
+
+		indicesArr = append(indicesArr, uint64(jobData.ValidatorIndex))
 	}
 	dbValis := []types.NodeJobValidatorInfo{}
 	err := WriterDb.Select(&dbValis, `select validatorindex, pubkey, withdrawalcredentials, exitepoch, status from validators where validatorindex = any($1)`, pq.Array(indicesArr))
@@ -53,7 +64,7 @@ func GetNodeJobValidatorInfos(job *types.NodeJob) ([]types.NodeJobValidatorInfo,
 		} else if job.Status == types.PendingNodeJobStatus {
 			status = "Pending"
 		} else if info.WithdrawCredentials[0] == 1 {
-			status = "Withdraw credentials set"
+			status = "Withdrawal credentials set"
 		}
 		dbValis[i].Status = status
 	}
