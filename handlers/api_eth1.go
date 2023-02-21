@@ -773,7 +773,7 @@ func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 			value := new(big.Int).SetBytes(tx.Value).String()
 			m, ok := tokenMeta[string(tx.TokenAddress)]
 			if ok {
-				value = utils.FormatErc20Deicmals(tx.Value, m).String()
+				value = utils.FormatErc20Decimals(tx.Value, m).String()
 			}
 
 			transactions = append(transactions, &types.Eth1TokenTxParsed{

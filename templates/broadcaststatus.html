@@ -1,0 +1,33 @@
+{{ define "js" }}
+{{ end }}
+
+{{ define "css" }}
+  <style>
+    @media (min-width: 1140px) {
+      .max-lg-300 {
+        max-width: 300px;
+      }
+    }
+  </style>
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <section class="my-5">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="row justify-content-center">
+              <div class="col-md-12 col-lg-8 text-center">
+                <h1 class="h4 ">Withdrawal Credentials Change Request Job<br />{{ .ID }}</h1>
+                <h2 class="h5">Status: {{ .Status }}</h2>
+                <h2 class="h5">Type: {{ .Type }}</h2>
+                <h2 class="h5">CreatedTime: {{ .CreatedTime }}</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  {{ end }}
+{{ end }}

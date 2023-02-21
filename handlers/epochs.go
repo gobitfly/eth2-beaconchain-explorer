@@ -33,10 +33,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Error("error getting user session")
 	}
 
-	state, err := GetDataTableState(user, session, "epochs")
-	if err != nil {
-		logger.WithError(err).Error("error getting stored table state")
-	}
+	state := GetDataTableState(user, session, "epochs")
 	length := uint64(50)
 	start := uint64(0)
 	var startEpoch uint64
@@ -180,6 +177,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 				attesterslashingscount, 
 				attestationscount, 
 				depositscount, 
+				withdrawalcount,
 				voluntaryexitscount, 
 				validatorscount, 
 				averagevalidatorbalance, 
@@ -222,7 +220,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatEpoch(b.Epoch),
 			utils.FormatTimestamp(utils.EpochToTime(b.Epoch).Unix()),
 			b.AttestationsCount,
-			b.DepositsCount,
+			fmt.Sprintf("%v / %v", b.DepositsCount, b.WithdrawalCount),
 			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
 			utils.FormatYesNo(b.Finalized),
 			utils.FormatBalance(b.EligibleEther, currency),

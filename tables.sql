@@ -108,6 +108,13 @@ create table sync_committees
     primary key (period, validatorindex, committeeindex)
 );
 
+drop table if exists sync_committees_count_per_validator;
+create table sync_committees_count_per_validator (
+	period int not null unique,
+	count_so_far float8 not null,
+    primary key (period)
+);
+
 drop table if exists validator_balances_recent;
 create table validator_balances_recent
 (
@@ -406,6 +413,10 @@ create table blocks_deposits
     signature             bytea  not null,
     primary key (block_slot, block_index)
 );
+
+
+create index idx_blocks_deposits_publickey on blocks_deposits (publickey);
+
 
 drop table if exists blocks_voluntaryexits;
 create table blocks_voluntaryexits
@@ -1025,4 +1036,17 @@ create table global_notifications
     target varchar(20) not null primary key, 
     content text not null,
     enabled bool not null
+);
+
+drop table if exists node_jobs;
+create table node_jobs
+(
+    id varchar(40),
+    type varchar(40) not null, -- can be one of: BLS_TO_EXECUTION_CHANGES, VOLUNTARY_EXITS
+    status varchar(40) not null, -- can be one of: PENDING, SUBMITTED_TO_NODE, COMPLETED
+    created_time timestamp without time zone not null default 'now()',
+    submitted_to_node_time timestamp without time zone,
+    completed_time timestamp without time zone,
+    data jsonb not null,
+    primary key (id)
 );

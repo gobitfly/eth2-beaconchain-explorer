@@ -239,7 +239,7 @@ func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDat
 	}
 
 	var chartData = make([]*types.ChartDataPoint, len(blocks))
-	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
+	epochsPerDay := utils.EpochsPerDay()
 
 	for i := len(blocks) - 1; i >= 0; i-- {
 		consData := consMap[blocks[i].Number]

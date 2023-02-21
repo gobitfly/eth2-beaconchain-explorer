@@ -20,7 +20,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
-	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
+	epochsPerDay := utils.EpochsPerDay()
 	firstEpoch := day * epochsPerDay
 	lastEpoch := (day+1)*epochsPerDay - 1
 	// firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
@@ -93,8 +93,8 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	logger.Infof("export completed, took %v", time.Since(start))
 
 	start = time.Now()
-	logger.Infof("exporting missed_attestations statistics lasteEpoch: %v firstEpoch: %v", lastEpoch, firstEpoch)
-	ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, lastEpoch, lastEpoch-firstEpoch)
+	logger.Infof("exporting missed_attestations statistics lastEpoch: %v firstEpoch: %v", lastEpoch, firstEpoch)
+	ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, firstEpoch, lastEpoch)
 	if err != nil {
 		return err
 	}
@@ -444,7 +444,7 @@ func WriteChartSeriesForDay(day int64) error {
 		return fmt.Errorf("this function does not yet pre-beaconchain blocks")
 	}
 
-	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
+	epochsPerDay := utils.EpochsPerDay()
 	beaconchainDay := day * int64(epochsPerDay)
 
 	startDate := utils.EpochToTime(uint64(beaconchainDay))

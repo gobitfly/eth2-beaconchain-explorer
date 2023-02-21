@@ -1947,7 +1947,7 @@ func (n *validatorWithdrawalNotification) GetEpoch() uint64 {
 }
 
 func (n *validatorWithdrawalNotification) GetEventName() types.EventName {
-	return types.ValidatorGotSlashedEventName
+	return types.ValidatorReceivedWithdrawalEventName
 }
 
 func (n *validatorWithdrawalNotification) GetInfo(includeUrl bool) string {
@@ -1986,7 +1986,7 @@ func collectWithdrawalNotifications(notificationsByUserID map[uint64]map[types.E
 		return fmt.Errorf("error getting withdrawals from database, err: %w", err)
 	}
 
-	logger.Infof("retrieved %v events", len(events))
+	// logger.Infof("retrieved %v events", len(events))
 	for _, event := range events {
 		subscribers, ok := subMap[hex.EncodeToString(event.Pubkey)]
 		if ok {
@@ -2000,7 +2000,7 @@ func collectWithdrawalNotifications(notificationsByUserID map[uint64]map[types.E
 						continue
 					}
 				}
-				logger.Infof("creating %v notification for validator %v in epoch %v", types.ValidatorReceivedWithdrawalEventName, event.Index, epoch)
+				// logger.Infof("creating %v notification for validator %v in epoch %v", types.ValidatorReceivedWithdrawalEventName, event.Index, epoch)
 				n := &validatorWithdrawalNotification{
 					SubscriptionID:  *sub.ID,
 					ValidatorIndex:  event.Index,

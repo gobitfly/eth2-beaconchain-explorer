@@ -2152,7 +2152,7 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 	tx, err := db.FrontendWriterDB.Beginx()
 	if err != nil {
 		//  return fmt.Errorf("error beginning transaction")
-		logger.Errorf("error committing transacton")
+		logger.WithError(err).Errorf("error committing transacton")
 		http.Error(w, "error processing request", 500)
 		return
 	}
@@ -2178,12 +2178,12 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 
 	err = tx.Commit()
 	if err != nil {
-		logger.Errorf("error committing transacton")
+		logger.WithError(err).Errorf("error committing transacton")
 		http.Error(w, "error processing request", 500)
 		return
 	}
 
-	fmt.Fprintf(w, "successfully unsubscribed from %v events", len(hashes))
+	fmt.Fprintf(w, "successfully unsubscribed from %v event(s)", len(hashes))
 }
 
 type UsersNotificationsRequest struct {
@@ -2932,12 +2932,25 @@ func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
 
 	var configs []*notificationConfig
 
-	err = db.FrontendWriterDB.Select(&configs, "SELECT target, content, enabled FROM global_notifications ORDER BY target")
-
+	err = db.WriterDb.Select(&configs, "SELECT target, content, enabled FROM global_notifications WHERE target = $1 ORDER BY target", utils.Config.Chain.Name)
 	if err != nil {
 		logger.Errorf("error retrieving globalNotificationMessage: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
+	}
+
+	if len(configs) == 0 {
+		_, err = db.WriterDb.Exec("INSERT INTO global_notifications VALUES ($1, '', false)", utils.Config.Chain.Name)
+		if err != nil {
+			logger.Errorf("error creating default global notification entry: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		configs = append(configs, &notificationConfig{
+			Target:  utils.Config.Chain.Name,
+			Enabled: false,
+			Content: "",
+		})
 	}
 
 	pageData := &struct {
@@ -2979,7 +2992,7 @@ func UserGlobalNotificationPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var targets []string
-	err = db.FrontendWriterDB.Select(&targets, "SELECT target FROM global_notifications")
+	err = db.WriterDb.Select(&targets, "SELECT target FROM global_notifications WHERE target = $1", utils.Config.Chain.Name)
 	if err != nil {
 		logger.Errorf("error retrieving targets: %v", err)
 		http.Redirect(w, r, "/user/global_notification", http.StatusSeeOther)
@@ -2994,7 +3007,7 @@ func UserGlobalNotificationPost(w http.ResponseWriter, r *http.Request) {
 		if enabledText == "on" {
 			enabled = true
 		}
-		_, err = db.FrontendWriterDB.Exec("UPDATE global_notifications SET content = $1, enabled = $2 WHERE target = $3", content, enabled, target)
+		_, err = db.WriterDb.Exec("UPDATE global_notifications SET content = $1, enabled = $2 WHERE target = $3", content, enabled, target)
 
 		if err != nil {
 			logger.Errorf("error setting globalNotificationMessage: %v", err)

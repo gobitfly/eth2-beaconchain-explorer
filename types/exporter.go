@@ -93,7 +93,7 @@ type Validator struct {
 // ValidatorQueue is a struct to hold validator queue data
 type ValidatorQueue struct {
 	Activating uint64
-	Exititing  uint64
+	Exiting    uint64
 }
 
 type SyncAggregate struct {
@@ -176,7 +176,7 @@ type ExecutionPayload struct {
 
 type Withdrawals struct {
 	Slot           uint64 `json:"slot,omitempty"`
-	BlockRoot      uint64 `json:"blockroot,omitempty"`
+	BlockRoot      []byte `json:"blockroot,omitempty"`
 	Index          uint64 `json:"index"`
 	ValidatorIndex uint64 `json:"validatorindex"`
 	Address        []byte `json:"address"`

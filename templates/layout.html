@@ -734,6 +734,10 @@
                         <span class="nav-icon"><i class="fas fa-gas-pump"></i></span>
                         <span class="nav-text ml-3">GasNow</span>
                       </a>
+                      <a class="dropdown-item" href="/tools/broadcast">
+                        <span class="nav-icon"><i class="fas fa-bullhorn"></i></span>
+                        <span class="nav-text ml-3">Broadcast Signed Messages</span>
+                      </a>
                     </div>
                     <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
                       <span class="ml-4" style="display: block; font-size: 18px; font-weight: 700; letter-spacing: .3px;">Services</span>
@@ -966,6 +970,8 @@
         {{ end }}
       {{ end }}
       <script src="/js/clipboard.min.js"></script>
+      <script src="/js/requestInterval.js"></script>
+
       {{ template "js" .Data }}
       {{ if not .Meta.NoTrack }}
         {{ if ne .Meta.GATag "" }}

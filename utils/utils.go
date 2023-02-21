@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"eth2-exporter/config"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
@@ -40,6 +41,7 @@ import (
 	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/lib/pq"
+	"github.com/mvdan/xurls"
 	"github.com/sirupsen/logrus"
 	"github.com/skip2/go-qrcode"
 )
@@ -207,6 +209,23 @@ func GetTemplateFuncs() template.FuncMap {
 		},
 		"formatEthstoreComparison": FormatEthstoreComparison,
 		"formatPoolPerformance":    FormatPoolPerformance,
+		"formatTokenSymbolTitle":   FormatTokenSymbolTitle,
+		"formatTokenSymbol":        FormatTokenSymbol,
+		"formatTokenSymbolHTML":    FormatTokenSymbolHTML,
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, errors.New("invalid dict call")
+			}
+			dict := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, errors.New("dict keys must be strings")
+				}
+				dict[key] = values[i+1]
+			}
+			return dict, nil
+		},
 	}
 }
 
@@ -342,14 +361,19 @@ func ReadConfig(cfg *types.Config, path string) error {
 	}
 
 	if cfg.Chain.ConfigPath == "" {
+		// var prysmParamsConfig *prysmParams.BeaconChainConfig
 		switch cfg.Chain.Name {
 		case "mainnet":
+			// prysmParamsConfig = prysmParams.MainnetConfig().Copy()
 			err = yaml.Unmarshal([]byte(config.MainnetChainYml), &cfg.Chain.Config)
 		case "prater":
+			// prysmParamsConfig = prysmParams.PraterConfig().Copy()
 			err = yaml.Unmarshal([]byte(config.PraterChainYml), &cfg.Chain.Config)
 		case "ropsten":
+			// prysmParamsConfig = prysmParams.RopstenConfig().Copy()
 			err = yaml.Unmarshal([]byte(config.RopstenChainYml), &cfg.Chain.Config)
 		case "sepolia":
+			// prysmParamsConfig = prysmParams.SepoliaConfig().Copy()
 			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
 		default:
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
@@ -357,6 +381,10 @@ func ReadConfig(cfg *types.Config, path string) error {
 		if err != nil {
 			return err
 		}
+		// err = prysmParams.SetActive(prysmParamsConfig)
+		// if err != nil {
+		// 	return fmt.Errorf("error setting chainConfig (%v) for prysmParams: %w", cfg.Chain.Name, err)
+		// }
 	} else {
 		f, err := os.Open(cfg.Chain.ConfigPath)
 		if err != nil {
@@ -369,6 +397,10 @@ func ReadConfig(cfg *types.Config, path string) error {
 			return fmt.Errorf("error decoding Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
 		}
 		cfg.Chain.Config = *chainConfig
+		// err = prysmParams.LoadChainConfigFile(cfg.Chain.ConfigPath, nil)
+		// if err != nil {
+		// 	return fmt.Errorf("error loading chainConfig (%v) for prysmParams: %w", cfg.Chain.ConfigPath, err)
+		// }
 	}
 	cfg.Chain.Name = cfg.Chain.Config.ConfigName
 
@@ -376,15 +408,20 @@ func ReadConfig(cfg *types.Config, path string) error {
 		switch cfg.Chain.Name {
 		case "mainnet":
 			cfg.Chain.GenesisTimestamp = 1606824023
+			cfg.Chain.GenesisValidatorsRoot = "0x4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"
 		case "prater":
 			cfg.Chain.GenesisTimestamp = 1616508000
-		case "ropsten":
-			cfg.Chain.GenesisTimestamp = 1653922800
+			cfg.Chain.GenesisValidatorsRoot = "0x043db0d9a83813551ee2f33450d23797757d430911a9320530ad8a0eabc43efb"
 		case "sepolia":
 			cfg.Chain.GenesisTimestamp = 1655733600
+			cfg.Chain.GenesisValidatorsRoot = "0xd8ea171f3c94aea21ebc42a1ed61052acf3f9209c00e4efbaaddac09ed9b8078"
 		default:
 			return fmt.Errorf("tried to set known genesis-timestamp, but unknown chain-name")
 		}
+	}
+
+	if cfg.Chain.DomainBLSToExecutionChange == "" {
+		cfg.Chain.DomainBLSToExecutionChange = "0x0A000000"
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -920,6 +957,34 @@ func FormatPoolPerformance(val float64) template.HTML {
 	return template.HTML(fmt.Sprintf(`<span data-toggle="tooltip" title=%f%%>%s%%</span>`, val, fmt.Sprintf("%.2f", val)))
 }
 
+func FormatTokenSymbolTitle(symbol string) string {
+	urls := xurls.Relaxed.FindAllString(symbol, -1)
+
+	if len(urls) > 0 {
+		return "The token symbol has been hidden as it contains a URL which might be a scam"
+	}
+	return ""
+}
+
+func FormatTokenSymbol(symbol string) string {
+	urls := xurls.Relaxed.FindAllString(symbol, -1)
+
+	if len(urls) > 0 {
+		return "[hidden-symbol]"
+	}
+	return symbol
+}
+
+func FormatTokenSymbolHTML(tmpl template.HTML) template.HTML {
+	tmplString := (string(tmpl))
+	symbolTitle := FormatTokenSymbolTitle(tmplString)
+
+	tmplString = FormatTokenSymbol(tmplString)
+	tmpl = template.HTML(strings.ReplaceAll(tmplString, `title=""`, fmt.Sprintf(`title="%s"`, symbolTitle)))
+
+	return tmpl
+}
+
 func ReverseSlice[S ~[]E, E any](s S) {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
@@ -943,5 +1008,6 @@ func GetTimeToNextWithdrawal(distance uint64) time.Time {
 }
 
 func EpochsPerDay() uint64 {
-	return (24 * 60 * 60) / Config.Chain.Config.SlotsPerEpoch / Config.Chain.Config.SecondsPerSlot
+	day := time.Hour * 24
+	return (uint64(day.Seconds()) / Config.Chain.Config.SlotsPerEpoch) / Config.Chain.Config.SecondsPerSlot
 }

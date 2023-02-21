@@ -1,0 +1,81 @@
+{{ define "js" }}
+  <script src="https://www.google.com/recaptcha/api.js" async></script>
+  <script>
+    function onSubmit(token) {
+      var form = document.getElementById("contact")
+      if (form.reportValidity()) {
+        form.submit()
+      }
+    }
+  </script>
+{{ end }}
+
+{{ define "css" }}
+  <style>
+    @media (min-width: 1140px) {
+      .max-lg-300 {
+        max-width: 300px;
+      }
+    }
+  </style>
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="row">
+        <div class="col-md-12">
+          {{ if ne .FlashMessage "" }}
+            <div class="alert container mt-2 {{ if contains .FlashMessage "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
+              <div class="p-2">{{ .FlashMessage | formatHTML }}</div>
+              <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          {{ end }}
+          {{ if not $.NoAds }}{{ template "bannerGeneric" dict "desktop" "52" "mobile" "52" }}{{ end }}
+          <section class="my-2">
+            <div class="row">
+              <div class="col-md-12">
+                <div class="row justify-content-center">
+                  <div class="col-md-12 col-lg-8 text-center">
+                    <h1 class="h4 ">Submit your signed withdrawal change requests</h1>
+                    <form id="credentialschange" action="/tools/broadcast" method="post">
+                      <div class="text-left">
+                        <div class="form-group">
+                          <label for="bls_to_execution_changes">Signature JSON</label>
+                          <textarea
+                            class="form-control"
+                            id="bls_to_execution_changes"
+                            name="bls_to_execution_changes"
+                            rows="30"
+                            placeholder='[{
+      "message": {
+        "validator_index": "62019",
+        "from_bls_pubkey": "0x8562a3e163bfbc20bebbbea2643bdcb8823d36a481ae770ce7eb358c53a78ac5e5074ef1f2506fe1c42d7c36f9dc650f",
+        "to_execution_address": "0x0bcededbeea88da966e98dd40796b802d54342cc"
+      },
+      "signature": "0x80f445291542b582cbda37142621461328cdf960bc460e8e4de98530fab5d8cdc052a5b2cb47100a2ddf33555363d6db07b79921b7eddc4922e925a83d747befe02e384c12fb7f13386fe7295ec4330bdd959f130e95a4dc476e27fc31c1ce42"
+    },
+    {
+      "message": {
+        "validator_index": "62020",
+        "from_bls_pubkey": "0xaa592161caf20a7ea52892cffd9e5e7770aff561380e842eeacdfb5b205bcf64e5fadd86229fa67ced09d1613e2d854b",
+        "to_execution_address": "0x0bcededbeea88da966e98dd40796b802d54342cc"
+      },
+      "signature": "0x89544b15ed8148a2471fd6ca96bf0aebe16419d59b5fb9eedeeba262592cba601d09107f848af3e05c3d8c1c5405284d05aaf488c24fbe140d8f06c285de3f4db102bf66f21c176715bbb1a30bf6aa27e5caa7684caf92c4c5b8fc69a73f158c"
+    }]'></textarea>
+                        </div>
+                      </div>
+                      <button data-sitekey="{{ .RecaptchaKey }}" data-callback="onSubmit" data-action="submit" type="submit" class="g-recaptcha btn btn-primary text-center">Submit & Broadcast</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

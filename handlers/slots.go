@@ -30,20 +30,17 @@ func Slots(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Error("error getting user session")
 	}
 
-	state, err := GetDataTableState(user, session, "slots")
-	if err != nil {
-		logger.WithError(err).Error("error getting stored table state")
-	}
+	state := GetDataTableState(user, session, "slots")
 
 	length := uint64(50)
 	start := uint64(0)
 	search := ""
 	searchForEmpty := false
 
-	if state != nil {
-		length = state.Length
-		start = state.Start
-		// we currently do not set search on state change
+	if state.Length == 0 {
+		length = 50
+	}
+	if state.Search.Search != "" {
 		search = state.Search.Search
 	}
 

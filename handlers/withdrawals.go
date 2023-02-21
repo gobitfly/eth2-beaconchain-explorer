@@ -17,6 +17,7 @@ import (
 
 // Withdrawals will return information about recent withdrawals
 func Withdrawals(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
 
 	var withdrawalsTemplate = templates.GetTemplate("layout.html", "withdrawals.html", "components/charts.html")
 
@@ -24,6 +25,9 @@ func Withdrawals(w http.ResponseWriter, r *http.Request) {
 
 	pageData := &types.WithdrawalsPageData{}
 	pageData.Stats = services.GetLatestStats()
+
+	data := InitPageData(w, r, "validators", "/withdrawals", "Validator Withdrawals")
+	data.HeaderAd = true
 	// var err error
 	// pageData.Stats, err = services.CalculateStats()
 	// if err != nil {
@@ -53,11 +57,35 @@ func Withdrawals(w http.ResponseWriter, r *http.Request) {
 	// 	Height: 300,
 	// }
 
-	data := InitPageData(w, r, "validators", "/withdrawals", "Validator Withdrawals")
-	data.HeaderAd = true
+	user, session, err := getUserSession(r)
+	if err != nil {
+		logger.WithError(err).Error("error getting user session")
+	}
+
+	state := GetDataTableState(user, session, "withdrawals")
+	if state.Length == 0 {
+		state.Length = 10
+	}
+
+	withdrawals, err := WithdrawalsTableData(1, state.Search.Search, state.Length, state.Start, "", "", currency)
+	if err != nil {
+		logger.Errorf("error getting withdrawals table data: %v", err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+	pageData.Withdrawals = withdrawals
+
+	blsChange, err := BLSTableData(1, state.Search.Search, state.Length, state.Start, "", "")
+	if err != nil {
+		logger.Errorf("error getting bls table data: %v", err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+	pageData.BlsChanges = blsChange
+
 	data.Data = pageData
 
-	err := withdrawalsTemplate.ExecuteTemplate(w, "layout", data)
+	err = withdrawalsTemplate.ExecuteTemplate(w, "layout", data)
 	if handleTemplateError(w, r, "withdrawals.go", "withdrawals", "", err) != nil {
 		return // an error has occurred and was processed
 	}
@@ -65,10 +93,8 @@ func Withdrawals(w http.ResponseWriter, r *http.Request) {
 
 // WithdrawalsData will return eth1-deposits as json
 func WithdrawalsData(w http.ResponseWriter, r *http.Request) {
-	currency := GetCurrency(r)
-
 	w.Header().Set("Content-Type", "application/json")
-
+	currency := GetCurrency(r)
 	q := r.URL.Query()
 
 	search := q.Get("search[value]")
@@ -97,7 +123,25 @@ func WithdrawalsData(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
-	orderColumn := q.Get("order[0][column]")
+	orderBy := q.Get("order[0][column]")
+	orderDir := q.Get("order[0][dir]")
+
+	data, err := WithdrawalsTableData(draw, search, length, start, orderBy, orderDir, currency)
+	if err != nil {
+		logger.Errorf("error getting withdrawal table data: %v", err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+}
+
+func WithdrawalsTableData(draw uint64, search string, length, start uint64, orderBy, orderDir string, currency string) (*types.DataTableResponse, error) {
 	orderByMap := map[string]string{
 		"0": "epoch",
 		"1": "slot",
@@ -106,25 +150,23 @@ func WithdrawalsData(w http.ResponseWriter, r *http.Request) {
 		"4": "address",
 		"5": "amount",
 	}
-	orderBy, exists := orderByMap[orderColumn]
+	orderColumn, exists := orderByMap[orderBy]
 	if !exists {
 		orderBy = "index"
 	}
 
-	orderDir := q.Get("order[0][dir]")
+	if orderDir != "asc" {
+		orderDir = "desc"
+	}
 
 	withdrawalCount, err := db.GetTotalWithdrawals()
 	if err != nil {
-		logger.Errorf("error getting total withdrawal count: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+		return nil, fmt.Errorf("error getting total withdrawals: %w", err)
 	}
 
-	withdrawals, err := db.GetWithdrawals(search, length, start, orderBy, orderDir)
+	withdrawals, err := db.GetWithdrawals(search, length, start, orderColumn, orderDir)
 	if err != nil {
-		logger.Errorf("error getting withdrawals: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+		return nil, fmt.Errorf("error getting withdrawals: %w", err)
 	}
 
 	tableData := make([][]interface{}, len(withdrawals))
@@ -145,14 +187,10 @@ func WithdrawalsData(w http.ResponseWriter, r *http.Request) {
 		RecordsTotal:    withdrawalCount,
 		RecordsFiltered: withdrawalCount,
 		Data:            tableData,
+		PageLength:      length,
+		DisplayStart:    start,
 	}
-
-	err = json.NewEncoder(w).Encode(data)
-	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
+	return data, nil
 }
 
 // Eth1DepositsData will return eth1-deposits as json
@@ -185,33 +223,48 @@ func BLSChangeData(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
-	orderColumn := q.Get("order[0][column]")
+	orderBy := q.Get("order[0][column]")
+	orderDir := q.Get("order[0][dir]")
+
+	data, err := BLSTableData(draw, search, length, start, orderBy, orderDir)
+	if err != nil {
+		logger.Errorf("Error getting bls changes: %v", err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+}
+
+func BLSTableData(draw uint64, search string, length, start uint64, orderBy, orderDir string) (*types.DataTableResponse, error) {
+
 	orderByMap := map[string]string{
 		"0": "block_slot",
 		"1": "block_slot",
 		"2": "validatorindex",
 	}
-	orderBy, exists := orderByMap[orderColumn]
+	orderVar, exists := orderByMap[orderBy]
 	if !exists {
 		orderBy = "block_slot"
 	}
 
-	orderDir := q.Get("order[0][dir]")
-
-	// latestEpoch := services.LatestEpoch()
+	if orderDir != "asc" {
+		orderDir = "desc"
+	}
 
 	total, err := db.GetTotalBLSChanges()
 	if err != nil {
-		logger.Errorf("Error getting total bls changes: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+		return nil, fmt.Errorf("error getting total bls changes: %w", err)
 	}
 
-	blsChange, err := db.GetBLSChanges(search, length, start, orderBy, orderDir)
+	blsChange, err := db.GetBLSChanges(search, length, start, orderVar, orderDir)
 	if err != nil {
-		logger.Errorf("Error getting bls changes: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+		return nil, fmt.Errorf("error getting bls changes: %w", err)
 	}
 
 	tableData := make([][]interface{}, len(blsChange))
@@ -231,12 +284,8 @@ func BLSChangeData(w http.ResponseWriter, r *http.Request) {
 		RecordsTotal:    total,
 		RecordsFiltered: total,
 		Data:            tableData,
+		PageLength:      length,
+		DisplayStart:    start,
 	}
-
-	err = json.NewEncoder(w).Encode(data)
-	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
+	return data, nil
 }

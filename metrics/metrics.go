@@ -36,6 +36,10 @@ var (
 		Name: "http_requests_duration",
 		Help: "Duration of HTTP requests in seconds by path and method.",
 	}, []string{"path", "method"})
+	Tasks = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "task_counter",
+		Help: "Counter of tasks with name in labels",
+	}, []string{"name"})
 	TaskDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "task_duration",
 		Help:    "Duration of tasks",
