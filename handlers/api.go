@@ -1338,8 +1338,18 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	data := make([]*ApiValidatorResponse, 0)
 
 	err = db.ReaderDb.Select(&data, `
-	SELECT 
-		validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch,
+	WITH validator_withdrawals AS (
+		SELECT validatorindex as index, COALESCE(sum(amount), 0) as total 
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON b.blockroot = w.block_root AND status = '1'
+		WHERE validatorindex = ANY($1)
+		GROUP BY validatorindex
+		ORDER BY validatorindex
+	)
+	SELECT
+		validatorindex, 
+		'0x' || encode(pubkey, 'hex') as  pubkey, 
+		withdrawableepoch,
 		'0x' || encode(withdrawalcredentials, 'hex') as withdrawalcredentials,
 		slashed,
 		activationeligibilityepoch,
@@ -1347,12 +1357,15 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 		exitepoch,
 		lastattestationslot,
 		status,
-		COALESCE(validator_names.name, '') AS name
+		COALESCE(validator_names.name, '') AS name,
+		COALESCE((SELECT total from validator_withdrawals where index = validatorindex), 0) as total_withdrawals
 	FROM validators
 	LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey
 	WHERE validatorindex = ANY($1)
-	ORDER BY validatorindex`, pq.Array(queryIndices))
+	ORDER BY validatorindex;
+	`, pq.Array(queryIndices))
 	if err != nil {
+		logger.Warnf("error retrieving validator data from db: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -1404,6 +1417,7 @@ type ApiValidatorResponse struct {
 	Validatorindex             int64  `json:"validatorindex"`
 	Withdrawableepoch          int64  `json:"withdrawableepoch"`
 	Withdrawalcredentials      string `json:"withdrawalcredentials"`
+	TotalWithdrawals           uint64 `json:"total_withdrawals" db:"total_withdrawals"`
 }
 
 // ApiValidatorDailyStats godoc
