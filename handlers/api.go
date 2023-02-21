@@ -30,6 +30,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mssola/user_agent"
+	"github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 
@@ -2147,7 +2148,25 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 	if slotQuery < 10000 {
 		slotQuery = 10000
 	}
-	rows, err := db.ReaderDb.Query("SELECT x, y, color, slot, validator FROM graffitiwall WHERE slot <= $1 AND slot >= $2 ORDER BY slot desc", slotQuery, slotQuery-10000)
+
+	startPxl := uint64(0)
+	endPxl := uint64(999)
+
+	startX := math.MinU64(parseUintWithDefault(r.URL.Query().Get("startx"), startPxl), endPxl)
+	startY := math.MinU64(parseUintWithDefault(r.URL.Query().Get("starty"), startPxl), endPxl)
+	endX := math.MinU64(parseUintWithDefault(r.URL.Query().Get("endx"), endPxl), endPxl)
+	endY := math.MinU64(parseUintWithDefault(r.URL.Query().Get("endy"), endPxl), endPxl)
+
+	rows, err := db.ReaderDb.Query(`
+	SELECT 
+		x,
+		y,
+		color,
+		slot,
+		validator
+	FROM graffitiwall
+	WHERE slot BETWEEN $1 AND $2 AND x BETWEEN $3 AND $4 AND y BETWEEN $5 AND $6
+	ORDER BY slot desc, x, y`, slotQuery-10000, slotQuery, startX, endX, startY, endY)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
