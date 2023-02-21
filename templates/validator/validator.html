@@ -84,7 +84,7 @@
     <div class="container mt-2 validator-content">
       {{ template "flashMessage" . }}
       {{ template "validatorHeading" . }}
-      {{ if not .NoAds }}{{ template "bannerValidator" }}{{ end }}
+      {{ if not .NoAds }}{{ template "banner" dict "bannerId" "40" }}{{ end }}
       <div class="row align-items-stretch">
         <div class="col-lg-8 px-lg-2 my-2">
           <div class="card d-flex flex-column justify-content-center h-100 py-0 px-0 card-body">
