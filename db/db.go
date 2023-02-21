@@ -2599,6 +2599,32 @@ func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64) ([]*
 	return withdrawals, nil
 }
 
+func GetValidatorsWithdrawals(validators []uint64, fromEpoch uint64, toEpoch uint64) ([]*types.Withdrawals, error) {
+	var withdrawals []*types.Withdrawals
+
+	err := ReaderDb.Select(&withdrawals, `
+	SELECT 
+		w.block_slot as slot, 
+		w.withdrawalindex as index, 
+		w.block_root as blockroot,
+		w.validatorindex, 
+		w.address, 
+		w.amount 
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	WHERE validatorindex = ANY($1)
+	AND (w.block_slot / 32) >= $2 AND (w.block_slot / 32) <= $3 
+	ORDER BY w.withdrawalindex`, pq.Array(validators), fromEpoch, toEpoch)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return withdrawals, nil
+		}
+		return nil, fmt.Errorf("error getting blocks_withdrawals for validators: %+v: %w", validators, err)
+	}
+
+	return withdrawals, nil
+}
+
 func GetValidatorsWithdrawalsByEpoch(validator []uint64, limit uint64, offset uint64) ([]*types.WithdrawalsByEpoch, error) {
 	var withdrawals []*types.WithdrawalsByEpoch
 	if limit == 0 {
@@ -2823,6 +2849,60 @@ func GetValidatorBLSChange(validatorindex uint64) (*types.BLSChange, error) {
 	}
 
 	return change, nil
+}
+
+// GetValidatorsBLSChange returns the BLS change for a list of validators
+func GetValidatorsBLSChange(validators []uint64) ([]*types.ValidatorsBLSChange, error) {
+	change := make([]*types.ValidatorsBLSChange, 0, len(validators))
+
+	err := ReaderDb.Select(&change, `	
+	SELECT
+		bls.block_slot as slot,
+		bls.block_root,
+		bls.signature,
+		bls.pubkey,
+		bls.validatorindex,
+		bls.address,
+		d.withdrawalcredentials
+	FROM blocks_bls_change bls
+	INNER JOIN blocks b ON b.blockroot = bls.block_root AND b.status = '1'
+	LEFT JOIN validators v ON v.validatorindex = bls.validatorindex
+	LEFT JOIN (
+		SELECT ROW_NUMBER() OVER (PARTITION BY publickey ORDER BY block_slot) as rn, withdrawalcredentials, publickey, block_root FROM blocks_deposits d
+		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1'
+	) as d ON d.publickey = v.pubkey AND rn = 1
+	Where bls.validatorindex = ANY($1)
+	ORDER BY bls.block_slot desc
+	`, pq.Array(validators))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error getting validators blocks_bls_change: %w", err)
+	}
+
+	return change, nil
+}
+
+func GetValidatorsInitialWithdrawalCredentials(validators []uint64) ([][]byte, error) {
+	var withdrawalCredentials [][]byte
+
+	err := ReaderDb.Select(&withdrawalCredentials, `
+	SELECT 
+		withdrawalcredentials 
+	FROM 
+		blocks_deposits d
+	LEFT JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1'
+	WHERE
+		validatorindex = ANY($1)`, pq.Array(validators))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error getting validator initial withdrawal credentials: %w", err)
+	}
+
+	return withdrawalCredentials, nil
 }
 
 func GetWithdrawableValidatorCount(epoch uint64) (uint64, error) {

@@ -188,7 +188,15 @@ func main() {
 	}
 
 	transforms := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
-	transforms = append(transforms, bt.TransformBlock, bt.TransformTx, bt.TransformItx, bt.TransformERC20, bt.TransformERC721, bt.TransformERC1155, bt.TransformUncle)
+	transforms = append(transforms,
+		bt.TransformBlock,
+		bt.TransformTx,
+		bt.TransformItx,
+		bt.TransformERC20,
+		bt.TransformERC721,
+		bt.TransformERC1155,
+		bt.TransformUncle,
+		bt.TransformWithdrawals)
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 

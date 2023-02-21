@@ -125,6 +125,14 @@ message Eth1UncleIndexed {
     bytes reward = 8;
 }
 
+message Eth1WithdrawalIndexed {
+    uint64 block_number =1;
+    uint64 index = 2;
+    uint64 validator_index = 3;
+    bytes address = 4;
+    bytes amount = 5;
+    google.protobuf.Timestamp time = 6;
+}
 
 message Eth1TransactionIndexed {
     bytes hash = 1;

@@ -1338,8 +1338,18 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	data := make([]*ApiValidatorResponse, 0)
 
 	err = db.ReaderDb.Select(&data, `
-	SELECT 
-		validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch,
+	WITH validator_withdrawals AS (
+		SELECT validatorindex as index, COALESCE(sum(amount), 0) as total 
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON b.blockroot = w.block_root AND status = '1'
+		WHERE validatorindex = ANY($1)
+		GROUP BY validatorindex
+		ORDER BY validatorindex
+	)
+	SELECT
+		validatorindex, 
+		'0x' || encode(pubkey, 'hex') as  pubkey, 
+		withdrawableepoch,
 		'0x' || encode(withdrawalcredentials, 'hex') as withdrawalcredentials,
 		slashed,
 		activationeligibilityepoch,
@@ -1347,12 +1357,15 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 		exitepoch,
 		lastattestationslot,
 		status,
-		COALESCE(validator_names.name, '') AS name
+		COALESCE(validator_names.name, '') AS name,
+		COALESCE((SELECT total from validator_withdrawals where index = validatorindex), 0) as total_withdrawals
 	FROM validators
 	LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey
 	WHERE validatorindex = ANY($1)
-	ORDER BY validatorindex`, pq.Array(queryIndices))
+	ORDER BY validatorindex;
+	`, pq.Array(queryIndices))
 	if err != nil {
+		logger.Warnf("error retrieving validator data from db: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -1404,6 +1417,7 @@ type ApiValidatorResponse struct {
 	Validatorindex             int64  `json:"validatorindex"`
 	Withdrawableepoch          int64  `json:"withdrawableepoch"`
 	Withdrawalcredentials      string `json:"withdrawalcredentials"`
+	TotalWithdrawals           uint64 `json:"total_withdrawals" db:"total_withdrawals"`
 }
 
 // ApiValidatorDailyStats godoc
@@ -1482,6 +1496,8 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 		COALESCE(proposer_slashings, 0) AS proposer_slashings,
 		COALESCE(deposits, 0) AS deposits,
 		COALESCE(deposits_amount, 0) AS deposits_amount,
+		COALESCE(withdrawals, 0) AS withdrawals,
+		COALESCE(withdrawals_amount, 0) AS withdrawals_amount,
 		COALESCE(participated_sync, 0) AS participated_sync,
 		COALESCE(missed_sync, 0) AS missed_sync,
 		COALESCE(orphaned_sync, 0) AS orphaned_sync
@@ -1620,6 +1636,135 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ApiValidatorWithdrawals godoc
+// @Summary Get the withdrawal history of up to 100 validators for the last 100 epochs. To receive older withdrawals modify the epoch paraum
+// @Tags Validator
+// @Produce  json
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Param  epoch query int false "the start epoch for the withdrawal history (default: latest epoch)"
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorWithdrawalResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/validator/{indexOrPubkey}/withdrawals [get]
+func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
+
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), err.Error())
+		return
+	}
+
+	if len(queryIndices) == 0 {
+		sendErrorResponse(w, r.URL.String(), "no or invalid validator indicies provided")
+	}
+
+	q := r.URL.Query()
+
+	latestEpoch := services.LatestEpoch()
+	epoch, err := strconv.ParseUint(q.Get("epoch"), 10, 64)
+	if err != nil {
+		epoch = latestEpoch
+	}
+
+	endEpoch := epoch - 100
+	if epoch < 100 {
+		endEpoch = 0
+	}
+
+	data, err := db.GetValidatorsWithdrawals(queryIndices, endEpoch, epoch)
+	if err != nil {
+		logger.Errorf("error retrieving withdrawals for %v route: %v", r.URL.String(), err)
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	dataFormatted := make([]*types.ApiValidatorWithdrawalResponse, 0, len(data))
+	for _, w := range data {
+		dataFormatted = append(dataFormatted, &types.ApiValidatorWithdrawalResponse{
+			Epoch:          w.Slot / 32,
+			Slot:           w.Slot,
+			Index:          w.Index,
+			ValidatorIndex: w.ValidatorIndex,
+			Amount:         w.Amount,
+			BlockRoot:      fmt.Sprintf("0x%x", w.BlockRoot),
+			Address:        fmt.Sprintf("0x%x", w.Address),
+		})
+	}
+
+	response := &types.ApiResponse{}
+	response.Status = "OK"
+
+	response.Data = dataFormatted
+
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		return
+	}
+}
+
+// ApiValidatorBlsChange godoc
+// @Summary Gets the BLS withdrawal address change for up to 100 validators
+// @Tags Validator
+// @Produce  json
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorBalanceHistoryResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/validator/{indexOrPubkey}/blsChange [get]
+func ApiValidatorBlsChange(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
+
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), err.Error())
+		return
+	}
+
+	if len(queryIndices) == 0 {
+		sendErrorResponse(w, r.URL.String(), "no or invalid validator indicies provided")
+	}
+
+	data, err := db.GetValidatorsBLSChange(queryIndices)
+	if err != nil {
+		logger.Errorf("error retrieving validators bls change for %v route: %v", r.URL.String(), err)
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	dataFormatted := make([]*types.ApiValidatorBlsChangeResponse, 0, len(data))
+
+	for _, d := range data {
+		dataFormatted = append(dataFormatted, &types.ApiValidatorBlsChangeResponse{
+			Epoch:                    d.Slot / 32,
+			Slot:                     d.Slot,
+			BlockRoot:                fmt.Sprintf("0x%x", d.BlockRoot),
+			Validatorindex:           d.Validatorindex,
+			BlsPubkey:                fmt.Sprintf("0x%x", d.BlsPubkey),
+			Address:                  fmt.Sprintf("0x%x", d.Address),
+			Signature:                fmt.Sprintf("0x%x", d.Signature),
+			WithdrawalCredentialsOld: fmt.Sprintf("0x%x", d.WithdrawalCredentialsOld),
+			WithdrawalCredentialsNew: fmt.Sprintf("0x010000000000000000000000%x", d.Address),
+		})
+	}
+
+	response := &types.ApiResponse{}
+	response.Status = "OK"
+
+	response.Data = dataFormatted
+
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		return
+	}
+}
+
 // ApiValidator godoc
 // @Summary Get the balance history of up to 100 validators
 // @Tags Validator
@@ -1628,7 +1773,7 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 // @Param  latest_epoch query int false "The latest epoch to consider in the query"
 // @Param  offset query int false "Number of items to skip"
 // @Param  limit query int false "Maximum number of items to return, up to 100"
-// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorBalanceHistoryResponse}
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorBlsChangeResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/balancehistory [get]
 func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
