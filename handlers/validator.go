@@ -285,46 +285,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	epoch7d := int64(epoch) - int64(utils.EpochsPerDay())*7
-	if epoch7d < 0 {
-		epoch7d = 0
-	}
-	balances7d, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, uint64(epoch7d), 1)
-	if err != nil {
-		logger.Errorf("error getting validator balance data for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	for balanceIndex, balance := range balances7d {
-		if len(balance) == 0 {
-			continue
-		}
-		if validatorPageData.ValidatorIndex == balanceIndex {
-			validatorPageData.Balance7d = balance[0].Balance
-		}
-	}
-
-	epoch31d := int64(epoch) - int64(utils.EpochsPerDay())*31
-	if epoch31d < 0 {
-		epoch31d = 0
-	}
-	balances31d, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, uint64(epoch31d), 1)
-	if err != nil {
-		logger.Errorf("error getting validator balance data for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	for balanceIndex, balance := range balances31d {
-		if len(balance) == 0 {
-			continue
-		}
-		if validatorPageData.ValidatorIndex == balanceIndex {
-			validatorPageData.Balance31d = balance[0].Balance
-		}
-	}
-
 	if validatorPageData.Pool != "" {
 		validatorPageData.Tags = append(validatorPageData.Tags, "pool:"+validatorPageData.Pool)
 	}
@@ -529,9 +489,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.Income1d = earnings.LastDay
 	validatorPageData.Income7d = earnings.LastWeek
 	validatorPageData.Income31d = earnings.LastMonth
-	validatorPageData.APR7d = earnings.APR7d
-	validatorPageData.APR31d = earnings.APR31d
-	validatorPageData.APR365d = earnings.APR365d
+
+	validatorPageData.ElAPR365d = earnings.ElAPR365d
+	validatorPageData.ClAPR365d = earnings.ClAPR365d
 	validatorPageData.TotalExecutionRewards = earnings.TotalExecutionRewards
 	validatorPageData.Luck = earnings.Luck
 
@@ -628,7 +588,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		finalizedEpoch := services.LatestFinalizedEpoch()
-		lookback := int64(finalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
+		lookback := int64(finalizedEpoch-(lastStatsDay+1)*utils.EpochsPerDay()) + 1
 		if lookback > 0 {
 			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, finalizedEpoch, lookback)
 			if err != nil {
@@ -1510,6 +1470,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(validatorHistory))
 	for _, b := range validatorHistory {
+		//duty := types.ValidatorDuty{}
 		// Status 0 == Scheduled
 		// Status 1 == Attested
 		// Status 2 == Missed
@@ -1517,20 +1478,20 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		// Status 4 == Inactivity leak
 		// Status 5 == Inactive
 
-		if b.InclusionSlot.Valid && b.InclusionSlot.Int64 != 0 && b.AttestationStatus == 0 {
-			b.AttestationStatus = 1
-		}
-
-		if b.AttesterSlot.Int64 != -1 && b.AttesterSlot.Valid && utils.SlotToTime(uint64(b.AttesterSlot.Int64)).Before(time.Now().Add(time.Minute*-1)) && b.InclusionSlot.Int64 == 0 {
-			b.AttestationStatus = 2
-		}
-
 		if !b.AttesterSlot.Valid && b.BalanceChange.Int64 < 0 {
 			b.AttestationStatus = 4
 		}
 
 		if !b.AttesterSlot.Valid && b.BalanceChange.Int64 >= 0 {
 			b.AttestationStatus = 5
+		}
+
+		if b.AttesterSlot.Int64 != -1 && b.AttesterSlot.Valid && utils.SlotToTime(uint64(b.AttesterSlot.Int64)).Before(time.Now().Add(time.Minute*-1)) && b.InclusionSlot.Int64 == 0 {
+			b.AttestationStatus = 2
+		}
+
+		if b.InclusionSlot.Valid && b.InclusionSlot.Int64 != 0 && b.AttestationStatus == 0 {
+			b.AttestationStatus = 1
 		}
 
 		events := utils.FormatAttestationStatusShort(b.AttestationStatus)

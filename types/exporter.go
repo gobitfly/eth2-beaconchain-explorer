@@ -84,7 +84,8 @@ type Validator struct {
 	Balance1d         sql.NullInt64 `db:"balance1d"`
 	Balance7d         sql.NullInt64 `db:"balance7d"`
 	Balance31d        sql.NullInt64 `db:"balance31d"`
-	Status            string        `db:"status"`
+	Balance365d       sql.NullInt64
+	Status            string `db:"status"`
 
 	LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`
 	LastProposalSlot    sql.NullInt64 `db:"lastproposalslot"`

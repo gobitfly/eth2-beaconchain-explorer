@@ -49,6 +49,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	lastDayEpoch := latestEpoch - int64(utils.EpochsPerDay())
 	lastWeekEpoch := latestEpoch - int64(utils.EpochsPerDay())*7
 	lastMonthEpoch := latestEpoch - int64(utils.EpochsPerDay())*31
+	lastYearEpoch := latestEpoch - int64(utils.EpochsPerDay())*365
 
 	if lastDayEpoch < 0 {
 		lastDayEpoch = 0
@@ -58,6 +59,9 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 	if lastMonthEpoch < 0 {
 		lastMonthEpoch = 0
+	}
+	if lastYearEpoch < 0 {
+		lastYearEpoch = 0
 	}
 
 	balances := []*types.Validator{}
@@ -136,6 +140,21 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		}
 	}
 
+	balances365d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastYearEpoch), 1)
+	if err != nil {
+		logger.Errorf("error getting validator Balance31d data in GetValidatorEarnings: %v", err)
+		return nil, err
+	}
+	for balanceIndex, balance := range balances365d {
+		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
+			continue
+		}
+		balancesMap[balanceIndex].Balance365d = sql.NullInt64{
+			Int64: int64(balance[0].Balance),
+			Valid: true,
+		}
+	}
+
 	deposits := []struct {
 		Epoch     int64
 		Amount    int64
@@ -155,13 +174,11 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
 	}
 
-	var earningsTotal int64
-	var earningsLastDay int64
-	var earningsLastWeek int64
-	var earningsLastMonth int64
-	var apr7d float64
-	var apr31d float64
-	var apr365d float64
+	var clEarningsTotal int64
+	var clEarningsLastDay int64
+	var clEarningsLastWeek int64
+	var clEarningsLastMonth int64
+	var clEarningsLastYear int64
 	var totalDeposits int64
 
 	for _, balance := range balancesMap {
@@ -172,16 +189,19 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			totalDeposits += deposit
 
 			if epoch > int64(balance.ActivationEpoch) {
-				earningsTotal -= deposit
+				clEarningsTotal -= deposit
 			}
 			if epoch > lastDayEpoch && epoch > int64(balance.ActivationEpoch) {
-				earningsLastDay -= deposit
+				clEarningsLastDay -= deposit
 			}
 			if epoch > lastWeekEpoch && epoch > int64(balance.ActivationEpoch) {
-				earningsLastWeek -= deposit
+				clEarningsLastWeek -= deposit
 			}
 			if epoch > lastMonthEpoch && epoch > int64(balance.ActivationEpoch) {
-				earningsLastMonth -= deposit
+				clEarningsLastMonth -= deposit
+			}
+			if epoch > lastYearEpoch && epoch > int64(balance.ActivationEpoch) {
+				clEarningsLastYear -= deposit
 			}
 		}
 
@@ -194,11 +214,15 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		if int64(balance.ActivationEpoch) > lastMonthEpoch {
 			balance.Balance31d = balance.BalanceActivation
 		}
+		if int64(balance.ActivationEpoch) > lastYearEpoch {
+			balance.Balance365d = balance.BalanceActivation
+		}
 
-		earningsTotal += int64(balance.Balance) - balance.BalanceActivation.Int64
-		earningsLastDay += int64(balance.Balance) - balance.Balance1d.Int64
-		earningsLastWeek += int64(balance.Balance) - balance.Balance7d.Int64
-		earningsLastMonth += int64(balance.Balance) - balance.Balance31d.Int64
+		clEarningsTotal += int64(balance.Balance) - balance.BalanceActivation.Int64
+		clEarningsLastDay += int64(balance.Balance) - balance.Balance1d.Int64
+		clEarningsLastWeek += int64(balance.Balance) - balance.Balance7d.Int64
+		clEarningsLastMonth += int64(balance.Balance) - balance.Balance31d.Int64
+		clEarningsLastYear += int64(balance.Balance) - balance.Balance365d.Int64
 	}
 
 	if totalDeposits == 0 {
@@ -208,7 +232,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	// retrieve EL Informaion
 	// get all EL blocks
 	var execBlocks []types.ExecBlockProposer
-	/* err = db.ReaderDb.Select(&execBlocks,
+	err = db.ReaderDb.Select(&execBlocks,
 		`SELECT
 			exec_block_number,
 			slot
@@ -221,7 +245,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	)
 	if err != nil {
 		return nil, err
-	} */
+	}
 
 	blockList := []uint64{}
 	for _, slot := range execBlocks {
@@ -246,7 +270,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	last1dTimestamp := time.Now().Add(-1 * 24 * time.Hour)
 	last7dTimestamp := time.Now().Add(-7 * 24 * time.Hour)
 	last31dTimestamp := time.Now().Add(-31 * 24 * time.Hour)
-	var totalExecutionRewards int64 = 0
+	last365dTimestamp := time.Now().Add(-365 * 24 * time.Hour)
+	var elEarningsTotal int64
+	var elEarningsLastDay int64
+	var elEarningsLastWeek int64
+	var elEarningsLastMonth int64
+	var elEarningsLastYear int64
 	for _, execBlock := range blocks {
 
 		var elReward *big.Int
@@ -260,44 +289,67 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 		execBlockTs := execBlock.Time.AsTime()
 		if execBlockTs.After(last1dTimestamp) {
-			earningsLastDay += elReward.Int64()
+			elEarningsLastDay += elReward.Int64()
 		}
 		if execBlockTs.After(last7dTimestamp) {
-			earningsLastWeek += elReward.Int64()
+			elEarningsLastWeek += elReward.Int64()
 		}
 		if execBlockTs.After(last31dTimestamp) {
-			earningsLastMonth += elReward.Int64()
+			elEarningsLastMonth += elReward.Int64()
 		}
-		earningsTotal += elReward.Int64()
-		totalExecutionRewards += elReward.Int64()
+		if execBlockTs.After(last365dTimestamp) {
+			elEarningsLastYear += elReward.Int64()
+		}
+		elEarningsTotal += elReward.Int64()
 	}
 
-	apr7d = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
-	if apr7d < float64(-1) {
-		apr7d = float64(-1)
+	clApr7d := (((float64(clEarningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
+	if clApr7d < float64(-1) {
+		clApr7d = float64(-1)
 	}
 
-	apr31d = (((float64(earningsLastMonth) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 31
-	if apr31d < float64(-1) {
-		apr31d = float64(-1)
+	clApr31d := (((float64(clEarningsLastMonth) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 31
+	if clApr31d < float64(-1) {
+		clApr31d = float64(-1)
 	}
 
-	//TODO: change to true 365d earnings once that information is available in db
-	apr365d = (((float64(earningsTotal) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / float64(utils.DayOfSlot(services.LatestSlot())+1)
-	if apr365d < float64(-1) {
-		apr365d = float64(-1)
+	clApr365d := ((float64(clEarningsLastYear) / 1e9) / (float64(totalDeposits) / 1e9))
+	if clApr365d < float64(-1) {
+		clApr365d = float64(-1)
 	}
+
+	elApr7d := (((float64(elEarningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
+	if elApr7d < float64(-1) {
+		elApr7d = float64(-1)
+	}
+
+	elApr31d := (((float64(elEarningsLastMonth) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 31
+	if elApr31d < float64(-1) {
+		elApr31d = float64(-1)
+	}
+
+	elApr365d := ((float64(elEarningsLastYear) / 1e9) / (float64(totalDeposits) / 1e9))
+	if elApr365d < float64(-1) {
+		elApr365d = float64(-1)
+	}
+
+	earningsTotal := clEarningsTotal + elEarningsTotal
+	earningsLastDay := clEarningsLastDay + elEarningsLastDay
+	earningsLastWeek := clEarningsLastWeek + elEarningsLastWeek
+	earningsLastMonth := clEarningsLastMonth + elEarningsLastMonth
 
 	return &types.ValidatorEarnings{
 		Total:                 earningsTotal,
 		LastDay:               earningsLastDay,
 		LastWeek:              earningsLastWeek,
 		LastMonth:             earningsLastMonth,
-		TotalExecutionRewards: totalExecutionRewards,
-		APR:                   apr7d,
-		APR7d:                 apr7d,
-		APR31d:                apr31d,
-		APR365d:               apr365d,
+		ClAPR7d:               clApr7d,
+		ClAPR31d:              clApr31d,
+		ClAPR365d:             clApr365d,
+		ElAPR7d:               elApr7d,
+		ElAPR31d:              elApr31d,
+		ElAPR365d:             elApr365d,
+		TotalExecutionRewards: elEarningsTotal,
 		TotalDeposits:         totalDeposits,
 		LastDayFormatted:      utils.FormatIncome(earningsLastDay, currency),
 		LastWeekFormatted:     utils.FormatIncome(earningsLastWeek, currency),
@@ -309,6 +361,8 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 }
 
 // getProposalLuck calculates the luck of a given set of proposed blocks for a certain number of validators
+//
+// precondition: proposedBlocks is sorted by ascending block number
 func getProposalLuck(proposedBlocks []types.ExecBlockProposer, validatorsCount int) float64 {
 	// Return 0 if there are no proposed blocks or no validators
 	if len(proposedBlocks) == 0 || validatorsCount == 0 {
@@ -360,7 +414,7 @@ func getProposalLuck(proposedBlocks []types.ExecBlockProposer, validatorsCount i
 	// Cutoff time for proposals to be considered qualified
 	blockProposalCutoffTime := time.Now().Add(-proposalTimeframe)
 
-	// Count the number of qualified proposal
+	// Count the number of qualified proposals
 	qualifiedProposalCount := 0
 	for _, block := range proposedBlocks {
 		if utils.SlotToTime(block.Slot).After(blockProposalCutoffTime) {
@@ -375,6 +429,23 @@ func getProposalLuck(proposedBlocks []types.ExecBlockProposer, validatorsCount i
 func calcExpectedSlotProposals(timeframe time.Duration, validatorCount int, activeValidatorsCount uint64) float64 {
 	expectedSlots := timeframe.Seconds() / float64(utils.Config.Chain.Config.SecondsPerSlot)
 	return (expectedSlots / float64(activeValidatorsCount)) * float64(validatorCount)
+}
+
+// getNextBlockEstimateTimestamp will return the estimated timestamp of the next block proposal
+//
+// Test for nil result with .IsZero()
+//
+// precondition: proposedBlocks is sorted by ascending block number
+func getNextBlockEstimateTimestamp(proposedBlocks []types.ExecBlockProposer, validatorsCount int) time.Time {
+	// Return the current time if there are no proposed blocks or no validators
+	if len(proposedBlocks) == 0 || validatorsCount == 0 {
+		return time.Time{}
+	}
+
+	oneMonth := time.Hour * 24 * 30
+	expectedProposalsPerMonth := calcExpectedSlotProposals(oneMonth, validatorsCount, *services.GetLatestStats().ActiveValidatorCount)
+	newBlockOnAvgDays := time.Duration(float64(oneMonth.Nanoseconds()) / expectedProposalsPerMonth)
+	return utils.SlotToTime(proposedBlocks[len(proposedBlocks)-1].Slot).Add(newBlockOnAvgDays)
 }
 
 // LatestState will return common information that about the current state of the eth2 chain

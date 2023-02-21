@@ -541,7 +541,7 @@
 
 {{ define "validatorIncomeTable" }}
   {{ with .Data }}
-    <span class="h4">Income</span>
+    <span class="h4">General</span>
     <table class="table" style="margin-top: 0 !important" width="100%">
       <tbody>
         <tr>
@@ -556,13 +556,13 @@
           <th scope="row">Month</th>
           <td>{{ formatIncome .Income31d $.Rates.Currency }}</td>
         </tr>
-        <tr>
+        <tr>{{/* 
           <th scope="row">
             APR7d <span data-toggle="tooltip" title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i class="far fa-question-circle"></i></span>
           </th>
           <td>
             <span data-toggle="tooltip" title="{{ formatPercentageWithPrecision .APR7d 5 }}%" class="{{ if gtf .APR7d 0 }}text-success{{ end }} {{ if gtf  0 .APR7d }}text-danger{{ end }}"><b>{{ .APR7d | formatPercentage }}%</b></span>
-          </td>
+          </td> */}}
         </tr>
         <tr>
           <th scope="row">Eligible since</th>

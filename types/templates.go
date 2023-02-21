@@ -357,9 +357,12 @@ type ValidatorPageData struct {
 	Rank7d                              int64 `db:"rank7d"`
 	RankCount                           int64 `db:"rank_count"`
 	RankPercentage                      float64
-	APR7d                               float64
-	APR31d                              float64
-	APR365d                             float64
+	ElAPR7d                             float64 `json:"elApr7d"`
+	ElAPR31d                            float64 `json:"elApr31d"`
+	ElAPR365d                           float64 `json:"elApr365d"`
+	ClAPR7d                             float64 `json:"clApr7d"`
+	ClAPR31d                            float64 `json:"clApr31d"`
+	ClAPR365d                           float64 `json:"clApr365d"`
 	TotalExecutionRewards               int64
 	Luck                                float64
 	Proposals                           [][]uint64
@@ -946,15 +949,16 @@ type DashboardValidatorBalanceHistory struct {
 
 // ValidatorEarnings is a struct to hold the earnings of one or multiple validators
 type ValidatorEarnings struct {
-	Total     int64 `json:"total"`
-	LastDay   int64 `json:"lastDay"`
-	LastWeek  int64 `json:"lastWeek"`
-	LastMonth int64 `json:"lastMonth"`
-	//TODO: remove field `APR`
-	APR                     float64       `json:"apr"`
-	APR7d                   float64       `json:"apr7d"`
-	APR31d                  float64       `json:"apr31d"`
-	APR365d                 float64       `json:"apr365d"`
+	Total                   int64         `json:"total"`
+	LastDay                 int64         `json:"lastDay"`
+	LastWeek                int64         `json:"lastWeek"`
+	LastMonth               int64         `json:"lastMonth"`
+	ElAPR7d                 float64       `json:"elApr7d"`
+	ElAPR31d                float64       `json:"elApr31d"`
+	ElAPR365d               float64       `json:"elApr365d"`
+	ClAPR7d                 float64       `json:"clApr7d"`
+	ClAPR31d                float64       `json:"clApr31d"`
+	ClAPR365d               float64       `json:"clApr365d"`
 	TotalExecutionRewards   int64         `json:"totalExecutionRewards"`
 	TotalDeposits           int64         `json:"totalDeposits"`
 	EarningsInPeriodBalance int64         `json:"earningsInPeriodBalance"`
@@ -994,6 +998,15 @@ type ValidatorHistory struct {
 	ProposalStatus    sql.NullInt64                `db:"proposal_status" json:"proposal_status,omitempty"`
 	ProposalSlot      sql.NullInt64                `db:"proposal_slot" json:"proposal_slot,omitempty"`
 	IncomeDetails     *itypes.ValidatorEpochIncome `db:"-" json:"income_details,omitempty"`
+}
+
+type ValidatorDuty struct {
+	SourceAttestationStatus uint64
+	TargetAttestationStatus uint64
+	HeadAttestationStatus   uint64
+	BlockProposalStatus     uint64
+	SyncCommitteeStatus     uint64
+	SlashingStatus          uint64
 }
 
 type ValidatorSlashing struct {

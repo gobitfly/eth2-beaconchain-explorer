@@ -379,6 +379,14 @@ func NewFormat(amount *big.Int, unit string, digits int, maxPreCommaDigitsBefore
 		unitDigits = 0
 	}
 
+	trimmedAmount, fullAMount := trimAmount(amount, unitDigits, maxPreCommaDigitsBeforeTrim, digits)
+	tooltip := fmt.Sprintf(`data-toggle="tooltip" data-placement="top" title="%s"`, fullAMount)
+
+	// done, convert to HTML & return
+	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, displayUnit))
+}
+
+func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int, digits int) (trimmedAmount, fullAmount string) {
 	// Initialize preComma and postComma variables to "0"
 	preComma := "0"
 	postComma := "0"
@@ -417,13 +425,11 @@ func NewFormat(amount *big.Int, unit string, digits int, maxPreCommaDigitsBefore
 		postComma = strings.TrimRight(fmt.Sprintf(d, 0)+s, "0")
 	}
 
-	// tooltip
-	var tooltip string
-	tooltip = ` data-toggle="tooltip" data-placement="top" title="` + preComma
+	fullAmount = preComma
 	if len(postComma) > 0 {
-		tooltip += `.` + postComma
+
+		fullAmount += "." + postComma
 	}
-	tooltip += `"`
 
 	// limit floating part
 	if len(postComma) > digits {
@@ -434,9 +440,7 @@ func NewFormat(amount *big.Int, unit string, digits int, maxPreCommaDigitsBefore
 	if len(postComma) > 0 {
 		preComma += "." + postComma
 	}
-
-	// done, convert to HTML & return
-	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, preComma, displayUnit))
+	return preComma, fullAmount
 }
 
 func FormatMethod(method string) template.HTML {
