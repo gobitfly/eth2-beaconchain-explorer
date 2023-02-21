@@ -7,7 +7,6 @@ import (
 	"eth2-exporter/types"
 	"fmt"
 	"math/big"
-	"reflect"
 	"strings"
 	"time"
 
@@ -142,31 +141,18 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 	// withdrawals, ok := block.()
 
 	// check if block has withdrawals by checking of the method is available
-	if reflect.ValueOf(block).MethodByName("Withdrawals").IsValid() {
-		withdrawals := make([]*types.Eth1Withdrawal, 0)
-		type Withdrawal struct {
-			Index     uint64         `json:"index"`          // monotonically increasing identifier issued by consensus layer
-			Validator uint64         `json:"validatorIndex"` // index of validator associated with withdrawal
-			Address   common.Address `json:"address"`        // target address for withdrawn ether
-			Amount    uint64         `json:"amount"`         // value of withdrawal in Gwei
-		}
-
-		withdraw := reflect.ValueOf(block).MethodByName("Withdrawals").Call(nil)
-
-		for _, w := range withdraw {
-			currentWithdrawal, ok := w.Interface().(*Withdrawal)
-			if !ok {
-				logger.Errorf("error getting withdrawal could not cast interface to *Withdrawal")
-				break
-			}
-			withdrawals = append(withdrawals, &types.Eth1Withdrawal{
-				Index:          currentWithdrawal.Index,
-				ValidatorIndex: currentWithdrawal.Validator,
-				Address:        currentWithdrawal.Address.Bytes(),
-				Amount:         new(big.Int).SetUint64(currentWithdrawal.Amount).Bytes(),
+	withdrawals := block.Withdrawals()
+	if len(withdrawals) > 0 {
+		withdrawalsIndexed := make([]*types.Eth1Withdrawal, 0, len(withdrawals))
+		for _, w := range withdrawals {
+			withdrawalsIndexed = append(withdrawalsIndexed, &types.Eth1Withdrawal{
+				Index:          w.Index,
+				ValidatorIndex: w.Validator,
+				Address:        w.Address.Bytes(),
+				Amount:         new(big.Int).SetUint64(w.Amount).Bytes(),
 			})
 		}
-		c.Withdrawals = withdrawals
+		c.Withdrawals = withdrawalsIndexed
 	}
 
 	txs := block.Transactions()
