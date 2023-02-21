@@ -97,7 +97,7 @@ func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
 
 	validators, err := db.GetNodeJobValidatorInfos(job)
 	if err != nil {
-		logger.Errorf("error retrieving hib validator infos %v", err)
+		logger.WithError(err).Errorf("error retrieving validator infos")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}

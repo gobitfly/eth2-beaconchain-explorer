@@ -28,9 +28,6 @@ var NodeJobTypes = []NodeJobType{
 	VoluntaryExitsNodeJobType,
 }
 
-type BLSToExecutionChangesNodeJobData []*capella.SignedBLSToExecutionChange
-type VoluntaryExitsNodeJobData phase0.VoluntaryExit
-
 func NewNodeJob(data []byte) (*NodeJob, error) {
 	j := &NodeJob{}
 	j.RawData = data
@@ -60,27 +57,35 @@ type NodeJobValidatorInfo struct {
 	Status              string
 }
 
+// ParseData will try to unmarshal NodeJob.RawData into NodeJob.Data and determine NodeJob.Type by doing so. If it is not able to unmarshal any type it will return an error. It will sanitize NodeJob.RawData on success.
 func (nj *NodeJob) ParseData() error {
 	{
-		d := BLSToExecutionChangesNodeJobData{}
+		d := []*capella.SignedBLSToExecutionChange{}
 		err := json.Unmarshal(nj.RawData, &d)
 		if err == nil {
+			if nj.Type != "" && nj.Type != UnknownNodeJobType && nj.Type != BLSToExecutionChangesNodeJobType {
+				return fmt.Errorf("nodejob.RawData missmatches nodejob.Type (%v)", nj.Type)
+			}
 			nj.Type = BLSToExecutionChangesNodeJobType
 			nj.Data = d
 			return nj.SanitizeRawData()
 		}
 	}
 	{
-		d := VoluntaryExitsNodeJobData{}
+		//var d *VoluntaryExitsNodeJobData
+		var d *phase0.SignedVoluntaryExit
 		err := json.Unmarshal(nj.RawData, &d)
-		if err == nil && d.Epoch != 0 {
+		if err == nil && d.Message.Epoch != 0 {
+			if nj.Type != "" && nj.Type != UnknownNodeJobType && nj.Type != VoluntaryExitsNodeJobType {
+				return fmt.Errorf("nodejob.RawData missmatches nodejob.Type (%v)", nj.Type)
+			}
 			nj.Type = VoluntaryExitsNodeJobType
 			nj.Data = d
 			return nj.SanitizeRawData()
 		}
 	}
 	nj.Type = UnknownNodeJobType
-	return fmt.Errorf("invalid data")
+	return fmt.Errorf("can not unmarshal job-data")
 }
 
 func (nj *NodeJob) SanitizeRawData() error {
@@ -92,12 +97,12 @@ func (nj *NodeJob) SanitizeRawData() error {
 	return nil
 }
 
-func (nj NodeJob) GetBLSToExecutionChangesNodeJobData() (*BLSToExecutionChangesNodeJobData, bool) {
-	d, ok := nj.Data.(BLSToExecutionChangesNodeJobData)
-	return &d, ok
+func (nj NodeJob) GetBLSToExecutionChangesNodeJobData() ([]*capella.SignedBLSToExecutionChange, bool) {
+	d, ok := nj.Data.([]*capella.SignedBLSToExecutionChange)
+	return d, ok
 }
 
-func (nj NodeJob) GetVoluntaryExitsNodeJobData() (*VoluntaryExitsNodeJobData, bool) {
-	d, ok := nj.Data.(VoluntaryExitsNodeJobData)
-	return &d, ok
+func (nj NodeJob) GetVoluntaryExitsNodeJobData() (*phase0.SignedVoluntaryExit, bool) {
+	d, ok := nj.Data.(*phase0.SignedVoluntaryExit)
+	return d, ok
 }
