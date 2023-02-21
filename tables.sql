@@ -414,6 +414,10 @@ create table blocks_deposits
     primary key (block_slot, block_index)
 );
 
+
+create index idx_blocks_deposits_publickey on blocks_deposits (publickey);
+
+
 drop table if exists blocks_voluntaryexits;
 create table blocks_voluntaryexits
 (

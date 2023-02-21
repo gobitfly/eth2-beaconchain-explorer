@@ -32,6 +32,7 @@ type PageData struct {
 	ChainSecondsPerSlot   uint64
 	ChainGenesisTimestamp uint64
 	CurrentEpoch          uint64
+	LatestFinalizedEpoch  uint64
 	CurrentSlot           uint64
 	FinalizationDelay     uint64
 	Mainnet               bool
@@ -1857,6 +1858,16 @@ type BLSChange struct {
 	BlsPubkey      []byte `db:"pubkey" json:"pubkey,omitempty"`
 	Address        []byte `db:"address" json:"address,omitempty"`
 	Signature      []byte `db:"signature" json:"signature,omitempty"`
+}
+
+type ValidatorsBLSChange struct {
+	Slot                     uint64 `db:"slot" json:"slot,omitempty"`
+	BlockRoot                []byte `db:"block_root" json:"blockroot,omitempty"`
+	Validatorindex           uint64 `db:"validatorindex" json:"validatorindex,omitempty"`
+	BlsPubkey                []byte `db:"pubkey" json:"pubkey,omitempty"`
+	Address                  []byte `db:"address" json:"address,omitempty"`
+	Signature                []byte `db:"signature" json:"signature,omitempty"`
+	WithdrawalCredentialsOld []byte `db:"withdrawalcredentials" json:"withdrawalcredentials,omitempty"`
 }
 
 type WithdrawalsPageData struct {
