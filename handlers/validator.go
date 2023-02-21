@@ -1356,10 +1356,14 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	if strings.EqualFold(depositedAddress, recoveredAddress.Hex()) {
 		if applyNameToAll == "on" {
 			res, err := db.WriterDb.Exec(`
-				INSERT INTO validator_names (publickey, name)
-				SELECT publickey, $1 as name
-				FROM (SELECT DISTINCT publickey FROM eth1_deposits WHERE from_address = $2 AND valid_signature) a
-				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, recoveredAddress.Bytes())
+				INSERT INTO validator_names (publickey, index, name)
+				SELECT 
+					a.publickey,
+					validators.validatorindex AS index,
+					$2 AS name
+				FROM (SELECT DISTINCT publickey FROM eth1_deposits WHERE from_address = $1 AND valid_signature) a
+				LEFT JOIN validators ON validators.pubkey = a.publickey
+				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, recoveredAddress.Bytes(), name)
 			if err != nil {
 				logger.Errorf("error saving validator name (apply to all): %x: %v: %v", pubkeyDecoded, name, err)
 				utils.SetFlash(w, r, validatorEditFlash, "Error: Db error while updating validator names")
@@ -1372,9 +1376,12 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		} else {
 			_, err := db.WriterDb.Exec(`
-				INSERT INTO validator_names (publickey, name) 
-				VALUES($2, $1) 
-				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, pubkeyDecoded)
+				INSERT INTO validator_names (publickey, index, name) 
+				VALUES(
+					$1, 
+					(SELECT validatorindex FROM validators WHERE pubkey = $1),
+					$2) 
+				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, pubkeyDecoded, name)
 			if err != nil {
 				logger.Errorf("error saving validator name: %x: %v: %v", pubkeyDecoded, name, err)
 				utils.SetFlash(w, r, validatorEditFlash, "Error: Db error while updating validator name")

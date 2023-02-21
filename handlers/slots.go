@@ -161,8 +161,7 @@ func GetSlotsTableData(draw, start, length uint64, search string, searchForEmpty
 				blocks.graffiti,
 				COALESCE(validator_names.name, '') AS name
 			FROM blocks 
-			LEFT JOIN validators ON blocks.proposer = validators.validatorindex
-			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+			LEFT JOIN validator_names ON blocks.proposer = validator_names.index
 			WHERE blocks.slot >= $1 AND blocks.slot <= $2
 			ORDER BY blocks.slot DESC`, endSlot, startSlot)
 		if err != nil {
@@ -253,8 +252,7 @@ func GetSlotsTableData(draw, start, length uint64, search string, searchForEmpty
 				cnt.total_count
 			FROM matched_slots
 			INNER JOIN blocks on blocks.slot = matched_slots.slot 
-			LEFT JOIN validators ON blocks.proposer = validators.validatorindex
-			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+			LEFT JOIN validator_names ON blocks.proposer= validator_names.index
 			LEFT JOIN (select count(*) from matched_slots) cnt(total_count) ON true
 			ORDER BY slot DESC LIMIT $%v OFFSET $%v`, searchBlocksQry, len(args)-1, len(args))
 

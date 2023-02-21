@@ -101,8 +101,7 @@ func getProposerAndStatusFromSlot(startSlot uint64, endSlot uint64) (map[uint64]
 			blocks.status,
 			COALESCE(validator_names.name, '') AS name
 		FROM blocks 
-		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
-		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+		LEFT JOIN validator_names ON blocks.proposer= validator_names.index
 		WHERE blocks.slot >= $1 AND blocks.slot <= $2
 		ORDER BY blocks.slot DESC`, startSlot, endSlot)
 	if err != nil {

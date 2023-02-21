@@ -47,11 +47,13 @@ create table validator_pool
 drop table if exists validator_names;
 create table validator_names
 (
-    publickey bytea not null,
-    name      varchar(40),
+    publickey   bytea   not null,
+    index       int     not null,
+    name        varchar(40),
     primary key (publickey)
 );
 create index idx_validator_names_publickey on validator_names (publickey);
+create index idx_validator_names_index on validator_names (index);
 create index idx_validator_names_name on validator_names(name);
 
 drop table if exists validator_set;

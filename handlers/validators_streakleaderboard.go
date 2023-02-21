@@ -101,7 +101,7 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 					from validator_attestation_streaks where current = 't' and status = 1
 				)
 			select 
-				v.validatorindex,
+				ls.validatorindex,
 				coalesce(vn.name, '') as name,
 				cnt.totalcount,
 				coalesce(ls.rank, 0) lrank,
@@ -111,9 +111,8 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 				coalesce(cs.start, 0) cstart,
 				coalesce(cs.length, 0) clength
 			from longeststreaks ls
-			inner join validators v on ls.validatorindex = v.validatorindex
-			left join currentstreaks cs on cs.validatorindex = v.validatorindex
-			left join validator_names vn on v.pubkey = vn.publickey
+			left join currentstreaks cs on ls.validatorindex = cs.validatorindex
+			left join validator_names vn on ls.validatorindex = vn.index
 			left join (select count(*) from longeststreaks) cnt(totalcount) on true
 			order by `+orderBy+` `+orderDir+` limit $1 offset $2`, length, start)
 	} else {
@@ -136,7 +135,7 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 					from validator_attestation_streaks where current = 't' and status = 1
 				)
 			select 
-				v.validatorindex,
+				ls.validatorindex,
 				coalesce(vn.name, '') as name,
 				cnt.totalcount,
 				coalesce(ls.rank, 0) lrank,
@@ -147,9 +146,8 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 				coalesce(cs.length, 0) clength
 			from longeststreaks ls
 			inner join matched_validators mv on ls.validatorindex = mv.validatorindex
-			inner join validators v on ls.validatorindex = v.validatorindex
-			left join currentstreaks cs on cs.validatorindex = v.validatorindex
-			left join validator_names vn on v.pubkey = vn.publickey
+			left join currentstreaks cs on ls.validatorindex = cs.validatorindex 
+			left join validator_names vn on ls.validatorindex = vn.index
 			left join (select count(*) from matched_validators) cnt(totalcount) on true
 			order by `+orderBy+` `+orderDir+` limit $1 offset $2`, length, start, "%"+search+"%", search+"%")
 	}

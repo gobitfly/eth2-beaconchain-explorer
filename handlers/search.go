@@ -344,15 +344,14 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			Count            uint64        `db:"count" json:"-"`
 		}{}
 		err = db.ReaderDb.Select(&res, `
-			SELECT name, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
+			SELECT name, COUNT(*), ARRAY_AGG(index) validatorindices FROM (
 				SELECT
-					validatorindex,
-					validator_names.name,
-					DENSE_RANK() OVER(PARTITION BY validator_names.name ORDER BY validatorindex) AS validatorrow,
-					DENSE_RANK() OVER(PARTITION BY validator_names.name) AS namerow
-				FROM validators
-				LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-				WHERE LOWER(validator_names.name) LIKE LOWER($1)
+					index,
+					name,
+					DENSE_RANK() OVER(PARTITION BY name ORDER BY index) AS validatorrow,
+					DENSE_RANK() OVER(PARTITION BY name) AS namerow
+				FROM validator_names
+				WHERE LOWER(name) LIKE LOWER($1)
 			) a
 			WHERE validatorrow <= $2 AND namerow <= 10
 			GROUP BY name

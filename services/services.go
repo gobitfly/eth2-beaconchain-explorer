@@ -777,9 +777,8 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			blocks.status,
 			COALESCE(blocks.exec_block_number, 0) AS exec_block_number,
 			COALESCE(validator_names.name, '') AS name
-		FROM blocks 
-		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
-		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+		FROM blocks
+		LEFT JOIN validator_names ON blocks.proposer= validator_names.index
 		WHERE blocks.slot < $1
 		ORDER BY blocks.slot DESC LIMIT 20`, cutoffSlot)
 	if err != nil {

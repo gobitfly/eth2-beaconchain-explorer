@@ -1845,10 +1845,11 @@ func GetQueueAheadOfValidator(validatorIndex uint64) (uint64, error) {
 
 func GetValidatorNames() (map[uint64]string, error) {
 	rows, err := ReaderDb.Query(`
-		SELECT validatorindex, validator_names.name 
-		FROM validators 
-		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		WHERE validator_names.name IS NOT NULL`)
+		SELECT 
+			index,
+			name 
+		FROM validator_names
+		WHERE name IS NOT NULL`)
 
 	if err != nil {
 		return nil, err

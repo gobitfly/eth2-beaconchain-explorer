@@ -233,8 +233,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			COALESCE(validator_names.name, '') AS name,
 			(SELECT count(*) from blocks_bls_change where block_slot = $1) as bls_change_count
 		FROM blocks 
-		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
-		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+		LEFT JOIN validator_names ON blocks.proposer= validator_names.index
 		LEFT JOIN blocks_tags ON blocks.slot = blocks_tags.slot and blocks.blockroot = blocks_tags.blockroot
 		LEFT JOIN tags ON blocks_tags.tag_id = tags.id
 		LEFT JOIN epochs ON blocks.epoch = epochs.epoch
