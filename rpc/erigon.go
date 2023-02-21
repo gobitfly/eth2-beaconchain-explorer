@@ -143,8 +143,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 	// check if block has withdrawals by checking of the method is available
 	withdrawals := block.Withdrawals()
 	if len(withdrawals) > 0 {
-		withdrawalsIndexed := make([]*types.Eth1Withdrawal, 0)
-
+		withdrawalsIndexed := make([]*types.Eth1Withdrawal, 0, len(withdrawals))
 		for _, w := range withdrawals {
 			withdrawalsIndexed = append(withdrawalsIndexed, &types.Eth1Withdrawal{
 				Index:          w.Index,
