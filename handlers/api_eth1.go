@@ -895,7 +895,7 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 
 	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, 10000)
 	if err != nil {
-		return nil, fmt.Errorf("error cannot get blocks from bigtable using GetBlocksIndexedMultiple: %v", err)
+		return nil, fmt.Errorf("error cannot get blocks from bigtable using GetBlocksIndexedMultiple: %w", err)
 	}
 
 	resultPerProposer := make(map[uint64]types.ExecutionPerformanceResponse)
@@ -903,7 +903,7 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
 	if err != nil {
 		// logger.WithError(err).Errorf("can not get relays data")
-		return nil, fmt.Errorf("error can not get relays data: %v", err)
+		return nil, fmt.Errorf("error can not get relays data: %w", err)
 	}
 
 	for _, block := range blocks {

@@ -568,7 +568,7 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 	columnTypes, err := rows.ColumnTypes()
 
 	if err != nil {
-		return nil, fmt.Errorf("error getting column types: %v", err)
+		return nil, fmt.Errorf("error getting column types: %w", err)
 	}
 
 	count := len(columnTypes)
@@ -600,7 +600,7 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 		err := rows.Scan(scanArgs...)
 
 		if err != nil {
-			return nil, fmt.Errorf("error scanning rows: %v", err)
+			return nil, fmt.Errorf("error scanning rows: %w", err)
 		}
 
 		masterData := map[string]interface{}{}
