@@ -1338,8 +1338,18 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	data := make([]*ApiValidatorResponse, 0)
 
 	err = db.ReaderDb.Select(&data, `
+	WITH validator_withdrawals AS (
+		SELECT validatorindex as index, COALESCE(sum(amount), 0) as total 
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON b.blockroot = w.block_root AND status = '1'
+		WHERE validatorindex = ANY($1)
+		GROUP BY validatorindex
+		ORDER BY validatorindex
+	)
 	SELECT
-		validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch,
+		validatorindex, 
+		'0x' || encode(pubkey, 'hex') as  pubkey, 
+		withdrawableepoch,
 		'0x' || encode(withdrawalcredentials, 'hex') as withdrawalcredentials,
 		slashed,
 		activationeligibilityepoch,
@@ -1347,19 +1357,15 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 		exitepoch,
 		lastattestationslot,
 		status,
-		COALESCE(n.name, '') AS name,
-		w.total as total_withdrawals
-	FROM validators v
-	LEFT JOIN validator_names n ON n.publickey = v.pubkey
-	LEFT JOIN (
-		SELECT validatorindex as index, COALESCE(sum(amount), 0) as total 
-		FROM blocks_withdrawals w
-		INNER JOIN blocks b ON b.blockroot = w.block_root AND status = '1'
-		GROUP BY validatorindex
-	) as w ON w.index = v.validatorindex
-	WHERE validatorindex = ANY($1);
+		COALESCE(validator_names.name, '') AS name,
+		COALESCE((SELECT total from validator_withdrawals where index = validatorindex), 0) as total_withdrawals
+	FROM validators
+	LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey
+	WHERE validatorindex = ANY($1)
+	ORDER BY validatorindex;
 	`, pq.Array(queryIndices))
 	if err != nil {
+		logger.Warnf("error retrieving validator data from db: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
