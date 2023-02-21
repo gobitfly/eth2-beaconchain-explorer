@@ -34,9 +34,7 @@ func GetNodeJobValidatorInfos(job *types.NodeJob) ([]types.NodeJobValidatorInfo,
 
 	indicesArr := []uint64{}
 
-	if job.Type == types.UnknownNodeJobType {
-		return []types.NodeJobValidatorInfo{}, nil
-	} else if job.Type == types.BLSToExecutionChangesNodeJobType {
+	if job.Type == types.BLSToExecutionChangesNodeJobType {
 		jobData, ok := job.GetBLSToExecutionChangesNodeJobData()
 		if !ok {
 			return nil, fmt.Errorf("invalid bls to execution job-data")
@@ -44,14 +42,17 @@ func GetNodeJobValidatorInfos(job *types.NodeJob) ([]types.NodeJobValidatorInfo,
 		for _, op := range *jobData {
 			indicesArr = append(indicesArr, uint64(op.Message.ValidatorIndex))
 		}
-	} else {
+	} else if job.Type == types.VoluntaryExitsNodeJobType {
 		jobData, ok := job.GetVoluntaryExitsNodeJobData()
 		if !ok {
 			return nil, fmt.Errorf("invalid voluntary exit job-data")
 		}
 
 		indicesArr = append(indicesArr, uint64(jobData.ValidatorIndex))
+	} else {
+		return []types.NodeJobValidatorInfo{}, nil
 	}
+
 	dbValis := []types.NodeJobValidatorInfo{}
 	err := WriterDb.Select(&dbValis, `select validatorindex, pubkey, withdrawalcredentials, exitepoch, status from validators where validatorindex = any($1)`, pq.Array(indicesArr))
 	if err != nil {
