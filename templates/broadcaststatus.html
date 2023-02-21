@@ -47,10 +47,10 @@
                         <div class="col-md-8">{{ .Job.SubmittedToNodeTime.Time | formatTime }}</div>
                       </div>
                     {{ end }}
-                    <h4 class="h4 mt-2 pl-3 pt-3">Effected Validators:</h4>
+                    <h4 class="h4 mt-2 pl-3 pt-3">Affected Validators:</h4>
                     {{ range .Validators }}
                       <div class="row mx-0 pt-3 pl-3">
-                        <div class="col-md-4">{{ .ValidatorIndex | formatValidator }}:</div>
+                        <div class="col-md-4">{{ .ValidatorIndex | formatValidator }}</div>
                         <div class="col-md-8">{{ .Status }}</div>
                       </div>
                     {{ end }}
