@@ -421,7 +421,7 @@ func (bigtable *Bigtable) SaveAttestationAssignments(epoch uint64, assignments m
 		}
 
 		if validatorsPerSlot[attesterslot] == nil {
-			validatorsPerSlot[attesterslot] = make([]uint64, 0, len(assignments)/32)
+			validatorsPerSlot[attesterslot] = make([]uint64, 0, len(assignments)/int(utils.Config.Chain.Config.SlotsPerEpoch))
 		}
 		validatorsPerSlot[attesterslot] = append(validatorsPerSlot[attesterslot], validator)
 	}

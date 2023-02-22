@@ -375,6 +375,9 @@ func ReadConfig(cfg *types.Config, path string) error {
 		case "sepolia":
 			// prysmParamsConfig = prysmParams.SepoliaConfig().Copy()
 			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
+		case "gnosis":
+			// prysmParamsConfig = prysmParams.SepoliaConfig().Copy()
+			err = yaml.Unmarshal([]byte(config.GnosisChainYml), &cfg.Chain.Config)
 		default:
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
 		}
@@ -415,6 +418,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 		case "sepolia":
 			cfg.Chain.GenesisTimestamp = 1655733600
 			cfg.Chain.GenesisValidatorsRoot = "0xd8ea171f3c94aea21ebc42a1ed61052acf3f9209c00e4efbaaddac09ed9b8078"
+		case "gnosis":
+			//TODO add genesis timestamp & validators root
 		default:
 			return fmt.Errorf("tried to set known genesis-timestamp, but unknown chain-name")
 		}
