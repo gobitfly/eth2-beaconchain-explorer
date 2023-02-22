@@ -138,8 +138,6 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 	receipts := make([]*geth_types.Receipt, len(block.Transactions()))
 	reqs := make([]geth_rpc.BatchElem, len(block.Transactions()))
 
-	// withdrawals, ok := block.()
-
 	// check if block has withdrawals by checking of the method is available
 	withdrawals := block.Withdrawals()
 	if len(withdrawals) > 0 {
