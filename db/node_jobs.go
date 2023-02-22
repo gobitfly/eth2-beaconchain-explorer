@@ -18,15 +18,6 @@ import (
 	ethutil "github.com/wealdtech/go-eth2-util"
 )
 
-func GetCurrentForkVersion() (*types.ForkVersion, error) {
-	var epoch uint64
-	err := WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
-	if err != nil {
-		return nil, err
-	}
-	return utils.ForkVersionAtEpoch(epoch), nil
-}
-
 func GetNodeJob(id string) (*types.NodeJob, error) {
 	if len(id) > 40 {
 		return nil, fmt.Errorf("invalid id")
