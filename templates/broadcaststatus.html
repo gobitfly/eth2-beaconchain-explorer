@@ -29,27 +29,33 @@
                 <h4 class="h4 pb-3">{{ .JobTitle }}<br />{{ .Job.ID }}</h4>
                 <div class="card text-left">
                   <div class="card-body">
-                    <div class="row border-bottom p-3 mx-0">
+                    <div class="row flex-nowrap border-bottom p-3 mx-0">
                       <div class="col-md-4">Status:</div>
                       <div class="col-md-8">{{ .Job.Status }}</div>
                     </div>
-                    <div class="row border-bottom p-3 mx-0">
+                    <div class="row flex-nowrap border-bottom p-3 mx-0">
                       <div class="col-md-4">Type:</div>
                       <div class="col-md-8">{{ .JobTypeLabel }}</div>
                     </div>
-                    <div class="row border-bottom p-3 mx-0">
+                    <div class="row flex-nowrap border-bottom p-3 mx-0">
+                      <div class="col-md-4">Data:</div>
+                      <div class="col-md-8">
+                        <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy json-text from the request to clipboard" data-clipboard-text="{{ .JobJson }}">Copy json <i class="fa fa-copy"></i></button>
+                      </div>
+                    </div>
+                    <div class="row flex-nowrap border-bottom p-3 mx-0">
                       <div class="col-md-4">Created time:</div>
                       <div class="col-md-8">{{ .Job.CreatedTime | formatTime }}</div>
                     </div>
                     {{ if .Job.SubmittedToNodeTime.Valid }}
-                      <div class="row border-bottom p-3 mx-0">
+                      <div class="row flex-nowrap border-bottom p-3 mx-0">
                         <div class="col-md-4">Submitted to node time:</div>
                         <div class="col-md-8">{{ .Job.SubmittedToNodeTime.Time | formatTime }}</div>
                       </div>
                     {{ end }}
                     <h4 class="h4 mt-2 pl-3 pt-3">Affected Validators:</h4>
                     {{ range .Validators }}
-                      <div class="row mx-0 pt-3 pl-3">
+                      <div class="row flex-nowrap mx-0 pt-3 pl-3">
                         <div class="col-md-4">{{ .ValidatorIndex | formatValidator }}</div>
                         <div class="col-md-8">{{ .Status }}</div>
                       </div>

@@ -94,6 +94,7 @@ func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
 	pageData.Job = job
 	pageData.JobTypeLabel = FormatNodeJobType(job.Type)
 	pageData.JobTitle = FormatNodeJobTitle(job.Type)
+	pageData.JobJson = fmt.Sprintf("%v", string(job.RawData))
 
 	validators, err := db.GetNodeJobValidatorInfos(job)
 	if err != nil {
