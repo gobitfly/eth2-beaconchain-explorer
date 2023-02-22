@@ -59,6 +59,9 @@ type NodeJobValidatorInfo struct {
 
 // ParseData will try to unmarshal NodeJob.RawData into NodeJob.Data and determine NodeJob.Type by doing so. If it is not able to unmarshal any type it will return an error. It will sanitize NodeJob.RawData on success.
 func (nj *NodeJob) ParseData() error {
+	if len(nj.RawData) == 0 {
+		return fmt.Errorf("job-data is empty")
+	}
 	{
 		d := []*capella.SignedBLSToExecutionChange{}
 		err := json.Unmarshal(nj.RawData, &d)
@@ -84,7 +87,6 @@ func (nj *NodeJob) ParseData() error {
 			return nj.SanitizeRawData()
 		}
 	}
-	nj.Type = UnknownNodeJobType
 	return fmt.Errorf("can not unmarshal job-data")
 }
 
