@@ -405,6 +405,7 @@
           </ol>
         </nav>
       </div>
+      {{ if not .NoAds }}{{ template "banner" dict "bannerId" "48" }}{{ end }}
       {{ if ne (len .Tags) 0 }}
         <div class="tags">
           {{ range .Tags }}

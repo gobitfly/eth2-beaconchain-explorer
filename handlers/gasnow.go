@@ -14,7 +14,7 @@ import (
 
 // Blocks will return information about blocks using a go template
 func GasNow(w http.ResponseWriter, r *http.Request) {
-	var gasNowTemplate = templates.GetTemplate("layout.html", "gasnow.html")
+	var gasNowTemplate = templates.GetTemplate("layout.html", "gasnow.html", "components/banner.html")
 
 	w.Header().Set("Content-Type", "text/html")
 

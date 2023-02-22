@@ -43,6 +43,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		"slot/exits.html",
 		"slot/overview.html",
 		"slot/execTransactions.html",
+		"components/banner.html",
 	)
 
 	var slotFutureTemplate = templates.GetTemplate(
@@ -129,6 +130,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	data.Meta.Path = fmt.Sprintf("/slot/%v", blockPageData.Slot)
+	blockPageData.NoAds = data.NoAds
 	data.Data = blockPageData
 
 	if utils.IsApiRequest(r) {

@@ -130,8 +130,8 @@
 {{ end }}
 {{ define "css" }}{{ end }}
 {{ define "content" }}
-  {{ with .Data }}
-    <div class="container mt-2">
+  <div class="container mt-2">
+    {{ with .Data }}
       <div class="my-3">
         <div class="d-md-flex py-2 justify-content-md-between">
           <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-chart-line mr-2"></i>Ethereum Network Charts</h1>
@@ -148,9 +148,7 @@
           <div id="chart" height="600"></div>
         </div>
       </div>
-      <div class="d-flex justify-content-between py-2">
-        <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-      </div>
-    </div>
-  {{ end }}
+    {{ end }}
+    {{ if not .NoAds }}<div class="pt-2">{{ template "banner" dict "bannerId" "51" }}</div>{{ end }}
+  </div>
 {{ end }}

@@ -65,7 +65,7 @@ func Chart(w http.ResponseWriter, r *http.Request) {
 // GenericChart uses a go template for presenting the page of a generic chart
 func GenericChart(w http.ResponseWriter, r *http.Request) {
 
-	var genericChartTemplate = templates.GetTemplate("layout.html", "genericchart.html")
+	var genericChartTemplate = templates.GetTemplate("layout.html", "genericchart.html", "components/banner.html")
 	var chartsUnavailableTemplate = templates.GetTemplate("layout.html", "chartsunavailable.html")
 
 	vars := mux.Vars(r)

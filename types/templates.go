@@ -643,6 +643,7 @@ type BlockPageData struct {
 
 	Tags       TagMetadataSlice `db:"tags"`
 	IsValidMev bool             `db:"is_valid_mev"`
+	NoAds      bool
 }
 
 func (u *BlockPageData) MarshalJSON() ([]byte, error) {
@@ -944,6 +945,7 @@ type DashboardData struct {
 	// Validators     [][]interface{}                  `json:"validators"`
 	Csrf           string `json:"csrf"`
 	ValidatorLimit int    `json:"valLimit"`
+	NoAds          bool
 }
 
 // DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page
@@ -1185,6 +1187,7 @@ type UserNotificationsCenterPageData struct {
 	AddValidatorWatchlistModal AddValidatorWatchlistModal
 	ManageNotificationModal    ManageNotificationModal
 	NetworkEventModal          NetworkEventModal
+	NoAds                      bool
 	// Subscriptions []*Subscription
 }
 
@@ -1727,6 +1730,7 @@ type Eth1BlockPageData struct {
 	Txs                   []Eth1BlockPageTransaction
 	Uncles                []Eth1BlockPageData
 	State                 string
+	NoAds                 bool
 }
 
 type Eth1BlockPageTransaction struct {

@@ -702,6 +702,7 @@
           <h5 class="text-center">In total ${ page.total_burned | formatETH(1) } ETH have been burned up to now.</h5>
         </div>
       </div>
+      {{ if not .NoAds }}{{ template "banner" dict "bannerId" "46" }}{{ end }}
       <div class="card mt-3">
         <div class="card-header">
           <div class="row">

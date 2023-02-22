@@ -30,7 +30,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var notificationCenterParts []string = []string{"layout.html", "user/notificationsCenter.html", "modals.html"}
+var notificationCenterParts []string = []string{"layout.html", "user/notificationsCenter.html", "modals.html", "components/banner.html"}
 
 func UserAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -881,6 +881,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	userNotificationsCenterData.Network = networkData
 	userNotificationsCenterData.MonitoringSubscriptions = monitoringSubscriptions
 	userNotificationsCenterData.Machines = machines
+	userNotificationsCenterData.NoAds = data.NoAds
 	data.Data = userNotificationsCenterData
 	data.User = user
 

@@ -18,7 +18,7 @@ import (
 func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 	var txNotFoundTemplate = templates.GetTemplate("layout.html", "eth1txnotfound.html")
-	var txTemplate = templates.GetTemplate("layout.html", "eth1tx.html")
+	var txTemplate = templates.GetTemplate("layout.html", "eth1tx.html", "components/banner.html")
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)

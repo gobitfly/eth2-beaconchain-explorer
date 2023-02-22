@@ -53,6 +53,7 @@
       </div>
 
       <br />
+      {{ if not .NoAds }}{{ template "banner" dict "bannerId" "50" }}{{ end }}
       <div>Staking pool deposit addresses are based on on-chain data. Please open an <a href="https://github.com/gobitfly/eth2-beaconchain-explorer/issues">issue</a> if you want to add an Ethereum staking pool.</div>
       <div class="row mt-4">
         <div class="col-md-12">
