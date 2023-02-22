@@ -96,11 +96,11 @@ func (njp *NodeJobsProcessor) Run() {
 func (njp *NodeJobsProcessor) Process() error {
 	err := db.UpdateNodeJobs()
 	if err != nil {
-		return err
+		return fmt.Errorf("error updating job: %w", err)
 	}
 	err = db.SubmitNodeJobs()
 	if err != nil {
-		return err
+		return fmt.Errorf("error submitting job: %w", err)
 	}
 	return nil
 }

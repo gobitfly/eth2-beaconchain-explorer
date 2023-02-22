@@ -1891,6 +1891,7 @@ type ChangeWithdrawalCredentialsPageData struct {
 }
 
 type BroadcastPageData struct {
+	Stats        *Stats
 	FlashMessage string
 	CaptchaId    string
 	CsrfField    template.HTML
@@ -1898,5 +1899,9 @@ type BroadcastPageData struct {
 }
 
 type BroadcastStatusPageData struct {
-	Job *NodeJob
+	Job          *NodeJob
+	JobTypeLabel string
+	JobTitle     string
+	JobJson      string
+	Validators   *[]NodeJobValidatorInfo
 }
