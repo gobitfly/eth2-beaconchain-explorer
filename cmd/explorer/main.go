@@ -65,10 +65,13 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
-	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
+	logrus.WithFields(logrus.Fields{
+		"config":    *configPath,
+		"version":   version.Version,
+		"chainName": utils.Config.Chain.Config.ConfigName}).Printf("starting")
 
 	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
-		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
+		utils.LogError("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file", nil).Fatal()
 	}
 
 	err = handlers.CheckAndPreloadImprint()
@@ -148,7 +151,7 @@ func main() {
 		}
 
 		if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) {
-			logrus.Fatalf("chain id missmatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), erigonChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+			logrus.Fatalf("chain id mismatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), erigonChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 		}
 	}()
 
@@ -213,7 +216,7 @@ func main() {
 		if utils.Config.Indexer.Node.Type == "lighthouse" {
 			rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainID)
 			if err != nil {
-				logrus.Fatal(err)
+				utils.LogError("new lighthouse client error", err).Fatal()
 			}
 		} else {
 			logrus.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
@@ -225,7 +228,7 @@ func main() {
 				for _, epoch := range utils.Config.Indexer.OneTimeExport.Epochs {
 					err := exporter.ExportEpoch(epoch, rpcClient)
 					if err != nil {
-						logrus.Fatal(err)
+						utils.LogError("exporting epoch error", err).Fatal()
 					}
 				}
 			} else {
@@ -233,7 +236,7 @@ func main() {
 				for epoch := utils.Config.Indexer.OneTimeExport.StartEpoch; epoch <= utils.Config.Indexer.OneTimeExport.EndEpoch; epoch++ {
 					err := exporter.ExportEpoch(epoch, rpcClient)
 					if err != nil {
-						logrus.Fatal(err)
+						utils.LogError("exporting epoch error", err).Fatal()
 					}
 				}
 			}

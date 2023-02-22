@@ -25,6 +25,8 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -1043,4 +1045,28 @@ func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
 		CurrentVersion:  MustParseHex(Config.Chain.Config.GenesisForkVersion),
 		PreviousVersion: MustParseHex(Config.Chain.Config.GenesisForkVersion),
 	}
+}
+
+func LogError(infoIdentifier string, err error) *logrus.Entry {
+	var fileIdentifier, lineIdentifier, functionIdentifier string
+
+	pc, fullFilePath, line, ok := runtime.Caller(1)
+	if ok {
+		fileIdentifier = filepath.Base(fullFilePath)
+		functionIdentifier = runtime.FuncForPC(pc).Name()
+		lineIdentifier = strconv.Itoa(line)
+	} else {
+		msg := "Cannot read callstack"
+		fileIdentifier = msg
+		functionIdentifier = msg
+		lineIdentifier = msg
+	}
+
+	return logrus.WithFields(logrus.Fields{
+		"file":       fileIdentifier,
+		"line":       lineIdentifier,
+		"function":   functionIdentifier,
+		"info":       infoIdentifier,
+		"error type": fmt.Sprintf("%T", err),
+	}).WithError(err)
 }

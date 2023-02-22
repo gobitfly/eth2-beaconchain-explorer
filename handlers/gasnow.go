@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
+	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
 	"sort"
@@ -70,7 +71,7 @@ func GasNowData(w http.ResponseWriter, r *http.Request) {
 
 	gasnowData := services.LatestGasNowData()
 	if gasnowData == nil {
-		logger.Error("error obtaining latest gas now data 'nil'")
+		utils.LogError("error obtaining latest gas now data 'nil'", nil).Error()
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}

@@ -1275,13 +1275,13 @@ func getGasNowData() (*types.GasNowPageData, error) {
 
 	err = client.Call(&raw, "txpool_content")
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogError("error getting raw json data from txpool_content", err).Fatal()
 	}
 
 	txPoolContent := &TxPoolContent{}
 	err = json.Unmarshal(raw, txPoolContent)
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogError("unmarshal json error", err).Fatal()
 	}
 
 	pendingTxs := make([]*geth_types.Transaction, 0, len(txPoolContent.Pending))
@@ -1368,7 +1368,7 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 		if client == nil {
 			client, err = geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
 			if err != nil {
-				logrus.Error("can't connect to geth node: ", err)
+				utils.LogError("can't connect to geth node", err).Error()
 				time.Sleep(time.Second * 30)
 				continue
 			}

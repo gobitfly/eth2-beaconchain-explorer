@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
 
@@ -112,7 +113,7 @@ func GenericChartData(w http.ResponseWriter, r *http.Request) {
 
 	chartsPageData := services.LatestChartsPageData()
 	if chartsPageData == nil {
-		logger.Error("error getting chart page data")
+		utils.LogError("error getting chart page data", nil).Error()
 		SendErrorResponse(w, r.URL.String(), "error getting chart page data")
 		return
 	}

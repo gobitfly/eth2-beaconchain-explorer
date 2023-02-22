@@ -107,13 +107,13 @@ func main() {
 	defer db.WriterDb.Close()
 
 	if erigonEndpoint == nil || *erigonEndpoint == "" {
-		logrus.Fatal("no erigon node url provided")
+		utils.LogError("no erigon node url provided", nil).Fatal()
 	}
 
 	logrus.Infof("using erigon node at %v", *erigonEndpoint)
 	client, err := rpc.NewErigonClient(*erigonEndpoint)
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogError("erigon client creation error", err).Fatal()
 	}
 
 	chainId := strconv.FormatUint(utils.Config.Chain.Config.DepositChainID, 10)
@@ -122,7 +122,7 @@ func main() {
 
 	nodeChainId, err := client.GetNativeClient().ChainID(context.Background())
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogError("node chain id error", err).Fatal()
 	}
 
 	if nodeChainId.String() != chainId {
@@ -140,7 +140,7 @@ func main() {
 			for {
 				err = UpdateTokenPrices(bt, client, *tokenPriceExportList)
 				if err != nil {
-					logrus.Error(err)
+					utils.LogError("error while updating token prices", err).Error()
 					time.Sleep(*tokenPriceExportFrequency)
 				}
 				time.Sleep(*tokenPriceExportFrequency)
@@ -764,7 +764,7 @@ func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk 
 	if err := g.Wait(); err == nil {
 		logrus.Info("data table indexing completed")
 	} else {
-		logrus.Error(err)
+		utils.LogError("wait group error", err).Error()
 		return err
 	}
 
@@ -778,13 +778,13 @@ func ImportMainnetERC20TokenMetadataFromTokenDirectory(bt *db.Bigtable) {
 	resp, err := client.Get("<INSERT_TOKENLIST_URL>")
 
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogError("getting client error", err).Fatal()
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogError("reading body error", err).Fatal()
 	}
 
 	type TokenDirectory struct {
@@ -816,14 +816,14 @@ func ImportMainnetERC20TokenMetadataFromTokenDirectory(bt *db.Bigtable) {
 	err = json.Unmarshal(body, td)
 
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogError("unmarshal json body error", err).Fatal()
 	}
 
 	for _, token := range td.Tokens {
 
 		address, err := hex.DecodeString(strings.TrimPrefix(token.Address, "0x"))
 		if err != nil {
-			logrus.Fatal(err)
+			utils.LogError("decoding string to hex error", err).Fatal()
 		}
 		logrus.Infof("processing token %v at address %x", token.Name, address)
 
@@ -837,7 +837,7 @@ func ImportMainnetERC20TokenMetadataFromTokenDirectory(bt *db.Bigtable) {
 				body, err := ioutil.ReadAll(resp.Body)
 
 				if err != nil {
-					logrus.Fatal(err)
+					utils.LogError("reading body error", err).Fatal()
 				}
 
 				meta.Logo = body
@@ -850,7 +850,7 @@ func ImportMainnetERC20TokenMetadataFromTokenDirectory(bt *db.Bigtable) {
 
 		err = bt.SaveERC20Metadata(address, meta)
 		if err != nil {
-			logrus.Fatal(err)
+			utils.LogError("error while saving ERC20 metadata", err).Fatal()
 		}
 		time.Sleep(time.Millisecond * 250)
 	}
@@ -867,13 +867,13 @@ func ImportNameLabels(bt *db.Bigtable) {
 	data, err := ioutil.ReadFile("")
 
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogError("reading file error", err).Fatal()
 	}
 
 	err = json.Unmarshal(data, &res)
 
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogError("unmarshal json error", err).Fatal()
 	}
 
 	logrus.Infof("retrieved %v names", len(res))

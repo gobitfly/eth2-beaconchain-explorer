@@ -66,7 +66,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
        			pubkey
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
-		logger.Error(err)
+		utils.LogError("error retrieving db results", err).Error()
 		return nil, nil, err
 	}
 

@@ -103,12 +103,12 @@ func rocketpoolExporter() {
 	var err error
 	rpEth1RPRCClient, err = gethRPC.Dial(endpoint)
 	if err != nil {
-		logger.Fatal(err)
+		utils.LogError("new geth client error", err).Fatal()
 	}
 	rpEth1Client = ethclient.NewClient(rpEth1RPRCClient)
 	rpExporter, err := NewRocketpoolExporter(rpEth1Client, utils.Config.RocketpoolExporter.StorageContractAddress, db.WriterDb)
 	if err != nil {
-		logger.Fatal(err)
+		utils.LogError("new rocketpool exporter error", err).Fatal()
 	}
 	rpExporter.Run()
 }

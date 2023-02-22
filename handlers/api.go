@@ -816,7 +816,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	var parsedBody types.DashboardRequest
 	err = json.Unmarshal(body, &parsedBody)
 	if err != nil {
-		logger.Error(err)
+		utils.LogError("unmarshal json body error", err).Error()
 		getValidators = false
 	}
 
@@ -2098,7 +2098,7 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 		WHERE eth1_deposits.publickey = ANY($1)`, pubkeys,
 	)
 	if err != nil {
-		logger.Error(err)
+		utils.LogError("error retrieving db results", err).Error()
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -2547,7 +2547,7 @@ func RegisterEthpoolSubscription(w http.ResponseWriter, r *http.Request) {
 	localSignature := hmacSign(fmt.Sprintf("ETHPOOL %v %v", pkg, ethpoolUserID))
 	if signature != localSignature {
 		w.WriteHeader(http.StatusInternalServerError)
-		logger.Errorf("signature missmatch %v | %v", signature, localSignature)
+		logger.Errorf("signature mismatch %v | %v", signature, localSignature)
 		sendErrorResponse(w, r.URL.String(), "Unauthorized: signature not valid")
 		return
 	}

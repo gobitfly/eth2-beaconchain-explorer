@@ -226,7 +226,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		} else {
-			logger.Error("error no email provided when creating stripe customer ", customer.ID)
+			utils.LogError("error no email provided when creating stripe customer "+customer.ID, nil).Error()
 			http.Error(w, "error no email provided when creating stripe customer "+customer.ID, http.StatusServiceUnavailable)
 			return
 		}
@@ -320,13 +320,13 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if subscription.Items == nil {
-			logger.Error("error updating subscription no items found", subscription)
+			utils.LogError(fmt.Sprint("error updating subscription no items found", subscription), nil).Error()
 			http.Error(w, "error updating subscription no items found", http.StatusServiceUnavailable)
 			return
 		}
 
 		if len(subscription.Items.Data) == 0 {
-			logger.Error("error updating subscription no items found", subscription)
+			utils.LogError(fmt.Sprint("error updating subscription no items found", subscription), nil).Error()
 			http.Error(w, "error updating subscription no items found", http.StatusServiceUnavailable)
 			return
 		}

@@ -74,7 +74,7 @@ func main() {
 	case "checkTransactions":
 
 	default:
-		logrus.Fatal("unknown command")
+		utils.LogError("unknown command", nil).Fatal()
 	}
 }
 
