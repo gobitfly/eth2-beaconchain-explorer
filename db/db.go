@@ -2677,24 +2677,6 @@ func GetAddressWithdrawalsTotal(address []byte) (uint64, error) {
 	return total, nil
 }
 
-func GetValidatorWithdrawalsTotal(validator uint64) (uint64, error) {
-	var total uint64
-
-	err := ReaderDb.Get(&total, `
-		SELECT sum(w.amount) as total 
-		FROM blocks_withdrawals w
-		INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-		WHERE w.validatorindex = $1`, validator)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("error getting total blocks_withdrawals for validator: %d: %w", validator, err)
-	}
-
-	return total, nil
-}
-
 func GetValidatorWithdrawalsCount(validator uint64) (uint64, error) {
 	var count uint64
 
