@@ -3,6 +3,7 @@ package types
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/attestantio/go-eth2-client/spec/capella"
@@ -20,10 +21,21 @@ type NodeJobType string
 
 const BLSToExecutionChangesNodeJobType NodeJobType = "BLS_TO_EXECUTION_CHANGES"
 const VoluntaryExitsNodeJobType NodeJobType = "VOLUNTARY_EXITS"
+const UnknownNodeJobType NodeJobType = "UNKNOWN"
 
 var NodeJobTypes = []NodeJobType{
 	BLSToExecutionChangesNodeJobType,
 	VoluntaryExitsNodeJobType,
+}
+
+func NewNodeJob(data []byte) (*NodeJob, error) {
+	j := &NodeJob{}
+	j.RawData = data
+	err := j.ParseData()
+	if err != nil {
+		return nil, err
+	}
+	return j, nil
 }
 
 type NodeJob struct {
@@ -33,45 +45,66 @@ type NodeJob struct {
 	CompletedTime       sql.NullTime  `db:"completed_time"`
 	Type                NodeJobType   `db:"type"`
 	Status              NodeJobStatus `db:"status"`
-	Data                []byte        `db:"data"`
+	RawData             []byte        `db:"data"`
+	Data                interface{}   `db:"-"`
 }
 
-func (nj NodeJob) ToBLSToExecutionChangesNodeJob() (*BLSToExecutionChangesNodeJob, error) {
-	j := &BLSToExecutionChangesNodeJob{}
-	j.ID = nj.ID
-	j.CreatedTime = nj.CreatedTime
-	j.SubmittedToNodeTime = nj.SubmittedToNodeTime
-	j.CompletedTime = nj.CompletedTime
-	j.Type = nj.Type
-	j.Status = nj.Status
-	err := json.Unmarshal(nj.Data, &j.Data)
-	if err != nil {
-		return nil, err
+type NodeJobValidatorInfo struct {
+	ValidatorIndex      uint64 `db:"validatorindex"`
+	PublicKey           []byte `db:"pubkey"`
+	WithdrawCredentials []byte `db:"withdrawalcredentials"`
+	ExitEpoch           uint64 `db:"exitepoch"`
+	Status              string
+}
+
+// ParseData will try to unmarshal NodeJob.RawData into NodeJob.Data and determine NodeJob.Type by doing so. If it is not able to unmarshal any type it will return an error. It will sanitize NodeJob.RawData on success.
+func (nj *NodeJob) ParseData() error {
+	if len(nj.RawData) == 0 {
+		return fmt.Errorf("job-data is empty")
 	}
-	return j, nil
-}
-
-func (nj NodeJob) ToVoluntaryExitsNodeJob() (*VoluntaryExitsNodeJob, error) {
-	j := &VoluntaryExitsNodeJob{}
-	j.ID = nj.ID
-	j.CreatedTime = nj.CreatedTime
-	j.SubmittedToNodeTime = nj.SubmittedToNodeTime
-	j.CompletedTime = nj.CompletedTime
-	j.Type = nj.Type
-	j.Status = nj.Status
-	err := json.Unmarshal(nj.Data, &j.Data)
-	if err != nil {
-		return nil, err
+	{
+		d := []*capella.SignedBLSToExecutionChange{}
+		err := json.Unmarshal(nj.RawData, &d)
+		if err == nil {
+			if nj.Type != "" && nj.Type != UnknownNodeJobType && nj.Type != BLSToExecutionChangesNodeJobType {
+				return fmt.Errorf("nodejob.RawData missmatches nodejob.Type (%v)", nj.Type)
+			}
+			nj.Type = BLSToExecutionChangesNodeJobType
+			nj.Data = d
+			return nj.SanitizeRawData()
+		}
 	}
-	return j, nil
+	{
+		//var d *VoluntaryExitsNodeJobData
+		var d *phase0.SignedVoluntaryExit
+		err := json.Unmarshal(nj.RawData, &d)
+		if err == nil && d.Message.Epoch != 0 {
+			if nj.Type != "" && nj.Type != UnknownNodeJobType && nj.Type != VoluntaryExitsNodeJobType {
+				return fmt.Errorf("nodejob.RawData missmatches nodejob.Type (%v)", nj.Type)
+			}
+			nj.Type = VoluntaryExitsNodeJobType
+			nj.Data = d
+			return nj.SanitizeRawData()
+		}
+	}
+	return fmt.Errorf("can not unmarshal job-data")
 }
 
-type BLSToExecutionChangesNodeJob struct {
-	NodeJob
-	Data []*capella.SignedBLSToExecutionChange `db:"data,json"`
+func (nj *NodeJob) SanitizeRawData() error {
+	d, err := json.Marshal(nj.Data)
+	if err != nil {
+		return err
+	}
+	nj.RawData = d
+	return nil
 }
 
-type VoluntaryExitsNodeJob struct {
-	NodeJob
-	Data *phase0.VoluntaryExit `db:"data,json"`
+func (nj NodeJob) GetBLSToExecutionChangesNodeJobData() ([]*capella.SignedBLSToExecutionChange, bool) {
+	d, ok := nj.Data.([]*capella.SignedBLSToExecutionChange)
+	return d, ok
+}
+
+func (nj NodeJob) GetVoluntaryExitsNodeJobData() (*phase0.SignedVoluntaryExit, bool) {
+	d, ok := nj.Data.(*phase0.SignedVoluntaryExit)
+	return d, ok
 }

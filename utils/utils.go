@@ -423,6 +423,9 @@ func ReadConfig(cfg *types.Config, path string) error {
 	if cfg.Chain.DomainBLSToExecutionChange == "" {
 		cfg.Chain.DomainBLSToExecutionChange = "0x0A000000"
 	}
+	if cfg.Chain.DomainVoluntaryExit == "" {
+		cfg.Chain.DomainVoluntaryExit = "0x04000000"
+	}
 
 	logrus.WithFields(logrus.Fields{
 		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
@@ -568,7 +571,7 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 	columnTypes, err := rows.ColumnTypes()
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting column types: %w", err)
 	}
 
 	count := len(columnTypes)
@@ -600,7 +603,7 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 		err := rows.Scan(scanArgs...)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error scanning rows: %w", err)
 		}
 
 		masterData := map[string]interface{}{}
@@ -1010,4 +1013,34 @@ func GetTimeToNextWithdrawal(distance uint64) time.Time {
 func EpochsPerDay() uint64 {
 	day := time.Hour * 24
 	return (uint64(day.Seconds()) / Config.Chain.Config.SlotsPerEpoch) / Config.Chain.Config.SecondsPerSlot
+}
+
+// ForkVersionAtEpoch returns the forkversion active a specific epoch
+func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
+	if epoch >= Config.Chain.Config.CappellaForkEpoch {
+		return &types.ForkVersion{
+			Epoch:           Config.Chain.Config.CappellaForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.Config.CappellaForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.Config.BellatrixForkVersion),
+		}
+	}
+	if epoch >= Config.Chain.Config.BellatrixForkEpoch {
+		return &types.ForkVersion{
+			Epoch:           Config.Chain.Config.BellatrixForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.Config.BellatrixForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.Config.AltairForkVersion),
+		}
+	}
+	if epoch >= Config.Chain.Config.AltairForkEpoch {
+		return &types.ForkVersion{
+			Epoch:           Config.Chain.Config.AltairForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.Config.AltairForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.Config.GenesisForkVersion),
+		}
+	}
+	return &types.ForkVersion{
+		Epoch:           0,
+		CurrentVersion:  MustParseHex(Config.Chain.Config.GenesisForkVersion),
+		PreviousVersion: MustParseHex(Config.Chain.Config.GenesisForkVersion),
+	}
 }
