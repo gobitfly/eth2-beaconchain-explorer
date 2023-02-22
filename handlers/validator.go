@@ -1985,25 +1985,3 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
-// func ValidatorWithdrawalEstimation(w http.ResponseWriter, r *http.Request) {
-// 	w.Header().Set("Content-Type", "application/json")
-
-// 	vars := mux.Vars(r)
-// 	validatorIndex, err := strconv.ParseUint(vars["index"], 10, 64)
-// 	if err != nil {
-// 		logger.Errorf("error parsing validator index: %v", err)
-// 		http.Error(w, "Internal server error", http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	// q := r.URL.Query()
-
-// 	highestIndex, err := db.GetMostRecentWithdrawalIndex()
-// 	if err != nil {
-// 		logger.Errorf("error retrieving most recent withdrawal index: %v", err)
-// 		http.Error(w, "Internal server error", http.StatusInternalServerError)
-// 		return
-// 	}
-
-// }
