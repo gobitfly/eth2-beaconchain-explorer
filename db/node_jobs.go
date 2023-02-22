@@ -134,7 +134,10 @@ func CreateBLSToExecutionChangesNodeJob(nj *types.NodeJob) (*types.NodeJob, erro
 	opsByIndex := map[uint64]*capella.SignedBLSToExecutionChange{}
 	opsToCheck := map[uint64]bool{}
 	indicesArr := []uint64{}
-	d, _ := nj.GetBLSToExecutionChangesNodeJobData()
+	d, ok := nj.GetBLSToExecutionChangesNodeJobData()
+	if !ok {
+		return nil, fmt.Errorf("invalid job")
+	}
 	for _, op := range d {
 		err := utils.VerifyBlsToExecutionChangeSignature(op)
 		if err != nil {
