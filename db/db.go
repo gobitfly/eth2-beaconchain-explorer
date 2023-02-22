@@ -2470,12 +2470,12 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 	return withdrawals, nil
 }
 
-func GetTotalAmountWithdrawn() (uint64, uint64, error) {
+func GetTotalAmountWithdrawn() (sum uint64, count uint64, err error) {
 	var res = struct {
 		Sum   uint64 `db:"sum"`
 		Count uint64 `db:"count"`
 	}{}
-	err := ReaderDb.Get(&res, `
+	err = ReaderDb.Get(&res, `
 	SELECT 
 		COALESCE(sum(w.amount), 0) as sum,
 		COALESCE(count(*), 0) as count
