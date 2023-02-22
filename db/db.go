@@ -2379,7 +2379,8 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 	err := ReaderDb.Select(&withdrawals, `
 		SELECT
 		w.withdrawalindex as index,
-		w.validatorindex, address,
+		w.validatorindex,
+		w.address,
 		w.amount
 		FROM
 			blocks_withdrawals w
