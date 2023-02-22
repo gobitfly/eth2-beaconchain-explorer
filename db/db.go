@@ -1886,7 +1886,7 @@ func GetTotalEligibleEther() (uint64, error) {
 	var total uint64
 
 	err := ReaderDb.Get(&total, `
-		SELECT eligibleether FROM epochs ORDER BY epoch desc LIMIT 1
+		SELECT eligibleether FROM epochs ORDER BY epoch DESC LIMIT 1
 	`)
 	if err == sql.ErrNoRows {
 		return 0, nil
@@ -2009,20 +2009,20 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 	SELECT
 		b.slot,
 		b.blockroot,
-		case
-			when b.status = '0' then 'scheduled'
-			when b.status = '1' then 'proposed'
-			when b.status = '2' then 'missed'
-			when b.status = '3' then 'orphaned'
-			else 'unknown'
-		end as status,
+		CASE
+			WHEN b.status = '0' THEN 'scheduled'
+			WHEN b.status = '1' THEN 'proposed'
+			WHEN b.status = '2' THEN 'missed'
+			WHEN b.status = '3' THEN 'orphaned'
+			ELSE 'unknown'
+		END AS status,
 		b.epoch,
-		COALESCE(e.globalparticipationrate, 0) as globalparticipationrate,
-		COALESCE(e.finalized, false) as finalized
+		COALESCE(e.globalparticipationrate, 0) AS globalparticipationrate,
+		COALESCE(e.finalized, false) AS finalized
 	FROM blocks b
-		left join epochs e on e.epoch = b.epoch
+		LEFT JOIN epochs e ON e.epoch = b.epoch
 	WHERE b.epoch >= $1
-	ORDER BY slot desc;
+	ORDER BY slot DESC;
 `, latestEpoch)
 	if err != nil {
 		return nil, err
@@ -2400,7 +2400,7 @@ func GetTotalWithdrawals() (total uint64, err error) {
 	SELECT withdrawalindex
 	FROM
 		blocks_withdrawals
-	order by withdrawalindex desc limit 1`)
+	ORDER BY withdrawalindex DESC limit 1`)
 	if err == sql.ErrNoRows {
 		return 0, nil
 	}
@@ -2531,7 +2531,7 @@ func GetAddressWithdrawals(address []byte, limit uint64, offset uint64) ([]*type
 		w.amount 
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-	WHERE w.address = $1 ORDER BY w.withdrawalindex desc limit $2 offset $3`, address, limit, offset)
+	WHERE w.address = $1 ORDER BY w.withdrawalindex DESC LIMIT $2 OFFSET $3`, address, limit, offset)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil
@@ -2587,7 +2587,7 @@ func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64) ([]*
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	WHERE validatorindex = $1 
-	ORDER BY w.withdrawalindex desc limit $2 offset $3`, validator, limit, offset)
+	ORDER BY w.withdrawalindex DESC LIMIT $2 OFFSET $3`, validator, limit, offset)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil
@@ -2643,7 +2643,7 @@ func GetValidatorsWithdrawalsByEpoch(validator []uint64, limit uint64, offset ui
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	WHERE validatorindex = ANY($1)
 	GROUP BY w.validatorindex, w.block_slot / 32
-	ORDER BY w.block_slot / 32 desc limit $2 offset $3`, pq.Array(validator), limit, offset)
+	ORDER BY w.block_slot / 32 DESC LIMIT $2 OFFSET $3`, pq.Array(validator), limit, offset)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil
@@ -2719,7 +2719,7 @@ func GetMostRecentWithdrawalValidator() (uint64, error) {
 		blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	ORDER BY 
-		withdrawalindex DESC limit 1;`)
+		withdrawalindex DESC LIMIT 1;`)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
@@ -2856,7 +2856,7 @@ func GetValidatorsBLSChange(validators []uint64) ([]*types.ValidatorsBLSChange, 
 
 	err := ReaderDb.Select(&change, `	
 	SELECT
-		bls.block_slot as slot,
+		bls.block_slot AS slot,
 		bls.block_root,
 		bls.signature,
 		bls.pubkey,
@@ -2867,11 +2867,11 @@ func GetValidatorsBLSChange(validators []uint64) ([]*types.ValidatorsBLSChange, 
 	INNER JOIN blocks b ON b.blockroot = bls.block_root AND b.status = '1'
 	LEFT JOIN validators v ON v.validatorindex = bls.validatorindex
 	LEFT JOIN (
-		SELECT ROW_NUMBER() OVER (PARTITION BY publickey ORDER BY block_slot) as rn, withdrawalcredentials, publickey, block_root FROM blocks_deposits d
+		SELECT ROW_NUMBER() OVER (PARTITION BY publickey ORDER BY block_slot) AS rn, withdrawalcredentials, publickey, block_root FROM blocks_deposits d
 		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1'
-	) as d ON d.publickey = v.pubkey AND rn = 1
-	Where bls.validatorindex = ANY($1)
-	ORDER BY bls.block_slot desc
+	) AS d ON d.publickey = v.pubkey AND rn = 1
+	WHERE bls.validatorindex = ANY($1)
+	ORDER BY bls.block_slot DESC
 	`, pq.Array(validators))
 	if err != nil {
 		if err == sql.ErrNoRows {
