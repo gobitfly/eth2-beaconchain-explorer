@@ -936,7 +936,7 @@ func getSyncCommitteeFor(validators []uint64, period uint64) ([]interface{}, err
 		pq.Array(validators),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not get sync committee for period %d: %w", period, err)
 	}
 	defer rows.Close()
 	return utils.SqlRowsToJSON(rows)
@@ -1197,7 +1197,7 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 		WHERE validatorindex = ANY($1)`, pq.Array(queryIndices))
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error querying rocketpool minipools: %w", err)
 	}
 	defer rows.Close()
 
@@ -1222,26 +1222,33 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		performance7d,
 		performance31d,
 		performance365d,
-		rank7d
+		rank7d,
+		w.total as total_withdrawals
 	FROM validators
 	LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 	LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey
+	LEFT JOIN (
+		SELECT validatorindex as index, COALESCE(sum(amount), 0) as total 
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON b.blockroot = w.block_root AND status = '1'
+		WHERE validatorindex = ANY($1)
+		GROUP BY validatorindex
+	) as w ON w.index = validators.validatorindex
 	WHERE validators.validatorindex = ANY($1)
 	ORDER BY validators.validatorindex`, pq.Array(queryIndices))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error querying validators: %w", err)
 	}
 	defer rows.Close()
 
 	data, err := utils.SqlRowsToJSON(rows)
-
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error converting validators to json: %w", err)
 	}
 
 	balances, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), 1)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting validator balances from bigtable: %w", err)
 	}
 
 	for balanceIndex, balance := range balances {
@@ -1274,7 +1281,7 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorEffectiveness, error) {
 	data, err := db.BigtableClient.GetValidatorEffectiveness(indices, epoch)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting validator effectiveness from bigtable: %w", err)
 	}
 	for i := 0; i < len(data); i++ {
 		// convert value to old api schema
@@ -1308,7 +1315,7 @@ func getEpoch(epoch int64) ([]interface{}, error) {
 	totalvalidatorbalance, validatorscount, voluntaryexitscount, votedether
 	FROM epochs WHERE epoch = $1`, epoch)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error querying epoch: %w", err)
 	}
 	defer rows.Close()
 	return utils.SqlRowsToJSON(rows)
@@ -1338,31 +1345,28 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	data := make([]*ApiValidatorResponse, 0)
 
 	err = db.ReaderDb.Select(&data, `
-	WITH validator_withdrawals AS (
-		SELECT validatorindex as index, COALESCE(sum(amount), 0) as total 
-		FROM blocks_withdrawals w
-		INNER JOIN blocks b ON b.blockroot = w.block_root AND status = '1'
+		SELECT
+			validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch,
+			'0x' || encode(withdrawalcredentials, 'hex') as withdrawalcredentials,
+			slashed,
+			activationeligibilityepoch,
+			activationepoch,
+			exitepoch,
+			lastattestationslot,
+			status,
+			COALESCE(n.name, '') AS name,
+			w.total as total_withdrawals
+		FROM validators v
+		LEFT JOIN validator_names n ON n.publickey = v.pubkey
+		LEFT JOIN (
+			SELECT validatorindex as index, COALESCE(sum(amount), 0) as total 
+			FROM blocks_withdrawals w
+			INNER JOIN blocks b ON b.blockroot = w.block_root AND status = '1'
+			WHERE validatorindex = ANY($1)
+			GROUP BY validatorindex
+		) as w ON w.index = v.validatorindex
 		WHERE validatorindex = ANY($1)
-		GROUP BY validatorindex
-		ORDER BY validatorindex
-	)
-	SELECT
-		validatorindex, 
-		'0x' || encode(pubkey, 'hex') as  pubkey, 
-		withdrawableepoch,
-		'0x' || encode(withdrawalcredentials, 'hex') as withdrawalcredentials,
-		slashed,
-		activationeligibilityepoch,
-		activationepoch,
-		exitepoch,
-		lastattestationslot,
-		status,
-		COALESCE(validator_names.name, '') AS name,
-		COALESCE((SELECT total from validator_withdrawals where index = validatorindex), 0) as total_withdrawals
-	FROM validators
-	LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey
-	WHERE validatorindex = ANY($1)
-	ORDER BY validatorindex;
+		ORDER BY validatorindex;
 	`, pq.Array(queryIndices))
 	if err != nil {
 		logger.Warnf("error retrieving validator data from db: %v", err)

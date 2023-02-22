@@ -869,6 +869,11 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	last7dTimestamp := time.Now().Add(-7 * 24 * time.Hour)
 	last1dTimestamp := time.Now().Add(-1 * 24 * time.Hour)
 
+	monthRange := latestEpoch - 7200
+	if latestEpoch < 7200 {
+		monthRange = 0
+	}
+
 	var execBlocks []types.ExecBlockProposer
 	err := db.ReaderDb.Select(&execBlocks,
 		`SELECT 
@@ -880,27 +885,25 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 		AND exec_block_number > 0 
 		AND epoch > $2`,
 		pq.Array(queryIndices),
-		latestEpoch-7200, // 32d range
+		monthRange, // 32d range
 	)
 	if err != nil {
-		logger.WithError(err).Error("can not load proposed blocks from db")
-		return nil, err
+		return nil, fmt.Errorf("error cannot get proposed blocks from db with indicies: %+v and epoch: %v, err: %w", queryIndices, latestEpoch, err)
 	}
 
 	blockList, blockToProposerMap := getBlockNumbersAndMapProposer(execBlocks)
 
 	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, 10000)
 	if err != nil {
-		logger.WithError(err).Errorf("can not load mined blocks by GetBlocksIndexedMultiple")
-		return nil, err
+		return nil, fmt.Errorf("error cannot get blocks from bigtable using GetBlocksIndexedMultiple: %w", err)
 	}
 
 	resultPerProposer := make(map[uint64]types.ExecutionPerformanceResponse)
 
 	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
 	if err != nil {
-		logger.WithError(err).Errorf("can not get relays data")
-		return nil, err
+		// logger.WithError(err).Errorf("can not get relays data")
+		return nil, fmt.Errorf("error can not get relays data: %w", err)
 	}
 
 	for _, block := range blocks {
