@@ -2391,7 +2391,7 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil
 		}
-		return nil, fmt.Errorf("error getting blocks_withdrawals: %w", err)
+		return nil, fmt.Errorf("error getting blocks_withdrawals for slot: %d: %w", slot, err)
 	}
 
 	return withdrawals, nil
@@ -2564,7 +2564,7 @@ func GetEpochWithdrawals(epoch uint64) ([]*types.WithdrawalsNotification, error)
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("error getting blocks_withdrawals: %w", err)
+		return nil, fmt.Errorf("error getting blocks_withdrawals for epoch: %d: %w", epoch, err)
 	}
 
 	return withdrawals, nil
