@@ -273,6 +273,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 	for _, column := range columns {
 		if orderBy == column {
 			hasColumn = true
+			break
 		}
 	}
 	if !hasColumn {
@@ -324,6 +325,7 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	for _, column := range columns {
 		if orderBy == column {
 			hasColumn = true
+			break
 		}
 	}
 	if !hasColumn {
@@ -2418,6 +2420,7 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 	for _, column := range columns {
 		if orderBy == column {
 			hasColumn = true
+			break
 		}
 	}
 	if !hasColumn {
@@ -2755,6 +2758,7 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 	for _, column := range columns {
 		if orderBy == column {
 			hasColumn = true
+			break
 		}
 	}
 	if !hasColumn {
