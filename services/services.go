@@ -1221,9 +1221,6 @@ func gasNowUpdater(wg *sync.WaitGroup) {
 		time.Sleep(time.Second * 15)
 	}
 }
-func GetGasNowData() (*types.GasNowPageData, error) {
-	return getGasNowData()
-}
 
 func getGasNowData() (*types.GasNowPageData, error) {
 	gpoData := &types.GasNowPageData{}

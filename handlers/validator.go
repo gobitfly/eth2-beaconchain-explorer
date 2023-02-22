@@ -70,7 +70,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData := types.ValidatorPageData{}
 
 	stats := services.GetLatestStats()
-	// stats, _ := services.CalculateStats()
 	churnRate := stats.ValidatorChurnLimit
 	if churnRate == nil {
 		churnRate = new(uint64)
