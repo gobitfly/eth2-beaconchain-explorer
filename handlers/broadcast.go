@@ -13,7 +13,7 @@ import (
 )
 
 func Broadcast(w http.ResponseWriter, r *http.Request) {
-	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "broadcast.html", "validator/withdrawalOverviewRow.html")
+	var tpl = templates.GetTemplate("layout.html", "components/banner.html", "broadcast.html", "validator/withdrawalOverviewRow.html")
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "tools", "/tools/broadcast", "Broadcast")
