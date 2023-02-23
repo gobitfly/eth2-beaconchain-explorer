@@ -79,30 +79,26 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
 	}
 
-	var earningsTotal int64
-	err = db.WriterDb.Get(&earningsTotal, "SELECT SUM(COALESCE(cl_rewards_gwei, 0)) + SUM(COALESCE(el_rewards_gwei, 0) / 1e9) FROM validator_stats WHERE validatorindex = ANY($1)", validatorsPQArray)
+	type ClEarnings struct {
+		EarningsTotal     int64 `db:"cl_rewards_gwei_total"`
+		EarningsLastDay   int64 `db:"cl_rewards_gwei"`
+		EarningsLastWeek  int64 `db:"cl_rewards_gwei_7d"`
+		EarningsLastMonth int64 `db:"cl_rewards_gwei_31d"`
+	}
+
+	c := &ClEarnings{}
+
+	err = db.ReaderDb.Get(c, `
+	SELECT 
+		COALESCE(cl_rewards_gwei, 0) AS cl_rewards_gwei, 
+		COALESCE(cl_rewards_gwei_7d, 0) AS cl_rewards_gwei_7d, 
+		COALESCE(cl_rewards_gwei_31d, 0) AS cl_rewards_gwei_31d, 
+		COALESCE(cl_rewards_gwei_total, 0) AS cl_rewards_gwei_total
+	FROM validator_stats WHERE day = $1 AND validatorindex = ANY($2)`, lastDay, validatorsPQArray)
 	if err != nil {
-		logger.Errorf("error getting total validator earnings: %v", err)
 		return nil, nil, err
 	}
-	var earningsLastDay int64
-	err = db.WriterDb.Get(&earningsLastDay, "SELECT SUM(COALESCE(cl_rewards_gwei, 0)) + SUM(COALESCE(el_rewards_gwei, 0) / 1e9) FROM validator_stats WHERE validatorindex = ANY($1) AND day = $2", validatorsPQArray, lastDay)
-	if err != nil {
-		logger.Errorf("error getting last day validator earnings: %v", err)
-		return nil, nil, err
-	}
-	var earningsLastWeek int64
-	err = db.WriterDb.Get(&earningsLastWeek, "SELECT SUM(COALESCE(cl_rewards_gwei, 0)) + SUM(COALESCE(el_rewards_gwei, 0) / 1e9) FROM validator_stats WHERE validatorindex = ANY($1) AND day >= $2", validatorsPQArray, lastWeek)
-	if err != nil {
-		logger.Errorf("error getting last week validator earnings: %v", err)
-		return nil, nil, err
-	}
-	var earningsLastMonth int64
-	err = db.WriterDb.Get(&earningsLastMonth, "SELECT SUM(COALESCE(cl_rewards_gwei, 0)) + SUM(COALESCE(el_rewards_gwei, 0) / 1e9) FROM validator_stats WHERE validatorindex = ANY($1) AND day >= $2", validatorsPQArray, lastMonth)
-	if err != nil {
-		logger.Errorf("error getting last month validator earnings: %v", err)
-		return nil, nil, err
-	}
+
 	var apr float64
 	var totalDeposits int64
 
@@ -129,24 +125,24 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
-	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
+	apr = (((float64(c.EarningsLastMonth) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
 	if apr < float64(-1) {
 		apr = float64(-1)
 	}
 
 	return &types.ValidatorEarnings{
-		Total:                earningsTotal,
-		LastDay:              earningsLastDay,
-		LastWeek:             earningsLastWeek,
-		LastMonth:            earningsLastMonth,
+		Total:                c.EarningsTotal,
+		LastDay:              c.EarningsLastDay,
+		LastWeek:             c.EarningsLastWeek,
+		LastMonth:            c.EarningsLastMonth,
 		APR:                  apr,
 		TotalDeposits:        totalDeposits,
 		TotalWithdrawals:     totalWithdrawals,
-		LastDayFormatted:     utils.FormatIncome(earningsLastDay, currency),
-		LastWeekFormatted:    utils.FormatIncome(earningsLastWeek, currency),
-		LastMonthFormatted:   utils.FormatIncome(earningsLastMonth, currency),
-		TotalFormatted:       utils.FormatIncome(earningsTotal, currency),
-		TotalChangeFormatted: utils.FormatIncome(earningsTotal+totalDeposits, currency),
+		LastDayFormatted:     utils.FormatIncome(c.EarningsLastDay, currency),
+		LastWeekFormatted:    utils.FormatIncome(c.EarningsLastWeek, currency),
+		LastMonthFormatted:   utils.FormatIncome(c.EarningsLastMonth, currency),
+		TotalFormatted:       utils.FormatIncome(c.EarningsTotal, currency),
+		TotalChangeFormatted: utils.FormatIncome(c.EarningsTotal+totalDeposits, currency),
 	}, balancesMap, nil
 }
 
