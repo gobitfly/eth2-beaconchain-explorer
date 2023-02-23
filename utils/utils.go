@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bytes"
-	"crypto/rand"
 	securerand "crypto/rand"
 	"crypto/sha256"
 	"database/sql"
@@ -693,16 +692,14 @@ func GenerateRandomAPIKey() (string, error) {
 	max := big.NewInt(int64(len(letters)))
 	key := make([]byte, apiLength)
 	for i := 0; i < apiLength; i++ {
-		num, err := rand.Int(rand.Reader, max)
+		num, err := securerand.Int(securerand.Reader, max)
 		if err != nil {
 			return "", err
 		}
 		key[i] = letters[num.Int64()]
 	}
 
-	logrus.Infof("%v", key)
 	apiKeyBase64 := base64.RawURLEncoding.EncodeToString(key)
-	logrus.Infof("%v", apiKeyBase64)
 	return apiKeyBase64, nil
 }
 
