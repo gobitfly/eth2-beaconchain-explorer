@@ -526,15 +526,13 @@ func FormatWithdawalCredentials(hash []byte, addCopyButton bool) template.HTML {
 }
 
 func FormatAddressToWithdawalCredentials(address []byte, addCopyButton bool) template.HTML {
-	combined := fmt.Sprintf("0x010000000000000000000000%v", fmt.Sprintf("%#x", address)[2:])
-
-	var text template.HTML = template.HTML(fmt.Sprintf("<a href=\"/address/%#x\"><span class=\"text-monospace text-success\">0x01</span><span class=\"text-monospace\">00…%x</span></a>", address, address[len(address)-2:]))
-
-	if addCopyButton {
-		text += template.HTML(fmt.Sprintf("<i class=\"fa fa-copy text-muted p-1\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=\"%s\"></i>", combined))
+	credentials, err := hex.DecodeString("010000000000000000000000")
+	if err != nil {
+		return "INVALID CREDENTIALS"
 	}
+	credentials = append(credentials, address...)
 
-	return text
+	return FormatWithdawalCredentials(credentials, addCopyButton)
 }
 
 func FormatName(name string, trunc_opt ...bool) template.HTML {
