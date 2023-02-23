@@ -1058,7 +1058,7 @@ func graffitiCloudChartData() (*types.GenericChartData, error) {
 		Title:                        "Graffiti Word Cloud",
 		Subtitle:                     "Word Cloud of the 25 most occurring graffities.",
 		TooltipFormatter:             `function(){ return '<b>'+this.point.name+'</b><br\>Occurrences: '+this.point.weight+'<br\>Validators: '+this.point.validators }`,
-		PlotOptionsSeriesEventsClick: `function(event){ window.location.href = '/blocks?q='+encodeURIComponent(event.point.name) }`,
+		PlotOptionsSeriesEventsClick: `function(event){ window.location.href = '/slots?q='+encodeURIComponent(event.point.name) }`,
 		PlotOptionsSeriesCursor:      "pointer",
 		Series: []*types.GenericChartDataSeries{
 			{
