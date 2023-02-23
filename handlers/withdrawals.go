@@ -28,11 +28,6 @@ func Withdrawals(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "validators", "/withdrawals", "Validator Withdrawals")
 	data.HeaderAd = true
-	// var err error
-	// pageData.Stats, err = services.CalculateStats()
-	// if err != nil {
-	// 	logger.Errorf("error getting latest stats: %v", err)
-	// }
 
 	latestChartsPageData := services.LatestChartsPageData()
 	if len(latestChartsPageData) != 0 {

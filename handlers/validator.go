@@ -70,7 +70,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData := types.ValidatorPageData{}
 
 	stats := services.GetLatestStats()
-	// stats, _ := services.CalculateStats()
 	churnRate := stats.ValidatorChurnLimit
 	if churnRate == nil {
 		churnRate = new(uint64)
@@ -1542,13 +1541,13 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			Index:  withdrawals.ValidatorIndex,
 			Epoch:  withdrawals.Epoch,
 			Amount: withdrawals.Amount,
-			Slot:   withdrawals.Epoch * 32,
+			Slot:   withdrawals.Epoch * utils.Config.Chain.Config.SlotsPerEpoch,
 		}
 	}
 
 	proposalMap := make(map[uint64]*types.ValidatorProposal)
 	for _, proposal := range proposalHistory[index] {
-		proposalMap[proposal.Slot/32] = &types.ValidatorProposal{
+		proposalMap[proposal.Slot/utils.Config.Chain.Config.SlotsPerEpoch] = &types.ValidatorProposal{
 			Index:  index,
 			Slot:   proposal.Slot,
 			Status: proposal.Status,
@@ -1985,25 +1984,3 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
-// func ValidatorWithdrawalEstimation(w http.ResponseWriter, r *http.Request) {
-// 	w.Header().Set("Content-Type", "application/json")
-
-// 	vars := mux.Vars(r)
-// 	validatorIndex, err := strconv.ParseUint(vars["index"], 10, 64)
-// 	if err != nil {
-// 		logger.Errorf("error parsing validator index: %v", err)
-// 		http.Error(w, "Internal server error", http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	// q := r.URL.Query()
-
-// 	highestIndex, err := db.GetMostRecentWithdrawalIndex()
-// 	if err != nil {
-// 		logger.Errorf("error retrieving most recent withdrawal index: %v", err)
-// 		http.Error(w, "Internal server error", http.StatusInternalServerError)
-// 		return
-// 	}
-
-// }

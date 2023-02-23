@@ -44,9 +44,9 @@ import (
 // @description If you required a higher usage plan please checkout https://beaconcha.in/pricing.
 // @description The API key can be provided in the Header or as a query string parameter.
 // @description
-// @description Key as a query string parameter: `curl https://beaconcha.in/api/v1/block/1?apikey=<your_key>`
+// @description Key as a query string parameter: `curl https://beaconcha.in/api/v1/slot/1?apikey=<your_key>`
 // @description
-// @description Key in a request header:  `curl -H 'apikey: <your_key>' https://beaconcha.in/api/v1/block/1`
+// @description Key in a request header:  `curl -H 'apikey: <your_key>' https://beaconcha.in/api/v1/slot/1`
 // @tag.name Epoch
 // @tag.description Consensus layer information about epochs
 // @tag.docs.url https://example.com
@@ -651,15 +651,15 @@ func ApiSlotVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 	returnQueryResultsAsArray(rows, w, r)
 }
 
-// ApiBlockWithdrawals godoc
-// @Summary Get the withdrawals included in a specific block
-// @Tags Block
-// @Description Returns the withdrawals included in a specific block
-// @Produce  json
-// @Param  slot path string true "Block slot"
+// ApiSlotWithdrawals godoc
+// @Summary Get the withdrawals included in a specific slot
+// @Tags Slot
+// @Description Returns the withdrawals included in a specific slot
+// @Produce json
+// @Param slot path string true "Block slot"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/block/{slot}/withdrawals [get]
+// @Router /api/v1/slot/{slot}/withdrawals [get]
 func ApiSlotWithdrawals(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
@@ -1688,7 +1688,7 @@ func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 	dataFormatted := make([]*types.ApiValidatorWithdrawalResponse, 0, len(data))
 	for _, w := range data {
 		dataFormatted = append(dataFormatted, &types.ApiValidatorWithdrawalResponse{
-			Epoch:          w.Slot / 32,
+			Epoch:          w.Slot / utils.Config.Chain.Config.SlotsPerEpoch,
 			Slot:           w.Slot,
 			Index:          w.Index,
 			ValidatorIndex: w.ValidatorIndex,
@@ -1745,7 +1745,7 @@ func ApiValidatorBlsChange(w http.ResponseWriter, r *http.Request) {
 
 	for _, d := range data {
 		dataFormatted = append(dataFormatted, &types.ApiValidatorBlsChangeResponse{
-			Epoch:                    d.Slot / 32,
+			Epoch:                    d.Slot / utils.Config.Chain.Config.SlotsPerEpoch,
 			Slot:                     d.Slot,
 			BlockRoot:                fmt.Sprintf("0x%x", d.BlockRoot),
 			Validatorindex:           d.Validatorindex,

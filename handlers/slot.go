@@ -74,7 +74,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 	if blockSlot == -1 {
 		err = db.ReaderDb.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
 		if blockSlot == -1 {
-			if handleTemplateError(w, r, "block.go", "Block", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			if handleTemplateError(w, r, "slot.go", "Slot", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
 			return
@@ -139,7 +139,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		err = slotTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if handleTemplateError(w, r, "block.go", "Block", "ApiRequest", err) != nil {
+	if handleTemplateError(w, r, "slot.go", "Slot", "ApiRequest", err) != nil {
 		return // an error has occurred and was processed
 	}
 }

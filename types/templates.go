@@ -1750,12 +1750,12 @@ type SlotVizSlots struct {
 	Active    bool   `json:"active"`
 }
 type SlotVizEpochs struct {
-	Epoch          uint64            `json:"epoch"`
-	Finalized      bool              `json:"finalized"`
-	Justified      bool              `json:"justified"`
-	Justifying     bool              `json:"justifying"`
-	Particicpation float64           `json:"participation"`
-	Slots          [32]*SlotVizSlots `json:"slots"`
+	Epoch          uint64          `json:"epoch"`
+	Finalized      bool            `json:"finalized"`
+	Justified      bool            `json:"justified"`
+	Justifying     bool            `json:"justifying"`
+	Particicpation float64         `json:"participation"`
+	Slots          []*SlotVizSlots `json:"slots"`
 }
 
 type RelaysResp struct {

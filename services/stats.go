@@ -40,10 +40,6 @@ func statsUpdater(wg *sync.WaitGroup) {
 	}
 }
 
-func CalculateStats() (*types.Stats, error) {
-	return calculateStats()
-}
-
 func calculateStats() (*types.Stats, error) {
 	stats := types.Stats{}
 
