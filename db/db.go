@@ -2048,7 +2048,7 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 				Particicpation: b.Globalparticipationrate,
 				Slots:          []*types.SlotVizSlots{},
 			}
-			r.Slots = make([]*types.SlotVizSlots, 32)
+			r.Slots = make([]*types.SlotVizSlots, utils.Config.Chain.Config.SlotsPerEpoch)
 			epochMap[b.Epoch] = &r
 		}
 
