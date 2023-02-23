@@ -239,7 +239,13 @@ func IncludeHTML(path string) template.HTML {
 }
 
 func GraffitiToSring(graffiti []byte) string {
-	return strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
+	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
+
+	if !utf8.ValidString(s) {
+		return "INVALID_UTF8_STRING"
+	}
+
+	return s
 }
 
 // FormatGraffitiString formats (and escapes) the graffiti
