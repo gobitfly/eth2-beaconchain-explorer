@@ -666,11 +666,20 @@ func main() {
 
 		n.UseHandler(router)
 
+		if utils.Config.Frontend.HttpWriteTimeout == 0 {
+			utils.Config.Frontend.HttpIdleTimeout = time.Second * 15
+		}
+		if utils.Config.Frontend.HttpReadTimeout == 0 {
+			utils.Config.Frontend.HttpIdleTimeout = time.Second * 15
+		}
+		if utils.Config.Frontend.HttpIdleTimeout == 0 {
+			utils.Config.Frontend.HttpIdleTimeout = time.Second * 60
+		}
 		srv := &http.Server{
 			Addr:         cfg.Frontend.Server.Host + ":" + cfg.Frontend.Server.Port,
-			WriteTimeout: time.Second * 15,
-			ReadTimeout:  time.Second * 15,
-			IdleTimeout:  time.Second * 60,
+			WriteTimeout: utils.Config.Frontend.HttpWriteTimeout,
+			ReadTimeout:  utils.Config.Frontend.HttpReadTimeout,
+			IdleTimeout:  utils.Config.Frontend.HttpIdleTimeout,
 			Handler:      n,
 		}
 
