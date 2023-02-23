@@ -256,13 +256,13 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 	}{}
 
 	err = ReaderDb.Select(&deposits, `
-	SELECT block_slot / 32 AS epoch, amount, publickey 
+	SELECT block_slot / $2 AS epoch, amount, publickey 
 	FROM blocks_deposits 
 	WHERE publickey IN (
 		SELECT pubkey 
 		FROM validators 
 		WHERE validatorindex = ANY($1)
-	)`, validatorsPQArray)
+	)`, validatorsPQArray, utils.Config.Chain.Config.SlotsPerEpoch)
 	if err != nil {
 		logger.Errorf("error selecting deposits from blocks_deposits: %v", err)
 		return

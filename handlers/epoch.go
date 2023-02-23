@@ -76,9 +76,9 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//Create placeholder structs
-		blocks := make([]*types.IndexPageDataBlocks, 32)
+		blocks := make([]*types.IndexPageDataBlocks, utils.Config.Chain.Config.SlotsPerEpoch)
 		for i := range blocks {
-			slot := uint64(i) + epoch*32
+			slot := uint64(i) + (epoch * utils.Config.Chain.Config.SlotsPerEpoch)
 			block := types.IndexPageDataBlocks{
 				Epoch:  epoch,
 				Slot:   slot,
@@ -89,7 +89,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		}
 		epochPageData = types.EpochPageData{
 			Epoch:         epoch,
-			BlocksCount:   32,
+			BlocksCount:   utils.Config.Chain.Config.SlotsPerEpoch,
 			PreviousEpoch: epoch - 1,
 			NextEpoch:     epoch + 1,
 			Ts:            utils.EpochToTime(epoch),

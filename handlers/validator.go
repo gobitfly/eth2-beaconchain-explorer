@@ -1541,13 +1541,13 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			Index:  withdrawals.ValidatorIndex,
 			Epoch:  withdrawals.Epoch,
 			Amount: withdrawals.Amount,
-			Slot:   withdrawals.Epoch * 32,
+			Slot:   withdrawals.Epoch * utils.Config.Chain.Config.SlotsPerEpoch,
 		}
 	}
 
 	proposalMap := make(map[uint64]*types.ValidatorProposal)
 	for _, proposal := range proposalHistory[index] {
-		proposalMap[proposal.Slot/32] = &types.ValidatorProposal{
+		proposalMap[proposal.Slot/utils.Config.Chain.Config.SlotsPerEpoch] = &types.ValidatorProposal{
 			Index:  index,
 			Slot:   proposal.Slot,
 			Status: proposal.Status,

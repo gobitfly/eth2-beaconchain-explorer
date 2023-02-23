@@ -1688,7 +1688,7 @@ func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 	dataFormatted := make([]*types.ApiValidatorWithdrawalResponse, 0, len(data))
 	for _, w := range data {
 		dataFormatted = append(dataFormatted, &types.ApiValidatorWithdrawalResponse{
-			Epoch:          w.Slot / 32,
+			Epoch:          w.Slot / utils.Config.Chain.Config.SlotsPerEpoch,
 			Slot:           w.Slot,
 			Index:          w.Index,
 			ValidatorIndex: w.ValidatorIndex,
@@ -1745,7 +1745,7 @@ func ApiValidatorBlsChange(w http.ResponseWriter, r *http.Request) {
 
 	for _, d := range data {
 		dataFormatted = append(dataFormatted, &types.ApiValidatorBlsChangeResponse{
-			Epoch:                    d.Slot / 32,
+			Epoch:                    d.Slot / utils.Config.Chain.Config.SlotsPerEpoch,
 			Slot:                     d.Slot,
 			BlockRoot:                fmt.Sprintf("0x%x", d.BlockRoot),
 			Validatorindex:           d.Validatorindex,

@@ -223,7 +223,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			from blocks_deposits
 			inner join validators on blocks_deposits.publickey = validators.pubkey
 			inner join blocks on blocks_deposits.block_root = blocks.blockroot
-			where block_slot >= $1 * 32 and block_slot <= $2 * 32 and blocks.status = '1'
+			where block_slot >= $1 * $4 and block_slot <= $2 * $4 and blocks.status = '1'
 			group by validators.validatorindex
 		) 
 		on conflict (validatorindex, day) do
@@ -239,7 +239,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 				select validators.validatorindex, case when block_slot = 0 then -1 else $3 end as day, count(*), sum(amount)
 				from blocks_deposits
 				inner join validators on blocks_deposits.publickey = validators.pubkey
-				where block_slot >= $1 * 32 and block_slot <= $2 * 32 and status = '1'
+				where block_slot >= $1 * $4 and block_slot <= $2 * $4 and status = '1'
 				group by validators.validatorindex, day
 			) 
 			on conflict (validatorindex, day) do
@@ -249,7 +249,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			return err
 		}
 	}
-	_, err = tx.Exec(depositsQry, firstEpoch, lastEpoch, day)
+	_, err = tx.Exec(depositsQry, firstEpoch, lastEpoch, day, utils.Config.Chain.Config.SlotsPerEpoch)
 	if err != nil {
 		return err
 	}
@@ -263,13 +263,13 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			select validatorindex, $3, count(*), sum(amount)
 			from blocks_withdrawals
 			inner join blocks on blocks_withdrawals.block_root = blocks.blockroot
-			where block_slot >= $1 * 32 and block_slot <= $2 * 32 and blocks.status = '1'
+			where block_slot >= $1 * $4 and block_slot <= $2 * $4 and blocks.status = '1'
 			group by validatorindex
 		) 
 		on conflict (validatorindex, day) do
 			update set withdrawals = excluded.withdrawals, 
 			withdrawals_amount = excluded.withdrawals_amount;`
-	_, err = tx.Exec(withdrawalsQuery, firstEpoch, lastEpoch, day)
+	_, err = tx.Exec(withdrawalsQuery, firstEpoch, lastEpoch, day, utils.Config.Chain.Config.SlotsPerEpoch)
 	if err != nil {
 		return err
 	}
@@ -351,7 +351,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 			(select day from _today) as day
 		from blocks_deposits
 		where 
-			block_slot > (select (day) * $4 * 32 from _today) and
+			block_slot > (select (day) * $4 * $5 from _today) and
 			publickey in (select pubkey
 				from validators
 				where validatorindex = ANY($1))
@@ -362,7 +362,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 			(select day from _today) as day
 		from blocks_withdrawals
 		where 
-			block_slot > (select (day) * 225 * 32 from _today) 
+			block_slot > (select (day) * 225 * $5 from _today) 
 			AND
 			validatorindex = ANY($1)
 	),
@@ -402,7 +402,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 	) as foo2 
 	where diff <> 0  AND
 		day BETWEEN $2 AND $3
-	order by day;`, queryValidatorsArr, lowerBoundDay, upperBoundDay, utils.EpochsPerDay())
+	order by day;`, queryValidatorsArr, lowerBoundDay, upperBoundDay, utils.EpochsPerDay(), utils.Config.Chain.Config.SlotsPerEpoch)
 
 	if len(result) > 0 {
 		if result[len(result)-1].EndBalance.Int64 == 0 {

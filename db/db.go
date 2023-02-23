@@ -2046,8 +2046,9 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 				Epoch:          b.Epoch,
 				Finalized:      b.Finalized,
 				Particicpation: b.Globalparticipationrate,
-				Slots:          [32]*types.SlotVizSlots{},
+				Slots:          []*types.SlotVizSlots{},
 			}
+			r.Slots = make([]*types.SlotVizSlots, 32)
 			epochMap[b.Epoch] = &r
 		}
 
@@ -2070,10 +2071,10 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 	}
 
 	for _, epoch := range epochMap {
-		for i := 0; i < 32; i++ {
+		for i := uint64(0); i < utils.Config.Chain.Config.SlotsPerEpoch; i++ {
 			if epoch.Slots[i] == nil {
 				status := "scheduled"
-				slot := epoch.Epoch*utils.Config.Chain.Config.SlotsPerEpoch + uint64(i)
+				slot := (epoch.Epoch * utils.Config.Chain.Config.SlotsPerEpoch) + i
 				if slot < currentSlot {
 					status = "scheduled-missed"
 				}
@@ -2236,7 +2237,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 		Amount    int64
 	}{}
 
-	err = tx.Select(&deposits, `SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'`)
+	err = tx.Select(&deposits, `SELECT block_slot / $1 AS epoch, amount, publickey FROM blocks_deposits INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'`, utils.Config.Chain.Config.SlotsPerEpoch)
 	if err != nil {
 		return fmt.Errorf("error retrieving validator deposits data: %w", err)
 	}
@@ -2443,10 +2444,10 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 			WHERE CAST(w.validatorindex as varchar) LIKE $3 || '%%'
 				OR address LIKE $4 || '%%'::bytea
 				OR CAST(block_slot as varchar) LIKE $3 || '%%'
-				OR CAST(block_slot / 32 as varchar) LIKE $3 || '%%'
+				OR CAST(block_slot / $5 as varchar) LIKE $3 || '%%'
 			ORDER BY %s %s
 			LIMIT $1
-			OFFSET $2`, orderBy, orderDir), length, start, strings.ToLower(query), bquery)
+			OFFSET $2`, orderBy, orderDir), length, start, strings.ToLower(query), bquery, utils.Config.Chain.Config.SlotsPerEpoch)
 		if err != nil {
 			return nil, err
 		}
@@ -2616,8 +2617,8 @@ func GetValidatorsWithdrawals(validators []uint64, fromEpoch uint64, toEpoch uin
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	WHERE validatorindex = ANY($1)
-	AND (w.block_slot / 32) >= $2 AND (w.block_slot / 32) <= $3 
-	ORDER BY w.withdrawalindex`, pq.Array(validators), fromEpoch, toEpoch)
+	AND (w.block_slot / $4) >= $2 AND (w.block_slot / $4) <= $3 
+	ORDER BY w.withdrawalindex`, pq.Array(validators), fromEpoch, toEpoch, utils.Config.Chain.Config.SlotsPerEpoch)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil
@@ -2641,13 +2642,13 @@ func GetValidatorsWithdrawalsByEpoch(validator []uint64, limit uint64, offset ui
 	err := ReaderDb.Select(&withdrawals, `
 	SELECT 
 		w.validatorindex,
-		w.block_slot / 32 as epoch, 
+		w.block_slot / $4 as epoch, 
 		sum(w.amount) as amount
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	WHERE validatorindex = ANY($1)
-	GROUP BY w.validatorindex, w.block_slot / 32
-	ORDER BY w.block_slot / 32 DESC LIMIT $2 OFFSET $3`, pq.Array(validator), limit, offset)
+	GROUP BY w.validatorindex, w.block_slot / $4
+	ORDER BY w.block_slot / $4 DESC LIMIT $2 OFFSET $3`, pq.Array(validator), limit, offset, utils.Config.Chain.Config.SlotsPerEpoch)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil
@@ -2763,10 +2764,10 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 			WHERE CAST(bls.validatorindex as varchar) LIKE $3 || '%%'
 				OR pubkey LIKE $4::bytea || '%%'::bytea
 				OR CAST(block_slot as varchar) LIKE $3 || '%%'
-				OR CAST((block_slot / 32) as varchar) LIKE $3 || '%%'
+				OR CAST((block_slot / $5) as varchar) LIKE $3 || '%%'
 			ORDER BY bls.%s %s
 			LIMIT $1
-			OFFSET $2`, orderBy, orderDir), length, start, strings.ToLower(query), bquery)
+			OFFSET $2`, orderBy, orderDir), length, start, strings.ToLower(query), bquery, utils.Config.Chain.Config.SlotsPerEpoch)
 		if err != nil {
 			return nil, err
 		}

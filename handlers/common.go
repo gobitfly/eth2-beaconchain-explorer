@@ -142,12 +142,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	err = db.ReaderDb.Select(&deposits, `
 	SELECT 
-		block_slot / 32 AS epoch, 
+		block_slot / $2 AS epoch, 
 		amount, 
 		publickey 
 	FROM blocks_deposits d
 	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' 
-	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray)
+	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray, utils.Config.Chain.Config.SlotsPerEpoch)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -169,13 +169,13 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	err = db.ReaderDb.Select(&withdrawals, `
 	SELECT 
 		w.validatorindex,
-		w.block_slot / 32 AS epoch, 
+		w.block_slot / $2 AS epoch, 
 		sum(w.amount) as amount
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	WHERE validatorindex = ANY($1)
-	GROUP BY validatorindex, w.block_slot / 32
-	`, validatorsPQArray)
+	GROUP BY validatorindex, w.block_slot / $2
+	`, validatorsPQArray, utils.Config.Chain.Config.SlotsPerEpoch)
 	if err != nil {
 		return nil, nil, err
 	}
