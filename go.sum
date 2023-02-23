@@ -472,6 +472,14 @@ github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 h1:p104kn46Q8Wd
 github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0/go.mod h1:fyg7847qk6SyHyPtNmDHnmrv/HOrqktSC+C9fM+CJOE=
 github.com/gobitfly/eth-rewards v0.1.2-0.20230108135551-2d8c485e4c35 h1:dA8SWHBLHcNkytQMDTug4NPONSRV1WJl64B0Yp3YzOo=
 github.com/gobitfly/eth-rewards v0.1.2-0.20230108135551-2d8c485e4c35/go.mod h1:GEerfGH16ByR90QoS/9QyJ0UyCHQRLQ9QH6ZbfneSdU=
+github.com/gobitfly/eth-rewards v0.1.2-0.20230223090318-1ee10569e8c9 h1:IHQ1KYW8wye4WJBlq/g29mCSIBEBqZxa4Dn340PW6oo=
+github.com/gobitfly/eth-rewards v0.1.2-0.20230223090318-1ee10569e8c9/go.mod h1:A99LE4czDqE8K1avcK6aTUA71aRIARdEhREVoNtIi/s=
+github.com/gobitfly/eth-rewards v0.1.2-0.20230223092734-b4337df00875 h1:8/WOvKc0Ocl4Fx4SrlzFfjzx3tAb1RtxeWB8jqJM3MI=
+github.com/gobitfly/eth-rewards v0.1.2-0.20230223092734-b4337df00875/go.mod h1:A99LE4czDqE8K1avcK6aTUA71aRIARdEhREVoNtIi/s=
+github.com/gobitfly/eth-rewards v0.1.2-0.20230223093840-3afcf173781f h1:emezsNCQDjPz6hjZqutG5dKO+t0mugTRLqSdu7a9oV0=
+github.com/gobitfly/eth-rewards v0.1.2-0.20230223093840-3afcf173781f/go.mod h1:A99LE4czDqE8K1avcK6aTUA71aRIARdEhREVoNtIi/s=
+github.com/gobitfly/eth-rewards v0.1.2-0.20230223100937-f58cc7338cf1 h1:1ljHKtMIVaeUb6ddJsQ8vbUTlaUTnMTNzpPwLUomtSA=
+github.com/gobitfly/eth-rewards v0.1.2-0.20230223100937-f58cc7338cf1/go.mod h1:A99LE4czDqE8K1avcK6aTUA71aRIARdEhREVoNtIi/s=
 github.com/gobitfly/eth.store v0.0.0-20221012115129-3b4606992669 h1:nGqtKWpeItBrYO0TkdSSpeVRpjcWW6il28EasO9WZSo=
 github.com/gobitfly/eth.store v0.0.0-20221012115129-3b4606992669/go.mod h1:NlB9l6tiM42FM5qQHIsG/Iey6AJ0XQvRcKkmt63/ve0=
 github.com/gobitfly/prysm/v3 v3.0.0-20230216184552-2f3f1e8190d5 h1:8kVoXCPhDwSjaGlKzBVQeE8n49k6jZumBGiP26FHNy0=

@@ -154,6 +154,8 @@ create table validator_stats
     deposits_amount         bigint,
     withdrawals             int,
     withdrawals_amount      bigint,
+    cl_rewards_gwei         bigint,
+    el_rewards_wei          decimal,
     primary key (validatorindex, day)
 );
 create index idx_validator_stats_day on validator_stats (day);

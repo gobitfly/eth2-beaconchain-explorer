@@ -1395,17 +1395,15 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*180))
 	defer cancel()
 
-	endEpoch := startEpoch - uint64(limit)
+	rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch))
 
-	endTime := utils.EpochToTime(endEpoch)
-
-	// if the end time + 25 hours is not after the current time the end epoch is older than 25 hours.
-	if !endTime.Add(time.Hour * 25).After(time.Now()) {
-		return nil, fmt.Errorf("error epoch range is outside of the garbage collection policy (1 day)")
+	var rangeEnd string
+	if startEpoch >= uint64(limit) {
+		rangeEnd = fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch-uint64(limit)))
+	} else {
+		rangeEnd = fmt.Sprintf("%s:e:b:%s%s", bigtable.chainId, reversedPaddedEpoch(0), "\x00") // add \x00 to rangeEnd so epoch 0 is included
 	}
 
-	rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch))
-	rangeEnd := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch))
 	// logger.Infof("range: %v to %v", rangeStart, rangeEnd)
 	res := make(map[uint64]map[uint64]*itypes.ValidatorEpochIncome, len(validators))
 

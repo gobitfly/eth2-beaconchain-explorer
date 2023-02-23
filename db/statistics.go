@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	itypes "github.com/gobitfly/eth-rewards/types"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 )
@@ -38,6 +39,77 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	}
 
 	start := time.Now()
+
+	tx, err := WriterDb.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	logger.Infof("exporting cl_rewards_gwei and el_rewards_wei statistics")
+	incomeDetails, err := BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, lastEpoch, int64(lastEpoch-firstEpoch)+1)
+	if err != nil {
+		return err
+	}
+
+	incomeStats := make(map[uint64]*itypes.ValidatorEpochIncome)
+
+	for validator, epochs := range incomeDetails {
+		if incomeStats[validator] == nil {
+			incomeStats[validator] = &itypes.ValidatorEpochIncome{}
+		}
+
+		for _, rewardDetails := range epochs {
+			incomeStats[validator].AttestationHeadReward += rewardDetails.AttestationHeadReward
+			incomeStats[validator].AttestationSourceReward += rewardDetails.AttestationSourceReward
+			incomeStats[validator].AttestationSourcePenalty += rewardDetails.AttestationSourcePenalty
+			incomeStats[validator].AttestationTargetReward += rewardDetails.AttestationTargetReward
+			incomeStats[validator].AttestationTargetPenalty += rewardDetails.AttestationTargetPenalty
+			incomeStats[validator].FinalityDelayPenalty += rewardDetails.FinalityDelayPenalty
+			incomeStats[validator].ProposerSlashingInclusionReward += rewardDetails.ProposerSlashingInclusionReward
+			incomeStats[validator].ProposerAttestationInclusionReward += rewardDetails.ProposerAttestationInclusionReward
+			incomeStats[validator].ProposerSyncInclusionReward += rewardDetails.ProposerSyncInclusionReward
+			incomeStats[validator].SyncCommitteeReward += rewardDetails.SyncCommitteeReward
+			incomeStats[validator].SyncCommitteePenalty += rewardDetails.SyncCommitteePenalty
+			incomeStats[validator].SlashingReward += rewardDetails.SlashingReward
+			incomeStats[validator].SlashingPenalty += rewardDetails.SlashingPenalty
+			incomeStats[validator].TxFeeRewardWei = utils.AddBigInts(incomeStats[validator].TxFeeRewardWei, rewardDetails.TxFeeRewardWei)
+		}
+	}
+
+	batchSize := 16000 // max parameters: 65535
+	for b := 0; b < len(incomeStats); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(incomeStats) < end {
+			end = len(incomeStats)
+		}
+
+		numArgs := 4
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*numArgs)
+		for i := start; i < end; i++ {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
+			valueArgs = append(valueArgs, i)
+			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, incomeStats[uint64(i)].TotalClRewards())
+			valueArgs = append(valueArgs, new(big.Int).SetBytes(incomeStats[uint64(i)].TxFeeRewardWei).String())
+		}
+		stmt := fmt.Sprintf(`
+		insert into validator_stats (validatorindex, day, cl_rewards_gwei, el_rewards_wei) VALUES
+		%s
+		on conflict (validatorindex, day) do update set cl_rewards_gwei = excluded.cl_rewards_gwei, el_rewards_wei = excluded.el_rewards_wei;`,
+			strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+
+		logger.Infof("saving validator income details batch %v completed", b)
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+	start = time.Now()
+
 	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
 	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(firstEpoch, lastEpoch)
 	if err != nil {
@@ -48,13 +120,8 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	for _, stat := range balanceStatistics {
 		balanceStatsArr = append(balanceStatsArr, stat)
 	}
-	tx, err := WriterDb.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
 
-	batchSize := 6500 // max parameters: 65535
+	batchSize = 6500 // max parameters: 65535
 	for b := 0; b < len(balanceStatsArr); b += batchSize {
 		start := b
 		end := b + batchSize
