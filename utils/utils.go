@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"crypto/rand"
 	securerand "crypto/rand"
 	"crypto/sha256"
 	"database/sql"
@@ -29,7 +30,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -686,17 +686,23 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 }
 
 // GenerateAPIKey generates an API key for a user
-func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
-	apiKey, err := bcrypt.GenerateFromPassword([]byte(passwordHash+email+Ts), 10)
-	if err != nil {
-		return "", err
-	}
-	key := apiKey
-	if len(apiKey) > 30 {
-		key = apiKey[8:29]
+func GenerateRandomAPIKey() (string, error) {
+	const apiLength = 28
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+	max := big.NewInt(int64(len(letters)))
+	key := make([]byte, apiLength)
+	for i := 0; i < apiLength; i++ {
+		num, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			return "", err
+		}
+		key[i] = letters[num.Int64()]
 	}
 
+	logrus.Infof("%v", key)
 	apiKeyBase64 := base64.RawURLEncoding.EncodeToString(key)
+	logrus.Infof("%v", apiKeyBase64)
 	return apiKeyBase64, nil
 }
 

@@ -103,9 +103,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	registerTs := time.Now().Unix()
-
-	apiKey, err := utils.GenerateAPIKey(string(pHash), email, fmt.Sprint(registerTs))
+	apiKey, err := utils.GenerateRandomAPIKey()
 	if err != nil {
 		logger.Errorf("error generating hash for api_key: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
@@ -117,7 +115,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	_, err = tx.Exec(`
       INSERT INTO users (password, email, register_ts, api_key)
       VALUES ($1, $2, TO_TIMESTAMP($3), $4)`,
-		string(pHash), email, registerTs, apiKey,
+		string(pHash), email, time.Now().Unix(), apiKey,
 	)
 
 	if err != nil {
