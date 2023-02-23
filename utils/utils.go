@@ -240,6 +240,7 @@ func IncludeHTML(path string) template.HTML {
 
 func GraffitiToSring(graffiti []byte) string {
 	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
+	s = strings.Replace(s, "\u0000", "", -1) // rempove 0x00 bytes as it is not supported in postgres
 
 	if !utf8.ValidString(s) {
 		return "INVALID_UTF8_STRING"
