@@ -2949,7 +2949,7 @@ func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor 
 			)
 			OR
 			(
-				$3::int < $4 AND (validatorindex < $4 AND validatorindex > $3)
+				$3::int < $4 AND (validatorindex > $4 OR validatorindex < $3)
 			)
 		);`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch, validatorindex, cursor)
 	if err != nil {
