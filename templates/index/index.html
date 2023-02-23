@@ -184,7 +184,7 @@
                 })
             }
         })
-</script>
+</script> {{ if .SlotVizData }}{{ template "SlotViz" .SlotVizData }}{{ end }}
 {{ end }}
 
 {{ define "css" }}

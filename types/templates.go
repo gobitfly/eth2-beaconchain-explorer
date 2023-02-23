@@ -179,8 +179,9 @@ type IndexPageData struct {
 }
 
 type SlotVizPageData struct {
-	Epochs   []*SlotVizEpochs
-	Selector string
+	Epochs        []*SlotVizEpochs
+	Selector      string
+	HardforkEpoch uint64
 }
 
 type IndexPageDataEpochs struct {
