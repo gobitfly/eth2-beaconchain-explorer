@@ -526,6 +526,16 @@ func FormatWithdawalCredentials(hash []byte, addCopyButton bool) template.HTML {
 	return text
 }
 
+func FormatAddressToWithdrawalCredentials(address []byte, addCopyButton bool) template.HTML {
+	credentials, err := hex.DecodeString("010000000000000000000000")
+	if err != nil {
+		return "INVALID CREDENTIALS"
+	}
+	credentials = append(credentials, address...)
+
+	return FormatWithdawalCredentials(credentials, addCopyButton)
+}
+
 func FormatName(name string, trunc_opt ...bool) template.HTML {
 	trunc := true
 	if len(trunc_opt) > 0 {

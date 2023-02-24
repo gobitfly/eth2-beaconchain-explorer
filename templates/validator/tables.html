@@ -364,15 +364,14 @@
         </p>
         {{ if .BLSChange }}
           <div class="my-3">
-            <p>
-              {{ if gt (epochOfSlot .BLSChange.Slot) $.LatestFinalizedEpoch }}
-                <span>A request to change your withdrawal credentials has been registered and is being finalized. You have requested to change your withdrawal credentials</span>
-              {{ else }}
-                <span>Your withdrawal credential were successfully changed</span>
-              {{ end }}
-              <span>during epoch <span>{{ epochOfSlot .BLSChange.Slot | formatEpoch }}</span><span> and slot </span><span class="mr-1">{{ formatBlockSlot .BLSChange.Slot }}</span>.</span>
-              The signature included (<span class="mr-1">{{ formatHash .BLSChange.Signature true }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.Signature false }}"></i></span>) was signed by your BLS private key and can be verified with your BLS public key (<span>{{ formatHash .BLSChange.BlsPubkey true }}</span><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.BlsPubkey false }}"></i>). Payouts will be sent to <span> {{ formatEth1Address .BLSChange.Address }}</span>.
-            </p>
+            {{ if gt (epochOfSlot .BLSChange.Slot) $.LatestFinalizedEpoch }}
+              <p><b>Pending withdrawal credential: </b><span>{{ formatAddressToWithdrawalCredentials .BLSChange.Address true }}</span> waiting for epoch finality.</p>
+              <span>A request to change your withdrawal credentials has been registered and is being finalized. You have requested to change your withdrawal credentials</span>
+            {{ else }}
+              <span>Your withdrawal credential were successfully changed</span>
+            {{ end }}
+            <span>during epoch <span>{{ epochOfSlot .BLSChange.Slot | formatEpoch }}</span><span> and slot </span><span class="mr-1">{{ formatBlockSlot .BLSChange.Slot }}</span>.</span>
+            The signature included (<span class="mr-1">{{ formatHash .BLSChange.Signature true }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.Signature false }}"></i></span>) was signed by your BLS private key and can be verified with your BLS public key (<span>{{ formatHash .BLSChange.BlsPubkey true }}</span><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.BlsPubkey false }}"></i>). Payouts will be sent to <span> {{ formatEth1Address .BLSChange.Address }}</span>.
           </div>
         {{ end }}
       {{ end }}
