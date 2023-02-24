@@ -1,12 +1,75 @@
 {{ define "css" }}
 {{ end }}
-{{ define "js" }}
-{{ end }}
 
 {{ define "slot_finder" }}
+  <div class="m-2 d-flex">
+    <div class="flex-column">
+      <label>Slot</label>
+      <input id="slotNumber" class="form-control col-6" type="number" value="1" oninput="slotChanged()" />
+    </div>
+    <div class="flex-column">
+      <label>UTC</label>
+      <input id="datepickerUtc" type="text" class="form-control" />
+    </div>
+    <div class="flex-column">
+      <label>Local</label>
+      <input id="datepickerLocal" type="text" class="form-control" />
+    </div>
+  </div>
   <script>
+    const genesisTimeStamp = {{ .ChainGenesisTimestamp }}
+    const secondsPerSlot = {{ .ChainSecondsPerSlot }}
+    const slotsPerEpoch = {{ .ChainSlotsPerEpoch }}
+    var slotNumber
+    var datepickerUtc
+    var datepickerLocal
     var a = moment("2016-01-01")
     console.log("b", a)
+
+    function slotChanged() {
+      const slot = parseInt(slotNumber.value)
+      if (!isNaN(slot) && slot > 0) {
+        const newDate = new Date((genesisTimeStamp + slot * secondsPerSlot) * 1000)
+        const newDateLocal = moment(newDate)
+        const newDateUtc = moment.utc(newDate)
+        datepickerUtc.data('daterangepicker').setStartDate(newDateUtc);
+        datepickerUtc.data('daterangepicker').setEndDate(newDateUtc);
+        datepickerLocal.data('daterangepicker').setStartDate(newDateLocal);
+        datepickerLocal.data('daterangepicker').setEndDate(newDateLocal);
+      }
+    }
+    function utcChanged(start, end, label){
+        const timeStamp = start.toDate().getTime() / 1000;
+        const slot = Math.max(1, Math.floor((timeStamp - genesisTimeStamp) / secondsPerSlot))
+        slotNumber.value = slot;
+        slotChanged();
+
+    }
+
+    window.addEventListener("load", function () {
+      slotNumber = document.getElementById("slotNumber")
+      datepickerUtc = $('input[id="datepickerUtc"]')
+      datepickerLocal= $('input[id="datepickerLocal"]')
+
+      datepickerUtc.daterangepicker({
+        locale: {
+          format: "DD/MM/YYYY hh:mm:ss UTC",
+        },
+        singleDatePicker: true,
+        timePicker: true,
+        timePicker24Hour: true,
+        timePickerSeconds: true,
+      }, utcChanged)
+      datepickerLocal.daterangepicker({
+        locale: {
+          format: "DD/MM/YYYY hh:mm:ss Z",
+        },
+        singleDatePicker: true,
+        timePicker: true,
+        timePicker24Hour: true,
+        timePickerSeconds: true,
+      },utcChanged)
+      slotChanged();
+    })
   </script>
-  <div class="m-2">Slot Finder</div>
 {{ end }}
