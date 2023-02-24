@@ -511,7 +511,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		lookback := int64(finalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
 		if lookback > 0 {
 			logger.Infof("retrieving attestations not yet in stats, lookback is %v", lookback)
-			attestationsNotInStats, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, finalizedEpoch, lookback)
+			attestationsNotInStats, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, finalizedEpoch-uint64(lookback), finalizedEpoch)
 			if err != nil {
 				logger.Errorf("error retrieving validator attestations not in stats from bigtable: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -666,7 +666,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// if sync duties of last period haven't fully been exported yet, fetch remaining duties from bigtable
 		if syncPeriods[0].LastEpoch > lastExportedEpoch {
 			lookback := int64(latestEpoch - lastExportedEpoch)
-			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, latestEpoch, lookback)
+			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, latestEpoch-uint64(lookback), latestEpoch)
 			if err != nil {
 				logger.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1032,7 +1032,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	tableData := [][]interface{}{}
 
 	if totalCount > 0 {
-		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, uint64(int64(lastAttestationEpoch)-start), int64(length))
+		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, uint64(int64(lastAttestationEpoch)-start)-uint64(length), uint64(int64(lastAttestationEpoch)-start))
 		if err != nil {
 			logger.Errorf("error retrieving validator attestations data: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1931,7 +1931,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 		// retrieve sync duties from bigtable
 		// note that the limit may be negative for either call, which results in the function fetching epochs for the absolute limit value in ascending ordering
-		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, firstShownEpoch, int64(limit), ascOrdering)
+		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, firstShownEpoch-limit, limit, ascOrdering)
 		if err != nil {
 			logger.Errorf("error retrieving validator sync duty data from bigtable: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1939,7 +1939,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if nextPeriodLimit != 0 {
-			nextPeriodSyncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, lastShownEpoch, nextPeriodLimit, ascOrdering)
+			nextPeriodSyncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, lastShownEpoch-uint64(nextPeriodLimit), lastShownEpoch, ascOrdering)
 			if err != nil {
 				logger.Errorf("error retrieving second validator sync duty data from bigtable: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)

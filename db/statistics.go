@@ -47,7 +47,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	defer tx.Rollback()
 
 	logger.Infof("exporting cl_rewards_gwei and el_rewards_wei statistics")
-	incomeDetails, err := BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, lastEpoch, int64(lastEpoch-firstEpoch)+1)
+	incomeDetails, err := BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, firstEpoch, lastEpoch)
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	start = time.Now()
 	logger.Infof("exporting sync statistics")
-	syncStats, err := BigtableClient.GetValidatorSyncDutiesStatistics([]uint64{}, lastEpoch, int64(lastEpoch-firstEpoch)+1) //+1 is needed because the function uses limit instead of end epoch
+	syncStats, err := BigtableClient.GetValidatorSyncDutiesStatistics([]uint64{}, firstEpoch, lastEpoch) //+1 is needed because the function uses limit instead of end epoch
 	if err != nil {
 		return err
 	}
