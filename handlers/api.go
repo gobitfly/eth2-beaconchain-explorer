@@ -1667,14 +1667,14 @@ func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
-	latestEpoch := services.LatestEpoch()
 	epoch, err := strconv.ParseUint(q.Get("epoch"), 10, 64)
 	if err != nil {
-		epoch = latestEpoch
+		epoch = services.LatestEpoch()
 	}
 
-	endEpoch := epoch - 100
-	if epoch < 100 {
+	// startEpoch and endEpoch are both inclusive, so substracting 99 here will result in a limit of 100 epochs
+	endEpoch := epoch - 99
+	if epoch < 99 {
 		endEpoch = 0
 	}
 
@@ -1715,7 +1715,7 @@ func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorBalanceHistoryResponse}
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorBlsChangeResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/blsChange [get]
 func ApiValidatorBlsChange(w http.ResponseWriter, r *http.Request) {
@@ -1777,7 +1777,7 @@ func ApiValidatorBlsChange(w http.ResponseWriter, r *http.Request) {
 // @Param  latest_epoch query int false "The latest epoch to consider in the query"
 // @Param  offset query int false "Number of items to skip"
 // @Param  limit query int false "Maximum number of items to return, up to 100"
-// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorBlsChangeResponse}
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorBalanceHistoryResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/balancehistory [get]
 func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
