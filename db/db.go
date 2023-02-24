@@ -2379,10 +2379,10 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 
 	err := ReaderDb.Select(&withdrawals, `
 		SELECT
-		w.withdrawalindex as index,
-		w.validatorindex,
-		w.address,
-		w.amount
+			w.withdrawalindex as index,
+			w.validatorindex,
+			w.address,
+			w.amount
 		FROM
 			blocks_withdrawals w
 		LEFT JOIN blocks b ON b.blockroot = w.block_root
@@ -2401,10 +2401,10 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 
 func GetTotalWithdrawals() (total uint64, err error) {
 	err = ReaderDb.Get(&total, `
-	SELECT withdrawalindex
-	FROM
-		blocks_withdrawals
-	ORDER BY withdrawalindex DESC limit 1`)
+	SELECT
+		MAX(withdrawalindex)
+	FROM 
+		blocks_withdrawals`)
 	if err == sql.ErrNoRows {
 		return 0, nil
 	}
