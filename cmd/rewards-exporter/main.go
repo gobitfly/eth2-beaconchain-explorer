@@ -2,6 +2,7 @@ package main
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
@@ -88,7 +89,11 @@ func main() {
 				if err != nil {
 					logrus.Errorf("error marking rewards_exported as true for epoch %v: %v", e, err)
 				}
+				services.ReportStatus("rewardsExporter", "Running", nil)
 			}
+
+			services.ReportStatus("rewardsExporter", "Running", nil)
+			time.Sleep(time.Minute)
 
 		}
 	}
