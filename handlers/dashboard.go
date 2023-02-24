@@ -345,6 +345,9 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 }
 
 func DashboardWithdrawals(w http.ResponseWriter, r *http.Request) {
+
+	// [WIP]
+
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
