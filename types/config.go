@@ -150,6 +150,10 @@ type Config struct {
 		PoolsUpdater struct {
 			Enabled bool `yaml:"enabled" envconfig:"FRONTEND_POOLS_UPDATER"`
 		} `yaml:"poolsUpdater"`
+		SlotViz struct {
+			Enabled       bool   `yaml:"enabled" envconfig:"FRONTEND_SLOTVIZ_ENABLED"`
+			HardforkEpoch uint64 `yaml:"hardforkEpoch" envconfig:"FRONTEND_SLOTVIZ_HARDFORK_EPOCH"`
+		} `yaml:"slotViz"`
 		HttpReadTimeout  time.Duration `yaml:"httpReadTimeout" envconfig:"FRONTEND_HTTP_READ_TIMEOUT"`
 		HttpWriteTimeout time.Duration `yaml:"httpWriteTimeout" envconfig:"FRONTEND_HTTP_WRITE_TIMEOUT"`
 		HttpIdleTimeout  time.Duration `yaml:"httpIdleTimeout" envconfig:"FRONTEND_HTTP_IDLE_TIMEOUT"`
