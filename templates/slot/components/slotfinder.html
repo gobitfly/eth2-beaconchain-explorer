@@ -1,6 +1,3 @@
-{{ define "css" }}
-{{ end }}
-
 {{ define "slot_finder" }}
   <div class="m-2 d-flex flex-wrap">
     <div class="d-flex m-2">
@@ -34,9 +31,9 @@
   </div>
   <small class="d-flex justify-content-end align-items-center m-2">Inpired by <a href="https://slots.symphonious.net" class="ml-2">https://slots.symphonious.net</a></small>
   <script>
-    const genesisTimeStamp = {{ .ChainGenesisTimestamp }}
-    const secondsPerSlot = {{ .ChainSecondsPerSlot }}
-    const slotsPerEpoch = {{ .ChainSlotsPerEpoch }}
+    var genesisTimeStamp = {{ .ChainGenesisTimestamp }}
+    var secondsPerSlot = {{ .ChainSecondsPerSlot }}
+    var slotsPerEpoch = {{ .ChainSlotsPerEpoch }}
     var slotNumber, datepickerUtc, datepickerLocal, beaconchainDay, slotLink
 
     function slotChanged() {
@@ -46,33 +43,32 @@
         const slotDate = new Date((genesisTimeStamp + slot * secondsPerSlot) * 1000)
         const slotDateLocal = moment(slotDate)
         const slotDateUtc = moment.utc(slotDate)
-        datepickerUtc.data('daterangepicker').setStartDate(slotDateUtc);
-        datepickerUtc.data('daterangepicker').setEndDate(slotDateUtc);
-        datepickerLocal.data('daterangepicker').setStartDate(slotDateLocal);
-        datepickerLocal.data('daterangepicker').setEndDate(slotDateLocal);
+        datepickerUtc.data("daterangepicker").setStartDate(slotDateUtc)
+        datepickerUtc.data("daterangepicker").setEndDate(slotDateUtc)
+        datepickerLocal.data("daterangepicker").setStartDate(slotDateLocal)
+        datepickerLocal.data("daterangepicker").setEndDate(slotDateLocal)
 
-        const timePassed = slotDate.getTime() / 1000 - genesisTimeStamp;
+        const timePassed = slotDate.getTime() / 1000 - genesisTimeStamp
         const daysPassed = Math.max(1, 1 + Math.floor(timePassed / 60 / 60 / 24))
-        beaconchainDay.innerText = daysPassed;
+        beaconchainDay.innerText = daysPassed
         epoch.innerText = Math.max(1, 1 + Math.floor(slot / slotsPerEpoch))
-        epochLink.href =  `/epoch/${epoch.innerText}`
+        epochLink.href = `/epoch/${epoch.innerText}`
       }
     }
 
-
-    function processTime(time, isUtc){
-      const timeStamp = time.toDate().getTime() / 1000 + (isUtc ? time.utcOffset() * 60 : 0);
+    function processTime(date, isUtc) {
+      const timeStamp = date.toDate().getTime() / 1000 + (isUtc ? date.utcOffset() * 60 : 0)
       const slot = Math.max(1, Math.floor((timeStamp - genesisTimeStamp) / secondsPerSlot))
-      slotNumber.value = slot;
-      slotChanged();
+      slotNumber.value = slot
+      slotChanged()
     }
 
-    function utcChanged(start){
-      processTime(start, true);
+    function utcChanged(start) {
+      processTime(start, true)
     }
 
-    function localChanged(start, end, label){
-      processTime(start, false);
+    function localChanged(start) {
+      processTime(start, false)
     }
 
     window.addEventListener("load", function () {
@@ -81,27 +77,35 @@
       slotLink = document.getElementById("slotLink")
       epoch = document.getElementById("epoch")
       datepickerUtc = $('input[id="datepickerUtc"]')
-      datepickerLocal= $('input[id="datepickerLocal"]')
+      datepickerLocal = $('input[id="datepickerLocal"]')
 
-      datepickerUtc.daterangepicker({
-        locale: {
-          format: "DD/MM/YYYY hh:mm:ss UTC",
+      datepickerUtc.daterangepicker(
+        {
+          locale: {
+            format: "DD/MM/YYYY hh:mm:ss UTC",
+          },
+          singleDatePicker: true,
+          timePicker: true,
+          timePicker24Hour: true,
+          timePickerSeconds: true,
+          minDate: new Date(genesisTimeStamp * 1000)
         },
-        singleDatePicker: true,
-        timePicker: true,
-        timePicker24Hour: true,
-        timePickerSeconds: true,
-      }, utcChanged)
-      datepickerLocal.daterangepicker({
-        locale: {
-          format: "DD/MM/YYYY hh:mm:ss Z",
+        utcChanged
+      )
+      datepickerLocal.daterangepicker(
+        {
+          locale: {
+            format: "DD/MM/YYYY hh:mm:ss Z",
+          },
+          singleDatePicker: true,
+          timePicker: true,
+          timePicker24Hour: true,
+          timePickerSeconds: true,
+          minDate: new Date(genesisTimeStamp * 1000),
         },
-        singleDatePicker: true,
-        timePicker: true,
-        timePicker24Hour: true,
-        timePickerSeconds: true,
-      },localChanged)
-      slotChanged();
+        localChanged
+      )
+      slotChanged()
     })
   </script>
 {{ end }}

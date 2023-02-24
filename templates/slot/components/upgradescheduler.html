@@ -1,9 +1,86 @@
-{{ define "css" }}
-{{ end }}
-{{ define "js" }}
-  <script></script>
-{{ end }}
-
 {{ define "upgrade_scheduler" }}
-  <div class="m-2">Upgrade Scheduler</div>
+  <div class="m-2 d-flex flex-wrap">
+    <div class="d-flex flex-column m-2 mb-4">
+      <label>Upgrade Date</label>
+      <input id="datepicker" type="text" class="form-control" />
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th class="px-2">Epoch</th>
+          <th class="px-2">Start Slot</th>
+          <th class="px-2">UTC</th>
+          <th class="px-2">Moscow</th>
+          <th class="px-2">Los Angeles</th>
+          <th class="px-2">New York</th>
+          <th class="px-2">Brisbane</th>
+          <th class="px-2">Local Time</th>
+        </tr>
+      </thead>
+      <tbody id="upgrade-table"></tbody>
+    </table>
+  </div>
+  <script>
+    var genesisTimeStamp = {{ .ChainGenesisTimestamp }}
+    var secondsPerSlot = {{ .ChainSecondsPerSlot }}
+    var slotsPerEpoch = {{ .ChainSlotsPerEpoch }}
+    const timeZones = ["UTC", "Europe/Moscow", "America/Los_Angeles", "America/New_York", "Australia/Brisbane"]
+
+    datepickerLocal = $('input[id="datepickerLocal"]')
+
+    function setupTable(date) {
+      console.log(date)
+      const table = document.getElementById("upgrade-table")
+      table.innerHTML = ""
+      const utc = luxon.DateTime.utc(date.getFullYear(), date.getMonth() + 1, date.getDate(), 12)
+      const dif = utc.ts / 1000 - genesisTimeStamp
+      const firstSlot = Math.max(1, dif / secondsPerSlot)
+      const firstEpoch = 1 + Math.floor(firstSlot / slotsPerEpoch)
+      const epochInADay = Math.ceil((24 * 60 * 60) / secondsPerSlot / slotsPerEpoch)
+      for (let i = 0; i < epochInADay; i++) {
+        const row = document.createElement("tr")
+        const epoch = firstEpoch + i
+        const values = [epoch, epoch * slotsPerEpoch]
+        const baseDate = luxon.DateTime.fromSeconds(genesisTimeStamp + epoch * slotsPerEpoch * secondsPerSlot)
+        timeZones.forEach((tz) => {
+          baseDate.setZone(tz)
+          values.push(new Intl.DateTimeFormat('en-GB', { dateStyle: 'short', timeStyle: 'short', timeZone: tz }).format(baseDate))
+        })
+        baseDate.toLocal()
+        values.push(new Intl.DateTimeFormat('en-GB', { dateStyle: 'short', timeStyle: 'short' }).format(baseDate))
+
+
+        values.forEach((v) => {
+          const col = document.createElement("td")
+          col.innerText = v
+          row.appendChild(col)
+        })
+        table.appendChild(row)
+      }
+
+      console.log("utc", utc)
+    }
+
+    function datePicked(date){
+      setupTable(date.toDate())
+    }
+
+    window.addEventListener("load", function () {
+      datepicker = $('input[id="datepicker"]')
+      datepicker.daterangepicker(
+        {
+          locale: {
+            format: "DD/MM/YYYY",
+          },
+          singleDatePicker: true,
+          minDate: new Date(genesisTimeStamp * 1000),
+        },
+        datePicked
+      )
+      const today = new Date()
+      datepicker.data("daterangepicker").setStartDate(today)
+      datepicker.data("daterangepicker").setEndDate(today)
+      setupTable(today)
+    })
+  </script>
 {{ end }}
