@@ -2,14 +2,11 @@ package main
 
 import (
 	"eth2-exporter/db"
-	"eth2-exporter/rpc"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"flag"
 	"fmt"
-	"math/big"
 	"time"
 
 	eth_rewards "github.com/gobitfly/eth-rewards"
@@ -55,11 +52,6 @@ func main() {
 
 	client := beacon.NewClient(*bnAddress, time.Minute*5)
 
-	lc, err := rpc.NewLighthouseClient(*bnAddress, big.NewInt(5))
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
 	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
@@ -68,52 +60,60 @@ func main() {
 
 	if *epochEnd != 0 {
 		for i := *epochStart; i <= *epochEnd; i++ {
-			export(uint64(i), bt, client, enAddress)
+			err := export(uint64(i), bt, client, enAddress)
+			if err != nil {
+				logrus.Fatal(err)
+			}
 		}
 		return
 	}
 	if *epoch == -1 {
 		for {
-			head, err := lc.GetChainHead()
+
+			notExportedEpochs := []uint64{}
+			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported ORDER BY epoch")
 			if err != nil {
 				logrus.Fatal(err)
 			}
-			if int64(head.FinalizedEpoch) <= *epoch {
-				logrus.Infof("pausing %v <= %v", int64(head.FinalizedEpoch), *epoch)
-				services.ReportStatus("rewardsExporter", "Running", nil)
-				time.Sleep(time.Second * 12)
-				continue
+			for _, e := range notExportedEpochs {
+				err := export(e, bt, client, enAddress)
+
+				if err != nil {
+					logrus.Error(err)
+					continue
+				}
+
+				_, err = db.WriterDb.Exec("UPDATE epochs SET rewards_exported = true WHERE epoch = $1", e)
+
+				if err != nil {
+					logrus.Errorf("error marking rewards_exported as true for epoch %v: %v", e, err)
+				}
 			}
 
-			if *epoch == -1 {
-				*epoch = int64(head.FinalizedEpoch) - 1
-			}
-
-			for i := *epoch + 1; i <= int64(head.FinalizedEpoch); i++ {
-				export(uint64(i), bt, client, enAddress)
-			}
-
-			*epoch = int64(head.FinalizedEpoch)
 		}
 	}
 
-	export(uint64(*epoch), bt, client, enAddress)
+	err = export(uint64(*epoch), bt, client, enAddress)
+	if err != nil {
+		logrus.Fatal(err)
+	}
 }
 
-func export(epoch uint64, bt *db.Bigtable, client *beacon.Client, elClient *string) {
+func export(epoch uint64, bt *db.Bigtable, client *beacon.Client, elClient *string) error {
 	start := time.Now()
 	logrus.Infof("retrieving rewards details for epoch %v", epoch)
 
 	rewards, err := eth_rewards.GetRewardsForEpoch(epoch, client, *elClient)
 
 	if err != nil {
-		logrus.Fatalf("error retrieving reward details for epoch %v: %v", epoch, err)
+		return fmt.Errorf("error retrieving reward details for epoch %v: %v", epoch, err)
 	} else {
 		logrus.Infof("retrieved %v reward details for epoch %v in %v", len(rewards), epoch, time.Since(start))
 	}
 
 	err = bt.SaveValidatorIncomeDetails(uint64(epoch), rewards)
 	if err != nil {
-		logrus.Fatalf("error saving reward details to bigtable: %v", err)
+		return fmt.Errorf("error saving reward details to bigtable: %v", err)
 	}
+	return nil
 }

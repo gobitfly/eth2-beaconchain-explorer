@@ -229,6 +229,7 @@ create table epochs
     eligibleether           bigint,
     globalparticipationrate float,
     votedether              bigint,
+    rewards_exported        bool not null default false,
     primary key (epoch)
 );
 
