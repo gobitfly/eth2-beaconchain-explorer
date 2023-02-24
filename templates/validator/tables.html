@@ -365,7 +365,7 @@
         {{ if .BLSChange }}
           <div class="my-3">
             {{ if gt (epochOfSlot .BLSChange.Slot) $.LatestFinalizedEpoch }}
-              <p><b>Pending withdrawal credential: </b><span>{{ formatAddressToWithdawalCredentials .BLSChange.Address true }}</span> waiting for epoch finality.</p>
+              <p><b>Pending withdrawal credential: </b><span>{{ formatAddressToWithdrawalCredentials .BLSChange.Address true }}</span> waiting for epoch finality.</p>
               <span>A request to change your withdrawal credentials has been registered and is being finalized. You have requested to change your withdrawal credentials</span>
             {{ else }}
               <span>Your withdrawal credential were successfully changed</span>

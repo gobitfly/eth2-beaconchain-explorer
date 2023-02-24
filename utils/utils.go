@@ -91,7 +91,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatGraffiti":                          FormatGraffiti,
 		"formatHash":                              FormatHash,
 		"formatWithdawalCredentials":              FormatWithdawalCredentials,
-		"formatAddressToWithdawalCredentials":     FormatAddressToWithdawalCredentials,
+		"formatAddressToWithdrawalCredentials":    FormatAddressToWithdrawalCredentials,
 		"formatBitvector":                         FormatBitvector,
 		"formatBitlist":                           FormatBitlist,
 		"formatBitvectorValidators":               formatBitvectorValidators,
