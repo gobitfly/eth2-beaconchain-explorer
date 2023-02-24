@@ -188,10 +188,10 @@
                   .attr("y", (d, i) => y.bandwidth() / 2 - 7.5)
                   .attr("slot", (d) => d.Slot)
                   .on("click", (d) => {
-                    if (slot) {
                       var slot = d.target.getAttribute("slot")
-                      window.location = "/slot/" + slot
-                    }
+                      if (slot) {
+                        window.location = "/slot/" + slot
+                      }
                   })
                   .attr("data-original-title", (s, i) => {
                     if (!s.Slot) {
@@ -409,7 +409,8 @@
     const watermarkContainer = document.createElement("div")
     watermarkContainer.style.position = "relative"
 
-    const watermarkContent = document.createElement("div")
+    const watermarkContent = document.createElement("a")
+    watermarkContent.href = "https://beaconcha.in"
     watermarkContent.style.position = "absolute"
     watermarkContent.style.top = "100%"
     watermarkContent.style.right = 0
