@@ -690,6 +690,14 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 	}
 
 	handleRow := func(r gcp_bigtable.Row) bool {
+		keySplit := strings.Split(r.Key(), ":")
+
+		epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
+			return false
+		}
+
 		for _, ri := range r[VALIDATOR_BALANCES_FAMILY] {
 			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, VALIDATOR_BALANCES_FAMILY+":"), 10, 64)
 			if err != nil {
@@ -702,14 +710,6 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 			// unwanted ones
 			if valLen >= getAllThreshold && !validatorMap[validator] {
 				continue
-			}
-
-			keySplit := strings.Split(r.Key(), ":")
-
-			epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
-			if err != nil {
-				logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
-				return false
 			}
 
 			balances := ri.Value

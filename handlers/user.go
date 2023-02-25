@@ -958,7 +958,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), 1)
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), services.LatestEpoch())
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

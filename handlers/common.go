@@ -66,14 +66,20 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		balancesMap[balance.Index] = balance
 	}
 
-	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), 1)
+	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), uint64(latestEpoch))
 	if err != nil {
 		logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
 		return nil, nil, err
 	}
+
 	for balanceIndex, balance := range latestBalances {
-		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
+		logger.Info(balanceIndex, len(balance))
+		if len(balance) == 0 {
 			continue
+		}
+
+		if balancesMap[balanceIndex] == nil {
+			balancesMap[balanceIndex] = &types.Validator{}
 		}
 		balancesMap[balanceIndex].Balance = balance[0].Balance
 		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance

@@ -937,7 +937,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 
 	if data.Epoch == 0 {
 		var err error
-		genesisBalances, err = BigtableClient.GetValidatorBalanceHistory([]uint64{}, 0, 1)
+		genesisBalances, err = BigtableClient.GetValidatorBalanceHistory([]uint64{}, 0, 0)
 		if err != nil {
 			return err
 		}
@@ -1261,7 +1261,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		if newValidator.ActivationEpoch == 0 {
 			balance = genesisBalances
 		} else {
-			balance, err = BigtableClient.GetValidatorBalanceHistory([]uint64{newValidator.Validatorindex}, newValidator.ActivationEpoch, 1)
+			balance, err = BigtableClient.GetValidatorBalanceHistory([]uint64{newValidator.Validatorindex}, newValidator.ActivationEpoch, newValidator.ActivationEpoch)
 			if err != nil {
 				return err
 			}
@@ -2171,7 +2171,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 	}
 
 	logger.Infof("retrieving validator balances for epoch %v", currentEpoch)
-	latestBalances, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(currentEpoch), 1)
+	latestBalances, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(currentEpoch), uint64(currentEpoch))
 	if err != nil {
 		return fmt.Errorf("error getting validator balance data in updateValidatorPerformance: %w", err)
 	}
@@ -2184,7 +2184,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 	}
 
 	logger.Infof("retrieving validator balances for epoch %v", lastDayEpoch)
-	balances1d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastDayEpoch), 1)
+	balances1d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastDayEpoch), uint64(lastDayEpoch))
 	if err != nil {
 		return fmt.Errorf("error getting validator Balance1d data in updateValidatorPerformance: %w", err)
 	}
@@ -2200,7 +2200,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 	}
 
 	logger.Infof("retrieving validator balances for epoch %v", lastWeekEpoch)
-	balances7d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastWeekEpoch), 1)
+	balances7d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastWeekEpoch), uint64(lastWeekEpoch))
 	if err != nil {
 		return fmt.Errorf("error getting validator Balance7d data in updateValidatorPerformance: %w", err)
 	}
@@ -2216,7 +2216,7 @@ func updateValidatorPerformance(tx *sqlx.Tx) error {
 	}
 
 	logger.Infof("retrieving validator balances for epoch %v", lastMonthEpoch)
-	balances31d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastMonthEpoch), 1)
+	balances31d, err := BigtableClient.GetValidatorBalanceHistory([]uint64{}, uint64(lastMonthEpoch), uint64(lastMonthEpoch))
 	if err != nil {
 		return fmt.Errorf("error getting validator Balance31d data in updateValidatorPerformance: %w", err)
 	}

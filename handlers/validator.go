@@ -1474,17 +1474,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	g := new(errgroup.Group)
 
-	var balanceHistory map[uint64][]*types.ValidatorBalance
-	g.Go(func() error {
-		var err error
-		balanceHistory, err = db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, currentEpoch-start, 12)
-		if err != nil {
-			logger.Errorf("error retrieving validator balance history from bigtable: %v", err)
-			return err
-		}
-		return nil
-	})
-
 	var withdrawals []*types.WithdrawalsByEpoch
 	g.Go(func() error {
 		var err error
@@ -1499,7 +1488,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	var incomeDetails map[uint64]map[uint64]*itypes.ValidatorEpochIncome
 	g.Go(func() error {
 		var err error
-		incomeDetails, err = db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{index}, currentEpoch-start, 12)
+		incomeDetails, err = db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{index}, currentEpoch-start-12, currentEpoch-start)
 		if err != nil {
 			logger.Errorf("error retrieving validator income details history from bigtable: %v", err)
 			return err
@@ -1507,27 +1496,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
-	var attestationHistory map[uint64][]*types.ValidatorAttestation
-	g.Go(func() error {
-		var err error
-		attestationHistory, err = db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, currentEpoch-start, 12)
-		if err != nil {
-			logger.Errorf("error retrieving validator attestation history from bigtable: %v", err)
-			return err
-		}
-		return nil
-	})
-
-	var proposalHistory map[uint64][]*types.ValidatorProposal
-	g.Go(func() error {
-		var err error
-		proposalHistory, err = db.BigtableClient.GetValidatorProposalHistory([]uint64{index}, currentEpoch-start, 12)
-		if err != nil {
-			logger.Errorf("error retrieving validator proposal history from bigtable: %v", err)
-			return err
-		}
-		return nil
-	})
 	err = g.Wait()
 
 	if err != nil {
@@ -1545,98 +1513,33 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	proposalMap := make(map[uint64]*types.ValidatorProposal)
-	for _, proposal := range proposalHistory[index] {
-		proposalMap[proposal.Slot/utils.Config.Chain.Config.SlotsPerEpoch] = &types.ValidatorProposal{
-			Index:  index,
-			Slot:   proposal.Slot,
-			Status: proposal.Status,
-		}
-	}
-
-	attestationsMap := make(map[uint64]*types.ValidatorAttestation)
-	for _, attestation := range attestationHistory[index] {
-		attestationsMap[attestation.Epoch] = &types.ValidatorAttestation{
-			Index:          index,
-			Epoch:          attestation.Epoch,
-			AttesterSlot:   attestation.AttesterSlot,
-			CommitteeIndex: 0,
-			Status:         attestation.Status,
-			InclusionSlot:  attestation.InclusionSlot,
-			Delay:          attestation.Delay,
-		}
-	}
-
-	for i := 0; i < len(balanceHistory[index])-2; i++ {
-		balanceChange := int64(balanceHistory[index][i].Balance) - int64(balanceHistory[index][i+1].Balance)
-
-		h := &types.ValidatorHistory{
-			Epoch:            balanceHistory[index][i].Epoch,
-			BalanceChange:    sql.NullInt64{Int64: balanceChange, Valid: true},
-			AttesterSlot:     sql.NullInt64{Int64: 0, Valid: false},
-			InclusionSlot:    sql.NullInt64{Int64: 0, Valid: false},
-			ProposalStatus:   sql.NullInt64{Int64: 0, Valid: false},
-			ProposalSlot:     sql.NullInt64{Int64: 0, Valid: false},
-			WithdrawalStatus: sql.NullInt64{Int64: 0, Valid: false},
-			WithdrawalSlot:   sql.NullInt64{Int64: 0, Valid: false},
-		}
-
-		if withdrawalMap[balanceHistory[index][i].Epoch] != nil {
-			h.WithdrawalSlot = sql.NullInt64{Int64: int64(withdrawalMap[balanceHistory[index][i].Epoch].Slot), Valid: true}
-			h.WithdrawalStatus = sql.NullInt64{Int64: 1, Valid: true}
-		}
-
-		if incomeDetails[index] != nil {
-			h.IncomeDetails = incomeDetails[index][balanceHistory[index][i].Epoch]
-		}
-
-		if attestationsMap[balanceHistory[index][i].Epoch] != nil {
-			h.AttesterSlot = sql.NullInt64{Int64: int64(attestationsMap[balanceHistory[index][i].Epoch].AttesterSlot), Valid: true}
-			h.InclusionSlot = sql.NullInt64{Int64: int64(attestationsMap[balanceHistory[index][i].Epoch].InclusionSlot), Valid: true}
-		}
-
-		if proposalMap[balanceHistory[index][i].Epoch] != nil {
-			h.ProposalStatus = sql.NullInt64{Int64: int64(proposalMap[balanceHistory[index][i].Epoch].Status), Valid: true}
-			h.ProposalSlot = sql.NullInt64{Int64: int64(proposalMap[balanceHistory[index][i].Epoch].Slot), Valid: true}
-		}
-
-		validatorHistory = append(validatorHistory, h)
-	}
-
 	tableData := make([][]interface{}, 0, len(validatorHistory))
-	for _, b := range validatorHistory {
-		if !b.AttesterSlot.Valid && b.BalanceChange.Int64 < 0 {
-			b.AttestationStatus = 4
-		}
+	for _, b := range incomeDetails {
+		for e, id := range b {
 
-		if !b.AttesterSlot.Valid && b.BalanceChange.Int64 >= 0 {
-			b.AttestationStatus = 5
-		}
+			events := template.HTML("")
+			if id.AttestationSourcePenalty > 0 && id.AttestationTargetPenalty > 0 {
+				events += utils.FormatAttestationStatusShort(2)
+			} else {
+				events += utils.FormatAttestationStatusShort(1)
+			}
 
-		if b.AttesterSlot.Int64 != -1 && b.AttesterSlot.Valid && utils.SlotToTime(uint64(b.AttesterSlot.Int64)).Before(time.Now().Add(time.Minute*-1)) && b.InclusionSlot.Int64 == 0 {
-			b.AttestationStatus = 2
-		}
+			if id.ProposerAttestationInclusionReward > 0 {
+				block := utils.FormatBlockStatusShort(1)
+				events += block
+			} else if id.ProposalsMissed > 0 {
+				block := utils.FormatBlockStatusShort(2)
+				events += block
+			}
 
-		if b.InclusionSlot.Valid && b.InclusionSlot.Int64 != 0 && b.AttestationStatus == 0 {
-			b.AttestationStatus = 1
-		}
+			if withdrawalMap[e] != nil {
+				withdrawal := utils.FormatWithdrawalShort(uint64(withdrawalMap[e].Slot))
+				events += withdrawal
+			}
 
-		events := utils.FormatAttestationStatusShort(b.AttestationStatus)
-
-		if b.ProposalSlot.Valid {
-			block := utils.FormatBlockStatusShort(uint64(b.ProposalStatus.Int64))
-			events += block
-		}
-
-		if b.WithdrawalSlot.Valid {
-			withdrawal := utils.FormatWithdrawalShort(uint64(b.WithdrawalSlot.Int64))
-			events += withdrawal
-		}
-
-		if b.BalanceChange.Valid {
 			tableData = append(tableData, []interface{}{
-				utils.FormatEpoch(b.Epoch),
-				utils.FormatBalanceChangeFormated(&b.BalanceChange.Int64, currency, b.IncomeDetails),
+				utils.FormatEpoch(e),
+				utils.FormatBalanceChangeFormated(id.TotalClRewards(), currency, id),
 				template.HTML(""),
 				template.HTML(events),
 			})

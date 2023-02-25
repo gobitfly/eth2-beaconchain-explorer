@@ -106,7 +106,7 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
-	incomeData, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validators, endEpoch, 100)
+	incomeData, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validators, endEpoch-100, endEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error loading validator income history data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -430,7 +430,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(filterArr, services.LatestEpoch(), 1)
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(filterArr, services.LatestEpoch(), services.LatestEpoch())
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

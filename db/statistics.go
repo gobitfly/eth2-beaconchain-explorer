@@ -477,7 +477,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 			if err != nil {
 				return nil, err
 			}
-			balances, err := BigtableClient.GetValidatorBalanceHistory(validator_indices, epoch, 1)
+			balances, err := BigtableClient.GetValidatorBalanceHistory(validator_indices, epoch, epoch)
 			if err != nil {
 				return nil, err
 			}
@@ -680,7 +680,7 @@ func WriteChartSeriesForDay(day int64) error {
 	}
 
 	logger.Infof("exporting consensus rewards from %v to %v", firstEpoch, lastEpoch)
-	historyFirst, err := BigtableClient.GetValidatorBalanceHistory(nil, firstEpoch+1, 1)
+	historyFirst, err := BigtableClient.GetValidatorBalanceHistory(nil, firstEpoch+1, firstEpoch+1)
 	if err != nil {
 		return err
 	}
@@ -692,7 +692,7 @@ func WriteChartSeriesForDay(day int64) error {
 		}
 	}
 
-	historyLast, err := BigtableClient.GetValidatorBalanceHistory(nil, uint64(lastEpoch+1), 1)
+	historyLast, err := BigtableClient.GetValidatorBalanceHistory(nil, uint64(lastEpoch+1), uint64(lastEpoch+1))
 	if err != nil {
 		return err
 	}

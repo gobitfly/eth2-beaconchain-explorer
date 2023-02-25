@@ -192,7 +192,7 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		balancesMap[balance.Index] = balance
 	}
 
-	latestBalances, err := BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), 1)
+	latestBalances, err := BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), uint64(latestEpoch))
 	if err != nil {
 		logger.Errorf("error getting validator balance data in getValidatorEarnings: %v", err)
 		return
@@ -204,7 +204,7 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		balancesMap[balanceIndex].Balance = balance[0].Balance
 	}
 
-	balances1d, err := BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastDayEpoch), 1)
+	balances1d, err := BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastDayEpoch), uint64(lastDayEpoch))
 	if err != nil {
 		logger.Errorf("error getting validator Balance1d data in getValidatorEarnings: %v", err)
 		return
@@ -219,7 +219,7 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		}
 	}
 
-	balances7d, err := BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastWeekEpoch), 1)
+	balances7d, err := BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastWeekEpoch), uint64(lastWeekEpoch))
 	if err != nil {
 		logger.Errorf("error getting validator Balance7d data in getValidatorEarnings: %v", err)
 		return
@@ -234,7 +234,7 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		}
 	}
 
-	balances31d, err := BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastMonthEpoch), 1)
+	balances31d, err := BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastMonthEpoch), uint64(lastMonthEpoch))
 	if err != nil {
 		logger.Errorf("error getting validator Balance31d data in getValidatorEarnings: %v", err)
 		return
