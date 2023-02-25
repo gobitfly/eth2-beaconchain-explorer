@@ -420,7 +420,7 @@ type ValidatorStatsTableRow struct {
 	Day                    int64         `db:"day"`
 	StartBalance           sql.NullInt64 `db:"start_balance"`
 	EndBalance             sql.NullInt64 `db:"end_balance"`
-	Income                 int64         `db:"-"`
+	Income                 int64         `db:"cl_rewards_gwei"`
 	IncomeExchangeRate     float64       `db:"-"`
 	IncomeExchangeCurrency string        `db:"-"`
 	IncomeExchanged        float64       `db:"-"`

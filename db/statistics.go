@@ -393,6 +393,31 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		ORDER BY day
 	;`, queryValidatorsArr, lowerBoundDay, upperBoundDay)
 
+	// retrieve rewards for epochs not yet in stats
+	lastDay := len(result) - 1
+	currentDayIncome := int64(0)
+	if lastDay > 0 {
+		currentDay := uint64(lastDay + 1)
+		startEpoch := currentDay * utils.EpochsPerDay()
+		endEpoch := startEpoch + utils.EpochsPerDay() - 1
+		income, err := BigtableClient.GetValidatorIncomeDetailsHistory(validator_indices, startEpoch, endEpoch)
+
+		if err != nil {
+			return nil, err
+		}
+
+		for _, ids := range income {
+			for _, id := range ids {
+				currentDayIncome += id.TotalClRewards()
+			}
+		}
+
+		result = append(result, types.ValidatorIncomeHistory{
+			Day:       int64(currentDay),
+			ClRewards: currentDayIncome,
+		})
+	}
+
 	return result, err
 }
 

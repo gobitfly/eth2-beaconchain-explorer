@@ -1642,38 +1642,14 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	COALESCE(deposits_amount, 0) AS deposits_amount,
 	COALESCE(participated_sync, 0) AS participated_sync,
 	COALESCE(missed_sync, 0) AS missed_sync,
-	COALESCE(orphaned_sync, 0) AS orphaned_sync
+	COALESCE(orphaned_sync, 0) AS orphaned_sync,
+	COALESCE(cl_rewards_gwei, 0) AS cl_rewards_gwei
 	FROM validator_stats WHERE validatorindex = $1 ORDER BY day DESC`, index)
 
 	if err != nil {
 		logger.Errorf("error retrieving validator stats history: %v", err)
 		http.Error(w, "Validator not found", http.StatusNotFound)
 		return
-	}
-
-	balanceData, err := db.GetValidatorIncomeHistory([]uint64{index}, 0, 0)
-
-	if err != nil {
-		logger.Errorf("error retrieving validator income history: %v", err)
-		http.Error(w, "Validator not found", http.StatusNotFound)
-		return
-	}
-	// day => index mapping
-	dayMapping := make(map[int64]int)
-	for i := 0; i < len(validatorStatsTablePageData.Rows); i++ {
-		dayMapping[validatorStatsTablePageData.Rows[i].Day] = i
-
-	}
-
-	for i := 0; i < len(balanceData); i++ {
-		j, found := dayMapping[balanceData[i].Day]
-		if !found {
-			continue
-		}
-		validatorStatsTablePageData.Rows[j].StartBalance = balanceData[i].StartBalance
-		validatorStatsTablePageData.Rows[j].EndBalance = balanceData[i].EndBalance
-		validatorStatsTablePageData.Rows[j].Income = balanceData[i].ClRewards
-		validatorStatsTablePageData.Rows[j].Deposits = balanceData[i].DepositAmount
 	}
 
 	// if validatorStatsTablePageData.Rows[len(validatorStatsTablePageData.Rows)-1].Day == -1 {
