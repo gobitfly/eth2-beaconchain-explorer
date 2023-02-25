@@ -742,16 +742,6 @@ create table price
     primary key (ts)
 );
 
-drop table if exists staking_pools_chart;
-create table staking_pools_chart
-(
-    epoch                      int  not null,
-    name                       text not null,
-    income                     bigint not null,
-    balance                    bigint not null,
-    PRIMARY KEY(epoch, name)
-);
-
 drop table if exists stats_sharing;
 CREATE TABLE stats_sharing (
                                id 				bigserial 			primary key,
