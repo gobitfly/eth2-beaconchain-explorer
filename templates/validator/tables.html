@@ -663,15 +663,21 @@
     <table class="table" style="margin-top: 0 !important" width="100%">
       <tbody>
         <tr>
-          <th scope="row">Day</th>
+          <th scope="row">
+            Last Day <span data-toggle="tooltip" title="Income during the last day, updated daily"><i class="far fa-question-circle"></i></span>
+          </th>
           <td>{{ formatIncome .Income1d $.Rates.Currency }}</td>
         </tr>
         <tr>
-          <th scope="row">Week</th>
+          <th scope="row">
+            Last Week <span data-toggle="tooltip" title="Income during the last 7 days, updated daily"><i class="far fa-question-circle"></i></span>
+          </th>
           <td>{{ formatIncome .Income7d $.Rates.Currency }}</td>
         </tr>
         <tr>
-          <th scope="row">Month</th>
+          <th scope="row">
+            Last Month <span data-toggle="tooltip" title="Income during the last 31 days, updated daily"><i class="far fa-question-circle"></i></span>
+          </th>
           <td>{{ formatIncome .Income31d $.Rates.Currency }}</td>
         </tr>
         <tr>

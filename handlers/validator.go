@@ -1472,7 +1472,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		start = 90
 	}
 
-	currentEpoch := services.LatestFinalizedEpoch()
+	currentEpoch := services.LatestEpoch() - 1
 
 	var validatorHistory []*types.ValidatorHistory
 
@@ -1523,7 +1523,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
 			tableData = append(tableData, []interface{}{
 				utils.FormatEpoch(i),
-				utils.FormatBalanceChangeFormated(0, currency, nil),
+				"pending...",
 				template.HTML(""),
 				template.HTML(""),
 			})
@@ -1549,9 +1549,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			events += withdrawal
 		}
 
+		rewards := incomeDetails[index][i].TotalClRewards()
 		tableData = append(tableData, []interface{}{
 			utils.FormatEpoch(i),
-			utils.FormatBalanceChangeFormated(incomeDetails[index][i].TotalClRewards(), currency, incomeDetails[index][i]),
+			utils.FormatBalanceChangeFormated(&rewards, currency, incomeDetails[index][i]),
 			template.HTML(""),
 			template.HTML(events),
 		})

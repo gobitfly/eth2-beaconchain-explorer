@@ -132,7 +132,7 @@ func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 	return FormatBalanceChange(balance, currency)
 }
 
-func FormatBalanceChangeFormated(balance int64, currencyName string, details *itypes.ValidatorEpochIncome) template.HTML {
+func FormatBalanceChangeFormated(balance *int64, currencyName string, details *itypes.ValidatorEpochIncome) template.HTML {
 
 	income := ""
 	if details != nil {
@@ -177,23 +177,26 @@ func FormatBalanceChangeFormated(balance int64, currencyName string, details *it
 	}
 
 	if currencyName == "ETH" {
-		if balance == 0 {
+		if balance == nil || *balance == 0 {
 			return template.HTML("<span class=\"float-right\">0 GWei</span>")
 		}
-		if balance < 0 {
-			return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger float-right\">%s GWei</span>", income, FormatAddCommasFormated(float64(balance), 0)))
+		if *balance < 0 {
+			return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger float-right\">%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
 		}
-		return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success float-right\">+%s GWei</span>", income, FormatAddCommasFormated(float64(balance), 0)))
+		return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success float-right\">+%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
 	} else {
-		if balance == 0 {
+		if balance == nil {
+			return template.HTML("<span class=\"float-right\">0 " + currencyName + "</span>")
+		}
+		if *balance == 0 {
 			return template.HTML("pending")
 		}
 
-		balanceF := float64(balance) / float64(1e9)
+		balanceF := float64(*balance) / float64(1e9)
 		exchangeRate := ExchangeRateForCurrency(currencyName)
 		value := balanceF * float64(exchangeRate)
 
-		if balance < 0 {
+		if *balance < 0 {
 			return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%f\">%s %s</span>", value, FormatAddCommasFormated(value, 2), currencyName))
 		}
 		return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%f\">+%s %s</span>", value, FormatAddCommasFormated(value, 2), currencyName))
