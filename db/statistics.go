@@ -598,32 +598,12 @@ func WriteChartSeriesForDay(day int64) error {
 	}
 
 	logger.Infof("exporting consensus rewards from %v to %v", firstEpoch, lastEpoch)
-	historyFirst, err := BigtableClient.GetValidatorBalanceHistory(nil, firstEpoch+1, firstEpoch+1)
-	if err != nil {
-		return err
-	}
 
-	sumStartEpoch := decimal.NewFromInt(0)
-	for _, balances := range historyFirst {
-		for _, balance := range balances {
-			sumStartEpoch = sumStartEpoch.Add(decimal.NewFromInt(int64(balance.Balance)))
-		}
-	}
-
-	historyLast, err := BigtableClient.GetValidatorBalanceHistory(nil, uint64(lastEpoch+1), uint64(lastEpoch+1))
-	if err != nil {
-		return err
-	}
-
-	sumEndEpoch := decimal.NewFromInt(0)
-	for _, balances := range historyLast {
-		for _, balance := range balances {
-			sumEndEpoch = sumEndEpoch.Add(decimal.NewFromInt(int64(balance.Balance)))
-		}
-	}
 	// consensus rewards are in Gwei
-	totalConsensusRewards := sumEndEpoch.Sub(sumStartEpoch)
-	logger.Infof("consensus rewards: %v", totalConsensusRewards.String())
+	totalConsensusRewards := int64(0)
+
+	err = WriterDb.Get(&totalConsensusRewards, "SELECT SUM(COALESCE(cl_rewards_gwei, 0)) FROM validator_stats WHERE day = $1", day)
+	logger.Infof("consensus rewards: %v", totalConsensusRewards)
 
 	logger.Infof("Exporting BURNED_FEES %v", totalBurned.String())
 	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES ($1, 'BURNED_FEES', $2) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", dateTrunc, totalBurned.String())
@@ -649,7 +629,7 @@ func WriteChartSeriesForDay(day int64) error {
 		return fmt.Errorf("error calculating BLOCK_TIME_AVG chart_series: %w", err)
 	}
 	// convert consensus rewards to gwei
-	emission := (totalBaseBlockReward.Add(totalConsensusRewards.Mul(decimal.NewFromInt(1000000000))).Add(totalTips)).Sub(totalBurned)
+	emission := (totalBaseBlockReward.Add(decimal.NewFromInt(totalConsensusRewards).Mul(decimal.NewFromInt(1000000000))).Add(totalTips)).Sub(totalBurned)
 	logger.Infof("Exporting TOTAL_EMISSION %v day emission", emission)
 
 	var lastEmission float64
