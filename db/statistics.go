@@ -363,37 +363,17 @@ func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string)
 	if err != nil {
 		return nil, err
 	}
-	var chartData = make([]*types.ChartDataPoint, len(incomeHistory))
+	var clRewardsSeries = make([]*types.ChartDataPoint, len(incomeHistory))
 
 	for i := 0; i < len(incomeHistory); i++ {
 		color := "#7cb5ec"
-		if incomeHistory[i].Income < 0 {
+		if incomeHistory[i].ClRewards < 0 {
 			color = "#f7a35c"
 		}
 		balanceTs := utils.DayToTime(incomeHistory[i].Day)
-		chartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(incomeHistory[i].Income) / 1000000000), Color: color}
+		clRewardsSeries[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(incomeHistory[i].ClRewards) / 1e9), Color: color}
 	}
-	return chartData, err
-}
-
-func GetValidatorELIncomeHistory(validator_indices []uint64, lowerBoundDay uint64, upperBoundDay uint64) ([]types.ValidatorIncomeHistory, error) {
-	if upperBoundDay == 0 {
-		upperBoundDay = 65536
-	}
-	queryValidatorsArr := pq.Array(validator_indices)
-
-	var result []types.ValidatorIncomeHistory
-	err := ReaderDb.Select(&result, `
-		select 
-			day, consensus_rewards_sum_wei AS income
-		FROM eth_store_stats
-		WHERE validator = ANY($1) AND
-			day BETWEEN ($2 - 1) AND $3
-		GROUP BY day
-		ORDER BY day
-	`, queryValidatorsArr, lowerBoundDay, upperBoundDay)
-
-	return result, err
+	return clRewardsSeries, err
 }
 
 func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64, upperBoundDay uint64) ([]types.ValidatorIncomeHistory, error) {
@@ -404,102 +384,15 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 
 	var result []types.ValidatorIncomeHistory
 	err := ReaderDb.Select(&result, `
-	with _today as (
-		select max(day) + 1 as day from validator_stats
-	),
-	current_balances as (
-		select 0 as end_balance, (select day from _today) as day, array_agg(pubkey) as pubkeys
-		from validators
-		where validatorindex = ANY($1)
-	),
-	current_deposits as (
-		select
-			coalesce(SUM(amount),0) as deposits_amount,
-			(select day from _today) as day
-		from blocks_deposits
-		where 
-			block_slot > (select (day) * $4 * $5 from _today) and
-			publickey in (select pubkey
-				from validators
-				where validatorindex = ANY($1))
-	),
-	current_withdrawals as (
-		select
-			coalesce(SUM(amount),0) as withdrawals_amount,
-			(select day from _today) as day
-		from blocks_withdrawals
-		where 
-			block_slot > (select (day) * 225 * $5 from _today) 
-			AND
-			validatorindex = ANY($1)
-	),
-	history as (
-		select day, coalesce(lag(end_balance) over (order by day), start_balance) as start_balance, end_balance as end_balance, deposits_amount, withdrawals_amount
-		from (
-			select 
-				day, COALESCE(SUM(start_balance),0) AS start_balance, COALESCE(SUM(end_balance),0) AS end_balance, COALESCE(SUM(deposits_amount), 0) AS deposits_amount,  COALESCE(SUM(withdrawals_amount), 0) as withdrawals_amount
-			FROM validator_stats
-			WHERE validatorindex = ANY($1) AND
-				day BETWEEN ($2 - 1) AND $3
-			GROUP BY day
-			ORDER BY day
-		) as foo order by day
-	),
-	today as (
-		select 
-			(select day from _today), COALESCE(SUM(end_balance),0) AS start_balance
-		FROM validator_stats
-		WHERE validatorindex = ANY($1) and day=(select day from _today) - 1
-		GROUP BY day
-	)
-	select * from (
-		select day, end_balance + withdrawals_amount - start_balance - deposits_amount as diff, start_balance, end_balance, deposits_amount, withdrawals_amount from (
-			select 
-				coalesce(history.day, 0) + coalesce(current_balances.day, 0) as day,
-				coalesce(history.start_balance,0) + coalesce(today.start_balance,0) as start_balance,
-				coalesce(history.end_balance,0) + coalesce(current_balances.end_balance,0) as end_balance,
-				coalesce(history.deposits_amount,0) + coalesce(current_deposits.deposits_amount,0) as deposits_amount,
-				coalesce(history.withdrawals_amount,0) + coalesce(current_withdrawals.withdrawals_amount,0) as withdrawals_amount
-			from history
-			full outer join current_balances on current_balances.day = history.day
-			left join current_deposits on current_balances.day = current_deposits.day
-			left join current_withdrawals on current_balances.day = current_withdrawals.day
-			full join today on current_balances.day = today.day
-		) as foo 
-	) as foo2 
-	where diff <> 0  AND
-		day BETWEEN $2 AND $3
-	order by day;`, queryValidatorsArr, lowerBoundDay, upperBoundDay, utils.EpochsPerDay(), utils.Config.Chain.Config.SlotsPerEpoch)
+		SELECT 
+			day, 
+			SUM(COALESCE(cl_rewards_gwei, 0)) AS cl_rewards_gwei
+		FROM validator_stats 
+		WHERE validatorindex = ANY($1) AND day BETWEEN $2 AND $3 
+		GROUP BY day 
+		ORDER BY day
+	;`, queryValidatorsArr, lowerBoundDay, upperBoundDay)
 
-	if len(result) > 0 {
-		if result[len(result)-1].EndBalance.Int64 == 0 {
-			epoch, err := GetLatestEpoch()
-			if err != nil {
-				return nil, err
-			}
-			balances, err := BigtableClient.GetValidatorBalanceHistory(validator_indices, epoch, epoch)
-			if err != nil {
-				return nil, err
-			}
-
-			balanceSum := uint64(0)
-			for _, balance := range balances {
-				if len(balance) == 0 {
-					continue
-				}
-				balanceSum += balance[0].Balance
-			}
-
-			result[len(result)-1].EndBalance.Int64 = int64(balanceSum)
-			result[len(result)-1].EndBalance.Valid = true
-
-			startBalance := int64(0)
-			if result[len(result)-1].StartBalance.Valid {
-				startBalance = result[len(result)-1].StartBalance.Int64
-			}
-			result[len(result)-1].Income = result[len(result)-1].EndBalance.Int64 - startBalance
-		}
-	}
 	return result, err
 }
 

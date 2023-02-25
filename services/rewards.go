@@ -75,7 +75,7 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 	for i, item := range income {
 		key := fmt.Sprintf("%v", utils.DayToTime(item.Day))
 		key = strings.Split(key, " ")[0]
-		iETH := float64(item.Income) / 1e9
+		iETH := float64(item.ClRewards) / 1e9
 		tETH += iETH
 		iCur := iETH * prices[key]
 		tCur += iCur

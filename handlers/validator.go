@@ -1461,14 +1461,18 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 {
 		totalCount += activationAndExitEpoch.ExitEpoch - activationAndExitEpoch.ActivationEpoch
 	} else {
-		totalCount += services.LatestEpoch() - activationAndExitEpoch.ActivationEpoch + 1
+		totalCount += services.LatestFinalizedEpoch() - activationAndExitEpoch.ActivationEpoch + 1
+	}
+
+	if totalCount > 100 {
+		totalCount = 100
 	}
 
 	if start > 90 {
 		start = 90
 	}
 
-	currentEpoch := services.LatestEpoch() - 1
+	currentEpoch := services.LatestFinalizedEpoch()
 
 	var validatorHistory []*types.ValidatorHistory
 
@@ -1488,7 +1492,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	var incomeDetails map[uint64]map[uint64]*itypes.ValidatorEpochIncome
 	g.Go(func() error {
 		var err error
-		incomeDetails, err = db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{index}, currentEpoch-start-12, currentEpoch-start)
+		incomeDetails, err = db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{index}, currentEpoch-start-9, currentEpoch-start)
 		if err != nil {
 			logger.Errorf("error retrieving validator income details history from bigtable: %v", err)
 			return err
@@ -1514,40 +1518,43 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tableData := make([][]interface{}, 0, len(validatorHistory))
-	for _, b := range incomeDetails {
-		for e, id := range b {
 
-			events := template.HTML("")
-			if id.AttestationSourcePenalty > 0 && id.AttestationTargetPenalty > 0 {
-				events += utils.FormatAttestationStatusShort(2)
-			} else {
-				events += utils.FormatAttestationStatusShort(1)
-			}
-
-			if id.ProposerAttestationInclusionReward > 0 {
-				block := utils.FormatBlockStatusShort(1)
-				events += block
-			} else if id.ProposalsMissed > 0 {
-				block := utils.FormatBlockStatusShort(2)
-				events += block
-			}
-
-			if withdrawalMap[e] != nil {
-				withdrawal := utils.FormatWithdrawalShort(uint64(withdrawalMap[e].Slot))
-				events += withdrawal
-			}
-
+	for i := currentEpoch - start; i >= currentEpoch-start-9; i-- {
+		if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
 			tableData = append(tableData, []interface{}{
-				utils.FormatEpoch(e),
-				utils.FormatBalanceChangeFormated(id.TotalClRewards(), currency, id),
+				utils.FormatEpoch(i),
+				utils.FormatBalanceChangeFormated(0, currency, nil),
 				template.HTML(""),
-				template.HTML(events),
+				template.HTML(""),
 			})
+			continue
 		}
-	}
+		events := template.HTML("")
+		if incomeDetails[index][i].AttestationSourcePenalty > 0 && incomeDetails[index][i].AttestationTargetPenalty > 0 {
+			events += utils.FormatAttestationStatusShort(2)
+		} else {
+			events += utils.FormatAttestationStatusShort(1)
+		}
 
-	if totalCount > 100 {
-		totalCount = 100
+		if incomeDetails[index][i].ProposerAttestationInclusionReward > 0 {
+			block := utils.FormatBlockStatusShort(1)
+			events += block
+		} else if incomeDetails[index][i].ProposalsMissed > 0 {
+			block := utils.FormatBlockStatusShort(2)
+			events += block
+		}
+
+		if withdrawalMap[i] != nil {
+			withdrawal := utils.FormatWithdrawalShort(uint64(withdrawalMap[i].Slot))
+			events += withdrawal
+		}
+
+		tableData = append(tableData, []interface{}{
+			utils.FormatEpoch(i),
+			utils.FormatBalanceChangeFormated(incomeDetails[index][i].TotalClRewards(), currency, incomeDetails[index][i]),
+			template.HTML(""),
+			template.HTML(events),
+		})
 	}
 
 	data := &types.DataTableResponse{
@@ -1665,7 +1672,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		}
 		validatorStatsTablePageData.Rows[j].StartBalance = balanceData[i].StartBalance
 		validatorStatsTablePageData.Rows[j].EndBalance = balanceData[i].EndBalance
-		validatorStatsTablePageData.Rows[j].Income = balanceData[i].Income
+		validatorStatsTablePageData.Rows[j].Income = balanceData[i].ClRewards
 		validatorStatsTablePageData.Rows[j].Deposits = balanceData[i].DepositAmount
 	}
 
