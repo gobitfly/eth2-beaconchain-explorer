@@ -671,6 +671,9 @@ func WriteChartSeriesForDay(day int64) error {
 	totalConsensusRewards := int64(0)
 
 	err = WriterDb.Get(&totalConsensusRewards, "SELECT SUM(COALESCE(cl_rewards_gwei, 0)) FROM validator_stats WHERE day = $1", day)
+	if err != nil {
+		return fmt.Errorf("error calculating totalConsensusRewards: %w", err)
+	}
 	logger.Infof("consensus rewards: %v", totalConsensusRewards)
 
 	logger.Infof("Exporting BURNED_FEES %v", totalBurned.String())
