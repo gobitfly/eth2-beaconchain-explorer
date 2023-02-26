@@ -931,31 +931,26 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 }
 
 func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
-	if firstEpoch > lastEpoch {
-		return nil, fmt.Errorf("GetValidatorMissedAttestationsCount received an invalid firstEpoch (%d) and lastEpoch (%d) combination", firstEpoch, lastEpoch)
-	}
 
 	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
 
-	for e := firstEpoch; e <= lastEpoch; e++ {
-		data, err := bigtable.GetValidatorAttestationHistory(validators, e, 1)
+	data, err := bigtable.GetValidatorAttestationHistory(validators, firstEpoch, lastEpoch)
 
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
+	}
 
-		logger.Infof("retrieved attestation history for epoch %v", e)
+	logger.Infof("retrieved attestation history for epochs %v-%v", firstEpoch, lastEpoch)
 
-		for validator, attestations := range data {
-			for _, attestation := range attestations {
-				if attestation.Status == 0 {
-					if res[validator] == nil {
-						res[validator] = &types.ValidatorMissedAttestationsStatistic{
-							Index: validator,
-						}
+	for validator, attestations := range data {
+		for _, attestation := range attestations {
+			if attestation.Status == 0 {
+				if res[validator] == nil {
+					res[validator] = &types.ValidatorMissedAttestationsStatistic{
+						Index: validator,
 					}
-					res[validator].MissedAttestations++
 				}
+				res[validator].MissedAttestations++
 			}
 		}
 	}
@@ -993,7 +988,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 
 // returns the validator attestation effectiveness in %
 func (bigtable *Bigtable) GetValidatorEffectiveness(validators []uint64, epoch uint64) ([]*types.ValidatorEffectiveness, error) {
-	data, err := bigtable.GetValidatorAttestationHistory(validators, epoch, 100)
+	data, err := bigtable.GetValidatorAttestationHistory(validators, epoch-100, epoch)
 
 	if err != nil {
 		return nil, err
