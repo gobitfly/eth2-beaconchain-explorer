@@ -13,6 +13,7 @@ import (
 	itypes "github.com/gobitfly/eth-rewards/types"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
 )
 
 func WriteValidatorStatisticsForDay(day uint64) error {
@@ -23,9 +24,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	epochsPerDay := utils.EpochsPerDay()
 	firstEpoch := day * epochsPerDay
-	lastEpoch := (day+1)*epochsPerDay - 1
-	// firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
-	// lastSlot := (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+	lastEpoch := firstEpoch + epochsPerDay - 1
 
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
@@ -109,6 +108,73 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
 	start = time.Now()
+
+	logrus.Infof("exporting 7d income stats")
+	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, cl_rewards_gwei_7d, el_rewards_wei_7d) 
+		(
+			select validatorindex, $1, sum(coalesce(cl_rewards_gwei, 0)), sum(coalesce(el_rewards_wei, 0)) 
+			from validator_stats 
+			where day <= $1 and day > $1 - 7 
+			group by validatorindex
+		) 
+		on conflict (validatorindex, day) do update set 
+		cl_rewards_gwei_7d = excluded.cl_rewards_gwei_7d, el_rewards_wei_7d=excluded.el_rewards_wei_7d;`, day)
+	if err != nil {
+		return err
+	}
+
+	logrus.Infof("exporting 31d income stats")
+	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, cl_rewards_gwei_31d, el_rewards_wei_31d) 
+		(
+			select validatorindex, $1, sum(coalesce(cl_rewards_gwei, 0)), sum(coalesce(el_rewards_wei, 0)) 
+			from validator_stats 
+			where day <= $1 and day > $1 - 31 
+			group by validatorindex
+		) 
+		on conflict (validatorindex, day) do update set 
+		cl_rewards_gwei_31d = excluded.cl_rewards_gwei_31d, el_rewards_wei_31d=excluded.el_rewards_wei_31d;`, day)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("exporting total income stats")
+	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, cl_rewards_gwei_total, el_rewards_wei_total) 
+		(
+			select vs1.validatorindex, $1, coalesce(vs1.cl_rewards_gwei, 0) + coalesce(vs2.cl_rewards_gwei_total, 0), coalesce(vs1.el_rewards_wei, 0) + coalesce(vs2.el_rewards_wei_total, 0) 
+			from validator_stats vs1
+			left join validator_stats vs2 on vs2.day = $1 - 1 and vs1.validatorindex = vs2.validatorindex
+			where vs1.day = $1
+		) 
+		on conflict (validatorindex, day) do update set 
+		cl_rewards_gwei_total = excluded.cl_rewards_gwei_total, el_rewards_wei_total=excluded.el_rewards_wei_total;`, day)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("populate validator_performance table")
+	_, err = tx.Exec(`insert into validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d) 
+		(
+			select 
+				validatorindex, 
+				end_balance as balance, 
+				cl_rewards_gwei as performance1d, 
+				cl_rewards_gwei_7d as performance7d, 
+				cl_rewards_gwei_31d as performance31d, 
+				cl_rewards_gwei_total as performance365d, 
+				row_number() over(order by cl_rewards_gwei_7d desc) as rank7d 
+			from validator_stats where day = 248
+		) 
+		on conflict (validatorindex) do update set 
+			balance = excluded.balance, 
+			performance1d=excluded.performance1d,
+			performance7d=excluded.performance7d,
+			performance31d=excluded.performance31d,
+			performance365d=excluded.performance365d,
+			rank7d=excluded.rank7d
+			;`) //, day)
+	if err != nil {
+		return err
+	}
 
 	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
 	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(firstEpoch, lastEpoch)
@@ -358,6 +424,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	logger.Infof("statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
 }
+
 func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string) ([]*types.ChartDataPoint, error) {
 	incomeHistory, err := GetValidatorIncomeHistory(validator_indices, 0, 0)
 	if err != nil {
