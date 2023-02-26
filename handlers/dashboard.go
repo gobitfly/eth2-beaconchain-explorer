@@ -415,12 +415,12 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch,
 			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '1') as executedproposals,
 			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '2') as missedproposals,
-			COALESCE(validator_performance.performance7d, 0) as performance7d,
+			COALESCE(validator_stats.cl_rewards_gwei_7d, 0) as performance7d,
 			COALESCE(validator_names.name, '') AS name,
 		    validators.status AS state
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
+		LEFT JOIN validator_stats ON validators.validatorindex = validator_stats.validatorindex AND validator_stats.day = (SELECT MAX(day) FROM validator_stats)
 		WHERE validators.validatorindex = ANY($1)
 		LIMIT $2`, filter, validatorLimit)
 
