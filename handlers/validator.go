@@ -1818,7 +1818,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 		// retrieve sync duties from bigtable
 		// note that the limit may be negative for either call, which results in the function fetching epochs for the absolute limit value in ascending ordering
-		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, firstShownEpoch-limit, limit, ascOrdering)
+		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, firstShownEpoch-limit, firstShownEpoch, ascOrdering)
 		if err != nil {
 			logger.Errorf("error retrieving validator sync duty data from bigtable: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

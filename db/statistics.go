@@ -395,9 +395,9 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 	;`, queryValidatorsArr, lowerBoundDay, upperBoundDay)
 
 	// retrieve rewards for epochs not yet in stats
-	lastDay := len(result) - 1
-	currentDayIncome := int64(0)
-	if upperBoundDay == 65536 && lastDay > 0 {
+	if upperBoundDay == 65536 && len(result) > 0 {
+		currentDayIncome := int64(0)
+		lastDay := result[len(result)-1].Day
 		currentDay := uint64(lastDay + 1)
 		startEpoch := currentDay * utils.EpochsPerDay()
 		endEpoch := startEpoch + utils.EpochsPerDay() - 1
@@ -417,6 +417,8 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 			Day:       int64(currentDay),
 			ClRewards: currentDayIncome,
 		})
+
+		logger.Info(currentDay, currentDayIncome)
 	}
 
 	return result, err
