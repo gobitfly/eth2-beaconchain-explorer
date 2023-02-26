@@ -417,8 +417,6 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 			Day:       int64(currentDay),
 			ClRewards: currentDayIncome,
 		})
-
-		logger.Info(currentDay, currentDayIncome)
 	}
 
 	return result, err
