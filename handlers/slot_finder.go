@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-// Blocks will return information about blocks using a go template
+// Will return the slot finder page
 func SlotFinder(w http.ResponseWriter, r *http.Request) {
 
 	var template = templates.GetTemplate("layout.html", "slot/slotfinder.html", "slot/components/slotfinder.html", "slot/components/upgradescheduler.html")

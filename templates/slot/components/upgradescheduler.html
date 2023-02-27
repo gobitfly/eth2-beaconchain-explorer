@@ -9,16 +9,20 @@
       max-height: 500px;
     }
     .upgrade-scheduler table {
+      width: 100%;
+    }
+    .upgrade-scheduler table {
       position: relative;
     }
     .upgrade-scheduler thead {
       position: sticky;
       top: 0;
     }
-    .upgrade-scheduler thead {
+    .upgrade-scheduler thead tr {
       background-color: var(--bg-color);
       box-shadow: 0 2px 2px -1px var(--shadow-light);
     }
+
     .upgrade-scheduler th,
     .upgrade-scheduler td {
       padding: 4px;
@@ -100,11 +104,11 @@
       const col = document.createElement("td")
       if (link) {
         const aLink = document.createElement("a")
-        aLink.innerText = value
+        aLink.innerHTML = value
         aLink.href = link
         col.appendChild(aLink)
       } else {
-        col.innerText = value
+        col.innerHTML = value
       }
       if (className) {
         col.className = className
@@ -117,8 +121,8 @@
       table.innerHTML = ""
       const utc = luxon.DateTime.utc(date.getFullYear(), date.getMonth() + 1, date.getDate(), 12)
       const dif = utc.ts / 1000 - genesisTimeStamp
-      const firstSlot = Math.max(1, dif / secondsPerSlot)
-      const firstEpoch = 1 + Math.floor(firstSlot / slotsPerEpoch)
+      const firstSlot = Math.max(0, dif / secondsPerSlot)
+      const firstEpoch = Math.floor(firstSlot / slotsPerEpoch)
       const epochInADay = Math.ceil((24 * 60 * 60) / secondsPerSlot / slotsPerEpoch)
       for (let i = 0; i < epochInADay; i++) {
         const row = document.createElement("tr")
@@ -128,7 +132,7 @@
         appendTd(row, slot, getClassForNumber(slot), `/slot/${slot}`)
         const baseDate = luxon.DateTime.fromSeconds(genesisTimeStamp + epoch * slotsPerEpoch * secondsPerSlot)
         timeZones.forEach((tz) => {
-          const value = new Intl.DateTimeFormat("en-GB", { dateStyle: "short", timeStyle: "short", timeZone: tz }).format(baseDate)
+          const value = new Intl.DateTimeFormat("en-GB", { dateStyle: "short", timeStyle: "short", timeZone: tz }).format(baseDate).replace(" ", "<br>")
           appendTd(row, value, getTimeClass(baseDate, tz))
         })
 
