@@ -427,10 +427,10 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	return nil
 }
 
-func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string) ([]*types.ChartDataPoint, error) {
-	incomeHistory, err := GetValidatorIncomeHistory(validator_indices, 0, 0)
+func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string) ([]*types.ChartDataPoint, int64, error) {
+	incomeHistory, currentDayIncome, err := GetValidatorIncomeHistory(validator_indices, 0, 0)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	var clRewardsSeries = make([]*types.ChartDataPoint, len(incomeHistory))
 
@@ -442,10 +442,10 @@ func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string)
 		balanceTs := utils.DayToTime(incomeHistory[i].Day + 1)
 		clRewardsSeries[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(incomeHistory[i].ClRewards) / 1e9), Color: color}
 	}
-	return clRewardsSeries, err
+	return clRewardsSeries, currentDayIncome, err
 }
 
-func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64, upperBoundDay uint64) ([]types.ValidatorIncomeHistory, error) {
+func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64, upperBoundDay uint64) ([]types.ValidatorIncomeHistory, int64, error) {
 	if upperBoundDay == 0 {
 		upperBoundDay = 65536
 	}
@@ -464,8 +464,8 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 	;`, queryValidatorsArr, lowerBoundDay, upperBoundDay)
 
 	// retrieve rewards for epochs not yet in stats
+	currentDayIncome := int64(0)
 	if upperBoundDay == 65536 && len(result) > 0 {
-		currentDayIncome := int64(0)
 		lastDay := result[len(result)-1].Day
 		currentDay := uint64(lastDay + 1)
 		startEpoch := currentDay * utils.EpochsPerDay()
@@ -473,7 +473,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		income, err := BigtableClient.GetValidatorIncomeDetailsHistory(validator_indices, startEpoch, endEpoch)
 
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		for _, ids := range income {
@@ -488,7 +488,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		})
 	}
 
-	return result, err
+	return result, currentDayIncome, err
 }
 
 func WriteChartSeriesForDay(day int64) error {

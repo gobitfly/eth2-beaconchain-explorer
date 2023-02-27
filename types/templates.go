@@ -352,6 +352,7 @@ type ValidatorPageData struct {
 	MissedSyncCount                     uint64
 	OrphanedSyncCount                   uint64
 	UnmissedSyncPercentage              float64 // missed/(participated+orphaned)
+	IncomeToday                         int64
 	Income1d                            int64
 	Income7d                            int64
 	Income31d                           int64
