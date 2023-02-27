@@ -2274,7 +2274,7 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 // @Summary Get the most recent pixels that have been painted.
 // @Tags Misc
 // @Description Returns the most recent pixels that have been painted during the last 10000 slots.
-// @Description Optionally set the slot query parameter to look back further and/or the slot query parameters to restrict the area.
+// @Description Optionally set the slot query parameter to look back further.
 // @Description Boundary coordinates are included.
 // @Description Returns an error if an invalid area is provided by the coordinates.
 // @Produce  json
