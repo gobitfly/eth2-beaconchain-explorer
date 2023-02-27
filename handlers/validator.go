@@ -1585,7 +1585,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if withdrawalMap[i] != nil {
-			withdrawal := utils.FormatWithdrawalShort(uint64(withdrawalMap[i].Slot))
+			withdrawal := utils.FormatWithdrawalShort(uint64(withdrawalMap[i].Slot), withdrawalMap[i].Amount)
 			events += withdrawal
 		}
 

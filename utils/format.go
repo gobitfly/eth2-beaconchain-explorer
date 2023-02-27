@@ -333,8 +333,8 @@ func FormatBlockStatusShort(status uint64) template.HTML {
 }
 
 // FormatBlockStatusShort will return an html status for a block.
-func FormatWithdrawalShort(slot uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<span title=\"Withdrawal processed in epoch %v during slot: %v\" data-toggle=\"tooltip\" class=\"mx-1 badge badge-pill bg-success text-white\" style=\"font-size: 12px; font-weight: 500;\"><i class=\"fas fa-money-bill\"></i></span>", EpochOfSlot(slot), slot))
+func FormatWithdrawalShort(slot uint64, amount uint64) template.HTML {
+	return template.HTML(fmt.Sprintf("<span title=\"Withdrawal processed in epoch %v during slot %v for %v\" data-toggle=\"tooltip\" class=\"mx-1 badge badge-pill bg-success text-white\" style=\"font-size: 12px; font-weight: 500;\"><i class=\"fas fa-money-bill\"></i></span>", EpochOfSlot(slot), slot, FormatCurrentBalance(amount, "ETH")))
 }
 
 func FormatTransactionType(txnType uint8) string {
