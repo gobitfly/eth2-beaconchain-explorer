@@ -391,7 +391,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	start = time.Now()
 	logger.Infof("exporting withdrawals and withdrawals_amount statistics")
 	withdrawalsQuery := `
-		insert into validator_stats (validatorindex, day, deposits, deposits_amount) 
+		insert into validator_stats (validatorindex, day, withdrawals, withdrawals_amount) 
 		(
 			select validatorindex, $3, count(*), sum(amount)
 			from blocks_withdrawals
