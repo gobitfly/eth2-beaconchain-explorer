@@ -24,12 +24,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	gorillacontext "github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mssola/user_agent"
+	"github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 
@@ -1391,20 +1393,8 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	j := json.NewEncoder(w)
-	response := &types.ApiResponse{}
-	response.Status = "OK"
 
-	if len(data) == 1 {
-		response.Data = data[0]
-	} else {
-		response.Data = data
-	}
-	err = j.Encode(response)
-
-	if err != nil {
-		logger.Errorf("error serializing json data for API %v route: %v", r.URL, err)
-	}
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{data})
 }
 
 type ApiValidatorResponse struct {
@@ -3209,6 +3199,78 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		return err
 	}
 	return nil
+}
+
+// ApiWithdrawalCredentialValidators godoc
+// @Summary Get validator indexes and pubkeys of a withdrawal credential
+// @Tags Execution
+// @Description Returns the validator indexes and pubkeys of a withdrawal credential
+// @Produce json
+// @Param withdrawalCredential path string true "Provide a withdrawal credential with an optional 0x prefix"
+// @Param  limit query string false "Limit the number of results, maximum: 100"
+// @Param offset query string false "Offset the number of results"
+// @Success 200 {object} types.ApiResponse{data=types.ApiWithdrawalCredentialResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/execution/{withdrawalCredential} [get]
+func ApiWithdrawalCredentialValidators(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	q := r.URL.Query()
+
+	credentialString := vars["withdrawalCredential"]
+	credentialString = strings.ToLower(credentialString)
+	credential := common.FromHex(credentialString)
+
+	limitQuery := q.Get("limit")
+	offsetQuery := q.Get("offset")
+
+	offset := parseUintWithDefault(offsetQuery, 0)
+	limit := parseUintWithDefault(limitQuery, 10)
+
+	// We set a max limit to limit the request call time.
+	const maxLimit uint64 = 100
+	limit = math.MinU64(limit, maxLimit)
+
+	response := types.ApiWithdrawalCredentialResponse{}
+
+	result := []struct {
+		Index  uint64 `db:"validatorindex"`
+		Pubkey []byte `db:"pubkey"`
+	}{}
+
+	err := db.ReaderDb.Select(&result, `
+	SELECT
+		validatorindex,
+		pubkey
+	FROM validators
+	WHERE withdrawalcredentials = $1
+	LIMIT $2
+	OFFSET $3
+	`, credential, limit, offset)
+
+	if err != nil {
+		logger.Warnf("error retrieving validator data from db: %T", err)
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	response.WithdrawalCredential = fmt.Sprintf("%#x", credential)
+	response.Validators = []struct {
+		Index  uint64 `json:"index"`
+		PubKey string `json:"pubkey"`
+	}{}
+	for _, validator := range result {
+		response.Validators = append(response.Validators, struct {
+			Index  uint64 `json:"index"`
+			PubKey string `json:"pubkey"`
+		}{
+			Index:  validator.Index,
+			PubKey: fmt.Sprintf("%#x", validator.Pubkey),
+		})
+	}
+
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
 }
 
 func DecodeMapStructure(input interface{}, output interface{}) error {

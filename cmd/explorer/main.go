@@ -321,6 +321,8 @@ func main() {
 		apiV1Router.HandleFunc("/execution/address/{address}/blocks", handlers.ApiEth1AddressBlocks).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/execution/address/{address}/uncles", handlers.ApiEth1AddressUncles).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/execution/address/{address}/tokens", handlers.ApiEth1AddressTokens).Methods("GET", "OPTIONS")
+
+		apiV1Router.HandleFunc("/execution/{withdrawalCredential}", handlers.ApiWithdrawalCredentialValidators).Methods("GET", "OPTIONS")
 		// // query params: type={erc20,erc721,erc1155}, address
 
 		// apiV1Router.HandleFunc("/execution/transactions", handlers.ApiEth1Tx).Methods("GET", "OPTIONS")
