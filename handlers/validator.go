@@ -57,6 +57,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
 
 	//start := time.Now()
+	timings := struct {
+		Start         time.Time
+		BasicInfo     time.Duration
+		Earnings      time.Duration
+		Deposits      time.Duration
+		Proposals     time.Duration
+		Charts        time.Duration
+		Effectiveness time.Duration
+		Statistics    time.Duration
+		SyncStats     time.Duration
+		Rocketpool    time.Duration
+	}{
+		Start: time.Now(),
+	}
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
@@ -273,6 +287,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	timings.BasicInfo = time.Since(timings.Start)
+	timings.Start = time.Now()
 
 	earnings, balances, err := GetValidatorEarnings([]uint64{index}, GetCurrency(r))
 	if err != nil {
@@ -280,6 +296,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	timings.Earnings = time.Since(timings.Start)
+	timings.Start = time.Now()
 
 	validatorPageData.Income1d = earnings.LastDay
 	validatorPageData.Income7d = earnings.LastWeek
@@ -359,6 +377,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+
+	timings.Deposits = time.Since(timings.Start)
+	timings.Start = time.Now()
 	// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
 	if epoch >= utils.Config.Chain.Config.CappellaForkEpoch {
 		// get validator withdrawals
@@ -482,6 +503,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if validatorPageData.ExitEpoch != 9223372036854775807 {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 	}
+	timings.Proposals = time.Since(timings.Start)
+	timings.Start = time.Now()
 
 	var lastStatsDay uint64
 	err = db.ReaderDb.Get(&lastStatsDay, "select coalesce(max(day),0) from validator_stats")
@@ -533,6 +556,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.AttestationsCount-validatorPageData.MissedAttestationsCount) / float64(validatorPageData.AttestationsCount)
 	}
 
+	timings.Statistics = time.Since(timings.Start)
+	timings.Start = time.Now()
 	// logger.Infof("attestations data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
@@ -552,7 +577,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
+	timings.Charts = time.Since(timings.Start)
+	timings.Start = time.Now()
 	// logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
@@ -611,6 +637,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AttestationInclusionEffectiveness = eff[0].AttestationEfficiency
 	}
 
+	timings.Effectiveness = time.Since(timings.Start)
+	timings.Start = time.Now()
 	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
@@ -697,6 +725,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.SyncCount = validatorPageData.ParticipatedSyncCount + validatorPageData.MissedSyncCount + validatorPageData.OrphanedSyncCount + syncStats.ScheduledSync
 		validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.SyncCount-validatorPageData.MissedSyncCount) / float64(validatorPageData.SyncCount)
 	}
+	timings.SyncStats = time.Since(timings.Start)
+	timings.Start = time.Now()
 
 	// add rocketpool-data if available
 	validatorPageData.Rocketpool = &types.RocketpoolValidatorPageData{}
@@ -735,7 +765,23 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Infof("got validator page data")
+	timings.Rocketpool = time.Since(timings.Start)
+	timings.Start = time.Now()
+
+	// logger.WithFields(logrus.Fields{
+	// 	"index":         index,
+	// 	"BasicInfo":     timings.BasicInfo,
+	// 	"Earnings":      timings.Earnings,
+	// 	"Deposits":      timings.Deposits,
+	// 	"Proposals":     timings.Proposals,
+	// 	"Charts":        timings.Charts,
+	// 	"Effectiveness": timings.Effectiveness,
+	// 	"Statistics":    timings.Statistics,
+	// 	"SyncStats":     timings.SyncStats,
+	// 	"Rocketpool":    timings.Rocketpool,
+	// 	"total":         timings.BasicInfo + timings.Earnings + timings.Deposits + timings.Proposals + timings.Charts + timings.Effectiveness + timings.Statistics + timings.SyncStats + timings.Rocketpool,
+	// }).Infof("got validator page data")
+
 	data.Data = validatorPageData
 
 	if utils.IsApiRequest(r) {
