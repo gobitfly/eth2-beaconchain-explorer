@@ -1020,12 +1020,6 @@ type StakingCalculatorPageData struct {
 	TotalStaked                 uint64
 }
 
-type EthOneDepositsPageData struct {
-	*Stats
-	DepositContract string
-	DepositChart    *ChartsPageDataChart
-}
-
 type DepositsPageData struct {
 	*Stats
 	DepositContract string
