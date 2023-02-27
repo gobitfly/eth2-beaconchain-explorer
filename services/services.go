@@ -1471,7 +1471,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	// }
 
 	// swap this for GetEpochIncomeHistory in the future
-	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, latestEpoch, 10)
+	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, latestEpoch-10, latestBlock)
 	if err != nil {
 		logger.WithError(err).Error("error getting validator income history")
 	}

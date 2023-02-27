@@ -5,7 +5,8 @@ WORKDIR /src
 RUN go mod download
 RUN go install github.com/swaggo/swag/cmd/swag@v1.8.3
 ADD . /src
-RUN make -B all
+ARG target=all
+RUN make -B $target
 
 # final stage
 FROM ubuntu:22.04
