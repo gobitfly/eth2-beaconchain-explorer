@@ -382,7 +382,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	timings.Deposits = time.Since(timings.Start)
 	timings.Start = time.Now()
-  
+
 	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
 		// validators can have 0x01 credentials even before the cappella fork
 		validatorPageData.IsWithdrawableAddress = true
@@ -1604,6 +1604,12 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			utils.FormatBalanceChangeFormated(&rewards, currency, incomeDetails[index][i]),
 			template.HTML(""),
 			template.HTML(events),
+		})
+	}
+
+	if len(tableData) == 0 {
+		tableData = append(tableData, []interface{}{
+			template.HTML("Validator no longer active"),
 		})
 	}
 
