@@ -142,7 +142,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		case 1:
 			epochPageData.ProposedCount += 1
 			epochPageData.SyncParticipationRate += block.SyncAggParticipation
-			epochPageData.WithdrawalCount += b.Withdrawals
+			epochPageData.WithdrawalCount += block.Withdrawals
 		case 2:
 			epochPageData.MissedCount += 1
 		case 3:
