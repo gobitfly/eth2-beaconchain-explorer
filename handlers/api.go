@@ -1355,7 +1355,7 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 			lastattestationslot,
 			status,
 			COALESCE(n.name, '') AS name,
-			w.total as total_withdrawals
+			COALESCE(w.total, 0) as total_withdrawals
 		FROM validators v
 		LEFT JOIN validator_names n ON n.publickey = v.pubkey
 		LEFT JOIN (
