@@ -69,6 +69,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData := types.ValidatorPageData{}
 
+	validatorPageData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
+
 	stats := services.GetLatestStats()
 	churnRate := stats.ValidatorChurnLimit
 	if churnRate == nil {
@@ -359,8 +361,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
-	if epoch >= utils.Config.Chain.Config.CappellaForkEpoch {
+
+	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
+		// validators can have 0x01 credentials even before the cappella fork
+		validatorPageData.IsWithdrawableAddress = true
+	}
+
+	if validatorPageData.CappellaHasHappened {
+		// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
+
 		// get validator withdrawals
 		withdrawalsCount, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
 		if err != nil {
@@ -380,10 +389,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.BLSChange = blsChange
 
 		if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x00}) && blsChange != nil {
-			validatorPageData.IsWithdrawableAddress = true
-		}
-
-		if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
+			// blsChanges are only possible afters cappeala
 			validatorPageData.IsWithdrawableAddress = true
 		}
 
@@ -409,9 +415,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				validatorPageData.NextWithdrawalRow = tableData
 			}
 		}
-		// else {
-		// logger.Infof("IS NOT WITHDRAWABLE credentials: %x IsWithdrawableAddress: %v CurrentBalance: %v WithdrawableEpoch: %v Epoch: %v EffectiveBalance: %v CurrentBalance: %v MaxEff: %v", validatorPageData.WithdrawCredentials, validatorPageData.IsWithdrawableAddress, validatorPageData.CurrentBalance, validatorPageData.WithdrawableEpoch, validatorPageData.Epoch, validatorPageData.EffectiveBalance, utils.Config.Chain.Config.MaxEffectiveBalance, validatorPageData.CurrentBalance, utils.Config.Chain.Config.MaxEffectiveBalance)
-		// }
 	}
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
