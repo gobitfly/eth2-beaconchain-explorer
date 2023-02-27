@@ -45,6 +45,48 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	}
 	defer tx.Rollback()
 
+	logger.Infof("exporting deposits and deposits_amount statistics")
+	depositsQry := `
+		insert into validator_stats (validatorindex, day, deposits, deposits_amount) 
+		(
+			select validators.validatorindex, $3, count(*), sum(amount)
+			from blocks_deposits
+			inner join validators on blocks_deposits.publickey = validators.pubkey
+			inner join blocks on blocks_deposits.block_root = blocks.blockroot
+			where block_slot >= $1 and block_slot <= $2 and blocks.status = '1'
+			group by validators.validatorindex
+		) 
+		on conflict (validatorindex, day) do
+			update set deposits = excluded.deposits, 
+			deposits_amount = excluded.deposits_amount;`
+	if day == 0 {
+		// genesis-deposits will be added to block 0 by the exporter which is technically not 100% correct
+		// since deposits will be added to the validator-balance only after the block which includes the deposits.
+		// to ease the calculation of validator-income (considering deposits) we set the day of genesis-deposits to -1.
+		depositsQry = `
+			insert into validator_stats (validatorindex, day, deposits, deposits_amount)
+			(
+				select validators.validatorindex, case when block_slot = 0 then -1 else $3 end as day, count(*), sum(amount)
+				from blocks_deposits
+				inner join validators on blocks_deposits.publickey = validators.pubkey
+				where block_slot >= $1 and block_slot <= $2 and status = '1'
+				group by validators.validatorindex, day
+			) 
+			on conflict (validatorindex, day) do
+				update set deposits = excluded.deposits, 
+				deposits_amount = excluded.deposits_amount;`
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = tx.Exec(depositsQry, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch, day)
+	if err != nil {
+		return err
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	start = time.Now()
 	logger.Infof("exporting cl_rewards_gwei and el_rewards_wei statistics")
 	incomeDetails, err := BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, firstEpoch, lastEpoch)
 	if err != nil {
@@ -81,14 +123,15 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		start := b
 		end := b + batchSize
 		if len(incomeStats) < end {
-			end = len(incomeStats)
+			end = len(incomeStats) - 1
 		}
 
+		logger.Info(start, end)
 		numArgs := 4
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
-		for i := start; i < end; i++ {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
+		for i := start; i <= end; i++ {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3, (i-start)*numArgs+4))
 			valueArgs = append(valueArgs, i)
 			valueArgs = append(valueArgs, day)
 			valueArgs = append(valueArgs, incomeStats[uint64(i)].TotalClRewards())
@@ -348,47 +391,6 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	logger.Infof("export completed, took %v", time.Since(start))
 
 	start = time.Now()
-	logger.Infof("exporting deposits and deposits_amount statistics")
-	depositsQry := `
-		insert into validator_stats (validatorindex, day, deposits, deposits_amount) 
-		(
-			select validators.validatorindex, $3, count(*), sum(amount)
-			from blocks_deposits
-			inner join validators on blocks_deposits.publickey = validators.pubkey
-			inner join blocks on blocks_deposits.block_root = blocks.blockroot
-			where block_slot >= $1 * $4 and block_slot <= $2 * $4 and blocks.status = '1'
-			group by validators.validatorindex
-		) 
-		on conflict (validatorindex, day) do
-			update set deposits = excluded.deposits, 
-			deposits_amount = excluded.deposits_amount;`
-	if day == 0 {
-		// genesis-deposits will be added to block 0 by the exporter which is technically not 100% correct
-		// since deposits will be added to the validator-balance only after the block which includes the deposits.
-		// to ease the calculation of validator-income (considering deposits) we set the day of genesis-deposits to -1.
-		depositsQry = `
-			insert into validator_stats (validatorindex, day, deposits, deposits_amount)
-			(
-				select validators.validatorindex, case when block_slot = 0 then -1 else $3 end as day, count(*), sum(amount)
-				from blocks_deposits
-				inner join validators on blocks_deposits.publickey = validators.pubkey
-				where block_slot >= $1 * $4 and block_slot <= $2 * $4 and status = '1'
-				group by validators.validatorindex, day
-			) 
-			on conflict (validatorindex, day) do
-				update set deposits = excluded.deposits, 
-				deposits_amount = excluded.deposits_amount;`
-		if err != nil {
-			return err
-		}
-	}
-	_, err = tx.Exec(depositsQry, firstEpoch, lastEpoch, day, utils.Config.Chain.Config.SlotsPerEpoch)
-	if err != nil {
-		return err
-	}
-	logger.Infof("export completed, took %v", time.Since(start))
-
-	start = time.Now()
 	logger.Infof("exporting withdrawals and withdrawals_amount statistics")
 	withdrawalsQuery := `
 		insert into validator_stats (validatorindex, day, withdrawals, withdrawals_amount) 
@@ -396,13 +398,13 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			select validatorindex, $3, count(*), sum(amount)
 			from blocks_withdrawals
 			inner join blocks on blocks_withdrawals.block_root = blocks.blockroot
-			where block_slot >= $1 * $4 and block_slot <= $2 * $4 and blocks.status = '1'
+			where block_slot >= $1 and block_slot <= $2 and blocks.status = '1'
 			group by validatorindex
 		) 
 		on conflict (validatorindex, day) do
 			update set withdrawals = excluded.withdrawals, 
 			withdrawals_amount = excluded.withdrawals_amount;`
-	_, err = tx.Exec(withdrawalsQuery, firstEpoch, lastEpoch, day, utils.Config.Chain.Config.SlotsPerEpoch)
+	_, err = tx.Exec(withdrawalsQuery, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch, day)
 	if err != nil {
 		return err
 	}
