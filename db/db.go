@@ -2386,15 +2386,8 @@ func GetValidatorsWithdrawals(validators []uint64, fromEpoch uint64, toEpoch uin
 	return withdrawals, nil
 }
 
-func GetValidatorsWithdrawalsByEpoch(validator []uint64, limit uint64, offset uint64) ([]*types.WithdrawalsByEpoch, error) {
+func GetValidatorsWithdrawalsByEpoch(validator []uint64, startEpoch uint64, endEpoch uint64) ([]*types.WithdrawalsByEpoch, error) {
 	var withdrawals []*types.WithdrawalsByEpoch
-	if limit == 0 {
-		limit = 100
-	}
-
-	if limit > (offset + 100) {
-		limit = offset + 100
-	}
 
 	err := ReaderDb.Select(&withdrawals, `
 	SELECT 
@@ -2402,10 +2395,10 @@ func GetValidatorsWithdrawalsByEpoch(validator []uint64, limit uint64, offset ui
 		w.block_slot / $4 as epoch, 
 		sum(w.amount) as amount
 	FROM blocks_withdrawals w
-	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-	WHERE validatorindex = ANY($1)
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1' AND b.slot >= $2 AND b.slot <= $3
+	WHERE validatorindex = ANY($1) 
 	GROUP BY w.validatorindex, w.block_slot / $4
-	ORDER BY w.block_slot / $4 DESC LIMIT $2 OFFSET $3`, pq.Array(validator), limit, offset, utils.Config.Chain.Config.SlotsPerEpoch)
+	ORDER BY w.block_slot / $4 DESC LIMIT 100`, pq.Array(validator), startEpoch*utils.Config.Chain.Config.SlotsPerEpoch, endEpoch*utils.Config.Chain.Config.SlotsPerEpoch, utils.Config.Chain.Config.SlotsPerEpoch)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil

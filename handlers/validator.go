@@ -1521,7 +1521,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	var withdrawals []*types.WithdrawalsByEpoch
 	g.Go(func() error {
 		var err error
-		withdrawals, err = db.GetValidatorsWithdrawalsByEpoch([]uint64{index}, 10, uint64(start))
+		withdrawals, err = db.GetValidatorsWithdrawalsByEpoch([]uint64{index}, currentEpoch-start-9, currentEpoch-start)
 		if err != nil {
 			logger.Errorf("error retrieving validator withdrawals by epoch: %v", err)
 			return err

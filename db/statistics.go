@@ -132,10 +132,18 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
 		for i := start; i <= end; i++ {
 			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3, (i-start)*numArgs+4))
+			clRewards := int64(0)
+			elRewards := "0"
+			if incomeStats[uint64(i)] != nil {
+				clRewards = incomeStats[uint64(i)].TotalClRewards()
+				elRewards = new(big.Int).SetBytes(incomeStats[uint64(i)].TxFeeRewardWei).String()
+			} else {
+				logger.Warnf("no rewards for validator %v available", i)
+			}
 			valueArgs = append(valueArgs, i)
 			valueArgs = append(valueArgs, day)
-			valueArgs = append(valueArgs, incomeStats[uint64(i)].TotalClRewards())
-			valueArgs = append(valueArgs, new(big.Int).SetBytes(incomeStats[uint64(i)].TxFeeRewardWei).String())
+			valueArgs = append(valueArgs, clRewards)
+			valueArgs = append(valueArgs, elRewards)
 		}
 		stmt := fmt.Sprintf(`
 		insert into validator_stats (validatorindex, day, cl_rewards_gwei, el_rewards_wei) VALUES
