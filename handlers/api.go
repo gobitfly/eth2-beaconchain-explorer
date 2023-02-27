@@ -3403,7 +3403,7 @@ func parseApiValidatorParamToIndices(origParam string, limit int) (indices []uin
 	var pubkeys pq.ByteaArray
 	params := strings.Split(origParam, ",")
 	if len(params) > limit {
-		return nil, fmt.Errorf("only a maximum of 100 query parameters are allowed")
+		return nil, fmt.Errorf("only a maximum of %d query parameters are allowed", limit)
 	}
 	for _, param := range params {
 		if strings.Contains(param, "0x") || len(param) == 96 {

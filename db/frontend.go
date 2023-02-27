@@ -130,7 +130,7 @@ func CreateAPIKey(userID uint64) error {
 		return err
 	}
 
-	key, err := utils.GenerateAPIKey(u.Password, u.Email, fmt.Sprint(u.RegisterTs.Unix()))
+	key, err := utils.GenerateRandomAPIKey()
 	if err != nil {
 		return err
 	}

@@ -235,7 +235,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case "indexed_validators_by_eth1_addresses":
-		if len(search) <= 1 {
+		if len(search) <= 1 || len(search) > 40 {
 			break
 		}
 		if len(search)%2 != 0 {
@@ -254,20 +254,55 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 				return
 			}
-			err = db.ReaderDb.Select(result, `
-			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
-				SELECT 
-					DISTINCT ON(validatorindex) validatorindex,
-					ENCODE(from_address::bytea, 'hex') as from_address,
-					DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
-					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
-				FROM eth1_deposits
-				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE from_address LIKE $1 || '%'::bytea
-			) a 
-			WHERE validatorrow <= $2 AND addressrow <= 10
-			GROUP BY from_address
-			ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
+			if len(eth1AddressHash) == 20 {
+				// if it is an eth1-address just search for exact match
+				err = db.ReaderDb.Select(result, `
+				SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
+					SELECT 
+						DISTINCT ON(validatorindex) validatorindex,
+						ENCODE(from_address::bytea, 'hex') as from_address,
+						DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
+						DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
+					FROM eth1_deposits
+					INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
+					WHERE from_address = $1
+				) a 
+				WHERE validatorrow <= $2 AND addressrow <= 10
+				GROUP BY from_address
+				ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
+			} else if len(eth1AddressHash) <= 16 {
+				// if the lenght is less then 32 use byte-wise comparison
+				err = db.ReaderDb.Select(result, `
+				SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
+					SELECT 
+						DISTINCT ON(validatorindex) validatorindex,
+						ENCODE(from_address::bytea, 'hex') as from_address,
+						DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
+						DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
+					FROM eth1_deposits
+					INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
+					WHERE from_address LIKE $1 || '%'::bytea
+				) a 
+				WHERE validatorrow <= $2 AND addressrow <= 10
+				GROUP BY from_address
+				ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
+			} else {
+				// otherwise use hex (see BIDS-1570)
+				err = db.ReaderDb.Select(result, `
+				SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
+					SELECT 
+						DISTINCT ON(validatorindex) validatorindex,
+						ENCODE(from_address::bytea, 'hex') as from_address,
+						DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
+						DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
+					FROM eth1_deposits
+					INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
+					WHERE encode(from_address,'hex') LIKE $1
+				) a 
+				WHERE validatorrow <= $2 AND addressrow <= 10
+				GROUP BY from_address
+				ORDER BY count DESC`, search+"%", searchValidatorsResultLimit)
+			}
 			if err != nil {
 				logger.Errorf("error reading result data: %v", err)
 				http.Error(w, "Internal server error", http.StatusServiceUnavailable)

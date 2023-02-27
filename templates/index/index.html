@@ -13,6 +13,7 @@
     <script src="/js/d3.min.js"></script>
   {{ end }}
     <script>
+        var creditsEnabled = {{ if .SlotVizData.Epochs }} false {{ else }} true {{ end }}
         var app = new Vue({
             el: '#app',
             delimiters: ['${', '}'], // Standard vuejs template syntax conflicts with golang template syntax
@@ -30,6 +31,7 @@
                     updateIn: -1,
                     page: {{.}},
                     chartOptions: {
+                        credits: { enabled: creditsEnabled },
                         rangeSelector: {enabled: false},
                         navigator: {enabled: false},
                         scrollbar: {enabled: false},
@@ -184,7 +186,7 @@
                 })
             }
         })
-</script>
+</script> {{ if .SlotVizData }}{{ template "SlotViz" .SlotVizData }}{{ end }}
 {{ end }}
 
 {{ define "css" }}
