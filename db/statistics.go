@@ -439,7 +439,7 @@ func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string)
 		if incomeHistory[i].ClRewards < 0 {
 			color = "#f7a35c"
 		}
-		balanceTs := utils.DayToTime(incomeHistory[i].Day)
+		balanceTs := utils.DayToTime(incomeHistory[i].Day + 1)
 		clRewardsSeries[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(incomeHistory[i].ClRewards) / 1e9), Color: color}
 	}
 	return clRewardsSeries, err
