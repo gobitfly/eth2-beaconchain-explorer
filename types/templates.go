@@ -383,6 +383,7 @@ type ValidatorPageData struct {
 	Rocketpool                          *RocketpoolValidatorPageData
 	NoAds                               bool
 	ShowWithdrawalWarning               bool
+	CappellaHasHappened                 bool
 	BLSChange                           *BLSChange
 	IsWithdrawableAddress               bool
 	EstimatedNextWithdrawal             template.HTML

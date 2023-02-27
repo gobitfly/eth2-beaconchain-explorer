@@ -234,16 +234,21 @@
     <div class="mx-3">
       <span id="depositCount" style="cursor: pointer;" data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="fas fa-wallet"></i> {{ .DepositsCount }}</span>
     </div>
-    <div class="mx-3">
-      <span id="withdrawalCount" style="cursor: pointer;" data-toggle="tooltip" {{ if .IsWithdrawableAddress }}title="Withdrawals processed for this validator"{{ else }}title="To receive payouts you need 0x01 withdrawal credentials"{{ end }}>
-        <i class="fas fa-money-bill"></i>
-        {{ if .IsWithdrawableAddress }}
-          <span> {{ .WithdrawalCount }} </span>
-        {{ else }}
-          <span><i class="text-warning fas fa-exclamation-triangle"></i></span>
-        {{ end }}
-      </span>
-    </div>
+
+    {{ if .CappellaHasHappened }}
+      <div class="mx-3">
+        <span id="withdrawalCount" style="cursor: pointer;" data-toggle="tooltip" {{ if .IsWithdrawableAddress }}title="Withdrawals processed for this validator"{{ else }}title="To receive payouts you need 0x01 withdrawal credentials"{{ end }}>
+          <i class="fas fa-money-bill"></i>
+          {{ if .IsWithdrawableAddress }}
+            <span> {{ .WithdrawalCount }} </span>
+          {{ else }}
+            <span><i class="text-warning fas fa-exclamation-triangle"></i></span>
+          {{ end }}
+        </span>
+      </div>
+    {{ end }}
+
+
     <!--
     <div class="mx-3">
         {{ if ne .CurrentAttestationStreak .LongestAttestationStreak }}
