@@ -2523,10 +2523,6 @@ func GetAddressWithdrawals(address []byte, limit uint64, offset uint64) ([]*type
 		limit = 100
 	}
 
-	if limit > (offset + 100) {
-		limit = offset + 100
-	}
-
 	err := ReaderDb.Select(&withdrawals, `
 	SELECT 
 		w.block_slot as slot, 
@@ -2576,10 +2572,6 @@ func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64) ([]*
 	var withdrawals []*types.Withdrawals
 	if limit == 0 {
 		limit = 100
-	}
-
-	if limit > (offset + 100) {
-		limit = offset + 100
 	}
 
 	err := ReaderDb.Select(&withdrawals, `
@@ -2633,10 +2625,6 @@ func GetValidatorsWithdrawalsByEpoch(validator []uint64, limit uint64, offset ui
 	var withdrawals []*types.WithdrawalsByEpoch
 	if limit == 0 {
 		limit = 100
-	}
-
-	if limit > (offset + 100) {
-		limit = offset + 100
 	}
 
 	err := ReaderDb.Select(&withdrawals, `
