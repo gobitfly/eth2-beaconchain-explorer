@@ -30,6 +30,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mssola/user_agent"
+	"github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 
@@ -2270,9 +2271,17 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiGraffitiwall godoc
-// @Summary Get the most recent pixels that have been painted during the last 10000 slots. Optionally set the slot query parameter to look back further.
+// @Summary Get the most recent pixels that have been painted.
 // @Tags Misc
+// @Description Returns the most recent pixels that have been painted during the last 10000 slots.
+// @Description Optionally set the slot query parameter to look back further and/or the slot query parameters to restrict the area.
+// @Description Boundary coordinates are included.
+// @Description Returns an error if an invalid area is provided by the coordinates.
 // @Produce  json
+// @Param startx query int false "Start X offset" default(0)
+// @Param starty query int false "Start Y offset" default(0)
+// @Param endx query int false "End X limit" default(999)
+// @Param endy query int false "End Y limit" default(999)
 // @Param slot query string false "Slot to query"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
@@ -2293,10 +2302,32 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if slotQuery < 10000 {
-		slotQuery = 10000
+	slotQuery = math.MaxU64(slotQuery, 10000)
+
+	defaultStartPxl := uint64(0)
+	defaultEndPxl := uint64(999)
+
+	startX := math.MinU64(parseUintWithDefault(q.Get("startx"), defaultStartPxl), defaultEndPxl)
+	startY := math.MinU64(parseUintWithDefault(q.Get("starty"), defaultStartPxl), defaultEndPxl)
+	endX := math.MinU64(parseUintWithDefault(q.Get("endx"), defaultEndPxl), defaultEndPxl)
+	endY := math.MinU64(parseUintWithDefault(q.Get("endy"), defaultEndPxl), defaultEndPxl)
+
+	if startX > endX || startY > endY {
+		logger.Error("invalid area provided by the coordinates")
+		sendErrorResponse(w, r.URL.String(), "invalid area provided by the coordinates")
+		return
 	}
-	rows, err := db.ReaderDb.Query("SELECT x, y, color, slot, validator FROM graffitiwall WHERE slot <= $1 AND slot >= $2 ORDER BY slot desc", slotQuery, slotQuery-10000)
+
+	rows, err := db.ReaderDb.Query(`
+	SELECT 
+		x,
+		y,
+		color,
+		slot,
+		validator
+	FROM graffitiwall
+	WHERE slot BETWEEN $1 AND $2 AND x BETWEEN $3 AND $4 AND y BETWEEN $5 AND $6
+	ORDER BY slot desc, x, y`, slotQuery-10000, slotQuery, startX, endX, startY, endY)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
