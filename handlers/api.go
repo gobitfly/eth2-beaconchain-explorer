@@ -1810,22 +1810,15 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type responseType struct {
-		Balance          uint64 `json:"balance"`
-		EffectiveBalance uint64 `json:"effectivebalance"`
-		Epoch            uint64 `json:"epoch"`
-		ValidatorIndex   uint64 `json:"validatorindex"`
-		Week             uint64 `json:"week"`
-	}
-	responseData := make([]*responseType, 0, len(history)*101)
+	responseData := make([]*types.ApiValidatorBalanceHistoryResponse, 0, len(history)*101)
 
 	for validatorIndex, balances := range history {
 		for _, balance := range balances {
-			responseData = append(responseData, &responseType{
+			responseData = append(responseData, &types.ApiValidatorBalanceHistoryResponse{
 				Balance:          balance.Balance,
 				EffectiveBalance: balance.EffectiveBalance,
 				Epoch:            balance.Epoch,
-				ValidatorIndex:   validatorIndex,
+				Validatorindex:   validatorIndex,
 				Week:             balance.Epoch / 1575,
 			})
 		}
@@ -1835,7 +1828,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		if responseData[i].Epoch != responseData[j].Epoch {
 			return responseData[i].Epoch > responseData[j].Epoch
 		}
-		return responseData[i].ValidatorIndex < responseData[j].ValidatorIndex
+		return responseData[i].Validatorindex < responseData[j].Validatorindex
 	})
 
 	response := &types.ApiResponse{}
