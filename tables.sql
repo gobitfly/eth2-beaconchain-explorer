@@ -128,37 +128,44 @@ create index idx_validator_balances_recent_validatorindex on validator_balances_
 create index idx_validator_balances_recent_balance on validator_balances_recent (balance);
 
 drop table if exists validator_stats;
-create table validator_stats
-(
-    validatorindex          int not null,
-    day                     int not null,
-    start_balance           bigint,
-    end_balance             bigint,
-    min_balance             bigint,
-    max_balance             bigint,
+CREATE TABLE public.validator_stats (
+    validatorindex integer NOT NULL,
+    day integer NOT NULL,
+    start_balance bigint,
+    end_balance bigint,
+    min_balance bigint,
+    max_balance bigint,
     start_effective_balance bigint,
-    end_effective_balance   bigint,
-    min_effective_balance   bigint,
-    max_effective_balance   bigint,
-    missed_attestations     int,
-    orphaned_attestations   int,
-    participated_sync       int,
-    missed_sync             int,
-    orphaned_sync           int,
-    proposed_blocks         int,
-    missed_blocks           int,
-    orphaned_blocks         int,
-    attester_slashings      int,
-    proposer_slashings      int,
-    deposits                int,
-    deposits_amount         bigint,
-    withdrawals             int,
-    withdrawals_amount      bigint,
-    cl_rewards_gwei         bigint,
-    el_rewards_wei          decimal,
+    end_effective_balance bigint,
+    min_effective_balance bigint,
+    max_effective_balance bigint,
+    missed_attestations integer,
+    orphaned_attestations integer,
+    proposed_blocks integer,
+    missed_blocks integer,
+    orphaned_blocks integer,
+    attester_slashings integer,
+    proposer_slashings integer,
+    deposits integer,
+    deposits_amount bigint,
+    participated_sync integer,
+    missed_sync integer,
+    orphaned_sync integer,
+    withdrawals integer,
+    withdrawals_amount bigint,
+    cl_rewards_gwei bigint,
+    el_rewards_wei numeric,
+    cl_rewards_gwei_7d bigint,
+    cl_rewards_gwei_31d bigint,
+    cl_rewards_gwei_total bigint,
+    el_rewards_wei_7d numeric,
+    el_rewards_wei_31d numeric,
+    el_rewards_wei_total numeric,
     primary key (validatorindex, day)
 );
-create index idx_validator_stats_day on validator_stats (day);
+
+CREATE INDEX idx_validator_stats_day ON public.validator_stats USING btree (day);
+
 
 drop table if exists validator_stats_status;
 create table validator_stats_status
