@@ -95,10 +95,10 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	err = db.ReaderDb.Get(c, `
 	SELECT 
-		SUM(COALESCE(cl_rewards_gwei, 0)) AS cl_rewards_gwei, 
-		SUM(COALESCE(cl_rewards_gwei_7d, 0)) AS cl_rewards_gwei_7d, 
-		SUM(COALESCE(cl_rewards_gwei_31d, 0)) AS cl_rewards_gwei_31d, 
-		SUM(COALESCE(cl_rewards_gwei_total, 0)) AS cl_rewards_gwei_total
+		COALESCE(SUM(cl_rewards_gwei), 0) AS cl_rewards_gwei, 
+		COALESCE(SUM(cl_rewards_gwei_7d), 0) AS cl_rewards_gwei_7d, 
+		COALESCE(SUM(cl_rewards_gwei_31d), 0) AS cl_rewards_gwei_31d, 
+		COALESCE(SUM(cl_rewards_gwei_total), 0) AS cl_rewards_gwei_total
 	FROM validator_stats WHERE day = $1 AND validatorindex = ANY($2)`, lastDay, validatorsPQArray)
 	if err != nil {
 		return nil, nil, err
