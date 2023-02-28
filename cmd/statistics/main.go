@@ -100,11 +100,11 @@ func main() {
 		}
 		firstDay, err := strconv.ParseUint(s[0], 10, 64)
 		if err != nil {
-			utils.LogFatal(err, "error parsing first day of statisticsDaysToExport flag to uint")
+			utils.LogFatal(err, "error parsing first day of statisticsDaysToExport flag to uint", 0)
 		}
 		lastDay, err := strconv.ParseUint(s[1], 10, 64)
 		if err != nil {
-			utils.LogFatal(err, "error parsing last day of statisticsDaysToExport flag to uint")
+			utils.LogFatal(err, "error parsing last day of statisticsDaysToExport flag to uint", 0)
 		}
 
 		if *statisticsValidatorToggle {

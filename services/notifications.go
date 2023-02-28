@@ -190,7 +190,7 @@ func notificationSender() {
 		}
 
 		if !unlocked {
-			utils.LogError(nil, fmt.Sprint("error releasing advisory lock unlocked: ", unlocked))
+			utils.LogError(nil, fmt.Sprint("error releasing advisory lock unlocked: ", unlocked), 0)
 		}
 
 		conn.Close()

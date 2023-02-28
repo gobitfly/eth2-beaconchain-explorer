@@ -73,7 +73,7 @@ func main() {
 	case "checkTransactions":
 
 	default:
-		utils.LogFatal(nil, "unknown command")
+		utils.LogFatal(nil, "unknown command", 0)
 	}
 }
 

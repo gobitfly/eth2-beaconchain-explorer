@@ -75,14 +75,14 @@ func Start(client rpc.Client) error {
 		logger.Printf("performing one time full db reindex")
 		head, err := client.GetChainHead()
 		if err != nil {
-			utils.LogFatal(err, "getting chain head from client error")
+			utils.LogFatal(err, "getting chain head from client error", 0)
 		}
 
 		for epoch := uint64(0); epoch <= head.HeadEpoch; epoch++ {
 			err := ExportEpoch(epoch, client)
 
 			if err != nil {
-				utils.LogError(err, "exporting epoch error")
+				utils.LogError(err, "exporting epoch error", 0)
 			}
 		}
 	}
@@ -91,7 +91,7 @@ func Start(client rpc.Client) error {
 		logger.Printf("performing one time full canon check")
 		head, err := client.GetChainHead()
 		if err != nil {
-			utils.LogFatal(err, "getting chain head from client error")
+			utils.LogFatal(err, "getting chain head from client error", 0)
 		}
 
 		for epoch := int64(head.HeadEpoch) - 1; epoch >= 0; epoch-- {
@@ -112,13 +112,13 @@ func Start(client rpc.Client) error {
 		// Add any missing epoch to the export set (might happen if the indexer was stopped for a long period of time)
 		epochs, err := db.GetAllEpochs()
 		if err != nil {
-			utils.LogFatal(err, "getting all epochs from db error")
+			utils.LogFatal(err, "getting all epochs from db error", 0)
 		}
 
 		if len(epochs) > 0 && epochs[0] != 0 {
 			err := ExportEpoch(0, client)
 			if err != nil {
-				utils.LogError(err, "exporting epoch error")
+				utils.LogError(err, "exporting epoch error", 0)
 			}
 			logger.Printf("finished export for epoch %v", 0)
 			epochs = append([]uint64{0}, epochs...)
@@ -131,7 +131,7 @@ func Start(client rpc.Client) error {
 				for epoch := epochs[i]; epoch <= epochs[i+1]; epoch++ {
 					err := ExportEpoch(epoch, client)
 					if err != nil {
-						utils.LogError(err, "exporting epoch error")
+						utils.LogError(err, "exporting epoch error", 0)
 					}
 					logger.Printf("finished export for epoch %v", epoch)
 				}
@@ -143,17 +143,17 @@ func Start(client rpc.Client) error {
 		// Make sure that all blocks are correct by comparing all block hashes in the database to the ones we have in the node
 		head, err := client.GetChainHead()
 		if err != nil {
-			utils.LogFatal(err, "getting chain head from client error")
+			utils.LogFatal(err, "getting chain head from client error", 0)
 		}
 
 		dbBlocks, err := db.GetLastPendingAndProposedBlocks(1, head.HeadEpoch)
 		if err != nil {
-			utils.LogFatal(err, "getting proposed and pending blocks error ")
+			utils.LogFatal(err, "getting proposed and pending blocks error ", 0)
 		}
 
 		nodeBlocks, err := GetLastBlocks(1, head.HeadEpoch, client)
 		if err != nil {
-			utils.LogFatal(err, "getting blocks for range of epochs error")
+			utils.LogFatal(err, "getting blocks for range of epochs error", 0)
 		}
 
 		blocksMap := make(map[string]*types.BlockComparisonContainer)
@@ -220,12 +220,12 @@ func Start(client rpc.Client) error {
 		// Update all epoch statistics
 		head, err := client.GetChainHead()
 		if err != nil {
-			utils.LogFatal(err, "getting chain head from client error")
+			utils.LogFatal(err, "getting chain head from client error", 0)
 		}
 		startEpoch := uint64(0)
 		err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
 		if err != nil {
-			utils.LogFatal(err, "error while updating epoch status")
+			utils.LogFatal(err, "error while updating epoch status", 0)
 		}
 	}
 
@@ -625,7 +625,7 @@ func networkLivenessUpdater(client rpc.Client) {
 	var prevHeadEpoch uint64
 	err := db.WriterDb.Get(&prevHeadEpoch, "SELECT COALESCE(MAX(headepoch), 0) FROM network_liveness")
 	if err != nil {
-		utils.LogFatal(err, "getting previous head epoch from db error")
+		utils.LogFatal(err, "getting previous head epoch from db error", 0)
 	}
 
 	epochDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch)

@@ -49,7 +49,7 @@ func eth1DepositsExporter() {
 
 	rpcClient, err := gethRPC.Dial(utils.Config.Eth1GethEndpoint)
 	if err != nil {
-		utils.LogFatal(err, "new geth client error")
+		utils.LogFatal(err, "new geth client error", 0)
 	}
 	eth1RPCClient = rpcClient
 	client := ethclient.NewClient(rpcClient)

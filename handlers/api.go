@@ -817,7 +817,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	var parsedBody types.DashboardRequest
 	err = json.Unmarshal(body, &parsedBody)
 	if err != nil {
-		utils.LogError(err, "unmarshal json body error")
+		utils.LogError(err, "unmarshal json body error", 0)
 		getValidators = false
 	}
 

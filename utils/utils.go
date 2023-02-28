@@ -1057,30 +1057,24 @@ func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
 	}
 }
 
-func LogFatal(err error, errorMsg interface{}, infoIdentifiers ...string) {
-	logErrorInfo(err, infoIdentifiers...).Fatal(errorMsg)
+func LogFatal(err error, errorMsg interface{}, callerSkip int, infoIdentifiers ...string) {
+	logErrorInfo(err, callerSkip, infoIdentifiers...).Fatal(errorMsg)
 }
 
-func LogError(err error, errorMsg interface{}, infoIdentifiers ...string) {
-	logErrorInfo(err, infoIdentifiers...).Error(errorMsg)
+func LogError(err error, errorMsg interface{}, callerSkip int, infoIdentifiers ...string) {
+	logErrorInfo(err, callerSkip, infoIdentifiers...).Error(errorMsg)
 }
 
-func logErrorInfo(err error, infoIdentifiers ...string) *logrus.Entry {
+func logErrorInfo(err error, callerSkip int, infoIdentifiers ...string) *logrus.Entry {
 	logFields := logrus.NewEntry(logrus.New())
 
-	pc, fullFilePath, line, ok := runtime.Caller(2)
+	pc, fullFilePath, line, ok := runtime.Caller(callerSkip + 2)
 	if ok {
-		if filepath.Base(fullFilePath) == "panic.go" {
-			// In case of a call during a panic go one layer higher
-			pc, fullFilePath, line, ok = runtime.Caller(3)
-		}
-		if ok {
-			logFields = logFields.WithFields(logrus.Fields{
-				"file":     filepath.Base(fullFilePath),
-				"line":     line,
-				"function": runtime.FuncForPC(pc).Name(),
-			})
-		}
+		logFields = logFields.WithFields(logrus.Fields{
+			"file":     filepath.Base(fullFilePath),
+			"line":     line,
+			"function": runtime.FuncForPC(pc).Name(),
+		})
 	} else {
 		logFields = logFields.WithField("runtime", "Callstack cannot be read")
 	}

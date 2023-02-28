@@ -113,7 +113,7 @@ func GenericChartData(w http.ResponseWriter, r *http.Request) {
 
 	chartsPageData := services.LatestChartsPageData()
 	if chartsPageData == nil {
-		utils.LogError(nil, "error getting chart page data")
+		utils.LogError(nil, "error getting chart page data", 0)
 		SendErrorResponse(w, r.URL.String(), "error getting chart page data")
 		return
 	}
