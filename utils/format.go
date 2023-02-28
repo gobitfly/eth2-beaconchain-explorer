@@ -478,13 +478,24 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
 }
 
-// WithdrawalCredentialsToAddress converts
+// WithdrawalCredentialsToAddress converts withdrawalCredentials to an address if possible
 func WithdrawalCredentialsToAddress(credentials []byte) []byte {
 	if len(credentials) > 12 && bytes.Equal(credentials[:1], []byte{0x01}) {
 		return credentials[12:]
 	}
 
 	return credentials
+}
+
+// AddressToWithdrawalCredentials converts a valid address to withdrawalCredentials
+func AddressToWithdrawalCredentials(address []byte) []byte {
+	if IsValidEth1Address(fmt.Sprintf("%#x", address)) {
+		credentials := make([]byte, 12)
+		credentials[0] = 0x01
+		credentials = append(credentials, address...)
+		return credentials
+	}
+	return address
 }
 
 func FormatHashWithCopy(hash []byte) template.HTML {

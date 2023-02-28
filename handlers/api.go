@@ -3201,26 +3201,28 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 	return nil
 }
 
-// ApiWithdrawalCredentialValidators godoc
-// @Summary Get validator indexes and pubkeys of a withdrawal credential
-// @Tags Execution
-// @Description Returns the validator indexes and pubkeys of a withdrawal credential
+// ApiWithdrawalCredentialsValidators godoc
+// @Summary Get validator indexes and pubkeys of a withdrawal credential or eth1 address
+// @Tags Validator
+// @Description Returns the validator indexes and pubkeys of a withdrawal credential or eth1 address
 // @Produce json
-// @Param withdrawalCredential path string true "Provide a withdrawal credential with an optional 0x prefix"
-// @Param  limit query string false "Limit the number of results, maximum: 100"
-// @Param offset query string false "Offset the number of results"
-// @Success 200 {object} types.ApiResponse{data=types.ApiWithdrawalCredentialResponse}
+// @Param withdrawalCredentialsOrEth1address path string true "Provide a withdrawal credential or an eth1 address with an optional 0x prefix"
+// @Param  limit query int false "Limit the number of results, maximum: 100" default(10)
+// @Param offset query int false "Offset the number of results" default(0)
+// @Success 200 {object} types.ApiResponse{data=types.ApiWithdrawalCredentialsResponse}
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/execution/{withdrawalCredential} [get]
-func ApiWithdrawalCredentialValidators(w http.ResponseWriter, r *http.Request) {
+// @Router /api/v1/validator/withdrawalCredentials/{withdrawalCredentialsOrEth1address} [get]
+func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
 	q := r.URL.Query()
 
-	credentialString := vars["withdrawalCredential"]
-	credentialString = strings.ToLower(credentialString)
-	credential := common.FromHex(credentialString)
+	credentialsOrAddressString := vars["withdrawalCredentialsOrEth1address"]
+	credentialsOrAddressString = strings.ToLower(credentialsOrAddressString)
+	credentialsOrAddress := common.FromHex(credentialsOrAddressString)
+
+	credentials := utils.AddressToWithdrawalCredentials(credentialsOrAddress)
 
 	limitQuery := q.Get("limit")
 	offsetQuery := q.Get("offset")
@@ -3229,10 +3231,10 @@ func ApiWithdrawalCredentialValidators(w http.ResponseWriter, r *http.Request) {
 	limit := parseUintWithDefault(limitQuery, 10)
 
 	// We set a max limit to limit the request call time.
-	const maxLimit uint64 = 100
+	const maxLimit uint64 = 10000
 	limit = math.MinU64(limit, maxLimit)
 
-	response := types.ApiWithdrawalCredentialResponse{}
+	response := types.ApiWithdrawalCredentialsResponse{}
 
 	result := []struct {
 		Index  uint64 `db:"validatorindex"`
@@ -3247,24 +3249,18 @@ func ApiWithdrawalCredentialValidators(w http.ResponseWriter, r *http.Request) {
 	WHERE withdrawalcredentials = $1
 	LIMIT $2
 	OFFSET $3
-	`, credential, limit, offset)
+	`, credentials, limit, offset)
 
 	if err != nil {
-		logger.Warnf("error retrieving validator data from db: %T", err)
+		logger.Warnf("error retrieving validator data from db: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
 
-	response.WithdrawalCredential = fmt.Sprintf("%#x", credential)
-	response.Validators = []struct {
-		Index  uint64 `json:"index"`
-		PubKey string `json:"pubkey"`
-	}{}
+	response.WithdrawalCredentials = fmt.Sprintf("%#x", credentials)
+	response.Validators = make([]*types.WithdrawalCredentialsParsed, 0, len(result))
 	for _, validator := range result {
-		response.Validators = append(response.Validators, struct {
-			Index  uint64 `json:"index"`
-			PubKey string `json:"pubkey"`
-		}{
+		response.Validators = append(response.Validators, &types.WithdrawalCredentialsParsed{
 			Index:  validator.Index,
 			PubKey: fmt.Sprintf("%#x", validator.Pubkey),
 		})

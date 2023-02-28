@@ -318,12 +318,14 @@ type Eth1TokenTxParsed struct {
 	Operator     string    `json:"operator,omitempty"`
 }
 
-type ApiWithdrawalCredentialResponse struct {
-	WithdrawalCredential string `json:"withdrawalcredential"`
-	Validators           []struct {
-		Index  uint64 `json:"index"`
-		PubKey string `json:"pubkey"`
-	} `json:"validators"`
+type ApiWithdrawalCredentialsResponse struct {
+	WithdrawalCredentials string                         `json:"withdrawalcredentials"`
+	Validators            []*WithdrawalCredentialsParsed `json:"validators"`
+}
+
+type WithdrawalCredentialsParsed struct {
+	Index  uint64 `json:"index"`
+	PubKey string `json:"pubkey"`
 }
 
 type APIEpochResponse struct {
