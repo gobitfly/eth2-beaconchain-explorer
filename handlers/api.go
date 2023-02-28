@@ -3239,7 +3239,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 // @Param withdrawalCredentialsOrEth1address path string true "Provide a withdrawal credential or an eth1 address with an optional 0x prefix"
 // @Param  limit query int false "Limit the number of results, maximum: 100" default(10)
 // @Param offset query int false "Offset the number of results" default(0)
-// @Success 200 {object} types.ApiResponse{data=types.ApiWithdrawalCredentialsResponse}
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiWithdrawalCredentialsResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/withdrawalCredentials/{withdrawalCredentialsOrEth1address} [get]
 func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) {
@@ -3264,8 +3264,6 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 	const maxLimit uint64 = 10000
 	limit = math.MinU64(limit, maxLimit)
 
-	response := types.ApiWithdrawalCredentialsResponse{}
-
 	result := []struct {
 		Index  uint64 `db:"validatorindex"`
 		Pubkey []byte `db:"pubkey"`
@@ -3287,12 +3285,11 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	response.WithdrawalCredentials = fmt.Sprintf("%#x", credentials)
-	response.Validators = make([]*types.WithdrawalCredentialsParsed, 0, len(result))
+	response := make([]*types.ApiWithdrawalCredentialsResponse, 0, len(result))
 	for _, validator := range result {
-		response.Validators = append(response.Validators, &types.WithdrawalCredentialsParsed{
-			Index:  validator.Index,
-			PubKey: fmt.Sprintf("%#x", validator.Pubkey),
+		response = append(response, &types.ApiWithdrawalCredentialsResponse{
+			Publickey:      fmt.Sprintf("%#x", validator.Pubkey),
+			ValidatorIndex: validator.Index,
 		})
 	}
 
