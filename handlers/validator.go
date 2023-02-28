@@ -290,7 +290,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var lastStatsDay uint64
-	err = db.ReaderDb.Get(&lastStatsDay, "select coalesce(max(day),0) from validator_stats_status where status")
+	err = db.ReaderDb.Get(&lastStatsDay, "SELECT COALESCE(MAX(day),0) FROM validator_stats_status WHERE status")
 	if err != nil {
 		logger.Errorf("error getting lastStatsDay for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
