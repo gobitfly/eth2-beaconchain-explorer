@@ -1,13 +1,14 @@
 {{ define "SlotViz" }}
   <script src="/js/d3.min.js"></script>
   <script>
-    var epochs = {{.Epochs}}
+    const epochs = {{.Epochs}}
+    const hardforkEpoch = {{ .HardforkEpoch }}
+    const selector =  {{.Selector}}
+    const element = document.getElementById(selector)
     /// Chat Dimensions
-    var margin = { top: 20, right: 30, bottom: 0, left: 30 }
-    var width = document.getElementById({{.Selector}}).clientWidth
-    var height = 120 + margin.top + margin.bottom + epochs.length * 50
-
-
+    const margin = { top: 20, right: 30, bottom: 0, left: 30 }
+    const width = element?.clientWidth || 0
+    const height = 120 + margin.top + margin.bottom + (epochs?.length || 5) * 50
 
     // var reveal = (path) =>
     //   path
@@ -27,7 +28,11 @@
     var colorProposed = d3.scaleSequential().domain([0, 12]).interpolator(d3.interpolateRgb("rgba(100, 200, 100, 1)", "rgba(100, 200, 100, 0.3)"))
 
     // Chart Svg
-    var svg = d3.select("#"+{{.Selector}}).append("svg").attr("viewBox", [0, 0, width, height]).attr("style", `max-width: ${width}px; font: 10px sans-serif;`)
+    var svg = d3
+      .select("#" + selector)
+      .append("svg")
+      .attr("viewBox", [0, 0, width, height])
+      .attr("style", `max-width: ${width}px; font: 10px sans-serif;`)
 
     // Define X axis
     var x = d3
@@ -117,7 +122,7 @@
                     var txt = d.finalized ? "finalized" : "justifying"
                     return txt + " " + d.participation + "%"
                   } else {
-                    return "processing..."
+                    return d.slots[0].Slot ? "processing..." : ""
                   }
                 })
             },
@@ -129,7 +134,7 @@
                     var txt = d.finalized ? "finalized" : "justifying"
                     return txt + " " + d.participation + "%"
                   } else {
-                    return "processing..."
+                    return d.slots[0].Slot ? "processing..." : ""
                   }
                 })
                 .call((label) => {
@@ -183,10 +188,15 @@
                   .attr("y", (d, i) => y.bandwidth() / 2 - 7.5)
                   .attr("slot", (d) => d.Slot)
                   .on("click", (d) => {
-                    var slot = d.target.getAttribute("slot")
-                    window.location = "/slot/" + slot
+                      var slot = d.target.getAttribute("slot")
+                      if (slot) {
+                        window.location = "/slot/" + slot
+                      }
                   })
                   .attr("data-original-title", (s, i) => {
+                    if (!s.Slot) {
+                      return
+                    }
                     if (s.active) {
                       return `current slot ${s.Slot}`
                     }
@@ -221,8 +231,8 @@
                       } else {
                         return colorProposed(1)
                       }
-                    } else if (d.status === 'scheduled-missed') {
-                      return 'var(--highlight)'
+                    } else if (d.status === "scheduled-missed") {
+                      return "var(--highlight)"
                     } else if (d.status === "orphaned") {
                       return "rgba(100,100, 200, 0.8)"
                     } else if (d.status === "genesis") {
@@ -246,8 +256,8 @@
                     } else {
                       return colorProposed(1)
                     }
-                  } else if (d.status === 'scheduled-missed') {
-                    return 'var(--highlight)'
+                  } else if (d.status === "scheduled-missed") {
+                    return "var(--highlight)"
                   } else if (d.status === "orphaned") {
                     return "rgba(100,100, 200, 0.8)"
                   } else if (d.status === "genesis") {
@@ -264,6 +274,9 @@
                   }
                 })
                 .attr("data-original-title", (s, i) => {
+                  if (!s.Slot) {
+                    return
+                  }
                   if (s.active) {
                     return `current slot ${s.Slot}`
                   }
@@ -367,10 +380,25 @@
     }
 
     function processLaunchMetrics(data) {
+      data = data || []
+      if (hardforkEpoch) {
+        data = data.filter((d) => d.epoch >= hardforkEpoch)
+      }
       for (var i = 0; i < data.length; i++) {
         if (data[i].participation <= 1 && data[i].participation > 0) {
           data[i].participation = Math.round(data[i].participation * 10000) / 100
         }
+      }
+      while (data.length < 5 && hardforkEpoch) {
+        epoch = data.length ? data[0].epoch + 1 : hardforkEpoch
+        data.splice(0, 0, {
+          epoch,
+          finalized: false,
+          justified: false,
+          justifying: false,
+          participation: 0,
+          slots: Array(32).fill({}),
+        })
       }
       chart.update(data)
     }
@@ -378,19 +406,20 @@
     processLaunchMetrics(epochs)
     setInterval(fetchMetrics, 3000)
 
-    const watermarkContainer = document.createElement('div')
-    watermarkContainer.style.position = 'relative'
+    const watermarkContainer = document.createElement("div")
+    watermarkContainer.style.position = "relative"
 
-    const watermarkContent = document.createElement('div')
-    watermarkContent.style.position = 'absolute'
+    const watermarkContent = document.createElement("a")
+    watermarkContent.href = "https://beaconcha.in"
+    watermarkContent.style.position = "absolute"
     watermarkContent.style.top = "100%"
     watermarkContent.style.right = 0
-    watermarkContent.innerText = 'beaconcha.in'
-    watermarkContent.classList.add('text-muted')
-    watermarkContent.classList.add('font-weight-bold')
+    watermarkContent.innerText = "beaconcha.in"
+    watermarkContent.classList.add("text-muted")
+    watermarkContent.classList.add("font-weight-bold")
 
     watermarkContainer.appendChild(watermarkContent)
 
-    document.getElementById({{.Selector}}).appendChild(watermarkContainer)
+    document.getElementById(selector).appendChild(watermarkContainer)
   </script>
 {{ end }}

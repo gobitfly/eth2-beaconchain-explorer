@@ -1358,7 +1358,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 	}
 
 	// get attestations for all validators for the last n epochs
-	attestations, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{}, epoch, 4) // retrieve attestation data of the last 3 epochs
+	attestations, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{}, epoch-4, epoch) // retrieve attestation data of the last 3 epochs
 	if err != nil {
 		return fmt.Errorf("error getting validator attestations from bigtable %w", err)
 	}
@@ -1967,7 +1967,7 @@ func (n *validatorWithdrawalNotification) GetEventFilter() string {
 }
 
 func (n *validatorWithdrawalNotification) GetInfoMarkdown() string {
-	generalPart := fmt.Sprintf(`A withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during in slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/%[4]v).`, n.ValidatorIndex, utils.FormatCurrentBalance(n.Amount, "ETH"), n.Slot, utils.FormatHash(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
+	generalPart := fmt.Sprintf(`A withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/%[4]v).`, n.ValidatorIndex, utils.FormatCurrentBalance(n.Amount, "ETH"), n.Slot, utils.FormatHash(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
 	return generalPart
 }
 

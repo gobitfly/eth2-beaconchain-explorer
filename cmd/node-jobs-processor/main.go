@@ -17,8 +17,8 @@ import (
 
 func main() {
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
-	bnAddress := flag.String("beacon-node-address", "", "Url of the beacon node api")
-	enAddress := flag.String("execution-node-address", "", "Url of the execution node api")
+	metricsAddr := flag.String("metrics.address", "localhost:9090", "serve metrics on that addr")
+	metricsEnabled := flag.Bool("metrics.enabled", false, "enable serving metrics")
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
 
@@ -51,16 +51,16 @@ func main() {
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 
-	nrp := NewNodeJobsProcessor(*bnAddress, *enAddress)
+	nrp := NewNodeJobsProcessor(utils.Config.NodeJobsProcessor.ClEndpoint, utils.Config.NodeJobsProcessor.ElEndpoint)
 	go nrp.Run()
 
-	if utils.Config.Metrics.Enabled {
-		go func(addr string) {
-			logrus.WithFields(logrus.Fields{"addr": addr}).Infof("Serving metrics")
-			if err := metrics.Serve(addr); err != nil {
+	if *metricsEnabled {
+		go func() {
+			logrus.WithFields(logrus.Fields{"addr": *metricsAddr}).Infof("Serving metrics")
+			if err := metrics.Serve(*metricsAddr); err != nil {
 				logrus.WithError(err).Fatal("Error serving metrics")
 			}
-		}(utils.Config.Metrics.Address)
+		}()
 	}
 
 	utils.WaitForCtrlC()

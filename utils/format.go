@@ -488,10 +488,11 @@ func WithdrawalCredentialsToAddress(credentials []byte) []byte {
 }
 
 func FormatHashWithCopy(hash []byte) template.HTML {
-	copyBtn := CopyButton(hex.EncodeToString(hash))
 	if len(hash) == 0 {
 		return "N/A"
 	}
+
+	copyBtn := CopyButton(hex.EncodeToString(hash))
 	return template.HTML(fmt.Sprintf(`<span>%v</span> %v`, FormatHash(hash), copyBtn))
 }
 
@@ -523,6 +524,16 @@ func FormatWithdawalCredentials(hash []byte, addCopyButton bool) template.HTML {
 	}
 
 	return text
+}
+
+func FormatAddressToWithdrawalCredentials(address []byte, addCopyButton bool) template.HTML {
+	credentials, err := hex.DecodeString("010000000000000000000000")
+	if err != nil {
+		return "INVALID CREDENTIALS"
+	}
+	credentials = append(credentials, address...)
+
+	return FormatWithdawalCredentials(credentials, addCopyButton)
 }
 
 func FormatName(name string, trunc_opt ...bool) template.HTML {

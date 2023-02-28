@@ -6,7 +6,6 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
-	"time"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
 
@@ -92,9 +91,7 @@ func UpdateAPIKey(user uint64) error {
 		return fmt.Errorf("error getting current user, err: %w", err)
 	}
 
-	updateTs := time.Now().Unix()
-
-	apiKey, err := utils.GenerateAPIKey(string(u.PHash), u.Email, fmt.Sprint(updateTs))
+	apiKey, err := utils.GenerateRandomAPIKey()
 	if err != nil {
 		return err
 	}

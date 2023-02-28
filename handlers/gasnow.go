@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// Blocks will return information about blocks using a go template
+// Will return the gas now page
 func GasNow(w http.ResponseWriter, r *http.Request) {
 	var gasNowTemplate = templates.GetTemplate("layout.html", "gasnow.html")
 

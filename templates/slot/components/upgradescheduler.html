@@ -1,0 +1,165 @@
+{{ define "upgrade_scheduler" }}
+  <style>
+    .upgrade-scheduler #datepicker {
+      width: auto;
+    }
+    .upgrade-scheduler .table-container {
+      max-width: 100%;
+      overflow-x: auto;
+      max-height: 500px;
+    }
+    .upgrade-scheduler table {
+      width: 100%;
+    }
+    .upgrade-scheduler table {
+      position: relative;
+    }
+    .upgrade-scheduler thead {
+      position: sticky;
+      top: 0;
+    }
+    .upgrade-scheduler thead tr {
+      background-color: var(--bg-color);
+      box-shadow: 0 2px 2px -1px var(--shadow-light);
+    }
+
+    .upgrade-scheduler th,
+    .upgrade-scheduler td {
+      padding: 4px;
+    }
+
+    .upgrade-scheduler td:first-child,
+    .upgrade-scheduler td:nth-child(2) {
+      border-bottom: solid 1px var(--shadow-light);
+    }
+
+    .upgrade-scheduler td.perfect {
+      background-color: #66bb6a;
+    }
+
+    .upgrade-scheduler td.good {
+      background-color: #c8e6c9;
+    }
+
+    .upgrade-scheduler td.ok {
+      background-color: #fff9c4;
+    }
+
+    .upgrade-scheduler td.bad {
+      background-color: #ffcdd2;
+    }
+  </style>
+  <div class="m-2 d-flex flex-column upgrade-scheduler">
+    <div class="m-2 mb-4">
+      <label>Upgrade Date</label>
+      <input id="datepicker" type="text" class="form-control" />
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th class="px-2">Epoch</th>
+            <th class="px-2">Start Slot</th>
+            <th class="px-2">UTC</th>
+            <th class="px-2">Moscow</th>
+            <th class="px-2">Los Angeles</th>
+            <th class="px-2">New York</th>
+            <th class="px-2">Brisbane</th>
+            <th class="px-2">Local Time</th>
+          </tr>
+        </thead>
+        <tbody id="upgrade-table"></tbody>
+      </table>
+    </div>
+  </div>
+  <small class="d-flex justify-content-end align-items-center m-2">Inpired by <a href="https://slots.symphonious.net" class="ml-2">https://slots.symphonious.net</a></small>
+  <script>
+    var genesisTimeStamp = {{ .ChainGenesisTimestamp }}
+    var secondsPerSlot = {{ .ChainSecondsPerSlot }}
+    var slotsPerEpoch = {{ .ChainSlotsPerEpoch }}
+    const timeZones = ["UTC", "Europe/Moscow", "America/Los_Angeles", "America/New_York", "Australia/Brisbane", undefined] //undefined for local time zone
+
+    function getClassForNumber(num) {
+      if (num % 100 === 0) {
+        return "perfect"
+      } else if (num % 10 === 0) {
+        return "good"
+      }
+    }
+
+    function getTimeClass(date, tz) {
+      const tzDate = date.setZone(tz, { keepLocalTime: true })
+      const hour = tzDate.plus({ minutes: tzDate.o }).hour
+      if (hour >= 8 && hour <= 16) {
+        return "perfect"
+      } else if (hour >= 7 && hour <= 20) {
+        return "good"
+      } else if (hour >= 5 && hour <= 23) {
+        return "ok"
+      }
+      return "bad"
+    }
+
+    function appendTd(row, value, className, link) {
+      const col = document.createElement("td")
+      if (link) {
+        const aLink = document.createElement("a")
+        aLink.innerHTML = value
+        aLink.href = link
+        col.appendChild(aLink)
+      } else {
+        col.innerHTML = value
+      }
+      if (className) {
+        col.className = className
+      }
+      row.appendChild(col)
+    }
+
+    function setupTable(date) {
+      const table = document.getElementById("upgrade-table")
+      table.innerHTML = ""
+      const utc = luxon.DateTime.utc(date.getFullYear(), date.getMonth() + 1, date.getDate(), 12)
+      const dif = utc.ts / 1000 - genesisTimeStamp
+      const firstSlot = Math.max(0, dif / secondsPerSlot)
+      const firstEpoch = Math.floor(firstSlot / slotsPerEpoch)
+      const epochInADay = Math.ceil((24 * 60 * 60) / secondsPerSlot / slotsPerEpoch)
+      for (let i = 0; i < epochInADay; i++) {
+        const row = document.createElement("tr")
+        const epoch = firstEpoch + i
+        appendTd(row, epoch, getClassForNumber(epoch), `/epoch/${epoch}`)
+        const slot = epoch * slotsPerEpoch
+        appendTd(row, slot, getClassForNumber(slot), `/slot/${slot}`)
+        const baseDate = luxon.DateTime.fromSeconds(genesisTimeStamp + epoch * slotsPerEpoch * secondsPerSlot)
+        timeZones.forEach((tz) => {
+          const value = new Intl.DateTimeFormat("en-GB", { dateStyle: "short", timeStyle: "short", timeZone: tz }).format(baseDate).replace(" ", "<br>")
+          appendTd(row, value, getTimeClass(baseDate, tz))
+        })
+
+        table.appendChild(row)
+      }
+    }
+
+    function datePicked(date) {
+      setupTable(date.toDate())
+    }
+
+    window.addEventListener("load", function () {
+      datepicker = $('input[id="datepicker"]')
+      datepicker.daterangepicker(
+        {
+          locale: {
+            format: "DD/MM/YYYY",
+          },
+          singleDatePicker: true,
+          minDate: new Date(genesisTimeStamp * 1000),
+        },
+        datePicked
+      )
+      const today = new Date()
+      datepicker.data("daterangepicker").setStartDate(today)
+      datepicker.data("daterangepicker").setEndDate(today)
+      setupTable(today)
+    })
+  </script>
+{{ end }}

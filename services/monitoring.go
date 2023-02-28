@@ -251,7 +251,7 @@ func startServicesMonitoringService() {
 		"poolsUpdater":     time.Minute * 30,
 		"epochExporter":    time.Minute * 15,
 		"statistics":       time.Minute * 15,
-		"poolInfoUpdater":  time.Minute * 30,
+		//"poolInfoUpdater":  time.Minute * 30,
 	}
 
 	for {

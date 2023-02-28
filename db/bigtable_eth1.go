@@ -1634,7 +1634,7 @@ func (bigtable *Bigtable) TransformWithdrawals(block *types.Eth1Block, cache *fr
 	}
 
 	for _, withdrawal := range block.Withdrawals {
-		iReversed := reversePaddedIndex(int(withdrawal.Index), 10)
+		iReversed := reversePaddedIndex(int(withdrawal.Index), 9999999999999)
 
 		withdrawalIndexed := types.Eth1WithdrawalIndexed{
 			BlockNumber:    block.Number,
@@ -1647,7 +1647,7 @@ func (bigtable *Bigtable) TransformWithdrawals(block *types.Eth1Block, cache *fr
 
 		bigtable.markBalanceUpdate(withdrawal.Address, []byte{0x0}, bulkMetadataUpdates, cache)
 
-		// store uncles in with the key <chainid>:W:<reversePaddedBlockNumber>:<reversePaddedWithdrawalIndex>
+		// store withdrawals with the key <chainid>:W:<reversePaddedBlockNumber>:<reversePaddedWithdrawalIndex>
 		key := fmt.Sprintf("%s:W:%s:%s", bigtable.chainId, reversedPaddedBlockNumber(block.GetNumber()), iReversed)
 		mut := gcp_bigtable.NewMutation()
 
