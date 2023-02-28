@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -43,32 +42,23 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := int64(services.LatestEpoch())
-	lastDayEpoch := latestEpoch - int64(utils.EpochsPerDay())
-	lastWeekEpoch := latestEpoch - int64(utils.EpochsPerDay())*7
-	lastMonthEpoch := latestEpoch - int64(utils.EpochsPerDay())*31
 
-	if lastDayEpoch <= 0 {
-		lastDayEpoch = 2
+	lastDay := 0
+	err := db.WriterDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats")
+
+	if err != nil {
+		return nil, nil, err
 	}
-	if lastWeekEpoch <= 0 {
-		lastWeekEpoch = 2
+	lastWeek := lastDay - 7
+	if lastWeek < 0 {
+		lastWeek = 0
 	}
-	if lastMonthEpoch <= 0 {
-		lastMonthEpoch = 2
+	lastMonth := lastDay - 31
+	if lastMonth < 0 {
+		lastMonth = 0
 	}
 
 	balances := []*types.Validator{}
-
-	err := db.ReaderDb.Select(&balances, `SELECT 
-				validatorindex,
-			    COALESCE(balanceactivation, 0) AS balanceactivation, 
-       			activationepoch,
-       			pubkey
-		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
-	if err != nil {
-		logger.Error(err)
-		return nil, nil, err
-	}
 
 	balancesMap := make(map[uint64]*types.Validator, len(balances))
 
@@ -76,201 +66,88 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		balancesMap[balance.Index] = balance
 	}
 
-	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), 1)
+	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), uint64(latestEpoch))
 	if err != nil {
 		logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
 		return nil, nil, err
 	}
+
 	for balanceIndex, balance := range latestBalances {
-		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
+		if len(balance) == 0 {
 			continue
+		}
+
+		if balancesMap[balanceIndex] == nil {
+			balancesMap[balanceIndex] = &types.Validator{}
 		}
 		balancesMap[balanceIndex].Balance = balance[0].Balance
 		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
 	}
 
-	balances1d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastDayEpoch), 1)
-	if err != nil {
-		logger.Errorf("error getting validator Balance1d data in GetValidatorEarnings: %v", err)
-		return nil, nil, err
-	}
-	for balanceIndex, balance := range balances1d {
-		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
-			continue
-		}
-		balancesMap[balanceIndex].Balance1d = sql.NullInt64{
-			Int64: int64(balance[0].Balance),
-			Valid: true,
-		}
+	type ClEarnings struct {
+		EarningsTotal     int64 `db:"cl_rewards_gwei_total"`
+		EarningsLastDay   int64 `db:"cl_rewards_gwei"`
+		EarningsLastWeek  int64 `db:"cl_rewards_gwei_7d"`
+		EarningsLastMonth int64 `db:"cl_rewards_gwei_31d"`
 	}
 
-	balances7d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastWeekEpoch), 1)
-	if err != nil {
-		logger.Errorf("error getting validator Balance7d data in GetValidatorEarnings: %v", err)
-		return nil, nil, err
-	}
-	for balanceIndex, balance := range balances7d {
-		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
-			continue
-		}
-		balancesMap[balanceIndex].Balance7d = sql.NullInt64{
-			Int64: int64(balance[0].Balance),
-			Valid: true,
-		}
-	}
+	c := &ClEarnings{}
 
-	balances31d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastMonthEpoch), 1)
-	if err != nil {
-		logger.Errorf("error getting validator Balance31d data in GetValidatorEarnings: %v", err)
-		return nil, nil, err
-	}
-	for balanceIndex, balance := range balances31d {
-		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
-			continue
-		}
-		balancesMap[balanceIndex].Balance31d = sql.NullInt64{
-			Int64: int64(balance[0].Balance),
-			Valid: true,
-		}
-	}
-
-	deposits := []struct {
-		Epoch     int64
-		Amount    int64
-		Publickey []byte
-	}{}
-
-	err = db.ReaderDb.Select(&deposits, `
+	err = db.ReaderDb.Get(c, `
 	SELECT 
-		block_slot / $2 AS epoch, 
-		amount, 
-		publickey 
+		SUM(COALESCE(cl_rewards_gwei, 0)) AS cl_rewards_gwei, 
+		SUM(COALESCE(cl_rewards_gwei_7d, 0)) AS cl_rewards_gwei_7d, 
+		SUM(COALESCE(cl_rewards_gwei_31d, 0)) AS cl_rewards_gwei_31d, 
+		SUM(COALESCE(cl_rewards_gwei_total, 0)) AS cl_rewards_gwei_total
+	FROM validator_stats WHERE day = $1 AND validatorindex = ANY($2)`, lastDay, validatorsPQArray)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var apr float64
+	var totalDeposits int64
+
+	err = db.ReaderDb.Get(&totalDeposits, `
+	SELECT 
+		COALESCE(SUM(amount), 0) 
 	FROM blocks_deposits d
 	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' 
-	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray, utils.Config.Chain.Config.SlotsPerEpoch)
+	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	depositsMap := make(map[string]map[int64]int64)
-	for _, d := range deposits {
-		if _, exists := depositsMap[fmt.Sprintf("%x", d.Publickey)]; !exists {
-			depositsMap[fmt.Sprintf("%x", d.Publickey)] = make(map[int64]int64)
-		}
-		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
-	}
+	var totalWithdrawals uint64
 
-	withdrawals := []struct {
-		Epoch          uint64
-		Amount         uint64
-		ValidatorIndex uint64
-	}{}
-
-	err = db.ReaderDb.Select(&withdrawals, `
+	err = db.ReaderDb.Get(&totalWithdrawals, `
 	SELECT 
-		w.validatorindex,
-		w.block_slot / $2 AS epoch, 
-		sum(w.amount) as amount
+		COALESCE(sum(w.amount), 0)
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	WHERE validatorindex = ANY($1)
-	GROUP BY validatorindex, w.block_slot / $2
-	`, validatorsPQArray, utils.Config.Chain.Config.SlotsPerEpoch)
+	`, validatorsPQArray)
 	if err != nil {
 		return nil, nil, err
 	}
-	withdrawalsMap := make(map[uint64]map[uint64]uint64)
-	for _, w := range withdrawals {
-		if _, exists := withdrawalsMap[w.ValidatorIndex]; !exists {
-			withdrawalsMap[w.ValidatorIndex] = make(map[uint64]uint64)
-		}
-		withdrawalsMap[w.ValidatorIndex][w.Epoch] += w.Amount
-	}
 
-	var earningsTotal int64
-	var earningsLastDay int64
-	var earningsLastWeek int64
-	var earningsLastMonth int64
-	var apr float64
-	var totalDeposits int64
-	var totalWithdrawals uint64
-
-	for _, balance := range balancesMap {
-		if int64(balance.ActivationEpoch) >= latestEpoch {
-			continue
-		}
-		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
-			totalDeposits += deposit
-
-			if epoch > int64(balance.ActivationEpoch) {
-				earningsTotal -= deposit
-			}
-			if epoch > lastDayEpoch && epoch > int64(balance.ActivationEpoch) {
-				earningsLastDay -= deposit
-			}
-			if epoch > lastWeekEpoch && epoch > int64(balance.ActivationEpoch) {
-				earningsLastWeek -= deposit
-			}
-			if epoch > lastMonthEpoch && epoch > int64(balance.ActivationEpoch) {
-				earningsLastMonth -= deposit
-			}
-		}
-
-		for epoch, withdrawal := range withdrawalsMap[balance.Index] {
-			totalWithdrawals += withdrawal
-
-			if epoch > balance.ActivationEpoch {
-				earningsTotal += int64(withdrawal)
-			}
-			if epoch > uint64(lastDayEpoch) && epoch > balance.ActivationEpoch {
-				earningsLastDay += int64(withdrawal)
-			}
-			if epoch > uint64(lastWeekEpoch) && epoch > balance.ActivationEpoch {
-				earningsLastWeek += int64(withdrawal)
-			}
-			if epoch > uint64(lastMonthEpoch) && epoch > balance.ActivationEpoch {
-				earningsLastMonth += int64(withdrawal)
-			}
-		}
-
-		if int64(balance.ActivationEpoch) > lastDayEpoch {
-			balance.Balance1d = balance.BalanceActivation
-		}
-		if int64(balance.ActivationEpoch) > lastWeekEpoch {
-			balance.Balance7d = balance.BalanceActivation
-		}
-		if int64(balance.ActivationEpoch) > lastMonthEpoch {
-			balance.Balance31d = balance.BalanceActivation
-		}
-
-		earningsTotal += int64(balance.Balance) - balance.BalanceActivation.Int64
-		earningsLastDay += int64(balance.Balance) - balance.Balance1d.Int64
-		earningsLastWeek += int64(balance.Balance) - balance.Balance7d.Int64
-		earningsLastMonth += int64(balance.Balance) - balance.Balance31d.Int64
-	}
-
-	if totalDeposits == 0 {
-		totalDeposits = 32 * 1e9
-	}
-
-	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
+	apr = (((float64(c.EarningsLastWeek) / 1e9) / (float64(32))) * 365) / 7
 	if apr < float64(-1) {
 		apr = float64(-1)
 	}
 
 	return &types.ValidatorEarnings{
-		Total:                earningsTotal,
-		LastDay:              earningsLastDay,
-		LastWeek:             earningsLastWeek,
-		LastMonth:            earningsLastMonth,
+		Total:                c.EarningsTotal,
+		LastDay:              c.EarningsLastDay,
+		LastWeek:             c.EarningsLastWeek,
+		LastMonth:            c.EarningsLastMonth,
 		APR:                  apr,
 		TotalDeposits:        totalDeposits,
 		TotalWithdrawals:     totalWithdrawals,
-		LastDayFormatted:     utils.FormatIncome(earningsLastDay, currency),
-		LastWeekFormatted:    utils.FormatIncome(earningsLastWeek, currency),
-		LastMonthFormatted:   utils.FormatIncome(earningsLastMonth, currency),
-		TotalFormatted:       utils.FormatIncome(earningsTotal, currency),
-		TotalChangeFormatted: utils.FormatIncome(earningsTotal+totalDeposits, currency),
+		LastDayFormatted:     utils.FormatIncome(c.EarningsLastDay, currency),
+		LastWeekFormatted:    utils.FormatIncome(c.EarningsLastWeek, currency),
+		LastMonthFormatted:   utils.FormatIncome(c.EarningsLastMonth, currency),
+		TotalFormatted:       utils.FormatIncome(c.EarningsTotal, currency),
+		TotalChangeFormatted: utils.FormatIncome(c.EarningsTotal+totalDeposits, currency),
 	}, balancesMap, nil
 }
 
