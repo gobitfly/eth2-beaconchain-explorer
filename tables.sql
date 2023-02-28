@@ -154,6 +154,8 @@ create table validator_stats
     deposits_amount         bigint,
     withdrawals             int,
     withdrawals_amount      bigint,
+    cl_rewards_gwei         bigint,
+    el_rewards_wei          decimal,
     primary key (validatorindex, day)
 );
 create index idx_validator_stats_day on validator_stats (day);
@@ -227,6 +229,7 @@ create table epochs
     eligibleether           bigint,
     globalparticipationrate float,
     votedether              bigint,
+    rewards_exported        bool not null default false,
     primary key (epoch)
 );
 
@@ -737,16 +740,6 @@ create table price
     gbp numeric(20,10)                not null,
     aud numeric(20,10)                not null,
     primary key (ts)
-);
-
-drop table if exists staking_pools_chart;
-create table staking_pools_chart
-(
-    epoch                      int  not null,
-    name                       text not null,
-    income                     bigint not null,
-    balance                    bigint not null,
-    PRIMARY KEY(epoch, name)
 );
 
 drop table if exists stats_sharing;

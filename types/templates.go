@@ -383,6 +383,7 @@ type ValidatorPageData struct {
 	Rocketpool                               *RocketpoolValidatorPageData
 	NoAds                                    bool
 	ShowMultipleWithdrawalCredentialsWarning bool
+	CappellaHasHappened                      bool
 	BLSChange                                *BLSChange
 	IsWithdrawableAddress                    bool
 	EstimatedNextWithdrawal                  template.HTML
@@ -421,7 +422,7 @@ type ValidatorStatsTableRow struct {
 	Day                    int64         `db:"day"`
 	StartBalance           sql.NullInt64 `db:"start_balance"`
 	EndBalance             sql.NullInt64 `db:"end_balance"`
-	Income                 int64         `db:"-"`
+	Income                 int64         `db:"cl_rewards_gwei"`
 	IncomeExchangeRate     float64       `db:"-"`
 	IncomeExchangeCurrency string        `db:"-"`
 	IncomeExchanged        float64       `db:"-"`
@@ -474,7 +475,7 @@ type ValidatorBalanceHistory struct {
 // ValidatorBalanceHistory is a struct for the validator income history data
 type ValidatorIncomeHistory struct {
 	Day              int64         `db:"day"` // day can be -1 which is pre-genesis
-	Income           int64         `db:"diff"`
+	ClRewards        int64         `db:"cl_rewards_gwei"`
 	EndBalance       sql.NullInt64 `db:"end_balance"`
 	StartBalance     sql.NullInt64 `db:"start_balance"`
 	DepositAmount    sql.NullInt64 `db:"deposits_amount"`
