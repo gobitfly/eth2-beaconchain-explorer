@@ -71,7 +71,7 @@ func GasNowData(w http.ResponseWriter, r *http.Request) {
 
 	gasnowData := services.LatestGasNowData()
 	if gasnowData == nil {
-		utils.LogError("error obtaining latest gas now data 'nil'", nil).Error()
+		utils.LogError(nil, "error obtaining latest gas now data 'nil'")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}

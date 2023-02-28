@@ -74,7 +74,7 @@ func main() {
 	case "checkTransactions":
 
 	default:
-		utils.LogError("unknown command", nil).Fatal()
+		utils.LogFatal(nil, "unknown command")
 	}
 }
 

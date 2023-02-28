@@ -654,7 +654,7 @@ func (bigtable *Bigtable) DeleteRowsWithPrefix(prefix string) {
 					logger.WithError(err).Errorf("error deleting row: %v", rowsToDelete[i])
 				}
 				for _, err := range errs {
-					utils.LogError("bigtable apply bulk error", err).Error()
+					utils.LogError(err, "bigtable apply bulk error")
 				}
 			}
 			if l < 10000 && l > 0 {
@@ -664,7 +664,7 @@ func (bigtable *Bigtable) DeleteRowsWithPrefix(prefix string) {
 					logger.WithError(err).Errorf("error deleting row: %v", rowsToDelete[i])
 				}
 				for _, err := range errs {
-					utils.LogError("bigtable apply bulk error", err).Error()
+					utils.LogError(err, "bigtable apply bulk error")
 				}
 				break
 			}

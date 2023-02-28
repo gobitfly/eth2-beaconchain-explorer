@@ -46,7 +46,7 @@ func startClDataMonitoringService() {
 
 		if time.Since(utils.SlotToTime(maxAttestationSlot)) > time.Minute*15 {
 			errorMsg := fmt.Errorf("error: max attestation slot is older than 15 minutes: %v", time.Since(utils.SlotToTime(maxAttestationSlot)))
-			utils.LogError(errorMsg.Error(), nil).Error()
+			utils.LogError(nil, errorMsg)
 			ReportStatus(name, errorMsg.Error(), nil)
 			continue
 		}
@@ -61,7 +61,7 @@ func startClDataMonitoringService() {
 
 		if time.Since(utils.SlotToTime(maxSlot)) > time.Minute*15 {
 			errorMsg := fmt.Errorf("error: max slot in blocks table is older than 15 minutes: %v", time.Since(utils.SlotToTime(maxAttestationSlot)))
-			utils.LogError(errorMsg.Error(), nil).Error()
+			utils.LogError(nil, errorMsg)
 			ReportStatus(name, errorMsg.Error(), nil)
 			continue
 		}
@@ -76,7 +76,7 @@ func startClDataMonitoringService() {
 
 		if time.Since(utils.EpochToTime(maxEpoch)) > time.Minute*15 {
 			errorMsg := fmt.Errorf("error: max epoch in epochs table is older than 15 minutes: %v", time.Since(utils.SlotToTime(maxAttestationSlot)))
-			utils.LogError(errorMsg.Error(), nil).Error()
+			utils.LogError(nil, errorMsg)
 			ReportStatus(name, errorMsg.Error(), nil)
 			continue
 		}
@@ -177,14 +177,14 @@ func startApiMonitoringService() {
 		resp, err := client.Get(url)
 
 		if err != nil {
-			utils.LogError("getting client error", err).Error()
+			utils.LogError(err, "getting client error")
 			ReportStatus(name, err.Error(), nil)
 			continue
 		}
 
 		if resp.StatusCode != 200 {
 			errorMsg := fmt.Errorf("error: api epoch / latest endpoint returned a non 200 status: %v", resp.StatusCode)
-			utils.LogError(errorMsg.Error(), nil).Error()
+			utils.LogError(nil, errorMsg)
 			ReportStatus(name, errorMsg.Error(), nil)
 			continue
 		}
@@ -212,14 +212,14 @@ func startAppMonitoringService() {
 		resp, err := client.Post(url, "application/json", strings.NewReader(`{"indicesOrPubkey": "1,2"}`))
 
 		if err != nil {
-			utils.LogError("POST to dashboard URL error", err).Error()
+			utils.LogError(err, "POST to dashboard URL error")
 			ReportStatus(name, err.Error(), nil)
 			continue
 		}
 
 		if resp.StatusCode != 200 {
 			errorMsg := fmt.Errorf("error: api app endpoint returned a non 200 status: %v", resp.StatusCode)
-			utils.LogError(errorMsg.Error(), nil).Error()
+			utils.LogError(nil, errorMsg)
 			ReportStatus(name, errorMsg.Error(), nil)
 			continue
 		}
@@ -270,7 +270,7 @@ func startServicesMonitoringService() {
 
 				if err == sql.ErrNoRows {
 					errorMsg := fmt.Errorf("error: missing status entry for service %v", serviceName)
-					utils.LogError(errorMsg.Error(), err).Error()
+					utils.LogError(err, errorMsg)
 					ReportStatus(name, errorMsg.Error(), nil)
 					hasError = true
 					break

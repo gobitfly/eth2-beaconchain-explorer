@@ -55,6 +55,8 @@ func init() {
 }
 
 func main() {
+	utils.LogError(nil, "TestMsg", "Second info")
+
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
 
 	flag.Parse()
@@ -71,13 +73,15 @@ func main() {
 		"chainName": utils.Config.Chain.Config.ConfigName}).Printf("starting")
 
 	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
-		utils.LogError("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file", nil).Fatal()
+		utils.LogFatal(err, "invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
 	}
 
+	timer1 := time.Now()
 	err = handlers.CheckAndPreloadImprint()
 	if err != nil {
 		logrus.Fatalf("error check / preload imprint: %v", err)
 	}
+	fmt.Println(time.Since(timer1))
 
 	if utils.Config.Pprof.Enabled {
 		go func() {
@@ -216,7 +220,7 @@ func main() {
 		if utils.Config.Indexer.Node.Type == "lighthouse" {
 			rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainID)
 			if err != nil {
-				utils.LogError("new lighthouse client error", err).Fatal()
+				utils.LogFatal(err, "new lighthouse client error")
 			}
 		} else {
 			logrus.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
@@ -228,7 +232,7 @@ func main() {
 				for _, epoch := range utils.Config.Indexer.OneTimeExport.Epochs {
 					err := exporter.ExportEpoch(epoch, rpcClient)
 					if err != nil {
-						utils.LogError("exporting epoch error", err).Fatal()
+						utils.LogFatal(err, "exporting epoch error")
 					}
 				}
 			} else {
@@ -236,7 +240,7 @@ func main() {
 				for epoch := utils.Config.Indexer.OneTimeExport.StartEpoch; epoch <= utils.Config.Indexer.OneTimeExport.EndEpoch; epoch++ {
 					err := exporter.ExportEpoch(epoch, rpcClient)
 					if err != nil {
-						utils.LogError("exporting epoch error", err).Fatal()
+						utils.LogFatal(err, "exporting epoch error")
 					}
 				}
 			}

@@ -26,7 +26,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -1047,26 +1046,42 @@ func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
 	}
 }
 
-func LogError(infoIdentifier string, err error) *logrus.Entry {
-	var fileIdentifier, lineIdentifier, functionIdentifier string
+func LogFatal(err error, errorMsg interface{}, infoIdentifiers ...string) {
+	logErrorInfo(err, infoIdentifiers...).Fatal(errorMsg)
+}
 
-	pc, fullFilePath, line, ok := runtime.Caller(1)
+func LogError(err error, errorMsg interface{}, infoIdentifiers ...string) {
+	logErrorInfo(err, infoIdentifiers...).Error(errorMsg)
+}
+
+func logErrorInfo(err error, infoIdentifiers ...string) *logrus.Entry {
+	logFields := logrus.NewEntry(logrus.New())
+
+	pc, fullFilePath, line, ok := runtime.Caller(2)
 	if ok {
-		fileIdentifier = filepath.Base(fullFilePath)
-		functionIdentifier = runtime.FuncForPC(pc).Name()
-		lineIdentifier = strconv.Itoa(line)
+		if filepath.Base(fullFilePath) == "panic.go" {
+			// In case of a call during a panic go one layer higher
+			pc, fullFilePath, line, ok = runtime.Caller(3)
+		}
+		if ok {
+			logFields = logFields.WithFields(logrus.Fields{
+				"file":     filepath.Base(fullFilePath),
+				"line":     line,
+				"function": runtime.FuncForPC(pc).Name(),
+			})
+		}
 	} else {
-		msg := "Cannot read callstack"
-		fileIdentifier = msg
-		functionIdentifier = msg
-		lineIdentifier = msg
+		logFields = logFields.WithField("runtime", "Callstack cannot be read")
 	}
 
-	return logrus.WithFields(logrus.Fields{
-		"file":       fileIdentifier,
-		"line":       lineIdentifier,
-		"function":   functionIdentifier,
-		"info":       infoIdentifier,
-		"error type": fmt.Sprintf("%T", err),
-	}).WithError(err)
+	if err != nil {
+		logFields = logFields.WithField("error type", fmt.Sprintf("%T", err)).WithError(err)
+	}
+
+	infoCount := 0
+	for _, info := range infoIdentifiers {
+		logFields = logFields.WithField(fmt.Sprintf("info_%v", infoCount), info)
+	}
+
+	return logFields
 }

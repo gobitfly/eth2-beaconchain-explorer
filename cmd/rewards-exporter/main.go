@@ -55,17 +55,17 @@ func main() {
 
 	client, err := beacon.NewClient(*bnAddress)
 	if err != nil {
-		utils.LogError("new beacon client error", err).Fatal()
+		utils.LogFatal(err, "new beacon client error")
 	}
 
 	lc, err := rpc.NewLighthouseClient(*bnAddress, big.NewInt(5))
 	if err != nil {
-		utils.LogError("new lighthouse client error", err).Fatal()
+		utils.LogFatal(err, "new lighthouse client error")
 	}
 
 	elClient, err := geth_rpc.Dial(*enAddress)
 	if err != nil {
-		utils.LogError("new geth client error", err).Fatal()
+		utils.LogFatal(err, "new geth client error")
 	}
 
 	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
@@ -78,7 +78,7 @@ func main() {
 		for {
 			head, err := lc.GetChainHead()
 			if err != nil {
-				utils.LogError("getting chain head from lighthouse error", err).Fatal()
+				utils.LogFatal(err, "getting chain head from lighthouse error")
 			}
 			if int64(head.FinalizedEpoch) <= *epoch {
 				logrus.Infof("pausing %v <= %v", int64(head.FinalizedEpoch), *epoch)

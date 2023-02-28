@@ -816,7 +816,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	var parsedBody types.DashboardRequest
 	err = json.Unmarshal(body, &parsedBody)
 	if err != nil {
-		utils.LogError("unmarshal json body error", err).Error()
+		utils.LogError(err, "unmarshal json body error")
 		getValidators = false
 	}
 
@@ -2098,7 +2098,7 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 		WHERE eth1_deposits.publickey = ANY($1)`, pubkeys,
 	)
 	if err != nil {
-		utils.LogError("error retrieving db results", err).Error()
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
