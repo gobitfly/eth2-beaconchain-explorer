@@ -68,10 +68,16 @@
             {{ formatBlockStatus .Status }}
 
             {{ if .EpochFinalized }}
-              <span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="This block can't be reverted without manual intervention by all participants." data-container="body">
-                <span class="badge badge-success text-white px-1"><i class="fas fa-check-double"></i> Finalized</span>
-              </span>
-            {{ else if and (gtf .EpochParticipationRate 0.66) (ltf .EpochParticipationRate 1) }}
+              {{ if eq .Status 1 }}
+                <span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="This block can't be reverted without manual intervention by all participants." data-container="body">
+                  <span class="badge badge-success text-white px-1"><i class="fas fa-check-double"></i> Finalized</span>
+                </span>
+              {{ else }}
+                <span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="The block is finalized, but the Slot was not included." data-container="body">
+                  <span class="badge badge-light text-black px-1"><i class="fas fa-exclamation-circle"></i> Not Included</span>
+                </span>
+              {{ end }}
+            {{ else if and (gtf .EpochParticipationRate 0.66) (ltf .EpochParticipationRate 1) (le .Status 1 ) }}
               <span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="This block can be considered as safe, and is highly unlikely to be reverted." data-container="body">
                 <span class="badge badge-secondary text-white px-1"><i class="fas fa-check"></i> Not Finalized (Safe)</span>
               </span>
