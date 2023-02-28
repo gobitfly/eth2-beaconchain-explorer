@@ -55,7 +55,6 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 			proposerslashingscount, 
 			attesterslashingscount, 
 			attestationscount, 
-			withdrawalcount,
 			depositscount, 
 			voluntaryexitscount, 
 			validatorscount, 
@@ -143,6 +142,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		case 1:
 			epochPageData.ProposedCount += 1
 			epochPageData.SyncParticipationRate += block.SyncAggParticipation
+			epochPageData.WithdrawalCount += block.Withdrawals
 		case 2:
 			epochPageData.MissedCount += 1
 		case 3:
