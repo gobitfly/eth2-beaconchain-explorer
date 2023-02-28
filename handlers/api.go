@@ -3103,7 +3103,7 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 		err = json.Unmarshal(body, &jsonObject)
 		if err != nil {
 			logger.Warnf("Could not parse stats (meta stats) general | %v ", err)
-			sendErrorResponse(w, r.URL.String(), "metrics rate limit reached, one process per machine per user each minute is allowed.")
+			sendErrorResponse(w, r.URL.String(), "Invalid JSON format in request body")
 			return
 		}
 		jsonObjects = []map[string]interface{}{jsonObject}
