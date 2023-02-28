@@ -302,93 +302,93 @@ type ValidatorsPageDataValidators struct {
 
 // ValidatorPageData is a struct to hold data for the validators page
 type ValidatorPageData struct {
-	Epoch                               uint64 `db:"epoch"`
-	ValidatorIndex                      uint64 `db:"validatorindex"`
-	PublicKey                           []byte `db:"pubkey"`
-	WithdrawableEpoch                   uint64 `db:"withdrawableepoch"`
-	WithdrawCredentials                 []byte `db:"withdrawalcredentials"`
-	CurrentBalance                      uint64 `db:"balance"`
-	BalanceActivation                   uint64 `db:"balanceactivation"`
-	Balance7d                           uint64 `db:"balance7d"`
-	Balance31d                          uint64 `db:"balance31d"`
-	EffectiveBalance                    uint64 `db:"effectivebalance"`
-	Slashed                             bool   `db:"slashed"`
-	SlashedBy                           uint64
-	SlashedAt                           uint64
-	SlashedFor                          string
-	ActivationEligibilityEpoch          uint64         `db:"activationeligibilityepoch"`
-	ActivationEpoch                     uint64         `db:"activationepoch"`
-	ExitEpoch                           uint64         `db:"exitepoch"`
-	Index                               uint64         `db:"index"`
-	LastAttestationSlot                 *uint64        `db:"lastattestationslot"`
-	Name                                string         `db:"name"`
-	Pool                                string         `db:"pool"`
-	Tags                                pq.StringArray `db:"tags"`
-	WithdrawableTs                      time.Time
-	ActivationEligibilityTs             time.Time
-	ActivationTs                        time.Time
-	ExitTs                              time.Time
-	Status                              string `db:"status"`
-	BlocksCount                         uint64
-	ScheduledBlocksCount                uint64
-	MissedBlocksCount                   uint64
-	OrphanedBlocksCount                 uint64
-	ProposedBlocksCount                 uint64
-	UnmissedBlocksPercentage            float64 // missed/(executed+orphaned+scheduled)
-	AttestationsCount                   uint64
-	ExecutedAttestationsCount           uint64
-	MissedAttestationsCount             uint64
-	OrphanedAttestationsCount           uint64
-	UnmissedAttestationsPercentage      float64 // missed/(executed+orphaned)
-	StatusProposedCount                 uint64
-	StatusMissedCount                   uint64
-	DepositsCount                       uint64
-	WithdrawalCount                     uint64
-	SlashingsCount                      uint64
-	PendingCount                        uint64
-	SyncCount                           uint64
-	ScheduledSyncCount                  uint64
-	ParticipatedSyncCount               uint64
-	MissedSyncCount                     uint64
-	OrphanedSyncCount                   uint64
-	UnmissedSyncPercentage              float64 // missed/(participated+orphaned)
-	Income1d                            int64
-	Income7d                            int64
-	Income31d                           int64
-	Rank7d                              int64 `db:"rank7d"`
-	RankCount                           int64 `db:"rank_count"`
-	RankPercentage                      float64
-	Apr                                 float64
-	Proposals                           [][]uint64
-	IncomeHistoryChartData              []*ChartDataPoint
-	ExecutionIncomeHistoryData          []*ChartDataPoint
-	Deposits                            *ValidatorDeposits
-	Eth1DepositAddress                  []byte
-	FlashMessage                        string
-	Watchlist                           []*TaggedValidators
-	SubscriptionFlash                   []interface{}
-	User                                *User
-	AverageAttestationInclusionDistance float64
-	AttestationInclusionEffectiveness   float64
-	CsrfField                           template.HTML
-	NetworkStats                        *IndexPageData
-	ChurnRate                           uint64
-	QueuePosition                       uint64
-	EstimatedActivationTs               time.Time
-	EstimatedActivationEpoch            uint64
-	InclusionDelay                      int64
-	CurrentAttestationStreak            uint64
-	LongestAttestationStreak            uint64
-	IsRocketpool                        bool
-	Rocketpool                          *RocketpoolValidatorPageData
-	NoAds                               bool
-	ShowWithdrawalWarning               bool
-	CappellaHasHappened                 bool
-	BLSChange                           *BLSChange
-	IsWithdrawableAddress               bool
-	EstimatedNextWithdrawal             template.HTML
-	AddValidatorWatchlistModal          *AddValidatorWatchlistModal
-	NextWithdrawalRow                   [][]interface{}
+	Epoch                                    uint64 `db:"epoch"`
+	ValidatorIndex                           uint64 `db:"validatorindex"`
+	PublicKey                                []byte `db:"pubkey"`
+	WithdrawableEpoch                        uint64 `db:"withdrawableepoch"`
+	WithdrawCredentials                      []byte `db:"withdrawalcredentials"`
+	CurrentBalance                           uint64 `db:"balance"`
+	BalanceActivation                        uint64 `db:"balanceactivation"`
+	Balance7d                                uint64 `db:"balance7d"`
+	Balance31d                               uint64 `db:"balance31d"`
+	EffectiveBalance                         uint64 `db:"effectivebalance"`
+	Slashed                                  bool   `db:"slashed"`
+	SlashedBy                                uint64
+	SlashedAt                                uint64
+	SlashedFor                               string
+	ActivationEligibilityEpoch               uint64         `db:"activationeligibilityepoch"`
+	ActivationEpoch                          uint64         `db:"activationepoch"`
+	ExitEpoch                                uint64         `db:"exitepoch"`
+	Index                                    uint64         `db:"index"`
+	LastAttestationSlot                      *uint64        `db:"lastattestationslot"`
+	Name                                     string         `db:"name"`
+	Pool                                     string         `db:"pool"`
+	Tags                                     pq.StringArray `db:"tags"`
+	WithdrawableTs                           time.Time
+	ActivationEligibilityTs                  time.Time
+	ActivationTs                             time.Time
+	ExitTs                                   time.Time
+	Status                                   string `db:"status"`
+	BlocksCount                              uint64
+	ScheduledBlocksCount                     uint64
+	MissedBlocksCount                        uint64
+	OrphanedBlocksCount                      uint64
+	ProposedBlocksCount                      uint64
+	UnmissedBlocksPercentage                 float64 // missed/(executed+orphaned+scheduled)
+	AttestationsCount                        uint64
+	ExecutedAttestationsCount                uint64
+	MissedAttestationsCount                  uint64
+	OrphanedAttestationsCount                uint64
+	UnmissedAttestationsPercentage           float64 // missed/(executed+orphaned)
+	StatusProposedCount                      uint64
+	StatusMissedCount                        uint64
+	DepositsCount                            uint64
+	WithdrawalCount                          uint64
+	SlashingsCount                           uint64
+	PendingCount                             uint64
+	SyncCount                                uint64
+	ScheduledSyncCount                       uint64
+	ParticipatedSyncCount                    uint64
+	MissedSyncCount                          uint64
+	OrphanedSyncCount                        uint64
+	UnmissedSyncPercentage                   float64 // missed/(participated+orphaned)
+	Income1d                                 int64
+	Income7d                                 int64
+	Income31d                                int64
+	Rank7d                                   int64 `db:"rank7d"`
+	RankCount                                int64 `db:"rank_count"`
+	RankPercentage                           float64
+	Apr                                      float64
+	Proposals                                [][]uint64
+	IncomeHistoryChartData                   []*ChartDataPoint
+	ExecutionIncomeHistoryData               []*ChartDataPoint
+	Deposits                                 *ValidatorDeposits
+	Eth1DepositAddress                       []byte
+	FlashMessage                             string
+	Watchlist                                []*TaggedValidators
+	SubscriptionFlash                        []interface{}
+	User                                     *User
+	AverageAttestationInclusionDistance      float64
+	AttestationInclusionEffectiveness        float64
+	CsrfField                                template.HTML
+	NetworkStats                             *IndexPageData
+	ChurnRate                                uint64
+	QueuePosition                            uint64
+	EstimatedActivationTs                    time.Time
+	EstimatedActivationEpoch                 uint64
+	InclusionDelay                           int64
+	CurrentAttestationStreak                 uint64
+	LongestAttestationStreak                 uint64
+	IsRocketpool                             bool
+	Rocketpool                               *RocketpoolValidatorPageData
+	NoAds                                    bool
+	ShowMultipleWithdrawalCredentialsWarning bool
+	CappellaHasHappened                      bool
+	BLSChange                                *BLSChange
+	IsWithdrawableAddress                    bool
+	EstimatedNextWithdrawal                  template.HTML
+	AddValidatorWatchlistModal               *AddValidatorWatchlistModal
+	NextWithdrawalRow                        [][]interface{}
 }
 
 type RocketpoolValidatorPageData struct {
@@ -1019,12 +1019,6 @@ type StakingCalculatorPageData struct {
 	BestValidatorBalanceHistory *[]ValidatorBalanceHistory
 	WatchlistBalanceHistory     [][]interface{}
 	TotalStaked                 uint64
-}
-
-type EthOneDepositsPageData struct {
-	*Stats
-	DepositContract string
-	DepositChart    *ChartsPageDataChart
 }
 
 type DepositsPageData struct {

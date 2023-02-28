@@ -398,7 +398,7 @@
                 <td>{{ formatEth1Block $deposit.BlockNumber }}</td>
                 <td>{{ formatTimestamp $deposit.BlockTs }}</td>
                 <td>
-                  {{ if $.Data.ShowWithdrawalWarning }}
+                  {{ if $.Data.ShowMultipleWithdrawalCredentialsWarning }}
                     <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="At least one deposit to your validator has different withdrawal credentials!"></i></span>
                   {{ end }}
                   {{ formatWithdawalCredentials $deposit.WithdrawalCredentials true }}
@@ -558,7 +558,7 @@
                   <td>{{ formatBlockSlot $deposit.BlockSlot }}</td>
                   <td>{{ formatSlotToTimestamp $deposit.BlockSlot }}</td>
                   <td>
-                    {{ if $.Data.ShowWithdrawalWarning }}
+                    {{ if $.Data.ShowMultipleWithdrawalCredentialsWarning }}
                       <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="At least one deposit to your validator has different withdrawal credentials!"></i></span>
                     {{ end }}
                     {{ formatWithdawalCredentials $deposit.Withdrawalcredentials true }}
