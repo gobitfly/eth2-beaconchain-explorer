@@ -21,6 +21,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
@@ -249,6 +250,10 @@ func FormatAddCommasFormated(num float64, precision uint) template.HTML {
 		s = strings.TrimRight(strings.TrimRight(s, "0"), ".")
 	}
 	return template.HTML(strings.ReplaceAll(string([]rune(p.Sprintf(s, num))), ",", `<span class="thousands-separator"></span>`))
+}
+
+func FormatBigNumberAddCommasFormated(val hexutil.Big, precision uint) template.HTML {
+	return FormatAddCommasFormated(float64(val.ToInt().Int64()), 0)
 }
 
 func FormatAddCommas(n uint64) template.HTML {
