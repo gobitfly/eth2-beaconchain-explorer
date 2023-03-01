@@ -1351,6 +1351,10 @@ func (bigtable *Bigtable) GetEpochIncomeHistory(epoch uint64) (*itypes.Validator
 // GetValidatorIncomeDetailsHistory returns the validator income details
 // startEpoch & endEpoch are inclusive
 func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]*itypes.ValidatorEpochIncome, error) {
+	if startEpoch > endEpoch {
+		startEpoch = 0
+	}
+
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*180))
 	defer cancel()
 
