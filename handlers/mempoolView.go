@@ -44,7 +44,6 @@ func formatToTable(content *types.RawMempoolResponse) *types.DataTableResponse {
 	for _, pendingData := range content.Pending {
 		for _, tx := range pendingData {
 			dataTable.Data = append(dataTable.Data, []any{
-				// TODO: link to tx page once it has a mempool view implemented
 				utils.FormatAddressWithLimits(tx.Hash.Bytes(), "", false, "tx", 15, 18, true),
 				utils.FormatAddressAll(tx.From.Bytes(), "", false, "address", "", int(12), int(12), true),
 				_isContractCreation(tx.To),

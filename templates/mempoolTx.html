@@ -32,8 +32,8 @@
         <div class="card-body px-0 py-1">
           <div class="tab-content h-100">
             <div id="overview" class="tab-pane d-flex flex-column fade show active" role="tabpanel" aria-labelledby="overview-tab">
-              <div class="d-flex flex-column p-3">
-                <div class="col-md-3"><span class="align-middle">Transaction Hash:</span></div>
+              <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
+                <div class="col-md-3">Transaction Hash:</div>
                 <div class="col-md-9">
                   <div class="d-flex align-items-center">
                     <div style="min-width: 0;">{{ .Hash | formatHashLong }}</div>
@@ -87,7 +87,7 @@
                 <div class="col-md-3">Gas Fee Cap:</div>
                 <div class="col-md-9">{{ formatBigAmount .GasFeeCap "GWei" 5 }}</div>
               </div>
-              <div class="row border-bottom p-3 mx-0">
+              <div class="row  {{ if .Input }}border-bottom{{ end }} p-3 mx-0">
                 <div class="col-md-3">Attributes:</div>
                 <div class="col-md-9">
                   <div class="d-flex flex-wrap">
@@ -103,7 +103,7 @@
                 </div>
               </div>
               {{ if .Input }}
-                <div class="row border-bottom p-3 mx-0">
+                <div class="row p-3 mx-0">
                   <div class="col-md-3">Input:</div>
                   <div class="col-md-9">
                     <textarea readonly class="form-control bg-light text-monospace ">{{ .Input }}</textarea>

@@ -45,8 +45,6 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 	txData, err := eth1data.GetEth1Transaction(common.BytesToHash(txHash))
 	if err != nil {
-		logger.Errorf("error getting eth1 transaction data: %v", err)
-
 		mempool := services.LatestMempoolTransactions()
 		mempoolTx := mempool.FindTxByHash(txHashString)
 		if mempoolTx != nil {
@@ -60,7 +58,6 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 			}
 
 			data.Data = mempoolPageData
-
 		} else {
 			logger.Errorf("error getting eth1 transaction data: %v", err)
 			if handleTemplateError(w, r, "eth1tx.go", "Eth1TransactionTx", "GetEth1Transaction", txNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -68,7 +65,6 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-
 	} else {
 		data.Data = txData
 	}
