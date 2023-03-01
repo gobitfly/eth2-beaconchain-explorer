@@ -1038,7 +1038,7 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 
 	subs := []types.Subscription{}
 	err = db.FrontendWriterDB.Select(&subs, `
-			SELECT *
+			SELECT id, omitempty, user_id,omitempty, event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold, unsubscribe_hash, internal_state
 			FROM users_subscriptions
 			WHERE user_id = $1
 	`, user.UserID)

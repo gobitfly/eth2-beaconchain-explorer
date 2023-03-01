@@ -44,7 +44,7 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT * FROM eth1_deposits WHERE tx_hash = $1", eth1TxHash)
+	rows, err := db.ReaderDb.Query("SELECT amount, block_number, block_ts, from_address, merkletree_index, publickey, removed, signature, tx_hash, tx_index, tx_input, valid_signature, withdrawal_credentials FROM eth1_deposits WHERE tx_hash = $1", eth1TxHash)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
