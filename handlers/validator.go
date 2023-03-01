@@ -158,7 +158,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				logger.Errorf("error getting validator-deposits from db: %v", err)
 			}
 			validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
-			validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(deposits)
+			validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(deposits)
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
 				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)

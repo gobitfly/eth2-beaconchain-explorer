@@ -410,6 +410,7 @@ func main() {
 			router.HandleFunc("/slot/{slot}/attestations", handlers.SlotAttestationsData).Methods("GET")
 			router.HandleFunc("/slot/{slot}/withdrawals", handlers.SlotWithdrawalData).Methods("GET")
 			router.HandleFunc("/slot/{slot}/blsChange", handlers.SlotBlsChangeData).Methods("GET")
+			router.HandleFunc("/slots/finder", handlers.SlotFinder).Methods("GET")
 			router.HandleFunc("/slots", handlers.Slots).Methods("GET")
 			router.HandleFunc("/slots/data", handlers.SlotsData).Methods("GET")
 			router.HandleFunc("/blocks", handlers.Eth1Blocks).Methods("GET")
@@ -474,11 +475,11 @@ func main() {
 			router.HandleFunc("/validators/withdrawals/data", handlers.WithdrawalsData).Methods("GET")
 			router.HandleFunc("/validators/withdrawals/bls", handlers.BLSChangeData).Methods("GET")
 			router.HandleFunc("/validators/deposits", handlers.Deposits).Methods("GET")
-			router.HandleFunc("/validators/initiated-deposits", handlers.Eth1Deposits).Methods("GET")
+			router.HandleFunc("/validators/initiated-deposits", handlers.Eth1Deposits).Methods("GET") // deprecated, will redirect to /validators/deposits
 			router.HandleFunc("/validators/initiated-deposits/data", handlers.Eth1DepositsData).Methods("GET")
 			router.HandleFunc("/validators/deposit-leaderboard", handlers.Eth1DepositsLeaderboard).Methods("GET")
 			router.HandleFunc("/validators/deposit-leaderboard/data", handlers.Eth1DepositsLeaderboardData).Methods("GET")
-			router.HandleFunc("/validators/included-deposits", handlers.Eth2Deposits).Methods("GET")
+			router.HandleFunc("/validators/included-deposits", handlers.Eth2Deposits).Methods("GET") // deprecated, will redirect to /validators/deposits
 			router.HandleFunc("/validators/included-deposits/data", handlers.Eth2DepositsData).Methods("GET")
 
 			router.HandleFunc("/heatmap", handlers.Heatmap).Methods("GET")
