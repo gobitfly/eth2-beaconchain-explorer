@@ -4,7 +4,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/eth1data"
+	"eth2-exporter/services"
 	"eth2-exporter/templates"
+	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
@@ -19,6 +21,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 	var txNotFoundTemplate = templates.GetTemplate("layout.html", "eth1txnotfound.html")
 	var txTemplate = templates.GetTemplate("layout.html", "eth1tx.html")
+	var mempoolTxTemplate = templates.GetTemplate("layout.html", "mempoolTx.html")
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
@@ -42,15 +45,29 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 	txData, err := eth1data.GetEth1Transaction(common.BytesToHash(txHash))
 	if err != nil {
-		logger.Errorf("error getting eth1 transaction data: %v", err)
+		mempool := services.LatestMempoolTransactions()
+		mempoolTx := mempool.FindTxByHash(txHashString)
+		if mempoolTx != nil {
+			mempoolPageData := &types.MempoolTxPageData{RawMempoolTransaction: *mempoolTx}
+			txTemplate = mempoolTxTemplate
+			if mempoolTx.To == nil {
+				mempoolPageData.IsContractCreation = true
+			}
+			if mempoolTx.Input != nil {
+				mempoolPageData.TargetIsContract = true
+			}
 
-		if handleTemplateError(w, r, "eth1tx.go", "Eth1TransactionTx", "GetEth1Transaction", txNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
-			return // an error has occurred and was processed
+			data.Data = mempoolPageData
+		} else {
+			logger.Errorf("error getting eth1 transaction data: %v", err)
+			if handleTemplateError(w, r, "eth1tx.go", "Eth1TransactionTx", "GetEth1Transaction", txNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+				return // an error has occurred and was processed
+			}
+			return
 		}
-		return
+	} else {
+		data.Data = txData
 	}
-
-	data.Data = txData
 
 	if utils.IsApiRequest(r) {
 		w.Header().Set("Content-Type", "application/json")

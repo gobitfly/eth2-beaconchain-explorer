@@ -36,6 +36,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
@@ -122,6 +123,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatETH":                               FormatETH,
 		"formatFloat":                             FormatFloat,
 		"formatAmount":                            FormatAmount,
+		"formatBigAmount":                         FormatBigAmount,
 		"formatYesNo":                             FormatYesNo,
 		"formatAmountFormatted":                   FormatAmountFormated,
 		"formatAddressAsLink":                     FormatAddressAsLink,
@@ -207,11 +209,18 @@ func GetTemplateFuncs() template.FuncMap {
 		"byteToString": func(num []byte) string {
 			return string(num)
 		},
-		"formatEthstoreComparison": FormatEthstoreComparison,
-		"formatPoolPerformance":    FormatPoolPerformance,
-		"formatTokenSymbolTitle":   FormatTokenSymbolTitle,
-		"formatTokenSymbol":        FormatTokenSymbol,
-		"formatTokenSymbolHTML":    FormatTokenSymbolHTML,
+		"bigToInt": func(val *hexutil.Big) *big.Int {
+			if val != nil {
+				return val.ToInt()
+			}
+			return nil
+		},
+		"formatBigNumberAddCommasFormated": FormatBigNumberAddCommasFormated,
+		"formatEthstoreComparison":         FormatEthstoreComparison,
+		"formatPoolPerformance":            FormatPoolPerformance,
+		"formatTokenSymbolTitle":           FormatTokenSymbolTitle,
+		"formatTokenSymbol":                FormatTokenSymbol,
+		"formatTokenSymbolHTML":            FormatTokenSymbolHTML,
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {
 				return nil, errors.New("invalid dict call")
