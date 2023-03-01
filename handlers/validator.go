@@ -454,7 +454,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 			validatorPageData.WithdrawalCount = withdrawalsCount
 
-			validatorPageData.ShowWithdrawalWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
+			validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
 			blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
 			if err != nil {
 				return fmt.Errorf("error getting validator bls change from db: %v", err)
