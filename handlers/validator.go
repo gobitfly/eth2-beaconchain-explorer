@@ -438,11 +438,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
+	validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
+	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
+		// validators can have 0x01 credentials even before the cappella fork
+		validatorPageData.IsWithdrawableAddress = true
+	}
+
 	g.Go(func() error {
-		if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
-			// validators can have 0x01 credentials even before the cappella fork
-			validatorPageData.IsWithdrawableAddress = true
-		}
 
 		if validatorPageData.CappellaHasHappened {
 			// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
@@ -454,7 +456,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 			validatorPageData.WithdrawalCount = withdrawalsCount
 
-			validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
 			blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
 			if err != nil {
 				return fmt.Errorf("error getting validator bls change from db: %v", err)
