@@ -1514,6 +1514,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentEpoch := services.LatestEpoch() - 1
+	// for an exited validator we show the history until his exit
+	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 {
+		currentEpoch = activationAndExitEpoch.ExitEpoch - 1
+	}
 
 	var validatorHistory []*types.ValidatorHistory
 
