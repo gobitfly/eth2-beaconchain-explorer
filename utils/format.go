@@ -479,23 +479,24 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 }
 
 // WithdrawalCredentialsToAddress converts withdrawalCredentials to an address if possible
-func WithdrawalCredentialsToAddress(credentials []byte) []byte {
-	if len(credentials) > 12 && bytes.Equal(credentials[:1], []byte{0x01}) {
-		return credentials[12:]
+func WithdrawalCredentialsToAddress(credentials []byte) ([]byte, error) {
+	if IsValidWithdrawalCredentials(fmt.Sprintf("%#x", credentials)) {
+		if len(credentials) > 12 && bytes.Equal(credentials[:1], []byte{0x01}) {
+			return credentials[12:], nil
+		}
 	}
-
-	return credentials
+	return nil, fmt.Errorf("invalid withdrawal credentials")
 }
 
 // AddressToWithdrawalCredentials converts a valid address to withdrawalCredentials
-func AddressToWithdrawalCredentials(address []byte) []byte {
+func AddressToWithdrawalCredentials(address []byte) ([]byte, error) {
 	if IsValidEth1Address(fmt.Sprintf("%#x", address)) {
-		credentials := make([]byte, 12)
+		credentials := make([]byte, 12, 64)
 		credentials[0] = 0x01
 		credentials = append(credentials, address...)
-		return credentials
+		return credentials, nil
 	}
-	return address
+	return nil, fmt.Errorf("invalid eth1 address")
 }
 
 func FormatHashWithCopy(hash []byte) template.HTML {

@@ -3251,9 +3251,21 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 
 	credentialsOrAddressString := vars["withdrawalCredentialsOrEth1address"]
 	credentialsOrAddressString = strings.ToLower(credentialsOrAddressString)
+
+	if !utils.IsValidEth1Address(credentialsOrAddressString) &&
+		!utils.IsValidWithdrawalCredentials(credentialsOrAddressString) {
+		logger.Warn("invalid withdrawal credentials or eth1 address provided")
+		sendErrorResponse(w, r.URL.String(), "invalid withdrawal credentials or eth1 address provided")
+		return
+	}
+
 	credentialsOrAddress := common.FromHex(credentialsOrAddressString)
 
-	credentials := utils.AddressToWithdrawalCredentials(credentialsOrAddress)
+	credentials, err := utils.AddressToWithdrawalCredentials(credentialsOrAddress)
+	if err != nil {
+		// Input is not an address so it must already be withdrawal credentials
+		credentials = credentialsOrAddress
+	}
 
 	limitQuery := q.Get("limit")
 	offsetQuery := q.Get("offset")
@@ -3270,7 +3282,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 		Pubkey []byte `db:"pubkey"`
 	}{}
 
-	err := db.ReaderDb.Select(&result, `
+	err = db.ReaderDb.Select(&result, `
 	SELECT
 		validatorindex,
 		pubkey
