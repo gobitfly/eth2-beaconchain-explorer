@@ -1519,10 +1519,16 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	g := new(errgroup.Group)
 
+	startEpoch := currentEpoch - start - 9
+	endEpoch := currentEpoch - start
+	if startEpoch > endEpoch { // handle underflows of startEpoch
+		startEpoch = 0
+	}
+
 	var withdrawals []*types.WithdrawalsByEpoch
 	g.Go(func() error {
 		var err error
-		withdrawals, err = db.GetValidatorsWithdrawalsByEpoch([]uint64{index}, currentEpoch-start-9, currentEpoch-start)
+		withdrawals, err = db.GetValidatorsWithdrawalsByEpoch([]uint64{index}, startEpoch, endEpoch)
 		if err != nil {
 			logger.Errorf("error retrieving validator withdrawals by epoch: %v", err)
 			return err
@@ -1533,7 +1539,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	var incomeDetails map[uint64]map[uint64]*itypes.ValidatorEpochIncome
 	g.Go(func() error {
 		var err error
-		incomeDetails, err = db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{index}, currentEpoch-start-9, currentEpoch-start)
+		incomeDetails, err = db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{index}, startEpoch, endEpoch)
 		if err != nil {
 			logger.Errorf("error retrieving validator income details history from bigtable: %v", err)
 			return err
@@ -1560,7 +1566,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(validatorHistory))
 
-	for i := currentEpoch - start; i >= currentEpoch-start-9; i-- {
+	for i := endEpoch; i >= startEpoch; i-- {
 		if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
 			tableData = append(tableData, []interface{}{
 				utils.FormatEpoch(i),
