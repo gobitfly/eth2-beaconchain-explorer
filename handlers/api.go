@@ -3238,7 +3238,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 // @Description Returns the validator indexes and pubkeys of a withdrawal credential or eth1 address
 // @Produce json
 // @Param withdrawalCredentialsOrEth1address path string true "Provide a withdrawal credential or an eth1 address with an optional 0x prefix"
-// @Param  limit query int false "Limit the number of results, maximum: 100" default(10)
+// @Param  limit query int false "Limit the number of results, maximum: 200" default(10)
 // @Param offset query int false "Offset the number of results" default(0)
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiWithdrawalCredentialsResponse}
 // @Failure 400 {object} types.ApiResponse
@@ -3262,7 +3262,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 	limit := parseUintWithDefault(limitQuery, 10)
 
 	// We set a max limit to limit the request call time.
-	const maxLimit uint64 = 10000
+	const maxLimit uint64 = 200
 	limit = math.MinU64(limit, maxLimit)
 
 	result := []struct {
