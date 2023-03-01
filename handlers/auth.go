@@ -222,10 +222,10 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		user.ProductID = ""
 	}
 
-	session.Values["authenticated"] = true
-	session.Values["user_id"] = user.ID
-	session.Values["subscription"] = user.ProductID
-	session.Values["user_group"] = user.UserGroup
+	session.SetValue("authenticated", true)
+	session.SetValue("user_id", user.ID)
+	session.SetValue("subscription", user.ProductID)
+	session.SetValue("user_group", user.UserGroup)
 
 	// save datatable state settings from anon session
 	dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"

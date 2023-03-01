@@ -3,17 +3,51 @@ package utils
 import (
 	"fmt"
 	"net/http"
-
-	"github.com/gorilla/sessions"
 )
 
 // SessionStore is a securecookie-based session-store.
-var SessionStore *sessions.CookieStore
+
+type CustomSessionStore struct {
+	// TODO: Implement
+}
+
+func (css *CustomSessionStore) Get(r *http.Request, name string) (*CustomSession, error) {
+	// TODO: Implement
+	return &CustomSession{}, nil
+}
+
+type CustomSession struct {
+	// TODO: Implement
+}
+
+func (cs *CustomSession) AddFlash(value string) {
+	// TODO: Implement
+
+}
+
+func (cs *CustomSession) Save(r *http.Request, w http.ResponseWriter) {
+	// TODO: Implement
+}
+
+func (cs *CustomSession) SetValue(key string, value interface{}) {
+	// TODO: Implement
+}
+
+func (cs *CustomSession) Flashes() []interface{} {
+	// TODO: Implement
+	return []interface{}{}
+}
+
+func (cs *CustomSession) Values() map[interface{}]interface{} {
+	// TODO: Implement
+	return map[interface{}]interface{}{}
+}
+
+var SessionStore *CustomSessionStore
 
 // InitSessionStore initializes SessionStore with the given secret.
 func InitSessionStore(secret string) {
-	SessionStore = sessions.NewCookieStore([]byte(secret))
-	SessionStore.Options.HttpOnly = true
+	SessionStore = &CustomSessionStore{}
 }
 
 func SetFlash(w http.ResponseWriter, r *http.Request, name string, value string) {
