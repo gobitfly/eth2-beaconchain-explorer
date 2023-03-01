@@ -1396,11 +1396,7 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	response := &types.ApiResponse{}
 	response.Status = "OK"
 
-	if len(data) == 1 {
-		response.Data = data[0]
-	} else {
-		response.Data = data
-	}
+	response.Data = data
 	err = j.Encode(response)
 
 	if err != nil {
@@ -3103,7 +3099,7 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 		err = json.Unmarshal(body, &jsonObject)
 		if err != nil {
 			logger.Warnf("Could not parse stats (meta stats) general | %v ", err)
-			sendErrorResponse(w, r.URL.String(), "metrics rate limit reached, one process per machine per user each minute is allowed.")
+			sendErrorResponse(w, r.URL.String(), "Invalid JSON format in request body")
 			return
 		}
 		jsonObjects = []map[string]interface{}{jsonObject}
