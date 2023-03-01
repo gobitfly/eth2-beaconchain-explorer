@@ -230,7 +230,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	// save datatable state settings from anon session
 	dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
 
-	for k, state := range session.Values {
+	for k, state := range session.Values() {
 		k, ok := k.(string)
 		if ok && strings.HasPrefix(k, dataTableStatePrefix) {
 			state, ok := state.(types.DataTableSaveState)
@@ -245,7 +245,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 			} else {
 				logger.Errorf("error could not parse datatable state from session, state: %+v", state)
 			}
-			delete(session.Values, k)
+			session.DeleteValue(k)
 		}
 	}
 	// session.AddFlash("Successfully logged in")
@@ -254,26 +254,25 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 	logger.WithFields(
 		logrus.Fields{
-			"authenticated": session.Values["authenticated"],
-			"user_id":       session.Values["user_id"],
-			"subscription":  session.Values["subscription"],
-			"user_group":    session.Values["user_group"],
+			"authenticated": session.GetValue("authenticated"),
+			"user_id":       session.GetValue("user_id"),
+			"subscription":  session.GetValue("subscription"),
+			"user_group":    session.GetValue("user_group"),
 		},
 	).Info("login succeeded with session")
 
-	redirectURI, RedirectExists := session.Values["oauth_redirect_uri"]
+	redirectURI := session.GetValue("oauth_redirect_uri")
 
-	if RedirectExists {
-		state, stateExists := session.Values["state"]
+	if redirectURI != "" {
+		state := session.GetValue("state")
 		var stateParam = ""
 
-		if stateExists {
+		if state != "" {
 			stateParam = "&state=" + state.(string)
 		}
 
-		delete(session.Values, "oauth_redirect_uri")
-		delete(session.Values, "state")
-		session.Save(r, w)
+		session.DeleteValue("oauth_redirect_uri")
+		session.DeleteValue("state")
 
 		http.Redirect(w, r, "/user/authorize?redirect_uri="+redirectURI.(string)+stateParam, http.StatusSeeOther)
 		return
@@ -291,10 +290,10 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	session.Values["subscription"] = ""
-	session.Values["authenticated"] = false
-	delete(session.Values, "user_id")
-	delete(session.Values, "oauth_redirect_uri")
+	session.SetValue("subscription", "")
+	session.SetValue("authenticated", false)
+	session.DeleteValue("user_id")
+	session.DeleteValue("oauth_redirect_uri")
 	session.Save(r, w)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -362,9 +361,9 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		user.Subscription = dbUser.ProductID
 	}
 
-	session.Values["authenticated"] = true
-	session.Values["user_id"] = user.UserID
-	session.Values["subscription"] = user.Subscription
+	session.SetValue("authenticated", true)
+	session.SetValue("user_id", user.UserID)
+	session.SetValue("subscription", user.Subscription)
 	session.Save(r, w)
 
 	data := InitPageData(w, r, "requestReset", "/requestReset", "Reset Password")
@@ -422,9 +421,9 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session.Values["subscription"] = ""
-	session.Values["authenticated"] = false
-	delete(session.Values, "user_id")
+	session.SetValue("subscription", "")
+	session.SetValue("authenticated", false)
+	session.DeleteValue("user_id")
 
 	session.AddFlash("Your password has been updated successfully, please log in again!")
 
