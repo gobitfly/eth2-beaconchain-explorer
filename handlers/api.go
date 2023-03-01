@@ -1393,8 +1393,16 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	j := json.NewEncoder(w)
+	response := &types.ApiResponse{}
+	response.Status = "OK"
 
-	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{data})
+	response.Data = data
+	err = j.Encode(response)
+
+	if err != nil {
+		logger.Errorf("error serializing json data for API %v route: %v", r.URL, err)
+	}
 }
 
 type ApiValidatorResponse struct {
@@ -1657,14 +1665,14 @@ func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
-	latestEpoch := services.LatestEpoch()
 	epoch, err := strconv.ParseUint(q.Get("epoch"), 10, 64)
 	if err != nil {
-		epoch = latestEpoch
+		epoch = services.LatestEpoch()
 	}
 
-	endEpoch := epoch - 100
-	if epoch < 100 {
+	// startEpoch and endEpoch are both inclusive, so substracting 99 here will result in a limit of 100 epochs
+	endEpoch := epoch - 99
+	if epoch < 99 {
 		endEpoch = 0
 	}
 
@@ -1705,7 +1713,7 @@ func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorBalanceHistoryResponse}
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorBlsChangeResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/blsChange [get]
 func ApiValidatorBlsChange(w http.ResponseWriter, r *http.Request) {
@@ -1767,7 +1775,7 @@ func ApiValidatorBlsChange(w http.ResponseWriter, r *http.Request) {
 // @Param  latest_epoch query int false "The latest epoch to consider in the query"
 // @Param  offset query int false "Number of items to skip"
 // @Param  limit query int false "Maximum number of items to return, up to 100"
-// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorBlsChangeResponse}
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorBalanceHistoryResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/balancehistory [get]
 func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
@@ -1800,22 +1808,15 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type responseType struct {
-		Balance          uint64 `json:"balance"`
-		EffectiveBalance uint64 `json:"effectivebalance"`
-		Epoch            uint64 `json:"epoch"`
-		ValidatorIndex   uint64 `json:"validatorindex"`
-		Week             uint64 `json:"week"`
-	}
-	responseData := make([]*responseType, 0, len(history)*101)
+	responseData := make([]*types.ApiValidatorBalanceHistoryResponse, 0, len(history)*101)
 
 	for validatorIndex, balances := range history {
 		for _, balance := range balances {
-			responseData = append(responseData, &responseType{
+			responseData = append(responseData, &types.ApiValidatorBalanceHistoryResponse{
 				Balance:          balance.Balance,
 				EffectiveBalance: balance.EffectiveBalance,
 				Epoch:            balance.Epoch,
-				ValidatorIndex:   validatorIndex,
+				Validatorindex:   validatorIndex,
 				Week:             balance.Epoch / 1575,
 			})
 		}
@@ -1825,7 +1826,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		if responseData[i].Epoch != responseData[j].Epoch {
 			return responseData[i].Epoch > responseData[j].Epoch
 		}
-		return responseData[i].ValidatorIndex < responseData[j].ValidatorIndex
+		return responseData[i].Validatorindex < responseData[j].Validatorindex
 	})
 
 	response := &types.ApiResponse{}
@@ -3099,7 +3100,7 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 		err = json.Unmarshal(body, &jsonObject)
 		if err != nil {
 			logger.Warnf("Could not parse stats (meta stats) general | %v ", err)
-			sendErrorResponse(w, r.URL.String(), "metrics rate limit reached, one process per machine per user each minute is allowed.")
+			sendErrorResponse(w, r.URL.String(), "Invalid JSON format in request body")
 			return
 		}
 		jsonObjects = []map[string]interface{}{jsonObject}

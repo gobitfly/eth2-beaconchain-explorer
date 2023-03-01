@@ -44,33 +44,7 @@ func Deposits(w http.ResponseWriter, r *http.Request) {
 }
 
 func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
-
-	var eth1DepositsTemplate = templates.GetTemplate("layout.html", "eth1Deposits.html", "index/depositChart.html")
-
-	w.Header().Set("Content-Type", "text/html")
-
-	pageData := &types.EthOneDepositsPageData{}
-
-	latestChartsPageData := services.LatestChartsPageData()
-	if len(latestChartsPageData) != 0 {
-		for _, c := range latestChartsPageData {
-			if c.Path == "deposits" {
-				pageData.DepositChart = c
-				break
-			}
-		}
-	}
-
-	pageData.Stats = services.GetLatestStats()
-	pageData.DepositContract = utils.Config.Chain.Config.DepositContractAddress
-
-	data := InitPageData(w, r, "blockchain", "/deposits/eth1", "Initiated Deposits")
-	data.HeaderAd = true
-	data.Data = pageData
-
-	if handleTemplateError(w, r, "eth1Depostis.go", "Eth1Deposits", "", eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
-		return // an error has occurred and was processed
-	}
+	http.Redirect(w, r, "/validators/deposits", http.StatusMovedPermanently)
 }
 
 // Eth1DepositsData will return eth1-deposits as json
