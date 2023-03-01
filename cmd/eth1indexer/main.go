@@ -784,7 +784,7 @@ func ImportMainnetERC20TokenMetadataFromTokenDirectory(bt *db.Bigtable) {
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if err != nil {
-		utils.LogFatal(err, "reading body error", 0)
+		utils.LogFatal(err, "reading body for ERC20 tokens error", 0)
 	}
 
 	type TokenDirectory struct {
@@ -837,7 +837,7 @@ func ImportMainnetERC20TokenMetadataFromTokenDirectory(bt *db.Bigtable) {
 				body, err := ioutil.ReadAll(resp.Body)
 
 				if err != nil {
-					utils.LogFatal(err, "reading body error", 0)
+					utils.LogFatal(err, "reading body for ERC20 token logo URI error", 0)
 				}
 
 				meta.Logo = body

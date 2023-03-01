@@ -216,7 +216,7 @@ func main() {
 		if utils.Config.Indexer.Node.Type == "lighthouse" {
 			rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainID)
 			if err != nil {
-				utils.LogFatal(err, "new lighthouse client error", 0)
+				utils.LogFatal(err, "new explorer lighthouse client error", 0)
 			}
 		} else {
 			logrus.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
@@ -228,7 +228,7 @@ func main() {
 				for _, epoch := range utils.Config.Indexer.OneTimeExport.Epochs {
 					err := exporter.ExportEpoch(epoch, rpcClient)
 					if err != nil {
-						utils.LogFatal(err, "exporting epoch error", 0)
+						utils.LogFatal(err, "exporting OneTimeExport epochs error", 0)
 					}
 				}
 			} else {
@@ -236,7 +236,7 @@ func main() {
 				for epoch := utils.Config.Indexer.OneTimeExport.StartEpoch; epoch <= utils.Config.Indexer.OneTimeExport.EndEpoch; epoch++ {
 					err := exporter.ExportEpoch(epoch, rpcClient)
 					if err != nil {
-						utils.LogFatal(err, "exporting epoch error", 0)
+						utils.LogFatal(err, "exporting OneTimeExport start to end epoch error", 0)
 					}
 				}
 			}

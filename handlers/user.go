@@ -1176,7 +1176,7 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 
 		Logout(w, r)
 	} else {
-		utils.LogError(nil, "Trying to delete a unauthenticated user", 0)
+		utils.LogError(nil, "Trying to delete an unauthenticated user", 0)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1725,7 +1725,7 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 	}
 
 	if len(jsonObjects) > 100 {
-		utils.LogError(nil, "Max number bundle subscribe is 100", 0)
+		utils.LogError(nil, "Multiple notification subscription: max number bundle subscribe is 100", 0)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
@@ -1777,7 +1777,7 @@ func MultipleUsersNotificationsSubscribeWeb(w http.ResponseWriter, r *http.Reque
 	}
 
 	if len(jsonObjects) > 100 {
-		utils.LogError(nil, "Max number bundle subscribe is 100", 0)
+		utils.LogError(nil, "Multiple notification subscription web: max number bundle subscribe is 100", 0)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}

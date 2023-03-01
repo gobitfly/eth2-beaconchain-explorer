@@ -1278,7 +1278,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 	txPoolContent := &TxPoolContent{}
 	err = json.Unmarshal(raw, txPoolContent)
 	if err != nil {
-		utils.LogFatal(err, "unmarshal json error", 0)
+		utils.LogFatal(err, "unmarshal txpoolcontent json error", 0)
 	}
 
 	pendingTxs := make([]*geth_types.Transaction, 0, len(txPoolContent.Pending))

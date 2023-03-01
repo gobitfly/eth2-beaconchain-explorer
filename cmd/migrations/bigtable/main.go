@@ -45,7 +45,7 @@ func main() {
 
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
-		utils.LogFatal(err, "new lighthouse client error", 0)
+		utils.LogFatal(err, "new bigtable lighthouse client error", 0)
 	}
 
 	for i := *start; i <= *end; i++ {
@@ -143,14 +143,14 @@ func monitor(configPath string) {
 
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
-		utils.LogFatal(err, "new lighthouse client error", 0)
+		utils.LogFatal(err, "new bigtable lighthouse client for epoch 1 error", 0)
 	}
 	current := uint64(0)
 
 	for {
 		head, err := rpcClient.GetChainHead()
 		if err != nil {
-			utils.LogFatal(err, "getting chain head from lighthouse error", 0)
+			utils.LogFatal(err, "getting chain head from lighthouse for epoch 1 error", 0)
 		}
 
 		logrus.Infof("current is %v, head is %v, finalized is %v", current, head.HeadEpoch, head.FinalizedEpoch)
