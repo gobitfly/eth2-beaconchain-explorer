@@ -263,11 +263,11 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 	redirectURI := session.GetValue("oauth_redirect_uri")
 
-	if redirectURI != "" {
+	if redirectURI != nil {
 		state := session.GetValue("state")
 		var stateParam = ""
 
-		if state != "" {
+		if state != nil {
 			stateParam = "&state=" + state.(string)
 		}
 

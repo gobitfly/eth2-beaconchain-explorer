@@ -14,21 +14,26 @@ import (
 // SessionStore is a securecookie-based session-store.
 
 type CustomSessionStore struct {
+	// TODO: Implement
 	SCS *scs.SessionManager
 }
 
 func (css *CustomSessionStore) Get(r *http.Request, name string) (*CustomSession, error) {
+	// TODO: Implement
 	return &CustomSession{
-		SCS: css.SCS,
+		SCS:       css.SCS,
+		ContextFn: r.Context,
 	}, nil
 }
 
 type CustomSession struct {
-	SCS *scs.SessionManager
+	SCS       *scs.SessionManager
+	ContextFn func() context.Context
+	// TODO: Implement
 }
 
 func (cs *CustomSession) AddFlash(value string) {
-	cs.SCS.Put(context.Background(), "_flash", value)
+	cs.SCS.Put(cs.ContextFn(), "_flash", value)
 }
 
 func (cs *CustomSession) Save(r *http.Request, w http.ResponseWriter) error {
@@ -37,15 +42,15 @@ func (cs *CustomSession) Save(r *http.Request, w http.ResponseWriter) error {
 }
 
 func (cs *CustomSession) SetValue(key string, value interface{}) {
-	cs.SCS.Put(context.Background(), key, value)
+	cs.SCS.Put(cs.ContextFn(), key, value)
 }
 
 func (cs *CustomSession) GetValue(key string) interface{} {
-	return cs.SCS.Get(context.Background(), key)
+	return cs.SCS.Get(cs.ContextFn(), key)
 }
 
 func (cs *CustomSession) DeleteValue(key string) {
-	cs.SCS.Remove(context.Background(), key)
+	cs.SCS.Remove(cs.ContextFn(), key)
 }
 
 func (cs *CustomSession) Flashes(vars ...string) []interface{} {
@@ -55,14 +60,19 @@ func (cs *CustomSession) Flashes(vars ...string) []interface{} {
 		key = vars[0]
 	}
 
-	return []interface{}{cs.SCS.Pop(context.Background(), key)}
+	val := cs.SCS.PopString(cs.ContextFn(), key)
+	if val != "" {
+		return []interface{}{val}
+	}
+
+	return []interface{}{}
 }
 
 func (cs *CustomSession) Values() map[interface{}]interface{} {
 	r := make(map[interface{}]interface{})
 
-	for _, key := range cs.SCS.Keys(context.Background()) {
-		v := cs.SCS.Get(context.Background(), key)
+	for _, key := range cs.SCS.Keys(cs.ContextFn()) {
+		v := cs.SCS.Get(cs.ContextFn(), key)
 
 		if v != nil {
 			r[key] = v
@@ -119,8 +129,11 @@ func GetFlash(w http.ResponseWriter, r *http.Request, name string) (string, erro
 	if fm == nil {
 		return "", nil
 	}
-	session.Save(r, w)
-	return fmt.Sprintf("%v", fm[0]), nil
+
+	if len(fm) > 0 {
+		return fmt.Sprintf("%v", fm[0]), nil
+	}
+	return "", nil
 }
 
 func GetFlashes(w http.ResponseWriter, r *http.Request, name string) []interface{} {

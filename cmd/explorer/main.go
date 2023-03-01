@@ -665,7 +665,7 @@ func main() {
 		pa.Init(proxyaddr.CIDRLoopback)
 		n.Use(pa)
 
-		n.UseHandler(router)
+		n.UseHandler(utils.SessionStore.SCS.LoadAndSave(router))
 
 		if utils.Config.Frontend.HttpWriteTimeout == 0 {
 			utils.Config.Frontend.HttpIdleTimeout = time.Second * 15
