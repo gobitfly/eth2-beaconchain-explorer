@@ -2379,6 +2379,11 @@ func GetValidatorsWithdrawals(validators []uint64, fromEpoch uint64, toEpoch uin
 }
 
 func GetValidatorsWithdrawalsByEpoch(validator []uint64, startEpoch uint64, endEpoch uint64) ([]*types.WithdrawalsByEpoch, error) {
+
+	if startEpoch > endEpoch {
+		startEpoch = 0
+	}
+
 	var withdrawals []*types.WithdrawalsByEpoch
 
 	err := ReaderDb.Select(&withdrawals, `
