@@ -520,7 +520,7 @@ func IsValidEth1Tx(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1TxRE.MatchString(s)
 }
 
-// IsValidEth1Tx verifies whether a string represents a valid eth1-tx-hash.
+// IsValidWithdrawalCredentials verifies whether a string represents valid withdrawal credentials.
 func IsValidWithdrawalCredentials(s string) bool {
 	return withdrawalCredentialsRE.MatchString(s) || withdrawalCredentialsAddressRE.MatchString(s)
 }

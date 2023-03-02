@@ -425,17 +425,23 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
 			address, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
 			if err != nil {
-				logger.WithError(err).Error("error invalid withdrawal credentials")
+				logger.Warn("invalid withdrawal credentials")
 			}
 
 			// it normally takes to epochs to finalize
 			if timeToWithdrawal.After(utils.EpochToTime(epoch + (epoch - latestFinalized))) {
 				tableData := make([][]interface{}, 0, 1)
+				var withdrawalCredentialsTemplate template.HTML
+				if address != nil {
+					withdrawalCredentialsTemplate = template.HTML(fmt.Sprintf(`<a href="/address/0x%x"><span class="text-muted">%s</span></a>`, address, utils.FormatHash(validatorPageData.WithdrawCredentials)))
+				} else {
+					withdrawalCredentialsTemplate = `<span class="text-muted">N/A</span>`
+				}
 				tableData = append(tableData, []interface{}{
 					template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
 					template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 					template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
-					template.HTML(fmt.Sprintf(`<a href="/address/0x%x"><span class="text-muted">%s</span></a>`, address, utils.FormatHash(validatorPageData.WithdrawCredentials))),
+					withdrawalCredentialsTemplate,
 					template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(validatorPageData.CurrentBalance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
 				})
 

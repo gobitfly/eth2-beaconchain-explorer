@@ -3254,7 +3254,6 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 
 	if !utils.IsValidEth1Address(credentialsOrAddressString) &&
 		!utils.IsValidWithdrawalCredentials(credentialsOrAddressString) {
-		logger.Warn("invalid withdrawal credentials or eth1 address provided")
 		sendErrorResponse(w, r.URL.String(), "invalid withdrawal credentials or eth1 address provided")
 		return
 	}
