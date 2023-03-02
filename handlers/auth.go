@@ -361,6 +361,15 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, err = db.FrontendWriterDB.Exec("UPDATE users SET password_reset_hash = '' WHERE id = $1", dbUser.ID)
+	if err != nil {
+		logger.Errorf("error clearing hash when user is resetting password: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
+		return
+	}
+
 	// if the user has not confirmed her email yet, just confirm it since she clicked this reset-password-link that has been sent to her email aswell anyway
 	if !dbUser.EmailConfirmed {
 		_, err = db.FrontendWriterDB.Exec("UPDATE users SET email_confirmed = 'TRUE' WHERE id = $1", dbUser.ID)
