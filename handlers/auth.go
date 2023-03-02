@@ -171,6 +171,15 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("Error retrieving session for login route: %v", err)
 	}
 
+	err = session.SCS.RenewToken(r.Context())
+	if err != nil {
+		logger.Errorf("error renewing session token: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/register", http.StatusSeeOther)
+		return
+	}
+
 	err = r.ParseForm()
 	if err != nil {
 		logger.Errorf("error parsing form: %v", err)
@@ -424,6 +433,15 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	session.SetValue("subscription", "")
 	session.SetValue("authenticated", false)
 	session.DeleteValue("user_id")
+
+	err = session.SCS.RenewToken(r.Context())
+	if err != nil {
+		logger.Errorf("error renewing session tokent user: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
 
 	session.AddFlash("Your password has been updated successfully, please log in again!")
 

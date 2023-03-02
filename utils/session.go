@@ -94,8 +94,7 @@ func InitSessionStore(secret string) {
 	}
 
 	sessionManager := scs.New()
-	sessionManager.Lifetime = 3 * time.Hour
-	sessionManager.IdleTimeout = 20 * time.Minute
+	sessionManager.Lifetime = time.Minute
 	sessionManager.Cookie.Name = "session_id"
 	// sessionManager.Cookie.Domain = "example.com"
 	sessionManager.Cookie.HttpOnly = true
