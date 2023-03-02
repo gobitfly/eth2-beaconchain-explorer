@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"math/big"
 	"strings"
@@ -527,13 +528,32 @@ type RawMempoolResponse struct {
 	Pending map[string]map[int]RawMempoolTransaction `json:"pending"`
 }
 
+func (mempool RawMempoolResponse) FindTxByHash(txHashString string) *RawMempoolTransaction {
+	for _, pendingData := range mempool.Pending {
+		for _, tx := range pendingData {
+			if fmt.Sprintf("%s", tx.Hash) == txHashString {
+				return &tx
+			}
+		}
+	}
+	return nil
+}
+
 type RawMempoolTransaction struct {
-	Hash      common.Hash     `json:"hash"`
-	From      *common.Address `json:"from"`
-	To        *common.Address `json:"to"`
-	Value     *hexutil.Big    `json:"value"`
-	Gas       *hexutil.Big    `json:"gas"`
-	GasFeeCap *hexutil.Big    `json:"maxFeePerGas,omitempty"`
-	GasPrice  *hexutil.Big    `json:"gasPrice"`
-	Nonce     *hexutil.Big    `json:"nonce"`
+	Hash             common.Hash     `json:"hash"`
+	From             *common.Address `json:"from"`
+	To               *common.Address `json:"to"`
+	Value            *hexutil.Big    `json:"value"`
+	Gas              *hexutil.Big    `json:"gas"`
+	GasFeeCap        *hexutil.Big    `json:"maxFeePerGas,omitempty"`
+	GasPrice         *hexutil.Big    `json:"gasPrice"`
+	Nonce            *hexutil.Big    `json:"nonce"`
+	Input            *string         `json:"input"`
+	TransactionIndex *hexutil.Big    `json:"transactionIndex"`
+}
+
+type MempoolTxPageData struct {
+	RawMempoolTransaction
+	TargetIsContract   bool
+	IsContractCreation bool
 }

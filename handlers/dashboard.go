@@ -191,7 +191,7 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	var incomeHistoryChartData []*types.ChartDataPoint
 	var executionChartData []*types.ChartDataPoint
 	g.Go(func() error {
-		incomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart(queryValidators, currency)
+		incomeHistoryChartData, _, err = db.GetValidatorIncomeHistoryChart(queryValidators, currency)
 		return err
 	})
 
@@ -285,7 +285,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	incomeHistoryChartData, err := db.GetValidatorIncomeHistoryChart(queryValidators, currency)
+	incomeHistoryChartData, _, err := db.GetValidatorIncomeHistoryChart(queryValidators, currency)
 	if err != nil {
 		logger.Errorf("failed to genereate income history chart data for dashboard view: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
