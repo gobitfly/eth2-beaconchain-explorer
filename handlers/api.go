@@ -24,6 +24,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	gorillacontext "github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
@@ -3229,6 +3230,82 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		return err
 	}
 	return nil
+}
+
+// ApiWithdrawalCredentialsValidators godoc
+// @Summary Get validator indexes and pubkeys of a withdrawal credential or eth1 address
+// @Tags Validator
+// @Description Returns the validator indexes and pubkeys of a withdrawal credential or eth1 address
+// @Produce json
+// @Param withdrawalCredentialsOrEth1address path string true "Provide a withdrawal credential or an eth1 address with an optional 0x prefix"
+// @Param  limit query int false "Limit the number of results, maximum: 200" default(10)
+// @Param offset query int false "Offset the number of results" default(0)
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiWithdrawalCredentialsResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/validator/withdrawalCredentials/{withdrawalCredentialsOrEth1address} [get]
+func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	q := r.URL.Query()
+
+	credentialsOrAddressString := vars["withdrawalCredentialsOrEth1address"]
+	credentialsOrAddressString = strings.ToLower(credentialsOrAddressString)
+
+	if !utils.IsValidEth1Address(credentialsOrAddressString) &&
+		!utils.IsValidWithdrawalCredentials(credentialsOrAddressString) {
+		sendErrorResponse(w, r.URL.String(), "invalid withdrawal credentials or eth1 address provided")
+		return
+	}
+
+	credentialsOrAddress := common.FromHex(credentialsOrAddressString)
+
+	credentials, err := utils.AddressToWithdrawalCredentials(credentialsOrAddress)
+	if err != nil {
+		// Input is not an address so it must already be withdrawal credentials
+		credentials = credentialsOrAddress
+	}
+
+	limitQuery := q.Get("limit")
+	offsetQuery := q.Get("offset")
+
+	offset := parseUintWithDefault(offsetQuery, 0)
+	limit := parseUintWithDefault(limitQuery, 10)
+
+	// We set a max limit to limit the request call time.
+	const maxLimit uint64 = 200
+	limit = math.MinU64(limit, maxLimit)
+
+	result := []struct {
+		Index  uint64 `db:"validatorindex"`
+		Pubkey []byte `db:"pubkey"`
+	}{}
+
+	err = db.ReaderDb.Select(&result, `
+	SELECT
+		validatorindex,
+		pubkey
+	FROM validators
+	WHERE withdrawalcredentials = $1
+	LIMIT $2
+	OFFSET $3
+	`, credentials, limit, offset)
+
+	if err != nil {
+		logger.Warnf("error retrieving validator data from db: %v", err)
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	response := make([]*types.ApiWithdrawalCredentialsResponse, 0, len(result))
+	for _, validator := range result {
+		response = append(response, &types.ApiWithdrawalCredentialsResponse{
+			Publickey:      fmt.Sprintf("%#x", validator.Pubkey),
+			ValidatorIndex: validator.Index,
+		})
+	}
+
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
 }
 
 func DecodeMapStructure(input interface{}, output interface{}) error {
