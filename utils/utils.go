@@ -1057,23 +1057,27 @@ func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
 	}
 }
 
-func LogFatal(err error, errorMsg interface{}, callerSkip int, infoIdentifiers ...string) {
-	logErrorInfo(err, callerSkip, infoIdentifiers...).Fatal(errorMsg)
+// LogFatal logs a fatal error with callstack info that skips callerSkip many levels with arbitrarily many additional infos.
+// callerSkip equal to 0 gives you info directly where LogFatal is called.
+func LogFatal(err error, errorMsg interface{}, callerSkip int, additionalInfos ...string) {
+	logErrorInfo(err, callerSkip, additionalInfos...).Fatal(errorMsg)
 }
 
-func LogError(err error, errorMsg interface{}, callerSkip int, infoIdentifiers ...string) {
-	logErrorInfo(err, callerSkip, infoIdentifiers...).Error(errorMsg)
+// LogError logs an error with callstack info that skips callerSkip many levels with arbitrarily many additional infos.
+// callerSkip equal to 0 gives you info directly where LogError is called.
+func LogError(err error, errorMsg interface{}, callerSkip int, additionalInfos ...string) {
+	logErrorInfo(err, callerSkip, additionalInfos...).Error(errorMsg)
 }
 
-func logErrorInfo(err error, callerSkip int, infoIdentifiers ...string) *logrus.Entry {
+func logErrorInfo(err error, callerSkip int, additionalInfos ...string) *logrus.Entry {
 	logFields := logrus.NewEntry(logrus.New())
 
 	pc, fullFilePath, line, ok := runtime.Caller(callerSkip + 2)
 	if ok {
 		logFields = logFields.WithFields(logrus.Fields{
-			"file":     filepath.Base(fullFilePath),
-			"line":     line,
-			"function": runtime.FuncForPC(pc).Name(),
+			"cs_file":     filepath.Base(fullFilePath),
+			"cs_function": runtime.FuncForPC(pc).Name(),
+			"cs_line":     line,
 		})
 	} else {
 		logFields = logFields.WithField("runtime", "Callstack cannot be read")
@@ -1083,9 +1087,8 @@ func logErrorInfo(err error, callerSkip int, infoIdentifiers ...string) *logrus.
 		logFields = logFields.WithField("error type", fmt.Sprintf("%T", err)).WithError(err)
 	}
 
-	infoCount := 0
-	for _, info := range infoIdentifiers {
-		logFields = logFields.WithField(fmt.Sprintf("info_%v", infoCount), info)
+	for idx, info := range additionalInfos {
+		logFields = logFields.WithField(fmt.Sprintf("info_%v", idx), info)
 	}
 
 	return logFields
