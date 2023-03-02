@@ -1369,21 +1369,12 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q := r.URL.Query()
-
-	newEmail := q.Get("email")
-
-	if !utils.IsValidEmail(newEmail) {
-		utils.SetFlash(w, r, authSessionName, "Error: Could not update your email because the new email is invalid, please try again.")
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
-		return
-	}
-
 	user := struct {
 		ID        int64     `db:"id"`
 		Email     string    `db:"email"`
 		ConfirmTs time.Time `db:"email_confirmation_ts"`
 		Confirmed bool      `db:"email_confirmed"`
+		NewEmail  string    `db:"email_change_to_value"`
 	}{}
 
 	err = db.FrontendWriterDB.Get(&user, "SELECT id, email, email_confirmation_ts, email_confirmed FROM users WHERE email_confirmation_hash = $1", hash)
@@ -1406,15 +1397,21 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !utils.IsValidEmail(user.NewEmail) {
+		utils.SetFlash(w, r, authSessionName, "Error: Could not update your email because the new email is invalid, please try again.")
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
 	var emailExists string
-	db.FrontendWriterDB.Get(&emailExists, "SELECT email FROM users WHERE email = $1", newEmail)
+	db.FrontendWriterDB.Get(&emailExists, "SELECT email FROM users WHERE email = $1", user.NewEmail)
 	if emailExists != "" {
 		utils.SetFlash(w, r, authSessionName, "Error: Email already exists. We could not update your email.")
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
-	_, err = db.FrontendWriterDB.Exec(`UPDATE users SET email = $1 WHERE id = $2`, newEmail, user.ID)
+	_, err = db.FrontendWriterDB.Exec(`UPDATE users SET email = $1, email_confirmation_hash = '' WHERE id = $2`, user.NewEmail, user.ID)
 	if err != nil {
 		logger.Errorf("error: updating email for user: %v", err)
 		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
@@ -1426,8 +1423,16 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	session.SetValue("authenticated", false)
 	session.DeleteValue("user_id")
 
+	err = purgeAllSessionsForUser(r.Context(), uint64(user.ID))
+	if err != nil {
+		logger.Errorf("error: purging sessions for user %v: %v", user.ID, err)
+		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
 	utils.SetFlash(w, r, authSessionName, "Your email has been updated successfully! <br> You can log in with your new email.")
-	http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
@@ -1449,7 +1454,7 @@ func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
 		return &types.RateLimitError{TimeLeft: (*lastTs).Add(authConfirmEmailRateLimit).Sub(now)}
 	}
 
-	_, err = tx.Exec("UPDATE users SET email_confirmation_hash = $1 WHERE id = $2", emailConfirmationHash, userId)
+	_, err = tx.Exec("UPDATE users SET email_confirmation_hash = $1, email_change_to_value = $2 WHERE id = $3", emailConfirmationHash, newEmail, userId)
 	if err != nil {
 		return fmt.Errorf("error updating confirmation-hash: %w", err)
 	}
@@ -1462,12 +1467,12 @@ func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
 	subject := fmt.Sprintf("%s: Verify your email-address", utils.Config.Frontend.SiteDomain)
 	msg := fmt.Sprintf(`To update your email on %[1]s please verify it by clicking this link:
 
-https://%[1]s/settings/email/%[2]s?email=%[3]s
+https://%[1]s/settings/email/%[2]s
 
 Best regards,
 
 %[1]s
-`, utils.Config.Frontend.SiteDomain, emailConfirmationHash, url.QueryEscape(newEmail))
+`, utils.Config.Frontend.SiteDomain, emailConfirmationHash)
 	err = mail.SendTextMail(newEmail, subject, msg, []types.EmailAttachment{})
 	if err != nil {
 		return err
