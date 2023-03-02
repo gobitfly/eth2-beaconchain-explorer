@@ -61,8 +61,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	premiumSubscription, err := db.GetUserPremiumSubscription(user.UserID)
 	if err != nil && err != sql.ErrNoRows {
 		logger.Errorf("Error retrieving the premium subscriptions for user: %v %v", user.UserID, err)
-		session.Flashes("Error: Something went wrong.")
-		session.Save(r, w)
+		utils.SetFlash(w, r, "", "Error: Something went wrong.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -70,8 +69,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	subscription, err := db.StripeGetUserSubscription(user.UserID, utils.GROUP_API)
 	if err != nil && err != sql.ErrNoRows {
 		logger.Errorf("Error retrieving the subscriptions for user: %v %v", user.UserID, err)
-		session.Flashes("Error: Something went wrong.")
-		session.Save(r, w)
+		utils.SetFlash(w, r, "", "Error: Something went wrong.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -138,7 +136,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		premiumPkg = premiumSubscription.Package
 	}
 
-	session.Values["subscription"] = premiumPkg
+	session.SetValue("subscription", premiumPkg)
 	session.Save(r, w)
 
 	if handleTemplateError(w, r, "user.go", "UserSettings", "", userTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -181,9 +179,9 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	clientID := q.Get("client_id")
 	state := q.Get("state")
 
-	session.Values["state"] = state
-	session.Values["client_id"] = clientID
-	session.Values["oauth_redirect_uri"] = redirectURI
+	session.SetValue("state", state)
+	session.SetValue("client_id", clientID)
+	session.SetValue("oauth_redirect_uri", redirectURI)
 	session.Save(r, w)
 
 	if !user.Authenticated {
@@ -226,8 +224,8 @@ func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	delete(session.Values, "oauth_redirect_uri")
-	delete(session.Values, "state")
+	session.DeleteValue("oauth_redirect_uri")
+	session.DeleteValue("state")
 	session.Save(r, w)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -1132,7 +1130,7 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 
 		code := hex.EncodeToString(codeBytes)   // return to user
 		codeHashed := utils.HashAndEncode(code) // save hashed code in db
-		clientID := session.Values["client_id"].(string)
+		clientID := session.GetValue("client_id").(string)
 
 		err2 := db.AddAuthorizeCode(user.UserID, codeHashed, clientID, appData.ID)
 		if err2 != nil {
@@ -1168,7 +1166,7 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logger.Errorf("error deleting user by email for user: %v %v", user.UserID, err)
 			http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
-			session.Flashes("Error: Could not delete user.")
+			utils.SetFlash(w, r, "", "Error: Could not delete user.")
 			session.Save(r, w)
 			http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 			return
@@ -1405,9 +1403,9 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session.Values["subscription"] = ""
-	session.Values["authenticated"] = false
-	delete(session.Values, "user_id")
+	session.SetValue("subscription", "")
+	session.SetValue("authenticated", false)
+	session.DeleteValue("user_id")
 
 	utils.SetFlash(w, r, authSessionName, "Your email has been updated successfully! <br> You can log in with your new email.")
 	http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
