@@ -1272,6 +1272,25 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
+
+	err = purgeAllSessionsForUser(r.Context(), user.UserID)
+	if err != nil {
+		logger.Errorf("error purging sessions for user %v: %v", user.UserID, err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
+	err = session.SCS.RenewToken(r.Context())
+	if err != nil {
+		logger.Errorf("error renewing session token for user: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
 	session.AddFlash("Password Updated Successfully ✔️")
 	session.Save(r, w)
 	http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
