@@ -639,23 +639,38 @@ func FormatParticipation(v float64) template.HTML {
 
 // FormatIncome will return a string for a balance
 func FormatIncome(balanceInt int64, currency string) template.HTML {
+	return formatIncome(balanceInt, currency, true)
+}
 
+func FormatIncomeNoCurrency(balanceInt int64, currency string) template.HTML {
+	return formatIncome(balanceInt, currency, false)
+}
+
+func formatIncome(balanceInt int64, currency string, includeCurrency bool) template.HTML {
 	decimals := 2
+	preCommaDecimals := 4
 
 	if currency == "ETH" {
 		decimals = 5
+		preCommaDecimals = 1
 	}
 
 	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := (float64(balanceInt) / float64(1e9)) * float64(exchangeRate)
-	balanceFormated := FormatFloat(balance, decimals)
+	balance := float64(balanceInt) * exchangeRate
+	income, _ := trimAmount(big.NewInt(int64(math.Abs(balance))), 9, preCommaDecimals, decimals)
 
-	if balance > 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%s %v</b></span>`, balanceFormated, currency))
-	} else if balance < 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%s %v</b></span>`, balanceFormated, currency))
+	if includeCurrency {
+		currency = " " + currency
 	} else {
-		return template.HTML(fmt.Sprintf(`<b>%s %v</b>`, balanceFormated, currency))
+		currency = ""
+	}
+
+	if balanceInt > 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%s%s</b></span>`, income, currency))
+	} else if balanceInt < 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>-%s%s</b></span>`, income, currency))
+	} else {
+		return template.HTML(fmt.Sprintf(`<span>%s%s</span>`, income, currency))
 	}
 }
 

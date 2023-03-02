@@ -282,10 +282,24 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validatorPageData.Income1d = earnings.LastDay
-	validatorPageData.Income7d = earnings.LastWeek
-	validatorPageData.Income31d = earnings.LastMonth
-	validatorPageData.Apr = earnings.APR
+	validatorPageData.TotalExecutionRewards = earnings.TotalExecutionRewards
+	validatorPageData.ClIncome1d = earnings.ClIncome1d
+	validatorPageData.ClIncome7d = earnings.ClIncome7d
+	validatorPageData.ClIncome31d = earnings.ClIncome31d
+	validatorPageData.ElIncome1d = earnings.ElIncome1d
+	validatorPageData.ElIncome7d = earnings.ElIncome7d
+	validatorPageData.ElIncome31d = earnings.ElIncome31d
+
+	validatorPageData.ClAPR7d = earnings.ClAPR7d
+	validatorPageData.ClAPR31d = earnings.ClAPR31d
+	validatorPageData.ClAPR365d = earnings.ClAPR365d
+	validatorPageData.ElAPR7d = earnings.ElAPR7d
+	validatorPageData.ElAPR31d = earnings.ElAPR31d
+	validatorPageData.ElAPR365d = earnings.ElAPR365d
+
+	validatorPageData.ProposalLuck = earnings.ProposalLuck
+	validatorPageData.ProposalEstimate = earnings.ProposalEstimate
+
 	vbalance, ok := balances[validatorPageData.ValidatorIndex]
 	if !ok {
 		logger.Errorf("error retrieving validator balances: %v", err)
@@ -644,9 +658,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	expectedSyncCount := uint64(len(syncPeriods)) * utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
+	preliminarySyncCount := uint64(len(syncPeriods)) * utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
 
-	if expectedSyncCount > 0 {
+	if preliminarySyncCount > 0 {
 		// get sync stats from validator_stats
 		syncStats := struct {
 			ParticipatedSync uint64 `db:"participated_sync"`
@@ -697,6 +711,21 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// actual sync duty count and percentage
 		validatorPageData.SyncCount = validatorPageData.ParticipatedSyncCount + validatorPageData.MissedSyncCount + validatorPageData.OrphanedSyncCount + syncStats.ScheduledSync
 		validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.SyncCount-validatorPageData.MissedSyncCount) / float64(validatorPageData.SyncCount)
+	}
+
+	// sync luck
+	if len(tempSyncPeriods) > 0 {
+		maxPeriod := tempSyncPeriods[0].Period
+		expectedSyncCount, err := getExpectedSyncCommitteeSlots([]uint64{index}, latestEpoch)
+		if err != nil {
+			logger.Errorf("error retrieving expected sync committee slots: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if expectedSyncCount != 0 {
+			validatorPageData.SyncLuck = float64(validatorPageData.ParticipatedSyncCount+validatorPageData.MissedSyncCount) / float64(expectedSyncCount)
+		}
+		validatorPageData.SyncEstimate = getNextSyncEstimateTimestamp(maxPeriod, 1)
 	}
 
 	// add rocketpool-data if available

@@ -300,6 +300,7 @@ type ValidatorsPageDataValidators struct {
 }
 
 // ValidatorPageData is a struct to hold data for the validators page
+// ValidatorPageData is a struct to hold data for the validators page
 type ValidatorPageData struct {
 	Epoch                               uint64 `db:"epoch"`
 	ValidatorIndex                      uint64 `db:"validatorindex"`
@@ -351,13 +352,26 @@ type ValidatorPageData struct {
 	MissedSyncCount                     uint64
 	OrphanedSyncCount                   uint64
 	UnmissedSyncPercentage              float64 // missed/(participated+orphaned)
-	Income1d                            int64
-	Income7d                            int64
-	Income31d                           int64
+	ClIncome1d                          int64
+	ClIncome7d                          int64
+	ClIncome31d                         int64
+	ElIncome1d                          int64
+	ElIncome7d                          int64
+	ElIncome31d                         int64
 	Rank7d                              int64 `db:"rank7d"`
 	RankCount                           int64 `db:"rank_count"`
 	RankPercentage                      float64
-	Apr                                 float64
+	ElAPR7d                             float64 `json:"elApr7d"`
+	ElAPR31d                            float64 `json:"elApr31d"`
+	ElAPR365d                           float64 `json:"elApr365d"`
+	ClAPR7d                             float64 `json:"clApr7d"`
+	ClAPR31d                            float64 `json:"clApr31d"`
+	ClAPR365d                           float64 `json:"clApr365d"`
+	TotalExecutionRewards               uint64
+	ProposalLuck                        float64
+	SyncLuck                            float64
+	ProposalEstimate                    *time.Time
+	SyncEstimate                        *time.Time
 	Proposals                           [][]uint64
 	IncomeHistoryChartData              []*ChartDataPoint
 	ExecutionIncomeHistoryData          []*ChartDataPoint
@@ -956,11 +970,19 @@ type DashboardValidatorBalanceHistory struct {
 
 // ValidatorEarnings is a struct to hold the earnings of one or multiple validators
 type ValidatorEarnings struct {
-	Total                   int64         `json:"total"`
-	LastDay                 int64         `json:"lastDay"`
-	LastWeek                int64         `json:"lastWeek"`
-	LastMonth               int64         `json:"lastMonth"`
-	APR                     float64       `json:"apr"`
+	ElIncome1d              int64         `json:"elIncome1d"`
+	ElIncome7d              int64         `json:"elIncome7d"`
+	ElIncome31d             int64         `json:"elIncome31d"`
+	ClIncome1d              int64         `json:"clIncome1d"`
+	ClIncome7d              int64         `json:"clIncome7d"`
+	ClIncome31d             int64         `json:"clIncome31d"`
+	ElAPR7d                 float64       `json:"elApr7d"`
+	ElAPR31d                float64       `json:"elApr31d"`
+	ElAPR365d               float64       `json:"elApr365d"`
+	ClAPR7d                 float64       `json:"clApr7d"`
+	ClAPR31d                float64       `json:"clApr31d"`
+	ClAPR365d               float64       `json:"clApr365d"`
+	TotalExecutionRewards   uint64        `json:"totalExecutionRewards"`
 	TotalDeposits           int64         `json:"totalDeposits"`
 	TotalWithdrawals        uint64        `json:"totalWithdrawals"`
 	EarningsInPeriodBalance int64         `json:"earningsInPeriodBalance"`
@@ -972,6 +994,8 @@ type ValidatorEarnings struct {
 	LastMonthFormatted      template.HTML `json:"lastMonthFormatted"`
 	TotalFormatted          template.HTML `json:"totalFormatted"`
 	TotalChangeFormatted    template.HTML `json:"totalChangeFormatted"`
+	ProposalLuck            float64       `json:"proposalLuck"`
+	ProposalEstimate        *time.Time    `json:"proposalEstimate"`
 }
 
 // ValidatorAttestationSlashing is a struct to hold data of an attestation-slashing
