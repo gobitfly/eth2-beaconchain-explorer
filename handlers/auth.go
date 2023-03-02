@@ -293,12 +293,14 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 // Logout handles ending the user session.
 func Logout(w http.ResponseWriter, r *http.Request) {
-	session, err := utils.SessionStore.Get(r, authSessionName)
+
+	_, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
 	session.SetValue("subscription", "")
 	session.SetValue("authenticated", false)
 	session.DeleteValue("user_id")
@@ -444,9 +446,18 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	session.SetValue("authenticated", false)
 	session.DeleteValue("user_id")
 
+	err = purgeAllSessionsForUser(r.Context(), user.UserID)
+	if err != nil {
+		logger.Errorf("error purging sessions for user %v: %v", user.UserID, err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
 	err = session.SCS.RenewToken(r.Context())
 	if err != nil {
-		logger.Errorf("error renewing session tokent user: %v", err)
+		logger.Errorf("error renewing session token for user: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
 		session.Save(r, w)
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
