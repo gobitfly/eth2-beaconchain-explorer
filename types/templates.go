@@ -1471,6 +1471,7 @@ type DataTableSaveStateColumns struct {
 
 type Eth1AddressPageData struct {
 	Address            string `json:"address"`
+	IsContract         bool
 	QRCode             string `json:"qr_code_base64"`
 	QRCodeInverse      string
 	Metadata           *Eth1AddressMetadata

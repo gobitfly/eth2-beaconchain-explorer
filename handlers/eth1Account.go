@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/eth1data"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -12,6 +14,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
@@ -45,7 +48,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	addressBytes := common.FromHex(address)
 	data := InitPageData(w, r, "blockchain", "/address", fmt.Sprintf("Address 0x%x", addressBytes))
 
-	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address))
+	metadata, err := db.BigtableClient.GetMetadataForAddress(addressBytes)
 	if err != nil {
 		logger.Errorf("error retieving balances for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -166,6 +169,15 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	code, err := eth1data.GetCodeAt(ctx, common.BytesToAddress(addressBytes))
+	if err != nil {
+		logger.WithError(err).Errorf("error retrieving code data for address %v", address)
+	}
+	isContract := len(code) != 0
+
 	pngStr, pngStrInverse, err := utils.GenerateQRCodeForAddress(addressBytes)
 	if err != nil {
 		logger.WithError(err).Errorf("error generating qr code for address %v", address)
@@ -243,6 +255,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = types.Eth1AddressPageData{
 		Address:            address,
+		IsContract:         isContract,
 		QRCode:             pngStr,
 		QRCodeInverse:      pngStrInverse,
 		Metadata:           metadata,
