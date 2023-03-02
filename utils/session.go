@@ -96,9 +96,7 @@ func InitSessionStore(secret string) {
 	sessionManager := scs.New()
 	sessionManager.Lifetime = time.Hour * 24 * 7
 	sessionManager.Cookie.Name = "session_id"
-	// sessionManager.Cookie.Domain = "example.com"
 	sessionManager.Cookie.HttpOnly = true
-	// sessionManager.Cookie.Path = "/example/"
 	sessionManager.Cookie.Persist = true
 	sessionManager.Cookie.SameSite = http.SameSiteStrictMode
 	sessionManager.Cookie.Secure = true
