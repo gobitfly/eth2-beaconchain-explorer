@@ -94,7 +94,7 @@ func InitSessionStore(secret string) {
 	}
 
 	sessionManager := scs.New()
-	sessionManager.Lifetime = time.Minute
+	sessionManager.Lifetime = time.Hour * 24 * 7
 	sessionManager.Cookie.Name = "session_id"
 	// sessionManager.Cookie.Domain = "example.com"
 	sessionManager.Cookie.HttpOnly = true
@@ -103,7 +103,7 @@ func InitSessionStore(secret string) {
 	sessionManager.Cookie.SameSite = http.SameSiteStrictMode
 	sessionManager.Cookie.Secure = true
 
-	sessionManager.Store = redisstore.NewWithPrefix(pool, fmt.Sprintf("%d:", Config.Chain.Config.DepositChainID))
+	sessionManager.Store = redisstore.New(pool)
 
 	SessionStore = &CustomSessionStore{
 		SCS: sessionManager,

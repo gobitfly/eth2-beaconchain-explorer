@@ -268,7 +268,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 			"subscription":  session.GetValue("subscription"),
 			"user_group":    session.GetValue("user_group"),
 		},
-	).Info("login succeeded with session")
+	).Info("login succeeded")
 
 	redirectURI := session.GetValue("oauth_redirect_uri")
 
