@@ -156,7 +156,11 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "login", "/login", "Login")
-	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
+	data.Data = types.AuthData{
+		Flashes:      utils.GetFlashes(w, r, authSessionName),
+		CsrfField:    csrf.TemplateField(r),
+		RecaptchaKey: utils.Config.Frontend.RecaptchaSiteKey,
+	}
 	data.Meta.NoTrack = true
 
 	if handleTemplateError(w, r, "auth.go", "Login", "", loginTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -166,6 +170,24 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 // LoginPost handles authenticating the user.
 func LoginPost(w http.ResponseWriter, r *http.Request) {
+
+	if len(utils.Config.Frontend.RecaptchaSecretKey) > 0 && len(utils.Config.Frontend.RecaptchaSiteKey) > 0 {
+		if len(r.FormValue("g-recaptcha-response")) == 0 {
+			utils.SetFlash(w, r, "pricing_flash", "Error: Invalid CAPTCHA")
+			logger.Errorf("error no recaptca response present %v route: %v", r.URL.String(), r.FormValue("g-recaptcha-response"))
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
+		if err != nil || !valid {
+			utils.SetFlash(w, r, "pricing_flash", "Error: Invalid CAPTCHA")
+			logger.Errorf("error validating recaptcha %v route: %v", r.URL.String(), err)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+	}
+
 	session, err := utils.SessionStore.Get(r, authSessionName)
 	if err != nil {
 		logger.Errorf("Error retrieving session for login route: %v", err)
