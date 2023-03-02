@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
@@ -180,4 +181,23 @@ func getUserSession(r *http.Request) (*types.User, *utils.CustomSession, error) 
 		return u, session, nil
 	}
 	return u, session, nil
+}
+
+func purgeAllSessionsForUser(ctx context.Context, userId uint64) error {
+	// invalidate all sessions for this user
+	err := utils.SessionStore.SCS.Iterate(ctx, func(ctx context.Context) error {
+		sessionUserID, ok := utils.SessionStore.SCS.Get(ctx, "user_id").(uint64)
+		if !ok {
+			return nil
+		}
+
+		if userId == sessionUserID {
+			return utils.SessionStore.SCS.Destroy(ctx)
+		}
+
+		return nil
+	})
+
+	return err
+
 }
