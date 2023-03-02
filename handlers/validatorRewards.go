@@ -63,7 +63,7 @@ func getUserRewardSubscriptions(uid uint64) [][]string {
 	var dbResp []types.Subscription
 
 	err := db.FrontendWriterDB.Select(&dbResp,
-		`select id, omitempty, user_id,omitempty, event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold, unsubscribe_hash, internal_state from users_subscriptions where event_name=$1 AND user_id=$2`, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName), uid)
+		`select id, user_id, event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold, unsubscribe_hash, internal_state from users_subscriptions where event_name=$1 AND user_id=$2`, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName), uid)
 	if err != nil {
 		logger.Errorf("error getting prices: %v", err)
 	}

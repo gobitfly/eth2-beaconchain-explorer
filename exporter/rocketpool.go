@@ -229,7 +229,7 @@ func (rp *RocketpoolExporter) InitDAOProposals() error {
 
 func (rp *RocketpoolExporter) InitDAOMembers() error {
 	dbRes := []RocketpoolDAOMember{}
-	err := rp.DB.Select(&dbRes, `select address, id, url, joined_time, last_proposal_time, rpl_bond_amount, unbonded_validator_count from rocketpool_dao_members`)
+	err := rp.DB.Select(&dbRes, `select address, id, joined_time, last_proposal_time, rpl_bond_amount, unbonded_validator_count from rocketpool_dao_members`)
 	if err != nil {
 		return err
 	}
