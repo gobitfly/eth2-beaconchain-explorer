@@ -99,14 +99,27 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	// if search == "" {
 	err = db.ReaderDb.Select(&performanceData, `
 			SELECT 
-				a.*,
+				a.rank,
+				a.balance, 
+				a.performance1d, 
+				a.performance7d, 
+				a.performance31d, 
+				a.performance365d, 
+				a.rank7d, 
+				a.validatorindex,
 				validators.pubkey,
 				COALESCE(validator_names.name, '') AS name,
 				cnt.total_count
 			FROM (
 					SELECT
-						ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
-						validator_performance.*
+						ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,						
+						validator_performance.balance, 
+						validator_performance.performance1d, 
+						validator_performance.performance7d, 
+						validator_performance.performance31d, 
+						validator_performance.performance365d, 
+						validator_performance.rank7d, 
+						validator_performance.validatorindex
 					FROM validator_performance
 					ORDER BY `+orderBy+` `+orderDir+`
 					LIMIT $1 OFFSET $2

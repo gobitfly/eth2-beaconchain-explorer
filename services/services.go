@@ -130,7 +130,13 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			relays.is_censoring as censors,
 			relays.is_ethical as ethical,
 			stats.block_count / (select max(blocks.slot) - $1 from blocks)::float as network_usage,
-			stats.*
+			stats.relay_id,
+			stats.block_count,
+			stats.total_value,
+			stats.avg_value,
+			stats.unique_builders,
+			stats.max_value,
+			stats.max_value_slot
 		from relays
 		left join stats on stats.relay_id = relays.tag_id
 		left join tags on tags.id = relays.tag_id 
@@ -178,7 +184,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 					limit 1
 				) as latest_slot
 			from (
-				select * 
+				select builder_pubkey, tag_id
 				from relays_blocks
 				where block_slot > $1
 				order by block_slot desc) rb
@@ -240,7 +246,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			validators.validatorindex as proposer,
 			encode(exec_extra_data, 'hex') as block_extra_data
 		from (
-			select * 
+			select value, block_slot, builder_pubkey, proposer_fee_recipient, block_root, tag_id, proposer_pubkey
 			from relays_blocks
 			where relays_blocks.block_root not in (select bt.blockroot from blocks_tags bt where bt.tag_id='invalid-relay-reward') 
 			order by relays_blocks.value desc
