@@ -1146,7 +1146,7 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
 	} else {
-		logger.Error("Not authorized")
+		utils.LogError(nil, "Not authorized", 0)
 		callback := appData.RedirectURI + "?error=access_denied&error_description=no_authentication" + stateAppend
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
@@ -1174,7 +1174,7 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 
 		Logout(w, r)
 	} else {
-		logger.Error("Trying to delete a unauthenticated user")
+		utils.LogError(nil, "Trying to delete an unauthenticated user", 0)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1742,7 +1742,7 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Error("Max number bundle subscribe is 100")
+		utils.LogError(nil, "Multiple notification subscription: max number bundle subscribe is 100", 0)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
@@ -1794,7 +1794,7 @@ func MultipleUsersNotificationsSubscribeWeb(w http.ResponseWriter, r *http.Reque
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Error("Max number bundle subscribe is 100")
+		utils.LogError(nil, "Multiple notification subscription web: max number bundle subscribe is 100", 0)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
@@ -1968,7 +1968,7 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Error("Max number bundle unsubscribe is 100")
+		utils.LogError(nil, "Max number bundle unsubscribe is 100", 0)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle unsubscribe is 100")
 		return
 	}

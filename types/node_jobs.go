@@ -67,7 +67,7 @@ func (nj *NodeJob) ParseData() error {
 		err := json.Unmarshal(nj.RawData, &d)
 		if err == nil {
 			if nj.Type != "" && nj.Type != UnknownNodeJobType && nj.Type != BLSToExecutionChangesNodeJobType {
-				return fmt.Errorf("nodejob.RawData missmatches nodejob.Type (%v)", nj.Type)
+				return fmt.Errorf("nodejob.RawData mismatches nodejob.Type (%v)", nj.Type)
 			}
 			nj.Type = BLSToExecutionChangesNodeJobType
 			nj.Data = d
@@ -80,7 +80,7 @@ func (nj *NodeJob) ParseData() error {
 		err := json.Unmarshal(nj.RawData, &d)
 		if err == nil && d.Message.Epoch != 0 {
 			if nj.Type != "" && nj.Type != UnknownNodeJobType && nj.Type != VoluntaryExitsNodeJobType {
-				return fmt.Errorf("nodejob.RawData missmatches nodejob.Type (%v)", nj.Type)
+				return fmt.Errorf("nodejob.RawData mismatches nodejob.Type (%v)", nj.Type)
 			}
 			nj.Type = VoluntaryExitsNodeJobType
 			nj.Data = d
