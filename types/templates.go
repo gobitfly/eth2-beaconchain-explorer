@@ -1123,10 +1123,11 @@ type FilterSubscription struct {
 }
 
 type AuthData struct {
-	Flashes   []interface{}
-	Email     string
-	State     string
-	CsrfField template.HTML
+	Flashes      []interface{}
+	Email        string
+	State        string
+	RecaptchaKey string
+	CsrfField    template.HTML
 }
 
 type CsrfData struct {

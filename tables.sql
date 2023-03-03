@@ -501,6 +501,7 @@ create table users
     email_confirmed         bool                   not null default 'f',
     email_confirmation_hash character varying(40) unique,
     email_confirmation_ts   timestamp without time zone,
+    email_change_to_value   character varying(100),
     password_reset_hash     character varying(40),
     password_reset_ts       timestamp without time zone,
     register_ts             timestamp without time zone,
