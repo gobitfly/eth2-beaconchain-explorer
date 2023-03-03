@@ -378,6 +378,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
+		// those functions need to be executed sequentially as both require the CurrentBalance value
 		start := time.Now()
 		defer func() {
 			timings.Earnings = time.Since(start)
@@ -396,55 +397,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		validatorPageData.CurrentBalance = vbalance.Balance
 		validatorPageData.EffectiveBalance = vbalance.EffectiveBalance
-		return nil
-	})
 
-	g.Go(func() error {
-		filter := db.WatchlistFilter{
-			UserId:         data.User.UserID,
-			Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
-			Tag:            types.ValidatorTagsWatchlist,
-			JoinValidators: false,
-			Network:        utils.GetNetwork(),
+		if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
+			// validators can have 0x01 credentials even before the cappella fork
+			validatorPageData.IsWithdrawableAddress = true
 		}
-
-		watchlist, err := db.GetTaggedValidators(filter)
-		if err != nil {
-			return fmt.Errorf("error getting tagged validators from db: %v", err)
-		}
-
-		validatorPageData.Watchlist = watchlist
-		return nil
-	})
-
-	g.Go(func() error {
-		start := time.Now()
-		defer func() {
-			timings.Deposits = time.Since(start)
-		}()
-		deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
-		if err != nil {
-			return fmt.Errorf("error getting validator-deposits from db: %v", err)
-		}
-		validatorPageData.Deposits = deposits
-		validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
-
-		for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
-			if deposit.ValidSignature {
-				validatorPageData.Eth1DepositAddress = deposit.FromAddress
-				break
-			}
-		}
-		return nil
-	})
-
-	validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
-	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
-		// validators can have 0x01 credentials even before the cappella fork
-		validatorPageData.IsWithdrawableAddress = true
-	}
-
-	g.Go(func() error {
 
 		if validatorPageData.CappellaHasHappened {
 			// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
@@ -501,6 +458,48 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+		return nil
+	})
+
+	g.Go(func() error {
+		filter := db.WatchlistFilter{
+			UserId:         data.User.UserID,
+			Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
+			Tag:            types.ValidatorTagsWatchlist,
+			JoinValidators: false,
+			Network:        utils.GetNetwork(),
+		}
+
+		watchlist, err := db.GetTaggedValidators(filter)
+		if err != nil {
+			return fmt.Errorf("error getting tagged validators from db: %v", err)
+		}
+
+		validatorPageData.Watchlist = watchlist
+		return nil
+	})
+
+	g.Go(func() error {
+		start := time.Now()
+		defer func() {
+			timings.Deposits = time.Since(start)
+		}()
+		deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
+		if err != nil {
+			return fmt.Errorf("error getting validator-deposits from db: %v", err)
+		}
+		validatorPageData.Deposits = deposits
+		validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
+
+		for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
+			if deposit.ValidSignature {
+				validatorPageData.Eth1DepositAddress = deposit.FromAddress
+				break
+			}
+		}
+
+		validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
+
 		return nil
 	})
 
