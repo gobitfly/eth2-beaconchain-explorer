@@ -154,7 +154,7 @@ func retrieveAndInsertPayloadsFromRelay(r types.Relay, low_bound uint64, high_bo
 		}
 
 		if resp == nil {
-			r.Logger.Errorf("got no payloads")
+			r.Logger.Error("got no payloads")
 			break
 		}
 

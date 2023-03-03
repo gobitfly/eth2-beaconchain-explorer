@@ -34,7 +34,8 @@ create index idx_validators_pubkeyhex_pattern_pos on validators (pubkeyhex varch
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
 create index idx_validators_activationepoch on validators (activationepoch);
-CREATE INDEX validators_is_offline_vali_idx ON validators (validatorindex, lastattestationslot, pubkey);
+create index validators_is_offline_vali_idx on validators (validatorindex, lastattestationslot, pubkey);
+create index idx_validators_withdrawalcredentials on validators (withdrawalcredentials, validatorindex);
 
 drop table if exists validator_pool;
 create table validator_pool
@@ -952,15 +953,6 @@ CREATE TABLE blocks_tags (
 );
 CREATE INDEX idx_blocks_tags_slot ON blocks_tags (slot);
 CREATE INDEX idx_blocks_tags_tag_id ON blocks_tags (tag_id);
-
-CREATE TABLE relays (
-	tag_id varchar NOT NULL,
-	endpoint varchar NOT NULL,
-	PRIMARY KEY (tag_id, endpoint),
-	FOREIGN KEY (tag_id) REFERENCES tags(id)
-);
-
-DROP TABLE IF EXISTS relays;
 
 CREATE TABLE relays (
 	tag_id varchar NOT NULL,

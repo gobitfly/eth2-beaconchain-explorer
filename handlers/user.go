@@ -61,8 +61,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	premiumSubscription, err := db.GetUserPremiumSubscription(user.UserID)
 	if err != nil && err != sql.ErrNoRows {
 		logger.Errorf("Error retrieving the premium subscriptions for user: %v %v", user.UserID, err)
-		session.Flashes("Error: Something went wrong.")
-		session.Save(r, w)
+		utils.SetFlash(w, r, "", "Error: Something went wrong.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -70,8 +69,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	subscription, err := db.StripeGetUserSubscription(user.UserID, utils.GROUP_API)
 	if err != nil && err != sql.ErrNoRows {
 		logger.Errorf("Error retrieving the subscriptions for user: %v %v", user.UserID, err)
-		session.Flashes("Error: Something went wrong.")
-		session.Save(r, w)
+		utils.SetFlash(w, r, "", "Error: Something went wrong.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -138,7 +136,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		premiumPkg = premiumSubscription.Package
 	}
 
-	session.Values["subscription"] = premiumPkg
+	session.SetValue("subscription", premiumPkg)
 	session.Save(r, w)
 
 	if handleTemplateError(w, r, "user.go", "UserSettings", "", userTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -181,9 +179,9 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	clientID := q.Get("client_id")
 	state := q.Get("state")
 
-	session.Values["state"] = state
-	session.Values["client_id"] = clientID
-	session.Values["oauth_redirect_uri"] = redirectURI
+	session.SetValue("state", state)
+	session.SetValue("client_id", clientID)
+	session.SetValue("oauth_redirect_uri", redirectURI)
 	session.Save(r, w)
 
 	if !user.Authenticated {
@@ -226,8 +224,8 @@ func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	delete(session.Values, "oauth_redirect_uri")
-	delete(session.Values, "state")
+	session.DeleteValue("oauth_redirect_uri")
+	session.DeleteValue("state")
 	session.Save(r, w)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -1132,7 +1130,7 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 
 		code := hex.EncodeToString(codeBytes)   // return to user
 		codeHashed := utils.HashAndEncode(code) // save hashed code in db
-		clientID := session.Values["client_id"].(string)
+		clientID := session.GetValue("client_id").(string)
 
 		err2 := db.AddAuthorizeCode(user.UserID, codeHashed, clientID, appData.ID)
 		if err2 != nil {
@@ -1148,7 +1146,7 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
 	} else {
-		logger.Error("Not authorized")
+		utils.LogError(nil, "Not authorized", 0)
 		callback := appData.RedirectURI + "?error=access_denied&error_description=no_authentication" + stateAppend
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
@@ -1168,7 +1166,7 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logger.Errorf("error deleting user by email for user: %v %v", user.UserID, err)
 			http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
-			session.Flashes("Error: Could not delete user.")
+			utils.SetFlash(w, r, "", "Error: Could not delete user.")
 			session.Save(r, w)
 			http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 			return
@@ -1176,7 +1174,7 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 
 		Logout(w, r)
 	} else {
-		logger.Error("Trying to delete a unauthenticated user")
+		utils.LogError(nil, "Trying to delete an unauthenticated user", 0)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1274,6 +1272,25 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
+
+	err = purgeAllSessionsForUser(r.Context(), user.UserID)
+	if err != nil {
+		logger.Errorf("error purging sessions for user %v: %v", user.UserID, err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
+	err = session.SCS.RenewToken(r.Context())
+	if err != nil {
+		logger.Errorf("error renewing session token for user: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
 	session.AddFlash("Password Updated Successfully ✔️")
 	session.Save(r, w)
 	http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
@@ -1405,9 +1422,9 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session.Values["subscription"] = ""
-	session.Values["authenticated"] = false
-	delete(session.Values, "user_id")
+	session.SetValue("subscription", "")
+	session.SetValue("authenticated", false)
+	session.DeleteValue("user_id")
 
 	utils.SetFlash(w, r, authSessionName, "Your email has been updated successfully! <br> You can log in with your new email.")
 	http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
@@ -1725,7 +1742,7 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Error("Max number bundle subscribe is 100")
+		utils.LogError(nil, "Multiple notification subscription: max number bundle subscribe is 100", 0)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
@@ -1777,7 +1794,7 @@ func MultipleUsersNotificationsSubscribeWeb(w http.ResponseWriter, r *http.Reque
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Error("Max number bundle subscribe is 100")
+		utils.LogError(nil, "Multiple notification subscription web: max number bundle subscribe is 100", 0)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
@@ -1951,7 +1968,7 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Error("Max number bundle unsubscribe is 100")
+		utils.LogError(nil, "Max number bundle unsubscribe is 100", 0)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle unsubscribe is 100")
 		return
 	}
