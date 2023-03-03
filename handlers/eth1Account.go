@@ -57,6 +57,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	g := new(errgroup.Group)
 	g.SetLimit(9)
 
+	isContract := false
 	txns := &types.DataTableResponse{}
 	internal := &types.DataTableResponse{}
 	erc20 := &types.DataTableResponse{}
@@ -67,6 +68,13 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	withdrawals := &types.DataTableResponse{}
 	withdrawalSummary := template.HTML("0")
 
+	g.Go(func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+
+		isContract, err = eth1data.IsContract(ctx, common.BytesToAddress(addressBytes))
+		return err
+	})
 	g.Go(func() error {
 		var err error
 		txns, err = db.BigtableClient.GetAddressTransactionsTableData(addressBytes, "", "")
@@ -168,15 +176,6 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	code, err := eth1data.GetCodeAt(ctx, common.BytesToAddress(addressBytes))
-	if err != nil {
-		logger.WithError(err).Errorf("error retrieving code data for address %v", address)
-	}
-	isContract := len(code) != 0
 
 	pngStr, pngStrInverse, err := utils.GenerateQRCodeForAddress(addressBytes)
 	if err != nil {

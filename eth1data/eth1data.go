@@ -77,11 +77,10 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		txPageData.To = &receipt.ContractAddress
 		txPageData.IsContractCreation = true
 	}
-	code, err := GetCodeAt(ctx, *txPageData.To)
+	txPageData.TargetIsContract, err = IsContract(ctx, *txPageData.To)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving code data for tx %v recipient %v: %v", hash, tx.To(), err)
 	}
-	txPageData.TargetIsContract = len(code) != 0
 
 	header, err := GetBlockHeaderByHash(ctx, receipt.BlockHash)
 	if err != nil {
@@ -307,6 +306,14 @@ func GetCodeAt(ctx context.Context, address common.Address) ([]byte, error) {
 	}
 
 	return code, nil
+}
+
+func IsContract(ctx context.Context, address common.Address) (bool, error) {
+	code, err := GetCodeAt(ctx, address)
+	if err != nil {
+		return false, err
+	}
+	return len(code) != 0, nil
 }
 
 func GetBlockHeaderByHash(ctx context.Context, hash common.Hash) (*geth_types.Header, error) {
