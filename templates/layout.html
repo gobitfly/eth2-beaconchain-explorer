@@ -56,89 +56,13 @@
           document.getElementById("app-style-initial").id = "app-theme"
         }
       </script>
-        <script>
-            function updateLang(lang) {
-                document.cookie = "language=" + lang + ";samesite=strict;path=/"
-                window.location.reload()
-            }
-
-            function updateCurrency(currency) {
-                document.cookie = "currency=" + currency + ";samesite=strict;path=/"
-                window.location.reload(true)
-            }
-
-            function getCookie(cname) {
-                var name = cname + "="
-                var ca = document.cookie.split(';')
-                for(var i = 0; i < ca.length; i++) {
-                    var c = ca[i]
-                    while (c.charAt(0) == ' ') {
-                        c = c.substring(1)
-                    }
-                    if (c.indexOf(name) == 0) {
-                        return c.substring(name.length, c.length)
-                    }
-                }
-                return ""
-            }
-
-            window.addEventListener('load', function() {
-                var currentCurrency = getCookie('currency')
-
-                if (currentCurrency) {
-                    document.getElementById('currencyDropdown').textContent = currentCurrency
-                    document.getElementById('currencyFlagDropdown').innerHTML = "<img class='currency-flag-dropdown-image' src='/img/" + currentCurrency +  ".svg'>"
-                }
-            })
-
-            window.addEventListener('DOMContentLoaded', function () {
-              if ({{.Mainnet}}) {
-                document.getElementById('initialPrice').textContent = ''
-                switch (getCookie('currency')) {
-                  case 'AUD':
-                        document.getElementById('currentCurrencySymbol').textContent = 'A$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.AudTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.AudRoundPrice}}
-                        break
-                  case 'CAD':
-                        document.getElementById('currentCurrencySymbol').textContent = 'C$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CadTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.CadRoundPrice}}
-                        break
-                  case 'CNY':
-                        document.getElementById('currentCurrencySymbol').textContent = '¥'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CnyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.CnyRoundPrice}}
-                        break
-                  case 'EUR':
-                        document.getElementById('currentCurrencySymbol').textContent = '€'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.EurTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.EurRoundPrice}}
-                        break
-                  case 'GBP':
-                        document.getElementById('currentCurrencySymbol').textContent = '£'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.GbpTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.GbpRoundPrice}}
-                        break
-                  case 'JPY':
-                        document.getElementById('currentCurrencySymbol').textContent = '¥'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.JpyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.JpyRoundPrice}}
-                        break
-                  case 'RUB':
-                        document.getElementById('currentCurrencySymbol').textContent = '₽'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.RubTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.RubRoundPrice}}
-                        break
-                  default:
-                        document.getElementById('currentCurrencySymbol').textContent = '$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.UsdTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.UsdRoundPrice}}
-                        break
-                }
-              }
-            })
-        </script> {{ template "css" .Data }}
+      <script>
+        function updateCurrency(currency) {
+          document.cookie = "currency=" + currency + ";samesite=strict;path=/"
+          window.location.reload(true)
+        }
+      </script>
+      {{ template "css" .Data }}
       <script src="/js/jquery.min.js"></script>
     </head>
     <header></header>
@@ -182,9 +106,8 @@
                   <div class="info-item-body">
                     <a id="banner-eth-price-data">
                       <span id="currentCurrencySymbol" class="currency-symbol">{{ .Rates.CurrentSymbol }}</span>
-                      <span id="initialPrice">{{ .Rates.CurrentPriceFormatted }}</span>
-                      <span id="currentKFormattedPrice" class="k-formatted-price"></span>
-                      <span id="currentCurencyPrice" class="price"></span>
+                      <span id="currentKFormattedPrice" class="k-formatted-price">{{ .Rates.CurrentPriceKFormatted }}</span>
+                      <span id="currentCurencyPrice" class="price">{{ .Rates.CurrentPriceFormatted }}</span>
                     </a>
                   </div>
                 </div>
@@ -237,63 +160,16 @@
                   <div id="currencyDropdown">{{ .Rates.Currency }}</div>
                 </a>
                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('ETH')">
-                    <img class="currency-flag-option" src="/img/ETH.svg" />
-                    <span class="currency-name">Ether</span>
-                    ETH
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('USD')">
-                    <img class="currency-flag-option" src="/img/USD.svg" />
-                    <span class="currency-name">United States Dollar</span>
-                    USD
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('EUR')">
-                    <img class="currency-flag-option" src="/img/EUR.svg" />
-                    <span class="currency-name">Euro</span>
-                    EUR
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('GBP')">
-                    <img class="currency-flag-option" src="/img/GBP.svg" />
-                    <span class="currency-name">Pound Sterling</span>
-                    GBP
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CNY')">
-                    <img class="currency-flag-option" src="/img/CNY.svg" />
-                    <span class="currency-name">Chinese Yuan</span>
-                    CNY
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('RUB')">
-                    <img class="currency-flag-option" src="/img/RUB.svg" />
-                    <span class="currency-name">Russian Ruble</span>
-                    RUB
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CAD')">
-                    <img class="currency-flag-option" src="/img/CAD.svg" />
-                    <span class="currency-name">Canadian Dollar</span>
-                    CAD
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('AUD')">
-                    <img class="currency-flag-option" src="/img/AUD.svg" />
-                    <span class="currency-name">Australian Dollar</span>
-                    AUD
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('JPY')">
-                    <img class="currency-flag-option" src="/img/JPY.svg" />
-                    <span class="currency-name">Japanese Yen</span>
-                    JPY
-                  </a>
+                  {{ range getAvailableCurrencies }}
+                    <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency({{ . }})">
+                      <img class="currency-flag-option" src="/img/{{ . }}.svg" />
+                      <span class="currency-name">{{ getCurrencyLabel . }}</span>
+                      {{ . }}
+                    </a>
+                  {{ end }}
                 </div>
               </div>
             {{ end }}
-            <!--<div class="dropdown">
-                        <a class="btn btn-transparent btn-sm dropdown-toggle" id="langDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fas fa-globe m-0 p-0"></i>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="langDropdown">
-                            <a class="dropdown-item" onClick="updateLang('en-US')">English</a>
-                            <a class="dropdown-item" onClick="updateLang('ru-RU')">Russian</a>
-                        </div>
-                    </div> -->
             {{ if .User.Authenticated }}
               <div class="dropdown">
                 <a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
