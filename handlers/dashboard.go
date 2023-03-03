@@ -363,13 +363,13 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		utils.LogError(err, fmt.Errorf("error converting datatables data parameter from string to int: %v", err), 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+		utils.LogError(err, fmt.Errorf("error converting datatables data parameter from string to int: %v", err), 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -396,14 +396,14 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	withdrawalCount, err := db.GetDashboardWithdrawalsCount(validators)
 	if err != nil {
-		logger.Errorf("error retrieving dashboard validator withdrawals count: %v", err)
+		utils.LogError(err, fmt.Errorf("error retrieving dashboard validator withdrawals count: %v", err), 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	withdrawals, err := db.GetDashboardWithdrawals(validators, length, start, orderBy, orderDir)
 	if err != nil {
-		logger.Errorf("error retrieving validator withdrawals: %v", err)
+		utils.LogError(err, fmt.Errorf("error retrieving validator withdrawals: %v", err), 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -430,7 +430,7 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		utils.LogError(err, fmt.Errorf("error enconding json response for %v route: %v", r.URL.String(), err), 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
