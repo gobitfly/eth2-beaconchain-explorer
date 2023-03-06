@@ -11,7 +11,7 @@ import (
 )
 
 func StakingServices(w http.ResponseWriter, r *http.Request) {
-	var stakingServicesTemplate = templates.GetTemplate("layout.html", "stakingServices.html", "components/bannerStakingServices.html")
+	var stakingServicesTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"stakingServices.html", "components/bannerStakingServices.html"}...)...)
 
 	var err error
 

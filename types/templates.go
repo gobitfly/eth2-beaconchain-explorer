@@ -49,6 +49,28 @@ type PageData struct {
 	DebugSession       map[string]interface{}
 	GasNow             *GasNowPageData
 	GlobalNotification template.HTML
+	MainMenuItems      []MainMenuItem
+}
+
+type MainMenuItem struct {
+	Label        string
+	Path         string
+	IsActive     bool
+	HasBigGroups bool
+	Groups       []NavigationGroup
+}
+
+type NavigationGroup struct {
+	Label string
+	Links []NavigationLink
+}
+
+type NavigationLink struct {
+	Label      string
+	Path       string
+	CustomIcon string
+	Icon       string
+	IsHidden   bool
 }
 
 type PageRates struct {

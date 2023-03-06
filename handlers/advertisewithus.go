@@ -11,7 +11,7 @@ import (
 )
 
 func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
-	var advertisewithusTemplate = templates.GetTemplate("layout.html", "advertisewithus.html")
+	var advertisewithusTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"advertisewithus.html"}...)...)
 
 	var err error
 

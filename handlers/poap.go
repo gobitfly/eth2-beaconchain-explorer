@@ -24,7 +24,7 @@ var poapData atomic.Value
 var poapDataEpoch uint64
 
 func Poap(w http.ResponseWriter, r *http.Request) {
-	var poapTemplate = templates.GetTemplate("layout.html", "poap.html")
+	var poapTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"poap.html"}...)...)
 
 	w.Header().Set("Content-Type", "text/html")
 

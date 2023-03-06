@@ -8,9 +8,9 @@ import (
 
 func EthStore(w http.ResponseWriter, r *http.Request) {
 	ethStoreTemplate := templates.GetTemplate(
-		"layout.html",
-		"ethstore.html",
-		"svg/barChart.html")
+		append(layoutTemplateFiles, []string{"ethstore.html",
+			"svg/barChart.html"}...)...,
+	)
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "services", "/ethstore", "ETH.STORE Statistics")
 	data.Data = services.LatestEthStoreStatistics()

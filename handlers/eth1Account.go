@@ -20,7 +20,7 @@ import (
 
 func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
-	var eth1AddressTemplate = templates.GetTemplate("layout.html", "sprites.html", "execution/address.html")
+	var eth1AddressTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"sprites.html", "execution/address.html"}...)...)
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
@@ -29,7 +29,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	if !isValid {
 		data := InitPageData(w, r, "blockchain", "/address", "not found")
 
-		if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "not valid", templates.GetTemplate("layout.html", "sprites.html", "execution/addressNotFound.html").ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "not valid", templates.GetTemplate(append(layoutTemplateFiles, []string{"sprites.html", "execution/addressNotFound.html"}...)...).ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return

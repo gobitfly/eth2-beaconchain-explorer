@@ -18,9 +18,9 @@ import (
 // Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
 
-	var epochTemplate = templates.GetTemplate("layout.html", "epoch.html")
-	var epochFutureTemplate = templates.GetTemplate("layout.html", "epochFuture.html")
-	var epochNotFoundTemplate = templates.GetTemplate("layout.html", "epochnotfound.html")
+	var epochTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"epoch.html"}...)...)
+	var epochFutureTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"epochFuture.html"}...)...)
+	var epochNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"epochnotfound.html"}...)...)
 
 	const MaxEpochValue = 4294967296 // we only render a page for epochs up to this value
 

@@ -7,7 +7,7 @@ import (
 
 func EducationServices(w http.ResponseWriter, r *http.Request) {
 
-	var educationServicesTemplate = templates.GetTemplate("layout.html", "educationServices.html")
+	var educationServicesTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"educationServices.html"}...)...)
 
 	w.Header().Set("Content-Type", "text/html")
 

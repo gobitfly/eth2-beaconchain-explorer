@@ -7,7 +7,7 @@ import (
 
 // Faq will return the data from the frequently asked questions (FAQ) using a go template
 func UnitConverter(w http.ResponseWriter, r *http.Request) {
-	var unitConverterTemplate = templates.GetTemplate("layout.html", "unitConverter.html")
+	var unitConverterTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"unitConverter.html"}...)...)
 
 	w.Header().Set("Content-Type", "text/html")
 

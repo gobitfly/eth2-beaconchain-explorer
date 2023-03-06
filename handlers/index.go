@@ -10,8 +10,7 @@ import (
 	"net/http"
 )
 
-var indexTemplateFiles = []string{
-	"layout.html",
+var indexTemplateFiles = append(layoutTemplateFiles, []string{
 	"index/index.html",
 	"index/depositProgress.html",
 	"index/depositChart.html",
@@ -31,7 +30,7 @@ var indexTemplateFiles = []string{
 	"svg/timeline.html",
 	"components/rocket.html",
 	"slotViz.html",
-}
+}...)
 
 var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
 	indexTemplateFiles...,

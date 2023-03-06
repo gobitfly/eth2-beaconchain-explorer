@@ -19,7 +19,7 @@ import (
 
 func Eth1Blocks(w http.ResponseWriter, r *http.Request) {
 
-	var eth1BlocksTemplate = templates.GetTemplate("layout.html", "execution/blocks.html")
+	var eth1BlocksTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"execution/blocks.html"}...)...)
 
 	w.Header().Set("Content-Type", "text/html")
 
