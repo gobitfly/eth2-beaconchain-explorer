@@ -346,6 +346,18 @@ type EthStoreDay struct {
 	APR                    decimal.Decimal `db:"apr"`
 }
 
+// AdConfig is a struct to hold the configuration for one specific ad banner placement
+type AdConfig struct {
+	Id              string `db:"id"`
+	TemplateId      string `db:"template_id"`
+	JQuerySelector  string `db:"jquery_selector"`
+	InsertMode      string `db:"insert_mode"`
+	RefreshInterval int    `db:"refresh_interval"`
+	Enabled         bool   `db:"enabled"`
+	BannerId        int    `db:"banner_id"`
+	HtmlContent     string `db:"html_content"`
+}
+
 type HistoricEthPrice struct {
 	MarketData struct {
 		CurrentPrice struct {
