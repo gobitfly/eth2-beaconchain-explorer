@@ -24,6 +24,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	gorillacontext "github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
@@ -296,7 +297,7 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query(`SELECT *, 
+	rows, err := db.ReaderDb.Query(`SELECT attestationscount, attesterslashingscount, averagevalidatorbalance, blockscount, depositscount, eligibleether, epoch, finalized, globalparticipationrate, proposerslashingscount, rewards_exported, totalvalidatorbalance, validatorscount, voluntaryexitscount, votedether, withdrawalcount, 
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '0') as scheduledblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '1') as proposedblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '2') as missedblocks,
@@ -350,7 +351,7 @@ func ApiEpochSlots(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT * FROM blocks WHERE epoch = $1 ORDER BY slot", epoch)
+	rows, err := db.ReaderDb.Query("SELECT attestationscount, attesterslashingscount, blockroot, depositscount, epoch, eth1data_blockhash, eth1data_depositcount, eth1data_depositroot, exec_base_fee_per_gas, exec_block_hash, exec_block_number, exec_extra_data, exec_fee_recipient, exec_gas_limit, exec_gas_used, exec_logs_bloom, exec_parent_hash, exec_random, exec_receipts_root, exec_state_root, exec_timestamp, exec_transactions_count, graffiti, graffiti_text, parentroot, proposer, proposerslashingscount, randaoreveal, signature, slot, stateroot, status, syncaggregate_bits, syncaggregate_participation, syncaggregate_signature, voluntaryexitscount, withdrawalcount FROM blocks WHERE epoch = $1 ORDER BY slot", epoch)
 	if err != nil {
 		sendServerErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -492,7 +493,7 @@ func ApiSlotAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_attestations WHERE block_slot = $1 ORDER BY block_index", slot)
+	rows, err := db.ReaderDb.Query("SELECT aggregationbits, beaconblockroot, block_index, block_root, block_slot, committeeindex, signature, slot, source_epoch, source_root, target_epoch, target_root, validators FROM blocks_attestations WHERE block_slot = $1 ORDER BY block_index", slot)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -523,7 +524,7 @@ func ApiSlotAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_attesterslashings WHERE block_slot = $1 ORDER BY block_index DESC", slot)
+	rows, err := db.ReaderDb.Query("SELECT attestation1_beaconblockroot, attestation1_index, attestation1_indices, attestation1_signature, attestation1_slot, attestation1_source_epoch, attestation1_source_root, attestation1_target_epoch, attestation1_target_root, attestation2_beaconblockroot, attestation2_index, attestation2_indices, attestation2_signature, attestation2_slot, attestation2_source_epoch, attestation2_source_root, attestation2_target_epoch, attestation2_target_root, block_index, block_root, block_slot FROM blocks_attesterslashings WHERE block_slot = $1 ORDER BY block_index DESC", slot)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -577,7 +578,7 @@ func ApiSlotDeposits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_deposits WHERE block_slot = $1 ORDER BY block_index DESC limit $2 offset $3", slot, limit, offset)
+	rows, err := db.ReaderDb.Query("SELECT amount, block_index, block_root, block_slot, proof, publickey, signature, withdrawalcredentials FROM blocks_deposits WHERE block_slot = $1 ORDER BY block_index DESC limit $2 offset $3", slot, limit, offset)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -609,7 +610,7 @@ func ApiSlotProposerSlashings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_proposerslashings WHERE block_slot = $1 ORDER BY block_index DESC", slot)
+	rows, err := db.ReaderDb.Query("SELECT block_index, block_root, block_slot, header1_bodyroot, header1_parentroot, header1_signature, header1_slot, header1_stateroot, header2_bodyroot, header2_parentroot, header2_signature, header2_slot, header2_stateroot, proposerindex FROM blocks_proposerslashings WHERE block_slot = $1 ORDER BY block_index DESC", slot)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -641,7 +642,7 @@ func ApiSlotVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT * FROM blocks_voluntaryexits WHERE block_slot = $1 ORDER BY block_index DESC", slot)
+	rows, err := db.ReaderDb.Query("SELECT block_slot, block_index, block_root, epoch, validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1 ORDER BY block_index DESC", slot)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -817,7 +818,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	var parsedBody types.DashboardRequest
 	err = json.Unmarshal(body, &parsedBody)
 	if err != nil {
-		logger.Error(err)
+		utils.LogError(err, "unmarshal json body error", 0)
 		getValidators = false
 	}
 
@@ -1895,7 +1896,7 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT validator_performance.* FROM validator_performance LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex WHERE validator_performance.validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(queryIndices))
+	rows, err := db.ReaderDb.Query("SELECT validator_performance.validatorindex, validator_performance.balance, validator_performance.performance1d, validator_performance.performance7d, validator_performance.performance31d, validator_performance.performance365d, validator_performance.rank7d FROM validator_performance LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex WHERE validator_performance.validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(queryIndices))
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -2051,7 +2052,7 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query(`
 			SELECT 
-				validator_performance.*
+				balance, performance1d, performance7d, performance31d, performance365d, rank7d, validatorindex
 			FROM validator_performance 
 			ORDER BY performance7d DESC LIMIT 100`)
 	if err != nil {
@@ -2084,11 +2085,11 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.ReaderDb.Query(
-		`SELECT eth1_deposits.* FROM eth1_deposits 
-		WHERE eth1_deposits.publickey = ANY($1)`, pubkeys,
+		`SELECT amount, block_number, block_ts, from_address, merkletree_index, publickey, removed, signature, tx_hash, tx_index, tx_input, valid_signature, withdrawal_credentials FROM eth1_deposits 
+		WHERE publickey = ANY($1)`, pubkeys,
 	)
 	if err != nil {
-		logger.Error(err)
+		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -2567,7 +2568,7 @@ func RegisterEthpoolSubscription(w http.ResponseWriter, r *http.Request) {
 	localSignature := hmacSign(fmt.Sprintf("ETHPOOL %v %v", pkg, ethpoolUserID))
 	if signature != localSignature {
 		w.WriteHeader(http.StatusInternalServerError)
-		logger.Errorf("signature missmatch %v | %v", signature, localSignature)
+		logger.Errorf("signature mismatch %v | %v", signature, localSignature)
 		sendErrorResponse(w, r.URL.String(), "Unauthorized: signature not valid")
 		return
 	}
@@ -2778,7 +2779,13 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 					exitepoch, 
 					lastattestationslot, 
 					validators.status, 
-					validator_performance.*,
+					validator_performance.balance, 
+					validator_performance.performance1d, 
+					validator_performance.performance7d, 
+					validator_performance.performance31d, 
+					validator_performance.performance365d, 
+					validator_performance.rank7d, 
+					validator_performance.validatorindex,
 					TRUNC(rplm.node_fee::decimal, 10)::float  AS minipool_node_fee  
 				FROM validators 
 				LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex 
@@ -3229,6 +3236,82 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		return err
 	}
 	return nil
+}
+
+// ApiWithdrawalCredentialsValidators godoc
+// @Summary Get validator indexes and pubkeys of a withdrawal credential or eth1 address
+// @Tags Validator
+// @Description Returns the validator indexes and pubkeys of a withdrawal credential or eth1 address
+// @Produce json
+// @Param withdrawalCredentialsOrEth1address path string true "Provide a withdrawal credential or an eth1 address with an optional 0x prefix"
+// @Param  limit query int false "Limit the number of results, maximum: 200" default(10)
+// @Param offset query int false "Offset the number of results" default(0)
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiWithdrawalCredentialsResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/validator/withdrawalCredentials/{withdrawalCredentialsOrEth1address} [get]
+func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	q := r.URL.Query()
+
+	credentialsOrAddressString := vars["withdrawalCredentialsOrEth1address"]
+	credentialsOrAddressString = strings.ToLower(credentialsOrAddressString)
+
+	if !utils.IsValidEth1Address(credentialsOrAddressString) &&
+		!utils.IsValidWithdrawalCredentials(credentialsOrAddressString) {
+		sendErrorResponse(w, r.URL.String(), "invalid withdrawal credentials or eth1 address provided")
+		return
+	}
+
+	credentialsOrAddress := common.FromHex(credentialsOrAddressString)
+
+	credentials, err := utils.AddressToWithdrawalCredentials(credentialsOrAddress)
+	if err != nil {
+		// Input is not an address so it must already be withdrawal credentials
+		credentials = credentialsOrAddress
+	}
+
+	limitQuery := q.Get("limit")
+	offsetQuery := q.Get("offset")
+
+	offset := parseUintWithDefault(offsetQuery, 0)
+	limit := parseUintWithDefault(limitQuery, 10)
+
+	// We set a max limit to limit the request call time.
+	const maxLimit uint64 = 200
+	limit = math.MinU64(limit, maxLimit)
+
+	result := []struct {
+		Index  uint64 `db:"validatorindex"`
+		Pubkey []byte `db:"pubkey"`
+	}{}
+
+	err = db.ReaderDb.Select(&result, `
+	SELECT
+		validatorindex,
+		pubkey
+	FROM validators
+	WHERE withdrawalcredentials = $1
+	LIMIT $2
+	OFFSET $3
+	`, credentials, limit, offset)
+
+	if err != nil {
+		logger.Warnf("error retrieving validator data from db: %v", err)
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	response := make([]*types.ApiWithdrawalCredentialsResponse, 0, len(result))
+	for _, validator := range result {
+		response = append(response, &types.ApiWithdrawalCredentialsResponse{
+			Publickey:      fmt.Sprintf("%#x", validator.Pubkey),
+			ValidatorIndex: validator.Index,
+		})
+	}
+
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
 }
 
 func DecodeMapStructure(input interface{}, output interface{}) error {

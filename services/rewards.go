@@ -28,7 +28,7 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 
 	var pricesDb []types.Price
 	err = db.WriterDb.Select(&pricesDb,
-		`select * from price where ts >= TO_TIMESTAMP($1) and ts <= TO_TIMESTAMP($2) order by ts desc`, start, end)
+		`select ts, eur, usd, gbp, cad, jpy, cny, rub, aud from price where ts >= TO_TIMESTAMP($1) and ts <= TO_TIMESTAMP($2) order by ts desc`, start, end)
 	if err != nil {
 		logger.Errorf("error getting prices: %v", err)
 	}

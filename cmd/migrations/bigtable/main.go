@@ -45,7 +45,7 @@ func main() {
 
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogFatal(err, "new bigtable lighthouse client error", 0)
 	}
 
 	for i := *start; i <= *end; i++ {
@@ -56,7 +56,7 @@ func main() {
 		logrus.Infof("deleting existing epoch data")
 		err := bt.DeleteEpoch(i)
 		if err != nil {
-			logrus.Fatal(err)
+			utils.LogFatal(err, "deleting epoch error", 0)
 		}
 
 		firstSlot := i * utils.Config.Chain.Config.SlotsPerEpoch
@@ -64,14 +64,14 @@ func main() {
 
 		c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", firstSlot), i)
 		if err != nil {
-			logrus.Fatal(err)
+			utils.LogFatal(err, "getting sync comittee error", 0)
 		}
 
 		validatorsU64 := make([]uint64, len(c.Validators))
 		for i, idxStr := range c.Validators {
 			idxU64, err := strconv.ParseUint(idxStr, 10, 64)
 			if err != nil {
-				logrus.Fatal(err)
+				utils.LogFatal(err, "parsing validator index to uint error", 0)
 			}
 			validatorsU64[i] = idxU64
 		}
@@ -86,7 +86,7 @@ func main() {
 
 		data, err := rpcClient.GetEpochData(uint64(i), true)
 		if err != nil {
-			logrus.Fatal(err)
+			utils.LogFatal(err, "getting epoch data error", 0)
 		}
 
 		g := new(errgroup.Group)
@@ -118,7 +118,7 @@ func main() {
 		err = g.Wait()
 
 		if err != nil {
-			logrus.Fatal(err)
+			utils.LogFatal(err, "wait group error", 0)
 		}
 	}
 
@@ -143,14 +143,14 @@ func monitor(configPath string) {
 
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogFatal(err, "new bigtable lighthouse client in monitor error", 0)
 	}
 	current := uint64(0)
 
 	for {
 		head, err := rpcClient.GetChainHead()
 		if err != nil {
-			logrus.Fatal(err)
+			utils.LogFatal(err, "getting chain head from lighthouse in monitor error", 0)
 		}
 
 		logrus.Infof("current is %v, head is %v, finalized is %v", current, head.HeadEpoch, head.FinalizedEpoch)
@@ -164,7 +164,7 @@ func monitor(configPath string) {
 			logrus.Infof("exporting epoch %v", i)
 			data, err := rpcClient.GetEpochData(i, true)
 			if err != nil {
-				logrus.Fatal(err)
+				utils.LogFatal(err, "getting epoch data error", 0)
 			}
 
 			g := new(errgroup.Group)
@@ -196,7 +196,7 @@ func monitor(configPath string) {
 			err = g.Wait()
 
 			if err != nil {
-				logrus.Fatal(err)
+				utils.LogFatal(err, "wait group error", 0)
 			}
 		}
 		current = head.HeadEpoch
