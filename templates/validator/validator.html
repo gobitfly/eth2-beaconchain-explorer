@@ -149,9 +149,11 @@
               <li class="nav-item">
                 <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-wallet"></i> <span class="tab-text">Deposits</span></a>
               </li>
-              <li class="nav-item">
-                <a class="nav-link {{ if not .IsWithdrawableAddress }}disabled{{ end }}" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawals" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-money-bill"></i> <span class="tab-text">Withdrawals</span></a>
-              </li>
+              {{ if .CappellaHasHappened }}
+                <li class="nav-item">
+                  <a class="nav-link {{ if not .IsWithdrawableAddress }}disabled{{ end }}" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawals" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-money-bill"></i> <span class="tab-text">Withdrawals</span></a>
+                </li>
+              {{ end }}
               {{ if .IsRocketpool }}
                 <li class="nav-item">
                   <a class="nav-link" id="rocketpool-tab" data-toggle="tab" href="#rocketpool" role="tab" aria-controls="rocketpool" aria-selected="false">
@@ -197,7 +199,7 @@
               <div class="tab-pane fade h-100" id="deposits" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
                 <div class="px-3">{{ template "validatorDepositsTable" $ }}</div>
               </div>
-              {{ if .IsWithdrawableAddress }}
+              {{ if and (.CappellaHasHappened) (.IsWithdrawableAddress) }}
                 <div class="tab-pane fade h-100" id="withdrawals" role="tabpanel" aria-labelledby="withdrawal-tab" aria-controls="withdrawals">
                   {{ template "validatorWithdrawalTable" . }}
                 </div>

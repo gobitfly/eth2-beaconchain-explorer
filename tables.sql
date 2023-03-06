@@ -34,7 +34,8 @@ create index idx_validators_pubkeyhex_pattern_pos on validators (pubkeyhex varch
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
 create index idx_validators_activationepoch on validators (activationepoch);
-CREATE INDEX validators_is_offline_vali_idx ON validators (validatorindex, lastattestationslot, pubkey);
+create index validators_is_offline_vali_idx on validators (validatorindex, lastattestationslot, pubkey);
+create index idx_validators_withdrawalcredentials on validators (withdrawalcredentials, validatorindex);
 
 drop table if exists validator_pool;
 create table validator_pool
@@ -154,6 +155,14 @@ create table validator_stats
     deposits_amount         bigint,
     withdrawals             int,
     withdrawals_amount      bigint,
+    cl_rewards_gwei         bigint,
+    cl_rewards_gwei_total   bigint,
+    cl_rewards_gwei_31d     bigint,
+    cl_rewards_gwei_7d      bigint,
+    el_rewards_wei          decimal,
+    el_rewards_wei_total    decimal,
+    el_rewards_wei_31d      decimal,
+    el_rewards_wei_7d       decimal,
     primary key (validatorindex, day)
 );
 create index idx_validator_stats_day on validator_stats (day);
@@ -227,6 +236,7 @@ create table epochs
     eligibleether           bigint,
     globalparticipationrate float,
     votedether              bigint,
+    rewards_exported        bool not null default false,
     primary key (epoch)
 );
 
@@ -497,6 +507,7 @@ create table users
     email_confirmed         bool                   not null default 'f',
     email_confirmation_hash character varying(40) unique,
     email_confirmation_ts   timestamp without time zone,
+    email_change_to_value   character varying(100),
     password_reset_hash     character varying(40),
     password_reset_ts       timestamp without time zone,
     register_ts             timestamp without time zone,
@@ -739,16 +750,6 @@ create table price
     primary key (ts)
 );
 
-drop table if exists staking_pools_chart;
-create table staking_pools_chart
-(
-    epoch                      int  not null,
-    name                       text not null,
-    income                     bigint not null,
-    balance                    bigint not null,
-    PRIMARY KEY(epoch, name)
-);
-
 drop table if exists stats_sharing;
 CREATE TABLE stats_sharing (
                                id 				bigserial 			primary key,
@@ -959,15 +960,6 @@ CREATE TABLE blocks_tags (
 );
 CREATE INDEX idx_blocks_tags_slot ON blocks_tags (slot);
 CREATE INDEX idx_blocks_tags_tag_id ON blocks_tags (tag_id);
-
-CREATE TABLE relays (
-	tag_id varchar NOT NULL,
-	endpoint varchar NOT NULL,
-	PRIMARY KEY (tag_id, endpoint),
-	FOREIGN KEY (tag_id) REFERENCES tags(id)
-);
-
-DROP TABLE IF EXISTS relays;
 
 CREATE TABLE relays (
 	tag_id varchar NOT NULL,

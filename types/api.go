@@ -317,6 +317,10 @@ type Eth1TokenTxParsed struct {
 	TokenId      string    `json:"token_id,omitempty"`
 	Operator     string    `json:"operator,omitempty"`
 }
+type ApiWithdrawalCredentialsResponse struct {
+	Publickey      string `json:"publickey"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+}
 
 type APIEpochResponse struct {
 	Epoch                   uint64 `json:"epoch"`
@@ -338,6 +342,8 @@ type APIEpochResponse struct {
 	ValidatorsCount         uint64 `json:"validatorscount"`
 	VoluntaryExitsCount     uint64 `json:"voluntaryexitscount"`
 	VotedEther              uint64 `json:"votedether"`
+	RewardsExported         uint64 `json:"rewards_exported"`
+	WithdrawalCount         uint64 `json:"withdrawalcount"`
 }
 
 type APISlotResponse struct {
@@ -377,6 +383,7 @@ type APISlotResponse struct {
 	SyncaggregateParticipation float64 `json:"syncaggregate_participation"`
 	SyncaggregateSignature     string  `json:"syncaggregate_signature"`
 	Voluntaryexitscount        uint64  `json:"voluntaryexitscount"`
+	WithdrawalCount            uint64  `json:"withdrawalcount"`
 }
 
 type APIAttestationResponse struct {

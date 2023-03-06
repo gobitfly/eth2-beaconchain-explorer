@@ -75,7 +75,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 	if blockSlot == -1 {
 		err = db.ReaderDb.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
 		if blockSlot == -1 {
-			if handleTemplateError(w, r, "block.go", "Block", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			if handleTemplateError(w, r, "slot.go", "Slot", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
 			return
@@ -141,7 +141,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		err = slotTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if handleTemplateError(w, r, "block.go", "Block", "ApiRequest", err) != nil {
+	if handleTemplateError(w, r, "slot.go", "Slot", "ApiRequest", err) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -343,7 +343,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		}
 	}
 
-	err = db.ReaderDb.Select(&blockPageData.ProposerSlashings, "SELECT * FROM blocks_proposerslashings WHERE block_slot = $1", blockPageData.Slot)
+	err = db.ReaderDb.Select(&blockPageData.ProposerSlashings, "SELECT block_slot, block_index, block_root, proposerindex, header1_slot, header1_parentroot, header1_stateroot, header1_bodyroot, header1_signature, header2_slot, header2_parentroot, header2_stateroot, header2_bodyroot, header2_signature FROM blocks_proposerslashings WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block proposer slashings data: %v", err)
 	}

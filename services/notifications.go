@@ -190,7 +190,7 @@ func notificationSender() {
 		}
 
 		if !unlocked {
-			logger.Error("error releasing advisory lock unlocked: ", unlocked)
+			utils.LogError(nil, fmt.Errorf("error releasing advisory lock unlocked: %v", unlocked), 0)
 		}
 
 		conn.Close()
@@ -1358,7 +1358,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 	}
 
 	// get attestations for all validators for the last n epochs
-	attestations, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{}, epoch, 4) // retrieve attestation data of the last 3 epochs
+	attestations, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{}, epoch-4, epoch) // retrieve attestation data of the last 3 epochs
 	if err != nil {
 		return fmt.Errorf("error getting validator attestations from bigtable %w", err)
 	}
@@ -1967,7 +1967,7 @@ func (n *validatorWithdrawalNotification) GetEventFilter() string {
 }
 
 func (n *validatorWithdrawalNotification) GetInfoMarkdown() string {
-	generalPart := fmt.Sprintf(`A withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during in slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/%[4]v).`, n.ValidatorIndex, utils.FormatCurrentBalance(n.Amount, "ETH"), n.Slot, utils.FormatHash(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
+	generalPart := fmt.Sprintf(`A withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/%[4]v).`, n.ValidatorIndex, utils.FormatCurrentBalance(n.Amount, "ETH"), n.Slot, utils.FormatHash(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
 	return generalPart
 }
 
@@ -2721,7 +2721,7 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 			inTime = time.Until(utils.EpochToTime(syncStartEpoch))
 		}
 
-		return fmt.Sprintf(`Your validator %v has been elected to be part of the next sync committee. The additional duties start at epoch %v, which is in %s and will last for a day until epoch %v.`, extras[0], extras[1], inTime.Round(time.Second), extras[2])
+		return fmt.Sprintf(`Your validator %v has been elected to be part of the next sync committee. The additional duties start at epoch %v, which is in %s and will last for about a day until epoch %v.`, extras[0], extras[1], inTime.Round(time.Second), extras[2])
 	}
 
 	return ""
@@ -3028,13 +3028,12 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 	var dbResult []struct {
 		SubscriptionID  uint64         `db:"id"`
 		UserID          uint64         `db:"user_id"`
-		Epoch           uint64         `db:"created_epoch"`
 		EventFilter     string         `db:"event_filter"`
 		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 	}
 
 	err = db.FrontendWriterDB.Select(&dbResult, `
-				SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
+				SELECT us.id, us.user_id, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 				FROM users_subscriptions AS us 
 				WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '26 hours' OR us.last_sent_ts IS NULL) AND event_filter = ANY($2);
 				`,
@@ -3049,7 +3048,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 		n := &rocketpoolNotification{
 			SubscriptionID:  r.SubscriptionID,
 			UserID:          r.UserID,
-			Epoch:           r.Epoch,
+			Epoch:           epoch,
 			EventFilter:     r.EventFilter,
 			EventName:       eventName,
 			ExtraData:       fmt.Sprintf("%v|%v|%v", mapping[r.EventFilter], nextPeriod*utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, (nextPeriod+1)*utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod),

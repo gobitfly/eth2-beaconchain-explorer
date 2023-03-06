@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-// Blocks will return information about blocks using a go template
+// Will return the slots page
 func Slots(w http.ResponseWriter, r *http.Request) {
 
 	var blocksTemplate = templates.GetTemplate("layout.html", "slots.html")

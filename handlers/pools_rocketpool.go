@@ -585,7 +585,16 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 	var dbResult []types.RocketpoolPageDataDAOMember
 	if search == "" {
 		err = db.ReaderDb.Select(&dbResult, fmt.Sprintf(`
-			select rocketpool_dao_members.*, cnt.total_count
+			select 
+				rocketpool_dao_members.rocketpool_storage_address, 
+				rocketpool_dao_members.address, 
+				rocketpool_dao_members.id, 
+				rocketpool_dao_members.url, 
+				rocketpool_dao_members.joined_time, 
+				rocketpool_dao_members.last_proposal_time, 
+				rocketpool_dao_members.rpl_bond_amount, 
+				rocketpool_dao_members.unbonded_validator_count, 
+				cnt.total_count
 			from rocketpool_dao_members
 			left join (select count(*) from rocketpool_dao_members) cnt(total_count) ON true
 			order by %s %s
@@ -603,7 +612,16 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 				union select address from rocketpool_dao_members where id ilike $4
 				union select address from rocketpool_dao_members where url ilike $4
 			)
-			select rocketpool_dao_members.*, cnt.total_count
+			select 			
+				rocketpool_dao_members.rocketpool_storage_address, 
+				rocketpool_dao_members.address, 
+				rocketpool_dao_members.id, 
+				rocketpool_dao_members.url, 
+				rocketpool_dao_members.joined_time, 
+				rocketpool_dao_members.last_proposal_time, 
+				rocketpool_dao_members.rpl_bond_amount, 
+				rocketpool_dao_members.unbonded_validator_count, 
+				cnt.total_count
 			from rocketpool_dao_members
 			inner join matched_members on matched_members.address = rocketpool_dao_members.address
 			left join (select count(*) from matched_members) cnt(total_count) ON true

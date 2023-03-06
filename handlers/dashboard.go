@@ -106,7 +106,7 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
-	incomeData, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validators, endEpoch, 100)
+	incomeData, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validators, endEpoch-100, endEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error loading validator income history data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -191,7 +191,7 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	var incomeHistoryChartData []*types.ChartDataPoint
 	var executionChartData []*types.ChartDataPoint
 	g.Go(func() error {
-		incomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart(queryValidators, currency)
+		incomeHistoryChartData, _, err = db.GetValidatorIncomeHistoryChart(queryValidators, currency)
 		return err
 	})
 
@@ -285,7 +285,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	incomeHistoryChartData, err := db.GetValidatorIncomeHistoryChart(queryValidators, currency)
+	incomeHistoryChartData, _, err := db.GetValidatorIncomeHistoryChart(queryValidators, currency)
 	if err != nil {
 		logger.Errorf("failed to genereate income history chart data for dashboard view: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -345,6 +345,9 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 }
 
 func DashboardWithdrawals(w http.ResponseWriter, r *http.Request) {
+
+	// [WIP]
+
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -415,12 +418,12 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch,
 			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '1') as executedproposals,
 			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '2') as missedproposals,
-			COALESCE(validator_performance.performance7d, 0) as performance7d,
+			COALESCE(validator_stats.cl_rewards_gwei_7d, 0) as performance7d,
 			COALESCE(validator_names.name, '') AS name,
 		    validators.status AS state
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
+		LEFT JOIN validator_stats ON validators.validatorindex = validator_stats.validatorindex AND validator_stats.day = (SELECT MAX(day) FROM validator_stats)
 		WHERE validators.validatorindex = ANY($1)
 		LIMIT $2`, filter, validatorLimit)
 
@@ -430,7 +433,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(filterArr, services.LatestEpoch(), 1)
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(filterArr, services.LatestEpoch(), services.LatestEpoch())
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

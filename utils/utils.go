@@ -25,11 +25,11 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 	"unicode/utf8"
 
-	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -37,6 +37,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
@@ -91,6 +92,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatGraffiti":                          FormatGraffiti,
 		"formatHash":                              FormatHash,
 		"formatWithdawalCredentials":              FormatWithdawalCredentials,
+		"formatAddressToWithdrawalCredentials":    FormatAddressToWithdrawalCredentials,
 		"formatBitvector":                         FormatBitvector,
 		"formatBitlist":                           FormatBitlist,
 		"formatBitvectorValidators":               formatBitvectorValidators,
@@ -122,6 +124,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatETH":                               FormatETH,
 		"formatFloat":                             FormatFloat,
 		"formatAmount":                            FormatAmount,
+		"formatBigAmount":                         FormatBigAmount,
 		"formatYesNo":                             FormatYesNo,
 		"formatAmountFormatted":                   FormatAmountFormated,
 		"formatAddressAsLink":                     FormatAddressAsLink,
@@ -207,11 +210,18 @@ func GetTemplateFuncs() template.FuncMap {
 		"byteToString": func(num []byte) string {
 			return string(num)
 		},
-		"formatEthstoreComparison": FormatEthstoreComparison,
-		"formatPoolPerformance":    FormatPoolPerformance,
-		"formatTokenSymbolTitle":   FormatTokenSymbolTitle,
-		"formatTokenSymbol":        FormatTokenSymbol,
-		"formatTokenSymbolHTML":    FormatTokenSymbolHTML,
+		"bigToInt": func(val *hexutil.Big) *big.Int {
+			if val != nil {
+				return val.ToInt()
+			}
+			return nil
+		},
+		"formatBigNumberAddCommasFormated": FormatBigNumberAddCommasFormated,
+		"formatEthstoreComparison":         FormatEthstoreComparison,
+		"formatPoolPerformance":            FormatPoolPerformance,
+		"formatTokenSymbolTitle":           FormatTokenSymbolTitle,
+		"formatTokenSymbol":                FormatTokenSymbol,
+		"formatTokenSymbolHTML":            FormatTokenSymbolHTML,
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {
 				return nil, errors.New("invalid dict call")
@@ -240,7 +250,14 @@ func IncludeHTML(path string) template.HTML {
 }
 
 func GraffitiToSring(graffiti []byte) string {
-	return strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
+	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
+	s = strings.Replace(s, "\u0000", "", -1) // rempove 0x00 bytes as it is not supported in postgres
+
+	if !utf8.ValidString(s) {
+		return "INVALID_UTF8_STRING"
+	}
+
+	return s
 }
 
 // FormatGraffitiString formats (and escapes) the graffiti
@@ -492,9 +509,11 @@ func IsApiRequest(r *http.Request) bool {
 	return ok && len(query) > 0 && query[0] == "json"
 }
 
-var eth1AddressRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{40}$")
-var eth1TxRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{64}$")
-var zeroHashRE = regexp.MustCompile("^0?x?0+$")
+var eth1AddressRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{40}$")
+var withdrawalCredentialsRE = regexp.MustCompile("^(0x)?00[0-9a-fA-F]{62}$")
+var withdrawalCredentialsAddressRE = regexp.MustCompile("^(0x)?010000000000000000000000[0-9a-fA-F]{40}$")
+var eth1TxRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{64}$")
+var zeroHashRE = regexp.MustCompile("^(0x)?0+$")
 
 // IsValidEth1Address verifies whether a string represents a valid eth1-address.
 func IsValidEth1Address(s string) bool {
@@ -509,6 +528,11 @@ func IsEth1Address(s string) bool {
 // IsValidEth1Tx verifies whether a string represents a valid eth1-tx-hash.
 func IsValidEth1Tx(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1TxRE.MatchString(s)
+}
+
+// IsValidWithdrawalCredentials verifies whether a string represents valid withdrawal credentials.
+func IsValidWithdrawalCredentials(s string) bool {
+	return withdrawalCredentialsRE.MatchString(s) || withdrawalCredentialsAddressRE.MatchString(s)
 }
 
 // https://github.com/badoux/checkmail/blob/f9f80cb795fa/checkmail.go#L37
@@ -686,14 +710,18 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 }
 
 // GenerateAPIKey generates an API key for a user
-func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
-	apiKey, err := bcrypt.GenerateFromPassword([]byte(passwordHash+email+Ts), 10)
-	if err != nil {
-		return "", err
-	}
-	key := apiKey
-	if len(apiKey) > 30 {
-		key = apiKey[8:29]
+func GenerateRandomAPIKey() (string, error) {
+	const apiLength = 28
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+	max := big.NewInt(int64(len(letters)))
+	key := make([]byte, apiLength)
+	for i := 0; i < apiLength; i++ {
+		num, err := securerand.Int(securerand.Reader, max)
+		if err != nil {
+			return "", err
+		}
+		key[i] = letters[num.Int64()]
 	}
 
 	apiKeyBase64 := base64.RawURLEncoding.EncodeToString(key)
@@ -1043,4 +1071,41 @@ func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
 		CurrentVersion:  MustParseHex(Config.Chain.Config.GenesisForkVersion),
 		PreviousVersion: MustParseHex(Config.Chain.Config.GenesisForkVersion),
 	}
+}
+
+// LogFatal logs a fatal error with callstack info that skips callerSkip many levels with arbitrarily many additional infos.
+// callerSkip equal to 0 gives you info directly where LogFatal is called.
+func LogFatal(err error, errorMsg interface{}, callerSkip int, additionalInfos ...string) {
+	logErrorInfo(err, callerSkip, additionalInfos...).Fatal(errorMsg)
+}
+
+// LogError logs an error with callstack info that skips callerSkip many levels with arbitrarily many additional infos.
+// callerSkip equal to 0 gives you info directly where LogError is called.
+func LogError(err error, errorMsg interface{}, callerSkip int, additionalInfos ...string) {
+	logErrorInfo(err, callerSkip, additionalInfos...).Error(errorMsg)
+}
+
+func logErrorInfo(err error, callerSkip int, additionalInfos ...string) *logrus.Entry {
+	logFields := logrus.NewEntry(logrus.New())
+
+	pc, fullFilePath, line, ok := runtime.Caller(callerSkip + 2)
+	if ok {
+		logFields = logFields.WithFields(logrus.Fields{
+			"cs_file":     filepath.Base(fullFilePath),
+			"cs_function": runtime.FuncForPC(pc).Name(),
+			"cs_line":     line,
+		})
+	} else {
+		logFields = logFields.WithField("runtime", "Callstack cannot be read")
+	}
+
+	if err != nil {
+		logFields = logFields.WithField("error type", fmt.Sprintf("%T", err)).WithError(err)
+	}
+
+	for idx, info := range additionalInfos {
+		logFields = logFields.WithField(fmt.Sprintf("info_%v", idx), info)
+	}
+
+	return logFields
 }

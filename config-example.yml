@@ -17,10 +17,10 @@ chain:
 # Frontend config
 frontend:
   enabled: true # Enable or disable to web frontend
-  imprint: "templates/imprint.example.html}**"  # Path to the imprint page content
+  imprint: "templates/imprint.example.html}**" # Path to the imprint page content
   siteName: "Ethereum Block Chain Explorer" # Name of the site, displayed in the title tag
   siteSubtitle: "Showing the <a href='https://prylabs.net'>💎 Prysm Eth Testnet</a>" # Subtitle shown on the main page
-  csrfAuthKey: '0123456789abcdef000000000000000000000000000000000000000000000000'
+  csrfAuthKey: "0123456789abcdef000000000000000000000000000000000000000000000000"
   jwtSigningSecret: "0123456789abcdef000000000000000000000000000000000000000000000000"
   jwtIssuer: "beaconcha.in"
   jwtValidityInMinutes: 30
@@ -41,7 +41,9 @@ frontend:
       user: "<emailuser>"
       password: "<emailpassword>"
   flashSecret: "" # Encryption secret for flash cookies
-
+  slotViz:
+    enabled: false
+    hardforkEpoch: 0
 # Indexer config
 indexer:
   enabled: true # Enable or disable the indexing service
@@ -52,6 +54,6 @@ indexer:
     port: "4000" # port of the backend node
     type: "prysm" # can be either prysm or lighthouse
     pageSize: 500 # the amount of entries to fetch per paged rpc call
-  eth1Endpoint: 'https://goerli.infura.io/v3/<api-token>'
-  eth1DepositContractAddress: '0x5cA1e00004366Ac85f492887AAab12d0e6418876'
+  eth1Endpoint: "https://goerli.infura.io/v3/<api-token>"
+  eth1DepositContractAddress: "0x5cA1e00004366Ac85f492887AAab12d0e6418876"
   eth1DepositContractFirstBlock: 2523557

@@ -104,8 +104,8 @@ type ValidatorsDataQueryParams struct {
 	StateFilter       string
 }
 
-var searchPubkeyExactRE = regexp.MustCompile(`^0?x?[0-9a-fA-F]{96}`)  // only search for pubkeys if string consists of 96 hex-chars
-var searchPubkeyLikeRE = regexp.MustCompile(`^0?x?[0-9a-fA-F]{2,96}`) // only search for pubkeys if string consists of 96 hex-chars
+var searchPubkeyExactRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{96}`)  // only search for pubkeys if string consists of 96 hex-chars
+var searchPubkeyLikeRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{2,96}`) // only search for pubkeys if string consists of 96 hex-chars
 
 func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams, error) {
 	q := r.URL.Query()
@@ -282,7 +282,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	for i, validator := range validators {
 		indices[i] = validator.ValidatorIndex
 	}
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), 1)
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), services.LatestEpoch())
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
