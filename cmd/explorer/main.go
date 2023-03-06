@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -193,8 +194,20 @@ func main() {
 
 	if utils.Config.Metrics.Enabled {
 		go metrics.MonitorDB(db.WriterDb)
-		DBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.WriterDatabase.Username, cfg.WriterDatabase.Password, cfg.WriterDatabase.Host, cfg.WriterDatabase.Port, cfg.WriterDatabase.Name)
-		frontendDBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.Frontend.WriterDatabase.Username, cfg.Frontend.WriterDatabase.Password, cfg.Frontend.WriterDatabase.Host, cfg.Frontend.WriterDatabase.Port, cfg.Frontend.WriterDatabase.Name)
+		DBInfo := []string{
+			cfg.WriterDatabase.Username,
+			cfg.WriterDatabase.Password,
+			cfg.WriterDatabase.Host,
+			cfg.WriterDatabase.Port,
+			cfg.WriterDatabase.Name}
+		DBStr := strings.Join(DBInfo, "-")
+		frontendDBInfo := []string{
+			cfg.Frontend.WriterDatabase.Username,
+			cfg.Frontend.WriterDatabase.Password,
+			cfg.Frontend.WriterDatabase.Host,
+			cfg.Frontend.WriterDatabase.Port,
+			cfg.Frontend.WriterDatabase.Name}
+		frontendDBStr := strings.Join(frontendDBInfo, "-")
 		if DBStr != frontendDBStr {
 			go metrics.MonitorDB(db.FrontendWriterDB)
 		}
