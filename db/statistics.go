@@ -611,7 +611,7 @@ func WriteChartSeriesForDay(day int64) error {
 		totalGasLimit = totalGasLimit.Add(decimal.NewFromInt(int64(blk.GasLimit)))
 
 		if prevBlock != nil {
-			avgBlockTime = avgBlockTime.Add(decimal.NewFromInt(prevBlock.Time.AsTime().UnixMicro() - blk.Time.AsTime().UnixMicro())).Div(decimal.NewFromInt(2))
+			avgBlockTime = avgBlockTime.Add(decimal.NewFromInt(prevBlock.Time.AsTime().UnixMicro() - blk.Time.AsTime().UnixMicro()))
 		}
 
 		totalBaseBlockReward = totalBaseBlockReward.Add(decimal.NewFromBigInt(utils.Eth1BlockReward(blk.Number, blk.Difficulty), 0))
@@ -674,6 +674,8 @@ func WriteChartSeriesForDay(day int64) error {
 		}
 		prevBlock = blk
 	}
+
+	avgBlockTime = avgBlockTime.Div(decimal.NewFromInt(blockCount - 1))
 
 	logger.Infof("exporting consensus rewards from %v to %v", firstEpoch, lastEpoch)
 
