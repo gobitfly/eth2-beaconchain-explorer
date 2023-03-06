@@ -103,12 +103,12 @@ func rocketpoolExporter() {
 	var err error
 	rpEth1RPRCClient, err = gethRPC.Dial(endpoint)
 	if err != nil {
-		logger.Fatal(err)
+		utils.LogFatal(err, "new rocketpool geth client error", 0)
 	}
 	rpEth1Client = ethclient.NewClient(rpEth1RPRCClient)
 	rpExporter, err := NewRocketpoolExporter(rpEth1Client, utils.Config.RocketpoolExporter.StorageContractAddress, db.WriterDb)
 	if err != nil {
-		logger.Fatal(err)
+		utils.LogFatal(err, "new rocketpool exporter error", 0)
 	}
 	rpExporter.Run()
 }
@@ -193,7 +193,7 @@ func (rp *RocketpoolExporter) Init() error {
 
 func (rp *RocketpoolExporter) InitMinipools() error {
 	dbRes := []RocketpoolMinipool{}
-	err := rp.DB.Select(&dbRes, `select * from rocketpool_minipools`)
+	err := rp.DB.Select(&dbRes, `select address, pubkey, node_address, node_fee, deposit_type, status,status_time, penalty_count from rocketpool_minipools`)
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func (rp *RocketpoolExporter) InitMinipools() error {
 
 func (rp *RocketpoolExporter) InitNodes() error {
 	dbRes := []RocketpoolNode{}
-	err := rp.DB.Select(&dbRes, `select * from rocketpool_nodes`)
+	err := rp.DB.Select(&dbRes, `select address, timezone_location, rpl_stake, min_rpl_stake, max_rpl_stake, rpl_cumulative_rewards, smoothing_pool_opted_in, claimed_smoothing_pool, unclaimed_smoothing_pool, unclaimed_rpl_rewards from rocketpool_nodes`)
 	if err != nil {
 		return err
 	}
@@ -217,7 +217,7 @@ func (rp *RocketpoolExporter) InitNodes() error {
 
 func (rp *RocketpoolExporter) InitDAOProposals() error {
 	dbRes := []RocketpoolDAOProposal{}
-	err := rp.DB.Select(&dbRes, `select * from rocketpool_proposals`)
+	err := rp.DB.Select(&dbRes, `select id, dao, proposer_address, message, created_time, start_time, end_time, expiry_time, votes_required, votes_for, votes_against, member_voted, member_supported, is_cancelled, is_executed, payload, state from rocketpool_proposals`)
 	if err != nil {
 		return err
 	}
@@ -229,7 +229,7 @@ func (rp *RocketpoolExporter) InitDAOProposals() error {
 
 func (rp *RocketpoolExporter) InitDAOMembers() error {
 	dbRes := []RocketpoolDAOMember{}
-	err := rp.DB.Select(&dbRes, `select * from rocketpool_dao_members`)
+	err := rp.DB.Select(&dbRes, `select url, address, id, joined_time, last_proposal_time, rpl_bond_amount, unbonded_validator_count from rocketpool_dao_members`)
 	if err != nil {
 		return err
 	}

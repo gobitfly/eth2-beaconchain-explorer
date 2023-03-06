@@ -924,6 +924,8 @@ $(document).ready(function () {
       return
     }
     localStorage.setItem("dashboard_validators", JSON.stringify(state.validators))
+    window.dispatchEvent(new CustomEvent("dashboard_validators_set"))
+
     if (state.validators.length) {
       // console.log('length', state.validators)
       var qryStr = "?validators=" + state.validators.join(",")

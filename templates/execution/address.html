@@ -360,7 +360,7 @@
       <h1 class="h4 mb-1 mb-md-0 header-address text-truncate">
         <div class="my-md-3 font-weight-bold">
           <span>
-            <span class="mr-1">Address</span>
+            <span class="mr-1">{{ if .Data.IsContract }}Contract{{ else }}Address{{ end }}</span>
             <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
             <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ .Data.Address }}"></i>
           </span>

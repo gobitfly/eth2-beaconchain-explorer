@@ -2,6 +2,7 @@ package erc20
 
 import (
 	"encoding/json"
+	"eth2-exporter/utils"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -23,7 +24,7 @@ var logger = logrus.StandardLogger().WithField("module", "erc20")
 func InitTokenList(path string) {
 	body, err := ioutil.ReadFile(path)
 	if err != nil {
-		logger.Fatal("unable to retrieve erc20 token list", err)
+		utils.LogFatal(err, "unable to retrieve erc20 token list", 0)
 	}
 	TokenList := &ERC20TokenList{}
 

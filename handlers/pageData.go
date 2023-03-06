@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
@@ -12,8 +13,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/gorilla/sessions"
 )
 
 func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string) *types.PageData {
@@ -89,7 +88,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		if session != nil {
 			jsn := make(map[string]interface{})
 			// convert map[interface{}]interface{} -> map[string]interface{}
-			for sessionKey, sessionValue := range session.Values {
+			for sessionKey, sessionValue := range session.Values() {
 				jsn[fmt.Sprintf("%v", sessionKey)] = sessionValue
 			}
 			data.DebugSession = jsn
@@ -150,7 +149,7 @@ func getUserFromSessionStore(r *http.Request) *types.User {
 	return u
 }
 
-func getUserSession(r *http.Request) (*types.User, *sessions.Session, error) {
+func getUserSession(r *http.Request) (*types.User, *utils.CustomSession, error) {
 	u := &types.User{}
 	if utils.SessionStore == nil { // sanity check for production deployment where api runs independ of frontend and has no initialized sessionstore
 		return u, nil, errors.New("sessionstore not initialized")
@@ -161,25 +160,44 @@ func getUserSession(r *http.Request) (*types.User, *sessions.Session, error) {
 		return u, session, err
 	}
 	ok := false
-	u.Authenticated, ok = session.Values["authenticated"].(bool)
+	u.Authenticated, ok = session.GetValue("authenticated").(bool)
 	if !ok {
 		u.Authenticated = false
 		return u, session, nil
 	}
-	u.UserID, ok = session.Values["user_id"].(uint64)
+	u.UserID, ok = session.GetValue("user_id").(uint64)
 	if !ok {
 		u.Authenticated = false
 		return u, session, nil
 	}
-	u.Subscription, ok = session.Values["subscription"].(string)
+	u.Subscription, ok = session.GetValue("subscription").(string)
 	if !ok {
 		u.Subscription = ""
 		return u, session, nil
 	}
-	u.UserGroup, ok = session.Values["user_group"].(string)
+	u.UserGroup, ok = session.GetValue("user_group").(string)
 	if !ok {
 		u.UserGroup = ""
 		return u, session, nil
 	}
 	return u, session, nil
+}
+
+func purgeAllSessionsForUser(ctx context.Context, userId uint64) error {
+	// invalidate all sessions for this user
+	err := utils.SessionStore.SCS.Iterate(ctx, func(ctx context.Context) error {
+		sessionUserID, ok := utils.SessionStore.SCS.Get(ctx, "user_id").(uint64)
+		if !ok {
+			return nil
+		}
+
+		if userId == sessionUserID {
+			return utils.SessionStore.SCS.Destroy(ctx)
+		}
+
+		return nil
+	})
+
+	return err
+
 }

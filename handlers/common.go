@@ -18,7 +18,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gorilla/sessions"
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 )
@@ -413,20 +412,20 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 		dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
 		key = dataTableStatePrefix + key
 		count := 0
-		for k := range session.Values {
+		for k := range session.Values() {
 			k, ok := k.(string)
 			if ok && strings.HasPrefix(k, dataTableStatePrefix) {
 				count += 1
 			}
 		}
 		if count > 50 {
-			_, ok := session.Values[key]
+			_, ok := session.Values()[key]
 			if !ok {
 				logger.Errorf("error maximum number of datatable states stored in session")
 				return
 			}
 		}
-		session.Values[key] = settings
+		session.Values()[key] = settings
 
 		err := session.Save(r, w)
 		if err != nil {
@@ -446,7 +445,7 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	response.Data = ""
 }
 
-func GetDataTableState(user *types.User, session *sessions.Session, tableKey string) *types.DataTableSaveState {
+func GetDataTableState(user *types.User, session *utils.CustomSession, tableKey string) *types.DataTableSaveState {
 	state := types.DataTableSaveState{
 		Start: 0,
 	}
@@ -458,7 +457,7 @@ func GetDataTableState(user *types.User, session *sessions.Session, tableKey str
 		}
 		return state
 	}
-	stateRaw, exists := session.Values["table:state:"+utils.GetNetwork()+":"+tableKey]
+	stateRaw, exists := session.Values()["table:state:"+utils.GetNetwork()+":"+tableKey]
 	if !exists {
 		return &state
 	}

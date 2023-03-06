@@ -30,7 +30,7 @@ func mevBoostRelaysExporter() {
 	for {
 		// we retrieve the relays from the db each loop to prevent having to restart the exporter for changes
 		relays = nil
-		err := db.ReaderDb.Select(&relays, `select * from relays`)
+		err := db.ReaderDb.Select(&relays, `select tag_id, endpoint, public_link, is_censoring, is_ethical, name from relays`)
 		wg := &sync.WaitGroup{}
 		if err == nil {
 			for _, relay := range relays {
@@ -89,7 +89,7 @@ func fetchDeliveredPayloads(r types.Relay, offset uint64) ([]BidTrace, error) {
 func exportRelayBlocks(r types.Relay) error {
 	// retrieve the oldest tag usage so we know when to stop processing payloads from the head
 	var lastUsage types.RelayBlock
-	err := db.ReaderDb.Get(&lastUsage, `SELECT * FROM relays_blocks WHERE tag_id=$1 ORDER BY block_slot DESC LIMIT 1`, r.ID)
+	err := db.ReaderDb.Get(&lastUsage, `SELECT tag_id, block_slot, block_root, exec_block_hash, value, builder_pubkey, proposer_pubkey, proposer_fee_recipient FROM relays_blocks WHERE tag_id=$1 ORDER BY block_slot DESC LIMIT 1`, r.ID)
 	if err != nil {
 		r.Logger.Errorf("failed to retrieve last relay block from db, assuming none set: %v", err)
 	}
@@ -102,7 +102,7 @@ func exportRelayBlocks(r types.Relay) error {
 
 	// to make sure we dont have an incomplete table, check if there are any payloads before our first tag usage
 	var firstUsage types.RelayBlock
-	err = db.ReaderDb.Get(&firstUsage, `SELECT * FROM relays_blocks WHERE tag_id=$1 ORDER BY block_slot ASC LIMIT 1`, r.ID)
+	err = db.ReaderDb.Get(&firstUsage, `SELECT tag_id, block_slot, block_root, exec_block_hash, value, builder_pubkey, proposer_pubkey, proposer_fee_recipient FROM relays_blocks WHERE tag_id=$1 ORDER BY block_slot ASC LIMIT 1`, r.ID)
 	if err != nil {
 		r.Logger.Errorf("failed to retrieve first relay block from db, assuming none set: %v", err)
 	}
@@ -154,7 +154,7 @@ func retrieveAndInsertPayloadsFromRelay(r types.Relay, low_bound uint64, high_bo
 		}
 
 		if resp == nil {
-			r.Logger.Errorf("got no payloads")
+			r.Logger.Error("got no payloads")
 			break
 		}
 

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -65,10 +66,13 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
-	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
+	logrus.WithFields(logrus.Fields{
+		"config":    *configPath,
+		"version":   version.Version,
+		"chainName": utils.Config.Chain.Config.ConfigName}).Printf("starting")
 
 	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
-		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
+		utils.LogFatal(err, "invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file", 0)
 	}
 
 	err = handlers.CheckAndPreloadImprint()
@@ -148,7 +152,7 @@ func main() {
 		}
 
 		if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) {
-			logrus.Fatalf("chain id missmatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), erigonChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+			logrus.Fatalf("chain id mismatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), erigonChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 		}
 	}()
 
@@ -190,8 +194,20 @@ func main() {
 
 	if utils.Config.Metrics.Enabled {
 		go metrics.MonitorDB(db.WriterDb)
-		DBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.WriterDatabase.Username, cfg.WriterDatabase.Password, cfg.WriterDatabase.Host, cfg.WriterDatabase.Port, cfg.WriterDatabase.Name)
-		frontendDBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.Frontend.WriterDatabase.Username, cfg.Frontend.WriterDatabase.Password, cfg.Frontend.WriterDatabase.Host, cfg.Frontend.WriterDatabase.Port, cfg.Frontend.WriterDatabase.Name)
+		DBInfo := []string{
+			cfg.WriterDatabase.Username,
+			cfg.WriterDatabase.Password,
+			cfg.WriterDatabase.Host,
+			cfg.WriterDatabase.Port,
+			cfg.WriterDatabase.Name}
+		DBStr := strings.Join(DBInfo, "-")
+		frontendDBInfo := []string{
+			cfg.Frontend.WriterDatabase.Username,
+			cfg.Frontend.WriterDatabase.Password,
+			cfg.Frontend.WriterDatabase.Host,
+			cfg.Frontend.WriterDatabase.Port,
+			cfg.Frontend.WriterDatabase.Name}
+		frontendDBStr := strings.Join(frontendDBInfo, "-")
 		if DBStr != frontendDBStr {
 			go metrics.MonitorDB(db.FrontendWriterDB)
 		}
@@ -213,7 +229,7 @@ func main() {
 		if utils.Config.Indexer.Node.Type == "lighthouse" {
 			rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainID)
 			if err != nil {
-				logrus.Fatal(err)
+				utils.LogFatal(err, "new explorer lighthouse client error", 0)
 			}
 		} else {
 			logrus.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
@@ -225,7 +241,7 @@ func main() {
 				for _, epoch := range utils.Config.Indexer.OneTimeExport.Epochs {
 					err := exporter.ExportEpoch(epoch, rpcClient)
 					if err != nil {
-						logrus.Fatal(err)
+						utils.LogFatal(err, "exporting OneTimeExport epochs error", 0)
 					}
 				}
 			} else {
@@ -233,7 +249,7 @@ func main() {
 				for epoch := utils.Config.Indexer.OneTimeExport.StartEpoch; epoch <= utils.Config.Indexer.OneTimeExport.EndEpoch; epoch++ {
 					err := exporter.ExportEpoch(epoch, rpcClient)
 					if err != nil {
-						logrus.Fatal(err)
+						utils.LogFatal(err, "exporting OneTimeExport start to end epoch error", 0)
 					}
 				}
 			}
@@ -293,6 +309,7 @@ func main() {
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestationeffectiveness", handlers.ApiValidatorAttestationEffectiveness).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/stats/{index}", handlers.ApiValidatorDailyStats).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/eth1/{address}", handlers.ApiValidatorByEth1Address).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/withdrawalCredentials/{withdrawalCredentialsOrEth1address}", handlers.ApiWithdrawalCredentialsValidators).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validators/queue", handlers.ApiValidatorQueue).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/graffitiwall", handlers.ApiGraffitiwall).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
@@ -492,6 +509,7 @@ func main() {
 			router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET")
 			router.HandleFunc("/dashboard/data/proposalshistory", handlers.DashboardDataProposalsHistory).Methods("GET")
 			router.HandleFunc("/dashboard/data/validators", handlers.DashboardDataValidators).Methods("GET")
+			router.HandleFunc("/dashboard/data/withdrawal", handlers.DashboardDataWithdrawals).Methods("GET")
 			router.HandleFunc("/dashboard/data/effectiveness", handlers.DashboardDataEffectiveness).Methods("GET")
 			router.HandleFunc("/dashboard/data/earnings", handlers.DashboardDataEarnings).Methods("GET")
 			router.HandleFunc("/graffitiwall", handlers.Graffitiwall).Methods("GET")
@@ -665,7 +683,7 @@ func main() {
 		pa.Init(proxyaddr.CIDRLoopback)
 		n.Use(pa)
 
-		n.UseHandler(router)
+		n.UseHandler(utils.SessionStore.SCS.LoadAndSave(router))
 
 		if utils.Config.Frontend.HttpWriteTimeout == 0 {
 			utils.Config.Frontend.HttpIdleTimeout = time.Second * 15

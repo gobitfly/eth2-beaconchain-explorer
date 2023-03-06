@@ -378,6 +378,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
+		// those functions need to be executed sequentially as both require the CurrentBalance value
 		start := time.Now()
 		defer func() {
 			timings.Earnings = time.Since(start)
@@ -402,6 +403,67 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		validatorPageData.CurrentBalance = vbalance.Balance
 		validatorPageData.EffectiveBalance = vbalance.EffectiveBalance
+
+		if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
+			// validators can have 0x01 credentials even before the cappella fork
+			validatorPageData.IsWithdrawableAddress = true
+		}
+
+		if validatorPageData.CappellaHasHappened {
+			// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
+
+			// get validator withdrawals
+			withdrawalsCount, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
+			if err != nil {
+				return fmt.Errorf("error getting validator withdrawals count from db: %v", err)
+			}
+			validatorPageData.WithdrawalCount = withdrawalsCount
+
+			blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
+			if err != nil {
+				return fmt.Errorf("error getting validator bls change from db: %v", err)
+			}
+			validatorPageData.BLSChange = blsChange
+
+			if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x00}) && blsChange != nil {
+				// blsChanges are only possible afters cappeala
+				validatorPageData.IsWithdrawableAddress = true
+			}
+
+			// only calculate the expected next withdrawal if the validator is eligible
+			if stats != nil && stats.LatestValidatorWithdrawalIndex != nil && stats.TotalValidatorCount != nil && validatorPageData.IsWithdrawableAddress && (validatorPageData.CurrentBalance > 0 && validatorPageData.WithdrawableEpoch <= validatorPageData.Epoch || validatorPageData.EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.Config.MaxEffectiveBalance) {
+				distance, err := db.GetWithdrawableCountFromCursor(validatorPageData.Epoch, validatorPageData.Index, *stats.LatestValidatorWithdrawalIndex)
+				if err != nil {
+					return fmt.Errorf("error getting withdrawable validator count from cursor: %v", err)
+				}
+
+				timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
+				address, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
+				if err != nil {
+					logger.Warn("invalid withdrawal credentials")
+				}
+
+				// it normally takes to epochs to finalize
+				if timeToWithdrawal.After(utils.EpochToTime(epoch + (epoch - latestFinalized))) {
+					tableData := make([][]interface{}, 0, 1)
+					var withdrawalCredentialsTemplate template.HTML
+					if address != nil {
+						withdrawalCredentialsTemplate = template.HTML(fmt.Sprintf(`<a href="/address/0x%x"><span class="text-muted">%s</span></a>`, address, utils.FormatHash(validatorPageData.WithdrawCredentials)))
+					} else {
+						withdrawalCredentialsTemplate = `<span class="text-muted">N/A</span>`
+					}
+					tableData = append(tableData, []interface{}{
+						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
+						template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
+						withdrawalCredentialsTemplate,
+						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(validatorPageData.CurrentBalance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
+					})
+
+					validatorPageData.NextWithdrawalRow = tableData
+				}
+			}
+		}
 		return nil
 	})
 
@@ -441,61 +503,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
-		return nil
-	})
 
-	validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
-	if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
-		// validators can have 0x01 credentials even before the cappella fork
-		validatorPageData.IsWithdrawableAddress = true
-	}
+		validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
 
-	g.Go(func() error {
-
-		if validatorPageData.CappellaHasHappened {
-			// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
-
-			// get validator withdrawals
-			withdrawalsCount, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
-			if err != nil {
-				return fmt.Errorf("error getting validator withdrawals count from db: %v", err)
-			}
-			validatorPageData.WithdrawalCount = withdrawalsCount
-
-			blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
-			if err != nil {
-				return fmt.Errorf("error getting validator bls change from db: %v", err)
-			}
-			validatorPageData.BLSChange = blsChange
-
-			if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x00}) && blsChange != nil {
-				// blsChanges are only possible afters cappeala
-				validatorPageData.IsWithdrawableAddress = true
-			}
-
-			// only calculate the expected next withdrawal if the validator is eligible
-			if stats != nil && stats.LatestValidatorWithdrawalIndex != nil && stats.TotalValidatorCount != nil && validatorPageData.IsWithdrawableAddress && (validatorPageData.CurrentBalance > 0 && validatorPageData.WithdrawableEpoch <= validatorPageData.Epoch || validatorPageData.EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.Config.MaxEffectiveBalance) {
-				distance, err := db.GetWithdrawableCountFromCursor(validatorPageData.Epoch, validatorPageData.Index, *stats.LatestValidatorWithdrawalIndex)
-				if err != nil {
-					return fmt.Errorf("error getting withdrawable validator count from cursor: %v", err)
-				}
-
-				timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
-				// it normally takes to epochs to finalize
-				if timeToWithdrawal.After(utils.EpochToTime(epoch + (epoch - latestFinalized))) {
-					tableData := make([][]interface{}, 0, 1)
-					tableData = append(tableData, []interface{}{
-						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
-						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
-						template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
-						template.HTML(fmt.Sprintf(`<a href="/address/0x%x"><span class="text-muted">%s</span></a>`, utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials), utils.FormatHash(validatorPageData.WithdrawCredentials))),
-						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(validatorPageData.CurrentBalance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
-					})
-
-					validatorPageData.NextWithdrawalRow = tableData
-				}
-			}
-		}
 		return nil
 	})
 
@@ -1156,6 +1166,23 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "block_slot",
+		"1": "block_slot",
+		"2": "block_slot",
+		"3": "address",
+		"4": "amount",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "block_slot"
+	}
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "asc" {
+		orderDir = "desc"
+	}
+
 	length := uint64(10)
 
 	withdrawalCount, err := db.GetValidatorWithdrawalsCount(index)
@@ -1165,7 +1192,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	withdrawals, err := db.GetValidatorWithdrawals(index, length, start)
+	withdrawals, err := db.GetValidatorWithdrawals(index, length, start, orderBy, orderDir)
 	if err != nil {
 		logger.Errorf("error retrieving validator withdrawals: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1530,6 +1557,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentEpoch := services.LatestEpoch() - 1
+	// for an exited validator we show the history until his exit
+	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 {
+		currentEpoch = activationAndExitEpoch.ExitEpoch - 1
+	}
 
 	var validatorHistory []*types.ValidatorHistory
 

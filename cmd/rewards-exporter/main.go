@@ -74,7 +74,7 @@ func main() {
 			notExportedEpochs := []uint64{}
 			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported ORDER BY epoch")
 			if err != nil {
-				logrus.Fatal(err)
+				utils.LogFatal(err, "getting chain head from lighthouse error", 0)
 			}
 			for _, e := range notExportedEpochs {
 				err := export(e, bt, client, enAddress)

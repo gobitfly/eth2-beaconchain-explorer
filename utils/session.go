@@ -1,19 +1,111 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"time"
 
-	"github.com/gorilla/sessions"
+	"github.com/alexedwards/scs/redisstore"
+	"github.com/alexedwards/scs/v2"
+	"github.com/gomodule/redigo/redis"
 )
 
 // SessionStore is a securecookie-based session-store.
-var SessionStore *sessions.CookieStore
+
+type CustomSessionStore struct {
+	// TODO: Implement
+	SCS *scs.SessionManager
+}
+
+func (css *CustomSessionStore) Get(r *http.Request, name string) (*CustomSession, error) {
+	// TODO: Implement
+	return &CustomSession{
+		SCS:       css.SCS,
+		ContextFn: r.Context,
+	}, nil
+}
+
+type CustomSession struct {
+	SCS       *scs.SessionManager
+	ContextFn func() context.Context
+	// TODO: Implement
+}
+
+func (cs *CustomSession) AddFlash(value string) {
+	cs.SCS.Put(cs.ContextFn(), "_flash", value)
+}
+
+func (cs *CustomSession) Save(r *http.Request, w http.ResponseWriter) error {
+	// Not required as sessions are saved on the fly via middleware
+	return nil
+}
+
+func (cs *CustomSession) SetValue(key string, value interface{}) {
+	cs.SCS.Put(cs.ContextFn(), key, value)
+}
+
+func (cs *CustomSession) GetValue(key string) interface{} {
+	return cs.SCS.Get(cs.ContextFn(), key)
+}
+
+func (cs *CustomSession) DeleteValue(key string) {
+	cs.SCS.Remove(cs.ContextFn(), key)
+}
+
+func (cs *CustomSession) Flashes(vars ...string) []interface{} {
+	// TODO: Implement
+	key := "_flash"
+	if len(vars) > 0 {
+		key = vars[0]
+	}
+
+	val := cs.SCS.PopString(cs.ContextFn(), key)
+	if val != "" {
+		return []interface{}{val}
+	}
+
+	return []interface{}{}
+}
+
+func (cs *CustomSession) Values() map[interface{}]interface{} {
+	r := make(map[interface{}]interface{})
+
+	for _, key := range cs.SCS.Keys(cs.ContextFn()) {
+		v := cs.SCS.Get(cs.ContextFn(), key)
+
+		if v != nil {
+			r[key] = v
+		}
+	}
+	return r
+}
+
+var SessionStore *CustomSessionStore
 
 // InitSessionStore initializes SessionStore with the given secret.
 func InitSessionStore(secret string) {
-	SessionStore = sessions.NewCookieStore([]byte(secret))
-	SessionStore.Options.HttpOnly = true
+
+	pool := &redis.Pool{
+		MaxIdle: 10,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", Config.RedisCacheEndpoint)
+		},
+	}
+
+	sessionManager := scs.New()
+	sessionManager.Lifetime = time.Hour * 24 * 7
+	sessionManager.Cookie.Name = "session_id"
+	sessionManager.Cookie.HttpOnly = true
+	sessionManager.Cookie.Persist = true
+	sessionManager.Cookie.SameSite = http.SameSiteStrictMode
+	sessionManager.Cookie.Secure = true
+
+	sessionManager.Store = redisstore.New(pool)
+
+	SessionStore = &CustomSessionStore{
+		SCS: sessionManager,
+	}
 }
 
 func SetFlash(w http.ResponseWriter, r *http.Request, name string, value string) {
@@ -34,8 +126,11 @@ func GetFlash(w http.ResponseWriter, r *http.Request, name string) (string, erro
 	if fm == nil {
 		return "", nil
 	}
-	session.Save(r, w)
-	return fmt.Sprintf("%v", fm[0]), nil
+
+	if len(fm) > 0 {
+		return fmt.Sprintf("%v", fm[0]), nil
+	}
+	return "", nil
 }
 
 func GetFlashes(w http.ResponseWriter, r *http.Request, name string) []interface{} {

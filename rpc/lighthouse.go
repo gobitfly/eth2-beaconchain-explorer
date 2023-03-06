@@ -55,7 +55,7 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 		stream, err := eventsource.Subscribe(fmt.Sprintf("%s/eth/v1/events?topics=head", lc.endpoint), "")
 
 		if err != nil {
-			logrus.Fatal(err)
+			utils.LogFatal(err, "getting eventsource stream error", 0)
 		}
 		defer stream.Close()
 
