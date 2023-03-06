@@ -1150,6 +1150,23 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "block_slot",
+		"1": "block_slot",
+		"2": "block_slot",
+		"3": "address",
+		"4": "amount",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "block_slot"
+	}
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "asc" {
+		orderDir = "desc"
+	}
+
 	length := uint64(10)
 
 	withdrawalCount, err := db.GetValidatorWithdrawalsCount(index)
@@ -1159,7 +1176,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	withdrawals, err := db.GetValidatorWithdrawals(index, length, start)
+	withdrawals, err := db.GetValidatorWithdrawals(index, length, start, orderBy, orderDir)
 	if err != nil {
 		logger.Errorf("error retrieving validator withdrawals: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
