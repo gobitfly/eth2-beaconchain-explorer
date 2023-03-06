@@ -21,6 +21,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
@@ -251,6 +252,10 @@ func FormatAddCommasFormated(num float64, precision uint) template.HTML {
 	return template.HTML(strings.ReplaceAll(string([]rune(p.Sprintf(s, num))), ",", `<span class="thousands-separator"></span>`))
 }
 
+func FormatBigNumberAddCommasFormated(val hexutil.Big, precision uint) template.HTML {
+	return FormatAddCommasFormated(float64(val.ToInt().Int64()), 0)
+}
+
 func FormatAddCommas(n uint64) template.HTML {
 	number := FormatFloat(float64(n), 2)
 
@@ -333,8 +338,8 @@ func FormatBlockStatusShort(status uint64) template.HTML {
 }
 
 // FormatBlockStatusShort will return an html status for a block.
-func FormatWithdrawalShort(slot uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<span title=\"withdrawal processed in epoch %v during slot: %v\" data-toggle=\"tooltip\" class=\"mx-1 badge badge-pill bg-success text-white\" style=\"font-size: 12px; font-weight: 500;\"><i class=\"fas fa-money-bill\"></i></span>", EpochOfSlot(slot), slot))
+func FormatWithdrawalShort(slot uint64, amount uint64) template.HTML {
+	return template.HTML(fmt.Sprintf("<span title=\"Withdrawal processed in epoch %v during slot %v for %v\" data-toggle=\"tooltip\" class=\"mx-1 badge badge-pill bg-success text-white\" style=\"font-size: 12px; font-weight: 500;\"><i class=\"fas fa-money-bill\"></i></span>", EpochOfSlot(slot), slot, FormatCurrentBalance(amount, "ETH")))
 }
 
 func FormatTransactionType(txnType uint8) string {
@@ -488,10 +493,11 @@ func WithdrawalCredentialsToAddress(credentials []byte) []byte {
 }
 
 func FormatHashWithCopy(hash []byte) template.HTML {
-	copyBtn := CopyButton(hex.EncodeToString(hash))
 	if len(hash) == 0 {
 		return "N/A"
 	}
+
+	copyBtn := CopyButton(hex.EncodeToString(hash))
 	return template.HTML(fmt.Sprintf(`<span>%v</span> %v`, FormatHash(hash), copyBtn))
 }
 
@@ -523,6 +529,16 @@ func FormatWithdawalCredentials(hash []byte, addCopyButton bool) template.HTML {
 	}
 
 	return text
+}
+
+func FormatAddressToWithdrawalCredentials(address []byte, addCopyButton bool) template.HTML {
+	credentials, err := hex.DecodeString("010000000000000000000000")
+	if err != nil {
+		return "INVALID CREDENTIALS"
+	}
+	credentials = append(credentials, address...)
+
+	return FormatWithdawalCredentials(credentials, addCopyButton)
 }
 
 func FormatName(name string, trunc_opt ...bool) template.HTML {

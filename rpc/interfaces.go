@@ -9,7 +9,6 @@ import (
 // Client provides an interface for RPC clients
 type Client interface {
 	GetChainHead() (*types.ChainHead, error)
-	GetChainHeadFromHeaders() (*types.ChainHead, error)
 	GetEpochData(epoch uint64, skipHistoricBalances bool) (*types.EpochData, error)
 	GetValidatorQueue() (*types.ValidatorQueue, error)
 	GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error)

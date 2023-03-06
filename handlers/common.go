@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -12,7 +11,6 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"math/big"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -20,7 +18,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/sessions"
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
@@ -46,36 +43,14 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := int64(services.LatestEpoch())
-	lastDayEpoch := latestEpoch - int64(utils.EpochsPerDay())
-	lastWeekEpoch := latestEpoch - int64(utils.EpochsPerDay())*7
-	lastMonthEpoch := latestEpoch - int64(utils.EpochsPerDay())*31
-	lastYearEpoch := latestEpoch - int64(utils.EpochsPerDay())*365
 
-	if lastDayEpoch <= 0 {
-		lastDayEpoch = 2
-	}
-	if lastWeekEpoch <= 0 {
-		lastWeekEpoch = 2
-	}
-	if lastMonthEpoch <= 0 {
-		lastMonthEpoch = 2
-	}
-	if lastYearEpoch <= 0 {
-		lastYearEpoch = 2
+	lastDay := 0
+	err := db.WriterDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats")
+	if err != nil {
+		return nil, nil, err
 	}
 
 	balances := []*types.Validator{}
-
-	err := db.ReaderDb.Select(&balances, `SELECT 
-				validatorindex,
-			    COALESCE(balanceactivation, 0) AS balanceactivation, 
-       			activationepoch,
-       			pubkey
-		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
-	if err != nil {
-		logger.Error(err)
-		return nil, nil, err
-	}
 
 	balancesMap := make(map[uint64]*types.Validator, len(balances))
 
@@ -83,90 +58,57 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		balancesMap[balance.Index] = balance
 	}
 
-	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), 1)
+	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), uint64(latestEpoch))
 	if err != nil {
 		logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
 		return nil, nil, err
 	}
+
 	for balanceIndex, balance := range latestBalances {
-		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
+		if len(balance) == 0 {
 			continue
+		}
+
+		if balancesMap[balanceIndex] == nil {
+			balancesMap[balanceIndex] = &types.Validator{}
 		}
 		balancesMap[balanceIndex].Balance = balance[0].Balance
 		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
 	}
 
-	balances1d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastDayEpoch), 1)
+	type Earnings struct {
+		ClEarningsTotal     int64 `db:"cl_rewards_gwei_total"`
+		ClEarningsLastDay   int64 `db:"cl_rewards_gwei"`
+		ClEarningsLastWeek  int64 `db:"cl_rewards_gwei_7d"`
+		ClEarningsLastMonth int64 `db:"cl_rewards_gwei_31d"`
+		ElEarningsTotal     int64 `db:"el_rewards_gwei_total"`
+		ElEarningsLastDay   int64 `db:"el_rewards_gwei"`
+		ElEarningsLastWeek  int64 `db:"el_rewards_gwei_7d"`
+		ElEarningsLastMonth int64 `db:"el_rewards_gwei_31d"`
+	}
+
+	e := &Earnings{}
+
+	err = db.ReaderDb.Get(e, `
+		SELECT 
+		COALESCE(SUM(cl_rewards_gwei), 0) AS cl_rewards_gwei, 
+		COALESCE(SUM(cl_rewards_gwei_7d), 0) AS cl_rewards_gwei_7d, 
+		COALESCE(SUM(cl_rewards_gwei_31d), 0) AS cl_rewards_gwei_31d, 
+		COALESCE(SUM(cl_rewards_gwei_total), 0) AS cl_rewards_gwei_total,
+		COALESCE(SUM(el_rewards_gwei), 0) AS el_rewards_gwei, 
+		COALESCE(SUM(el_rewards_gwei_7d), 0) AS el_rewards_gwei_7d, 
+		COALESCE(SUM(el_rewards_gwei_31d), 0) AS el_rewards_gwei_31d, 
+		COALESCE(SUM(el_rewards_gwei_total), 0) AS el_rewards_gwei_total
+		FROM validator_stats WHERE day = $1 AND validatorindex = ANY($2)`, lastDay, validatorsPQArray)
 	if err != nil {
-		logger.Errorf("error getting validator Balance1d data in GetValidatorEarnings: %v", err)
 		return nil, nil, err
 	}
-	for balanceIndex, balance := range balances1d {
-		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
-			continue
-		}
-		balancesMap[balanceIndex].Balance1d = sql.NullInt64{
-			Int64: int64(balance[0].Balance),
-			Valid: true,
-		}
-	}
 
-	balances7d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastWeekEpoch), 1)
-	if err != nil {
-		logger.Errorf("error getting validator Balance7d data in GetValidatorEarnings: %v", err)
-		return nil, nil, err
-	}
-	for balanceIndex, balance := range balances7d {
-		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
-			continue
-		}
-		balancesMap[balanceIndex].Balance7d = sql.NullInt64{
-			Int64: int64(balance[0].Balance),
-			Valid: true,
-		}
-	}
+	var totalDeposits int64
 
-	balances31d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastMonthEpoch), 1)
-	if err != nil {
-		logger.Errorf("error getting validator Balance31d data in GetValidatorEarnings: %v", err)
-		return nil, nil, err
-	}
-	for balanceIndex, balance := range balances31d {
-		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
-			continue
-		}
-		balancesMap[balanceIndex].Balance31d = sql.NullInt64{
-			Int64: int64(balance[0].Balance),
-			Valid: true,
-		}
-	}
-
-	balances365d, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(lastYearEpoch), 1)
-	if err != nil {
-		logger.Errorf("error getting validator Balance31d data in GetValidatorEarnings: %v", err)
-		return nil, nil, err
-	}
-	for balanceIndex, balance := range balances365d {
-		if len(balance) == 0 || balancesMap[balanceIndex] == nil {
-			continue
-		}
-		balancesMap[balanceIndex].Balance365d = sql.NullInt64{
-			Int64: int64(balance[0].Balance),
-			Valid: true,
-		}
-	}
-
-	deposits := []struct {
-		Epoch     int64
-		Amount    int64
-		Publickey []byte
-	}{}
-
-	err = db.ReaderDb.Select(&deposits, `
+	err = db.ReaderDb.Get(&totalDeposits, `
 	SELECT 
-		block_slot / 32 AS epoch, 
-		amount, 
-		publickey 
+		COALESCE(SUM(amount), 0) 
 	FROM blocks_deposits d
 	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' 
 	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray)
@@ -174,254 +116,49 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
-	depositsMap := make(map[string]map[int64]int64)
-	for _, d := range deposits {
-		if _, exists := depositsMap[fmt.Sprintf("%x", d.Publickey)]; !exists {
-			depositsMap[fmt.Sprintf("%x", d.Publickey)] = make(map[int64]int64)
-		}
-		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
-	}
+	var totalWithdrawals uint64
 
-	withdrawals := []struct {
-		Epoch          uint64
-		Amount         uint64
-		ValidatorIndex uint64
-	}{}
-
-	err = db.ReaderDb.Select(&withdrawals, `
+	err = db.ReaderDb.Get(&totalWithdrawals, `
 	SELECT 
-		w.validatorindex,
-		w.block_slot / 32 AS epoch, 
-		sum(w.amount) as amount
+		COALESCE(sum(w.amount), 0)
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	WHERE validatorindex = ANY($1)
-	GROUP BY validatorindex, w.block_slot / 32
 	`, validatorsPQArray)
 	if err != nil {
 		return nil, nil, err
 	}
-	withdrawalsMap := make(map[uint64]map[uint64]uint64)
-	for _, w := range withdrawals {
-		if _, exists := withdrawalsMap[w.ValidatorIndex]; !exists {
-			withdrawalsMap[w.ValidatorIndex] = make(map[uint64]uint64)
-		}
-		withdrawalsMap[w.ValidatorIndex][w.Epoch] += w.Amount
-	}
 
-	var clEarningsTotal int64
-	var clEarningsLastDay int64
-	var clEarningsLastWeek int64
-	var clEarningsLastMonth int64
-	var clEarningsLastYear int64
-	var totalDeposits int64
-	var totalWithdrawals uint64
+	earningsLastDay := e.ClEarningsLastDay + e.ElEarningsLastDay
+	earningsLastWeek := e.ClEarningsLastWeek + e.ElEarningsLastWeek
+	earningsLastMonth := e.ClEarningsLastMonth + e.ElEarningsLastMonth
 
-	for _, balance := range balancesMap {
-		if int64(balance.ActivationEpoch) >= latestEpoch {
-			continue
-		}
-		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
-			totalDeposits += deposit
-
-			if epoch > int64(balance.ActivationEpoch) {
-				clEarningsTotal -= deposit
-			}
-			if epoch > lastDayEpoch && epoch > int64(balance.ActivationEpoch) {
-				clEarningsLastDay -= deposit
-			}
-			if epoch > lastWeekEpoch && epoch > int64(balance.ActivationEpoch) {
-				clEarningsLastWeek -= deposit
-			}
-			if epoch > lastMonthEpoch && epoch > int64(balance.ActivationEpoch) {
-				clEarningsLastMonth -= deposit
-			}
-			if epoch > lastYearEpoch && epoch > int64(balance.ActivationEpoch) {
-				clEarningsLastYear -= deposit
-			}
-		}
-
-		for epoch, withdrawal := range withdrawalsMap[balance.Index] {
-			totalWithdrawals += withdrawal
-
-			if epoch > balance.ActivationEpoch {
-				clEarningsTotal += int64(withdrawal)
-			}
-			if epoch > uint64(lastDayEpoch) && epoch > balance.ActivationEpoch {
-				clEarningsLastDay += int64(withdrawal)
-			}
-			if epoch > uint64(lastWeekEpoch) && epoch > balance.ActivationEpoch {
-				clEarningsLastWeek += int64(withdrawal)
-			}
-			if epoch > uint64(lastMonthEpoch) && epoch > balance.ActivationEpoch {
-				clEarningsLastMonth += int64(withdrawal)
-			}
-		}
-
-		if int64(balance.ActivationEpoch) > lastDayEpoch {
-			balance.Balance1d = balance.BalanceActivation
-		}
-		if int64(balance.ActivationEpoch) > lastWeekEpoch {
-			balance.Balance7d = balance.BalanceActivation
-		}
-		if int64(balance.ActivationEpoch) > lastMonthEpoch {
-			balance.Balance31d = balance.BalanceActivation
-		}
-		if int64(balance.ActivationEpoch) > lastYearEpoch {
-			balance.Balance365d = balance.BalanceActivation
-		}
-
-		clEarningsTotal += int64(balance.Balance) - balance.BalanceActivation.Int64
-		clEarningsLastDay += int64(balance.Balance) - balance.Balance1d.Int64
-		clEarningsLastWeek += int64(balance.Balance) - balance.Balance7d.Int64
-		clEarningsLastMonth += int64(balance.Balance) - balance.Balance31d.Int64
-		clEarningsLastYear += int64(balance.Balance) - balance.Balance365d.Int64
-	}
-
-	if totalDeposits == 0 {
-		totalDeposits = 32 * 1e9
-	}
-
-	// retrieve EL Informaion
-	// get all EL blocks
-	var execBlocks []types.ExecBlockProposer
-	err = db.ReaderDb.Select(&execBlocks,
-		`SELECT
-			exec_block_number,
-			slot
-			FROM blocks
-		WHERE proposer = ANY($1)
-		AND exec_block_number IS NOT NULL
-		AND exec_block_number > 0
-		ORDER BY exec_block_number ASC`,
-		validatorsPQArray,
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	blockList := []uint64{}
-	for _, slot := range execBlocks {
-		blockList = append(blockList, slot.ExecBlock)
-	}
-
-	// get EL rewards
-	var blocks []*types.Eth1BlockIndexed
-	var relaysData map[common.Hash]types.RelaysData
-
-	if len(blockList) > 0 {
-		blocks, err = db.BigtableClient.GetBlocksIndexedMultiple(blockList, 10000)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error retrieving blocks from bigtable: %v", err)
-		}
-		relaysData, err = db.GetRelayDataForIndexedBlocks(blocks)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error retrieving mev relay data: %v", err)
-		}
-	}
-
-	last1dTimestamp := time.Now().Add(-1 * 24 * time.Hour)
-	last7dTimestamp := time.Now().Add(-7 * 24 * time.Hour)
-	last31dTimestamp := time.Now().Add(-31 * 24 * time.Hour)
-	last365dTimestamp := time.Now().Add(-365 * 24 * time.Hour)
-	var elEarningsTotal int64
-	var elEarningsLastDay int64
-	var elEarningsLastWeek int64
-	var elEarningsLastMonth int64
-	var elEarningsLastYear int64
-	for _, execBlock := range blocks {
-
-		var elReward *big.Int
-		relayData, ok := relaysData[common.BytesToHash(execBlock.Hash)]
-		if ok {
-			elReward = relayData.MevBribe.BigInt()
-		} else {
-			elReward = big.NewInt(0).SetBytes(execBlock.TxReward)
-		}
-		elReward = elReward.Div(elReward, big.NewInt(1e9))
-
-		execBlockTs := execBlock.Time.AsTime()
-		if execBlockTs.After(last1dTimestamp) {
-			elEarningsLastDay += elReward.Int64()
-		}
-		if execBlockTs.After(last7dTimestamp) {
-			elEarningsLastWeek += elReward.Int64()
-		}
-		if execBlockTs.After(last31dTimestamp) {
-			elEarningsLastMonth += elReward.Int64()
-		}
-		if execBlockTs.After(last365dTimestamp) {
-			elEarningsLastYear += elReward.Int64()
-		}
-		elEarningsTotal += elReward.Int64()
-	}
-
-	clApr7d := (((float64(clEarningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
-	if clApr7d < float64(-1) {
-		clApr7d = float64(-1)
-	}
-
-	clApr31d := (((float64(clEarningsLastMonth) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 31
-	if clApr31d < float64(-1) {
-		clApr31d = float64(-1)
-	}
-
-	clApr365d := ((float64(clEarningsLastYear) / 1e9) / (float64(totalDeposits) / 1e9))
-	if clApr365d < float64(-1) {
-		clApr365d = float64(-1)
-	}
-
-	elApr7d := (((float64(elEarningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
-	if elApr7d < float64(-1) {
-		elApr7d = float64(-1)
-	}
-
-	elApr31d := (((float64(elEarningsLastMonth) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 31
-	if elApr31d < float64(-1) {
-		elApr31d = float64(-1)
-	}
-
-	elApr365d := ((float64(elEarningsLastYear) / 1e9) / (float64(totalDeposits) / 1e9))
-	if elApr365d < float64(-1) {
-		elApr365d = float64(-1)
-	}
-
-	earningsLastDay := clEarningsLastDay + elEarningsLastDay
-	earningsLastWeek := clEarningsLastWeek + elEarningsLastWeek
-	earningsLastMonth := clEarningsLastMonth + elEarningsLastMonth
-
+	//TODO Add 365d earnings once it is available
 	return &types.ValidatorEarnings{
-		ClIncome1d:            clEarningsLastDay,
-		ClIncome7d:            clEarningsLastWeek,
-		ClIncome31d:           clEarningsLastMonth,
-		ElIncome1d:            elEarningsLastDay,
-		ElIncome7d:            elEarningsLastWeek,
-		ElIncome31d:           elEarningsLastMonth,
-		ClAPR7d:               clApr7d,
-		ClAPR31d:              clApr31d,
-		ClAPR365d:             clApr365d,
-		ElAPR7d:               elApr7d,
-		ElAPR31d:              elApr31d,
-		ElAPR365d:             elApr365d,
-		TotalExecutionRewards: uint64(elEarningsTotal),
-		TotalDeposits:         totalDeposits,
-		LastDayFormatted:      utils.FormatIncome(earningsLastDay, currency),
-		LastWeekFormatted:     utils.FormatIncome(earningsLastWeek, currency),
-		LastMonthFormatted:    utils.FormatIncome(earningsLastMonth, currency),
-		TotalFormatted:        utils.FormatIncome(clEarningsTotal, currency),
-		TotalChangeFormatted:  utils.FormatIncome(clEarningsTotal+totalDeposits, currency),
-		ProposalLuck:          getProposalLuck(execBlocks, len(validators)),
-		ProposalEstimate:      getNextBlockEstimateTimestamp(execBlocks, len(validators)),
+		ClIncome1d:           e.ClEarningsLastDay,
+		ClIncome7d:           e.ClEarningsLastWeek,
+		ClIncome31d:          e.ClEarningsLastMonth,
+		ClIncomeTotal:        e.ClEarningsTotal,
+		ElIncome1d:           e.ElEarningsLastDay,
+		ElIncome7d:           e.ElEarningsLastWeek,
+		ElIncome31d:          e.ElEarningsLastMonth,
+		ElIncomeTotal:        e.ElEarningsTotal,
+		TotalDeposits:        totalDeposits,
+		LastDayFormatted:     utils.FormatIncome(earningsLastDay, currency),
+		LastWeekFormatted:    utils.FormatIncome(earningsLastWeek, currency),
+		LastMonthFormatted:   utils.FormatIncome(earningsLastMonth, currency),
+		TotalFormatted:       utils.FormatIncome(e.ClEarningsTotal, currency),
+		TotalChangeFormatted: utils.FormatIncome(e.ClEarningsTotal+totalDeposits, currency),
 	}, balancesMap, nil
 }
 
 // getProposalLuck calculates the luck of a given set of proposed blocks for a certain number of validators
 // given the blocks proposed by the validators and the number of validators
 //
-// precondition: proposedBlocks is sorted by ascending block number
-func getProposalLuck(proposedBlocks []types.ExecBlockProposer, validatorsCount int) float64 {
+// precondition: slots is sorted by ascending block number
+func getProposalLuck(slots []uint64, validatorsCount int) float64 {
 	// Return 0 if there are no proposed blocks or no validators
-	if len(proposedBlocks) == 0 || validatorsCount == 0 {
+	if len(slots) == 0 || validatorsCount == 0 {
 		return 0
 	}
 	// Timeframe constants
@@ -441,7 +178,7 @@ func getProposalLuck(proposedBlocks []types.ExecBlockProposer, validatorsCount i
 	// Get the timeframe for which we should consider qualified proposals
 	var proposalTimeframe time.Duration
 	// Time since the first block in the proposed block slice
-	timeSinceFirstBlock := time.Since(utils.SlotToTime(proposedBlocks[0].Slot))
+	timeSinceFirstBlock := time.Since(utils.SlotToTime(slots[0]))
 
 	// Determine the appropriate timeframe based on the time since the first block and the expected slot proposals
 	switch {
@@ -475,8 +212,8 @@ func getProposalLuck(proposedBlocks []types.ExecBlockProposer, validatorsCount i
 
 	// Count the number of qualified proposals
 	qualifiedProposalCount := 0
-	for _, block := range proposedBlocks {
-		if utils.SlotToTime(block.Slot).After(blockProposalCutoffTime) {
+	for _, slot := range slots {
+		if utils.SlotToTime(slot).After(blockProposalCutoffTime) {
 			qualifiedProposalCount++
 		}
 	}
@@ -497,9 +234,9 @@ func calcExpectedSlotProposals(timeframe time.Duration, validatorCount int, acti
 // given the blocks proposed by the validators and the number of validators
 //
 // precondition: proposedBlocks is sorted by ascending block number
-func getNextBlockEstimateTimestamp(proposedBlocks []types.ExecBlockProposer, validatorsCount int) *time.Time {
+func getNextBlockEstimateTimestamp(slots []uint64, validatorsCount int) *time.Time {
 	// don't estimate if there are no proposed blocks or no validators
-	if len(proposedBlocks) == 0 || validatorsCount == 0 {
+	if len(slots) == 0 || validatorsCount == 0 {
 		return nil
 	}
 	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
@@ -513,7 +250,7 @@ func getNextBlockEstimateTimestamp(proposedBlocks []types.ExecBlockProposer, val
 	expectedValue := 1 / probability
 
 	// return the timestamp of the last proposed block plus the average interval
-	nextExpectedSlot := proposedBlocks[len(proposedBlocks)-1].Slot + uint64(expectedValue)
+	nextExpectedSlot := slots[len(slots)-1] + uint64(expectedValue)
 	estimate := utils.SlotToTime(nextExpectedSlot)
 	return &estimate
 }

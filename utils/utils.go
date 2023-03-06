@@ -29,7 +29,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -37,6 +36,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
@@ -91,6 +91,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatGraffiti":                          FormatGraffiti,
 		"formatHash":                              FormatHash,
 		"formatWithdawalCredentials":              FormatWithdawalCredentials,
+		"formatAddressToWithdrawalCredentials":    FormatAddressToWithdrawalCredentials,
 		"formatBitvector":                         FormatBitvector,
 		"formatBitlist":                           FormatBitlist,
 		"formatBitvectorValidators":               formatBitvectorValidators,
@@ -123,6 +124,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatETH":                               FormatETH,
 		"formatFloat":                             FormatFloat,
 		"formatAmount":                            FormatAmount,
+		"formatBigAmount":                         FormatBigAmount,
 		"formatYesNo":                             FormatYesNo,
 		"formatAmountFormatted":                   FormatAmountFormated,
 		"formatAddressAsLink":                     FormatAddressAsLink,
@@ -210,11 +212,18 @@ func GetTemplateFuncs() template.FuncMap {
 		"byteToString": func(num []byte) string {
 			return string(num)
 		},
-		"formatEthstoreComparison": FormatEthstoreComparison,
-		"formatPoolPerformance":    FormatPoolPerformance,
-		"formatTokenSymbolTitle":   FormatTokenSymbolTitle,
-		"formatTokenSymbol":        FormatTokenSymbol,
-		"formatTokenSymbolHTML":    FormatTokenSymbolHTML,
+		"bigToInt": func(val *hexutil.Big) *big.Int {
+			if val != nil {
+				return val.ToInt()
+			}
+			return nil
+		},
+		"formatBigNumberAddCommasFormated": FormatBigNumberAddCommasFormated,
+		"formatEthstoreComparison":         FormatEthstoreComparison,
+		"formatPoolPerformance":            FormatPoolPerformance,
+		"formatTokenSymbolTitle":           FormatTokenSymbolTitle,
+		"formatTokenSymbol":                FormatTokenSymbol,
+		"formatTokenSymbolHTML":            FormatTokenSymbolHTML,
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {
 				return nil, errors.New("invalid dict call")
@@ -243,7 +252,14 @@ func IncludeHTML(path string) template.HTML {
 }
 
 func GraffitiToSring(graffiti []byte) string {
-	return strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
+	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
+	s = strings.Replace(s, "\u0000", "", -1) // rempove 0x00 bytes as it is not supported in postgres
+
+	if !utf8.ValidString(s) {
+		return "INVALID_UTF8_STRING"
+	}
+
+	return s
 }
 
 // FormatGraffitiString formats (and escapes) the graffiti
@@ -426,6 +442,9 @@ func ReadConfig(cfg *types.Config, path string) error {
 	if cfg.Chain.DomainBLSToExecutionChange == "" {
 		cfg.Chain.DomainBLSToExecutionChange = "0x0A000000"
 	}
+	if cfg.Chain.DomainVoluntaryExit == "" {
+		cfg.Chain.DomainVoluntaryExit = "0x04000000"
+	}
 
 	logrus.WithFields(logrus.Fields{
 		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
@@ -571,7 +590,7 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 	columnTypes, err := rows.ColumnTypes()
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting column types: %w", err)
 	}
 
 	count := len(columnTypes)
@@ -603,7 +622,7 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 		err := rows.Scan(scanArgs...)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error scanning rows: %w", err)
 		}
 
 		masterData := map[string]interface{}{}
@@ -686,14 +705,18 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 }
 
 // GenerateAPIKey generates an API key for a user
-func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
-	apiKey, err := bcrypt.GenerateFromPassword([]byte(passwordHash+email+Ts), 10)
-	if err != nil {
-		return "", err
-	}
-	key := apiKey
-	if len(apiKey) > 30 {
-		key = apiKey[8:29]
+func GenerateRandomAPIKey() (string, error) {
+	const apiLength = 28
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+	max := big.NewInt(int64(len(letters)))
+	key := make([]byte, apiLength)
+	for i := 0; i < apiLength; i++ {
+		num, err := securerand.Int(securerand.Reader, max)
+		if err != nil {
+			return "", err
+		}
+		key[i] = letters[num.Int64()]
 	}
 
 	apiKeyBase64 := base64.RawURLEncoding.EncodeToString(key)
@@ -1013,4 +1036,34 @@ func GetTimeToNextWithdrawal(distance uint64) time.Time {
 func EpochsPerDay() uint64 {
 	day := time.Hour * 24
 	return (uint64(day.Seconds()) / Config.Chain.Config.SlotsPerEpoch) / Config.Chain.Config.SecondsPerSlot
+}
+
+// ForkVersionAtEpoch returns the forkversion active a specific epoch
+func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
+	if epoch >= Config.Chain.Config.CappellaForkEpoch {
+		return &types.ForkVersion{
+			Epoch:           Config.Chain.Config.CappellaForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.Config.CappellaForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.Config.BellatrixForkVersion),
+		}
+	}
+	if epoch >= Config.Chain.Config.BellatrixForkEpoch {
+		return &types.ForkVersion{
+			Epoch:           Config.Chain.Config.BellatrixForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.Config.BellatrixForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.Config.AltairForkVersion),
+		}
+	}
+	if epoch >= Config.Chain.Config.AltairForkEpoch {
+		return &types.ForkVersion{
+			Epoch:           Config.Chain.Config.AltairForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.Config.AltairForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.Config.GenesisForkVersion),
+		}
+	}
+	return &types.ForkVersion{
+		Epoch:           0,
+		CurrentVersion:  MustParseHex(Config.Chain.Config.GenesisForkVersion),
+		PreviousVersion: MustParseHex(Config.Chain.Config.GenesisForkVersion),
+	}
 }

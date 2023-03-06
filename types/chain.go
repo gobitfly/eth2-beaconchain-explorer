@@ -1,5 +1,11 @@
 package types
 
+type ForkVersion struct {
+	Epoch           uint64
+	CurrentVersion  []byte
+	PreviousVersion []byte
+}
+
 // https://github.com/ethereum/consensus-specs/blob/dev/configs/mainnet.yaml
 type ChainConfig struct {
 	PresetBase                       string `yaml:"PRESET_BASE"`

@@ -154,6 +154,8 @@ create table validator_stats
     deposits_amount         bigint,
     withdrawals             int,
     withdrawals_amount      bigint,
+    cl_rewards_gwei         bigint,
+    el_rewards_wei          decimal,
     primary key (validatorindex, day)
 );
 create index idx_validator_stats_day on validator_stats (day);
@@ -227,6 +229,7 @@ create table epochs
     eligibleether           bigint,
     globalparticipationrate float,
     votedether              bigint,
+    rewards_exported        bool not null default false,
     primary key (epoch)
 );
 
@@ -739,16 +742,6 @@ create table price
     primary key (ts)
 );
 
-drop table if exists staking_pools_chart;
-create table staking_pools_chart
-(
-    epoch                      int  not null,
-    name                       text not null,
-    income                     bigint not null,
-    balance                    bigint not null,
-    PRIMARY KEY(epoch, name)
-);
-
 drop table if exists stats_sharing;
 CREATE TABLE stats_sharing (
                                id 				bigserial 			primary key,
@@ -1044,7 +1037,7 @@ create table node_jobs
     id varchar(40),
     type varchar(40) not null, -- can be one of: BLS_TO_EXECUTION_CHANGES, VOLUNTARY_EXITS
     status varchar(40) not null, -- can be one of: PENDING, SUBMITTED_TO_NODE, COMPLETED
-    created_time timestamp without time zone not null default 'now()',
+    created_time timestamp without time zone not null default now(),
     submitted_to_node_time timestamp without time zone,
     completed_time timestamp without time zone,
     data jsonb not null,

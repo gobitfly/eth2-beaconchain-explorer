@@ -179,8 +179,9 @@ type IndexPageData struct {
 }
 
 type SlotVizPageData struct {
-	Epochs   []*SlotVizEpochs
-	Selector string
+	Epochs        []*SlotVizEpochs
+	Selector      string
+	HardforkEpoch uint64
 }
 
 type IndexPageDataEpochs struct {
@@ -302,105 +303,102 @@ type ValidatorsPageDataValidators struct {
 // ValidatorPageData is a struct to hold data for the validators page
 // ValidatorPageData is a struct to hold data for the validators page
 type ValidatorPageData struct {
-	Epoch                               uint64 `db:"epoch"`
-	ValidatorIndex                      uint64 `db:"validatorindex"`
-	PublicKey                           []byte `db:"pubkey"`
-	WithdrawableEpoch                   uint64 `db:"withdrawableepoch"`
-	WithdrawCredentials                 []byte `db:"withdrawalcredentials"`
-	CurrentBalance                      uint64 `db:"balance"`
-	BalanceActivation                   uint64 `db:"balanceactivation"`
-	Balance7d                           uint64 `db:"balance7d"`
-	Balance31d                          uint64 `db:"balance31d"`
-	EffectiveBalance                    uint64 `db:"effectivebalance"`
-	Slashed                             bool   `db:"slashed"`
-	SlashedBy                           uint64
-	SlashedAt                           uint64
-	SlashedFor                          string
-	ActivationEligibilityEpoch          uint64         `db:"activationeligibilityepoch"`
-	ActivationEpoch                     uint64         `db:"activationepoch"`
-	ExitEpoch                           uint64         `db:"exitepoch"`
-	Index                               uint64         `db:"index"`
-	LastAttestationSlot                 *uint64        `db:"lastattestationslot"`
-	Name                                string         `db:"name"`
-	Pool                                string         `db:"pool"`
-	Tags                                pq.StringArray `db:"tags"`
-	WithdrawableTs                      time.Time
-	ActivationEligibilityTs             time.Time
-	ActivationTs                        time.Time
-	ExitTs                              time.Time
-	Status                              string `db:"status"`
-	BlocksCount                         uint64
-	ScheduledBlocksCount                uint64
-	MissedBlocksCount                   uint64
-	OrphanedBlocksCount                 uint64
-	ProposedBlocksCount                 uint64
-	UnmissedBlocksPercentage            float64 // missed/(executed+orphaned+scheduled)
-	AttestationsCount                   uint64
-	ExecutedAttestationsCount           uint64
-	MissedAttestationsCount             uint64
-	OrphanedAttestationsCount           uint64
-	UnmissedAttestationsPercentage      float64 // missed/(executed+orphaned)
-	StatusProposedCount                 uint64
-	StatusMissedCount                   uint64
-	DepositsCount                       uint64
-	WithdrawalCount                     uint64
-	SlashingsCount                      uint64
-	PendingCount                        uint64
-	SyncCount                           uint64
-	ScheduledSyncCount                  uint64
-	ParticipatedSyncCount               uint64
-	MissedSyncCount                     uint64
-	OrphanedSyncCount                   uint64
-	UnmissedSyncPercentage              float64 // missed/(participated+orphaned)
-	ClIncome1d                          int64
-	ClIncome7d                          int64
-	ClIncome31d                         int64
-	ElIncome1d                          int64
-	ElIncome7d                          int64
-	ElIncome31d                         int64
-	Rank7d                              int64 `db:"rank7d"`
-	RankCount                           int64 `db:"rank_count"`
-	RankPercentage                      float64
-	ElAPR7d                             float64 `json:"elApr7d"`
-	ElAPR31d                            float64 `json:"elApr31d"`
-	ElAPR365d                           float64 `json:"elApr365d"`
-	ClAPR7d                             float64 `json:"clApr7d"`
-	ClAPR31d                            float64 `json:"clApr31d"`
-	ClAPR365d                           float64 `json:"clApr365d"`
-	TotalExecutionRewards               uint64
-	ProposalLuck                        float64
-	SyncLuck                            float64
-	ProposalEstimate                    *time.Time
-	SyncEstimate                        *time.Time
-	Proposals                           [][]uint64
-	IncomeHistoryChartData              []*ChartDataPoint
-	ExecutionIncomeHistoryData          []*ChartDataPoint
-	Deposits                            *ValidatorDeposits
-	Eth1DepositAddress                  []byte
-	FlashMessage                        string
-	Watchlist                           []*TaggedValidators
-	SubscriptionFlash                   []interface{}
-	User                                *User
-	AverageAttestationInclusionDistance float64
-	AttestationInclusionEffectiveness   float64
-	CsrfField                           template.HTML
-	NetworkStats                        *IndexPageData
-	ChurnRate                           uint64
-	QueuePosition                       uint64
-	EstimatedActivationTs               time.Time
-	EstimatedActivationEpoch            uint64
-	InclusionDelay                      int64
-	CurrentAttestationStreak            uint64
-	LongestAttestationStreak            uint64
-	IsRocketpool                        bool
-	Rocketpool                          *RocketpoolValidatorPageData
-	NoAds                               bool
-	ShowWithdrawalWarning               bool
-	BLSChange                           *BLSChange
-	IsWithdrawableAddress               bool
-	EstimatedNextWithdrawal             template.HTML
-	AddValidatorWatchlistModal          *AddValidatorWatchlistModal
-	NextWithdrawalRow                   [][]interface{}
+	Epoch                                    uint64 `db:"epoch"`
+	ValidatorIndex                           uint64 `db:"validatorindex"`
+	PublicKey                                []byte `db:"pubkey"`
+	WithdrawableEpoch                        uint64 `db:"withdrawableepoch"`
+	WithdrawCredentials                      []byte `db:"withdrawalcredentials"`
+	CurrentBalance                           uint64 `db:"balance"`
+	BalanceActivation                        uint64 `db:"balanceactivation"`
+	Balance7d                                uint64 `db:"balance7d"`
+	Balance31d                               uint64 `db:"balance31d"`
+	EffectiveBalance                         uint64 `db:"effectivebalance"`
+	Slashed                                  bool   `db:"slashed"`
+	SlashedBy                                uint64
+	SlashedAt                                uint64
+	SlashedFor                               string
+	ActivationEligibilityEpoch               uint64         `db:"activationeligibilityepoch"`
+	ActivationEpoch                          uint64         `db:"activationepoch"`
+	ExitEpoch                                uint64         `db:"exitepoch"`
+	Index                                    uint64         `db:"index"`
+	LastAttestationSlot                      *uint64        `db:"lastattestationslot"`
+	Name                                     string         `db:"name"`
+	Pool                                     string         `db:"pool"`
+	Tags                                     pq.StringArray `db:"tags"`
+	WithdrawableTs                           time.Time
+	ActivationEligibilityTs                  time.Time
+	ActivationTs                             time.Time
+	ExitTs                                   time.Time
+	Status                                   string `db:"status"`
+	BlocksCount                              uint64
+	ScheduledBlocksCount                     uint64
+	MissedBlocksCount                        uint64
+	OrphanedBlocksCount                      uint64
+	ProposedBlocksCount                      uint64
+	UnmissedBlocksPercentage                 float64 // missed/(executed+orphaned+scheduled)
+	AttestationsCount                        uint64
+	ExecutedAttestationsCount                uint64
+	MissedAttestationsCount                  uint64
+	OrphanedAttestationsCount                uint64
+	UnmissedAttestationsPercentage           float64 // missed/(executed+orphaned)
+	StatusProposedCount                      uint64
+	StatusMissedCount                        uint64
+	DepositsCount                            uint64
+	WithdrawalCount                          uint64
+	SlashingsCount                           uint64
+	PendingCount                             uint64
+	SyncCount                                uint64
+	ScheduledSyncCount                       uint64
+	ParticipatedSyncCount                    uint64
+	MissedSyncCount                          uint64
+	OrphanedSyncCount                        uint64
+	UnmissedSyncPercentage                   float64 // missed/(participated+orphaned)
+	ClIncome1d                               int64
+	ClIncome7d                               int64
+	ClIncome31d                              int64
+	ClIncomeTotal                            int64
+	ElIncome1d                               int64
+	ElIncome7d                               int64
+	ElIncome31d                              int64
+	ElIncomeTotal                            int64
+	TotalDeposits                            int64
+	ProposalLuck                             float64
+	SyncLuck                                 float64
+	ProposalEstimate                         *time.Time
+	SyncEstimate                             *time.Time
+	Rank7d                                   int64 `db:"rank7d"`
+	RankCount                                int64 `db:"rank_count"`
+	RankPercentage                           float64
+	Proposals                                [][]uint64
+	IncomeHistoryChartData                   []*ChartDataPoint
+	ExecutionIncomeHistoryData               []*ChartDataPoint
+	Deposits                                 *ValidatorDeposits
+	Eth1DepositAddress                       []byte
+	FlashMessage                             string
+	Watchlist                                []*TaggedValidators
+	SubscriptionFlash                        []interface{}
+	User                                     *User
+	AverageAttestationInclusionDistance      float64
+	AttestationInclusionEffectiveness        float64
+	CsrfField                                template.HTML
+	NetworkStats                             *IndexPageData
+	ChurnRate                                uint64
+	QueuePosition                            uint64
+	EstimatedActivationTs                    time.Time
+	EstimatedActivationEpoch                 uint64
+	InclusionDelay                           int64
+	CurrentAttestationStreak                 uint64
+	LongestAttestationStreak                 uint64
+	IsRocketpool                             bool
+	Rocketpool                               *RocketpoolValidatorPageData
+	NoAds                                    bool
+	ShowMultipleWithdrawalCredentialsWarning bool
+	CappellaHasHappened                      bool
+	BLSChange                                *BLSChange
+	IsWithdrawableAddress                    bool
+	EstimatedNextWithdrawal                  template.HTML
+	AddValidatorWatchlistModal               *AddValidatorWatchlistModal
+	NextWithdrawalRow                        [][]interface{}
 }
 
 type RocketpoolValidatorPageData struct {
@@ -434,7 +432,7 @@ type ValidatorStatsTableRow struct {
 	Day                    int64         `db:"day"`
 	StartBalance           sql.NullInt64 `db:"start_balance"`
 	EndBalance             sql.NullInt64 `db:"end_balance"`
-	Income                 int64         `db:"-"`
+	Income                 int64         `db:"cl_rewards_gwei"`
 	IncomeExchangeRate     float64       `db:"-"`
 	IncomeExchangeCurrency string        `db:"-"`
 	IncomeExchanged        float64       `db:"-"`
@@ -487,7 +485,7 @@ type ValidatorBalanceHistory struct {
 // ValidatorBalanceHistory is a struct for the validator income history data
 type ValidatorIncomeHistory struct {
 	Day              int64         `db:"day"` // day can be -1 which is pre-genesis
-	Income           int64         `db:"diff"`
+	ClRewards        int64         `db:"cl_rewards_gwei"`
 	EndBalance       sql.NullInt64 `db:"end_balance"`
 	StartBalance     sql.NullInt64 `db:"start_balance"`
 	DepositAmount    sql.NullInt64 `db:"deposits_amount"`
@@ -973,16 +971,11 @@ type ValidatorEarnings struct {
 	ElIncome1d              int64         `json:"elIncome1d"`
 	ElIncome7d              int64         `json:"elIncome7d"`
 	ElIncome31d             int64         `json:"elIncome31d"`
+	ElIncomeTotal           int64         `json:"elIncomeTotal"`
 	ClIncome1d              int64         `json:"clIncome1d"`
 	ClIncome7d              int64         `json:"clIncome7d"`
 	ClIncome31d             int64         `json:"clIncome31d"`
-	ElAPR7d                 float64       `json:"elApr7d"`
-	ElAPR31d                float64       `json:"elApr31d"`
-	ElAPR365d               float64       `json:"elApr365d"`
-	ClAPR7d                 float64       `json:"clApr7d"`
-	ClAPR31d                float64       `json:"clApr31d"`
-	ClAPR365d               float64       `json:"clApr365d"`
-	TotalExecutionRewards   uint64        `json:"totalExecutionRewards"`
+	ClIncomeTotal           int64         `json:"clIncomeTotal"`
 	TotalDeposits           int64         `json:"totalDeposits"`
 	TotalWithdrawals        uint64        `json:"totalWithdrawals"`
 	EarningsInPeriodBalance int64         `json:"earningsInPeriodBalance"`
@@ -994,8 +987,6 @@ type ValidatorEarnings struct {
 	LastMonthFormatted      template.HTML `json:"lastMonthFormatted"`
 	TotalFormatted          template.HTML `json:"totalFormatted"`
 	TotalChangeFormatted    template.HTML `json:"totalChangeFormatted"`
-	ProposalLuck            float64       `json:"proposalLuck"`
-	ProposalEstimate        *time.Time    `json:"proposalEstimate"`
 }
 
 // ValidatorAttestationSlashing is a struct to hold data of an attestation-slashing
@@ -1041,12 +1032,6 @@ type StakingCalculatorPageData struct {
 	BestValidatorBalanceHistory *[]ValidatorBalanceHistory
 	WatchlistBalanceHistory     [][]interface{}
 	TotalStaked                 uint64
-}
-
-type EthOneDepositsPageData struct {
-	*Stats
-	DepositContract string
-	DepositChart    *ChartsPageDataChart
 }
 
 type DepositsPageData struct {
@@ -1774,12 +1759,12 @@ type SlotVizSlots struct {
 	Active    bool   `json:"active"`
 }
 type SlotVizEpochs struct {
-	Epoch          uint64            `json:"epoch"`
-	Finalized      bool              `json:"finalized"`
-	Justified      bool              `json:"justified"`
-	Justifying     bool              `json:"justifying"`
-	Particicpation float64           `json:"participation"`
-	Slots          [32]*SlotVizSlots `json:"slots"`
+	Epoch          uint64          `json:"epoch"`
+	Finalized      bool            `json:"finalized"`
+	Justified      bool            `json:"justified"`
+	Justifying     bool            `json:"justifying"`
+	Particicpation float64         `json:"participation"`
+	Slots          []*SlotVizSlots `json:"slots"`
 }
 
 type RelaysResp struct {
@@ -1915,6 +1900,7 @@ type ChangeWithdrawalCredentialsPageData struct {
 }
 
 type BroadcastPageData struct {
+	Stats        *Stats
 	FlashMessage string
 	CaptchaId    string
 	CsrfField    template.HTML
@@ -1922,5 +1908,9 @@ type BroadcastPageData struct {
 }
 
 type BroadcastStatusPageData struct {
-	Job *NodeJob
+	Job          *NodeJob
+	JobTypeLabel string
+	JobTitle     string
+	JobJson      string
+	Validators   *[]NodeJobValidatorInfo
 }

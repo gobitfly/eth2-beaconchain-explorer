@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -260,6 +261,9 @@ func FormatAmountFormated(amount *big.Int, unit string, digits int, maxPreCommaD
 }
 func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
 	return formatAmount(amount, unit, digits, 0, false, false, false)
+}
+func FormatBigAmount(amount *hexutil.Big, unit string, digits int) template.HTML {
+	return FormatAmount((*big.Int)(amount), unit, digits)
 }
 func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
 	// define display unit & digits used per unit max
