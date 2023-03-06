@@ -1161,7 +1161,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
-		orderBy = "validatorindex"
+		orderBy = "block_slot"
 	}
 	orderDir := q.Get("order[0][dir]")
 	if orderDir != "asc" {
