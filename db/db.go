@@ -2331,7 +2331,7 @@ func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64, orde
 		limit = 100
 	}
 
-	err := ReaderDb.Select(&withdrawals, `
+	err := ReaderDb.Select(&withdrawals, fmt.Sprintf(`
 	SELECT 
 		w.block_slot as slot, 
 		w.withdrawalindex as index, 
@@ -2341,7 +2341,8 @@ func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64, orde
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	WHERE validatorindex = $1 
-	ORDER BY  w.`+orderBy+` `+orderDir+` LIMIT $2 OFFSET $3`, validator, limit, offset)
+	ORDER BY  w.%s %s 
+	LIMIT $2 OFFSET $3`, orderBy, orderDir), validator, limit, offset)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil
@@ -2448,17 +2449,18 @@ func GetDashboardWithdrawals(validators []uint64, limit uint64, offset uint64, o
 		limit = 100
 	}
 	validatorFilter := pq.Array(validators)
-	err := ReaderDb.Select(&withdrawals, `
-	SELECT 
-		w.block_slot as slot, 
-		w.withdrawalindex as index, 
-		w.validatorindex, 
-		w.address, 
-		w.amount 
-	FROM blocks_withdrawals w
-	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-	WHERE validatorindex = ANY($1)
-	ORDER BY  w.`+orderBy+` `+orderDir+` LIMIT $2 OFFSET $3`, validatorFilter, limit, offset)
+	err := ReaderDb.Select(&withdrawals, fmt.Sprintf(`
+		SELECT 
+			w.block_slot as slot, 
+			w.withdrawalindex as index, 
+			w.validatorindex, 
+			w.address, 
+			w.amount 
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+		WHERE validatorindex = ANY($1)
+		ORDER BY  w.%s %s 
+		LIMIT $2 OFFSET $3`, orderBy, orderDir), validatorFilter, limit, offset)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil

@@ -1155,7 +1155,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 	orderByMap := map[string]string{
 		"0": "block_slot",
 		"1": "block_slot",
-		"2": "withdrawalindex",
+		"2": "block_slot",
 		"3": "address",
 		"4": "amount",
 	}

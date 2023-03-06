@@ -25,14 +25,14 @@
       return validatorsStr ? JSON.parse(validatorsStr).join(",") : undefined
     }
 
-    function isDashboardActive() {
+    function isWithdrawalTabActive() {
       return $("#withdrawal-tab").hasClass("active")
     }
 
     window.addEventListener("load", function () {
       var table
 
-      if (isDashboardActive()) {
+      if (isWithdrawalTabActive()) {
         createWithdrawalTable()
       }
 
@@ -42,7 +42,7 @@
         }
       })
       window.addEventListener("dashboard_validators_set", function () {
-        if (isDashboardActive() || table) {
+        if (isWithdrawalTabActive() || table) {
           createWithdrawalTable()
         }
       })
