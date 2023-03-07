@@ -240,7 +240,7 @@
       <span id="depositCount" style="cursor: pointer;" data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="fas fa-wallet"></i> {{ .DepositsCount }}</span>
     </div>
 
-    {{ if $.CappellaHasHappened }}
+    {{ if .CappellaHasHappened }}
       <div class="mx-3">
         <span id="withdrawalCount" style="cursor: pointer;" data-toggle="tooltip" {{ if .IsWithdrawableAddress }}title="Withdrawals processed for this validator"{{ else }}title="To receive payouts you need 0x01 withdrawal credentials"{{ end }}>
           <i class="fas fa-money-bill"></i>
