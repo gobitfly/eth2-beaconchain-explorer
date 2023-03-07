@@ -43,10 +43,10 @@ func getImprintPath() string {
 
 func getImprintTemplate(path string) *template.Template {
 	if len(path) == 0 {
-		return templates.GetTemplate("layout.html", "imprint.example.html")
+		return templates.GetTemplate(append(layoutTemplateFiles, "imprint.example.html")...)
 	}
 
-	var imprintTemplate = templates.GetTemplate("layout.html")
+	var imprintTemplate = templates.GetTemplate(layoutTemplateFiles...)
 	imprintTemplate = templates.AddTemplateFile(imprintTemplate, path)
 	return imprintTemplate
 }

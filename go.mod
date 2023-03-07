@@ -7,6 +7,8 @@ require (
 	cloud.google.com/go/secretmanager v1.5.0
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/Gurpartap/storekit-go v0.0.0-20201205024111-36b6cd5c6a21
+	github.com/alexedwards/scs/redisstore v0.0.0-20230217120314-6b1bedc0f08c
+	github.com/alexedwards/scs/v2 v2.5.0
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/awa/go-iap v1.3.7
 	github.com/aybabtme/uniplot v0.0.0-20151203143629-039c559e5e7e
@@ -15,13 +17,14 @@ require (
 	github.com/evanw/esbuild v0.8.23
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gobitfly/eth-rewards v0.1.2-0.20230224192318-ef649812fa91
-	github.com/gobitfly/eth.store v0.0.0-20221012115129-3b4606992669
+	github.com/gobitfly/eth.store v0.0.0-20230306101821-6942a878a8dc
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/protobuf v1.5.2
+	github.com/gomodule/redigo v1.8.0
+	github.com/google/go-querystring v1.1.0
 	github.com/gorilla/context v1.1.1
 	github.com/gorilla/csrf v1.7.0
 	github.com/gorilla/mux v1.8.0
-	github.com/gorilla/sessions v1.2.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/jackc/pgx/v4 v4.6.0
@@ -73,8 +76,6 @@ require (
 	cloud.google.com/go v0.102.1 // indirect
 	cloud.google.com/go/compute v1.7.0 // indirect
 	cloud.google.com/go/iam v0.3.0 // indirect
-	github.com/alexedwards/scs/redisstore v0.0.0-20230217120314-6b1bedc0f08c // indirect
-	github.com/alexedwards/scs/v2 v2.5.0 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.2.1 // indirect
 	github.com/cncf/udpa/go v0.0.0-20210930031921-04548b0d99d4 // indirect
 	github.com/cncf/xds/go v0.0.0-20211011173535-cb28da3451f1 // indirect
@@ -84,7 +85,6 @@ require (
 	github.com/envoyproxy/go-control-plane v0.10.2-0.20220325020618-49ff273808a1 // indirect
 	github.com/envoyproxy/protoc-gen-validate v0.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/gomodule/redigo v1.8.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.1.0 // indirect
 	github.com/googleapis/go-type-adapters v1.0.0 // indirect
 	github.com/protolambda/zssz v0.1.5 // indirect
@@ -101,7 +101,7 @@ require (
 	cloud.google.com/go/storage v1.22.1 // indirect
 	github.com/BurntSushi/toml v1.2.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/attestantio/go-eth2-client v0.15.3
+	github.com/attestantio/go-eth2-client v0.15.7
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
@@ -117,7 +117,7 @@ require (
 	github.com/go-openapi/swag v0.21.1 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/goccy/go-yaml v1.9.8 // indirect
+	github.com/goccy/go-yaml v1.10.0 // indirect
 	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.4 // indirect
@@ -138,7 +138,7 @@ require (
 	github.com/jackc/puddle v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.15.15
-	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
@@ -162,7 +162,7 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/net v0.6.0 // indirect
 	golang.org/x/oauth2 v0.3.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/tools v0.3.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gonum.org/v1/gonum v0.9.3 // indirect

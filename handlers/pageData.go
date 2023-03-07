@@ -15,6 +15,11 @@ import (
 	"time"
 )
 
+var layoutTemplateFiles = []string{
+	"layout.html",
+	"layout/mainnavigation.html",
+}
+
 func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string) *types.PageData {
 	fullTitle := fmt.Sprintf("%v - %v - beaconcha.in - %v", title, utils.Config.Frontend.SiteName, time.Now().Year())
 
@@ -22,6 +27,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		fullTitle = fmt.Sprintf("%v - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year())
 	}
 
+	isMainnet := utils.Config.Chain.Config.ConfigName == "mainnet"
 	user := getUser(r)
 	data := &types.PageData{
 		HeaderAd: false,
@@ -45,39 +51,42 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
 		Rates: types.PageRates{
-			EthPrice:              0,
-			EthRoundPrice:         0,
-			EthTruncPrice:         "",
-			UsdRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("USD")),
-			UsdTruncPrice:         "",
-			EurRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("EUR")),
-			EurTruncPrice:         "",
-			GbpRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("GBP")),
-			GbpTruncPrice:         "",
-			CnyRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("CNY")),
-			CnyTruncPrice:         "",
-			RubRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("RUB")),
-			RubTruncPrice:         "",
-			CadRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("CAD")),
-			CadTruncPrice:         "",
-			AudRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("AUD")),
-			AudTruncPrice:         "",
-			JpyRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("JPY")),
-			JpyTruncPrice:         "",
-			Currency:              GetCurrency(r),
-			CurrentPriceFormatted: GetCurrentPriceFormatted(r),
-			CurrentSymbol:         GetCurrencySymbol(r),
+			EthPrice:               0,
+			EthRoundPrice:          0,
+			EthTruncPrice:          "",
+			UsdRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("USD")),
+			UsdTruncPrice:          "",
+			EurRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("EUR")),
+			EurTruncPrice:          "",
+			GbpRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("GBP")),
+			GbpTruncPrice:          "",
+			CnyRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("CNY")),
+			CnyTruncPrice:          "",
+			RubRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("RUB")),
+			RubTruncPrice:          "",
+			CadRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("CAD")),
+			CadTruncPrice:          "",
+			AudRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("AUD")),
+			AudTruncPrice:          "",
+			JpyRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("JPY")),
+			JpyTruncPrice:          "",
+			Currency:               GetCurrency(r),
+			CurrentPriceFormatted:  GetCurrentPriceFormatted(r),
+			CurrentPriceKFormatted: GetCurrentPriceKFormatted(r),
+			CurrentSymbol:          GetCurrencySymbol(r),
 		},
-		Mainnet:            utils.Config.Chain.Config.ConfigName == "mainnet",
-		DepositContract:    utils.Config.Indexer.Eth1DepositContractAddress,
-		ClientsUpdated:     ethclients.ClientsUpdated(),
-		ChainConfig:        utils.Config.Chain.Config,
-		Lang:               "en-US",
-		NoAds:              user.Authenticated && user.Subscription != "",
-		Debug:              utils.Config.Frontend.Debug,
-		GasNow:             services.LatestGasNowData(),
-		ShowSyncingMessage: services.IsSyncing(),
-		GlobalNotification: services.GlobalNotificationMessage(),
+		Mainnet:             utils.Config.Chain.Config.ConfigName == "mainnet",
+		DepositContract:     utils.Config.Indexer.Eth1DepositContractAddress,
+		ClientsUpdated:      ethclients.ClientsUpdated(),
+		ChainConfig:         utils.Config.Chain.Config,
+		Lang:                "en-US",
+		NoAds:               user.Authenticated && user.Subscription != "",
+		Debug:               utils.Config.Frontend.Debug,
+		GasNow:              services.LatestGasNowData(),
+		ShowSyncingMessage:  services.IsSyncing(),
+		GlobalNotification:  services.GlobalNotificationMessage(),
+		AvailableCurrencies: price.GetAvailableCurrencies(),
+		MainMenuItems:       createMenuItems(active, isMainnet),
 	}
 
 	if utils.Config.Frontend.Debug {
@@ -200,4 +209,253 @@ func purgeAllSessionsForUser(ctx context.Context, userId uint64) error {
 
 	return err
 
+}
+
+func createMenuItems(active string, isMain bool) []types.MainMenuItem {
+	hiddenFor := []string{"confirmation", "login", "register"}
+
+	if utils.SliceContains(hiddenFor, active) {
+		return []types.MainMenuItem{}
+	}
+	return []types.MainMenuItem{
+		{
+			Label:    "Blockchain",
+			IsActive: active == "blockchain",
+			Groups: []types.NavigationGroup{
+				{
+					Links: []types.NavigationLink{
+						{
+							Label: "Epochs",
+							Path:  "/epochs",
+							Icon:  "fa-history",
+						},
+						{
+							Label: "Slots",
+							Path:  "/slots",
+							Icon:  "fa-cube",
+						},
+					},
+				}, {
+					Links: []types.NavigationLink{
+						{
+							Label: "Blocks",
+							Path:  "/blocks",
+							Icon:  "fa-cubes",
+						},
+						{
+							Label: "Txs",
+							Path:  "/transactions",
+							Icon:  "fa-credit-card",
+						},
+						{
+							Label: "Mempool",
+							Path:  "/mempool",
+							Icon:  "fa-upload",
+						},
+					},
+				},
+			},
+		},
+		{
+			Label:    "Validators",
+			IsActive: active == "validators",
+			Groups: []types.NavigationGroup{
+				{
+					Links: []types.NavigationLink{
+						{
+							Label: "Overview",
+							Path:  "/validators",
+							Icon:  "fa-table",
+						},
+						{
+							Label: "Slashings",
+							Path:  "/validators/slashings",
+							Icon:  "fa-user-slash",
+						},
+					},
+				}, {
+					Links: []types.NavigationLink{
+						{
+							Label: "Validator Leaderboard",
+							Path:  "/validators/leaderboard",
+							Icon:  "fa-medal",
+						},
+						{
+							Label: "Deposit Leaderboard",
+							Path:  "/validators/deposit-leaderboard",
+							Icon:  "fa-file-import",
+						},
+					},
+				}, {
+					Links: []types.NavigationLink{
+						{
+							Label: "Deposits",
+							Path:  "/validators/deposits",
+							Icon:  "fa-file-signature",
+						},
+						{
+							Label: "Withdrawals",
+							Path:  "/validators/withdrawals",
+							Icon:  "fa-money-bill",
+						},
+					},
+				},
+			},
+		},
+		{
+			Label:    "Dashboard",
+			IsActive: active == "dashboard",
+			Path:     "/dashboard",
+		},
+		{
+			Label:    "Notifications",
+			IsActive: false,
+			Path:     "/user/notifications",
+		},
+		{
+			Label:        "More",
+			IsActive:     active == "more",
+			HasBigGroups: true,
+			Groups: []types.NavigationGroup{
+				{
+					Label: "Staking Pools",
+					Links: []types.NavigationLink{
+						{
+							Label:      "ETH.STORE",
+							Path:       "/ethstore",
+							CustomIcon: "ethermine_stake_logo_svg",
+						},
+						{
+							Label: "Staking Services",
+							Path:  "/stakingServices",
+							Icon:  "fa-drumstick-bite",
+						},
+						{
+							Label: "Pool Benchmarks",
+							Path:  "/pools",
+							Icon:  "fa-chart-pie",
+						},
+						{
+							Label: "Rocket Pool Stats",
+							Path:  "/pools/rocketpool",
+							Icon:  "fa-rocket",
+						},
+					},
+				}, {
+					Label: "Stats",
+					Links: []types.NavigationLink{
+						{
+							Label: "Charts",
+							Path:  "/charts",
+							Icon:  "fa-chart-bar",
+						},
+						{
+							Label: "Income History",
+							Path:  "/rewards",
+							Icon:  "fa-money-bill-alt",
+						},
+						{
+							Label: "Profit Calculator",
+							Path:  "/calculator",
+							Icon:  "fa-calculator",
+						},
+						{
+							Label: "Block Viz",
+							Path:  "/vis",
+							Icon:  "fa-project-diagram",
+						},
+						{
+							Label: "Relays",
+							Path:  "/relays",
+							Icon:  "fa-robot",
+						},
+						{
+							Label: "EIP-1559 Burn",
+							Path:  "/burn",
+							Icon:  "fa-burn",
+						},
+						{
+							Label:    "Correlations",
+							Path:     "/correlations",
+							Icon:     "fa-chart-line",
+							IsHidden: !isMain,
+						},
+					},
+				}, {
+					Label: "Tools",
+					Links: []types.NavigationLink{
+						{
+							Label: "Beaconchain App",
+							Path:  "/mobile",
+							Icon:  "fa-mobile-alt",
+						},
+						{
+							Label: "Beaconchain Premium",
+							Path:  "/premium",
+							Icon:  "fa-gem",
+						},
+						{
+							Label:      "Webhooks",
+							Path:       "/user/webhooks",
+							CustomIcon: "webhook_logo_svg",
+						},
+						{
+							Label: "API Docs",
+							Path:  "https://beaconcha.in/api/v1/docs/index.html",
+							Icon:  "fa-book-reader",
+						},
+						{
+							Label: "API Pricing",
+							Path:  "/pricing",
+							Icon:  "fa-laptop-code",
+						},
+						{
+							Label: "Unit Converter",
+							Path:  "/tools/unitConverter",
+							Icon:  "fa-sync",
+						},
+						{
+							Label: "GasNow",
+							Path:  "/gasnow",
+							Icon:  "fa-gas-pump",
+						},
+						{
+							Label: "Broadcast Signed Messages",
+							Path:  "/tools/broadcast",
+							Icon:  "fa-bullhorn",
+						},
+					},
+				}, {
+					Label: "Services",
+					Links: []types.NavigationLink{
+						{
+							Label: "Knowledge Base",
+							Path:  "https://kb.beaconcha.in",
+							Icon:  "fa-external-link-alt",
+						},
+						{
+							Label: "Notifications",
+							Path:  "/user/notifications",
+							Icon:  "fa-bell",
+						},
+						{
+							Label: "Graffiti Wall",
+							Path:  "/graffitiwall",
+							Icon:  "fa-paint-brush",
+						},
+						{
+							Label: "Ethereum Clients",
+							Path:  "/ethClients",
+							Icon:  "fa-desktop",
+						},
+						{
+							Label: "Slot Finder",
+							Path:  "/slots/finder",
+							Icon:  "fa-cube",
+						},
+					},
+				},
+			},
+		},
+	}
 }

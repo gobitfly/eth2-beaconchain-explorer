@@ -8,7 +8,7 @@ import (
 )
 
 func Graffitiwall(w http.ResponseWriter, r *http.Request) {
-	var graffitiwallTemplate = templates.GetTemplate("layout.html", "graffitiwall.html")
+	var graffitiwallTemplate = templates.GetTemplate(append(layoutTemplateFiles, "graffitiwall.html")...)
 
 	var err error
 

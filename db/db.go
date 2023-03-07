@@ -2325,13 +2325,13 @@ func GetEpochWithdrawals(epoch uint64) ([]*types.WithdrawalsNotification, error)
 	return withdrawals, nil
 }
 
-func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64) ([]*types.Withdrawals, error) {
+func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64, orderBy string, orderDir string) ([]*types.Withdrawals, error) {
 	var withdrawals []*types.Withdrawals
 	if limit == 0 {
 		limit = 100
 	}
 
-	err := ReaderDb.Select(&withdrawals, `
+	err := ReaderDb.Select(&withdrawals, fmt.Sprintf(`
 	SELECT 
 		w.block_slot as slot, 
 		w.withdrawalindex as index, 
@@ -2341,7 +2341,8 @@ func GetValidatorWithdrawals(validator uint64, limit uint64, offset uint64) ([]*
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	WHERE validatorindex = $1 
-	ORDER BY w.withdrawalindex DESC LIMIT $2 OFFSET $3`, validator, limit, offset)
+	ORDER BY  w.%s %s 
+	LIMIT $2 OFFSET $3`, orderBy, orderDir), validator, limit, offset)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return withdrawals, nil
@@ -2422,6 +2423,52 @@ func GetAddressWithdrawalsTotal(address []byte) (uint64, error) {
 	}
 
 	return total, nil
+}
+
+func GetDashboardWithdrawalsCount(validators []uint64) (uint64, error) {
+	var count uint64
+	validatorFilter := pq.Array(validators)
+	err := ReaderDb.Get(&count, `
+	SELECT count(*) 
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	WHERE w.validatorindex = Any($1)`, validatorFilter)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("error getting dashboard validator blocks_withdrawals count for validators: %d: %w", validators, err)
+	}
+
+	return count, nil
+}
+
+func GetDashboardWithdrawals(validators []uint64, limit uint64, offset uint64, orderBy string, orderDir string) ([]*types.Withdrawals, error) {
+	var withdrawals []*types.Withdrawals
+	if limit == 0 {
+		limit = 100
+	}
+	validatorFilter := pq.Array(validators)
+	err := ReaderDb.Select(&withdrawals, fmt.Sprintf(`
+		SELECT 
+			w.block_slot as slot, 
+			w.withdrawalindex as index, 
+			w.validatorindex, 
+			w.address, 
+			w.amount 
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+		WHERE validatorindex = ANY($1)
+		ORDER BY  w.%s %s 
+		LIMIT $2 OFFSET $3`, orderBy, orderDir), validatorFilter, limit, offset)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return withdrawals, nil
+		}
+		return nil, fmt.Errorf("error getting dashboard blocks_withdrawals for validators: %d: %w", validators, err)
+	}
+
+	return withdrawals, nil
 }
 
 func GetValidatorWithdrawalsCount(validator uint64) (uint64, error) {

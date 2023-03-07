@@ -109,7 +109,7 @@
                     processing: true,
                     serverSide: true,
                     stateSave: true,
-                    ordering: true,
+                    ordering: false,
                     order: [[0, 'desc']],
                     lengthChange: false,
                     searching: false,
@@ -124,23 +124,6 @@
                             next: '<i class="fas fa-chevron-right"></i>'
                         }
                     },
-                    columnDefs: [
-                        {
-                            targets: 1,
-                            data: '1',
-                            "orderable": false
-                        },
-                        {
-                            targets: 3,
-                            data: '3',
-                            "orderable": false
-                        },
-                        {
-                            targets: 4,
-                            data: '4',
-                            "orderable": false
-                        },
-                    ],
                     drawCallback: function(settings) {
                         formatTimestamps()
                     },
