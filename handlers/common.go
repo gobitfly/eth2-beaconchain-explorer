@@ -226,6 +226,10 @@ func GetCurrentPriceFormatted(r *http.Request) template.HTML {
 	return utils.FormatAddCommas(uint64(price))
 }
 
+func GetCurrentPriceKFormatted(r *http.Request) template.HTML {
+	return utils.KFormatterEthPrice(GetCurrentPrice(r))
+}
+
 func GetTruncCurrentPriceFormatted(r *http.Request) string {
 	price := GetCurrentPrice(r)
 	symbol := GetCurrencySymbol(r)

@@ -41,15 +41,16 @@ type PageData struct {
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
 	// IsUserClientUpdated   func(uint64) bool
-	ChainConfig        ChainConfig
-	Lang               string
-	NoAds              bool
-	Debug              bool
-	DebugTemplates     []string
-	DebugSession       map[string]interface{}
-	GasNow             *GasNowPageData
-	GlobalNotification template.HTML
-	MainMenuItems      []MainMenuItem
+	ChainConfig         ChainConfig
+	Lang                string
+	NoAds               bool
+	Debug               bool
+	DebugTemplates      []string
+	DebugSession        map[string]interface{}
+	GasNow              *GasNowPageData
+	GlobalNotification  template.HTML
+	AvailableCurrencies []string
+	MainMenuItems       []MainMenuItem
 }
 
 type MainMenuItem struct {
@@ -74,29 +75,30 @@ type NavigationLink struct {
 }
 
 type PageRates struct {
-	EthPrice              float64
-	EthRoundPrice         uint64
-	EthTruncPrice         template.HTML
-	UsdRoundPrice         uint64
-	UsdTruncPrice         template.HTML
-	EurRoundPrice         uint64
-	EurTruncPrice         template.HTML
-	GbpRoundPrice         uint64
-	GbpTruncPrice         template.HTML
-	CnyRoundPrice         uint64
-	CnyTruncPrice         template.HTML
-	RubRoundPrice         uint64
-	RubTruncPrice         template.HTML
-	CadRoundPrice         uint64
-	CadTruncPrice         template.HTML
-	AudRoundPrice         uint64
-	AudTruncPrice         template.HTML
-	JpyRoundPrice         uint64
-	JpyTruncPrice         template.HTML
-	Currency              string
-	CurrentPriceFormatted template.HTML
-	CurrentSymbol         string
-	ExchangeRate          float64
+	EthPrice               float64
+	EthRoundPrice          uint64
+	EthTruncPrice          template.HTML
+	UsdRoundPrice          uint64
+	UsdTruncPrice          template.HTML
+	EurRoundPrice          uint64
+	EurTruncPrice          template.HTML
+	GbpRoundPrice          uint64
+	GbpTruncPrice          template.HTML
+	CnyRoundPrice          uint64
+	CnyTruncPrice          template.HTML
+	RubRoundPrice          uint64
+	RubTruncPrice          template.HTML
+	CadRoundPrice          uint64
+	CadTruncPrice          template.HTML
+	AudRoundPrice          uint64
+	AudTruncPrice          template.HTML
+	JpyRoundPrice          uint64
+	JpyTruncPrice          template.HTML
+	Currency               string
+	CurrentPriceFormatted  template.HTML
+	CurrentPriceKFormatted template.HTML
+	CurrentSymbol          string
+	ExchangeRate           float64
 }
 
 // Meta is a struct to hold metadata about the page
