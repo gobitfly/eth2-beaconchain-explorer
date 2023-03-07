@@ -113,6 +113,7 @@ type Meta struct {
 	Tdata2      string
 	GATag       string
 	NoTrack     bool
+	Template    string
 }
 
 // LatestState is a struct to hold data for the banner

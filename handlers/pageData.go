@@ -39,6 +39,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			Path:        path,
 			GATag:       utils.Config.Frontend.GATag,
 			NoTrack:     false,
+			Template:    mainTemplate,
 		},
 		Active:                active,
 		Data:                  &types.Empty{},
