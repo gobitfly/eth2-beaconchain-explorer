@@ -601,7 +601,7 @@ func WriteChartSeriesForDay(day int64) error {
 
 	var prevBlock *types.Eth1Block
 
-	avgBlockTime := decimal.NewFromInt(0)
+	accumulatedBlockTime := decimal.NewFromInt(0)
 
 	for blk := range blocksChan {
 		// logger.Infof("analyzing block: %v with: %v transactions", blk.Number, len(blk.Transactions))
@@ -611,7 +611,7 @@ func WriteChartSeriesForDay(day int64) error {
 		totalGasLimit = totalGasLimit.Add(decimal.NewFromInt(int64(blk.GasLimit)))
 
 		if prevBlock != nil {
-			avgBlockTime = avgBlockTime.Add(decimal.NewFromInt(prevBlock.Time.AsTime().UnixMicro() - blk.Time.AsTime().UnixMicro()))
+			accumulatedBlockTime = accumulatedBlockTime.Add(decimal.NewFromInt(prevBlock.Time.AsTime().UnixMicro() - blk.Time.AsTime().UnixMicro()))
 		}
 
 		totalBaseBlockReward = totalBaseBlockReward.Add(decimal.NewFromBigInt(utils.Eth1BlockReward(blk.Number, blk.Difficulty), 0))
@@ -675,7 +675,7 @@ func WriteChartSeriesForDay(day int64) error {
 		prevBlock = blk
 	}
 
-	avgBlockTime = avgBlockTime.Div(decimal.NewFromInt(blockCount - 1))
+	avgBlockTime := accumulatedBlockTime.Div(decimal.NewFromInt(blockCount - 1))
 
 	logger.Infof("exporting consensus rewards from %v to %v", firstEpoch, lastEpoch)
 
