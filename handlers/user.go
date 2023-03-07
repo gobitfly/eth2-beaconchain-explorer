@@ -30,7 +30,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var notificationCenterParts []string = []string{"layout.html", "user/notificationsCenter.html", "modals.html"}
+var notificationCenterParts []string = append(layoutTemplateFiles, "user/notificationsCenter.html", "modals.html")
 
 func UserAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,7 +46,7 @@ func UserAuthMiddleware(next http.Handler) http.Handler {
 
 // UserSettings renders the user-template
 func UserSettings(w http.ResponseWriter, r *http.Request) {
-	var userTemplate = templates.GetTemplate("layout.html", "user/settings.html")
+	var userTemplate = templates.GetTemplate(append(layoutTemplateFiles, "user/settings.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	userSettingsData := &types.UserSettingsPageData{}
@@ -161,7 +161,7 @@ func GenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 
 // UserAuthorizeConfirm renders the user-authorize template
 func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
-	var authorizeTemplate = templates.GetTemplate("layout.html", "user/authorize.html")
+	var authorizeTemplate = templates.GetTemplate(append(layoutTemplateFiles, "user/authorize.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	authorizeData := &types.UserAuthorizeConfirmPageData{}
@@ -232,7 +232,7 @@ func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserNotifications(w http.ResponseWriter, r *http.Request) {
-	var notificationTemplate = templates.GetTemplate("layout.html", "user/notifications.html")
+	var notificationTemplate = templates.GetTemplate(append(layoutTemplateFiles, "user/notifications.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	userNotificationsData := &types.UserNotificationsPageData{}
@@ -2366,7 +2366,7 @@ func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
 // Imprint will show the imprint data using a go template
 func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 
-	var webhookTemplate = templates.GetTemplate("layout.html", "user/webhooks.html")
+	var webhookTemplate = templates.GetTemplate(append(layoutTemplateFiles, "user/webhooks.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
@@ -2930,7 +2930,7 @@ func UsersNotificationChannels(w http.ResponseWriter, r *http.Request) {
 
 // UserSettings renders the user-template
 func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
-	var userTemplate = templates.GetTemplate("layout.html", "user/global_notification.html")
+	var userTemplate = templates.GetTemplate(append(layoutTemplateFiles, "user/global_notification.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 

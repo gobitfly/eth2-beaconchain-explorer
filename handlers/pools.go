@@ -11,11 +11,11 @@ import (
 
 func Pools(w http.ResponseWriter, r *http.Request) {
 	var poolsServicesTemplate = templates.GetTemplate(
-		"layout.html",
-		"pools/pools.html",
-		"pools/loadingSvg.html",
-		"pools/charts.html",
-		"bannerPools.html")
+		append(layoutTemplateFiles, "pools/pools.html",
+			"pools/loadingSvg.html",
+			"pools/charts.html",
+			"bannerPools.html")...,
+	)
 
 	w.Header().Set("Content-Type", "text/html")
 

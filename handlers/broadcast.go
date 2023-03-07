@@ -13,7 +13,7 @@ import (
 )
 
 func Broadcast(w http.ResponseWriter, r *http.Request) {
-	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "broadcast.html", "validator/withdrawalOverviewRow.html")
+	var tpl = templates.GetTemplate(append(layoutTemplateFiles, "components/bannerGeneric.html", "broadcast.html", "validator/withdrawalOverviewRow.html")...)
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "tools", "/tools/broadcast", "Broadcast")
@@ -76,7 +76,7 @@ func BroadcastPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
-	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "broadcaststatus.html")
+	var tpl = templates.GetTemplate(append(layoutTemplateFiles, "components/bannerGeneric.html", "broadcaststatus.html")...)
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "tools", "/tools/broadcast/status", "Broadcast Status")

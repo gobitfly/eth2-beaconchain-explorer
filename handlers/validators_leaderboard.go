@@ -14,7 +14,7 @@ import (
 
 // ValidatorsLeaderboard returns the validator-leaderboard using a go template
 func ValidatorsLeaderboard(w http.ResponseWriter, r *http.Request) {
-	var validatorsLeaderboardTemplate = templates.GetTemplate("layout.html", "validators_leaderboard.html")
+	var validatorsLeaderboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validators_leaderboard.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 

@@ -21,7 +21,7 @@ import (
 
 func Eth1Token(w http.ResponseWriter, r *http.Request) {
 
-	var eth1TokenTemplate = templates.GetTemplate("layout.html", "execution/token.html")
+	var eth1TokenTemplate = templates.GetTemplate(append(layoutTemplateFiles, "execution/token.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)

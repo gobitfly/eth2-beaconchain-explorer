@@ -43,6 +43,10 @@ table {
   width: 1rem;
 }
 
+.dropdown-menu.dropdown-menu-right.show {
+  display: flex;
+}
+
 .icon-inside {
   position: absolute;
   top: 50%;
@@ -365,6 +369,13 @@ table {
     opacity: 1
   }
 }
+
+.nav-icon img{
+  width: 1rem;
+  height: auto;
+  aspect-ratio: 1;
+}
+
 
 @media (max-width: 1140px) {
   .dropdown-item {

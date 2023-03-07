@@ -50,6 +50,28 @@ type PageData struct {
 	GasNow              *GasNowPageData
 	GlobalNotification  template.HTML
 	AvailableCurrencies []string
+	MainMenuItems       []MainMenuItem
+}
+
+type MainMenuItem struct {
+	Label        string
+	Path         string
+	IsActive     bool
+	HasBigGroups bool // if HasBigGroups is set to true then the NavigationGroups will be ordered horizontally and their Label will be shown
+	Groups       []NavigationGroup
+}
+
+type NavigationGroup struct {
+	Label string // only used for "BigGroups"
+	Links []NavigationLink
+}
+
+type NavigationLink struct {
+	Label      string
+	Path       string
+	CustomIcon string
+	Icon       string
+	IsHidden   bool
 }
 
 type PageRates struct {

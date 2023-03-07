@@ -9,7 +9,7 @@ import (
 // Will return the confirmation page
 func Confirmation(w http.ResponseWriter, r *http.Request) {
 
-	var confirmationTemplate = templates.GetTemplate("layout.html", "confirmation.html")
+	var confirmationTemplate = templates.GetTemplate(append(layoutTemplateFiles, "confirmation.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 

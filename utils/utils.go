@@ -70,6 +70,7 @@ var HashLikeRegex = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
 func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"includeHTML":                             IncludeHTML,
+		"includeSvg":                              IncludeSvg,
 		"formatHTML":                              FormatMessageToHtml,
 		"formatBalance":                           FormatBalance,
 		"formatBalanceChange":                     FormatBalanceChange,
