@@ -345,11 +345,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if validatorPageData.ActivationEpoch > validatorPageData.Epoch {
 		validatorPageData.AttestationsCount = 0
 	}
+
+	lastExportedEpoch := (lastStatsDay+1)*utils.EpochsPerDay() - 1
+	activeDays := float64((lastExportedEpoch - validatorPageData.ActivationEpoch + 1)) / float64(utils.EpochsPerDay())
+
 	if validatorPageData.ExitEpoch != 9223372036854775807 {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
+		activeDays = float64(validatorPageData.AttestationsCount) / float64(utils.EpochsPerDay())
 	}
-
-	activeDays := validatorPageData.AttestationsCount / utils.EpochsPerDay()
 
 	g := errgroup.Group{}
 	g.Go(func() error {
@@ -423,14 +426,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 		if activeDays > 0 {
 			//TODO: Add 365d apr insted of total once available
-			clAprTotal := ((float64(earnings.ClIncomeTotal) / float64(earnings.TotalDeposits)) * 365) / float64(activeDays)
+			clAprTotal := ((float64(earnings.ClIncomeTotal) / float64(earnings.TotalDeposits)) * 365) / activeDays
 			if clAprTotal < float64(-1) {
 				clAprTotal = float64(-1)
 			}
 			validatorPageData.ClAPRTotal = clAprTotal
 
 			//TODO: Add 365d apr insted of total once available
-			elAprTotal := ((float64(earnings.ElIncomeTotal) / float64(earnings.TotalDeposits)) * 365) / float64(activeDays)
+			elAprTotal := ((float64(earnings.ElIncomeTotal) / float64(earnings.TotalDeposits)) * 365) / activeDays
 			if elAprTotal < float64(-1) {
 				elAprTotal = float64(-1)
 			}
@@ -743,7 +746,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			lastExportedEpoch := (lastStatsDay+1)*utils.EpochsPerDay() - 1
 			// if sync duties of last period haven't fully been exported yet, fetch remaining duties from bigtable
 			if actualSyncPeriods[0].LastEpoch > lastExportedEpoch {
 				lookback := int64(latestEpoch - lastExportedEpoch)
