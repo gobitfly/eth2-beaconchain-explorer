@@ -59,7 +59,7 @@ func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, e
 
 func Heatmap(w http.ResponseWriter, r *http.Request) {
 
-	var heatmapTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"heatmap.html"}...)...)
+	var heatmapTemplate = templates.GetTemplate(append(layoutTemplateFiles, "heatmap.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators
@@ -148,7 +148,7 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
 
-	var dashboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"dashboard.html", "dashboard/tables.html"}...)...)
+	var dashboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, "dashboard.html", "dashboard/tables.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators

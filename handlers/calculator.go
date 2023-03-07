@@ -10,7 +10,7 @@ import (
 // StakingCalculator renders stakingCalculatorTemplate
 func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 
-	var stakingCalculatorTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"calculator.html"}...)...)
+	var stakingCalculatorTemplate = templates.GetTemplate(append(layoutTemplateFiles, "calculator.html")...)
 
 	calculatorPageData := types.StakingCalculatorPageData{}
 

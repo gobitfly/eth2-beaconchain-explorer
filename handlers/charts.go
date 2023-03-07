@@ -17,8 +17,8 @@ const CHART_PREVIEW_POINTS = 100
 // Charts uses a go template for presenting the page to show charts
 func Charts(w http.ResponseWriter, r *http.Request) {
 
-	var chartsTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"charts.html"}...)...)
-	var chartsUnavailableTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"chartsunavailable.html"}...)...)
+	var chartsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "charts.html")...)
+	var chartsUnavailableTemplate = templates.GetTemplate(append(layoutTemplateFiles, "chartsunavailable.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -66,8 +66,8 @@ func Chart(w http.ResponseWriter, r *http.Request) {
 // GenericChart uses a go template for presenting the page of a generic chart
 func GenericChart(w http.ResponseWriter, r *http.Request) {
 
-	var genericChartTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"genericchart.html"}...)...)
-	var chartsUnavailableTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"chartsunavailable.html"}...)...)
+	var genericChartTemplate = templates.GetTemplate(append(layoutTemplateFiles, "genericchart.html")...)
+	var chartsUnavailableTemplate = templates.GetTemplate(append(layoutTemplateFiles, "chartsunavailable.html")...)
 
 	vars := mux.Vars(r)
 	chartVar := vars["chart"]
@@ -136,7 +136,7 @@ func GenericChartData(w http.ResponseWriter, r *http.Request) {
 
 // SlotViz renders a single page with a d3 slot (block) visualisation
 func SlotViz(w http.ResponseWriter, r *http.Request) {
-	var slotVizTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"slotViz.html", "slotVizPage.html"}...)...)
+	var slotVizTemplate = templates.GetTemplate(append(layoutTemplateFiles, "slotViz.html", "slotVizPage.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "stats", "/charts", "Charts")

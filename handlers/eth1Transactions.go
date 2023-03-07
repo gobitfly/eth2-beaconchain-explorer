@@ -21,7 +21,7 @@ const (
 
 func Eth1Transactions(w http.ResponseWriter, r *http.Request) {
 
-	var eth1TransactionsTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"execution/transactions.html"}...)...)
+	var eth1TransactionsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "execution/transactions.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 

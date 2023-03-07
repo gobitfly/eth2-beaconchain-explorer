@@ -28,7 +28,7 @@ type rewardsResp struct {
 }
 
 func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
-	var validatorRewardsServicesTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"validatorRewards.html"}...)...)
+	var validatorRewardsServicesTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validatorRewards.html")...)
 
 	var err error
 

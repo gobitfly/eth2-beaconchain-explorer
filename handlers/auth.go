@@ -27,7 +27,7 @@ var authInternalServerErrorFlashMsg = "Error: Something went wrong :( Please ret
 
 // Register handler renders a template that allows for the creation of a new user.
 func Register(w http.ResponseWriter, r *http.Request) {
-	var registerTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"register.html"}...)...)
+	var registerTemplate = templates.GetTemplate(append(layoutTemplateFiles, "register.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -151,7 +151,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 // Login handler renders a template that allows a user to login.
 func Login(w http.ResponseWriter, r *http.Request) {
 
-	var loginTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"login.html"}...)...)
+	var loginTemplate = templates.GetTemplate(append(layoutTemplateFiles, "login.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -347,7 +347,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 // the email of the user if it has not been confirmed yet.
 func ResetPassword(w http.ResponseWriter, r *http.Request) {
 
-	var resetPasswordTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"resetPassword.html"}...)...)
+	var resetPasswordTemplate = templates.GetTemplate(append(layoutTemplateFiles, "resetPassword.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -505,7 +505,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 // RequestResetPassword renders a template that lets the user enter his email and request a reset link.
 func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 
-	var requestResetPaswordTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"requestResetPassword.html"}...)...)
+	var requestResetPaswordTemplate = templates.GetTemplate(append(layoutTemplateFiles, "requestResetPassword.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "register", "/register", "Reset Password")
@@ -570,7 +570,7 @@ func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 // ResendConfirmation handler sends a template for the user to request another confirmation link via email.
 func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 
-	var resendConfirmationTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"resendConfirmation.html"}...)...)
+	var resendConfirmationTemplate = templates.GetTemplate(append(layoutTemplateFiles, "resendConfirmation.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 

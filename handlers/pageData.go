@@ -27,7 +27,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		fullTitle = fmt.Sprintf("%v - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year())
 	}
 
-	isMain := utils.Config.Chain.Config.ConfigName == "mainnet"
+	isMainnet := utils.Config.Chain.Config.ConfigName == "mainnet"
 	user := getUser(r)
 	data := &types.PageData{
 		HeaderAd: false,
@@ -74,7 +74,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			CurrentPriceFormatted: GetCurrentPriceFormatted(r),
 			CurrentSymbol:         GetCurrencySymbol(r),
 		},
-		Mainnet:            isMain,
+		Mainnet:            isMainnet,
 		DepositContract:    utils.Config.Indexer.Eth1DepositContractAddress,
 		ClientsUpdated:     ethclients.ClientsUpdated(),
 		ChainConfig:        utils.Config.Chain.Config,
@@ -84,7 +84,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		GasNow:             services.LatestGasNowData(),
 		ShowSyncingMessage: services.IsSyncing(),
 		GlobalNotification: services.GlobalNotificationMessage(),
-		MainMenuItems:      createMenuItems(active, isMain),
+		MainMenuItems:      createMenuItems(active, isMainnet),
 	}
 
 	if utils.Config.Frontend.Debug {
@@ -307,7 +307,7 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 		},
 		{
 			Label:    "Notifications",
-			IsActive: active == "notifications",
+			IsActive: false,
 			Path:     "/user/notifications",
 		},
 		{

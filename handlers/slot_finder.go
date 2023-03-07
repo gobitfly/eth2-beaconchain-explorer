@@ -8,7 +8,7 @@ import (
 // Will return the slot finder page
 func SlotFinder(w http.ResponseWriter, r *http.Request) {
 
-	var template = templates.GetTemplate(append(layoutTemplateFiles, []string{"slot/slotfinder.html", "slot/components/slotfinder.html", "slot/components/upgradescheduler.html"}...)...)
+	var template = templates.GetTemplate(append(layoutTemplateFiles, "slot/slotfinder.html", "slot/components/slotfinder.html", "slot/components/upgradescheduler.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 

@@ -37,7 +37,8 @@ var validatorEditFlash = "edit_validator_flash"
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
 	var validatorTemplate = templates.GetTemplate(
-		append(layoutTemplateFiles, []string{"validator/validator.html",
+		append(layoutTemplateFiles,
+			"validator/validator.html",
 			"validator/heading.html",
 			"validator/tables.html",
 			"validator/modals.html",
@@ -48,9 +49,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 			"components/flashMessage.html",
 			"components/rocket.html",
-			"components/bannerValidator.html"}...)...,
+			"components/bannerValidator.html")...,
 	)
-	var validatorNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"validator/validatornotfound.html"}...)...)
+	var validatorNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validator/validatornotfound.html")...)
 
 	currency := GetCurrency(r)
 
@@ -1659,7 +1660,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 // Validator returns validator data using a go template
 func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 
-	var validatorStatsTableTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"validator_stats_table.html"}...)...)
+	var validatorStatsTableTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validator_stats_table.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)

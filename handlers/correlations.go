@@ -27,7 +27,7 @@ func Correlations(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = indicators
 
-	var correlationsTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"correlations.html"}...)...)
+	var correlationsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "correlations.html")...)
 
 	// data := &types.PageData{
 	// 	HeaderAd: true,

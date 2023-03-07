@@ -23,7 +23,7 @@ type states struct {
 
 // Validators returns the validators using a go template
 func Validators(w http.ResponseWriter, r *http.Request) {
-	var validatorsTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"validators.html"}...)...)
+	var validatorsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validators.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 

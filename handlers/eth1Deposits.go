@@ -15,7 +15,7 @@ import (
 // Deposits will return information about deposits using a go template
 func Deposits(w http.ResponseWriter, r *http.Request) {
 
-	var DepositsTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"deposits.html", "index/depositChart.html"}...)...)
+	var DepositsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "deposits.html", "index/depositChart.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -145,7 +145,7 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 
 // Eth1Deposits will return information about deposits using a go template
 func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
-	var eth1DepositsLeaderboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, []string{"eth1DepositsLeaderboard.html"}...)...)
+	var eth1DepositsLeaderboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, "eth1DepositsLeaderboard.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 

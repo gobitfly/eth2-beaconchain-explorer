@@ -17,8 +17,7 @@ import (
 func Pricing(w http.ResponseWriter, r *http.Request) {
 
 	var pricingTemplate = templates.GetTemplate(
-		append(layoutTemplateFiles, []string{"payment/pricing.html",
-			"svg/pricing.html"}...)...,
+		append(layoutTemplateFiles, "payment/pricing.html", "svg/pricing.html")...,
 	)
 	var err error
 
@@ -63,8 +62,8 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 func MobilePricing(w http.ResponseWriter, r *http.Request) {
 
 	var mobilePricingTemplate = templates.GetTemplate(
-		append(layoutTemplateFiles, []string{"payment/mobilepricing.html",
-			"svg/mobilepricing.html"}...)...,
+		append(layoutTemplateFiles, "payment/mobilepricing.html",
+			"svg/mobilepricing.html")...,
 	)
 
 	var err error
