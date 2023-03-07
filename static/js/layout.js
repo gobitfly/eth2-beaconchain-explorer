@@ -112,11 +112,11 @@ function hex2a(hexx) {
 $(document).ready(function () {
   // format timestamps within tooltip titles
   $("[data-tooltip-date=true]").each(function (item) {
-    let titleObject = $($.parseHTML($(this).attr("title")));
-    titleObject.find("[aria-ethereum-date]").each(function(index, element){
+    let titleObject = $($.parseHTML($(this).attr("title")))
+    titleObject.find("[aria-ethereum-date]").each(function (index, element) {
       formatAriaEthereumDate(this)
-    });
-    $(this).attr("title", titleObject.prop('outerHTML'))
+    })
+    $(this).attr("title", titleObject.prop("outerHTML"))
   })
   formatTimestamps() // make sure this happens before tooltips
   if ($('[data-toggle="tooltip"]').tooltip) {
