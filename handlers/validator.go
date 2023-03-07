@@ -441,16 +441,16 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					tableData := make([][]interface{}, 0, 1)
 					var withdrawalCredentialsTemplate template.HTML
 					if address != nil {
-						withdrawalCredentialsTemplate = template.HTML(fmt.Sprintf(`<a href="/address/0x%x"><span class="text-muted">%s</span></a>`, address, utils.FormatHash(validatorPageData.WithdrawCredentials)))
+						withdrawalCredentialsTemplate = template.HTML(fmt.Sprintf(`<a href="/address/0x%x"><span class="text-muted">%s</span></a>`, address, utils.FormatAddress(address, nil, "", false, false, true)))
 					} else {
 						withdrawalCredentialsTemplate = `<span class="text-muted">N/A</span>`
 					}
 					tableData = append(tableData, []interface{}{
-						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
-						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 						template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
 						withdrawalCredentialsTemplate,
-						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(validatorPageData.CurrentBalance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(validatorPageData.CurrentBalance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
 					})
 
 					validatorPageData.NextWithdrawalRow = tableData
@@ -1149,6 +1149,23 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "block_slot",
+		"1": "block_slot",
+		"2": "block_slot",
+		"3": "address",
+		"4": "amount",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "block_slot"
+	}
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "asc" {
+		orderDir = "desc"
+	}
+
 	length := uint64(10)
 
 	withdrawalCount, err := db.GetValidatorWithdrawalsCount(index)
@@ -1158,7 +1175,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	withdrawals, err := db.GetValidatorWithdrawals(index, length, start)
+	withdrawals, err := db.GetValidatorWithdrawals(index, length, start, orderBy, orderDir)
 	if err != nil {
 		logger.Errorf("error retrieving validator withdrawals: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1523,6 +1540,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentEpoch := services.LatestEpoch() - 1
+	// for an exited validator we show the history until his exit
+	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 {
+		currentEpoch = activationAndExitEpoch.ExitEpoch - 1
+	}
 
 	var validatorHistory []*types.ValidatorHistory
 

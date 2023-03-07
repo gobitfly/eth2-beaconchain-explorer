@@ -109,7 +109,7 @@
                     processing: true,
                     serverSide: true,
                     stateSave: true,
-                    ordering: true,
+                    ordering: false,
                     order: [[0, 'desc']],
                     lengthChange: false,
                     searching: false,
@@ -124,23 +124,6 @@
                             next: '<i class="fas fa-chevron-right"></i>'
                         }
                     },
-                    columnDefs: [
-                        {
-                            targets: 1,
-                            data: '1',
-                            "orderable": false
-                        },
-                        {
-                            targets: 3,
-                            data: '3',
-                            "orderable": false
-                        },
-                        {
-                            targets: 4,
-                            data: '4',
-                            "orderable": false
-                        },
-                    ],
                     drawCallback: function(settings) {
                         formatTimestamps()
                     },
@@ -594,19 +577,12 @@
             <th></th>
           </tr>
         </thead>
-        <tbody>
-          {{ if and (not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0))) (gt $.LatestFinalizedEpoch .ExitEpoch) }}
-            <tr colspan="3">
-              validator has exited and is no longer required to perform any duties.
-            </tr>
-          {{ end }}
-        </tbody>
+        <tbody></tbody>
       </table>
     </div>
 
     <script>
         var index = {{.Index}}
-        {{ if not (and (not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0))) (gt $.LatestFinalizedEpoch .ExitEpoch)) }}
         window.addEventListener('load', function() {
             $('#validator-history-table').DataTable({
                 processing: true,
@@ -651,7 +627,6 @@
             $("#validator-history-table_paginate").attr('style', 'padding-right: 0 !important')
             $("#validator-history-table_info").attr('style', 'padding-top: 0;')
         })
-        {{ end }}
     </script>
   {{ end }}
 {{ end }}

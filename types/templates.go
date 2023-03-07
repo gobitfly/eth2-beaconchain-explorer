@@ -967,8 +967,9 @@ type DashboardData struct {
 	// BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
 	// Earnings       ValidatorEarnings                `json:"earnings"`
 	// Validators     [][]interface{}                  `json:"validators"`
-	Csrf           string `json:"csrf"`
-	ValidatorLimit int    `json:"valLimit"`
+	Csrf                string `json:"csrf"`
+	ValidatorLimit      int    `json:"valLimit"`
+	CappellaHasHappened bool
 }
 
 // DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page
@@ -1494,6 +1495,7 @@ type DataTableSaveStateColumns struct {
 
 type Eth1AddressPageData struct {
 	Address            string `json:"address"`
+	IsContract         bool
 	QRCode             string `json:"qr_code_base64"`
 	QRCodeInverse      string
 	Metadata           *Eth1AddressMetadata
