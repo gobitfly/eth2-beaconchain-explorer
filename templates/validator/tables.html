@@ -639,19 +639,27 @@
     {{ $Income1d := addI64 .ClIncome1d .ElIncome1d }}
     {{ $Income7d := addI64 .ClIncome7d .ElIncome7d }}
     {{ $Income31d := addI64 .ClIncome31d .ElIncome31d }}
-    <span class="h4">General  <small data-toggle="tooltip" title="Income updates daily"><i class="far fa-question-circle"></i></small></th></span>
+    <span class="h4">
+      General <small data-toggle="tooltip" title="Income updates daily"><i class="far fa-question-circle"></i></small>
+    </span>
     <table class="table" style="margin-top: 0 !important" width="100%">
       <tbody style="font-size: 0.875rem;">
         <tr>
           <th scope="row">Total Tx Rewards</th>
-          <td class="pl-0">{{ formatExchangedAmount .ElIncomeTotal $.Rates.Currency}}</td>
+          <td class="pl-0">{{ formatExchangedAmount .ElIncomeTotal $.Rates.Currency }}</td>
         </tr>
         <!-- shown in desktop -->
         <tr class="d-none d-sm-table-row">
           <th scope="row">Income 1d | 7d | 31d</th>
           <td class="pl-0">
-            <span data-toggle="tooltip" data-html="true" title="CL: {{ formatIncome .ClIncome1d $.Rates.Currency }} | {{ formatIncome .ClIncome7d $.Rates.Currency }} | {{ formatIncome .ClIncome31d $.Rates.Currency }} <br> EL: {{ formatIncome .ElIncome1d $.Rates.Currency }} | {{ formatIncome .ElIncome7d $.Rates.Currency }} | {{ formatIncome .ElIncome31d $.Rates.Currency }}">
-              {{ formatIncomeNoCurrency $Income1d $.Rates.Currency }} | {{ formatIncomeNoCurrency $Income7d $.Rates.Currency }} | {{ formatIncomeNoCurrency $Income31d $.Rates.Currency }}
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatIncome .ClIncome1d $.Rates.Currency }} | {{ formatIncome .ClIncome7d $.Rates.Currency }} | {{ formatIncome .ClIncome31d $.Rates.Currency }} <br> 
+                EL: {{ formatIncome .ElIncome1d $.Rates.Currency }} | {{ formatIncome .ElIncome7d $.Rates.Currency }} | {{ formatIncome .ElIncome31d $.Rates.Currency }}">
+              {{ formatIncomeNoCurrency $Income1d $.Rates.Currency }} | {{ formatIncomeNoCurrency $Income7d $.Rates.Currency }} |
+              {{ formatIncomeNoCurrency $Income31d $.Rates.Currency }}
             </span>
           </td>
         </tr>
@@ -659,7 +667,13 @@
         <tr class="d-sm-none">
           <th scope="row">Income</th>
           <td class="pl-0">
-            <span data-toggle="tooltip" data-html="true" title="{{ if ne .ElIncome31d 0 }} CL: 1d: {{ formatIncome .ClIncome1d $.Rates.Currency }} | 7d: {{ formatIncome .ClIncome7d $.Rates.Currency }} | 31d: {{ formatIncome .ClIncome31d $.Rates.Currency }} <br> EL: 1d: {{ formatIncome .ElIncome1d $.Rates.Currency }} | 7d: {{ formatIncome .ElIncome7d $.Rates.Currency }} | 31d: {{ formatIncome .ElIncome31d $.Rates.Currency }} <br> All: {{ end }}1d: {{ formatIncome $Income1d $.Rates.Currency }} | 7d: {{ formatIncome $Income7d $.Rates.Currency }} | 31d: {{ formatIncome $Income31d $.Rates.Currency }}">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: 1d: {{ formatIncome .ClIncome1d $.Rates.Currency }} | 7d: {{ formatIncome .ClIncome7d $.Rates.Currency }} | 31d: {{ formatIncome .ClIncome31d $.Rates.Currency }} <br /> 
+                EL: 1d: {{ formatIncome .ElIncome1d $.Rates.Currency }} | 7d: {{ formatIncome .ElIncome7d $.Rates.Currency }} | 31d: {{ formatIncome .ElIncome31d $.Rates.Currency }} <br /> 
+                All: 1d: {{ formatIncome $Income1d $.Rates.Currency }} | 7d: {{ formatIncome $Income7d $.Rates.Currency }} | 31d: {{ formatIncome $Income31d $.Rates.Currency }}">
               {{ formatIncomeNoCurrency $Income7d $.Rates.Currency }}
               <i class="far fa-question-circle"></i>
             </span>
@@ -669,7 +683,12 @@
         <tr class="d-none d-sm-table-row">
           <th scope="row">APR 7d | 31d | Total</th>
           <td class="pl-0">
-            <span data-toggle="tooltip" data-html="true" title="CL: {{ formatPercentageWithPrecision .ClAPR7d 2 }}% | {{ formatPercentageWithPrecision .ClAPR31d 2 }}% | {{ formatPercentageWithPrecision .ClAPRTotal 2 }}% <br> EL : {{ formatPercentageWithPrecision .ElAPR7d 2 }}% | {{ formatPercentageWithPrecision .ElAPR31d 2 }}% | {{ formatPercentageWithPrecision .ElAPRTotal 2 }}%">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatPercentageWithPrecision .ClAPR7d 2 }}% | {{ formatPercentageWithPrecision .ClAPR31d 2 }}% | {{ formatPercentageWithPrecision .ClAPRTotal 2 }}% <br> 
+                EL : {{ formatPercentageWithPrecision .ElAPR7d 2 }}% | {{ formatPercentageWithPrecision .ElAPR31d 2 }}% | {{ formatPercentageWithPrecision .ElAPRTotal 2 }}%">
               <span class="{{ if gtf $APR7d 0 }}text-success{{ end }}{{ if gtf  0 $APR7d }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision $APR7d 2 }}%</b></span>
               |
               <span class="{{ if gtf $APR31d 0 }}text-success{{ end }}{{ if gtf  0 $APR31d }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision $APR31d 2 }}%</b></span>
@@ -682,7 +701,13 @@
         <tr class="d-sm-none">
           <th scope="row">APR</th>
           <td class="pl-0">
-            <span data-toggle="tooltip" data-html="true" title="CL: 7d: {{ formatPercentageWithPrecision .ClAPR7d 2 }}% | 31d: {{ formatPercentageWithPrecision .ClAPR31d 2 }}% | Total: {{ formatPercentageWithPrecision .ClAPRTotal 2 }}% <br> EL: 7d: {{ formatPercentageWithPrecision .ElAPR7d 2 }}% | 31d: {{ formatPercentageWithPrecision .ElAPR31d 2 }}% | Total: {{ formatPercentageWithPrecision .ElAPRTotal 2 }}% <br> All: 7d: {{ formatPercentageWithPrecision $APR7d 2 }}% | 31d: {{ formatPercentageWithPrecision $APR31d 2 }}% | Total: {{ formatPercentageWithPrecision $APRTotal 2 }}%">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: 7d: {{ formatPercentageWithPrecision .ClAPR7d 2 }}% | 31d: {{ formatPercentageWithPrecision .ClAPR31d 2 }}% | Total: {{ formatPercentageWithPrecision .ClAPRTotal 2 }}% <br> 
+                EL: 7d: {{ formatPercentageWithPrecision .ElAPR7d 2 }}% | 31d: {{ formatPercentageWithPrecision .ElAPR31d 2 }}% | Total: {{ formatPercentageWithPrecision .ElAPRTotal 2 }}% <br> 
+                All: 7d: {{ formatPercentageWithPrecision $APR7d 2 }}% | 31d: {{ formatPercentageWithPrecision $APR31d 2 }}% | Total: {{ formatPercentageWithPrecision $APRTotal 2 }}%">
               <span class="{{ if gtf $APR7d 0 }}text-success{{ end }}{{ if gtf  0 $APR7d }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision $APR7d 2 }}%</b></span>
               <i class="far fa-question-circle"></i>
             </span>
@@ -693,7 +718,8 @@
           <td class="pl-0">
             {{ $hasProposalLuck := nef .ProposalLuck 0 }}
             {{ $hasSyncLuck := nef .SyncLuck 0 }}
-            <span data-toggle="tooltip" data-html="true" data-tooltip-date="true" title="<span>Block Prop. {{ if $hasProposalLuck }}(exp. <span aria-ethereum-date='{{.ProposalEstimate.Unix}}' aria-ethereum-date-format='FROMNOW' ></span>) {{ formatPercentageWithPrecision .ProposalLuck 2 }}%{{ else }}-{{ end }}<br>Sync Com. {{ if $hasSyncLuck }}(exp. <span aria-ethereum-date='{{ .SyncEstimate.Unix }}' aria-ethereum-date-format='FROMNOW'></span>) {{ formatPercentageWithPrecision .SyncLuck 2 }}%{{ else }}-{{ end }}</span>">
+            <!-- prettier-ignore-attribute -->
+            <span data-toggle="tooltip" data-html="true" data-tooltip-date="true" title="<span>Block Prop. {{ if $hasProposalLuck }}(exp. <span aria-ethereum-date='{{ .ProposalEstimate.Unix }}' aria-ethereum-date-format='FROMNOW'></span>) {{ formatPercentageWithPrecision .ProposalLuck 2 }}%{{ else }}-{{ end }}<br>Sync Com. {{ if $hasSyncLuck }}(exp. <span aria-ethereum-date='{{ .SyncEstimate.Unix }}' aria-ethereum-date-format='FROMNOW'></span>) {{ formatPercentageWithPrecision .SyncLuck 2 }}%{{ else }}-{{ end }}</span>">
               {{ if $hasProposalLuck }}
                 {{ formatPercentageWithPrecision .ProposalLuck 2 }}% <i class="tab-icon mr-md-1 fas fa-cubes d-none d-sm-inline-block"></i>
               {{ else }}
@@ -760,16 +786,6 @@
             </td>
           </tr>
         {{ end }}
-        <!--
-         <tr>
-            <th scope="row">Avg. optimal inclusion distance</th>
-        <tr>
-        <tr>
-            <th scope="row">Attestations (executed/missed)</th>
-        <tr>
-        <tr>
-            <th scope="row">Proposals (executed/missed)</th>
-        <tr> -->
       </tbody>
     </table>
   {{ end }}
