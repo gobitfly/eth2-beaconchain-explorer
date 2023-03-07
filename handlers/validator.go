@@ -26,6 +26,7 @@ import (
 	"github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
 
@@ -222,6 +223,25 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			validatorPageData.Watchlist = watchlist
+
+			if data.User.Authenticated {
+				events := make([]types.EventNameCheckbox, 0)
+				for _, ev := range types.AddWatchlistEvents {
+					events = append(events, types.EventNameCheckbox{
+						EventLabel: ev.Desc,
+						EventName:  ev.Event,
+						Active:     false,
+						Warning:    ev.Warning,
+						Info:       ev.Info,
+					})
+				}
+				validatorPageData.AddValidatorWatchlistModal = &types.AddValidatorWatchlistModal{
+					Events:         events,
+					ValidatorIndex: validatorPageData.Index,
+					CsrfField:      csrf.TemplateField(r),
+				}
+			}
+
 			data.Data = validatorPageData
 			if utils.IsApiRequest(r) {
 				w.Header().Set("Content-Type", "application/json")
@@ -330,6 +350,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AddValidatorWatchlistModal = &types.AddValidatorWatchlistModal{
 			Events:         events,
 			ValidatorIndex: validatorPageData.Index,
+			CsrfField:      csrf.TemplateField(r),
 		}
 	}
 
