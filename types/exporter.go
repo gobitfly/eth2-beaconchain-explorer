@@ -352,9 +352,9 @@ type AdConfig struct {
 	TemplateId      string `db:"template_id"`
 	JQuerySelector  string `db:"jquery_selector"`
 	InsertMode      string `db:"insert_mode"`
-	RefreshInterval int    `db:"refresh_interval"`
+	RefreshInterval uint64 `db:"refresh_interval"`
 	Enabled         bool   `db:"enabled"`
-	BannerId        int    `db:"banner_id"`
+	BannerId        uint64 `db:"banner_id"`
 	HtmlContent     string `db:"html_content"`
 }
 

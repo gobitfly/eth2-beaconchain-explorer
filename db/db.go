@@ -2467,7 +2467,7 @@ func GetMostRecentWithdrawalValidator() (uint64, error) {
 func GetAdConfigurations() ([]*types.AdConfig, error) {
 	var adConfigs []*types.AdConfig
 
-	err := ReaderDb.Get(&adConfigs, `
+	err := ReaderDb.Select(&adConfigs, `
 	SELECT 
 		id, 
 		template_id, 
@@ -2493,7 +2493,7 @@ func GetAdConfigurations() ([]*types.AdConfig, error) {
 func GetAdConfigurationsForTemplate(id string) ([]*types.AdConfig, error) {
 	var adConfigs []*types.AdConfig
 
-	err := ReaderDb.Get(&adConfigs, `
+	err := ReaderDb.Select(&adConfigs, `
 	SELECT 
 		id, 
 		template_id, 
@@ -2530,7 +2530,7 @@ func InsertAdConfigurations(adConfig types.AdConfig) error {
 			enabled,
 			banner_id,
 			html_content) 
-		VALUES($1, $2, $3, $4, $5, $6, $7) 
+		VALUES($1, $2, $3, $4, $5, $6, $7, $8) 
 		ON CONFLICT DO NOTHING`,
 		adConfig.Id,
 		adConfig.TemplateId,
@@ -2543,7 +2543,7 @@ func InsertAdConfigurations(adConfig types.AdConfig) error {
 	if err != nil {
 		return fmt.Errorf("error inserting ad configuration: %w", err)
 	}
-	return err
+	return nil
 }
 
 // update exisiting ad configuration
@@ -2555,12 +2555,12 @@ func UpdateAdConfiguration(adConfig types.AdConfig) error {
 	defer tx.Rollback()
 	_, err = tx.Exec(`
 		update ad_configuration set 
-			template_id = $2 
-			jquery_selector = $3 
-			insert_mode = $4 
-			refresh_interval = $5 
-			enabled = $6
-			banner_id = $7
+			template_id = $2,
+			jquery_selector = $3,
+			insert_mode = $4,
+			refresh_interval = $5,
+			enabled = $6,
+			banner_id = $7,
 			html_content = $8
 		WHERE id = $1;`,
 		adConfig.Id,
@@ -2571,7 +2571,10 @@ func UpdateAdConfiguration(adConfig types.AdConfig) error {
 		adConfig.Enabled,
 		adConfig.BannerId,
 		adConfig.HtmlContent)
-	return err
+	if err != nil {
+		return fmt.Errorf("error updating ad configuration: %w", err)
+	}
+	return tx.Commit()
 }
 
 // delete ad configuration

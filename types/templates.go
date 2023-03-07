@@ -1373,6 +1373,12 @@ type UserWebhookRow struct {
 	CsrfField    template.HTML
 }
 
+type AdConfigurationPageData struct {
+	Configurations []*AdConfig
+	CsrfField      template.HTML
+	New            AdConfig
+}
+
 type UserWebhookRowError struct {
 	SummaryRequest  template.HTML
 	SummaryResponse template.HTML
