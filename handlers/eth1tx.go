@@ -19,9 +19,9 @@ import (
 // Tx will show the tx using a go template
 func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
-	var txNotFoundTemplate = templates.GetTemplate("layout.html", "eth1txnotfound.html")
-	var txTemplate = templates.GetTemplate("layout.html", "eth1tx.html", "components/banner.html")
-	var mempoolTxTemplate = templates.GetTemplate("layout.html", "mempoolTx.html")
+	var txNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "eth1txnotfound.html")...)
+	var txTemplate = templates.GetTemplate(append(layoutTemplateFiles, "eth1tx.html", "components/banner.html")...)
+	var mempoolTxTemplate = templates.GetTemplate(append(layoutTemplateFiles, "mempoolTx.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)

@@ -164,12 +164,12 @@ type Config struct {
 		Pprof   bool   `yaml:"pprof" envconfig:"METRICS_PPROF"`
 	} `yaml:"metrics"`
 	Notifications struct {
-		Enabled                                       bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
-		Sender                                        bool   `yaml:"sender" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
-		UserDBNotifications                           bool   `yaml:"userDbNotifications" envconfig:"FRONTEND_USERDB_NOTIFICATIONS_ENABLED"`
-		FirebaseCredentialsPath                       string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
-		ValidatorBalanceDecreasedNotificationsEnabled bool   `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"FRONTEND_VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`
-		PubkeyCachePath                               string `yaml:"pubkeyCachePath" envconfig:"FRONTEND_NOTIFICATIONS_PUBKEY_CACHE_PATH"`
+		Enabled                                       bool   `yaml:"enabled" envconfig:"NOTIFICATIONS_ENABLED"`
+		Sender                                        bool   `yaml:"sender" envconfig:"NOTIFICATIONS_SENDER"`
+		UserDBNotifications                           bool   `yaml:"userDbNotifications" envconfig:"USERDB_NOTIFICATIONS_ENABLED"`
+		FirebaseCredentialsPath                       string `yaml:"firebaseCredentialsPath" envconfig:"NOTIFICATIONS_FIREBASE_CRED_PATH"`
+		ValidatorBalanceDecreasedNotificationsEnabled bool   `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`
+		PubkeyCachePath                               string `yaml:"pubkeyCachePath" envconfig:"NOTIFICATIONS_PUBKEY_CACHE_PATH"`
 	} `yaml:"notifications"`
 	SSVExporter struct {
 		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`

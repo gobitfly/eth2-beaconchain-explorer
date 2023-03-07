@@ -26,6 +26,7 @@ import (
 	"github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
 
@@ -37,21 +38,22 @@ var validatorEditFlash = "edit_validator_flash"
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
 	var validatorTemplate = templates.GetTemplate(
-		"layout.html",
-		"validator/validator.html",
-		"validator/heading.html",
-		"validator/tables.html",
-		"validator/modals.html",
-		"modals.html",
-		"validator/overview.html",
-		"validator/charts.html",
-		"validator/countdown.html",
+		append(layoutTemplateFiles,
+			"validator/validator.html",
+			"validator/heading.html",
+			"validator/tables.html",
+			"validator/modals.html",
+			"modals.html",
+			"validator/overview.html",
+			"validator/charts.html",
+			"validator/countdown.html",
 
-		"components/flashMessage.html",
-		"components/rocket.html",
-		"components/banner.html",
+			"components/flashMessage.html",
+			"components/rocket.html",
+			"components/bannerValidator.html",
+			"components/banner.html")...,
 	)
-	var validatorNotFoundTemplate = templates.GetTemplate("layout.html", "validator/validatornotfound.html")
+	var validatorNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validator/validatornotfound.html")...)
 
 	currency := GetCurrency(r)
 
@@ -222,6 +224,25 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			validatorPageData.Watchlist = watchlist
+
+			if data.User.Authenticated {
+				events := make([]types.EventNameCheckbox, 0)
+				for _, ev := range types.AddWatchlistEvents {
+					events = append(events, types.EventNameCheckbox{
+						EventLabel: ev.Desc,
+						EventName:  ev.Event,
+						Active:     false,
+						Warning:    ev.Warning,
+						Info:       ev.Info,
+					})
+				}
+				validatorPageData.AddValidatorWatchlistModal = &types.AddValidatorWatchlistModal{
+					Events:         events,
+					ValidatorIndex: validatorPageData.Index,
+					CsrfField:      csrf.TemplateField(r),
+				}
+			}
+
 			data.Data = validatorPageData
 			if utils.IsApiRequest(r) {
 				w.Header().Set("Content-Type", "application/json")
@@ -330,6 +351,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AddValidatorWatchlistModal = &types.AddValidatorWatchlistModal{
 			Events:         events,
 			ValidatorIndex: validatorPageData.Index,
+			CsrfField:      csrf.TemplateField(r),
 		}
 	}
 
@@ -442,16 +464,16 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					tableData := make([][]interface{}, 0, 1)
 					var withdrawalCredentialsTemplate template.HTML
 					if address != nil {
-						withdrawalCredentialsTemplate = template.HTML(fmt.Sprintf(`<a href="/address/0x%x"><span class="text-muted">%s</span></a>`, address, utils.FormatHash(validatorPageData.WithdrawCredentials)))
+						withdrawalCredentialsTemplate = template.HTML(fmt.Sprintf(`<a href="/address/0x%x"><span class="text-muted">%s</span></a>`, address, utils.FormatAddress(address, nil, "", false, false, true)))
 					} else {
 						withdrawalCredentialsTemplate = `<span class="text-muted">N/A</span>`
 					}
 					tableData = append(tableData, []interface{}{
-						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
-						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 						template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
 						withdrawalCredentialsTemplate,
-						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(validatorPageData.CurrentBalance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(validatorPageData.CurrentBalance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
 					})
 
 					validatorPageData.NextWithdrawalRow = tableData
@@ -1150,6 +1172,23 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "block_slot",
+		"1": "block_slot",
+		"2": "block_slot",
+		"3": "address",
+		"4": "amount",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "block_slot"
+	}
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "asc" {
+		orderDir = "desc"
+	}
+
 	length := uint64(10)
 
 	withdrawalCount, err := db.GetValidatorWithdrawalsCount(index)
@@ -1159,7 +1198,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	withdrawals, err := db.GetValidatorWithdrawals(index, length, start)
+	withdrawals, err := db.GetValidatorWithdrawals(index, length, start, orderBy, orderDir)
 	if err != nil {
 		logger.Errorf("error retrieving validator withdrawals: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1643,7 +1682,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 // Validator returns validator data using a go template
 func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 
-	var validatorStatsTableTemplate = templates.GetTemplate("layout.html", "validator_stats_table.html")
+	var validatorStatsTableTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validator_stats_table.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)

@@ -19,7 +19,7 @@ import (
 func Withdrawals(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
 
-	var withdrawalsTemplate = templates.GetTemplate("layout.html", "withdrawals.html", "validator/withdrawalOverviewRow.html", "components/charts.html")
+	var withdrawalsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "withdrawals.html", "validator/withdrawalOverviewRow.html", "components/charts.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 

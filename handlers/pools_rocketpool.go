@@ -16,7 +16,7 @@ import (
 
 // PoolsRocketpool returns the rocketpool using a go template
 func PoolsRocketpool(w http.ResponseWriter, r *http.Request) {
-	var poolsRocketpoolTemplate = templates.GetTemplate("layout.html", "pools_rocketpool.html")
+	var poolsRocketpoolTemplate = templates.GetTemplate(append(layoutTemplateFiles, "pools_rocketpool.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "pools/rocketpool", "/pools/rocketpool", "Rocketpool", "pools_rocketpool.html")

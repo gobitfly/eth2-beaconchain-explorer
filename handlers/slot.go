@@ -31,27 +31,26 @@ const MaxSlotValue = 137438953503 // we only render a page for blocks up to this
 func Slot(w http.ResponseWriter, r *http.Request) {
 
 	var slotTemplate = templates.GetTemplate(
-		"layout.html",
-		"slot/slot.html",
-		"slot/transactions.html",
-		"slot/withdrawals.html",
-		"slot/attestations.html",
-		"slot/deposits.html",
-		"slot/votes.html",
-		"slot/attesterSlashing.html",
-		"slot/proposerSlashing.html",
-		"slot/exits.html",
-		"slot/overview.html",
-		"slot/execTransactions.html",
-		"components/banner.html",
+		append(layoutTemplateFiles,
+			"slot/slot.html",
+			"slot/transactions.html",
+			"slot/withdrawals.html",
+			"slot/attestations.html",
+			"slot/deposits.html",
+			"slot/votes.html",
+			"slot/attesterSlashing.html",
+			"slot/proposerSlashing.html",
+			"slot/exits.html",
+			"slot/overview.html",
+			"slot/execTransactions.html",
+			"components/banner.html")...,
 	)
 
 	var slotFutureTemplate = templates.GetTemplate(
-		"layout.html",
-		"slot/slotFuture.html",
+		append(layoutTemplateFiles, "slot/slotFuture.html")...,
 	)
 
-	var blockNotFoundTemplate = templates.GetTemplate("layout.html", "slotnotfound.html")
+	var blockNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "slotnotfound.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 

@@ -14,7 +14,7 @@ import (
 
 // ValidatorsSlashings returns validator slashing using a go template
 func ValidatorsSlashings(w http.ResponseWriter, r *http.Request) {
-	var validatorsSlashingsTemplate = templates.GetTemplate("layout.html", "validators_slashings.html")
+	var validatorsSlashingsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validators_slashings.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 

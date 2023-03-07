@@ -10,6 +10,8 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"html/template"
+	"math/big"
 	"math/rand"
 	"net/http"
 	"sort"
@@ -57,7 +59,7 @@ func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, e
 
 func Heatmap(w http.ResponseWriter, r *http.Request) {
 
-	var heatmapTemplate = templates.GetTemplate("layout.html", "heatmap.html")
+	var heatmapTemplate = templates.GetTemplate(append(layoutTemplateFiles, "heatmap.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators
@@ -146,13 +148,16 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
 
-	var dashboardTemplate = templates.GetTemplate("layout.html", "dashboard.html", "components/banner.html")
+	var dashboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, "layout.html", "dashboard.html", "components/banner.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators
 
 	dashboardData := types.DashboardData{}
 	dashboardData.ValidatorLimit = validatorLimit
+
+	epoch := services.LatestEpoch()
+	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
 
 	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", "components/banner.html")
 	data.HeaderAd = true
@@ -344,49 +349,89 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DashboardWithdrawals(w http.ResponseWriter, r *http.Request) {
-
-	// [WIP]
+func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
 	validatorLimit := getUserPremium(r).MaxValidators
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	validators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		http.Error(w, "Invalid query", 400)
 		return
 	}
-	filter := pq.Array(filterArr)
 
-	proposals := []struct {
-		Slot   uint64
-		Status uint64
-	}{}
-
-	err = db.ReaderDb.Select(&proposals, `
-		SELECT slot, status
-		FROM blocks
-		WHERE proposer = ANY($1)
-		ORDER BY slot`, filter)
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving block-proposals")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		utils.LogError(err, fmt.Errorf("error converting datatables data parameter from string to int: %v", err), 0)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		utils.LogError(err, fmt.Errorf("error converting datatables data parameter from string to int: %v", err), 0)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	proposalsResult := make([][]uint64, len(proposals))
-	for i, b := range proposals {
-		proposalsResult[i] = []uint64{
-			uint64(utils.SlotToTime(b.Slot).Unix()),
-			b.Status,
-		}
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "validatorindex",
+		"1": "block_slot",
+		"2": "block_slot",
+		"3": "withdrawalindex",
+		"4": "address",
+		"5": "amount",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "validatorindex"
+	}
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "asc" {
+		orderDir = "desc"
 	}
 
-	err = json.NewEncoder(w).Encode(proposalsResult)
+	length := uint64(10)
+
+	withdrawalCount, err := db.GetDashboardWithdrawalsCount(validators)
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		utils.LogError(err, fmt.Errorf("error retrieving dashboard validator withdrawals count: %v", err), 0)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	withdrawals, err := db.GetDashboardWithdrawals(validators, length, start, orderBy, orderDir)
+	if err != nil {
+		utils.LogError(err, fmt.Errorf("error retrieving validator withdrawals: %v", err), 0)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	tableData := make([][]interface{}, 0, len(withdrawals))
+
+	for _, w := range withdrawals {
+		tableData = append(tableData, []interface{}{
+			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatTimeFromNow(utils.SlotToTime(w.Slot)))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+		})
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    withdrawalCount,
+		RecordsFiltered: withdrawalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		utils.LogError(err, fmt.Errorf("error enconding json response for %v route: %v", r.URL.String(), err), 0)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }

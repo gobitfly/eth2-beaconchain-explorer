@@ -42,40 +42,64 @@ type PageData struct {
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
 	// IsUserClientUpdated   func(uint64) bool
-	ChainConfig        ChainConfig
-	Lang               string
-	NoAds              bool
-	Debug              bool
-	DebugTemplates     []string
-	DebugSession       map[string]interface{}
-	GasNow             *GasNowPageData
-	GlobalNotification template.HTML
+	ChainConfig         ChainConfig
+	Lang                string
+	NoAds               bool
+	Debug               bool
+	DebugTemplates      []string
+	DebugSession        map[string]interface{}
+	GasNow              *GasNowPageData
+	GlobalNotification  template.HTML
+	AvailableCurrencies []string
+	MainMenuItems       []MainMenuItem
+}
+
+type MainMenuItem struct {
+	Label        string
+	Path         string
+	IsActive     bool
+	HasBigGroups bool // if HasBigGroups is set to true then the NavigationGroups will be ordered horizontally and their Label will be shown
+	Groups       []NavigationGroup
+}
+
+type NavigationGroup struct {
+	Label string // only used for "BigGroups"
+	Links []NavigationLink
+}
+
+type NavigationLink struct {
+	Label      string
+	Path       string
+	CustomIcon string
+	Icon       string
+	IsHidden   bool
 }
 
 type PageRates struct {
-	EthPrice              float64
-	EthRoundPrice         uint64
-	EthTruncPrice         template.HTML
-	UsdRoundPrice         uint64
-	UsdTruncPrice         template.HTML
-	EurRoundPrice         uint64
-	EurTruncPrice         template.HTML
-	GbpRoundPrice         uint64
-	GbpTruncPrice         template.HTML
-	CnyRoundPrice         uint64
-	CnyTruncPrice         template.HTML
-	RubRoundPrice         uint64
-	RubTruncPrice         template.HTML
-	CadRoundPrice         uint64
-	CadTruncPrice         template.HTML
-	AudRoundPrice         uint64
-	AudTruncPrice         template.HTML
-	JpyRoundPrice         uint64
-	JpyTruncPrice         template.HTML
-	Currency              string
-	CurrentPriceFormatted template.HTML
-	CurrentSymbol         string
-	ExchangeRate          float64
+	EthPrice               float64
+	EthRoundPrice          uint64
+	EthTruncPrice          template.HTML
+	UsdRoundPrice          uint64
+	UsdTruncPrice          template.HTML
+	EurRoundPrice          uint64
+	EurTruncPrice          template.HTML
+	GbpRoundPrice          uint64
+	GbpTruncPrice          template.HTML
+	CnyRoundPrice          uint64
+	CnyTruncPrice          template.HTML
+	RubRoundPrice          uint64
+	RubTruncPrice          template.HTML
+	CadRoundPrice          uint64
+	CadTruncPrice          template.HTML
+	AudRoundPrice          uint64
+	AudTruncPrice          template.HTML
+	JpyRoundPrice          uint64
+	JpyTruncPrice          template.HTML
+	Currency               string
+	CurrentPriceFormatted  template.HTML
+	CurrentPriceKFormatted template.HTML
+	CurrentSymbol          string
+	ExchangeRate           float64
 }
 
 // Meta is a struct to hold metadata about the page
@@ -947,9 +971,10 @@ type DashboardData struct {
 	// BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
 	// Earnings       ValidatorEarnings                `json:"earnings"`
 	// Validators     [][]interface{}                  `json:"validators"`
-	Csrf           string `json:"csrf"`
-	ValidatorLimit int    `json:"valLimit"`
-	NoAds          bool
+	Csrf                string `json:"csrf"`
+	ValidatorLimit      int    `json:"valLimit"`
+	CappellaHasHappened bool
+	NoAds               bool
 }
 
 // DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page

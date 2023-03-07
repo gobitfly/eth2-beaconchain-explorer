@@ -15,7 +15,7 @@ import (
 // Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {
 
-	var epochsTemplate = templates.GetTemplate("layout.html", "epochs.html")
+	var epochsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "epochs.html")...)
 
 	currency := GetCurrency(r)
 
