@@ -19,6 +19,7 @@ import (
 var layoutTemplateFiles = []string{
 	"layout.html",
 	"layout/mainnavigation.html",
+	"layout/ad_handler.html",
 }
 
 func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string, mainTemplate string) *types.PageData {

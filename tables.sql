@@ -1049,7 +1049,7 @@ create table ad_configuration
     id varchar(40), --uuid
     template_id varchar(100) not null, --relative path to the main html file of the page
     jquery_selector varchar(40) not null, --selector with the html
-    insert_mode varchar(10) not null, -- can be before, after or instead
+    insert_mode varchar(10) not null, -- can be before, after, replace or insert
     refresh_interval int not null, -- defines how often the ad is refreshed, 0 = don't refresh
     enabled bool not null, -- defines if the ad is active
     banner_id int, -- an ad must ether have a banner_id OR an html_content

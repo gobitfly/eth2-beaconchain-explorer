@@ -377,7 +377,9 @@
         {{ end }}
         {{ template "hero" . }}
       {{ end }}
-      {{ if not .NoAds }}{{ template "banner" dict "bannerId" "34" }}{{ end }}
+      {{ if not .NoAds }}
+        <div id="r-banner"></div>
+      {{ end }}
       {{ with .Data }}
         {{ if and (not .Genesis) (not .GenesisPeriod) }}
           {{ template "preGenesis" $ }}

@@ -14,7 +14,7 @@ import (
 
 // Load Ad Configuration page
 func AdConfiguration(w http.ResponseWriter, r *http.Request) {
-	var userTemplate = templates.GetTemplate("layout.html", "user/ad_configuration.html")
+	var userTemplate = templates.GetTemplate(append(layoutTemplateFiles, "user/ad_configuration.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 

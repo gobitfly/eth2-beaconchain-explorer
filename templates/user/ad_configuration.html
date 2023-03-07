@@ -72,7 +72,7 @@
     </div>
     <div>
       <input type="number" name="refreshInterval" value="{{ .RefreshInterval }}" />
-      <label for="refreshInterval">Refresh Interval (0 = no refresh)</label>
+      <label for="refreshInterval">Refresh Interval (in sec, 0 = no refresh)</label>
     </div>
     <div>
       <input type="checkbox" name="enabled" {{ if .Enabled }}checked{{ end }} />
@@ -83,7 +83,8 @@
       <select name="insertMode" id="insertMode_{{ .Id }}">
         <option value="before" {{ if (eq .InsertMode `before`) }}selected="selected"{{ end }}>Before</option>
         <option value="after" {{ if (eq .InsertMode `after`) }}selected="selected"{{ end }}>After</option>
-        <option value="instead" {{ if (eq .InsertMode `insert`) }}selected="selected"{{ end }}>Insert</option>
+        <option value="insert" {{ if (eq .InsertMode `insert`) }}selected="selected"{{ end }}>Insert</option>
+        <option value="replace" {{ if (eq .InsertMode `replace`) }}selected="selected"{{ end }}>Replace</option>
       </select>
       <label for="insertMode">Insert Mode</label>
     </div>
