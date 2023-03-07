@@ -130,7 +130,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatAddressAsLink":                     FormatAddressAsLink,
 		"formatBuilder":                           FormatBuilder,
 		"formatDifficulty":                        FormatDifficulty,
-		"getAvailableCurrencies":                  price.GetAvailableCurrencies,
 		"getCurrencyLabel":                        price.GetCurrencyLabel,
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,

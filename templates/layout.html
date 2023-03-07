@@ -107,7 +107,7 @@
                     <a id="banner-eth-price-data">
                       <span id="currentCurrencySymbol" class="currency-symbol">{{ .Rates.CurrentSymbol }}</span>
                       <span id="currentKFormattedPrice" class="k-formatted-price">{{ .Rates.CurrentPriceKFormatted }}</span>
-                      <span id="currentCurencyPrice" class="price">{{ .Rates.CurrentPriceFormatted }}</span>
+                      <span id="currentCurrencyPrice" class="price">{{ .Rates.CurrentPriceFormatted }}</span>
                     </a>
                   </div>
                 </div>
@@ -160,7 +160,7 @@
                   <div id="currencyDropdown">{{ .Rates.Currency }}</div>
                 </a>
                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
-                  {{ range getAvailableCurrencies }}
+                  {{ range .AvailableCurrencies }}
                     <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency({{ . }})">
                       <img class="currency-flag-option" src="/img/{{ . }}.svg" />
                       <span class="currency-name">{{ getCurrencyLabel . }}</span>

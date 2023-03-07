@@ -41,14 +41,15 @@ type PageData struct {
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
 	// IsUserClientUpdated   func(uint64) bool
-	ChainConfig        ChainConfig
-	Lang               string
-	NoAds              bool
-	Debug              bool
-	DebugTemplates     []string
-	DebugSession       map[string]interface{}
-	GasNow             *GasNowPageData
-	GlobalNotification template.HTML
+	ChainConfig         ChainConfig
+	Lang                string
+	NoAds               bool
+	Debug               bool
+	DebugTemplates      []string
+	DebugSession        map[string]interface{}
+	GasNow              *GasNowPageData
+	GlobalNotification  template.HTML
+	AvailableCurrencies []string
 }
 
 type PageRates struct {
