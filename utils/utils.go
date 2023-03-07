@@ -125,6 +125,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatETH":                               FormatETH,
 		"formatFloat":                             FormatFloat,
 		"formatAmount":                            FormatAmount,
+		"formatExchangedAmount":                   FormatExchangedAmount,
 		"formatBigAmount":                         FormatBigAmount,
 		"formatYesNo":                             FormatYesNo,
 		"formatAmountFormatted":                   FormatAmountFormated,

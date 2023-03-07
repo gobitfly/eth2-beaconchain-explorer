@@ -356,12 +356,16 @@ type ValidatorPageData struct {
 	ClIncome1d                               int64
 	ClIncome7d                               int64
 	ClIncome31d                              int64
-	ClIncomeTotal                            int64
 	ElIncome1d                               int64
 	ElIncome7d                               int64
 	ElIncome31d                              int64
 	ElIncomeTotal                            int64
-	TotalDeposits                            int64
+	ElAPR7d                                  float64
+	ElAPR31d                                 float64
+	ElAPRTotal                               float64
+	ClAPR7d                                  float64
+	ClAPR31d                                 float64
+	ClAPRTotal                               float64
 	ProposalLuck                             float64
 	SyncLuck                                 float64
 	ProposalEstimate                         *time.Time

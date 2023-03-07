@@ -635,16 +635,16 @@
   {{ with .Data }}
     {{ $APR7d := addFloat64 .ClAPR7d .ElAPR7d }}
     {{ $APR31d := addFloat64 .ClAPR31d .ElAPR31d }}
-    {{ $APR365d := addFloat64 .ClAPR365d .ElAPR365d }}
+    {{ $APRTotal := addFloat64 .ClAPRTotal .ElAPRTotal }}
     {{ $Income1d := addI64 .ClIncome1d .ElIncome1d }}
     {{ $Income7d := addI64 .ClIncome7d .ElIncome7d }}
     {{ $Income31d := addI64 .ClIncome31d .ElIncome31d }}
-    <span class="h4">General</span>
+    <span class="h4">General  <small data-toggle="tooltip" title="Income updates daily"><i class="far fa-question-circle"></i></small></th></span>
     <table class="table" style="margin-top: 0 !important" width="100%">
       <tbody style="font-size: 0.875rem;">
         <tr>
           <th scope="row">Total Tx Rewards</th>
-          <td class="pl-0">{{ formatCurrentBalance .TotalExecutionRewards $.Rates.Currency }}</td>
+          <td class="pl-0">{{ formatExchangedAmount .ElIncomeTotal $.Rates.Currency}}</td>
         </tr>
         <!-- shown in desktop -->
         <tr class="d-none d-sm-table-row">
@@ -667,14 +667,14 @@
         </tr>
         <!-- shown in desktop -->
         <tr class="d-none d-sm-table-row">
-          <th scope="row">APR 7d | 31d | 365d</th>
+          <th scope="row">APR 7d | 31d | Total</th>
           <td class="pl-0">
-            <span data-toggle="tooltip" data-html="true" title="CL: {{ formatPercentageWithPrecision .ClAPR7d 2 }}% | {{ formatPercentageWithPrecision .ClAPR31d 2 }}% | {{ formatPercentageWithPrecision .ClAPR365d 2 }}% <br> EL : {{ formatPercentageWithPrecision .ElAPR7d 2 }}% | {{ formatPercentageWithPrecision .ElAPR31d 2 }}% | {{ formatPercentageWithPrecision .ElAPR365d 2 }}%">
+            <span data-toggle="tooltip" data-html="true" title="CL: {{ formatPercentageWithPrecision .ClAPR7d 2 }}% | {{ formatPercentageWithPrecision .ClAPR31d 2 }}% | {{ formatPercentageWithPrecision .ClAPRTotal 2 }}% <br> EL : {{ formatPercentageWithPrecision .ElAPR7d 2 }}% | {{ formatPercentageWithPrecision .ElAPR31d 2 }}% | {{ formatPercentageWithPrecision .ElAPRTotal 2 }}%">
               <span class="{{ if gtf $APR7d 0 }}text-success{{ end }}{{ if gtf  0 $APR7d }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision $APR7d 2 }}%</b></span>
               |
               <span class="{{ if gtf $APR31d 0 }}text-success{{ end }}{{ if gtf  0 $APR31d }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision $APR31d 2 }}%</b></span>
               |
-              <span class="{{ if gtf $APR365d 0 }}text-success{{ end }}{{ if gtf  0 $APR365d }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision $APR365d 2 }}%</b></span>
+              <span class="{{ if gtf $APRTotal 0 }}text-success{{ end }}{{ if gtf  0 $APRTotal }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision $APRTotal 2 }}%</b></span>
             </span>
           </td>
         </tr>
@@ -682,7 +682,7 @@
         <tr class="d-sm-none">
           <th scope="row">APR</th>
           <td class="pl-0">
-            <span data-toggle="tooltip" data-html="true" title="CL: 7d: {{ formatPercentageWithPrecision .ClAPR7d 2 }}% | 31d: {{ formatPercentageWithPrecision .ClAPR31d 2 }}% | 365d: {{ formatPercentageWithPrecision .ClAPR365d 2 }}% <br> EL: 7d: {{ formatPercentageWithPrecision .ElAPR7d 2 }}% | 31d: {{ formatPercentageWithPrecision .ElAPR31d 2 }}% | 365d: {{ formatPercentageWithPrecision .ElAPR365d 2 }}% <br> All: 7d: {{ formatPercentageWithPrecision $APR7d 2 }}% | 31d: {{ formatPercentageWithPrecision $APR31d 2 }}% | 365d: {{ formatPercentageWithPrecision $APR365d 2 }}%">
+            <span data-toggle="tooltip" data-html="true" title="CL: 7d: {{ formatPercentageWithPrecision .ClAPR7d 2 }}% | 31d: {{ formatPercentageWithPrecision .ClAPR31d 2 }}% | Total: {{ formatPercentageWithPrecision .ClAPRTotal 2 }}% <br> EL: 7d: {{ formatPercentageWithPrecision .ElAPR7d 2 }}% | 31d: {{ formatPercentageWithPrecision .ElAPR31d 2 }}% | Total: {{ formatPercentageWithPrecision .ElAPRTotal 2 }}% <br> All: 7d: {{ formatPercentageWithPrecision $APR7d 2 }}% | 31d: {{ formatPercentageWithPrecision $APR31d 2 }}% | Total: {{ formatPercentageWithPrecision $APRTotal 2 }}%">
               <span class="{{ if gtf $APR7d 0 }}text-success{{ end }}{{ if gtf  0 $APR7d }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision $APR7d 2 }}%</b></span>
               <i class="far fa-question-circle"></i>
             </span>

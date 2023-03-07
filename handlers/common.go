@@ -75,35 +75,38 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
 	}
 
-	type Earnings struct {
+	var earnings struct {
 		ClEarningsTotal     int64 `db:"cl_rewards_gwei_total"`
 		ClEarningsLastDay   int64 `db:"cl_rewards_gwei"`
 		ClEarningsLastWeek  int64 `db:"cl_rewards_gwei_7d"`
 		ClEarningsLastMonth int64 `db:"cl_rewards_gwei_31d"`
-		ElEarningsTotal     int64 `db:"el_rewards_gwei_total"`
-		ElEarningsLastDay   int64 `db:"el_rewards_gwei"`
-		ElEarningsLastWeek  int64 `db:"el_rewards_gwei_7d"`
-		ElEarningsLastMonth int64 `db:"el_rewards_gwei_31d"`
+		ElEarningsTotal     int64 `db:"el_rewards_wei_total"`
+		ElEarningsLastDay   int64 `db:"el_rewards_wei"`
+		ElEarningsLastWeek  int64 `db:"el_rewards_wei_7d"`
+		ElEarningsLastMonth int64 `db:"el_rewards_wei_31d"`
 	}
 
-	e := &Earnings{}
-
-	err = db.ReaderDb.Get(e, `
+	err = db.ReaderDb.Get(&earnings, `
 		SELECT 
 		COALESCE(SUM(cl_rewards_gwei), 0) AS cl_rewards_gwei, 
 		COALESCE(SUM(cl_rewards_gwei_7d), 0) AS cl_rewards_gwei_7d, 
 		COALESCE(SUM(cl_rewards_gwei_31d), 0) AS cl_rewards_gwei_31d, 
 		COALESCE(SUM(cl_rewards_gwei_total), 0) AS cl_rewards_gwei_total,
-		COALESCE(SUM(el_rewards_gwei), 0) AS el_rewards_gwei, 
-		COALESCE(SUM(el_rewards_gwei_7d), 0) AS el_rewards_gwei_7d, 
-		COALESCE(SUM(el_rewards_gwei_31d), 0) AS el_rewards_gwei_31d, 
-		COALESCE(SUM(el_rewards_gwei_total), 0) AS el_rewards_gwei_total
+		COALESCE(SUM(el_rewards_wei), 0) AS el_rewards_wei, 
+		COALESCE(SUM(el_rewards_wei_7d), 0) AS el_rewards_wei_7d, 
+		COALESCE(SUM(el_rewards_wei_31d), 0) AS el_rewards_wei_31d, 
+		COALESCE(SUM(el_rewards_wei_total), 0) AS el_rewards_wei_total
 		FROM validator_stats WHERE day = $1 AND validatorindex = ANY($2)`, lastDay, validatorsPQArray)
 	if err != nil {
 		return nil, nil, err
 	}
+	// since only 5 digits are shown the lost precision is probably negligible
+	earnings.ElEarningsLastDay = earnings.ElEarningsLastDay / 1e9
+	earnings.ElEarningsLastWeek = earnings.ElEarningsLastWeek / 1e9
+	earnings.ElEarningsLastMonth = earnings.ElEarningsLastMonth / 1e9
+	earnings.ElEarningsTotal = earnings.ElEarningsTotal / 1e9
 
-	var totalDeposits int64
+	var totalDeposits uint64
 
 	err = db.ReaderDb.Get(&totalDeposits, `
 	SELECT 
@@ -113,6 +116,9 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray)
 	if err != nil {
 		return nil, nil, err
+	}
+	if totalDeposits == 0 {
+		totalDeposits = utils.Config.Chain.Config.MaxEffectiveBalance
 	}
 
 	var totalWithdrawals uint64
@@ -128,26 +134,25 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
-	earningsLastDay := e.ClEarningsLastDay + e.ElEarningsLastDay
-	earningsLastWeek := e.ClEarningsLastWeek + e.ElEarningsLastWeek
-	earningsLastMonth := e.ClEarningsLastMonth + e.ElEarningsLastMonth
+	earningsLastDay := earnings.ClEarningsLastDay + earnings.ElEarningsLastDay
+	earningsLastWeek := earnings.ClEarningsLastWeek + earnings.ElEarningsLastWeek
+	earningsLastMonth := earnings.ClEarningsLastMonth + earnings.ElEarningsLastMonth
 
-	//TODO Add 365d earnings once it is available
 	return &types.ValidatorEarnings{
-		ClIncome1d:           e.ClEarningsLastDay,
-		ClIncome7d:           e.ClEarningsLastWeek,
-		ClIncome31d:          e.ClEarningsLastMonth,
-		ClIncomeTotal:        e.ClEarningsTotal,
-		ElIncome1d:           e.ElEarningsLastDay,
-		ElIncome7d:           e.ElEarningsLastWeek,
-		ElIncome31d:          e.ElEarningsLastMonth,
-		ElIncomeTotal:        e.ElEarningsTotal,
-		TotalDeposits:        totalDeposits,
+		ClIncome1d:           earnings.ClEarningsLastDay,
+		ClIncome7d:           earnings.ClEarningsLastWeek,
+		ClIncome31d:          earnings.ClEarningsLastMonth,
+		ClIncomeTotal:        earnings.ClEarningsTotal,
+		ElIncome1d:           earnings.ElEarningsLastDay,
+		ElIncome7d:           earnings.ElEarningsLastWeek,
+		ElIncome31d:          earnings.ElEarningsLastMonth,
+		ElIncomeTotal:        earnings.ElEarningsTotal,
+		TotalDeposits:        int64(totalDeposits),
 		LastDayFormatted:     utils.FormatIncome(earningsLastDay, currency),
 		LastWeekFormatted:    utils.FormatIncome(earningsLastWeek, currency),
 		LastMonthFormatted:   utils.FormatIncome(earningsLastMonth, currency),
-		TotalFormatted:       utils.FormatIncome(e.ClEarningsTotal, currency),
-		TotalChangeFormatted: utils.FormatIncome(e.ClEarningsTotal+totalDeposits, currency),
+		TotalFormatted:       utils.FormatIncome(earnings.ClEarningsTotal, currency),
+		TotalChangeFormatted: utils.FormatIncome(earnings.ClEarningsTotal+int64(totalDeposits), currency),
 	}, balancesMap, nil
 }
 

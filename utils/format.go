@@ -673,17 +673,13 @@ func FormatIncomeNoCurrency(balanceInt int64, currency string) template.HTML {
 }
 
 func formatIncome(balanceInt int64, currency string, includeCurrency bool) template.HTML {
-	decimals := 2
-	preCommaDecimals := 4
-
-	if currency == "ETH" {
-		decimals = 5
-		preCommaDecimals = 1
+	var income string
+	// always pass absolute value to ensure same amount of decimals
+	if balanceInt >= 0 {
+		income = exchangeAndTrim(currency, balanceInt)
+	} else {
+		income = exchangeAndTrim(currency, -balanceInt)
 	}
-
-	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := float64(balanceInt) * exchangeRate
-	income, _ := trimAmount(big.NewInt(int64(math.Abs(balance))), 9, preCommaDecimals, decimals)
 
 	if includeCurrency {
 		currency = " " + currency
@@ -698,6 +694,27 @@ func formatIncome(balanceInt int64, currency string, includeCurrency bool) templ
 	} else {
 		return template.HTML(fmt.Sprintf(`<span>%s%s</span>`, income, currency))
 	}
+}
+
+func FormatExchangedAmount(balanceInt int64, currency string) template.HTML {
+	income := exchangeAndTrim(currency, balanceInt)
+	return template.HTML(fmt.Sprintf(`<span>%s %s</span>`, income, currency))
+}
+
+func exchangeAndTrim(currency string, amount int64) string {
+	decimals := 5
+	preCommaDecimals := 1
+
+	if currency != "ETH" {
+		decimals = 2
+		preCommaDecimals = 4
+	}
+
+	exchangeRate := ExchangeRateForCurrency(currency)
+	exchangedAmount := float64(amount) * exchangeRate
+	// lost precision here but we don't need it for frontend
+	income, _ := trimAmount(big.NewInt(int64(exchangedAmount)), 9, preCommaDecimals, decimals)
+	return income
 }
 
 func FormatIncomeSql(balanceInt sql.NullInt64, currency string) template.HTML {

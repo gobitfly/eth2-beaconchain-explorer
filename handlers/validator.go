@@ -77,12 +77,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var index uint64
 	var err error
 
-	epoch := services.LatestEpoch()
+	latestEpoch := services.LatestEpoch()
 	latestFinalized := services.LatestFinalizedEpoch()
 
 	validatorPageData := types.ValidatorPageData{}
 
-	validatorPageData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
+	validatorPageData.CappellaHasHappened = latestEpoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
 
 	stats := services.GetLatestStats()
 	churnRate := stats.ValidatorChurnLimit
@@ -313,7 +313,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.RankPercentage = float64(validatorPageData.Rank7d) / float64(validatorPageData.RankCount)
 	}
 
-	validatorPageData.Epoch = epoch
+	validatorPageData.Epoch = latestEpoch
 	validatorPageData.Index = index
 
 	if data.User.Authenticated {
@@ -348,6 +348,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if validatorPageData.ExitEpoch != 9223372036854775807 {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 	}
+
+	activeDays := validatorPageData.AttestationsCount / utils.EpochsPerDay()
 
 	g := errgroup.Group{}
 	g.Go(func() error {
@@ -390,12 +392,50 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.ClIncome1d = earnings.ClIncome1d
 		validatorPageData.ClIncome7d = earnings.ClIncome7d
 		validatorPageData.ClIncome31d = earnings.ClIncome31d
-		validatorPageData.ClIncomeTotal = earnings.ClIncomeTotal
 		validatorPageData.ElIncome1d = earnings.ElIncome1d
 		validatorPageData.ElIncome7d = earnings.ElIncome7d
 		validatorPageData.ElIncome31d = earnings.ElIncome31d
 		validatorPageData.ElIncomeTotal = earnings.ElIncomeTotal
-		validatorPageData.TotalDeposits = earnings.TotalDeposits
+
+		clApr7d := ((float64(earnings.ClIncome7d) / float64(earnings.TotalDeposits)) * 365) / 7
+		if clApr7d < float64(-1) {
+			clApr7d = float64(-1)
+		}
+		validatorPageData.ClAPR7d = clApr7d
+
+		elApr7d := ((float64(earnings.ElIncome7d) / float64(earnings.TotalDeposits)) * 365) / 7
+		if elApr7d < float64(-1) {
+			elApr7d = float64(-1)
+		}
+		validatorPageData.ElAPR7d = elApr7d
+
+		clApr31d := ((float64(earnings.ClIncome31d) / float64(earnings.TotalDeposits)) * 365) / 31
+		if clApr31d < float64(-1) {
+			clApr31d = float64(-1)
+		}
+		validatorPageData.ClAPR31d = clApr31d
+
+		elApr31d := ((float64(earnings.ElIncome31d) / float64(earnings.TotalDeposits)) * 365) / 31
+		if elApr31d < float64(-1) {
+			elApr31d = float64(-1)
+		}
+		validatorPageData.ElAPR31d = elApr31d
+
+		if activeDays > 0 {
+			//TODO: Add 365d apr insted of total once available
+			clAprTotal := ((float64(earnings.ClIncomeTotal) / float64(earnings.TotalDeposits)) * 365) / float64(activeDays)
+			if clAprTotal < float64(-1) {
+				clAprTotal = float64(-1)
+			}
+			validatorPageData.ClAPRTotal = clAprTotal
+
+			//TODO: Add 365d apr insted of total once available
+			elAprTotal := ((float64(earnings.ElIncomeTotal) / float64(earnings.TotalDeposits)) * 365) / float64(activeDays)
+			if elAprTotal < float64(-1) {
+				elAprTotal = float64(-1)
+			}
+			validatorPageData.ElAPRTotal = elAprTotal
+		}
 
 		vbalance, ok := balances[validatorPageData.ValidatorIndex]
 		if !ok {
@@ -444,7 +484,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 
 				// it normally takes to epochs to finalize
-				if timeToWithdrawal.After(utils.EpochToTime(epoch + (epoch - latestFinalized))) {
+				if timeToWithdrawal.After(utils.EpochToTime(latestEpoch + (latestEpoch - latestFinalized))) {
 					tableData := make([][]interface{}, 0, 1)
 					var withdrawalCredentialsTemplate template.HTML
 					if address != nil {
@@ -562,6 +602,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		} else {
 			validatorPageData.UnmissedBlocksPercentage = 1.0
 		}
+
+		var slots []uint64
+		for _, p := range proposals {
+			slots = append(slots, p.Slot)
+		}
+
+		validatorPageData.ProposalLuck = getProposalLuck(slots, 1)
+		validatorPageData.ProposalEstimate = getNextBlockEstimateTimestamp(slots, 1)
 		return nil
 	})
 
@@ -673,7 +721,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// remove scheduled committees
-		latestEpoch := services.LatestEpoch()
 		for i, syncPeriod := range allSyncPeriods {
 			if syncPeriod.FirstEpoch <= latestEpoch {
 				actualSyncPeriods = allSyncPeriods[i:]
@@ -734,7 +781,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			maxPeriod := allSyncPeriods[0].Period
 			expectedSyncCount, err := getExpectedSyncCommitteeSlots([]uint64{index}, latestEpoch)
 			if err != nil {
-				fmt.Errorf("error retrieving expected sync committee slots: %v", err)
+				return fmt.Errorf("error retrieving expected sync committee slots: %v", err)
 			}
 			if expectedSyncCount != 0 {
 				validatorPageData.SyncLuck = float64(validatorPageData.ParticipatedSyncCount+validatorPageData.MissedSyncCount) / float64(expectedSyncCount)
