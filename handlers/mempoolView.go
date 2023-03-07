@@ -18,7 +18,7 @@ func MempoolView(w http.ResponseWriter, r *http.Request) {
 	var mempoolViewTemplate = templates.GetTemplate("layout.html", "mempoolview.html")
 
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "services", "/mempool", "Pending Mempool Transactions")
+	data := InitPageData(w, r, "services", "/mempool", "Pending Mempool Transactions", "mempoolview.html")
 
 	data.Data = formatedData
 

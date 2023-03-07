@@ -70,7 +70,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash))
+	data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), "slot/slot.html")
 
 	if blockSlot == -1 {
 		err = db.ReaderDb.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)

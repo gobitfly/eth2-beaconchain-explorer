@@ -14,7 +14,7 @@ import (
 func Correlations(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "correlations", "/correlations", "Correlations")
+	data := InitPageData(w, r, "correlations", "/correlations", "Correlations", "correlations.html")
 
 	var indicators []string
 	err := db.ReaderDb.Select(&indicators, "SELECT DISTINCT(indicator) AS indicator FROM chart_series WHERE time > NOW() - INTERVAL '1 week' ORDER BY indicator;")

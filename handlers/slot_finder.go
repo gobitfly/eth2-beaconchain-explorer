@@ -12,7 +12,7 @@ func SlotFinder(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "blockchain", "/slotFinder", "Slot Finder")
+	data := InitPageData(w, r, "blockchain", "/slotFinder", "Slot Finder", "slot/slotfinder.html")
 
 	if handleTemplateError(w, r, "slot_finder.go", "Slot Finder", "", template.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed

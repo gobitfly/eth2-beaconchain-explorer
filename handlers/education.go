@@ -11,7 +11,7 @@ func EducationServices(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/educationServices", "Ethereum Education Services Overview")
+	data := InitPageData(w, r, "services", "/educationServices", "Ethereum Education Services Overview", "educationServices.html")
 
 	if handleTemplateError(w, r, "education.go", "EducationServices", "", educationServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed

@@ -4,6 +4,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"net/http"
 	"strconv"
 
@@ -19,7 +20,7 @@ func AdConfiguration(w http.ResponseWriter, r *http.Request) {
 
 	user, _, err := getUserSession(r)
 	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
+		utils.LogError(err, "error retrieving session", 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -40,12 +41,12 @@ func AdConfiguration(w http.ResponseWriter, r *http.Request) {
 	configs, err = db.GetAdConfigurations()
 
 	if err != nil {
-		logger.Errorf("error loading the ad configuration: %v", err)
+		utils.LogError(err, "error loading the ad configuration", 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	data := InitPageData(w, r, "user", "/user/ad_configuration", "Ad Configuration")
+	data := InitPageData(w, r, "user", "/user/ad_configuration", "Ad Configuration", "user/ad_configuration.html")
 	pageData := types.AdConfigurationPageData{}
 	pageData.CsrfField = csrf.TemplateField(r)
 	pageData.Configurations = configs
@@ -64,7 +65,7 @@ func AdConfiguration(w http.ResponseWriter, r *http.Request) {
 func AdConfigurationPost(w http.ResponseWriter, r *http.Request) {
 	user, _, err := getUserSession(r)
 	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
+		utils.LogError(err, "error retrieving session", 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -76,7 +77,7 @@ func AdConfigurationPost(w http.ResponseWriter, r *http.Request) {
 
 	err = r.ParseForm()
 	if err != nil {
-		logger.Errorf("error parsing form: %v", err)
+		utils.LogError(err, "error parsing form", 0)
 		http.Redirect(w, r, "/user/ad_configuration", http.StatusSeeOther)
 		return
 	}
@@ -93,14 +94,14 @@ func AdConfigurationPost(w http.ResponseWriter, r *http.Request) {
 		htmlContent = r.FormValue(`htmlContent`)
 
 		if len(htmlContent) == 0 {
-			logger.Errorf("error no html content provided: %v", err)
+			utils.LogError(err, "error no html content provided", 0)
 			http.Redirect(w, r, "/user/ad_configuration", http.StatusSeeOther)
 			return
 		}
 	} else {
 		bannerId, err = strconv.ParseUint(r.FormValue(`bannerId`), 0, 64)
 		if err != nil || bannerId == 0 {
-			logger.Errorf("error no bannerId provided: %v", err)
+			utils.LogError(err, "error no bannerId provided", 0)
 			http.Redirect(w, r, "/user/ad_configuration", http.StatusSeeOther)
 			return
 		}
@@ -116,18 +117,18 @@ func AdConfigurationPost(w http.ResponseWriter, r *http.Request) {
 		BannerId:        bannerId,
 		HtmlContent:     htmlContent,
 	}
-	logger.Infof(`adConfig %v`, adConfig)
+
 	if len(adConfig.Id) == 0 {
 		adConfig.Id = uuid.New().String()
 		err = db.InsertAdConfigurations(adConfig)
 		if err != nil {
-			logger.Errorf("error inserting new ad config: %v", err)
+			utils.LogError(err, "error inserting new ad config", 0)
 		}
 
 	} else {
 		err = db.UpdateAdConfiguration(adConfig)
 		if err != nil {
-			logger.Errorf("error updating ad config: %v", err)
+			utils.LogError(err, "error updating ad config", 0)
 		}
 	}
 
@@ -138,7 +139,7 @@ func AdConfigurationPost(w http.ResponseWriter, r *http.Request) {
 func AdConfigurationDeletePost(w http.ResponseWriter, r *http.Request) {
 	user, _, err := getUserSession(r)
 	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
+		utils.LogError(err, "error retrieving session", 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -150,20 +151,20 @@ func AdConfigurationDeletePost(w http.ResponseWriter, r *http.Request) {
 
 	err = r.ParseForm()
 	if err != nil {
-		logger.Errorf("error parsing form: %v", err)
+		utils.LogError(err, "error parsing form", 0)
 		http.Redirect(w, r, "/user/ad_configuration", http.StatusSeeOther)
 		return
 	}
 	id := r.FormValue(`id`)
 	if len(id) == 0 {
-		logger.Errorf("error no id provided: %v", err)
+		utils.LogError(err, "error no id provided", 0)
 		http.Redirect(w, r, "/user/ad_configuration", http.StatusSeeOther)
 		return
 	}
 
 	err = db.DeleteAdConfiguration(id)
 	if err != nil {
-		logger.Errorf("error deleting ad config: %v", err)
+		utils.LogError(err, "error deleting ad config", 0)
 	}
 
 	http.Redirect(w, r, "/user/ad_configuration", http.StatusSeeOther)

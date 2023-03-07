@@ -21,6 +21,7 @@ import (
 // PageData is a struct to hold web page data
 type PageData struct {
 	Active                string
+	AdConfigurations      []*AdConfig
 	HeaderAd              bool
 	Meta                  *Meta
 	ShowSyncingMessage    bool

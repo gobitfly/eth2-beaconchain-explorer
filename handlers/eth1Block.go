@@ -50,14 +50,14 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", 0))
+		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", 0), "slotnotfound.html")
 		if handleTemplateError(w, r, "eth1Block.go", "Eth1Block", "number", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
 	}
 
-	data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number))
+	data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number), "slot/slot.html")
 	eth1BlockPageData, err := GetExecutionBlockPageData(number, 10)
 	if err != nil {
 		if handleTemplateError(w, r, "eth1Block.go", "Eth1Block", "GetExecutionBlockPageData", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -95,7 +95,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Pre  Merge PoW Block
-		data := InitPageData(w, r, "block", "/block", fmt.Sprintf("Block %d", eth1BlockPageData.Number))
+		data := InitPageData(w, r, "block", "/block", fmt.Sprintf("Block %d", eth1BlockPageData.Number), "execution/block.html")
 		data.HeaderAd = true
 		eth1BlockPageData.NoAds = data.NoAds
 		data.Data = eth1BlockPageData

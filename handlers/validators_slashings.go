@@ -18,7 +18,7 @@ func ValidatorsSlashings(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "validators", "/validators/slashings", "Validator Slashings")
+	data := InitPageData(w, r, "validators", "/validators/slashings", "Validator Slashings", "validators_slashings.html")
 	data.HeaderAd = true
 
 	if handleTemplateError(w, r, "validators_slashings.go", "ValidatorsSlashings", "", validatorsSlashingsTemplate.ExecuteTemplate(w, "layout", data)) != nil {

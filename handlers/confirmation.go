@@ -35,7 +35,7 @@ func Confirmation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := InitPageData(w, r, "confirmation", "/blocks", "Blocks")
+	data := InitPageData(w, r, "confirmation", "/blocks", "Blocks", "confirmation.html")
 	data.Data = pageData
 	data.Meta.NoTrack = true
 

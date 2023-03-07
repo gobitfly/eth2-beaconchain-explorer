@@ -104,7 +104,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.PendingCount = *pendingCount
 	validatorPageData.InclusionDelay = int64((utils.Config.Chain.Config.Eth1FollowDistance*utils.Config.Chain.Config.SecondsPerEth1Block+utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch*utils.Config.Chain.Config.EpochsPerEth1VotingPeriod)/3600) + 1
 
-	data := InitPageData(w, r, "validators", "/validators", "")
+	data := InitPageData(w, r, "validators", "/validators", "", "validator/validator.html")
 	data.HeaderAd = true
 	validatorPageData.NetworkStats = services.LatestIndexPageData()
 	validatorPageData.User = data.User
@@ -1651,7 +1651,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	var index uint64
 	var err error
 
-	data := InitPageData(w, r, "validators", "/validators", "")
+	data := InitPageData(w, r, "validators", "/validators", "", "validator_stats_table.html")
 	data.HeaderAd = true
 
 	// Request came with a hash

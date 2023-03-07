@@ -34,7 +34,7 @@ func Deposits(w http.ResponseWriter, r *http.Request) {
 	pageData.Stats = services.GetLatestStats()
 	pageData.DepositContract = utils.Config.Chain.Config.DepositContractAddress
 
-	data := InitPageData(w, r, "blockchain", "/deposits", "Deposits")
+	data := InitPageData(w, r, "blockchain", "/deposits", "Deposits", "index/depositChart.html")
 	data.HeaderAd = true
 	data.Data = pageData
 
@@ -149,7 +149,7 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Initiated Deposits")
+	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Initiated Deposits", "eth1DepositsLeaderboard.html")
 	data.HeaderAd = true
 
 	data.Data = types.EthOneDepositLeaderBoardPageData{

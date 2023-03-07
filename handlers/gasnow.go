@@ -19,7 +19,7 @@ func GasNow(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "gasnow", "/gasnow", fmt.Sprintf("%v Gwei", 34))
+	data := InitPageData(w, r, "gasnow", "/gasnow", fmt.Sprintf("%v Gwei", 34), "components/banner.html")
 
 	now := time.Now().Truncate(time.Minute)
 	lastWeek := time.Now().Truncate(time.Minute).Add(-time.Hour * 24 * 7)

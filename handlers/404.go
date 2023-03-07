@@ -71,7 +71,7 @@ func NotFound(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusNotFound)
-	data := InitPageData(w, r, "blockchain", r.URL.Path, "Not Found")
+	data := InitPageData(w, r, "blockchain", r.URL.Path, "Not Found", "404notfound.html")
 	err := notFoundTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing not-found template for %v route: %v", r.URL.String(), err)

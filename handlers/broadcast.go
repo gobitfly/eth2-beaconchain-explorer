@@ -16,7 +16,7 @@ func Broadcast(w http.ResponseWriter, r *http.Request) {
 	var tpl = templates.GetTemplate("layout.html", "components/banner.html", "broadcast.html", "validator/withdrawalOverviewRow.html")
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "tools", "/tools/broadcast", "Broadcast")
+	data := InitPageData(w, r, "tools", "/tools/broadcast", "Broadcast", "broadcast.html")
 	pageData := &types.BroadcastPageData{}
 	pageData.Stats = services.GetLatestStats()
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
@@ -79,7 +79,7 @@ func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
 	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "broadcaststatus.html")
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "tools", "/tools/broadcast/status", "Broadcast Status")
+	data := InitPageData(w, r, "tools", "/tools/broadcast/status", "Broadcast Status", "broadcaststatus.html")
 
 	vars := mux.Vars(r)
 

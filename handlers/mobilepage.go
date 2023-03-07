@@ -16,7 +16,7 @@ func MobilePage(w http.ResponseWriter, r *http.Request) {
 	var err error
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "more", "/mobile", "Beaconchain Dashboard")
+	data := InitPageData(w, r, "more", "/mobile", "Beaconchain Dashboard", "mobilepage.html")
 	pageData := &types.AdvertiseWithUsPageData{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
 

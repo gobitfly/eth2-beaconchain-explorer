@@ -22,7 +22,7 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "stats", "/charts", "Charts")
+	data := InitPageData(w, r, "stats", "/charts", "Charts", "charts.html")
 
 	chartsPageData := services.LatestChartsPageData()
 
@@ -73,7 +73,7 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 	chartVar := vars["chart"]
 
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "stats", "/charts", "Chart")
+	data := InitPageData(w, r, "stats", "/charts", "Chart", "genericchart.html")
 
 	chartsPageData := services.LatestChartsPageData()
 	if chartsPageData == nil {
@@ -139,7 +139,7 @@ func SlotViz(w http.ResponseWriter, r *http.Request) {
 	var slotVizTemplate = templates.GetTemplate("layout.html", "slotViz.html", "slotVizPage.html")
 
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "stats", "/charts", "Charts")
+	data := InitPageData(w, r, "stats", "/charts", "Charts", "slotVizPage.html")
 
 	slotVizData := types.SlotVizPageData{
 		Selector: "checklist",

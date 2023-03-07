@@ -25,7 +25,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "stats", "/calculator", "Staking calculator")
+	data := InitPageData(w, r, "stats", "/calculator", "Staking calculator", "calculator.html")
 	data.Data = calculatorPageData
 
 	if handleTemplateError(w, r, "calculator.go", "StakingCalculator", "", stakingCalculatorTemplate.ExecuteTemplate(w, "layout", data)) != nil {

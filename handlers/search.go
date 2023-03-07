@@ -45,7 +45,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/address/"+search, http.StatusMovedPermanently)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
-		data := InitPageData(w, r, "search", "/search", "")
+		data := InitPageData(w, r, "search", "/search", "", "searchnotfound.html")
 		data.HeaderAd = true
 
 		if handleTemplateError(w, r, "search.go", "Search", "", searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {

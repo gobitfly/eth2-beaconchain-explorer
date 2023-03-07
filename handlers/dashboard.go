@@ -135,7 +135,7 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 
 	logger.Infof("retrieved income history of %v validators in %v", len(incomeData), time.Since(start))
 
-	data := InitPageData(w, r, "dashboard", "/heatmap", "Validator Heatmap")
+	data := InitPageData(w, r, "dashboard", "/heatmap", "Validator Heatmap", "heatmap.html")
 	data.HeaderAd = true
 	data.Data = heatmapData
 
@@ -154,7 +154,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	dashboardData := types.DashboardData{}
 	dashboardData.ValidatorLimit = validatorLimit
 
-	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard")
+	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", "components/banner.html")
 	data.HeaderAd = true
 	data.Data = dashboardData
 

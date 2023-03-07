@@ -17,7 +17,7 @@ func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "advertisewithus", "/advertisewithus", "Adverstise With Us")
+	data := InitPageData(w, r, "advertisewithus", "/advertisewithus", "Adverstise With Us", "advertisewithus.html")
 
 	pageData := &types.AdvertiseWithUsPageData{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey

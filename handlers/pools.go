@@ -19,7 +19,7 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/pools", "Staking Pools Services Overview")
+	data := InitPageData(w, r, "services", "/pools", "Staking Pools Services Overview", "pools/pools.html")
 
 	distributionData, err := services.ChartHandlers["pools_distribution"].DataFunc()
 	if err != nil {

@@ -13,7 +13,7 @@ import (
 func Imprint(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "imprint", "/imprint", "Imprint")
+	data := InitPageData(w, r, "imprint", "/imprint", "Imprint", getImprintPath())
 	data.HeaderAd = true
 
 	if handleTemplateError(w, r, "imprint.go", "Imprint", "", getImprintTemplate(getImprintPath()).ExecuteTemplate(w, "layout", data)) != nil {

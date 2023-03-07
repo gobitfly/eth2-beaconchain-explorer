@@ -82,7 +82,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	validatorsPageData.ExitedCount = validatorsPageData.VoluntaryExitsCount + validatorsPageData.Slashed
 	validatorsPageData.TotalCount = validatorsPageData.ActiveCount + validatorsPageData.ExitingCount + validatorsPageData.ExitedCount + validatorsPageData.PendingCount + validatorsPageData.DepositedCount
 
-	data := InitPageData(w, r, "validators", "/validators", "Validators")
+	data := InitPageData(w, r, "validators", "/validators", "Validators", "validators.html")
 	data.HeaderAd = true
 	data.Data = validatorsPageData
 

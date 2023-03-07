@@ -11,7 +11,7 @@ func Faq(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "faq", "/faq", "FAQ")
+	data := InitPageData(w, r, "faq", "/faq", "FAQ", "faq.html")
 	data.HeaderAd = true
 
 	if handleTemplateError(w, r, "faq.go", "Faq", "", faqTemplate.ExecuteTemplate(w, "layout", data)) != nil {

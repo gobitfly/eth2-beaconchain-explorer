@@ -28,7 +28,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	epochString := strings.Replace(vars["epoch"], "0x", "", -1)
 
-	data := InitPageData(w, r, "blockchain", "/epochs", "Epoch")
+	data := InitPageData(w, r, "blockchain", "/epochs", "Epoch", "epoch.html")
 	data.HeaderAd = true
 
 	epoch, err := strconv.ParseUint(epochString, 10, 64)

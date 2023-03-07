@@ -20,14 +20,14 @@ import (
 func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 	var txNotFoundTemplate = templates.GetTemplate("layout.html", "eth1txnotfound.html")
-	var txTemplate = templates.GetTemplate("layout.html", "eth1tx", "components/banner.html")
+	var txTemplate = templates.GetTemplate("layout.html", "eth1tx.html", "components/banner.html")
 	var mempoolTxTemplate = templates.GetTemplate("layout.html", "mempoolTx.html")
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	txHashString := vars["hash"]
 
-	data := InitPageData(w, r, "blockchain", "/tx", "Transaction")
+	data := InitPageData(w, r, "blockchain", "/tx", "Transaction", "eth1tx.html")
 	data.HeaderAd = true
 
 	SetPageDataTitle(data, fmt.Sprintf("Transaction %v", txHashString))

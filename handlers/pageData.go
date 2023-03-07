@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
 	"eth2-exporter/services"
@@ -15,7 +16,7 @@ import (
 	"time"
 )
 
-func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string) *types.PageData {
+func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string, mainTemplate string) *types.PageData {
 	fullTitle := fmt.Sprintf("%v - %v - beaconcha.in - %v", title, utils.Config.Frontend.SiteName, time.Now().Year())
 
 	if title == "" {
@@ -78,6 +79,14 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		GasNow:             services.LatestGasNowData(),
 		ShowSyncingMessage: services.IsSyncing(),
 		GlobalNotification: services.GlobalNotificationMessage(),
+	}
+
+	if !data.NoAds {
+		adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplate)
+		if err != nil {
+			utils.LogError(err, fmt.Sprintf("error loading the ad configurations for template %s: ", mainTemplate), 0)
+		}
+		data.AdConfigurations = adConfigurations
 	}
 
 	if utils.Config.Frontend.Debug {

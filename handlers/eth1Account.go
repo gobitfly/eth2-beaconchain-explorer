@@ -30,7 +30,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	address := template.HTMLEscapeString(vars["address"])
 	isValid := utils.IsEth1Address(address)
 	if !isValid {
-		data := InitPageData(w, r, "blockchain", "/address", "not found")
+		data := InitPageData(w, r, "blockchain", "/address", "not found", "execution/addressNotFound.html")
 
 		if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "not valid", templates.GetTemplate("layout.html", "sprites.html", "execution/addressNotFound.html").ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
@@ -46,7 +46,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	symbol := GetCurrencySymbol(r)
 
 	addressBytes := common.FromHex(address)
-	data := InitPageData(w, r, "blockchain", "/address", fmt.Sprintf("Address 0x%x", addressBytes))
+	data := InitPageData(w, r, "blockchain", "/address", fmt.Sprintf("Address 0x%x", addressBytes), "execution/address.html")
 
 	metadata, err := db.BigtableClient.GetMetadataForAddress(addressBytes)
 	if err != nil {

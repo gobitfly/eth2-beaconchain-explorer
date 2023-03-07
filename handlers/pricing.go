@@ -25,7 +25,7 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "pricing", "/pricing", "API Pricing")
+	data := InitPageData(w, r, "pricing", "/pricing", "API Pricing", "payment/pricing.html")
 
 	pageData := &types.ApiPricing{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
@@ -73,7 +73,7 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "premium", "/premium", "Premium Pricing")
+	data := InitPageData(w, r, "premium", "/premium", "Premium Pricing", "payment/mobilepricing.html")
 
 	pageData := &types.MobilePricing{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey

@@ -21,7 +21,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "blockchain", "/epochs", "Epochs")
+	data := InitPageData(w, r, "blockchain", "/epochs", "Epochs", "epochs.html")
 	data.HeaderAd = true
 
 	var epochs []*types.EpochsPageData

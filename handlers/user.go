@@ -126,7 +126,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userSettingsData.CsrfField = csrf.TemplateField(r)
 
-	data := InitPageData(w, r, "user", "/user", "User Settings")
+	data := InitPageData(w, r, "user", "/user", "User Settings", "user/settings.html")
 	data.HeaderAd = true
 	data.Data = userSettingsData
 	data.User = user
@@ -203,7 +203,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	authorizeData.CsrfField = csrf.TemplateField(r)
 	authorizeData.Flashes = utils.GetFlashes(w, r, authSessionName)
 
-	data := InitPageData(w, r, "user", "/user", "")
+	data := InitPageData(w, r, "user", "/user", "", "user/authorize.html")
 	data.Data = authorizeData
 	data.Meta.NoTrack = true
 
@@ -280,7 +280,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	link = link[:len(link)-1]
 	userNotificationsData.DashboardLink = link
 
-	data := InitPageData(w, r, "user", "/user", "")
+	data := InitPageData(w, r, "user", "/user", "", "user/notifications.html")
 	data.Data = userNotificationsData
 	data.User = user
 
@@ -613,7 +613,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	userNotificationsCenterData := &types.UserNotificationsCenterPageData{}
-	data := InitPageData(w, r, "user", "/user", "")
+	data := InitPageData(w, r, "user", "/user", "", "user/notificationsCenter.html")
 
 	user := getUser(r)
 
@@ -2372,7 +2372,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
 
-	data := InitPageData(w, r, "webhook", "/webhook", "Webhook configuration")
+	data := InitPageData(w, r, "webhook", "/webhook", "Webhook configuration", "user/webhooks.html")
 	pageData := types.WebhookPageData{}
 
 	ctx, done := ctxt.WithTimeout(ctxt.Background(), time.Second*30)
@@ -2983,7 +2983,7 @@ func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
 	pageData.GlobalNotificationMessages = configs
 	pageData.CsrfField = csrf.TemplateField(r)
 
-	data := InitPageData(w, r, "user", "/user/global_notification", "Global Notification")
+	data := InitPageData(w, r, "user", "/user/global_notification", "Global Notification", "user/global_notification.html")
 	data.HeaderAd = true
 	data.Data = pageData
 	data.User = user

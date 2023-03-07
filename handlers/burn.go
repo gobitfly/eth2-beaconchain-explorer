@@ -10,7 +10,7 @@ import (
 
 func Burn(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "burn", "/burn", "Eth Burned")
+	data := InitPageData(w, r, "burn", "/burn", "Eth Burned", "burn.html")
 
 	var burnTemplate = templates.GetTemplate("layout.html", "burn.html", "components/banner.html")
 

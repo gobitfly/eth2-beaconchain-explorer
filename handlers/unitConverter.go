@@ -11,7 +11,7 @@ func UnitConverter(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "unitConverter", "/unitConerter", "Unit Converter")
+	data := InitPageData(w, r, "unitConverter", "/unitConerter", "Unit Converter", "unitConverter.html")
 
 	if handleTemplateError(w, r, "unitConverter.go", "UnitConverter", "", unitConverterTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed

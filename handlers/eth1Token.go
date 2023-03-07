@@ -101,7 +101,7 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := InitPageData(w, r, "blockchain", "/token", fmt.Sprintf("Token 0x%x", token))
+	data := InitPageData(w, r, "blockchain", "/token", fmt.Sprintf("Token 0x%x", token), "execution/token.html")
 
 	data.Data = types.Eth1TokenPageData{
 		Token:            fmt.Sprintf("%x", token),
