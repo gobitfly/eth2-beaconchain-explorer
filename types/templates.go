@@ -299,6 +299,7 @@ type ValidatorsPageData struct {
 	VoluntaryExitsCount  uint64
 	UnknownCount         uint64
 	Validators           []*ValidatorsPageDataValidators
+	CappellaHasHappened  bool
 }
 
 // ValidatorsPageDataValidators is a struct to hold data about validators for the validators page
