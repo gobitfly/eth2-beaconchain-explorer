@@ -54,8 +54,11 @@ func Init() {
 	ready.Add(1)
 	go indexPageDataUpdater(ready)
 
-	ready.Add(1)
-	go poolsUpdater(ready)
+	// Temporary Fix
+	if (utils.Config.Chain.Config.DepositChainID == 1) {
+	  ready.Add(1)
+	  go poolsUpdater(ready)
+  }
 
 	ready.Add(1)
 	go relaysUpdater(ready)
@@ -69,14 +72,20 @@ func Init() {
 	ready.Add(1)
 	go mempoolUpdater(ready)
 
-	ready.Add(1)
-	go burnUpdater(ready)
+	// Temporary Fix
+	if (utils.Config.Chain.Config.DepositChainID == 1) {
+		ready.Add(1)
+		go burnUpdater(ready)
+	}
 
 	ready.Add(1)
 	go gasNowUpdater(ready)
 
-	ready.Add(1)
-	go ethStoreStatisticsDataUpdater(ready)
+	// Temporary Fix
+	if (utils.Config.Chain.Config.DepositChainID == 1) {
+		ready.Add(1)
+		go ethStoreStatisticsDataUpdater(ready)
+	}
 
 	ready.Add(1)
 	go startMonitoringService(ready)
@@ -110,7 +119,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 
 	overallStatsQuery, err := db.ReaderDb.Preparex(`
 		with stats as (
-			select 
+			select
 				tag_id as relay_id,
 				count(*) as block_count,
 				sum(value) as total_value,
@@ -119,12 +128,12 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 				max(value) as max_value,
 				(select rb2.block_slot from relays_blocks rb2 where rb2.value = max(rb.value) and rb2.tag_id = rb.tag_id limit 1) as max_value_slot
 			from relays_blocks rb
-			where 
-				rb.block_slot > $1 and 
-				rb.block_root not in (select bt.blockroot from blocks_tags bt where bt.tag_id='invalid-relay-reward') 
-			group by tag_id 
+			where
+				rb.block_slot > $1 and
+				rb.block_root not in (select bt.blockroot from blocks_tags bt where bt.tag_id='invalid-relay-reward')
+			group by tag_id
 		)
-		select 
+		select
 			tags.metadata ->> 'name' as "name",
 			relays.public_link as link,
 			relays.is_censoring as censors,
@@ -139,8 +148,8 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			stats.max_value_slot
 		from relays
 		left join stats on stats.relay_id = relays.tag_id
-		left join tags on tags.id = relays.tag_id 
-		where stats.relay_id = tag_id 
+		left join tags on tags.id = relays.tag_id
+		where stats.relay_id = tag_id
 		order by stats.block_count DESC`)
 	if err != nil {
 		logger.Errorf("failed to prepare overallStatsQuery: %v", err)
@@ -165,13 +174,13 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 	relaysData.RelaysInfoContainers = tmp
 
 	err = db.ReaderDb.Select(&relaysData.TopBuilders, `
-		select 
+		select
 			builder_pubkey,
 			SUM(c) as c,
 			jsonb_agg(tags.metadata) as tags,
 			max(latest_slot) as latest_slot
 		from (
-			select 
+			select
 				builder_pubkey,
 				count(*) as c,
 				tag_id,
@@ -188,10 +197,10 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 				from relays_blocks
 				where block_slot > $1
 				order by block_slot desc) rb
-			group by builder_pubkey, tag_id 
+			group by builder_pubkey, tag_id
 		) foo
 		left join tags on tags.id = foo.tag_id
-		group by builder_pubkey 
+		group by builder_pubkey
 		order by c desc`, LatestSlot()-(14*dayInSlots))
 	if err != nil {
 		logger.Errorf("failed to get builder ranking %v", err)
@@ -213,23 +222,23 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			where blockroot in (
 				select rb.block_root
 				from relays_blocks rb
-			) 
+			)
 			order by blocks.slot desc
 			limit 15
 		) as blocks
 		left join relays_blocks
 			on relays_blocks.block_root = blocks.blockroot
-		left join tags 
-			on tags.id = relays_blocks.tag_id 
+		left join tags
+			on tags.id = relays_blocks.tag_id
 		left join validators
-			on validators.pubkey = relays_blocks.proposer_pubkey  
-		group by 
-			blockroot, 
+			on validators.pubkey = relays_blocks.proposer_pubkey
+		group by
+			blockroot,
 			relays_blocks.block_slot,
 			relays_blocks.builder_pubkey,
 			relays_blocks.proposer_fee_recipient,
 			blocks.exec_extra_data,
-			validators.validatorindex 
+			validators.validatorindex
 		order by relays_blocks.block_slot desc`)
 	if err != nil {
 		logger.Errorf("failed to get latest blocks for relays page %v", err)
@@ -248,24 +257,24 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 		from (
 			select value, block_slot, builder_pubkey, proposer_fee_recipient, block_root, tag_id, proposer_pubkey
 			from relays_blocks
-			where relays_blocks.block_root not in (select bt.blockroot from blocks_tags bt where bt.tag_id='invalid-relay-reward') 
+			where relays_blocks.block_root not in (select bt.blockroot from blocks_tags bt where bt.tag_id='invalid-relay-reward')
 			order by relays_blocks.value desc
 			limit 15
-		) as relays_blocks 
+		) as relays_blocks
 		left join blocks
 			on relays_blocks.block_root = blocks.blockroot
-		left join tags 
-			on tags.id = relays_blocks.tag_id 
+		left join tags
+			on tags.id = relays_blocks.tag_id
 		left join validators
-			on validators.pubkey = relays_blocks.proposer_pubkey  
-		group by 
-			blockroot, 
+			on validators.pubkey = relays_blocks.proposer_pubkey
+		group by
+			blockroot,
 			relays_blocks.block_slot,
 			relays_blocks.builder_pubkey,
 			relays_blocks.proposer_fee_recipient,
 			blocks.exec_fee_recipient,
 			blocks.exec_extra_data,
-			validators.validatorindex 
+			validators.validatorindex
 		order by value desc`)
 	if err != nil {
 		logger.Errorf("failed to get top blocks for relays page %v", err)
@@ -783,7 +792,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			blocks.status,
 			COALESCE(blocks.exec_block_number, 0) AS exec_block_number,
 			COALESCE(validator_names.name, '') AS name
-		FROM blocks 
+		FROM blocks
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		WHERE blocks.slot < $1
