@@ -36,8 +36,10 @@
         </form>
       </div>
       <div class="p-3">
-        <input type="text" id="adFilter" oninput="filterAdConfigurations()" placeholder="Search for T. Id or JQ Selector" />
-        <i id="banner-search" class="fas fa-search"></i>
+        <div class="position-relative d-inline">
+          <input type="text" id="adFilter" oninput="filterAdConfigurations()" placeholder="Search for T. Id or JQ Selector" />
+          <i id="banner-search" class="fas fa-search mt-2"></i>
+        </div>
         <label for="adFilter">Filter Ad Configurations </label>
       </div>
       {{ range .Configurations }}
