@@ -463,7 +463,31 @@ function formatTimestamps(selStr) {
   }
 }
 
+function getLuxonDateFromTimestamp(ts) {
+  if (!ts) {
+    return
+  }
+
+  // Parse Date depanding on the format we get it
+  if (`${ts}`.includes("T")) {
+    if (ts === "0001-01-01T00:00:00Z") {
+      return
+    } else {
+      return luxon.DateTime.fromISO(ts)
+    }
+  } else {
+    let parsedDate = parseInt(ts)
+    if (parsedDate === 0 || isNaN(parsedDate)) {
+      return
+    }
+    return luxon.DateTime.fromMillis(parsedDate * 1000)
+  }
+}
+
 function getRelativeTime(tsLuxon) {
+  if (!tsLuxon) {
+    return
+  }
   var prefix = ""
   var suffix = ""
   if (tsLuxon.diffNow().milliseconds > 0) {
