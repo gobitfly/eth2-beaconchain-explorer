@@ -30,11 +30,10 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 			"slot/exits.html",
 			"slot/overview.html",
 			"slot/execTransactions.html",
-			"slot/withdrawals.html",
-			"components/banner.html")...,
+			"slot/withdrawals.html")...,
 	)
 	var blockNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "slotnotfound.html")...)
-	var preMergeBlockTemplate = templates.GetTemplate(append(layoutTemplateFiles, "execution/block.html", "slot/execTransactions.html", "components/banner.html")...)
+	var preMergeBlockTemplate = templates.GetTemplate(append(layoutTemplateFiles, "execution/block.html", "slot/execTransactions.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
@@ -88,6 +87,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 
 		data.HeaderAd = true
 		blockPageData.NoAds = data.NoAds
+		blockPageData.Template = data.Meta.Template
 		data.Data = blockPageData
 
 		if handleTemplateError(w, r, "eth1Block.go", "Eth1Block", "Done (Post Merge)", blockTemplate.ExecuteTemplate(w, "layout", data)) != nil {

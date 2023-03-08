@@ -309,6 +309,7 @@
 {{ end }}
 
 {{ define "content" }}
+  {{ $temlate := .Meta.Template }}
   {{ with .Data }}
     {{ $isBlockView := (contains $.Meta.Path "block") }}
     <div class="container mt-2">
@@ -342,7 +343,7 @@
           </ol>
         </nav>
       </div>
-      {{ if not .NoAds }}{{ template "banner" dict "bannerId" "48" }}{{ end }}
+      {{ if not .NoAds }}<div id="r-banner" info="{{ $temlate }}"></div>{{ end }}
       {{ if ne (len .Tags) 0 }}
         <div class="tags">
           {{ range .Tags }}

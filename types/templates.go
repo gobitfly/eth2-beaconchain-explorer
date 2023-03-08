@@ -673,6 +673,7 @@ type BlockPageData struct {
 	Tags       TagMetadataSlice `db:"tags"`
 	IsValidMev bool             `db:"is_valid_mev"`
 	NoAds      bool
+	Template   string
 }
 
 func (u *BlockPageData) MarshalJSON() ([]byte, error) {

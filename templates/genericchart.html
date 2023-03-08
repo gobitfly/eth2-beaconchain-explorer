@@ -149,6 +149,6 @@
         </div>
       </div>
     {{ end }}
-    {{ if not .NoAds }}<div class="pt-2">{{ template "banner" dict "bannerId" "51" }}</div>{{ end }}
+    {{ if not .NoAds }}<div id="r-banner" info="{{ .Meta.Template }}"></div>{{ end }}
   </div>
 {{ end }}

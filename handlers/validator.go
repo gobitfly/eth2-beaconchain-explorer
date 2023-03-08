@@ -50,8 +50,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 			"components/flashMessage.html",
 			"components/rocket.html",
-			"components/bannerValidator.html",
-			"components/banner.html")...,
+			"components/bannerValidator.html")...,
 	)
 	var validatorNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validator/validatornotfound.html")...)
 

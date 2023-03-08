@@ -20,7 +20,7 @@
         </nav>
       </div>
     </div>
-    {{ if not .NoAds }}{{ template "banner" dict "bannerId" "49" }}{{ end }}
+    {{ if not .NoAds }}<div id="r-banner" info="{{ .Meta.Template }}"></div>{{ end }}
     {{ with .Data }}
       <div class="card">
         <div class="card-header">

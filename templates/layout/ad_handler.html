@@ -9,40 +9,39 @@
         </div>
     `
     function refreshAd(id) {
-          if (document.hasFocus()) {
-            const ins = $(`#${id}`).find("ins");
-            ins.removeAttr("data-revive-loaded")
-            ins.removeAttr("data-revive-seq")
-            reviveAsync["5b200397ccf8a9353bf44ef99b45268c"].refresh()
-          }
-        }
+      if (document.hasFocus()) {
+        const ins = $(`#${id}`).find("ins")
+        ins.removeAttr("data-revive-loaded")
+        ins.removeAttr("data-revive-seq")
+        reviveAsync["5b200397ccf8a9353bf44ef99b45268c"].refresh()
+      }
+    }
 
     function initiateConfig(config, retry = false) {
       const container = $(config.JQuerySelector)[0]
       if (container) {
         const htmlText = config.HtmlContent?.length ? config.HtmlContent : bannerTemplate.replace("--bannerId--", config.BannerId)
         const temp = document.createElement("div")
-        temp.innerHTML = htmlText;
-        const ad =  temp.firstElementChild
+        temp.innerHTML = htmlText
+        const ad = temp.firstElementChild
         ad.id = config.Id
-        switch(config.InsertMode){
-            case "replace":
-                container.replaceWith(ad);
-                break;
-            case "before":
-                container.before(ad);
-                break;
-            case "after":
-                container.after(ad);
-                break;
-            default:
-                container.append(ad);
-                break;
+        switch (config.InsertMode) {
+          case "replace":
+            container.replaceWith(ad)
+            break
+          case "before":
+            container.before(ad)
+            break
+          case "after":
+            container.after(ad)
+            break
+          default:
+            container.append(ad)
+            break
         }
-        if(config.RefreshInterval){
-            window.requestInterval(()=>refreshAd(config.Id), config.RefreshInterval * 1000)
+        if (config.RefreshInterval) {
+          window.requestInterval(() => refreshAd(config.Id), config.RefreshInterval * 1000)
         }
-
       } else if (retry) {
         setInterval(() => initiateConfig(config), 1000) //If we didn't find the element initially let's retry it once after one second.
       } else {

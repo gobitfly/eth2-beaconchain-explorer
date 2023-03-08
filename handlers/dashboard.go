@@ -148,7 +148,7 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
 
-	var dashboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, "layout.html", "dashboard.html", "components/banner.html")...)
+	var dashboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, "layout.html", "dashboard.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators
@@ -159,7 +159,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	epoch := services.LatestEpoch()
 	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
 
-	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", "components/banner.html")
+	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", "dashboard.html")
 	data.HeaderAd = true
 	data.Data = dashboardData
 

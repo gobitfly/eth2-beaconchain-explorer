@@ -30,7 +30,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var notificationCenterParts []string = append(layoutTemplateFiles, "user/notificationsCenter.html", "modals.html", "components/banner.html")
+var notificationCenterParts []string = append(layoutTemplateFiles, "user/notificationsCenter.html", "modals.html")
 
 func UserAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

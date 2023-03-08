@@ -17,6 +17,7 @@
 {{ end }}
 
 {{ define "content" }}
+  {{ $temlate := .Meta.Template }}
   {{ with .Data }}
     <div class="container-fluid container-xl container-min-width container-custom">
       {{ if .Flashes }}
@@ -47,7 +48,7 @@
           <span class="text-nowrap">Notification Channels</span>
         </button>
       </div>
-      {{ if not .NoAds }}{{ template "banner" dict "bannerId" "45" }}{{ end }}
+      {{ if not .NoAds }}<div id="r-banner" info="{{ $temlate }}"></div>{{ end }}
       <div class="row flex-column flex-sm-row justify-content-center align-content-center mx-0 my-2 metrics-section mx-auto">
         <div class="col-12 col-sm col-xl mr-sm-3 mt-1 mb-2 p-2 shadow-sm border custom-border-radius custom-background-color">
           <div class="row d-flex align-items-center mx-1 metric-card-row">

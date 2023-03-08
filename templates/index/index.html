@@ -378,7 +378,7 @@
         {{ template "hero" . }}
       {{ end }}
       {{ if not .NoAds }}
-        <div id="r-banner"></div>
+        <div id="r-banner" info="{{ .Meta.Template }}"></div>
       {{ end }}
       {{ with .Data }}
         {{ if and (not .Genesis) (not .GenesisPeriod) }}

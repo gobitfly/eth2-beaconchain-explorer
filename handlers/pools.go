@@ -15,8 +15,7 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 			"pools/pools.html",
 			"pools/loadingSvg.html",
 			"pools/charts.html",
-			"bannerPools.html",
-			"components/banner.html")...,
+			"bannerPools.html")...,
 	)
 
 	w.Header().Set("Content-Type", "text/html")

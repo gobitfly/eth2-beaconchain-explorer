@@ -866,6 +866,8 @@
 {{ end }}
 
 {{ define "content" }}
+  {{ $temlate := .Meta.Template }}
+  {{ $noAds := .NoAds }}
   {{ with .Data }}
     <div class="container mt-2">
       <div class="my-3">
@@ -1055,9 +1057,7 @@
               <div id="breakEvenPointHolder" style="display:none">The break-even-point is reached after <span id="breakEvenPoint">10</span> days</div>
             </table>
           </div>
-          <div class="d-flex justify-content-between py-2">
-            <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-          </div>
+          {{ if not $noAds }}<div id="r-banner" info="{{ $temlate }}"></div>{{ end }}
         </div>
       </div>
     </div>

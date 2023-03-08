@@ -441,8 +441,8 @@
 {{ end }}
 
 {{ define "content" }}
-  {{ with .Data }}
-    <div class="container-fluid container-xl">
+  <div class="container-fluid container-xl">
+    {{ with .Data }}
       <div class="mt-4">
         <div class="d-flex align-items-center justify-content-md-end">
           <nav aria-label="breadcrumb">
@@ -546,9 +546,9 @@
           </table>
         </div>
       </div>
-      <div class="d-flex align-items-center" style="margin-top: 5rem;">
-        <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-      </div>
-    </div>
-  {{ end }}
+    {{ end }}
+    {{ if not .NoAds }}
+      <div id="r-banner" info="{{ .Meta.Template }}"></div>
+    {{ end }}
+  </div>
 {{ end }}

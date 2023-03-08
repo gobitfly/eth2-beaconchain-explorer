@@ -20,7 +20,7 @@ import (
 func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 	var txNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "eth1txnotfound.html")...)
-	var txTemplate = templates.GetTemplate(append(layoutTemplateFiles, "eth1tx.html", "components/banner.html")...)
+	var txTemplate = templates.GetTemplate(append(layoutTemplateFiles, "eth1tx.html")...)
 	var mempoolTxTemplate = templates.GetTemplate(append(layoutTemplateFiles, "mempoolTx.html")...)
 
 	w.Header().Set("Content-Type", "text/html")

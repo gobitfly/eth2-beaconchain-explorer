@@ -166,7 +166,11 @@
 
 {{ define "content" }}
   <div class="broadcast container mt-12">
-    {{ if not .NoAds }}<div class="pt-2">{{ template "banner" dict "bannerId" "52" }}</div>{{ end }}
+    {{ if not .NoAds }}
+      <div class="pt-2">
+        <div id="r-banner" info="{{ .Meta.Template }}"></div>
+      </div>
+    {{ end }}
     {{ with .Data }}
       <div class="row">
         <div class="col-md-12">
