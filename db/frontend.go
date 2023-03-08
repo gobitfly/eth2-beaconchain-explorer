@@ -229,7 +229,7 @@ func GetUserDevicesByUserID(userID uint64) ([]types.PairedDevice, error) {
 	if len(data) > 0 {
 		return data, nil
 	}
-	return nil, errors.New("no rows found")
+	return nil, sql.ErrNoRows
 }
 
 // InsertUserDevice Insert user device and return device id
