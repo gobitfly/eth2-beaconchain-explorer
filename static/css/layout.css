@@ -600,7 +600,3 @@ label.btn.btn-light:hover {
     right: -1rem;
   }
 }
-
-.ad-banner iframe {
-  max-width: 100% !important;
-}

@@ -30,12 +30,6 @@ func AdConfiguration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type notificationConfig struct {
-		Target  string
-		Content string
-		Enabled bool
-	}
-
 	var configs []*types.AdConfig
 
 	configs, err = db.GetAdConfigurations()

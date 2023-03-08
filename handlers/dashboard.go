@@ -148,7 +148,7 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
 
-	var dashboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, "layout.html", "dashboard.html")...)
+	var dashboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, "dashboard.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators
