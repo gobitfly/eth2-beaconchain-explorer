@@ -1,0 +1,111 @@
+{{ define "slot_finder" }}
+  <div class="m-2 d-flex flex-wrap">
+    <div class="d-flex m-2">
+      <div class="d-flex flex-column">
+        <label>Slot</label>
+        <div class="d-flex align-items-center">
+          <input id="slotNumber" class="form-control col-6" type="number" value="0" min="0" oninput="slotChanged()" />
+          <a id="slotLink"><i class="fas fa-cube mx-2"></i></a>
+        </div>
+      </div>
+      <div class="d-flex flex-column ml-2">
+        <label>Epoch</label>
+        <a id="epochLink" class="d-flex align-items-center">
+          <labal id="epoch">0</labal>
+          <i class="fas fa-history mx-2"></i>
+        </a>
+      </div>
+    </div>
+    <div class="d-flex flex-column m-2">
+      <label>Beaconchain Day</label>
+      <labal id="beaconchainDay">0</labal>
+    </div>
+    <div class="d-flex flex-column m-2">
+      <label>UTC</label>
+      <input id="datepickerUtc" type="text" class="form-control" />
+    </div>
+    <div class="d-flex flex-column m-2">
+      <label>Local</label>
+      <input id="datepickerLocal" type="text" class="form-control" />
+    </div>
+  </div>
+  <small class="d-flex justify-content-end align-items-center m-2">Inpired by <a href="https://slots.symphonious.net" class="ml-2">https://slots.symphonious.net</a></small>
+  <script>
+    var genesisTimeStamp = {{ .ChainGenesisTimestamp }}
+    var secondsPerSlot = {{ .ChainSecondsPerSlot }}
+    var slotsPerEpoch = {{ .ChainSlotsPerEpoch }}
+    var slotNumber, datepickerUtc, datepickerLocal, beaconchainDay, slotLink
+
+    function slotChanged() {
+      const slot = parseInt(slotNumber.value)
+      if (!isNaN(slot)) {
+        slotLink.href = `/slot/${slot}`
+        const slotDate = new Date((genesisTimeStamp + slot * secondsPerSlot) * 1000)
+        const slotDateLocal = moment(slotDate)
+        const slotDateUtc = moment.utc(slotDate)
+        datepickerUtc.data("daterangepicker").setStartDate(slotDateUtc)
+        datepickerUtc.data("daterangepicker").setEndDate(slotDateUtc)
+        datepickerLocal.data("daterangepicker").setStartDate(slotDateLocal)
+        datepickerLocal.data("daterangepicker").setEndDate(slotDateLocal)
+
+        const timePassed = slotDate.getTime() / 1000 - genesisTimeStamp
+        const daysPassed = Math.max(0, Math.floor(timePassed / 60 / 60 / 24))
+        beaconchainDay.innerText = daysPassed
+        epoch.innerText = Math.max(0, Math.floor(slot / slotsPerEpoch))
+        epochLink.href = `/epoch/${epoch.innerText}`
+      }
+    }
+
+    function processTime(date, isUtc) {
+      const timeStamp = date.toDate().getTime() / 1000 + (isUtc ? date.utcOffset() * 60 : 0)
+      const slot = Math.max(0, Math.floor((timeStamp - genesisTimeStamp) / secondsPerSlot))
+      slotNumber.value = slot
+      slotChanged()
+    }
+
+    function utcChanged(start) {
+      processTime(start, true)
+    }
+
+    function localChanged(start) {
+      processTime(start, false)
+    }
+
+    window.addEventListener("load", function () {
+      slotNumber = document.getElementById("slotNumber")
+      beaconchainDay = document.getElementById("beaconchainDay")
+      slotLink = document.getElementById("slotLink")
+      epoch = document.getElementById("epoch")
+      datepickerUtc = $('input[id="datepickerUtc"]')
+      datepickerLocal = $('input[id="datepickerLocal"]')
+
+      datepickerUtc.daterangepicker(
+        {
+          locale: {
+            format: "DD/MM/YYYY hh:mm:ss UTC",
+          },
+          singleDatePicker: true,
+          timePicker: true,
+          timePicker24Hour: true,
+          timePickerSeconds: true,
+          minDate: new Date(genesisTimeStamp * 1000)
+        },
+        utcChanged
+      )
+      datepickerLocal.daterangepicker(
+        {
+          locale: {
+            format: "DD/MM/YYYY hh:mm:ss Z",
+          },
+          singleDatePicker: true,
+          timePicker: true,
+          timePicker24Hour: true,
+          timePickerSeconds: true,
+          minDate: new Date(genesisTimeStamp * 1000),
+        },
+        localChanged
+      )
+      slotChanged()
+    })
+  </script>
+{{ end }}

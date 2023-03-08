@@ -28,6 +28,13 @@ type ValidatorSyncDutiesStatistic struct {
 	MissedSync       uint64
 }
 
+type ValidatorWithdrawal struct {
+	Index  uint64
+	Epoch  uint64
+	Slot   uint64
+	Amount uint64
+}
+
 type ValidatorProposal struct {
 	Index  uint64
 	Slot   uint64

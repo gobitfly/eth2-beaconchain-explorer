@@ -18,9 +18,9 @@ import (
 // Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
 
-	var epochTemplate = templates.GetTemplate("layout.html", "epoch.html")
-	var epochFutureTemplate = templates.GetTemplate("layout.html", "epochFuture.html")
-	var epochNotFoundTemplate = templates.GetTemplate("layout.html", "epochnotfound.html")
+	var epochTemplate = templates.GetTemplate(append(layoutTemplateFiles, "epoch.html")...)
+	var epochFutureTemplate = templates.GetTemplate(append(layoutTemplateFiles, "epochFuture.html")...)
+	var epochNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "epochnotfound.html")...)
 
 	const MaxEpochValue = 4294967296 // we only render a page for epochs up to this value
 
@@ -36,9 +36,8 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		SetPageDataTitle(data, fmt.Sprintf("Epoch %v", epochString))
 		data.Meta.Path = "/epoch/" + epochString
-		logger.Errorf("error parsing epoch index %v: %v", epochString, err)
 
-		if handleTemplateError(w, r, epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "epoch.go", "Epoch", "parse epochString", epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -69,16 +68,16 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		//Epoch not in database -> Show future epoch
 		if epoch > MaxEpochValue {
-			if handleTemplateError(w, r, epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			if handleTemplateError(w, r, "epoch.go", "Epoch", ">MaxEpochValue", epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
 			return
 		}
 
 		//Create placeholder structs
-		blocks := make([]*types.IndexPageDataBlocks, 32)
+		blocks := make([]*types.IndexPageDataBlocks, utils.Config.Chain.Config.SlotsPerEpoch)
 		for i := range blocks {
-			slot := uint64(i) + epoch*32
+			slot := uint64(i) + (epoch * utils.Config.Chain.Config.SlotsPerEpoch)
 			block := types.IndexPageDataBlocks{
 				Epoch:  epoch,
 				Slot:   slot,
@@ -89,7 +88,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		}
 		epochPageData = types.EpochPageData{
 			Epoch:         epoch,
-			BlocksCount:   32,
+			BlocksCount:   utils.Config.Chain.Config.SlotsPerEpoch,
 			PreviousEpoch: epoch - 1,
 			NextEpoch:     epoch + 1,
 			Ts:            utils.EpochToTime(epoch),
@@ -98,7 +97,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 		//Render template
 		data.Data = epochPageData
-		if handleTemplateError(w, r, epochFutureTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "epoch.go", "Epoch", "Done (not in Database)", epochFutureTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -107,23 +106,27 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	err = db.ReaderDb.Select(&epochPageData.Blocks, `
 		SELECT 
 			blocks.slot, 
-			blocks.proposer, 
+			blocks.proposer,
 			blocks.blockroot, 
 			blocks.parentroot, 
 			blocks.attestationscount, 
-			blocks.depositscount, 
+			blocks.depositscount,
+			blocks.withdrawalcount, 
 			blocks.voluntaryexitscount, 
 			blocks.proposerslashingscount, 
 			blocks.attesterslashingscount,
        		blocks.status,
-			blocks.syncaggregate_participation
-		FROM blocks 
+			blocks.syncaggregate_participation,
+			COALESCE(validator_names.name, '') AS name
+		FROM blocks
+		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		WHERE epoch = $1
 		ORDER BY blocks.slot DESC`, epoch)
 	if err != nil {
 		logger.Errorf("error epoch blocks data: %v", err)
 
-		if handleTemplateError(w, r, epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "epoch.go", "Epoch", "read Blocks from db", epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -131,6 +134,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	for _, block := range epochPageData.Blocks {
 		block.Ts = utils.SlotToTime(block.Slot)
+		block.ProposerFormatted = utils.FormatValidatorWithName(block.Proposer, block.ProposerName)
 
 		switch block.Status {
 		case 0:
@@ -138,12 +142,22 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		case 1:
 			epochPageData.ProposedCount += 1
 			epochPageData.SyncParticipationRate += block.SyncAggParticipation
+			epochPageData.WithdrawalCount += block.Withdrawals
 		case 2:
 			epochPageData.MissedCount += 1
 		case 3:
 			epochPageData.OrphanedCount += 1
 		}
 	}
+
+	withdrawalTotal, err := db.GetEpochWithdrawalsTotal(epoch)
+	if err != nil {
+		logger.Errorf("error getting epoch withdrawals total: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	epochPageData.WithdrawalTotal = utils.FormatCurrentBalance(withdrawalTotal, GetCurrency(r))
+
 	epochPageData.SyncParticipationRate /= float64(epochPageData.ProposedCount)
 
 	epochPageData.Ts = utils.EpochToTime(epochPageData.Epoch)
@@ -156,10 +170,15 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	err = db.ReaderDb.Get(&epochPageData.PreviousEpoch, "SELECT epoch FROM epochs WHERE epoch < $1 ORDER BY epoch DESC LIMIT 1", epochPageData.Epoch)
-	if err != nil {
-		logger.Errorf("error retrieving previous epoch for epoch %v: %v", epochPageData.Epoch, err)
+
+	if epochPageData.Epoch == 0 {
 		epochPageData.PreviousEpoch = 0
+	} else {
+		err = db.ReaderDb.Get(&epochPageData.PreviousEpoch, "SELECT epoch FROM epochs WHERE epoch < $1 ORDER BY epoch DESC LIMIT 1", epochPageData.Epoch)
+		if err != nil {
+			logger.Errorf("error retrieving previous epoch for epoch %v: %v", epochPageData.Epoch, err)
+			epochPageData.PreviousEpoch = 0
+		}
 	}
 
 	data.Data = epochPageData
@@ -171,7 +190,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		err = epochTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if handleTemplateError(w, r, err) != nil {
+	if handleTemplateError(w, r, "epoch.go", "Epoch", "Done", err) != nil {
 		return // an error has occurred and was processed
 	}
 }

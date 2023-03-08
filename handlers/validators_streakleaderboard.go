@@ -14,14 +14,14 @@ import (
 
 // ValidatorsStreaksLeaderboard returns the attestation-streak-leaderboard using a go template
 func ValidatorsStreakLeaderboard(w http.ResponseWriter, r *http.Request) {
-	var validatorsStreakLeaderboardTemplate = templates.GetTemplate("layout.html", "validators_streakleaderboard.html")
+	var validatorsStreakLeaderboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validators_streakleaderboard.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "validators", "/validators/streaksleaderboard", "Validator Streaks Leaderboard")
 	data.HeaderAd = true
 
-	if handleTemplateError(w, r, validatorsStreakLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "validators_streakLeaderboard.go", "ValidatorsStreakLeaderboard", "", validatorsStreakLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

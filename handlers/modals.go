@@ -49,7 +49,7 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 
 		err = db.AddToWatchlist([]db.WatchlistEntry{{UserId: user.UserID, Validator_publickey: hex.EncodeToString(pubkey)}}, utils.GetNetwork())
 		if err != nil {
-			logger.WithError(err).Error("error adding validator to watchlist: %v", user.UserID)
+			logger.WithError(err).Errorf("error adding validator to watchlist: %v", user.UserID)
 			utils.SetFlash(w, r, authSessionName, "Error: We could not add your validator to the watchlist.")
 			http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 			return
@@ -59,7 +59,7 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 			if r.FormValue(string(ev.Event)) == "on" || r.FormValue("all") == "on" {
 				err := db.AddSubscription(user.UserID, utils.GetNetwork(), ev.Event, hex.EncodeToString(pubkey), 0)
 				if err != nil {
-					logger.WithError(err).Error("error adding subscription for user: %v", user.UserID)
+					logger.WithError(err).Errorf("error adding subscription for user: %v", user.UserID)
 					utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding your validator to the watchlist, please try again in a bit.")
 					http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 					return
@@ -67,7 +67,7 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 			} else {
 				err := db.DeleteSubscription(user.UserID, utils.GetNetwork(), ev.Event, hex.EncodeToString(pubkey))
 				if err != nil {
-					logger.WithError(err).Error("error deleting subscription for user: %v", user.UserID)
+					logger.WithError(err).Errorf("error deleting subscription for user: %v", user.UserID)
 					utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating a subscription, please try again in a bit.")
 					http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 					return
@@ -96,7 +96,7 @@ func UserModalAddNetworkEvent(w http.ResponseWriter, r *http.Request) {
 		if r.FormValue(string(ev.Event)) == "on" || r.FormValue("all") == "on" {
 			err := db.AddSubscription(user.UserID, utils.GetNetwork(), ev.Event, string(ev.Event), 0)
 			if err != nil {
-				logger.WithError(err).Error("error adding subscription for user: %v", user.UserID)
+				logger.WithError(err).Errorf("error adding subscription for user: %v", user.UserID)
 				utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding a network subscription, please try again in a bit.")
 				http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 				return
@@ -104,7 +104,7 @@ func UserModalAddNetworkEvent(w http.ResponseWriter, r *http.Request) {
 		} else {
 			err := db.DeleteSubscription(user.UserID, utils.GetNetwork(), ev.Event, string(ev.Event))
 			if err != nil {
-				logger.WithError(err).Error("error adding subscription for user: %v", user.UserID)
+				logger.WithError(err).Errorf("error adding subscription for user: %v", user.UserID)
 				utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating a network subscription, please try again in a bit.")
 				http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 				return
@@ -191,7 +191,7 @@ func UserModalManageNotificationModal(w http.ResponseWriter, r *http.Request) {
 			if active || all {
 				err := db.AddSubscription(user.UserID, utils.GetNetwork(), eventName, hex.EncodeToString(pubkey), 0)
 				if err != nil {
-					logger.WithError(err).Error("error adding subscription for user: %v", user.UserID)
+					logger.WithError(err).Errorf("error adding subscription for user: %v", user.UserID)
 					utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating the validators in your watchlist, please try again in a bit.")
 					http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 					return
@@ -199,7 +199,7 @@ func UserModalManageNotificationModal(w http.ResponseWriter, r *http.Request) {
 			} else {
 				err := db.DeleteSubscription(user.UserID, utils.GetNetwork(), eventName, hex.EncodeToString(pubkey))
 				if err != nil {
-					logger.WithError(err).Error("error deleting subscription for user: %v", user.UserID)
+					logger.WithError(err).Errorf("error deleting subscription for user: %v", user.UserID)
 					utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating the validators in your watchlist, please try again in a bit.")
 					http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 					return

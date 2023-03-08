@@ -8,7 +8,7 @@ import (
 )
 
 func Graffitiwall(w http.ResponseWriter, r *http.Request) {
-	var graffitiwallTemplate = templates.GetTemplate("layout.html", "graffitiwall.html")
+	var graffitiwallTemplate = templates.GetTemplate(append(layoutTemplateFiles, "graffitiwall.html")...)
 
 	var err error
 
@@ -28,7 +28,7 @@ func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 	data.HeaderAd = true
 	data.Data = graffitiwallData
 
-	if handleTemplateError(w, r, graffitiwallTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "graffitiwall.go", "Graffitiwall", "", graffitiwallTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

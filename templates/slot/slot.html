@@ -16,20 +16,6 @@
           att.appendChild(getInfoElementAttestations('Error loading attestations...', 'red'));
         }
       }
-
-      {{ if .ExecutionData }}
-        var transactions_tab_loaded = false
-        let ttab = $('#transactions-tab')
-        if(ttab.length > 0) {
-          ttab.on('shown.bs.tab', function (event) { if(!transactions_tab_loaded) { setupInfiniteScrollTransactions(); }; transactions_tab_loaded = true; });
-        } else {
-          console.error('error getting #transactions-tab')
-          const att = document.getElementById('transactions_table');
-          if(att) {
-            att.appendChild(getInfoElementTransactions('Error loading attestations...', 'red'));
-          }
-        }
-      {{ end }}
     }
 
     function getInfoElementAttestations (text, color) {
@@ -165,56 +151,8 @@
       }
     }
 
-    function getInfoElementTransactions (text, color) {
-      const txn_tr = document.createElement('tr'); {
-        txn_tr.innerHTML = `
-          <TD class="border-0" colspan='7' style='text-align: center; font-weight: bold; color: ` + color + `;'>` + text + `</TD>
-        `;
-      }
-      return txn_tr;
-    }
-
-    function getTransactionsElement(element, last=false) {
-      const txn_tr = document.createElement('tr'); {
-        if (!last) {
-          txn_tr.classList.add('border-bottom');
-        }
-        txn_tr.innerHTML = `
-          <TD class="border-0">` + element.HashFormatted + `</TD>
-          <TD class="border-0">` + element.Method + `</TD>
-          <TD class="border-0">` + element.FromFormatted + `</TD>
-          <TD class="border-0">` + element.ToFormatted + `</TD>
-          <TD class="border-0">` + element.Value + `</TD>
-          <TD class="border-0">` + element.Fee + `</TD>
-          <TD class="border-0">` + element.GasPrice + `</TD>
-        `;
-      }
-      return txn_tr;
-    }
-
-    {{ if .ExecutionData }}
-    async function setupInfiniteScrollTransactions() {
-      const infLoading = document.getElementById('transactions_table');
-      if(infLoading) {
-        try {
-          const res = await fetch(`/block/${encodeURI({{.ExecutionData.Number}})}/transactions`);
-          const data = await res.json();
-
-          const lastElement = data.length - 1
-          const startElement = (data.length > 10) ? 10 : 0;
-          for (let i = startElement; i < data.length; ++i) {
-            infLoading.appendChild(getTransactionsElement(data[i], (i == lastElement)));
-          }
-        } catch (err) {
-          console.error('error getting lazy attestations: ', err)
-          infLoading.appendChild(getInfoElementTransactions('Error loading transactions...', 'red'));
-        }
-      }
-    }
-    {{ end }}
-
     $(document).ready(function () {
-      let slotNumber = {{ .Slot }}
+      let slotNumber = {{ .Slot }} || 0
       var depositsTblOpts = {
         processing: true,
         serverSide: true,
@@ -274,7 +212,7 @@
         stateSave: true,
         searching: true,
         ajax: "/slot/" + slotNumber + "/votes",
-        pageLength: 10,
+        pageLength: 16,
         pagingType: "input",
         language: {
           searchPlaceholder: "Validator",
@@ -304,6 +242,59 @@
       }
 
       $("#block_votes").DataTable(votesTblOpts)
+
+
+      let withdrawalOpts = {
+          processing: true,
+          serverSide: true,
+          ordering: false,
+          info: false,
+          // stateSave: true,
+          searching: false,
+          ajax: "/slot/" + slotNumber + "/withdrawals",
+          paging: false,
+          // deferLoading: true,
+          pageLength: 10,
+          preDrawCallback: function () {
+            try {
+              $("#block_withdrawals").find('[data-toggle="tooltip"]').tooltip("dispose")
+            } catch (e) {
+              console.error(e)
+            }
+          },
+          drawCallback: function (settings) {
+            formatTimestamps()
+            $("#block_withdrawals").find('[data-toggle="tooltip"]').tooltip()
+          }
+        }
+
+        $("#block_withdrawals").DataTable(withdrawalOpts)
+
+        let blsChangeOpts = {
+          processing: true,
+          serverSide: true,
+          ordering: false,
+          info: false,
+          // stateSave: true,
+          searching: false,
+          ajax: "/slot/" + slotNumber + "/blsChange",
+          paging: false,
+          // deferLoading: true,
+          pageLength: 10,
+          preDrawCallback: function () {
+            try {
+              $("#block_blsChange").find('[data-toggle="tooltip"]').tooltip("dispose")
+            } catch (e) {
+              console.error(e)
+            }
+          },
+          drawCallback: function (settings) {
+            formatTimestamps()
+            $("#block_blsChange").find('[data-toggle="tooltip"]').tooltip()
+          }
+        }
+
+        $("#block_blsChange").DataTable(blsChangeOpts)
     })
   </script>
 
@@ -399,6 +390,16 @@
             <a class="nav-link" id="proposer-slashings-tab" data-toggle="tab" href="#proposer-slashings" role="tab" aria-controls="proposer-slashings" aria-selected="false">Proposer Slashings <span class="badge bg-secondary text-white">{{ .ProposerSlashingsCount }}</span></a>
           </li>
         {{ end }}
+        {{ if gt .WithdrawalCount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawal" aria-selected="false">Withdrawals <span class="badge bg-secondary text-white">{{ .WithdrawalCount }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt .BLSChangeCount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="blsChange-tab" data-toggle="tab" href="#blsChange" role="tab" aria-controls="blsChange" aria-selected="false">BLS Change <span class="badge bg-secondary text-white">{{ .BLSChangeCount }}</span></a>
+          </li>
+        {{ end }}
       </ul>
       <style>
         .block-card {
@@ -433,6 +434,20 @@
           <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
             <div class="card block-card py-1">
               {{ template "execution_transactions" .ExecutionData }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt .WithdrawalCount 0 }}
+          <div class="tab-pane fade" id="withdrawals" role="tabpanel" aria-labelledby="withdrawals-tab">
+            <div class="card block-card py-1">
+              {{ template "block_withdrawals" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt .BLSChangeCount 0 }}
+          <div class="tab-pane fade" id="blsChange" role="tabpanel" aria-labelledby="blsChange-tab">
+            <div class="card block-card py-1">
+              {{ template "block_blsChange" . }}
             </div>
           </div>
         {{ end }}

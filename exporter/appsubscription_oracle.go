@@ -17,11 +17,14 @@ import (
 	"github.com/awa/go-iap/playstore"
 )
 
+var duplicateOrderMap map[string]uint64 = make(map[string]uint64)
+
 func checkSubscriptions() {
 	if !utils.Config.Frontend.VerifyAppSubs {
 		return
 	}
 	for {
+		duplicateOrderMap = make(map[string]uint64)
 		start := time.Now()
 
 		receipts, err := db.GetAllAppSubscriptions()
@@ -38,7 +41,7 @@ func checkSubscriptions() {
 			valid, err := VerifyReceipt(googleClient, receipt)
 
 			if receipt.Store == "manuall" {
-				valid, err = VerifyManuall(receipt)
+				valid, err = verifyManuall(receipt)
 			}
 
 			if receipt.Store == "ethpool" {
@@ -51,11 +54,11 @@ func checkSubscriptions() {
 				if strings.Contains(err.Error(), "expired") {
 					err = db.SetSubscriptionToExpired(nil, receipt.ID)
 					if err != nil {
-						logger.Errorf("subscription set expired failed for [%v]: %w", receipt.ID, err)
+						logger.Errorf("subscription set expired failed for [%v]: %v", receipt.ID, err)
 					}
 					continue
 				}
-				logger.Warnf("subscription verification failed in service for [%v]: %w", receipt.ID, err)
+				logger.Warnf("subscription verification failed in service for [%v]: %v", receipt.ID, err)
 				continue
 			}
 
@@ -71,7 +74,7 @@ func checkSubscriptions() {
 	}
 }
 
-func VerifyManuall(receipt *types.PremiumData) (*VerifyResponse, error) {
+func verifyManuall(receipt *types.PremiumData) (*VerifyResponse, error) {
 	valid := receipt.ExpiresAt.Unix() > time.Now().Unix()
 	return &VerifyResponse{
 		Valid:          valid,
@@ -82,9 +85,9 @@ func VerifyManuall(receipt *types.PremiumData) (*VerifyResponse, error) {
 
 func VerifyReceipt(googleClient *playstore.Client, receipt *types.PremiumData) (*VerifyResponse, error) {
 	if receipt.Store == "ios-appstore" {
-		return VerifyApple(receipt)
+		return verifyApple(receipt)
 	} else if receipt.Store == "android-playstore" {
-		return VerifyGoogle(googleClient, receipt)
+		return verifyGoogle(googleClient, receipt)
 	} else {
 		return &VerifyResponse{
 			Valid:          false,
@@ -104,7 +107,7 @@ func initGoogle() *playstore.Client {
 	return client
 }
 
-func VerifyGoogle(client *playstore.Client, receipt *types.PremiumData) (*VerifyResponse, error) {
+func verifyGoogle(client *playstore.Client, receipt *types.PremiumData) (*VerifyResponse, error) {
 	if client == nil {
 		client = initGoogle()
 		if client == nil {
@@ -112,7 +115,7 @@ func VerifyGoogle(client *playstore.Client, receipt *types.PremiumData) (*Verify
 				Valid:          false,
 				ExpirationDate: 0,
 				RejectReason:   "gclient_init_exception",
-			}, errors.New("Google client can't be initialized")
+			}, errors.New("google client can't be initialized")
 		}
 	}
 
@@ -126,6 +129,19 @@ func VerifyGoogle(client *playstore.Client, receipt *types.PremiumData) (*Verify
 			RejectReason:   "invalid_state",
 		}, err
 	}
+
+	otherReceiptID, found := duplicateOrderMap[resp.OrderId]
+	if found {
+		if otherReceiptID != receipt.ID {
+			return &VerifyResponse{
+				Valid:          false,
+				ExpirationDate: 0,
+				RejectReason:   "duplicate",
+			}, err
+		}
+	}
+
+	duplicateOrderMap[resp.OrderId] = receipt.ID
 
 	now := time.Now().Unix() * 1000
 	valid := resp.ExpiryTimeMillis > now
@@ -157,7 +173,7 @@ func rejectReason(valid bool) string {
 	return "expired"
 }
 
-func VerifyApple(receipt *types.PremiumData) (*VerifyResponse, error) {
+func verifyApple(receipt *types.PremiumData) (*VerifyResponse, error) {
 	appStoreSecret := utils.Config.Frontend.AppSubsAppleSecret
 	client := storekit.NewVerificationClient().OnProductionEnv()
 
@@ -205,6 +221,19 @@ func VerifyApple(receipt *types.PremiumData) (*VerifyResponse, error) {
 
 	for _, latestReceiptInfo := range resp.LatestReceiptInfo {
 		productID := latestReceiptInfo.ProductId
+
+		otherReceiptID, found := duplicateOrderMap[latestReceiptInfo.OriginalTransactionId]
+		if found {
+			if otherReceiptID != receipt.ID {
+				return &VerifyResponse{
+					Valid:          false,
+					ExpirationDate: 0,
+					RejectReason:   "duplicate",
+				}, err
+			}
+		}
+
+		duplicateOrderMap[latestReceiptInfo.OriginalTransactionId] = receipt.ID
 
 		if receipt.ProductID == productID {
 			expiresAtMs := latestReceiptInfo.ExpiresDateMs

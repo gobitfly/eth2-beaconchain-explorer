@@ -11,7 +11,7 @@ import (
 )
 
 func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
-	var advertisewithusTemplate = templates.GetTemplate("layout.html", "advertisewithus.html")
+	var advertisewithusTemplate = templates.GetTemplate(append(layoutTemplateFiles, "advertisewithus.html")...)
 
 	var err error
 
@@ -30,7 +30,7 @@ func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data = pageData
-	if handleTemplateError(w, r, advertisewithusTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "advertisewithus.go", "AdvertiseWithUs", "", advertisewithusTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

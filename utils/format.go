@@ -21,6 +21,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
@@ -65,17 +66,17 @@ func FormatAttestationStatus(status uint64) template.HTML {
 // FormatAttestationStatusShort will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatusShort(status uint64) template.HTML {
 	if status == 0 {
-		return `<span title="Scheduled" data-toggle="tooltip" class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Sche.</span>`
+		return `<span title="Scheduled" data-toggle="tooltip" class="mx-1 badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Sche.</span>`
 	} else if status == 1 {
-		return `<span title="Attested" data-toggle="tooltip" class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Att.</span>`
+		return `<span title="Attested" data-toggle="tooltip" class="mx-1 badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Att.</span>`
 	} else if status == 2 {
-		return `<span title="Missed" data-toggle="tooltip" class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Miss.</span>`
+		return `<span title="Missed" data-toggle="tooltip" class="mx-1 badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Miss.</span>`
 	} else if status == 3 {
-		return `<span title="Missed (Orphaned)" data-toggle="tooltip" class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
+		return `<span title="Missed (Orphaned)" data-toggle="tooltip" class="mx-1 badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
 	} else if status == 4 {
-		return `<span title="Inactivity Leak" data-toggle="tooltip" class="badge badge-pill bg-danger text-white" style="font-size: 12px; font-weight: 500;">Leak</span>`
+		return `<span title="Inactivity Leak" data-toggle="tooltip" class="mx-1 badge badge-pill bg-danger text-white" style="font-size: 12px; font-weight: 500;">Leak</span>`
 	} else if status == 5 {
-		return `<span title="Inactive" data-toggle="tooltip" class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Inac.</span>`
+		return `<span title="Inactive" data-toggle="tooltip" class="mx-1 badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Inac.</span>`
 	} else {
 		return "Unknown"
 	}
@@ -251,6 +252,10 @@ func FormatAddCommasFormated(num float64, precision uint) template.HTML {
 	return template.HTML(strings.ReplaceAll(string([]rune(p.Sprintf(s, num))), ",", `<span class="thousands-separator"></span>`))
 }
 
+func FormatBigNumberAddCommasFormated(val hexutil.Big, precision uint) template.HTML {
+	return FormatAddCommasFormated(float64(val.ToInt().Int64()), 0)
+}
+
 func FormatAddCommas(n uint64) template.HTML {
 	number := FormatFloat(float64(n), 2)
 
@@ -320,16 +325,21 @@ func FormatBlockStatus(status uint64) template.HTML {
 func FormatBlockStatusShort(status uint64) template.HTML {
 	// genesis <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
 	if status == 0 {
-		return `<span title="Scheduled" data-toggle="tooltip" class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Sche.</span>`
+		return `<span title="Scheduled" data-toggle="tooltip" class="mx-1 badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Sche.</span>`
 	} else if status == 1 {
-		return `<span title="Proposed" data-toggle="tooltip" class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Prop.</span>`
+		return `<span title="Proposed" data-toggle="tooltip" class="mx-1 badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Prop.</span>`
 	} else if status == 2 {
-		return `<span title="Missed" data-toggle="tooltip" class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Miss.</span>`
+		return `<span title="Missed" data-toggle="tooltip" class="mx-1 badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Miss.</span>`
 	} else if status == 3 {
-		return `<span title="Missed (Orphaned)" data-toggle="tooltip" class="badge badge-pill bg-secondary text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
+		return `<span title="Missed (Orphaned)" data-toggle="tooltip" class="mx-1 badge badge-pill bg-secondary text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
 	} else {
 		return "Unknown"
 	}
+}
+
+// FormatBlockStatusShort will return an html status for a block.
+func FormatWithdrawalShort(slot uint64, amount uint64) template.HTML {
+	return template.HTML(fmt.Sprintf("<span title=\"Withdrawal processed in epoch %v during slot %v for %v\" data-toggle=\"tooltip\" class=\"mx-1 badge badge-pill bg-success text-white\" style=\"font-size: 12px; font-weight: 500;\"><i class=\"fas fa-money-bill\"></i></span>", EpochOfSlot(slot), slot, FormatCurrentBalance(amount, "ETH")))
 }
 
 func FormatTransactionType(txnType uint8) string {
@@ -393,58 +403,23 @@ func FormatEth1AddressStringLowerCase(addr []byte) template.HTML {
 func FormatEth1Address(addr []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(addr))
 	eth1Addr := common.BytesToAddress(addr)
-
-	if Config.Chain.Config.ConfigName == "prater" {
-		return template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
-	}
-	if Config.Chain.Config.ConfigName == "ropsten" {
-		return template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
-	}
-	if Config.Chain.Config.ConfigName == "sepolia" {
-		return template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
-	}
 	return template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
 }
 
 // FormatEth1Block will return the eth1-block formated as html
 func FormatEth1Block(block uint64) template.HTML {
-	if Config.Chain.Config.ConfigName == "prater" {
-		return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", block))
-	}
-	if Config.Chain.Config.ConfigName == "ropsten" {
-		return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", block))
-	}
-	if Config.Chain.Config.ConfigName == "sepolia" {
-		return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", block))
-	}
 	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", block))
 }
 
 // FormatEth1BlockHash will return the eth1-block formated as html
 func FormatEth1BlockHash(block []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(block))
-	if Config.Chain.Config.ConfigName == "prater" {
-		return template.HTML(fmt.Sprintf("<a href=\"/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
-	}
-	if Config.Chain.Config.ConfigName == "ropsten" {
-		return template.HTML(fmt.Sprintf("<a href=\"/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
-	}
-	if Config.Chain.Config.ConfigName == "sepolia" {
-		return template.HTML(fmt.Sprintf("<a href=\"/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
-	}
-	return template.HTML(fmt.Sprintf("<a href=\"/block/%#[1]x\">%[1]x</a>%s", block, copyBtn))
+	return template.HTML(fmt.Sprintf("<a href=\"/block/%#[1]x\">%#[1]x</a>%s", block, copyBtn))
 }
 
 // FormatEth1TxHash will return the eth1-tx-hash formated as html
 func FormatEth1TxHash(hash []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(hash))
-
-	if Config.Chain.Config.ConfigName == "prater" {
-		return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
-	}
-	if Config.Chain.Config.ConfigName == "ropsten" {
-		return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
-	}
 	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 }
 
@@ -508,16 +483,72 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
 }
 
-func FormatWithdawalCredentials(hash []byte) template.HTML {
+// WithdrawalCredentialsToAddress converts withdrawalCredentials to an address if possible
+func WithdrawalCredentialsToAddress(credentials []byte) ([]byte, error) {
+	if IsValidWithdrawalCredentials(fmt.Sprintf("%#x", credentials)) && bytes.Equal(credentials[:1], []byte{0x01}) {
+		return credentials[12:], nil
+	}
+	return nil, fmt.Errorf("invalid withdrawal credentials")
+}
+
+// AddressToWithdrawalCredentials converts a valid address to withdrawalCredentials
+func AddressToWithdrawalCredentials(address []byte) ([]byte, error) {
+	if IsValidEth1Address(fmt.Sprintf("%#x", address)) {
+		credentials := make([]byte, 12, 32)
+		credentials[0] = 0x01
+		credentials = append(credentials, address...)
+		return credentials, nil
+	}
+	return nil, fmt.Errorf("invalid eth1 address")
+}
+
+func FormatHashWithCopy(hash []byte) template.HTML {
+	if len(hash) == 0 {
+		return "N/A"
+	}
+
+	copyBtn := CopyButton(hex.EncodeToString(hash))
+	return template.HTML(fmt.Sprintf(`<span>%v</span> %v`, FormatHash(hash), copyBtn))
+}
+
+func formatWithdrawalHash(hash []byte) template.HTML {
+	var colorClass string
+	if hash[0] == 0x01 {
+		colorClass = "text-success"
+	} else {
+		colorClass = "text-warning"
+	}
+
+	return template.HTML(fmt.Sprintf("<span class=\"text-monospace %s\">%#x</span><span class=\"text-monospace\">%x…%x</span>", colorClass, hash[:1], hash[1:2], hash[len(hash)-2:]))
+}
+
+func FormatWithdawalCredentials(hash []byte, addCopyButton bool) template.HTML {
 	if len(hash) != 32 {
 		return "INVALID CREDENTIALS"
 	}
 
+	var text template.HTML
 	if hash[0] == 0x01 {
-		return template.HTML(fmt.Sprintf(`<a href="/address/0x%x">%s</a>`, hash[12:], FormatHash(hash)))
+		text = template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\">%s</a>", hash[12:], formatWithdrawalHash(hash)))
 	} else {
-		return FormatHash(hash)
+		text = formatWithdrawalHash(hash)
 	}
+
+	if addCopyButton {
+		text += template.HTML(fmt.Sprintf("<i class=\"fa fa-copy text-muted p-1\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=\"%#x\"></i>", hash))
+	}
+
+	return text
+}
+
+func FormatAddressToWithdrawalCredentials(address []byte, addCopyButton bool) template.HTML {
+	credentials, err := hex.DecodeString("010000000000000000000000")
+	if err != nil {
+		return "INVALID CREDENTIALS"
+	}
+	credentials = append(credentials, address...)
+
+	return FormatWithdawalCredentials(credentials, addCopyButton)
 }
 
 func FormatName(name string, trunc_opt ...bool) template.HTML {
@@ -1059,6 +1090,8 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 	if len(balance.Metadata.Logo) != 0 {
 		logo = fmt.Sprintf(`<img class="mr-1" style="height: 1.2rem;" src="data:image/png;base64, %s">`, base64.StdEncoding.EncodeToString(balance.Metadata.Logo))
 	}
+	symbolTitle := FormatTokenSymbolTitle(balance.Metadata.Symbol)
+	symbol := FormatTokenSymbol(balance.Metadata.Symbol)
 	pflt, _ := price.Float64()
 	flt, _ := num.Div(mul).Round(5).Float64()
 	bflt, _ := price.Mul(num.Div(mul)).Float64()
@@ -1066,7 +1099,7 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 	<div class="token-balance-col token-name text-truncate d-flex align-items-center justify-content-between flex-wrap">
 		<div class="token-icon p-1">
 			<a href='/token/0x%x?a=0x%x'>
-				<span>%s</span> <span>%s</span>
+				<span>%s</span> <span title="%s">%s</span>
 			</a> 
 		</div>
 		<div class="token-price-balance p-1">
@@ -1080,7 +1113,7 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 		<div class="token-price p-1">
 			<span class="text-muted" style="font-size: 90%%;">@ $%.2f</span>
 		</div>
-	</div>`, balance.Token, balance.Address, logo, balance.Metadata.Symbol, bflt, FormatThousandsEnglish(strconv.FormatFloat(flt, 'f', -1, 64)), pflt))
+	</div>`, balance.Token, balance.Address, logo, symbolTitle, symbol, bflt, FormatThousandsEnglish(strconv.FormatFloat(flt, 'f', -1, 64)), pflt))
 }
 
 func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
@@ -1108,12 +1141,22 @@ func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
 	return template.HTML(p.Sprintf("%s", FormatThousandsEnglish(strconv.FormatFloat(f, 'f', -1, 64))))
 }
 
+func FormatErc20Decimals(balance []byte, metadata *types.ERC20Metadata) decimal.Decimal {
+	decimals := new(big.Int).SetBytes(metadata.Decimals)
+	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
+	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance), 0)
+
+	return num.Div(mul)
+}
+
 func FormatTokenName(balance *types.Eth1AddressBalance) template.HTML {
 	logo := ""
 	if len(balance.Metadata.Logo) != 0 {
 		logo = fmt.Sprintf(`<img style="height: 20px;" src="data:image/png;base64, %s">`, base64.StdEncoding.EncodeToString(balance.Metadata.Logo))
 	}
-	return template.HTML(fmt.Sprintf("<a href='/token/0x%x?a=0x%x'>%s %s</a>", balance.Token, balance.Address, logo, balance.Metadata.Symbol))
+	symbolTitle := FormatTokenSymbolTitle(balance.Metadata.Symbol)
+	symbol := FormatTokenSymbol(balance.Metadata.Symbol)
+	return template.HTML(fmt.Sprintf(`<a href='/token/0x%x?a=0x%x' title="%s">%s %s</a>`, balance.Token, balance.Address, symbolTitle, logo, symbol))
 }
 
 func ToBase64(input []byte) string {
@@ -1154,7 +1197,4 @@ func FormatTimestampUInt64(ts uint64) template.HTML {
 // FormatEth1AddressFull will return the eth1-address formated as html
 func FormatEth1AddressFull(addr common.Address) template.HTML {
 	return FormatAddress(addr.Bytes(), nil, "", false, false, true)
-}
-
-func formatNumberInternal(prefix string, postfix string, number *big.Int, decimals int) {
 }

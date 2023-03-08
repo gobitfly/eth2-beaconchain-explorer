@@ -8,7 +8,7 @@
             var usp = new URLSearchParams(window.location.search)
             var q = usp.get('q')
             {{ if len .DepositContract }}
-            var tbl = $('#deposits').DataTable({
+            var tbl = $('#initiated-deposits').DataTable({
                 processing: true,
                 serverSide: true,
                 ordering: true,
@@ -25,7 +25,7 @@
                     }
                 },
                 drawCallback: function(settings) {
-                    formatTimestamps('#deposits')
+                    formatTimestamps('#initiated-deposits')
                 },
                 language: {
                     searchPlaceholder: 'Address | Val. Key | Withd. Cred. | Tx Hash',
@@ -37,18 +37,88 @@
                 }
             })
             {{end}}
-            if (q) {
-                tbl.search(q);
-                tbl.draw();
-            }
-            $("#deposits_filter > label > input").on('input', function(ev) {
-                if (ev && ev.target && ev.target.value) {
-                    var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
-                    window.history.replaceState(null, 'Eth1Deposits', newUrl)
-                } else {
-                    window.history.replaceState(null, 'Eth1Deposits', window.location.pathname)
-                }
-            })
+
+
+            var tblIncluded = $("#included-deposits").DataTable({
+        processing: true,
+        serverSide: true,
+        ordering: true,
+        stateSave: true,
+        order: [[0, "desc"]],
+        searching: true,
+        ajax: "/validators/included-deposits/data",
+        pagingType: "input",
+        language: {
+          searchPlaceholder: "Slot / Validator Key / Withdrawal Credentials",
+          search: "",
+          paginate: {
+            previous: '<i class="fas fa-chevron-left"></i>',
+            next: '<i class="fas fa-chevron-right"></i>',
+          },
+        },
+        drawCallback: function (settings) {
+          $('[data-toggle="tooltip"]').tooltip()
+        },
+        columnDefs: [
+          {
+            targets: 3,
+            data: "3",
+            render: function (data, type, row, meta) {
+              // make the span we get from the backend into a DOM element and extract the text value from it (because clipboard text takes only string, not HTML elements)
+              const clipboardtext = $(row[5]).text()
+              if (clipboardtext.startsWith("0x01")) {
+                data = `<a href="/address/${clipboardtext.replace("010000000000000000000000", "")}">${data}</a>`
+              }
+              return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
+            },
+          },
+          {
+            targets: 4,
+            data: "4",
+            render: function (data, type, row, meta) {
+              const clipboardtext = $(row[6]).text()
+              return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
+            },
+          },
+        ],
+      })
+      if (q) {
+          tblIncluded.search(q);
+          tblIncluded.draw();
+      }
+      $("#included-deposits_filter > label > input").on('input', function(ev) {
+          if (ev && ev.target && ev.target.value) {
+              var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+              q = ev.target.value
+              window.history.replaceState(null, 'Deposits', newUrl)
+          } else {
+              window.history.replaceState(null, 'Deposits', window.location.pathname)
+              q = ""
+          }
+          if(tbl) {
+            tbl.search(q || "");
+            tbl.draw();
+          }
+      })
+
+      if (q) {
+          tbl.search(q);
+          tbl.draw();
+      }
+      $("#initiated-deposits_filter > label > input").on('input', function(ev) {
+          if (ev && ev.target && ev.target.value) {
+              var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+              q = ev.target.value
+              window.history.replaceState(null, 'Deposits', newUrl)
+          } else {
+              window.history.replaceState(null, 'Deposits', window.location.pathname)
+              q = ""
+          }
+          if(tblIncluded) {
+              tblIncluded.search(q || "");
+              tblIncluded.draw();
+          }
+      })
 
         })
     </script>
@@ -62,7 +132,7 @@
     <div class="container my-2">
       <div class="d-md-flex py-2 justify-content-md-between mb-3">
         <div class="heading">
-          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-file-signature mr-2"></i>Eth Deposits</h1>
+          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-file-signature mr-2"></i>Deposits</h1>
         </div>
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
@@ -123,6 +193,9 @@
           </div>
         </div>
       </div>
+      <h2 class="h4 my-3">
+        <span class="nav-text">Initiated Deposits</span>
+      </h2>
       <div>
         {{ template "depositChart" . }}
       </div>
@@ -130,7 +203,7 @@
       <div class="card">
         <div class="card-body px-0 py-2">
           <div class="table-responsive pt-2">
-            <table class="table" id="deposits">
+            <table class="table" id="initiated-deposits">
               <thead>
                 <tr>
                   <th>Address</th>
@@ -152,6 +225,28 @@
                   </tr>
                 {{ end }}
               </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <h2 class="my-3 h4">
+        <span class="nav-text">Included Deposits</span>
+      </h2>
+      <h6>This table displays the deposits received by the Ethereum Beacon Chain.</h6>
+      <div class="card">
+        <div class="card-body px-0 py-2">
+          <div class="table-responsive pt-2">
+            <table class="table" id="included-deposits">
+              <thead>
+                <tr>
+                  <th>Slot</th>
+                  <th>Validator Key</th>
+                  <th>Amount</th>
+                  <th>Withdrawal Credentials</th>
+                  <th>Signature</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
             </table>
           </div>
         </div>

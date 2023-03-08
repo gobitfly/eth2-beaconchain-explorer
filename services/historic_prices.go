@@ -12,7 +12,7 @@ import (
 )
 
 func StartHistoricPriceService() {
-	for true {
+	for {
 		updateHistoricPrices()
 		time.Sleep(time.Hour)
 	}

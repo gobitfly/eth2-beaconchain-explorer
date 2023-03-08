@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -25,7 +24,6 @@ var logger = logrus.New().WithField("module", "exporter")
 // This is a workaround for a bug in the prysm archive node that causes epochs without blocks
 // to not be archived properly (see https://github.com/prysmaticlabs/prysm/issues/4165)
 var epochBlacklist = make(map[uint64]uint64)
-var saveEpochMux = &sync.Mutex{}
 var fullCheckRunning = uint64(0)
 
 var Client *rpc.Client
@@ -37,6 +35,7 @@ func Start(client rpc.Client) error {
 	go genesisDepositsExporter()
 	go checkSubscriptions()
 	go syncCommitteesExporter(client)
+	go syncCommitteesCountExporter()
 	if utils.Config.SSVExporter.Enabled {
 		go ssvExporter()
 	}
@@ -53,8 +52,19 @@ func Start(client rpc.Client) error {
 	}
 	// wait until the beacon-node is available
 	for {
-		_, err := client.GetChainHead()
+		head, err := client.GetChainHead()
 		if err == nil {
+			logger.Infof("Beacon node is available with head slot: %v", head.HeadSlot)
+
+			// if we are still waiting for genesis, export epoch 0 with genesis data
+			// epoch 0 will only contain genesis data at this point
+			if head.HeadSlot == 0 {
+				err := ExportEpoch(0, client)
+				if err != nil {
+					logger.Errorf("error exporting genesis information for epoch 0 err: %v", err)
+				}
+			}
+
 			break
 		}
 		logger.Errorf("beacon-node seems to be unavailable: %v", err)
@@ -65,14 +75,14 @@ func Start(client rpc.Client) error {
 		logger.Printf("performing one time full db reindex")
 		head, err := client.GetChainHead()
 		if err != nil {
-			logger.Fatal(err)
+			utils.LogFatal(err, "getting chain head from client for full db reindex error", 0)
 		}
 
-		for epoch := uint64(1); epoch <= head.HeadEpoch; epoch++ {
+		for epoch := uint64(0); epoch <= head.HeadEpoch; epoch++ {
 			err := ExportEpoch(epoch, client)
 
 			if err != nil {
-				logger.Error(err)
+				utils.LogError(err, "exporting all epochs up to head epoch error", 0)
 			}
 		}
 	}
@@ -81,11 +91,11 @@ func Start(client rpc.Client) error {
 		logger.Printf("performing one time full canon check")
 		head, err := client.GetChainHead()
 		if err != nil {
-			logger.Fatal(err)
+			utils.LogFatal(err, "getting chain head from client for full canon check error", 0)
 		}
 
-		for epoch := head.HeadEpoch - 1; epoch >= 0; epoch-- {
-			blocks, err := client.GetBlockStatusByEpoch(epoch)
+		for epoch := int64(head.HeadEpoch) - 1; epoch >= 0; epoch-- {
+			blocks, err := client.GetBlockStatusByEpoch(uint64(epoch))
 			if err != nil {
 				logger.Errorf("error retrieving block status: %v", err)
 				continue
@@ -102,13 +112,13 @@ func Start(client rpc.Client) error {
 		// Add any missing epoch to the export set (might happen if the indexer was stopped for a long period of time)
 		epochs, err := db.GetAllEpochs()
 		if err != nil {
-			logger.Fatal(err)
+			utils.LogFatal(err, "getting all epochs from db error", 0)
 		}
 
 		if len(epochs) > 0 && epochs[0] != 0 {
 			err := ExportEpoch(0, client)
 			if err != nil {
-				logger.Error(err)
+				utils.LogError(err, "exporting epoch 0 error", 0)
 			}
 			logger.Printf("finished export for epoch %v", 0)
 			epochs = append([]uint64{0}, epochs...)
@@ -121,7 +131,7 @@ func Start(client rpc.Client) error {
 				for epoch := epochs[i]; epoch <= epochs[i+1]; epoch++ {
 					err := ExportEpoch(epoch, client)
 					if err != nil {
-						logger.Error(err)
+						utils.LogError(err, fmt.Errorf("exporting epochs between %v and %v error", epochs[i], epochs[i+1]), 0)
 					}
 					logger.Printf("finished export for epoch %v", epoch)
 				}
@@ -133,17 +143,17 @@ func Start(client rpc.Client) error {
 		// Make sure that all blocks are correct by comparing all block hashes in the database to the ones we have in the node
 		head, err := client.GetChainHead()
 		if err != nil {
-			logger.Fatal(err)
+			utils.LogFatal(err, "getting chain head from client for full blocks check error", 0)
 		}
 
 		dbBlocks, err := db.GetLastPendingAndProposedBlocks(1, head.HeadEpoch)
 		if err != nil {
-			logger.Fatal(err)
+			utils.LogFatal(err, "getting proposed and pending blocks error ", 0)
 		}
 
 		nodeBlocks, err := GetLastBlocks(1, head.HeadEpoch, client)
 		if err != nil {
-			logger.Fatal(err)
+			utils.LogFatal(err, "getting blocks for range of epochs error", 0)
 		}
 
 		blocksMap := make(map[string]*types.BlockComparisonContainer)
@@ -210,12 +220,12 @@ func Start(client rpc.Client) error {
 		// Update all epoch statistics
 		head, err := client.GetChainHead()
 		if err != nil {
-			logger.Fatal(err)
+			utils.LogFatal(err, "getting chain head from client for updating epoch statistics error", 0)
 		}
 		startEpoch := uint64(0)
 		err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
 		if err != nil {
-			logger.Fatal(err)
+			utils.LogFatal(err, "error while updating epoch status", 0)
 		}
 	}
 
@@ -504,90 +514,84 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		return fmt.Errorf("error retrieving epoch data: no validators received for epoch")
 	}
 
-	go func() {
-		saveEpochMux.Lock()
-		defer saveEpochMux.Unlock()
-		logger.Infof("acquired saveEpochMux lock for epoch %v", data.Epoch)
-		// export epoch data to bigtable
-		g := new(errgroup.Group)
-		g.Go(func() error {
-			err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
-			if err != nil {
-				return fmt.Errorf("error exporting validator balances to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			err = db.BigtableClient.SaveAttestationAssignments(epoch, data.ValidatorAssignmentes.AttestorAssignments)
-			if err != nil {
-				return fmt.Errorf("error exporting attestation assignments to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			err = db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
-			if err != nil {
-				return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			err = db.BigtableClient.SaveAttestations(data.Blocks)
-			if err != nil {
-				return fmt.Errorf("error exporting attestations to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			err = db.BigtableClient.SaveProposals(data.Blocks)
-			if err != nil {
-				return fmt.Errorf("error exporting proposals to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			err = db.BigtableClient.SaveSyncComitteeDuties(data.Blocks)
-			if err != nil {
-				return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			attestedSlots := make(map[uint64]uint64)
-			for _, blockkv := range data.Blocks {
-				for _, block := range blockkv {
-					for _, attestation := range block.Attestations {
-						for _, validator := range attestation.Attesters {
-							if block.Slot > attestedSlots[validator] {
-								attestedSlots[validator] = block.Slot
-							}
+	// export epoch data to bigtable
+	g := new(errgroup.Group)
+	g.SetLimit(7)
+	g.Go(func() error {
+		err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
+		if err != nil {
+			return fmt.Errorf("error exporting validator balances to bigtable: %v", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		err = db.BigtableClient.SaveAttestationAssignments(epoch, data.ValidatorAssignmentes.AttestorAssignments)
+		if err != nil {
+			return fmt.Errorf("error exporting attestation assignments to bigtable: %v", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		err = db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
+		if err != nil {
+			return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		err = db.BigtableClient.SaveAttestations(data.Blocks)
+		if err != nil {
+			return fmt.Errorf("error exporting attestations to bigtable: %v", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		err = db.BigtableClient.SaveProposals(data.Blocks)
+		if err != nil {
+			return fmt.Errorf("error exporting proposals to bigtable: %v", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		err = db.BigtableClient.SaveSyncComitteeDuties(data.Blocks)
+		if err != nil {
+			return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		attestedSlots := make(map[uint64]uint64)
+		for _, blockkv := range data.Blocks {
+			for _, block := range blockkv {
+				for _, attestation := range block.Attestations {
+					for _, validator := range attestation.Attesters {
+						if block.Slot > attestedSlots[validator] {
+							attestedSlots[validator] = block.Slot
 						}
 					}
 				}
 			}
-
-			err = services.SetLastAttestationSlots(attestedSlots)
-			if err != nil {
-				return fmt.Errorf("error settings last attestation slots for epoch %v: %v", data.Epoch, err)
-			}
-			return nil
-		})
-
-		err = g.Wait()
-		if err != nil {
-			logger.Errorf("error during bigtable export: %v", err)
-			return
 		}
 
-		// at this point all epoch data has been written to bigtable
-		err = db.SaveEpoch(data, client)
+		err = services.SetLastAttestationSlots(attestedSlots)
 		if err != nil {
-			logger.Errorf("error saving epoch data: %v", err)
-			return
+			return fmt.Errorf("error settings last attestation slots for epoch %v: %v", data.Epoch, err)
 		}
+		return nil
+	})
 
-		services.ReportStatus("epochExporter", "Running", nil)
-	}()
+	err = g.Wait()
+	if err != nil {
+		return fmt.Errorf("error during bigtable export: %w", err)
+	}
+
+	// at this point all epoch data has been written to bigtable
+	err = db.SaveEpoch(data, client)
+	if err != nil {
+		return fmt.Errorf("error saving epoch data: %w", err)
+	}
+
+	services.ReportStatus("epochExporter", "Running", nil)
 	return nil
 }
 
@@ -617,46 +621,11 @@ func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
 	return nil
 }
 
-func finalityCheckpointsUpdater(client rpc.Client) {
-	t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot))
-	for range t.C {
-		var prevEpoch uint64
-		err := db.WriterDb.Get(&prevEpoch, `select coalesce(max(epoch),1) from finality_checkpoints`)
-		if err != nil {
-			logger.WithError(err).Errorf("error getting last exported finality_checkpoints from db")
-			continue
-		}
-		nextEpoch := prevEpoch + 1
-		checkpoints, err := client.GetFinalityCheckpoints(nextEpoch)
-		if err != nil {
-			logger.WithFields(logrus.Fields{"error": err, "epoch": nextEpoch}).Errorf("error getting finality_checkpoints from client")
-			continue
-		}
-		_, err = db.WriterDb.Exec(`
-			insert into finality_checkpoints (
-				epoch, 
-				current_justified_epoch, current_justified_root, 
-				previous_justified_epoch, previous_justified_root, 
-				finalized_epoch, finalized_root
-			)
-			values ($1, $2, $3, $4, $5, $6, $7)`,
-			nextEpoch,
-			checkpoints.CurrentJustified.Epoch, checkpoints.CurrentJustified.Root,
-			checkpoints.PreviousJustified.Epoch, checkpoints.PreviousJustified.Root,
-			checkpoints.Finalized.Epoch, checkpoints.Finalized.Root,
-		)
-		if err != nil {
-			logger.WithFields(logrus.Fields{"error": err, "epoch": nextEpoch}).Errorf("error inserting finality_checkpoints into db")
-			continue
-		}
-	}
-}
-
 func networkLivenessUpdater(client rpc.Client) {
 	var prevHeadEpoch uint64
 	err := db.WriterDb.Get(&prevHeadEpoch, "SELECT COALESCE(MAX(headepoch), 0) FROM network_liveness")
 	if err != nil {
-		logger.Fatal(err)
+		utils.LogFatal(err, "getting previous head epoch from db error", 0)
 	}
 
 	epochDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch)
@@ -777,7 +746,6 @@ func genesisDepositsExporter() {
 				LEFT JOIN validator_balances_recent b 
 					ON v.validatorindex = b.validatorindex
 					AND b.epoch = 0
-					AND b.week = 0
 				LEFT JOIN ( 
 					SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits 
 				) d ON d.publickey = v.pubkey

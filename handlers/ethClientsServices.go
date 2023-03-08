@@ -11,7 +11,7 @@ import (
 )
 
 func EthClientsServices(w http.ResponseWriter, r *http.Request) {
-	var ethClientsServicesTemplate = templates.GetTemplate("layout.html", "ethClientsServices.html")
+	var ethClientsServicesTemplate = templates.GetTemplate(append(layoutTemplateFiles, "ethClientsServices.html")...)
 
 	var err error
 
@@ -37,8 +37,6 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 			switch item {
 			case "geth":
 				pageData.Geth.IsUserSubscribed = true
-			case "openethereum":
-				pageData.OpenEthereum.IsUserSubscribed = true
 			case "nethermind":
 				pageData.Nethermind.IsUserSubscribed = true
 			case "besu":
@@ -67,7 +65,7 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data = pageData
-	if handleTemplateError(w, r, ethClientsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "ethClientsServices.go", "EthClientsServices", "", ethClientsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

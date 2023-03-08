@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"math/big"
 	"strings"
@@ -14,6 +15,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type EventName string
@@ -26,6 +29,7 @@ const (
 	ValidatorGotSlashedEventName                     EventName = "validator_got_slashed"
 	ValidatorDidSlashEventName                       EventName = "validator_did_slash"
 	ValidatorIsOfflineEventName                      EventName = "validator_is_offline"
+	ValidatorReceivedWithdrawalEventName             EventName = "validator_withdrawal"
 	ValidatorReceivedDepositEventName                EventName = "validator_received_deposit"
 	NetworkSlashingEventName                         EventName = "network_slashing"
 	NetworkValidatorActivationQueueFullEventName     EventName = "network_validator_activation_queue_full"
@@ -69,6 +73,7 @@ var EventLabel map[EventName]string = map[EventName]string{
 	ValidatorDidSlashEventName:                       "Your validator(s) slashed another validator",
 	ValidatorIsOfflineEventName:                      "Your validator(s) state changed",
 	ValidatorReceivedDepositEventName:                "Your validator(s) received a deposit",
+	ValidatorReceivedWithdrawalEventName:             "Your validator(s) received a withdrawal",
 	NetworkSlashingEventName:                         "A slashing event has been registered by the network",
 	NetworkValidatorActivationQueueFullEventName:     "The activation queue is full",
 	NetworkValidatorActivationQueueNotFullEventName:  "The activation queue is empty",
@@ -108,6 +113,7 @@ var EventNames = []EventName{
 	ValidatorDidSlashEventName,
 	ValidatorIsOfflineEventName,
 	ValidatorReceivedDepositEventName,
+	ValidatorReceivedWithdrawalEventName,
 	NetworkSlashingEventName,
 	NetworkValidatorActivationQueueFullEventName,
 	NetworkValidatorActivationQueueNotFullEventName,
@@ -130,8 +136,10 @@ var EventNames = []EventName{
 }
 
 type EventNameDesc struct {
-	Desc  string
-	Event EventName
+	Desc    string
+	Event   EventName
+	Info    template.HTML
+	Warning template.HTML
 }
 
 type MachineMetricSystemUser struct {
@@ -148,6 +156,7 @@ var AddWatchlistEvents = []EventNameDesc{
 	{
 		Desc:  "Validator is Offline",
 		Event: ValidatorIsOfflineEventName,
+		Info:  template.HTML(`<i data-toggle="tooltip" data-html="true" title="<div class='text-left'>Will trigger a notifcation:<br><ul><li>Once you have been offline for 3 epochs</li><li>Every 32 Epochs (~3 hours) during your downtime</li><li>Once you are back online again</li></ul></div>" class="fas fa-question-circle"></i>`),
 	},
 	{
 		Desc:  "Proposals missed",
@@ -166,8 +175,14 @@ var AddWatchlistEvents = []EventNameDesc{
 		Event: SyncCommitteeSoon,
 	},
 	{
-		Desc:  "Attestations missed",
-		Event: ValidatorMissedAttestationEventName,
+		Desc:    "Attestations missed",
+		Event:   ValidatorMissedAttestationEventName,
+		Warning: template.HTML(`<i data-toggle="tooltip" title="Will trigger every epoch (6.4 minutes) during downtime" class="fas fa-exclamation-circle text-warning"></i>`),
+	},
+	{
+		Desc:  "Withdrawal processed",
+		Event: ValidatorReceivedWithdrawalEventName,
+		Info:  template.HTML(`<i data-toggle="tooltip" data-html="true" title="<div class='text-left'>Will trigger a notifcation when:<br><ul><li>A partial withdrawal is processed</li><li>Your validator exits and its full balance is withdrawn</li></ul> <div>Requires that your validator has 0x01 credentials</div></div>" class="fas fa-question-circle"></i>`),
 	},
 }
 
@@ -184,7 +199,7 @@ var NetworkNotificationEvents = []EventNameDesc{
 }
 
 func GetDisplayableEventName(event EventName) string {
-	return strings.Title(strings.ReplaceAll(string(event), "_", " "))
+	return cases.Title(language.English).String(strings.ReplaceAll(string(event), "_", " "))
 }
 
 func EventNameFromString(event string) (EventName, error) {
@@ -513,13 +528,32 @@ type RawMempoolResponse struct {
 	Pending map[string]map[int]RawMempoolTransaction `json:"pending"`
 }
 
+func (mempool RawMempoolResponse) FindTxByHash(txHashString string) *RawMempoolTransaction {
+	for _, pendingData := range mempool.Pending {
+		for _, tx := range pendingData {
+			if fmt.Sprintf("%s", tx.Hash) == txHashString {
+				return &tx
+			}
+		}
+	}
+	return nil
+}
+
 type RawMempoolTransaction struct {
-	Hash      common.Hash     `json:"hash"`
-	From      *common.Address `json:"from"`
-	To        *common.Address `json:"to"`
-	Value     *hexutil.Big    `json:"value"`
-	Gas       *hexutil.Big    `json:"gas"`
-	GasFeeCap *hexutil.Big    `json:"maxFeePerGas,omitempty"`
-	GasPrice  *hexutil.Big    `json:"gasPrice"`
-	Nonce     *hexutil.Big    `json:"nonce"`
+	Hash             common.Hash     `json:"hash"`
+	From             *common.Address `json:"from"`
+	To               *common.Address `json:"to"`
+	Value            *hexutil.Big    `json:"value"`
+	Gas              *hexutil.Big    `json:"gas"`
+	GasFeeCap        *hexutil.Big    `json:"maxFeePerGas,omitempty"`
+	GasPrice         *hexutil.Big    `json:"gasPrice"`
+	Nonce            *hexutil.Big    `json:"nonce"`
+	Input            *string         `json:"input"`
+	TransactionIndex *hexutil.Big    `json:"transactionIndex"`
+}
+
+type MempoolTxPageData struct {
+	RawMempoolTransaction
+	TargetIsContract   bool
+	IsContractCreation bool
 }
