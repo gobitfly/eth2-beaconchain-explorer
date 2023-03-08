@@ -1,10 +1,27 @@
 {{ define "addHandler" }}
+  <style>
+    @keyframes fadeInAd {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+    ins[data-revive-id] {
+      opacity: 0;
+    }
+    ins[data-revive-loaded] {
+      opacity: 1;
+      animation: fadeInAd 5s;
+    }
+  </style>
   <script>
     const configurations = {{ . }}
     const bannerTemplate = `
         <div id="r-banner" class=" my-2 pb-1 ad d-flex justify-content-center align-items-center ad-banner">
             <div id="revive-banner" class="position-relative d-flex justify-content-center align-items-center" style="width:100%; height: 90px">
-            <ins ref="ins" data-revive-zoneid="--bannerId--" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"> </ins>
+              <ins ref="ins" data-revive-zoneid="--bannerId--" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"> </ins>
             </div>
         </div>
     `
@@ -13,6 +30,13 @@
         const ins = $(`#${id}`).find("ins")
         ins.removeAttr("data-revive-loaded")
         ins.removeAttr("data-revive-seq")
+        reviveAsync["5b200397ccf8a9353bf44ef99b45268c"].refresh()
+      }
+    }
+
+    function makeSureReviveIsInitiated(id) {
+      const ins = $(`#${id}`).find("ins")
+      if (!ins.attr("data-revive-seq") && !ins.attr("data-revive-loaded")) {
         reviveAsync["5b200397ccf8a9353bf44ef99b45268c"].refresh()
       }
     }
@@ -40,8 +64,9 @@
             break
         }
         if (config.RefreshInterval) {
-          window.requestInterval(() => refreshAd(config.Id), config.RefreshInterval * 1000)
+          setInterval(() => refreshAd(config.Id), config.RefreshInterval * 1000)
         }
+        makeSureReviveIsInitiated(config.Id)
       } else if (retry) {
         setInterval(() => initiateConfig(config), 1000) //If we didn't find the element initially let's retry it once after one second.
       } else {

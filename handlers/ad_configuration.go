@@ -51,8 +51,9 @@ func AdConfiguration(w http.ResponseWriter, r *http.Request) {
 	pageData.CsrfField = csrf.TemplateField(r)
 	pageData.Configurations = configs
 	pageData.New = types.AdConfig{
-		InsertMode: "insert",
-		Enabled:    true,
+		InsertMode:     "replace",
+		JQuerySelector: "#r-banner",
+		Enabled:        true,
 	}
 	data.Data = pageData
 
