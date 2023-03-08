@@ -17,9 +17,7 @@ import (
 func Pricing(w http.ResponseWriter, r *http.Request) {
 
 	var pricingTemplate = templates.GetTemplate(
-		"layout.html",
-		"payment/pricing.html",
-		"svg/pricing.html",
+		append(layoutTemplateFiles, "payment/pricing.html", "svg/pricing.html")...,
 	)
 	var err error
 
@@ -56,7 +54,7 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = pageData
 
-	if handleTemplateError(w, r, pricingTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "pricing.go", "Pricing", "", pricingTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -64,9 +62,8 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 func MobilePricing(w http.ResponseWriter, r *http.Request) {
 
 	var mobilePricingTemplate = templates.GetTemplate(
-		"layout.html",
-		"payment/mobilepricing.html",
-		"svg/mobilepricing.html",
+		append(layoutTemplateFiles, "payment/mobilepricing.html",
+			"svg/mobilepricing.html")...,
 	)
 
 	var err error
@@ -112,7 +109,7 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = pageData
 
-	if handleTemplateError(w, r, mobilePricingTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "pricing.go", "MobilePricing", "", mobilePricingTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

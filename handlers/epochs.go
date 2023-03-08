@@ -15,7 +15,7 @@ import (
 // Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {
 
-	var epochsTemplate = templates.GetTemplate("layout.html", "epochs.html")
+	var epochsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "epochs.html")...)
 
 	currency := GetCurrency(r)
 
@@ -33,10 +33,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Error("error getting user session")
 	}
 
-	state, err := GetDataTableState(user, session, "epochs")
-	if err != nil {
-		logger.WithError(err).Error("error getting stored table state")
-	}
+	state := GetDataTableState(user, session, "epochs")
 	length := uint64(50)
 	start := uint64(0)
 	var startEpoch uint64
@@ -77,7 +74,8 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		proposerslashingscount, 
 		attesterslashingscount, 
 		attestationscount, 
-		depositscount, 
+		depositscount,
+		withdrawalcount,
 		voluntaryexitscount, 
 		validatorscount, 
 		averagevalidatorbalance, 
@@ -101,7 +99,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 			utils.FormatEpoch(b.Epoch),
 			utils.FormatTimestamp(utils.EpochToTime(b.Epoch).Unix()),
 			b.AttestationsCount,
-			b.DepositsCount,
+			fmt.Sprintf("%v / %v", b.DepositsCount, b.WithdrawalCount),
 			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
 			utils.FormatYesNo(b.Finalized),
 			utils.FormatBalance(b.EligibleEther, currency),
@@ -118,7 +116,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		DisplayStart:    start,
 	}
 
-	if handleTemplateError(w, r, epochsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "epochs.go", "Epochs", "Done", epochsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -179,6 +177,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 				attesterslashingscount, 
 				attestationscount, 
 				depositscount, 
+				withdrawalcount,
 				voluntaryexitscount, 
 				validatorscount, 
 				averagevalidatorbalance, 
@@ -221,7 +220,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatEpoch(b.Epoch),
 			utils.FormatTimestamp(utils.EpochToTime(b.Epoch).Unix()),
 			b.AttestationsCount,
-			b.DepositsCount,
+			fmt.Sprintf("%v / %v", b.DepositsCount, b.WithdrawalCount),
 			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
 			utils.FormatYesNo(b.Finalized),
 			utils.FormatBalance(b.EligibleEther, currency),

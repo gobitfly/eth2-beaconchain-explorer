@@ -1,5 +1,5 @@
 {{ define "participationWarning" }}
-  <div v-if="participation < 0.66" class="page-info my-2 p-1">
+  <div v-if="participation < 0.66 && participation > 0" class="page-info my-2 p-1">
     <div class="d-flex justify-content-between">
       <h5><i class="fas fa-hands-helping"></i> Get the network back on track by turning on your validator</h5>
       <span class="d-none d-lg-block">${validatorsMissing} validators missing</span>

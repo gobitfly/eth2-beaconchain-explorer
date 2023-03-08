@@ -21,14 +21,14 @@ const (
 
 func Eth1Transactions(w http.ResponseWriter, r *http.Request) {
 
-	var eth1TransactionsTemplate = templates.GetTemplate("layout.html", "execution/transactions.html")
+	var eth1TransactionsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "execution/transactions.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "blockchain", "/eth1transactions", "Transactions")
 	data.Data = getTransactionDataStartingWithPageToken("")
 
-	if handleTemplateError(w, r, eth1TransactionsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "eth1Transactions.go", "Eth1Transactions", "", eth1TransactionsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -140,7 +140,7 @@ func getEth1BlockAndNext(number uint64) (*types.Eth1Block, uint64, error) {
 		return nil, 0, err
 	}
 	if block == nil {
-		return nil, 0, fmt.Errorf("Block %d not found", number)
+		return nil, 0, fmt.Errorf("block %d not found", number)
 	}
 
 	nextBlock := uint64(0)

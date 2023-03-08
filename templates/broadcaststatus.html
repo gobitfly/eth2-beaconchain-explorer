@@ -1,0 +1,73 @@
+{{ define "js" }}
+{{ end }}
+
+{{ define "css" }}
+  <style>
+    @media (min-width: 1140px) {
+      .max-lg-300 {
+        max-width: 300px;
+      }
+    }
+    .broadcast-status .promo-code {
+      border: 1px solid var(--highlight);
+      display: block;
+    }
+    .broadcast-status .highlight-text {
+      color: var(--highlight);
+    }
+  </style>
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="broadcast-status container mt-2">
+      <section class="my-5">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="row justify-content-center">
+              <div class="col-md-12 col-lg-8 text-center">
+                <h4 class="h4 pb-3">{{ .JobTitle }}<br />{{ .Job.ID }}</h4>
+                <div class="card text-left">
+                  <div class="card-body">
+                    <div class="row flex-nowrap border-bottom p-3 mx-0">
+                      <div class="col-md-4">Status:</div>
+                      <div class="col-md-8">{{ .Job.Status }}</div>
+                    </div>
+                    <div class="row flex-nowrap border-bottom p-3 mx-0">
+                      <div class="col-md-4">Type:</div>
+                      <div class="col-md-8">{{ .JobTypeLabel }}</div>
+                    </div>
+                    <div class="row flex-nowrap border-bottom p-3 mx-0">
+                      <div class="col-md-4">Data:</div>
+                      <div class="col-md-8">
+                        <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy json-text from the request to clipboard" data-clipboard-text="{{ .JobJson }}">Copy json <i class="fa fa-copy"></i></button>
+                      </div>
+                    </div>
+                    <div class="row flex-nowrap border-bottom p-3 mx-0">
+                      <div class="col-md-4">Created time:</div>
+                      <div class="col-md-8">{{ .Job.CreatedTime | formatTime }}</div>
+                    </div>
+                    {{ if .Job.SubmittedToNodeTime.Valid }}
+                      <div class="row flex-nowrap border-bottom p-3 mx-0">
+                        <div class="col-md-4">Submitted to node time:</div>
+                        <div class="col-md-8">{{ .Job.SubmittedToNodeTime.Time | formatTime }}</div>
+                      </div>
+                    {{ end }}
+                    <h4 class="h4 mt-2 pl-3 pt-3">Affected Validators:</h4>
+                    {{ range .Validators }}
+                      <div class="row flex-nowrap mx-0 pt-3 pl-3">
+                        <div class="col-md-4">{{ .ValidatorIndex | formatValidator }}</div>
+                        <div class="col-md-8">{{ .Status }}</div>
+                      </div>
+                    {{ end }}
+                  </div>
+                </div>
+                <p class=" mt-4 p-3 card promo-code"><i class="fas fa-gift pr-2 text-primary"></i>Great job on submitting your signature to the beaconchain! To celebrate, we're offering a special promotion: Use promo code <b class="text-primary">shanghaiHF100</b> at checkout to get a one-time 100% discount on your first Mobile App and API purchase. Don't miss out - offer ends April 2023.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  {{ end }}
+{{ end }}

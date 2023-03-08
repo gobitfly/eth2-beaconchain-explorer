@@ -5,7 +5,7 @@ BUILDDATE=`date -u +"%Y-%m-%dT%H:%M:%S%:z"`
 PACKAGE=eth2-exporter
 LDFLAGS="-X ${PACKAGE}/version.Version=${VERSION} -X ${PACKAGE}/version.BuildDate=${BUILDDATE} -X ${PACKAGE}/version.GitCommit=${GITCOMMIT} -X ${PACKAGE}/version.GitDate=${GITDATE} -s -w"
 
-all: explorer stats frontend-data-updater eth1indexer ethstore-exporter rewards-exporter
+all: explorer stats frontend-data-updater eth1indexer ethstore-exporter rewards-exporter node-jobs-processor
 
 lint:
 	golint ./...
@@ -34,3 +34,9 @@ rewards-exporter:
 
 eth1indexer:
 	go build --ldflags=${LDFLAGS} -o bin/eth1indexer cmd/eth1indexer/main.go
+
+node-jobs-processor:
+	go build --ldflags=${LDFLAGS} -o bin/node-jobs-processor cmd/node-jobs-processor/main.go
+
+addhooks:
+	git config core.hooksPath hooks

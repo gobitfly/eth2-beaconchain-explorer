@@ -27,7 +27,7 @@ func Correlations(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = indicators
 
-	var correlationsTemplate = templates.GetTemplate("layout.html", "correlations.html")
+	var correlationsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "correlations.html")...)
 
 	// data := &types.PageData{
 	// 	HeaderAd: true,
@@ -44,7 +44,7 @@ func Correlations(w http.ResponseWriter, r *http.Request) {
 	// 	GPO:          services.LatestGasNowData(),
 	// }
 
-	if handleTemplateError(w, r, correlationsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "correlations.go", "Correlations", "", correlationsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"eth2-exporter/config"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
@@ -24,20 +25,24 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 	"unicode/utf8"
 
-	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 	"gopkg.in/yaml.v3"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/lib/pq"
+	"github.com/mvdan/xurls"
 	"github.com/sirupsen/logrus"
 	"github.com/skip2/go-qrcode"
 )
@@ -65,6 +70,7 @@ var HashLikeRegex = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
 func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"includeHTML":                             IncludeHTML,
+		"includeSvg":                              IncludeSvg,
 		"formatHTML":                              FormatMessageToHtml,
 		"formatBalance":                           FormatBalance,
 		"formatBalanceChange":                     FormatBalanceChange,
@@ -87,6 +93,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatGraffiti":                          FormatGraffiti,
 		"formatHash":                              FormatHash,
 		"formatWithdawalCredentials":              FormatWithdawalCredentials,
+		"formatAddressToWithdrawalCredentials":    FormatAddressToWithdrawalCredentials,
 		"formatBitvector":                         FormatBitvector,
 		"formatBitlist":                           FormatBitlist,
 		"formatBitvectorValidators":               formatBitvectorValidators,
@@ -118,11 +125,13 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatETH":                               FormatETH,
 		"formatFloat":                             FormatFloat,
 		"formatAmount":                            FormatAmount,
+		"formatBigAmount":                         FormatBigAmount,
 		"formatYesNo":                             FormatYesNo,
 		"formatAmountFormatted":                   FormatAmountFormated,
 		"formatAddressAsLink":                     FormatAddressAsLink,
 		"formatBuilder":                           FormatBuilder,
 		"formatDifficulty":                        FormatDifficulty,
+		"getCurrencyLabel":                        price.GetCurrencyLabel,
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
@@ -158,7 +167,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatStringThousands": FormatThousandsEnglish,
 		"derefString":           DerefString,
 		"trLang":                TrLang,
-		"firstCharToUpper":      func(s string) string { return strings.Title(s) },
+		"firstCharToUpper":      func(s string) string { return cases.Title(language.English).String(s) },
 		"eqsp": func(a, b *string) bool {
 			if a != nil && b != nil {
 				return *a == *b
@@ -203,12 +212,34 @@ func GetTemplateFuncs() template.FuncMap {
 		"byteToString": func(num []byte) string {
 			return string(num)
 		},
-		"formatEthstoreComparison": FormatEthstoreComparison,
-		"formatPoolPerformance":    FormatPoolPerformance,
+		"bigToInt": func(val *hexutil.Big) *big.Int {
+			if val != nil {
+				return val.ToInt()
+			}
+			return nil
+		},
+		"formatBigNumberAddCommasFormated": FormatBigNumberAddCommasFormated,
+		"formatEthstoreComparison":         FormatEthstoreComparison,
+		"formatPoolPerformance":            FormatPoolPerformance,
+		"formatTokenSymbolTitle":           FormatTokenSymbolTitle,
+		"formatTokenSymbol":                FormatTokenSymbol,
+		"formatTokenSymbolHTML":            FormatTokenSymbolHTML,
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, errors.New("invalid dict call")
+			}
+			dict := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, errors.New("dict keys must be strings")
+				}
+				dict[key] = values[i+1]
+			}
+			return dict, nil
+		},
 	}
 }
-
-var LayoutPaths []string = []string{"templates/layout/layout.html", "templates/layout/nav.html"}
 
 // IncludeHTML adds html to the page
 func IncludeHTML(path string) template.HTML {
@@ -221,7 +252,14 @@ func IncludeHTML(path string) template.HTML {
 }
 
 func GraffitiToSring(graffiti []byte) string {
-	return strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
+	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
+	s = strings.Replace(s, "\u0000", "", -1) // rempove 0x00 bytes as it is not supported in postgres
+
+	if !utf8.ValidString(s) {
+		return "INVALID_UTF8_STRING"
+	}
+
+	return s
 }
 
 // FormatGraffitiString formats (and escapes) the graffiti
@@ -342,14 +380,19 @@ func ReadConfig(cfg *types.Config, path string) error {
 	}
 
 	if cfg.Chain.ConfigPath == "" {
+		// var prysmParamsConfig *prysmParams.BeaconChainConfig
 		switch cfg.Chain.Name {
 		case "mainnet":
+			// prysmParamsConfig = prysmParams.MainnetConfig().Copy()
 			err = yaml.Unmarshal([]byte(config.MainnetChainYml), &cfg.Chain.Config)
 		case "prater":
+			// prysmParamsConfig = prysmParams.PraterConfig().Copy()
 			err = yaml.Unmarshal([]byte(config.PraterChainYml), &cfg.Chain.Config)
 		case "ropsten":
+			// prysmParamsConfig = prysmParams.RopstenConfig().Copy()
 			err = yaml.Unmarshal([]byte(config.RopstenChainYml), &cfg.Chain.Config)
 		case "sepolia":
+			// prysmParamsConfig = prysmParams.SepoliaConfig().Copy()
 			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
 		default:
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
@@ -357,6 +400,10 @@ func ReadConfig(cfg *types.Config, path string) error {
 		if err != nil {
 			return err
 		}
+		// err = prysmParams.SetActive(prysmParamsConfig)
+		// if err != nil {
+		// 	return fmt.Errorf("error setting chainConfig (%v) for prysmParams: %w", cfg.Chain.Name, err)
+		// }
 	} else {
 		f, err := os.Open(cfg.Chain.ConfigPath)
 		if err != nil {
@@ -369,6 +416,10 @@ func ReadConfig(cfg *types.Config, path string) error {
 			return fmt.Errorf("error decoding Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
 		}
 		cfg.Chain.Config = *chainConfig
+		// err = prysmParams.LoadChainConfigFile(cfg.Chain.ConfigPath, nil)
+		// if err != nil {
+		// 	return fmt.Errorf("error loading chainConfig (%v) for prysmParams: %w", cfg.Chain.ConfigPath, err)
+		// }
 	}
 	cfg.Chain.Name = cfg.Chain.Config.ConfigName
 
@@ -376,15 +427,23 @@ func ReadConfig(cfg *types.Config, path string) error {
 		switch cfg.Chain.Name {
 		case "mainnet":
 			cfg.Chain.GenesisTimestamp = 1606824023
+			cfg.Chain.GenesisValidatorsRoot = "0x4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"
 		case "prater":
 			cfg.Chain.GenesisTimestamp = 1616508000
-		case "ropsten":
-			cfg.Chain.GenesisTimestamp = 1653922800
+			cfg.Chain.GenesisValidatorsRoot = "0x043db0d9a83813551ee2f33450d23797757d430911a9320530ad8a0eabc43efb"
 		case "sepolia":
 			cfg.Chain.GenesisTimestamp = 1655733600
+			cfg.Chain.GenesisValidatorsRoot = "0xd8ea171f3c94aea21ebc42a1ed61052acf3f9209c00e4efbaaddac09ed9b8078"
 		default:
 			return fmt.Errorf("tried to set known genesis-timestamp, but unknown chain-name")
 		}
+	}
+
+	if cfg.Chain.DomainBLSToExecutionChange == "" {
+		cfg.Chain.DomainBLSToExecutionChange = "0x0A000000"
+	}
+	if cfg.Chain.DomainVoluntaryExit == "" {
+		cfg.Chain.DomainVoluntaryExit = "0x04000000"
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -452,9 +511,11 @@ func IsApiRequest(r *http.Request) bool {
 	return ok && len(query) > 0 && query[0] == "json"
 }
 
-var eth1AddressRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{40}$")
-var eth1TxRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{64}$")
-var zeroHashRE = regexp.MustCompile("^0?x?0+$")
+var eth1AddressRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{40}$")
+var withdrawalCredentialsRE = regexp.MustCompile("^(0x)?00[0-9a-fA-F]{62}$")
+var withdrawalCredentialsAddressRE = regexp.MustCompile("^(0x)?010000000000000000000000[0-9a-fA-F]{40}$")
+var eth1TxRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{64}$")
+var zeroHashRE = regexp.MustCompile("^(0x)?0+$")
 
 // IsValidEth1Address verifies whether a string represents a valid eth1-address.
 func IsValidEth1Address(s string) bool {
@@ -471,12 +532,32 @@ func IsValidEth1Tx(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1TxRE.MatchString(s)
 }
 
+// IsValidWithdrawalCredentials verifies whether a string represents valid withdrawal credentials.
+func IsValidWithdrawalCredentials(s string) bool {
+	return withdrawalCredentialsRE.MatchString(s) || withdrawalCredentialsAddressRE.MatchString(s)
+}
+
 // https://github.com/badoux/checkmail/blob/f9f80cb795fa/checkmail.go#L37
 var emailRE = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 // IsValidEmail verifies whether a string represents a valid email-address.
 func IsValidEmail(s string) bool {
 	return emailRE.MatchString(s)
+}
+
+// IsValidUrl verifies whether a string represents a valid Url.
+func IsValidUrl(s string) bool {
+	u, err := url.ParseRequestURI(s)
+	if err != nil {
+		return false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	if len(u.Host) == 0 {
+		return false
+	}
+	return govalidator.IsURL(s)
 }
 
 // RoundDecimals rounds (nearest) a number to the specified number of digits after comma
@@ -516,7 +597,7 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 	columnTypes, err := rows.ColumnTypes()
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting column types: %w", err)
 	}
 
 	count := len(columnTypes)
@@ -548,7 +629,7 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 		err := rows.Scan(scanArgs...)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error scanning rows: %w", err)
 		}
 
 		masterData := map[string]interface{}{}
@@ -631,14 +712,18 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 }
 
 // GenerateAPIKey generates an API key for a user
-func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
-	apiKey, err := bcrypt.GenerateFromPassword([]byte(passwordHash+email+Ts), 10)
-	if err != nil {
-		return "", err
-	}
-	key := apiKey
-	if len(apiKey) > 30 {
-		key = apiKey[8:29]
+func GenerateRandomAPIKey() (string, error) {
+	const apiLength = 28
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+	max := big.NewInt(int64(len(letters)))
+	key := make([]byte, apiLength)
+	for i := 0; i < apiLength; i++ {
+		num, err := securerand.Int(securerand.Reader, max)
+		if err != nil {
+			return "", err
+		}
+		key[i] = letters[num.Int64()]
 	}
 
 	apiKeyBase64 := base64.RawURLEncoding.EncodeToString(key)
@@ -905,6 +990,34 @@ func FormatPoolPerformance(val float64) template.HTML {
 	return template.HTML(fmt.Sprintf(`<span data-toggle="tooltip" title=%f%%>%s%%</span>`, val, fmt.Sprintf("%.2f", val)))
 }
 
+func FormatTokenSymbolTitle(symbol string) string {
+	urls := xurls.Relaxed.FindAllString(symbol, -1)
+
+	if len(urls) > 0 {
+		return "The token symbol has been hidden as it contains a URL which might be a scam"
+	}
+	return ""
+}
+
+func FormatTokenSymbol(symbol string) string {
+	urls := xurls.Relaxed.FindAllString(symbol, -1)
+
+	if len(urls) > 0 {
+		return "[hidden-symbol]"
+	}
+	return symbol
+}
+
+func FormatTokenSymbolHTML(tmpl template.HTML) template.HTML {
+	tmplString := (string(tmpl))
+	symbolTitle := FormatTokenSymbolTitle(tmplString)
+
+	tmplString = FormatTokenSymbol(tmplString)
+	tmpl = template.HTML(strings.ReplaceAll(tmplString, `title=""`, fmt.Sprintf(`title="%s"`, symbolTitle)))
+
+	return tmpl
+}
+
 func ReverseSlice[S ~[]E, E any](s S) {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
@@ -913,4 +1026,88 @@ func ReverseSlice[S ~[]E, E any](s S) {
 
 func AddBigInts(a, b []byte) []byte {
 	return new(big.Int).Add(new(big.Int).SetBytes(a), new(big.Int).SetBytes(b)).Bytes()
+}
+
+// GetTimeToNextWithdrawal calculates the time it takes for the validators next withdrawal to be processed.
+func GetTimeToNextWithdrawal(distance uint64) time.Time {
+	minTimeToWithdrawal := time.Now().Add(time.Second * time.Duration((distance/Config.Chain.Config.MaxValidatorsPerWithdrawalSweep)*Config.Chain.Config.SecondsPerSlot))
+	timeToWithdrawal := time.Now().Add(time.Second * time.Duration((float64(distance)/float64(Config.Chain.Config.MaxWithdrawalsPerPayload))*float64(Config.Chain.Config.SecondsPerSlot)))
+
+	if timeToWithdrawal.Before(minTimeToWithdrawal) {
+		return minTimeToWithdrawal
+	}
+
+	return timeToWithdrawal
+}
+
+func EpochsPerDay() uint64 {
+	day := time.Hour * 24
+	return (uint64(day.Seconds()) / Config.Chain.Config.SlotsPerEpoch) / Config.Chain.Config.SecondsPerSlot
+}
+
+// ForkVersionAtEpoch returns the forkversion active a specific epoch
+func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
+	if epoch >= Config.Chain.Config.CappellaForkEpoch {
+		return &types.ForkVersion{
+			Epoch:           Config.Chain.Config.CappellaForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.Config.CappellaForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.Config.BellatrixForkVersion),
+		}
+	}
+	if epoch >= Config.Chain.Config.BellatrixForkEpoch {
+		return &types.ForkVersion{
+			Epoch:           Config.Chain.Config.BellatrixForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.Config.BellatrixForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.Config.AltairForkVersion),
+		}
+	}
+	if epoch >= Config.Chain.Config.AltairForkEpoch {
+		return &types.ForkVersion{
+			Epoch:           Config.Chain.Config.AltairForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.Config.AltairForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.Config.GenesisForkVersion),
+		}
+	}
+	return &types.ForkVersion{
+		Epoch:           0,
+		CurrentVersion:  MustParseHex(Config.Chain.Config.GenesisForkVersion),
+		PreviousVersion: MustParseHex(Config.Chain.Config.GenesisForkVersion),
+	}
+}
+
+// LogFatal logs a fatal error with callstack info that skips callerSkip many levels with arbitrarily many additional infos.
+// callerSkip equal to 0 gives you info directly where LogFatal is called.
+func LogFatal(err error, errorMsg interface{}, callerSkip int, additionalInfos ...string) {
+	logErrorInfo(err, callerSkip, additionalInfos...).Fatal(errorMsg)
+}
+
+// LogError logs an error with callstack info that skips callerSkip many levels with arbitrarily many additional infos.
+// callerSkip equal to 0 gives you info directly where LogError is called.
+func LogError(err error, errorMsg interface{}, callerSkip int, additionalInfos ...string) {
+	logErrorInfo(err, callerSkip, additionalInfos...).Error(errorMsg)
+}
+
+func logErrorInfo(err error, callerSkip int, additionalInfos ...string) *logrus.Entry {
+	logFields := logrus.NewEntry(logrus.New())
+
+	pc, fullFilePath, line, ok := runtime.Caller(callerSkip + 2)
+	if ok {
+		logFields = logFields.WithFields(logrus.Fields{
+			"cs_file":     filepath.Base(fullFilePath),
+			"cs_function": runtime.FuncForPC(pc).Name(),
+			"cs_line":     line,
+		})
+	} else {
+		logFields = logFields.WithField("runtime", "Callstack cannot be read")
+	}
+
+	if err != nil {
+		logFields = logFields.WithField("error type", fmt.Sprintf("%T", err)).WithError(err)
+	}
+
+	for idx, info := range additionalInfos {
+		logFields = logFields.WithField(fmt.Sprintf("info_%v", idx), info)
+	}
+
+	return logFields
 }

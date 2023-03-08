@@ -16,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
 	geth_rpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -70,7 +69,7 @@ func (client *ErigonClient) GetNativeClient() *ethclient.Client {
 	return client.ethClient
 }
 
-func (client *ErigonClient) GetRPCClient() *rpc.Client {
+func (client *ErigonClient) GetRPCClient() *geth_rpc.Client {
 	return client.rpcClient
 }
 
@@ -107,6 +106,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 		Bloom:        block.Bloom().Bytes(),
 		Uncles:       []*types.Eth1Block{},
 		Transactions: []*types.Eth1Transaction{},
+		Withdrawals:  []*types.Eth1Withdrawal{},
 	}
 
 	if block.BaseFee() != nil {
@@ -136,7 +136,20 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 	}
 
 	receipts := make([]*geth_types.Receipt, len(block.Transactions()))
-	reqs := make([]rpc.BatchElem, len(block.Transactions()))
+	reqs := make([]geth_rpc.BatchElem, len(block.Transactions()))
+
+	if len(block.Withdrawals()) > 0 {
+		withdrawalsIndexed := make([]*types.Eth1Withdrawal, 0, len(block.Withdrawals()))
+		for _, w := range block.Withdrawals() {
+			withdrawalsIndexed = append(withdrawalsIndexed, &types.Eth1Withdrawal{
+				Index:          w.Index,
+				ValidatorIndex: w.Validator,
+				Address:        w.Address.Bytes(),
+				Amount:         new(big.Int).SetUint64(w.Amount).Bytes(),
+			})
+		}
+		c.Withdrawals = withdrawalsIndexed
+	}
 
 	txs := block.Transactions()
 
@@ -273,7 +286,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 	})
 
 	for i := range reqs {
-		reqs[i] = rpc.BatchElem{
+		reqs[i] = geth_rpc.BatchElem{
 			Method: "eth_getTransactionReceipt",
 			Args:   []interface{}{txs[i].Hash().String()},
 			Result: &receipts[i],
@@ -465,7 +478,7 @@ func (client *ErigonClient) TraceParityTx(txHash string) ([]*ParityTraceResult, 
 }
 
 func (client *ErigonClient) GetBalances(pairs []*types.Eth1AddressBalance, addressIndex, tokenIndex int) ([]*types.Eth1AddressBalance, error) {
-	batchElements := make([]rpc.BatchElem, 0, len(pairs))
+	batchElements := make([]geth_rpc.BatchElem, 0, len(pairs))
 
 	ret := make([]*types.Eth1AddressBalance, len(pairs))
 
@@ -485,7 +498,7 @@ func (client *ErigonClient) GetBalances(pairs []*types.Eth1AddressBalance, addre
 		// logger.Infof("retrieving balance for %x / %x", ret[i].Address, ret[i].Token)
 
 		if len(pair.Token) < 20 {
-			batchElements = append(batchElements, rpc.BatchElem{
+			batchElements = append(batchElements, geth_rpc.BatchElem{
 				Method: "eth_getBalance",
 				Args:   []interface{}{common.BytesToAddress(pair.Address), "latest"},
 				Result: &result,
@@ -498,7 +511,7 @@ func (client *ErigonClient) GetBalances(pairs []*types.Eth1AddressBalance, addre
 				Data: common.Hex2Bytes(fmt.Sprintf("70a08231000000000000000000000000%x", pair.Address)),
 			}
 
-			batchElements = append(batchElements, rpc.BatchElem{
+			batchElements = append(batchElements, geth_rpc.BatchElem{
 				Method: "eth_call",
 				Args:   []interface{}{toCallArg(msg), "latest"},
 				Result: &result,
@@ -513,7 +526,7 @@ func (client *ErigonClient) GetBalances(pairs []*types.Eth1AddressBalance, addre
 
 	for i, el := range batchElements {
 		if el.Error != nil {
-			logrus.Errorf("error in batch call: %v", el.Error)
+			logrus.Warnf("error in batch call: %v", el.Error) // PPR: are smart contracts that pretend to implement the erc20 standard but are somehow buggy
 		}
 
 		res := strings.TrimPrefix(*el.Result.(*string), "0x")

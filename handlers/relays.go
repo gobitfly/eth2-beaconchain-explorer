@@ -8,7 +8,7 @@ import (
 
 func Relays(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	var relaysServicesTemplate = templates.GetTemplate("layout.html", "relays.html")
+	var relaysServicesTemplate = templates.GetTemplate(append(layoutTemplateFiles, "relays.html")...)
 
 	data := InitPageData(w, r, "services", "/relays", "Relay Overview")
 
@@ -16,7 +16,7 @@ func Relays(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = relayData
 
-	if handleTemplateError(w, r, relaysServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "relays.go", "Relays", "", relaysServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

@@ -34,7 +34,8 @@ create index idx_validators_pubkeyhex_pattern_pos on validators (pubkeyhex varch
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
 create index idx_validators_activationepoch on validators (activationepoch);
-CREATE INDEX validators_is_offline_vali_idx ON validators (validatorindex, lastattestationslot, pubkey);
+create index validators_is_offline_vali_idx on validators (validatorindex, lastattestationslot, pubkey);
+create index idx_validators_withdrawalcredentials on validators (withdrawalcredentials, validatorindex);
 
 drop table if exists validator_pool;
 create table validator_pool
@@ -108,6 +109,13 @@ create table sync_committees
     primary key (period, validatorindex, committeeindex)
 );
 
+drop table if exists sync_committees_count_per_validator;
+create table sync_committees_count_per_validator (
+	period int not null unique,
+	count_so_far float8 not null,
+    primary key (period)
+);
+
 drop table if exists validator_balances_recent;
 create table validator_balances_recent
 (
@@ -145,6 +153,16 @@ create table validator_stats
     proposer_slashings      int,
     deposits                int,
     deposits_amount         bigint,
+    withdrawals             int,
+    withdrawals_amount      bigint,
+    cl_rewards_gwei         bigint,
+    cl_rewards_gwei_total   bigint,
+    cl_rewards_gwei_31d     bigint,
+    cl_rewards_gwei_7d      bigint,
+    el_rewards_wei          decimal,
+    el_rewards_wei_total    decimal,
+    el_rewards_wei_31d      decimal,
+    el_rewards_wei_7d       decimal,
     primary key (validatorindex, day)
 );
 create index idx_validator_stats_day on validator_stats (day);
@@ -209,6 +227,7 @@ create table epochs
     attesterslashingscount  int    not null,
     attestationscount       int    not null,
     depositscount           int    not null,
+    withdrawalcount         int    not null default 0,
     voluntaryexitscount     int    not null,
     validatorscount         int    not null,
     averagevalidatorbalance bigint not null,
@@ -217,6 +236,7 @@ create table epochs
     eligibleether           bigint,
     globalparticipationrate float,
     votedether              bigint,
+    rewards_exported        bool not null default false,
     primary key (epoch)
 );
 
@@ -242,6 +262,7 @@ create table blocks
     attesterslashingscount      int     not null,
     attestationscount           int     not null,
     depositscount               int     not null,
+    withdrawalcount             int     not null default 0,
     voluntaryexitscount         int     not null,
     proposer                    int     not null,
     status                      text    not null, /* Can be 0 = scheduled, 1 proposed, 2 missed, 3 orphaned */
@@ -270,6 +291,35 @@ create index idx_blocks_epoch on blocks (epoch);
 create index idx_blocks_graffiti_text on blocks using gin (graffiti_text gin_trgm_ops);
 create index idx_blocks_blockrootstatus on blocks (blockroot, status);
 create index idx_blocks_exec_block_number on blocks (exec_block_number);
+
+drop table if exists blocks_withdrawals;
+create table blocks_withdrawals
+(
+    block_slot         int not null,
+    block_root         bytea not null,
+    withdrawalindex    int not null,
+    validatorindex     int not null,
+    address            bytea not null,
+    amount             bigint not null, -- in GWei
+    primary key (block_slot, block_root, withdrawalindex)
+);
+
+create index idx_blocks_withdrawals_recipient on blocks_withdrawals (address);
+create index idx_blocks_withdrawals_validatorindex on blocks_withdrawals (validatorindex);
+
+drop table if exists blocks_bls_change;
+create table blocks_bls_change
+(
+    block_slot           int     not null,
+    block_root           bytea   not null,
+    validatorindex       int     not null,
+    signature            bytea   not null,
+    pubkey               bytea   not null,
+    address              bytea   not null,
+    primary key (block_slot, block_root, validatorindex)
+);
+create index idx_blocks_bls_change_pubkey on blocks_bls_change (pubkey);
+create index idx_blocks_bls_change_address on blocks_bls_change (address);
 
 drop table if exists blocks_transactions;
 create table blocks_transactions
@@ -374,6 +424,10 @@ create table blocks_deposits
     primary key (block_slot, block_index)
 );
 
+
+create index idx_blocks_deposits_publickey on blocks_deposits (publickey);
+
+
 drop table if exists blocks_voluntaryexits;
 create table blocks_voluntaryexits
 (
@@ -429,6 +483,21 @@ create table eth1_deposits
 create index idx_eth1_deposits on eth1_deposits (publickey);
 create index idx_eth1_deposits_from_address on eth1_deposits (from_address);
 
+drop table if exists eth1_deposits_aggregated;
+create table eth1_deposits_aggregated
+(
+    from_address         bytea  not null,
+    amount               bigint not null,
+    validcount           int    not null,
+    invalidcount         int    not null,
+    slashedcount         int    not null,
+    totalcount           int    not null,
+    activecount          int    not null,
+    pendingcount         int    not null,
+    voluntary_exit_count int    not null,
+    primary key (from_address)
+);
+
 drop table if exists users;
 create table users
 (
@@ -438,11 +507,13 @@ create table users
     email_confirmed         bool                   not null default 'f',
     email_confirmation_hash character varying(40) unique,
     email_confirmation_ts   timestamp without time zone,
+    email_change_to_value   character varying(100),
     password_reset_hash     character varying(40),
     password_reset_ts       timestamp without time zone,
     register_ts             timestamp without time zone,
     api_key                 character varying(256) unique,
     stripe_customer_id      character varying(256) unique,
+    user_group              varchar(10),
     primary key (id, email)
 );
 
@@ -679,16 +750,6 @@ create table price
     primary key (ts)
 );
 
-drop table if exists staking_pools_chart;
-create table staking_pools_chart
-(
-    epoch                      int  not null,
-    name                       text not null,
-    income                     bigint not null,
-    balance                    bigint not null,
-    PRIMARY KEY(epoch, name)
-);
-
 drop table if exists stats_sharing;
 CREATE TABLE stats_sharing (
                                id 				bigserial 			primary key,
@@ -903,15 +964,6 @@ CREATE INDEX idx_blocks_tags_tag_id ON blocks_tags (tag_id);
 CREATE TABLE relays (
 	tag_id varchar NOT NULL,
 	endpoint varchar NOT NULL,
-	PRIMARY KEY (tag_id, endpoint),
-	FOREIGN KEY (tag_id) REFERENCES tags(id)
-);
-
-DROP TABLE IF EXISTS relays;
-
-CREATE TABLE relays (
-	tag_id varchar NOT NULL,
-	endpoint varchar NOT NULL,
 	public_link varchar NULL,
 	is_censoring bool NULL,
 	is_ethical bool NULL,
@@ -950,6 +1002,7 @@ CREATE TABLE validator_queue_deposits (
 CREATE INDEX idx_validator_queue_deposits_block_slot ON validator_queue_deposits USING btree (block_slot);
 CREATE UNIQUE INDEX idx_validator_queue_deposits_validatorindex ON validator_queue_deposits USING btree (validatorindex);
 
+drop table if exists service_status;
 create table service_status (name text not null, executable_name text not null, version text not null, pid int not null, status text not null, metadata jsonb, last_update timestamp not null, primary key (name, executable_name, version, pid));
 
 DROP TABLE IF EXISTS chart_series;
@@ -968,3 +1021,24 @@ create table chart_series_status
     primary key (day)
 );
 
+
+drop table if exists global_notifications;
+create table global_notifications
+(
+    target varchar(20) not null primary key, 
+    content text not null,
+    enabled bool not null
+);
+
+drop table if exists node_jobs;
+create table node_jobs
+(
+    id varchar(40),
+    type varchar(40) not null, -- can be one of: BLS_TO_EXECUTION_CHANGES, VOLUNTARY_EXITS
+    status varchar(40) not null, -- can be one of: PENDING, SUBMITTED_TO_NODE, COMPLETED
+    created_time timestamp without time zone not null default now(),
+    submitted_to_node_time timestamp without time zone,
+    completed_time timestamp without time zone,
+    data jsonb not null,
+    primary key (id)
+);

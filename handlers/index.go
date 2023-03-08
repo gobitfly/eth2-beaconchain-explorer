@@ -10,8 +10,7 @@ import (
 	"net/http"
 )
 
-var indexTemplateFiles = []string{
-	"layout.html",
+var indexTemplateFiles = append(layoutTemplateFiles,
 	"index/index.html",
 	"index/depositProgress.html",
 	"index/depositChart.html",
@@ -31,7 +30,7 @@ var indexTemplateFiles = []string{
 	"svg/timeline.html",
 	"components/rocket.html",
 	"slotViz.html",
-}
+)
 
 var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFS(templates.Files,
 	indexTemplateFiles...,
@@ -47,15 +46,19 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	// data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
 	data.Data.(*types.IndexPageData).Countdown = utils.Config.Frontend.Countdown
 
-	// data.Data.(*types.IndexPageData).SlotVizData = struct {
-	// 	Epochs   []*types.SlotVizEpochs
-	// 	Selector string
-	// }{
-	// 	Epochs:   services.LatestSlotVizMetrics(),
-	// 	Selector: "slotsViz",
-	// }
+	if utils.Config.Frontend.SlotViz.Enabled {
+		data.Data.(*types.IndexPageData).SlotVizData = struct {
+			Epochs        []*types.SlotVizEpochs
+			Selector      string
+			HardforkEpoch uint64
+		}{
+			Epochs:        services.LatestSlotVizMetrics(),
+			Selector:      "slotsViz",
+			HardforkEpoch: utils.Config.Frontend.SlotViz.HardforkEpoch,
+		}
+	}
 
-	if handleTemplateError(w, r, indexTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "index.go", "Index", "", indexTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

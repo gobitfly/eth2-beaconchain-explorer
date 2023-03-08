@@ -190,6 +190,10 @@
             <div class="col-md-9">{{ .DepositsCount }}</div>
           </div>
           <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-3">Withdrawals:</div>
+            <div class="col-md-9">{{ .WithdrawalCount }} <span class="text-muted">({{ .WithdrawalTotal }})</span></div>
+          </div>
+          <div class="row border-bottom p-3 mx-0">
             <div class="col-md-3">Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span>:</div>
             <div class="col-md-9">{{ .ProposerSlashingsCount }} / {{ .AttesterSlashingsCount }}</div>
           </div>
@@ -249,7 +253,9 @@
                   <th>Root Hash</th>
                   <th>Attestations</th>
                   <th>Sync Participation</th>
-                  <th>Deposits</th>
+                  <th>
+                    <span data-toggle="tooltip" data-placement="top" title="Deposits">D<span class="d-none d-lg-inline">eposits</span> <i class="d-lg-none far fa-arrow-alt-circle-down"></i></span> / <span data-toggle="tooltip" data-placement="top" title="Withdrawals">W<span class="d-none d-lg-inline">ithdrawals</span> <i class="d-lg-none far fa-arrow-alt-circle-up"></i></span>
+                  </th>
                   <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
                   <th>Exits</th>
                 </tr>
@@ -260,7 +266,7 @@
                     <td><a href="/slot/{{ .Slot }}">{{ formatAddCommas .Slot }}</a></td>
                     <td class="text-capitalize">{{ formatBlockStatus .Status }}</td>
                     <td aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW">{{ .Ts.Format "2006-01-02T15:04:05" }}</td>
-                    <td><a href="/validator/{{ .Proposer }}">{{ formatAddCommas .Proposer }}</a></td>
+                    <td><a href="/validator/{{ .Proposer }}">{{ .ProposerFormatted }}</a></td>
                     <td class="d-flex align-items-center text-monospace">
                       {{ if eq .Status 1 }}
                         <a href="/slot/{{ printf "%x" .BlockRoot }}">0x{{ printf "%.4x" .BlockRoot }}...</a>
@@ -271,7 +277,7 @@
                     </td>
                     <td>{{ .Attestations }}</td>
                     <td>{{ formatPercentageWithPrecision .SyncAggParticipation 2 }}%</td>
-                    <td>{{ .Deposits }}</td>
+                    <td>{{ .Deposits }} / {{ .Withdrawals }}</td>
                     <td>{{ .Proposerslashings }} / {{ .Attesterslashings }}</td>
                     <td>{{ .Exits }}</td>
                   </tr>

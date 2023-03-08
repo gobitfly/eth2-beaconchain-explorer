@@ -2,6 +2,7 @@ package types
 
 import (
 	"html/template"
+	"time"
 )
 
 // Config is a struct to hold the configuration data
@@ -26,10 +27,13 @@ type Config struct {
 	} `yaml:"bigtable"`
 	LastAttestationCachePath string `yaml:"lastAttestationCachePath" envconfig:"LAST_ATTESTATION_CACHE_PATH"`
 	Chain                    struct {
-		Name             string `yaml:"name" envconfig:"CHAIN_NAME"`
-		GenesisTimestamp uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
-		ConfigPath       string `yaml:"configPath" envconfig:"CHAIN_CONFIG_PATH"`
-		Config           ChainConfig
+		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
+		GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
+		GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
+		DomainBLSToExecutionChange string `yaml:"domainBLSToExecutionChange" envconfig:"CHAIN_DOMAIN_BLS_TO_EXECUTION_CHANGE"`
+		DomainVoluntaryExit        string `yaml:"domainVoluntaryExit" envconfig:"CHAIN_DOMAIN_VOLUNTARY_EXIT"`
+		ConfigPath                 string `yaml:"configPath" envconfig:"CHAIN_CONFIG_PATH"`
+		Config                     ChainConfig
 	} `yaml:"chain"`
 	Eth1ErigonEndpoint  string `yaml:"eth1ErigonEndpoint" envconfig:"ETH1_ERIGON_ENDPOINT"`
 	Eth1GethEndpoint    string `yaml:"eth1GethEndpoint" envconfig:"ETH1_GETH_ENDPOINT"`
@@ -146,18 +150,26 @@ type Config struct {
 		PoolsUpdater struct {
 			Enabled bool `yaml:"enabled" envconfig:"FRONTEND_POOLS_UPDATER"`
 		} `yaml:"poolsUpdater"`
+		SlotViz struct {
+			Enabled       bool   `yaml:"enabled" envconfig:"FRONTEND_SLOTVIZ_ENABLED"`
+			HardforkEpoch uint64 `yaml:"hardforkEpoch" envconfig:"FRONTEND_SLOTVIZ_HARDFORK_EPOCH"`
+		} `yaml:"slotViz"`
+		HttpReadTimeout  time.Duration `yaml:"httpReadTimeout" envconfig:"FRONTEND_HTTP_READ_TIMEOUT"`
+		HttpWriteTimeout time.Duration `yaml:"httpWriteTimeout" envconfig:"FRONTEND_HTTP_WRITE_TIMEOUT"`
+		HttpIdleTimeout  time.Duration `yaml:"httpIdleTimeout" envconfig:"FRONTEND_HTTP_IDLE_TIMEOUT"`
 	} `yaml:"frontend"`
 	Metrics struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`
 		Address string `yaml:"address" envconfig:"METRICS_ADDRESS"`
+		Pprof   bool   `yaml:"pprof" envconfig:"METRICS_PPROF"`
 	} `yaml:"metrics"`
 	Notifications struct {
-		Enabled                                       bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
-		Sender                                        bool   `yaml:"sender" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
-		UserDBNotifications                           bool   `yaml:"userDbNotifications" envconfig:"FRONTEND_USERDB_NOTIFICATIONS_ENABLED"`
-		FirebaseCredentialsPath                       string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
-		ValidatorBalanceDecreasedNotificationsEnabled bool   `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"FRONTEND_VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`
-		PubkeyCachePath                               string `yaml:"pubkeyCachePath" envconfig:"FRONTEND_NOTIFICATIONS_PUBKEY_CACHE_PATH"`
+		Enabled                                       bool   `yaml:"enabled" envconfig:"NOTIFICATIONS_ENABLED"`
+		Sender                                        bool   `yaml:"sender" envconfig:"NOTIFICATIONS_SENDER"`
+		UserDBNotifications                           bool   `yaml:"userDbNotifications" envconfig:"USERDB_NOTIFICATIONS_ENABLED"`
+		FirebaseCredentialsPath                       string `yaml:"firebaseCredentialsPath" envconfig:"NOTIFICATIONS_FIREBASE_CRED_PATH"`
+		ValidatorBalanceDecreasedNotificationsEnabled bool   `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`
+		PubkeyCachePath                               string `yaml:"pubkeyCachePath" envconfig:"NOTIFICATIONS_PUBKEY_CACHE_PATH"`
 	} `yaml:"notifications"`
 	SSVExporter struct {
 		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`
@@ -175,6 +187,10 @@ type Config struct {
 		Enabled bool   `yaml:"enabled" envconfig:"PPROF_ENABLED"`
 		Port    string `yaml:"port" envconfig:"PPROF_PORT"`
 	} `yaml:"pprof"`
+	NodeJobsProcessor struct {
+		ElEndpoint string `yaml:"elEndpoint" envconfig:"NODE_JOBS_PROCESSOR_EL_ENDPOINT"`
+		ClEndpoint string `yaml:"clEndpoint" envconfig:"NODE_JOBS_PROCESSOR_CL_ENDPOINT"`
+	} `yaml:"nodeJobsProcessor"`
 }
 
 type DatabaseConfig struct {

@@ -150,6 +150,11 @@
     .nav-link.dropdown-toggle::after {
       float: none !important;
     }
+
+    .image-container {
+      width: 100%;
+      margin: 3rem auto;
+    }
   </style>
 {{ end }}
 
@@ -167,9 +172,9 @@
       </h1>
     </div>
     <div>
-      <span>Wrong address entered you have.</span>
+      <span>You have entered the wrong address.</span>
     </div>
-    <div style="width: 60vw; margin: 3rem auto;">
+    <div class="image-container">
       {{ template "AddressNotFound" }}
     </div>
   </div>

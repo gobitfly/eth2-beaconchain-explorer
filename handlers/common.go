@@ -17,8 +17,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/gorilla/sessions"
 	"github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 )
 
 var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
@@ -38,124 +38,116 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 }
 
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
-func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, error) {
+func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := int64(services.LatestEpoch())
-	lastDayEpoch := latestEpoch - 225
-	lastWeekEpoch := latestEpoch - 225*7
-	lastMonthEpoch := latestEpoch - 225*31
 
-	if lastDayEpoch < 0 {
-		lastDayEpoch = 0
+	lastDay := 0
+	err := db.WriterDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats")
+
+	if err != nil {
+		return nil, nil, err
 	}
-	if lastWeekEpoch < 0 {
-		lastWeekEpoch = 0
+	lastWeek := lastDay - 7
+	if lastWeek < 0 {
+		lastWeek = 0
 	}
-	if lastMonthEpoch < 0 {
-		lastMonthEpoch = 0
+	lastMonth := lastDay - 31
+	if lastMonth < 0 {
+		lastMonth = 0
 	}
 
 	balances := []*types.Validator{}
 
-	err := db.ReaderDb.Select(&balances, `SELECT 
-			   COALESCE(balance, 0) AS balance, 
-			   COALESCE(balanceactivation, 0) AS balanceactivation, 
-			   COALESCE(balance1d, 0) AS balance1d, 
-			   COALESCE(balance7d, 0) AS balance7d, 
-			   COALESCE(balance31d , 0) AS balance31d,
-       			activationepoch,
-       			pubkey
-		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
-	if err != nil {
-		logger.Error(err)
-		return nil, err
+	balancesMap := make(map[uint64]*types.Validator, len(balances))
+
+	for _, balance := range balances {
+		balancesMap[balance.Index] = balance
 	}
 
-	deposits := []struct {
-		Epoch     int64
-		Amount    int64
-		Publickey []byte
-	}{}
-
-	err = db.ReaderDb.Select(&deposits, "SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))", validatorsPQArray)
+	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), uint64(latestEpoch))
 	if err != nil {
-		return nil, err
+		logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
+		return nil, nil, err
 	}
 
-	depositsMap := make(map[string]map[int64]int64)
-	for _, d := range deposits {
-		if _, exists := depositsMap[fmt.Sprintf("%x", d.Publickey)]; !exists {
-			depositsMap[fmt.Sprintf("%x", d.Publickey)] = make(map[int64]int64)
+	for balanceIndex, balance := range latestBalances {
+		if len(balance) == 0 {
+			continue
 		}
-		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
+
+		if balancesMap[balanceIndex] == nil {
+			balancesMap[balanceIndex] = &types.Validator{}
+		}
+		balancesMap[balanceIndex].Balance = balance[0].Balance
+		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
 	}
 
-	var earningsTotal int64
-	var earningsLastDay int64
-	var earningsLastWeek int64
-	var earningsLastMonth int64
+	type ClEarnings struct {
+		EarningsTotal     int64 `db:"cl_rewards_gwei_total"`
+		EarningsLastDay   int64 `db:"cl_rewards_gwei"`
+		EarningsLastWeek  int64 `db:"cl_rewards_gwei_7d"`
+		EarningsLastMonth int64 `db:"cl_rewards_gwei_31d"`
+	}
+
+	c := &ClEarnings{}
+
+	err = db.ReaderDb.Get(c, `
+	SELECT 
+		COALESCE(SUM(cl_rewards_gwei), 0) AS cl_rewards_gwei, 
+		COALESCE(SUM(cl_rewards_gwei_7d), 0) AS cl_rewards_gwei_7d, 
+		COALESCE(SUM(cl_rewards_gwei_31d), 0) AS cl_rewards_gwei_31d, 
+		COALESCE(SUM(cl_rewards_gwei_total), 0) AS cl_rewards_gwei_total
+	FROM validator_stats WHERE day = $1 AND validatorindex = ANY($2)`, lastDay, validatorsPQArray)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	var apr float64
 	var totalDeposits int64
 
-	for _, balance := range balances {
-		if int64(balance.ActivationEpoch) >= latestEpoch {
-			continue
-		}
-		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
-			totalDeposits += deposit
-
-			if epoch > int64(balance.ActivationEpoch) {
-				earningsTotal -= deposit
-			}
-			if epoch > lastDayEpoch && epoch > int64(balance.ActivationEpoch) {
-				earningsLastDay -= deposit
-			}
-			if epoch > lastWeekEpoch && epoch > int64(balance.ActivationEpoch) {
-				earningsLastWeek -= deposit
-			}
-			if epoch > lastMonthEpoch && epoch > int64(balance.ActivationEpoch) {
-				earningsLastMonth -= deposit
-			}
-		}
-
-		if int64(balance.ActivationEpoch) > lastDayEpoch {
-			balance.Balance1d = balance.BalanceActivation
-		}
-		if int64(balance.ActivationEpoch) > lastWeekEpoch {
-			balance.Balance7d = balance.BalanceActivation
-		}
-		if int64(balance.ActivationEpoch) > lastMonthEpoch {
-			balance.Balance31d = balance.BalanceActivation
-		}
-
-		earningsTotal += int64(balance.Balance) - balance.BalanceActivation.Int64
-		earningsLastDay += int64(balance.Balance) - balance.Balance1d.Int64
-		earningsLastWeek += int64(balance.Balance) - balance.Balance7d.Int64
-		earningsLastMonth += int64(balance.Balance) - balance.Balance31d.Int64
+	err = db.ReaderDb.Get(&totalDeposits, `
+	SELECT 
+		COALESCE(SUM(amount), 0) 
+	FROM blocks_deposits d
+	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' 
+	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	if totalDeposits == 0 {
-		totalDeposits = 32 * 1e9
+	var totalWithdrawals uint64
+
+	err = db.ReaderDb.Get(&totalWithdrawals, `
+	SELECT 
+		COALESCE(sum(w.amount), 0)
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	WHERE validatorindex = ANY($1)
+	`, validatorsPQArray)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
+	apr = (((float64(c.EarningsLastWeek) / 1e9) / (float64(32))) * 365) / 7
 	if apr < float64(-1) {
 		apr = float64(-1)
 	}
 
 	return &types.ValidatorEarnings{
-		Total:                earningsTotal,
-		LastDay:              earningsLastDay,
-		LastWeek:             earningsLastWeek,
-		LastMonth:            earningsLastMonth,
+		Total:                c.EarningsTotal,
+		LastDay:              c.EarningsLastDay,
+		LastWeek:             c.EarningsLastWeek,
+		LastMonth:            c.EarningsLastMonth,
 		APR:                  apr,
 		TotalDeposits:        totalDeposits,
-		LastDayFormatted:     utils.FormatIncome(earningsLastDay, currency),
-		LastWeekFormatted:    utils.FormatIncome(earningsLastWeek, currency),
-		LastMonthFormatted:   utils.FormatIncome(earningsLastMonth, currency),
-		TotalFormatted:       utils.FormatIncome(earningsTotal, currency),
-		TotalChangeFormatted: utils.FormatIncome(earningsTotal+totalDeposits, currency),
-	}, nil
+		TotalWithdrawals:     totalWithdrawals,
+		LastDayFormatted:     utils.FormatIncome(c.EarningsLastDay, currency),
+		LastWeekFormatted:    utils.FormatIncome(c.EarningsLastWeek, currency),
+		LastMonthFormatted:   utils.FormatIncome(c.EarningsLastMonth, currency),
+		TotalFormatted:       utils.FormatIncome(c.EarningsTotal, currency),
+		TotalChangeFormatted: utils.FormatIncome(c.EarningsTotal+totalDeposits, currency),
+	}, balancesMap, nil
 }
 
 // LatestState will return common information that about the current state of the eth2 chain
@@ -234,6 +226,10 @@ func GetCurrentPriceFormatted(r *http.Request) template.HTML {
 	return utils.FormatAddCommas(uint64(price))
 }
 
+func GetCurrentPriceKFormatted(r *http.Request) template.HTML {
+	return utils.KFormatterEthPrice(GetCurrentPrice(r))
+}
+
 func GetTruncCurrentPriceFormatted(r *http.Request) string {
 	price := GetCurrentPrice(r)
 	symbol := GetCurrencySymbol(r)
@@ -279,6 +275,9 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// never store the page number
+	settings.Start = 0
+
 	key := settings.Key
 	if len(key) == 0 {
 		logger.Errorf("no key provided")
@@ -290,20 +289,20 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 		dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
 		key = dataTableStatePrefix + key
 		count := 0
-		for k := range session.Values {
+		for k := range session.Values() {
 			k, ok := k.(string)
 			if ok && strings.HasPrefix(k, dataTableStatePrefix) {
 				count += 1
 			}
 		}
 		if count > 50 {
-			_, ok := session.Values[key]
+			_, ok := session.Values()[key]
 			if !ok {
 				logger.Errorf("error maximum number of datatable states stored in session")
 				return
 			}
 		}
-		session.Values[key] = settings
+		session.Values()[key] = settings
 
 		err := session.Save(r, w)
 		if err != nil {
@@ -323,30 +322,41 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	response.Data = ""
 }
 
-func GetDataTableState(user *types.User, session *sessions.Session, tableKey string) (*types.DataTableSaveState, error) {
+func GetDataTableState(user *types.User, session *utils.CustomSession, tableKey string) *types.DataTableSaveState {
+	state := types.DataTableSaveState{
+		Start: 0,
+	}
 	if user.Authenticated {
 		state, err := db.GetDataTablesState(user.UserID, tableKey)
 		if err != nil {
-			return nil, err
+			logger.Errorf("error getting data table state from db: %v", err)
+			return state
 		}
-		return state, nil
+		return state
 	}
-	stateRaw, exists := session.Values["table:state:"+utils.GetNetwork()+":"+tableKey]
+	stateRaw, exists := session.Values()["table:state:"+utils.GetNetwork()+":"+tableKey]
 	if !exists {
-		return nil, nil
+		return &state
 	}
 	state, ok := stateRaw.(types.DataTableSaveState)
 	if !ok {
-		return nil, fmt.Errorf("error parsing session value into type DataTableSaveState")
+		logger.Errorf("error getting state from session: %+v", stateRaw)
+		return &state
 	}
-	return &state, nil
+	return &state
 }
 
 // used to handle errors constructed by Template.ExecuteTemplate correctly
-func handleTemplateError(w http.ResponseWriter, r *http.Request, err error) error {
+func handleTemplateError(w http.ResponseWriter, r *http.Request, fileIdentifier string, functionIdentifier string, infoIdentifier string, err error) error {
 	// ignore network related errors
 	if err != nil && !errors.Is(err, syscall.EPIPE) && !errors.Is(err, syscall.ETIMEDOUT) {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		logger.WithFields(logrus.Fields{
+			"file":       fileIdentifier,
+			"function":   functionIdentifier,
+			"info":       infoIdentifier,
+			"error type": fmt.Sprintf("%T", err),
+			"route":      r.URL.String(),
+		}).WithError(err).Error("error executing template")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 	}
 	return err

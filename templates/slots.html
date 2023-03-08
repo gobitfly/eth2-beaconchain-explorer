@@ -16,6 +16,7 @@
           data.search.search = ""
           data.order = []
           data.columns = []
+          data.start = 0
           data.key = `${settings.sTableId}`
           fetch('/tables/state', {
             method: "POST",
@@ -143,7 +144,9 @@
                   <th>Time</th>
                   <th>Proposer</th>
                   <th data-toggle="tooltip" data-placement="top" title="Attestations included in slot">Att</th>
-                  <th data-toggle="tooltip" data-placement="top" title="Deposits included in block">Dep</th>
+                  <th>
+                    <span data-toggle="tooltip" data-placement="top" title="Deposits">D<span class="d-none d-lg-inline">eposits</span> <i class="d-lg-none far fa-arrow-alt-circle-down"></i></span> / <span data-toggle="tooltip" data-placement="top" title="Withdrawals">W<span class="d-none d-lg-inline">ithdrawals</span> <i class="d-lg-none far fa-arrow-alt-circle-up"></i></span>
+                  </th>
                   <th data-toggle="tooltip" data-placement="top" title="Slashings Proposer/Attester">S- <span>P</span>/<span>A</span></th>
                   <th>Exits</th>
                   <th>Votes</th>

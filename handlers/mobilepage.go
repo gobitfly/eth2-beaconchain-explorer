@@ -11,7 +11,7 @@ import (
 )
 
 func MobilePage(w http.ResponseWriter, r *http.Request) {
-	var mobileTemplate = templates.GetTemplate("layout.html", "mobilepage.html")
+	var mobileTemplate = templates.GetTemplate(append(layoutTemplateFiles, "mobilepage.html")...)
 
 	var err error
 	w.Header().Set("Content-Type", "text/html")
@@ -29,7 +29,7 @@ func MobilePage(w http.ResponseWriter, r *http.Request) {
 	data.Data = pageData
 	data.HeaderAd = true
 
-	if handleTemplateError(w, r, mobileTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "mobilepage.go", "MobilePage", "", mobileTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

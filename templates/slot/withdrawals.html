@@ -1,0 +1,37 @@
+{{ define "block_withdrawals" }}
+  <div class="row p-1 mx-0">
+    <div class="col-md-12 text-center"><b>Showing {{ .WithdrawalCount }} Withdrawals </b></div>
+  </div>
+  <div class="table-responsive">
+    <table id="block_withdrawals" class="table table-sm text-left">
+      <thead>
+        <tr style="background-color: var(--bg-color-light);">
+          <th class="border-0">Index</th>
+          <th class="border-0">Validator Index</th>
+          <th class="border-0">Recipient Address</th>
+          <th class="border-0">Amount</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+{{ end }}
+
+{{ define "block_blsChange" }}
+  <div class="row p-1 mx-0">
+    <div class="col-md-12 text-center"><b>Showing {{ .BLSChangeCount }} address changes </b></div>
+  </div>
+  <div class="table-responsive">
+    <table id="block_blsChange" class="table table-sm text-left">
+      <thead>
+        <tr style="background-color: var(--bg-color-light);">
+          <th class="border-0">Validator Index</th>
+          <th class="border-0">Signature</th>
+          <th class="border-0">BLS Public Key</th>
+          <th class="border-0">New Withdrawal Address</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+{{ end }}

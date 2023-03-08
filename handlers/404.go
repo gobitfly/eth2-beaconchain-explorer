@@ -64,10 +64,7 @@ func handleHTTPError(err error, handler func(http.ResponseWriter, *http.Request)
 }
 
 func NotFound(w http.ResponseWriter, r *http.Request) {
-	notFoundTemplate := templates.GetTemplate(
-		"layout.html",
-		"svg/relax.html",
-		"404notfound.html")
+	notFoundTemplate := templates.GetTemplate(append(layoutTemplateFiles, "svg/relax.html", "404notfound.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusNotFound)

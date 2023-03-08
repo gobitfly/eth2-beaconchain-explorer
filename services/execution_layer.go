@@ -21,7 +21,7 @@ func latestBlockUpdater(wg *sync.WaitGroup) {
 		cacheKey := fmt.Sprintf("%d:frontend:latestEth1BlockNumber", utils.Config.Chain.Config.DepositChainID)
 		err = cache.TieredCache.SetUint64(cacheKey, recent.GetNumber(), time.Hour*24)
 		if err != nil {
-			logger.Errorf("error caching latestProposedSlot: %v", err)
+			logger.Errorf("error caching latestBlockNumber: %v", err)
 		}
 
 		if firstRun {

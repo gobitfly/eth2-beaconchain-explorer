@@ -1,0 +1,27 @@
+{{ define "js" }}
+{{ end }}
+{{ define "css" }}
+{{ end }}
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <h1>Set a global, site wide notification</h1>
+
+      <form action="/user/global_notification" method="POST">
+        {{ .CsrfField }}
+        {{ range .GlobalNotificationMessages }}
+          <div class="mb-3">
+            <h2>{{ .Target }}</h2>
+            <input type="checkbox" id="enabled_{{ .Target }}" name="enabled_{{ .Target }}" {{ if .Enabled }}checked{{ end }} />
+            <label for="enabled">Enabled</label>
+            <br />
+            <label for="globalNotificationContent" class="form-label">Notification content (HTML)</label>
+            <textarea class="form-control" id="content_{{ .Target }}" name="content_{{ .Target }}" rows="20">{{ .Content }}</textarea>
+          </div>
+        {{ end }}
+        <div id="help" class="form-text">Any notification update will take around 10 minutes to become visible on the site. Please ensure that the HTML is valid. There are no sanity checks!</div>
+        <button type="submit" class="btn btn-primary float-right">Save</button>
+      </form>
+    </div>
+  {{ end }}
+{{ end }}

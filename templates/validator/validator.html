@@ -1,5 +1,4 @@
 {{ define "js" }}
-  <script src="/js/requestInterval.js"></script>
   <script src="/js/vue.min.js"></script>
   <script>
     window.addEventListener("popstate", function (event) {
@@ -150,11 +149,16 @@
               <li class="nav-item">
                 <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-wallet"></i> <span class="tab-text">Deposits</span></a>
               </li>
+              {{ if .CappellaHasHappened }}
+                <li class="nav-item">
+                  <a class="nav-link {{ if not .IsWithdrawableAddress }}disabled{{ end }}" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawals" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-money-bill"></i> <span class="tab-text">Withdrawals</span></a>
+                </li>
+              {{ end }}
               {{ if .IsRocketpool }}
                 <li class="nav-item">
                   <a class="nav-link" id="rocketpool-tab" data-toggle="tab" href="#rocketpool" role="tab" aria-controls="rocketpool" aria-selected="false">
                     <i class="tab-icon mr-md-1 fas fa-rocket"></i>
-                    <span class="tab-text">Rocket Pool</span>
+                    <span class="tab-text">RPL</span>
                   </a>
                 </li>
               {{ end }}
@@ -195,6 +199,11 @@
               <div class="tab-pane fade h-100" id="deposits" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
                 <div class="px-3">{{ template "validatorDepositsTable" $ }}</div>
               </div>
+              {{ if and (.CappellaHasHappened) (.IsWithdrawableAddress) }}
+                <div class="tab-pane fade h-100" id="withdrawals" role="tabpanel" aria-labelledby="withdrawal-tab" aria-controls="withdrawals">
+                  {{ template "validatorWithdrawalTable" . }}
+                </div>
+              {{ end }}
               {{ if .IsRocketpool }}
                 <div class="tab-pane fade w-100" id="rocketpool" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mt-5 mb-4">
@@ -354,7 +363,10 @@
       <!-- Edit Validator Modals -->
       {{ template "validatorEditModal"  . }}
       <!-- Add Validator to Watchlist Modal -->
-      {{ template "validatorBookmarkModal"  . }}
+      {{ if .User.Authenticated }}
+        {{ template "AddValidatorWatchlistModal" .AddValidatorWatchlistModal }}
+      {{ end }}
+
     </div>
   {{ end }}
 {{ end }}

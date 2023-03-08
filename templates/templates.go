@@ -29,8 +29,12 @@ var _ error = CompileTimeCheck(fs.FS(Files))
 
 func GetTemplate(files ...string) *template.Template {
 	name := strings.Join(files, "-")
+
 	if utils.Config.Frontend.Debug {
 		for i := range files {
+			if strings.HasPrefix(files[i], "templates") {
+				continue
+			}
 			files[i] = "templates/" + files[i]
 		}
 		return template.Must(template.New(name).Funcs(template.FuncMap(templateFuncs)).ParseFiles(files...))

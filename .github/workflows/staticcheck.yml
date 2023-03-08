@@ -1,0 +1,36 @@
+name: Static Check
+
+on:
+  push:
+    branches:
+      - master
+      - staging
+  pull_request:
+    branches:
+      - staging
+      - master
+
+jobs:
+  ci:
+    name: "Run CI"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        go: ["1.18.x"]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - uses: WillAbides/setup-go-faster@v1.7.0
+      with:
+        go-version: ${{ matrix.go }}
+    - run: make all				
+    - run: "go test ./..."
+    - run: "go vet ./..."
+    - uses: dominikh/staticcheck-action@v1.2.0
+      with:
+        version: "2022.1.1"
+        install-go: false
+        cache-key: ${{ matrix.go }}
