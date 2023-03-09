@@ -24,6 +24,7 @@ func main() {
 
 	epochStart := flag.Uint64("epoch-start", 0, "start epoch to export")
 	epochEnd := flag.Uint64("epoch-end", 0, "end epoch to export")
+	sleepDuration := flag.Duration("sleep", time.Minute, "duration to sleep between export runs")
 
 	flag.Parse()
 
@@ -96,7 +97,7 @@ func main() {
 			}
 
 			services.ReportStatus("rewardsExporter", "Running", nil)
-			time.Sleep(time.Minute)
+			time.Sleep(*sleepDuration)
 
 		}
 	}
