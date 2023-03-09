@@ -65,7 +65,7 @@
       <div>
         <select name="templateId">
           {{ range .TemplateNames }}
-            <option value="before" {{ if (eq . $TemplateId) }}selected="selected"{{ end }}>{{ . }}</option>
+            <option value="{{ . }}" {{ if (eq . $TemplateId) }}selected="selected"{{ end }}>{{ . }}</option>
           {{ end }}
         </select>
         <label for="templateId">Template Id</label>

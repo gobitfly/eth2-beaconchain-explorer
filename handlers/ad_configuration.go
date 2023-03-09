@@ -48,6 +48,7 @@ func AdConfiguration(w http.ResponseWriter, r *http.Request) {
 	pageData.TemplateNames = templates.GetTemplateNames()
 	pageData.New = types.AdConfig{
 		InsertMode:     "replace",
+		TemplateId:     "index/index.html",
 		JQuerySelector: "#r-banner",
 		Enabled:        true,
 	}
