@@ -13,8 +13,8 @@ import (
 // Blocks will return information about blocks using a go template
 func Correlations(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-
-	data := InitPageData(w, r, "correlations", "/correlations", "Correlations", "correlations.html")
+	templateFiles := append(layoutTemplateFiles, "correlations.html")
+	data := InitPageData(w, r, "correlations", "/correlations", "Correlations", templateFiles)
 
 	var indicators []string
 	err := db.ReaderDb.Select(&indicators, "SELECT DISTINCT(indicator) AS indicator FROM chart_series WHERE time > NOW() - INTERVAL '1 week' ORDER BY indicator;")
@@ -27,7 +27,7 @@ func Correlations(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = indicators
 
-	var correlationsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "correlations.html")...)
+	var correlationsTemplate = templates.GetTemplate(templateFiles...)
 
 	// data := &types.PageData{
 	// 	HeaderAd: true,

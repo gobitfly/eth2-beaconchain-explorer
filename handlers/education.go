@@ -6,12 +6,12 @@ import (
 )
 
 func EducationServices(w http.ResponseWriter, r *http.Request) {
-
-	var educationServicesTemplate = templates.GetTemplate(append(layoutTemplateFiles, "educationServices.html")...)
+	templateFiles := append(layoutTemplateFiles, "educationServices.html")
+	var educationServicesTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/educationServices", "Ethereum Education Services Overview", "educationServices.html")
+	data := InitPageData(w, r, "services", "/educationServices", "Ethereum Education Services Overview", templateFiles)
 
 	if handleTemplateError(w, r, "education.go", "EducationServices", "", educationServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed

@@ -54,6 +54,11 @@ func GetTemplate(files ...string) *template.Template {
 	return templateCache[name]
 }
 
+func GetTemplateNames() []string {
+	files, _ := getFileSysNames(fs.FS(Files), ".")
+	return files
+}
+
 func CompileTimeCheck(fsys fs.FS) error {
 	files, err := getFileSysNames(fsys, ".")
 	if err != nil {

@@ -16,13 +16,13 @@ const CHART_PREVIEW_POINTS = 100
 
 // Charts uses a go template for presenting the page to show charts
 func Charts(w http.ResponseWriter, r *http.Request) {
-
-	var chartsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "charts.html")...)
+	templateFiles := append(layoutTemplateFiles, "charts.html")
+	var chartsTemplate = templates.GetTemplate(templateFiles...)
 	var chartsUnavailableTemplate = templates.GetTemplate(append(layoutTemplateFiles, "chartsunavailable.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "stats", "/charts", "Charts", "charts.html")
+	data := InitPageData(w, r, "stats", "/charts", "Charts", templateFiles)
 
 	chartsPageData := services.LatestChartsPageData()
 
@@ -65,15 +65,15 @@ func Chart(w http.ResponseWriter, r *http.Request) {
 
 // GenericChart uses a go template for presenting the page of a generic chart
 func GenericChart(w http.ResponseWriter, r *http.Request) {
-
-	var genericChartTemplate = templates.GetTemplate(append(layoutTemplateFiles, "genericchart")...)
+	templateFiles := append(layoutTemplateFiles, "genericchart")
+	var genericChartTemplate = templates.GetTemplate(templateFiles...)
 	var chartsUnavailableTemplate = templates.GetTemplate(append(layoutTemplateFiles, "chartsunavailable.html")...)
 
 	vars := mux.Vars(r)
 	chartVar := vars["chart"]
 
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "stats", "/charts", "Chart", "genericchart.html")
+	data := InitPageData(w, r, "stats", "/charts", "Chart", templateFiles)
 
 	chartsPageData := services.LatestChartsPageData()
 	if chartsPageData == nil {
@@ -136,10 +136,11 @@ func GenericChartData(w http.ResponseWriter, r *http.Request) {
 
 // SlotViz renders a single page with a d3 slot (block) visualisation
 func SlotViz(w http.ResponseWriter, r *http.Request) {
-	var slotVizTemplate = templates.GetTemplate(append(layoutTemplateFiles, "slotViz.html", "slotVizPage.html")...)
+	templateFiles := append(layoutTemplateFiles, "slotViz.html", "slotVizPage.html")
+	var slotVizTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "stats", "/charts", "Charts", "slotVizPage.html")
+	data := InitPageData(w, r, "stats", "/charts", "Charts", templateFiles)
 
 	slotVizData := types.SlotVizPageData{
 		Selector: "checklist",

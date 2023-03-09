@@ -58,8 +58,8 @@ func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, e
 }
 
 func Heatmap(w http.ResponseWriter, r *http.Request) {
-
-	var heatmapTemplate = templates.GetTemplate(append(layoutTemplateFiles, "heatmap.html")...)
+	templateFiles := append(layoutTemplateFiles, "heatmap.html")
+	var heatmapTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators
@@ -137,7 +137,7 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 
 	logger.Infof("retrieved income history of %v validators in %v", len(incomeData), time.Since(start))
 
-	data := InitPageData(w, r, "dashboard", "/heatmap", "Validator Heatmap", "heatmap.html")
+	data := InitPageData(w, r, "dashboard", "/heatmap", "Validator Heatmap", templateFiles)
 	data.HeaderAd = true
 	data.Data = heatmapData
 
@@ -147,8 +147,8 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 }
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
-
-	var dashboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, "dashboard.html")...)
+	templateFiles := append(layoutTemplateFiles, "dashboard.html")
+	var dashboardTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators
@@ -159,7 +159,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	epoch := services.LatestEpoch()
 	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
 
-	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", "dashboard.html")
+	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", templateFiles)
 	data.HeaderAd = true
 	data.Data = dashboardData
 

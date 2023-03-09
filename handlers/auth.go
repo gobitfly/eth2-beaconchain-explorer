@@ -27,11 +27,12 @@ var authInternalServerErrorFlashMsg = "Error: Something went wrong :( Please ret
 
 // Register handler renders a template that allows for the creation of a new user.
 func Register(w http.ResponseWriter, r *http.Request) {
-	var registerTemplate = templates.GetTemplate(append(layoutTemplateFiles, "register.html")...)
+	templateFiles := append(layoutTemplateFiles, "register.html")
+	var registerTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "register", "/register", "Register new account", "register.html")
+	data := InitPageData(w, r, "register", "/register", "Register new account", templateFiles)
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
@@ -150,12 +151,12 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 
 // Login handler renders a template that allows a user to login.
 func Login(w http.ResponseWriter, r *http.Request) {
-
-	var loginTemplate = templates.GetTemplate(append(layoutTemplateFiles, "login.html")...)
+	templateFiles := append(layoutTemplateFiles, "login.html")
+	var loginTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "login", "/login", "Login", "login.html")
+	data := InitPageData(w, r, "login", "/login", "Login", templateFiles)
 	data.Data = types.AuthData{
 		Flashes:      utils.GetFlashes(w, r, authSessionName),
 		CsrfField:    csrf.TemplateField(r),
@@ -346,8 +347,8 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 // This only works if the hash in the url is correct. This will also confirm
 // the email of the user if it has not been confirmed yet.
 func ResetPassword(w http.ResponseWriter, r *http.Request) {
-
-	var resetPasswordTemplate = templates.GetTemplate(append(layoutTemplateFiles, "resetPassword.html")...)
+	templateFiles := append(layoutTemplateFiles, "resetPassword.html")
+	var resetPasswordTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -418,7 +419,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	session.SetValue("subscription", user.Subscription)
 	session.Save(r, w)
 
-	data := InitPageData(w, r, "requestReset", "/requestReset", "Reset Password", "resetPassword.html")
+	data := InitPageData(w, r, "requestReset", "/requestReset", "Reset Password", templateFiles)
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), Email: dbUser.Email, CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
@@ -504,11 +505,11 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 
 // RequestResetPassword renders a template that lets the user enter his email and request a reset link.
 func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
-
-	var requestResetPaswordTemplate = templates.GetTemplate(append(layoutTemplateFiles, "requestResetPassword.html")...)
+	templateFiles := append(layoutTemplateFiles, "requestResetPassword.html")
+	var requestResetPaswordTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "register", "/register", "Reset Password", "requestResetPassword.html")
+	data := InitPageData(w, r, "register", "/register", "Reset Password", templateFiles)
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
@@ -569,12 +570,12 @@ func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 
 // ResendConfirmation handler sends a template for the user to request another confirmation link via email.
 func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
-
-	var resendConfirmationTemplate = templates.GetTemplate(append(layoutTemplateFiles, "resendConfirmation.html")...)
+	templateFiles := append(layoutTemplateFiles, "resendConfirmation.html")
+	var resendConfirmationTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "resendConfirmation", "/resendConfirmation", "Resend Password Reset", "resendConfirmation.html")
+	data := InitPageData(w, r, "resendConfirmation", "/resendConfirmation", "Resend Password Reset", templateFiles)
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 
 	if handleTemplateError(w, r, "auth.go", "ResendConfirmation", "", resendConfirmationTemplate.ExecuteTemplate(w, "layout", data)) != nil {

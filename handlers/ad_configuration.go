@@ -14,7 +14,8 @@ import (
 
 // Load Ad Configuration page
 func AdConfiguration(w http.ResponseWriter, r *http.Request) {
-	var userTemplate = templates.GetTemplate(append(layoutTemplateFiles, "user/ad_configuration.html")...)
+	templateFiles := append(layoutTemplateFiles, "user/ad_configuration.html")
+	var userTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -40,10 +41,11 @@ func AdConfiguration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := InitPageData(w, r, "user", "/user/ad_configuration", "Ad Configuration", "user/ad_configuration.html")
+	data := InitPageData(w, r, "user", "/user/ad_configuration", "Ad Configuration", templateFiles)
 	pageData := types.AdConfigurationPageData{}
 	pageData.CsrfField = csrf.TemplateField(r)
 	pageData.Configurations = configs
+	pageData.TemplateNames = templates.GetTemplateNames()
 	pageData.New = types.AdConfig{
 		InsertMode:     "replace",
 		JQuerySelector: "#r-banner",

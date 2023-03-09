@@ -22,7 +22,7 @@ var layoutTemplateFiles = []string{
 	"layout/ad_handler.html",
 }
 
-func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string, mainTemplate string) *types.PageData {
+func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string, mainTemplates []string) *types.PageData {
 	fullTitle := fmt.Sprintf("%v - %v - beaconcha.in - %v", title, utils.Config.Frontend.SiteName, time.Now().Year())
 
 	if title == "" {
@@ -39,7 +39,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			Path:        path,
 			GATag:       utils.Config.Frontend.GATag,
 			NoTrack:     false,
-			Template:    mainTemplate,
+			Template:    strings.Join(mainTemplates, ","),
 		},
 		Active:                active,
 		Data:                  &types.Empty{},
@@ -93,9 +93,9 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 	}
 
 	if !data.NoAds {
-		adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplate)
+		adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplates)
 		if err != nil {
-			utils.LogError(err, fmt.Sprintf("error loading the ad configurations for template %s: ", mainTemplate), 0)
+			utils.LogError(err, fmt.Sprintf("error loading the ad configurations for template %s: ", mainTemplates), 0)
 		}
 		data.AdConfigurations = adConfigurations
 	}

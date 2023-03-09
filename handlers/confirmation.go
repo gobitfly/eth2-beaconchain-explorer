@@ -8,8 +8,8 @@ import (
 
 // Will return the confirmation page
 func Confirmation(w http.ResponseWriter, r *http.Request) {
-
-	var confirmationTemplate = templates.GetTemplate(append(layoutTemplateFiles, "confirmation.html")...)
+	templateFiles := append(layoutTemplateFiles, "confirmation.html")
+	var confirmationTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -35,7 +35,7 @@ func Confirmation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := InitPageData(w, r, "confirmation", "/blocks", "Blocks", "confirmation.html")
+	data := InitPageData(w, r, "confirmation", "/blocks", "Blocks", templateFiles)
 	data.Data = pageData
 	data.Meta.NoTrack = true
 

@@ -2537,7 +2537,7 @@ func GetAdConfigurations() ([]*types.AdConfig, error) {
 }
 
 // get the ad configuration for a specific template that are active
-func GetAdConfigurationsForTemplate(id string) ([]*types.AdConfig, error) {
+func GetAdConfigurationsForTemplate(ids []string) ([]*types.AdConfig, error) {
 	var adConfigs []*types.AdConfig
 
 	err := ReaderDb.Select(&adConfigs, `
@@ -2553,13 +2553,13 @@ func GetAdConfigurationsForTemplate(id string) ([]*types.AdConfig, error) {
 	FROM 
 		ad_configuration
 	WHERE 
-		template_id = $1 AND
-		enabled = true`, id)
+		template_id = ANY($1) AND
+		enabled = true`, ids)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return []*types.AdConfig{}, nil
 		}
-		return nil, fmt.Errorf("error getting ad configurations for template: %w %s", err, id)
+		return nil, fmt.Errorf("error getting ad configurations for template: %w %s", err, ids)
 	}
 
 	return adConfigs, nil

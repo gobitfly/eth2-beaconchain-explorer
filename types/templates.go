@@ -1405,6 +1405,7 @@ type AdConfigurationPageData struct {
 	Configurations []*AdConfig
 	CsrfField      template.HTML
 	New            AdConfig
+	TemplateNames  []string
 }
 
 type UserWebhookRowError struct {

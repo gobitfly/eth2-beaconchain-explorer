@@ -18,22 +18,25 @@ import (
 
 func Eth1Block(w http.ResponseWriter, r *http.Request) {
 
+	blockTemplateFiles := append(layoutTemplateFiles,
+		"slot/slot.html",
+		"slot/transactions.html",
+		"slot/attestations.html",
+		"slot/deposits.html",
+		"slot/votes.html",
+		"slot/attesterSlashing.html",
+		"slot/proposerSlashing.html",
+		"slot/exits.html",
+		"slot/overview.html",
+		"slot/execTransactions.html",
+		"slot/withdrawals.html")
 	var blockTemplate = templates.GetTemplate(
-		append(layoutTemplateFiles,
-			"slot/slot.html",
-			"slot/transactions.html",
-			"slot/attestations.html",
-			"slot/deposits.html",
-			"slot/votes.html",
-			"slot/attesterSlashing.html",
-			"slot/proposerSlashing.html",
-			"slot/exits.html",
-			"slot/overview.html",
-			"slot/execTransactions.html",
-			"slot/withdrawals.html")...,
+		blockTemplateFiles...,
 	)
-	var blockNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "slotnotfound.html")...)
-	var preMergeBlockTemplate = templates.GetTemplate(append(layoutTemplateFiles, "execution/block.html", "slot/execTransactions.html")...)
+	preMergeTemplateFiles := append(layoutTemplateFiles, "execution/block.html", "slot/execTransactions.html")
+	notFountTemplateFiles := append(layoutTemplateFiles, "slotnotfound.html")
+	var blockNotFoundTemplate = templates.GetTemplate(notFountTemplateFiles...)
+	var preMergeBlockTemplate = templates.GetTemplate(preMergeTemplateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
@@ -49,16 +52,16 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", 0), "slotnotfound.html")
+		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", 0), notFountTemplateFiles)
 		if handleTemplateError(w, r, "eth1Block.go", "Eth1Block", "number", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
 	}
 
-	data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number), "slot/slot.html")
 	eth1BlockPageData, err := GetExecutionBlockPageData(number, 10)
 	if err != nil {
+		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", 0), notFountTemplateFiles)
 		if handleTemplateError(w, r, "eth1Block.go", "Eth1Block", "GetExecutionBlockPageData", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
@@ -67,6 +70,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 
 	// execute template based on whether block is pre or post merge
 	if eth1BlockPageData.Difficulty.Cmp(big.NewInt(0)) == 0 {
+		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number), blockTemplateFiles)
 		// Post Merge PoS Block
 
 		// calculate PoS slot number based on block timestamp
@@ -95,7 +99,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Pre  Merge PoW Block
-		data := InitPageData(w, r, "block", "/block", fmt.Sprintf("Block %d", eth1BlockPageData.Number), "execution/block.html")
+		data := InitPageData(w, r, "block", "/block", fmt.Sprintf("Block %d", eth1BlockPageData.Number), preMergeTemplateFiles)
 		data.HeaderAd = true
 		eth1BlockPageData.NoAds = data.NoAds
 		data.Data = eth1BlockPageData

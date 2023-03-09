@@ -14,14 +14,14 @@ import (
 
 // Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {
-
-	var epochsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "epochs.html")...)
+	templateFiles := append(layoutTemplateFiles, "epochs.html")
+	var epochsTemplate = templates.GetTemplate(templateFiles...)
 
 	currency := GetCurrency(r)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "blockchain", "/epochs", "Epochs", "epochs.html")
+	data := InitPageData(w, r, "blockchain", "/epochs", "Epochs", templateFiles)
 	data.HeaderAd = true
 
 	var epochs []*types.EpochsPageData

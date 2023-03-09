@@ -39,7 +39,7 @@ var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateF
 func Index(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "index", "", "", "index/index.html")
+	data := InitPageData(w, r, "index", "", "", indexTemplateFiles)
 	data.Data = services.LatestIndexPageData()
 
 	// data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage

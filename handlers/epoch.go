@@ -17,10 +17,12 @@ import (
 
 // Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
-
-	var epochTemplate = templates.GetTemplate(append(layoutTemplateFiles, "epoch.html")...)
-	var epochFutureTemplate = templates.GetTemplate(append(layoutTemplateFiles, "epochFuture.html")...)
-	var epochNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "epochnotfound.html")...)
+	epochTemplateFiles := append(layoutTemplateFiles, "epoch.html")
+	epochFutureTemplateFiles := append(layoutTemplateFiles, "epochFuture.html")
+	epochNotFoundTemplateFiles := append(layoutTemplateFiles, "epochnotfound.html")
+	var epochTemplate = templates.GetTemplate(epochTemplateFiles...)
+	var epochFutureTemplate = templates.GetTemplate(epochFutureTemplateFiles...)
+	var epochNotFoundTemplate = templates.GetTemplate(epochNotFoundTemplateFiles...)
 
 	const MaxEpochValue = 4294967296 // we only render a page for epochs up to this value
 
@@ -28,7 +30,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	epochString := strings.Replace(vars["epoch"], "0x", "", -1)
 
-	data := InitPageData(w, r, "blockchain", "/epochs", "Epoch", "epoch.html")
+	data := InitPageData(w, r, "blockchain", "/epochs", "Epoch", append(layoutTemplateFiles, "epoch.html", "epochFuture.html", "epochnotfound.html"))
 	data.HeaderAd = true
 
 	epoch, err := strconv.ParseUint(epochString, 10, 64)
