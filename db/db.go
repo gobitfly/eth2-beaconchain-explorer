@@ -2159,7 +2159,7 @@ func GetSlotWithdrawals(slot uint64) ([]*types.Withdrawals, error) {
 func GetTotalWithdrawals() (total uint64, err error) {
 	err = ReaderDb.Get(&total, `
 	SELECT
-		MAX(withdrawalindex)
+		COALESCE(MAX(withdrawalindex), 0)
 	FROM 
 		blocks_withdrawals`)
 	if err == sql.ErrNoRows {

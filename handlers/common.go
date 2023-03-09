@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -328,7 +329,7 @@ func GetDataTableState(user *types.User, session *utils.CustomSession, tableKey 
 	}
 	if user.Authenticated {
 		state, err := db.GetDataTablesState(user.UserID, tableKey)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			logger.Errorf("error getting data table state from db: %v", err)
 			return state
 		}
