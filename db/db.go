@@ -1115,7 +1115,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 			// }
 
 			if c.Status != v.Status {
-				logger.Infof("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
+				logger.Tracef("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
 				queries.WriteString(fmt.Sprintf("UPDATE validators SET status = '%s' WHERE validatorindex = %d;\n", v.Status, c.Index))
 				updates++
 			}
