@@ -931,26 +931,31 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 }
 
 func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
+	if firstEpoch > lastEpoch {
+		return nil, fmt.Errorf("GetValidatorMissedAttestationsCount received an invalid firstEpoch (%d) and lastEpoch (%d) combination", firstEpoch, lastEpoch)
+	}
 
 	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
 
-	data, err := bigtable.GetValidatorAttestationHistory(validators, firstEpoch, lastEpoch)
+	for e := firstEpoch; e <= lastEpoch; e++ {
+		data, err := bigtable.GetValidatorAttestationHistory(validators, e, e)
 
-	if err != nil {
-		return nil, err
-	}
+		if err != nil {
+			return nil, err
+		}
 
-	logger.Infof("retrieved attestation history for epochs %v-%v", firstEpoch, lastEpoch)
+		logger.Infof("retrieved attestation history for epoch %v", e)
 
-	for validator, attestations := range data {
-		for _, attestation := range attestations {
-			if attestation.Status == 0 {
-				if res[validator] == nil {
-					res[validator] = &types.ValidatorMissedAttestationsStatistic{
-						Index: validator,
+		for validator, attestations := range data {
+			for _, attestation := range attestations {
+				if attestation.Status == 0 {
+					if res[validator] == nil {
+						res[validator] = &types.ValidatorMissedAttestationsStatistic{
+							Index: validator,
+						}
 					}
+					res[validator].MissedAttestations++
 				}
-				res[validator].MissedAttestations++
 			}
 		}
 	}
@@ -1431,6 +1436,102 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 	return res, nil
 }
 
+// GetValidatorIncomeDetailsHistory returns the validator income details
+// startEpoch & endEpoch are inclusive
+func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*itypes.ValidatorEpochIncome, error) {
+	if startEpoch > endEpoch {
+		startEpoch = 0
+	}
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
+
+	ranges, err := bigtable.getEpochRanges(startEpoch, endEpoch)
+	if err != nil {
+		return nil, err
+	}
+
+	// logger.Infof("range: %v to %v", rangeStart, rangeEnd)
+	incomeStats := make(map[uint64]*itypes.ValidatorEpochIncome, len(validators))
+
+	valLen := len(validators)
+
+	// read entire row if you require more than 1000 validators
+	var columnFilters []gcp_bigtable.Filter
+	if valLen < 1000 {
+		columnFilters = make([]gcp_bigtable.Filter, 0, valLen)
+		for _, validator := range validators {
+			columnFilters = append(columnFilters, gcp_bigtable.ColumnFilter(fmt.Sprintf("%d", validator)))
+		}
+	}
+
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
+		gcp_bigtable.InterleaveFilters(columnFilters...),
+	)
+
+	if len(columnFilters) == 1 { // special case to retrieve data for one validators
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
+			columnFilters[0],
+		)
+	}
+	if len(columnFilters) == 0 { // special case to retrieve data for all validators
+		filter = gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY)
+	}
+
+	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+		keySplit := strings.Split(r.Key(), ":")
+
+		epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
+			return false
+		}
+		epoch = max_epoch - epoch
+		logger.Infof("processing income data for epoch %v", epoch)
+		for _, ri := range r[INCOME_DETAILS_COLUMN_FAMILY] {
+			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, INCOME_DETAILS_COLUMN_FAMILY+":"), 10, 64)
+			if err != nil {
+				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
+				return false
+			}
+
+			rewardDetails := &itypes.ValidatorEpochIncome{}
+			err = proto.Unmarshal(ri.Value, rewardDetails)
+			if err != nil {
+				logger.Errorf("error decoding validator income data for row %v: %v", r.Key(), err)
+				return false
+			}
+
+			if incomeStats[validator] == nil {
+				incomeStats[validator] = &itypes.ValidatorEpochIncome{}
+			}
+
+			incomeStats[validator].AttestationHeadReward += rewardDetails.AttestationHeadReward
+			incomeStats[validator].AttestationSourceReward += rewardDetails.AttestationSourceReward
+			incomeStats[validator].AttestationSourcePenalty += rewardDetails.AttestationSourcePenalty
+			incomeStats[validator].AttestationTargetReward += rewardDetails.AttestationTargetReward
+			incomeStats[validator].AttestationTargetPenalty += rewardDetails.AttestationTargetPenalty
+			incomeStats[validator].FinalityDelayPenalty += rewardDetails.FinalityDelayPenalty
+			incomeStats[validator].ProposerSlashingInclusionReward += rewardDetails.ProposerSlashingInclusionReward
+			incomeStats[validator].ProposerAttestationInclusionReward += rewardDetails.ProposerAttestationInclusionReward
+			incomeStats[validator].ProposerSyncInclusionReward += rewardDetails.ProposerSyncInclusionReward
+			incomeStats[validator].SyncCommitteeReward += rewardDetails.SyncCommitteeReward
+			incomeStats[validator].SyncCommitteePenalty += rewardDetails.SyncCommitteePenalty
+			incomeStats[validator].SlashingReward += rewardDetails.SlashingReward
+			incomeStats[validator].SlashingPenalty += rewardDetails.SlashingPenalty
+			incomeStats[validator].TxFeeRewardWei = utils.AddBigInts(incomeStats[validator].TxFeeRewardWei, rewardDetails.TxFeeRewardWei)
+		}
+		return true
+	}, gcp_bigtable.RowFilter(filter))
+	if err != nil {
+		return nil, err
+	}
+
+	return incomeStats, nil
+}
+
 // Deletes all block data from bigtable
 func (bigtable *Bigtable) DeleteEpoch(epoch uint64) error {
 
@@ -1485,6 +1586,10 @@ func (bigtable *Bigtable) getSlotRanges(startEpoch uint64, endEpoch uint64) (gcp
 		// add \x00 to make the range inclusive
 		rangeEnd = fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), "\x00")
 		rangeStart = fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(endEpoch))
+		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
+	} else if startEpoch == endEpoch { // special case, only retrieve data for one epoch
+		rangeEnd := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch-1))
+		rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
 		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 	} else {
 		// epochs are sorted descending, so start with the larges epoch and end with the smallest

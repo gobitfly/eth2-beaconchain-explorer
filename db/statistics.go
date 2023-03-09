@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	itypes "github.com/gobitfly/eth-rewards/types"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
@@ -44,6 +43,50 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		return err
 	}
 	defer tx.Rollback()
+	logger.Infof("exporting missed_attestations statistics lastEpoch: %v firstEpoch: %v", lastEpoch, firstEpoch)
+	ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, firstEpoch, lastEpoch)
+	if err != nil {
+		return err
+	}
+	maArr := make([]*types.ValidatorMissedAttestationsStatistic, 0, len(ma))
+	for _, stat := range ma {
+		maArr = append(maArr, stat)
+	}
+
+	batchSize := 16000 // max parameters: 65535
+	for b := 0; b < len(maArr); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(maArr) < end {
+			end = len(maArr)
+		}
+
+		numArgs := 4
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*numArgs)
+		for i, stat := range maArr[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
+			valueArgs = append(valueArgs, stat.Index)
+			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, stat.MissedAttestations)
+			valueArgs = append(valueArgs, 0)
+		}
+		stmt := fmt.Sprintf(`
+		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
+		%s
+		on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
+			strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+
+		logger.Infof("saving missed attestations batch %v completed", b)
+	}
+
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	start = time.Now()
 
 	logger.Infof("exporting deposits and deposits_amount statistics")
 	depositsQry := `
@@ -88,80 +131,56 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	start = time.Now()
 	logger.Infof("exporting cl_rewards_gwei and el_rewards_wei statistics")
-	incomeDetails, err := BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, firstEpoch, lastEpoch)
+	incomeStats, err := BigtableClient.GetAggregatedValidatorIncomeDetailsHistory([]uint64{}, firstEpoch, lastEpoch)
 	if err != nil {
 		return err
 	}
 
-	incomeStats := make(map[uint64]*itypes.ValidatorEpochIncome)
+	maxValidatorIndex := uint64(0)
 
-	for validator, epochs := range incomeDetails {
-		if incomeStats[validator] == nil {
-			incomeStats[validator] = &itypes.ValidatorEpochIncome{}
-		}
-
-		for _, rewardDetails := range epochs {
-			incomeStats[validator].AttestationHeadReward += rewardDetails.AttestationHeadReward
-			incomeStats[validator].AttestationSourceReward += rewardDetails.AttestationSourceReward
-			incomeStats[validator].AttestationSourcePenalty += rewardDetails.AttestationSourcePenalty
-			incomeStats[validator].AttestationTargetReward += rewardDetails.AttestationTargetReward
-			incomeStats[validator].AttestationTargetPenalty += rewardDetails.AttestationTargetPenalty
-			incomeStats[validator].FinalityDelayPenalty += rewardDetails.FinalityDelayPenalty
-			incomeStats[validator].ProposerSlashingInclusionReward += rewardDetails.ProposerSlashingInclusionReward
-			incomeStats[validator].ProposerAttestationInclusionReward += rewardDetails.ProposerAttestationInclusionReward
-			incomeStats[validator].ProposerSyncInclusionReward += rewardDetails.ProposerSyncInclusionReward
-			incomeStats[validator].SyncCommitteeReward += rewardDetails.SyncCommitteeReward
-			incomeStats[validator].SyncCommitteePenalty += rewardDetails.SyncCommitteePenalty
-			incomeStats[validator].SlashingReward += rewardDetails.SlashingReward
-			incomeStats[validator].SlashingPenalty += rewardDetails.SlashingPenalty
-			incomeStats[validator].TxFeeRewardWei = utils.AddBigInts(incomeStats[validator].TxFeeRewardWei, rewardDetails.TxFeeRewardWei)
+	for validator := range incomeStats {
+		if validator > maxValidatorIndex {
+			maxValidatorIndex = validator
 		}
 	}
 
-	batchSize := 16000 // max parameters: 65535
-	numArgs := 4
-
-	valueStrings := make([]string, 0, batchSize)
-	valueArgs := make([]interface{}, 0, batchSize*numArgs)
-	batchCount := 0
-	mapCount := 0
-	for validator, validatorIncome := range incomeStats {
-		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", batchCount*numArgs+1, batchCount*numArgs+2, batchCount*numArgs+3, batchCount*numArgs+4))
-		clRewards := int64(0)
-		elRewards := "0"
-		if validatorIncome != nil {
-			clRewards = validatorIncome.TotalClRewards()
-			elRewards = new(big.Int).SetBytes(validatorIncome.TxFeeRewardWei).String()
-		} else {
-			logger.Warnf("no rewards for validator %v available", validator)
+	batchSize = 16000 // max parameters: 65535
+	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
+		start := b
+		end := b + batchSize
+		if int(maxValidatorIndex) < end {
+			end = int(maxValidatorIndex)
 		}
-		valueArgs = append(valueArgs, validator)
-		valueArgs = append(valueArgs, day)
-		valueArgs = append(valueArgs, clRewards)
-		valueArgs = append(valueArgs, elRewards)
 
-		batchCount++
-		mapCount++
-		isLastElement := mapCount == len(incomeStats)
+		logrus.Info(start, end)
+		numArgs := 4
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*numArgs)
+		for i := start; i <= end; i++ {
+			clRewards := int64(0)
+			elRewards := ""
 
-		if batchCount == batchSize || isLastElement {
-			stmt := fmt.Sprintf(`
-			insert into validator_stats (validatorindex, day, cl_rewards_gwei, el_rewards_wei) VALUES
-			%s
-			on conflict (validatorindex, day) do update set cl_rewards_gwei = excluded.cl_rewards_gwei, el_rewards_wei = excluded.el_rewards_wei;`,
-				strings.Join(valueStrings, ","))
-			_, err := tx.Exec(stmt, valueArgs...)
-			if err != nil {
-				return err
+			if incomeStats[uint64(i)] != nil {
+				clRewards = incomeStats[uint64(i)].TotalClRewards()
+				elRewards = new(big.Int).SetBytes(incomeStats[uint64(i)].TxFeeRewardWei).String()
 			}
-
-			logger.Infof("saving validator income details batch completed")
-
-			// Reset for next batch
-			valueStrings = make([]string, 0, batchSize)
-			valueArgs = make([]interface{}, 0, batchSize*numArgs)
-			batchCount = 0
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3, (i-start)*numArgs+4))
+			valueArgs = append(valueArgs, i)
+			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, clRewards)
+			valueArgs = append(valueArgs, elRewards)
 		}
+		stmt := fmt.Sprintf(`
+		insert into validator_stats (validatorindex, day, cl_rewards_gwei, el_rewards_wei) VALUES
+		%s
+		on conflict (validatorindex, day) do update set cl_rewards_gwei = excluded.cl_rewards_gwei, el_rewards_wei = excluded.el_rewards_wei;`,
+			strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		logrus.Infof("saving validator income details batch %v completed", b)
 	}
 
 	logger.Infof("export completed, took %v", time.Since(start))
@@ -205,31 +224,6 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		) 
 		on conflict (validatorindex, day) do update set 
 		cl_rewards_gwei_total = excluded.cl_rewards_gwei_total, el_rewards_wei_total=excluded.el_rewards_wei_total;`, day)
-	if err != nil {
-		return err
-	}
-
-	logger.Infof("populate validator_performance table")
-	_, err = tx.Exec(`insert into validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d) 
-		(
-			select 
-				validatorindex, 
-				end_balance as balance, 
-				cl_rewards_gwei as performance1d, 
-				cl_rewards_gwei_7d as performance7d, 
-				cl_rewards_gwei_31d as performance31d, 
-				cl_rewards_gwei_total as performance365d, 
-				row_number() over(order by cl_rewards_gwei_7d desc) as rank7d 
-			from validator_stats where day = 248
-		) 
-		on conflict (validatorindex) do update set 
-			balance = excluded.balance, 
-			performance1d=excluded.performance1d,
-			performance7d=excluded.performance7d,
-			performance31d=excluded.performance31d,
-			performance365d=excluded.performance365d,
-			rank7d=excluded.rank7d
-			;`) //, day)
 	if err != nil {
 		return err
 	}
@@ -283,51 +277,33 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
 
-	start = time.Now()
-	logger.Infof("exporting missed_attestations statistics lastEpoch: %v firstEpoch: %v", lastEpoch, firstEpoch)
-	ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, firstEpoch, lastEpoch)
+	logger.Infof("populate validator_performance table")
+	_, err = tx.Exec(`insert into validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d) 
+		(
+			select 
+				validatorindex, 
+				end_balance as balance, 
+				cl_rewards_gwei as performance1d, 
+				cl_rewards_gwei_7d as performance7d, 
+				cl_rewards_gwei_31d as performance31d, 
+				cl_rewards_gwei_total as performance365d, 
+				row_number() over(order by cl_rewards_gwei_7d desc) as rank7d 
+			from validator_stats where day = $1
+		) 
+		on conflict (validatorindex) do update set 
+			balance = excluded.balance, 
+			performance1d=excluded.performance1d,
+			performance7d=excluded.performance7d,
+			performance31d=excluded.performance31d,
+			performance365d=excluded.performance365d,
+			rank7d=excluded.rank7d
+			;`, day)
 	if err != nil {
 		return err
 	}
-	maArr := make([]*types.ValidatorMissedAttestationsStatistic, 0, len(ma))
-	for _, stat := range ma {
-		maArr = append(maArr, stat)
-	}
-
-	batchSize = 16000 // max parameters: 65535
-	for b := 0; b < len(maArr); b += batchSize {
-		start := b
-		end := b + batchSize
-		if len(maArr) < end {
-			end = len(maArr)
-		}
-
-		numArgs := 4
-		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*numArgs)
-		for i, stat := range maArr[start:end] {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
-			valueArgs = append(valueArgs, stat.Index)
-			valueArgs = append(valueArgs, day)
-			valueArgs = append(valueArgs, stat.MissedAttestations)
-			valueArgs = append(valueArgs, 0)
-		}
-		stmt := fmt.Sprintf(`
-		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
-		%s
-		on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
-			strings.Join(valueStrings, ","))
-		_, err := tx.Exec(stmt, valueArgs...)
-		if err != nil {
-			return err
-		}
-
-		logger.Infof("saving missed attestations batch %v completed", b)
-	}
-
-	logger.Infof("export completed, took %v", time.Since(start))
 
 	start = time.Now()
+
 	logger.Infof("exporting sync statistics")
 	syncStats, err := BigtableClient.GetValidatorSyncDutiesStatistics([]uint64{}, firstEpoch, lastEpoch) //+1 is needed because the function uses limit instead of end epoch
 	if err != nil {
