@@ -119,44 +119,51 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	}
 
 	batchSize := 16000 // max parameters: 65535
-	for b := 0; b < len(incomeStats); b += batchSize {
-		start := b
-		end := b + batchSize
-		if len(incomeStats) < end {
-			end = len(incomeStats) - 1
-		}
+	numArgs := 4
 
-		logger.Info(start, end)
-		numArgs := 4
-		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*numArgs)
-		for i := start; i <= end; i++ {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3, (i-start)*numArgs+4))
-			clRewards := int64(0)
-			elRewards := "0"
-			if incomeStats[uint64(i)] != nil {
-				clRewards = incomeStats[uint64(i)].TotalClRewards()
-				elRewards = new(big.Int).SetBytes(incomeStats[uint64(i)].TxFeeRewardWei).String()
-			} else {
-				logger.Warnf("no rewards for validator %v available", i)
+	valueStrings := make([]string, 0, batchSize)
+	valueArgs := make([]interface{}, 0, batchSize*numArgs)
+	batchCount := 0
+	mapCount := 0
+	for validator, validatorIncome := range incomeStats {
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", batchCount*numArgs+1, batchCount*numArgs+2, batchCount*numArgs+3, batchCount*numArgs+4))
+		clRewards := int64(0)
+		elRewards := "0"
+		if validatorIncome != nil {
+			clRewards = validatorIncome.TotalClRewards()
+			elRewards = new(big.Int).SetBytes(validatorIncome.TxFeeRewardWei).String()
+		} else {
+			logger.Warnf("no rewards for validator %v available", validator)
+		}
+		valueArgs = append(valueArgs, validator)
+		valueArgs = append(valueArgs, day)
+		valueArgs = append(valueArgs, clRewards)
+		valueArgs = append(valueArgs, elRewards)
+
+		batchCount++
+		mapCount++
+		isLastElement := mapCount == len(incomeStats)
+
+		if batchCount == batchSize || isLastElement {
+			stmt := fmt.Sprintf(`
+			insert into validator_stats (validatorindex, day, cl_rewards_gwei, el_rewards_wei) VALUES
+			%s
+			on conflict (validatorindex, day) do update set cl_rewards_gwei = excluded.cl_rewards_gwei, el_rewards_wei = excluded.el_rewards_wei;`,
+				strings.Join(valueStrings, ","))
+			_, err := tx.Exec(stmt, valueArgs...)
+			if err != nil {
+				return err
 			}
-			valueArgs = append(valueArgs, i)
-			valueArgs = append(valueArgs, day)
-			valueArgs = append(valueArgs, clRewards)
-			valueArgs = append(valueArgs, elRewards)
-		}
-		stmt := fmt.Sprintf(`
-		insert into validator_stats (validatorindex, day, cl_rewards_gwei, el_rewards_wei) VALUES
-		%s
-		on conflict (validatorindex, day) do update set cl_rewards_gwei = excluded.cl_rewards_gwei, el_rewards_wei = excluded.el_rewards_wei;`,
-			strings.Join(valueStrings, ","))
-		_, err := tx.Exec(stmt, valueArgs...)
-		if err != nil {
-			return err
-		}
 
-		logger.Infof("saving validator income details batch %v completed", b)
+			logger.Infof("saving validator income details batch completed")
+
+			// Reset for next batch
+			valueStrings = make([]string, 0, batchSize)
+			valueArgs = make([]interface{}, 0, batchSize*numArgs)
+			batchCount = 0
+		}
 	}
+
 	logger.Infof("export completed, took %v", time.Since(start))
 	start = time.Now()
 
@@ -470,11 +477,23 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		GROUP BY day 
 		ORDER BY day
 	;`, queryValidatorsArr, lowerBoundDay, upperBoundDay)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	// retrieve rewards for epochs not yet in stats
 	currentDayIncome := int64(0)
-	if upperBoundDay == 65536 && len(result) > 0 {
-		lastDay := result[len(result)-1].Day
+	if upperBoundDay == 65536 {
+		lastDay := int64(0)
+		if len(result) > 0 {
+			lastDay = result[len(result)-1].Day
+		} else {
+			err = ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats")
+			if err != nil {
+				return nil, 0, err
+			}
+		}
+
 		currentDay := uint64(lastDay + 1)
 		startEpoch := currentDay * utils.EpochsPerDay()
 		endEpoch := startEpoch + utils.EpochsPerDay() - 1
