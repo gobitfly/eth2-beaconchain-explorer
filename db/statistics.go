@@ -136,28 +136,35 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		return err
 	}
 
+	maxValidatorIndex := uint64(0)
+
+	for validator := range incomeStats {
+		if validator > maxValidatorIndex {
+			maxValidatorIndex = validator
+		}
+	}
+
 	batchSize = 16000 // max parameters: 65535
-	for b := 0; b < len(incomeStats); b += batchSize {
+	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
 		start := b
 		end := b + batchSize
-		if len(incomeStats) < end {
-			end = len(incomeStats) - 1
+		if int(maxValidatorIndex) < end {
+			end = int(maxValidatorIndex)
 		}
 
-		logger.Info(start, end)
+		logrus.Info(start, end)
 		numArgs := 4
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
 		for i := start; i <= end; i++ {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3, (i-start)*numArgs+4))
 			clRewards := int64(0)
-			elRewards := "0"
+			elRewards := ""
+
 			if incomeStats[uint64(i)] != nil {
 				clRewards = incomeStats[uint64(i)].TotalClRewards()
 				elRewards = new(big.Int).SetBytes(incomeStats[uint64(i)].TxFeeRewardWei).String()
-			} else {
-				logger.Warnf("no rewards for validator %v available", i)
 			}
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3, (i-start)*numArgs+4))
 			valueArgs = append(valueArgs, i)
 			valueArgs = append(valueArgs, day)
 			valueArgs = append(valueArgs, clRewards)
@@ -170,10 +177,10 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
-			return err
+			logrus.Fatal(err)
 		}
 
-		logger.Infof("saving validator income details batch %v completed", b)
+		logrus.Infof("saving validator income details batch %v completed", b)
 	}
 
 	logger.Infof("export completed, took %v", time.Since(start))
