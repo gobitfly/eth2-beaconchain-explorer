@@ -136,7 +136,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		return err
 	}
 
-  batchSize = 16000 // max parameters: 65535
+	batchSize = 16000 // max parameters: 65535
 	for b := 0; b < len(incomeStats); b += batchSize {
 		start := b
 		end := b + batchSize
