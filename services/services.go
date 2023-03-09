@@ -151,9 +151,14 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 	dayInSlots := 24 * 60 * 60 / utils.Config.Chain.Config.SecondsPerSlot
 
 	tmp := [3]types.RelayInfoContainer{{Days: 7}, {Days: 31}, {Days: 180}}
+	latest := LatestSlot()
 	for i := 0; i < len(tmp); i++ {
 		tmp[i].IsFirst = i == 0
-		err = overallStatsQuery.Select(&tmp[i].RelaysInfo, LatestSlot()-(tmp[i].Days*dayInSlots))
+		var forSlot uint64 = 0
+		if latest > tmp[i].Days*dayInSlots {
+			forSlot = latest - (tmp[i].Days * dayInSlots)
+		}
+		err = overallStatsQuery.Select(&tmp[i].RelaysInfo, forSlot)
 		if err != nil {
 			return nil, err
 		}
@@ -164,6 +169,10 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 	}
 	relaysData.RelaysInfoContainers = tmp
 
+	var forSlot uint64 = 0
+	if latest > (14 * dayInSlots) {
+		forSlot = latest - (14 * dayInSlots)
+	}
 	err = db.ReaderDb.Select(&relaysData.TopBuilders, `
 		select 
 			builder_pubkey,
@@ -192,7 +201,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 		) foo
 		left join tags on tags.id = foo.tag_id
 		group by builder_pubkey 
-		order by c desc`, LatestSlot()-(14*dayInSlots))
+		order by c desc`, forSlot)
 	if err != nil {
 		logger.Errorf("failed to get builder ranking %v", err)
 		return nil, err
