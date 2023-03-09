@@ -47,6 +47,11 @@ table {
   display: flex;
 }
 
+.main-navigation .dropdown-item svg{
+  width: 1rem;
+  margin-right: 0.5rem;
+}
+
 .icon-inside {
   position: absolute;
   top: 50%;
