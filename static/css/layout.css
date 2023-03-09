@@ -43,7 +43,7 @@ table {
   width: 1rem;
 }
 
-.dropdown-menu.dropdown-menu-right.show {
+.main-navigation .dropdown-menu.dropdown-menu-right.show {
   display: flex;
 }
 
