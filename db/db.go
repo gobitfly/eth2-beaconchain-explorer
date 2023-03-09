@@ -2556,7 +2556,6 @@ func GetAdConfigurationsForTemplate(ids []string) ([]*types.AdConfig, error) {
 		template_id = ANY($1) AND
 		enabled = true`, pq.Array(ids))
 	if err != nil {
-		logger.Infof("error %v", err)
 		if err == sql.ErrNoRows {
 			return []*types.AdConfig{}, nil
 		}

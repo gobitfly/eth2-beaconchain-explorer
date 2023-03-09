@@ -31,13 +31,16 @@ func GetTemplate(files ...string) *template.Template {
 	name := strings.Join(files, "-")
 
 	if utils.Config.Frontend.Debug {
+		templateFiles := make([]string, len(files))
+		copy(templateFiles, files)
 		for i := range files {
 			if strings.HasPrefix(files[i], "templates") {
-				continue
+				templateFiles[i] = files[i]
+			} else {
+				templateFiles[i] = "templates/" + files[i]
 			}
-			files[i] = "templates/" + files[i]
 		}
-		return template.Must(template.New(name).Funcs(template.FuncMap(templateFuncs)).ParseFiles(files...))
+		return template.Must(template.New(name).Funcs(template.FuncMap(templateFuncs)).ParseFiles(templateFiles...))
 	}
 
 	templateCacheMux.RLock()
