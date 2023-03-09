@@ -46,7 +46,8 @@ func UserAuthMiddleware(next http.Handler) http.Handler {
 
 // UserSettings renders the user-template
 func UserSettings(w http.ResponseWriter, r *http.Request) {
-	var userTemplate = templates.GetTemplate(append(layoutTemplateFiles, "user/settings.html")...)
+	templateFiles := append(layoutTemplateFiles, "user/settings.html")
+	var userTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	userSettingsData := &types.UserSettingsPageData{}
@@ -126,7 +127,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userSettingsData.CsrfField = csrf.TemplateField(r)
 
-	data := InitPageData(w, r, "user", "/user", "User Settings", "user/settings.html")
+	data := InitPageData(w, r, "user", "/user", "User Settings", templateFiles)
 	data.HeaderAd = true
 	data.Data = userSettingsData
 	data.User = user
@@ -161,7 +162,8 @@ func GenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 
 // UserAuthorizeConfirm renders the user-authorize template
 func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
-	var authorizeTemplate = templates.GetTemplate(append(layoutTemplateFiles, "user/authorize.html")...)
+	templateFiles := append(layoutTemplateFiles, "user/authorize.html")
+	var authorizeTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	authorizeData := &types.UserAuthorizeConfirmPageData{}
@@ -203,7 +205,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	authorizeData.CsrfField = csrf.TemplateField(r)
 	authorizeData.Flashes = utils.GetFlashes(w, r, authSessionName)
 
-	data := InitPageData(w, r, "user", "/user", "", "user/authorize.html")
+	data := InitPageData(w, r, "user", "/user", "", templateFiles)
 	data.Data = authorizeData
 	data.Meta.NoTrack = true
 
@@ -232,7 +234,8 @@ func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserNotifications(w http.ResponseWriter, r *http.Request) {
-	var notificationTemplate = templates.GetTemplate(append(layoutTemplateFiles, "user/notifications.html")...)
+	templateFiles := append(layoutTemplateFiles, "user/notifications.html")
+	var notificationTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	userNotificationsData := &types.UserNotificationsPageData{}
@@ -280,7 +283,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	link = link[:len(link)-1]
 	userNotificationsData.DashboardLink = link
 
-	data := InitPageData(w, r, "user", "/user", "", "user/notifications.html")
+	data := InitPageData(w, r, "user", "/user", "", templateFiles)
 	data.Data = userNotificationsData
 	data.User = user
 
@@ -613,7 +616,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	userNotificationsCenterData := &types.UserNotificationsCenterPageData{}
-	data := InitPageData(w, r, "user", "/user", "", "user/notificationsCenter.html")
+	data := InitPageData(w, r, "user", "/user", "", notificationCenterParts)
 
 	user := getUser(r)
 
@@ -2366,13 +2369,13 @@ func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
 
 // Imprint will show the imprint data using a go template
 func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
-
-	var webhookTemplate = templates.GetTemplate(append(layoutTemplateFiles, "user/webhooks.html")...)
+	templateFiles := append(layoutTemplateFiles, "user/webhooks.html")
+	var webhookTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
 
-	data := InitPageData(w, r, "webhook", "/webhook", "Webhook configuration", "user/webhooks.html")
+	data := InitPageData(w, r, "webhook", "/webhook", "Webhook configuration", templateFiles)
 	pageData := types.WebhookPageData{}
 
 	ctx, done := ctxt.WithTimeout(ctxt.Background(), time.Second*30)
@@ -2931,7 +2934,8 @@ func UsersNotificationChannels(w http.ResponseWriter, r *http.Request) {
 
 // UserSettings renders the user-template
 func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
-	var userTemplate = templates.GetTemplate(append(layoutTemplateFiles, "user/global_notification.html")...)
+	templateFiles := append(layoutTemplateFiles, "user/global_notification.html")
+	var userTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -2983,7 +2987,7 @@ func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
 	pageData.GlobalNotificationMessages = configs
 	pageData.CsrfField = csrf.TemplateField(r)
 
-	data := InitPageData(w, r, "user", "/user/global_notification", "Global Notification", "user/global_notification.html")
+	data := InitPageData(w, r, "user", "/user/global_notification", "Global Notification", templateFiles)
 	data.HeaderAd = true
 	data.Data = pageData
 	data.User = user

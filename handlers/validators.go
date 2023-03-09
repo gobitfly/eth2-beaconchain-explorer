@@ -23,7 +23,8 @@ type states struct {
 
 // Validators returns the validators using a go template
 func Validators(w http.ResponseWriter, r *http.Request) {
-	var validatorsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validators.html")...)
+	templateFiles := append(layoutTemplateFiles, "validators.html")
+	var validatorsTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -82,7 +83,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	validatorsPageData.ExitedCount = validatorsPageData.VoluntaryExitsCount + validatorsPageData.Slashed
 	validatorsPageData.TotalCount = validatorsPageData.ActiveCount + validatorsPageData.ExitingCount + validatorsPageData.ExitedCount + validatorsPageData.PendingCount + validatorsPageData.DepositedCount
 
-	data := InitPageData(w, r, "validators", "/validators", "Validators", "validators.html")
+	data := InitPageData(w, r, "validators", "/validators", "Validators", templateFiles)
 	data.HeaderAd = true
 	data.Data = validatorsPageData
 

@@ -2554,12 +2554,13 @@ func GetAdConfigurationsForTemplate(ids []string) ([]*types.AdConfig, error) {
 		ad_configuration
 	WHERE 
 		template_id = ANY($1) AND
-		enabled = true`, ids)
+		enabled = true`, pq.Array(ids))
 	if err != nil {
+		logger.Infof("error %v", err)
 		if err == sql.ErrNoRows {
 			return []*types.AdConfig{}, nil
 		}
-		return nil, fmt.Errorf("error getting ad configurations for template: %w %s", err, ids)
+		return nil, fmt.Errorf("error getting ad configurations for template: %v %s", err, ids)
 	}
 
 	return adConfigs, nil

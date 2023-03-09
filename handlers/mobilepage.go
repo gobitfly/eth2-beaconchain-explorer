@@ -11,12 +11,13 @@ import (
 )
 
 func MobilePage(w http.ResponseWriter, r *http.Request) {
-	var mobileTemplate = templates.GetTemplate(append(layoutTemplateFiles, "mobilepage.html")...)
+	templateFiles := append(layoutTemplateFiles, "mobilepage.html")
+	var mobileTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "more", "/mobile", "Beaconchain Dashboard", "mobilepage.html")
+	data := InitPageData(w, r, "more", "/mobile", "Beaconchain Dashboard", templateFiles)
 	pageData := &types.AdvertiseWithUsPageData{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
 

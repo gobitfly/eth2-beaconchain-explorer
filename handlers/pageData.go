@@ -95,7 +95,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 	if !data.NoAds {
 		adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplates)
 		if err != nil {
-			utils.LogError(err, fmt.Sprintf("error loading the ad configurations for template %s: ", mainTemplates), 0)
+			utils.LogError(err, fmt.Sprintf("error loading the ad configurations for template"), 0)
 		}
 		data.AdConfigurations = adConfigurations
 	}

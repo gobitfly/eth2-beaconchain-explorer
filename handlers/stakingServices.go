@@ -11,13 +11,14 @@ import (
 )
 
 func StakingServices(w http.ResponseWriter, r *http.Request) {
-	var stakingServicesTemplate = templates.GetTemplate(append(layoutTemplateFiles, "layout.html", "stakingServices.html")...)
+	templateFiles := append(layoutTemplateFiles, "layout.html", "stakingServices.html")
+	var stakingServicesTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/stakingServices", "Ethereum Staking Services Overview", "stakingServices.html")
+	data := InitPageData(w, r, "services", "/stakingServices", "Ethereum Staking Services Overview", templateFiles)
 
 	pageData := &types.StakeWithUsPageData{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey

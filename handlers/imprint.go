@@ -11,9 +11,10 @@ import (
 
 // Imprint will show the imprint data using a go template
 func Imprint(w http.ResponseWriter, r *http.Request) {
+	templateFiles := []string{getImprintPath()}
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "imprint", "/imprint", "Imprint", getImprintPath())
+	data := InitPageData(w, r, "imprint", "/imprint", "Imprint", templateFiles)
 	data.HeaderAd = true
 
 	if handleTemplateError(w, r, "imprint.go", "Imprint", "", getImprintTemplate(getImprintPath()).ExecuteTemplate(w, "layout", data)) != nil {

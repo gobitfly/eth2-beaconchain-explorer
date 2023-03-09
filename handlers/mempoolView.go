@@ -14,11 +14,11 @@ import (
 func MempoolView(w http.ResponseWriter, r *http.Request) {
 	mempool := services.LatestMempoolTransactions()
 	formatedData := formatToTable(mempool)
-
-	var mempoolViewTemplate = templates.GetTemplate(append(layoutTemplateFiles, "mempoolview.html")...)
+	templateFiles := append(layoutTemplateFiles, "mempoolview.html")
+	var mempoolViewTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "services", "/mempool", "Pending Mempool Transactions", "mempoolview.html")
+	data := InitPageData(w, r, "services", "/mempool", "Pending Mempool Transactions", templateFiles)
 
 	data.Data = formatedData
 

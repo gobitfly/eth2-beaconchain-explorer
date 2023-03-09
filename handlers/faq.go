@@ -7,11 +7,12 @@ import (
 
 // Faq will return the data from the frequently asked questions (FAQ) using a go template
 func Faq(w http.ResponseWriter, r *http.Request) {
-	var faqTemplate = templates.GetTemplate(append(layoutTemplateFiles, "faq.html")...)
+	templateFiles := append(layoutTemplateFiles, "faq.html")
+	var faqTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "faq", "/faq", "FAQ", "faq.html")
+	data := InitPageData(w, r, "faq", "/faq", "FAQ", templateFiles)
 	data.HeaderAd = true
 
 	if handleTemplateError(w, r, "faq.go", "Faq", "", faqTemplate.ExecuteTemplate(w, "layout", data)) != nil {

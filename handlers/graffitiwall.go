@@ -8,7 +8,8 @@ import (
 )
 
 func Graffitiwall(w http.ResponseWriter, r *http.Request) {
-	var graffitiwallTemplate = templates.GetTemplate(append(layoutTemplateFiles, "graffitiwall.html")...)
+	templateFiles := append(layoutTemplateFiles, "graffitiwall.html")
+	var graffitiwallTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 
@@ -24,7 +25,7 @@ func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := InitPageData(w, r, "more", "/graffitiwall", "Graffitiwall", "graffitiwall.html")
+	data := InitPageData(w, r, "more", "/graffitiwall", "Graffitiwall", templateFiles)
 	data.HeaderAd = true
 	data.Data = graffitiwallData
 

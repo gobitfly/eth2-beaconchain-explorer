@@ -11,13 +11,14 @@ import (
 )
 
 func EthClientsServices(w http.ResponseWriter, r *http.Request) {
-	var ethClientsServicesTemplate = templates.GetTemplate(append(layoutTemplateFiles, "ethClientsServices.html")...)
+	templateFiles := append(layoutTemplateFiles, "ethClientsServices.html")
+	var ethClientsServicesTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/ethClientsServices", "Ethereum Clients Services Overview", "ethClientsServices.html")
+	data := InitPageData(w, r, "services", "/ethClientsServices", "Ethereum Clients Services Overview", templateFiles)
 
 	pageData := ethclients.GetEthClientData()
 	pageData.CsrfField = csrf.TemplateField(r)
