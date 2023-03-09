@@ -136,7 +136,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		return err
 	}
 
-	batchSize = 16000 // max parameters: 65535
+  batchSize = 16000 // max parameters: 65535
 	for b := 0; b < len(incomeStats); b += batchSize {
 		start := b
 		end := b + batchSize
@@ -175,6 +175,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 		logger.Infof("saving validator income details batch %v completed", b)
 	}
+
 	logger.Infof("export completed, took %v", time.Since(start))
 	start = time.Now()
 
@@ -445,11 +446,23 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		GROUP BY day 
 		ORDER BY day
 	;`, queryValidatorsArr, lowerBoundDay, upperBoundDay)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	// retrieve rewards for epochs not yet in stats
 	currentDayIncome := int64(0)
-	if upperBoundDay == 65536 && len(result) > 0 {
-		lastDay := result[len(result)-1].Day
+	if upperBoundDay == 65536 {
+		lastDay := int64(0)
+		if len(result) > 0 {
+			lastDay = result[len(result)-1].Day
+		} else {
+			err = ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats")
+			if err != nil {
+				return nil, 0, err
+			}
+		}
+
 		currentDay := uint64(lastDay + 1)
 		startEpoch := currentDay * utils.EpochsPerDay()
 		endEpoch := startEpoch + utils.EpochsPerDay() - 1

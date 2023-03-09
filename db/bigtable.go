@@ -1360,7 +1360,7 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 		startEpoch = 0
 	}
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*180))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*180)
 	defer cancel()
 
 	ranges, err := bigtable.getEpochRanges(startEpoch, endEpoch)
@@ -1387,7 +1387,7 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 		gcp_bigtable.InterleaveFilters(columnFilters...),
 	)
 
-	if len(columnFilters) == 1 { // special case to retrieve data for one validators
+	if len(columnFilters) == 1 { // special case to retrieve data for one validator
 		filter = gcp_bigtable.ChainFilters(
 			gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
 			columnFilters[0],
@@ -1613,13 +1613,13 @@ func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) (gc
 		rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(0))
 		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 
-		// epochs are sorted descending, so start with the larges epoch and end with the smallest
+		// epochs are sorted descending, so start with the largest epoch and end with the smallest
 		// add \x00 to make the range inclusive
 		rangeEnd = fmt.Sprintf("%s:e:b:%s%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), "\x00")
 		rangeStart = fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch))
 		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 	} else {
-		// epochs are sorted descending, so start with the larges epoch and end with the smallest
+		// epochs are sorted descending, so start with the largest epoch and end with the smallest
 		// add \x00 to make the range inclusive
 		rangeEnd := fmt.Sprintf("%s:e:b:%s%s", bigtable.chainId, reversedPaddedEpoch(startEpoch), "\x00")
 		rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch))
