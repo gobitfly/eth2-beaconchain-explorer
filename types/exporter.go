@@ -81,9 +81,6 @@ type Validator struct {
 	WithdrawalCredentials      []byte `db:"withdrawalcredentials"`
 
 	BalanceActivation sql.NullInt64 `db:"balanceactivation"`
-	Balance1d         sql.NullInt64 `db:"balance1d"`
-	Balance7d         sql.NullInt64 `db:"balance7d"`
-	Balance31d        sql.NullInt64 `db:"balance31d"`
 	Status            string        `db:"status"`
 
 	LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`

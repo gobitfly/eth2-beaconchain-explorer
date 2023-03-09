@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -309,53 +308,6 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 		return nil, fmt.Errorf("error parsing epoch validators: %v", err)
 	}
 
-	epoch1d := int64(epoch) - int64(utils.EpochsPerDay())
-	epoch7d := int64(epoch) - int64(utils.EpochsPerDay())*7
-	epoch31d := int64(epoch) - int64(utils.EpochsPerDay())*31
-
-	var validatorBalances1d map[uint64]uint64
-	var validatorBalances7d map[uint64]uint64
-	var validatorBalances31d map[uint64]uint64
-
-	if !skipHistoricBalances {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			start := time.Now()
-			var err error
-			validatorBalances1d, err = lc.GetBalancesForEpoch(epoch1d)
-			if err != nil {
-				logrus.Errorf("error retrieving validator balances for epoch %v (1d): %v", epoch1d, err)
-				return
-			}
-			logger.Printf("retrieved data for %v validator balances for epoch %v (1d) took %v", len(parsedValidators.Data), epoch1d, time.Since(start))
-		}()
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			start := time.Now()
-			var err error
-			validatorBalances7d, err = lc.GetBalancesForEpoch(epoch7d)
-			if err != nil {
-				logrus.Errorf("error retrieving validator balances for epoch %v (7d): %v", epoch7d, err)
-				return
-			}
-			logger.Printf("retrieved data for %v validator balances for epoch %v (7d) took %v", len(parsedValidators.Data), epoch7d, time.Since(start))
-		}()
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			start := time.Now()
-			var err error
-			validatorBalances31d, err = lc.GetBalancesForEpoch(epoch31d)
-			if err != nil {
-				logrus.Errorf("error retrieving validator balances for epoch %v (31d): %v", epoch31d, err)
-				return
-			}
-			logger.Printf("retrieved data for %v validator balances for epoch %v (31d) took %v", len(parsedValidators.Data), epoch31d, time.Since(start))
-		}()
-		wg.Wait()
-	}
 	for _, validator := range parsedValidators.Data {
 		data.Validators = append(data.Validators, &types.Validator{
 			Index:                      uint64(validator.Index),
@@ -368,9 +320,6 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 			ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
 			ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
 			WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
-			Balance1d:                  sql.NullInt64{Int64: int64(validatorBalances1d[uint64(validator.Index)]), Valid: true},
-			Balance7d:                  sql.NullInt64{Int64: int64(validatorBalances7d[uint64(validator.Index)]), Valid: true},
-			Balance31d:                 sql.NullInt64{Int64: int64(validatorBalances31d[uint64(validator.Index)]), Valid: true},
 			Status:                     validator.Status,
 		})
 	}
