@@ -147,7 +147,7 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 }
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
-	templateFiles := append(layoutTemplateFiles, "dashboard.html")
+	templateFiles := append(layoutTemplateFiles, "dashboard.html", "dashboard/tables.html")
 	var dashboardTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")

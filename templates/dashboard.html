@@ -22,180 +22,181 @@
 {{ end }}
 
 {{ define "content" }}
-  <div class="container mt-2 outer-container" style="min-width:300px;">
-    <div class="dashboard-container">
-      <div class="dashboard-header">
-        <div class="dashboard-title">
-          <style>
-            .cube {
-              display: flex;
-              justify-content: center;
-              --disperse-factor: 0.5px;
-            }
+  {{ $template := .Meta.Template }}
+  {{ with .Data }}
+    <div class="container mt-2 outer-container" style="min-width:300px;">
+      <div class="dashboard-container">
+        <div class="dashboard-header">
+          <div class="dashboard-title">
+            <style>
+              .cube {
+                display: flex;
+                justify-content: center;
+                --disperse-factor: 0.5px;
+              }
 
-            .cube-unit {
-              fill-opacity: 0.9;
-              stroke-miterlimit: 0;
-            }
+              .cube-unit {
+                fill-opacity: 0.9;
+                stroke-miterlimit: 0;
+              }
 
-            .blue-cube {
-              /* --mainColor: #009CDE;
+              .blue-cube {
+                /* --mainColor: #009CDE;
             --strokeColor: #0079ad;
             --lightColor: #00affa;
             --darkColor: #008bc7; */
-              width: 89px;
-              height: auto;
-            }
-
-            .blue-cube {
-              --mainColor: rgba(75, 75, 75, 0.7);
-              --strokeColor: rgba(55, 55, 55, 1);
-              --lightColor: rgba(0, 0, 0, 0.5);
-              --darkColor: rgba(100, 100, 100, 0.8);
-            }
-
-            [data-theme="dark"] .blue-cube {
-              --mainColor: rgba(180, 180, 180, 0.7);
-              --strokeColor: rgba(200, 200, 200, 1);
-              --lightColor: rgba(255, 255, 255, 0.5);
-              --darkColor: rgba(150, 150, 150, 0.8);
-            }
-
-            @keyframes moveX {
-              to {
-                transform: translateX(var(--translateX, 35px));
+                width: 89px;
+                height: auto;
               }
-            }
 
-            @keyframes moveY {
-              to {
-                transform: translateY(var(--translateY, -35px));
+              .blue-cube {
+                --mainColor: rgba(75, 75, 75, 0.7);
+                --strokeColor: rgba(55, 55, 55, 1);
+                --lightColor: rgba(0, 0, 0, 0.5);
+                --darkColor: rgba(100, 100, 100, 0.8);
               }
-            }
 
-            @keyframes moveXY {
-              to {
-                transform: translate(var(--translateX, 200px), var(--translateY, 200px));
+              [data-theme="dark"] .blue-cube {
+                --mainColor: rgba(180, 180, 180, 0.7);
+                --strokeColor: rgba(200, 200, 200, 1);
+                --lightColor: rgba(255, 255, 255, 0.5);
+                --darkColor: rgba(150, 150, 150, 0.8);
               }
-            }
 
-            @keyframes moveBack {
-              to {
-                transform: translate(0, 0);
+              @keyframes moveX {
+                to {
+                  transform: translateX(var(--translateX, 35px));
+                }
               }
-            }
 
-            .move {
-              /* transform: translate(-50px, -20px);
+              @keyframes moveY {
+                to {
+                  transform: translateY(var(--translateY, -35px));
+                }
+              }
+
+              @keyframes moveXY {
+                to {
+                  transform: translate(var(--translateX, 200px), var(--translateY, 200px));
+                }
+              }
+
+              @keyframes moveBack {
+                to {
+                  transform: translate(0, 0);
+                }
+              }
+
+              .move {
+                /* transform: translate(-50px, -20px);
             animation: 2s moveBack alternate infinite paused; */
-            }
+              }
 
-            .move > use {
-              /* animation: 2s moveBack alternate infinite paused; */
-            }
+              .move > use {
+                /* animation: 2s moveBack alternate infinite paused; */
+              }
 
-            .m-left,
-            .m-right {
-              animation: 2s moveX alternate infinite paused;
-            }
+              .m-left,
+              .m-right {
+                animation: 2s moveX alternate infinite paused;
+              }
 
-            .m-up,
-            .m-down {
-              animation: 2s moveY alternate infinite paused;
-            }
+              .m-up,
+              .m-down {
+                animation: 2s moveY alternate infinite paused;
+              }
 
-            .m-xy {
-              animation: 2s moveXY forwards infinite paused;
-            }
+              .m-xy {
+                animation: 2s moveXY forwards infinite paused;
+              }
 
-            .m-left {
-              --translateX: -50px;
-            }
+              .m-left {
+                --translateX: -50px;
+              }
 
-            .m-right {
-              --translateX: 500px;
-            }
+              .m-right {
+                --translateX: 500px;
+              }
 
-            .m-up {
-              --translateY: -50px;
-            }
+              .m-up {
+                --translateY: -50px;
+              }
 
-            .m-down {
-              --translateY: 200px;
-            }
+              .m-down {
+                --translateY: 200px;
+              }
 
-            .multiselect-border {
-              z-index: 5;
-            }
-          </style>
+              .multiselect-border {
+                z-index: 5;
+              }
+            </style>
 
-          <div id="dashboard-cube" class="cube">
-            <svg xmlns="http://www.w3.org/2000/svg" class="blue-cube" viewBox="20 -20 250 200">
-              <defs>
-                <g id="cube" class="cube-unit">
-                  <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)" />
-                  <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)" />
-                  <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)" />
+            <div id="dashboard-cube" class="cube">
+              <svg xmlns="http://www.w3.org/2000/svg" class="blue-cube" viewBox="20 -20 250 200">
+                <defs>
+                  <g id="cube" class="cube-unit">
+                    <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)" />
+                    <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)" />
+                    <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)" />
+                  </g>
+                  <g id="cube" class="cube-unit">
+                    <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)" />
+                    <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)" />
+                    <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)" />
+                  </g>
+                  <g style="transform:scale(0.6)" id="cube-small" class="cube-unit">
+                    <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)" />
+                    <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)" />
+                    <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)" />
+                  </g>
+                  <g id="cube" class="cube-unit">
+                    <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)" />
+                    <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)" />
+                    <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)" />
+                  </g>
+                </defs>
+                <g class="move"><use href="#cube-small" x="129" y="56" /></g>
+                <g style="opacity:.2;">
+                  <use href="#cube" x="121" y="48" />
+                  <use href="#cube" x="121" y="24" />
+                  <use href="#cube" x="121" y="0" />
+                  <use href="#cube" x="100" y="60" />
+                  <use href="#cube" x="100" y="36" />
+                  <use href="#cube" x="100" y="12" />
+                  <use href="#cube" x="142" y="60" />
+                  <use href="#cube" x="142" y="36" />
+                  <use href="#cube" x="142" y="12" />
+                  <use href="#cube" x="163" y="72" />
+                  <use href="#cube" x="163" y="48" />
+                  <use href="#cube" x="163" y="24" />
+                  <use href="#cube" x="79" y="72" />
+                  <use href="#cube" x="79" y="48" />
+                  <use href="#cube" x="79" y="24" />
+                  <use href="#cube" x="121" y="72" />
+                  <use href="#cube" x="121" y="48" />
+                  <use href="#cube" x="121" y="24" />
+                  <use href="#cube" x="100" y="84" />
+                  <use href="#cube" x="100" y="60" />
+                  <use href="#cube" x="100" y="36" />
+                  <use href="#cube" x="142" y="84" />
+                  <use href="#cube" x="142" y="60" />
+                  <use href="#cube" x="142" y="36" />
+                  <use href="#cube" x="121" y="96" />
+                  <use href="#cube" x="121" y="72" />
+                  <use href="#cube-small" x="129" y="56" />
                 </g>
-                <g id="cube" class="cube-unit">
-                  <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)" />
-                  <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)" />
-                  <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)" />
-                </g>
-                <g style="transform:scale(0.6)" id="cube-small" class="cube-unit">
-                  <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)" />
-                  <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)" />
-                  <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)" />
-                </g>
-                <g id="cube" class="cube-unit">
-                  <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)" />
-                  <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)" />
-                  <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)" />
-                </g>
-              </defs>
-              <g class="move"><use href="#cube-small" x="129" y="56" /></g>
-              <g style="opacity:.2;">
-                <use href="#cube" x="121" y="48" />
-                <use href="#cube" x="121" y="24" />
-                <use href="#cube" x="121" y="0" />
-                <use href="#cube" x="100" y="60" />
-                <use href="#cube" x="100" y="36" />
-                <use href="#cube" x="100" y="12" />
-                <use href="#cube" x="142" y="60" />
-                <use href="#cube" x="142" y="36" />
-                <use href="#cube" x="142" y="12" />
-                <use href="#cube" x="163" y="72" />
-                <use href="#cube" x="163" y="48" />
-                <use href="#cube" x="163" y="24" />
-                <use href="#cube" x="79" y="72" />
-                <use href="#cube" x="79" y="48" />
-                <use href="#cube" x="79" y="24" />
-                <use href="#cube" x="121" y="72" />
-                <use href="#cube" x="121" y="48" />
-                <use href="#cube" x="121" y="24" />
-                <use href="#cube" x="100" y="84" />
-                <use href="#cube" x="100" y="60" />
-                <use href="#cube" x="100" y="36" />
-                <use href="#cube" x="142" y="84" />
-                <use href="#cube" x="142" y="60" />
-                <use href="#cube" x="142" y="36" />
-                <use href="#cube" x="121" y="96" />
-                <use href="#cube" x="121" y="72" />
-                <use href="#cube-small" x="129" y="56" />
-              </g>
-            </svg>
-          </div>
-          <div class="brand">
-            <div class="dashboard-title-value title">
-              <div class="title">Dashboard</div>
-              <div style="font-size:1.5rem;" class="stat">Validators</div>
+              </svg>
+            </div>
+            <div class="brand">
+              <div class="dashboard-title-value title">
+                <div class="title">Dashboard</div>
+                <div style="font-size:1.5rem;" class="stat">Validators</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="px-3"><div id="r-banner" info="{{ .Meta.Template }}"></div></div>
+        <div class="px-3"><div id="r-banner" info="{{ $template }}"></div></div>
 
-      {{ with .Data }}
         <div class="row align-items-stretch">
           <div class="col-lg-8 px-lg-2 my-2">
             <div class="card d-flex flex-column justify-content-center h-100 py-3 px-3 card-body">
@@ -698,7 +699,7 @@
             </div>
           </div>
         </div>
-      {{ end }}
+      </div>
     </div>
-  </div>
+  {{ end }}
 {{ end }}
