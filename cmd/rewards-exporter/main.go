@@ -8,12 +8,14 @@ import (
 	"eth2-exporter/version"
 	"flag"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	eth_rewards "github.com/gobitfly/eth-rewards"
 	"github.com/gobitfly/eth-rewards/beacon"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -21,6 +23,7 @@ func main() {
 	bnAddress := flag.String("beacon-node-address", "", "Url of the beacon node api")
 	enAddress := flag.String("execution-node-address", "", "Url of the execution node api")
 	epoch := flag.Int64("epoch", -1, "epoch to export (use -1 to export latest finalized epoch)")
+	batchConcurrency := flag.Int("batch-concurrency", -1, "epoch to export at the same time (only for historic)")
 
 	epochStart := flag.Uint64("epoch-start", 0, "start epoch to export")
 	epochEnd := flag.Uint64("epoch-end", 0, "end epoch to export")
@@ -61,14 +64,62 @@ func main() {
 	defer bt.Close()
 
 	if *epochEnd != 0 {
-		for i := *epochStart; i <= *epochEnd; i++ {
-			err := export(uint64(i), bt, client, enAddress)
-			if err != nil {
-				logrus.Fatal(err)
-			}
+		g := errgroup.Group{}
+		g.SetLimit(*batchConcurrency)
+
+		start := time.Now()
+		epochsCompleted := int64(0)
+		notExportedEpochs := []uint64{}
+		err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch >= $1 AND epoch <= $2 ORDER BY epoch", *epochStart, *epochEnd)
+		if err != nil {
+			logrus.Fatal(err)
 		}
+		epochsToExport := int64(len(notExportedEpochs))
+
+		go func() {
+			for {
+				c := atomic.LoadInt64(&epochsCompleted)
+
+				if c == 0 {
+					time.Sleep(time.Second)
+					continue
+				}
+
+				epochsRemaining := epochsToExport - c
+
+				elapsed := time.Since(start)
+				remaining := time.Duration(epochsRemaining * int64(time.Since(start).Nanoseconds()) / c)
+				epochDuration := time.Duration(elapsed.Nanoseconds() / c)
+
+				logrus.Infof("exported %v of %v epochs in %v (%v/epoch), estimated time remaining: %vs", c, epochsToExport, elapsed, epochDuration, remaining)
+				time.Sleep(time.Second * 10)
+			}
+		}()
+
+		for _, e := range notExportedEpochs {
+			e := e
+			g.Go(func() error {
+				err := export(e, bt, client, enAddress)
+
+				if err != nil {
+					logrus.Error(err)
+					return nil
+				}
+
+				_, err = db.WriterDb.Exec("UPDATE epochs SET rewards_exported = true WHERE epoch = $1", e)
+
+				if err != nil {
+					logrus.Errorf("error marking rewards_exported as true for epoch %v: %v", e, err)
+				}
+
+				atomic.AddInt64(&epochsCompleted, 1)
+				return nil
+			})
+		}
+		g.Wait()
 		return
 	}
+
 	if *epoch == -1 {
 		for {
 			notExportedEpochs := []uint64{}
