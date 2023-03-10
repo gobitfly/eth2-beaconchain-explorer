@@ -61,9 +61,12 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(slotOrHash) != 64 {
 		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
-		if err != nil {
-			logger.Errorf("error parsing blockslot to int: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		if err != nil || blockSlot >= 2147483648 { // block slot must be lower then max int4
+			data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash))
+			data.Data = "slot"
+			if handleTemplateError(w, r, "slot.go", "Slot", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+				return // an error has occurred and was processed
+			}
 			return
 		}
 	}
@@ -73,6 +76,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 	if blockSlot == -1 {
 		err = db.ReaderDb.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
 		if blockSlot == -1 {
+			data.Data = "slot"
 			if handleTemplateError(w, r, "slot.go", "Slot", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
