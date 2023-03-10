@@ -49,6 +49,8 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", 0))
+		data.Data = "block"
+
 		if handleTemplateError(w, r, "eth1Block.go", "Eth1Block", "number", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
@@ -58,6 +60,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number))
 	eth1BlockPageData, err := GetExecutionBlockPageData(number, 10)
 	if err != nil {
+		data.Data = "block"
 		if handleTemplateError(w, r, "eth1Block.go", "Eth1Block", "GetExecutionBlockPageData", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
@@ -76,6 +79,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logger.Errorf("error retrieving slot page data: %v", err)
 
+			data.Data = "block"
 			if handleTemplateError(w, r, "eth1Block.go", "Eth1Block", "GetSlotPageData", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
