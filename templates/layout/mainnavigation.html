@@ -57,19 +57,25 @@
     <a class="dropdown-item" href="{{ .Path }}">
       {{ if .IsHighlighted }}
         <span class="btn btn-primary">
-      {{ end }}
-      <span class="nav-icon">
-      {{ if .CustomIcon }}
-        {{ includeSvg .CustomIcon }}
+          <span class="nav-icon">
+            {{ if .CustomIcon }}
+              {{ includeSvg .CustomIcon }}
+            {{ else }}
+              <i class="fas {{ .Icon }} mr-2"></i>
+            {{ end }}
+          </span>
+          <span class="text-white">{{ .Label }}</span>
+        </span>
       {{ else }}
-        <i class="fas {{ .Icon }} mr-2"></i>
-      {{ end }}
-      </span>
-      {{ if .IsHighlighted }}
-        <span class="text-white">{{ .Label }}</span></span>
-      {{ else }}
+        <span class="nav-icon">
+          {{ if .CustomIcon }}
+            {{ includeSvg .CustomIcon }}
+          {{ else }}
+            <i class="fas {{ .Icon }} mr-2"></i>
+          {{ end }}
+        </span>
         <span class="nav-text">{{ .Label }}</span>
-      {{end}}
+      {{ end }}
     </a>
   {{ end }}
 {{ end }}
