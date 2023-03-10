@@ -34,7 +34,7 @@ func IncludeSvg(name string) template.HTML {
   		`
 	case "ethermine_stake_logo_svg":
 		svg = `
-			<svg style="width: 1rem;" viewBox="7.98 -0.02 24.78 40.07">
+			<svg viewBox="7.98 -0.02 24.78 40.07">
 				<path data-name="Rechteck 13" transform="translate(0 .03)" style="fill:none" d="M0 0h40v40H0z"></path>
 				<g data-name="Ebene 2">
 				<path data-name="Pfad 25" d="M165.132 200.79v-10.124l12.375-7.286z" transform="translate(-144.758 -160.76)" style="fill:var(--body-color)"></path>
@@ -50,7 +50,7 @@ func IncludeSvg(name string) template.HTML {
 		`
 	case "webhook_logo_svg":
 		svg = `
-			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="width: 20px; margin-bottom: 3px; fill: var(--font-color);" xmlns="http://www.w3.org/2000/svg">
+			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="margin-bottom: 3px; fill: var(--font-color);" xmlns="http://www.w3.org/2000/svg">
 				<!-- credit https://www.iconfinder.com/carbon-design -->
 				<defs>
 				<style>

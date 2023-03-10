@@ -29,18 +29,6 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	validatorsPageData := types.ValidatorsPageData{}
-	validatorsPageData.PendingCount = 0
-	validatorsPageData.ActiveOnlineCount = 0
-	validatorsPageData.ActiveOfflineCount = 0
-	validatorsPageData.ActiveCount = 0
-	validatorsPageData.SlashingOnlineCount = 0
-	validatorsPageData.SlashingOfflineCount = 0
-	validatorsPageData.SlashingCount = 0
-	validatorsPageData.ExitingOnlineCount = 0
-	validatorsPageData.ExitingOfflineCount = 0
-	validatorsPageData.ExitedCount = 0
-	validatorsPageData.VoluntaryExitsCount = 0
-	validatorsPageData.DepositedCount = 0
 
 	var currentStateCounts []*states
 
@@ -77,11 +65,14 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	epoch := services.LatestEpoch()
+
 	validatorsPageData.ActiveCount = validatorsPageData.ActiveOnlineCount + validatorsPageData.ActiveOfflineCount
 	validatorsPageData.SlashingCount = validatorsPageData.SlashingOnlineCount + validatorsPageData.SlashingOfflineCount
 	validatorsPageData.ExitingCount = validatorsPageData.ExitingOnlineCount + validatorsPageData.ExitingOfflineCount
 	validatorsPageData.ExitedCount = validatorsPageData.VoluntaryExitsCount + validatorsPageData.Slashed
 	validatorsPageData.TotalCount = validatorsPageData.ActiveCount + validatorsPageData.ExitingCount + validatorsPageData.ExitedCount + validatorsPageData.PendingCount + validatorsPageData.DepositedCount
+	validatorsPageData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
 
 	data := InitPageData(w, r, "validators", "/validators", "Validators", templateFiles)
 	data.HeaderAd = true

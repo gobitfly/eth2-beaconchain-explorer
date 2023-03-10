@@ -1271,7 +1271,6 @@ func BlockTimeAvgChartData() (*types.GenericChartData, error) {
 		ColumnDataGroupingApproximation: "average",
 		TooltipFormatter: `
 		function (tooltip) {
-			this.point.y = Math.round(this.point.y)
 			var orig = tooltip.defaultFormatter.call(this, tooltip)
 			var epoch = timeToEpoch(this.x)
 			if (epoch > 0) {
