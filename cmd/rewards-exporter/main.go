@@ -70,7 +70,7 @@ func main() {
 		start := time.Now()
 		epochsCompleted := int64(0)
 		notExportedEpochs := []uint64{}
-		err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch >= $1 AND epoch <= $2 ORDER BY epoch", *epochStart, *epochEnd)
+		err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch >= $1 AND epoch <= $2 ORDER BY epoch DESC", *epochStart, *epochEnd)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -121,13 +121,14 @@ func main() {
 	}
 
 	if *epoch == -1 {
+		lastExportedEpoch := uint64(0)
 		for {
 			notExportedEpochs := []uint64{}
-			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported ORDER BY epoch desc")
+			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch > $1 ORDER BY epoch desc LIMIT 10", lastExportedEpoch)
 			if err != nil {
 				utils.LogFatal(err, "getting chain head from lighthouse error", 0)
 			}
-			for i, e := range notExportedEpochs {
+			for _, e := range notExportedEpochs {
 				err := export(e, bt, client, enAddress)
 
 				if err != nil {
@@ -142,8 +143,8 @@ func main() {
 				}
 				services.ReportStatus("rewardsExporter", "Running", nil)
 
-				if i > 10 { // restart the export loop in case we are lagging a lot of epochs behind
-					break
+				if e > lastExportedEpoch {
+					lastExportedEpoch = e
 				}
 			}
 
