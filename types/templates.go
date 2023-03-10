@@ -67,11 +67,12 @@ type NavigationGroup struct {
 }
 
 type NavigationLink struct {
-	Label      string
-	Path       string
-	CustomIcon string
-	Icon       string
-	IsHidden   bool
+	Label         string
+	Path          string
+	CustomIcon    string
+	Icon          string
+	IsHidden      bool
+	IsHighlighted bool
 }
 
 type PageRates struct {
