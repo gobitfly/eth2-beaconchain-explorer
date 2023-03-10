@@ -158,7 +158,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
 		for i := start; i <= end; i++ {
 			clRewards := int64(0)
-			elRewards := ""
+			elRewards := "0"
 
 			if incomeStats[uint64(i)] != nil {
 				clRewards = incomeStats[uint64(i)].TotalClRewards()
@@ -282,11 +282,11 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		(
 			select 
 				validatorindex, 
-				end_balance as balance, 
-				cl_rewards_gwei as performance1d, 
-				cl_rewards_gwei_7d as performance7d, 
-				cl_rewards_gwei_31d as performance31d, 
-				cl_rewards_gwei_total as performance365d, 
+				COALESCE(end_balance, 0) as balance, 
+				COALESCE(end_balance, cl_rewards_gwei, 0) as performance1d, 
+				COALESCE(end_balance, cl_rewards_gwei_7d , 0)as performance7d, 
+				COALESCE(end_balance, cl_rewards_gwei_31d, 0) as performance31d, 
+				COALESCE(end_balance, cl_rewards_gwei_total, 0) as performance365d, 
 				row_number() over(order by cl_rewards_gwei_7d desc) as rank7d 
 			from validator_stats where day = $1
 		) 
