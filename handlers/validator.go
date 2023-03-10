@@ -107,7 +107,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	data.HeaderAd = true
 	validatorPageData.NetworkStats = services.LatestIndexPageData()
 	validatorPageData.User = data.User
-	validatorPageData.NoAds = data.NoAds
 
 	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
 	if err != nil {

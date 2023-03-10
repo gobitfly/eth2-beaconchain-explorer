@@ -180,8 +180,9 @@
   </style>
 {{ end }}
 {{ define "content" }}
-  <div class="container mt-2">
-    {{ with .Data }}
+  {{ $template := .Meta.Template }}
+  {{ with .Data }}
+    <div class="container mt-2">
       <div class="my-3">
         <div class="d-md-flex py-2 justify-content-md-between">
           <div class="heading">
@@ -381,9 +382,7 @@
           </div>
         </div>
       </div>
-    {{ end }}
-    {{ if not .NoAds }}
-      <div id="r-banner" info="{{ .Meta.Template }}"></div>
-    {{ end }}
-  </div>
+      <div id="r-banner" info="{{ $template }}"></div>
+    </div>
+  {{ end }}
 {{ end }}

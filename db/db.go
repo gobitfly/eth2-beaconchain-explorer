@@ -2522,6 +2522,7 @@ func GetAdConfigurations() ([]*types.AdConfig, error) {
 		insert_mode, 
 		refresh_interval, 
 		enabled, 
+		for_all_users,
 		banner_id, 
 		html_content
 	FROM 
@@ -2537,10 +2538,13 @@ func GetAdConfigurations() ([]*types.AdConfig, error) {
 }
 
 // get the ad configuration for a specific template that are active
-func GetAdConfigurationsForTemplate(ids []string) ([]*types.AdConfig, error) {
+func GetAdConfigurationsForTemplate(ids []string, noAds bool) ([]*types.AdConfig, error) {
 	var adConfigs []*types.AdConfig
-
-	err := ReaderDb.Select(&adConfigs, `
+	forAllUsers := ""
+	if noAds {
+		forAllUsers = " AND for_all_users = true"
+	}
+	err := ReaderDb.Select(&adConfigs, fmt.Sprintf(`
 	SELECT 
 		id, 
 		template_id, 
@@ -2548,13 +2552,14 @@ func GetAdConfigurationsForTemplate(ids []string) ([]*types.AdConfig, error) {
 		insert_mode, 
 		refresh_interval, 
 		enabled, 
+		for_all_users,
 		banner_id, 
 		html_content
 	FROM 
 		ad_configuration
 	WHERE 
 		template_id = ANY($1) AND
-		enabled = true`, pq.Array(ids))
+		enabled = true %v`, forAllUsers), pq.Array(ids))
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return []*types.AdConfig{}, nil
@@ -2575,9 +2580,10 @@ func InsertAdConfigurations(adConfig types.AdConfig) error {
 			insert_mode,
 			refresh_interval, 
 			enabled,
+			for_all_users,
 			banner_id,
 			html_content) 
-		VALUES($1, $2, $3, $4, $5, $6, $7, $8) 
+		VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) 
 		ON CONFLICT DO NOTHING`,
 		adConfig.Id,
 		adConfig.TemplateId,
@@ -2585,6 +2591,7 @@ func InsertAdConfigurations(adConfig types.AdConfig) error {
 		adConfig.InsertMode,
 		adConfig.RefreshInterval,
 		adConfig.Enabled,
+		adConfig.ForAllUsers,
 		adConfig.BannerId,
 		adConfig.HtmlContent)
 	if err != nil {
@@ -2607,8 +2614,9 @@ func UpdateAdConfiguration(adConfig types.AdConfig) error {
 			insert_mode = $4,
 			refresh_interval = $5,
 			enabled = $6,
-			banner_id = $7,
-			html_content = $8
+			for_all_users = $7,
+			banner_id = $8,
+			html_content = $9
 		WHERE id = $1;`,
 		adConfig.Id,
 		adConfig.TemplateId,
@@ -2616,6 +2624,7 @@ func UpdateAdConfiguration(adConfig types.AdConfig) error {
 		adConfig.InsertMode,
 		adConfig.RefreshInterval,
 		adConfig.Enabled,
+		adConfig.ForAllUsers,
 		adConfig.BannerId,
 		adConfig.HtmlContent)
 	if err != nil {

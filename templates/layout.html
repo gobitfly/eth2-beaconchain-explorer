@@ -464,10 +464,8 @@
                     </script>
         {{ end }}
       {{ end }}
-      {{ if not .NoAds }}
-        <script type="text/javascript" async src="/js/revive.min.js"></script>
-        {{ template "addHandler" .AdConfigurations }}
-      {{ end }}
+      <script type="text/javascript" async src="/js/revive.min.js"></script>
+      {{ template "addHandler" .AdConfigurations }}
       {{ if .Debug }}
         <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.min.js" integrity="sha512-O9SYDgWAM3bEzit1z6mkFd+dxKUplO/oB8UwYGAkg2Zy/WzDUQ2mYA/ysk3c0CxiXAN4u8T9JeZ0Ahk2Jj/33Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <script src="/js/debug.js"></script>

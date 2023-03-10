@@ -441,8 +441,9 @@
 {{ end }}
 
 {{ define "content" }}
-  <div class="container-fluid container-xl">
-    {{ with .Data }}
+  {{ $template := .Meta.Template }}
+  {{ with .Data }}
+    <div class="container-fluid container-xl">
       <div class="mt-4">
         <div class="d-flex align-items-center justify-content-md-end">
           <nav aria-label="breadcrumb">
@@ -546,9 +547,7 @@
           </table>
         </div>
       </div>
-    {{ end }}
-    {{ if not .NoAds }}
-      <div id="r-banner" info="{{ .Meta.Template }}"></div>
-    {{ end }}
-  </div>
+      <div id="r-banner" info="{{ $template }}"></div>
+    </div>
+  {{ end }}
 {{ end }}

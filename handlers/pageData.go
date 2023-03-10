@@ -92,13 +92,11 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		MainMenuItems:       createMenuItems(active, isMainnet),
 	}
 
-	if !data.NoAds {
-		adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplates)
-		if err != nil {
-			utils.LogError(err, "error loading the ad configurations for template", 0)
-		}
-		data.AdConfigurations = adConfigurations
+	adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplates, data.NoAds)
+	if err != nil {
+		utils.LogError(err, "error loading the ad configurations for template", 0)
 	}
+	data.AdConfigurations = adConfigurations
 
 	if utils.Config.Frontend.Debug {
 		_, session, err := getUserSession(r)

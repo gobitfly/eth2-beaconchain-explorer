@@ -882,7 +882,6 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	userNotificationsCenterData.Network = networkData
 	userNotificationsCenterData.MonitoringSubscriptions = monitoringSubscriptions
 	userNotificationsCenterData.Machines = machines
-	userNotificationsCenterData.NoAds = data.NoAds
 	data.Data = userNotificationsCenterData
 	data.User = user
 

@@ -128,8 +128,6 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 	}
 	data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), slotTemplateFiles)
 	data.Meta.Path = fmt.Sprintf("/slot/%v", blockPageData.Slot)
-	blockPageData.NoAds = data.NoAds
-	blockPageData.Template = data.Meta.Template
 	data.Data = blockPageData
 
 	if utils.IsApiRequest(r) {

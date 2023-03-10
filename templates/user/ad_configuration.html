@@ -9,7 +9,7 @@
       const filterValue = document.getElementById("adFilter").value.toLowerCase()
       $(".configuration-box").each(function () {
         const box = $(this)
-        const templateId = box.find("input[name='templateId']")[0].value.toLowerCase()
+        const templateId = box.find("select[name='templateId']")[0].value.toLowerCase()
         const jQuerySelector = box.find("input[name='jQuerySelector']")[0].value.toLowerCase()
         if (filterValue.length === 0 || templateId.includes(filterValue) || jQuerySelector.includes(filterValue)) {
           this.style.display = "flex"
@@ -81,6 +81,8 @@
       <div>
         <input type="checkbox" name="enabled" {{ if .Config.Enabled }}checked{{ end }} />
         <label for="enabled">Is active</label>
+        <input type="checkbox" class="pl-3" name="forAllUsers" {{ if .Config.ForAllUsers }}checked{{ end }} />
+        <label for="enabled">For all users (*Also for Add-Free users!)</label>
       </div>
 
       <div>
@@ -100,12 +102,12 @@
       <div {{ if not (len .Config.HtmlContent) }}style="display:none;"{{ end }} id="htmlContentBox_{{ .Config.Id }}">
         <label for="htmlContent" class="form-label">Banner HTML</label>
         <textarea class="form-control" name="htmlContent" rows="20" placeholder="Enter your <div>Banner HTML</div>">{{ .Config.HtmlContent }}</textarea>
-        <div class="form-text">Please ensure that the HTML is valid and there are no sanity checks!</div>
+        <div class="form-text">Please ensure that the HTML is valid as there are no sanity checks!</div>
       </div>
       <div {{ if (len .Config.HtmlContent) }}style="display:none;"{{ end }} id="bannerIdBox_{{ .Config.Id }}">
         <input type="number" name="bannerId" value="{{ .Config.BannerId }}" />
         <label for="bannerId">Banner Id</label>
-        <div class="form-text">Please ensure that there are no sanity checks!</div>
+        <div class="form-text">Please ensure that the configuration is valid as there are no sanity checks!</div>
       </div>
     </div>
     <button type="submit" class="btn btn-primary w-100">{{ if len .Config.Id }}Save{{ else }}Add{{ end }}</button>

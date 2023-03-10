@@ -408,7 +408,6 @@ type ValidatorPageData struct {
 	LongestAttestationStreak                 uint64
 	IsRocketpool                             bool
 	Rocketpool                               *RocketpoolValidatorPageData
-	NoAds                                    bool
 	ShowMultipleWithdrawalCredentialsWarning bool
 	CappellaHasHappened                      bool
 	BLSChange                                *BLSChange
@@ -672,8 +671,6 @@ type BlockPageData struct {
 
 	Tags       TagMetadataSlice `db:"tags"`
 	IsValidMev bool             `db:"is_valid_mev"`
-	NoAds      bool
-	Template   string
 }
 
 func (u *BlockPageData) MarshalJSON() ([]byte, error) {
@@ -1213,7 +1210,6 @@ type UserNotificationsCenterPageData struct {
 	AddValidatorWatchlistModal AddValidatorWatchlistModal
 	ManageNotificationModal    ManageNotificationModal
 	NetworkEventModal          NetworkEventModal
-	NoAds                      bool
 	// Subscriptions []*Subscription
 }
 
@@ -1271,7 +1267,6 @@ type MobilePricing struct {
 type StakeWithUsPageData struct {
 	FlashMessage string
 	RecaptchaKey string
-	NoAds        bool
 }
 type RateLimitError struct {
 	TimeLeft time.Duration
@@ -1764,7 +1759,6 @@ type Eth1BlockPageData struct {
 	Txs                   []Eth1BlockPageTransaction
 	Uncles                []Eth1BlockPageData
 	State                 string
-	NoAds                 bool
 }
 
 type Eth1BlockPageTransaction struct {

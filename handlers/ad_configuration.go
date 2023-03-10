@@ -76,7 +76,7 @@ func AdConfigurationPost(w http.ResponseWriter, r *http.Request) {
 	err = r.ParseForm()
 	if err != nil {
 		utils.LogError(err, "error parsing form", 0)
-		http.Redirect(w, r, "/user/ad_configuration", http.StatusSeeOther)
+		http.Redirect(w, r, "/user/ad_configuration?error=parsingForm", http.StatusSeeOther)
 		return
 	}
 	id := r.FormValue(`id`)
@@ -92,15 +92,15 @@ func AdConfigurationPost(w http.ResponseWriter, r *http.Request) {
 		htmlContent = r.FormValue(`htmlContent`)
 
 		if len(htmlContent) == 0 {
-			utils.LogError(err, "error no html content provided", 0)
-			http.Redirect(w, r, "/user/ad_configuration", http.StatusSeeOther)
+			utils.LogError(nil, "error with provided html content", 0)
+			http.Redirect(w, r, "/user/ad_configuration?error=noHtmlContent", http.StatusSeeOther)
 			return
 		}
 	} else {
 		bannerId, err = strconv.ParseUint(r.FormValue(`bannerId`), 0, 64)
 		if err != nil || bannerId == 0 {
 			utils.LogError(err, "error no bannerId provided", 0)
-			http.Redirect(w, r, "/user/ad_configuration", http.StatusSeeOther)
+			http.Redirect(w, r, "/user/ad_configuration?error=noBannerId", http.StatusSeeOther)
 			return
 		}
 	}
@@ -112,6 +112,7 @@ func AdConfigurationPost(w http.ResponseWriter, r *http.Request) {
 		InsertMode:      r.FormValue(`insertMode`),
 		RefreshInterval: refreshInterval,
 		Enabled:         len(r.FormValue(`enabled`)) > 0,
+		ForAllUsers:     len(r.FormValue(`forAllUsers`)) > 0,
 		BannerId:        bannerId,
 		HtmlContent:     htmlContent,
 	}
@@ -121,12 +122,16 @@ func AdConfigurationPost(w http.ResponseWriter, r *http.Request) {
 		err = db.InsertAdConfigurations(adConfig)
 		if err != nil {
 			utils.LogError(err, "error inserting new ad config", 0)
+			http.Redirect(w, r, "/user/ad_configuration?error=insertingConfig", http.StatusSeeOther)
+			return
 		}
 
 	} else {
 		err = db.UpdateAdConfiguration(adConfig)
 		if err != nil {
 			utils.LogError(err, "error updating ad config", 0)
+			http.Redirect(w, r, "/user/ad_configuration?error=updatingConfig", http.StatusSeeOther)
+			return
 		}
 	}
 
@@ -150,19 +155,21 @@ func AdConfigurationDeletePost(w http.ResponseWriter, r *http.Request) {
 	err = r.ParseForm()
 	if err != nil {
 		utils.LogError(err, "error parsing form", 0)
-		http.Redirect(w, r, "/user/ad_configuration", http.StatusSeeOther)
+		http.Redirect(w, r, "/user/ad_configuration?error=parsingForm", http.StatusSeeOther)
 		return
 	}
 	id := r.FormValue(`id`)
 	if len(id) == 0 {
 		utils.LogError(err, "error no id provided", 0)
-		http.Redirect(w, r, "/user/ad_configuration", http.StatusSeeOther)
+		http.Redirect(w, r, "/user/ad_configuration?error=noTemplateId", http.StatusSeeOther)
 		return
 	}
 
 	err = db.DeleteAdConfiguration(id)
 	if err != nil {
 		utils.LogError(err, "error deleting ad config", 0)
+		http.Redirect(w, r, "/user/ad_configuration?error=notDeleted", http.StatusSeeOther)
+		return
 	}
 
 	http.Redirect(w, r, "/user/ad_configuration", http.StatusSeeOther)

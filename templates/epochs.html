@@ -66,8 +66,9 @@
   <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
 {{ end }}
 {{ define "content" }}
-  <div class="container mt-2">
-    {{ with .Data }}
+  {{ $template := .Meta.Template }}
+  {{ with .Data }}
+    <div class="container mt-2">
       <div class="d-md-flex py-2 justify-content-md-between">
         <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-history mr-2"></i>Epochs</h1>
         <nav aria-label="breadcrumb">
@@ -110,7 +111,7 @@
         </div>
         <div id="footer-placeholder" style="height:71px;"></div>
       </div>
-    {{ end }}
-    {{ if not .NoAds }}<div id="r-banner" info="{{ .Meta.Template }}"></div>{{ end }}
-  </div>
+      <div id="r-banner" info="{{ $template }}"></div>
+    </div>
+  {{ end }}
 {{ end }}

@@ -628,7 +628,7 @@
       <div class="progress">
         <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" v-bind:style="'width: ' +progress + '%'" v-bind:aria-valuenow="progress" aria-valuemin="0" aria-valuemax="5">Update in: ${updateIn}s</div>
       </div>
-      {{ if not .NoAds }}<div id="r-banner" info="{{ .Meta.Template }}"></div>{{ end }}
+      <div id="r-banner" info="{{ .Meta.Template }}"></div>
       {{ if .Mainnet }}
         <div class="row mt-5">
           <div class="col">

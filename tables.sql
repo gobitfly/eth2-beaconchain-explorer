@@ -1052,6 +1052,7 @@ create table ad_configuration
     insert_mode varchar(10) not null, -- can be before, after, replace or insert
     refresh_interval int not null, -- defines how often the ad is refreshed, 0 = don't refresh
     enabled bool not null, -- defines if the ad is active
+    for_all_users bool not null, -- if set the ad will be shown to all users even if they have NoAds
     banner_id int, -- an ad must ether have a banner_id OR an html_content
     html_content text,
     primary key (id)

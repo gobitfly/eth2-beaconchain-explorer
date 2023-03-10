@@ -148,8 +148,9 @@
 {{ end }}
 
 {{ define "content" }}
-  <div class="container my-2">
-    {{ with .Data }}
+  {{ $template := .Meta.Template }}
+  {{ with .Data }}
+    <div class="container my-2">
       <div class="d-md-flex py-2 justify-content-md-between mb-3">
         <div class="heading">
           <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-money-bill mr-2"></i>Withdrawals</h1>
@@ -233,9 +234,7 @@
           </div>
         </div>
       </div>
-    {{ end }}
-    {{ if not .NoAds }}
-      <div id="r-banner-withdrawal" info="{{ .Meta.Template }}"></div>
-    {{ end }}
-  </div>
+      <div id="r-banner-withdrawal" info="{{ $template }}"></div>
+    </div>
+  {{ end }}
 {{ end }}

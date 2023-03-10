@@ -354,6 +354,7 @@ type AdConfig struct {
 	InsertMode      string `db:"insert_mode"`
 	RefreshInterval uint64 `db:"refresh_interval"`
 	Enabled         bool   `db:"enabled"`
+	ForAllUsers     bool   `db:"for_all_users"`
 	BannerId        uint64 `db:"banner_id"`
 	HtmlContent     string `db:"html_content"`
 }
