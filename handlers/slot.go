@@ -58,7 +58,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 		if err != nil || blockSlot >= 2147483648 { // block slot must be lower then max int4
-			data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash))
+			data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), blockNotFoundTemplateFiles)
 			data.Data = "slot"
 			if handleTemplateError(w, r, "slot.go", "Slot", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
