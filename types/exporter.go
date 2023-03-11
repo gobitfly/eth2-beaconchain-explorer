@@ -518,7 +518,6 @@ type Relay struct {
 	Link        sql.NullString `db:"public_link"`
 	IsCensoring sql.NullBool   `db:"is_censoring"`
 	IsEthical   sql.NullBool   `db:"is_ethical"`
-	Name        string         `db:"name"`
 	Logger      logrus.Entry
 }
 
