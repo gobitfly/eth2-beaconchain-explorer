@@ -30,7 +30,7 @@ func mevBoostRelaysExporter() {
 	for {
 		// we retrieve the relays from the db each loop to prevent having to restart the exporter for changes
 		relays = nil
-		err := db.ReaderDb.Select(&relays, `select tag_id, endpoint, public_link, is_censoring, is_ethical, name from relays`)
+		err := db.ReaderDb.Select(&relays, `select tag_id, endpoint, public_link, is_censoring, is_ethical from relays`)
 		wg := &sync.WaitGroup{}
 		if err == nil {
 			for _, relay := range relays {
