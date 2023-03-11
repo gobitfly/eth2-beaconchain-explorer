@@ -1489,7 +1489,8 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 			return false
 		}
 		epoch = max_epoch - epoch
-		logger.Infof("processing income data for epoch %v", epoch)
+		start := time.Now()
+
 		for _, ri := range r[INCOME_DETAILS_COLUMN_FAMILY] {
 			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, INCOME_DETAILS_COLUMN_FAMILY+":"), 10, 64)
 			if err != nil {
@@ -1523,6 +1524,8 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 			incomeStats[validator].SlashingPenalty += rewardDetails.SlashingPenalty
 			incomeStats[validator].TxFeeRewardWei = utils.AddBigInts(incomeStats[validator].TxFeeRewardWei, rewardDetails.TxFeeRewardWei)
 		}
+
+		logger.Infof("processed income data for epoch %v in %v", epoch, time.Since(start))
 		return true
 	}, gcp_bigtable.RowFilter(filter))
 	if err != nil {

@@ -99,8 +99,17 @@ func main() {
 		for _, e := range notExportedEpochs {
 			e := e
 			g.Go(func() error {
-				err := export(e, bt, client, enAddress)
 
+				var err error
+				for i := 0; i < 10; i++ {
+					err = export(e, bt, client, enAddress)
+
+					if err != nil {
+						logrus.Error(err)
+					} else {
+						break
+					}
+				}
 				if err != nil {
 					logrus.Error(err)
 					return nil
