@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	"database/sql"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
@@ -40,8 +41,8 @@ func mevBoostRelaysExporter() {
 				wg.Add(1)
 				go singleRelayExport(relay, wg)
 			}
-		} else {
-			logger.Warnf("failed to retrieve relays from db: %v", err)
+		} else if err != sql.ErrNoRows {
+			utils.LogError(err, "failed to retrieve relays from db", 0)
 		}
 		wg.Wait()
 		time.Sleep(time.Second * 60)
