@@ -441,7 +441,6 @@
 {{ end }}
 
 {{ define "content" }}
-  {{ $template := .Meta.Template }}
   {{ with .Data }}
     <div class="container-fluid container-xl">
       <div class="mt-4">
@@ -547,7 +546,7 @@
           </table>
         </div>
       </div>
-      <div id="r-banner" info="{{ $template }}"></div>
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
     </div>
   {{ end }}
 {{ end }}

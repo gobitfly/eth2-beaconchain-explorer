@@ -75,7 +75,6 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	validatorsPageData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
 
 	data := InitPageData(w, r, "validators", "/validators", "Validators", templateFiles)
-	data.HeaderAd = true
 	data.Data = validatorsPageData
 
 	if handleTemplateError(w, r, "validators.go", "Validators", "", validatorsTemplate.ExecuteTemplate(w, "layout", data)) != nil {

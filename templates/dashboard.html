@@ -22,7 +22,6 @@
 {{ end }}
 
 {{ define "content" }}
-  {{ $template := .Meta.Template }}
   {{ with .Data }}
     <div class="container mt-2 outer-container" style="min-width:300px;">
       <div class="dashboard-container">
@@ -195,7 +194,7 @@
             </div>
           </div>
         </div>
-        <div class="px-3"><div id="r-banner" info="{{ $template }}"></div></div>
+        <div class="px-3"><div id="r-banner" info="{{ $.Meta.Templates }}"></div></div>
 
         <div class="row align-items-stretch">
           <div class="col-lg-8 px-lg-2 my-2">

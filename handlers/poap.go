@@ -30,7 +30,6 @@ func Poap(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "more", "/poap", "POAP", templateFiles)
-	data.HeaderAd = true
 	data.Data = struct {
 		PoapClients []string
 	}{

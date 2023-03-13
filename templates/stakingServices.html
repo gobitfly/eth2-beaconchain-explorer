@@ -59,7 +59,6 @@
 {{ end }}
 
 {{ define "content" }}
-  {{ $template := .Meta.Template }}
   {{ with .Data }}
     {{ if ne .FlashMessage "" }}
       <div class="alert container mt-2 {{ if contains .FlashMessage "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
@@ -191,7 +190,7 @@
         </div>
       </div>
     </section>
-    <div id="r-banner" info="{{ $template }}"></div>
+    <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
     <div class="container mt-2">
       <section class="my-5">
         <div class="row">

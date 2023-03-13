@@ -27,7 +27,6 @@ func Withdrawals(w http.ResponseWriter, r *http.Request) {
 	pageData.Stats = services.GetLatestStats()
 
 	data := InitPageData(w, r, "validators", "/withdrawals", "Validator Withdrawals", templateFiles)
-	data.HeaderAd = true
 
 	latestChartsPageData := services.LatestChartsPageData()
 	if len(latestChartsPageData) != 0 {

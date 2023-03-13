@@ -32,14 +32,13 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 	isMainnet := utils.Config.Chain.Config.ConfigName == "mainnet"
 	user := getUser(r)
 	data := &types.PageData{
-		HeaderAd: false,
 		Meta: &types.Meta{
 			Title:       fullTitle,
 			Description: "beaconcha.in makes Ethereum accessible to non-technical end users",
 			Path:        path,
 			GATag:       utils.Config.Frontend.GATag,
 			NoTrack:     false,
-			Template:    strings.Join(mainTemplates, ","),
+			Templates:   strings.Join(mainTemplates, ","),
 		},
 		Active:                active,
 		Data:                  &types.Empty{},
@@ -94,9 +93,10 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 
 	adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplates, data.NoAds)
 	if err != nil {
-		utils.LogError(err, "error loading the ad configurations for template", 0)
+		utils.LogError(err, fmt.Sprintf("error loading the ad configurations for template %v", path), 0)
+	} else {
+		data.AdConfigurations = adConfigurations
 	}
-	data.AdConfigurations = adConfigurations
 
 	if utils.Config.Frontend.Debug {
 		_, session, err := getUserSession(r)

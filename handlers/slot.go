@@ -129,8 +129,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 			blockPageData.ExecutionData.IsValidMev = blockPageData.IsValidMev
 		}
 	}
-	data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), slotTemplateFiles)
-	data.Meta.Path = fmt.Sprintf("/slot/%v", blockPageData.Slot)
+	data := InitPageData(w, r, "blockchain", fmt.Sprintf("/slot/%v", blockPageData.Slot), fmt.Sprintf("Slot %v", slotOrHash), slotTemplateFiles)
 	data.Data = blockPageData
 
 	if utils.IsApiRequest(r) {

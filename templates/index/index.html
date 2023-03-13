@@ -377,7 +377,7 @@
         {{ end }}
         {{ template "hero" . }}
       {{ end }}
-      <div id="r-banner" info="{{ .Meta.Template }}"></div>
+      <div id="r-banner" info="{{ .Meta.Templates }}"></div>
       {{ with .Data }}
         {{ if and (not .Genesis) (not .GenesisPeriod) }}
           {{ template "preGenesis" $ }}

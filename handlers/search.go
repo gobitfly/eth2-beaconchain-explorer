@@ -47,7 +47,6 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		templateFiles := append(layoutTemplateFiles, "searchnotfound.html")
 		var searchNotFoundTemplate = templates.GetTemplate(templateFiles...)
 		data := InitPageData(w, r, "search", "/search", "", templateFiles)
-		data.HeaderAd = true
 
 		if handleTemplateError(w, r, "search.go", "Search", "", searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed

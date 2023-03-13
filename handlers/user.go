@@ -128,7 +128,6 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	userSettingsData.CsrfField = csrf.TemplateField(r)
 
 	data := InitPageData(w, r, "user", "/user", "User Settings", templateFiles)
-	data.HeaderAd = true
 	data.Data = userSettingsData
 	data.User = user
 
@@ -2987,7 +2986,6 @@ func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
 	pageData.CsrfField = csrf.TemplateField(r)
 
 	data := InitPageData(w, r, "user", "/user/global_notification", "Global Notification", templateFiles)
-	data.HeaderAd = true
 	data.Data = pageData
 	data.User = user
 

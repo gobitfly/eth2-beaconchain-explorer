@@ -19,21 +19,11 @@ func AdConfiguration(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	user, _, err := getUserSession(r)
-	if err != nil {
-		utils.LogError(err, "error retrieving session", 0)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if !hasPermission(w, r) {
 		return
 	}
 
-	if user.UserGroup != "ADMIN" {
-		http.Error(w, "Insufficient privilleges", http.StatusUnauthorized)
-		return
-	}
-
-	var configs []*types.AdConfig
-
-	configs, err = db.GetAdConfigurations()
+	configs, err := db.GetAdConfigurations()
 
 	if err != nil {
 		utils.LogError(err, "error loading the ad configuration", 0)
@@ -61,19 +51,11 @@ func AdConfiguration(w http.ResponseWriter, r *http.Request) {
 
 // Insert / Update Ad configuration
 func AdConfigurationPost(w http.ResponseWriter, r *http.Request) {
-	user, _, err := getUserSession(r)
-	if err != nil {
-		utils.LogError(err, "error retrieving session", 0)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if !hasPermission(w, r) {
 		return
 	}
 
-	if user.UserGroup != "ADMIN" {
-		http.Error(w, "Insufficient privilleges", http.StatusUnauthorized)
-		return
-	}
-
-	err = r.ParseForm()
+	err := r.ParseForm()
 	if err != nil {
 		utils.LogError(err, "error parsing form", 0)
 		http.Redirect(w, r, "/user/ad_configuration?error=parsingForm", http.StatusSeeOther)
@@ -140,19 +122,10 @@ func AdConfigurationPost(w http.ResponseWriter, r *http.Request) {
 
 // Delete Ad configuration
 func AdConfigurationDeletePost(w http.ResponseWriter, r *http.Request) {
-	user, _, err := getUserSession(r)
-	if err != nil {
-		utils.LogError(err, "error retrieving session", 0)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if !hasPermission(w, r) {
 		return
 	}
-
-	if user.UserGroup != "ADMIN" {
-		http.Error(w, "Insufficient privilleges", http.StatusUnauthorized)
-		return
-	}
-
-	err = r.ParseForm()
+	err := r.ParseForm()
 	if err != nil {
 		utils.LogError(err, "error parsing form", 0)
 		http.Redirect(w, r, "/user/ad_configuration?error=parsingForm", http.StatusSeeOther)
@@ -173,4 +146,19 @@ func AdConfigurationDeletePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/user/ad_configuration", http.StatusSeeOther)
+}
+
+func hasPermission(w http.ResponseWriter, r *http.Request) bool {
+	user, _, err := getUserSession(r)
+	if err != nil {
+		utils.LogError(err, "error retrieving session", 0)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return false
+	}
+
+	if user.UserGroup != "ADMIN" {
+		http.Error(w, "Insufficient privileges", http.StatusUnauthorized)
+		return false
+	}
+	return true
 }

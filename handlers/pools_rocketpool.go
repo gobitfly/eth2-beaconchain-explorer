@@ -21,7 +21,6 @@ func PoolsRocketpool(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "pools/rocketpool", "/pools/rocketpool", "Rocketpool", templateFiles)
-	data.HeaderAd = true
 
 	if handleTemplateError(w, r, "pools_rocketpool.go", "PoolsRocketpool", "", poolsRocketpoolTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed

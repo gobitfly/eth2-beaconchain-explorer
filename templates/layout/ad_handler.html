@@ -39,7 +39,7 @@
 
     function makeSureReviveIsInitiated(id) {
       const ins = $(`#${id}`).find("ins")
-      if (!ins.attr("data-revive-seq") && !ins.attr("data-revive-loaded")) {
+      if (ins && ins.attr("data-revive-id") && !ins.attr("data-revive-seq") && !ins.attr("data-revive-loaded")) {
         reviveAsync["5b200397ccf8a9353bf44ef99b45268c"].refresh()
       }
     }

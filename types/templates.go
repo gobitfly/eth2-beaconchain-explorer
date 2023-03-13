@@ -22,7 +22,6 @@ import (
 type PageData struct {
 	Active                string
 	AdConfigurations      []*AdConfig
-	HeaderAd              bool
 	Meta                  *Meta
 	ShowSyncingMessage    bool
 	User                  *User
@@ -113,7 +112,7 @@ type Meta struct {
 	Tdata2      string
 	GATag       string
 	NoTrack     bool
-	Template    string
+	Templates   string
 }
 
 // LatestState is a struct to hold data for the banner
@@ -974,7 +973,6 @@ type DashboardData struct {
 	Csrf                string `json:"csrf"`
 	ValidatorLimit      int    `json:"valLimit"`
 	CappellaHasHappened bool
-	NoAds               bool
 }
 
 // DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page
@@ -1901,6 +1899,19 @@ type ValidatorsBLSChange struct {
 	Address                  []byte `db:"address" json:"address,omitempty"`
 	Signature                []byte `db:"signature" json:"signature,omitempty"`
 	WithdrawalCredentialsOld []byte `db:"withdrawalcredentials" json:"withdrawalcredentials,omitempty"`
+}
+
+// AdConfig is a struct to hold the configuration for one specific ad banner placement
+type AdConfig struct {
+	Id              string `db:"id"`
+	TemplateId      string `db:"template_id"`
+	JQuerySelector  string `db:"jquery_selector"`
+	InsertMode      string `db:"insert_mode"`
+	RefreshInterval uint64 `db:"refresh_interval"`
+	Enabled         bool   `db:"enabled"`
+	ForAllUsers     bool   `db:"for_all_users"`
+	BannerId        uint64 `db:"banner_id"`
+	HtmlContent     string `db:"html_content"`
 }
 
 type WithdrawalsPageData struct {

@@ -104,7 +104,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.InclusionDelay = int64((utils.Config.Chain.Config.Eth1FollowDistance*utils.Config.Chain.Config.SecondsPerEth1Block+utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch*utils.Config.Chain.Config.EpochsPerEth1VotingPeriod)/3600) + 1
 
 	data := InitPageData(w, r, "validators", "/validators", "", validatorTemplateFiles)
-	data.HeaderAd = true
 	validatorPageData.NetworkStats = services.LatestIndexPageData()
 	validatorPageData.User = data.User
 
@@ -160,7 +159,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
 				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
 				data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", index), "", validatorNotFoundTemplateFiles)
-				data.HeaderAd = true
 
 				if handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 					return // an error has occurred and was processed
@@ -298,7 +296,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	if err == sql.ErrNoRows {
 		data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", index), "", validatorNotFoundTemplateFiles)
-		data.HeaderAd = true
 		if handleTemplateError(w, r, "validator.go", "Validator", "no rows", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
@@ -1690,7 +1687,6 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	data := InitPageData(w, r, "validators", "/validators", "", templateFiles)
-	data.HeaderAd = true
 
 	// Request came with a hash
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {

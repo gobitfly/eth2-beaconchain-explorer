@@ -866,7 +866,6 @@
 {{ end }}
 
 {{ define "content" }}
-  {{ $template := .Meta.Template }}
   {{ with .Data }}
     <div class="container mt-2">
       <div class="my-3">
@@ -1056,7 +1055,7 @@
               <div id="breakEvenPointHolder" style="display:none">The break-even-point is reached after <span id="breakEvenPoint">10</span> days</div>
             </table>
           </div>
-          <div id="r-banner" info="{{ $template }}"></div>
+          <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
         </div>
       </div>
     </div>

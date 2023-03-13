@@ -128,7 +128,6 @@
 {{ end }}
 
 {{ define "content" }}
-  {{ $template := .Meta.Template }}
   {{ with .Data }}
     <div class="container my-2">
       <div class="d-md-flex py-2 justify-content-md-between mb-3">
@@ -252,7 +251,7 @@
           </div>
         </div>
       </div>
-      <div id="r-banner" info="{{ $template }}"></div>
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
     </div>
   {{ end }}
 {{ end }}

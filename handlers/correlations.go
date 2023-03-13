@@ -30,7 +30,6 @@ func Correlations(w http.ResponseWriter, r *http.Request) {
 	var correlationsTemplate = templates.GetTemplate(templateFiles...)
 
 	// data := &types.PageData{
-	// 	HeaderAd: true,
 	// 	Meta: &types.Meta{
 	// 		Image:       "https://etherchain.org/img/ballon-512x512.png",
 	// 		Title:       fmt.Sprintf("%v - Correlations - etherchain.org - %v", utils.Config.Frontend.SiteName, time.Now().Year()),

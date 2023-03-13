@@ -29,23 +29,22 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	txHashString := vars["hash"]
 	var data *types.PageData
-	hasError := false
+	title := fmt.Sprintf("Transaction %v", txHashString)
+	path := fmt.Sprintf("/tx/%v", txHashString)
 
 	txHash, err := hex.DecodeString(strings.ReplaceAll(txHashString, "0x", ""))
 	if err != nil {
 		logger.Errorf("error parsing tx hash %v: %v", txHashString, err)
-		data = InitPageData(w, r, "blockchain", "/tx", "Transaction", txNotFoundTemplateFiles)
+		data = InitPageData(w, r, "blockchain", path, title, txNotFoundTemplateFiles)
 		txTemplate = txNotFoundTemplate
-	}
-
-	if !hasError {
+	} else {
 		txData, err := eth1data.GetEth1Transaction(common.BytesToHash(txHash))
 		if err != nil {
 			mempool := services.LatestMempoolTransactions()
 			mempoolTx := mempool.FindTxByHash(txHashString)
 			if mempoolTx != nil {
 
-				data = InitPageData(w, r, "blockchain", "/tx", "Transaction", mempoolTxTemplateFiles)
+				data = InitPageData(w, r, "blockchain", path, title, mempoolTxTemplateFiles)
 				mempoolPageData := &types.MempoolTxPageData{RawMempoolTransaction: *mempoolTx}
 				txTemplate = mempoolTxTemplate
 				if mempoolTx.To == nil {
@@ -58,17 +57,14 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 				data.Data = mempoolPageData
 			} else {
 				logger.Errorf("error getting eth1 transaction data: %v", err)
-				data = InitPageData(w, r, "blockchain", "/tx", "Transaction", txNotFoundTemplateFiles)
+				data = InitPageData(w, r, "blockchain", path, title, txNotFoundTemplateFiles)
 				txTemplate = txNotFoundTemplate
 			}
 		} else {
-			data = InitPageData(w, r, "blockchain", "/tx", "Transaction", txTemplateFiles)
+			data = InitPageData(w, r, "blockchain", path, title, txTemplateFiles)
 			data.Data = txData
 		}
 	}
-	data.HeaderAd = true
-	SetPageDataTitle(data, fmt.Sprintf("Transaction %v", txHashString))
-	data.Meta.Path = "/tx/" + txHashString
 
 	if utils.IsApiRequest(r) {
 		w.Header().Set("Content-Type", "application/json")

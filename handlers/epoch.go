@@ -29,24 +29,19 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	epochString := strings.Replace(vars["epoch"], "0x", "", -1)
-
-	data := InitPageData(w, r, "blockchain", "/epochs", "Epoch", append(layoutTemplateFiles, "epoch.html", "epochFuture.html", "epochnotfound.html"))
-	data.HeaderAd = true
+	epochTitle := fmt.Sprintf("Epoch %v", epochString)
 
 	epoch, err := strconv.ParseUint(epochString, 10, 64)
+	metaPath := fmt.Sprintf("/epoch/%v", epoch)
 
 	if err != nil {
-		SetPageDataTitle(data, fmt.Sprintf("Epoch %v", epochString))
-		data.Meta.Path = "/epoch/" + epochString
+		data := InitPageData(w, r, "blockchain", metaPath, epochTitle, append(layoutTemplateFiles, epochNotFoundTemplateFiles...))
 
 		if handleTemplateError(w, r, "epoch.go", "Epoch", "parse epochString", epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
 	}
-
-	SetPageDataTitle(data, fmt.Sprintf("Epoch %v", epochString))
-	data.Meta.Path = fmt.Sprintf("/epoch/%v", epoch)
 
 	epochPageData := types.EpochPageData{}
 
@@ -70,6 +65,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		//Epoch not in database -> Show future epoch
 		if epoch > MaxEpochValue {
+			data := InitPageData(w, r, "blockchain", metaPath, epochTitle, append(layoutTemplateFiles, epochNotFoundTemplateFiles...))
 			if handleTemplateError(w, r, "epoch.go", "Epoch", ">MaxEpochValue", epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
@@ -98,6 +94,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//Render template
+		data := InitPageData(w, r, "blockchain", metaPath, epochTitle, append(layoutTemplateFiles, epochFutureTemplateFiles...))
 		data.Data = epochPageData
 		if handleTemplateError(w, r, "epoch.go", "Epoch", "Done (not in Database)", epochFutureTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
@@ -127,6 +124,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		ORDER BY blocks.slot DESC`, epoch)
 	if err != nil {
 		logger.Errorf("error epoch blocks data: %v", err)
+		data := InitPageData(w, r, "blockchain", metaPath, epochTitle, append(layoutTemplateFiles, epochNotFoundTemplateFiles...))
 
 		if handleTemplateError(w, r, "epoch.go", "Epoch", "read Blocks from db", epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
@@ -183,6 +181,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	data := InitPageData(w, r, "blockchain", metaPath, epochTitle, append(layoutTemplateFiles, epochTemplateFiles...))
 	data.Data = epochPageData
 
 	if utils.IsApiRequest(r) {

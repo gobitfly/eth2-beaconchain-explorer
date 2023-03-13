@@ -17,7 +17,7 @@ func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 
 	var graffitiwallData []*types.GraffitiwallData
 
-	err = db.ReaderDb.Select(&graffitiwallData, "select x, y, color, slot, validator from graffitiwall", "graffitiwall.html")
+	err = db.ReaderDb.Select(&graffitiwallData, "select x, y, color, slot, validator from graffitiwall")
 
 	if err != nil {
 		logger.Errorf("error retrieving block tree data: %v", err)
@@ -26,7 +26,6 @@ func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := InitPageData(w, r, "more", "/graffitiwall", "Graffitiwall", templateFiles)
-	data.HeaderAd = true
 	data.Data = graffitiwallData
 
 	if handleTemplateError(w, r, "graffitiwall.go", "Graffitiwall", "", graffitiwallTemplate.ExecuteTemplate(w, "layout", data)) != nil {

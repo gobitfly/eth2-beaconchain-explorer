@@ -15,7 +15,7 @@ import (
 
 // Will return the gas now page
 func GasNow(w http.ResponseWriter, r *http.Request) {
-	templateFiles := append(layoutTemplateFiles, "layout.html", "gasnow.html")
+	templateFiles := append(layoutTemplateFiles, "gasnow.html")
 	var gasNowTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")

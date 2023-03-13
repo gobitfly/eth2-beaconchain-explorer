@@ -2526,7 +2526,7 @@ func GetAdConfigurations() ([]*types.AdConfig, error) {
 		banner_id, 
 		html_content
 	FROM 
-		ad_configuration`)
+		ad_configurations`)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return []*types.AdConfig{}, nil
@@ -2556,7 +2556,7 @@ func GetAdConfigurationsForTemplate(ids []string, noAds bool) ([]*types.AdConfig
 		banner_id, 
 		html_content
 	FROM 
-		ad_configuration
+		ad_configurations
 	WHERE 
 		template_id = ANY($1) AND
 		enabled = true %v`, forAllUsers), pq.Array(ids))
@@ -2573,7 +2573,7 @@ func GetAdConfigurationsForTemplate(ids []string, noAds bool) ([]*types.AdConfig
 // insert new ad configuration
 func InsertAdConfigurations(adConfig types.AdConfig) error {
 	_, err := WriterDb.Exec(`
-		INSERT INTO ad_configuration (
+		INSERT INTO ad_configurations (
 			id, 
 			template_id, 
 			jquery_selector,
@@ -2608,7 +2608,7 @@ func UpdateAdConfiguration(adConfig types.AdConfig) error {
 	}
 	defer tx.Rollback()
 	_, err = tx.Exec(`
-		update ad_configuration set 
+		UPDATE ad_configurations SET 
 			template_id = $2,
 			jquery_selector = $3,
 			insert_mode = $4,
@@ -2644,8 +2644,8 @@ func DeleteAdConfiguration(id string) error {
 
 	// delete ad configuration
 	_, err = WriterDb.Exec(`
-		delete from ad_configuration 
-		where 
+		DELETE FROM ad_configurations 
+		WHERE 
 			id = $1;`,
 		id)
 	return err
