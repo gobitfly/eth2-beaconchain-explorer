@@ -747,7 +747,7 @@ $(document).ready(function () {
     var el = document.getElementById("dashboard-info")
     var slashedText = ""
     if (state.validatorsCount.slashed > 0) {
-    slashedText = `, ${state.validatorsCount.slashed} slashed`
+      slashedText = `, ${state.validatorsCount.slashed} slashed`
     }
     el.innerText = `${state.validatorsCount.active_online + state.validatorsCount.active_offline} active (${state.validatorsCount.active_online} online, ${state.validatorsCount.active_offline} offline), ${state.validatorsCount.pending} pending, ${state.validatorsCount.exited + state.validatorsCount.slashed} exited validators (${state.validatorsCount.exited} voluntary${slashedText})`
 
