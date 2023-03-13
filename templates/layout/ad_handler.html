@@ -71,7 +71,7 @@
         }
         makeSureReviveIsInitiated(config.Id)
       } else if (retry) {
-        setInterval(() => initiateConfig(config), 1000) //If we didn't find the element initially let's retry it once after one second.
+        setTimeout(() => initiateConfig(config), 1000) //If we didn't find the element initially let's retry it once after one second.
       } else {
         console.log(`Ad component ${config.JQuerySelector} not found`)
       }
