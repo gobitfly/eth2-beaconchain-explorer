@@ -147,9 +147,6 @@ type Config struct {
 			Timestamp uint64        `yaml:"timestamp" envconfig:"FRONTEND_COUNTDOWN_TIMESTAMP"`
 			Info      string        `yaml:"info" envconfig:"FRONTEND_COUNTDOWN_INFO"`
 		} `yaml:"countdown"`
-		PoolsUpdater struct {
-			Enabled bool `yaml:"enabled" envconfig:"FRONTEND_POOLS_UPDATER"`
-		} `yaml:"poolsUpdater"`
 		SlotViz struct {
 			Enabled       bool   `yaml:"enabled" envconfig:"FRONTEND_SLOTVIZ_ENABLED"`
 			HardforkEpoch uint64 `yaml:"hardforkEpoch" envconfig:"FRONTEND_SLOTVIZ_HARDFORK_EPOCH"`

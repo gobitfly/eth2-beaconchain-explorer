@@ -346,8 +346,6 @@ func (client *ErigonClient) GetBlockNumberByHash(hash string) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	logger.Info(fmt.Sprintf("%#x", block.Hash().Bytes()))
-	logger.Info(fmt.Sprintf("%#x", block.Coinbase().Bytes()))
 	return block.NumberU64(), nil
 }
 
