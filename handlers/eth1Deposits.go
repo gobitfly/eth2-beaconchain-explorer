@@ -14,8 +14,8 @@ import (
 
 // Deposits will return information about deposits using a go template
 func Deposits(w http.ResponseWriter, r *http.Request) {
-
-	var DepositsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "deposits.html", "index/depositChart.html")...)
+	templateFiles := append(layoutTemplateFiles, "deposits.html", "index/depositChart.html")
+	var DepositsTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -34,8 +34,7 @@ func Deposits(w http.ResponseWriter, r *http.Request) {
 	pageData.Stats = services.GetLatestStats()
 	pageData.DepositContract = utils.Config.Chain.Config.DepositContractAddress
 
-	data := InitPageData(w, r, "blockchain", "/deposits", "Deposits")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "blockchain", "/deposits", "Deposits", templateFiles)
 	data.Data = pageData
 
 	if handleTemplateError(w, r, "eth1Depostis.go", "Deposits", "", DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -145,12 +144,12 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 
 // Eth1Deposits will return information about deposits using a go template
 func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
-	var eth1DepositsLeaderboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, "eth1DepositsLeaderboard.html")...)
+	templateFiles := append(layoutTemplateFiles, "eth1DepositsLeaderboard.html")
+	var eth1DepositsLeaderboardTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Initiated Deposits")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Initiated Deposits", templateFiles)
 
 	data.Data = types.EthOneDepositLeaderBoardPageData{
 		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,

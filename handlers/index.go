@@ -24,7 +24,6 @@ var indexTemplateFiles = append(layoutTemplateFiles,
 	"index/recentEpochs.html",
 	"index/genesisCountdown.html",
 	"index/depositDistribution.html",
-	"components/banner.html",
 	"svg/bricks.html",
 	"svg/professor.html",
 	"svg/timeline.html",
@@ -40,7 +39,7 @@ var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateF
 func Index(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "index", "", "")
+	data := InitPageData(w, r, "index", "", "", indexTemplateFiles)
 	data.Data = services.LatestIndexPageData()
 
 	// data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage

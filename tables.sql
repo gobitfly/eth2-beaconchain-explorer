@@ -1042,3 +1042,19 @@ create table node_jobs
     data jsonb not null,
     primary key (id)
 );
+
+drop table if exists ad_configurations;
+create table ad_configurations
+(
+    id varchar(40), --uuid
+    template_id varchar(100) not null, --relative path to the main html file of the page
+    jquery_selector varchar(40) not null, --selector with the html
+    insert_mode varchar(10) not null, -- can be before, after, replace or insert
+    refresh_interval int not null, -- defines how often the ad is refreshed in seconds, 0 = don't refresh
+    enabled bool not null, -- defines if the ad is active
+    for_all_users bool not null, -- if set the ad will be shown to all users even if they have NoAds
+    banner_id int, -- an ad must either have a banner_id OR an html_content
+    html_content text,
+    primary key (id)
+);
+create index idx_ad_configuration_for_template on ad_configurations (template_id, enabled);

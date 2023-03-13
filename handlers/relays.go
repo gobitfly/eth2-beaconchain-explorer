@@ -8,9 +8,10 @@ import (
 
 func Relays(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	var relaysServicesTemplate = templates.GetTemplate(append(layoutTemplateFiles, "relays.html")...)
+	templateFiles := append(layoutTemplateFiles, "relays.html")
+	var relaysServicesTemplate = templates.GetTemplate(templateFiles...)
 
-	data := InitPageData(w, r, "services", "/relays", "Relay Overview")
+	data := InitPageData(w, r, "services", "/relays", "Relay Overview", templateFiles)
 
 	relayData := services.LatestRelaysPageData()
 

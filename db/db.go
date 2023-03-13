@@ -2510,6 +2510,147 @@ func GetMostRecentWithdrawalValidator() (uint64, error) {
 	return validatorindex, nil
 }
 
+// get all ad configurations
+func GetAdConfigurations() ([]*types.AdConfig, error) {
+	var adConfigs []*types.AdConfig
+
+	err := ReaderDb.Select(&adConfigs, `
+	SELECT 
+		id, 
+		template_id, 
+		jquery_selector, 
+		insert_mode, 
+		refresh_interval, 
+		enabled, 
+		for_all_users,
+		banner_id, 
+		html_content
+	FROM 
+		ad_configurations`)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return []*types.AdConfig{}, nil
+		}
+		return nil, fmt.Errorf("error getting ad configurations: %w", err)
+	}
+
+	return adConfigs, nil
+}
+
+// get the ad configuration for a specific template that are active
+func GetAdConfigurationsForTemplate(ids []string, noAds bool) ([]*types.AdConfig, error) {
+	var adConfigs []*types.AdConfig
+	forAllUsers := ""
+	if noAds {
+		forAllUsers = " AND for_all_users = true"
+	}
+	err := ReaderDb.Select(&adConfigs, fmt.Sprintf(`
+	SELECT 
+		id, 
+		template_id, 
+		jquery_selector, 
+		insert_mode, 
+		refresh_interval, 
+		enabled, 
+		for_all_users,
+		banner_id, 
+		html_content
+	FROM 
+		ad_configurations
+	WHERE 
+		template_id = ANY($1) AND
+		enabled = true %v`, forAllUsers), pq.Array(ids))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return []*types.AdConfig{}, nil
+		}
+		return nil, fmt.Errorf("error getting ad configurations for template: %v %s", err, ids)
+	}
+
+	return adConfigs, nil
+}
+
+// insert new ad configuration
+func InsertAdConfigurations(adConfig types.AdConfig) error {
+	_, err := WriterDb.Exec(`
+		INSERT INTO ad_configurations (
+			id, 
+			template_id, 
+			jquery_selector,
+			insert_mode,
+			refresh_interval, 
+			enabled,
+			for_all_users,
+			banner_id,
+			html_content) 
+		VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+		ON CONFLICT DO NOTHING`,
+		adConfig.Id,
+		adConfig.TemplateId,
+		adConfig.JQuerySelector,
+		adConfig.InsertMode,
+		adConfig.RefreshInterval,
+		adConfig.Enabled,
+		adConfig.ForAllUsers,
+		adConfig.BannerId,
+		adConfig.HtmlContent)
+	if err != nil {
+		return fmt.Errorf("error inserting ad configuration: %w", err)
+	}
+	return nil
+}
+
+// update exisiting ad configuration
+func UpdateAdConfiguration(adConfig types.AdConfig) error {
+	tx, err := WriterDb.Begin()
+	if err != nil {
+		return fmt.Errorf("error starting db transactions: %w", err)
+	}
+	defer tx.Rollback()
+	_, err = tx.Exec(`
+		UPDATE ad_configurations SET 
+			template_id = $2,
+			jquery_selector = $3,
+			insert_mode = $4,
+			refresh_interval = $5,
+			enabled = $6,
+			for_all_users = $7,
+			banner_id = $8,
+			html_content = $9
+		WHERE id = $1;`,
+		adConfig.Id,
+		adConfig.TemplateId,
+		adConfig.JQuerySelector,
+		adConfig.InsertMode,
+		adConfig.RefreshInterval,
+		adConfig.Enabled,
+		adConfig.ForAllUsers,
+		adConfig.BannerId,
+		adConfig.HtmlContent)
+	if err != nil {
+		return fmt.Errorf("error updating ad configuration: %w", err)
+	}
+	return tx.Commit()
+}
+
+// delete ad configuration
+func DeleteAdConfiguration(id string) error {
+
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting db transactions: %w", err)
+	}
+	defer tx.Rollback()
+
+	// delete ad configuration
+	_, err = WriterDb.Exec(`
+		DELETE FROM ad_configurations 
+		WHERE 
+			id = $1;`,
+		id)
+	return err
+}
+
 func GetTotalBLSChanges() (uint64, error) {
 	var count uint64
 	err := ReaderDb.Get(&count, `

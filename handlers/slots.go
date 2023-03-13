@@ -17,13 +17,13 @@ import (
 
 // Will return the slots page
 func Slots(w http.ResponseWriter, r *http.Request) {
-
-	var blocksTemplate = templates.GetTemplate(append(layoutTemplateFiles, "slots.html")...)
+	templateFiles := append(layoutTemplateFiles, "slots.html")
+	var blocksTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	q := r.URL.Query()
 
-	data := InitPageData(w, r, "blockchain", "/slots", "Slots")
+	data := InitPageData(w, r, "blockchain", "/slots", "Slots", templateFiles)
 
 	user, session, err := getUserSession(r)
 	if err != nil {

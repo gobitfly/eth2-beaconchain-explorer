@@ -21,7 +21,7 @@ import (
 // PageData is a struct to hold web page data
 type PageData struct {
 	Active                string
-	HeaderAd              bool
+	AdConfigurations      []*AdConfig
 	Meta                  *Meta
 	ShowSyncingMessage    bool
 	User                  *User
@@ -112,6 +112,7 @@ type Meta struct {
 	Tdata2      string
 	GATag       string
 	NoTrack     bool
+	Templates   string
 }
 
 // LatestState is a struct to hold data for the banner
@@ -407,7 +408,6 @@ type ValidatorPageData struct {
 	LongestAttestationStreak                 uint64
 	IsRocketpool                             bool
 	Rocketpool                               *RocketpoolValidatorPageData
-	NoAds                                    bool
 	ShowMultipleWithdrawalCredentialsWarning bool
 	CappellaHasHappened                      bool
 	BLSChange                                *BLSChange
@@ -1266,7 +1266,6 @@ type MobilePricing struct {
 type StakeWithUsPageData struct {
 	FlashMessage string
 	RecaptchaKey string
-	NoAds        bool
 }
 type RateLimitError struct {
 	TimeLeft time.Duration
@@ -1394,6 +1393,13 @@ type UserWebhookRow struct {
 	Events       []EventNameCheckbox     `db:"event_names" json:"-"`
 	Discord      bool
 	CsrfField    template.HTML
+}
+
+type AdConfigurationPageData struct {
+	Configurations []*AdConfig
+	CsrfField      template.HTML
+	New            AdConfig
+	TemplateNames  []string
 }
 
 type UserWebhookRowError struct {
@@ -1893,6 +1899,19 @@ type ValidatorsBLSChange struct {
 	Address                  []byte `db:"address" json:"address,omitempty"`
 	Signature                []byte `db:"signature" json:"signature,omitempty"`
 	WithdrawalCredentialsOld []byte `db:"withdrawalcredentials" json:"withdrawalcredentials,omitempty"`
+}
+
+// AdConfig is a struct to hold the configuration for one specific ad banner placement
+type AdConfig struct {
+	Id              string `db:"id"`
+	TemplateId      string `db:"template_id"`
+	JQuerySelector  string `db:"jquery_selector"`
+	InsertMode      string `db:"insert_mode"`
+	RefreshInterval uint64 `db:"refresh_interval"`
+	Enabled         bool   `db:"enabled"`
+	ForAllUsers     bool   `db:"for_all_users"`
+	BannerId        uint64 `db:"banner_id"`
+	HtmlContent     string `db:"html_content"`
 }
 
 type WithdrawalsPageData struct {

@@ -24,12 +24,12 @@ var poapData atomic.Value
 var poapDataEpoch uint64
 
 func Poap(w http.ResponseWriter, r *http.Request) {
-	var poapTemplate = templates.GetTemplate(append(layoutTemplateFiles, "poap.html")...)
+	templateFiles := append(layoutTemplateFiles, "poap.html")
+	var poapTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "more", "/poap", "POAP")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "more", "/poap", "POAP", templateFiles)
 	data.Data = struct {
 		PoapClients []string
 	}{

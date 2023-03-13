@@ -14,12 +14,12 @@ import (
 
 // ValidatorsLeaderboard returns the validator-leaderboard using a go template
 func ValidatorsLeaderboard(w http.ResponseWriter, r *http.Request) {
-	var validatorsLeaderboardTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validators_leaderboard.html")...)
+	templateFiles := append(layoutTemplateFiles, "validators_leaderboard.html")
+	var validatorsLeaderboardTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "validators", "/validators/leaderboard", "Validator Staking Leaderboard")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "validators", "/validators/leaderboard", "Validator Staking Leaderboard", templateFiles)
 
 	if handleTemplateError(w, r, "validators_leaderboard.go", "ValidatorsLeaderboard", "", validatorsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed

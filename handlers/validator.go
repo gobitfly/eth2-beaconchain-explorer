@@ -37,22 +37,20 @@ var validatorEditFlash = "edit_validator_flash"
 
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
-	var validatorTemplate = templates.GetTemplate(
-		append(layoutTemplateFiles,
-			"validator/validator.html",
-			"validator/heading.html",
-			"validator/tables.html",
-			"validator/modals.html",
-			"modals.html",
-			"validator/overview.html",
-			"validator/charts.html",
-			"validator/countdown.html",
-
-			"components/flashMessage.html",
-			"components/rocket.html",
-			"components/bannerValidator.html")...,
-	)
-	var validatorNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validator/validatornotfound.html")...)
+	validatorTemplateFiles := append(layoutTemplateFiles,
+		"validator/validator.html",
+		"validator/heading.html",
+		"validator/tables.html",
+		"validator/modals.html",
+		"modals.html",
+		"validator/overview.html",
+		"validator/charts.html",
+		"validator/countdown.html",
+		"components/flashMessage.html",
+		"components/rocket.html")
+	validatorNotFoundTemplateFiles := append(layoutTemplateFiles, "validator/validatornotfound.html")
+	var validatorTemplate = templates.GetTemplate(validatorTemplateFiles...)
+	var validatorNotFoundTemplate = templates.GetTemplate(validatorNotFoundTemplateFiles...)
 
 	currency := GetCurrency(r)
 
@@ -105,11 +103,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.PendingCount = *pendingCount
 	validatorPageData.InclusionDelay = int64((utils.Config.Chain.Config.Eth1FollowDistance*utils.Config.Chain.Config.SecondsPerEth1Block+utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch*utils.Config.Chain.Config.EpochsPerEth1VotingPeriod)/3600) + 1
 
-	data := InitPageData(w, r, "validators", "/validators", "")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "validators", "/validators", "", validatorTemplateFiles)
 	validatorPageData.NetworkStats = services.LatestIndexPageData()
 	validatorPageData.User = data.User
-	validatorPageData.NoAds = data.NoAds
 
 	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
 	if err != nil {
@@ -162,7 +158,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(deposits)
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
 				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
-				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
+				data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", index), "", validatorNotFoundTemplateFiles)
 
 				if handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 					return // an error has occurred and was processed
@@ -299,6 +295,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validators.validatorindex = $1`, index)
 
 	if err == sql.ErrNoRows {
+		data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", index), "", validatorNotFoundTemplateFiles)
 		if handleTemplateError(w, r, "validator.go", "Validator", "no rows", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
@@ -1680,8 +1677,8 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 // Validator returns validator data using a go template
 func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
-
-	var validatorStatsTableTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validator_stats_table.html")...)
+	templateFiles := append(layoutTemplateFiles, "validator_stats_table.html")
+	var validatorStatsTableTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
@@ -1689,8 +1686,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	var index uint64
 	var err error
 
-	data := InitPageData(w, r, "validators", "/validators", "")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "validators", "/validators", "", templateFiles)
 
 	// Request came with a hash
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
