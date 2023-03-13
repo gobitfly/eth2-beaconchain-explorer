@@ -1330,7 +1330,7 @@ func getEpoch(epoch int64) ([]interface{}, error) {
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse{data=[]types.APIValidatorResponse}
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/validator/{indexOrPubkey} [get]
+// @Router /api/v1/validator/{indexOrPubkey} [post]
 func ApiValidator(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
