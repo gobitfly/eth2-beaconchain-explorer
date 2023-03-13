@@ -21,7 +21,6 @@ type options struct {
 	configPath                string
 	statisticsDayToExport     int64
 	statisticsDaysToExport    string
-	poolsDisabledFlag         bool
 	statisticsValidatorToggle bool
 	statisticsChartToggle     bool
 }
@@ -32,7 +31,6 @@ func main() {
 	configPath := flag.String("config", "", "Path to the config file")
 	statisticsDayToExport := flag.Int64("statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
 	statisticsDaysToExport := flag.String("statistics.days", "", "Days to export statistics (will export the day independent if it has been already exported or not")
-	poolsDisabledFlag := flag.Bool("pools.disabled", false, "Disable exporting pools")
 	statisticsValidatorToggle := flag.Bool("validators.enabled", false, "Toggle exporting validator statistics")
 	statisticsChartToggle := flag.Bool("charts.enabled", false, "Toggle exporting chart series")
 
@@ -44,7 +42,6 @@ func main() {
 		statisticsDaysToExport:    *statisticsDaysToExport,
 		statisticsChartToggle:     *statisticsChartToggle,
 		statisticsValidatorToggle: *statisticsValidatorToggle,
-		poolsDisabledFlag:         *poolsDisabledFlag,
 	}
 
 	logrus.Printf("version: %v, config file path: %v", version.Version, *configPath)
@@ -103,11 +100,11 @@ func main() {
 		}
 		firstDay, err := strconv.ParseUint(s[0], 10, 64)
 		if err != nil {
-			logrus.Fatal(err)
+			utils.LogFatal(err, "error parsing first day of statisticsDaysToExport flag to uint", 0)
 		}
 		lastDay, err := strconv.ParseUint(s[1], 10, 64)
 		if err != nil {
-			logrus.Fatal(err)
+			utils.LogFatal(err, "error parsing last day of statisticsDaysToExport flag to uint", 0)
 		}
 
 		if *statisticsValidatorToggle {
@@ -170,9 +167,6 @@ func main() {
 	}
 
 	go statisticsLoop()
-	if !*poolsDisabledFlag {
-		go poolsLoop()
-	}
 
 	utils.WaitForCtrlC()
 
@@ -249,13 +243,5 @@ func statisticsLoop() {
 
 		services.ReportStatus("statistics", "Running", nil)
 		time.Sleep(time.Minute)
-	}
-}
-
-func poolsLoop() {
-	for {
-		db.UpdatePoolInfo()
-		services.ReportStatus("poolInfoUpdater", "Running", nil)
-		time.Sleep(time.Minute * 10)
 	}
 }

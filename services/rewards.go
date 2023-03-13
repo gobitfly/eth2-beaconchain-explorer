@@ -28,7 +28,7 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 
 	var pricesDb []types.Price
 	err = db.WriterDb.Select(&pricesDb,
-		`select * from price where ts >= TO_TIMESTAMP($1) and ts <= TO_TIMESTAMP($2) order by ts desc`, start, end)
+		`select ts, eur, usd, gbp, cad, jpy, cny, rub, aud from price where ts >= TO_TIMESTAMP($1) and ts <= TO_TIMESTAMP($2) order by ts desc`, start, end)
 	if err != nil {
 		logger.Errorf("error getting prices: %v", err)
 	}
@@ -36,7 +36,7 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 	lowerBound := utils.TimeToDay(start)
 	upperBound := utils.TimeToDay(end)
 
-	income, err := db.GetValidatorIncomeHistory(validatorArr, lowerBound+1, upperBound)
+	income, _, err := db.GetValidatorIncomeHistory(validatorArr, lowerBound+1, upperBound)
 	if err != nil {
 		logger.Errorf("error getting income history for validator hist: %v", err)
 	}
@@ -75,7 +75,7 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 	for i, item := range income {
 		key := fmt.Sprintf("%v", utils.DayToTime(item.Day))
 		key = strings.Split(key, " ")[0]
-		iETH := float64(item.Income) / 1e9
+		iETH := float64(item.ClRewards) / 1e9
 		tETH += iETH
 		iCur := iETH * prices[key]
 		tCur += iCur
@@ -296,7 +296,7 @@ func getValidatorDetails(validators []uint64) [][]string {
 		return [][]string{}
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, LatestEpoch(), 1)
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, LatestEpoch(), LatestEpoch())
 	if err != nil {
 		logger.Errorf("error getting validator balance data for getValidatorDetails function: %v", err)
 		return [][]string{}

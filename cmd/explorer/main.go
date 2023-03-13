@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -65,10 +66,13 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
-	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
+	logrus.WithFields(logrus.Fields{
+		"config":    *configPath,
+		"version":   version.Version,
+		"chainName": utils.Config.Chain.Config.ConfigName}).Printf("starting")
 
 	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
-		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
+		utils.LogFatal(err, "invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file", 0)
 	}
 
 	err = handlers.CheckAndPreloadImprint()
@@ -148,7 +152,7 @@ func main() {
 		}
 
 		if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) {
-			logrus.Fatalf("chain id missmatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), erigonChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+			logrus.Fatalf("chain id mismatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), erigonChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 		}
 	}()
 
@@ -190,8 +194,20 @@ func main() {
 
 	if utils.Config.Metrics.Enabled {
 		go metrics.MonitorDB(db.WriterDb)
-		DBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.WriterDatabase.Username, cfg.WriterDatabase.Password, cfg.WriterDatabase.Host, cfg.WriterDatabase.Port, cfg.WriterDatabase.Name)
-		frontendDBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.Frontend.WriterDatabase.Username, cfg.Frontend.WriterDatabase.Password, cfg.Frontend.WriterDatabase.Host, cfg.Frontend.WriterDatabase.Port, cfg.Frontend.WriterDatabase.Name)
+		DBInfo := []string{
+			cfg.WriterDatabase.Username,
+			cfg.WriterDatabase.Password,
+			cfg.WriterDatabase.Host,
+			cfg.WriterDatabase.Port,
+			cfg.WriterDatabase.Name}
+		DBStr := strings.Join(DBInfo, "-")
+		frontendDBInfo := []string{
+			cfg.Frontend.WriterDatabase.Username,
+			cfg.Frontend.WriterDatabase.Password,
+			cfg.Frontend.WriterDatabase.Host,
+			cfg.Frontend.WriterDatabase.Port,
+			cfg.Frontend.WriterDatabase.Name}
+		frontendDBStr := strings.Join(frontendDBInfo, "-")
 		if DBStr != frontendDBStr {
 			go metrics.MonitorDB(db.FrontendWriterDB)
 		}
@@ -213,7 +229,7 @@ func main() {
 		if utils.Config.Indexer.Node.Type == "lighthouse" {
 			rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainID)
 			if err != nil {
-				logrus.Fatal(err)
+				utils.LogFatal(err, "new explorer lighthouse client error", 0)
 			}
 		} else {
 			logrus.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
@@ -225,7 +241,7 @@ func main() {
 				for _, epoch := range utils.Config.Indexer.OneTimeExport.Epochs {
 					err := exporter.ExportEpoch(epoch, rpcClient)
 					if err != nil {
-						logrus.Fatal(err)
+						utils.LogFatal(err, "exporting OneTimeExport epochs error", 0)
 					}
 				}
 			} else {
@@ -233,7 +249,7 @@ func main() {
 				for epoch := utils.Config.Indexer.OneTimeExport.StartEpoch; epoch <= utils.Config.Indexer.OneTimeExport.EndEpoch; epoch++ {
 					err := exporter.ExportEpoch(epoch, rpcClient)
 					if err != nil {
-						logrus.Fatal(err)
+						utils.LogFatal(err, "exporting OneTimeExport start to end epoch error", 0)
 					}
 				}
 			}
@@ -258,28 +274,23 @@ func main() {
 		router.PathPrefix("/api/v1/docs/").Handler(httpSwagger.WrapHandler)
 		apiV1Router.HandleFunc("/epoch/{epoch}", handlers.ApiEpoch).Methods("GET", "OPTIONS")
 
-		// deprecated use slot
 		apiV1Router.HandleFunc("/epoch/{epoch}/blocks", handlers.ApiEpochSlots).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/epoch/{epoch}/slots", handlers.ApiEpochSlots).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slotOrHash}", handlers.ApiSlots).Methods("GET", "OPTIONS")
-		// deprecated use slot
-		apiV1Router.HandleFunc("/block/{slotOrHash}", handlers.ApiSlots).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slot}/attestations", handlers.ApiSlotAttestations).Methods("GET", "OPTIONS")
-		// deprecated use slot
-		apiV1Router.HandleFunc("/block/{slot}/attestations", handlers.ApiSlotAttestations).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slot}/deposits", handlers.ApiSlotDeposits).Methods("GET", "OPTIONS")
-		// deprecated use slot
-		apiV1Router.HandleFunc("/block/{slot}/deposits", handlers.ApiSlotDeposits).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slot}/attesterslashings", handlers.ApiSlotAttesterSlashings).Methods("GET", "OPTIONS")
-		// deprecated use slot
-		apiV1Router.HandleFunc("/block/{slot}/attesterslashings", handlers.ApiSlotAttesterSlashings).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slot}/proposerslashings", handlers.ApiSlotProposerSlashings).Methods("GET", "OPTIONS")
-		// deprecated use slot
-		apiV1Router.HandleFunc("/block/{slot}/proposerslashings", handlers.ApiSlotProposerSlashings).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slot}/voluntaryexits", handlers.ApiSlotVoluntaryExits).Methods("GET", "OPTIONS")
-		// deprecated use slot
-		apiV1Router.HandleFunc("/block/{slot}/voluntaryexits", handlers.ApiSlotVoluntaryExits).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slot}/withdrawals", handlers.ApiSlotWithdrawals).Methods("GET", "OPTIONS")
+
+		// deprecated, use slot equivalents
+		apiV1Router.HandleFunc("/block/{slotOrHash}", handlers.ApiSlots).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/block/{slot}/attestations", handlers.ApiSlotAttestations).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/block/{slot}/deposits", handlers.ApiSlotDeposits).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/block/{slot}/attesterslashings", handlers.ApiSlotAttesterSlashings).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/block/{slot}/proposerslashings", handlers.ApiSlotProposerSlashings).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/block/{slot}/voluntaryexits", handlers.ApiSlotVoluntaryExits).Methods("GET", "OPTIONS")
 
 		apiV1Router.HandleFunc("/sync_committee/{period}", handlers.ApiSyncCommittee).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/eth1deposit/{txhash}", handlers.ApiEth1Deposit).Methods("GET", "OPTIONS")
@@ -298,6 +309,7 @@ func main() {
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestationeffectiveness", handlers.ApiValidatorAttestationEffectiveness).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/stats/{index}", handlers.ApiValidatorDailyStats).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/eth1/{address}", handlers.ApiValidatorByEth1Address).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/withdrawalCredentials/{withdrawalCredentialsOrEth1address}", handlers.ApiWithdrawalCredentialsValidators).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validators/queue", handlers.ApiValidatorQueue).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/graffitiwall", handlers.ApiGraffitiwall).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
@@ -415,6 +427,7 @@ func main() {
 			router.HandleFunc("/slot/{slot}/attestations", handlers.SlotAttestationsData).Methods("GET")
 			router.HandleFunc("/slot/{slot}/withdrawals", handlers.SlotWithdrawalData).Methods("GET")
 			router.HandleFunc("/slot/{slot}/blsChange", handlers.SlotBlsChangeData).Methods("GET")
+			router.HandleFunc("/slots/finder", handlers.SlotFinder).Methods("GET")
 			router.HandleFunc("/slots", handlers.Slots).Methods("GET")
 			router.HandleFunc("/slots/data", handlers.SlotsData).Methods("GET")
 			router.HandleFunc("/blocks", handlers.Eth1Blocks).Methods("GET")
@@ -479,11 +492,11 @@ func main() {
 			router.HandleFunc("/validators/withdrawals/data", handlers.WithdrawalsData).Methods("GET")
 			router.HandleFunc("/validators/withdrawals/bls", handlers.BLSChangeData).Methods("GET")
 			router.HandleFunc("/validators/deposits", handlers.Deposits).Methods("GET")
-			router.HandleFunc("/validators/initiated-deposits", handlers.Eth1Deposits).Methods("GET")
+			router.HandleFunc("/validators/initiated-deposits", handlers.Eth1Deposits).Methods("GET") // deprecated, will redirect to /validators/deposits
 			router.HandleFunc("/validators/initiated-deposits/data", handlers.Eth1DepositsData).Methods("GET")
 			router.HandleFunc("/validators/deposit-leaderboard", handlers.Eth1DepositsLeaderboard).Methods("GET")
 			router.HandleFunc("/validators/deposit-leaderboard/data", handlers.Eth1DepositsLeaderboardData).Methods("GET")
-			router.HandleFunc("/validators/included-deposits", handlers.Eth2Deposits).Methods("GET")
+			router.HandleFunc("/validators/included-deposits", handlers.Eth2Deposits).Methods("GET") // deprecated, will redirect to /validators/deposits
 			router.HandleFunc("/validators/included-deposits/data", handlers.Eth2DepositsData).Methods("GET")
 
 			router.HandleFunc("/heatmap", handlers.Heatmap).Methods("GET")
@@ -496,6 +509,7 @@ func main() {
 			router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET")
 			router.HandleFunc("/dashboard/data/proposalshistory", handlers.DashboardDataProposalsHistory).Methods("GET")
 			router.HandleFunc("/dashboard/data/validators", handlers.DashboardDataValidators).Methods("GET")
+			router.HandleFunc("/dashboard/data/withdrawal", handlers.DashboardDataWithdrawals).Methods("GET")
 			router.HandleFunc("/dashboard/data/effectiveness", handlers.DashboardDataEffectiveness).Methods("GET")
 			router.HandleFunc("/dashboard/data/earnings", handlers.DashboardDataEarnings).Methods("GET")
 			router.HandleFunc("/graffitiwall", handlers.Graffitiwall).Methods("GET")
@@ -522,11 +536,7 @@ func main() {
 
 			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
-			if utils.Config.Frontend.PoolsUpdater.Enabled {
-				router.HandleFunc("/pools", handlers.Pools).Methods("GET")
-				// router.HandleFunc("/pools/streak/current", handlers.GetAvgCurrentStreak).Methods("GET")
-				// router.HandleFunc("/pools/chart/income_per_eth", handlers.GetIncomePerEthChart).Methods("GET")
-			}
+			router.HandleFunc("/pools", handlers.Pools).Methods("GET")
 			router.HandleFunc("/relays", handlers.Relays).Methods("GET")
 			router.HandleFunc("/pools/rocketpool", handlers.PoolsRocketpool).Methods("GET")
 			router.HandleFunc("/pools/rocketpool/data/minipools", handlers.PoolsRocketpoolDataMinipools).Methods("GET")
@@ -669,13 +679,22 @@ func main() {
 		pa.Init(proxyaddr.CIDRLoopback)
 		n.Use(pa)
 
-		n.UseHandler(router)
+		n.UseHandler(utils.SessionStore.SCS.LoadAndSave(router))
 
+		if utils.Config.Frontend.HttpWriteTimeout == 0 {
+			utils.Config.Frontend.HttpIdleTimeout = time.Second * 15
+		}
+		if utils.Config.Frontend.HttpReadTimeout == 0 {
+			utils.Config.Frontend.HttpIdleTimeout = time.Second * 15
+		}
+		if utils.Config.Frontend.HttpIdleTimeout == 0 {
+			utils.Config.Frontend.HttpIdleTimeout = time.Second * 60
+		}
 		srv := &http.Server{
 			Addr:         cfg.Frontend.Server.Host + ":" + cfg.Frontend.Server.Port,
-			WriteTimeout: time.Second * 15,
-			ReadTimeout:  time.Second * 15,
-			IdleTimeout:  time.Second * 60,
+			WriteTimeout: utils.Config.Frontend.HttpWriteTimeout,
+			ReadTimeout:  utils.Config.Frontend.HttpReadTimeout,
+			IdleTimeout:  utils.Config.Frontend.HttpIdleTimeout,
 			Handler:      n,
 		}
 

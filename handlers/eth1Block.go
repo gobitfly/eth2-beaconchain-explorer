@@ -19,21 +19,20 @@ import (
 func Eth1Block(w http.ResponseWriter, r *http.Request) {
 
 	var blockTemplate = templates.GetTemplate(
-		"layout.html",
-		"slot/slot.html",
-		"slot/transactions.html",
-		"slot/attestations.html",
-		"slot/deposits.html",
-		"slot/votes.html",
-		"slot/attesterSlashing.html",
-		"slot/proposerSlashing.html",
-		"slot/exits.html",
-		"slot/overview.html",
-		"slot/execTransactions.html",
-		"slot/withdrawals.html",
+		append(layoutTemplateFiles, "slot/slot.html",
+			"slot/transactions.html",
+			"slot/attestations.html",
+			"slot/deposits.html",
+			"slot/votes.html",
+			"slot/attesterSlashing.html",
+			"slot/proposerSlashing.html",
+			"slot/exits.html",
+			"slot/overview.html",
+			"slot/execTransactions.html",
+			"slot/withdrawals.html")...,
 	)
-	var blockNotFoundTemplate = templates.GetTemplate("layout.html", "slotnotfound.html")
-	var preMergeBlockTemplate = templates.GetTemplate("layout.html", "execution/block.html", "slot/execTransactions.html")
+	var blockNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "slotnotfound.html")...)
+	var preMergeBlockTemplate = templates.GetTemplate(append(layoutTemplateFiles, "execution/block.html", "slot/execTransactions.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
@@ -50,6 +49,8 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", 0))
+		data.Data = "block"
+
 		if handleTemplateError(w, r, "eth1Block.go", "Eth1Block", "number", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
@@ -59,6 +60,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number))
 	eth1BlockPageData, err := GetExecutionBlockPageData(number, 10)
 	if err != nil {
+		data.Data = "block"
 		if handleTemplateError(w, r, "eth1Block.go", "Eth1Block", "GetExecutionBlockPageData", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
@@ -77,6 +79,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logger.Errorf("error retrieving slot page data: %v", err)
 
+			data.Data = "block"
 			if handleTemplateError(w, r, "eth1Block.go", "Eth1Block", "GetSlotPageData", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}

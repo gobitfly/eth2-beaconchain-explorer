@@ -1,10 +1,16 @@
-{{ define "js" }}
-{{ end }}
-
 {{ define "css" }}
 {{ end }}
 {{ define "js" }}
+  <script src="https://www.google.com/recaptcha/api.js" async></script>
+
   <script>
+    function onSubmit(token) {
+      var form = document.getElementById("login_form")
+      if (form.reportValidity()) {
+        form.submit()
+      }
+    }
+
     var params = new URLSearchParams(window.location.search)
     var emailParam = params.get("email")
     var emailInput = document.getElementById("email")
@@ -49,7 +55,7 @@
               </div>
             {{ end }}
           {{ end }}
-          <form action="/login" method="POST">
+          <form id="login_form" action="/login" method="POST">
             {{ .CsrfField }}
             <div class="form-group">
               <label for="email">Email address</label>
@@ -62,7 +68,7 @@
               </label>
               <input tabindex="2" required type="password" maxlength="256" class="form-control" autocomplete="current-password" id="password" name="password" />
             </div>
-            <button tabindex="3" type="submit" class="btn btn-primary float-right">Login</button>
+            <button data-sitekey="{{ .RecaptchaKey }}" data-callback="onSubmit" tabindex="3" type="submit" class="g-recaptcha btn btn-primary float-right">Login</button>
           </form>
           <span style="font-size: 90%;" class="text-muted">Don't have an account? </span><a tabindex="4" href="/register">Sign up</a>
         </div>

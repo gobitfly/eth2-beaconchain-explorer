@@ -1,5 +1,11 @@
 package types
 
+type ForkVersion struct {
+	Epoch           uint64
+	CurrentVersion  []byte
+	PreviousVersion []byte
+}
+
 // https://github.com/ethereum/consensus-specs/blob/dev/configs/mainnet.yaml
 type ChainConfig struct {
 	PresetBase                       string `yaml:"PRESET_BASE"`
@@ -17,6 +23,8 @@ type ChainConfig struct {
 	BellatrixForkEpoch               uint64 `yaml:"BELLATRIX_FORK_EPOCH"`
 	CappellaForkVersion              string `yaml:"CAPELLA_FORK_VERSION"`
 	CappellaForkEpoch                uint64 `yaml:"CAPELLA_FORK_EPOCH"`
+	DenebForkVersion                 string `yaml:"DENEB_FORK_VERSION"`
+	DenebForkEpoch                   uint64 `yaml:"DENEB_FORK_EPOCH"`
 	ShardingForkVersion              string `yaml:"SHARDING_FORK_VERSION"`
 	ShardingForkEpoch                uint64 `yaml:"SHARDING_FORK_EPOCH"`
 	SecondsPerSlot                   uint64 `yaml:"SECONDS_PER_SLOT"`

@@ -130,7 +130,13 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			relays.is_censoring as censors,
 			relays.is_ethical as ethical,
 			stats.block_count / (select max(blocks.slot) - $1 from blocks)::float as network_usage,
-			stats.*
+			stats.relay_id,
+			stats.block_count,
+			stats.total_value,
+			stats.avg_value,
+			stats.unique_builders,
+			stats.max_value,
+			stats.max_value_slot
 		from relays
 		left join stats on stats.relay_id = relays.tag_id
 		left join tags on tags.id = relays.tag_id 
@@ -145,9 +151,14 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 	dayInSlots := 24 * 60 * 60 / utils.Config.Chain.Config.SecondsPerSlot
 
 	tmp := [3]types.RelayInfoContainer{{Days: 7}, {Days: 31}, {Days: 180}}
+	latest := LatestSlot()
 	for i := 0; i < len(tmp); i++ {
 		tmp[i].IsFirst = i == 0
-		err = overallStatsQuery.Select(&tmp[i].RelaysInfo, LatestSlot()-(tmp[i].Days*dayInSlots))
+		var forSlot uint64 = 0
+		if latest > tmp[i].Days*dayInSlots {
+			forSlot = latest - (tmp[i].Days * dayInSlots)
+		}
+		err = overallStatsQuery.Select(&tmp[i].RelaysInfo, forSlot)
 		if err != nil {
 			return nil, err
 		}
@@ -158,6 +169,10 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 	}
 	relaysData.RelaysInfoContainers = tmp
 
+	var forSlot uint64 = 0
+	if latest > (14 * dayInSlots) {
+		forSlot = latest - (14 * dayInSlots)
+	}
 	err = db.ReaderDb.Select(&relaysData.TopBuilders, `
 		select 
 			builder_pubkey,
@@ -178,7 +193,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 					limit 1
 				) as latest_slot
 			from (
-				select * 
+				select builder_pubkey, tag_id
 				from relays_blocks
 				where block_slot > $1
 				order by block_slot desc) rb
@@ -186,7 +201,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 		) foo
 		left join tags on tags.id = foo.tag_id
 		group by builder_pubkey 
-		order by c desc`, LatestSlot()-(14*dayInSlots))
+		order by c desc`, forSlot)
 	if err != nil {
 		logger.Errorf("failed to get builder ranking %v", err)
 		return nil, err
@@ -240,7 +255,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			validators.validatorindex as proposer,
 			encode(exec_extra_data, 'hex') as block_extra_data
 		from (
-			select * 
+			select value, block_slot, builder_pubkey, proposer_fee_recipient, block_root, tag_id, proposer_pubkey
 			from relays_blocks
 			where relays_blocks.block_root not in (select bt.blockroot from blocks_tags bt where bt.tag_id='invalid-relay-reward') 
 			order by relays_blocks.value desc
@@ -1220,9 +1235,6 @@ func gasNowUpdater(wg *sync.WaitGroup) {
 		time.Sleep(time.Second * 15)
 	}
 }
-func GetGasNowData() (*types.GasNowPageData, error) {
-	return getGasNowData()
-}
 
 func getGasNowData() (*types.GasNowPageData, error) {
 	gpoData := &types.GasNowPageData{}
@@ -1274,13 +1286,13 @@ func getGasNowData() (*types.GasNowPageData, error) {
 
 	err = client.Call(&raw, "txpool_content")
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogFatal(err, "error getting raw json data from txpool_content", 0)
 	}
 
 	txPoolContent := &TxPoolContent{}
 	err = json.Unmarshal(raw, txPoolContent)
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogFatal(err, "unmarshal txpoolcontent json error", 0)
 	}
 
 	pendingTxs := make([]*geth_types.Transaction, 0, len(txPoolContent.Pending))
@@ -1367,7 +1379,7 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 		if client == nil {
 			client, err = geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
 			if err != nil {
-				logrus.Error("can't connect to geth node: ", err)
+				utils.LogError(err, "can't connect to geth node", 0)
 				time.Sleep(time.Second * 30)
 				continue
 			}
@@ -1473,7 +1485,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	// }
 
 	// swap this for GetEpochIncomeHistory in the future
-	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, latestEpoch, 10)
+	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, latestEpoch-10, latestBlock)
 	if err != nil {
 		logger.WithError(err).Error("error getting validator income history")
 	}

@@ -24,6 +24,7 @@ type EthPrice struct {
 	} `json:"ethereum"`
 }
 
+var availableCurrencies = []string{"ETH", "USD", "EUR", "GBP", "CNY", "RUB", "CAD", "AUD", "JPY"}
 var ethPrice = new(EthPrice)
 var ethPriceMux = &sync.RWMutex{}
 
@@ -113,6 +114,35 @@ func GetEthPrice(currency string) float64 {
 		return ethPrice.Ethereum.Gbp
 	default:
 		return 1
+	}
+}
+
+func GetAvailableCurrencies() []string {
+	return availableCurrencies
+}
+
+func GetCurrencyLabel(currency string) string {
+	switch currency {
+	case "ETH":
+		return "Ether"
+	case "USD":
+		return "United States Dollar"
+	case "EUR":
+		return "Euro"
+	case "GBP":
+		return "Pound Sterling"
+	case "CNY":
+		return "Chinese Yuan"
+	case "RUB":
+		return "Russian Ruble"
+	case "CAD":
+		return "Canadian Dollar"
+	case "AUD":
+		return "Australian Dollar"
+	case "JPY":
+		return "Japanese Yen"
+	default:
+		return ""
 	}
 }
 

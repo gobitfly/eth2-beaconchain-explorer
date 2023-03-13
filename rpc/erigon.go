@@ -138,13 +138,9 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 	receipts := make([]*geth_types.Receipt, len(block.Transactions()))
 	reqs := make([]geth_rpc.BatchElem, len(block.Transactions()))
 
-	// withdrawals, ok := block.()
-
-	// check if block has withdrawals by checking of the method is available
-	withdrawals := block.Withdrawals()
-	if len(withdrawals) > 0 {
-		withdrawalsIndexed := make([]*types.Eth1Withdrawal, 0, len(withdrawals))
-		for _, w := range withdrawals {
+	if len(block.Withdrawals()) > 0 {
+		withdrawalsIndexed := make([]*types.Eth1Withdrawal, 0, len(block.Withdrawals()))
+		for _, w := range block.Withdrawals() {
 			withdrawalsIndexed = append(withdrawalsIndexed, &types.Eth1Withdrawal{
 				Index:          w.Index,
 				ValidatorIndex: w.Validator,
@@ -350,8 +346,6 @@ func (client *ErigonClient) GetBlockNumberByHash(hash string) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	logger.Info(fmt.Sprintf("%#x", block.Hash().Bytes()))
-	logger.Info(fmt.Sprintf("%#x", block.Coinbase().Bytes()))
 	return block.NumberU64(), nil
 }
 

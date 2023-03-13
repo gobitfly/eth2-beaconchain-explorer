@@ -18,9 +18,9 @@ import (
 // Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
 
-	var epochTemplate = templates.GetTemplate("layout.html", "epoch.html")
-	var epochFutureTemplate = templates.GetTemplate("layout.html", "epochFuture.html")
-	var epochNotFoundTemplate = templates.GetTemplate("layout.html", "epochnotfound.html")
+	var epochTemplate = templates.GetTemplate(append(layoutTemplateFiles, "epoch.html")...)
+	var epochFutureTemplate = templates.GetTemplate(append(layoutTemplateFiles, "epochFuture.html")...)
+	var epochNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "epochnotfound.html")...)
 
 	const MaxEpochValue = 4294967296 // we only render a page for epochs up to this value
 
@@ -55,7 +55,6 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 			proposerslashingscount, 
 			attesterslashingscount, 
 			attestationscount, 
-			withdrawalcount,
 			depositscount, 
 			voluntaryexitscount, 
 			validatorscount, 
@@ -76,9 +75,9 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//Create placeholder structs
-		blocks := make([]*types.IndexPageDataBlocks, 32)
+		blocks := make([]*types.IndexPageDataBlocks, utils.Config.Chain.Config.SlotsPerEpoch)
 		for i := range blocks {
-			slot := uint64(i) + epoch*32
+			slot := uint64(i) + (epoch * utils.Config.Chain.Config.SlotsPerEpoch)
 			block := types.IndexPageDataBlocks{
 				Epoch:  epoch,
 				Slot:   slot,
@@ -89,7 +88,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		}
 		epochPageData = types.EpochPageData{
 			Epoch:         epoch,
-			BlocksCount:   32,
+			BlocksCount:   utils.Config.Chain.Config.SlotsPerEpoch,
 			PreviousEpoch: epoch - 1,
 			NextEpoch:     epoch + 1,
 			Ts:            utils.EpochToTime(epoch),
@@ -142,6 +141,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		case 1:
 			epochPageData.ProposedCount += 1
 			epochPageData.SyncParticipationRate += block.SyncAggParticipation
+			epochPageData.WithdrawalCount += block.Withdrawals
 		case 2:
 			epochPageData.MissedCount += 1
 		case 3:

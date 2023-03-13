@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/eth1data"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -12,6 +14,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
@@ -20,7 +23,7 @@ import (
 
 func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
-	var eth1AddressTemplate = templates.GetTemplate("layout.html", "sprites.html", "execution/address.html")
+	var eth1AddressTemplate = templates.GetTemplate(append(layoutTemplateFiles, "sprites.html", "execution/address.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
@@ -29,7 +32,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	if !isValid {
 		data := InitPageData(w, r, "blockchain", "/address", "not found")
 
-		if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "not valid", templates.GetTemplate("layout.html", "sprites.html", "execution/addressNotFound.html").ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "not valid", templates.GetTemplate(append(layoutTemplateFiles, "sprites.html", "execution/addressNotFound.html")...).ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -45,7 +48,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	addressBytes := common.FromHex(address)
 	data := InitPageData(w, r, "blockchain", "/address", fmt.Sprintf("Address 0x%x", addressBytes))
 
-	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address))
+	metadata, err := db.BigtableClient.GetMetadataForAddress(addressBytes)
 	if err != nil {
 		logger.Errorf("error retieving balances for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -54,6 +57,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	g := new(errgroup.Group)
 	g.SetLimit(9)
 
+	isContract := false
 	txns := &types.DataTableResponse{}
 	internal := &types.DataTableResponse{}
 	erc20 := &types.DataTableResponse{}
@@ -64,6 +68,13 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	withdrawals := &types.DataTableResponse{}
 	withdrawalSummary := template.HTML("0")
 
+	g.Go(func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+
+		isContract, err = eth1data.IsContract(ctx, common.BytesToAddress(addressBytes))
+		return err
+	})
 	g.Go(func() error {
 		var err error
 		txns, err = db.BigtableClient.GetAddressTransactionsTableData(addressBytes, "", "")
@@ -243,6 +254,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = types.Eth1AddressPageData{
 		Address:            address,
+		IsContract:         isContract,
 		QRCode:             pngStr,
 		QRCodeInverse:      pngStrInverse,
 		Metadata:           metadata,

@@ -11,7 +11,7 @@ import (
 )
 
 func EthClientsServices(w http.ResponseWriter, r *http.Request) {
-	var ethClientsServicesTemplate = templates.GetTemplate("layout.html", "ethClientsServices.html")
+	var ethClientsServicesTemplate = templates.GetTemplate(append(layoutTemplateFiles, "ethClientsServices.html")...)
 
 	var err error
 

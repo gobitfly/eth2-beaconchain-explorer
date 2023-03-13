@@ -27,7 +27,7 @@ var authInternalServerErrorFlashMsg = "Error: Something went wrong :( Please ret
 
 // Register handler renders a template that allows for the creation of a new user.
 func Register(w http.ResponseWriter, r *http.Request) {
-	var registerTemplate = templates.GetTemplate("layout.html", "register.html")
+	var registerTemplate = templates.GetTemplate(append(layoutTemplateFiles, "register.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -103,9 +103,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	registerTs := time.Now().Unix()
-
-	apiKey, err := utils.GenerateAPIKey(string(pHash), email, fmt.Sprint(registerTs))
+	apiKey, err := utils.GenerateRandomAPIKey()
 	if err != nil {
 		logger.Errorf("error generating hash for api_key: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
@@ -117,7 +115,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	_, err = tx.Exec(`
       INSERT INTO users (password, email, register_ts, api_key)
       VALUES ($1, $2, TO_TIMESTAMP($3), $4)`,
-		string(pHash), email, registerTs, apiKey,
+		string(pHash), email, time.Now().Unix(), apiKey,
 	)
 
 	if err != nil {
@@ -153,12 +151,16 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 // Login handler renders a template that allows a user to login.
 func Login(w http.ResponseWriter, r *http.Request) {
 
-	var loginTemplate = templates.GetTemplate("layout.html", "login.html")
+	var loginTemplate = templates.GetTemplate(append(layoutTemplateFiles, "login.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "login", "/login", "Login")
-	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
+	data.Data = types.AuthData{
+		Flashes:      utils.GetFlashes(w, r, authSessionName),
+		CsrfField:    csrf.TemplateField(r),
+		RecaptchaKey: utils.Config.Frontend.RecaptchaSiteKey,
+	}
 	data.Meta.NoTrack = true
 
 	if handleTemplateError(w, r, "auth.go", "Login", "", loginTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -168,9 +170,36 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 // LoginPost handles authenticating the user.
 func LoginPost(w http.ResponseWriter, r *http.Request) {
+
+	if len(utils.Config.Frontend.RecaptchaSecretKey) > 0 && len(utils.Config.Frontend.RecaptchaSiteKey) > 0 {
+		if len(r.FormValue("g-recaptcha-response")) == 0 {
+			utils.SetFlash(w, r, "pricing_flash", "Error: Invalid CAPTCHA")
+			logger.Errorf("error no recaptca response present %v route: %v", r.URL.String(), r.FormValue("g-recaptcha-response"))
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
+		if err != nil || !valid {
+			utils.SetFlash(w, r, "pricing_flash", "Error: Invalid CAPTCHA")
+			logger.Errorf("error validating recaptcha %v route: %v", r.URL.String(), err)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+	}
+
 	session, err := utils.SessionStore.Get(r, authSessionName)
 	if err != nil {
 		logger.Errorf("Error retrieving session for login route: %v", err)
+	}
+
+	err = session.SCS.RenewToken(r.Context())
+	if err != nil {
+		logger.Errorf("error renewing session token: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/register", http.StatusSeeOther)
+		return
 	}
 
 	err = r.ParseForm()
@@ -224,15 +253,15 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		user.ProductID = ""
 	}
 
-	session.Values["authenticated"] = true
-	session.Values["user_id"] = user.ID
-	session.Values["subscription"] = user.ProductID
-	session.Values["user_group"] = user.UserGroup
+	session.SetValue("authenticated", true)
+	session.SetValue("user_id", user.ID)
+	session.SetValue("subscription", user.ProductID)
+	session.SetValue("user_group", user.UserGroup)
 
 	// save datatable state settings from anon session
 	dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
 
-	for k, state := range session.Values {
+	for k, state := range session.Values() {
 		k, ok := k.(string)
 		if ok && strings.HasPrefix(k, dataTableStatePrefix) {
 			state, ok := state.(types.DataTableSaveState)
@@ -247,7 +276,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 			} else {
 				logger.Errorf("error could not parse datatable state from session, state: %+v", state)
 			}
-			delete(session.Values, k)
+			session.DeleteValue(k)
 		}
 	}
 	// session.AddFlash("Successfully logged in")
@@ -256,26 +285,25 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 	logger.WithFields(
 		logrus.Fields{
-			"authenticated": session.Values["authenticated"],
-			"user_id":       session.Values["user_id"],
-			"subscription":  session.Values["subscription"],
-			"user_group":    session.Values["user_group"],
+			"authenticated": session.GetValue("authenticated"),
+			"user_id":       session.GetValue("user_id"),
+			"subscription":  session.GetValue("subscription"),
+			"user_group":    session.GetValue("user_group"),
 		},
-	).Info("login succeeded with session")
+	).Info("login succeeded")
 
-	redirectURI, RedirectExists := session.Values["oauth_redirect_uri"]
+	redirectURI := session.GetValue("oauth_redirect_uri")
 
-	if RedirectExists {
-		state, stateExists := session.Values["state"]
+	if redirectURI != nil {
+		state := session.GetValue("state")
 		var stateParam = ""
 
-		if stateExists {
+		if state != nil {
 			stateParam = "&state=" + state.(string)
 		}
 
-		delete(session.Values, "oauth_redirect_uri")
-		delete(session.Values, "state")
-		session.Save(r, w)
+		session.DeleteValue("oauth_redirect_uri")
+		session.DeleteValue("state")
 
 		http.Redirect(w, r, "/user/authorize?redirect_uri="+redirectURI.(string)+stateParam, http.StatusSeeOther)
 		return
@@ -287,16 +315,28 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 // Logout handles ending the user session.
 func Logout(w http.ResponseWriter, r *http.Request) {
-	session, err := utils.SessionStore.Get(r, authSessionName)
+
+	_, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	session.Values["subscription"] = ""
-	session.Values["authenticated"] = false
-	delete(session.Values, "user_id")
-	delete(session.Values, "oauth_redirect_uri")
+
+	session.SetValue("subscription", "")
+	session.SetValue("authenticated", false)
+	session.DeleteValue("user_id")
+	session.DeleteValue("oauth_redirect_uri")
+
+	err = session.SCS.RenewToken(r.Context())
+	if err != nil {
+		logger.Errorf("error renewing session tokent user: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
 	session.Save(r, w)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -307,7 +347,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 // the email of the user if it has not been confirmed yet.
 func ResetPassword(w http.ResponseWriter, r *http.Request) {
 
-	var resetPasswordTemplate = templates.GetTemplate("layout.html", "resetPassword.html")
+	var resetPasswordTemplate = templates.GetTemplate(append(layoutTemplateFiles, "resetPassword.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -343,6 +383,15 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, err = db.FrontendWriterDB.Exec("UPDATE users SET password_reset_hash = '' WHERE id = $1", dbUser.ID)
+	if err != nil {
+		logger.Errorf("error clearing hash when user is resetting password: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
+		return
+	}
+
 	// if the user has not confirmed her email yet, just confirm it since she clicked this reset-password-link that has been sent to her email aswell anyway
 	if !dbUser.EmailConfirmed {
 		_, err = db.FrontendWriterDB.Exec("UPDATE users SET email_confirmed = 'TRUE' WHERE id = $1", dbUser.ID)
@@ -364,9 +413,9 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		user.Subscription = dbUser.ProductID
 	}
 
-	session.Values["authenticated"] = true
-	session.Values["user_id"] = user.UserID
-	session.Values["subscription"] = user.Subscription
+	session.SetValue("authenticated", true)
+	session.SetValue("user_id", user.UserID)
+	session.SetValue("subscription", user.Subscription)
 	session.Save(r, w)
 
 	data := InitPageData(w, r, "requestReset", "/requestReset", "Reset Password")
@@ -424,9 +473,27 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session.Values["subscription"] = ""
-	session.Values["authenticated"] = false
-	delete(session.Values, "user_id")
+	session.SetValue("subscription", "")
+	session.SetValue("authenticated", false)
+	session.DeleteValue("user_id")
+
+	err = purgeAllSessionsForUser(r.Context(), user.UserID)
+	if err != nil {
+		logger.Errorf("error purging sessions for user %v: %v", user.UserID, err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
+	err = session.SCS.RenewToken(r.Context())
+	if err != nil {
+		logger.Errorf("error renewing session token for user: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
 
 	session.AddFlash("Your password has been updated successfully, please log in again!")
 
@@ -438,7 +505,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 // RequestResetPassword renders a template that lets the user enter his email and request a reset link.
 func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 
-	var requestResetPaswordTemplate = templates.GetTemplate("layout.html", "requestResetPassword.html")
+	var requestResetPaswordTemplate = templates.GetTemplate(append(layoutTemplateFiles, "requestResetPassword.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "register", "/register", "Reset Password")
@@ -503,7 +570,7 @@ func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 // ResendConfirmation handler sends a template for the user to request another confirmation link via email.
 func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 
-	var resendConfirmationTemplate = templates.GetTemplate("layout.html", "resendConfirmation.html")
+	var resendConfirmationTemplate = templates.GetTemplate(append(layoutTemplateFiles, "resendConfirmation.html")...)
 
 	w.Header().Set("Content-Type", "text/html")
 
