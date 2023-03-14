@@ -2932,22 +2932,15 @@ func UsersNotificationChannels(w http.ResponseWriter, r *http.Request) {
 
 // UserSettings renders the user-template
 func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
+	isAdmin, user := handleAdminPermissions(w, r)
+	if !isAdmin {
+		return
+	}
+
 	templateFiles := append(layoutTemplateFiles, "user/global_notification.html")
 	var userTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
-
-	user, _, err := getUserSession(r)
-	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	if user.UserGroup != "ADMIN" {
-		http.Error(w, "Insufficient privilleges", http.StatusUnauthorized)
-		return
-	}
 
 	type notificationConfig struct {
 		Target  string
@@ -2957,7 +2950,7 @@ func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
 
 	var configs []*notificationConfig
 
-	err = db.WriterDb.Select(&configs, "SELECT target, content, enabled FROM global_notifications WHERE target = $1 ORDER BY target", utils.Config.Chain.Name)
+	err := db.WriterDb.Select(&configs, "SELECT target, content, enabled FROM global_notifications WHERE target = $1 ORDER BY target", utils.Config.Chain.Name)
 	if err != nil {
 		logger.Errorf("error retrieving globalNotificationMessage: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -2996,19 +2989,12 @@ func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
 
 // LoginPost handles authenticating the user.
 func UserGlobalNotificationPost(w http.ResponseWriter, r *http.Request) {
-	user, _, err := getUserSession(r)
-	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	isAdmin, _ := handleAdminPermissions(w, r)
+	if !isAdmin {
 		return
 	}
 
-	if user.UserGroup != "ADMIN" {
-		http.Error(w, "Insufficient privilleges", http.StatusUnauthorized)
-		return
-	}
-
-	err = r.ParseForm()
+	err := r.ParseForm()
 	if err != nil {
 		logger.Errorf("error parsing form: %v", err)
 		http.Redirect(w, r, "/user/global_notification", http.StatusSeeOther)
@@ -3042,4 +3028,21 @@ func UserGlobalNotificationPost(w http.ResponseWriter, r *http.Request) {
 
 	// Index(w, r)
 	http.Redirect(w, r, "/user/global_notification", http.StatusSeeOther)
+}
+
+// returns true if admin permissions are available, otherwise http.Error is called and false is returned
+func handleAdminPermissions(w http.ResponseWriter, r *http.Request) (bool, *types.User) {
+	user, _, err := getUserSession(r)
+	if err != nil {
+		utils.LogError(err, "error retrieving session", 0)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return false, user
+	}
+
+	if user.UserGroup != "ADMIN" {
+		http.Error(w, "Insufficient privileges", http.StatusUnauthorized)
+		return false, user
+	}
+
+	return true, user
 }
