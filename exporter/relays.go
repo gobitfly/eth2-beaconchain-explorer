@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math"
 	"net/http"
 	"sync"
 	"time"
@@ -31,15 +32,18 @@ func mevBoostRelaysExporter() {
 	for {
 		// we retrieve the relays from the db each loop to prevent having to restart the exporter for changes
 		relays = nil
-		err := db.ReaderDb.Select(&relays, `select tag_id, endpoint, public_link, is_censoring, is_ethical from relays`)
+		err := db.ReaderDb.Select(&relays, `select tag_id, endpoint, public_link, is_censoring, is_ethical, export_failure_count, last_export_try_ts, last_export_success_ts from relays`)
 		wg := &sync.WaitGroup{}
+		mux := &sync.Mutex{}
 		if err == nil {
 			for _, relay := range relays {
-				// create relay logger
-				relay.Logger = *logrus.New().WithFields(
-					logrus.Fields{"module": "exporter", "relay": relay.ID})
-				wg.Add(1)
-				go singleRelayExport(relay, wg)
+				if shouldTryToExportRelay(relay) {
+					// create relay logger
+					relay.Logger = *logrus.New().WithFields(
+						logrus.Fields{"module": "exporter", "relay": relay.ID})
+					wg.Add(1)
+					go singleRelayExport(relay, wg, mux)
+				}
 			}
 		} else if err != sql.ErrNoRows {
 			utils.LogError(err, "failed to retrieve relays from db", 0)
@@ -50,13 +54,50 @@ func mevBoostRelaysExporter() {
 
 }
 
-func singleRelayExport(r types.Relay, wg *sync.WaitGroup) {
+func singleRelayExport(r types.Relay, wg *sync.WaitGroup, mux *sync.Mutex) {
 	defer wg.Done()
+
 	err := exportRelayBlocks(r)
 	if err != nil {
-		r.Logger.Errorf("failed to export blocks for relay: %v", err)
+		errMsg := fmt.Errorf("failed to export blocks for relay: %v", err)
+		if shouldLogExportAsError(r) {
+			r.Logger.Error(errMsg)
+		} else {
+			r.Logger.Warn(errMsg)
+		}
+
+		// Only increase the export_failure_count if we haven't already reached the maximum time maxWaitTimeForRelayExport
+
+		exportFailureCountToSet := r.ExportFailureCount + 1
+		if _, reachesLimit := waitTimeToExportRelay(r); reachesLimit {
+			exportFailureCountToSet = r.ExportFailureCount
+		}
+		mux.Lock()
+		_, err = db.WriterDb.Exec(`
+			UPDATE relays SET
+				export_failure_count = $1,
+				last_export_try_ts = NOW()
+			WHERE tag_id = $2`, exportFailureCountToSet, r.ID)
+		mux.Unlock()
+		if err != nil {
+			r.Logger.Errorf("Could not increase export_failure_count of relay: %v", r.ID)
+		}
+
 		return
 	}
+
+	mux.Lock()
+	_, err = db.WriterDb.Exec(`
+			UPDATE relays SET
+				export_failure_count = $1,
+				last_export_try_ts = NOW()
+				last_export_success_ts = NOW()
+			WHERE tag_id = $2`, 0, r.ID)
+	mux.Unlock()
+	if err != nil {
+		r.Logger.Errorf("Could not reset export_failure_count of relay: %v", r.ID)
+	}
+
 	r.Logger.Infof("finished syncing payloads from relay")
 }
 
@@ -197,7 +238,7 @@ func retrieveAndInsertPayloadsFromRelay(r types.Relay, low_bound uint64, high_bo
 				utils.MustParseHex(payload.ProposerPubkey),
 				utils.MustParseHex(payload.ProposerFeeRecipient))
 			if err != nil {
-				r.Logger.Error("failled to insert payload into relays_blocks table")
+				r.Logger.Error("failed to insert payload into relays_blocks table")
 				return err
 			}
 		}
@@ -224,4 +265,31 @@ func retrieveAndInsertPayloadsFromRelay(r types.Relay, low_bound uint64, high_bo
 		time.Sleep(time.Second * 1)
 	}
 	return tx.Commit()
+}
+
+func shouldTryToExportRelay(r types.Relay) bool {
+	if r.ExportFailureCount == 0 {
+		return true
+	}
+
+	waitTime, _ := waitTimeToExportRelay(r)
+	return time.Since(r.LastExportTryTs) >= waitTime
+}
+
+func waitTimeToExportRelay(r types.Relay) (time.Duration, bool) {
+	maxWaitTimeForRelayExport := time.Hour * 24
+
+	waitTime := time.Duration(math.Exp2(float64(r.ExportFailureCount))) * time.Minute
+	reachesWaitTime := false
+	if waitTime >= maxWaitTimeForRelayExport {
+		waitTime = maxWaitTimeForRelayExport
+		reachesWaitTime = true
+	}
+	return waitTime, reachesWaitTime
+}
+
+func shouldLogExportAsError(r types.Relay) bool {
+	maxWaitTimeForRelayExportError := time.Hour * 24 * 30
+
+	return time.Since(r.LastExportSuccessTs) >= maxWaitTimeForRelayExportError
 }
