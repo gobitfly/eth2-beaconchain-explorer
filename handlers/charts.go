@@ -146,6 +146,7 @@ func SlotViz(w http.ResponseWriter, r *http.Request) {
 		Selector: "checklist",
 		Epochs:   services.LatestSlotVizMetrics(),
 	}
+	// The following struct is needed so that we can handle the SlotVizPageData same as in the index.go page.
 	data.Data = struct {
 		SlotVizData types.SlotVizPageData
 	}{
