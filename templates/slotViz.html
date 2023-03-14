@@ -1,13 +1,18 @@
 {{ define "SlotViz" }}
   <script src="/js/d3.min.js"></script>
   <script>
-    const epochs = {{.Epochs}}
-    const hardforkEpoch = {{ .HardforkEpoch }}
-    const selector =  {{.Selector}}
-    const element = document.getElementById(selector)
+    var currentEpoch = {{ .CurrentEpoch }}
+    var genesisTimeStamp = {{ .ChainGenesisTimestamp }}
+    var secondsPerSlot = {{ .ChainSecondsPerSlot }}
+    var slotsPerEpoch = {{ .ChainSlotsPerEpoch }}
+    const data = {{ .Data.SlotVizData }}
+    const epochs = data.Epochs
+    const hardforkEpoch = data.HardforkEpoch
+    const selector = data.Selector
+    const slotVizElement = document.getElementById(selector)
     /// Chat Dimensions
     const margin = { top: 20, right: 30, bottom: 0, left: 30 }
-    const width = element?.clientWidth || 0
+    const width = slotVizElement?.clientWidth || 0
     const height = 120 + margin.top + margin.bottom + (epochs?.length || 5) * 50
 
     // var reveal = (path) =>
@@ -188,10 +193,10 @@
                   .attr("y", (d, i) => y.bandwidth() / 2 - 7.5)
                   .attr("slot", (d) => d.Slot)
                   .on("click", (d) => {
-                      var slot = d.target.getAttribute("slot")
-                      if (slot) {
-                        window.location = "/slot/" + slot
-                      }
+                    var slot = d.target.getAttribute("slot")
+                    if (slot) {
+                      window.location = "/slot/" + slot
+                    }
                   })
                   .attr("data-original-title", (s, i) => {
                     if (!s.Slot) {
@@ -403,6 +408,31 @@
       chart.update(data)
     }
 
+    let slotVizCountdown
+    function updateCountdown() {
+      const hfTs = (genesisTimeStamp + hardforkEpoch * slotsPerEpoch * secondsPerSlot) * 1000
+      const now = Date.now()
+      if (hfTs > now) {
+        if (!slotVizCountdown) {
+          slotVizCountdown = document.createElement("div")
+          slotVizCountdown.className = "mb-3"
+          $("#" + selector).prepend(slotVizCountdown)
+        }
+        const slots = Math.ceil((hfTs - now) / 1000 / secondsPerSlot)
+        slotVizCountdown.innerHTML = `<b>Hardfork in:</b> ${getRelativeTime(luxon.DateTime.fromMillis(hfTs))} | ${slots} slots`
+        setTimeout(updateCountdown, secondsPerSlot * 1000)
+      } else {
+        if (slotVizCountdown) {
+          $(slotVizCountdown).remove()
+          slotVizCountdown = null
+        }
+      }
+    }
+
+    if (hardforkEpoch && hardforkEpoch > currentEpoch) {
+      window.addEventListener("DOMContentLoaded", updateCountdown)
+    }
+
     processLaunchMetrics(epochs)
     setInterval(fetchMetrics, 3000)
 
@@ -420,6 +450,6 @@
 
     watermarkContainer.appendChild(watermarkContent)
 
-    document.getElementById(selector).appendChild(watermarkContainer)
+    slotVizElement.appendChild(watermarkContainer)
   </script>
 {{ end }}

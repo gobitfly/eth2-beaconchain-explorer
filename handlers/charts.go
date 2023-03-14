@@ -146,7 +146,11 @@ func SlotViz(w http.ResponseWriter, r *http.Request) {
 		Selector: "checklist",
 		Epochs:   services.LatestSlotVizMetrics(),
 	}
-	data.Data = slotVizData
+	data.Data = struct {
+		SlotVizData types.SlotVizPageData
+	}{
+		SlotVizData: slotVizData,
+	}
 	if handleTemplateError(w, r, "charts.go", "SlotViz", "", slotVizTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
