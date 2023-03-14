@@ -220,9 +220,9 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		SELECT 
 			vs1.validatorindex, 
 			vs1.day, 
-			vs1.cl_rewards_gwei + COALESCE(vs2.cl_rewards_gwei_total, 0) AS cl_rewards_gwei_total_new, 
-			vs1.el_rewards_wei + COALESCE(vs2.el_rewards_wei_total, 0) AS el_rewards_wei_total_new, 
-			vs1.mev_rewards_wei + COALESCE(vs2.mev_rewards_wei_total, 0) AS mev_rewards_wei_total_new 
+			COALESCE(vs1.cl_rewards_gwei, 0) + COALESCE(vs2.cl_rewards_gwei_total, 0) AS cl_rewards_gwei_total_new, 
+			COALESCE(vs1.el_rewards_wei, 0) + COALESCE(vs2.el_rewards_wei_total, 0) AS el_rewards_wei_total_new, 
+			COALESCE(vs1.mev_rewards_wei, 0) + COALESCE(vs2.mev_rewards_wei_total, 0) AS mev_rewards_wei_total_new 
 		FROM validator_stats vs1 LEFT JOIN validator_stats vs2 ON vs2.day = vs1.day - 1 AND vs2.validatorindex = vs1.validatorindex WHERE vs1.day = $1
 	) ON CONFLICT (validatorindex, day) DO UPDATE SET 
 		cl_rewards_gwei_total = excluded.cl_rewards_gwei_total,
@@ -315,7 +315,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 				COALESCE(vs_now.cl_rewards_gwei_7d , 0)as performance7d, 
 				COALESCE(vs_now.cl_rewards_gwei_31d, 0) as performance31d, 
 				COALESCE(vs_now.cl_rewards_gwei_total, 0) as performance365d, 
-				row_number() over(order by cl_rewards_gwei_7d desc) as rank7d,
+				row_number() over(order by vs_now.cl_rewards_gwei_7d desc) as rank7d,
 
 				coalesce(vs_now.cl_rewards_gwei_total - vs_1d.cl_rewards_gwei_total, 0) as cl_performance_1d, 
 				coalesce(vs_now.cl_rewards_gwei_total - vs_7d.cl_rewards_gwei_total, 0) as cl_performance_7d, 
@@ -367,7 +367,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			mev_performance_31d=excluded.mev_performance_31d,
 			mev_performance_365d=excluded.mev_performance_365d,
 			mev_performance_total=excluded.mev_performance_total
-			;`, day, int64(day)-1, int64(day)-6, int64(day)-30, int64(day)-364)
+			;`, day, int64(day)-1, int64(day)-7, int64(day)-31, int64(day)-365)
 	if err != nil {
 		return err
 	}
@@ -473,7 +473,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	start = time.Now()
 	logger.Infof("marking day export as completed in the status table")
-	_, err = tx.Exec("insert into validator_stats_status (day, status) values ($1, true)", day)
+	_, err = tx.Exec("insert into validator_stats_status (day, status) values ($1, true) ON CONFLICT (day) DO UPDATE SET status=EXCLUDED.status", day)
 	if err != nil {
 		return err
 	}
