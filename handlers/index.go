@@ -50,6 +50,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 			Epochs:        services.LatestSlotVizMetrics(),
 			Selector:      "slotsViz",
 			HardforkEpoch: utils.Config.Frontend.SlotViz.HardforkEpoch,
+			HardforkName:  utils.Config.Frontend.SlotViz.HardforkName,
 		}
 	}
 
