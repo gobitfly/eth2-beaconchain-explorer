@@ -55,18 +55,13 @@
 {{ define "mainNavigationItem" }}
   {{ if not .IsHidden }}
     <a class="dropdown-item" href="{{ .Path }}">
+      {{ $buttonClass := "" }}
+      {{ $textClass := "nav-text" }}
       {{ if .IsHighlighted }}
-        <span class="btn btn-primary">
-          <span class="nav-icon">
-            {{ if .CustomIcon }}
-              {{ includeSvg .CustomIcon }}
-            {{ else }}
-              <i class="fas {{ .Icon }} mr-2"></i>
-            {{ end }}
-          </span>
-          <span class="text-white">{{ .Label }}</span>
-        </span>
-      {{ else }}
+        {{ $buttonClass = "btn btn-primary d-flex align-items-center" }}
+        {{ $textClass = "text-white" }}
+      {{ end }}
+      <span class="{{ $buttonClass }}">
         <span class="nav-icon">
           {{ if .CustomIcon }}
             {{ includeSvg .CustomIcon }}
@@ -74,8 +69,8 @@
             <i class="fas {{ .Icon }} mr-2"></i>
           {{ end }}
         </span>
-        <span class="nav-text">{{ .Label }}</span>
-      {{ end }}
+        <span class="{{ $textClass }}">{{ .Label }}</span>
+      </span>
     </a>
   {{ end }}
 {{ end }}
