@@ -335,8 +335,6 @@ type ValidatorPageData struct {
 	WithdrawCredentials                      []byte `db:"withdrawalcredentials"`
 	CurrentBalance                           uint64 `db:"balance"`
 	BalanceActivation                        uint64 `db:"balanceactivation"`
-	Balance7d                                uint64 `db:"balance7d"`
-	Balance31d                               uint64 `db:"balance31d"`
 	EffectiveBalance                         uint64 `db:"effectivebalance"`
 	Slashed                                  bool   `db:"slashed"`
 	SlashedBy                                uint64
