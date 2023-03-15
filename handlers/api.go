@@ -992,21 +992,23 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	}
 
 	// we need all related and unique timeframes (activation and exit sync period) for all validators
-	const noExitEpoch = uint64(9223372036854775807)
+	const noEpoch = uint64(9223372036854775807)
 	uniquePeriods := make(map[uint64]bool)
 	uniquePeriods[utils.SyncPeriodOfEpoch(epoch)] = true
 	for i := range validatorsInfo { // we have to use the index as we have to write into slice too
-		// activation epoch
-		firstSyncEpoch := validatorsInfo[i].ActivationEpoch
-		if utils.Config.Chain.Config.AltairForkEpoch > validatorsInfo[i].ActivationEpoch {
-			firstSyncEpoch = utils.Config.Chain.Config.AltairForkEpoch
-		}
-		validatorsInfo[i].FirstPossibleSyncCommittee = utils.SyncPeriodOfEpoch(firstSyncEpoch)
-		uniquePeriods[validatorsInfo[i].FirstPossibleSyncCommittee] = true
+		// activation epoch (if any)
+		if validatorsInfo[i].ActivationEpoch != noEpoch {
+			firstSyncEpoch := validatorsInfo[i].ActivationEpoch
+			if utils.Config.Chain.Config.AltairForkEpoch > validatorsInfo[i].ActivationEpoch {
+				firstSyncEpoch = utils.Config.Chain.Config.AltairForkEpoch
+			}
+			validatorsInfo[i].FirstPossibleSyncCommittee = utils.SyncPeriodOfEpoch(firstSyncEpoch)
+			uniquePeriods[validatorsInfo[i].FirstPossibleSyncCommittee] = true
 
-		// exit epoch (if any)
-		if validatorsInfo[i].ExitEpoch != noExitEpoch && validatorsInfo[i].ExitEpoch > firstSyncEpoch {
-			uniquePeriods[utils.SyncPeriodOfEpoch(validatorsInfo[i].ExitEpoch)] = true
+			// exit epoch (if any)
+			if validatorsInfo[i].ExitEpoch != noEpoch && validatorsInfo[i].ExitEpoch > firstSyncEpoch {
+				uniquePeriods[utils.SyncPeriodOfEpoch(validatorsInfo[i].ExitEpoch)] = true
+			}
 		}
 	}
 
@@ -1040,12 +1042,16 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	// calculate expected committies for every single validator and aggregate them
 	expectedCommitties := 0.0
 	for _, vi := range validatorsInfo {
+		if vi.ActivationEpoch == noEpoch {
+			continue
+		}
+
 		if _, found := periodInfoMap[vi.FirstPossibleSyncCommittee]; !found {
 			return 0, fmt.Errorf("required period not found")
 		}
 
 		lastEpoch := vi.ExitEpoch
-		if vi.ExitEpoch == noExitEpoch {
+		if vi.ExitEpoch == noEpoch {
 			lastEpoch = epoch
 		}
 
