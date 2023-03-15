@@ -61,7 +61,6 @@ require (
 	golang.org/x/sync v0.1.0
 	golang.org/x/text v0.7.0
 	google.golang.org/api v0.102.0
-	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -102,6 +101,7 @@ require (
 	github.com/wealdtech/go-bytesutil v1.2.1 // indirect
 	github.com/wealdtech/go-merkletree v1.0.1-0.20190605192610-2bb163c2ea2a // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
+	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6 // indirect
 	google.golang.org/grpc v1.52.3 // indirect
 )
 
