@@ -974,25 +974,39 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 
 func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedSlots uint64, err error) {
 	// retrieve activation and exit epochs from database per validator
-	var validatorsInfo = []struct {
+	type ValidatorInfo struct {
 		Id                         int64  `db:"validatorindex"`
 		ActivationEpoch            uint64 `db:"activationepoch"`
 		ExitEpoch                  uint64 `db:"exitepoch"`
 		FirstPossibleSyncCommittee uint64 // calculated
-	}{}
+	}
 
+	var validatorsInfoFromDb = []ValidatorInfo{}
 	query, args, err := sqlx.In(`SELECT validatorindex, activationepoch, exitepoch FROM validators WHERE validatorindex IN (?) ORDER BY validatorindex ASC`, validators)
 	if err != nil {
 		return 0, err
 	}
 
-	err = db.ReaderDb.Select(&validatorsInfo, db.ReaderDb.Rebind(query), args...)
+	err = db.ReaderDb.Select(&validatorsInfoFromDb, db.ReaderDb.Rebind(query), args...)
 	if err != nil {
 		return 0, err
 	}
 
+	// only check validators are/have been active and that did not exit before altair
+	const noEpoch = uint64(9223372036854775807)
+	var validatorsInfo = make([]ValidatorInfo, 0, len(validatorsInfoFromDb))
+	for _, v := range validatorsInfoFromDb {
+		if v.ActivationEpoch != noEpoch && (v.ExitEpoch == noEpoch || v.ExitEpoch >= utils.Config.Chain.Config.AltairForkEpoch) {
+			validatorsInfo = append(validatorsInfo, v)
+		}
+	}
+
+	if len(validatorsInfo) == 0 {
+		// no validators relevant for sync duties left, early exit
+		return 0, nil
+	}
+
 	// we need all related and unique timeframes (activation and exit sync period) for all validators
-	const noExitEpoch = uint64(9223372036854775807)
 	uniquePeriods := make(map[uint64]bool)
 	uniquePeriods[utils.SyncPeriodOfEpoch(epoch)] = true
 	for i := range validatorsInfo { // we have to use the index as we have to write into slice too
@@ -1005,7 +1019,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 		uniquePeriods[validatorsInfo[i].FirstPossibleSyncCommittee] = true
 
 		// exit epoch (if any)
-		if validatorsInfo[i].ExitEpoch != noExitEpoch && validatorsInfo[i].ExitEpoch > firstSyncEpoch {
+		if validatorsInfo[i].ExitEpoch != noEpoch && validatorsInfo[i].ExitEpoch > firstSyncEpoch {
 			uniquePeriods[utils.SyncPeriodOfEpoch(validatorsInfo[i].ExitEpoch)] = true
 		}
 	}
@@ -1045,7 +1059,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 		}
 
 		lastEpoch := vi.ExitEpoch
-		if vi.ExitEpoch == noExitEpoch {
+		if vi.ExitEpoch == noEpoch {
 			lastEpoch = epoch
 		}
 
