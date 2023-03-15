@@ -49,7 +49,7 @@ func mevBoostRelaysExporter() {
 			utils.LogError(err, "failed to retrieve relays from db", 0)
 		}
 		wg.Wait()
-		time.Sleep(time.Second * 60)
+		time.Sleep(time.Minute)
 	}
 
 }
@@ -72,13 +72,13 @@ func singleRelayExport(r types.Relay, wg *sync.WaitGroup, mux *sync.Mutex) {
 		if isMaxWaitTime {
 			_, err = db.WriterDb.Exec(`
 			UPDATE relays SET
-				last_export_try_ts = NOW()
+				last_export_try_ts = (NOW() AT TIME ZONE 'utc')
 			WHERE tag_id = $1 AND endpoint = $2`, r.ID, r.Endpoint)
 		} else {
 			_, err = db.WriterDb.Exec(`
 			UPDATE relays SET
 				export_failure_count = $1,
-				last_export_try_ts = NOW()
+				last_export_try_ts = (NOW() AT TIME ZONE 'utc')
 			WHERE tag_id = $2 AND endpoint = $3`, r.ExportFailureCount+1, r.ID, r.Endpoint)
 		}
 		mux.Unlock()
@@ -93,8 +93,8 @@ func singleRelayExport(r types.Relay, wg *sync.WaitGroup, mux *sync.Mutex) {
 	_, err = db.WriterDb.Exec(`
 			UPDATE relays SET
 				export_failure_count = $1,
-				last_export_try_ts = NOW()
-				last_export_success_ts = NOW()
+				last_export_try_ts = (NOW() AT TIME ZONE 'utc'),
+				last_export_success_ts = (NOW() AT TIME ZONE 'utc')
 			WHERE tag_id = $2 AND endpoint = $3`, 0, r.ID, r.Endpoint)
 	mux.Unlock()
 	if err != nil {
@@ -280,7 +280,7 @@ func shouldTryToExportRelay(r types.Relay) bool {
 }
 
 func waitTimeToExportRelay(r types.Relay) (time.Duration, bool) {
-	maxWaitTimeForRelayExport := time.Hour * 24
+	maxWaitTimeForRelayExport := utils.Day
 
 	waitTime := time.Duration(math.Exp2(float64(r.ExportFailureCount))) * time.Minute
 	isMaxWaitTime := false
@@ -292,7 +292,7 @@ func waitTimeToExportRelay(r types.Relay) (time.Duration, bool) {
 }
 
 func shouldLogExportAsError(r types.Relay) bool {
-	maxWaitTimeForRelayExportError := time.Hour * 24 * 30
+	maxWaitTimeForRelayExportError := utils.Month
 
 	return time.Since(r.LastExportSuccessTs) >= maxWaitTimeForRelayExportError
 }
