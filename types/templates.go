@@ -433,8 +433,14 @@ type RocketpoolValidatorPageData struct {
 	SmoothingUnclaimed   *string    `db:"unclaimed_smoothing_pool"`
 	UnclaimedRPL         *string    `db:"unclaimed_rpl_rewards"`
 	SmoothingPoolOptIn   bool       `db:"smoothing_pool_opted_in"`
-	PenaltyCount         *uint64    `db:"penalty_count"`
+	PenaltyCount         int        `db:"penalty_count"`
 	RocketscanUrl        string     `db:"-"`
+	NodeDepositBalance   *string    `db:"node_deposit_balance"`
+	NodeRefundBalance    *string    `db:"node_refund_balance"`
+	UserDepositBalance   *string    `db:"user_deposit_balance"`
+	IsVacant             bool       `db:"is_vacant"`
+	Version              *string    `db:"version"`
+	NodeDepositCredit    *string    `db:"deposit_credit"`
 }
 
 type ValidatorStatsTablePageData struct {
