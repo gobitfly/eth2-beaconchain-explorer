@@ -54,7 +54,7 @@
 
 {{ define "mainNavigationItem" }}
   {{ if not .IsHidden }}
-    <a class="dropdown-item" href="{{ .Path }}">
+    <a class="dropdown-item" {{ if .IsHighlighted }}style="padding:0 0.625rem;"{{ end }} href="{{ .Path }}">
       {{ $buttonClass := "" }}
       {{ $textClass := "nav-text" }}
       {{ if .IsHighlighted }}
