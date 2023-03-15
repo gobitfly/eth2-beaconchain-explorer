@@ -140,7 +140,7 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 	}
 
 	// setting tooltip & limit name/address if necessary
-	addressString := fmt.Sprintf("0x%x", address)
+	addressString := FixAddressCasing(fmt.Sprintf("0x%x", address))
 	tooltip := ""
 	if len(name) == 0 { // no name set
 		tooltip = addressString
@@ -246,10 +246,11 @@ func FormatHashLong(hash common.Hash) template.HTML {
 }
 
 func FormatAddressLong(address string) template.HTML {
+	address = FixAddressCasing(address)
 	test := `
-	<span class="text-monospace mw-100"><span class="text-primary">0x%s</span><span class="text-truncate">%s</span><span class="text-primary">%s</span></span>`
+	<span class="text-monospace mw-100"><span class="text-primary">%s</span><span class="text-truncate">%s</span><span class="text-primary">%s</span></span>`
 	if len(address) > 4 {
-		return template.HTML(fmt.Sprintf(test, address[:4], address[4:len(address)-4], address[len(address)-4:]))
+		return template.HTML(fmt.Sprintf(test, address[:6], address[6:len(address)-4], address[len(address)-4:]))
 	}
 
 	return template.HTML(address)

@@ -83,6 +83,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatSlotToTimestamp":                   FormatSlotToTimestamp,
 		"formatDepositAmount":                     FormatDepositAmount,
 		"formatEpoch":                             FormatEpoch,
+		"fixAddressCasing":                        FixAddressCasing,
 		"formatAddressLong":                       FormatAddressLong,
 		"formatHashLong":                          FormatHashLong,
 		"formatEth1Block":                         FormatEth1Block,
@@ -955,7 +956,7 @@ func FormatThousandsEnglish(number string) string {
 // returns two transparent base64 encoded img strings for dark and light theme
 // the first has a black QR code the second a white QR code
 func GenerateQRCodeForAddress(address []byte) (string, string, error) {
-	q, err := qrcode.New(fmt.Sprintf("0x%x", address), qrcode.Medium)
+	q, err := qrcode.New(FixAddressCasing(fmt.Sprintf("0x%x", address)), qrcode.Medium)
 	if err != nil {
 		return "", "", err
 	}
