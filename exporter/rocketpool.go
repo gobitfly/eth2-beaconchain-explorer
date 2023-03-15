@@ -419,16 +419,22 @@ func (rp *RocketpoolExporter) UpdateMinipools() error {
 	if err != nil {
 		return err
 	}
+
+	atlasDeployed, err := IsAtlasDeployed(rp.API)
+	if err != nil {
+		return err
+	}
+
 	for _, a := range minipoolAddresses {
 		addrHex := a.Hex()
 		if mp, exists := rp.MinipoolsByAddress[addrHex]; exists {
-			err = mp.Update(rp.API)
+			err = mp.Update(rp.API, atlasDeployed)
 			if err != nil {
 				return err
 			}
 			continue
 		}
-		mp, err := NewRocketpoolMinipool(rp.API, a.Bytes())
+		mp, err := NewRocketpoolMinipool(rp.API, a.Bytes(), atlasDeployed)
 		if err != nil {
 			return err
 		}
@@ -444,6 +450,11 @@ func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 	}(t0)
 
 	nodeAddresses, err := node.GetNodeAddresses(rp.API, nil)
+	if err != nil {
+		return err
+	}
+
+	atlasDeployed, err := IsAtlasDeployed(rp.API)
 	if err != nil {
 		return err
 	}
@@ -465,13 +476,13 @@ func (rp *RocketpoolExporter) UpdateNodes(includeCumulativeRpl bool) error {
 	for _, a := range nodeAddresses {
 		addrHex := a.Hex()
 		if node, exists := rp.NodesByAddress[addrHex]; exists {
-			err = node.Update(rp.API, rp.RocketpoolRewardTreeData, includeCumulativeRpl, rp.NodeRPLCumulative)
+			err = node.Update(rp.API, rp.RocketpoolRewardTreeData, includeCumulativeRpl, rp.NodeRPLCumulative, atlasDeployed)
 			if err != nil {
 				return err
 			}
 			continue
 		}
-		node, err := NewRocketpoolNode(rp.API, a.Bytes(), rp.RocketpoolRewardTreeData, rp.NodeRPLCumulative)
+		node, err := NewRocketpoolNode(rp.API, a.Bytes(), rp.RocketpoolRewardTreeData, rp.NodeRPLCumulative, atlasDeployed)
 		if err != nil {
 			return err
 		}
@@ -666,6 +677,16 @@ func IsMergeUpdateDeployed(rp *rocketpool.RocketPool) (bool, error) {
 	}
 
 	constraint, _ := version.NewConstraint(">= 1.1.0")
+	return constraint.Check(currentVersion), nil
+}
+
+func IsAtlasDeployed(rp *rocketpool.RocketPool) (bool, error) {
+	currentVersion, err := rputil.GetCurrentVersion(rp, nil)
+	if err != nil {
+		return false, err
+	}
+
+	constraint, _ := version.NewConstraint(">= 1.2.0")
 	return constraint.Check(currentVersion), nil
 }
 
@@ -1214,7 +1235,7 @@ type RocketpoolMinipool struct {
 	Version            uint8     `db:"version"`
 }
 
-func NewRocketpoolMinipool(rp *rocketpool.RocketPool, addr []byte) (*RocketpoolMinipool, error) {
+func NewRocketpoolMinipool(rp *rocketpool.RocketPool, addr []byte, atlasDeployed bool) (*RocketpoolMinipool, error) {
 	pubk, err := minipool.GetMinipoolPubkey(rp, common.BytesToAddress(addr), nil)
 	if err != nil {
 		return nil, err
@@ -1242,14 +1263,14 @@ func NewRocketpoolMinipool(rp *rocketpool.RocketPool, addr []byte) (*RocketpoolM
 		NodeFee:     nodeFee,
 		DepositType: depositType.String(),
 	}
-	err = rpm.Update(rp)
+	err = rpm.Update(rp, atlasDeployed)
 	if err != nil {
 		return nil, err
 	}
 	return rpm, nil
 }
 
-func (r *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
+func (r *RocketpoolMinipool) Update(rp *rocketpool.RocketPool, atlasDeployed bool) error {
 	mp, err := minipool.NewMinipool(rp, common.BytesToAddress(r.Address), nil)
 	if err != nil {
 		return err
@@ -1259,9 +1280,11 @@ func (r *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
 	var status rpTypes.MinipoolStatus
 	var statusTime time.Time
 	var penaltyCount uint64
-	var nodeDepositBalance, nodeRefundBalance, userDepositBalance *big.Int
+	var nodeDepositBalance, nodeRefundBalance, userDepositBalance *big.Int = big.NewInt(0), big.NewInt(0), big.NewInt(0)
 	var version uint8
-	var statusDetail minipool.StatusDetails
+	var statusDetail minipool.StatusDetails = minipool.StatusDetails{
+		IsVacant: false,
+	}
 
 	wg.Go(func() error {
 		var err error
@@ -1279,32 +1302,35 @@ func (r *RocketpoolMinipool) Update(rp *rocketpool.RocketPool) error {
 		return err
 	})
 
-	wg.Go(func() error {
-		var err error
-		nodeDepositBalance, err = mp.GetNodeDepositBalance(nil)
-		return err
-	})
+	if atlasDeployed {
+		wg.Go(func() error {
+			var err error
+			nodeDepositBalance, err = mp.GetNodeDepositBalance(nil)
+			return err
+		})
 
-	wg.Go(func() error {
-		var err error
-		userDepositBalance, err = mp.GetUserDepositBalance(nil)
-		return err
-	})
+		wg.Go(func() error {
+			var err error
+			userDepositBalance, err = mp.GetUserDepositBalance(nil)
+			return err
+		})
 
-	wg.Go(func() error {
-		var err error
-		nodeRefundBalance, err = mp.GetNodeRefundBalance(nil)
-		return err
-	})
+		wg.Go(func() error {
+			var err error
+			nodeRefundBalance, err = mp.GetNodeRefundBalance(nil)
+			return err
+		})
+
+		wg.Go(func() error {
+			var err error
+			statusDetail, err = mp.GetStatusDetails(nil)
+			return err
+		})
+	}
+
 	wg.Go(func() error {
 		var err error
 		version = mp.GetVersion()
-		return err
-	})
-
-	wg.Go(func() error {
-		var err error
-		statusDetail, err = mp.GetStatusDetails(nil)
 		return err
 	})
 
@@ -1338,7 +1364,7 @@ type RocketpoolNode struct {
 	DepositCredit          *big.Int `db:"deposit_credit"`
 }
 
-func NewRocketpoolNode(rp *rocketpool.RocketPool, addr []byte, rewardTrees map[uint64]RewardsFile, legacyClaims map[string]*big.Int) (*RocketpoolNode, error) {
+func NewRocketpoolNode(rp *rocketpool.RocketPool, addr []byte, rewardTrees map[uint64]RewardsFile, legacyClaims map[string]*big.Int, atlasDeployed bool) (*RocketpoolNode, error) {
 	rpn := &RocketpoolNode{
 		Address: addr,
 	}
@@ -1347,7 +1373,7 @@ func NewRocketpoolNode(rp *rocketpool.RocketPool, addr []byte, rewardTrees map[u
 		return nil, err
 	}
 	rpn.TimezoneLocation = tl
-	err = rpn.Update(rp, rewardTrees, true, legacyClaims)
+	err = rpn.Update(rp, rewardTrees, true, legacyClaims, atlasDeployed)
 	if err != nil {
 		return nil, err
 	}
@@ -1360,7 +1386,7 @@ type RocketpoolRewards struct {
 	OdaoRpl          *big.Int
 }
 
-func (r *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[uint64]RewardsFile, includeCumulativeRpl bool, legacyClaims map[string]*big.Int) error {
+func (r *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[uint64]RewardsFile, includeCumulativeRpl bool, legacyClaims map[string]*big.Int, atlasDeployed bool) error {
 	stake, err := node.GetNodeRPLStake(rp, common.BytesToAddress(r.Address), nil)
 	if err != nil {
 		return err
@@ -1379,9 +1405,13 @@ func (r *RocketpoolNode) Update(rp *rocketpool.RocketPool, rewardTrees map[uint6
 		return err
 	}
 
-	depositCredit, err := node.GetNodeDepositCredit(rp, common.BytesToAddress(r.Address), nil)
-	if err != nil {
-		return err
+	var depositCredit *big.Int = big.NewInt(0)
+
+	if atlasDeployed {
+		depositCredit, err = node.GetNodeDepositCredit(rp, common.BytesToAddress(r.Address), nil)
+		if err != nil {
+			return err
+		}
 	}
 
 	if len(rewardTrees) > 0 {
