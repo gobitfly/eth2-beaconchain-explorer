@@ -62,9 +62,10 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 		"1": "pubkey",
 		"2": "node_address",
 		"3": "node_fee",
-		"4": "deposit_type",
-		"5": "status",
-		"6": "penalty_count",
+		"4": "node_deposit_balance",
+		"5": "deposit_type",
+		"6": "status",
+		"7": "penalty_count",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -92,6 +93,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 				rocketpool_minipools.penalty_count,
 				validators.validatorindex as validator_index,
 				coalesce(validator_names.name,'') as validator_name,
+				coalesce((node_deposit_balance / 1e18)::int, 16) as node_deposit_balance,
 				cnt.total_count
 			from rocketpool_minipools
 			left join validator_names on rocketpool_minipools.pubkey = validator_names.publickey
@@ -123,6 +125,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 				rocketpool_minipools.status_time, 
 				rocketpool_minipools.penalty_count,
 				validators.validatorindex as validator_index,
+				coalesce((node_deposit_balance / 1e18)::int, 16) as node_deposit_balance,
 				coalesce(validator_names.name,'') as validator_name,
 				cnt.total_count
 			from rocketpool_minipools
@@ -158,6 +161,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 		}
 		entry = append(entry, utils.FormatEth1Address(row.NodeAddress))
 		entry = append(entry, row.NodeFee)
+		entry = append(entry, row.DepositEth)
 		entry = append(entry, row.DepositType)
 		entry = append(entry, row.Status)
 		entry = append(entry, row.PenaltyCount)
@@ -216,6 +220,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 		"3": "min_rpl_stake",
 		"4": "max_rpl_stake",
 		"5": "rpl_cumulative_rewards",
+		"6": "deposit_credit",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -244,6 +249,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 				rocketpool_nodes.claimed_smoothing_pool, 
 				rocketpool_nodes.unclaimed_smoothing_pool, 
 				rocketpool_nodes.unclaimed_rpl_rewards, 
+				rocketpool_nodes.deposit_credit,
 				cnt.total_count
 			from rocketpool_nodes
 			left join (select count(*) from rocketpool_nodes) cnt(total_count) ON true
@@ -272,6 +278,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 				rocketpool_nodes.claimed_smoothing_pool, 
 				rocketpool_nodes.unclaimed_smoothing_pool, 
 				rocketpool_nodes.unclaimed_rpl_rewards,
+				rocketpool_nodes.deposit_credit,
 				cnt.total_count
 			from rocketpool_nodes
 			inner join matched_nodes on matched_nodes.address = rocketpool_nodes.address
@@ -301,6 +308,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 		entry = append(entry, row.MinRPLStake)
 		entry = append(entry, row.MaxRPLStake)
 		entry = append(entry, row.CumulativeRPL)
+		entry = append(entry, row.DepositCredit)
 		tableData = append(tableData, entry)
 	}
 

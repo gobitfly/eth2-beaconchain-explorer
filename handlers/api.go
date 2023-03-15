@@ -1192,7 +1192,13 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 			rpln.claimed_smoothing_pool     AS claimed_smoothing_pool,
 			rpln.unclaimed_smoothing_pool   AS unclaimed_smoothing_pool,
 			rpln.unclaimed_rpl_rewards      AS unclaimed_rpl_rewards,
-			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in  
+			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in,
+			COALESCE(rpln.deposit_credit, 0) as node_deposit_credit,
+			COALESCE(rplm.node_deposit_balance, 0) AS node_deposit_balance,
+			COALESCE(rplm.node_refund_balance, 0) AS node_refund_balance,
+			COALESCE(rplm.user_deposit_balance, 0) AS user_deposit_balance,
+			COALESCE(rplm.is_vacant, false) AS is_vacant,
+			COALESCE(rplm.version, 0) AS version
 		FROM rocketpool_minipools rplm 
 		LEFT JOIN validators validators ON rplm.pubkey = validators.pubkey 
 		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address

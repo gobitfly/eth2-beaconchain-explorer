@@ -793,6 +793,11 @@ create table rocketpool_minipools
     status text not null, -- Initialized, Prelaunch, Staking, Withdrawable, Dissolved .. see: https://github.com/rocket-pool/rocketpool/blob/683addf4ac/contracts/types/MinipoolStatus.sol
     status_time timestamp without time zone,
     penalty_count numeric not null default 0,
+    node_deposit_balance numeric,
+    node_refund_balance numeric,
+    user_deposit_balance numeric,
+    is_vacant boolean default false,
+    version int default 0,
     primary key(rocketpool_storage_address, address)
 );
 
@@ -811,6 +816,8 @@ create table rocketpool_nodes
     claimed_smoothing_pool  numeric not null,
     unclaimed_smoothing_pool  numeric not null,
     unclaimed_rpl_rewards numeric not null,
+    effective_rpl_stake numeric not null,
+    deposit_credit numeric,
 
     primary key(rocketpool_storage_address, address)
 );

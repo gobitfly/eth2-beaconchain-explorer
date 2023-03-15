@@ -1322,6 +1322,7 @@ type RocketpoolPageDataMinipool struct {
 	Status                   string    `db:"status"`
 	StatusTime               time.Time `db:"status_time"`
 	PenaltyCount             uint64    `db:"penalty_count"`
+	DepositEth               int       `db:"node_deposit_balance"`
 }
 
 type RocketpoolPageDataNode struct {
@@ -1337,6 +1338,7 @@ type RocketpoolPageDataNode struct {
 	UnclaimedSmoothingPool   string `db:"unclaimed_smoothing_pool"`
 	UnclaimedRplRewards      string `db:"unclaimed_rpl_rewards"`
 	SmoothingPoolOptIn       bool   `db:"smoothing_pool_opted_in"`
+	DepositCredit            string `db:"deposit_credit"`
 }
 
 type RocketpoolPageDataDAOProposal struct {
