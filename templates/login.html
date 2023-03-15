@@ -5,6 +5,8 @@
 
   <script>
     function onSubmit(token) {
+      form.submit()
+      return
       var form = document.getElementById("login_form")
       if (form.reportValidity()) {
         form.submit()
@@ -68,7 +70,7 @@
               </label>
               <input tabindex="2" required type="password" maxlength="256" class="form-control" autocomplete="current-password" id="password" name="password" />
             </div>
-            <button data-sitekey="{{ .RecaptchaKey }}" data-callback="onSubmit" tabindex="3" type="submit" class="g-recaptcha btn btn-primary float-right">Login</button>
+            <button data-callback="onSubmit" tabindex="3" type="submit" class="btn btn-primary float-right">Login</button>
           </form>
           <span style="font-size: 90%;" class="text-muted">Don't have an account? </span><a tabindex="4" href="/register">Sign up</a>
         </div>
