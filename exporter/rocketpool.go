@@ -32,7 +32,6 @@ import (
 	rpTypes "github.com/rocket-pool/rocketpool-go/types"
 	rputil "github.com/rocket-pool/rocketpool-go/utils"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
-	"github.com/rocket-pool/smartnode/shared/services/config"
 	smartnodeCfg "github.com/rocket-pool/smartnode/shared/services/config"
 	smartnodeRewards "github.com/rocket-pool/smartnode/shared/services/rewards"
 	smartnodeNetwork "github.com/rocket-pool/smartnode/shared/types/config"
@@ -282,7 +281,7 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 		logger.Infof("retrieving reward tree %v", interval)
 		event, err := smartnodeRewards.GetRewardSnapshotEvent(
 			rp.API,
-			&config.RocketPoolConfig{
+			&smartnodeCfg.RocketPoolConfig{
 				Smartnode:    RP_CONFIG,
 				IsNativeMode: true,
 			},
@@ -1563,17 +1562,6 @@ func CalculateLifetimeNodeRewardsAllLegacy(rp *rocketpool.RocketPool, intervalSi
 
 // Get contracts
 var rocketRewardsPoolLock sync.Mutex
-
-func getRocketRewardsPool(rp *rocketpool.RocketPool, address *common.Address) (*rocketpool.Contract, error) {
-	rocketRewardsPoolLock.Lock()
-	defer rocketRewardsPoolLock.Unlock()
-
-	if address == nil {
-		return rp.GetContract("rocketRewardsPool", nil)
-	} else {
-		return rp.VersionManager.V1_1_0.GetContractWithAddress("rocketRewardsPool", *address)
-	}
-}
 
 func getRocketRewardsPoolLegacy(rp *rocketpool.RocketPool, address *common.Address) (*rocketpool.Contract, error) {
 	rocketRewardsPoolLock.Lock()
