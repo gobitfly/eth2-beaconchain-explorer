@@ -406,7 +406,7 @@
           $(selector).prepend(slotVizCountdown)
         }
         const slots = Math.ceil((hfTs - now) / 1000 / secondsPerSlot)
-        slotVizCountdown.innerHTML = `<b>${hardforkName} Hardfork in:</b> ${getRelativeTime(luxon.DateTime.fromMillis(hfTs))} | ${slots} slots`
+        slotVizCountdown.innerHTML = `<b>${hardforkName} Hardfork</b> ${getRelativeTime(luxon.DateTime.fromMillis(hfTs))} | ${slots} ${slots > 1 ? 'slots' : 'slot'}`
         setTimeout(updateCountdown, 1000)
       } else {
         if (slotVizCountdown) {
