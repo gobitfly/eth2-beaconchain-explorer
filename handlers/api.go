@@ -1349,6 +1349,7 @@ func ApiValidatorPost(w http.ResponseWriter, r *http.Request) {
 	apiValidator(w, r)
 }
 
+// This endpoint supports both GET and POST but requires different swagger descriptions based on the type
 func apiValidator(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
