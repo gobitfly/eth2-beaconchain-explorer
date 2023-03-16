@@ -45,12 +45,19 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	// data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
 	pageData.Countdown = utils.Config.Frontend.Countdown
 
-	if utils.Config.Frontend.SlotViz.Enabled {
-		pageData.SlotVizData = types.SlotVizPageData{
-			Epochs:        services.LatestSlotVizMetrics(),
-			Selector:      "slotsViz",
-			HardforkEpoch: utils.Config.Frontend.SlotViz.HardforkEpoch,
-			HardforkName:  utils.Config.Frontend.SlotViz.HardforkName,
+	configuration, err := services.GetExplorerConfigurationsWithDefaults()
+	if err == nil {
+		visiblFrom, err := configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleFromEpoch)
+		if err == nil && visiblFrom <= data.CurrentEpoch {
+			visibleTo, err := configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleToEpoch)
+			if err == nil && visibleTo >= data.CurrentEpoch {
+				pageData.SlotVizData =
+					types.SlotVizPageData{
+						Epochs:   services.LatestSlotVizMetrics(),
+						Selector: "slotsViz",
+						Config:   configuration[services.ConfigurationCategorySlotViz],
+					}
+			}
 		}
 	}
 

@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"math/big"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -205,10 +206,9 @@ type IndexPageData struct {
 }
 
 type SlotVizPageData struct {
-	Epochs        []*SlotVizEpochs
-	Selector      string
-	HardforkEpoch uint64
-	HardforkName  string
+	Epochs   []*SlotVizEpochs
+	Selector string
+	Config   ExplorerConfigurationKeyMap
 }
 
 type IndexPageDataEpochs struct {
@@ -1941,6 +1941,35 @@ type ExplorerConfig struct {
 }
 type ExplorerConfigurationKeyMap map[ExplorerConfigurationKey]ExplorerConfigValue
 type ExplorerConfigurationMap map[ExplorerConfigurationCategory]ExplorerConfigurationKeyMap
+
+func (configMap ExplorerConfigurationMap) GetConfigValue(category ExplorerConfigurationCategory, configKey ExplorerConfigurationKey) (ExplorerConfigValue, error) {
+	configValue := ExplorerConfigValue{}
+	kyMap, ok := configMap[category]
+	if ok {
+		configValue, ok = kyMap[configKey]
+		if ok {
+			return configValue, nil
+		}
+	}
+	return configValue, errors.New("error")
+}
+
+func (configMap ExplorerConfigurationMap) GetUInt64Value(category ExplorerConfigurationCategory, configKey ExplorerConfigurationKey) (uint64, error) {
+	configValue, err := configMap.GetConfigValue(category, configKey)
+	if err == nil {
+		if configValue.DataType != "int" {
+			return 0, errors.New("Wrong data type")
+		} else {
+			return strconv.ParseUint(configValue.Value, 10, 64)
+		}
+	}
+	return 0, err
+}
+
+func (configMap ExplorerConfigurationMap) GetValue(category ExplorerConfigurationCategory, configKey ExplorerConfigurationKey) (string, error) {
+	configValue, err := configMap.GetConfigValue(category, configKey)
+	return configValue.Value, err
+}
 
 type WithdrawalsPageData struct {
 	Stats           *Stats

@@ -10,10 +10,10 @@ const (
 	ConfigurationCategorySlotViz types.ExplorerConfigurationCategory = "SlotVizOnMainPage"
 )
 const (
-	ConfigurationKeyVisibleFromEpoch       types.ExplorerConfigurationKey = "VisibleFromEpoch"
-	ConfigurationKeyVisibleActiveFromEpoch types.ExplorerConfigurationKey = "ActiveFromEpoch"
-	ConfigurationKeyVisibleToEpoch         types.ExplorerConfigurationKey = "VisibleToEpoch"
-	ConfigurationKeyEpochName              types.ExplorerConfigurationKey = "EpochName"
+	ConfigurationKeyVisibleFromEpoch types.ExplorerConfigurationKey = "VisibleFromEpoch"
+	ConfigurationKeyVisibleToEpoch   types.ExplorerConfigurationKey = "VisibleToEpoch"
+	ConfigurationKeyHardforkEpoch    types.ExplorerConfigurationKey = "HardforkEpoch"
+	ConfigurationKeyHardforkName     types.ExplorerConfigurationKey = "HardforkName"
 )
 
 /***
@@ -22,10 +22,10 @@ Per default these values will be taken, overridden by the values from the db, if
 ***/
 var DefaultExplorerConfiguration types.ExplorerConfigurationMap = types.ExplorerConfigurationMap{
 	ConfigurationCategorySlotViz: {
-		ConfigurationKeyVisibleFromEpoch:       {Value: "", DataType: "int"},
-		ConfigurationKeyVisibleActiveFromEpoch: {Value: "", DataType: "int"},
-		ConfigurationKeyVisibleToEpoch:         {Value: "", DataType: "int"},
-		ConfigurationKeyEpochName:              {Value: "", DataType: "string"},
+		ConfigurationKeyVisibleFromEpoch: {Value: "0", DataType: "int"},
+		ConfigurationKeyHardforkEpoch:    {Value: "0", DataType: "int"},
+		ConfigurationKeyVisibleToEpoch:   {Value: "0", DataType: "int"},
+		ConfigurationKeyHardforkName:     {Value: "", DataType: "string"},
 	},
 }
 
