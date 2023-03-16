@@ -766,6 +766,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			rpln.claimed_smoothing_pool     AS claimed_smoothing_pool,
 			rpln.unclaimed_smoothing_pool   AS unclaimed_smoothing_pool,
 			rpln.unclaimed_rpl_rewards      AS unclaimed_rpl_rewards,
+			COALESCE(node_deposit_balance, 0) AS node_deposit_balance,
+			COALESCE(node_refund_balance, 0) AS node_refund_balance,
+			COALESCE(user_deposit_balance, 0) AS user_deposit_balance,
+			COALESCE(rpln.effective_rpl_stake, 0) as effective_rpl_stake,
+			COALESCE(deposit_credit, 0) AS deposit_credit,
+			is_vacant,
+			version,
 			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in 
 		FROM validators
 		LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey

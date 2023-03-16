@@ -245,12 +245,40 @@
                     </div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-globe mr-2 text-muted"></i>Node Timezone</div>
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-solid fa-coins mr-2 text-muted"></i>Node Deposit</div>
+                    <div>{{ formatETH .Rocketpool.NodeDepositBalance }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-solid fa-users mr-2 text-muted"></i>rETH Pool Deposit</div>
+                    <div>{{ formatETH .Rocketpool.UserDepositBalance }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-solid fa-chevron-left mr-2 text-muted"></i>Node Refund Balance</div>
+                    <div>{{ formatETH .Rocketpool.NodeRefundBalance }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-regular fa-credit-card mr-2 text-muted"></i>Node Deposit Credit</div>
+                    <div>{{ formatETH .Rocketpool.NodeDepositCredit }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-globe mr-2 text-muted mr-2 text-muted"></i>Node Timezone</div>
                     <div>{{ .Rocketpool.NodeTimezoneLocation }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-regular fa-circle mr-2 text-muted"></i>Vacant</div>
+                    <div>{{ if .Rocketpool.IsVacant }}yes{{ else }}no{{ end }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-regular fa-code-branch mr-2 text-muted"></i>Delegate Version</div>
+                    <div>{{ .Rocketpool.Version }}</div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node RPL Stake</div>
                     <div>{{ formatRPL .Rocketpool.NodeRPLStake }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node RPL Effective Stake</div>
+                    <div>{{ formatRPL .Rocketpool.EffectiveRPLStake }}</div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node Min RPL Stake</div>
@@ -269,20 +297,20 @@
                     <div>{{ formatRPL .Rocketpool.UnclaimedRPL }}</div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Penalties</div>
-                    <div>{{ if .Rocketpool.PenaltyCount }}<span class="text-danger">{{ .Rocketpool.PenaltyCount }}</span>{{ else }}0{{ end }}</div>
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-exclamation-triangle mr-2 text-muted"></i>Penalties</div>
+                    <div>{{ if gt .Rocketpool.PenaltyCount 0 }}<span class="text-danger">{{ .Rocketpool.PenaltyCount }}</span>{{ else }}0{{ end }}</div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Smoothing Pool Opt-In</div>
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-solid fa-swimming-pool mr-2 text-muted"></i>Smoothing Pool Opt-In</div>
                     <div>{{ if .Rocketpool.SmoothingPoolOptIn }}✅{{ else }}❌{{ end }}</div>
                   </div>
                   {{ if .Rocketpool.SmoothingPoolOptIn }}
                     <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-                      <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Smoothing Claimed</div>
+                      <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-solid fa-swimming-pool mr-2 text-muted"></i>Smoothing Claimed</div>
                       <div>{{ formatETH .Rocketpool.SmoothingClaimed }}</div>
                     </div>
                     <div class="w-75 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-                      <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Smoothing Unclaimed</div>
+                      <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-solid fa-swimming-pool mr-2 text-muted"></i>Smoothing Unclaimed</div>
                       <div>{{ formatETH .Rocketpool.SmoothingUnclaimed }}</div>
                     </div>
                   {{ end }}
