@@ -2990,7 +2990,7 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 		ret, err := utils.TryFetchContractMetadata(address)
 
 		if err != nil {
-			logrus.Errorf("error fetching contract metadata for address %x: %v", address, err)
+			logrus.Warnf("error fetching contract metadata for address %x: contract abi not found / %v", address, err)
 			err = cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
 			return nil, err
 		} else {

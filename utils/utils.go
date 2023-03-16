@@ -821,13 +821,7 @@ func ElementExists(arr []string, el string) bool {
 }
 
 func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
-	meta, err := getABIFromEtherscan(address)
-
-	if err != nil {
-		logrus.Warnf("failed to get abi for contract %x from etherscan: %v", address, err)
-		return nil, fmt.Errorf("contract abi not found")
-	}
-	return meta, nil
+	return getABIFromEtherscan(address)
 }
 
 // func getABIFromSourcify(address []byte) (*types.ContractMetadata, error) {
