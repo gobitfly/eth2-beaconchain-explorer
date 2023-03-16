@@ -608,6 +608,8 @@ func main() {
 			authRouter.HandleFunc("/ad_configuration", handlers.AdConfiguration).Methods("GET")
 			authRouter.HandleFunc("/ad_configuration", handlers.AdConfigurationPost).Methods("POST")
 			authRouter.HandleFunc("/ad_configuration/delete", handlers.AdConfigurationDeletePost).Methods("POST")
+			authRouter.HandleFunc("/explorer_configuration", handlers.ExplorerConfiguration).Methods("GET")
+			authRouter.HandleFunc("/explorer_configuration", handlers.ExplorerConfigurationPost).Methods("POST")
 
 			authRouter.HandleFunc("/notifications-center", handlers.UserNotificationsCenter).Methods("GET")
 			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")

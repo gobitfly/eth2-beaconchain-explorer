@@ -1411,6 +1411,11 @@ type AdConfigurationPageData struct {
 	TemplateNames  []string
 }
 
+type ExplorerConfigurationPageData struct {
+	Configurations ExplorerConfigurationMap
+	CsrfField      template.HTML
+}
+
 type UserWebhookRowError struct {
 	SummaryRequest  template.HTML
 	SummaryResponse template.HTML
@@ -1922,6 +1927,20 @@ type AdConfig struct {
 	BannerId        uint64 `db:"banner_id"`
 	HtmlContent     string `db:"html_content"`
 }
+
+type ExplorerConfigurationCategory string
+type ExplorerConfigurationKey string
+type ExplorerConfigValue struct {
+	Value    string `db:"value"`
+	DataType string `db:"data_type"`
+}
+type ExplorerConfig struct {
+	Category ExplorerConfigurationCategory `db:"category"`
+	Key      ExplorerConfigurationKey      `db:"key"`
+	ExplorerConfigValue
+}
+type ExplorerConfigurationKeyMap map[ExplorerConfigurationKey]ExplorerConfigValue
+type ExplorerConfigurationMap map[ExplorerConfigurationCategory]ExplorerConfigurationKeyMap
 
 type WithdrawalsPageData struct {
 	Stats           *Stats
