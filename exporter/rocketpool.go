@@ -47,6 +47,8 @@ const GethEventLogInterval = 25000
 
 var RP_CONFIG *smartnodeCfg.SmartnodeConfig
 
+var leb16, _ = big.NewInt(0).SetString("16000000000000000000", 10)
+
 func rocketpoolExporter() {
 	RP_CONFIG = initRPConfig()
 	endpoint := utils.Config.Eth1GethEndpoint
@@ -1279,7 +1281,8 @@ func (r *RocketpoolMinipool) Update(rp *rocketpool.RocketPool, atlasDeployed boo
 	var status rpTypes.MinipoolStatus
 	var statusTime time.Time
 	var penaltyCount uint64
-	var nodeDepositBalance, nodeRefundBalance, userDepositBalance *big.Int = big.NewInt(0), big.NewInt(0), big.NewInt(0)
+
+	var nodeDepositBalance, nodeRefundBalance, userDepositBalance *big.Int = leb16, big.NewInt(0), leb16
 	var version uint8
 	var statusDetail minipool.StatusDetails = minipool.StatusDetails{
 		IsVacant: false,
