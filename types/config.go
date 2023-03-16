@@ -150,6 +150,7 @@ type Config struct {
 		SlotViz struct {
 			Enabled       bool   `yaml:"enabled" envconfig:"FRONTEND_SLOTVIZ_ENABLED"`
 			HardforkEpoch uint64 `yaml:"hardforkEpoch" envconfig:"FRONTEND_SLOTVIZ_HARDFORK_EPOCH"`
+			HardforkName  string `yaml:"hardforkName" envconfig:"FRONTEND_SLOTVIZ_HARDFORK_NAME"`
 		} `yaml:"slotViz"`
 		HttpReadTimeout  time.Duration `yaml:"httpReadTimeout" envconfig:"FRONTEND_HTTP_READ_TIMEOUT"`
 		HttpWriteTimeout time.Duration `yaml:"httpWriteTimeout" envconfig:"FRONTEND_HTTP_WRITE_TIMEOUT"`
