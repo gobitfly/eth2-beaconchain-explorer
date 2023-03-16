@@ -70,13 +70,24 @@ create table validator_set
 drop table if exists validator_performance;
 create table validator_performance
 (
-    validatorindex  int    not null,
-    balance         bigint not null,
-    performance1d   bigint not null,
-    performance7d   bigint not null,
-    performance31d  bigint not null,
-    performance365d bigint not null,
-    rank7d          int    not null,
+    validatorindex        int    not null,
+    balance               bigint not null,
+    cl_performance_1d     bigint not null,
+    cl_performance_7d     bigint not null,
+    cl_performance_31d    bigint not null,
+    cl_performance_365d   bigint not null,
+    cl_performance_total  bigint not null,
+    el_performance_1d     bigint not null,
+    el_performance_7d     bigint not null,
+    el_performance_31d    bigint not null,
+    el_performance_365d   bigint not null,
+    el_performance_total  bigint not null,
+    mev_performance_1d    bigint not null,
+    mev_performance_7d    bigint not null,
+    mev_performance_31d   bigint not null,
+    mev_performance_365d  bigint not null,
+    mev_performance_total bigint not null,
+    rank7d                int    not null,
     primary key (validatorindex)
 );
 create index idx_validator_performance_balance on validator_performance (balance);
@@ -154,12 +165,10 @@ create table validator_stats
     withdrawals_amount      bigint,
     cl_rewards_gwei         bigint,
     cl_rewards_gwei_total   bigint,
-    cl_rewards_gwei_31d     bigint,
-    cl_rewards_gwei_7d      bigint,
     el_rewards_wei          decimal,
     el_rewards_wei_total    decimal,
-    el_rewards_wei_31d      decimal,
-    el_rewards_wei_7d       decimal,
+    mev_rewards_wei         decimal,
+    mev_rewards_wei_total   decimal,
     primary key (validatorindex, day)
 );
 create index idx_validator_stats_day on validator_stats (day);
@@ -169,6 +178,7 @@ create table validator_stats_status
 (
     day    int     not null,
     status boolean not null,
+    income_exported boolean not null default false,
     primary key (day)
 );
 

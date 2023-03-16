@@ -42,6 +42,8 @@ node-jobs-processor:
 # 	go build --ldflags=${LDFLAGS} -o bin/add_income_stats cmd/playground/add_income_stats/main.go
 # 	go build --ldflags=${LDFLAGS} -o bin/re_calculate_stats_totals cmd/playground/re_calculate_stats_totals/main.go
 # 	go build --ldflags=${LDFLAGS} -o bin/add_mev_stats cmd/playground/add_mev_stats/main.go
+# 	go build --ldflags=${LDFLAGS} -o bin/calculate_income_stats cmd/playground/calculate_income_stats/main.go
+# 	go build --ldflags=${LDFLAGS} -o bin/re_calculate_stats_totals cmd/playground/re_calculate_stats_totals/main.go
 
 addhooks:
 	git config core.hooksPath hooks
