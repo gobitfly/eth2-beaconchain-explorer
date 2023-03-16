@@ -757,7 +757,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			rplm.deposit_type      AS minipool_deposit_type,
 			rplm.status            AS minipool_status,
 			rplm.status_time       AS minipool_status_time,
-			rplm.penalty_count     AS penalty_count,
+			COALESCE(rplm.penalty_count,0)     AS penalty_count,
 			rpln.timezone_location AS node_timezone_location,
 			rpln.rpl_stake         AS node_rpl_stake,
 			rpln.max_rpl_stake     AS node_max_rpl_stake,
