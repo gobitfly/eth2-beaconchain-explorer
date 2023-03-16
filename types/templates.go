@@ -441,6 +441,7 @@ type RocketpoolValidatorPageData struct {
 	IsVacant             bool       `db:"is_vacant"`
 	Version              *string    `db:"version"`
 	NodeDepositCredit    *string    `db:"deposit_credit"`
+	EffectiveRPLStake    *string    `db:"effective_rpl_stake"`
 }
 
 type ValidatorStatsTablePageData struct {

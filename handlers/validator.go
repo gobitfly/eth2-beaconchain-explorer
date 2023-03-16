@@ -772,6 +772,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			COALESCE(node_deposit_balance, 0) AS node_deposit_balance,
 			COALESCE(node_refund_balance, 0) AS node_refund_balance,
 			COALESCE(user_deposit_balance, 0) AS user_deposit_balance,
+			COALESCE(rpln.effective_rpl_stake, 0) as effective_rpl_stake,
 			COALESCE(deposit_credit, 0) AS deposit_credit,
 			is_vacant,
 			version,

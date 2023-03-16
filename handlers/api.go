@@ -1198,6 +1198,7 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 			COALESCE(rplm.node_refund_balance, 0) AS node_refund_balance,
 			COALESCE(rplm.user_deposit_balance, 0) AS user_deposit_balance,
 			COALESCE(rplm.is_vacant, false) AS is_vacant,
+			COALESCE(rpln.effective_rpl_stake, 0) as effective_rpl_stake,
 			COALESCE(rplm.version, 0) AS version
 		FROM rocketpool_minipools rplm 
 		LEFT JOIN validators validators ON rplm.pubkey = validators.pubkey 
