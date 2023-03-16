@@ -628,19 +628,7 @@
       <div class="progress">
         <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" v-bind:style="'width: ' +progress + '%'" v-bind:aria-valuenow="progress" aria-valuemin="0" aria-valuemax="5">Update in: ${updateIn}s</div>
       </div>
-      <!-- Coinzilla Banner 728x90 -->
-      <!-- <div class="partner w-100 d-flex mt-3 justify-content-center">
-			<script async src="https://coinzillatag.com/lib/display.js"></script>
-			<div class="coinzilla" data-zone="C-1635efda351897cb722"></div>
-			<script>
-				window.coinzilla_display = window.coinzilla_display || [];
-				var c_display_preferences = {};
-				c_display_preferences.zone = "1635efda351897cb722";
-				c_display_preferences.width = "728";
-				c_display_preferences.height = "90";
-				coinzilla_display.push(c_display_preferences);
-			</script>
-		</div> -->
+      <div id="r-banner" info="{{ .Meta.Templates }}"></div>
       {{ if .Mainnet }}
         <div class="row mt-5">
           <div class="col">

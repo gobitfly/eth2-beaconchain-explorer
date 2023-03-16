@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
 	"eth2-exporter/services"
@@ -18,9 +19,10 @@ import (
 var layoutTemplateFiles = []string{
 	"layout.html",
 	"layout/mainnavigation.html",
+	"layout/ad_handler.html",
 }
 
-func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string) *types.PageData {
+func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string, mainTemplates []string) *types.PageData {
 	fullTitle := fmt.Sprintf("%v - %v - beaconcha.in - %v", title, utils.Config.Frontend.SiteName, time.Now().Year())
 
 	if title == "" {
@@ -30,13 +32,13 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 	isMainnet := utils.Config.Chain.Config.ConfigName == "mainnet"
 	user := getUser(r)
 	data := &types.PageData{
-		HeaderAd: false,
 		Meta: &types.Meta{
 			Title:       fullTitle,
 			Description: "beaconcha.in makes Ethereum accessible to non-technical end users",
 			Path:        path,
 			GATag:       utils.Config.Frontend.GATag,
 			NoTrack:     false,
+			Templates:   strings.Join(mainTemplates, ","),
 		},
 		Active:                active,
 		Data:                  &types.Empty{},
@@ -87,6 +89,13 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		GlobalNotification:  services.GlobalNotificationMessage(),
 		AvailableCurrencies: price.GetAvailableCurrencies(),
 		MainMenuItems:       createMenuItems(active, isMainnet),
+	}
+
+	adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplates, data.NoAds)
+	if err != nil {
+		utils.LogError(err, fmt.Sprintf("error loading the ad configurations for template %v", path), 0)
+	} else {
+		data.AdConfigurations = adConfigurations
 	}
 
 	if utils.Config.Frontend.Debug {

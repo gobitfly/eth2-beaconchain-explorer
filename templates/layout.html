@@ -180,6 +180,7 @@
                   <a class="dropdown-item" href="/user/settings">Settings</a>
                   {{ if eq .User.UserGroup "ADMIN" }}
                     <a class="dropdown-item" href="/user/global_notification">Global Notification</a>
+                    <a class="dropdown-item" href="/user/ad_configuration">Ad Configuration</a>
                   {{ end }}
                   <a data-no-instant class="dropdown-item" href="/logout">Logout</a>
                 </div>
@@ -248,13 +249,6 @@
                 </span>
             </div> -->
 
-        <!-- {{ if .HeaderAd }}
-          <div class="container">
-            <div class="d-flex justify-content-between pt-4 pb-3">
-              <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-            </div>
-          </div>
-        {{ end }} -->
         {{ template "content" . }}
         {{ if not .User.Authenticated }}
           <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index: 999; bottom: 3%; left: 50%; transform: translateX(-50%); width: 100%; justify-content: center; align-items: center;">
@@ -471,7 +465,8 @@
                     </script>
         {{ end }}
       {{ end }}
-      {{ if not .NoAds }}<script type="text/javascript" async src="/js/revive.min.js"></script>{{ end }}
+      <script type="text/javascript" async src="/js/revive.min.js"></script>
+      {{ template "addHandler" .AdConfigurations }}
       {{ if .Debug }}
         <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.min.js" integrity="sha512-O9SYDgWAM3bEzit1z6mkFd+dxKUplO/oB8UwYGAkg2Zy/WzDUQ2mYA/ysk3c0CxiXAN4u8T9JeZ0Ahk2Jj/33Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <script src="/js/debug.js"></script>

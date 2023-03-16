@@ -605,6 +605,9 @@ func main() {
 			authRouter.HandleFunc("/notifications/bundled/subscribe", handlers.MultipleUsersNotificationsSubscribeWeb).Methods("POST", "OPTIONS")
 			authRouter.HandleFunc("/global_notification", handlers.UserGlobalNotification).Methods("GET")
 			authRouter.HandleFunc("/global_notification", handlers.UserGlobalNotificationPost).Methods("POST")
+			authRouter.HandleFunc("/ad_configuration", handlers.AdConfiguration).Methods("GET")
+			authRouter.HandleFunc("/ad_configuration", handlers.AdConfigurationPost).Methods("POST")
+			authRouter.HandleFunc("/ad_configuration/delete", handlers.AdConfigurationDeletePost).Methods("POST")
 
 			authRouter.HandleFunc("/notifications-center", handlers.UserNotificationsCenter).Methods("GET")
 			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")

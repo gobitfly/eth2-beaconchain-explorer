@@ -15,9 +15,6 @@ create table validators
     withdrawableepoch          bigint      not null,
     withdrawalcredentials      bytea       not null,
     balance                    bigint      not null,
-    balance1d                  bigint,
-    balance7d                  bigint,
-    balance31d                 bigint,
     balanceactivation          bigint,
     effectivebalance           bigint      not null,
     slashed                    bool        not null,
@@ -73,13 +70,24 @@ create table validator_set
 drop table if exists validator_performance;
 create table validator_performance
 (
-    validatorindex  int    not null,
-    balance         bigint not null,
-    performance1d   bigint not null,
-    performance7d   bigint not null,
-    performance31d  bigint not null,
-    performance365d bigint not null,
-    rank7d          int    not null,
+    validatorindex        int    not null,
+    balance               bigint not null,
+    cl_performance_1d     bigint not null,
+    cl_performance_7d     bigint not null,
+    cl_performance_31d    bigint not null,
+    cl_performance_365d   bigint not null,
+    cl_performance_total  bigint not null,
+    el_performance_1d     bigint not null,
+    el_performance_7d     bigint not null,
+    el_performance_31d    bigint not null,
+    el_performance_365d   bigint not null,
+    el_performance_total  bigint not null,
+    mev_performance_1d    bigint not null,
+    mev_performance_7d    bigint not null,
+    mev_performance_31d   bigint not null,
+    mev_performance_365d  bigint not null,
+    mev_performance_total bigint not null,
+    rank7d                int    not null,
     primary key (validatorindex)
 );
 create index idx_validator_performance_balance on validator_performance (balance);
@@ -157,12 +165,10 @@ create table validator_stats
     withdrawals_amount      bigint,
     cl_rewards_gwei         bigint,
     cl_rewards_gwei_total   bigint,
-    cl_rewards_gwei_31d     bigint,
-    cl_rewards_gwei_7d      bigint,
     el_rewards_wei          decimal,
     el_rewards_wei_total    decimal,
-    el_rewards_wei_31d      decimal,
-    el_rewards_wei_7d       decimal,
+    mev_rewards_wei         decimal,
+    mev_rewards_wei_total   decimal,
     primary key (validatorindex, day)
 );
 create index idx_validator_stats_day on validator_stats (day);
@@ -172,6 +178,7 @@ create table validator_stats_status
 (
     day    int     not null,
     status boolean not null,
+    income_exported boolean not null default false,
     primary key (day)
 );
 
@@ -1049,3 +1056,19 @@ create table node_jobs
     data jsonb not null,
     primary key (id)
 );
+
+drop table if exists ad_configurations;
+create table ad_configurations
+(
+    id varchar(40), --uuid
+    template_id varchar(100) not null, --relative path to the main html file of the page
+    jquery_selector varchar(40) not null, --selector with the html
+    insert_mode varchar(10) not null, -- can be before, after, replace or insert
+    refresh_interval int not null, -- defines how often the ad is refreshed in seconds, 0 = don't refresh
+    enabled bool not null, -- defines if the ad is active
+    for_all_users bool not null, -- if set the ad will be shown to all users even if they have NoAds
+    banner_id int, -- an ad must either have a banner_id OR an html_content
+    html_content text,
+    primary key (id)
+);
+create index idx_ad_configuration_for_template on ad_configurations (template_id, enabled);

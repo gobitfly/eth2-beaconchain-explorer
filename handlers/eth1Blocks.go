@@ -18,12 +18,12 @@ import (
 )
 
 func Eth1Blocks(w http.ResponseWriter, r *http.Request) {
-
-	var eth1BlocksTemplate = templates.GetTemplate(append(layoutTemplateFiles, "execution/blocks.html")...)
+	templateFiles := append(layoutTemplateFiles, "execution/blocks.html")
+	var eth1BlocksTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "blockchain", "/eth1blocks", "Ethereum Blocks")
+	data := InitPageData(w, r, "blockchain", "/eth1blocks", "Ethereum Blocks", templateFiles)
 	if handleTemplateError(w, r, "eth1Blocks.go", "Eth1Blocks", "", eth1BlocksTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
