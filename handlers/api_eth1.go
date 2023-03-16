@@ -392,8 +392,8 @@ func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
 			Hash:               fmt.Sprintf("0x%x", tx.Hash),
 			BlockNumber:        tx.BlockNumber,
 			Time:               tx.Time.AsTime(),
-			From:               fmt.Sprintf("0x%x", tx.From),
-			To:                 fmt.Sprintf("0x%x", tx.To),
+			From:               utils.FixAddressCasing(fmt.Sprintf("%x", tx.From)),
+			To:                 utils.FixAddressCasing(fmt.Sprintf("%x", tx.To)),
 			MethodId:           fmt.Sprintf("0x%x", tx.MethodId),
 			Value:              new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(tx.Value)), big.NewFloat(1e18)).String(),   //new(big.Int).Div(new(big.Int).SetBytes(tx.Value), big.NewInt(1e18)).String(),
 			GasPrice:           new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(tx.GasPrice)), big.NewFloat(1e9)).String(), //new(big.Int).Div(new(big.Int).SetBytes(tx.GasPrice), new(big.Int).SetInt64(1e18)).String(),
@@ -474,8 +474,8 @@ func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
 			BlockNumber: itx.BlockNumber,
 			Time:        itx.Time.AsTime(),
 			Type:        itx.Type,
-			From:        fmt.Sprintf("0x%x", itx.From),
-			To:          fmt.Sprintf("0x%x", itx.To),
+			From:        utils.FixAddressCasing(fmt.Sprintf("%x", itx.From)),
+			To:          utils.FixAddressCasing(fmt.Sprintf("%x", itx.To)),
 			Value:       new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(itx.Value)), big.NewFloat(1e18)).String(),
 		})
 	}
@@ -721,8 +721,8 @@ func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 				BlockNumber:  tx.BlockNumber,
 				TokenAddress: fmt.Sprintf("0x%x", tx.TokenAddress),
 				Time:         tx.Time.AsTime(),
-				From:         fmt.Sprintf("0x%x", tx.From),
-				To:           fmt.Sprintf("0x%x", tx.To),
+				From:         utils.FixAddressCasing(fmt.Sprintf("%x", tx.From)),
+				To:           utils.FixAddressCasing(fmt.Sprintf("%x", tx.To)),
 				TokenId:      new(big.Int).SetBytes(tx.TokenId).String(),
 			})
 		}
@@ -742,8 +742,8 @@ func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 				BlockNumber:  tx.BlockNumber,
 				TokenAddress: fmt.Sprintf("0x%x", tx.TokenAddress),
 				Time:         tx.Time.AsTime(),
-				From:         fmt.Sprintf("0x%x", tx.From),
-				To:           fmt.Sprintf("0x%x", tx.To),
+				From:         utils.FixAddressCasing(fmt.Sprintf("%x", tx.From)),
+				To:           utils.FixAddressCasing(fmt.Sprintf("%x", tx.To)),
 				TokenId:      new(big.Int).SetBytes(tx.TokenId).String(),
 				Value:        new(big.Int).SetBytes(tx.Value).String(),
 				Operator:     new(big.Int).SetBytes(tx.Operator).String(),
@@ -781,8 +781,8 @@ func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 				BlockNumber:  tx.BlockNumber,
 				TokenAddress: fmt.Sprintf("0x%x", tx.TokenAddress),
 				Time:         tx.Time.AsTime(),
-				From:         fmt.Sprintf("0x%x", tx.From),
-				To:           fmt.Sprintf("0x%x", tx.To),
+				From:         utils.FixAddressCasing(fmt.Sprintf("%x", tx.From)),
+				To:           utils.FixAddressCasing(fmt.Sprintf("%x", tx.To)),
 				Value:        value,
 			})
 		}

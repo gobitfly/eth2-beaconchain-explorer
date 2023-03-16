@@ -956,7 +956,7 @@ func FormatThousandsEnglish(number string) string {
 // returns two transparent base64 encoded img strings for dark and light theme
 // the first has a black QR code the second a white QR code
 func GenerateQRCodeForAddress(address []byte) (string, string, error) {
-	q, err := qrcode.New(FixAddressCasing(fmt.Sprintf("0x%x", address)), qrcode.Medium)
+	q, err := qrcode.New(FixAddressCasing(fmt.Sprintf("%x", address)), qrcode.Medium)
 	if err != nil {
 		return "", "", err
 	}

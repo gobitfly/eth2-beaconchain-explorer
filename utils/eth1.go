@@ -140,7 +140,13 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 	}
 
 	// setting tooltip & limit name/address if necessary
-	addressString := FixAddressCasing(fmt.Sprintf("0x%x", address))
+
+	addressString := ""
+	if len(address) > 22 || len(address) < 20 { // It seems this function is also used to format other hashes and not onyl 'normal' addresses
+		addressString = fmt.Sprintf("0x%x", address)
+	} else {
+		addressString = FixAddressCasing(fmt.Sprintf("%x", address))
+	}
 	tooltip := ""
 	if len(name) == 0 { // no name set
 		tooltip = addressString
@@ -149,14 +155,14 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 		if l <= digitsLimit { // len inside digitsLimits, not much to do
 			name = addressString
 		} else { // reduce to digits limit
-			digitsLimit -= 5                  // we will need 5 digits for 0x & …
-			name = fmt.Sprintf("%x", address) // get hex bytes as string
-			f := digitsLimit / 2              // as this int devision will always cut, we at an odd limit, we will have more digits at the end
-			name = fmt.Sprintf("0x%s…%s", name[:f], name[(l-(digitsLimit-f)):])
+			digitsLimit -= 5     // we will need 5 digits for 0x & …
+			name = addressString // get hex bytes as string
+			f := digitsLimit / 2 // as this int devision will always cut, we at an odd limit, we will have more digits at the end
+			name = fmt.Sprintf("%s…%s", name[:(f+2)], name[(l-(digitsLimit-f)+2):])
 		}
 		name = fmt.Sprintf(`<span class="text-monospace">%s</span>`, name)
 	} else { // name set
-		tooltip = fmt.Sprintf("%s\n0x%x", name, address) // set tool tip first, as we will change name
+		tooltip = fmt.Sprintf("%s\n%s", name, addressString) // set tool tip first, as we will change name
 		// limit name if necessary
 		if nameLimit > 0 && len(name) > nameLimit {
 			name = name[:nameLimit-3] + "…"
@@ -193,15 +199,16 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 func FormatAddressAsLink(address []byte, name string, verified bool, isContract bool) template.HTML {
 	ret := ""
 	name = template.HTMLEscapeString(name)
+	addressString := FixAddressCasing(fmt.Sprintf("%x", address))
 
 	if len(name) > 0 {
 		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/0x%x\">✔ %s (0x%x…%x)</a> %v", address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">✔ %s (%s…%s)</a> %v", addressString, name, addressString[:5], addressString[len(addressString)-3:], CopyButton(addressString))
 		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/0x%x\">%s 0x%x…%x</a> %v", address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">%s %s…%s</a> %v", addressString, name, addressString[:5], addressString[len(addressString)-3:], CopyButton(addressString))
 		}
 	} else {
-		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/0x%x\">0x%x…%x</a> %v", address, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">%s…%s</a> %v", addressString, addressString[:5], addressString[len(addressString)-3:], CopyButton(addressString))
 	}
 
 	if isContract {
@@ -213,15 +220,16 @@ func FormatAddressAsLink(address []byte, name string, verified bool, isContract 
 func FormatAddressAsTokenLink(token, address []byte, name string, verified bool, isContract bool) template.HTML {
 	ret := ""
 	name = template.HTMLEscapeString(name)
+	addressString := FixAddressCasing(fmt.Sprintf("%x", address))
 
 	if len(name) > 0 {
 		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/0x%x?a=0x%x\">✔ %s (0x%x…%x)</a> %v", token, address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/%x?a=%s\">✔ %s (%s…%s)</a> %v", token, addressString, name, addressString[:3], addressString[len(addressString)-3:], CopyButton(addressString))
 		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/0x%x?a=0x%x\">%s 0x%x…%x</a> %v", token, address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/%x?a=%s\">%s %s…%s</a> %v", token, addressString, name, addressString[:3], addressString[len(addressString)-3:], CopyButton(addressString))
 		}
 	} else {
-		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/0x%x?a=0x%x\">0x%x…%x</a> %v", token, address, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/%x?a=%s\">%s…%s</a> %v", token, addressString, addressString[:3], addressString[len(addressString)-3:], CopyButton(addressString))
 	}
 
 	if isContract {

@@ -255,7 +255,7 @@
               {{ with .Data.Metadata.Symbol | formatTokenSymbol }}{{ . }}{{ end }}
             </span>
             <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
-            <span class="d-flex align-items-center"><i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ .Data.Token }}"></i></span>
+            <span class="d-flex align-items-center"><i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ fixAddressCasing .Data.Token }}"></i></span>
           </span>
         </div>
         <!-- <span class="text-monospace">
@@ -266,8 +266,8 @@
         {{ if .Data.Address }}
           <span class="badge badge-primary text-light my-2" style="padding: .5rem 0 .5rem .5rem">
             <span class="mr-1">Filter:</span>
-            <a class="text-light text-monospace" style="width: 1rem; height: 1rem;" target="_blank" href="/address/{{ .Data.Address }}"
-              >0x{{ .Data.Address }} <span class="text-muted text-light" data-toggle="tooltip" title="clear filter"><a class="text-light p-2" href="/token/{{ .Data.Token }}">x</a></span></a
+            <a class="text-light text-monospace" style="width: 1rem; height: 1rem;" target="_blank" href="/address/{{ fixAddressCasing .Data.Address }}"
+              >{{ fixAddressCasing .Data.Address }} <span class="text-muted text-light" data-toggle="tooltip" title="clear filter"><a class="text-light p-2" href="/token/{{ fixAddressCasing .Data.Token }}">x</a></span></a
             >
           </span>
         {{ end }}
