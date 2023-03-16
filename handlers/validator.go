@@ -771,7 +771,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			COALESCE(user_deposit_balance, 0) AS user_deposit_balance,
 			COALESCE(rpln.effective_rpl_stake, 0) as effective_rpl_stake,
 			COALESCE(deposit_credit, 0) AS deposit_credit,
-			is_vacant,
+			COALESCE(is_vacant, false) AS is_vacant,
 			version,
 			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in 
 		FROM validators
