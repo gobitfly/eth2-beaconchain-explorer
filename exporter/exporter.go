@@ -271,6 +271,12 @@ func Start(client rpc.Client) error {
 		if err != nil {
 			logger.Errorf("error saving block: %v", err)
 		}
+
+		err = db.UpdateMissedBlocksInEpochWithSlotCutoff(block.Slot)
+		if err != nil {
+			logger.Errorf("error marking missed blocks: %v", err)
+		}
+
 		lastExportedSlot = block.Slot
 	}
 }
@@ -428,6 +434,14 @@ func doFullCheck(client rpc.Client, lookback uint64) {
 		logger.Errorf("error marking orphaned blocks: %v", err)
 	}
 
+	if head.HeadEpoch > 0 {
+		logger.Infof("marking missed blocks of epochs %v-%v", startEpoch, head.HeadEpoch-1)
+		err = MarkMissedBlocks(startEpoch, head.HeadEpoch-1)
+		if err != nil {
+			logger.Errorf("error marking missed blocks: %v", err)
+		}
+	}
+
 	// Update epoch statistics up to 10 epochs after the last finalized epoch
 	startEpoch = uint64(0)
 	if head.FinalizedEpoch > 10 {
@@ -459,6 +473,11 @@ func doFullCheck(client rpc.Client, lookback uint64) {
 // MarkOrphanedBlocks will mark the orphaned blocks in the database
 func MarkOrphanedBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBlock) error {
 	return db.UpdateCanonicalBlocks(startEpoch, endEpoch, blocks)
+}
+
+// MarkMissedBlocks will mark the missed blocks in the database
+func MarkMissedBlocks(startEpoch, endEpoch uint64) error {
+	return db.UpdateMissedBlocks(startEpoch, endEpoch)
 }
 
 // GetLastBlocks will get all blocks for a range of epochs
