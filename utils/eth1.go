@@ -141,10 +141,8 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 
 	// setting tooltip & limit name/address if necessary
 
-	addressString := ""
-	if len(address) > 22 || len(address) < 20 { // It seems this function is also used to format other hashes and not onyl 'normal' addresses
-		addressString = fmt.Sprintf("0x%x", address)
-	} else {
+	addressString := fmt.Sprintf("0x%x", address)
+	if IsEth1Address(addressString) {
 		addressString = FixAddressCasing(fmt.Sprintf("%x", address))
 	}
 	tooltip := ""
