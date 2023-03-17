@@ -212,37 +212,9 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	var rows *sql.Rows
-
-	var day int64
-
-	vars := mux.Vars(r)
-	if vars["day"] == "latest" {
-		err = db.ReaderDb.Get(&day, `
-			SELECT 
-				MAX(day)
-			FROM eth_store_stats e
-			WHERE validator = -1 `)
-		if err != nil {
-			logger.Errorf("error retrieving latest day: %v", err)
-			sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
-			return
-		}
-	} else {
-		day, err = strconv.ParseInt(vars["day"], 10, 64)
-		if err != nil {
-			sendErrorResponse(w, r.URL.String(), "invalid day provided")
-			return
-		}
-	}
-
-	dayStart := utils.DayToTime(day).Unix()
-	dayEnd := utils.DayToTime(day + 1).Unix()
-
-	rows, err = db.ReaderDb.Query(`
+	query := `
 		SELECT 
-			day,
-			to_timestamp($1) as day_start,
-			to_timestamp($2) as day_end,
+			day, 
 			effective_balances_sum_wei, 
 			start_balances_sum_wei, 
 			end_balances_sum_wei, 
@@ -258,7 +230,20 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 			(select avg(consensus_rewards_sum_wei) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgconsensus_rewards31d_wei,
 			(select avg(tx_fees_sum_wei) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgtx_fees31d_wei
 		FROM eth_store_stats e
-		WHERE validator = -1 AND day = $3`, dayStart, dayEnd, day)
+		WHERE validator = -1 `
+
+	vars := mux.Vars(r)
+	if vars["day"] == "latest" {
+		rows, err = db.ReaderDb.Query(query + ` ORDER BY day DESC LIMIT 1;`)
+	} else {
+		day, e := strconv.ParseInt(vars["day"], 10, 64)
+		if e != nil {
+			sendErrorResponse(w, r.URL.String(), "invalid day provided")
+			return
+		}
+		rows, err = db.ReaderDb.Query(query+` AND day = $1;`, day)
+	}
+
 	if err != nil {
 		logger.Errorf("error retrieving eth.store data: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -266,7 +251,40 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	data, err := utils.SqlRowsToJSON(rows)
+
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	for _, dataEntry := range data {
+		dataEntryMap, ok := dataEntry.(map[string]interface{})
+		if !ok {
+			sendErrorResponse(w, r.URL.String(), "could not parse db results")
+			return
+		} else {
+			day, ok := dataEntryMap["day"].(int64)
+			if !ok {
+				sendErrorResponse(w, r.URL.String(), "could not parse db results")
+				return
+			} else {
+				dataEntryMap["day_start"] = utils.DayToTime(day)
+				dataEntryMap["day_end"] = utils.DayToTime(day + 1)
+			}
+		}
+	}
+
+	response := &types.ApiResponse{
+		Status: "OK",
+		Data:   data,
+	}
+
+	err = json.NewEncoder(w).Encode(response)
+
+	if err != nil {
+		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
+	}
 }
 
 // ApiEpoch godoc
@@ -1537,34 +1555,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := []struct {
-		ValidatorIndex        uint64 `db:"validatorindex"`
-		AttesterSlashings     uint64 `db:"attester_slashings"`
-		Day                   uint64 `db:"day"`
-		Deposits              uint64 `db:"deposits"`
-		DepositsAmount        uint64 `db:"deposits_amount"`
-		Withdrawals           uint64 `db:"withdrawals"`
-		WithdrawalsAmount     uint64 `db:"withdrawals_amount"`
-		EndBalance            uint64 `db:"end_balance"`
-		EndEffectiveBalance   uint64 `db:"end_effective_balance"`
-		MaxBalance            uint64 `db:"max_balance"`
-		MaxEffectiveBalance   uint64 `db:"max_effective_balance"`
-		MinBalance            uint64 `db:"min_balance"`
-		MinEffectiveBalance   uint64 `db:"min_effective_balance"`
-		MissedAttestations    uint64 `db:"missed_attestations"`
-		MissedBlocks          uint64 `db:"missed_blocks"`
-		MissedSync            uint64 `db:"missed_sync"`
-		OrphanedAttestations  uint64 `db:"orphaned_attestations"`
-		OrphanedBlocks        uint64 `db:"orphaned_blocks"`
-		OrphanedSync          uint64 `db:"orphaned_sync"`
-		ParticipatedSync      uint64 `db:"participated_sync"`
-		ProposedBlocks        uint64 `db:"proposed_blocks"`
-		ProposerSlashings     uint64 `db:"proposer_slashings"`
-		StartBalance          uint64 `db:"start_balance"`
-		StartEffectiveBalance uint64 `db:"start_effective_balance"`
-	}{}
-
-	err = db.ReaderDb.Select(&result, `
+	rows, err := db.ReaderDb.Query(`
 		SELECT 
 		validatorindex,
 		day,
@@ -1595,40 +1586,42 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
+	defer rows.Close()
 
-	response := make([]*types.ApiValidatorDailyStatsResponse, 0, len(result))
-	for _, entry := range result {
-		response = append(response, &types.ApiValidatorDailyStatsResponse{
-			ValidatorIndex:        entry.ValidatorIndex,
-			AttesterSlashings:     entry.AttesterSlashings,
-			Day:                   entry.Day,
-			DayStart:              utils.DayToTime(int64(entry.Day)),
-			DayEnd:                utils.DayToTime(int64(entry.Day + 1)),
-			Deposits:              entry.Deposits,
-			DepositsAmount:        entry.DepositsAmount,
-			Withdrawals:           entry.Withdrawals,
-			WithdrawalsAmount:     entry.WithdrawalsAmount,
-			EndBalance:            entry.EndBalance,
-			EndEffectiveBalance:   entry.EndEffectiveBalance,
-			MaxBalance:            entry.MaxBalance,
-			MaxEffectiveBalance:   entry.MaxEffectiveBalance,
-			MinBalance:            entry.MinBalance,
-			MinEffectiveBalance:   entry.MinEffectiveBalance,
-			MissedAttestations:    entry.MissedAttestations,
-			MissedBlocks:          entry.MissedBlocks,
-			MissedSync:            entry.MissedSync,
-			OrphanedAttestations:  entry.OrphanedAttestations,
-			OrphanedBlocks:        entry.OrphanedBlocks,
-			OrphanedSync:          entry.OrphanedSync,
-			ParticipatedSync:      entry.ParticipatedSync,
-			ProposedBlocks:        entry.ProposedBlocks,
-			ProposerSlashings:     entry.ProposerSlashings,
-			StartBalance:          entry.StartBalance,
-			StartEffectiveBalance: entry.StartEffectiveBalance,
-		})
+	data, err := utils.SqlRowsToJSON(rows)
+
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not parse db results")
+		return
 	}
 
-	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
+	for _, dataEntry := range data {
+		dataEntryMap, ok := dataEntry.(map[string]interface{})
+		if !ok {
+			sendErrorResponse(w, r.URL.String(), "could not parse db results")
+			return
+		} else {
+			day, ok := dataEntryMap["day"].(int64)
+			if !ok {
+				sendErrorResponse(w, r.URL.String(), "could not parse db results")
+				return
+			} else {
+				dataEntryMap["day_start"] = utils.DayToTime(day)
+				dataEntryMap["day_end"] = utils.DayToTime(day + 1)
+			}
+		}
+	}
+
+	response := &types.ApiResponse{
+		Status: "OK",
+		Data:   data,
+	}
+
+	err = json.NewEncoder(w).Encode(response)
+
+	if err != nil {
+		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
+	}
 }
 
 // ApiValidatorByEth1Address godoc
@@ -1730,13 +1723,14 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, epochs := range history {
 		for epoch, income := range epochs {
+			epochAtStartOfTheWeek := (epoch / epochsPerWeek) * epochsPerWeek
 			responseData = append(responseData, &responseType{
 				Income:         income,
 				Epoch:          epoch,
 				ValidatorIndex: validatorIndex,
 				Week:           epoch / epochsPerWeek,
-				WeekStart:      utils.EpochToTime((epoch / epochsPerWeek) * epochsPerWeek),
-				WeekEnd:        utils.EpochToTime((epoch/epochsPerWeek)*epochsPerWeek + epochsPerWeek),
+				WeekStart:      utils.EpochToTime(epochAtStartOfTheWeek),
+				WeekEnd:        utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek),
 			})
 		}
 	}
@@ -1936,14 +1930,15 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, balances := range history {
 		for _, balance := range balances {
+			epochAtStartOfTheWeek := (balance.Epoch / epochsPerWeek) * epochsPerWeek
 			responseData = append(responseData, &types.ApiValidatorBalanceHistoryResponse{
 				Balance:          balance.Balance,
 				EffectiveBalance: balance.EffectiveBalance,
 				Epoch:            balance.Epoch,
 				Validatorindex:   validatorIndex,
 				Week:             balance.Epoch / epochsPerWeek,
-				WeekStart:        utils.EpochToTime((balance.Epoch / epochsPerWeek) * epochsPerWeek),
-				WeekEnd:          utils.EpochToTime((balance.Epoch/epochsPerWeek)*epochsPerWeek + epochsPerWeek),
+				WeekStart:        utils.EpochToTime(epochAtStartOfTheWeek),
+				WeekEnd:          utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek),
 			})
 		}
 	}
@@ -2257,6 +2252,7 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, balances := range history {
 		for _, attestation := range balances {
+			epochAtStartOfTheWeek := (attestation.Epoch / epochsPerWeek) * epochsPerWeek
 			responseData = append(responseData, &types.ApiValidatorAttestationsResponse{
 				AttesterSlot:   attestation.AttesterSlot,
 				CommitteeIndex: 0,
@@ -2265,8 +2261,8 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 				Status:         attestation.Status,
 				ValidatorIndex: validatorIndex,
 				Week:           attestation.Epoch / epochsPerWeek,
-				WeekStart:      utils.EpochToTime((attestation.Epoch / epochsPerWeek) * epochsPerWeek),
-				WeekEnd:        utils.EpochToTime((attestation.Epoch/epochsPerWeek)*epochsPerWeek + epochsPerWeek),
+				WeekStart:      utils.EpochToTime(epochAtStartOfTheWeek),
+				WeekEnd:        utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek),
 			})
 		}
 	}
