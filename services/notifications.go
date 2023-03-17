@@ -2000,10 +2000,10 @@ func collectWithdrawalNotifications(notificationsByUserID map[uint64]map[types.E
 						continue
 					}
 				}
-				// logger.Infof("creating %v notification for validator %v in epoch %v", types.ValidatorReceivedWithdrawalEventName, event.Index, epoch)
+				// logger.Infof("creating %v notification for validator %v in epoch %v", types.ValidatorReceivedWithdrawalEventName, event.ValidatorIndex, epoch)
 				n := &validatorWithdrawalNotification{
 					SubscriptionID:  *sub.ID,
-					ValidatorIndex:  event.Index,
+					ValidatorIndex:  event.ValidatorIndex,
 					Epoch:           epoch,
 					Slot:            event.Slot,
 					Amount:          event.Amount,
