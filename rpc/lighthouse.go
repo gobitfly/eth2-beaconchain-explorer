@@ -418,7 +418,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 				SyncAggregate:     nil,
 			}
 
-			if utils.SlotToTime(slot).After(time.Now().Add(time.Second * -60)) {
+			if utils.SlotToTime(slot).After(time.Now().Add(time.Second * -4)) {
 				// Block is in the future, set status to scheduled
 				data.Blocks[slot]["0x0"].Status = 0
 				data.Blocks[slot]["0x0"].BlockRoot = []byte{0x0}

@@ -525,12 +525,12 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 
 // UpdateMissedBlocks will update the missed blocks for an epoch range in the database
 func UpdateMissedBlocks(startEpoch, endEpoch uint64) error {
-	_, err := WriterDb.Exec(`UPDATE blocks SET status = '2' WHERE status = '0' AND epoch >= $1 AND epoch <= $2`, startEpoch, endEpoch)
+	_, err := WriterDb.Exec(`UPDATE blocks SET status = '2', blockroot = '\x01' WHERE status = '0' AND epoch >= $1 AND epoch <= $2`, startEpoch, endEpoch)
 	return err
 }
 
 func UpdateMissedBlocksInEpochWithSlotCutoff(slot uint64) error {
-	_, err := WriterDb.Exec(`UPDATE blocks SET status = '2' WHERE status = '0' AND epoch = $1 AND slot < $2`, slot/utils.Config.Chain.Config.SlotsPerEpoch, slot)
+	_, err := WriterDb.Exec(`UPDATE blocks SET status = '2', blockroot = '\x01' WHERE status = '0' AND epoch = $1 AND slot < $2`, slot/utils.Config.Chain.Config.SlotsPerEpoch, slot)
 	return err
 }
 
