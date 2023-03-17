@@ -224,12 +224,12 @@ func FormatAddressAsTokenLink(token, address []byte, name string, verified bool,
 
 	if len(name) > 0 {
 		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/%x?a=%s\">✔ %s (%s…%s)</a> %v", token, addressString, name, addressString[:3], addressString[len(addressString)-3:], CopyButton(addressString))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/%x?a=%s\">✔ %s (%s…%s)</a> %v", token, addressString, name, addressString[:5], addressString[len(addressString)-3:], CopyButton(addressString))
 		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/%x?a=%s\">%s %s…%s</a> %v", token, addressString, name, addressString[:3], addressString[len(addressString)-3:], CopyButton(addressString))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/%x?a=%s\">%s %s…%s</a> %v", token, addressString, name, addressString[:5], addressString[len(addressString)-3:], CopyButton(addressString))
 		}
 	} else {
-		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/%x?a=%s\">%s…%s</a> %v", token, addressString, addressString[:3], addressString[len(addressString)-3:], CopyButton(addressString))
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/%x?a=%s\">%s…%s</a> %v", token, addressString, addressString[:5], addressString[len(addressString)-3:], CopyButton(addressString))
 	}
 
 	if isContract {
