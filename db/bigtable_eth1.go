@@ -2479,7 +2479,7 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address string, search strin
 		if fmt.Sprintf("%x", t.From) != address {
 			from = utils.FormatAddressAsLink(t.From, "", false, false)
 		}
-		to := utils.FormatAddressWithLimits(t.To, "", false, "", 11, 0, false)
+		to := utils.FormatAddressWithLimits(t.To, "", false, "", 13, 0, false)
 		if fmt.Sprintf("%x", t.To) != address {
 			to = utils.FormatAddressAsLink(t.To, "", false, false)
 		}
@@ -2563,7 +2563,7 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 		if fmt.Sprintf("%x", t.From) != address {
 			from = utils.FormatAddressAsLink(t.From, "", false, false)
 		}
-		to := utils.FormatAddressWithLimits(t.To, "", false, "", 11, 0, false)
+		to := utils.FormatAddressWithLimits(t.To, "", false, "", 13, 0, false)
 		if fmt.Sprintf("%x", t.To) != address {
 			to = utils.FormatAddressAsLink(t.To, "", false, false)
 		}
