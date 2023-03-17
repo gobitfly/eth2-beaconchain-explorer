@@ -2475,7 +2475,7 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address string, search strin
 
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
-		from := utils.FormatAddressWithLimits(t.From, "", false, "", 11, 0, false)
+		from := utils.FormatAddressWithLimits(t.From, "", false, "", 13, 0, false)
 		if fmt.Sprintf("%x", t.From) != address {
 			from = utils.FormatAddressAsLink(t.From, "", false, false)
 		}
@@ -2559,7 +2559,7 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
-		from := utils.FormatAddressWithLimits(t.From, "", false, "", 11, 0, false)
+		from := utils.FormatAddressWithLimits(t.From, "", false, "", 13, 0, false)
 		if fmt.Sprintf("%x", t.From) != address {
 			from = utils.FormatAddressAsLink(t.From, "", false, false)
 		}
