@@ -534,7 +534,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		if len(result) > 0 {
 			lastDay = result[len(result)-1].Day
 		} else {
-			err = ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats")
+			err = ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats_status")
 			if err != nil {
 				return nil, 0, err
 			}

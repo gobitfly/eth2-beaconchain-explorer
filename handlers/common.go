@@ -44,7 +44,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	latestEpoch := int64(services.LatestEpoch())
 
 	lastDay := 0
-	err := db.WriterDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats")
+	err := db.WriterDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats_status")
 
 	if err != nil {
 		return nil, nil, err
