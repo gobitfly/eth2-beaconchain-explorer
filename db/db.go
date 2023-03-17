@@ -523,6 +523,17 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	return deposits, nil
 }
 
+// UpdateMissedBlocks will update the missed blocks for an epoch range in the database
+func UpdateMissedBlocks(startEpoch, endEpoch uint64) error {
+	_, err := WriterDb.Exec(`UPDATE blocks SET status = '2' WHERE status = '0' AND epoch >= $1 AND epoch <= $2`, startEpoch, endEpoch)
+	return err
+}
+
+func UpdateMissedBlocksInEpochWithSlotCutoff(slot uint64) error {
+	_, err := WriterDb.Exec(`UPDATE blocks SET status = '2' WHERE status = '0' AND epoch = $1 AND slot < $2`, slot/utils.Config.Chain.Config.SlotsPerEpoch, slot)
+	return err
+}
+
 // UpdateCanonicalBlocks will update the blocks for an epoch range in the database
 func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBlock) error {
 	if len(blocks) == 0 {
@@ -1159,21 +1170,6 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 				queries.WriteString(fmt.Sprintf("UPDATE validators SET withdrawalcredentials = '\\x%x' WHERE validatorindex = %d;\n", v.WithdrawalCredentials, c.Index))
 				updates++
 			}
-			// if c.Balance1d != v.Balance1d {
-			// 	// logger.Infof("Balance1d changed for validator %v from %v to %v", v.Index, c.Balance1d, v.Balance1d)
-			// 	queries.WriteString(fmt.Sprintf("UPDATE validators SET balance1d = %d WHERE validatorindex = %d;\n", v.Balance1d.Int64, c.Index))
-			// 	updates++
-			// }
-			// if c.Balance7d != v.Balance7d {
-			// 	// logger.Infof("Balance7d changed for validator %v from %v to %v", v.Index, c.Balance7d, v.Balance7d)
-			// 	queries.WriteString(fmt.Sprintf("UPDATE validators SET balance7d = %d WHERE validatorindex = %d;\n", v.Balance7d.Int64, c.Index))
-			// 	updates++
-			// }
-			// if c.Balance31d != v.Balance31d {
-			// 	// logger.Infof("Balance31d changed for validator %v from %v to %v", v.Index, c.Balance31d, v.Balance31d)
-			// 	queries.WriteString(fmt.Sprintf("UPDATE validators SET balance31d = %d WHERE validatorindex = %d;\n", v.Balance31d.Int64, c.Index))
-			// 	updates++
-			// }
 		}
 	}
 

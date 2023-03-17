@@ -757,7 +757,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			rplm.deposit_type      AS minipool_deposit_type,
 			rplm.status            AS minipool_status,
 			rplm.status_time       AS minipool_status_time,
-			rplm.penalty_count     AS penalty_count,
+			COALESCE(rplm.penalty_count,0)     AS penalty_count,
 			rpln.timezone_location AS node_timezone_location,
 			rpln.rpl_stake         AS node_rpl_stake,
 			rpln.max_rpl_stake     AS node_max_rpl_stake,
@@ -766,6 +766,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			rpln.claimed_smoothing_pool     AS claimed_smoothing_pool,
 			rpln.unclaimed_smoothing_pool   AS unclaimed_smoothing_pool,
 			rpln.unclaimed_rpl_rewards      AS unclaimed_rpl_rewards,
+			COALESCE(node_deposit_balance, 0) AS node_deposit_balance,
+			COALESCE(node_refund_balance, 0) AS node_refund_balance,
+			COALESCE(user_deposit_balance, 0) AS user_deposit_balance,
+			COALESCE(rpln.effective_rpl_stake, 0) as effective_rpl_stake,
+			COALESCE(deposit_credit, 0) AS deposit_credit,
+			COALESCE(is_vacant, false) AS is_vacant,
+			version,
 			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in 
 		FROM validators
 		LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey

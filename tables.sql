@@ -15,9 +15,6 @@ create table validators
     withdrawableepoch          bigint      not null,
     withdrawalcredentials      bytea       not null,
     balance                    bigint      not null,
-    balance1d                  bigint,
-    balance7d                  bigint,
-    balance31d                 bigint,
     balanceactivation          bigint,
     effectivebalance           bigint      not null,
     slashed                    bool        not null,
@@ -73,13 +70,24 @@ create table validator_set
 drop table if exists validator_performance;
 create table validator_performance
 (
-    validatorindex  int    not null,
-    balance         bigint not null,
-    performance1d   bigint not null,
-    performance7d   bigint not null,
-    performance31d  bigint not null,
-    performance365d bigint not null,
-    rank7d          int    not null,
+    validatorindex        int    not null,
+    balance               bigint not null,
+    cl_performance_1d     bigint not null,
+    cl_performance_7d     bigint not null,
+    cl_performance_31d    bigint not null,
+    cl_performance_365d   bigint not null,
+    cl_performance_total  bigint not null,
+    el_performance_1d     bigint not null,
+    el_performance_7d     bigint not null,
+    el_performance_31d    bigint not null,
+    el_performance_365d   bigint not null,
+    el_performance_total  bigint not null,
+    mev_performance_1d    bigint not null,
+    mev_performance_7d    bigint not null,
+    mev_performance_31d   bigint not null,
+    mev_performance_365d  bigint not null,
+    mev_performance_total bigint not null,
+    rank7d                int    not null,
     primary key (validatorindex)
 );
 create index idx_validator_performance_balance on validator_performance (balance);
@@ -157,12 +165,10 @@ create table validator_stats
     withdrawals_amount      bigint,
     cl_rewards_gwei         bigint,
     cl_rewards_gwei_total   bigint,
-    cl_rewards_gwei_31d     bigint,
-    cl_rewards_gwei_7d      bigint,
     el_rewards_wei          decimal,
     el_rewards_wei_total    decimal,
-    el_rewards_wei_31d      decimal,
-    el_rewards_wei_7d       decimal,
+    mev_rewards_wei         decimal,
+    mev_rewards_wei_total   decimal,
     primary key (validatorindex, day)
 );
 create index idx_validator_stats_day on validator_stats (day);
@@ -172,6 +178,7 @@ create table validator_stats_status
 (
     day    int     not null,
     status boolean not null,
+    income_exported boolean not null default false,
     primary key (day)
 );
 
@@ -793,6 +800,11 @@ create table rocketpool_minipools
     status text not null, -- Initialized, Prelaunch, Staking, Withdrawable, Dissolved .. see: https://github.com/rocket-pool/rocketpool/blob/683addf4ac/contracts/types/MinipoolStatus.sol
     status_time timestamp without time zone,
     penalty_count numeric not null default 0,
+    node_deposit_balance numeric,
+    node_refund_balance numeric,
+    user_deposit_balance numeric,
+    is_vacant boolean default false,
+    version int default 0,
     primary key(rocketpool_storage_address, address)
 );
 
@@ -811,6 +823,8 @@ create table rocketpool_nodes
     claimed_smoothing_pool  numeric not null,
     unclaimed_smoothing_pool  numeric not null,
     unclaimed_rpl_rewards numeric not null,
+    effective_rpl_stake numeric not null,
+    deposit_credit numeric,
 
     primary key(rocketpool_storage_address, address)
 );

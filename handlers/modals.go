@@ -56,7 +56,7 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, ev := range types.AddWatchlistEvents {
-			if r.FormValue(string(ev.Event)) == "on" || r.FormValue("all") == "on" {
+			if r.FormValue(string(ev.Event)) == "on" {
 				err := db.AddSubscription(user.UserID, utils.GetNetwork(), ev.Event, hex.EncodeToString(pubkey), 0)
 				if err != nil {
 					logger.WithError(err).Errorf("error adding subscription for user: %v", user.UserID)
@@ -168,15 +168,9 @@ func UserModalManageNotificationModal(w http.ResponseWriter, r *http.Request) {
 	validators := strings.Split(validatorsForm, ",")
 
 	events := make(map[types.EventName]bool, 0)
-
-	events[types.ValidatorIsOfflineEventName] = r.FormValue(string(types.ValidatorIsOfflineEventName)) == "on"
-	events[types.ValidatorMissedProposalEventName] = r.FormValue(string(types.ValidatorMissedProposalEventName)) == "on"
-	events[types.ValidatorExecutedProposalEventName] = r.FormValue(string(types.ValidatorExecutedProposalEventName)) == "on"
-	events[types.ValidatorGotSlashedEventName] = r.FormValue(string(types.ValidatorGotSlashedEventName)) == "on"
-	events[types.SyncCommitteeSoon] = r.FormValue(string(types.SyncCommitteeSoon)) == "on"
-	events[types.ValidatorMissedAttestationEventName] = r.FormValue(string(types.ValidatorMissedAttestationEventName)) == "on"
-
-	all := r.FormValue("all") == "on"
+	for _, ev := range types.AddWatchlistEvents {
+		events[ev.Event] = r.FormValue(string(ev.Event)) == "on"
+	}
 
 	for _, validator := range validators {
 		pubkey, _, err := GetValidatorIndexFrom(validator)
@@ -188,7 +182,7 @@ func UserModalManageNotificationModal(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for eventName, active := range events {
-			if active || all {
+			if active {
 				err := db.AddSubscription(user.UserID, utils.GetNetwork(), eventName, hex.EncodeToString(pubkey), 0)
 				if err != nil {
 					logger.WithError(err).Errorf("error adding subscription for user: %v", user.UserID)

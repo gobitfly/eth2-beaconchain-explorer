@@ -66,6 +66,15 @@
         }
       })
     })
+    $('#AddValidatorWatchlistModal input[type="checkbox"]').on("change", function () {
+      let checked = true
+      document.querySelectorAll('#AddValidatorWatchlistModal input[type="checkbox"]:not(#AddValidatorWatchlistModal-all)').forEach((el) => {
+        if (!el.checked) {
+          checked = false
+        }
+      })
+      document.getElementById("AddValidatorWatchlistModal-all").checked = checked
+    })
   </script>
 {{ end }}
 

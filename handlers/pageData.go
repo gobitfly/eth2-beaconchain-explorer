@@ -330,6 +330,12 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 					Label: "Staking Pools",
 					Links: []types.NavigationLink{
 						{
+							Label:         "Ethermine Staking",
+							Path:          "https://staking.ethermine.org/",
+							CustomIcon:    "ethermine_staking_logo_svg",
+							IsHighlighted: true,
+						},
+						{
 							Label:      "ETH.STORE",
 							Path:       "/ethstore",
 							CustomIcon: "ethermine_stake_logo_svg",
@@ -437,6 +443,12 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 				}, {
 					Label: "Services",
 					Links: []types.NavigationLink{
+						{
+							Label:         "Eversteel",
+							Path:          "https://eversteel.io/",
+							CustomIcon:    "eversteel_logo_svg",
+							IsHighlighted: true,
+						},
 						{
 							Label: "Knowledge Base",
 							Path:  "https://kb.beaconcha.in",
