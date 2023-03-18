@@ -168,10 +168,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 				contractMetadataCache[log.Address] = cmEntry
 			}
 
-			if cmEntry.err != nil || cmEntry.meta == nil {
-				if !wasContractMetadataCached {
-					logger.Warnf("error retrieving abi for contract %v: %v", tx.To(), cmEntry.err)
-				}
+			if cmEntry.err != nil || cmEntry.meta == nil || cmEntry.meta.ABI == nil {
 				eth1Event := &types.Eth1EventData{
 					Address: log.Address,
 					Name:    "",
