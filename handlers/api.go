@@ -1485,7 +1485,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 
 	latestEpoch := services.LatestEpoch()
 
-	latestDay := latestEpoch / 225
+	latestDay := latestEpoch / utils.EpochsPerDay()
 
 	startDay := int64(-1)
 	endDay := int64(latestDay)

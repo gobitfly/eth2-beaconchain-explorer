@@ -386,17 +386,15 @@ func ReadConfig(cfg *types.Config, path string) error {
 		// var prysmParamsConfig *prysmParams.BeaconChainConfig
 		switch cfg.Chain.Name {
 		case "mainnet":
-			// prysmParamsConfig = prysmParams.MainnetConfig().Copy()
 			err = yaml.Unmarshal([]byte(config.MainnetChainYml), &cfg.Chain.Config)
 		case "prater":
-			// prysmParamsConfig = prysmParams.PraterConfig().Copy()
 			err = yaml.Unmarshal([]byte(config.PraterChainYml), &cfg.Chain.Config)
 		case "ropsten":
-			// prysmParamsConfig = prysmParams.RopstenConfig().Copy()
 			err = yaml.Unmarshal([]byte(config.RopstenChainYml), &cfg.Chain.Config)
 		case "sepolia":
-			// prysmParamsConfig = prysmParams.SepoliaConfig().Copy()
 			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
+		case "gnosis":
+			err = yaml.Unmarshal([]byte(config.GnosisChainYml), &cfg.Chain.Config)
 		default:
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
 		}
