@@ -50,6 +50,8 @@ import (
 // Config is the globally accessible configuration
 var Config *types.Config
 
+var ErrRateLimit = errors.New("## RATE LIMIT ##")
+
 var localiser *i18n.I18n
 
 // making sure language files are loaded only once
@@ -822,13 +824,7 @@ func ElementExists(arr []string, el string) bool {
 }
 
 func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
-	meta, err := getABIFromEtherscan(address)
-
-	if err != nil {
-		logrus.Warnf("failed to get abi for contract %x from etherscan: %v", address, err)
-		return nil, fmt.Errorf("contract abi not found")
-	}
-	return meta, nil
+	return getABIFromEtherscan(address)
 }
 
 // func getABIFromSourcify(address []byte) (*types.ContractMetadata, error) {
@@ -875,44 +871,59 @@ func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
 // }
 
 func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
-	httpClient := http.Client{
-		Timeout: time.Second * 5,
-	}
-
 	baseUrl := "api.etherscan.io"
-
 	if Config.Chain.Config.DepositChainID == 5 {
 		baseUrl = "api-goerli.etherscan.io"
 	}
+
+	httpClient := http.Client{Timeout: time.Second * 5}
 	resp, err := httpClient.Get(fmt.Sprintf("https://%s/api?module=contract&action=getsourcecode&address=0x%x&apikey=%s", baseUrl, address, ""))
 	if err != nil {
 		return nil, err
 	}
 
-	if resp.StatusCode == 200 {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-
-		data := &types.EtherscanContractMetadata{}
-		err = json.Unmarshal(body, data)
-		if err != nil {
-			return nil, err
-		}
-
-		contractAbi, err := abi.JSON(strings.NewReader(data.Result[0].Abi))
-		if err != nil {
-			return nil, err
-		}
-		meta := &types.ContractMetadata{}
-		meta.ABIJson = []byte(data.Result[0].Abi)
-		meta.ABI = &contractAbi
-		meta.Name = data.Result[0].ContractName
-		return meta, nil
-	} else {
-		return nil, fmt.Errorf("etherscan contract code not found")
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("StatusCode: '%d', Status: '%s'", resp.StatusCode, resp.Status)
 	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	headerData := &struct {
+		Status  string `json:"status"`
+		Message string `json:"message"`
+	}{}
+	err = json.Unmarshal(body, headerData)
+	if err != nil {
+		return nil, err
+	}
+	if headerData.Status == "0" {
+		if headerData.Message == "NOTOK" {
+			return nil, ErrRateLimit
+		}
+		return nil, fmt.Errorf("%s", headerData.Message)
+	}
+
+	data := &types.EtherscanContractMetadata{}
+	err = json.Unmarshal(body, data)
+	if err != nil {
+		return nil, err
+	}
+	if data.Result[0].Abi == "Contract source code not verified" {
+		return nil, nil
+	}
+
+	contractAbi, err := abi.JSON(strings.NewReader(data.Result[0].Abi))
+	if err != nil {
+		return nil, err
+	}
+	meta := &types.ContractMetadata{}
+	meta.ABIJson = []byte(data.Result[0].Abi)
+	meta.ABI = &contractAbi
+	meta.Name = data.Result[0].ContractName
+	return meta, nil
 }
 
 func FormatThousandsEnglish(number string) string {
