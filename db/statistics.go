@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
@@ -38,7 +39,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	start := time.Now()
 
-	tx, err := WriterDb.Begin()
+	tx, err := WriterDb.Beginx()
 	if err != nil {
 		return err
 	}
@@ -153,27 +154,24 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		}
 
 		logrus.Info(start, end)
-		numArgs := 4
+		numArgs := 3
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
 		for i := start; i <= end; i++ {
 			clRewards := int64(0)
-			elRewards := "0"
 
 			if incomeStats[uint64(i)] != nil {
 				clRewards = incomeStats[uint64(i)].TotalClRewards()
-				elRewards = new(big.Int).SetBytes(incomeStats[uint64(i)].TxFeeRewardWei).String()
 			}
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3, (i-start)*numArgs+4))
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3))
 			valueArgs = append(valueArgs, i)
 			valueArgs = append(valueArgs, day)
 			valueArgs = append(valueArgs, clRewards)
-			valueArgs = append(valueArgs, elRewards)
 		}
 		stmt := fmt.Sprintf(`
-		insert into validator_stats (validatorindex, day, cl_rewards_gwei, el_rewards_wei) VALUES
+		insert into validator_stats (validatorindex, day, cl_rewards_gwei) VALUES
 		%s
-		on conflict (validatorindex, day) do update set cl_rewards_gwei = excluded.cl_rewards_gwei, el_rewards_wei = excluded.el_rewards_wei;`,
+		on conflict (validatorindex, day) do update set cl_rewards_gwei = excluded.cl_rewards_gwei;`,
 			strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
@@ -185,6 +183,89 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	logger.Infof("export completed, took %v", time.Since(start))
 	start = time.Now()
+
+	logger.Infof("exporting mev & el rewards")
+
+	type Container struct {
+		Slot            uint64 `db:"slot"`
+		ExecBlockNumber uint64 `db:"exec_block_number"`
+		Proposer        uint64 `db:"proposer"`
+		TxFeeReward     *big.Int
+		MevReward       *big.Int
+	}
+
+	blocks := make([]*Container, 0)
+	blocksMap := make(map[uint64]*Container)
+
+	err = tx.Select(&blocks, "SELECT slot, exec_block_number, proposer FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND exec_block_number > 0 AND status = '1'", firstEpoch, lastEpoch)
+	if err != nil {
+		return fmt.Errorf("error retrieving blocks data: %v", err)
+	}
+
+	numbers := make([]uint64, 0, len(blocks))
+
+	for _, b := range blocks {
+		numbers = append(numbers, b.ExecBlockNumber)
+		blocksMap[b.ExecBlockNumber] = b
+	}
+
+	blocksData, err := BigtableClient.GetBlocksIndexedMultiple(numbers, uint64(len(numbers)))
+	if err != nil {
+		return fmt.Errorf("error in GetBlocksIndexedMultiple: %v", err)
+	}
+
+	relaysData, err := GetRelayDataForIndexedBlocks(blocksData)
+	if err != nil {
+		return fmt.Errorf("error in GetRelayDataForIndexedBlocks: %v", err)
+	}
+
+	proposerRewards := make(map[uint64]*Container)
+	for _, b := range blocksData {
+		proposer := blocksMap[b.Number].Proposer
+
+		if proposerRewards[proposer] == nil {
+			proposerRewards[proposer] = &Container{
+				MevReward:   big.NewInt(0),
+				TxFeeReward: big.NewInt(0),
+			}
+		}
+
+		txFeeReward := new(big.Int).SetBytes(b.TxReward)
+		proposerRewards[proposer].TxFeeReward = new(big.Int).Add(txFeeReward, proposerRewards[proposer].TxFeeReward)
+
+		mevReward, ok := relaysData[common.BytesToHash(b.Hash)]
+
+		if ok {
+			proposerRewards[proposer].MevReward = new(big.Int).Add(mevReward.MevBribe.BigInt(), proposerRewards[proposer].MevReward)
+		} else {
+			proposerRewards[proposer].MevReward = new(big.Int).Add(txFeeReward, proposerRewards[proposer].MevReward)
+		}
+	}
+	logrus.Infof("retrieved mev / el rewards data for %v proposer", len(proposerRewards))
+
+	numArgs := 4
+	valueStrings := make([]string, 0, len(proposerRewards))
+	valueArgs := make([]interface{}, 0, len(proposerRewards)*numArgs)
+	i := 0
+	for proposer, rewards := range proposerRewards {
+
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
+		valueArgs = append(valueArgs, proposer)
+		valueArgs = append(valueArgs, day)
+		valueArgs = append(valueArgs, rewards.TxFeeReward.String())
+		valueArgs = append(valueArgs, rewards.MevReward.String())
+
+		i++
+	}
+	stmt := fmt.Sprintf(`
+	insert into validator_stats (validatorindex, day, el_rewards_wei, mev_rewards_wei) VALUES
+	%s
+	on conflict (validatorindex, day) do update set el_rewards_wei = excluded.el_rewards_wei, mev_rewards_wei = excluded.mev_rewards_wei;`,
+		strings.Join(valueStrings, ","))
+	_, err = tx.Exec(stmt, valueArgs...)
+	if err != nil {
+		return err
+	}
 
 	logrus.Infof("exporting 7d income stats")
 	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, cl_rewards_gwei_7d, el_rewards_wei_7d) 
