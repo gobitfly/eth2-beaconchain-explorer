@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -44,7 +45,8 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	latestEpoch := int64(services.LatestEpoch())
 
 	lastDay := 0
-	err := db.WriterDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats")
+	err := db.WriterDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats_status")
+
 	if err != nil {
 		return nil, nil, err
 	}
@@ -358,6 +360,10 @@ func GetCurrentPriceFormatted(r *http.Request) template.HTML {
 	return utils.FormatAddCommas(uint64(price))
 }
 
+func GetCurrentPriceKFormatted(r *http.Request) template.HTML {
+	return utils.KFormatterEthPrice(GetCurrentPrice(r))
+}
+
 func GetTruncCurrentPriceFormatted(r *http.Request) string {
 	price := GetCurrentPrice(r)
 	symbol := GetCurrencySymbol(r)
@@ -456,7 +462,7 @@ func GetDataTableState(user *types.User, session *utils.CustomSession, tableKey 
 	}
 	if user.Authenticated {
 		state, err := db.GetDataTablesState(user.UserID, tableKey)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			logger.Errorf("error getting data table state from db: %v", err)
 			return state
 		}

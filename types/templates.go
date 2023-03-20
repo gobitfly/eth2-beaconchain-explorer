@@ -21,7 +21,7 @@ import (
 // PageData is a struct to hold web page data
 type PageData struct {
 	Active                string
-	HeaderAd              bool
+	AdConfigurations      []*AdConfig
 	Meta                  *Meta
 	ShowSyncingMessage    bool
 	User                  *User
@@ -41,40 +41,65 @@ type PageData struct {
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
 	// IsUserClientUpdated   func(uint64) bool
-	ChainConfig        ChainConfig
-	Lang               string
-	NoAds              bool
-	Debug              bool
-	DebugTemplates     []string
-	DebugSession       map[string]interface{}
-	GasNow             *GasNowPageData
-	GlobalNotification template.HTML
+	ChainConfig         ChainConfig
+	Lang                string
+	NoAds               bool
+	Debug               bool
+	DebugTemplates      []string
+	DebugSession        map[string]interface{}
+	GasNow              *GasNowPageData
+	GlobalNotification  template.HTML
+	AvailableCurrencies []string
+	MainMenuItems       []MainMenuItem
+}
+
+type MainMenuItem struct {
+	Label        string
+	Path         string
+	IsActive     bool
+	HasBigGroups bool // if HasBigGroups is set to true then the NavigationGroups will be ordered horizontally and their Label will be shown
+	Groups       []NavigationGroup
+}
+
+type NavigationGroup struct {
+	Label string // only used for "BigGroups"
+	Links []NavigationLink
+}
+
+type NavigationLink struct {
+	Label         string
+	Path          string
+	CustomIcon    string
+	Icon          string
+	IsHidden      bool
+	IsHighlighted bool
 }
 
 type PageRates struct {
-	EthPrice              float64
-	EthRoundPrice         uint64
-	EthTruncPrice         template.HTML
-	UsdRoundPrice         uint64
-	UsdTruncPrice         template.HTML
-	EurRoundPrice         uint64
-	EurTruncPrice         template.HTML
-	GbpRoundPrice         uint64
-	GbpTruncPrice         template.HTML
-	CnyRoundPrice         uint64
-	CnyTruncPrice         template.HTML
-	RubRoundPrice         uint64
-	RubTruncPrice         template.HTML
-	CadRoundPrice         uint64
-	CadTruncPrice         template.HTML
-	AudRoundPrice         uint64
-	AudTruncPrice         template.HTML
-	JpyRoundPrice         uint64
-	JpyTruncPrice         template.HTML
-	Currency              string
-	CurrentPriceFormatted template.HTML
-	CurrentSymbol         string
-	ExchangeRate          float64
+	EthPrice               float64
+	EthRoundPrice          uint64
+	EthTruncPrice          template.HTML
+	UsdRoundPrice          uint64
+	UsdTruncPrice          template.HTML
+	EurRoundPrice          uint64
+	EurTruncPrice          template.HTML
+	GbpRoundPrice          uint64
+	GbpTruncPrice          template.HTML
+	CnyRoundPrice          uint64
+	CnyTruncPrice          template.HTML
+	RubRoundPrice          uint64
+	RubTruncPrice          template.HTML
+	CadRoundPrice          uint64
+	CadTruncPrice          template.HTML
+	AudRoundPrice          uint64
+	AudTruncPrice          template.HTML
+	JpyRoundPrice          uint64
+	JpyTruncPrice          template.HTML
+	Currency               string
+	CurrentPriceFormatted  template.HTML
+	CurrentPriceKFormatted template.HTML
+	CurrentSymbol          string
+	ExchangeRate           float64
 }
 
 // Meta is a struct to hold metadata about the page
@@ -88,6 +113,7 @@ type Meta struct {
 	Tdata2      string
 	GATag       string
 	NoTrack     bool
+	Templates   string
 }
 
 // LatestState is a struct to hold data for the banner
@@ -182,6 +208,7 @@ type SlotVizPageData struct {
 	Epochs        []*SlotVizEpochs
 	Selector      string
 	HardforkEpoch uint64
+	HardforkName  string
 }
 
 type IndexPageDataEpochs struct {
@@ -275,6 +302,7 @@ type ValidatorsPageData struct {
 	VoluntaryExitsCount  uint64
 	UnknownCount         uint64
 	Validators           []*ValidatorsPageDataValidators
+	CappellaHasHappened  bool
 }
 
 // ValidatorsPageDataValidators is a struct to hold data about validators for the validators page
@@ -310,8 +338,6 @@ type ValidatorPageData struct {
 	WithdrawCredentials                      []byte `db:"withdrawalcredentials"`
 	CurrentBalance                           uint64 `db:"balance"`
 	BalanceActivation                        uint64 `db:"balanceactivation"`
-	Balance7d                                uint64 `db:"balance7d"`
-	Balance31d                               uint64 `db:"balance31d"`
 	EffectiveBalance                         uint64 `db:"effectivebalance"`
 	Slashed                                  bool   `db:"slashed"`
 	SlashedBy                                uint64
@@ -395,7 +421,6 @@ type ValidatorPageData struct {
 	LongestAttestationStreak                 uint64
 	IsRocketpool                             bool
 	Rocketpool                               *RocketpoolValidatorPageData
-	NoAds                                    bool
 	ShowMultipleWithdrawalCredentialsWarning bool
 	CappellaHasHappened                      bool
 	BLSChange                                *BLSChange
@@ -421,8 +446,15 @@ type RocketpoolValidatorPageData struct {
 	SmoothingUnclaimed   *string    `db:"unclaimed_smoothing_pool"`
 	UnclaimedRPL         *string    `db:"unclaimed_rpl_rewards"`
 	SmoothingPoolOptIn   bool       `db:"smoothing_pool_opted_in"`
-	PenaltyCount         *uint64    `db:"penalty_count"`
+	PenaltyCount         int        `db:"penalty_count"`
 	RocketscanUrl        string     `db:"-"`
+	NodeDepositBalance   *string    `db:"node_deposit_balance"`
+	NodeRefundBalance    *string    `db:"node_refund_balance"`
+	UserDepositBalance   *string    `db:"user_deposit_balance"`
+	IsVacant             bool       `db:"is_vacant"`
+	Version              *string    `db:"version"`
+	NodeDepositCredit    *string    `db:"deposit_credit"`
+	EffectiveRPLStake    *string    `db:"effective_rpl_stake"`
 }
 
 type ValidatorStatsTablePageData struct {
@@ -1257,7 +1289,6 @@ type MobilePricing struct {
 type StakeWithUsPageData struct {
 	FlashMessage string
 	RecaptchaKey string
-	NoAds        bool
 }
 type RateLimitError struct {
 	TimeLeft time.Duration
@@ -1313,6 +1344,7 @@ type RocketpoolPageDataMinipool struct {
 	Status                   string    `db:"status"`
 	StatusTime               time.Time `db:"status_time"`
 	PenaltyCount             uint64    `db:"penalty_count"`
+	DepositEth               int       `db:"node_deposit_balance"`
 }
 
 type RocketpoolPageDataNode struct {
@@ -1328,6 +1360,7 @@ type RocketpoolPageDataNode struct {
 	UnclaimedSmoothingPool   string `db:"unclaimed_smoothing_pool"`
 	UnclaimedRplRewards      string `db:"unclaimed_rpl_rewards"`
 	SmoothingPoolOptIn       bool   `db:"smoothing_pool_opted_in"`
+	DepositCredit            string `db:"deposit_credit"`
 }
 
 type RocketpoolPageDataDAOProposal struct {
@@ -1385,6 +1418,13 @@ type UserWebhookRow struct {
 	Events       []EventNameCheckbox     `db:"event_names" json:"-"`
 	Discord      bool
 	CsrfField    template.HTML
+}
+
+type AdConfigurationPageData struct {
+	Configurations []*AdConfig
+	CsrfField      template.HTML
+	New            AdConfig
+	TemplateNames  []string
 }
 
 type UserWebhookRowError struct {
@@ -1884,6 +1924,19 @@ type ValidatorsBLSChange struct {
 	Address                  []byte `db:"address" json:"address,omitempty"`
 	Signature                []byte `db:"signature" json:"signature,omitempty"`
 	WithdrawalCredentialsOld []byte `db:"withdrawalcredentials" json:"withdrawalcredentials,omitempty"`
+}
+
+// AdConfig is a struct to hold the configuration for one specific ad banner placement
+type AdConfig struct {
+	Id              string `db:"id"`
+	TemplateId      string `db:"template_id"`
+	JQuerySelector  string `db:"jquery_selector"`
+	InsertMode      string `db:"insert_mode"`
+	RefreshInterval uint64 `db:"refresh_interval"`
+	Enabled         bool   `db:"enabled"`
+	ForAllUsers     bool   `db:"for_all_users"`
+	BannerId        uint64 `db:"banner_id"`
+	HtmlContent     string `db:"html_content"`
 }
 
 type WithdrawalsPageData struct {

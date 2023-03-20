@@ -25,7 +25,6 @@ var thresholdHexLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{5,96}$`)
 
 // Search handles search requests
 func Search(w http.ResponseWriter, r *http.Request) {
-	var searchNotFoundTemplate = templates.GetTemplate("layout.html", "searchnotfound.html")
 
 	search := r.FormValue("search")
 
@@ -45,8 +44,9 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/address/"+search, http.StatusMovedPermanently)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
-		data := InitPageData(w, r, "search", "/search", "")
-		data.HeaderAd = true
+		templateFiles := append(layoutTemplateFiles, "searchnotfound.html")
+		var searchNotFoundTemplate = templates.GetTemplate(templateFiles...)
+		data := InitPageData(w, r, "search", "/search", "", templateFiles)
 
 		if handleTemplateError(w, r, "search.go", "Search", "", searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed

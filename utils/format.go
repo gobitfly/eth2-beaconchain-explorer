@@ -401,9 +401,9 @@ func FormatEth1AddressStringLowerCase(addr []byte) template.HTML {
 
 // FormatEth1Address will return the eth1-address formated as html
 func FormatEth1Address(addr []byte) template.HTML {
-	copyBtn := CopyButton(hex.EncodeToString(addr))
-	eth1Addr := common.BytesToAddress(addr)
-	return template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
+	eth1Addr := FixAddressCasing(fmt.Sprintf("%x", addr))
+	copyBtn := CopyButton(eth1Addr)
+	return template.HTML(fmt.Sprintf("<a href=\"/address/%s\" class=\"text-monospace\">%s…</a>%s", eth1Addr, eth1Addr[:8], copyBtn))
 }
 
 // FormatEth1Block will return the eth1-block formated as html

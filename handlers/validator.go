@@ -26,6 +26,7 @@ import (
 	"github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
 
@@ -36,8 +37,7 @@ var validatorEditFlash = "edit_validator_flash"
 
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
-	var validatorTemplate = templates.GetTemplate(
-		"layout.html",
+	validatorTemplateFiles := append(layoutTemplateFiles,
 		"validator/validator.html",
 		"validator/heading.html",
 		"validator/tables.html",
@@ -46,12 +46,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		"validator/overview.html",
 		"validator/charts.html",
 		"validator/countdown.html",
-
 		"components/flashMessage.html",
-		"components/rocket.html",
-		"components/bannerValidator.html",
-	)
-	var validatorNotFoundTemplate = templates.GetTemplate("layout.html", "validator/validatornotfound.html")
+		"components/rocket.html")
+	validatorNotFoundTemplateFiles := append(layoutTemplateFiles, "validator/validatornotfound.html")
+	var validatorTemplate = templates.GetTemplate(validatorTemplateFiles...)
+	var validatorNotFoundTemplate = templates.GetTemplate(validatorNotFoundTemplateFiles...)
 
 	currency := GetCurrency(r)
 
@@ -104,11 +103,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.PendingCount = *pendingCount
 	validatorPageData.InclusionDelay = int64((utils.Config.Chain.Config.Eth1FollowDistance*utils.Config.Chain.Config.SecondsPerEth1Block+utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch*utils.Config.Chain.Config.EpochsPerEth1VotingPeriod)/3600) + 1
 
-	data := InitPageData(w, r, "validators", "/validators", "")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "validators", "/validators", "", validatorTemplateFiles)
 	validatorPageData.NetworkStats = services.LatestIndexPageData()
 	validatorPageData.User = data.User
-	validatorPageData.NoAds = data.NoAds
 
 	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
 	if err != nil {
@@ -161,7 +158,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(deposits)
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
 				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
-				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
+				data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", index), "", validatorNotFoundTemplateFiles)
 
 				if handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 					return // an error has occurred and was processed
@@ -222,6 +219,25 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			validatorPageData.Watchlist = watchlist
+
+			if data.User.Authenticated {
+				events := make([]types.EventNameCheckbox, 0)
+				for _, ev := range types.AddWatchlistEvents {
+					events = append(events, types.EventNameCheckbox{
+						EventLabel: ev.Desc,
+						EventName:  ev.Event,
+						Active:     false,
+						Warning:    ev.Warning,
+						Info:       ev.Info,
+					})
+				}
+				validatorPageData.AddValidatorWatchlistModal = &types.AddValidatorWatchlistModal{
+					Events:         events,
+					ValidatorIndex: validatorPageData.Index,
+					CsrfField:      csrf.TemplateField(r),
+				}
+			}
+
 			data.Data = validatorPageData
 			if utils.IsApiRequest(r) {
 				w.Header().Set("Content-Type", "application/json")
@@ -279,6 +295,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validators.validatorindex = $1`, index)
 
 	if err == sql.ErrNoRows {
+		data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", index), "", validatorNotFoundTemplateFiles)
 		if handleTemplateError(w, r, "validator.go", "Validator", "no rows", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
@@ -330,6 +347,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AddValidatorWatchlistModal = &types.AddValidatorWatchlistModal{
 			Events:         events,
 			ValidatorIndex: validatorPageData.Index,
+			CsrfField:      csrf.TemplateField(r),
 		}
 	}
 
@@ -491,16 +509,16 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					tableData := make([][]interface{}, 0, 1)
 					var withdrawalCredentialsTemplate template.HTML
 					if address != nil {
-						withdrawalCredentialsTemplate = template.HTML(fmt.Sprintf(`<a href="/address/0x%x"><span class="text-muted">%s</span></a>`, address, utils.FormatHash(validatorPageData.WithdrawCredentials)))
+						withdrawalCredentialsTemplate = template.HTML(fmt.Sprintf(`<a href="/address/0x%x"><span class="text-muted">%s</span></a>`, address, utils.FormatAddress(address, nil, "", false, false, true)))
 					} else {
 						withdrawalCredentialsTemplate = `<span class="text-muted">N/A</span>`
 					}
 					tableData = append(tableData, []interface{}{
-						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
-						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 						template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
 						withdrawalCredentialsTemplate,
-						template.HTML(fmt.Sprintf(`<span class="text-muted">%s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(validatorPageData.CurrentBalance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(validatorPageData.CurrentBalance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
 					})
 
 					validatorPageData.NextWithdrawalRow = tableData
@@ -804,7 +822,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			rplm.deposit_type      AS minipool_deposit_type,
 			rplm.status            AS minipool_status,
 			rplm.status_time       AS minipool_status_time,
-			rplm.penalty_count     AS penalty_count,
+			COALESCE(rplm.penalty_count,0)     AS penalty_count,
 			rpln.timezone_location AS node_timezone_location,
 			rpln.rpl_stake         AS node_rpl_stake,
 			rpln.max_rpl_stake     AS node_max_rpl_stake,
@@ -813,6 +831,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			rpln.claimed_smoothing_pool     AS claimed_smoothing_pool,
 			rpln.unclaimed_smoothing_pool   AS unclaimed_smoothing_pool,
 			rpln.unclaimed_rpl_rewards      AS unclaimed_rpl_rewards,
+			COALESCE(node_deposit_balance, 0) AS node_deposit_balance,
+			COALESCE(node_refund_balance, 0) AS node_refund_balance,
+			COALESCE(user_deposit_balance, 0) AS user_deposit_balance,
+			COALESCE(rpln.effective_rpl_stake, 0) as effective_rpl_stake,
+			COALESCE(deposit_credit, 0) AS deposit_credit,
+			COALESCE(is_vacant, false) AS is_vacant,
+			version,
 			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in 
 		FROM validators
 		LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
@@ -1724,8 +1749,8 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 // Validator returns validator data using a go template
 func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
-
-	var validatorStatsTableTemplate = templates.GetTemplate("layout.html", "validator_stats_table.html")
+	templateFiles := append(layoutTemplateFiles, "validator_stats_table.html")
+	var validatorStatsTableTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
@@ -1733,8 +1758,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	var index uint64
 	var err error
 
-	data := InitPageData(w, r, "validators", "/validators", "")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "validators", "/validators", "", templateFiles)
 
 	// Request came with a hash
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {

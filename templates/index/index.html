@@ -186,7 +186,7 @@
                 })
             }
         })
-</script> {{ if .SlotVizData }}{{ template "SlotViz" .SlotVizData }}{{ end }}
+</script>
 {{ end }}
 
 {{ define "css" }}
@@ -377,7 +377,7 @@
         {{ end }}
         {{ template "hero" . }}
       {{ end }}
-      {{ if not .NoAds }}{{ template "banner" }}{{ end }}
+      <div id="r-banner" info="{{ .Meta.Templates }}"></div>
       {{ with .Data }}
         {{ if and (not .Genesis) (not .GenesisPeriod) }}
           {{ template "preGenesis" $ }}
@@ -389,4 +389,5 @@
       {{ end }}
     </div>
   </div>
+  {{ if .Data.SlotVizData }}{{ template "SlotViz" . }}{{ end }}
 {{ end }}

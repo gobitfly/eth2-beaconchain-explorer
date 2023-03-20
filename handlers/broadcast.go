@@ -13,10 +13,11 @@ import (
 )
 
 func Broadcast(w http.ResponseWriter, r *http.Request) {
-	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "broadcast.html", "validator/withdrawalOverviewRow.html")
+	templateFiles := append(layoutTemplateFiles, "broadcast.html", "validator/withdrawalOverviewRow.html")
+	var tpl = templates.GetTemplate(templateFiles...)
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "tools", "/tools/broadcast", "Broadcast")
+	data := InitPageData(w, r, "tools", "/tools/broadcast", "Broadcast", templateFiles)
 	pageData := &types.BroadcastPageData{}
 	pageData.Stats = services.GetLatestStats()
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
@@ -76,10 +77,11 @@ func BroadcastPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
-	var tpl = templates.GetTemplate("layout.html", "components/bannerGeneric.html", "broadcaststatus.html")
+	templateFiles := append(layoutTemplateFiles, "broadcaststatus.html")
+	var tpl = templates.GetTemplate(templateFiles...)
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "tools", "/tools/broadcast/status", "Broadcast Status")
+	data := InitPageData(w, r, "tools", "/tools/broadcast/status", "Broadcast Status", templateFiles)
 
 	vars := mux.Vars(r)
 

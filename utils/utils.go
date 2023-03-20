@@ -50,6 +50,8 @@ import (
 // Config is the globally accessible configuration
 var Config *types.Config
 
+var ErrRateLimit = errors.New("## RATE LIMIT ##")
+
 var localiser *i18n.I18n
 
 // making sure language files are loaded only once
@@ -70,6 +72,7 @@ var HashLikeRegex = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
 func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"includeHTML":                             IncludeHTML,
+		"includeSvg":                              IncludeSvg,
 		"formatHTML":                              FormatMessageToHtml,
 		"formatBalance":                           FormatBalance,
 		"formatBalanceChange":                     FormatBalanceChange,
@@ -82,6 +85,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatSlotToTimestamp":                   FormatSlotToTimestamp,
 		"formatDepositAmount":                     FormatDepositAmount,
 		"formatEpoch":                             FormatEpoch,
+		"fixAddressCasing":                        FixAddressCasing,
 		"formatAddressLong":                       FormatAddressLong,
 		"formatHashLong":                          FormatHashLong,
 		"formatEth1Block":                         FormatEth1Block,
@@ -132,6 +136,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatAddressAsLink":                     FormatAddressAsLink,
 		"formatBuilder":                           FormatBuilder,
 		"formatDifficulty":                        FormatDifficulty,
+		"getCurrencyLabel":                        price.GetCurrencyLabel,
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
@@ -429,15 +434,29 @@ func ReadConfig(cfg *types.Config, path string) error {
 		switch cfg.Chain.Name {
 		case "mainnet":
 			cfg.Chain.GenesisTimestamp = 1606824023
-			cfg.Chain.GenesisValidatorsRoot = "0x4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"
 		case "prater":
 			cfg.Chain.GenesisTimestamp = 1616508000
-			cfg.Chain.GenesisValidatorsRoot = "0x043db0d9a83813551ee2f33450d23797757d430911a9320530ad8a0eabc43efb"
 		case "sepolia":
 			cfg.Chain.GenesisTimestamp = 1655733600
-			cfg.Chain.GenesisValidatorsRoot = "0xd8ea171f3c94aea21ebc42a1ed61052acf3f9209c00e4efbaaddac09ed9b8078"
+		case "zhejiang":
+			cfg.Chain.GenesisTimestamp = 1675263600
 		default:
 			return fmt.Errorf("tried to set known genesis-timestamp, but unknown chain-name")
+		}
+	}
+
+	if cfg.Chain.GenesisValidatorsRoot == "" {
+		switch cfg.Chain.Name {
+		case "mainnet":
+			cfg.Chain.GenesisValidatorsRoot = "0x4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"
+		case "prater":
+			cfg.Chain.GenesisValidatorsRoot = "0x043db0d9a83813551ee2f33450d23797757d430911a9320530ad8a0eabc43efb"
+		case "sepolia":
+			cfg.Chain.GenesisValidatorsRoot = "0xd8ea171f3c94aea21ebc42a1ed61052acf3f9209c00e4efbaaddac09ed9b8078"
+		case "zhejiang":
+			cfg.Chain.GenesisValidatorsRoot = "0x53a92d8f2bb1d85f62d16a156e6ebcd1bcaba652d0900b2c2f387826f3481f6f"
+		default:
+			return fmt.Errorf("tried to set known genesis-validators-root, but unknown chain-name")
 		}
 	}
 
@@ -450,6 +469,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 
 	logrus.WithFields(logrus.Fields{
 		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
+		"genesisValidatorsRoot":  cfg.Chain.GenesisValidatorsRoot,
 		"configName":             cfg.Chain.Config.ConfigName,
 		"depositChainID":         cfg.Chain.Config.DepositChainID,
 		"depositNetworkID":       cfg.Chain.Config.DepositNetworkID,
@@ -808,13 +828,7 @@ func ElementExists(arr []string, el string) bool {
 }
 
 func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
-	meta, err := getABIFromEtherscan(address)
-
-	if err != nil {
-		logrus.Warnf("failed to get abi for contract %x from etherscan: %v", address, err)
-		return nil, fmt.Errorf("contract abi not found")
-	}
-	return meta, nil
+	return getABIFromEtherscan(address)
 }
 
 // func getABIFromSourcify(address []byte) (*types.ContractMetadata, error) {
@@ -861,44 +875,59 @@ func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
 // }
 
 func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
-	httpClient := http.Client{
-		Timeout: time.Second * 5,
-	}
-
 	baseUrl := "api.etherscan.io"
-
 	if Config.Chain.Config.DepositChainID == 5 {
 		baseUrl = "api-goerli.etherscan.io"
 	}
+
+	httpClient := http.Client{Timeout: time.Second * 5}
 	resp, err := httpClient.Get(fmt.Sprintf("https://%s/api?module=contract&action=getsourcecode&address=0x%x&apikey=%s", baseUrl, address, ""))
 	if err != nil {
 		return nil, err
 	}
 
-	if resp.StatusCode == 200 {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-
-		data := &types.EtherscanContractMetadata{}
-		err = json.Unmarshal(body, data)
-		if err != nil {
-			return nil, err
-		}
-
-		contractAbi, err := abi.JSON(strings.NewReader(data.Result[0].Abi))
-		if err != nil {
-			return nil, err
-		}
-		meta := &types.ContractMetadata{}
-		meta.ABIJson = []byte(data.Result[0].Abi)
-		meta.ABI = &contractAbi
-		meta.Name = data.Result[0].ContractName
-		return meta, nil
-	} else {
-		return nil, fmt.Errorf("etherscan contract code not found")
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("StatusCode: '%d', Status: '%s'", resp.StatusCode, resp.Status)
 	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	headerData := &struct {
+		Status  string `json:"status"`
+		Message string `json:"message"`
+	}{}
+	err = json.Unmarshal(body, headerData)
+	if err != nil {
+		return nil, err
+	}
+	if headerData.Status == "0" {
+		if headerData.Message == "NOTOK" {
+			return nil, ErrRateLimit
+		}
+		return nil, fmt.Errorf("%s", headerData.Message)
+	}
+
+	data := &types.EtherscanContractMetadata{}
+	err = json.Unmarshal(body, data)
+	if err != nil {
+		return nil, err
+	}
+	if data.Result[0].Abi == "Contract source code not verified" {
+		return nil, nil
+	}
+
+	contractAbi, err := abi.JSON(strings.NewReader(data.Result[0].Abi))
+	if err != nil {
+		return nil, err
+	}
+	meta := &types.ContractMetadata{}
+	meta.ABIJson = []byte(data.Result[0].Abi)
+	meta.ABI = &contractAbi
+	meta.Name = data.Result[0].ContractName
+	return meta, nil
 }
 
 func FormatThousandsEnglish(number string) string {
@@ -942,7 +971,7 @@ func FormatThousandsEnglish(number string) string {
 // returns two transparent base64 encoded img strings for dark and light theme
 // the first has a black QR code the second a white QR code
 func GenerateQRCodeForAddress(address []byte) (string, string, error) {
-	q, err := qrcode.New(fmt.Sprintf("0x%x", address), qrcode.Medium)
+	q, err := qrcode.New(FixAddressCasing(fmt.Sprintf("%x", address)), qrcode.Medium)
 	if err != nil {
 		return "", "", err
 	}

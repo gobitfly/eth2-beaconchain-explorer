@@ -58,8 +58,8 @@ func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, e
 }
 
 func Heatmap(w http.ResponseWriter, r *http.Request) {
-
-	var heatmapTemplate = templates.GetTemplate("layout.html", "heatmap.html")
+	templateFiles := append(layoutTemplateFiles, "heatmap.html")
+	var heatmapTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators
@@ -137,8 +137,7 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 
 	logger.Infof("retrieved income history of %v validators in %v", len(incomeData), time.Since(start))
 
-	data := InitPageData(w, r, "dashboard", "/heatmap", "Validator Heatmap")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "dashboard", "/heatmap", "Validator Heatmap", templateFiles)
 	data.Data = heatmapData
 
 	if handleTemplateError(w, r, "dashboard.go", "Heatmap", "", heatmapTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -147,8 +146,8 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 }
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
-
-	var dashboardTemplate = templates.GetTemplate("layout.html", "dashboard.html", "dashboard/tables.html")
+	templateFiles := append(layoutTemplateFiles, "dashboard.html", "dashboard/tables.html")
+	var dashboardTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators
@@ -159,8 +158,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	epoch := services.LatestEpoch()
 	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
 
-	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", templateFiles)
 	data.Data = dashboardData
 
 	if handleTemplateError(w, r, "dashboard.go", "Dashboard", "", dashboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -536,7 +534,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			tableData[i] = append(tableData[i], nil)
 		}
 
-		if v.LastAttestationSlot != nil {
+		if v.LastAttestationSlot != nil && *v.LastAttestationSlot != 0 {
 			tableData[i] = append(tableData[i], []interface{}{
 				*v.LastAttestationSlot,
 				utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix(),

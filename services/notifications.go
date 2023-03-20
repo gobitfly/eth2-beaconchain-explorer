@@ -1149,7 +1149,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 }
 
 func getUrlPart(validatorIndex uint64) string {
-	return fmt.Sprintf(` For more information visit: https://%s/validator/%v.`, utils.Config.Frontend.SiteDomain, validatorIndex)
+	return fmt.Sprintf(` For more information visit: <a href='https://%s/validator/%v'>https://%s/validator/%v</a>.`, utils.Config.Frontend.SiteDomain, validatorIndex, utils.Config.Frontend.SiteDomain, validatorIndex)
 }
 
 func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName, epoch uint64) error {
@@ -2000,10 +2000,10 @@ func collectWithdrawalNotifications(notificationsByUserID map[uint64]map[types.E
 						continue
 					}
 				}
-				// logger.Infof("creating %v notification for validator %v in epoch %v", types.ValidatorReceivedWithdrawalEventName, event.Index, epoch)
+				// logger.Infof("creating %v notification for validator %v in epoch %v", types.ValidatorReceivedWithdrawalEventName, event.ValidatorIndex, epoch)
 				n := &validatorWithdrawalNotification{
 					SubscriptionID:  *sub.ID,
-					ValidatorIndex:  event.Index,
+					ValidatorIndex:  event.ValidatorIndex,
 					Epoch:           epoch,
 					Slot:            event.Slot,
 					Amount:          event.Amount,

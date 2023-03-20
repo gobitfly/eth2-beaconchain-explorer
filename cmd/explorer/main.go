@@ -295,7 +295,8 @@ func main() {
 		apiV1Router.HandleFunc("/sync_committee/{period}", handlers.ApiSyncCommittee).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/eth1deposit/{txhash}", handlers.ApiEth1Deposit).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/leaderboard", handlers.ApiValidatorLeaderboard).Methods("GET", "OPTIONS")
-		apiV1Router.HandleFunc("/validator/{indexOrPubkey}", handlers.ApiValidator).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}", handlers.ApiValidatorGet).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}", handlers.ApiValidatorPost).Methods("POST", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/withdrawals", handlers.ApiValidatorWithdrawals).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/blsChange", handlers.ApiValidatorBlsChange).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/balancehistory", handlers.ApiValidatorBalanceHistory).Methods("GET", "OPTIONS")
@@ -536,11 +537,7 @@ func main() {
 
 			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
-			if utils.Config.Frontend.PoolsUpdater.Enabled {
-				router.HandleFunc("/pools", handlers.Pools).Methods("GET")
-				// router.HandleFunc("/pools/streak/current", handlers.GetAvgCurrentStreak).Methods("GET")
-				// router.HandleFunc("/pools/chart/income_per_eth", handlers.GetIncomePerEthChart).Methods("GET")
-			}
+			router.HandleFunc("/pools", handlers.Pools).Methods("GET")
 			router.HandleFunc("/relays", handlers.Relays).Methods("GET")
 			router.HandleFunc("/pools/rocketpool", handlers.PoolsRocketpool).Methods("GET")
 			router.HandleFunc("/pools/rocketpool/data/minipools", handlers.PoolsRocketpoolDataMinipools).Methods("GET")
@@ -609,6 +606,9 @@ func main() {
 			authRouter.HandleFunc("/notifications/bundled/subscribe", handlers.MultipleUsersNotificationsSubscribeWeb).Methods("POST", "OPTIONS")
 			authRouter.HandleFunc("/global_notification", handlers.UserGlobalNotification).Methods("GET")
 			authRouter.HandleFunc("/global_notification", handlers.UserGlobalNotificationPost).Methods("POST")
+			authRouter.HandleFunc("/ad_configuration", handlers.AdConfiguration).Methods("GET")
+			authRouter.HandleFunc("/ad_configuration", handlers.AdConfigurationPost).Methods("POST")
+			authRouter.HandleFunc("/ad_configuration/delete", handlers.AdConfigurationDeletePost).Methods("POST")
 
 			authRouter.HandleFunc("/notifications-center", handlers.UserNotificationsCenter).Methods("GET")
 			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")

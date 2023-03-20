@@ -348,10 +348,7 @@ function loadMonitoringData(data) {
           if (type === "sort" || type === "type") {
             return data
           }
-          if (parseInt(data) === 0) {
-            return "N/A"
-          }
-          return `<span class="heading-l4">${getRelativeTime(luxon.DateTime.fromMillis(data * 1000)) || "N/A"}</span>`
+          return `<span class="heading-l4">${getRelativeTime(getLuxonDateFromTimestamp(data)) || "N/A"}</span>`
         },
       },
       // {

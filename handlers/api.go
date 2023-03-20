@@ -16,6 +16,7 @@ import (
 	"eth2-exporter/version"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/url"
 	"sort"
@@ -31,7 +32,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mssola/user_agent"
-	"github.com/protolambda/zrnt/eth2/util/math"
+	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 
@@ -974,25 +975,39 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 
 func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedSlots uint64, err error) {
 	// retrieve activation and exit epochs from database per validator
-	var validatorsInfo = []struct {
+	type ValidatorInfo struct {
 		Id                         int64  `db:"validatorindex"`
 		ActivationEpoch            uint64 `db:"activationepoch"`
 		ExitEpoch                  uint64 `db:"exitepoch"`
 		FirstPossibleSyncCommittee uint64 // calculated
-	}{}
+	}
 
+	var validatorsInfoFromDb = []ValidatorInfo{}
 	query, args, err := sqlx.In(`SELECT validatorindex, activationepoch, exitepoch FROM validators WHERE validatorindex IN (?) ORDER BY validatorindex ASC`, validators)
 	if err != nil {
 		return 0, err
 	}
 
-	err = db.ReaderDb.Select(&validatorsInfo, db.ReaderDb.Rebind(query), args...)
+	err = db.ReaderDb.Select(&validatorsInfoFromDb, db.ReaderDb.Rebind(query), args...)
 	if err != nil {
 		return 0, err
 	}
 
+	// only check validators are/have been active and that did not exit before altair
+	const noEpoch = uint64(9223372036854775807)
+	var validatorsInfo = make([]ValidatorInfo, 0, len(validatorsInfoFromDb))
+	for _, v := range validatorsInfoFromDb {
+		if v.ActivationEpoch != noEpoch && (v.ExitEpoch == noEpoch || v.ExitEpoch >= utils.Config.Chain.Config.AltairForkEpoch) {
+			validatorsInfo = append(validatorsInfo, v)
+		}
+	}
+
+	if len(validatorsInfo) == 0 {
+		// no validators relevant for sync duties left, early exit
+		return 0, nil
+	}
+
 	// we need all related and unique timeframes (activation and exit sync period) for all validators
-	const noExitEpoch = uint64(9223372036854775807)
 	uniquePeriods := make(map[uint64]bool)
 	uniquePeriods[utils.SyncPeriodOfEpoch(epoch)] = true
 	for i := range validatorsInfo { // we have to use the index as we have to write into slice too
@@ -1005,7 +1020,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 		uniquePeriods[validatorsInfo[i].FirstPossibleSyncCommittee] = true
 
 		// exit epoch (if any)
-		if validatorsInfo[i].ExitEpoch != noExitEpoch && validatorsInfo[i].ExitEpoch > firstSyncEpoch {
+		if validatorsInfo[i].ExitEpoch != noEpoch && validatorsInfo[i].ExitEpoch > firstSyncEpoch {
 			uniquePeriods[utils.SyncPeriodOfEpoch(validatorsInfo[i].ExitEpoch)] = true
 		}
 	}
@@ -1045,7 +1060,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 		}
 
 		lastEpoch := vi.ExitEpoch
-		if vi.ExitEpoch == noExitEpoch {
+		if vi.ExitEpoch == noEpoch {
 			lastEpoch = epoch
 		}
 
@@ -1192,7 +1207,14 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 			rpln.claimed_smoothing_pool     AS claimed_smoothing_pool,
 			rpln.unclaimed_smoothing_pool   AS unclaimed_smoothing_pool,
 			rpln.unclaimed_rpl_rewards      AS unclaimed_rpl_rewards,
-			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in  
+			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in,
+			COALESCE(rpln.deposit_credit, 0) as node_deposit_credit,
+			COALESCE(rplm.node_deposit_balance, 0) AS node_deposit_balance,
+			COALESCE(rplm.node_refund_balance, 0) AS node_refund_balance,
+			COALESCE(rplm.user_deposit_balance, 0) AS user_deposit_balance,
+			COALESCE(rplm.is_vacant, false) AS is_vacant,
+			COALESCE(rpln.effective_rpl_stake, 0) as effective_rpl_stake,
+			COALESCE(rplm.version, 0) AS version
 		FROM rocketpool_minipools rplm 
 		LEFT JOIN validators validators ON rplm.pubkey = validators.pubkey 
 		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
@@ -1326,17 +1348,40 @@ func getEpoch(epoch int64) ([]interface{}, error) {
 // ApiValidator godoc
 // @Summary Get up to 100 validators
 // @Tags Validator
+// @Description Searching for too many validators based on their pubkeys will lead to an "URI too long" error
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse{data=[]types.APIValidatorResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey} [get]
-func ApiValidator(w http.ResponseWriter, r *http.Request) {
+func ApiValidatorGet(w http.ResponseWriter, r *http.Request) {
+	apiValidator(w, r)
+}
 
+// ApiValidator godoc
+// @Summary Get unlimited validators
+// @Tags Validator
+// @Produce  json
+// @Param  indexOrPubkey path string true "Validator indicesOrPubkeys, comma separated"
+// @Success 200 {object} types.ApiResponse{data=[]types.APIValidatorResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/validator/{indexOrPubkey} [post]
+func ApiValidatorPost(w http.ResponseWriter, r *http.Request) {
+	apiValidator(w, r)
+}
+
+// This endpoint supports both GET and POST but requires different swagger descriptions based on the type
+func apiValidator(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
-	maxValidators := getUserPremium(r).MaxValidators
+
+	var maxValidators int
+	if r.Method == http.MethodGet {
+		maxValidators = getUserPremium(r).MaxValidators
+	} else {
+		maxValidators = math.MaxInt
+	}
 
 	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
@@ -2292,15 +2337,15 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	slotQuery = math.MaxU64(slotQuery, 10000)
+	slotQuery = utilMath.MaxU64(slotQuery, 10000)
 
 	defaultStartPxl := uint64(0)
 	defaultEndPxl := uint64(999)
 
-	startX := math.MinU64(parseUintWithDefault(q.Get("startx"), defaultStartPxl), defaultEndPxl)
-	startY := math.MinU64(parseUintWithDefault(q.Get("starty"), defaultStartPxl), defaultEndPxl)
-	endX := math.MinU64(parseUintWithDefault(q.Get("endx"), defaultEndPxl), defaultEndPxl)
-	endY := math.MinU64(parseUintWithDefault(q.Get("endy"), defaultEndPxl), defaultEndPxl)
+	startX := utilMath.MinU64(parseUintWithDefault(q.Get("startx"), defaultStartPxl), defaultEndPxl)
+	startY := utilMath.MinU64(parseUintWithDefault(q.Get("starty"), defaultStartPxl), defaultEndPxl)
+	endX := utilMath.MinU64(parseUintWithDefault(q.Get("endx"), defaultEndPxl), defaultEndPxl)
+	endY := utilMath.MinU64(parseUintWithDefault(q.Get("endy"), defaultEndPxl), defaultEndPxl)
 
 	if startX > endX || startY > endY {
 		logger.Error("invalid area provided by the coordinates")
@@ -3280,7 +3325,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 
 	// We set a max limit to limit the request call time.
 	const maxLimit uint64 = 200
-	limit = math.MinU64(limit, maxLimit)
+	limit = utilMath.MinU64(limit, maxLimit)
 
 	result := []struct {
 		Index  uint64 `db:"validatorindex"`

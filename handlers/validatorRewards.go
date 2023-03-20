@@ -28,13 +28,14 @@ type rewardsResp struct {
 }
 
 func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
-	var validatorRewardsServicesTemplate = templates.GetTemplate("layout.html", "validatorRewards.html")
+	templateFiles := append(layoutTemplateFiles, "validatorRewards.html")
+	var validatorRewardsServicesTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/rewards", "Ethereum Validator Rewards")
+	data := InitPageData(w, r, "services", "/rewards", "Ethereum Validator Rewards", templateFiles)
 
 	var supportedCurrencies []string
 	err = db.ReaderDb.Select(&supportedCurrencies,

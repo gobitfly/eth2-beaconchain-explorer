@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	"database/sql"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
@@ -30,7 +31,7 @@ func mevBoostRelaysExporter() {
 	for {
 		// we retrieve the relays from the db each loop to prevent having to restart the exporter for changes
 		relays = nil
-		err := db.ReaderDb.Select(&relays, `select tag_id, endpoint, public_link, is_censoring, is_ethical, name from relays`)
+		err := db.ReaderDb.Select(&relays, `select tag_id, endpoint, public_link, is_censoring, is_ethical from relays`)
 		wg := &sync.WaitGroup{}
 		if err == nil {
 			for _, relay := range relays {
@@ -40,8 +41,8 @@ func mevBoostRelaysExporter() {
 				wg.Add(1)
 				go singleRelayExport(relay, wg)
 			}
-		} else {
-			logger.Warnf("failed to retrieve relays from db: %v", err)
+		} else if err != sql.ErrNoRows {
+			utils.LogError(err, "failed to retrieve relays from db", 0)
 		}
 		wg.Wait()
 		time.Sleep(time.Second * 60)

@@ -20,8 +20,8 @@ import (
 )
 
 func Eth1Token(w http.ResponseWriter, r *http.Request) {
-
-	var eth1TokenTemplate = templates.GetTemplate("layout.html", "execution/token.html")
+	templateFiles := append(layoutTemplateFiles, "execution/token.html")
+	var eth1TokenTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
@@ -101,7 +101,7 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := InitPageData(w, r, "blockchain", "/token", fmt.Sprintf("Token 0x%x", token))
+	data := InitPageData(w, r, "blockchain", "/token", fmt.Sprintf("Token 0x%x", token), templateFiles)
 
 	data.Data = types.Eth1TokenPageData{
 		Token:            fmt.Sprintf("%x", token),

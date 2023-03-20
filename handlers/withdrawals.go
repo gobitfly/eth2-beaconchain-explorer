@@ -18,16 +18,15 @@ import (
 // Withdrawals will return information about recent withdrawals
 func Withdrawals(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
-
-	var withdrawalsTemplate = templates.GetTemplate("layout.html", "withdrawals.html", "validator/withdrawalOverviewRow.html", "components/charts.html")
+	templateFiles := append(layoutTemplateFiles, "withdrawals.html", "validator/withdrawalOverviewRow.html", "components/charts.html")
+	var withdrawalsTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
 	pageData := &types.WithdrawalsPageData{}
 	pageData.Stats = services.GetLatestStats()
 
-	data := InitPageData(w, r, "validators", "/withdrawals", "Validator Withdrawals")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "validators", "/withdrawals", "Validator Withdrawals", templateFiles)
 
 	latestChartsPageData := services.LatestChartsPageData()
 	if len(latestChartsPageData) != 0 {
