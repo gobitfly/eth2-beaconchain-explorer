@@ -92,10 +92,10 @@ func singleRelayExport(r types.Relay, wg *sync.WaitGroup, mux *sync.Mutex) {
 	mux.Lock()
 	_, err = db.WriterDb.Exec(`
 			UPDATE relays SET
-				export_failure_count = $1,
+				export_failure_count = 0,
 				last_export_try_ts = (NOW() AT TIME ZONE 'utc'),
 				last_export_success_ts = (NOW() AT TIME ZONE 'utc')
-			WHERE tag_id = $2 AND endpoint = $3`, 0, r.ID, r.Endpoint)
+			WHERE tag_id = $1 AND endpoint = $2`, r.ID, r.Endpoint)
 	mux.Unlock()
 	if err != nil {
 		r.Logger.Errorf("Could not update successful relay eport: %v", r.ID)
@@ -279,16 +279,14 @@ func shouldTryToExportRelay(r types.Relay) bool {
 	return time.Since(r.LastExportTryTs) >= waitTime
 }
 
-func waitTimeToExportRelay(r types.Relay) (time.Duration, bool) {
+func waitTimeToExportRelay(r types.Relay) (waitTime time.Duration, isMaxWaitTime bool) {
 	maxWaitTimeForRelayExport := utils.Day
-
-	waitTime := time.Duration(math.Exp2(float64(r.ExportFailureCount))) * time.Minute
-	isMaxWaitTime := false
+	waitTime = time.Duration(math.Exp2(float64(r.ExportFailureCount))) * time.Minute
 	if waitTime >= maxWaitTimeForRelayExport {
 		waitTime = maxWaitTimeForRelayExport
 		isMaxWaitTime = true
 	}
-	return waitTime, isMaxWaitTime
+	return
 }
 
 func shouldLogExportAsError(r types.Relay) bool {
