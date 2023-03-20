@@ -255,7 +255,7 @@
               {{ with .Data.Metadata.Symbol | formatTokenSymbol }}{{ . }}{{ end }}
             </span>
             <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
-            <span class="d-flex align-items-center"><i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ .Data.Token }}"></i></span>
+            <span class="d-flex align-items-center"><i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ fixAddressCasing .Data.Token }}"></i></span>
           </span>
         </div>
         <!-- <span class="text-monospace">
@@ -266,8 +266,8 @@
         {{ if .Data.Address }}
           <span class="badge badge-primary text-light my-2" style="padding: .5rem 0 .5rem .5rem">
             <span class="mr-1">Filter:</span>
-            <a class="text-light text-monospace" style="width: 1rem; height: 1rem;" target="_blank" href="/address/{{ .Data.Address }}"
-              >0x{{ .Data.Address }} <span class="text-muted text-light" data-toggle="tooltip" title="clear filter"><a class="text-light p-2" href="/token/{{ .Data.Token }}">x</a></span></a
+            <a class="text-light text-monospace" style="width: 1rem; height: 1rem;" target="_blank" href="/address/{{ fixAddressCasing .Data.Address }}"
+              >{{ fixAddressCasing .Data.Address }} <span class="text-muted text-light" data-toggle="tooltip" title="clear filter"><a class="text-light p-2" href="/token/{{ fixAddressCasing .Data.Token }}">x</a></span></a
             >
           </span>
         {{ end }}
@@ -462,8 +462,8 @@
 {{ end }}
 
 {{ define "QRCode" }}
-  <img class="cursor-pointer qrcode-light" data-toggle="modal" data-target="#qrcode-modal" style="visibility: hidden; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address 0x{{ .Data.Token }}" />
-  <img class="cursor-pointer qrcode-dark" data-toggle="modal" data-target="#qrcode-modal" style=" display: none; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{ .Data.QRCodeInverse }}" alt="QR code for address 0x{{ .Data.Token }}" />
+  <img class="cursor-pointer qrcode-light" data-toggle="modal" data-target="#qrcode-modal" style="visibility: hidden; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address {{ fixAddressCasing .Data.Token }}" />
+  <img class="cursor-pointer qrcode-dark" data-toggle="modal" data-target="#qrcode-modal" style=" display: none; width: calc(1.275rem + .3vw); height: calc(1.275rem + .3vw);" src="data:image/png;base64,{{ .Data.QRCodeInverse }}" alt="QR code for address {{ fixAddressCasing .Data.Token }}" />
 {{ end }}
 
 {{ define "TokenQRCodeModal" }}
@@ -471,11 +471,11 @@
     <div class="modal-dialog modal-dialog-centered" style="width: 95%; max-width: 400px; height: 375px; margin: 1.75rem auto;">
       <div class="modal-content">
         <div class="modal-header justify-content-center text-truncate">
-          <span class="text-monospace text-truncate text-center font-weight-bold" style="font-size: 85%; width: 100%;">0x{{ .Data.Token }}</span>
+          <span class="text-monospace text-truncate text-center font-weight-bold" style="font-size: 85%; width: 100%;">{{ fixAddressCasing .Data.Token }}</span>
         </div>
         <div class="modal-body d-flex justify-content-center">
-          <img style="visibility: hidden;" class="qrcode-light" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address 0x{{ .Data.Token }}" />
-          <img style="display: none" class="qrcode-dark" src="data:image/png;base64,{{ .Data.QRCodeInverse }}" alt="QR code for address 0x{{ .Data.Token }}" />
+          <img style="visibility: hidden;" class="qrcode-light" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address {{ fixAddressCasing .Data.Token }}" />
+          <img style="display: none" class="qrcode-dark" src="data:image/png;base64,{{ .Data.QRCodeInverse }}" alt="QR code for address {{ fixAddressCasing .Data.Token }}" />
         </div>
       </div>
     </div>
