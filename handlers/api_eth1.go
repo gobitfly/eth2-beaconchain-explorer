@@ -282,7 +282,7 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.Ether = decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.EthBalance.Balance), 0).Div(decimal.NewFromInt(1e18)).String()
+	response.Ether = decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.EthBalance.Balance), 0).DivRound(decimal.NewFromInt(1e18), 18).String()
 	response.Address = fmt.Sprintf("0x%x", metadata.EthBalance.Address)
 	response.Tokens = []struct {
 		Address  string  `json:"address"`
