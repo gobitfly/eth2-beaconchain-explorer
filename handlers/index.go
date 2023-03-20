@@ -45,21 +45,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	// data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
 	pageData.Countdown = utils.Config.Frontend.Countdown
 
-	configuration, err := services.GetExplorerConfigurationsWithDefaults()
-	if err == nil {
-		visiblFrom, err := configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleFromEpoch)
-		if err == nil && visiblFrom <= data.CurrentEpoch {
-			visibleTo, err := configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleToEpoch)
-			if err == nil && visibleTo >= data.CurrentEpoch {
-				pageData.SlotVizData =
-					types.SlotVizPageData{
-						Epochs:   services.LatestSlotVizMetrics(),
-						Selector: "slotsViz",
-						Config:   configuration[services.ConfigurationCategorySlotViz],
-					}
-			}
-		}
-	}
+	pageData.SlotVizData = getSlotVizData(data.CurrentEpoch)
 
 	data.Data = pageData
 
@@ -79,4 +65,27 @@ func IndexPageData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
+}
+
+func getSlotVizData(currentEpoch uint64) types.SlotVizPageData {
+	var slotVizPageData types.SlotVizPageData
+
+	var visiblFrom uint64
+	var visibleTo uint64
+	configuration, err := services.GetExplorerConfigurationsWithDefaults()
+	if err == nil {
+		visiblFrom, err = configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleFromEpoch)
+	}
+	if err == nil {
+		visibleTo, err = configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleToEpoch)
+	}
+	if err == nil && visiblFrom <= currentEpoch && visibleTo >= currentEpoch {
+		slotVizPageData = types.SlotVizPageData{
+			Epochs:   services.LatestSlotVizMetrics(),
+			Selector: "slotsViz",
+			Config:   configuration[services.ConfigurationCategorySlotViz],
+		}
+	}
+
+	return slotVizPageData
 }

@@ -39,7 +39,7 @@ func GetExplorerConfigurationsWithDefaults() (types.ExplorerConfigurationMap, er
 
 	configs := types.ExplorerConfigurationMap{}
 
-	// first we clone de defaults
+	// first we clone the defaults
 	for category, keyMap := range DefaultExplorerConfiguration {
 		configs[category] = make(types.ExplorerConfigurationKeyMap)
 		for key, configValue := range keyMap {
@@ -52,9 +52,9 @@ func GetExplorerConfigurationsWithDefaults() (types.ExplorerConfigurationMap, er
 
 	// now let's fill in the values from the db (if exists)
 	for _, row := range result {
-		kyMap, ok := configs[row.Category]
+		keyMap, ok := configs[row.Category]
 		if ok {
-			explorerValue, ok := kyMap[row.Key]
+			explorerValue, ok := keyMap[row.Key]
 			if ok {
 				configs[row.Category][row.Key] = types.ExplorerConfigValue{Value: row.Value, DataType: explorerValue.DataType}
 			}

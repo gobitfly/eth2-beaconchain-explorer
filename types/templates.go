@@ -1944,21 +1944,21 @@ type ExplorerConfigurationMap map[ExplorerConfigurationCategory]ExplorerConfigur
 
 func (configMap ExplorerConfigurationMap) GetConfigValue(category ExplorerConfigurationCategory, configKey ExplorerConfigurationKey) (ExplorerConfigValue, error) {
 	configValue := ExplorerConfigValue{}
-	kyMap, ok := configMap[category]
+	keyMap, ok := configMap[category]
 	if ok {
-		configValue, ok = kyMap[configKey]
+		configValue, ok = keyMap[configKey]
 		if ok {
 			return configValue, nil
 		}
 	}
-	return configValue, errors.New("error")
+	return configValue, fmt.Errorf("config value for %s %s not found", category, configKey)
 }
 
 func (configMap ExplorerConfigurationMap) GetUInt64Value(category ExplorerConfigurationCategory, configKey ExplorerConfigurationKey) (uint64, error) {
 	configValue, err := configMap.GetConfigValue(category, configKey)
 	if err == nil {
 		if configValue.DataType != "int" {
-			return 0, errors.New("Wrong data type")
+			return 0, fmt.Errorf("wrong data type for %s %s, got %s, expected %s", category, configKey, configValue.DataType, "int")
 		} else {
 			return strconv.ParseUint(configValue.Value, 10, 64)
 		}
@@ -1966,7 +1966,7 @@ func (configMap ExplorerConfigurationMap) GetUInt64Value(category ExplorerConfig
 	return 0, err
 }
 
-func (configMap ExplorerConfigurationMap) GetValue(category ExplorerConfigurationCategory, configKey ExplorerConfigurationKey) (string, error) {
+func (configMap ExplorerConfigurationMap) GetStringValue(category ExplorerConfigurationCategory, configKey ExplorerConfigurationKey) (string, error) {
 	configValue, err := configMap.GetConfigValue(category, configKey)
 	return configValue.Value, err
 }
