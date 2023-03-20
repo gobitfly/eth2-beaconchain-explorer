@@ -1246,6 +1246,9 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		performance7d,
 		performance31d,
 		performance365d,
+		cl_performance_total, 
+		el_performance_total, 
+		mev_performance_total,
 		rank7d,
 		w.total as total_withdrawals
 	FROM validators
@@ -1941,7 +1944,22 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT validator_performance.validatorindex, validator_performance.balance, validator_performance.performance1d, validator_performance.performance7d, validator_performance.performance31d, validator_performance.performance365d, validator_performance.rank7d FROM validator_performance LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex WHERE validator_performance.validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(queryIndices))
+	rows, err := db.ReaderDb.Query(`
+		SELECT 
+			validator_performance.validatorindex, 
+			validator_performance.balance, 
+			validator_performance.performance1d, 
+			validator_performance.performance7d, 
+			validator_performance.performance31d, 
+			validator_performance.performance365d, 
+			validator_performance.rank7d,
+			cl_performance_total, 
+			el_performance_total, 
+			mev_performance_total 
+		FROM validator_performance 
+		LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex 
+		WHERE validator_performance.validatorindex = ANY($1) 
+		ORDER BY validatorindex`, pq.Array(queryIndices))
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
