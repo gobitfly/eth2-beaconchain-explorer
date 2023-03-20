@@ -251,40 +251,18 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	data, err := utils.SqlRowsToJSON(rows)
-
-	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not parse db results")
-		return
-	}
-
-	for _, dataEntry := range data {
-		dataEntryMap, ok := dataEntry.(map[string]interface{})
+	dayTime := func(dataEntryMap map[string]interface{}) error {
+		day, ok := dataEntryMap["day"].(int64)
 		if !ok {
-			sendErrorResponse(w, r.URL.String(), "could not parse db results")
-			return
+			return fmt.Errorf("error type asserting day as an int")
 		} else {
-			day, ok := dataEntryMap["day"].(int64)
-			if !ok {
-				sendErrorResponse(w, r.URL.String(), "could not parse db results")
-				return
-			} else {
-				dataEntryMap["day_start"] = utils.DayToTime(day)
-				dataEntryMap["day_end"] = utils.DayToTime(day + 1)
-			}
+			dataEntryMap["day_start"] = utils.DayToTime(day)
+			dataEntryMap["day_end"] = utils.DayToTime(day + 1)
 		}
+		return nil
 	}
 
-	response := &types.ApiResponse{
-		Status: "OK",
-		Data:   data,
-	}
-
-	err = json.NewEncoder(w).Encode(response)
-
-	if err != nil {
-		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
-	}
+	returnQueryResults(rows, w, r, dayTime)
 }
 
 // ApiEpoch godoc
@@ -335,9 +313,8 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '0') as scheduledblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '1') as proposedblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '2') as missedblocks,
-		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '3') as orphanedblocks,
-		(SELECT to_timestamp($2)) as ts
-		FROM epochs WHERE epoch = $1`, epoch, utils.EpochToTime(uint64(epoch)).Unix())
+		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '3') as orphanedblocks
+		FROM epochs WHERE epoch = $1`, epoch)
 	if err != nil {
 		logger.WithError(err).Error("error retrieving epoch data")
 		sendServerErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -345,7 +322,12 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	epochTime := func(dataEntryMap map[string]interface{}) error {
+		dataEntryMap["ts"] = utils.EpochToTime(uint64(epoch))
+		return nil
+	}
+
+	returnQueryResults(rows, w, r, epochTime)
 }
 
 // ApiEpochSlots godoc
@@ -1588,40 +1570,18 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	data, err := utils.SqlRowsToJSON(rows)
-
-	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not parse db results")
-		return
-	}
-
-	for _, dataEntry := range data {
-		dataEntryMap, ok := dataEntry.(map[string]interface{})
+	dayTime := func(dataEntryMap map[string]interface{}) error {
+		day, ok := dataEntryMap["day"].(int64)
 		if !ok {
-			sendErrorResponse(w, r.URL.String(), "could not parse db results")
-			return
+			return fmt.Errorf("error type asserting day as an int")
 		} else {
-			day, ok := dataEntryMap["day"].(int64)
-			if !ok {
-				sendErrorResponse(w, r.URL.String(), "could not parse db results")
-				return
-			} else {
-				dataEntryMap["day_start"] = utils.DayToTime(day)
-				dataEntryMap["day_end"] = utils.DayToTime(day + 1)
-			}
+			dataEntryMap["day_start"] = utils.DayToTime(day)
+			dataEntryMap["day_end"] = utils.DayToTime(day + 1)
 		}
+		return nil
 	}
 
-	response := &types.ApiResponse{
-		Status: "OK",
-		Data:   data,
-	}
-
-	err = json.NewEncoder(w).Encode(response)
-
-	if err != nil {
-		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
-	}
+	returnQueryResultsAsArray(rows, w, r, dayTime)
 }
 
 // ApiValidatorByEth1Address godoc
@@ -3541,9 +3501,15 @@ func getAuthClaims(r *http.Request) *utils.CustomClaims {
 	return claims.(*utils.CustomClaims)
 }
 
-func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request) {
+func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request, adjustQueryEntriesFuncs ...func(map[string]interface{}) error) {
 	j := json.NewEncoder(w)
 	data, err := utils.SqlRowsToJSON(rows)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	err = adjustQueryResults(data, adjustQueryEntriesFuncs...)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not parse db results")
 		return
@@ -3552,9 +3518,15 @@ func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request) 
 	sendOKResponse(j, r.URL.String(), data)
 }
 
-func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Request) {
+func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Request, adjustQueryEntriesFuncs ...func(map[string]interface{}) error) {
 	data, err := utils.SqlRowsToJSON(rows)
 
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	err = adjustQueryResults(data, adjustQueryEntriesFuncs...)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not parse db results")
 		return
@@ -3570,6 +3542,22 @@ func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Re
 	if err != nil {
 		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
 	}
+}
+
+func adjustQueryResults(data []interface{}, adjustQueryEntriesFuncs ...func(map[string]interface{}) error) error {
+	for _, dataEntry := range data {
+		dataEntryMap, ok := dataEntry.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("error type asserting query results as a map")
+		} else {
+			for _, f := range adjustQueryEntriesFuncs {
+				if err := f(dataEntryMap); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // SendErrorResponse exposes sendErrorResponse
