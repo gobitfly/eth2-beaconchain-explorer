@@ -143,7 +143,7 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 
 	addressString := fmt.Sprintf("0x%x", address)
 	if IsEth1Address(addressString) {
-		addressString = FixAddressCasing(fmt.Sprintf("%x", address))
+		addressString = FixAddressCasing(addressString)
 	}
 	tooltip := ""
 	if len(name) == 0 { // no name set
