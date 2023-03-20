@@ -282,7 +282,7 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.Ether = decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.EthBalance.Balance), 0).Div(decimal.NewFromInt(1e18)).String()
+	response.Ether = decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.EthBalance.Balance), 0).DivRound(decimal.NewFromInt(1e18), 18).String()
 	response.Address = fmt.Sprintf("0x%x", metadata.EthBalance.Address)
 	response.Tokens = []struct {
 		Address  string  `json:"address"`
@@ -395,8 +395,8 @@ func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
 			From:               utils.FixAddressCasing(fmt.Sprintf("%x", tx.From)),
 			To:                 utils.FixAddressCasing(fmt.Sprintf("%x", tx.To)),
 			MethodId:           fmt.Sprintf("0x%x", tx.MethodId),
-			Value:              new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(tx.Value)), big.NewFloat(1e18)).String(),   //new(big.Int).Div(new(big.Int).SetBytes(tx.Value), big.NewInt(1e18)).String(),
-			GasPrice:           new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(tx.GasPrice)), big.NewFloat(1e9)).String(), //new(big.Int).Div(new(big.Int).SetBytes(tx.GasPrice), new(big.Int).SetInt64(1e18)).String(),
+			Value:              new(big.Float).Quo(new(big.Float).SetPrec(18).SetInt(new(big.Int).SetBytes(tx.Value)), big.NewFloat(1e18)).String(), //new(big.Int).Div(new(big.Int).SetBytes(tx.Value), big.NewInt(1e18)).String(),
+			GasPrice:           new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(tx.GasPrice)), big.NewFloat(1e9)).String(),           //new(big.Int).Div(new(big.Int).SetBytes(tx.GasPrice), new(big.Int).SetInt64(1e18)).String(),
 			IsContractCreation: tx.IsContractCreation,
 			InvokesContract:    tx.InvokesContract,
 		})
