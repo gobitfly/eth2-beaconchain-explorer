@@ -981,6 +981,9 @@ CREATE TABLE relays (
 	public_link varchar NULL,
 	is_censoring bool NULL,
 	is_ethical bool NULL,
+    export_failure_count INT NOT NULL DEFAULT 0,
+    last_export_try_ts timestamp without time zone NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
+    last_export_success_ts timestamp without time zone NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
 	PRIMARY KEY (tag_id, endpoint),
 	FOREIGN KEY (tag_id) REFERENCES tags(id)
 );
