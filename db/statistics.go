@@ -398,22 +398,22 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 				COALESCE(vs_now.cl_rewards_gwei_total, 0) as performance365d, 
 				row_number() over(order by vs_now.cl_rewards_gwei_7d desc) as rank7d,
 
-				coalesce(vs_now.cl_rewards_gwei_total - vs_1d.cl_rewards_gwei_total, 0) as cl_performance_1d, 
-				coalesce(vs_now.cl_rewards_gwei_total - vs_7d.cl_rewards_gwei_total, 0) as cl_performance_7d, 
-				coalesce(vs_now.cl_rewards_gwei_total - vs_31d.cl_rewards_gwei_total, 0) as cl_performance_31d, 
-				coalesce(vs_now.cl_rewards_gwei_total - vs_365d.cl_rewards_gwei_total, 0) as cl_performance_365d,
+				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_1d.cl_rewards_gwei_total, 0) as cl_performance_1d, 
+				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_7d.cl_rewards_gwei_total, 0) as cl_performance_7d, 
+				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_31d.cl_rewards_gwei_total, 0) as cl_performance_31d, 
+				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_365d.cl_rewards_gwei_total, 0) as cl_performance_365d,
 				coalesce(vs_now.cl_rewards_gwei_total, 0) as cl_performance_total, 
-
-				coalesce(vs_now.el_rewards_wei_total - vs_1d.el_rewards_wei_total, 0) as el_performance_1d, 
-				coalesce(vs_now.el_rewards_wei_total - vs_7d.el_rewards_wei_total, 0) as el_performance_7d, 
-				coalesce(vs_now.el_rewards_wei_total - vs_31d.el_rewards_wei_total, 0) as el_performance_31d, 
-				coalesce(vs_now.el_rewards_wei_total - vs_365d.el_rewards_wei_total, 0) as el_performance_365d,
+				
+				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_1d.el_rewards_wei_total, 0) as el_performance_1d, 
+				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_7d.el_rewards_wei_total, 0) as el_performance_7d, 
+				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_31d.el_rewards_wei_total, 0) as el_performance_31d, 
+				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_365d.el_rewards_wei_total, 0) as el_performance_365d,
 				coalesce(vs_now.el_rewards_wei_total, 0) as el_performance_total, 
-
-				coalesce(vs_now.mev_rewards_wei_total - vs_1d.mev_rewards_wei_total, 0) as mev_performance_1d, 
-				coalesce(vs_now.mev_rewards_wei_total - vs_7d.mev_rewards_wei_total, 0) as mev_performance_7d, 
-				coalesce(vs_now.mev_rewards_wei_total - vs_31d.mev_rewards_wei_total, 0) as mev_performance_31d, 
-				coalesce(vs_now.mev_rewards_wei_total - vs_365d.mev_rewards_wei_total, 0) as mev_performance_365d,
+				
+				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_1d.mev_rewards_wei_total, 0) as mev_performance_1d, 
+				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_7d.mev_rewards_wei_total, 0) as mev_performance_7d, 
+				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_31d.mev_rewards_wei_total, 0) as mev_performance_31d, 
+				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_365d.mev_rewards_wei_total, 0) as mev_performance_365d,
 				coalesce(vs_now.mev_rewards_wei_total, 0) as mev_performance_total
 			from validator_stats vs_now
 			left join validator_stats vs_1d on vs_1d.validatorindex = vs_now.validatorindex and vs_1d.day = $2
