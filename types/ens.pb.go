@@ -17,6 +17,7 @@ type EnsNameRegisteredIndexed struct {
 	Time            *timestamp.Timestamp `protobuf:"bytes,4,opt,name=time,proto3" json:"time,omitempty"`
 	Label           []byte               `protobuf:"bytes,7,opt,name=label,proto3" json:"label,omitempty"`
 	Owner           []byte               `protobuf:"bytes,5,opt,name=owner,proto3" json:"owner,omitempty"`
+	Resolver        []byte               `protobuf:"bytes,5,opt,name=resolver,proto3" json:"resolver ,omitempty"`
 	Name            []byte               `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
 	Expires         *timestamp.Timestamp `protobuf:"bytes,7,opt,name=expires,proto3" json:"expires,omitempty"`
 }

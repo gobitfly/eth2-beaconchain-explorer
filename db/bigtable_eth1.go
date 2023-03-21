@@ -1112,88 +1112,108 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			continue
 		}
 		iReversed := reversePaddedIndex(i, 10000)
-		for j, log := range tx.GetLogs() {
+		foundNameIndex := -1
+		foundResolverIndex := -1
+		logs := tx.GetLogs()
+		for j, log := range logs {
 			if j > 99999 {
 				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v tx: %x", j, tx.GetHash())
 			}
-			jReversed := reversePaddedIndex(j, 100000)
-			foundIndex := -1
 			if len(log.GetTopics()) > 0 {
-				for index, lTopic := range log.GetTopics() {
+				for _, lTopic := range log.GetTopics() {
 					if bytes.Equal(lTopic, ens.NameRegisteredTopic) {
-						foundIndex = index
+						foundNameIndex = j
+					} else if bytes.Equal(lTopic, ens.NewResolverTopic) {
+						foundResolverIndex = j
 					}
 				}
 			}
-			if foundIndex == -1 {
-				continue
-			}
+		}
+		if foundNameIndex == -1 || foundResolverIndex == -1 {
+			continue
+		}
 
-			topics := make([]common.Hash, 0, len(log.GetTopics()))
-			logger.Infof("TransformEnsNameRegistered We found one: %v", topics)
+		jReversed := reversePaddedIndex(foundNameIndex, 100000)
 
-			for _, lTopic := range log.GetTopics() {
-				topics = append(topics, common.BytesToHash(lTopic))
-			}
+		log := logs[foundNameIndex]
+		topics := make([]common.Hash, 0, len(log.GetTopics()))
 
-			ethLog := eth_types.Log{
-				Address:     common.BytesToAddress(log.GetAddress()),
-				Data:        log.Data,
-				Topics:      topics,
-				BlockNumber: blk.GetNumber(),
-				TxHash:      common.BytesToHash(tx.GetHash()),
-				TxIndex:     uint(i),
-				BlockHash:   common.BytesToHash(blk.GetHash()),
-				Index:       uint(j),
-				Removed:     log.GetRemoved(),
-			}
+		for _, lTopic := range log.GetTopics() {
+			topics = append(topics, common.BytesToHash(lTopic))
+		}
 
-			nameRegistered, _ := filterer.ParseNameRegistered(ethLog)
-			if nameRegistered == nil {
-				continue
-			}
-			logger.Infof("nameRegistered: name: %v, label: %x", nameRegistered.Name, nameRegistered.Label)
+		nameLog := eth_types.Log{
+			Address:     common.BytesToAddress(log.GetAddress()),
+			Data:        log.Data,
+			Topics:      topics,
+			BlockNumber: blk.GetNumber(),
+			TxHash:      common.BytesToHash(tx.GetHash()),
+			TxIndex:     uint(i),
+			BlockHash:   common.BytesToHash(blk.GetHash()),
+			Index:       uint(foundNameIndex),
+			Removed:     log.GetRemoved(),
+		}
 
-			key := fmt.Sprintf("%s:ENS:O:%x:%s", bigtable.chainId, tx.GetHash(), jReversed)
+		log = logs[foundResolverIndex]
+		topics = make([]common.Hash, 0, len(log.GetTopics()))
 
-			indexedLog := &types.EnsNameRegisteredIndexed{
-				ParentHash:      tx.GetHash(),
-				BlockNumber:     blk.GetNumber(),
-				Time:            blk.GetTime(),
-				ContractAddress: tx.To,
-				Label:           nameRegistered.Label[:],
-				Name:            []byte(nameRegistered.Name),
-				Owner:           nameRegistered.Owner.Bytes(),
-				Expires:         timestamppb.New(time.Unix(nameRegistered.Expires.Int64(), 0)),
-			}
+		for _, lTopic := range log.GetTopics() {
+			topics = append(topics, common.BytesToHash(lTopic))
+		}
 
-			logger.Infof("indexedLog: name: %v, n b: %v, o b: %v, e b: %v", nameRegistered.Name, indexedLog.GetName(), indexedLog.GetOwner(), indexedLog.GetExpires())
+		resolverLog := eth_types.Log{
+			Address:     common.BytesToAddress(log.GetAddress()),
+			Data:        log.Data,
+			Topics:      topics,
+			BlockNumber: blk.GetNumber(),
+			TxHash:      common.BytesToHash(tx.GetHash()),
+			TxIndex:     uint(i),
+			BlockHash:   common.BytesToHash(blk.GetHash()),
+			Index:       uint(foundResolverIndex),
+			Removed:     log.GetRemoved(),
+		}
 
-			b, err := proto.Marshal(indexedLog)
-			if err != nil {
-				return nil, nil, err
-			}
+		nameRegistered, _ := filterer.ParseNameRegistered(nameLog)
+		resolver, err := filterer.ParseNewResolver(resolverLog)
+		if nameRegistered == nil || resolver == nil {
+			continue
+		}
+		key := fmt.Sprintf("%s:ENS:O:%x:%s", bigtable.chainId, tx.GetHash(), jReversed)
 
+		indexedLog := &types.EnsNameRegisteredIndexed{
+			ParentHash:      tx.GetHash(),
+			BlockNumber:     blk.GetNumber(),
+			Time:            blk.GetTime(),
+			ContractAddress: tx.To,
+			Label:           nameRegistered.Label[:],
+			Name:            []byte(nameRegistered.Name),
+			Owner:           nameRegistered.Owner.Bytes(),
+			Resolver:        resolver.Resolver.Bytes(),
+			Expires:         timestamppb.New(time.Unix(nameRegistered.Expires.Int64(), 0)),
+		}
+
+		b, err := proto.Marshal(indexedLog)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		mut := gcp_bigtable.NewMutation()
+		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
+
+		bulkData.Keys = append(bulkData.Keys, key)
+		bulkData.Muts = append(bulkData.Muts, mut)
+
+		indexes := []string{
+			fmt.Sprintf("%s:I:ENS:L:%x:%x:%x:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.Label, indexedLog.Name, indexedLog.Resolver, indexedLog.Owner, indexedLog.Expires.AsTime().Unix(), reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+			fmt.Sprintf("%s:I:ENS:N:%x:%x:%x:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.Name, indexedLog.Resolver, indexedLog.Owner, indexedLog.Label, indexedLog.Expires.AsTime().Unix(), reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+		}
+
+		for _, idx := range indexes {
 			mut := gcp_bigtable.NewMutation()
-			mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
+			mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
 
-			bulkData.Keys = append(bulkData.Keys, key)
+			bulkData.Keys = append(bulkData.Keys, idx)
 			bulkData.Muts = append(bulkData.Muts, mut)
-
-			indexes := []string{
-				fmt.Sprintf("%s:I:ENS:O:%x:%x:%x:%v:TIME:%s:%s:%s", bigtable.chainId, indexedLog.Owner, indexedLog.Label, indexedLog.Name, indexedLog.Expires.AsTime().Unix(), reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
-				fmt.Sprintf("%s:I:ENS:L:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.Label, indexedLog.Owner, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
-			}
-			logger.Infof("indexes: %v", indexes)
-
-			for _, idx := range indexes {
-				mut := gcp_bigtable.NewMutation()
-				mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
-
-				bulkData.Keys = append(bulkData.Keys, idx)
-				bulkData.Muts = append(bulkData.Muts, mut)
-			}
-
 		}
 	}
 
