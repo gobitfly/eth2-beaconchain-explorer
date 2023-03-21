@@ -1242,10 +1242,11 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		lastattestationslot,
 		status,
 		COALESCE(validator_names.name, '') AS name,
-		performance1d,
-		performance7d,
-		performance31d,
-		performance365d,
+		COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d,
+		COALESCE(validator_performance.cl_performance_7d, 0) AS performance7d,
+		COALESCE(validator_performance.cl_performance_31d, 0) AS performance31d,
+		COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d,
+		COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal,
 		rank7d,
 		w.total as total_withdrawals
 	FROM validators
@@ -1941,7 +1942,21 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT validator_performance.validatorindex, validator_performance.balance, validator_performance.performance1d, validator_performance.performance7d, validator_performance.performance31d, validator_performance.performance365d, validator_performance.rank7d FROM validator_performance LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex WHERE validator_performance.validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(queryIndices))
+	rows, err := db.ReaderDb.Query(`
+	SELECT 
+		validator_performance.validatorindex, 
+		validator_performance.balance, 
+		COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d, 
+		COALESCE(validator_performance.cl_performance_7d, 0) AS performance7d, 
+		COALESCE(validator_performance.cl_performance_31d, 0) AS performance31d, 
+		COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d, 
+		COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal, 
+		validator_performance.rank7d 
+	FROM validator_performance 
+	LEFT JOIN validators ON 
+		validators.validatorindex = validator_performance.validatorindex 
+	WHERE validator_performance.validatorindex = ANY($1) 
+	ORDER BY validatorindex`, pq.Array(queryIndices))
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -2097,9 +2112,16 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query(`
 			SELECT 
-				balance, performance1d, performance7d, performance31d, performance365d, rank7d, validatorindex
+				balance, 
+				COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d, 
+				COALESCE(validator_performance.cl_performance_7d, 0) AS performance7d, 
+				COALESCE(validator_performance.cl_performance_31d, 0) AS performance31d, 
+				COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d, 
+				COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal, 
+				rank7d, 
+				validatorindex
 			FROM validator_performance 
-			ORDER BY performance7d DESC LIMIT 100`)
+			ORDER BY rank7d DESC LIMIT 100`)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -2825,10 +2847,11 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 					lastattestationslot, 
 					validators.status, 
 					validator_performance.balance, 
-					validator_performance.performance1d, 
-					validator_performance.performance7d, 
-					validator_performance.performance31d, 
-					validator_performance.performance365d, 
+					COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d, 
+					COALESCE(validator_performance.cl_performance_7d, 0) AS performance7d, 
+					COALESCE(validator_performance.cl_performance_31d, 0) AS performance31d, 
+					COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d, 
+					COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal, 
 					validator_performance.rank7d, 
 					validator_performance.validatorindex,
 					TRUNC(rplm.node_fee::decimal, 10)::float  AS minipool_node_fee  
