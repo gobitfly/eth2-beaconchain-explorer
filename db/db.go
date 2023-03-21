@@ -2917,9 +2917,8 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 }
 
 func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
-	var count uint64
 
-	condition := ""
+	var condition string
 	if validatorindex > cursor {
 		condition = "validatorindex > $4 AND validatorindex < $3"
 	} else if validatorindex < cursor {
@@ -2940,6 +2939,7 @@ func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor 
 		((effectivebalance = $1 AND balance > $1) OR (withdrawableepoch <= $2 AND balance > 0))
 		AND %s`, condition)
 
+	var count uint64
 	err := ReaderDb.Get(&count, query, utils.Config.Chain.Config.MaxEffectiveBalance, epoch, validatorindex, cursor)
 	if err != nil {
 		if err == sql.ErrNoRows {
