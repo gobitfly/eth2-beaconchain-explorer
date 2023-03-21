@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"eth2-exporter/cache"
+	"eth2-exporter/ens"
 	"eth2-exporter/erc1155"
 	"eth2-exporter/erc20"
 	"eth2-exporter/erc721"
@@ -1043,6 +1044,156 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 				bulkData.Keys = append(bulkData.Keys, idx)
 				bulkData.Muts = append(bulkData.Muts, mut)
 			}
+		}
+	}
+
+	return bulkData, bulkMetadataUpdates, nil
+}
+
+// https://etherscan.io/tx/0x9fec76750a504e5610643d1882e3b07f4fc786acf7b9e6680697bb7165de1165#eventlog
+// TransformEnsNameRegistered accepts an eth1 block and creates bigtable mutations for ERC20 transfer events.
+// It transforms the logs contained within a block and writes the transformed logs to bigtable
+// It writes NameRegistered events to the table data:
+// Row:    <chainID>:ENS_REG:<txHash>:<paddedLogIndex>
+// Family: f
+// Column: data
+// Cell:   Proto<Eth1ERC20Indexed>
+// Example scan: "1:ERC20:b10588bde42cb8eb14e72d24088bd71ad3903857d23d50b3ba4187c0cb7d3646" returns mainnet ERC20 event(s) for transaction 0xb10588bde42cb8eb14e72d24088bd71ad3903857d23d50b3ba4187c0cb7d3646
+//
+// It indexes ERC20 events by:
+// Row:    <chainID>:I:ERC20:<TOKEN_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
+// Family: f
+// Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
+// Cell:   nil
+//
+// Row:    <chainID>:I:ERC20:<FROM_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
+// Family: f
+// Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
+// Cell:   nil
+//
+// Row:    <chainID>:I:ERC20:<TO_ADDRESS>:TIME:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
+// Family: f
+// Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
+// Cell:   nil
+//
+// Row:    <chainID>:I:ERC20:<FROM_ADDRESS>:TO:<TO_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
+// Family: f
+// Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
+// Cell:   nil
+//
+// Row:    <chainID>:I:ERC20:<TO_ADDRESS>:FROM:<FROM_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
+// Family: f
+// Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
+// Cell:   nil
+//
+// Row:    <chainID>:I:ERC20:<FROM_ADDRESS>:TOKEN_SENT:<TOKEN_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
+// Family: f
+// Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
+// Cell:   nil
+//
+// Row:    <chainID>:I:ERC20:<TO_ADDRESS>:TOKEN_RECEIVED:<TOKEN_ADDRESS>:<reversePaddedBigtableTimestamp>:<paddedTxIndex>:<PaddedLogIndex>
+// Family: f
+// Column: <chainID>:ERC20:<txHash>:<paddedLogIndex>
+// Cell:   nil
+func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	bulkData = &types.BulkMutations{}
+	bulkMetadataUpdates = &types.BulkMutations{}
+
+	filterer, err := ens.NewEnsRegistrarFilterer(common.Address{}, nil)
+	if err != nil {
+		log.Printf("error creating filterer: %v", err)
+	}
+
+	for i, tx := range blk.GetTransactions() {
+		if i > 9999 {
+			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
+		}
+		if len(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts) > 0 && !utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(tx.To).String()) {
+			continue
+		}
+		iReversed := reversePaddedIndex(i, 10000)
+		for j, log := range tx.GetLogs() {
+			if j > 99999 {
+				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v tx: %x", j, tx.GetHash())
+			}
+			jReversed := reversePaddedIndex(j, 100000)
+			foundIndex := -1
+			if len(log.GetTopics()) > 0 {
+				for index, lTopic := range log.GetTopics() {
+					if bytes.Equal(lTopic, ens.NameRegisteredTopic) {
+						foundIndex = index
+					}
+				}
+			}
+			if foundIndex == -1 {
+				continue
+			}
+
+			topics := make([]common.Hash, 0, len(log.GetTopics()))
+			logger.Infof("TransformEnsNameRegistered We found one: %v", topics)
+
+			for _, lTopic := range log.GetTopics() {
+				topics = append(topics, common.BytesToHash(lTopic))
+			}
+
+			ethLog := eth_types.Log{
+				Address:     common.BytesToAddress(log.GetAddress()),
+				Data:        log.Data,
+				Topics:      topics,
+				BlockNumber: blk.GetNumber(),
+				TxHash:      common.BytesToHash(tx.GetHash()),
+				TxIndex:     uint(i),
+				BlockHash:   common.BytesToHash(blk.GetHash()),
+				Index:       uint(j),
+				Removed:     log.GetRemoved(),
+			}
+
+			nameRegistered, _ := filterer.ParseNameRegistered(ethLog)
+			if nameRegistered == nil {
+				continue
+			}
+			logger.Infof("nameRegistered: name: %v, label: %x", nameRegistered.Name, nameRegistered.Label)
+
+			key := fmt.Sprintf("%s:ENS:O:%x:%s", bigtable.chainId, tx.GetHash(), jReversed)
+
+			indexedLog := &types.EnsNameRegisteredIndexed{
+				ParentHash:      tx.GetHash(),
+				BlockNumber:     blk.GetNumber(),
+				Time:            blk.GetTime(),
+				ContractAddress: tx.To,
+				Label:           nameRegistered.Label[:],
+				Name:            []byte(nameRegistered.Name),
+				Owner:           nameRegistered.Owner.Bytes(),
+				Expires:         timestamppb.New(time.Unix(nameRegistered.Expires.Int64(), 0)),
+			}
+
+			logger.Infof("indexedLog: name: %v, n b: %v, o b: %v, e b: %v", nameRegistered.Name, indexedLog.GetName(), indexedLog.GetOwner(), indexedLog.GetExpires())
+
+			b, err := proto.Marshal(indexedLog)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			mut := gcp_bigtable.NewMutation()
+			mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
+
+			bulkData.Keys = append(bulkData.Keys, key)
+			bulkData.Muts = append(bulkData.Muts, mut)
+
+			indexes := []string{
+				fmt.Sprintf("%s:I:ENS:O:%x:%x:%x:%v:TIME:%s:%s:%s", bigtable.chainId, indexedLog.Owner, indexedLog.Label, indexedLog.Name, indexedLog.Expires.AsTime().Unix(), reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+				fmt.Sprintf("%s:I:ENS:L:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.Label, indexedLog.Owner, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+			}
+			logger.Infof("indexes: %v", indexes)
+
+			for _, idx := range indexes {
+				mut := gcp_bigtable.NewMutation()
+				mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
+
+				bulkData.Keys = append(bulkData.Keys, idx)
+				bulkData.Muts = append(bulkData.Muts, mut)
+			}
+
 		}
 	}
 

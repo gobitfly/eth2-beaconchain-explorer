@@ -66,6 +66,9 @@ type Config struct {
 		PubKeyTagsExporter struct {
 			Enabled bool `yaml:"enabled" envconfig:"PUBKEY_TAGS_EXPORTER_ENABLED"`
 		} `yaml:"pubkeyTagsExporter"`
+		EnsTransformer struct {
+			ValidRegistrarContracts []string `yaml:"validRegistrarContracts" envconfig:"ENS_VALID_REGISTRAR_CONTRACTS"`
+		} `yaml:"ensTransformer"`
 	} `yaml:"indexer"`
 	Frontend struct {
 		Debug                          bool   `yaml:"debug" envconfig:"FRONTEND_DEBUG"`
