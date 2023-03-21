@@ -67,25 +67,30 @@ func IndexPageData(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getSlotVizData(currentEpoch uint64) types.SlotVizPageData {
-	var slotVizPageData types.SlotVizPageData
-
+func getSlotVizData(currentEpoch uint64) *types.SlotVizPageData {
 	var visiblFrom uint64
 	var visibleTo uint64
 	configuration, err := services.GetExplorerConfigurationsWithDefaults()
-	if err == nil {
-		visiblFrom, err = configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleFromEpoch)
+	if err != nil {
+		utils.LogError(err, "Could not load SlotViz configuration for index page", 0)
+		return nil
 	}
-	if err == nil {
-		visibleTo, err = configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleToEpoch)
+	visiblFrom, err = configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleFromEpoch)
+	if err != nil {
+		utils.LogError(err, "Could not get visbleFrom for SlotViz on index page", 0)
+		return nil
 	}
-	if err == nil && visiblFrom <= currentEpoch && visibleTo >= currentEpoch {
-		slotVizPageData = types.SlotVizPageData{
+	visibleTo, err = configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleToEpoch)
+	if err != nil {
+		utils.LogError(err, "Could not get visibleTo for SlotViz on index page", 0)
+		return nil
+	}
+	if visiblFrom <= currentEpoch && visibleTo >= currentEpoch {
+		return &types.SlotVizPageData{
 			Epochs:   services.LatestSlotVizMetrics(),
 			Selector: "slotsViz",
-			Config:   configuration[services.ConfigurationCategorySlotViz],
-		}
-	}
+			Config:   configuration[services.ConfigurationCategorySlotViz]}
 
-	return slotVizPageData
+	}
+	return nil
 }

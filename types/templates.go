@@ -202,7 +202,7 @@ type IndexPageData struct {
 	DepositChart              *ChartsPageDataChart
 	DepositDistribution       *ChartsPageDataChart
 	Countdown                 interface{}
-	SlotVizData               SlotVizPageData `json:"slotVizData"`
+	SlotVizData               *SlotVizPageData `json:"slotVizData"`
 }
 
 type SlotVizPageData struct {
