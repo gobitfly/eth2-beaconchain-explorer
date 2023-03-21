@@ -2920,8 +2920,10 @@ func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor 
 
 	var condition string
 	if validatorindex > cursor {
+		// count all withdrawable validators between the cursor and the validator
 		condition = "validatorindex > $4 AND validatorindex < $3"
 	} else if validatorindex < cursor {
+		// count all withdrawable validators behind the cursor AND in front of the validator (logical OR)
 		condition = "(validatorindex > $4 OR validatorindex < $3)"
 	} else {
 		// cursor at validator
