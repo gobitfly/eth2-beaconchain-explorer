@@ -2917,7 +2917,6 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 }
 
 func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
-
 	var condition string
 	if validatorindex > cursor {
 		// count all withdrawable validators between the cursor and the validator
