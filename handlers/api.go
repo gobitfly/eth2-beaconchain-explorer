@@ -251,7 +251,7 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	dayTime := func(dataEntryMap map[string]interface{}) error {
+	addDayTime := func(dataEntryMap map[string]interface{}) error {
 		day, ok := dataEntryMap["day"].(int64)
 		if !ok {
 			return fmt.Errorf("error type asserting day as an int")
@@ -262,7 +262,7 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}
 
-	returnQueryResults(rows, w, r, dayTime)
+	returnQueryResults(rows, w, r, addDayTime)
 }
 
 // ApiEpoch godoc
@@ -322,12 +322,12 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	epochTime := func(dataEntryMap map[string]interface{}) error {
+	addEpochTime := func(dataEntryMap map[string]interface{}) error {
 		dataEntryMap["ts"] = utils.EpochToTime(uint64(epoch))
 		return nil
 	}
 
-	returnQueryResults(rows, w, r, epochTime)
+	returnQueryResults(rows, w, r, addEpochTime)
 }
 
 // ApiEpochSlots godoc
@@ -1570,7 +1570,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	dayTime := func(dataEntryMap map[string]interface{}) error {
+	addDayTime := func(dataEntryMap map[string]interface{}) error {
 		day, ok := dataEntryMap["day"].(int64)
 		if !ok {
 			return fmt.Errorf("error type asserting day as an int")
@@ -1581,7 +1581,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}
 
-	returnQueryResultsAsArray(rows, w, r, dayTime)
+	returnQueryResultsAsArray(rows, w, r, addDayTime)
 }
 
 // ApiValidatorByEth1Address godoc
@@ -3501,6 +3501,8 @@ func getAuthClaims(r *http.Request) *utils.CustomClaims {
 	return claims.(*utils.CustomClaims)
 }
 
+// Saves the result of a query converted to JSON in the response writer.
+// An arbitrary amount of functions adjustQueryEntriesFuncs can be added to adjust the JSON response.
 func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request, adjustQueryEntriesFuncs ...func(map[string]interface{}) error) {
 	j := json.NewEncoder(w)
 	data, err := utils.SqlRowsToJSON(rows)
@@ -3511,13 +3513,15 @@ func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request, 
 
 	err = adjustQueryResults(data, adjustQueryEntriesFuncs...)
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not parse db results")
+		sendErrorResponse(w, r.URL.String(), "could not adjust query results")
 		return
 	}
 
 	sendOKResponse(j, r.URL.String(), data)
 }
 
+// Saves the result of a query converted to JSON in the response writer as an array.
+// An arbitrary amount of functions adjustQueryEntriesFuncs can be added to adjust the JSON response.
 func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Request, adjustQueryEntriesFuncs ...func(map[string]interface{}) error) {
 	data, err := utils.SqlRowsToJSON(rows)
 
@@ -3528,7 +3532,7 @@ func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Re
 
 	err = adjustQueryResults(data, adjustQueryEntriesFuncs...)
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not parse db results")
+		sendErrorResponse(w, r.URL.String(), "could not adjust query results")
 		return
 	}
 
