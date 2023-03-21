@@ -1057,8 +1057,7 @@ create table node_jobs
     primary key (id)
 );
 
-drop table if exists ad_configurations;
-create table ad_configurations
+create table if not exists ad_configurations
 (
     id varchar(40), --uuid
     template_id varchar(100) not null, --relative path to the main html file of the page
@@ -1072,3 +1071,13 @@ create table ad_configurations
     primary key (id)
 );
 create index idx_ad_configuration_for_template on ad_configurations (template_id, enabled);
+
+create table if not exists  explorer_configurations
+(
+    category varchar(40), -- the category is used to group settings together
+    key varchar(40), -- identifies the config
+    value text, -- holds the value of the config
+    data_type varchar(40), -- defines to which data type the value is mapped
+    primary key (category, key)
+);
+create index idx_explorer_configurations on explorer_configurations (category, key);

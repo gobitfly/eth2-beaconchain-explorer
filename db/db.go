@@ -2647,6 +2647,61 @@ func DeleteAdConfiguration(id string) error {
 	return err
 }
 
+// get all explorer configurations
+func GetExplorerConfigurations() ([]*types.ExplorerConfig, error) {
+	var configs []*types.ExplorerConfig
+
+	err := ReaderDb.Select(&configs, `
+	SELECT 
+		category, 
+		key, 
+		value, 
+		data_type 
+	FROM 
+		explorer_configurations`)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return []*types.ExplorerConfig{}, nil
+		}
+		return nil, fmt.Errorf("error getting explorer configurations: %w", err)
+	}
+
+	return configs, nil
+}
+
+// save current configurations
+func SaveExplorerConfiguration(configs []types.ExplorerConfig) error {
+	valueStrings := []string{}
+	valueArgs := []interface{}{}
+	for i, config := range configs {
+		valueStrings = append(valueStrings, fmt.Sprintf("($%v, $%v, $%v, $%v)", i*4+1, i*4+2, i*4+3, i*4+4))
+
+		valueArgs = append(valueArgs, config.Category)
+		valueArgs = append(valueArgs, config.Key)
+		valueArgs = append(valueArgs, config.Value)
+		valueArgs = append(valueArgs, config.DataType)
+	}
+	query := fmt.Sprintf(`
+		INSERT INTO explorer_configurations (
+			category, 
+			key, 
+			value, 
+			data_type)
+    	VALUES %s 
+		ON CONFLICT 
+			(category, key) 
+		DO UPDATE SET 
+			value = excluded.value,
+			data_type = excluded.data_type
+			`, strings.Join(valueStrings, ","))
+
+	_, err := WriterDb.Exec(query, valueArgs...)
+	if err != nil {
+		return fmt.Errorf("error inserting/updating explorer configurations: %w", err)
+	}
+	return nil
+}
+
 func GetTotalBLSChanges() (uint64, error) {
 	var count uint64
 	err := ReaderDb.Get(&count, `
