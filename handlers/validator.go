@@ -450,13 +450,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 
 				timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
-				address, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
-				if err != nil {
-					logger.Warn("invalid withdrawal credentials")
-				}
 
-				// it normally takes to epochs to finalize
+				// it normally takes two epochs to finalize
 				if timeToWithdrawal.After(utils.EpochToTime(epoch + (epoch - latestFinalized))) {
+					address, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
+					if err != nil {
+						// warning only as "N/A" will be displayed
+						logger.Warn("invalid withdrawal credentials")
+					}
+
 					tableData := make([][]interface{}, 0, 1)
 					var withdrawalCredentialsTemplate template.HTML
 					if address != nil {
