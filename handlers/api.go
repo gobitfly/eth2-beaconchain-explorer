@@ -223,10 +223,10 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 			consensus_rewards_sum_wei,
 			total_rewards_wei,
 			apr,
-			(select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgAPR7d,
+			(select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgapr7d,
 			(select avg(consensus_rewards_sum_wei) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgconsensus_rewards7d_wei,
 			(select avg(tx_fees_sum_wei) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgtx_fees7d_wei,
-			(select avg(apr) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgAPR31d,
+			(select avg(apr) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgapr31d,
 			(select avg(consensus_rewards_sum_wei) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgconsensus_rewards31d_wei,
 			(select avg(tx_fees_sum_wei) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgtx_fees31d_wei
 		FROM eth_store_stats e
@@ -251,7 +251,18 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	addDayTime := func(dataEntryMap map[string]interface{}) error {
+		day, ok := dataEntryMap["day"].(int64)
+		if !ok {
+			return fmt.Errorf("error type asserting day as an int")
+		} else {
+			dataEntryMap["day_start"] = utils.DayToTime(day)
+			dataEntryMap["day_end"] = utils.DayToTime(day + 1)
+		}
+		return nil
+	}
+
+	returnQueryResults(rows, w, r, addDayTime)
 }
 
 // ApiEpoch godoc
@@ -302,9 +313,8 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '0') as scheduledblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '1') as proposedblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '2') as missedblocks,
-		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '3') as orphanedblocks,
-		(SELECT to_timestamp($2)) as ts
-		FROM epochs WHERE epoch = $1`, epoch, utils.EpochToTime(uint64(epoch)).Unix())
+		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '3') as orphanedblocks
+		FROM epochs WHERE epoch = $1`, epoch)
 	if err != nil {
 		logger.WithError(err).Error("error retrieving epoch data")
 		sendServerErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -312,7 +322,12 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	addEpochTime := func(dataEntryMap map[string]interface{}) error {
+		dataEntryMap["ts"] = utils.EpochToTime(uint64(epoch))
+		return nil
+	}
+
+	returnQueryResults(rows, w, r, addEpochTime)
 }
 
 // ApiEpochSlots godoc
@@ -1508,7 +1523,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 			sendErrorResponse(w, r.URL.String(), "invalid start_day parameter")
 			return
 		}
-		if start < endDay {
+		if start > endDay {
 			sendErrorResponse(w, r.URL.String(), "start_day must be less than end_day")
 			return
 		}
@@ -1556,7 +1571,18 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResultsAsArray(rows, w, r)
+	addDayTime := func(dataEntryMap map[string]interface{}) error {
+		day, ok := dataEntryMap["day"].(int64)
+		if !ok {
+			return fmt.Errorf("error type asserting day as an int")
+		} else {
+			dataEntryMap["day_start"] = utils.DayToTime(day)
+			dataEntryMap["day_end"] = utils.DayToTime(day + 1)
+		}
+		return nil
+	}
+
+	returnQueryResultsAsArray(rows, w, r, addDayTime)
 }
 
 // ApiValidatorByEth1Address godoc
@@ -1650,16 +1676,22 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 		Epoch          uint64                       `json:"epoch"`
 		ValidatorIndex uint64                       `json:"validatorindex"`
 		Week           uint64                       `json:"week"`
+		WeekStart      time.Time                    `json:"week_start"`
+		WeekEnd        time.Time                    `json:"week_end"`
 	}
 	responseData := make([]*responseType, 0, len(history)*101)
 
+	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, epochs := range history {
 		for epoch, income := range epochs {
+			epochAtStartOfTheWeek := (epoch / epochsPerWeek) * epochsPerWeek
 			responseData = append(responseData, &responseType{
+				Income:         income,
 				Epoch:          epoch,
 				ValidatorIndex: validatorIndex,
-				Week:           epoch / 1575,
-				Income:         income,
+				Week:           epoch / epochsPerWeek,
+				WeekStart:      utils.EpochToTime(epochAtStartOfTheWeek),
+				WeekEnd:        utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek),
 			})
 		}
 	}
@@ -1856,14 +1888,18 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 
 	responseData := make([]*types.ApiValidatorBalanceHistoryResponse, 0, len(history)*101)
 
+	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, balances := range history {
 		for _, balance := range balances {
+			epochAtStartOfTheWeek := (balance.Epoch / epochsPerWeek) * epochsPerWeek
 			responseData = append(responseData, &types.ApiValidatorBalanceHistoryResponse{
 				Balance:          balance.Balance,
 				EffectiveBalance: balance.EffectiveBalance,
 				Epoch:            balance.Epoch,
 				Validatorindex:   validatorIndex,
-				Week:             balance.Epoch / 1575,
+				Week:             balance.Epoch / epochsPerWeek,
+				WeekStart:        utils.EpochToTime(epochAtStartOfTheWeek),
+				WeekEnd:          utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek),
 			})
 		}
 	}
@@ -2193,27 +2229,22 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type responseType struct {
-		AttesterSlot   uint64 `json:"attesterslot"`
-		CommitteeIndex uint64 `json:"committeeindex"`
-		Epoch          uint64 `json:"epoch"`
-		InclusionSlot  uint64 `json:"inclusionslot"`
-		Status         uint64 `json:"status"`
-		ValidatorIndex uint64 `json:"validatorindex"`
-		Week           uint64 `json:"week"`
-	}
-	responseData := make([]*responseType, 0, len(history)*101)
+	responseData := make([]*types.ApiValidatorAttestationsResponse, 0, len(history)*101)
 
+	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, balances := range history {
 		for _, attestation := range balances {
-			responseData = append(responseData, &responseType{
+			epochAtStartOfTheWeek := (attestation.Epoch / epochsPerWeek) * epochsPerWeek
+			responseData = append(responseData, &types.ApiValidatorAttestationsResponse{
 				AttesterSlot:   attestation.AttesterSlot,
 				CommitteeIndex: 0,
 				Epoch:          attestation.Epoch,
 				InclusionSlot:  attestation.InclusionSlot,
 				Status:         attestation.Status,
 				ValidatorIndex: validatorIndex,
-				Week:           attestation.Epoch / 1575,
+				Week:           attestation.Epoch / epochsPerWeek,
+				WeekStart:      utils.EpochToTime(epochAtStartOfTheWeek),
+				WeekEnd:        utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek),
 			})
 		}
 	}
@@ -3493,7 +3524,9 @@ func getAuthClaims(r *http.Request) *utils.CustomClaims {
 	return claims.(*utils.CustomClaims)
 }
 
-func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request) {
+// Saves the result of a query converted to JSON in the response writer.
+// An arbitrary amount of functions adjustQueryEntriesFuncs can be added to adjust the JSON response.
+func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request, adjustQueryEntriesFuncs ...func(map[string]interface{}) error) {
 	j := json.NewEncoder(w)
 	data, err := utils.SqlRowsToJSON(rows)
 	if err != nil {
@@ -3501,14 +3534,28 @@ func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	err = adjustQueryResults(data, adjustQueryEntriesFuncs...)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not adjust query results")
+		return
+	}
+
 	sendOKResponse(j, r.URL.String(), data)
 }
 
-func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Request) {
+// Saves the result of a query converted to JSON in the response writer as an array.
+// An arbitrary amount of functions adjustQueryEntriesFuncs can be added to adjust the JSON response.
+func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Request, adjustQueryEntriesFuncs ...func(map[string]interface{}) error) {
 	data, err := utils.SqlRowsToJSON(rows)
 
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	err = adjustQueryResults(data, adjustQueryEntriesFuncs...)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not adjust query results")
 		return
 	}
 
@@ -3522,6 +3569,22 @@ func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Re
 	if err != nil {
 		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
 	}
+}
+
+func adjustQueryResults(data []interface{}, adjustQueryEntriesFuncs ...func(map[string]interface{}) error) error {
+	for _, dataEntry := range data {
+		dataEntryMap, ok := dataEntry.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("error type asserting query results as a map")
+		} else {
+			for _, f := range adjustQueryEntriesFuncs {
+				if err := f(dataEntryMap); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // SendErrorResponse exposes sendErrorResponse
