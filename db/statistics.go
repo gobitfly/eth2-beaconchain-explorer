@@ -97,7 +97,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			from blocks_deposits
 			inner join validators on blocks_deposits.publickey = validators.pubkey
 			inner join blocks on blocks_deposits.block_root = blocks.blockroot
-			where block_slot >= $1 and block_slot <= $2 and blocks.status = '1'
+			where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1'
 			group by validators.validatorindex
 		) 
 		on conflict (validatorindex, day) do
@@ -113,7 +113,8 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 				select validators.validatorindex, case when block_slot = 0 then -1 else $3 end as day, count(*), sum(amount)
 				from blocks_deposits
 				inner join validators on blocks_deposits.publickey = validators.pubkey
-				where block_slot >= $1 and block_slot <= $2 and status = '1'
+				inner join blocks on blocks_deposits.block_root = blocks.blockroot
+				where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1'
 				group by validators.validatorindex, day
 			) 
 			on conflict (validatorindex, day) do
@@ -124,7 +125,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		}
 	}
 
-	_, err = tx.Exec(depositsQry, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch, day)
+	_, err = tx.Exec(depositsQry, firstEpoch, lastEpoch, day)
 	if err != nil {
 		return err
 	}
