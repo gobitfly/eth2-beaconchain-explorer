@@ -9,7 +9,7 @@
         "epoch block"
         "part active"
         "staked ethstore"
-        "churn price"
+        "pending price"
         "chart chart";
     }
     #pg-epoch {
@@ -30,8 +30,8 @@
     #pg-ethstore {
       grid-area: ethstore;
     }
-    #pg-churn {
-      grid-area: churn;
+    #pg-pending {
+      grid-area: pending;
     }
     #pg-price {
       grid-area: price;
@@ -53,7 +53,7 @@
       #pg-grid {
         grid-template-areas:
           "epoch block  staked ethstore"
-          "part  active churn  price"
+          "part  active pending  price"
           "chart chart  chart  chart";
       }
     }
@@ -63,7 +63,7 @@
         padding: 0;
         grid-template-areas:
           "epoch block staked ethstore chart chart"
-          "part active churn price chart chart";
+          "part active pending price chart chart";
       }
       #pg-grid .pg-grid-item {
         padding-left: 1.6rem;
@@ -156,9 +156,9 @@
         <span data-toggle="tooltip" data-placement="top" title="The number of currently active validators" v-html="addCommas(page.active_validators)"></span>
       </h5>
     </div>
-    <div id="pg-churn" class="pg-grid-item">
-      <div class="style-stats-name">Churn Rate</div>
-      <h5 class="style-stats-value mb-0"><span data-toggle="tooltip" data-placement="top" title="The rate at which validators can enter or leave the system" v-html="page.churn_rate + '%'"></span></h5>
+    <div id="pg-pending" class="pg-grid-item">
+      <div class="style-stats-name">Pending Validators</div>
+      <h5 class="style-stats-value mb-0"><span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to enter the active validator set" v-html="addCommas(page.entering_validators)"></span> / <span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to exit the active validator set" v-html="addCommas(page.exiting_validators)"></span></h5>
     </div>
     <div id="pg-price" class="pg-grid-item">
       <div class="style-stats-name">Gas Price</div>
