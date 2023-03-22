@@ -1,6 +1,6 @@
 var csrfToken = ""
 
-const VALIDATOR_EVENTS = ["validator_attestation_missed", "validator_proposal_missed", "validator_proposal_submitted", "validator_got_slashed", "validator_synccommittee_soon", "validator_is_offline"]
+const VALIDATOR_EVENTS = ["validator_attestation_missed", "validator_proposal_missed", "validator_proposal_submitted", "validator_got_slashed", "validator_synccommittee_soon", "validator_is_offline", "validator_withdrawal"]
 
 // const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
 
@@ -348,10 +348,7 @@ function loadMonitoringData(data) {
           if (type === "sort" || type === "type") {
             return data
           }
-          if (parseInt(data) === 0) {
-            return "N/A"
-          }
-          return `<span class="heading-l4">${getRelativeTime(luxon.DateTime.fromMillis(data * 1000)) || "N/A"}</span>`
+          return `<span class="heading-l4">${getRelativeTime(getLuxonDateFromTimestamp(data)) || "N/A"}</span>`
         },
       },
       // {
@@ -577,6 +574,8 @@ function loadValidatorsData(data) {
                   case "validator_is_offline":
                     badgeColor = "badge-light"
                     break
+                  case "validator_withdrawal":
+                    badgeColor = "badge-light"
                 }
                 notifications += `<span style="font-size: 12px; font-weight: 500;" class="badge badge-pill ${badgeColor} ${textColor} badge-custom-size mr-1 my-1">${n.replace("validator", "").replaceAll("_", " ")}</span>`
               }

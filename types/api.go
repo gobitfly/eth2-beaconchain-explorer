@@ -317,6 +317,10 @@ type Eth1TokenTxParsed struct {
 	TokenId      string    `json:"token_id,omitempty"`
 	Operator     string    `json:"operator,omitempty"`
 }
+type ApiWithdrawalCredentialsResponse struct {
+	Publickey      string `json:"publickey"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+}
 
 type APIEpochResponse struct {
 	Epoch                   uint64 `json:"epoch"`
@@ -338,6 +342,8 @@ type APIEpochResponse struct {
 	ValidatorsCount         uint64 `json:"validatorscount"`
 	VoluntaryExitsCount     uint64 `json:"voluntaryexitscount"`
 	VotedEther              uint64 `json:"votedether"`
+	RewardsExported         uint64 `json:"rewards_exported"`
+	WithdrawalCount         uint64 `json:"withdrawalcount"`
 }
 
 type APISlotResponse struct {
@@ -377,6 +383,7 @@ type APISlotResponse struct {
 	SyncaggregateParticipation float64 `json:"syncaggregate_participation"`
 	SyncaggregateSignature     string  `json:"syncaggregate_signature"`
 	Voluntaryexitscount        uint64  `json:"voluntaryexitscount"`
+	WithdrawalCount            uint64  `json:"withdrawalcount"`
 }
 
 type APIAttestationResponse struct {
@@ -529,6 +536,8 @@ type ApiValidatorDailyStatsResponse struct {
 	Day                   uint64 `json:"day"`
 	Deposits              uint64 `json:"deposits"`
 	DepositsAmount        uint64 `json:"deposits_amount"`
+	Withdrawals           uint64 `json:"withdrawals"`
+	WithdrawalsAmount     uint64 `json:"withdrawals_amount"`
 	EndBalance            uint64 `json:"end_balance"`
 	EndEffectiveBalance   uint64 `json:"end_effective_balance"`
 	MaxBalance            uint64 `json:"max_balance"`
@@ -571,6 +580,28 @@ type ApiValidatorBalanceHistoryResponse struct {
 	Epoch            uint64 `json:"epoch"`
 	Validatorindex   uint64 `json:"validatorindex"`
 	Week             uint64 `json:"week"`
+}
+
+type ApiValidatorWithdrawalResponse struct {
+	Epoch          uint64 `json:"epoch,omitempty"`
+	Slot           uint64 `json:"slot,omitempty"`
+	BlockRoot      string `json:"blockroot,omitempty"`
+	Index          uint64 `json:"withdrawalindex"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+	Address        string `json:"address"`
+	Amount         uint64 `json:"amount"`
+}
+
+type ApiValidatorBlsChangeResponse struct {
+	Epoch                    uint64 `db:"epoch" json:"epoch,omitempty"`
+	Slot                     uint64 `db:"slot" json:"slot,omitempty"`
+	BlockRoot                string `db:"block_rot" json:"blockroot,omitempty"`
+	Validatorindex           uint64 `db:"validatorindex" json:"validatorindex,omitempty"`
+	BlsPubkey                string `db:"pubkey" json:"bls_pubkey,omitempty"`
+	Signature                string `db:"signature" json:"bls_signature,omitempty"`
+	Address                  string `db:"address" json:"address,omitempty"`
+	WithdrawalCredentialsOld string `db:"withdrawalcredentials_0x00" json:"withdrawalcredentials_0x00,omitempty"`
+	WithdrawalCredentialsNew string `db:"withdrawalcredentials_0x01" json:"withdrawalcredentials_0x01,omitempty"`
 }
 
 type ApiValidatorPerformanceResponse struct {

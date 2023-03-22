@@ -9,8 +9,8 @@ import (
 
 // StakingCalculator renders stakingCalculatorTemplate
 func StakingCalculator(w http.ResponseWriter, r *http.Request) {
-
-	var stakingCalculatorTemplate = templates.GetTemplate("layout.html", "calculator.html")
+	templateFiles := append(layoutTemplateFiles, "calculator.html")
+	var stakingCalculatorTemplate = templates.GetTemplate(templateFiles...)
 
 	calculatorPageData := types.StakingCalculatorPageData{}
 
@@ -25,7 +25,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "stats", "/calculator", "Staking calculator")
+	data := InitPageData(w, r, "stats", "/calculator", "Staking calculator", templateFiles)
 	data.Data = calculatorPageData
 
 	if handleTemplateError(w, r, "calculator.go", "StakingCalculator", "", stakingCalculatorTemplate.ExecuteTemplate(w, "layout", data)) != nil {

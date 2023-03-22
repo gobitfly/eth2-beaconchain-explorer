@@ -5,7 +5,6 @@
   <script src="/js/vue.min.js"></script>
   <script src="/js/highcharts/highcharts-vue.min.js"></script>
   <script src="/js/highcharts/highcharts-global-options.js"></script>
-  <script src="/js/requestInterval.js"></script>
 
   <!-- <script type="text/javascript" src="js/slick.min.js"></script> -->
   <!-- <script type="text/javascript" src="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script> -->
@@ -14,6 +13,7 @@
     <script src="/js/d3.min.js"></script>
   {{ end }}
     <script>
+        var creditsEnabled = {{ if .SlotVizData.Epochs }} false {{ else }} true {{ end }}
         var app = new Vue({
             el: '#app',
             delimiters: ['${', '}'], // Standard vuejs template syntax conflicts with golang template syntax
@@ -216,7 +216,7 @@
         {{ end }}
         {{ template "hero" . }}
       {{ end }}
-      {{ if not .NoAds }}{{ template "banner" }}{{ end }}
+      <div id="r-banner" info="{{ .Meta.Templates }}"></div>
       {{ with .Data }}
         {{ if and (not .Genesis) (not .GenesisPeriod) }}
           {{ template "preGenesis" $ }}
@@ -228,4 +228,5 @@
       {{ end }}
     </div>
   </div>
+  {{ if .Data.SlotVizData }}{{ template "SlotViz" . }}{{ end }}
 {{ end }}

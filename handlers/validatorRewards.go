@@ -28,13 +28,14 @@ type rewardsResp struct {
 }
 
 func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
-	var validatorRewardsServicesTemplate = templates.GetTemplate("layout.html", "validatorRewards.html")
+	templateFiles := append(layoutTemplateFiles, "validatorRewards.html")
+	var validatorRewardsServicesTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/rewards", "Ethereum Validator Rewards")
+	data := InitPageData(w, r, "services", "/rewards", "Ethereum Validator Rewards", templateFiles)
 
 	var supportedCurrencies []string
 	err = db.ReaderDb.Select(&supportedCurrencies,
@@ -61,8 +62,9 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 
 func getUserRewardSubscriptions(uid uint64) [][]string {
 	var dbResp []types.Subscription
+
 	err := db.FrontendWriterDB.Select(&dbResp,
-		`select * from users_subscriptions where event_name=$1 AND user_id=$2`, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName), uid)
+		`select id, user_id, event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold, unsubscribe_hash, internal_state from users_subscriptions where event_name=$1 AND user_id=$2`, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName), uid)
 	if err != nil {
 		logger.Errorf("error getting prices: %v", err)
 	}

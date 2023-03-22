@@ -10,6 +10,8 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"html/template"
+	"math/big"
 	"math/rand"
 	"net/http"
 	"sort"
@@ -56,8 +58,8 @@ func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, e
 }
 
 func Heatmap(w http.ResponseWriter, r *http.Request) {
-
-	var heatmapTemplate = templates.GetTemplate("layout.html", "heatmap.html")
+	templateFiles := append(layoutTemplateFiles, "heatmap.html")
+	var heatmapTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators
@@ -106,7 +108,7 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
-	incomeData, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validators, endEpoch, 100)
+	incomeData, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validators, endEpoch-100, endEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error loading validator income history data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -135,8 +137,7 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 
 	logger.Infof("retrieved income history of %v validators in %v", len(incomeData), time.Since(start))
 
-	data := InitPageData(w, r, "dashboard", "/heatmap", "Validator Heatmap")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "dashboard", "/heatmap", "Validator Heatmap", templateFiles)
 	data.Data = heatmapData
 
 	if handleTemplateError(w, r, "dashboard.go", "Heatmap", "", heatmapTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -145,8 +146,8 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 }
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
-
-	var dashboardTemplate = templates.GetTemplate("layout.html", "dashboard.html")
+	templateFiles := append(layoutTemplateFiles, "dashboard.html", "dashboard/tables.html")
+	var dashboardTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators
@@ -154,8 +155,10 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	dashboardData := types.DashboardData{}
 	dashboardData.ValidatorLimit = validatorLimit
 
-	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard")
-	data.HeaderAd = true
+	epoch := services.LatestEpoch()
+	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
+
+	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", templateFiles)
 	data.Data = dashboardData
 
 	if handleTemplateError(w, r, "dashboard.go", "Dashboard", "", dashboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -191,7 +194,7 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	var incomeHistoryChartData []*types.ChartDataPoint
 	var executionChartData []*types.ChartDataPoint
 	g.Go(func() error {
-		incomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart(queryValidators, currency)
+		incomeHistoryChartData, _, err = db.GetValidatorIncomeHistoryChart(queryValidators, currency)
 		return err
 	})
 
@@ -239,7 +242,7 @@ func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDat
 	}
 
 	var chartData = make([]*types.ChartDataPoint, len(blocks))
-	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.Config.SlotsPerEpoch / utils.Config.Chain.Config.SecondsPerSlot
+	epochsPerDay := utils.EpochsPerDay()
 
 	for i := len(blocks) - 1; i >= 0; i-- {
 		consData := consMap[blocks[i].Number]
@@ -285,7 +288,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	incomeHistoryChartData, err := db.GetValidatorIncomeHistoryChart(queryValidators, currency)
+	incomeHistoryChartData, _, err := db.GetValidatorIncomeHistoryChart(queryValidators, currency)
 	if err != nil {
 		logger.Errorf("failed to genereate income history chart data for dashboard view: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -344,6 +347,93 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+	validatorLimit := getUserPremium(r).MaxValidators
+	validators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	if err != nil {
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		utils.LogError(err, fmt.Errorf("error converting datatables data parameter from string to int: %v", err), 0)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		utils.LogError(err, fmt.Errorf("error converting datatables data parameter from string to int: %v", err), 0)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "validatorindex",
+		"1": "block_slot",
+		"2": "block_slot",
+		"3": "withdrawalindex",
+		"4": "address",
+		"5": "amount",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "validatorindex"
+	}
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "asc" {
+		orderDir = "desc"
+	}
+
+	length := uint64(10)
+
+	withdrawalCount, err := db.GetDashboardWithdrawalsCount(validators)
+	if err != nil {
+		utils.LogError(err, fmt.Errorf("error retrieving dashboard validator withdrawals count: %v", err), 0)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	withdrawals, err := db.GetDashboardWithdrawals(validators, length, start, orderBy, orderDir)
+	if err != nil {
+		utils.LogError(err, fmt.Errorf("error retrieving validator withdrawals: %v", err), 0)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	tableData := make([][]interface{}, 0, len(withdrawals))
+
+	for _, w := range withdrawals {
+		tableData = append(tableData, []interface{}{
+			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatTimeFromNow(utils.SlotToTime(w.Slot)))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+		})
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    withdrawalCount,
+		RecordsFiltered: withdrawalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		utils.LogError(err, fmt.Errorf("error enconding json response for %v route: %v", r.URL.String(), err), 0)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
 func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
 
@@ -371,12 +461,12 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch,
 			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '1') as executedproposals,
 			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '2') as missedproposals,
-			COALESCE(validator_performance.performance7d, 0) as performance7d,
+			COALESCE(validator_stats.cl_rewards_gwei_7d, 0) as performance7d,
 			COALESCE(validator_names.name, '') AS name,
 		    validators.status AS state
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
+		LEFT JOIN validator_stats ON validators.validatorindex = validator_stats.validatorindex AND validator_stats.day = (SELECT MAX(day) FROM validator_stats)
 		WHERE validators.validatorindex = ANY($1)
 		LIMIT $2`, filter, validatorLimit)
 
@@ -386,7 +476,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(filterArr, services.LatestEpoch(), 1)
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(filterArr, services.LatestEpoch(), services.LatestEpoch())
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -444,7 +534,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			tableData[i] = append(tableData[i], nil)
 		}
 
-		if v.LastAttestationSlot != nil {
+		if v.LastAttestationSlot != nil && *v.LastAttestationSlot != 0 {
 			tableData[i] = append(tableData[i], []interface{}{
 				*v.LastAttestationSlot,
 				utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix(),
@@ -495,7 +585,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	earnings, err := GetValidatorEarnings(queryValidators, GetCurrency(r))
+	earnings, _, err := GetValidatorEarnings(queryValidators, GetCurrency(r))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator earnings")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

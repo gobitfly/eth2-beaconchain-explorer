@@ -130,7 +130,7 @@ func CreateAPIKey(userID uint64) error {
 		return err
 	}
 
-	key, err := utils.GenerateAPIKey(u.Password, u.Email, fmt.Sprint(u.RegisterTs.Unix()))
+	key, err := utils.GenerateRandomAPIKey()
 	if err != nil {
 		return err
 	}
@@ -229,7 +229,7 @@ func GetUserDevicesByUserID(userID uint64) ([]types.PairedDevice, error) {
 	if len(data) > 0 {
 		return data, nil
 	}
-	return nil, errors.New("no rows found")
+	return nil, nil
 }
 
 // InsertUserDevice Insert user device and return device id

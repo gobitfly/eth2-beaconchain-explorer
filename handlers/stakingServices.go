@@ -11,13 +11,14 @@ import (
 )
 
 func StakingServices(w http.ResponseWriter, r *http.Request) {
-	var stakingServicesTemplate = templates.GetTemplate("layout.html", "stakingServices.html", "components/bannerStakingServices.html")
+	templateFiles := append(layoutTemplateFiles, "stakingServices.html")
+	var stakingServicesTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/stakingServices", "Ethereum Staking Services Overview")
+	data := InitPageData(w, r, "services", "/stakingServices", "Ethereum Staking Services Overview", templateFiles)
 
 	pageData := &types.StakeWithUsPageData{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
@@ -27,7 +28,6 @@ func StakingServices(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
-	pageData.NoAds = data.NoAds
 	data.Data = pageData
 
 	if handleTemplateError(w, r, "stakingServices.go", "StakingServices", "", stakingServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {

@@ -30,7 +30,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var notificationCenterParts []string = []string{"layout.html", "user/notificationsCenter.html", "modals.html"}
+var notificationCenterParts []string = append(layoutTemplateFiles, "user/notificationsCenter.html", "modals.html")
 
 func UserAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,7 +46,8 @@ func UserAuthMiddleware(next http.Handler) http.Handler {
 
 // UserSettings renders the user-template
 func UserSettings(w http.ResponseWriter, r *http.Request) {
-	var userTemplate = templates.GetTemplate("layout.html", "user/settings.html")
+	templateFiles := append(layoutTemplateFiles, "user/settings.html")
+	var userTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	userSettingsData := &types.UserSettingsPageData{}
@@ -61,8 +62,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	premiumSubscription, err := db.GetUserPremiumSubscription(user.UserID)
 	if err != nil && err != sql.ErrNoRows {
 		logger.Errorf("Error retrieving the premium subscriptions for user: %v %v", user.UserID, err)
-		session.Flashes("Error: Something went wrong.")
-		session.Save(r, w)
+		utils.SetFlash(w, r, "", "Error: Something went wrong.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -70,8 +70,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	subscription, err := db.StripeGetUserSubscription(user.UserID, utils.GROUP_API)
 	if err != nil && err != sql.ErrNoRows {
 		logger.Errorf("Error retrieving the subscriptions for user: %v %v", user.UserID, err)
-		session.Flashes("Error: Something went wrong.")
-		session.Save(r, w)
+		utils.SetFlash(w, r, "", "Error: Something went wrong.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -128,8 +127,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userSettingsData.CsrfField = csrf.TemplateField(r)
 
-	data := InitPageData(w, r, "user", "/user", "User Settings")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "user", "/user", "User Settings", templateFiles)
 	data.Data = userSettingsData
 	data.User = user
 
@@ -138,7 +136,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		premiumPkg = premiumSubscription.Package
 	}
 
-	session.Values["subscription"] = premiumPkg
+	session.SetValue("subscription", premiumPkg)
 	session.Save(r, w)
 
 	if handleTemplateError(w, r, "user.go", "UserSettings", "", userTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -163,7 +161,8 @@ func GenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 
 // UserAuthorizeConfirm renders the user-authorize template
 func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
-	var authorizeTemplate = templates.GetTemplate("layout.html", "user/authorize.html")
+	templateFiles := append(layoutTemplateFiles, "user/authorize.html")
+	var authorizeTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	authorizeData := &types.UserAuthorizeConfirmPageData{}
@@ -181,9 +180,9 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	clientID := q.Get("client_id")
 	state := q.Get("state")
 
-	session.Values["state"] = state
-	session.Values["client_id"] = clientID
-	session.Values["oauth_redirect_uri"] = redirectURI
+	session.SetValue("state", state)
+	session.SetValue("client_id", clientID)
+	session.SetValue("oauth_redirect_uri", redirectURI)
 	session.Save(r, w)
 
 	if !user.Authenticated {
@@ -205,7 +204,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	authorizeData.CsrfField = csrf.TemplateField(r)
 	authorizeData.Flashes = utils.GetFlashes(w, r, authSessionName)
 
-	data := InitPageData(w, r, "user", "/user", "")
+	data := InitPageData(w, r, "user", "/user", "", templateFiles)
 	data.Data = authorizeData
 	data.Meta.NoTrack = true
 
@@ -226,15 +225,16 @@ func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	delete(session.Values, "oauth_redirect_uri")
-	delete(session.Values, "state")
+	session.DeleteValue("oauth_redirect_uri")
+	session.DeleteValue("state")
 	session.Save(r, w)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func UserNotifications(w http.ResponseWriter, r *http.Request) {
-	var notificationTemplate = templates.GetTemplate("layout.html", "user/notifications.html")
+	templateFiles := append(layoutTemplateFiles, "user/notifications.html")
+	var notificationTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	userNotificationsData := &types.UserNotificationsPageData{}
@@ -282,7 +282,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	link = link[:len(link)-1]
 	userNotificationsData.DashboardLink = link
 
-	data := InitPageData(w, r, "user", "/user", "")
+	data := InitPageData(w, r, "user", "/user", "", templateFiles)
 	data.Data = userNotificationsData
 	data.User = user
 
@@ -615,7 +615,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	userNotificationsCenterData := &types.UserNotificationsCenterPageData{}
-	data := InitPageData(w, r, "user", "/user", "")
+	data := InitPageData(w, r, "user", "/user", "", notificationCenterParts)
 
 	user := getUser(r)
 
@@ -834,6 +834,8 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 			EventLabel: ev.Desc,
 			EventName:  ev.Event,
 			Active:     false,
+			Warning:    ev.Warning,
+			Info:       ev.Info,
 		})
 	}
 
@@ -956,7 +958,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), 1)
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), services.LatestEpoch())
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -1036,7 +1038,7 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 
 	subs := []types.Subscription{}
 	err = db.FrontendWriterDB.Select(&subs, `
-			SELECT *
+			SELECT id, user_id, event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold, unsubscribe_hash, internal_state
 			FROM users_subscriptions
 			WHERE user_id = $1
 	`, user.UserID)
@@ -1130,7 +1132,7 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 
 		code := hex.EncodeToString(codeBytes)   // return to user
 		codeHashed := utils.HashAndEncode(code) // save hashed code in db
-		clientID := session.Values["client_id"].(string)
+		clientID := session.GetValue("client_id").(string)
 
 		err2 := db.AddAuthorizeCode(user.UserID, codeHashed, clientID, appData.ID)
 		if err2 != nil {
@@ -1146,7 +1148,7 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
 	} else {
-		logger.Error("Not authorized")
+		utils.LogError(nil, "Not authorized", 0)
 		callback := appData.RedirectURI + "?error=access_denied&error_description=no_authentication" + stateAppend
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
@@ -1166,7 +1168,7 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logger.Errorf("error deleting user by email for user: %v %v", user.UserID, err)
 			http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
-			session.Flashes("Error: Could not delete user.")
+			utils.SetFlash(w, r, "", "Error: Could not delete user.")
 			session.Save(r, w)
 			http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 			return
@@ -1174,7 +1176,7 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 
 		Logout(w, r)
 	} else {
-		logger.Error("Trying to delete a unauthenticated user")
+		utils.LogError(nil, "Trying to delete an unauthenticated user", 0)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1272,6 +1274,25 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
+
+	err = purgeAllSessionsForUser(r.Context(), user.UserID)
+	if err != nil {
+		logger.Errorf("error purging sessions for user %v: %v", user.UserID, err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
+	err = session.SCS.RenewToken(r.Context())
+	if err != nil {
+		logger.Errorf("error renewing session token for user: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
 	session.AddFlash("Password Updated Successfully ✔️")
 	session.Save(r, w)
 	http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
@@ -1350,21 +1371,12 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q := r.URL.Query()
-
-	newEmail := q.Get("email")
-
-	if !utils.IsValidEmail(newEmail) {
-		utils.SetFlash(w, r, authSessionName, "Error: Could not update your email because the new email is invalid, please try again.")
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
-		return
-	}
-
 	user := struct {
 		ID        int64     `db:"id"`
 		Email     string    `db:"email"`
 		ConfirmTs time.Time `db:"email_confirmation_ts"`
 		Confirmed bool      `db:"email_confirmed"`
+		NewEmail  string    `db:"email_change_to_value"`
 	}{}
 
 	err = db.FrontendWriterDB.Get(&user, "SELECT id, email, email_confirmation_ts, email_confirmed FROM users WHERE email_confirmation_hash = $1", hash)
@@ -1387,15 +1399,21 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !utils.IsValidEmail(user.NewEmail) {
+		utils.SetFlash(w, r, authSessionName, "Error: Could not update your email because the new email is invalid, please try again.")
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
 	var emailExists string
-	db.FrontendWriterDB.Get(&emailExists, "SELECT email FROM users WHERE email = $1", newEmail)
+	db.FrontendWriterDB.Get(&emailExists, "SELECT email FROM users WHERE email = $1", user.NewEmail)
 	if emailExists != "" {
 		utils.SetFlash(w, r, authSessionName, "Error: Email already exists. We could not update your email.")
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
-	_, err = db.FrontendWriterDB.Exec(`UPDATE users SET email = $1 WHERE id = $2`, newEmail, user.ID)
+	_, err = db.FrontendWriterDB.Exec(`UPDATE users SET email = $1, email_confirmation_hash = '' WHERE id = $2`, user.NewEmail, user.ID)
 	if err != nil {
 		logger.Errorf("error: updating email for user: %v", err)
 		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
@@ -1403,12 +1421,20 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session.Values["subscription"] = ""
-	session.Values["authenticated"] = false
-	delete(session.Values, "user_id")
+	session.SetValue("subscription", "")
+	session.SetValue("authenticated", false)
+	session.DeleteValue("user_id")
+
+	err = purgeAllSessionsForUser(r.Context(), uint64(user.ID))
+	if err != nil {
+		logger.Errorf("error: purging sessions for user %v: %v", user.ID, err)
+		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
 
 	utils.SetFlash(w, r, authSessionName, "Your email has been updated successfully! <br> You can log in with your new email.")
-	http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
@@ -1430,7 +1456,7 @@ func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
 		return &types.RateLimitError{TimeLeft: (*lastTs).Add(authConfirmEmailRateLimit).Sub(now)}
 	}
 
-	_, err = tx.Exec("UPDATE users SET email_confirmation_hash = $1 WHERE id = $2", emailConfirmationHash, userId)
+	_, err = tx.Exec("UPDATE users SET email_confirmation_hash = $1, email_change_to_value = $2 WHERE id = $3", emailConfirmationHash, newEmail, userId)
 	if err != nil {
 		return fmt.Errorf("error updating confirmation-hash: %w", err)
 	}
@@ -1443,12 +1469,12 @@ func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
 	subject := fmt.Sprintf("%s: Verify your email-address", utils.Config.Frontend.SiteDomain)
 	msg := fmt.Sprintf(`To update your email on %[1]s please verify it by clicking this link:
 
-https://%[1]s/settings/email/%[2]s?email=%[3]s
+https://%[1]s/settings/email/%[2]s
 
 Best regards,
 
 %[1]s
-`, utils.Config.Frontend.SiteDomain, emailConfirmationHash, url.QueryEscape(newEmail))
+`, utils.Config.Frontend.SiteDomain, emailConfirmationHash)
 	err = mail.SendTextMail(newEmail, subject, msg, []types.EmailAttachment{})
 	if err != nil {
 		return err
@@ -1723,7 +1749,7 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Error("Max number bundle subscribe is 100")
+		utils.LogError(nil, "Multiple notification subscription: max number bundle subscribe is 100", 0)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
@@ -1775,7 +1801,7 @@ func MultipleUsersNotificationsSubscribeWeb(w http.ResponseWriter, r *http.Reque
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Error("Max number bundle subscribe is 100")
+		utils.LogError(nil, "Multiple notification subscription web: max number bundle subscribe is 100", 0)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
@@ -1949,7 +1975,7 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 	}
 
 	if len(jsonObjects) > 100 {
-		logger.Error("Max number bundle unsubscribe is 100")
+		utils.LogError(nil, "Max number bundle unsubscribe is 100", 0)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle unsubscribe is 100")
 		return
 	}
@@ -2150,7 +2176,7 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 	tx, err := db.FrontendWriterDB.Beginx()
 	if err != nil {
 		//  return fmt.Errorf("error beginning transaction")
-		logger.Errorf("error committing transacton")
+		logger.WithError(err).Errorf("error committing transacton")
 		http.Error(w, "error processing request", 500)
 		return
 	}
@@ -2176,12 +2202,12 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 
 	err = tx.Commit()
 	if err != nil {
-		logger.Errorf("error committing transacton")
+		logger.WithError(err).Errorf("error committing transacton")
 		http.Error(w, "error processing request", 500)
 		return
 	}
 
-	fmt.Fprintf(w, "successfully unsubscribed from %v events", len(hashes))
+	fmt.Fprintf(w, "successfully unsubscribed from %v event(s)", len(hashes))
 }
 
 type UsersNotificationsRequest struct {
@@ -2341,13 +2367,13 @@ func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
 
 // Imprint will show the imprint data using a go template
 func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
-
-	var webhookTemplate = templates.GetTemplate("layout.html", "user/webhooks.html")
+	templateFiles := append(layoutTemplateFiles, "user/webhooks.html")
+	var webhookTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
 
-	data := InitPageData(w, r, "webhook", "/webhook", "Webhook configuration")
+	data := InitPageData(w, r, "webhook", "/webhook", "Webhook configuration", templateFiles)
 	pageData := types.WebhookPageData{}
 
 	ctx, done := ctxt.WithTimeout(ctxt.Background(), time.Second*30)
@@ -2906,41 +2932,53 @@ func UsersNotificationChannels(w http.ResponseWriter, r *http.Request) {
 
 // UserSettings renders the user-template
 func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
-	var userTemplate = templates.GetTemplate("layout.html", "user/global_notification.html")
+	isAdmin, user := handleAdminPermissions(w, r)
+	if !isAdmin {
+		return
+	}
+
+	templateFiles := append(layoutTemplateFiles, "user/global_notification.html")
+	var userTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	user, _, err := getUserSession(r)
-	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	type notificationConfig struct {
+		Target  string
+		Content string
+		Enabled bool
 	}
 
-	if user.UserGroup != "ADMIN" {
-		http.Error(w, "Insufficient privilleges", http.StatusUnauthorized)
-		return
-	}
+	var configs []*notificationConfig
 
-	globalNotificationMessage := ""
-
-	err = db.FrontendWriterDB.Get(&globalNotificationMessage, "SELECT content FROM global_notifications WHERE target = 'web'")
-
+	err := db.WriterDb.Select(&configs, "SELECT target, content, enabled FROM global_notifications WHERE target = $1 ORDER BY target", utils.Config.Chain.Name)
 	if err != nil {
 		logger.Errorf("error retrieving globalNotificationMessage: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
+	if len(configs) == 0 {
+		_, err = db.WriterDb.Exec("INSERT INTO global_notifications VALUES ($1, '', false)", utils.Config.Chain.Name)
+		if err != nil {
+			logger.Errorf("error creating default global notification entry: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		configs = append(configs, &notificationConfig{
+			Target:  utils.Config.Chain.Name,
+			Enabled: false,
+			Content: "",
+		})
+	}
+
 	pageData := &struct {
-		CsrfField                 template.HTML
-		GlobalNotificationMessage string
+		CsrfField                  template.HTML
+		GlobalNotificationMessages []*notificationConfig
 	}{}
-	pageData.GlobalNotificationMessage = globalNotificationMessage
+	pageData.GlobalNotificationMessages = configs
 	pageData.CsrfField = csrf.TemplateField(r)
 
-	data := InitPageData(w, r, "user", "/user/global_notification", "Global Notification")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "user", "/user/global_notification", "Global Notification", templateFiles)
 	data.Data = pageData
 	data.User = user
 
@@ -2951,35 +2989,60 @@ func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
 
 // LoginPost handles authenticating the user.
 func UserGlobalNotificationPost(w http.ResponseWriter, r *http.Request) {
-	user, _, err := getUserSession(r)
-	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	isAdmin, _ := handleAdminPermissions(w, r)
+	if !isAdmin {
 		return
 	}
 
-	if user.UserGroup != "ADMIN" {
-		http.Error(w, "Insufficient privilleges", http.StatusUnauthorized)
-		return
-	}
-
-	err = r.ParseForm()
+	err := r.ParseForm()
 	if err != nil {
 		logger.Errorf("error parsing form: %v", err)
 		http.Redirect(w, r, "/user/global_notification", http.StatusSeeOther)
 		return
 	}
 
-	globalNotificationContent := r.FormValue("globalNotificationContent")
-
-	_, err = db.FrontendWriterDB.Exec("UPDATE global_notifications SET content = $1 WHERE target = 'web'", globalNotificationContent)
-
+	var targets []string
+	err = db.WriterDb.Select(&targets, "SELECT target FROM global_notifications WHERE target = $1", utils.Config.Chain.Name)
 	if err != nil {
-		logger.Errorf("error setting globalNotificationMessage: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Errorf("error retrieving targets: %v", err)
+		http.Redirect(w, r, "/user/global_notification", http.StatusSeeOther)
 		return
+	}
+
+	for _, target := range targets {
+		content := r.FormValue("content_" + target)
+		enabledText := r.FormValue("enabled_" + target)
+
+		enabled := false
+		if enabledText == "on" {
+			enabled = true
+		}
+		_, err = db.WriterDb.Exec("UPDATE global_notifications SET content = $1, enabled = $2 WHERE target = $3", content, enabled, target)
+
+		if err != nil {
+			logger.Errorf("error setting globalNotificationMessage: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Index(w, r)
 	http.Redirect(w, r, "/user/global_notification", http.StatusSeeOther)
+}
+
+// returns true if admin permissions are available, otherwise http.Error is called and false is returned
+func handleAdminPermissions(w http.ResponseWriter, r *http.Request) (bool, *types.User) {
+	user, _, err := getUserSession(r)
+	if err != nil {
+		utils.LogError(err, "error retrieving session", 0)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return false, user
+	}
+
+	if user.UserGroup != "ADMIN" {
+		http.Error(w, "Insufficient privileges", http.StatusUnauthorized)
+		return false, user
+	}
+
+	return true, user
 }

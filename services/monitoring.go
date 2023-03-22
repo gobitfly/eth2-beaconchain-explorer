@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"eth2-exporter/db"
 	"eth2-exporter/utils"
 	"fmt"
@@ -45,7 +46,7 @@ func startClDataMonitoringService() {
 
 		if time.Since(utils.SlotToTime(maxAttestationSlot)) > time.Minute*15 {
 			errorMsg := fmt.Errorf("error: max attestation slot is older than 15 minutes: %v", time.Since(utils.SlotToTime(maxAttestationSlot)))
-			logger.Error(errorMsg)
+			utils.LogError(nil, errorMsg, 0)
 			ReportStatus(name, errorMsg.Error(), nil)
 			continue
 		}
@@ -60,7 +61,7 @@ func startClDataMonitoringService() {
 
 		if time.Since(utils.SlotToTime(maxSlot)) > time.Minute*15 {
 			errorMsg := fmt.Errorf("error: max slot in blocks table is older than 15 minutes: %v", time.Since(utils.SlotToTime(maxAttestationSlot)))
-			logger.Error(errorMsg)
+			utils.LogError(nil, errorMsg, 0)
 			ReportStatus(name, errorMsg.Error(), nil)
 			continue
 		}
@@ -75,7 +76,7 @@ func startClDataMonitoringService() {
 
 		if time.Since(utils.EpochToTime(maxEpoch)) > time.Minute*15 {
 			errorMsg := fmt.Errorf("error: max epoch in epochs table is older than 15 minutes: %v", time.Since(utils.SlotToTime(maxAttestationSlot)))
-			logger.Error(errorMsg)
+			utils.LogError(nil, errorMsg, 0)
 			ReportStatus(name, errorMsg.Error(), nil)
 			continue
 		}
@@ -176,14 +177,14 @@ func startApiMonitoringService() {
 		resp, err := client.Get(url)
 
 		if err != nil {
-			logger.Error(err)
+			utils.LogError(err, "getting client error", 0)
 			ReportStatus(name, err.Error(), nil)
 			continue
 		}
 
 		if resp.StatusCode != 200 {
 			errorMsg := fmt.Errorf("error: api epoch / latest endpoint returned a non 200 status: %v", resp.StatusCode)
-			logger.Error(errorMsg)
+			utils.LogError(nil, errorMsg, 0)
 			ReportStatus(name, errorMsg.Error(), nil)
 			continue
 		}
@@ -211,14 +212,14 @@ func startAppMonitoringService() {
 		resp, err := client.Post(url, "application/json", strings.NewReader(`{"indicesOrPubkey": "1,2"}`))
 
 		if err != nil {
-			logger.Error(err)
+			utils.LogError(err, "POST to dashboard URL error", 0)
 			ReportStatus(name, err.Error(), nil)
 			continue
 		}
 
 		if resp.StatusCode != 200 {
 			errorMsg := fmt.Errorf("error: api app endpoint returned a non 200 status: %v", resp.StatusCode)
-			logger.Error(errorMsg)
+			utils.LogError(nil, errorMsg, 0)
 			ReportStatus(name, errorMsg.Error(), nil)
 			continue
 		}
@@ -232,63 +233,57 @@ func startServicesMonitoringService() {
 	name := "monitoring_services"
 	firstRun := true
 
+	servicesToCheck := map[string]time.Duration{
+		"eth1indexer":               time.Minute * 15,
+		"slotVizUpdater":            time.Minute * 15,
+		"slotUpdater":               time.Minute * 15,
+		"latestProposedSlotUpdater": time.Minute * 15,
+		"epochUpdater":              time.Minute * 15,
+		"rewardsExporter":           time.Minute * 15,
+		"mempoolUpdater":            time.Minute * 15,
+		"indexPageDataUpdater":      time.Minute * 15,
+		"latestBlockUpdater":        time.Minute * 15,
+		"notification-collector":    time.Minute * 15,
+		//"notification-sender", //exclude for now as the sender is only running on mainnet
+		"relaysUpdater":    time.Minute * 15,
+		"ethstoreExporter": time.Minute * 30,
+		"statsUpdater":     time.Minute * 30,
+		"poolsUpdater":     time.Minute * 30,
+		"epochExporter":    time.Minute * 15,
+		"statistics":       time.Minute * 15,
+		//"poolInfoUpdater":  time.Minute * 30,
+	}
+
 	for {
 		if !firstRun {
 			time.Sleep(time.Minute)
 		}
 		firstRun = false
 
-		servicesToCheck := []string{
-			"eth1indexer",
-			"slotVizUpdater",
-			"slotUpdater",
-			"latestProposedSlotUpdater",
-			"epochUpdater",
-			"rewardsExporter",
-			"mempoolUpdater",
-			"indexPageDataUpdater",
-			"latestBlockUpdater",
-			"notification-collector",
-			//"notification-sender", //exclude for now as the sender is only running on mainnet
-			"relaysUpdater",
-			"ethstoreExporter",
-			"statsUpdater",
-			"poolsUpdater",
-			"epochExporter",
-			"statistics",
-			"poolInfoUpdater",
-			"epochExporter",
-		}
-
-		type serviceStatus struct {
-			Name   string
-			Status string
-		}
-
-		var res []*serviceStatus
-
-		err := db.WriterDb.Select(&res, `select name, status from service_status where last_update > now() - interval '15 minutes' order by last_update desc;`)
-
-		if err != nil {
-			errorMsg := fmt.Errorf("error: could not retrieve service status from the service_status table: %v", err)
-			ReportStatus(name, errorMsg.Error(), nil)
-			continue
-		}
-
-		statusMap := make(map[string]string)
-
-		for _, s := range res {
-			_, exists := statusMap[s.Name]
-
-			if !exists {
-				statusMap[s.Name] = s.Status
-			}
-		}
-
+		now := time.Now()
 		hasError := false
-		for _, serviceName := range servicesToCheck {
-			if statusMap[serviceName] != "Running" {
-				errorMsg := fmt.Errorf("error: service %v has unexpected state %v", serviceName, statusMap[serviceName])
+		for serviceName, maxTimeout := range servicesToCheck {
+			var status string
+			err := db.WriterDb.Get(&status, `select status from service_status where last_update > $1 and name = $2 ORDER BY last_update DESC LIMIT 1;`, now.Add(maxTimeout*-1), serviceName)
+
+			if err != nil {
+
+				if err == sql.ErrNoRows {
+					errorMsg := fmt.Errorf("error: missing status entry for service %v", serviceName)
+					utils.LogError(err, errorMsg, 0)
+					ReportStatus(name, errorMsg.Error(), nil)
+					hasError = true
+					break
+				} else {
+					errorMsg := fmt.Errorf("error: could not retrieve service status from the service_status table: %v", err)
+					ReportStatus(name, errorMsg.Error(), nil)
+					hasError = true
+					break
+				}
+			}
+
+			if status != "Running" {
+				errorMsg := fmt.Errorf("error: service %v has unexpected state %v", serviceName, status)
 				ReportStatus(name, errorMsg.Error(), nil)
 				hasError = true
 				break
@@ -299,10 +294,11 @@ func startServicesMonitoringService() {
 			ReportStatus(name, "OK", nil)
 		}
 
-		_, err = db.WriterDb.Exec("DELETE FROM service_status WHERE last_update < NOW() - INTERVAL '1 WEEK'")
+		_, err := db.WriterDb.Exec("DELETE FROM service_status WHERE last_update < NOW() - INTERVAL '1 WEEK'")
 
 		if err != nil {
 			logger.Errorf("error cleaning up service_status table")
 		}
 	}
+
 }

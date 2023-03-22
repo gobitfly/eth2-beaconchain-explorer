@@ -94,7 +94,7 @@ type Validator struct {
 // ValidatorQueue is a struct to hold validator queue data
 type ValidatorQueue struct {
 	Activating uint64
-	Exititing  uint64
+	Exiting    uint64
 }
 
 type SyncAggregate struct {
@@ -106,25 +106,37 @@ type SyncAggregate struct {
 
 // Block is a struct to hold block data
 type Block struct {
-	Status            uint64
-	Proposer          uint64
-	BlockRoot         []byte
-	Slot              uint64
-	ParentRoot        []byte
-	StateRoot         []byte
-	Signature         []byte
-	RandaoReveal      []byte
-	Graffiti          []byte
-	Eth1Data          *Eth1Data
-	BodyRoot          []byte
-	ProposerSlashings []*ProposerSlashing
-	AttesterSlashings []*AttesterSlashing
-	Attestations      []*Attestation
-	Deposits          []*Deposit
-	VoluntaryExits    []*VoluntaryExit
-	SyncAggregate     *SyncAggregate    // warning: sync aggregate may be nil, for phase0 blocks
-	ExecutionPayload  *ExecutionPayload // warning: payload may be nil, for phase0/altair blocks
-	Canonical         bool
+	Status                     uint64
+	Proposer                   uint64
+	BlockRoot                  []byte
+	Slot                       uint64
+	ParentRoot                 []byte
+	StateRoot                  []byte
+	Signature                  []byte
+	RandaoReveal               []byte
+	Graffiti                   []byte
+	Eth1Data                   *Eth1Data
+	BodyRoot                   []byte
+	ProposerSlashings          []*ProposerSlashing
+	AttesterSlashings          []*AttesterSlashing
+	Attestations               []*Attestation
+	Deposits                   []*Deposit
+	VoluntaryExits             []*VoluntaryExit
+	SyncAggregate              *SyncAggregate    // warning: sync aggregate may be nil, for phase0 blocks
+	ExecutionPayload           *ExecutionPayload // warning: payload may be nil, for phase0/altair blocks
+	Canonical                  bool
+	SignedBLSToExecutionChange []*SignedBLSToExecutionChange
+}
+
+type SignedBLSToExecutionChange struct {
+	Message   BLSToExecutionChange
+	Signature []byte
+}
+
+type BLSToExecutionChange struct {
+	Validatorindex uint64
+	BlsPubkey      []byte
+	Address        []byte
 }
 
 type Transaction struct {
@@ -160,6 +172,31 @@ type ExecutionPayload struct {
 	BaseFeePerGas uint64
 	BlockHash     []byte
 	Transactions  []*Transaction
+	Withdrawals   []*Withdrawals
+}
+
+type Withdrawals struct {
+	Slot           uint64 `json:"slot,omitempty"`
+	BlockRoot      []byte `json:"blockroot,omitempty"`
+	Index          uint64 `json:"index"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+	Address        []byte `json:"address"`
+	Amount         uint64 `json:"amount"`
+}
+
+type WithdrawalsByEpoch struct {
+	Epoch          uint64
+	ValidatorIndex uint64
+	Amount         uint64
+}
+
+type WithdrawalsNotification struct {
+	Slot           uint64 `json:"slot,omitempty"`
+	Index          uint64 `json:"index"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+	Address        []byte `json:"address"`
+	Amount         uint64 `json:"amount"`
+	Pubkey         []byte `json:"pubkey"`
 }
 
 // Eth1Data is a struct to hold the ETH1 data

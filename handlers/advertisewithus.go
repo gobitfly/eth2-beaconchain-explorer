@@ -11,13 +11,14 @@ import (
 )
 
 func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
-	var advertisewithusTemplate = templates.GetTemplate("layout.html", "advertisewithus.html")
+	templateFiles := append(layoutTemplateFiles, "advertisewithus.html")
+	var advertisewithusTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "advertisewithus", "/advertisewithus", "Adverstise With Us")
+	data := InitPageData(w, r, "advertisewithus", "/advertisewithus", "Adverstise With Us", templateFiles)
 
 	pageData := &types.AdvertiseWithUsPageData{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey

@@ -27,29 +27,25 @@ var _ = intersect.Simple
 
 const MaxSlotValue = 137438953503 // we only render a page for blocks up to this slot
 
-// Block will return the data for a block
-func Block(w http.ResponseWriter, r *http.Request) {
-
-	var blockTemplate = templates.GetTemplate(
-		"layout.html",
-		"block/block.html",
-		"block/transactions.html",
-		"block/attestations.html",
-		"block/deposits.html",
-		"block/votes.html",
-		"block/attesterSlashing.html",
-		"block/proposerSlashing.html",
-		"block/exits.html",
-		"block/overview.html",
-		"block/execTransactions.html",
-	)
-
-	var blockFutureTemplate = templates.GetTemplate(
-		"layout.html",
-		"block/blockFuture.html",
-	)
-
-	var blockNotFoundTemplate = templates.GetTemplate("layout.html", "blocknotfound.html")
+// Slot will return the data for a block contained in the slot
+func Slot(w http.ResponseWriter, r *http.Request) {
+	slotTemplateFiles := append(layoutTemplateFiles,
+		"slot/slot.html",
+		"slot/transactions.html",
+		"slot/withdrawals.html",
+		"slot/attestations.html",
+		"slot/deposits.html",
+		"slot/votes.html",
+		"slot/attesterSlashing.html",
+		"slot/proposerSlashing.html",
+		"slot/exits.html",
+		"slot/overview.html",
+		"slot/execTransactions.html")
+	slotFutureTemplateFiles := append(layoutTemplateFiles, "slot/slotFuture.html")
+	blockNotFoundTemplateFiles := append(layoutTemplateFiles, "slotnotfound.html")
+	var slotTemplate = templates.GetTemplate(slotTemplateFiles...)
+	var slotFutureTemplate = templates.GetTemplate(slotFutureTemplateFiles...)
+	var blockNotFoundTemplate = templates.GetTemplate(blockNotFoundTemplateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -61,19 +57,22 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(slotOrHash) != 64 {
 		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
-		if err != nil {
-			logger.Errorf("error parsing blockslot to int: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		if err != nil || blockSlot >= 2147483648 { // block slot must be lower then max int4
+			data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), blockNotFoundTemplateFiles)
+			data.Data = "slot"
+			if handleTemplateError(w, r, "slot.go", "Slot", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+				return // an error has occurred and was processed
+			}
 			return
 		}
 	}
 
-	data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash))
-
 	if blockSlot == -1 {
 		err = db.ReaderDb.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
 		if blockSlot == -1 {
-			if handleTemplateError(w, r, "block.go", "Block", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), blockNotFoundTemplateFiles)
+			data.Data = "slot"
+			if handleTemplateError(w, r, "slot.go", "Slot", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
 			return
@@ -89,15 +88,18 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if err == sql.ErrNoRows {
 		slot := uint64(blockSlot)
 		//Slot not in database -> Show future block
-		data.Meta.Path = "/slot/" + slotOrHash
 
 		if slot > MaxSlotValue {
 			logger.Errorf("error retrieving blockPageData: %v", err)
-			if handleTemplateError(w, r, "block.go", "Block", "MaxSlotValue", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+
+			data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), blockNotFoundTemplateFiles)
+			if handleTemplateError(w, r, "slot.go", "Slot", "MaxSlotValue", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
 		}
 
+		data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), slotFutureTemplateFiles)
+		data.Meta.Path = "/slot/" + slotOrHash
 		futurePageData := types.BlockPageData{
 			Slot:         slot,
 			Epoch:        utils.EpochOfSlot(slot),
@@ -107,12 +109,12 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		}
 		data.Data = futurePageData
 
-		if handleTemplateError(w, r, "block.go", "Block", "ErrNoRows", blockFutureTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "slot.go", "Slot", "ErrNoRows", slotFutureTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 		return
 	} else if err != nil {
-		if handleTemplateError(w, r, "block.go", "Block", "GetSlotPageData", err) != nil {
+		if handleTemplateError(w, r, "slot.go", "Slot", "GetSlotPageData", err) != nil {
 			return // an error has occurred and was processed
 		}
 		return
@@ -127,7 +129,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			blockPageData.ExecutionData.IsValidMev = blockPageData.IsValidMev
 		}
 	}
-	data.Meta.Path = fmt.Sprintf("/slot/%v", blockPageData.Slot)
+	data := InitPageData(w, r, "blockchain", fmt.Sprintf("/slot/%v", blockPageData.Slot), fmt.Sprintf("Slot %v", slotOrHash), slotTemplateFiles)
 	data.Data = blockPageData
 
 	if utils.IsApiRequest(r) {
@@ -135,10 +137,10 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		err = json.NewEncoder(w).Encode(data.Data)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
-		err = blockTemplate.ExecuteTemplate(w, "layout", data)
+		err = slotTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
-	if handleTemplateError(w, r, "block.go", "Block", "ApiRequest", err) != nil {
+	if handleTemplateError(w, r, "slot.go", "Slot", "ApiRequest", err) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -222,13 +224,15 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			blocks.attesterslashingscount,
 			blocks.attestationscount,
 			blocks.depositscount,
+			blocks.withdrawalcount,
 			blocks.voluntaryexitscount,
 			blocks.proposer,
 			blocks.status,
 			exec_block_number,
 			jsonb_agg(tags.metadata) as tags,
 			COALESCE(not 'invalid-relay-reward'=ANY(array_agg(tags.id)), true) as is_valid_mev,
-			COALESCE(validator_names.name, '') AS name
+			COALESCE(validator_names.name, '') AS name,
+			(SELECT count(*) from blocks_bls_change where block_slot = $1) as bls_change_count
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
@@ -338,7 +342,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		}
 	}
 
-	err = db.ReaderDb.Select(&blockPageData.ProposerSlashings, "SELECT * FROM blocks_proposerslashings WHERE block_slot = $1", blockPageData.Slot)
+	err = db.ReaderDb.Select(&blockPageData.ProposerSlashings, "SELECT block_slot, block_index, block_root, proposerindex, header1_slot, header1_parentroot, header1_stateroot, header1_bodyroot, header1_signature, header2_slot, header2_parentroot, header2_stateroot, header2_bodyroot, header2_signature FROM blocks_proposerslashings WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block proposer slashings data: %v", err)
 	}
@@ -405,8 +409,8 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 	return &blockPageData, nil
 }
 
-// BlockDepositData returns the deposits for a specific slot
-func BlockDepositData(w http.ResponseWriter, r *http.Request) {
+// SlotDepositData returns the deposits for a specific slot
+func SlotDepositData(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
 	w.Header().Set("Content-Type", "application/json")
 
@@ -527,8 +531,8 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// BlockVoteData returns the votes for a specific slot
-func BlockVoteData(w http.ResponseWriter, r *http.Request) {
+// SlotVoteData returns the votes for a specific slot
+func SlotVoteData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
@@ -688,7 +692,7 @@ type transactionsData struct {
 	GasPrice      template.HTML `json:"GasPrice"`
 }
 
-// BlockTransactionsData returns the transactions for a specific slot
+// BlockTransactionsData returns the transactions for a specific block
 func BlockTransactionsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -745,8 +749,8 @@ type attestationsData struct {
 	Signature       string        `json:"Signature"`
 }
 
-// BlockAttestationsData returns the attestations for a specific slot
-func BlockAttestationsData(w http.ResponseWriter, r *http.Request) {
+// SlotAttestationsData returns the attestations for a specific slot
+func SlotAttestationsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
@@ -783,6 +787,87 @@ func BlockAttestationsData(w http.ResponseWriter, r *http.Request) {
 			TargetRoot:      fmt.Sprintf("%x", v.TargetRoot),
 			Signature:       fmt.Sprintf("%x", v.Signature),
 		}
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error encoding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(r)
+
+	slot, err := strconv.ParseUint(vars["slot"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	withdrawals, err := db.GetSlotWithdrawals(slot)
+	if err != nil {
+		logger.Errorf("error retrieving withdrawals data for slot %v, err: %v", slot, err)
+	}
+
+	tableData := make([][]interface{}, 0, len(withdrawals))
+	for _, w := range withdrawals {
+		// logger.Infof("w: %+v", w)
+		tableData = append(tableData, []interface{}{
+			template.HTML(fmt.Sprintf("%v", w.Index)),
+			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+		})
+	}
+
+	data := &types.DataTableResponse{
+		Draw:         1,
+		RecordsTotal: uint64(len(withdrawals)),
+		// RecordsFiltered: uint64(len(withdrawals)),
+		Data: tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error encoding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func SlotBlsChangeData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(r)
+
+	slot, err := strconv.ParseUint(vars["slot"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	blsChange, err := db.GetSlotBLSChange(slot)
+	if err != nil {
+		logger.Errorf("error retrieving blsChange data for slot %v, err: %v", slot, err)
+	}
+
+	tableData := make([][]interface{}, 0, len(blsChange))
+	for _, c := range blsChange {
+		tableData = append(tableData, []interface{}{
+			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(c.Validatorindex))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(c.Signature))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(c.BlsPubkey))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(c.Address, nil, "", false, false, true))),
+		})
+	}
+
+	data := &types.DataTableResponse{
+		Draw:         1,
+		RecordsTotal: uint64(len(blsChange)),
+		// RecordsFiltered: uint64(len(withdrawals)),
+		Data: tableData,
 	}
 
 	err = json.NewEncoder(w).Encode(data)

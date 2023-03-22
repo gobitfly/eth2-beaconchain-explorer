@@ -1,0 +1,239 @@
+{{ define "js" }}
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/highcharts/highstock.min.js"></script>
+  <script type="text/javascript" src="/js/highcharts/highcharts-global-options.js"></script>
+  <script>
+    $(document).ready(function () {
+      var usp = new URLSearchParams(window.location.search)
+      var q = usp.get("q")
+      var tblWithdrawals = $("#withdrawals").DataTable({
+        processing: true,
+        serverSide: true,
+        ordering: false,
+        stateSave: true,
+        stateSaveCallback: function (settings, data) {
+          data.search.search = ""
+          data.order = []
+          data.columns = []
+          data.start = 0
+          data.key = `${settings.sTableId}`
+          fetch('/tables/state', {
+            method: "POST",
+            body: JSON.stringify(data),
+          })
+          .then(res => res.json())
+          .then(({ status, data }) => {
+            if (status !== "OK") {
+              console.error("error updating table state, err:", data, "status: ", status)
+            }
+          }).catch(err => {
+            console.error("error updating table state, err: ", err)
+          })
+        },
+        order: [[2, "desc"]],
+        searching: true,
+        ajax: "/validators/withdrawals/data",
+        pagingType: "input",
+        deferLoading: {{.Withdrawals.RecordsTotal}},
+        preDrawCallback: function () {
+          // this does not always work.. not sure how to solve the staying tooltip
+          try {
+            $("#withdrawals").find('[data-toggle="tooltip"]').tooltip("dispose")
+          } catch (e) {}
+        },
+        drawCallback: function (settings) {
+          formatTimestamps("#withdrawals")
+        },
+        language: {
+          searchPlaceholder: "Epoch, Slot, Validator, Address",
+          search: "",
+          paginate: {
+            previous: '<i class="fas fa-chevron-left"></i>',
+            next: '<i class="fas fa-chevron-right"></i>',
+          },
+        },
+      })
+      if (q) {
+        tblWithdrawals.search(q)
+        tblWithdrawals.draw()
+      }
+
+      var tblBLS = $("#blsChange").DataTable({
+        processing: true,
+        serverSide: true,
+        ordering: false,
+        stateSave: true,
+        stateSaveCallback: function (settings, data) {
+          data.search.search = ""
+          data.order = []
+          data.columns = []
+          data.start = 0
+          data.key = `${settings.sTableId}`
+          fetch('/tables/state', {
+            method: "POST",
+            body: JSON.stringify(data),
+          })
+          .then(res => res.json())
+          .then(({ status, data }) => {
+            if (status !== "OK") {
+              console.error("error updating table state, err:", data, "status: ", status)
+            }
+          }).catch(err => {
+            console.error("error updating table state, err: ", err)
+          })
+        },
+        order: [[2, "desc"]],
+        searching: true,
+        ajax: "/validators/withdrawals/bls",
+        pagingType: "input",
+        deferLoading: {{.BlsChanges.RecordsTotal}},
+        preDrawCallback: function () {
+          // this does not always work.. not sure how to solve the staying tooltip
+          try {
+            $("#blsChange").find('[data-toggle="tooltip"]').tooltip("dispose")
+          } catch (e) {}
+        },
+        drawCallback: function (settings) {
+          formatTimestamps("#blsChange")
+        },
+        language: {
+          searchPlaceholder: "Epoch, Slot, Validator, BLS Public Key",
+          search: "",
+          paginate: {
+            previous: '<i class="fas fa-chevron-left"></i>',
+            next: '<i class="fas fa-chevron-right"></i>',
+          },
+        },
+      })
+
+      if (q) {
+        tblBLS.search(q)
+        tblBLS.draw()
+      }
+      $("#withdrawals_filter > label > input").on("input", function (ev) {
+        if (ev && ev.target && ev.target.value) {
+          var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+          q = ev.target.value
+          window.history.replaceState(null, "Withdrawals", newUrl)
+        } else {
+          window.history.replaceState(null, "Withdrawals", window.location.pathname)
+          q = ""
+        }
+        if (tblBLS) {
+          tblBLS.search(q || "")
+          tblBLS.draw()
+        }
+      })
+
+      $("#blsChange_filter > label > input").on("input", function (ev) {
+        if (ev && ev.target && ev.target.value) {
+          var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+          q = ev.target.value
+          window.history.replaceState(null, "Withdrawals", newUrl)
+        } else {
+          window.history.replaceState(null, "Withdrawals", window.location.pathname)
+          q = ""
+        }
+        if (tblWithdrawals) {
+          tblWithdrawals.search(q || "")
+          tblWithdrawals.draw()
+        }
+      })
+    })
+  </script>
+{{ end }}
+{{ define "css" }}
+  <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container my-2">
+      <div class="d-md-flex py-2 justify-content-md-between mb-3">
+        <div class="heading">
+          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-money-bill mr-2"></i>Withdrawals</h1>
+        </div>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+            <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
+            <li class="breadcrumb-item active" aria-current="page">withdrawals</li>
+          </ol>
+        </nav>
+      </div>
+      {{ template "withdrawalOverviewRow" .Stats }}
+      <h2 class="h4 my-3">
+        <span class="nav-text">Processed Withdrawals</span>
+      </h2>
+      <div>
+        {{ template "withdrawalChart" $ }}
+      </div>
+      <div class="my-3">
+        <h6 class="my-2">This table displays partial and full withdrawals.</h6>
+        <div class="card">
+          <div class="card-body px-0 py-2">
+            <div class="table-responsive pt-2">
+              <table class="table" id="withdrawals">
+                <thead>
+                  <tr>
+                    <th>Epoch</th>
+                    <th>Slot</th>
+                    <th>Index</th>
+                    <th>Validator</th>
+                    <th>Time</th>
+                    <th>Address</th>
+                    <th>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {{ range $i, $row := .Withdrawals.Data }}
+                    <tr>
+                      {{ range $j, $col := $row }}
+                        <td>{{ $col }}</td>
+                      {{ end }}
+                    </tr>
+                  {{ end }}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <h2 class="h4 my-3">
+        <span class="nav-text">Address Changes (BLS)</span>
+      </h2>
+      <div class="my-3">
+        <h6 class="my-2">This table displays the BLS address changes from <span class="monospace">0x00</span> credentials to <span class="monospace">0x01</span>.</h6>
+        <div class="card">
+          <div class="card-body px-0 py-2">
+            <div class="table-responsive pt-2">
+              <table class="table" id="blsChange">
+                <thead>
+                  <tr>
+                    <th>Epoch</th>
+                    <th>Slot</th>
+                    <th>Validator</th>
+                    <th>Signature</th>
+                    <th>BLS Public Key</th>
+                    <th>New Withdrawal Address</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {{ range $i, $row := .BlsChanges.Data }}
+                    <tr>
+                      {{ range $j, $col := $row }}
+                        <td>{{ $col }}</td>
+                      {{ end }}
+                    </tr>
+                  {{ end }}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="r-banner-withdrawal" info="{{ $.Meta.Templates }}"></div>
+    </div>
+  {{ end }}
+{{ end }}

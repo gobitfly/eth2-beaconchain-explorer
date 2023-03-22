@@ -110,6 +110,14 @@ function hex2a(hexx) {
 
 // typeahead
 $(document).ready(function () {
+  // format timestamps within tooltip titles
+  $("[data-tooltip-date=true]").each(function (item) {
+    let titleObject = $($.parseHTML($(this).attr("title")))
+    titleObject.find("[aria-ethereum-date]").each(function (index, element) {
+      formatAriaEthereumDate(this)
+    })
+    $(this).attr("title", titleObject.prop("outerHTML"))
+  })
   formatTimestamps() // make sure this happens before tooltips
   if ($('[data-toggle="tooltip"]').tooltip) {
     $('[data-toggle="tooltip"]').tooltip()
@@ -379,25 +387,7 @@ $(document).ready(function () {
 })
 
 $("[aria-ethereum-date]").each(function (item) {
-  var dt = $(this).attr("aria-ethereum-date")
-  var format = $(this).attr("aria-ethereum-date-format")
-
-  if (!format) {
-    format = "ff"
-  }
-
-  if (format === "FROMNOW") {
-    $(this).text(getRelativeTime(luxon.DateTime.fromMillis(dt * 1000)))
-    $(this).attr("title", luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
-    $(this).attr("data-toggle", "tooltip")
-  } else if (format === "LOCAL") {
-    var local = luxon.DateTime.fromMillis(dt * 1000)
-    $(this).text(local.toFormat("MMM-dd-yyyy HH:mm:ss") + " UTC" + local.toFormat("Z"))
-    $(this).attr("title", luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
-    $(this).attr("data-toggle", "tooltip")
-  } else {
-    $(this).text(luxon.DateTime.fromMillis(dt * 1000).toFormat(format))
-  }
+  formatAriaEthereumDate(this)
 })
 
 $(document).ready(function () {
@@ -445,6 +435,28 @@ if (url.match("#")) {
   $('.nav-pills a[href="#' + url.split("#")[1] + '"]').tab("show")
 }
 
+function formatAriaEthereumDate(elem) {
+  var dt = $(elem).attr("aria-ethereum-date")
+  var format = $(elem).attr("aria-ethereum-date-format")
+
+  if (!format) {
+    format = "ff"
+  }
+
+  if (format === "FROMNOW") {
+    $(elem).text(getRelativeTime(luxon.DateTime.fromMillis(dt * 1000)))
+    $(elem).attr("title", luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
+    $(elem).attr("data-toggle", "tooltip")
+  } else if (format === "LOCAL") {
+    var local = luxon.DateTime.fromMillis(dt * 1000)
+    $(elem).text(local.toFormat("MMM-dd-yyyy HH:mm:ss") + " UTC" + local.toFormat("Z"))
+    $(elem).attr("title", luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
+    $(elem).attr("data-toggle", "tooltip")
+  } else {
+    $(elem).text(luxon.DateTime.fromMillis(dt * 1000).toFormat(format))
+  }
+}
+
 function formatTimestamps(selStr) {
   var sel = $(document)
   if (selStr !== undefined) {
@@ -463,7 +475,31 @@ function formatTimestamps(selStr) {
   }
 }
 
+function getLuxonDateFromTimestamp(ts) {
+  if (!ts) {
+    return
+  }
+
+  // Parse Date depanding on the format we get it
+  if (`${ts}`.includes("T")) {
+    if (ts === "0001-01-01T00:00:00Z") {
+      return
+    } else {
+      return luxon.DateTime.fromISO(ts)
+    }
+  } else {
+    let parsedDate = parseInt(ts)
+    if (parsedDate === 0 || isNaN(parsedDate)) {
+      return
+    }
+    return luxon.DateTime.fromMillis(parsedDate * 1000)
+  }
+}
+
 function getRelativeTime(tsLuxon) {
+  if (!tsLuxon) {
+    return
+  }
   var prefix = ""
   var suffix = ""
   if (tsLuxon.diffNow().milliseconds > 0) {

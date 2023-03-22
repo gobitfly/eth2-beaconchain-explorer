@@ -1,5 +1,4 @@
 {{ define "js" }}
-  <script src="/js/requestInterval.js"></script>
   <script src="/js/vue.min.js"></script>
   <script>
     window.addEventListener("popstate", function (event) {
@@ -83,9 +82,9 @@
     <div class="container validator-content">
       {{ template "flashMessage" . }}
       {{ template "validatorHeading" . }}
-      {{ if not .NoAds }}{{ template "bannerValidator" }}{{ end }}
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="row align-items-stretch">
-        <div class="col-lg-8 px-lg-2 my-2">
+        <div class="col-lg-7 col-xl-8 px-lg-2 my-2">
           <div class="card d-flex flex-column justify-content-center h-100 py-0 px-0 card-body">
             <div>{{ template "validatorLifeCycleDiagram" . }}
             </div>
@@ -105,7 +104,7 @@
             </div>
           </div>
         </div>
-        <div class="col-lg-4 px-lg-2 my-2">
+        <div class="col-lg-5 col-xl-4 px-lg-2 my-2">
           <div class="card card-body py-2 px-0 h-100 d-flex align-items-center">
             {{ if $deposited }}
               {{ template "validatorNetworkStatsTable" . }}
@@ -123,7 +122,7 @@
         </div>
       </div>
       <div class="row align-items-stretch">
-        <div class="col-lg-8 px-lg-2 my-2">
+        <div class="col-lg-7 col-xl-8 px-lg-2 my-2">
           <div class="card h-100 px-0 py-0 card-body">
             <ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs" id="chartTabs" role="tablist">
               <li class="nav-item">
@@ -147,11 +146,16 @@
               <li class="nav-item">
                 <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-wallet"></i> <span class="tab-text">Deposits</span></a>
               </li>
+              {{ if .CappellaHasHappened }}
+                <li class="nav-item">
+                  <a class="nav-link {{ if not .IsWithdrawableAddress }}disabled{{ end }}" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawals" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-money-bill"></i> <span class="tab-text">Withdrawals</span></a>
+                </li>
+              {{ end }}
               {{ if .IsRocketpool }}
                 <li class="nav-item">
                   <a class="nav-link" id="rocketpool-tab" data-toggle="tab" href="#rocketpool" role="tab" aria-controls="rocketpool" aria-selected="false">
                     <i class="tab-icon mr-md-1 fas fa-rocket"></i>
-                    <span class="tab-text">Rocket Pool</span>
+                    <span class="tab-text">RPL</span>
                   </a>
                 </li>
               {{ end }}
@@ -192,6 +196,11 @@
               <div class="tab-pane fade h-100" id="deposits" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
                 <div class="px-3">{{ template "validatorDepositsTable" $ }}</div>
               </div>
+              {{ if and (.CappellaHasHappened) (.IsWithdrawableAddress) }}
+                <div class="tab-pane fade h-100" id="withdrawals" role="tabpanel" aria-labelledby="withdrawal-tab" aria-controls="withdrawals">
+                  {{ template "validatorWithdrawalTable" . }}
+                </div>
+              {{ end }}
               {{ if .IsRocketpool }}
                 <div class="tab-pane fade w-100" id="rocketpool" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mt-5 mb-4">
@@ -233,12 +242,40 @@
                     </div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-globe mr-2 text-muted"></i>Node Timezone</div>
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-solid fa-coins mr-2 text-muted"></i>Node Deposit</div>
+                    <div>{{ formatETH .Rocketpool.NodeDepositBalance }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-solid fa-users mr-2 text-muted"></i>rETH Pool Deposit</div>
+                    <div>{{ formatETH .Rocketpool.UserDepositBalance }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-solid fa-chevron-left mr-2 text-muted"></i>Node Refund Balance</div>
+                    <div>{{ formatETH .Rocketpool.NodeRefundBalance }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-regular fa-credit-card mr-2 text-muted"></i>Node Deposit Credit</div>
+                    <div>{{ formatETH .Rocketpool.NodeDepositCredit }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-globe mr-2 text-muted mr-2 text-muted"></i>Node Timezone</div>
                     <div>{{ .Rocketpool.NodeTimezoneLocation }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-regular fa-circle mr-2 text-muted"></i>Vacant</div>
+                    <div>{{ if .Rocketpool.IsVacant }}yes{{ else }}no{{ end }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-regular fa-code-branch mr-2 text-muted"></i>Delegate Version</div>
+                    <div>{{ .Rocketpool.Version }}</div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node RPL Stake</div>
                     <div>{{ formatRPL .Rocketpool.NodeRPLStake }}</div>
+                  </div>
+                  <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node RPL Effective Stake</div>
+                    <div>{{ formatRPL .Rocketpool.EffectiveRPLStake }}</div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node Min RPL Stake</div>
@@ -257,20 +294,20 @@
                     <div>{{ formatRPL .Rocketpool.UnclaimedRPL }}</div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Penalties</div>
-                    <div>{{ if .Rocketpool.PenaltyCount }}<span class="text-danger">{{ .Rocketpool.PenaltyCount }}</span>{{ else }}0{{ end }}</div>
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-exclamation-triangle mr-2 text-muted"></i>Penalties</div>
+                    <div>{{ if gt .Rocketpool.PenaltyCount 0 }}<span class="text-danger">{{ .Rocketpool.PenaltyCount }}</span>{{ else }}0{{ end }}</div>
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Smoothing Pool Opt-In</div>
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-solid fa-swimming-pool mr-2 text-muted"></i>Smoothing Pool Opt-In</div>
                     <div>{{ if .Rocketpool.SmoothingPoolOptIn }}✅{{ else }}❌{{ end }}</div>
                   </div>
                   {{ if .Rocketpool.SmoothingPoolOptIn }}
                     <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-                      <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Smoothing Claimed</div>
+                      <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-solid fa-swimming-pool mr-2 text-muted"></i>Smoothing Claimed</div>
                       <div>{{ formatETH .Rocketpool.SmoothingClaimed }}</div>
                     </div>
                     <div class="w-75 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-                      <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Smoothing Unclaimed</div>
+                      <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-solid fa-swimming-pool mr-2 text-muted"></i>Smoothing Unclaimed</div>
                       <div>{{ formatETH .Rocketpool.SmoothingUnclaimed }}</div>
                     </div>
                   {{ end }}
@@ -279,7 +316,7 @@
             </div>
           </div>
         </div>
-        <div class="col-lg-4 px-lg-2 d-flex align-items-center my-2">
+        <div class="col-lg-5 col-xl-4 px-lg-2 d-flex align-items-center my-2">
           <div class="card h-100 px-0 pt-0 card-body">
             <div style="height: 42px;" class="d-flex justify-content-center align-items-center border-bottom">
               <span class="h4 text-center mb-0">Validator History</span>
@@ -351,7 +388,10 @@
       <!-- Edit Validator Modals -->
       {{ template "validatorEditModal"  . }}
       <!-- Add Validator to Watchlist Modal -->
-      {{ template "validatorBookmarkModal"  . }}
+      {{ if .User.Authenticated }}
+        {{ template "AddValidatorWatchlistModal" .AddValidatorWatchlistModal }}
+      {{ end }}
+
     </div>
   {{ end }}
 {{ end }}

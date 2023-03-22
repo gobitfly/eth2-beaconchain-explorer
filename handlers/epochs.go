@@ -14,15 +14,14 @@ import (
 
 // Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {
-
-	var epochsTemplate = templates.GetTemplate("layout.html", "epochs.html")
+	templateFiles := append(layoutTemplateFiles, "epochs.html")
+	var epochsTemplate = templates.GetTemplate(templateFiles...)
 
 	currency := GetCurrency(r)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "blockchain", "/epochs", "Epochs")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "blockchain", "/epochs", "Epochs", templateFiles)
 
 	var epochs []*types.EpochsPageData
 
@@ -33,10 +32,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Error("error getting user session")
 	}
 
-	state, err := GetDataTableState(user, session, "epochs")
-	if err != nil {
-		logger.WithError(err).Error("error getting stored table state")
-	}
+	state := GetDataTableState(user, session, "epochs")
 	length := uint64(50)
 	start := uint64(0)
 	var startEpoch uint64
@@ -77,7 +73,8 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		proposerslashingscount, 
 		attesterslashingscount, 
 		attestationscount, 
-		depositscount, 
+		depositscount,
+		withdrawalcount,
 		voluntaryexitscount, 
 		validatorscount, 
 		averagevalidatorbalance, 
@@ -101,7 +98,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 			utils.FormatEpoch(b.Epoch),
 			utils.FormatTimestamp(utils.EpochToTime(b.Epoch).Unix()),
 			b.AttestationsCount,
-			b.DepositsCount,
+			fmt.Sprintf("%v / %v", b.DepositsCount, b.WithdrawalCount),
 			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
 			utils.FormatYesNo(b.Finalized),
 			utils.FormatBalance(b.EligibleEther, currency),
@@ -179,6 +176,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 				attesterslashingscount, 
 				attestationscount, 
 				depositscount, 
+				withdrawalcount,
 				voluntaryexitscount, 
 				validatorscount, 
 				averagevalidatorbalance, 
@@ -221,7 +219,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatEpoch(b.Epoch),
 			utils.FormatTimestamp(utils.EpochToTime(b.Epoch).Unix()),
 			b.AttestationsCount,
-			b.DepositsCount,
+			fmt.Sprintf("%v / %v", b.DepositsCount, b.WithdrawalCount),
 			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
 			utils.FormatYesNo(b.Finalized),
 			utils.FormatBalance(b.EligibleEther, currency),

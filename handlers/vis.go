@@ -14,12 +14,12 @@ import (
 
 // Vis returns the visualizations using a go template
 func Vis(w http.ResponseWriter, r *http.Request) {
-	var visTemplate = templates.GetTemplate("layout.html", "vis.html")
+	templateFiles := append(layoutTemplateFiles, "vis.html")
+	var visTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "stats", "/viz", "Visualizations")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "stats", "/viz", "Visualizations", templateFiles)
 
 	if handleTemplateError(w, r, "vis.go", "Vis", "", visTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
@@ -77,7 +77,8 @@ func VisBlocks(w http.ResponseWriter, r *http.Request) {
 
 // VisVotes shows the votes visualizations using a go template
 func VisVotes(w http.ResponseWriter, r *http.Request) {
-	var visVotesTemplate = templates.GetTemplate("layout.html", "vis_votes.html")
+	templateFiles := append(layoutTemplateFiles, "vis_votes.html")
+	var visVotesTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 
@@ -119,8 +120,7 @@ func VisVotes(w http.ResponseWriter, r *http.Request) {
 
 	logger.Printf("returning %v entries since %v", len(chartData), sinceSlot)
 
-	data := InitPageData(w, r, "vis", "/vis", "Votes")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "vis", "/vis", "Votes", templateFiles)
 	data.Data = &types.VisVotesPageData{ChartData: chartData}
 
 	if handleTemplateError(w, r, "vis.go", "VisVotes", "", visVotesTemplate.ExecuteTemplate(w, "layout", data)) != nil {

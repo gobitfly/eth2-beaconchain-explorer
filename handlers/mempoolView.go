@@ -5,8 +5,6 @@ import (
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"fmt"
-	"html/template"
 	"math/big"
 	"net/http"
 
@@ -16,11 +14,11 @@ import (
 func MempoolView(w http.ResponseWriter, r *http.Request) {
 	mempool := services.LatestMempoolTransactions()
 	formatedData := formatToTable(mempool)
-
-	var mempoolViewTemplate = templates.GetTemplate("layout.html", "mempoolview.html")
+	templateFiles := append(layoutTemplateFiles, "mempoolview.html")
+	var mempoolViewTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "services", "/mempool", "Pending Mempool Transactions")
+	data := InitPageData(w, r, "services", "/mempool", "Pending Mempool Transactions", templateFiles)
 
 	data.Data = formatedData
 
@@ -46,8 +44,7 @@ func formatToTable(content *types.RawMempoolResponse) *types.DataTableResponse {
 	for _, pendingData := range content.Pending {
 		for _, tx := range pendingData {
 			dataTable.Data = append(dataTable.Data, []any{
-				// TODO: link to tx page once it has a mempool view implemented
-				template.HTML(fmt.Sprintf(`<span class="text-monospace" >%v</span>`, tx.Hash.String())),
+				utils.FormatAddressWithLimits(tx.Hash.Bytes(), "", false, "tx", 15, 18, true),
 				utils.FormatAddressAll(tx.From.Bytes(), "", false, "address", "", int(12), int(12), true),
 				_isContractCreation(tx.To),
 				utils.FormatAmount((*big.Int)(tx.Value), "ETH", 5),

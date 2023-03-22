@@ -118,7 +118,7 @@
                     processing: true,
                     serverSide: true,
                     stateSave: true,
-                    ordering: true,
+                    ordering: false,
                     order: [[0, 'desc']],
                     lengthChange: false,
                     searching: false,
@@ -133,25 +133,84 @@
                             next: '<i class="fas fa-chevron-right"></i>'
                         }
                     },
-                    columnDefs: [
-                        {
-                            targets: 1,
-                            data: '1',
-                            "orderable": false
-                        },
-                        {
-                            targets: 3,
-                            data: '3',
-                            "orderable": false
-                        },
-                        {
-                            targets: 4,
-                            data: '4',
-                            "orderable": false
-                        },
-                    ],
                     drawCallback: function(settings) {
                         formatTimestamps()
+                    },
+                })
+            }
+        })
+    </script>
+{{ end }}
+
+{{ define "validatorWithdrawalTable" }}
+  <div class="table-responsive">
+    <table class="table" style="margin-top: 0 !important;" id="withdrawal-table" width="100%">
+      <thead>
+        <tr>
+          <th>Epoch</th>
+          <th>Slot</th>
+          <th>Time</th>
+          <th>Recipient Address</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+    <script>
+        var index = {{.Index}}
+        window.addEventListener('load', function() {
+            var activeTab = $('#chartTabs .active')
+            var initializedWithdrawalTable = false
+
+            if (activeTab.attr('id') === 'withdrawal-tab') {
+                initializedWithdrawalTable = true
+                createWithdrawalTable()
+            }
+
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+                if (e.target.id === 'withdrawal-tab' && !initializedWithdrawalTable) {
+                    initializedWithdrawalTable = true
+                    createWithdrawalTable()
+                }
+            });
+
+            function createWithdrawalTable() {
+                $('#withdrawal-table').DataTable({
+                    processing: true,
+                    serverSide: true,
+                    stateSave: true,
+                    ordering: true,
+                    order: [[0, 'desc']],
+                    lengthChange: false,
+                    searching: false,
+                    ajax: {
+                      url: `/validator/${index}/withdrawals`,
+                      dataSrc: function ( { data } ) {
+                        // add the estimate row if it exists
+                        {{ if .NextWithdrawalRow }}
+                          let row = {{.NextWithdrawalRow}}
+                          if (row && row.length) {
+                            data = row.concat(data)
+                          }
+                        {{ end }}
+                        return data
+                      },
+                    },
+                    pagingType: 'input',
+                    pageLength: 10,
+                    language: {
+                        // searchPlaceholder: 'Search by Epoch Number',
+                        search: '',
+                        paginate: {
+                            previous: '<i class="fas fa-chevron-left"></i>',
+                            next: '<i class="fas fa-chevron-right"></i>'
+                        }
+                    },
+                    columnDefs: [
+                    ],
+                    drawCallback: function(settings) {
+                        // formatTimestamps()
                     },
                 })
             }
@@ -192,7 +251,6 @@
             });
 
             function createSyncTable() {
-                console.log('create sync-table')
                 $('#sync-table').DataTable({
                     processing: true,
                     serverSide: true,
@@ -289,8 +347,26 @@
 
 {{ define "validatorDepositsTable" }}
   {{ with .Data }}
-    <div class="table-eth1">
-      <h4 class="my-3">Ethereum Deposits</h4>
+    <div>
+      {{ if .WithdrawCredentials }}
+        <h4 class="my-3">Withdrawal Address</h4>
+        <p>
+          <span>Your current withdrawal credentials are: {{ formatWithdawalCredentials .WithdrawCredentials true }}</span>
+        </p>
+        {{ if .BLSChange }}
+          <div class="my-3">
+            {{ if gt (epochOfSlot .BLSChange.Slot) $.LatestFinalizedEpoch }}
+              <p><b>Pending withdrawal credential: </b><span>{{ formatAddressToWithdrawalCredentials .BLSChange.Address true }}</span> waiting for epoch finality.</p>
+              <span>A request to change your withdrawal credentials has been registered and is being finalized. You have requested to change your withdrawal credentials</span>
+            {{ else }}
+              <span>Your withdrawal credential were successfully changed</span>
+            {{ end }}
+            <span>during epoch <span>{{ epochOfSlot .BLSChange.Slot | formatEpoch }}</span><span> and slot </span><span class="mr-1">{{ formatBlockSlot .BLSChange.Slot }}</span>.</span>
+            The signature included (<span class="mr-1">{{ formatHash .BLSChange.Signature true }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.Signature false }}"></i></span>) was signed by your BLS private key and can be verified with your BLS public key (<span>{{ formatHash .BLSChange.BlsPubkey true }}</span><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash .BLSChange.BlsPubkey false }}"></i>). Payouts will be sent to <span> {{ formatEth1Address .BLSChange.Address }}</span>.
+          </div>
+        {{ end }}
+      {{ end }}
+      <h4 class="my-3">Execution Layer</h4>
       <h6 class="">This table displays the deposits made to the Ethereum staking deposit contract.</h6>
       <div class="table-responsive card card-body p-0">
         <table class="table" style="margin-top: 0 !important;" id="deposits-eth1-table" width="100%">
@@ -313,13 +389,19 @@
                 <td>{{ formatEth1Block $deposit.BlockNumber }}</td>
                 <td>{{ formatTimestamp $deposit.BlockTs }}</td>
                 <td>
-                  {{ if $.Data.ShowWithdrawalWarning }}
+                  {{ if $.Data.ShowMultipleWithdrawalCredentialsWarning }}
                     <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="At least one deposit to your validator has different withdrawal credentials!"></i></span>
                   {{ end }}
                   {{ formatWithdawalCredentials $deposit.WithdrawalCredentials true }}
                 </td>
                 <td>{{ formatDepositAmount $deposit.Amount $.Rates.Currency }}</td>
-                <td><span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">{{ $deposit.ValidSignature }}</span></td>
+                <td>
+                  {{ if $deposit.ValidSignature }}
+                    <span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">{{ $deposit.ValidSignature }}</span>
+                  {{ else }}
+                    <span class="badge badge-pill bg-danger text-white" style="font-size: 12px; font-weight: 500;">{{ $deposit.ValidSignature }}</span>
+                  {{ end }}
+                </td>
               </tr>
             {{ end }}
           </tbody>
@@ -330,7 +412,7 @@
       <i class="fas fa-arrow-down"></i>
     </div>
     <div class="table-eth2">
-      <h4 class="my-3">Beaconchain Deposits</h4>
+      <h4 class="my-3">Consensus Layer</h4>
       {{ if not .Deposits.Eth2Deposits }}
         <h6 class="">No beacon chain deposits found for this validator. It takes <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{ .InclusionDelay }} hours</a> for a deposit to be processed by the beacon chain.</h6>
         <div class="wip d-flex justify-content-center p-3">
@@ -467,7 +549,7 @@
                   <td>{{ formatBlockSlot $deposit.BlockSlot }}</td>
                   <td>{{ formatSlotToTimestamp $deposit.BlockSlot }}</td>
                   <td>
-                    {{ if $.Data.ShowWithdrawalWarning }}
+                    {{ if $.Data.ShowMultipleWithdrawalCredentialsWarning }}
                       <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="At least one deposit to your validator has different withdrawal credentials!"></i></span>
                     {{ end }}
                     {{ formatWithdawalCredentials $deposit.Withdrawalcredentials true }}
@@ -494,9 +576,13 @@
       <table style="margin-top: 0px !important;" class="table" id="validator-history-table" width="100%">
         <thead>
           <tr>
-            <th>Epoch</th>
-            <th>Balance Change</th>
-            <th>Duty</th>
+            <th rowspan="2">Epoch</th>
+            <th colspan="2">Rewards</th>
+            <th rowspan="2" data-toggle="tooltip" title="Events like attestations, sync duties, block proposals and withdrawals for a given epoch">Events</th>
+          </tr>
+          <tr style="display:none">
+            <th></th>
+            <th></th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -541,46 +627,132 @@
 
 {{ define "validatorIncomeTable" }}
   {{ with .Data }}
-    <span class="h4">General</span>
+    <span class="h4"> General </span>
     <table class="table" style="margin-top: 0 !important" width="100%">
-      <tbody>
+      <tbody style="font-size: 0.875rem;">
         <tr>
-          <th scope="row">Day</th>
-          <td>{{ formatIncome .Income1d $.Rates.Currency }}</td>
+          <th scope="row">Total Tx Rewards</th>
+          <td class="pl-0">{{ formatExchangedAmount .ElIncomeTotal $.Rates.Currency }}</td>
         </tr>
-        <tr>
-          <th scope="row">Week</th>
-          <td>{{ formatIncome .Income7d $.Rates.Currency }}</td>
-        </tr>
-        <tr>
-          <th scope="row">Month</th>
-          <td>{{ formatIncome .Income31d $.Rates.Currency }}</td>
-        </tr>
-        <tr>{{/* 
-          <th scope="row">
-            APR7d <span data-toggle="tooltip" title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i class="far fa-question-circle"></i></span>
-          </th>
-          <td>
-            <span data-toggle="tooltip" title="{{ formatPercentageWithPrecision .APR7d 5 }}%" class="{{ if gtf .APR7d 0 }}text-success{{ end }} {{ if gtf  0 .APR7d }}text-danger{{ end }}"><b>{{ .APR7d | formatPercentage }}%</b></span>
-          </td> */}}
-        </tr>
-        <tr>
-          <th scope="row">Eligible since</th>
-          <td>
-            {{ if eq .ActivationEligibilityEpoch 9223372036854775807 }}
-              -
-            {{ else }}
-              <a href="/epoch/{{ .ActivationEligibilityEpoch }}">{{ if eq .ActivationEligibilityEpoch 0 }}genesis{{ else }}<span aria-ethereum-date="{{ .ActivationEligibilityTs.Unix }}"></span>{{ end }}</a>
-            {{ end }}
+        <tr class="">
+          <th scope="row">Income Today</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatIncome .IncomeToday.Cl $.Rates.Currency }} <br> 
+                EL: {{ formatIncome .IncomeToday.El $.Rates.Currency }}">
+              {{ formatIncome .IncomeToday.Total $.Rates.Currency }}
+            </span>
           </td>
         </tr>
+        <!-- shown in desktop -->
+        <tr class="d-none d-sm-table-row">
+          <th scope="row">Income 1d | 7d | 31d</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatIncome .Income1d.Cl $.Rates.Currency }} | {{ formatIncome .Income7d.Cl $.Rates.Currency }} | {{ formatIncome .Income31d.Cl $.Rates.Currency }} <br> 
+                EL: {{ formatIncome .Income1d.El $.Rates.Currency }} | {{ formatIncome .Income7d.El $.Rates.Currency }} | {{ formatIncome .Income31d.El $.Rates.Currency }}">
+              {{ formatIncomeNoCurrency .Income1d.Total $.Rates.Currency }} | {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }} |
+              {{ formatIncomeNoCurrency .Income31d.Total $.Rates.Currency }}
+            </span>
+          </td>
+        </tr>
+        <tr class="d-none d-sm-table-row">
+          <th scope="row">APR 7d | 31d | 365d</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatPercentageWithPrecision .Apr7d.Cl 2 }}% | {{ formatPercentageWithPrecision .Apr31d.Cl 2 }}% | {{ formatPercentageWithPrecision .Apr365d.Cl 2 }}% <br> 
+                El: {{ formatPercentageWithPrecision .Apr7d.El 2 }}% | {{ formatPercentageWithPrecision .Apr31d.El 2 }}% | {{ formatPercentageWithPrecision .Apr365d.El 2 }}%">
+              <span class="{{ if gtf .Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr7d.Total 2 }}%</b></span>
+              |
+              <span class="{{ if gtf .Apr31d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr31d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr31d.Total 2 }}%</b></span>
+              |
+              <span class="{{ if gtf .Apr365d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr365d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr365d.Total 2 }}%</b></span>
+            </span>
+          </td>
+        </tr>
+        <!-- shown in mobile -->
+        <tr class="d-sm-none">
+          <th scope="row">Income 7d</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                  CL: 1d: {{ formatIncomeNoCurrency .Income1d.Cl $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.Cl $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.Cl $.Rates.Currency }} <br /> 
+                  EL: 1d: {{ formatIncomeNoCurrency .Income1d.El $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.El $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.El $.Rates.Currency }} <br /> 
+                  All: 1d: {{ formatIncomeNoCurrency .Income1d.Total $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.Total $.Rates.Currency }}">
+              {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }}
+              <i class="far fa-question-circle"></i>
+            </span>
+          </td>
+        </tr>
+        <tr class="d-sm-none">
+          <th scope="row">APR 7d</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: 7d: {{ formatPercentageWithPrecision .Apr7d.Cl 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.Cl 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.Cl 2 }}% <br> 
+                El: 7d: {{ formatPercentageWithPrecision .Apr7d.El 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.El 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.El 2 }}% <br>
+                All: 7d: {{ formatPercentageWithPrecision .Apr7d.Total 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.Total 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.Total 2 }}%">
+              <span class="{{ if gtf .Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr7d.Total 2 }}%</b></span>
+              <i class="far fa-question-circle"></i>
+            </span>
+          </td>
+        </tr>
+        <!-- end -->
+        <tr>
+          <th scope="row">Luck</th>
+          <td class="pl-0">
+            {{ $hasProposalLuck := nef .ProposalLuck 0 }}
+            {{ $hasSyncLuck := nef .SyncLuck 0 }}
+            <!-- prettier-ignore-attribute -->
+            <span data-toggle="tooltip" data-html="true" data-tooltip-date="true" title="<span>Block Prop. {{ if $hasProposalLuck }}(exp. <span aria-ethereum-date='{{ .ProposalEstimate.Unix }}' aria-ethereum-date-format='FROMNOW'></span>) {{ formatPercentageWithPrecision .ProposalLuck 2 }}%{{ else }}-{{ end }}<br>Sync Com. {{ if $hasSyncLuck }}(exp. <span aria-ethereum-date='{{ .SyncEstimate.Unix }}' aria-ethereum-date-format='FROMNOW'></span>) {{ formatPercentageWithPrecision .SyncLuck 2 }}%{{ else }}-{{ end }}</span>">
+              {{ if $hasProposalLuck }}
+                {{ formatPercentageWithPrecision .ProposalLuck 2 }}% <i class="tab-icon mr-md-1 fas fa-cubes d-none d-sm-inline-block"></i>
+              {{ else }}
+                -
+              {{ end }}
+              |
+              {{ if $hasSyncLuck }}
+                {{ formatPercentageWithPrecision .SyncLuck 2 }}% <i class="tab-icon mr-md-1 fas fa-sync d-none d-sm-inline-block"></i>
+              {{ else }}
+                -
+              {{ end }}
+            </span>
+          </td>
+        </tr>
+        {{ if not (eq .WithdrawableEpoch 9223372036854775807) }}
+          <tr>
+            <th scope="row">Withdrawable</th>
+            <td class="pl-0">
+              {{ if gt .NetworkStats.CurrentEpoch .WithdrawableEpoch }}
+                <a href="/epoch/{{ .WithdrawableEpoch }}">
+                  <span title="Epoch: {{ .WithdrawableEpoch }}" data-toggle="tooltip" aria-ethereum-date="{{ .WithdrawableTs.Unix }}"></span>
+                </a>
+              {{ else }}
+                <span title="Epoch: {{ .WithdrawableEpoch }}" data-toggle="tooltip" aria-ethereum-date="{{ .WithdrawableTs.Unix }}"></span>
+              {{ end }}
+            </td>
+          </tr>
+        {{ end }}
         <tr>
           {{ if gt .NetworkStats.CurrentEpoch .ActivationEpoch }}
             <th scope="row">Active since</th>
           {{ else }}
             <th scope="row">Activation</th>
           {{ end }}
-          <td>
+          <td class="pl-0">
             {{ if eq .ActivationEpoch 9223372036854775807 }}
               -
             {{ else }}
@@ -591,7 +763,7 @@
         {{ if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0)) }}
           <tr>
             <th scope="row">Exited since</th>
-            <td>
+            <td class="pl-0">
               <a href="/epoch/{{ .ExitEpoch }}">
                 <span aria-ethereum-date="{{ .ExitTs.Unix }}"></span>
               </a>

@@ -2,7 +2,6 @@
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
   <script>
-    console.log('data: ',{{.}})
     $(document).ready(function () {
       $("#epochs").DataTable({
         processing: true,
@@ -17,6 +16,7 @@
 
           data.search.search = ""
           data.order = []
+          data.start = 0
           data.columns = []
           data.key = `${settings.sTableId}`
           fetch('/tables/state', {
@@ -87,7 +87,9 @@
                   <th>Epoch</th>
                   <th style="min-width: 125px">Time</th>
                   <th>Attestations</th>
-                  <th>Deposits</th>
+                  <th>
+                    <span data-toggle="tooltip" data-placement="top" title="Deposits">D<span class="d-none d-xl-inline">eposits</span> <i class="d-xl-none far fa-arrow-alt-circle-down"></i></span> / <span data-toggle="tooltip" data-placement="top" title="Withdrawals">W<span class="d-none d-lg-inline">ithdrawals</span> <i class="d-lg-none far fa-arrow-alt-circle-up"></i></span>
+                  </th>
                   <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
                   <th>Finalized</th>
                   <th>Eligible</th>
@@ -108,9 +110,7 @@
         </div>
         <div id="footer-placeholder" style="height:71px;"></div>
       </div>
-      <div class="d-flex justify-content-between py-2">
-        <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-      </div>
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
     </div>
   {{ end }}
 {{ end }}

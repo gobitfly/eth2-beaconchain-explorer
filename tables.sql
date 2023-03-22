@@ -15,9 +15,6 @@ create table validators
     withdrawableepoch          bigint      not null,
     withdrawalcredentials      bytea       not null,
     balance                    bigint      not null,
-    balance1d                  bigint,
-    balance7d                  bigint,
-    balance31d                 bigint,
     balanceactivation          bigint,
     effectivebalance           bigint      not null,
     slashed                    bool        not null,
@@ -34,7 +31,8 @@ create index idx_validators_pubkeyhex_pattern_pos on validators (pubkeyhex varch
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
 create index idx_validators_activationepoch on validators (activationepoch);
-CREATE INDEX validators_is_offline_vali_idx ON validators (validatorindex, lastattestationslot, pubkey);
+create index validators_is_offline_vali_idx on validators (validatorindex, lastattestationslot, pubkey);
+create index idx_validators_withdrawalcredentials on validators (withdrawalcredentials, validatorindex);
 
 drop table if exists validator_pool;
 create table validator_pool
@@ -72,13 +70,24 @@ create table validator_set
 drop table if exists validator_performance;
 create table validator_performance
 (
-    validatorindex  int    not null,
-    balance         bigint not null,
-    performance1d   bigint not null,
-    performance7d   bigint not null,
-    performance31d  bigint not null,
-    performance365d bigint not null,
-    rank7d          int    not null,
+    validatorindex        int    not null,
+    balance               bigint not null,
+    cl_performance_1d     bigint not null,
+    cl_performance_7d     bigint not null,
+    cl_performance_31d    bigint not null,
+    cl_performance_365d   bigint not null,
+    cl_performance_total  bigint not null,
+    el_performance_1d     bigint not null,
+    el_performance_7d     bigint not null,
+    el_performance_31d    bigint not null,
+    el_performance_365d   bigint not null,
+    el_performance_total  bigint not null,
+    mev_performance_1d    bigint not null,
+    mev_performance_7d    bigint not null,
+    mev_performance_31d   bigint not null,
+    mev_performance_365d  bigint not null,
+    mev_performance_total bigint not null,
+    rank7d                int    not null,
     primary key (validatorindex)
 );
 create index idx_validator_performance_balance on validator_performance (balance);
@@ -106,6 +115,13 @@ create table sync_committees
     validatorindex int not null,
     committeeindex int not null,
     primary key (period, validatorindex, committeeindex)
+);
+
+drop table if exists sync_committees_count_per_validator;
+create table sync_committees_count_per_validator (
+	period int not null unique,
+	count_so_far float8 not null,
+    primary key (period)
 );
 
 drop table if exists validator_balances_recent;
@@ -145,6 +161,14 @@ create table validator_stats
     proposer_slashings      int,
     deposits                int,
     deposits_amount         bigint,
+    withdrawals             int,
+    withdrawals_amount      bigint,
+    cl_rewards_gwei         bigint,
+    cl_rewards_gwei_total   bigint,
+    el_rewards_wei          decimal,
+    el_rewards_wei_total    decimal,
+    mev_rewards_wei         decimal,
+    mev_rewards_wei_total   decimal,
     primary key (validatorindex, day)
 );
 create index idx_validator_stats_day on validator_stats (day);
@@ -154,6 +178,7 @@ create table validator_stats_status
 (
     day    int     not null,
     status boolean not null,
+    income_exported boolean not null default false,
     primary key (day)
 );
 
@@ -209,6 +234,7 @@ create table epochs
     attesterslashingscount  int    not null,
     attestationscount       int    not null,
     depositscount           int    not null,
+    withdrawalcount         int    not null default 0,
     voluntaryexitscount     int    not null,
     validatorscount         int    not null,
     averagevalidatorbalance bigint not null,
@@ -217,6 +243,7 @@ create table epochs
     eligibleether           bigint,
     globalparticipationrate float,
     votedether              bigint,
+    rewards_exported        bool not null default false,
     primary key (epoch)
 );
 
@@ -242,6 +269,7 @@ create table blocks
     attesterslashingscount      int     not null,
     attestationscount           int     not null,
     depositscount               int     not null,
+    withdrawalcount             int     not null default 0,
     voluntaryexitscount         int     not null,
     proposer                    int     not null,
     status                      text    not null, /* Can be 0 = scheduled, 1 proposed, 2 missed, 3 orphaned */
@@ -270,6 +298,35 @@ create index idx_blocks_epoch on blocks (epoch);
 create index idx_blocks_graffiti_text on blocks using gin (graffiti_text gin_trgm_ops);
 create index idx_blocks_blockrootstatus on blocks (blockroot, status);
 create index idx_blocks_exec_block_number on blocks (exec_block_number);
+
+drop table if exists blocks_withdrawals;
+create table blocks_withdrawals
+(
+    block_slot         int not null,
+    block_root         bytea not null,
+    withdrawalindex    int not null,
+    validatorindex     int not null,
+    address            bytea not null,
+    amount             bigint not null, -- in GWei
+    primary key (block_slot, block_root, withdrawalindex)
+);
+
+create index idx_blocks_withdrawals_recipient on blocks_withdrawals (address);
+create index idx_blocks_withdrawals_validatorindex on blocks_withdrawals (validatorindex);
+
+drop table if exists blocks_bls_change;
+create table blocks_bls_change
+(
+    block_slot           int     not null,
+    block_root           bytea   not null,
+    validatorindex       int     not null,
+    signature            bytea   not null,
+    pubkey               bytea   not null,
+    address              bytea   not null,
+    primary key (block_slot, block_root, validatorindex)
+);
+create index idx_blocks_bls_change_pubkey on blocks_bls_change (pubkey);
+create index idx_blocks_bls_change_address on blocks_bls_change (address);
 
 drop table if exists blocks_transactions;
 create table blocks_transactions
@@ -374,6 +431,10 @@ create table blocks_deposits
     primary key (block_slot, block_index)
 );
 
+
+create index idx_blocks_deposits_publickey on blocks_deposits (publickey);
+
+
 drop table if exists blocks_voluntaryexits;
 create table blocks_voluntaryexits
 (
@@ -453,6 +514,7 @@ create table users
     email_confirmed         bool                   not null default 'f',
     email_confirmation_hash character varying(40) unique,
     email_confirmation_ts   timestamp without time zone,
+    email_change_to_value   character varying(100),
     password_reset_hash     character varying(40),
     password_reset_ts       timestamp without time zone,
     register_ts             timestamp without time zone,
@@ -695,16 +757,6 @@ create table price
     primary key (ts)
 );
 
-drop table if exists staking_pools_chart;
-create table staking_pools_chart
-(
-    epoch                      int  not null,
-    name                       text not null,
-    income                     bigint not null,
-    balance                    bigint not null,
-    PRIMARY KEY(epoch, name)
-);
-
 drop table if exists stats_sharing;
 CREATE TABLE stats_sharing (
                                id 				bigserial 			primary key,
@@ -748,6 +800,11 @@ create table rocketpool_minipools
     status text not null, -- Initialized, Prelaunch, Staking, Withdrawable, Dissolved .. see: https://github.com/rocket-pool/rocketpool/blob/683addf4ac/contracts/types/MinipoolStatus.sol
     status_time timestamp without time zone,
     penalty_count numeric not null default 0,
+    node_deposit_balance numeric,
+    node_refund_balance numeric,
+    user_deposit_balance numeric,
+    is_vacant boolean default false,
+    version int default 0,
     primary key(rocketpool_storage_address, address)
 );
 
@@ -766,6 +823,8 @@ create table rocketpool_nodes
     claimed_smoothing_pool  numeric not null,
     unclaimed_smoothing_pool  numeric not null,
     unclaimed_rpl_rewards numeric not null,
+    effective_rpl_stake numeric not null,
+    deposit_credit numeric,
 
     primary key(rocketpool_storage_address, address)
 );
@@ -919,15 +978,6 @@ CREATE INDEX idx_blocks_tags_tag_id ON blocks_tags (tag_id);
 CREATE TABLE relays (
 	tag_id varchar NOT NULL,
 	endpoint varchar NOT NULL,
-	PRIMARY KEY (tag_id, endpoint),
-	FOREIGN KEY (tag_id) REFERENCES tags(id)
-);
-
-DROP TABLE IF EXISTS relays;
-
-CREATE TABLE relays (
-	tag_id varchar NOT NULL,
-	endpoint varchar NOT NULL,
 	public_link varchar NULL,
 	is_censoring bool NULL,
 	is_ethical bool NULL,
@@ -966,6 +1016,7 @@ CREATE TABLE validator_queue_deposits (
 CREATE INDEX idx_validator_queue_deposits_block_slot ON validator_queue_deposits USING btree (block_slot);
 CREATE UNIQUE INDEX idx_validator_queue_deposits_validatorindex ON validator_queue_deposits USING btree (validatorindex);
 
+drop table if exists service_status;
 create table service_status (name text not null, executable_name text not null, version text not null, pid int not null, status text not null, metadata jsonb, last_update timestamp not null, primary key (name, executable_name, version, pid));
 
 DROP TABLE IF EXISTS chart_series;
@@ -989,5 +1040,35 @@ drop table if exists global_notifications;
 create table global_notifications
 (
     target varchar(20) not null primary key, 
-    content text not null
+    content text not null,
+    enabled bool not null
 );
+
+drop table if exists node_jobs;
+create table node_jobs
+(
+    id varchar(40),
+    type varchar(40) not null, -- can be one of: BLS_TO_EXECUTION_CHANGES, VOLUNTARY_EXITS
+    status varchar(40) not null, -- can be one of: PENDING, SUBMITTED_TO_NODE, COMPLETED
+    created_time timestamp without time zone not null default now(),
+    submitted_to_node_time timestamp without time zone,
+    completed_time timestamp without time zone,
+    data jsonb not null,
+    primary key (id)
+);
+
+drop table if exists ad_configurations;
+create table ad_configurations
+(
+    id varchar(40), --uuid
+    template_id varchar(100) not null, --relative path to the main html file of the page
+    jquery_selector varchar(40) not null, --selector with the html
+    insert_mode varchar(10) not null, -- can be before, after, replace or insert
+    refresh_interval int not null, -- defines how often the ad is refreshed in seconds, 0 = don't refresh
+    enabled bool not null, -- defines if the ad is active
+    for_all_users bool not null, -- if set the ad will be shown to all users even if they have NoAds
+    banner_id int, -- an ad must either have a banner_id OR an html_content
+    html_content text,
+    primary key (id)
+);
+create index idx_ad_configuration_for_template on ad_configurations (template_id, enabled);

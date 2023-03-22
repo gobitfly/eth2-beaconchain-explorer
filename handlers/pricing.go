@@ -15,17 +15,13 @@ import (
 )
 
 func Pricing(w http.ResponseWriter, r *http.Request) {
-
-	var pricingTemplate = templates.GetTemplate(
-		"layout.html",
-		"payment/pricing.html",
-		"svg/pricing.html",
-	)
+	templateFiles := append(layoutTemplateFiles, "payment/pricing.html", "svg/pricing.html")
+	var pricingTemplate = templates.GetTemplate(templateFiles...)
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "pricing", "/pricing", "API Pricing")
+	data := InitPageData(w, r, "pricing", "/pricing", "API Pricing", templateFiles)
 
 	pageData := &types.ApiPricing{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
@@ -63,17 +59,13 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 
 func MobilePricing(w http.ResponseWriter, r *http.Request) {
 
-	var mobilePricingTemplate = templates.GetTemplate(
-		"layout.html",
-		"payment/mobilepricing.html",
-		"svg/mobilepricing.html",
-	)
+	templateFiles := append(layoutTemplateFiles, "payment/mobilepricing.html", "svg/mobilepricing.html")
+	var mobilePricingTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
-
-	data := InitPageData(w, r, "premium", "/premium", "Premium Pricing")
+	data := InitPageData(w, r, "premium", "/premium", "Premium Pricing", templateFiles)
 
 	pageData := &types.MobilePricing{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey

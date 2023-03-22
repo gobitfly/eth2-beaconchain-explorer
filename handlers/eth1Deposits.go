@@ -12,14 +12,14 @@ import (
 	"strings"
 )
 
-// Eth1Deposits will return information about deposits using a go template
-func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
-
-	var eth1DepositsTemplate = templates.GetTemplate("layout.html", "eth1Deposits.html", "index/depositChart.html")
+// Deposits will return information about deposits using a go template
+func Deposits(w http.ResponseWriter, r *http.Request) {
+	templateFiles := append(layoutTemplateFiles, "deposits.html", "index/depositChart.html")
+	var DepositsTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	pageData := &types.EthOneDepositsPageData{}
+	pageData := &types.DepositsPageData{}
 
 	latestChartsPageData := services.LatestChartsPageData()
 	if len(latestChartsPageData) != 0 {
@@ -34,13 +34,16 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 	pageData.Stats = services.GetLatestStats()
 	pageData.DepositContract = utils.Config.Chain.Config.DepositContractAddress
 
-	data := InitPageData(w, r, "blockchain", "/deposits/eth1", "Initiated Deposits")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "blockchain", "/deposits", "Deposits", templateFiles)
 	data.Data = pageData
 
-	if handleTemplateError(w, r, "eth1Depostis.go", "Eth1Deposits", "", eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "eth1Depostis.go", "Deposits", "", DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
+}
+
+func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/validators/deposits", http.StatusMovedPermanently)
 }
 
 // Eth1DepositsData will return eth1-deposits as json
@@ -141,12 +144,12 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 
 // Eth1Deposits will return information about deposits using a go template
 func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
-	var eth1DepositsLeaderboardTemplate = templates.GetTemplate("layout.html", "eth1DepositsLeaderboard.html")
+	templateFiles := append(layoutTemplateFiles, "eth1DepositsLeaderboard.html")
+	var eth1DepositsLeaderboardTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Initiated Deposits")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Initiated Deposits", templateFiles)
 
 	data.Data = types.EthOneDepositLeaderBoardPageData{
 		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,

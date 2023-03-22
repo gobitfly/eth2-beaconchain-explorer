@@ -327,7 +327,6 @@ func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockInd
 
 	rowRange := gcp_bigtable.PrefixRange(prefix)
 	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("d"))
-	limit := gcp_bigtable.LimitRows(1)
 
 	block := types.Eth1BlockIndexed{}
 
@@ -348,7 +347,7 @@ func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockInd
 		return c == 0
 	}
 
-	err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, rowFilter, limit)
+	err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, rowFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -655,7 +654,7 @@ func (bigtable *Bigtable) DeleteRowsWithPrefix(prefix string) {
 					logger.WithError(err).Errorf("error deleting row: %v", rowsToDelete[i])
 				}
 				for _, err := range errs {
-					logger.Error(err)
+					utils.LogError(err, fmt.Errorf("bigtable apply bulk error, deleting rows: %v to %v", i-10000, i), 0)
 				}
 			}
 			if l < 10000 && l > 0 {
@@ -665,7 +664,7 @@ func (bigtable *Bigtable) DeleteRowsWithPrefix(prefix string) {
 					logger.WithError(err).Errorf("error deleting row: %v", rowsToDelete[i])
 				}
 				for _, err := range errs {
-					logger.Error(err)
+					utils.LogError(err, "bigtable apply bulk error, deleting remainer", 0)
 				}
 				break
 			}
@@ -1610,6 +1609,75 @@ func (bigtable *Bigtable) TransformUncle(block *types.Eth1Block, cache *freecach
 	return bulkData, bulkMetadataUpdates, nil
 }
 
+// TransformWithdrawals accepts an eth1 block and creates bigtable mutations.
+// It transforms the withdrawals contained within a block, extracts the necessary information to create a view and writes that information to bigtable
+// It writes uncles to table data:
+// Row:    <chainID>:W:<reversePaddedNumber>:<reversedWithdrawalIndex>
+// Family: f
+// Column: data
+// Cell:   Proto<Eth1WithdrawalIndexed>
+// Example scan: "1:W:" returns withdrawals in desc order
+// Example scan: "1:W:984886725" returns mainnet withdrawals included after block 15113275 (1000000000 - 984886725)
+//
+// It indexes withdrawals by:
+// Row:    <chainID>:I:W:<Address>:TIME:<reversePaddedBigtableTimestamp>
+// Family: f
+// Column: <chainID>:W:<reversePaddedNumber>
+// Cell:   nil
+// Example lookup: "1:I:W:ea674fdde714fd979de3edf0f56aa9716b898ec8:TIME:" returns withdrawals received by ethermine in desc order
+func (bigtable *Bigtable) TransformWithdrawals(block *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	bulkData = &types.BulkMutations{}
+	bulkMetadataUpdates = &types.BulkMutations{}
+
+	if len(block.Withdrawals) > int(utils.Config.Chain.Config.MaxWithdrawalsPerPayload) {
+		return nil, nil, fmt.Errorf("unexpected number of withdrawals in block expected at most %v but got: %v", utils.Config.Chain.Config.MaxWithdrawalsPerPayload, len(block.Withdrawals))
+	}
+
+	for _, withdrawal := range block.Withdrawals {
+		iReversed := reversePaddedIndex(int(withdrawal.Index), 9999999999999)
+
+		withdrawalIndexed := types.Eth1WithdrawalIndexed{
+			BlockNumber:    block.Number,
+			Index:          withdrawal.Index,
+			ValidatorIndex: withdrawal.ValidatorIndex,
+			Address:        withdrawal.Address,
+			Amount:         withdrawal.Amount,
+			Time:           block.Time,
+		}
+
+		bigtable.markBalanceUpdate(withdrawal.Address, []byte{0x0}, bulkMetadataUpdates, cache)
+
+		// store withdrawals with the key <chainid>:W:<reversePaddedBlockNumber>:<reversePaddedWithdrawalIndex>
+		key := fmt.Sprintf("%s:W:%s:%s", bigtable.chainId, reversedPaddedBlockNumber(block.GetNumber()), iReversed)
+		mut := gcp_bigtable.NewMutation()
+
+		b, err := proto.Marshal(&withdrawalIndexed)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error marshalling proto object err: %w", err)
+		}
+
+		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
+
+		bulkData.Keys = append(bulkData.Keys, key)
+		bulkData.Muts = append(bulkData.Muts, mut)
+
+		indexes := []string{
+			// Index withdrawal by address
+			fmt.Sprintf("%s:I:W:%x:TIME:%s:%s", bigtable.chainId, withdrawal.Address, reversePaddedBigtableTimestamp(block.Time), iReversed),
+		}
+
+		for _, idx := range indexes {
+			mut := gcp_bigtable.NewMutation()
+			mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
+
+			bulkData.Keys = append(bulkData.Keys, idx)
+			bulkData.Muts = append(bulkData.Muts, mut)
+		}
+	}
+
+	return bulkData, bulkMetadataUpdates, nil
+}
+
 func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*types.Eth1TransactionIndexed, string, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -2407,11 +2475,11 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address string, search strin
 
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
-		from := utils.FormatHash(t.From)
+		from := utils.FormatAddressWithLimits(t.From, "", false, "", 13, 0, false)
 		if fmt.Sprintf("%x", t.From) != address {
 			from = utils.FormatAddressAsLink(t.From, "", false, false)
 		}
-		to := utils.FormatHash(t.To)
+		to := utils.FormatAddressWithLimits(t.To, "", false, "", 13, 0, false)
 		if fmt.Sprintf("%x", t.To) != address {
 			to = utils.FormatAddressAsLink(t.To, "", false, false)
 		}
@@ -2491,11 +2559,11 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
-		from := utils.FormatHash(t.From)
+		from := utils.FormatAddressWithLimits(t.From, "", false, "", 13, 0, false)
 		if fmt.Sprintf("%x", t.From) != address {
 			from = utils.FormatAddressAsLink(t.From, "", false, false)
 		}
-		to := utils.FormatHash(t.To)
+		to := utils.FormatAddressWithLimits(t.To, "", false, "", 13, 0, false)
 		if fmt.Sprintf("%x", t.To) != address {
 			to = utils.FormatAddressAsLink(t.To, "", false, false)
 		}
@@ -2918,26 +2986,40 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 	ret := &types.ContractMetadata{}
 
 	if err != nil || row == nil {
-		logrus.Infof("trying to fetch contract metadata")
 		ret, err := utils.TryFetchContractMetadata(address)
 
 		if err != nil {
-			logrus.Errorf("error fetching contract metadata for address %x: %v", address, err)
-			err = cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
+			if err == utils.ErrRateLimit {
+				logrus.Warnf("Hit rate limit when fetching contract metadata for address %x", address)
+			} else {
+				utils.LogError(err, "Fetching contract metadata", 0, fmt.Sprintf("%x", address))
+				err := cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
+				if err != nil {
+					utils.LogError(err, "Caching contract metadata", 0, fmt.Sprintf("%x", address))
+				}
+			}
 			return nil, err
-		} else {
-			err = cache.TieredCache.Set(cacheKey, ret, time.Hour*24)
-			if err != nil {
-				logger.Errorf("error caching contract metadata: %v", err)
-			}
-
-			err = bigtable.SaveContractMetadata(address, ret)
-
-			if err != nil {
-				logger.Errorf("error saving contract metadata to bigtable: %v", err)
-			}
-			return ret, nil
 		}
+
+		// No contract found, caching empty
+		if ret == nil {
+			err = cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
+			if err != nil {
+				utils.LogError(err, "Caching contract metadata", 0, fmt.Sprintf("%x", address))
+			}
+			return nil, nil
+		}
+
+		err = cache.TieredCache.Set(cacheKey, ret, time.Hour*24)
+		if err != nil {
+			utils.LogError(err, "Caching contract metadata", 0, fmt.Sprintf("%x", address))
+		}
+
+		err = bigtable.SaveContractMetadata(address, ret)
+		if err != nil {
+			logger.Errorf("error saving contract metadata to bigtable: %v", err)
+		}
+		return ret, nil
 	}
 
 	for _, ri := range row {

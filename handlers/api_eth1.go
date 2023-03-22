@@ -44,7 +44,7 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT * FROM eth1_deposits WHERE tx_hash = $1", eth1TxHash)
+	rows, err := db.ReaderDb.Query("SELECT amount, block_number, block_ts, from_address, merkletree_index, publickey, removed, signature, tx_hash, tx_index, tx_input, valid_signature, withdrawal_credentials FROM eth1_deposits WHERE tx_hash = $1", eth1TxHash)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -392,8 +392,8 @@ func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
 			Hash:               fmt.Sprintf("0x%x", tx.Hash),
 			BlockNumber:        tx.BlockNumber,
 			Time:               tx.Time.AsTime(),
-			From:               fmt.Sprintf("0x%x", tx.From),
-			To:                 fmt.Sprintf("0x%x", tx.To),
+			From:               utils.FixAddressCasing(fmt.Sprintf("%x", tx.From)),
+			To:                 utils.FixAddressCasing(fmt.Sprintf("%x", tx.To)),
 			MethodId:           fmt.Sprintf("0x%x", tx.MethodId),
 			Value:              new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(tx.Value)), big.NewFloat(1e18)).String(),   //new(big.Int).Div(new(big.Int).SetBytes(tx.Value), big.NewInt(1e18)).String(),
 			GasPrice:           new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(tx.GasPrice)), big.NewFloat(1e9)).String(), //new(big.Int).Div(new(big.Int).SetBytes(tx.GasPrice), new(big.Int).SetInt64(1e18)).String(),
@@ -474,8 +474,8 @@ func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
 			BlockNumber: itx.BlockNumber,
 			Time:        itx.Time.AsTime(),
 			Type:        itx.Type,
-			From:        fmt.Sprintf("0x%x", itx.From),
-			To:          fmt.Sprintf("0x%x", itx.To),
+			From:        utils.FixAddressCasing(fmt.Sprintf("%x", itx.From)),
+			To:          utils.FixAddressCasing(fmt.Sprintf("%x", itx.To)),
 			Value:       new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(itx.Value)), big.NewFloat(1e18)).String(),
 		})
 	}
@@ -721,8 +721,8 @@ func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 				BlockNumber:  tx.BlockNumber,
 				TokenAddress: fmt.Sprintf("0x%x", tx.TokenAddress),
 				Time:         tx.Time.AsTime(),
-				From:         fmt.Sprintf("0x%x", tx.From),
-				To:           fmt.Sprintf("0x%x", tx.To),
+				From:         utils.FixAddressCasing(fmt.Sprintf("%x", tx.From)),
+				To:           utils.FixAddressCasing(fmt.Sprintf("%x", tx.To)),
 				TokenId:      new(big.Int).SetBytes(tx.TokenId).String(),
 			})
 		}
@@ -742,8 +742,8 @@ func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 				BlockNumber:  tx.BlockNumber,
 				TokenAddress: fmt.Sprintf("0x%x", tx.TokenAddress),
 				Time:         tx.Time.AsTime(),
-				From:         fmt.Sprintf("0x%x", tx.From),
-				To:           fmt.Sprintf("0x%x", tx.To),
+				From:         utils.FixAddressCasing(fmt.Sprintf("%x", tx.From)),
+				To:           utils.FixAddressCasing(fmt.Sprintf("%x", tx.To)),
 				TokenId:      new(big.Int).SetBytes(tx.TokenId).String(),
 				Value:        new(big.Int).SetBytes(tx.Value).String(),
 				Operator:     new(big.Int).SetBytes(tx.Operator).String(),
@@ -773,7 +773,7 @@ func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 			value := new(big.Int).SetBytes(tx.Value).String()
 			m, ok := tokenMeta[string(tx.TokenAddress)]
 			if ok {
-				value = utils.FormatErc20Deicmals(tx.Value, m).String()
+				value = utils.FormatErc20Decimals(tx.Value, m).String()
 			}
 
 			transactions = append(transactions, &types.Eth1TokenTxParsed{
@@ -781,8 +781,8 @@ func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 				BlockNumber:  tx.BlockNumber,
 				TokenAddress: fmt.Sprintf("0x%x", tx.TokenAddress),
 				Time:         tx.Time.AsTime(),
-				From:         fmt.Sprintf("0x%x", tx.From),
-				To:           fmt.Sprintf("0x%x", tx.To),
+				From:         utils.FixAddressCasing(fmt.Sprintf("%x", tx.From)),
+				To:           utils.FixAddressCasing(fmt.Sprintf("%x", tx.To)),
 				Value:        value,
 			})
 		}
@@ -869,6 +869,11 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	last7dTimestamp := time.Now().Add(-7 * 24 * time.Hour)
 	last1dTimestamp := time.Now().Add(-1 * 24 * time.Hour)
 
+	monthRange := latestEpoch - 7200
+	if latestEpoch < 7200 {
+		monthRange = 0
+	}
+
 	var execBlocks []types.ExecBlockProposer
 	err := db.ReaderDb.Select(&execBlocks,
 		`SELECT 
@@ -880,27 +885,25 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 		AND exec_block_number > 0 
 		AND epoch > $2`,
 		pq.Array(queryIndices),
-		latestEpoch-7200, // 32d range
+		monthRange, // 32d range
 	)
 	if err != nil {
-		logger.WithError(err).Error("can not load proposed blocks from db")
-		return nil, err
+		return nil, fmt.Errorf("error cannot get proposed blocks from db with indicies: %+v and epoch: %v, err: %w", queryIndices, latestEpoch, err)
 	}
 
 	blockList, blockToProposerMap := getBlockNumbersAndMapProposer(execBlocks)
 
 	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, 10000)
 	if err != nil {
-		logger.WithError(err).Errorf("can not load mined blocks by GetBlocksIndexedMultiple")
-		return nil, err
+		return nil, fmt.Errorf("error cannot get blocks from bigtable using GetBlocksIndexedMultiple: %w", err)
 	}
 
 	resultPerProposer := make(map[uint64]types.ExecutionPerformanceResponse)
 
 	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
 	if err != nil {
-		logger.WithError(err).Errorf("can not get relays data")
-		return nil, err
+		// logger.WithError(err).Errorf("can not get relays data")
+		return nil, fmt.Errorf("error can not get relays data: %w", err)
 	}
 
 	for _, block := range blocks {

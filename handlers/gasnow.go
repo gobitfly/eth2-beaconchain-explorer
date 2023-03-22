@@ -6,19 +6,21 @@ import (
 	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
+	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
 	"sort"
 	"time"
 )
 
-// Blocks will return information about blocks using a go template
+// Will return the gas now page
 func GasNow(w http.ResponseWriter, r *http.Request) {
-	var gasNowTemplate = templates.GetTemplate("layout.html", "gasnow.html")
+	templateFiles := append(layoutTemplateFiles, "gasnow.html")
+	var gasNowTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "gasnow", "/gasnow", fmt.Sprintf("%v Gwei", 34))
+	data := InitPageData(w, r, "gasnow", "/gasnow", fmt.Sprintf("%v Gwei", 34), templateFiles)
 
 	now := time.Now().Truncate(time.Minute)
 	lastWeek := time.Now().Truncate(time.Minute).Add(-time.Hour * 24 * 7)
@@ -70,7 +72,7 @@ func GasNowData(w http.ResponseWriter, r *http.Request) {
 
 	gasnowData := services.LatestGasNowData()
 	if gasnowData == nil {
-		logger.Error("error obtaining latest gas now data 'nil'")
+		utils.LogError(nil, "error obtaining latest gas now data 'nil'", 0)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}

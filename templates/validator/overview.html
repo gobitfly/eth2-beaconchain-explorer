@@ -207,9 +207,14 @@
         <div class="px-2 mx-auto" style="max-width: 50rem;">
           <div class="p-2 text-justify">
             This validator has exited the system during epoch <a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a> and is no longer validating. There is no need to keep the validator running anymore.
-            <span data-toggle="tooltip" title="Please note that the withdraw functionality has not been implemented by ACD yet."
-              >Funds will be withdrawable after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span></span
-            >.
+            {{ if .CappellaHasHappened }}
+              Funds will be withdrawable after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span
+              >.
+            {{ else }}
+              <span data-toggle="tooltip" title="Please note that the withdraw functionality has not been implemented by ACD yet.">
+                Funds will be withdrawable after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span></span
+              >.
+            {{ end }}
           </div>
           {{ if .Slashed }}<div class="p-2">Slashed by {{ .SlashedBy | formatValidator }} at Slot {{ .SlashedAt | formatBlockSlot }}, Reason: {{ .SlashedFor }}</div>{{ end }}
         </div>
@@ -230,6 +235,18 @@
     <div class="mx-3">
       <span id="syncCount" style="cursor: pointer;" data-toggle="tooltip" title="Sync Participations (Participated: {{ .ParticipatedSyncCount }}, Missed: {{ .MissedSyncCount }}, Orphaned: {{ .OrphanedSyncCount }}, Scheduled: {{ .ScheduledSyncCount }})"><i class="fas fa-sync poin"></i> {{ .SyncCount }}{{ if ne .SyncCount 0 }}({{ formatPercentageColoredEmoji .UnmissedSyncPercentage }}){{ end }}</span>
     </div>
+    {{ if .CappellaHasHappened }}
+      <div class="mx-3">
+        <span id="withdrawalCount" style="cursor: pointer;" data-toggle="tooltip" {{ if .IsWithdrawableAddress }}title="Withdrawals processed for this validator"{{ else }}title="To receive payouts you need 0x01 withdrawal credentials"{{ end }}>
+          <i class="fas fa-money-bill"></i>
+          {{ if .IsWithdrawableAddress }}
+            <span> {{ .WithdrawalCount }} </span>
+          {{ else }}
+            <span><i class="text-warning fas fa-exclamation-triangle"></i></span>
+          {{ end }}
+        </span>
+      </div>
+    {{ end }}
   </div>
 
   <script>
@@ -248,6 +265,9 @@
       })
       $("#depositCount").on("click", function () {
         $("#deposits-tab").tab("show")
+      })
+      $("#withdrawalCount").on("click", function () {
+        $("#withdrawal-tab").tab("show")
       })
     })
   </script>

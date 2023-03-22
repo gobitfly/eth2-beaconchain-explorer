@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
-	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"net/http"
@@ -13,17 +12,7 @@ import (
 
 // Eth2Deposits will return information about deposits using a go template
 func Eth2Deposits(w http.ResponseWriter, r *http.Request) {
-
-	var eth2DepositsTemplate = templates.GetTemplate("layout.html", "eth2Deposits.html")
-
-	w.Header().Set("Content-Type", "text/html")
-
-	data := InitPageData(w, r, "eth2Deposits", "/deposits/eth2", "Included Deposits")
-	data.HeaderAd = true
-
-	if handleTemplateError(w, r, "eth2Depostis.go", "Eth2Deposits", "", eth2DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
-		return // an error has occurred and was processed
-	}
+	http.Redirect(w, r, "/validators/deposits", http.StatusMovedPermanently)
 }
 
 // Eth2DepositsData will return information eth1-deposits in json
