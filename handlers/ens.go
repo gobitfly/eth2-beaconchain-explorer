@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"eth2-exporter/cache"
+	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -39,6 +40,13 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 
 	if utils.IsValidEnsDomain(search) {
 		data.Domain = search
+		bigAddress, err := db.BigtableClient.GetAddressForEnsName(search)
+		if err != nil {
+			utils.LogError(err, "error getting address from big table", 0)
+		} else {
+			logger.Infof("found big address: %s", bigAddress)
+		}
+
 		cacheKey := fmt.Sprintf("%d:ens:address:%v", utils.Config.Chain.Config.DepositChainID, search)
 
 		if address, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Hour); err != nil || len(address) == 0 {

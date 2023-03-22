@@ -54,6 +54,7 @@ const (
 
 const (
 	DATA_COLUMN                    = "d"
+	ENS                            = "ens"
 	INDEX_COLUMN                   = "i"
 	DEFAULT_FAMILY_BLOCKS          = "default"
 	METADATA_UPDATES_FAMILY_BLOCKS = "blocks"
@@ -1108,12 +1109,12 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 		if i > 9999 {
 			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
 		}
-		if len(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts) > 0 && !utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(tx.To).String()) {
-			continue
-		}
+
+		var isRegistarContract = len(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts) > 0 && utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(tx.To).String())
 		iReversed := reversePaddedIndex(i, 10000)
 		foundNameIndex := -1
 		foundResolverIndex := -1
+		foundNameRenewedIndex := -1
 		logs := tx.GetLogs()
 		for j, log := range logs {
 			if j > 99999 {
@@ -1121,100 +1122,154 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			}
 			if len(log.GetTopics()) > 0 {
 				for _, lTopic := range log.GetTopics() {
-					if bytes.Equal(lTopic, ens.NameRegisteredTopic) {
-						foundNameIndex = j
-					} else if bytes.Equal(lTopic, ens.NewResolverTopic) {
-						foundResolverIndex = j
+					if isRegistarContract {
+						if bytes.Equal(lTopic, ens.NameRegisteredTopic) {
+							foundNameIndex = j
+						} else if bytes.Equal(lTopic, ens.NewResolverTopic) {
+							foundResolverIndex = j
+						} else if bytes.Equal(lTopic, ens.NameRenewedTopic) {
+							foundNameRenewedIndex = j
+						}
 					}
 				}
 			}
 		}
-		if foundNameIndex == -1 || foundResolverIndex == -1 {
-			continue
-		}
+		if foundNameIndex > -1 && foundResolverIndex > -1 {
+			jReversed := reversePaddedIndex(foundNameIndex, 100000)
 
-		jReversed := reversePaddedIndex(foundNameIndex, 100000)
+			log := logs[foundNameIndex]
+			topics := make([]common.Hash, 0, len(log.GetTopics()))
 
-		log := logs[foundNameIndex]
-		topics := make([]common.Hash, 0, len(log.GetTopics()))
+			for _, lTopic := range log.GetTopics() {
+				topics = append(topics, common.BytesToHash(lTopic))
+			}
 
-		for _, lTopic := range log.GetTopics() {
-			topics = append(topics, common.BytesToHash(lTopic))
-		}
+			nameLog := eth_types.Log{
+				Address:     common.BytesToAddress(log.GetAddress()),
+				Data:        log.Data,
+				Topics:      topics,
+				BlockNumber: blk.GetNumber(),
+				TxHash:      common.BytesToHash(tx.GetHash()),
+				TxIndex:     uint(i),
+				BlockHash:   common.BytesToHash(blk.GetHash()),
+				Index:       uint(foundNameIndex),
+				Removed:     log.GetRemoved(),
+			}
 
-		nameLog := eth_types.Log{
-			Address:     common.BytesToAddress(log.GetAddress()),
-			Data:        log.Data,
-			Topics:      topics,
-			BlockNumber: blk.GetNumber(),
-			TxHash:      common.BytesToHash(tx.GetHash()),
-			TxIndex:     uint(i),
-			BlockHash:   common.BytesToHash(blk.GetHash()),
-			Index:       uint(foundNameIndex),
-			Removed:     log.GetRemoved(),
-		}
+			log = logs[foundResolverIndex]
+			topics = make([]common.Hash, 0, len(log.GetTopics()))
 
-		log = logs[foundResolverIndex]
-		topics = make([]common.Hash, 0, len(log.GetTopics()))
+			for _, lTopic := range log.GetTopics() {
+				topics = append(topics, common.BytesToHash(lTopic))
+			}
 
-		for _, lTopic := range log.GetTopics() {
-			topics = append(topics, common.BytesToHash(lTopic))
-		}
+			resolverLog := eth_types.Log{
+				Address:     common.BytesToAddress(log.GetAddress()),
+				Data:        log.Data,
+				Topics:      topics,
+				BlockNumber: blk.GetNumber(),
+				TxHash:      common.BytesToHash(tx.GetHash()),
+				TxIndex:     uint(i),
+				BlockHash:   common.BytesToHash(blk.GetHash()),
+				Index:       uint(foundResolverIndex),
+				Removed:     log.GetRemoved(),
+			}
 
-		resolverLog := eth_types.Log{
-			Address:     common.BytesToAddress(log.GetAddress()),
-			Data:        log.Data,
-			Topics:      topics,
-			BlockNumber: blk.GetNumber(),
-			TxHash:      common.BytesToHash(tx.GetHash()),
-			TxIndex:     uint(i),
-			BlockHash:   common.BytesToHash(blk.GetHash()),
-			Index:       uint(foundResolverIndex),
-			Removed:     log.GetRemoved(),
-		}
+			nameRegistered, _ := filterer.ParseNameRegistered(nameLog)
+			resolver, err := filterer.ParseNewResolver(resolverLog)
+			if nameRegistered == nil || resolver == nil {
+				continue
+			}
 
-		nameRegistered, _ := filterer.ParseNameRegistered(nameLog)
-		resolver, err := filterer.ParseNewResolver(resolverLog)
-		if nameRegistered == nil || resolver == nil {
-			continue
-		}
-		key := fmt.Sprintf("%s:ENS:O:%x:%s", bigtable.chainId, tx.GetHash(), jReversed)
+			key := fmt.Sprintf("%s:ENS:%x:%s", bigtable.chainId, tx.GetHash(), jReversed)
+			indexedLog := &types.EnsNameRegisteredIndexed{
+				ParentHash:       tx.GetHash(),
+				BlockNumber:      blk.GetNumber(),
+				Time:             blk.GetTime(),
+				RegisterContract: tx.To,
+				Label:            nameRegistered.Label[:],
+				Name:             []byte(nameRegistered.Name),
+				Owner:            nameRegistered.Owner.Bytes(),
+				Resolver:         resolver.Resolver.Bytes(),
+				Expires:          timestamppb.New(time.Unix(nameRegistered.Expires.Int64(), 0)),
+			}
+			logger.Infof("we found renewed event: %x, %x, %v", nameRegistered.Label, nameRegistered.Name, nameRegistered.Expires)
 
-		indexedLog := &types.EnsNameRegisteredIndexed{
-			ParentHash:      tx.GetHash(),
-			BlockNumber:     blk.GetNumber(),
-			Time:            blk.GetTime(),
-			ContractAddress: tx.To,
-			Label:           nameRegistered.Label[:],
-			Name:            []byte(nameRegistered.Name),
-			Owner:           nameRegistered.Owner.Bytes(),
-			Resolver:        resolver.Resolver.Bytes(),
-			Expires:         timestamppb.New(time.Unix(nameRegistered.Expires.Int64(), 0)),
-		}
+			b, err := proto.Marshal(indexedLog)
+			if err != nil {
+				return nil, nil, err
+			}
 
-		b, err := proto.Marshal(indexedLog)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		mut := gcp_bigtable.NewMutation()
-		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
-
-		bulkData.Keys = append(bulkData.Keys, key)
-		bulkData.Muts = append(bulkData.Muts, mut)
-
-		indexes := []string{
-			fmt.Sprintf("%s:I:ENS:L:%x:%x:%x:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.Label, indexedLog.Name, indexedLog.Resolver, indexedLog.Owner, indexedLog.Expires.AsTime().Unix(), reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
-			fmt.Sprintf("%s:I:ENS:N:%x:%x:%x:%x:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.Name, indexedLog.Resolver, indexedLog.Owner, indexedLog.Label, indexedLog.Expires.AsTime().Unix(), reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
-		}
-
-		for _, idx := range indexes {
 			mut := gcp_bigtable.NewMutation()
-			mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
+			mut.Set(DEFAULT_FAMILY, ENS, gcp_bigtable.Timestamp(0), b)
 
-			bulkData.Keys = append(bulkData.Keys, idx)
+			bulkData.Keys = append(bulkData.Keys, key)
 			bulkData.Muts = append(bulkData.Muts, mut)
+
+			indexes := []string{
+				fmt.Sprintf("%s:I:ENS:LABEL:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.Label, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+				fmt.Sprintf("%s:I:ENS:NAME:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.Name, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+			}
+
+			for _, idx := range indexes {
+				mut := gcp_bigtable.NewMutation()
+				mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
+
+				bulkData.Keys = append(bulkData.Keys, idx)
+				bulkData.Muts = append(bulkData.Muts, mut)
+			}
+		} else if foundNameRenewedIndex > -1 {
+			jReversed := reversePaddedIndex(foundNameIndex, 100000)
+
+			log := logs[foundNameRenewedIndex]
+			topics := make([]common.Hash, 0, len(log.GetTopics()))
+
+			for _, lTopic := range log.GetTopics() {
+				topics = append(topics, common.BytesToHash(lTopic))
+			}
+
+			nameRenewedLog := eth_types.Log{
+				Address:     common.BytesToAddress(log.GetAddress()),
+				Data:        log.Data,
+				Topics:      topics,
+				BlockNumber: blk.GetNumber(),
+				TxHash:      common.BytesToHash(tx.GetHash()),
+				TxIndex:     uint(i),
+				BlockHash:   common.BytesToHash(blk.GetHash()),
+				Index:       uint(foundNameRenewedIndex),
+				Removed:     log.GetRemoved(),
+			}
+
+			nameRenewed, _ := filterer.ParseNameRenewed(nameRenewedLog)
+
+			key := fmt.Sprintf("%s:ENS:RENEW:%x:%x:%s", nameRenewed.Label, bigtable.chainId, tx.GetHash(), jReversed)
+			indexedLog := &types.EnsNameRenewedIndexed{
+				ParentHash:  tx.GetHash(),
+				BlockNumber: blk.GetNumber(),
+				Time:        blk.GetTime(),
+				Label:       nameRenewed.Label[:],
+				Name:        []byte(nameRenewed.Name),
+				Expires:     timestamppb.New(time.Unix(nameRenewed.Expires.Int64(), 0)),
+			}
+			logger.Infof("P: %v", indexedLog.ProtoReflect())
+			logger.Infof("we found renewed event: %v, %v, %v: %v, %v, %v", indexedLog.Label, indexedLog.Name, indexedLog.Expires, indexedLog.Time, indexedLog.BlockNumber, indexedLog.ParentHash)
+
+			b, err := proto.Marshal(indexedLog)
+			if err != nil {
+				return nil, nil, err
+			}
+			if err == nil {
+
+				return nil, nil, nil
+			}
+			mut := gcp_bigtable.NewMutation()
+			mut.Set(DEFAULT_FAMILY, ENS, gcp_bigtable.Timestamp(0), b)
+
+			bulkData.Keys = append(bulkData.Keys, key)
+			bulkData.Muts = append(bulkData.Muts, mut)
+
 		}
+
 	}
 
 	return bulkData, bulkMetadataUpdates, nil
@@ -2363,6 +2418,84 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		}
 	}
 	return data, nil
+}
+
+func (bigtable *Bigtable) GetAddressForEnsName(name string) (*common.Address, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	registrations := []*types.EnsNameRegisteredIndexed{}
+	//deleteKeys := []string{}
+
+	// names in registration are without the .eth ending
+	prefix := fmt.Sprintf("%s:I:ENS:NAME:%x:", bigtable.chainId, name[:len(name)-4])
+	//prefix := fmt.Sprintf("%s:ENS:", bigtable.chainId)
+	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		b := &types.EnsNameRegisteredIndexed{}
+		row_ := row[DEFAULT_FAMILY][0]
+		//deleteKeys = append(deleteKeys, row_.Row)
+
+		row, err := bigtable.tableData.ReadRow(ctx, strings.Replace(row_.Column, "f:", "", 1))
+		if err != nil {
+			logrus.Errorf("error reading ens data row %v: %v", row.Key(), err)
+			return false
+		}
+		if row == nil {
+			return false
+		}
+		row_ = row[DEFAULT_FAMILY][0]
+		err = proto.Unmarshal(row_.Value, b)
+		if err != nil {
+			logrus.Errorf("error unmarshalling ens name for row %v: %v", row.Key(), err)
+			return false
+		}
+
+		registrations = append(registrations, b)
+		return true
+	}, gcp_bigtable.LimitRows(256))
+	if err != nil {
+		return nil, err
+	}
+	/*
+		if len(deleteKeys) > 0 {
+		mutsDelete := &types.BulkMutations{
+			Keys: make([]string, 0, len(deleteKeys)),
+			Muts: make([]*gcp_bigtable.Mutation, 0, len(deleteKeys)),
+		}
+		logger.Infof("delete keys: %v", deleteKeys)
+		for _, key := range deleteKeys {
+			mutDelete := gcp_bigtable.NewMutation()
+			mutDelete.DeleteRow()
+			mutsDelete.Keys = append(mutsDelete.Keys, key)
+			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+		}
+			err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
+			if err != nil {
+				logger.Infof("could not delete rows: %v", err)
+			}
+		}
+	*/
+
+	if len(registrations) == 0 {
+		return nil, fmt.Errorf("Ens name [%v] registration not fond", name)
+	}
+
+	sort.Slice(registrations, func(i, j int) bool {
+		return registrations[i].GetBlockNumber() < registrations[i].GetBlockNumber()
+	})
+
+	//current := registrations[len(registrations)-1]
+
+	//if current.Expires.AsTime().Before(current.Time.AsTime()) {
+	//TODO: Check if
+	//}
+
+	logger.Infof("Resolver: %v", common.BytesToAddress(registrations[0].GetResolver()))
+
+	address := common.BytesToAddress(registrations[0].GetOwner())
+
+	return &address, nil
 }
 
 // currently only erc20
