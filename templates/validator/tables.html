@@ -242,7 +242,6 @@
             });
 
             function createSyncTable() {
-                console.log('create sync-table')
                 $('#sync-table').DataTable({
                     processing: true,
                     serverSide: true,
@@ -633,20 +632,27 @@
 
 {{ define "validatorIncomeTable" }}
   {{ with .Data }}
-    {{ $APR7d := addFloat64 .ClAPR7d .ElAPR7d }}
-    {{ $APR31d := addFloat64 .ClAPR31d .ElAPR31d }}
-    {{ $APRTotal := addFloat64 .ClAPRTotal .ElAPRTotal }}
-    {{ $Income1d := addI64 .ClIncome1d .ElIncome1d }}
-    {{ $Income7d := addI64 .ClIncome7d .ElIncome7d }}
-    {{ $Income31d := addI64 .ClIncome31d .ElIncome31d }}
     <span class="h4">
-      General <small data-toggle="tooltip" title="Income updates daily"><i class="far fa-question-circle"></i></small>
+      General
     </span>
     <table class="table" style="margin-top: 0 !important" width="100%">
       <tbody style="font-size: 0.875rem;">
         <tr>
           <th scope="row">Total Tx Rewards</th>
           <td class="pl-0">{{ formatExchangedAmount .ElIncomeTotal $.Rates.Currency }}</td>
+        </tr>
+        <tr class="">
+          <th scope="row">Income Today</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatIncome .IncomeToday.Cl $.Rates.Currency }} <br> 
+                EL: {{ formatIncome .IncomeToday.El $.Rates.Currency }}">
+              {{ formatIncome .IncomeToday.Total $.Rates.Currency }}
+            </span>
+          </td>
         </tr>
         <!-- shown in desktop -->
         <tr class="d-none d-sm-table-row">
@@ -656,63 +662,62 @@
               data-toggle="tooltip"
               data-html="true"
               title="
-                CL: {{ formatIncome .ClIncome1d $.Rates.Currency }} | {{ formatIncome .ClIncome7d $.Rates.Currency }} | {{ formatIncome .ClIncome31d $.Rates.Currency }} <br> 
-                EL: {{ formatIncome .ElIncome1d $.Rates.Currency }} | {{ formatIncome .ElIncome7d $.Rates.Currency }} | {{ formatIncome .ElIncome31d $.Rates.Currency }}">
-              {{ formatIncomeNoCurrency $Income1d $.Rates.Currency }} | {{ formatIncomeNoCurrency $Income7d $.Rates.Currency }} |
-              {{ formatIncomeNoCurrency $Income31d $.Rates.Currency }}
+                CL: {{ formatIncome .Income1d.Cl $.Rates.Currency }} | {{ formatIncome .Income7d.Cl $.Rates.Currency }} | {{ formatIncome .Income31d.Cl $.Rates.Currency }} <br> 
+                EL: {{ formatIncome .Income1d.El $.Rates.Currency }} | {{ formatIncome .Income7d.El $.Rates.Currency }} | {{ formatIncome .Income31d.El $.Rates.Currency }}">
+              {{ formatIncomeNoCurrency .Income1d.Total $.Rates.Currency }} | {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }} |
+              {{ formatIncomeNoCurrency .Income31d.Total $.Rates.Currency }}
             </span>
           </td>
         </tr>
-        <!-- shown in mobile -->
-        <tr class="d-sm-none">
-          <th scope="row">Income</th>
-          <td class="pl-0">
-            <span
-              data-toggle="tooltip"
-              data-html="true"
-              title="
-                CL: 1d: {{ formatIncome .ClIncome1d $.Rates.Currency }} | 7d: {{ formatIncome .ClIncome7d $.Rates.Currency }} | 31d: {{ formatIncome .ClIncome31d $.Rates.Currency }} <br /> 
-                EL: 1d: {{ formatIncome .ElIncome1d $.Rates.Currency }} | 7d: {{ formatIncome .ElIncome7d $.Rates.Currency }} | 31d: {{ formatIncome .ElIncome31d $.Rates.Currency }} <br /> 
-                All: 1d: {{ formatIncome $Income1d $.Rates.Currency }} | 7d: {{ formatIncome $Income7d $.Rates.Currency }} | 31d: {{ formatIncome $Income31d $.Rates.Currency }}">
-              {{ formatIncomeNoCurrency $Income7d $.Rates.Currency }}
-              <i class="far fa-question-circle"></i>
-            </span>
-          </td>
-        </tr>
-        <!-- shown in desktop -->
         <tr class="d-none d-sm-table-row">
-          <th scope="row">APR 7d | 31d | Total</th>
+          <th scope="row">APR 7d | 31d | 365d</th>
           <td class="pl-0">
             <span
               data-toggle="tooltip"
               data-html="true"
               title="
-                CL: {{ formatPercentageWithPrecision .ClAPR7d 2 }}% | {{ formatPercentageWithPrecision .ClAPR31d 2 }}% | {{ formatPercentageWithPrecision .ClAPRTotal 2 }}% <br> 
-                EL : {{ formatPercentageWithPrecision .ElAPR7d 2 }}% | {{ formatPercentageWithPrecision .ElAPR31d 2 }}% | {{ formatPercentageWithPrecision .ElAPRTotal 2 }}%">
-              <span class="{{ if gtf $APR7d 0 }}text-success{{ end }}{{ if gtf  0 $APR7d }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision $APR7d 2 }}%</b></span>
+                CL: {{ formatPercentageWithPrecision .Apr7d.Cl 2 }}% | {{ formatPercentageWithPrecision .Apr31d.Cl 2 }}% | {{ formatPercentageWithPrecision .Apr365d.Cl 2 }}% <br> 
+                El: {{ formatPercentageWithPrecision .Apr7d.El 2 }}% | {{ formatPercentageWithPrecision .Apr31d.El 2 }}% | {{ formatPercentageWithPrecision .Apr365d.El 2 }}%">
+              <span class="{{ if gtf .Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr7d.Total 2 }}%</b></span>
               |
-              <span class="{{ if gtf $APR31d 0 }}text-success{{ end }}{{ if gtf  0 $APR31d }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision $APR31d 2 }}%</b></span>
+              <span class="{{ if gtf .Apr31d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr31d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr31d.Total 2 }}%</b></span>
               |
-              <span class="{{ if gtf $APRTotal 0 }}text-success{{ end }}{{ if gtf  0 $APRTotal }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision $APRTotal 2 }}%</b></span>
+              <span class="{{ if gtf .Apr365d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr365d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr365d.Total 2 }}%</b></span>
             </span>
           </td>
         </tr>
         <!-- shown in mobile -->
         <tr class="d-sm-none">
-          <th scope="row">APR</th>
+          <th scope="row">Income 7d</th>
           <td class="pl-0">
             <span
               data-toggle="tooltip"
               data-html="true"
               title="
-                CL: 7d: {{ formatPercentageWithPrecision .ClAPR7d 2 }}% | 31d: {{ formatPercentageWithPrecision .ClAPR31d 2 }}% | Total: {{ formatPercentageWithPrecision .ClAPRTotal 2 }}% <br> 
-                EL: 7d: {{ formatPercentageWithPrecision .ElAPR7d 2 }}% | 31d: {{ formatPercentageWithPrecision .ElAPR31d 2 }}% | Total: {{ formatPercentageWithPrecision .ElAPRTotal 2 }}% <br> 
-                All: 7d: {{ formatPercentageWithPrecision $APR7d 2 }}% | 31d: {{ formatPercentageWithPrecision $APR31d 2 }}% | Total: {{ formatPercentageWithPrecision $APRTotal 2 }}%">
-              <span class="{{ if gtf $APR7d 0 }}text-success{{ end }}{{ if gtf  0 $APR7d }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision $APR7d 2 }}%</b></span>
+                  CL: 1d: {{ formatIncomeNoCurrency .Income1d.Cl $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.Cl $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.Cl $.Rates.Currency }} <br /> 
+                  EL: 1d: {{ formatIncomeNoCurrency .Income1d.El $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.El $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.El $.Rates.Currency }} <br /> 
+                  All: 1d: {{ formatIncomeNoCurrency .Income1d.Total $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.Total $.Rates.Currency }}">
+              {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }}
               <i class="far fa-question-circle"></i>
             </span>
           </td>
         </tr>
+        <tr class="d-sm-none">
+          <th scope="row">APR 7d</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: 7d: {{ formatPercentageWithPrecision .Apr7d.Cl 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.Cl 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.Cl 2 }}% <br> 
+                El: 7d: {{ formatPercentageWithPrecision .Apr7d.El 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.El 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.El 2 }}% <br>
+                All: 7d: {{ formatPercentageWithPrecision .Apr7d.Total 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.Total 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.Total 2 }}%">
+              <span class="{{ if gtf .Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr7d.Total 2 }}%</b></span>
+              <i class="far fa-question-circle"></i>
+            </span>
+          </td>
+        </tr>
+        <!-- end -->
         <tr>
           <th scope="row">Luck</th>
           <td class="pl-0">

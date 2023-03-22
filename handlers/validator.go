@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
 	"github.com/protolambda/zrnt/eth2/util/math"
@@ -364,12 +365,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AttestationsCount = 0
 	}
 
-	lastExportedEpoch := (lastStatsDay+1)*utils.EpochsPerDay() - 1
-	activeDays := float64((lastExportedEpoch - validatorPageData.ActivationEpoch + 1)) / float64(utils.EpochsPerDay())
-
 	if validatorPageData.ExitEpoch != 9223372036854775807 {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
-		activeDays = float64(validatorPageData.AttestationsCount) / float64(utils.EpochsPerDay())
 	}
 
 	g := errgroup.Group{}
@@ -379,7 +376,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			timings.Charts = time.Since(start)
 		}()
 
-		validatorPageData.IncomeHistoryChartData, _, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency)
+		validatorPageData.IncomeHistoryChartData, validatorPageData.IncomeToday.Cl, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency)
 
 		if err != nil {
 			return fmt.Errorf("error calling db.GetValidatorIncomeHistoryChart: %v", err)
@@ -410,53 +407,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return fmt.Errorf("error retrieving validator earnings: %v", err)
 		}
-		validatorPageData.ClIncome1d = earnings.ClIncome1d
-		validatorPageData.ClIncome7d = earnings.ClIncome7d
-		validatorPageData.ClIncome31d = earnings.ClIncome31d
-		validatorPageData.ElIncome1d = earnings.ElIncome1d
-		validatorPageData.ElIncome7d = earnings.ElIncome7d
-		validatorPageData.ElIncome31d = earnings.ElIncome31d
+		validatorPageData.Income1d = earnings.Income1d
+		validatorPageData.Income7d = earnings.Income7d
+		validatorPageData.Income31d = earnings.Income31d
+		validatorPageData.Apr7d = earnings.Apr7d
+		validatorPageData.Apr31d = earnings.Apr31d
+		validatorPageData.Apr365d = earnings.Apr365d
 		validatorPageData.ElIncomeTotal = earnings.ElIncomeTotal
-
-		clApr7d := ((float64(earnings.ClIncome7d) / float64(earnings.TotalDeposits)) * 365) / 7
-		if clApr7d < float64(-1) {
-			clApr7d = float64(-1)
-		}
-		validatorPageData.ClAPR7d = clApr7d
-
-		elApr7d := ((float64(earnings.ElIncome7d) / float64(earnings.TotalDeposits)) * 365) / 7
-		if elApr7d < float64(-1) {
-			elApr7d = float64(-1)
-		}
-		validatorPageData.ElAPR7d = elApr7d
-
-		clApr31d := ((float64(earnings.ClIncome31d) / float64(earnings.TotalDeposits)) * 365) / 31
-		if clApr31d < float64(-1) {
-			clApr31d = float64(-1)
-		}
-		validatorPageData.ClAPR31d = clApr31d
-
-		elApr31d := ((float64(earnings.ElIncome31d) / float64(earnings.TotalDeposits)) * 365) / 31
-		if elApr31d < float64(-1) {
-			elApr31d = float64(-1)
-		}
-		validatorPageData.ElAPR31d = elApr31d
-
-		if activeDays > 0 {
-			//TODO: Add 365d apr insted of total once available
-			clAprTotal := ((float64(earnings.ClIncomeTotal) / float64(earnings.TotalDeposits)) * 365) / activeDays
-			if clAprTotal < float64(-1) {
-				clAprTotal = float64(-1)
-			}
-			validatorPageData.ClAPRTotal = clAprTotal
-
-			//TODO: Add 365d apr insted of total once available
-			elAprTotal := ((float64(earnings.ElIncomeTotal) / float64(earnings.TotalDeposits)) * 365) / activeDays
-			if elAprTotal < float64(-1) {
-				elAprTotal = float64(-1)
-			}
-			validatorPageData.ElAPRTotal = elAprTotal
-		}
 
 		vbalance, ok := balances[validatorPageData.ValidatorIndex]
 		if !ok {
@@ -591,15 +548,24 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	g.Go(func() error {
 		proposals := []struct {
-			Slot   uint64
-			Status uint64
+			Slot            uint64 `db:"slot"`
+			Status          uint64 `db:"status"`
+			ExecBlockNumber uint64 `db:"exec_block_number"`
 		}{}
 
-		err = db.ReaderDb.Select(&proposals, "SELECT slot, status FROM blocks WHERE proposer = $1 ORDER BY slot", index)
+		err = db.ReaderDb.Select(&proposals, `
+			SELECT 
+				slot, 
+				status, 
+				COALESCE(exec_block_number, 0) as exec_block_number
+			FROM blocks 
+			WHERE proposer = $1`, index)
 		if err != nil {
 			return fmt.Errorf("error retrieving block-proposals: %v", err)
 		}
 
+		proposedToday := []uint64{}
+		todayStartEpoch := uint64(lastStatsDay+1) * utils.EpochsPerDay()
 		validatorPageData.Proposals = make([][]uint64, len(proposals))
 		for i, b := range proposals {
 			validatorPageData.Proposals[i] = []uint64{
@@ -610,6 +576,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				validatorPageData.ScheduledBlocksCount++
 			} else if b.Status == 1 {
 				validatorPageData.ProposedBlocksCount++
+				// add to list of blocks proposed today if epoch hasn't been exported into stats yet
+				if utils.EpochOfSlot(b.Slot) >= todayStartEpoch && b.ExecBlockNumber > 0 {
+					proposedToday = append(proposedToday, b.ExecBlockNumber)
+				}
 			} else if b.Status == 2 {
 				validatorPageData.MissedBlocksCount++
 			} else if b.Status == 3 {
@@ -631,6 +601,32 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 		validatorPageData.ProposalLuck = getProposalLuck(slots, 1)
 		validatorPageData.ProposalEstimate = getNextBlockEstimateTimestamp(slots, 1)
+
+		if len(proposedToday) > 0 {
+			// get el data
+			execBlocks, err := db.BigtableClient.GetBlocksIndexedMultiple(proposedToday, 10000)
+			if err != nil {
+				return fmt.Errorf("error retrieving execution blocks data from bigtable: %v", err)
+			}
+
+			// get mev data
+			relaysData, err := db.GetRelayDataForIndexedBlocks(execBlocks)
+			if err != nil {
+				return fmt.Errorf("error retrieving mev bribe data from bigtable: %v", err)
+			}
+
+			incomeTodayEl := new(big.Int)
+			for _, execBlock := range execBlocks {
+				// add mev bribe if present
+				if relaysDatum, hasMevBribes := relaysData[common.BytesToHash(execBlock.Hash)]; hasMevBribes {
+					incomeTodayEl = new(big.Int).Add(incomeTodayEl, relaysDatum.MevBribe.Int)
+				} else {
+					incomeTodayEl = new(big.Int).Add(incomeTodayEl, new(big.Int).SetBytes(execBlock.GetTxReward()))
+				}
+			}
+			validatorPageData.IncomeToday.El = incomeTodayEl.Int64() / 1e9
+		}
+
 		return nil
 	})
 
@@ -765,6 +761,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// if sync duties of last period haven't fully been exported yet, fetch remaining duties from bigtable
+			lastExportedEpoch := (lastStatsDay+1)*utils.EpochsPerDay() - 1
 			if actualSyncPeriods[0].LastEpoch > lastExportedEpoch {
 				lookback := int64(latestEpoch - lastExportedEpoch)
 				res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, latestEpoch-uint64(lookback), latestEpoch)
@@ -862,6 +859,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	validatorPageData.IncomeToday.Total = validatorPageData.IncomeToday.Cl + validatorPageData.IncomeToday.El
 
 	// logger.WithFields(logrus.Fields{
 	// 	"index":         index,
