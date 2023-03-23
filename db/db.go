@@ -21,8 +21,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/patrickmn/go-cache"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
 	prysm_deposit "github.com/prysmaticlabs/prysm/v3/contracts/deposit"
 	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 	"github.com/sirupsen/logrus"
@@ -1394,45 +1392,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 		metrics.TaskDuration.WithLabelValues("db_save_blocks").Observe(time.Since(start).Seconds())
 	}()
 
-	beaconConfig := params.BeaconConfig()
-	genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Config.GenesisForkVersion, "0x", "", -1))
-	// genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Config.GenesisForkVersion.String(), "0x", "", -1))
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	domain, err := signing.ComputeDomain(
-		beaconConfig.DomainDeposit,
-		genForkVersion,
-		beaconConfig.ZeroHash[:],
-	)
-	if utils.Config.Chain.Config.ConfigName == "zinken" {
-		domain, err = signing.ComputeDomain(
-			beaconConfig.DomainDeposit,
-			[]byte{0x00, 0x00, 0x00, 0x03},
-			beaconConfig.ZeroHash[:],
-		)
-	}
-	if utils.Config.Chain.Config.ConfigName == "toledo" {
-		domain, err = signing.ComputeDomain(
-			beaconConfig.DomainDeposit,
-			[]byte{0x00, 0x70, 0x1E, 0xD0},
-			beaconConfig.ZeroHash[:],
-		)
-	}
-	if utils.Config.Chain.Config.ConfigName == "pyrmont" {
-		domain, err = signing.ComputeDomain(
-			beaconConfig.DomainDeposit,
-			[]byte{0x00, 0x00, 0x20, 0x09},
-			beaconConfig.ZeroHash[:],
-		)
-	}
-	if utils.Config.Chain.Config.ConfigName == "prater" {
-		domain, err = signing.ComputeDomain(
-			beaconConfig.DomainDeposit,
-			[]byte{0x00, 0x00, 0x10, 0x20},
-			beaconConfig.ZeroHash[:],
-		)
-	}
+	domain, err := utils.GetSigningDomain()
 	if err != nil {
 		return err
 	}

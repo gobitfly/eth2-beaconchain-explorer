@@ -43,6 +43,8 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/lib/pq"
 	"github.com/mvdan/xurls"
+	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
+	prysm_params "github.com/prysmaticlabs/prysm/v3/config/params"
 	"github.com/sirupsen/logrus"
 	"github.com/skip2/go-qrcode"
 )
@@ -1139,4 +1141,24 @@ func logErrorInfo(err error, callerSkip int, additionalInfos ...string) *logrus.
 	}
 
 	return logFields
+}
+
+func GetSigningDomain() ([]byte, error) {
+	beaconConfig := prysm_params.BeaconConfig()
+	genForkVersion, err := hex.DecodeString(strings.Replace(Config.Chain.Config.GenesisForkVersion, "0x", "", -1))
+	if err != nil {
+		return nil, err
+	}
+
+	domain, err := signing.ComputeDomain(
+		beaconConfig.DomainDeposit,
+		genForkVersion,
+		beaconConfig.ZeroHash[:],
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return domain, err
 }
