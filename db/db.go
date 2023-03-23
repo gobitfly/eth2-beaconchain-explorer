@@ -2917,6 +2917,9 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 }
 
 func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
+	// the validators' balance will not be checked here as this is only a rough estimation
+	// checking the balance for hundreds of thousands of validators is too expensive
+
 	var idCondition string
 	if validatorindex > cursor {
 		// find all withdrawable validators between the cursor and the validator
@@ -2929,15 +2932,9 @@ func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor 
 		return 0, nil
 	}
 
-	type validatorInfo struct {
-		ValidatorIndex    uint64 `db:"validatorindex"`
-		WithdrawableEpoch uint64 `db:"withdrawableepoch"`
-	}
-
 	query := fmt.Sprintf(`
 	SELECT 
-		validatorindex,
-		withdrawableepoch
+		COUNT(*)
 	FROM 
 		validators 
 	WHERE 
@@ -2945,41 +2942,10 @@ func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor 
 		activationepoch <= $3 AND exitepoch > $3 AND
 		withdrawalcredentials LIKE '\x01' || '%%'::bytea`, idCondition)
 
-	var validators []validatorInfo
-	err := ReaderDb.Select(&validators, query, cursor, validatorindex, epoch)
+	count := uint64(0)
+	err := ReaderDb.Get(&count, query, cursor, validatorindex, epoch)
 	if err != nil {
 		return 0, fmt.Errorf("error getting withdrawable validator count from cursor: %w", err)
-	}
-
-	if len(validators) == 0 {
-		// early exit if there are no validators to consider
-		return 0, nil
-	}
-
-	// BigtableClient.GetValidatorBalanceHistory requires a slice of ids only
-	ids := make([]uint64, 0, len(validators))
-	for _, v := range validators {
-		ids = append(ids, v.ValidatorIndex)
-	}
-
-	balanceMap, err := BigtableClient.GetValidatorBalanceHistory(ids, epoch, epoch)
-	if err != nil {
-		return 0, fmt.Errorf("error getting validator balance history: %w", err)
-	}
-
-	count := uint64(0)
-	for _, v := range validators {
-		if b, ok := balanceMap[v.ValidatorIndex]; ok {
-			if len(b) == 0 {
-				continue
-			}
-
-			// check (partial withdrawals) || (full withdrawals)
-			if (b[0].EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && b[0].Balance > utils.Config.Chain.Config.MaxEffectiveBalance) ||
-				(v.WithdrawableEpoch <= epoch && b[0].Balance > 0) {
-				count++
-			}
-		}
 	}
 
 	return count, nil
