@@ -97,7 +97,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			from blocks_deposits
 			inner join validators on blocks_deposits.publickey = validators.pubkey
 			inner join blocks on blocks_deposits.block_root = blocks.blockroot
-			where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1'
+			where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1' and blocks_deposits.valid_signature
 			group by validators.validatorindex
 		) 
 		on conflict (validatorindex, day) do

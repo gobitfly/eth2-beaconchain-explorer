@@ -19,9 +19,12 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
-	"github.com/patrickmn/go-cache"
-
 	"github.com/lib/pq"
+	"github.com/patrickmn/go-cache"
+	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
+	"github.com/prysmaticlabs/prysm/v3/config/params"
+	prysm_deposit "github.com/prysmaticlabs/prysm/v3/contracts/deposit"
+	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 	"github.com/sirupsen/logrus"
 
 	"eth2-exporter/rpc"
@@ -1391,6 +1394,49 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 		metrics.TaskDuration.WithLabelValues("db_save_blocks").Observe(time.Since(start).Seconds())
 	}()
 
+	beaconConfig := params.BeaconConfig()
+	genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Config.GenesisForkVersion, "0x", "", -1))
+	// genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Config.GenesisForkVersion.String(), "0x", "", -1))
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	domain, err := signing.ComputeDomain(
+		beaconConfig.DomainDeposit,
+		genForkVersion,
+		beaconConfig.ZeroHash[:],
+	)
+	if utils.Config.Chain.Config.ConfigName == "zinken" {
+		domain, err = signing.ComputeDomain(
+			beaconConfig.DomainDeposit,
+			[]byte{0x00, 0x00, 0x00, 0x03},
+			beaconConfig.ZeroHash[:],
+		)
+	}
+	if utils.Config.Chain.Config.ConfigName == "toledo" {
+		domain, err = signing.ComputeDomain(
+			beaconConfig.DomainDeposit,
+			[]byte{0x00, 0x70, 0x1E, 0xD0},
+			beaconConfig.ZeroHash[:],
+		)
+	}
+	if utils.Config.Chain.Config.ConfigName == "pyrmont" {
+		domain, err = signing.ComputeDomain(
+			beaconConfig.DomainDeposit,
+			[]byte{0x00, 0x00, 0x20, 0x09},
+			beaconConfig.ZeroHash[:],
+		)
+	}
+	if utils.Config.Chain.Config.ConfigName == "prater" {
+		domain, err = signing.ComputeDomain(
+			beaconConfig.DomainDeposit,
+			[]byte{0x00, 0x00, 0x10, 0x20},
+			beaconConfig.ZeroHash[:],
+		)
+	}
+	if err != nil {
+		return err
+	}
+
 	stmtBlock, err := tx.Prepare(`
 		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, syncaggregate_bits, syncaggregate_signature, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, withdrawalcount, voluntaryexitscount, syncaggregate_participation, proposer, status, exec_parent_hash, exec_fee_recipient, exec_state_root, exec_receipts_root, exec_logs_bloom, exec_random, exec_block_number, exec_gas_limit, exec_gas_used, exec_timestamp, exec_extra_data, exec_base_fee_per_gas, exec_block_hash, exec_transactions_count)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)
@@ -1455,8 +1501,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	defer stmtAttestations.Close()
 
 	stmtDeposits, err := tx.Prepare(`
-		INSERT INTO blocks_deposits (block_slot, block_index, block_root, proof, publickey, withdrawalcredentials, amount, signature)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+		INSERT INTO blocks_deposits (block_slot, block_index, block_root, proof, publickey, withdrawalcredentials, amount, signature, valid_signature)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
 		ON CONFLICT (block_slot, block_index) DO NOTHING`)
 	if err != nil {
 		return err
@@ -1665,7 +1711,17 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 			t = time.Now()
 
 			for i, d := range b.Deposits {
-				_, err := stmtDeposits.Exec(b.Slot, i, b.BlockRoot, nil, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature)
+
+				err := prysm_deposit.VerifyDepositSignature(&ethpb.Deposit_Data{
+					PublicKey:             d.PublicKey,
+					WithdrawalCredentials: d.WithdrawalCredentials,
+					Amount:                d.Amount,
+					Signature:             d.Signature,
+				}, domain)
+
+				signatureValid := err == nil
+
+				_, err = stmtDeposits.Exec(b.Slot, i, b.BlockRoot, nil, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature, signatureValid)
 				if err != nil {
 					return fmt.Errorf("error executing stmtDeposits for block %v: %w", b.Slot, err)
 				}
