@@ -2303,7 +2303,6 @@ func collectMonitoringMachine(
 	}
 
 	var result []MachineEvents
-	subscribedUserList := make(map[uint64]bool)
 	for _, data := range allSubscribed {
 		machineMap, found := machineDataOfSubscribed[data.UserID]
 		if !found {
@@ -2314,26 +2313,15 @@ func collectMonitoringMachine(
 			continue
 		}
 
-		subscribedUserList[data.UserID] = false
-
 		//logrus.Infof("currentMachineData %v | %v | %v | %v", currentMachine.CurrentDataInsertTs, currentMachine.CompareDataInsertTs, currentMachine.UserID, currentMachine.Machine)
 		if notifyConditionFullfilled(&data, currentMachineData) {
 			result = append(result, data)
-
-			subscribedUserList[data.UserID] = true
-		}
-	}
-
-	notifiedUsersCount := 0.0
-	for _, isNotifiedUser := range subscribedUserList {
-		if isNotifiedUser {
-			notifiedUsersCount++
 		}
 	}
 
 	// If more than 90% of users would be notified there is an issue and no one should be notified
-	notifiedUsersRatioThreshold := 0.9
-	if notifiedUsersCount/float64(len(subscribedUserList)) >= notifiedUsersRatioThreshold {
+	const notifiedSubscriptionsRatioThreshold = 0.9
+	if float64(len(result))/float64(len(allSubscribed)) >= notifiedSubscriptionsRatioThreshold {
 		utils.LogError(nil, fmt.Errorf("error too many users would be notified concerning: %v", eventName), 0)
 		return nil
 	}
