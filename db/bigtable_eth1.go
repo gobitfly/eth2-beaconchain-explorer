@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"eth2-exporter/cache"
 	"eth2-exporter/ens"
@@ -1195,7 +1196,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			}
 			logger.Infof("we found renewed event: %x, %x, %v", nameRegistered.Label, nameRegistered.Name, nameRegistered.Expires)
 
-			b, err := proto.Marshal(indexedLog)
+			b, err := json.Marshal(indexedLog)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1242,7 +1243,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			nameRenewed, _ := filterer.ParseNameRenewed(nameRenewedLog)
 
-			key := fmt.Sprintf("%s:ENS:RENEW:%x:%x:%s", nameRenewed.Label, bigtable.chainId, tx.GetHash(), jReversed)
+			key := fmt.Sprintf("%s:ENS:RENEW:%x:%x:%s", bigtable.chainId, nameRenewed.Label, tx.GetHash(), jReversed)
 			indexedLog := &types.EnsNameRenewedIndexed{
 				ParentHash:  tx.GetHash(),
 				BlockNumber: blk.GetNumber(),
@@ -1251,16 +1252,10 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 				Name:        []byte(nameRenewed.Name),
 				Expires:     timestamppb.New(time.Unix(nameRenewed.Expires.Int64(), 0)),
 			}
-			logger.Infof("P: %v", indexedLog.ProtoReflect())
-			logger.Infof("we found renewed event: %v, %v, %v: %v, %v, %v", indexedLog.Label, indexedLog.Name, indexedLog.Expires, indexedLog.Time, indexedLog.BlockNumber, indexedLog.ParentHash)
 
-			b, err := proto.Marshal(indexedLog)
+			b, err := json.Marshal(indexedLog)
 			if err != nil {
 				return nil, nil, err
-			}
-			if err == nil {
-
-				return nil, nil, nil
 			}
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(DEFAULT_FAMILY, ENS, gcp_bigtable.Timestamp(0), b)
@@ -2424,17 +2419,20 @@ func (bigtable *Bigtable) GetAddressForEnsName(name string) (*common.Address, er
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
-	registrations := []*types.EnsNameRegisteredIndexed{}
+	registration := &types.EnsNameRegisteredIndexed{}
 	//deleteKeys := []string{}
 
 	// names in registration are without the .eth ending
 	prefix := fmt.Sprintf("%s:I:ENS:NAME:%x:", bigtable.chainId, name[:len(name)-4])
-	//prefix := fmt.Sprintf("%s:ENS:", bigtable.chainId)
+	//prefix := fmt.Sprintf("%s:I:ENS:", bigtable.chainId)
 	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
 	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
 		b := &types.EnsNameRegisteredIndexed{}
 		row_ := row[DEFAULT_FAMILY][0]
-		//deleteKeys = append(deleteKeys, row_.Row)
+		/*deleteKeys = append(deleteKeys, row_.Row)
+		if len(deleteKeys) > 0 {
+			return true
+		}*/
 
 		row, err := bigtable.tableData.ReadRow(ctx, strings.Replace(row_.Column, "f:", "", 1))
 		if err != nil {
@@ -2445,13 +2443,15 @@ func (bigtable *Bigtable) GetAddressForEnsName(name string) (*common.Address, er
 			return false
 		}
 		row_ = row[DEFAULT_FAMILY][0]
-		err = proto.Unmarshal(row_.Value, b)
+		err = json.Unmarshal(row_.Value, b)
 		if err != nil {
 			logrus.Errorf("error unmarshalling ens name for row %v: %v", row.Key(), err)
 			return false
 		}
 
-		registrations = append(registrations, b)
+		if len(registration.Name) == 0 || registration.Expires.Seconds < b.Expires.Seconds {
+			registration = b
+		}
 		return true
 	}, gcp_bigtable.LimitRows(256))
 	if err != nil {
@@ -2459,41 +2459,60 @@ func (bigtable *Bigtable) GetAddressForEnsName(name string) (*common.Address, er
 	}
 	/*
 		if len(deleteKeys) > 0 {
-		mutsDelete := &types.BulkMutations{
-			Keys: make([]string, 0, len(deleteKeys)),
-			Muts: make([]*gcp_bigtable.Mutation, 0, len(deleteKeys)),
-		}
-		logger.Infof("delete keys: %v", deleteKeys)
-		for _, key := range deleteKeys {
-			mutDelete := gcp_bigtable.NewMutation()
-			mutDelete.DeleteRow()
-			mutsDelete.Keys = append(mutsDelete.Keys, key)
-			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
-		}
+			mutsDelete := &types.BulkMutations{
+				Keys: make([]string, 0, len(deleteKeys)),
+				Muts: make([]*gcp_bigtable.Mutation, 0, len(deleteKeys)),
+			}
+			logger.Infof("delete keys: %v", deleteKeys)
+			for _, key := range deleteKeys {
+				mutDelete := gcp_bigtable.NewMutation()
+				mutDelete.DeleteRow()
+				mutsDelete.Keys = append(mutsDelete.Keys, key)
+				mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+			}
 			err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
 			if err != nil {
 				logger.Infof("could not delete rows: %v", err)
 			}
-		}
-	*/
+		}*/
 
-	if len(registrations) == 0 {
+	if len(registration.Name) == 0 {
 		return nil, fmt.Errorf("Ens name [%v] registration not fond", name)
 	}
+	now := time.Now().Unix()
 
-	sort.Slice(registrations, func(i, j int) bool {
-		return registrations[i].GetBlockNumber() < registrations[i].GetBlockNumber()
-	})
+	if registration.Expires.Seconds < now {
 
-	//current := registrations[len(registrations)-1]
+		logger.Infof("Lets find some renews")
+		prefix := fmt.Sprintf("%s:ENS:RENEW:%x:", bigtable.chainId, registration.Label)
+		rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
+		err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+			b := &types.EnsNameRenewedIndexed{}
+			row_ := row[DEFAULT_FAMILY][0]
 
-	//if current.Expires.AsTime().Before(current.Time.AsTime()) {
-	//TODO: Check if
-	//}
+			err = json.Unmarshal(row_.Value, b)
+			if err != nil {
+				logrus.Errorf("error unmarshalling ens name for row %v: %v", row.Key(), err)
+				return false
+			}
 
-	logger.Infof("Resolver: %v", common.BytesToAddress(registrations[0].GetResolver()))
+			if registration.Expires.Seconds < b.Expires.Seconds {
+				registration.Expires = b.Expires
+			}
+			return true
+		}, gcp_bigtable.LimitRows(256))
+		if err != nil {
+			return nil, err
+		}
+	}
 
-	address := common.BytesToAddress(registrations[0].GetOwner())
+	if registration.Expires.Seconds < now {
+		return nil, fmt.Errorf("Ens name [%v] registration expired", name)
+	}
+
+	logger.Infof("Resolver: %v %v", common.BytesToAddress(registration.Resolver), registration.Expires)
+
+	address := common.BytesToAddress(registration.Owner)
 
 	return &address, nil
 }
