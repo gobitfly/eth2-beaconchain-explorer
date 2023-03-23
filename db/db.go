@@ -2917,26 +2917,31 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 }
 
 func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
-	var count uint64
+	var condition string
+	if validatorindex > cursor {
+		// count all withdrawable validators between the cursor and the validator
+		condition = "validatorindex > $4 AND validatorindex < $3"
+	} else if validatorindex < cursor {
+		// count all withdrawable validators behind the cursor AND in front of the validator (logical OR)
+		condition = "(validatorindex > $4 OR validatorindex < $3)"
+	} else {
+		// cursor at validator
+		return 0, nil
+	}
 
-	err := ReaderDb.Get(&count, `
+	query := fmt.Sprintf(`
 	SELECT 
 		count(*) 
 	FROM 
 		validators 
 	WHERE 
-		withdrawalcredentials LIKE '\x01' || '%'::bytea 
+		withdrawalcredentials LIKE '\x01' || '%%'::bytea 
 		AND 
 		((effectivebalance = $1 AND balance > $1) OR (withdrawableepoch <= $2 AND balance > 0))
-		AND (
-			(
-				$3::int > $4 AND validatorindex > $4 AND validatorindex < $3
-			)
-			OR
-			(
-				$3::int < $4 AND (validatorindex > $4 OR validatorindex < $3)
-			)
-		);`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch, validatorindex, cursor)
+		AND %s`, condition)
+
+	var count uint64
+	err := ReaderDb.Get(&count, query, utils.Config.Chain.Config.MaxEffectiveBalance, epoch, validatorindex, cursor)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
