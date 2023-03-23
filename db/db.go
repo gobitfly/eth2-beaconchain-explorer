@@ -2917,11 +2917,6 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 }
 
 func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
-	type validatorInfo struct {
-		ValidatorIndex    uint64 `db:"validatorindex"`
-		WithdrawableEpoch uint64 `db:"withdrawableepoch"`
-	}
-
 	var idCondition string
 	if validatorindex > cursor {
 		// find all withdrawable validators between the cursor and the validator
@@ -2932,6 +2927,11 @@ func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor 
 	} else {
 		// cursor at validator
 		return 0, nil
+	}
+
+	type validatorInfo struct {
+		ValidatorIndex    uint64 `db:"validatorindex"`
+		WithdrawableEpoch uint64 `db:"withdrawableepoch"`
 	}
 
 	query := fmt.Sprintf(`
@@ -2974,6 +2974,7 @@ func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor 
 				continue
 			}
 
+			// check (partial withdrawals) || (full withdrawals)
 			if (b[0].EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && b[0].Balance > utils.Config.Chain.Config.MaxEffectiveBalance) ||
 				(v.WithdrawableEpoch <= epoch && b[0].Balance > 0) {
 				count++
