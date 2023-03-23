@@ -40,22 +40,16 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 
 	if utils.IsValidEnsDomain(search) {
 		data.Domain = search
-		bigAddress, err := db.BigtableClient.GetAddressForEnsName(search)
-		if err != nil {
-			utils.LogError(err, "error getting address from big table", 0)
-		} else {
-			logger.Infof("found big address: %s", bigAddress)
-		}
 
 		cacheKey := fmt.Sprintf("%d:ens:address:%v", utils.Config.Chain.Config.DepositChainID, search)
 
-		if address, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Hour); err != nil || len(address) == 0 {
-			address, err := ens.Resolve(rpc.CurrentGethClient.GetNativeClient(), search)
+		if address, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Minute); err != nil || len(address) == 0 {
+			address, err := db.BigtableClient.GetAddressForEnsName(search)
 
 			if err == nil {
 				data.Address = address.Hex()
 
-				err := cache.TieredCache.SetString(cacheKey, data.Address, time.Hour)
+				err := cache.TieredCache.SetString(cacheKey, data.Address, time.Minute)
 				if err != nil {
 					logger.Errorf("error caching ens address: %v", err)
 				}
