@@ -2917,31 +2917,68 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 }
 
 func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
-	var count uint64
+	type validatorInfo struct {
+		ValidatorIndex    uint64 `db:"validatorindex"`
+		WithdrawableEpoch uint64 `db:"withdrawableepoch"`
+	}
 
-	err := ReaderDb.Get(&count, `
+	var idCondition string
+	if validatorindex > cursor {
+		// find all withdrawable validators between the cursor and the validator
+		idCondition = "(validatorindex > $1 AND validatorindex < $2)"
+	} else if validatorindex < cursor {
+		// find all withdrawable validators behind the cursor AND in front of the validator (i.e. logical OR)
+		idCondition = "(validatorindex > $1 OR validatorindex < $2)"
+	} else {
+		// cursor at validator
+		return 0, nil
+	}
+
+	query := fmt.Sprintf(`
 	SELECT 
-		count(*) 
+		validatorindex,
+		withdrawableepoch
 	FROM 
 		validators 
 	WHERE 
-		withdrawalcredentials LIKE '\x01' || '%'::bytea 
-		AND 
-		((effectivebalance = $1 AND balance > $1) OR (withdrawableepoch <= $2 AND balance > 0))
-		AND (
-			(
-				$3::int > $4 AND validatorindex > $4 AND validatorindex < $3
-			)
-			OR
-			(
-				$3::int < $4 AND (validatorindex > $4 OR validatorindex < $3)
-			)
-		);`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch, validatorindex, cursor)
+		%s AND
+		activationepoch <= $3 AND exitepoch > $3 AND
+		withdrawalcredentials LIKE '\x01' || '%%'::bytea`, idCondition)
+
+	var validators []validatorInfo
+	err := ReaderDb.Select(&validators, query, cursor, validatorindex, epoch)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, nil
-		}
 		return 0, fmt.Errorf("error getting withdrawable validator count from cursor: %w", err)
+	}
+
+	if len(validators) == 0 {
+		// early exit if there are no validators to consider
+		return 0, nil
+	}
+
+	// BigtableClient.GetValidatorBalanceHistory requires a slice of ids only
+	ids := make([]uint64, 0, len(validators))
+	for _, v := range validators {
+		ids = append(ids, v.ValidatorIndex)
+	}
+
+	balanceMap, err := BigtableClient.GetValidatorBalanceHistory(ids, epoch, epoch)
+	if err != nil {
+		return 0, fmt.Errorf("error getting validator balance history: %w", err)
+	}
+
+	count := uint64(0)
+	for _, v := range validators {
+		if b, ok := balanceMap[v.ValidatorIndex]; ok {
+			if len(b) == 0 {
+				continue
+			}
+
+			if (b[0].EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && b[0].Balance > utils.Config.Chain.Config.MaxEffectiveBalance) ||
+				(v.WithdrawableEpoch <= epoch && b[0].Balance > 0) {
+				count++
+			}
+		}
 	}
 
 	return count, nil
