@@ -428,6 +428,7 @@ create table blocks_deposits
     withdrawalcredentials bytea  not null,
     amount                bigint not null,
     signature             bytea  not null,
+    valid_signature       bool  not null default true,
     primary key (block_slot, block_index)
 );
 
