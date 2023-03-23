@@ -2543,7 +2543,7 @@ func (bigtable *Bigtable) GetAddressForEnsName(name string) (*common.Address, er
 		}*/
 
 	if len(registration.Name) == 0 {
-		return nil, fmt.Errorf("Ens name [%v] registration not fond", name)
+		return nil, fmt.Errorf("ens name [%v] registration not fond", name)
 	}
 	now := time.Now().Unix()
 
@@ -2573,7 +2573,7 @@ func (bigtable *Bigtable) GetAddressForEnsName(name string) (*common.Address, er
 
 	// even after the renew events are checkted the registration is still expired
 	if registration.Expires.Seconds < now {
-		return nil, fmt.Errorf("Ens name [%v] registration expired", name)
+		return nil, fmt.Errorf("ens name [%v] registration expired", name)
 	}
 
 	//ok now we got to check if there was an address change
