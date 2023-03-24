@@ -29,6 +29,10 @@
         {
             id: 'teku-graffiti',
             config: "--metrics-publish-endpoint https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}"
+        },
+        {
+            id: 'lodestar-graffiti',
+            config: "--monitoring.endpoint 'https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}' --metrics"
         }
     ]
 
@@ -619,6 +623,29 @@
                                 </div>
                                 <div style="float: right;">
                                   <a id="copy-teku-graffiti" data-toggle="tooltip" data-original-title="Copy Command" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white"> <span class="fa fa-copy icon-inside"></span> </a>
+                                </div>
+                              </div>
+                              <div style="clear: both;"></div>
+                              <br />
+                            </div>
+                          </div>
+                        </div>
+                        <div class="card" style="box-shadow: none; ">
+                          <h2 class="card-header" id="headingOne">
+                            <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">Lodestar Setup Guide</button>
+                          </h2>
+                          <div id="collapseOne" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample" style="margin: 15px;">
+                            <div class="accordion-body">
+                              Copy & Paste the following flags to your Lodestar validator <strong>and</strong> beaconnode:<br /><br />
+
+                              <div style="margin-left: 5px; margin-right: 5px;">
+                                <div style="float: left;  width: 90%;">
+                                  <code>
+                                    <span id="lodestar-graffiti"></span>
+                                  </code>
+                                </div>
+                                <div style="float: right;">
+                                  <a id="copy-lodestar-graffiti" data-toggle="tooltip" data-original-title="Copy Command" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white"> <span class="fa fa-copy icon-inside"></span> </a>
                                 </div>
                               </div>
                               <div style="clear: both;"></div>
