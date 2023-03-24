@@ -130,7 +130,7 @@ func (cache *tieredCache) GetWithLocalTimeout(key string, localExpiration time.D
 	if err == nil {
 		err = json.Unmarshal([]byte(wanted), returnValue)
 		if err != nil {
-			logrus.Warnf("error unmarshalling data for key %v: %v", key, err)
+			logrus.Errorf("error (GetWithLocalTimeout) unmarshalling data for key %v: %v", key, err)
 			return nil, err
 		}
 		return returnValue, nil

@@ -79,7 +79,7 @@ func (cache *RedisCache) Get(ctx context.Context, key string, returnValue interf
 	err = json.Unmarshal([]byte(value), returnValue)
 	if err != nil {
 		cache.redisRemoteCache.Del(ctx, key).Err()
-		logrus.Warnf("error unmarshalling data for key %v: %v", key, err)
+		logrus.Errorf("error (redit_cache / Get) unmarshalling data for key %v: %v", key, err)
 		return nil, err
 	}
 
