@@ -196,7 +196,8 @@ func main() {
 		bt.TransformERC721,
 		bt.TransformERC1155,
 		bt.TransformUncle,
-		bt.TransformWithdrawals)
+		bt.TransformWithdrawals,
+		bt.TransformEnsNameRegistered)
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 

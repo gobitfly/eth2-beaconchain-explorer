@@ -1098,6 +1098,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 	filterer, err := ens.NewEnsRegistrarFilterer(common.Address{}, nil)
 	if err != nil {
 		log.Printf("error creating filterer: %v", err)
+		return nil, nil, err
 	}
 
 	for i, tx := range blk.GetTransactions() {
