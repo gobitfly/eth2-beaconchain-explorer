@@ -1113,25 +1113,23 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 		foundNameIndex := -1
 		foundResolverIndex := -1
 		foundNameRenewedIndex := -1
-		foundAddressChangedIndex := -1
+		foundAddressChangedIndices := []int{}
 		logs := tx.GetLogs()
 		for j, log := range logs {
 			if j > 99999 {
 				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v tx: %x", j, tx.GetHash())
 			}
-			if len(log.GetTopics()) > 0 {
-				for _, lTopic := range log.GetTopics() {
-					if isRegistarContract {
-						if bytes.Equal(lTopic, ens.NameRegisteredTopic) {
-							foundNameIndex = j
-						} else if bytes.Equal(lTopic, ens.NewResolverTopic) {
-							foundResolverIndex = j
-						} else if bytes.Equal(lTopic, ens.NameRenewedTopic) {
-							foundNameRenewedIndex = j
-						}
-					} else if bytes.Equal(lTopic, ens.AddressChangedTopic) {
-						foundAddressChangedIndex = j
+			for _, lTopic := range log.GetTopics() {
+				if isRegistarContract {
+					if bytes.Equal(lTopic, ens.NameRegisteredTopic) {
+						foundNameIndex = j
+					} else if bytes.Equal(lTopic, ens.NewResolverTopic) {
+						foundResolverIndex = j
+					} else if bytes.Equal(lTopic, ens.NameRenewedTopic) {
+						foundNameRenewedIndex = j
 					}
+				} else if bytes.Equal(lTopic, ens.AddressChangedTopic) {
+					foundAddressChangedIndices = append(foundAddressChangedIndices, j)
 				}
 			}
 		}
@@ -1276,10 +1274,12 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			bulkData.Keys = append(bulkData.Keys, key)
 			bulkData.Muts = append(bulkData.Muts, mut)
 
-		} else if foundAddressChangedIndex > -1 { // We found a change address event
-			jReversed := reversePaddedIndex(foundAddressChangedIndex, 100000)
+		}
+		// We found a change address event, therre can be multiple within one transaction
+		for _, addressChangeIndex := range foundAddressChangedIndices {
+			jReversed := reversePaddedIndex(addressChangeIndex, 100000)
 
-			log := logs[foundAddressChangedIndex]
+			log := logs[addressChangeIndex]
 			topics := make([]common.Hash, 0, len(log.GetTopics()))
 
 			for _, lTopic := range log.GetTopics() {
@@ -1294,13 +1294,13 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 				TxHash:      common.BytesToHash(tx.GetHash()),
 				TxIndex:     uint(i),
 				BlockHash:   common.BytesToHash(blk.GetHash()),
-				Index:       uint(foundAddressChangedIndex),
+				Index:       uint(addressChangeIndex),
 				Removed:     log.GetRemoved(),
 			}
 
 			addressChanged, err := filterer.ParseAddressChanged(addressChangedLog)
 			if err != nil {
-				utils.LogError(err, "Indexing of address change event failed parse event", 0)
+				utils.LogError(err, "Indexing of address change event failed parse event at index ", 0)
 				continue
 			}
 
