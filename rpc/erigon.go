@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/ethclient"
 	geth_rpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
@@ -156,13 +157,13 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 	for _, tx := range txs {
 
 		var from []byte
-		msg, err := tx.AsMessage(geth_types.NewLondonSigner(tx.ChainId()), big.NewInt(1))
+		msg, err := core.TransactionToMessage(tx, geth_types.NewLondonSigner(tx.ChainId()), big.NewInt(1))
 		if err != nil {
 			from, _ = hex.DecodeString("abababababababababababababababababababab")
 
 			logrus.Errorf("error converting tx %v to msg: %v", tx.Hash(), err)
 		} else {
-			from = msg.From().Bytes()
+			from = msg.From.Bytes()
 		}
 
 		pbTx := &types.Eth1Transaction{
