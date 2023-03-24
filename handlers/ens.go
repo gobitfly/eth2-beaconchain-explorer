@@ -5,16 +5,13 @@ import (
 	"errors"
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
-	"eth2-exporter/rpc"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
-	ens "github.com/wealdtech/go-ens/v3"
 )
 
 func ResolveEnsDomain(w http.ResponseWriter, r *http.Request) {
@@ -62,25 +59,27 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 
 	} else if utils.IsValidEth1Address(search) {
 		data.Address = search
+		/*
+			cacheKey := fmt.Sprintf("%d:ens:domain:%v", utils.Config.Chain.Config.DepositChainID, search)
 
-		cacheKey := fmt.Sprintf("%d:ens:domain:%v", utils.Config.Chain.Config.DepositChainID, search)
+			if domain, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Hour); err != nil || len(domain) == 0 {
+				domain, err := ens.ReverseResolve(rpc.CurrentErigonClient.GetNativeClient(), common.HexToAddress(search))
 
-		if domain, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Hour); err != nil || len(domain) == 0 {
-			domain, err := ens.ReverseResolve(rpc.CurrentErigonClient.GetNativeClient(), common.HexToAddress(search))
+				if err == nil {
+					data.Domain = domain
 
-			if err == nil {
-				data.Domain = domain
-
-				err := cache.TieredCache.SetString(cacheKey, data.Domain, time.Hour)
-				if err != nil {
-					logger.Errorf("error caching ens domain: %v", err)
+					err := cache.TieredCache.SetString(cacheKey, data.Domain, time.Hour)
+					if err != nil {
+						logger.Errorf("error caching ens domain: %v", err)
+					}
+				} else {
+					returnError = err
 				}
 			} else {
-				returnError = err
-			}
-		} else {
-			data.Domain = domain
-		}
+				data.Domain = domain
+			}*/
+
+		returnError = errors.New("search for address disabled")
 	} else {
 		returnError = errors.New("not an ens domain or address")
 	}
