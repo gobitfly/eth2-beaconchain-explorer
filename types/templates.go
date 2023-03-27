@@ -1006,6 +1006,7 @@ type ValidatorEarnings struct {
 	LastMonthFormatted      template.HTML `json:"lastMonthFormatted"`
 	TotalFormatted          template.HTML `json:"totalFormatted"`
 	TotalChangeFormatted    template.HTML `json:"totalChangeFormatted"`
+	TotalBalance            template.HTML `json:"totalBalance"`
 }
 
 // ValidatorAttestationSlashing is a struct to hold data of an attestation-slashing
