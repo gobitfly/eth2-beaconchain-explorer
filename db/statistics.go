@@ -268,34 +268,6 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		return err
 	}
 
-	logrus.Infof("exporting 7d income stats")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, cl_rewards_gwei_7d, el_rewards_wei_7d) 
-		(
-			select validatorindex, $1, sum(coalesce(cl_rewards_gwei, 0)), sum(coalesce(el_rewards_wei, 0)) 
-			from validator_stats 
-			where day <= $1 and day > $1 - 7 
-			group by validatorindex
-		) 
-		on conflict (validatorindex, day) do update set 
-		cl_rewards_gwei_7d = excluded.cl_rewards_gwei_7d, el_rewards_wei_7d=excluded.el_rewards_wei_7d;`, day)
-	if err != nil {
-		return err
-	}
-
-	logrus.Infof("exporting 31d income stats")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, cl_rewards_gwei_31d, el_rewards_wei_31d) 
-		(
-			select validatorindex, $1, sum(coalesce(cl_rewards_gwei, 0)), sum(coalesce(el_rewards_wei, 0)) 
-			from validator_stats 
-			where day <= $1 and day > $1 - 31 
-			group by validatorindex
-		) 
-		on conflict (validatorindex, day) do update set 
-		cl_rewards_gwei_31d = excluded.cl_rewards_gwei_31d, el_rewards_wei_31d=excluded.el_rewards_wei_31d;`, day)
-	if err != nil {
-		return err
-	}
-
 	logger.Infof("exporting total income stats")
 	tx.Exec(`
 	INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei_total, el_rewards_wei_total, mev_rewards_wei_total) (
@@ -393,11 +365,11 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			select 
 			vs_now.validatorindex, 
 				COALESCE(vs_now.end_balance, 0) as balance, 
-				COALESCE(vs_now.cl_rewards_gwei, 0) as performance1d, 
-				COALESCE(vs_now.cl_rewards_gwei_7d , 0)as performance7d, 
-				COALESCE(vs_now.cl_rewards_gwei_31d, 0) as performance31d, 
-				COALESCE(vs_now.cl_rewards_gwei_total, 0) as performance365d, 
-				row_number() over(order by vs_now.cl_rewards_gwei_7d desc) as rank7d,
+				0 as performance1d, 
+				0 as performance7d, 
+				0 as performance31d, 
+				0 as performance365d, 
+				0 as rank7d,
 
 				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_1d.cl_rewards_gwei_total, 0) as cl_performance_1d, 
 				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_7d.cl_rewards_gwei_total, 0) as cl_performance_7d, 
@@ -450,6 +422,26 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			mev_performance_365d=excluded.mev_performance_365d,
 			mev_performance_total=excluded.mev_performance_total
 			;`, day, int64(day)-1, int64(day)-7, int64(day)-31, int64(day)-365)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		insert into validator_performance (                                                                                                 
+			validatorindex,          
+			balance,             
+			performance1d,
+			performance7d,
+			performance31d,  
+			performance365d,                                                                                             
+			rank7d
+		) (
+			select validatorindex, 0, 0, 0, 0, 0, row_number() over(order by validator_performance.cl_performance_7d desc) as rank7d from validator_performance
+		) 
+			on conflict (validatorindex) do update set 
+				rank7d=excluded.rank7d
+		;
+		`)
 	if err != nil {
 		return err
 	}
