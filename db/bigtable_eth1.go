@@ -1089,6 +1089,14 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 // Column: data
 // Cell:   Json<EnsAddressChangedIndexed>
 // Example scan: "5:ENS:AC:075ad14bb11b6abd341e57481716e5bd418108cf8221b6e6cd9f9777f94a31f8:949ebef03b3cce974b9f0565e768ce0aeab30e43c74f2986981310effa6a41d2:100000" returns prater Address change event for name logtest.eth
+// ==================================================
+// It writes ENS Name change events to the table data:
+// 	The <owner> is part of the EnsNameChangedIndexed data
+// Row:    <chainID>:ENS:AC:<node><owner>:<paddedLogIndex>
+// Family: f
+// Column: data
+// Cell:   Json<EnsNameChangedIndexed>
+// Example scan: "5:ENS:NC:637d3bfeb91d8cd782f22de2472227484711d9e7:4175026a5d07930c4a7ecd4cc85542b4fbcfc0a72481e5808572b048c38dccc1:99998" returns prater Name change event for owner 0x637d3bfeb91d8cd782f22de2472227484711d9e7
 //
 
 func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
@@ -1115,6 +1123,8 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 		foundResolverIndex := -1
 		foundNameRenewedIndex := -1
 		foundAddressChangedIndices := []int{}
+		foundNameChangedIndex := -1
+		foundNewOwnerIndex := -1
 		logs := tx.GetLogs()
 		for j, log := range logs {
 			if j > 99999 {
@@ -1131,6 +1141,10 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 					}
 				} else if bytes.Equal(lTopic, ens.AddressChangedTopic) {
 					foundAddressChangedIndices = append(foundAddressChangedIndices, j)
+				} else if bytes.Equal(lTopic, ens.NameChangedTopic) {
+					foundNameChangedIndex = j
+				} else if bytes.Equal(lTopic, ens.NewOwnerTopic) {
+					foundNewOwnerIndex = j
 				}
 			}
 		}
@@ -1216,6 +1230,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			indexes := []string{
 				fmt.Sprintf("%s:I:ENS:LABEL:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.Label, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
+				fmt.Sprintf("%s:I:ENS:ADDRESS:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.Owner, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 				fmt.Sprintf("%s:I:ENS:NAME:%x:TIME:%s:%s:%s", bigtable.chainId, indexedLog.Name, reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 			}
 
@@ -1267,6 +1282,81 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			b, err := json.Marshal(indexedLog)
 			if err != nil {
 				utils.LogError(err, "Indexing of renew event failed json.Marshal", 0)
+				continue
+			}
+			mut := gcp_bigtable.NewMutation()
+			mut.Set(DEFAULT_FAMILY, ENS, gcp_bigtable.Timestamp(0), b)
+
+			bulkData.Keys = append(bulkData.Keys, key)
+			bulkData.Muts = append(bulkData.Muts, mut)
+
+		} else if foundNameChangedIndex > -1 && foundNewOwnerIndex > -1 { // we found a name change event
+			jReversed := reversePaddedIndex(foundNameChangedIndex, 100000)
+
+			log := logs[foundNameChangedIndex]
+			topics := make([]common.Hash, 0, len(log.GetTopics()))
+
+			for _, lTopic := range log.GetTopics() {
+				topics = append(topics, common.BytesToHash(lTopic))
+			}
+
+			nameChangedLog := eth_types.Log{
+				Address:     common.BytesToAddress(log.GetAddress()),
+				Data:        log.Data,
+				Topics:      topics,
+				BlockNumber: blk.GetNumber(),
+				TxHash:      common.BytesToHash(tx.GetHash()),
+				TxIndex:     uint(i),
+				BlockHash:   common.BytesToHash(blk.GetHash()),
+				Index:       uint(foundNameChangedIndex),
+				Removed:     log.GetRemoved(),
+			}
+
+			nameChanged, err := filterer.ParseNameChanged(nameChangedLog)
+			if err != nil {
+				utils.LogError(err, "Indexing of name change event failed parse event at index ", 0)
+				continue
+			}
+
+			log = logs[foundNewOwnerIndex]
+			topics = make([]common.Hash, 0, len(log.GetTopics()))
+
+			for _, lTopic := range log.GetTopics() {
+				topics = append(topics, common.BytesToHash(lTopic))
+			}
+			newOwnerLog := eth_types.Log{
+				Address:     common.BytesToAddress(log.GetAddress()),
+				Data:        log.Data,
+				Topics:      topics,
+				BlockNumber: blk.GetNumber(),
+				TxHash:      common.BytesToHash(tx.GetHash()),
+				TxIndex:     uint(i),
+				BlockHash:   common.BytesToHash(blk.GetHash()),
+				Index:       uint(foundNewOwnerIndex),
+				Removed:     log.GetRemoved(),
+			}
+
+			newOwner, err := filterer.ParseNewOwner(newOwnerLog)
+			if err != nil {
+				utils.LogError(err, fmt.Errorf("Indexing of new owner event failed parse event at index %v", foundNewOwnerIndex), 0)
+				continue
+			}
+
+			key := fmt.Sprintf("%s:ENS:NC:%x:%x:%s", bigtable.chainId, newOwner.Owner, tx.GetHash(), jReversed)
+
+			logrus.Infof("key: %v", key)
+			indexedLog := &types.EnsNameChangedIndexed{
+				ParentHash:      tx.GetHash(),
+				BlockNumber:     blk.GetNumber(),
+				Time:            blk.GetTime(),
+				ResolveContract: nameChangedLog.Address[:],
+				Node:            nameChanged.Node,
+				NewName:         nameChanged.Name,
+			}
+
+			b, err := json.Marshal(indexedLog)
+			if err != nil {
+				utils.LogError(err, "Indexing of name change event failed json.Marshal", 0)
 				continue
 			}
 			mut := gcp_bigtable.NewMutation()
@@ -2478,26 +2568,17 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 	}
 	return data, nil
 }
-
-func (bigtable *Bigtable) GetAddressForEnsName(name string) (*common.Address, error) {
+func (bigtable *Bigtable) GetEnsRegistration(key string) (*types.EnsNameRegisteredIndexed, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
 	registration := &types.EnsNameRegisteredIndexed{}
-	//deleteKeys := []string{}
 
-	// names in registration are without the .eth ending
-	prefix := fmt.Sprintf("%s:I:ENS:NAME:%x:", bigtable.chainId, name[:len(name)-4])
-	//prefix := fmt.Sprintf("%s:ENS:", bigtable.chainId)
-	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
+	rowRange := gcp_bigtable.NewRange(key+"\x00", prefixSuccessor(key, 5))
 	// first we find the most recent registration for the ens name
 	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
 		b := &types.EnsNameRegisteredIndexed{}
 		row_ := row[DEFAULT_FAMILY][0]
-		/*deleteKeys = append(deleteKeys, row_.Row)
-		if len(deleteKeys) > 0 {
-			return true
-		}*/
 
 		// now we get the data for the ens name
 		row, err := bigtable.tableData.ReadRow(ctx, strings.Replace(row_.Column, "f:", "", 1))
@@ -2523,28 +2604,9 @@ func (bigtable *Bigtable) GetAddressForEnsName(name string) (*common.Address, er
 	if err != nil {
 		return nil, err
 	}
-	/*
-		if len(deleteKeys) > 0 {
-			mutsDelete := &types.BulkMutations{
-				Keys: make([]string, 0, len(deleteKeys)),
-				Muts: make([]*gcp_bigtable.Mutation, 0, len(deleteKeys)),
-			}
-			logger.Infof("delete keys: %v", deleteKeys)
-			for _, key := range deleteKeys {
-				mutDelete := gcp_bigtable.NewMutation()
-				mutDelete.DeleteRow()
-				mutsDelete.Keys = append(mutsDelete.Keys, key)
-				mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
-			}
-			err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
-			if err != nil {
-				logger.Infof("could not delete rows: %v", err)
-			}
-			return nil, nil
-		}*/
 
 	if len(registration.Name) == 0 {
-		return nil, fmt.Errorf("ens name [%v] registration not fond", name)
+		return nil, fmt.Errorf("ens registration for key [%v] not fond", key)
 	}
 	now := time.Now().Unix()
 
@@ -2574,12 +2636,27 @@ func (bigtable *Bigtable) GetAddressForEnsName(name string) (*common.Address, er
 
 	// even after the renew events are checkted the registration is still expired
 	if registration.Expires.Seconds < now {
-		return nil, fmt.Errorf("ens name [%v] registration expired", name)
+		return nil, fmt.Errorf("ens registration for key [%v] expired", key)
+	}
+
+	return registration, nil
+}
+
+func (bigtable *Bigtable) GetAddressForEnsName(name string) (*common.Address, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	// names in registration are without the .eth ending
+	prefix := fmt.Sprintf("%s:I:ENS:NAME:%x:", bigtable.chainId, name[:len(name)-4])
+
+	registration, err := bigtable.GetEnsRegistration(prefix)
+	if err != nil {
+		return nil, err
 	}
 
 	//ok now we got to check if there was an address change
 	prefix = fmt.Sprintf("%s:ENS:AC:%x:", bigtable.chainId, registration.Node)
-	rowRange = gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
+	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
 	foundAddressChange := &types.EnsAddressChangedIndexed{}
 	err = bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
 		b := &types.EnsAddressChangedIndexed{}
@@ -2606,6 +2683,49 @@ func (bigtable *Bigtable) GetAddressForEnsName(name string) (*common.Address, er
 	}
 
 	return &address, nil
+}
+
+func (bigtable *Bigtable) GetEnsNameForAddress(address string) (*string, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	// address in registration are without the leading 0x
+	prefix := fmt.Sprintf("%s:I:ENS:ADDRESS:%v:", bigtable.chainId, strings.ToLower(address[2:]))
+
+	registration, err := bigtable.GetEnsRegistration(prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	//ok now we got to check if there was a new name
+	prefix = fmt.Sprintf("%s:ENS:NC:%x:", bigtable.chainId, registration.Owner)
+	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
+	foundNameChange := &types.EnsNameChangedIndexed{}
+	err = bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		b := &types.EnsNameChangedIndexed{}
+		row_ := row[DEFAULT_FAMILY][0]
+
+		err = json.Unmarshal(row_.Value, b)
+		if err != nil {
+			logrus.Errorf("error unmarshalling ens name for row %v: %v", row.Key(), err)
+			return false
+		}
+
+		// CoinType 60 => Eth Address, there could also be other addresses set for that ens name, but we don't care for them here
+		if common.BytesToAddress(b.ResolveContract) == common.BytesToAddress(registration.Resolver) && foundNameChange.BlockNumber < b.BlockNumber {
+			foundNameChange = b
+		}
+		return true
+	}, gcp_bigtable.LimitRows(256))
+	if err != nil {
+		return nil, err
+	}
+	name := fmt.Sprintf("%s.eth", registration.Name)
+	if foundNameChange.BlockNumber > 0 {
+		name = foundNameChange.NewName
+	}
+
+	return &name, nil
 }
 
 // currently only erc20

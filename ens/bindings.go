@@ -53,7 +53,22 @@ type AddressChanged struct {
 	Raw        types.Log // Blockchain specific contextual infos
 }
 
-// NewResolver represents an NewResolver event raised by the Ens Registar contract.
+// NameChanged represents an NameChanged event raised by an ENS Resolver contract.
+type NameChanged struct {
+	Node [32]byte
+	Name string
+	Raw  types.Log // Blockchain specific contextual infos
+}
+
+// NewOwner represents an NewOwner event raised by an ENS resolver controller contract.
+type NewOwner struct {
+	Node  [32]byte
+	Label [32]byte
+	Owner common.Address
+	Raw   types.Log // Blockchain specific contextual infos
+}
+
+// NewResolver represents an NewResolver event raised by the Ens resolver controller  contract.
 type NewResolver struct {
 	Node     [32]byte
 	Resolver common.Address
@@ -134,6 +149,16 @@ func (_EnsRegistrar *EnsRegistrarFilterer) ParseNewResolver(log types.Log) (*New
 	return event, nil
 }
 
+// Solidity: event NewOwner(bytes32 indexed node, bytes32 indexed label, address owner);
+func (_EnsRegistrar *EnsRegistrarFilterer) ParseNewOwner(log types.Log) (*NewOwner, error) {
+	event := new(NewOwner)
+	if err := _EnsRegistrar.resolverControllerContract.UnpackLog(event, "NewOwner", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
 // Solidity: event NameRenewed(string name, bytes32 indexed label, address indexed owner, uint cost, uint expires);
 func (_EnsRegistrar *EnsRegistrarFilterer) ParseNameRenewed(log types.Log) (*NameRenewed, error) {
 	event := new(NameRenewed)
@@ -148,6 +173,16 @@ func (_EnsRegistrar *EnsRegistrarFilterer) ParseNameRenewed(log types.Log) (*Nam
 func (_EnsRegistrar *EnsRegistrarFilterer) ParseAddressChanged(log types.Log) (*AddressChanged, error) {
 	event := new(AddressChanged)
 	if err := _EnsRegistrar.resolverContract.UnpackLog(event, "AddressChanged", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// Solidity: event AddressChanged (index_topic_1 bytes32 node, uint256 coinType, bytes newAddress);
+func (_EnsRegistrar *EnsRegistrarFilterer) ParseNameChanged(log types.Log) (*NameChanged, error) {
+	event := new(NameChanged)
+	if err := _EnsRegistrar.resolverContract.UnpackLog(event, "NameChanged", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log

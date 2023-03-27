@@ -35,3 +35,12 @@ type EnsAddressChangedIndexed struct {
 	CoinType        uint64               `json:"coin_type,omitempty"`
 	NewAddress      []byte               `json:"new_address ,omitempty"`
 }
+
+type EnsNameChangedIndexed struct {
+	ParentHash      []byte               `json:"parent_hash,omitempty"`
+	BlockNumber     uint64               `json:"block_number,omitempty"`
+	ResolveContract []byte               `json:"resolve_contract,omitempty"`
+	Time            *timestamp.Timestamp `json:"time,omitempty"`
+	Node            [32]byte             `json:"node,omitempty"`
+	NewName         string               `json:"new_name ,omitempty"`
+}

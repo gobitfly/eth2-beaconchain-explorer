@@ -59,27 +59,25 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 
 	} else if utils.IsValidEth1Address(search) {
 		data.Address = search
-		/*
-			cacheKey := fmt.Sprintf("%d:ens:domain:%v", utils.Config.Chain.Config.DepositChainID, search)
 
-			if domain, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Hour); err != nil || len(domain) == 0 {
-				domain, err := ens.ReverseResolve(rpc.CurrentErigonClient.GetNativeClient(), common.HexToAddress(search))
+		cacheKey := fmt.Sprintf("%d:ens:domain:%v", utils.Config.Chain.Config.DepositChainID, search)
 
-				if err == nil {
-					data.Domain = domain
+		if domain, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Minute); err != nil || len(domain) == 0 {
+			name, err := db.BigtableClient.GetEnsNameForAddress(search)
 
-					err := cache.TieredCache.SetString(cacheKey, data.Domain, time.Hour)
-					if err != nil {
-						logger.Errorf("error caching ens domain: %v", err)
-					}
-				} else {
-					returnError = err
+			if err == nil {
+				data.Domain = *name
+
+				err := cache.TieredCache.SetString(cacheKey, data.Domain, time.Minute)
+				if err != nil {
+					logger.Errorf("error caching ens address: %v", err)
 				}
 			} else {
-				data.Domain = domain
-			}*/
-
-		returnError = errors.New("search for address disabled")
+				returnError = err
+			}
+		} else {
+			data.Domain = domain
+		}
 	} else {
 		returnError = errors.New("not an ens domain or address")
 	}
