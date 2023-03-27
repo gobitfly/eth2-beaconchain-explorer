@@ -1343,8 +1343,6 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			}
 
 			key := fmt.Sprintf("%s:ENS:NC:%x:%x:%s", bigtable.chainId, newOwner.Owner, tx.GetHash(), jReversed)
-
-			logrus.Infof("key: %v", key)
 			indexedLog := &types.EnsNameChangedIndexed{
 				ParentHash:      tx.GetHash(),
 				BlockNumber:     blk.GetNumber(),
