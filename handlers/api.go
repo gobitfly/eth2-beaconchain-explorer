@@ -1952,6 +1952,7 @@ func getBalanceHistoryQueryParameters(q url.Values) (uint64, uint64, error) {
 		if err != nil || limit > defaultLimit || limit < 1 {
 			return 0, 0, fmt.Errorf("invalid limit parameter")
 		}
+		limit = limit - 1
 	}
 
 	return latestEpoch, limit, nil
