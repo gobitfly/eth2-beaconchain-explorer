@@ -1192,12 +1192,12 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			nameRegistered, err := filterer.ParseNameRegistered(nameLog)
 			if err != nil {
-				utils.LogError(err, "Indexing of register event failed parse register event", 0)
+				utils.LogError(err, "indexing of register event failed parse register event", 0)
 				continue
 			}
 			resolver, err := filterer.ParseNewResolver(resolverLog)
 			if err != nil {
-				utils.LogError(err, "Indexing of register event failed parse resolver event", 0)
+				utils.LogError(err, "indexing of register event failed parse resolver event", 0)
 				continue
 			}
 
@@ -1218,7 +1218,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			b, err := json.Marshal(indexedLog)
 			if err != nil {
-				utils.LogError(err, "Indexing of register event failed json.Marshal", 0)
+				utils.LogError(err, "indexing of register event failed json.Marshal", 0)
 				continue
 			}
 
@@ -1265,7 +1265,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			nameRenewed, err := filterer.ParseNameRenewed(nameRenewedLog)
 			if err != nil {
-				utils.LogError(err, "Indexing of renew event failed parse event", 0)
+				utils.LogError(err, "indexing of renew event failed parse event", 0)
 				continue
 			}
 
@@ -1281,7 +1281,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			b, err := json.Marshal(indexedLog)
 			if err != nil {
-				utils.LogError(err, "Indexing of renew event failed json.Marshal", 0)
+				utils.LogError(err, "indexing of renew event failed json.Marshal", 0)
 				continue
 			}
 			mut := gcp_bigtable.NewMutation()
@@ -1314,7 +1314,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			nameChanged, err := filterer.ParseNameChanged(nameChangedLog)
 			if err != nil {
-				utils.LogError(err, "Indexing of name change event failed parse event at index ", 0)
+				utils.LogError(err, "indexing of name change event failed parse event at index ", 0)
 				continue
 			}
 
@@ -1338,7 +1338,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			newOwner, err := filterer.ParseNewOwner(newOwnerLog)
 			if err != nil {
-				utils.LogError(err, fmt.Errorf("Indexing of new owner event failed parse event at index %v", foundNewOwnerIndex), 0)
+				utils.LogError(err, fmt.Errorf("indexing of new owner event failed parse event at index %v", foundNewOwnerIndex), 0)
 				continue
 			}
 
@@ -1354,7 +1354,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			b, err := json.Marshal(indexedLog)
 			if err != nil {
-				utils.LogError(err, "Indexing of name change event failed json.Marshal", 0)
+				utils.LogError(err, "indexing of name change event failed json.Marshal", 0)
 				continue
 			}
 			mut := gcp_bigtable.NewMutation()
@@ -1389,7 +1389,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			addressChanged, err := filterer.ParseAddressChanged(addressChangedLog)
 			if err != nil {
-				utils.LogError(err, "Indexing of address change event failed parse event at index ", 0)
+				utils.LogError(err, "indexing of address change event failed parse event at index ", 0)
 				continue
 			}
 
@@ -1406,7 +1406,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			b, err := json.Marshal(indexedLog)
 			if err != nil {
-				utils.LogError(err, "Indexing of address change event failed json.Marshal", 0)
+				utils.LogError(err, "indexing of address change event failed json.Marshal", 0)
 				continue
 			}
 			mut := gcp_bigtable.NewMutation()
