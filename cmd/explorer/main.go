@@ -398,14 +398,12 @@ func main() {
 			logrus.Infof("ethclients initialized")
 		}
 
+		utils.InitSessionStore(cfg.Frontend.SessionSecret)
+
 		if !utils.Config.Frontend.OnlyAPI {
 			if utils.Config.Frontend.SiteDomain == "" {
 				utils.Config.Frontend.SiteDomain = "beaconcha.in"
 			}
-
-			logrus.Infof("frontend database connection established")
-
-			utils.InitSessionStore(cfg.Frontend.SessionSecret)
 
 			csrfBytes, err := hex.DecodeString(cfg.Frontend.CsrfAuthKey)
 			if err != nil {

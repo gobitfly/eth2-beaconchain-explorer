@@ -26,6 +26,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var ErrTooManyValidators = errors.New("too many validators")
+
 func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, error) {
 	if str == "" {
 		return []uint64{}, nil
@@ -36,7 +38,7 @@ func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, e
 
 	// we only support up to [validatorLimit] validators
 	if strSplitLen > validatorLimit {
-		return []uint64{}, fmt.Errorf("too many validators")
+		return []uint64{}, ErrTooManyValidators
 	}
 
 	validators := make([]uint64, strSplitLen)
@@ -155,7 +157,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
-	if err != nil {
+	if err != nil && err != ErrTooManyValidators {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
 		http.Error(w, "Invalid query", 400)
 		return
@@ -299,7 +301,7 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 		template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
 		withdrawalCredentialsTemplate,
-		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmount), big.NewInt(1e9)), "ETH", 6))),
+		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmount), big.NewInt(1e9)), "ETH", 6))),
 	})
 
 	return nextData, nil
@@ -595,12 +597,12 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch,
 			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '1') as executedproposals,
 			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '2') as missedproposals,
-			COALESCE(validator_stats.cl_rewards_gwei_7d, 0) as performance7d,
+			COALESCE(validator_performance.cl_performance_7d, 0) as performance7d,
 			COALESCE(validator_names.name, '') AS name,
 		    validators.status AS state
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		LEFT JOIN validator_stats ON validators.validatorindex = validator_stats.validatorindex AND validator_stats.day = (SELECT MAX(day) FROM validator_stats)
+		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 		WHERE validators.validatorindex = ANY($1)
 		LIMIT $2`, filter, validatorLimit)
 
