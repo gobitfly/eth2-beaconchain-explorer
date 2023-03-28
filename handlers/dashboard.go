@@ -26,6 +26,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var ErrTooManyValidators = errors.New("too many validators")
+
 func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, error) {
 	if str == "" {
 		return []uint64{}, nil
@@ -36,7 +38,7 @@ func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, e
 
 	// we only support up to [validatorLimit] validators
 	if strSplitLen > validatorLimit {
-		return []uint64{}, fmt.Errorf("too many validators")
+		return []uint64{}, ErrTooManyValidators
 	}
 
 	validators := make([]uint64, strSplitLen)
@@ -155,7 +157,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
-	if err != nil {
+	if err != nil && err != ErrTooManyValidators {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
 		http.Error(w, "Invalid query", 400)
 		return
