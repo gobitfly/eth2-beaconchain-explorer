@@ -1126,3 +1126,17 @@ func logErrorInfo(err error, callerSkip int, additionalInfos ...string) *logrus.
 
 	return logFields
 }
+
+func Int64Min(x, y int64) int64 {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func Int64Max(x, y int64) int64 {
+	if x > y {
+		return x
+	}
+	return y
+}
