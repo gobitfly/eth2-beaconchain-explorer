@@ -79,7 +79,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
 				FROM blocks 
 				WHERE slot = $1
-				ORDER BY slot LIMIT 10`, search)
+				ORDER BY blockroot DESC LIMIT 1`, search)
 			} else if len(search) == 64 {
 				blockHash, err := hex.DecodeString(search)
 				if err != nil {
@@ -92,7 +92,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				FROM blocks 
 				WHERE blockroot = $1 OR
 					stateroot = $1
-				ORDER BY slot LIMIT 10`, blockHash)
+				ORDER BY blockroot DESC LIMIT 1`, blockHash)
 				if err != nil {
 					logger.Errorf("error reading block root: %v", err)
 					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
