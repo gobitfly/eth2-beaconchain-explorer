@@ -3443,10 +3443,6 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid query", 400)
 		return
 	}
-	if err != nil {
-		http.Error(w, "Invalid query", 400)
-		return
-	}
 	if len(queryValidators) < 1 {
 		http.Error(w, "Invalid query", 400)
 		return
