@@ -139,7 +139,7 @@ func (_EnsRegistrar *EnsRegistrarFilterer) ParseNameRegistered(log types.Log) (*
 	return event, nil
 }
 
-// Solidity: event NameRegistered(string name, bytes32 indexed label, address indexed owner, uint cost, uint expires);
+// Solidity: event NewResolver (index_topic_1 bytes32 node, address resolver)
 func (_EnsRegistrar *EnsRegistrarFilterer) ParseNewResolver(log types.Log) (*NewResolver, error) {
 	event := new(NewResolver)
 	if err := _EnsRegistrar.resolverControllerContract.UnpackLog(event, "NewResolver", log); err != nil {
