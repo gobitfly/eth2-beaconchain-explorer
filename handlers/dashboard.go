@@ -254,6 +254,11 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		return nil, nil
 	}
 
+	_, lastWithdrawnEpoch, err := db.GetValidatorWithdrawalsCount(nextValidator.Index)
+	if err != nil {
+		return nil, err
+	}
+
 	distance, err := db.GetWithdrawableCountFromCursor(epoch, nextValidator.Index, *stats.LatestValidatorWithdrawalIndex)
 	if err != nil {
 		return nil, err
@@ -279,6 +284,11 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		withdrawalCredentialsTemplate = `<span class="text-muted">N/A</span>`
 	}
 
+	estimatedAmount := nextValidator.Balance - utils.Config.Chain.Config.MaxEffectiveBalance
+	if lastWithdrawnEpoch == epoch || nextValidator.Balance < utils.Config.Chain.Config.MaxEffectiveBalance {
+		estimatedAmount = 0
+	}
+
 	nextData := make([][]interface{}, 0, 1)
 	nextData = append(nextData, []interface{}{
 		template.HTML(fmt.Sprintf("%v", utils.FormatValidator(nextValidator.Index))),
@@ -286,7 +296,7 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 		template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
 		withdrawalCredentialsTemplate,
-		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(nextValidator.Balance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
+		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(estimatedAmount), big.NewInt(1e9)), "ETH", 6))),
 	})
 
 	return nextData, nil

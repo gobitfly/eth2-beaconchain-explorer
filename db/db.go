@@ -2506,6 +2506,36 @@ func GetValidatorWithdrawalsCount(validator uint64) (count, lastWithdrawalEpoch 
 	return r.Count, r.LastWithdrawalSlot / utils.Config.Chain.Config.SlotsPerEpoch, nil
 }
 
+func GetLastWithdrawalEpoch(validators []uint64) (map[uint64]uint64, error) {
+
+	type dbResponse struct {
+		ValidatorIndex     uint64 `db:"validatorindex"`
+		LastWithdrawalSlot uint64 `db:"last_withdawal_slot"`
+	}
+
+	res := make(map[uint64]uint64)
+
+	r := make([]*dbResponse, 0)
+	err := ReaderDb.Get(r, `
+	SELECT w.validatorindex, COALESCE(max(block_slot), 0) as last_withdawal_slot
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	WHERE w.validatorindex = ANY($1)
+	GROUP BY w.validatorindex`, validators)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return res, nil
+		}
+		return nil, fmt.Errorf("error getting validator blocks_withdrawals count for validators: %d: %w", validators, err)
+	}
+
+	for _, row := range r {
+		res[row.ValidatorIndex] = row.LastWithdrawalSlot / utils.Config.Chain.Config.SlotsPerEpoch
+	}
+
+	return res, nil
+}
+
 func GetMostRecentWithdrawalValidator() (uint64, error) {
 	var validatorindex uint64
 
