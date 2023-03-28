@@ -443,12 +443,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// only calculate the expected next withdrawal if the validator is eligible
-			if stats != nil &&
-				stats.LatestValidatorWithdrawalIndex != nil &&
-				stats.TotalValidatorCount != nil &&
-				validatorPageData.IsWithdrawableAddress &&
-				(validatorPageData.CurrentBalance > 0 && validatorPageData.WithdrawableEpoch <= validatorPageData.Epoch || validatorPageData.EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.Config.MaxEffectiveBalance) {
-
+			isFullWithdrawal := validatorPageData.CurrentBalance > 0 && validatorPageData.WithdrawableEpoch <= validatorPageData.Epoch
+			isPartialWithdrawal := validatorPageData.EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.Config.MaxEffectiveBalance
+			if stats != nil && stats.LatestValidatorWithdrawalIndex != nil && stats.TotalValidatorCount != nil && validatorPageData.IsWithdrawableAddress && (isFullWithdrawal || isPartialWithdrawal) {
 				distance, err := db.GetWithdrawableCountFromCursor(validatorPageData.Epoch, validatorPageData.Index, *stats.LatestValidatorWithdrawalIndex)
 				if err != nil {
 					return fmt.Errorf("error getting withdrawable validator count from cursor: %v", err)
@@ -472,17 +469,22 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 						withdrawalCredentialsTemplate = `<span class="text-muted">N/A</span>`
 					}
 
-					expectedWithdrawalAmount := validatorPageData.CurrentBalance - utils.Config.Chain.Config.MaxEffectiveBalance
+					var withdrawalAmont uint64
+					if isFullWithdrawal {
+						withdrawalAmont = validatorPageData.CurrentBalance
+					} else {
+						withdrawalAmont = validatorPageData.CurrentBalance - utils.Config.Chain.Config.MaxEffectiveBalance
+					}
 
 					if epoch == lastWithdrawalsEpoch {
-						expectedWithdrawalAmount = 0
+						withdrawalAmont = 0
 					}
 					tableData = append(tableData, []interface{}{
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 						template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
 						withdrawalCredentialsTemplate,
-						template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(expectedWithdrawalAmount), big.NewInt(1e9)), "ETH", 6))), // RECy
+						template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmont), big.NewInt(1e9)), "ETH", 6))),
 					})
 
 					validatorPageData.NextWithdrawalRow = tableData

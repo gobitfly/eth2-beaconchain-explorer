@@ -593,18 +593,27 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 
 	logger.Infof("processing %v push notifications", len(notificationQueueItem))
 
+	batchSize := 500
 	for _, n := range notificationQueueItem {
-		err = notify.SendPushBatch(n.Content.Messages)
-		if err != nil {
-			metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
-			logger.WithError(err).Error("error sending firebase batch job")
-		} else {
-			metrics.NotificationsSent.WithLabelValues("push", "200").Add(float64(len(n.Content.Messages)))
-		}
+		for b := 0; b < len(n.Content.Messages); b += batchSize {
+			start := b
+			end := b + batchSize
+			if len(n.Content.Messages) < end {
+				end = len(n.Content.Messages)
+			}
 
-		_, err = useDB.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
-		if err != nil {
-			return fmt.Errorf("error updating sent status for push notification with id: %v, err: %w", n.Id, err)
+			err = notify.SendPushBatch(n.Content.Messages[start:end])
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
+				logger.WithError(err).Error("error sending firebase batch job")
+			} else {
+				metrics.NotificationsSent.WithLabelValues("push", "200").Add(float64(len(n.Content.Messages)))
+			}
+
+			_, err = useDB.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
+			if err != nil {
+				return fmt.Errorf("error updating sent status for push notification with id: %v, err: %w", n.Id, err)
+			}
 		}
 	}
 	return nil
