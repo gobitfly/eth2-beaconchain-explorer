@@ -409,7 +409,7 @@ func ApiSlots(w http.ResponseWriter, r *http.Request) {
 
 	if len(blockRootHash) != 32 {
 		// blockRootHash is required for the SQL statement below, if none has passed we retrieve it manually
-		err := db.ReaderDb.Get(&blockRootHash, `SELECT blockroot FROM blocks WHERE slot = $1 AND status = '1'`, blockSlot)
+		err := db.ReaderDb.Get(&blockRootHash, `SELECT blockroot FROM blocks WHERE slot = $1`, blockSlot)
 
 		if err != nil || len(blockRootHash) != 32 {
 			sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
