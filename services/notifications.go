@@ -2319,7 +2319,7 @@ func collectMonitoringMachine(
 		}
 	}
 
-	// If more than 90% of users would be notified there is an issue and no one should be notified
+	// if at least 90% of users would be notified, we expect an issue on our end and no one will be notified
 	const notifiedSubscriptionsRatioThreshold = 0.9
 	if float64(len(result))/float64(len(allSubscribed)) >= notifiedSubscriptionsRatioThreshold {
 		utils.LogError(nil, fmt.Errorf("error too many users would be notified concerning: %v", eventName), 0)
