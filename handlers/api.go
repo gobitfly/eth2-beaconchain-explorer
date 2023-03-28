@@ -1880,7 +1880,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "no or invalid validator indicies provided")
 	}
 
-	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, latestEpoch-limit, latestEpoch)
+	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, latestEpoch-(limit-1), latestEpoch)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -1952,7 +1952,6 @@ func getBalanceHistoryQueryParameters(q url.Values) (uint64, uint64, error) {
 		if err != nil || limit > defaultLimit || limit < 1 {
 			return 0, 0, fmt.Errorf("invalid limit parameter")
 		}
-		limit = limit - 1
 	}
 
 	return latestEpoch, limit, nil
