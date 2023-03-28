@@ -197,6 +197,7 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 	epoch := services.LatestEpoch()
 
 	// find subscribed validators that are active and have valid withdrawal credentials (balance will be checked later as it will be queried from bigtable)
+	// order by validator index to ensure that "last withdrawal" cursor handling works
 	var validatorsDb []*types.Validator
 	err := db.ReaderDb.Select(&validatorsDb, `
 			SELECT
@@ -231,22 +232,25 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 	}
 
 	// find the first withdrawable validator by matching validators and balances
-	var nextValidator *types.Validator = nil
-	for balanceIndex, balance := range balances {
+	var nextValidator *types.Validator
+	for _, v := range validatorsDb {
+		balance, ok := balances[v.Index]
+		if !ok {
+			continue
+		}
 		if len(balance) == 0 {
 			continue
 		}
-		for _, v := range validatorsDb {
-			if v.Index != balanceIndex {
-				continue
-			}
 
-			if (balance[0].Balance > 0 && v.WithdrawableEpoch <= epoch) ||
-				(balance[0].EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && balance[0].Balance > utils.Config.Chain.Config.MaxEffectiveBalance) {
-				// this validator is withdrawable, check if it is the next one
-				if nextValidator == nil || v.Index > *stats.LatestValidatorWithdrawalIndex {
-					nextValidator = v
-					nextValidator.Balance = balance[0].Balance
+		if (balance[0].Balance > 0 && v.WithdrawableEpoch <= epoch) ||
+			(balance[0].EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && balance[0].Balance > utils.Config.Chain.Config.MaxEffectiveBalance) {
+			// this validator is eligible for withdrawal, check if it is the next one
+			if nextValidator == nil || v.Index > *stats.LatestValidatorWithdrawalIndex {
+				nextValidator = v
+				nextValidator.Balance = balance[0].Balance
+				if nextValidator.Index > *stats.LatestValidatorWithdrawalIndex {
+					// the first validator after the cursor has to be the next validator
+					break
 				}
 			}
 		}
@@ -281,6 +285,15 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		withdrawalCredentialsTemplate = `<span class="text-muted">N/A</span>`
 	}
 
+	var withdrawalAmount uint64
+	if nextValidator.WithdrawableEpoch <= epoch {
+		// full withdrawal
+		withdrawalAmount = nextValidator.Balance
+	} else {
+		// partial withdrawal
+		withdrawalAmount = nextValidator.Balance - utils.Config.Chain.Config.MaxEffectiveBalance
+	}
+
 	nextData := make([][]interface{}, 0, 1)
 	nextData = append(nextData, []interface{}{
 		template.HTML(fmt.Sprintf("%v", utils.FormatValidator(nextValidator.Index))),
@@ -288,7 +301,7 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 		template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
 		withdrawalCredentialsTemplate,
-		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(nextValidator.Balance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
+		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmount), big.NewInt(1e9)), "ETH", 6))),
 	})
 
 	return nextData, nil
