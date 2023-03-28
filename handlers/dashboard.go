@@ -197,6 +197,7 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 	epoch := services.LatestEpoch()
 
 	// find subscribed validators that are active and have valid withdrawal credentials (balance will be checked later as it will be queried from bigtable)
+	// order by validator index to ensure that "last withdrawal" cursor handling works
 	var validatorsDb []*types.Validator
 	err := db.ReaderDb.Select(&validatorsDb, `
 			SELECT
@@ -231,26 +232,25 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 	}
 
 	// find the first withdrawable validator by matching validators and balances
-	var nextValidator *types.Validator = nil
-	for balanceIndex, balance := range balances {
+	var nextValidator *types.Validator
+	for _, v := range validatorsDb {
+		balance, ok := balances[v.Index]
+		if !ok {
+			continue
+		}
 		if len(balance) == 0 {
 			continue
 		}
-		for _, v := range validatorsDb {
-			if v.Index != balanceIndex {
-				continue
-			}
 
-			if (balance[0].Balance > 0 && v.WithdrawableEpoch <= epoch) ||
-				(balance[0].EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && balance[0].Balance > utils.Config.Chain.Config.MaxEffectiveBalance) {
-				// this validator is eligible for withdrawal, check if it is the next one
-				if nextValidator == nil || v.Index > *stats.LatestValidatorWithdrawalIndex {
-					nextValidator = v
-					nextValidator.Balance = balance[0].Balance
-					if nextValidator.Index > *stats.LatestValidatorWithdrawalIndex {
-						// the first validator after the cursor has to be the next validator
-						break
-					}
+		if (balance[0].Balance > 0 && v.WithdrawableEpoch <= epoch) ||
+			(balance[0].EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && balance[0].Balance > utils.Config.Chain.Config.MaxEffectiveBalance) {
+			// this validator is eligible for withdrawal, check if it is the next one
+			if nextValidator == nil || v.Index > *stats.LatestValidatorWithdrawalIndex {
+				nextValidator = v
+				nextValidator.Balance = balance[0].Balance
+				if nextValidator.Index > *stats.LatestValidatorWithdrawalIndex {
+					// the first validator after the cursor has to be the next validator
+					break
 				}
 			}
 		}
