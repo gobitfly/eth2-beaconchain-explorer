@@ -1458,7 +1458,11 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 	response := &types.ApiResponse{}
 	response.Status = "OK"
 
-	response.Data = data
+	if len(data) == 1 {
+		response.Data = data[0]
+	} else {
+		response.Data = data
+	}
 	err = j.Encode(response)
 
 	if err != nil {
