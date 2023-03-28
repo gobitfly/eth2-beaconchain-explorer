@@ -1577,7 +1577,10 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("error type asserting day as an int")
 		} else {
 			dataEntryMap["day_start"] = utils.DayToTime(day)
-			dataEntryMap["day_end"] = utils.DayToTime(day + 1)
+
+			// The data for the day only goes up to its last epoch so the day ends one epoch duration before a full day.
+			epochDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch)
+			dataEntryMap["day_end"] = utils.DayToTime(day + 1).Add(-epochDuration)
 		}
 		return nil
 	}
@@ -1691,7 +1694,7 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 				ValidatorIndex: validatorIndex,
 				Week:           epoch / epochsPerWeek,
 				WeekStart:      utils.EpochToTime(epochAtStartOfTheWeek),
-				WeekEnd:        utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek),
+				WeekEnd:        utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek - 1),
 			})
 		}
 	}
@@ -1899,7 +1902,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 				Validatorindex:   validatorIndex,
 				Week:             balance.Epoch / epochsPerWeek,
 				WeekStart:        utils.EpochToTime(epochAtStartOfTheWeek),
-				WeekEnd:          utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek),
+				WeekEnd:          utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek - 1),
 			})
 		}
 	}
@@ -2244,7 +2247,7 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 				ValidatorIndex: validatorIndex,
 				Week:           attestation.Epoch / epochsPerWeek,
 				WeekStart:      utils.EpochToTime(epochAtStartOfTheWeek),
-				WeekEnd:        utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek),
+				WeekEnd:        utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek - 1),
 			})
 		}
 	}
