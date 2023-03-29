@@ -21,7 +21,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
 	flag.Parse()
 
@@ -70,6 +70,13 @@ func main() {
 		if err != nil {
 			logrus.WithError(err).Fatal("error updating API key")
 		}
+	case "applyDbSchema":
+		logrus.Infof("applying db schema")
+		err := db.ApplyEmbeddedDbSchema()
+		if err != nil {
+			logrus.WithError(err).Fatal("error applying db schema")
+		}
+		logrus.Infof("db schema applied successfully")
 	case "checkTransactions":
 
 	default:

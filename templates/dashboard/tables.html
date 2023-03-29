@@ -54,13 +54,23 @@
             serverSide: true,
             stateSave: true,
             ordering: true,
-            order: [[0, "desc"]],
+            order: [[1, "desc"]],
             lengthChange: false,
             searching: false,
             ajax: {
               url: `/dashboard/data/withdrawal`,
               data: function (d) {
                 d.validators = getValidatorString()
+              },
+              dataSrc: function ( { data } ) {
+                // add the estimate row if it exists
+                {{ if .NextWithdrawalRow }}
+                  let row = {{.NextWithdrawalRow}}
+                  if (row && row.length) {
+                    data = row.concat(data)
+                  }
+                {{ end }}
+                return data
               },
             },
             pagingType: "input",

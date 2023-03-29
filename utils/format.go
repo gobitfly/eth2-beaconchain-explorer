@@ -401,9 +401,9 @@ func FormatEth1AddressStringLowerCase(addr []byte) template.HTML {
 
 // FormatEth1Address will return the eth1-address formated as html
 func FormatEth1Address(addr []byte) template.HTML {
-	copyBtn := CopyButton(hex.EncodeToString(addr))
-	eth1Addr := common.BytesToAddress(addr)
-	return template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
+	eth1Addr := FixAddressCasing(fmt.Sprintf("%x", addr))
+	copyBtn := CopyButton(eth1Addr)
+	return template.HTML(fmt.Sprintf("<a href=\"/address/%s\" class=\"text-monospace\">%s…</a>%s", eth1Addr, eth1Addr[:8], copyBtn))
 }
 
 // FormatEth1Block will return the eth1-block formated as html
@@ -569,7 +569,11 @@ func AddCopyButton(element template.HTML, copyContent string) template.HTML {
 }
 
 func CopyButton(clipboardText interface{}) string {
-	return fmt.Sprintf(`<i class="fa fa-copy text-muted text-white ml-2 p-1" style="opacity: .8;" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
+	value := fmt.Sprintf("%v", clipboardText)
+	if len(value) < 2 || value[0] != '0' || value[1] != 'x' {
+		value = "0x" + value
+	}
+	return fmt.Sprintf(`<i class="fa fa-copy text-muted text-white ml-2 p-1" style="opacity: .8;" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=%s></i>`, value)
 }
 
 func CopyButtonText(clipboardText interface{}) string {
@@ -577,7 +581,11 @@ func CopyButtonText(clipboardText interface{}) string {
 }
 
 func CopyButtonWithTitle(clipboardText interface{}, title string) string {
-	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="%v" data-clipboard-text=0x%v></i>`, title, clipboardText)
+	value := fmt.Sprintf("%v", clipboardText)
+	if len(value) < 2 || value[0] != '0' || value[1] != 'x' {
+		value = "0x" + value
+	}
+	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="%v" data-clipboard-text=%s></i>`, title, value)
 }
 
 func Reverse(s string) string {

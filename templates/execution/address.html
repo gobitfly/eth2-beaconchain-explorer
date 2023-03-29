@@ -362,7 +362,7 @@
           <span>
             <span class="mr-1">{{ if .Data.IsContract }}Contract{{ else }}Address{{ end }}</span>
             <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
-            <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x{{ .Data.Address }}"></i>
+            <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ fixAddressCasing .Data.Address }}"></i>
           </span>
         </div>
         <span class="text-monospace mb-md-3 d-inline-block">
@@ -811,11 +811,11 @@
     <div class="modal-dialog modal-dialog-centered" style="width: 95%; max-width: 400px; height: 375px; margin: 1.75rem auto;">
       <div class="modal-content">
         <div class="modal-header justify-content-center text-truncate">
-          <span class="text-monospace text-truncate text-center font-weight-bold" style="font-size: 85%; width: 100%;">0x{{ .Data.Address }}</span>
+          <span class="text-monospace text-truncate text-center font-weight-bold" style="font-size: 85%; width: 100%;">{{ fixAddressCasing .Data.Address }}</span>
         </div>
         <div class="modal-body d-flex justify-content-center">
-          <img style="visibility: hidden;" class="qrcode-light" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address 0x{{ .Data.Address }}" />
-          <img style="display: none" class="qrcode-dark" src="data:image/png;base64,{{ .Data.QRCodeInverse }}" alt="QR code for address 0x{{ .Data.Address }}" />
+          <img style="visibility: hidden;" class="qrcode-light" src="data:image/png;base64,{{ .Data.QRCode }}" alt="QR code for address {{ fixAddressCasing .Data.Address }}" />
+          <img style="display: none" class="qrcode-dark" src="data:image/png;base64,{{ .Data.QRCodeInverse }}" alt="QR code for address {{ fixAddressCasing .Data.Address }}" />
         </div>
       </div>
     </div>

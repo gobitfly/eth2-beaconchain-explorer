@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
@@ -66,8 +67,14 @@ func BroadcastPost(w http.ResponseWriter, r *http.Request) {
 	jobData := r.FormValue("message")
 	job, err := db.CreateNodeJob([]byte(jobData))
 	if err != nil {
-		logger.Warnf("failed creating a node-job: %v", err)
-		utils.SetFlash(w, r, "info_flash", fmt.Sprintf("Error: %s", err))
+		errMsg := fmt.Sprintf("Error: %s", err)
+		var userErr db.CreateNodeJobUserError
+		if !errors.As(err, &userErr) {
+			// only send error-message if its a UserError, otherwise just tell the user that something is wrong without details
+			errMsg = "Sorry something went wrong :("
+			logger.Errorf("failed creating a node-job: %v", err)
+		}
+		utils.SetFlash(w, r, "info_flash", errMsg)
 		http.Redirect(w, r, "/tools/broadcast", http.StatusSeeOther)
 		return
 	}

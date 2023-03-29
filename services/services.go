@@ -1062,7 +1062,7 @@ func LatestIndexPageData() *types.IndexPageData {
 		DepositChart:              &types.ChartsPageDataChart{},
 		DepositDistribution:       &types.ChartsPageDataChart{},
 		Countdown:                 nil,
-		SlotVizData:               types.SlotVizPageData{},
+		SlotVizData:               nil,
 	}
 }
 

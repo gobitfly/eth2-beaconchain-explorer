@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"math/big"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -201,14 +202,13 @@ type IndexPageData struct {
 	DepositChart              *ChartsPageDataChart
 	DepositDistribution       *ChartsPageDataChart
 	Countdown                 interface{}
-	SlotVizData               SlotVizPageData `json:"slotVizData"`
+	SlotVizData               *SlotVizPageData `json:"slotVizData"`
 }
 
 type SlotVizPageData struct {
-	Epochs        []*SlotVizEpochs
-	Selector      string
-	HardforkEpoch uint64
-	HardforkName  string
+	Epochs   []*SlotVizEpochs
+	Selector string
+	Config   ExplorerConfigurationKeyMap
 }
 
 type IndexPageDataEpochs struct {
@@ -974,12 +974,10 @@ type HeatmapData struct {
 
 // DashboardData is a struct to hold data for the dashboard-page
 type DashboardData struct {
-	// BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
-	// Earnings       ValidatorEarnings                `json:"earnings"`
-	// Validators     [][]interface{}                  `json:"validators"`
 	Csrf                string `json:"csrf"`
 	ValidatorLimit      int    `json:"valLimit"`
 	CappellaHasHappened bool
+	NextWithdrawalRow   [][]interface{}
 }
 
 // DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page
@@ -1008,6 +1006,7 @@ type ValidatorEarnings struct {
 	LastMonthFormatted      template.HTML `json:"lastMonthFormatted"`
 	TotalFormatted          template.HTML `json:"totalFormatted"`
 	TotalChangeFormatted    template.HTML `json:"totalChangeFormatted"`
+	TotalBalance            template.HTML `json:"totalBalance"`
 }
 
 // ValidatorAttestationSlashing is a struct to hold data of an attestation-slashing
@@ -1411,6 +1410,11 @@ type AdConfigurationPageData struct {
 	CsrfField      template.HTML
 	New            AdConfig
 	TemplateNames  []string
+}
+
+type ExplorerConfigurationPageData struct {
+	Configurations ExplorerConfigurationMap
+	CsrfField      template.HTML
 }
 
 type UserWebhookRowError struct {
@@ -1923,6 +1927,49 @@ type AdConfig struct {
 	ForAllUsers     bool   `db:"for_all_users"`
 	BannerId        uint64 `db:"banner_id"`
 	HtmlContent     string `db:"html_content"`
+}
+
+type ExplorerConfigurationCategory string
+type ExplorerConfigurationKey string
+type ExplorerConfigValue struct {
+	Value    string `db:"value"`
+	DataType string `db:"data_type"`
+}
+type ExplorerConfig struct {
+	Category ExplorerConfigurationCategory `db:"category"`
+	Key      ExplorerConfigurationKey      `db:"key"`
+	ExplorerConfigValue
+}
+type ExplorerConfigurationKeyMap map[ExplorerConfigurationKey]ExplorerConfigValue
+type ExplorerConfigurationMap map[ExplorerConfigurationCategory]ExplorerConfigurationKeyMap
+
+func (configMap ExplorerConfigurationMap) GetConfigValue(category ExplorerConfigurationCategory, configKey ExplorerConfigurationKey) (ExplorerConfigValue, error) {
+	configValue := ExplorerConfigValue{}
+	keyMap, ok := configMap[category]
+	if ok {
+		configValue, ok = keyMap[configKey]
+		if ok {
+			return configValue, nil
+		}
+	}
+	return configValue, fmt.Errorf("config value for %s %s not found", category, configKey)
+}
+
+func (configMap ExplorerConfigurationMap) GetUInt64Value(category ExplorerConfigurationCategory, configKey ExplorerConfigurationKey) (uint64, error) {
+	configValue, err := configMap.GetConfigValue(category, configKey)
+	if err == nil {
+		if configValue.DataType != "int" {
+			return 0, fmt.Errorf("wrong data type for %s %s, got %s, expected %s", category, configKey, configValue.DataType, "int")
+		} else {
+			return strconv.ParseUint(configValue.Value, 10, 64)
+		}
+	}
+	return 0, err
+}
+
+func (configMap ExplorerConfigurationMap) GetStringValue(category ExplorerConfigurationCategory, configKey ExplorerConfigurationKey) (string, error) {
+	configValue, err := configMap.GetConfigValue(category, configKey)
+	return configValue.Value, err
 }
 
 type WithdrawalsPageData struct {

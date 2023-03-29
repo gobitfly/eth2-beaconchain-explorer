@@ -1,0 +1,32 @@
+{{ define "js" }}
+{{ end }}
+{{ define "css" }}
+{{ end }}
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <h1>Explorer Configuration Manager</h1>
+      <form action="/user/explorer_configuration" id="explorerConfigurationForm" method="POST">
+        {{ .CsrfField }}
+        {{ range $category, $keyMap := .Configurations }}
+          <div class="card p-3">
+            <h3 class="pb-3">{{ $category }}</h3>
+            {{ range $key, $configValue :=  $keyMap }}
+              <div>
+                {{ if eq $configValue.DataType "int" }}
+                  <input type="number" name="{{ $category }}-{{ $key }}" value="{{ $configValue.Value }}" />
+                {{ else if eq $configValue.DataType "bool" }}
+                  <input type="checkbox" name="{{ $category }}-{{ $key }}" {{ if not (len .Config.Enabled 0) }}checked{{ end }} />
+                {{ else }}
+                  <input type="string" name="{{ $category }}-{{ $key }}" value="{{ $configValue.Value }}" />
+                {{ end }}
+                <label class="ml-3" for="{{ $category }}-{{ $key }}">{{ $key }}</label>
+              </div>
+            {{ end }}
+          </div>
+        {{ end }}
+        <button type="submit" class="btn btn-primary w-100 mt-3">Save</button>
+      </form>
+    </div>
+  {{ end }}
+{{ end }}

@@ -7,8 +7,8 @@
     var slotsPerEpoch = {{ .ChainSlotsPerEpoch }}
     const data = {{ .Data.SlotVizData }}
     const epochs = data.Epochs
-    const hardforkEpoch = data.HardforkEpoch
-    const hardforkName = data.HardforkName || ''
+    const hardforkEpoch = data.Config?.HardforkEpoch?.Value ? parseInt(data.Config.HardforkEpoch.Value) : 0
+    const hardforkName = data.Config?.HardforkName?.Value || ''
     const selector = `#${data.Selector}`
     var vizChart
 
@@ -373,7 +373,7 @@
 
     function processLaunchMetrics(data) {
       data = data || []
-      if (hardforkEpoch) {
+      if (hardforkEpoch > 0) {
         data = data.filter((d) => d.epoch >= hardforkEpoch)
       }
       for (var i = 0; i < data.length; i++) {
