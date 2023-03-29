@@ -2,10 +2,15 @@ package price
 
 import (
 	"encoding/json"
+	"eth2-exporter/price/chainlink_feed"
+	"eth2-exporter/utils"
+	"math/big"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,6 +42,75 @@ func updateEthPrice(chainId uint64) {
 	for {
 		fetchPrice(chainId, &errorRetrievingEthPriceCount)
 		time.Sleep(time.Minute)
+	}
+}
+
+func fetchChainlinkFeed(chainId uint64) {
+	if chainId != 1 {
+		ethPrice = &EthPrice{
+			Ethereum: struct {
+				Cad float64 "json:\"cad\""
+				Cny float64 "json:\"cny\""
+				Eur float64 "json:\"eur\""
+				Jpy float64 "json:\"jpy\""
+				Rub float64 "json:\"rub\""
+				Usd float64 "json:\"usd\""
+				Gbp float64 "json:\"gbp\""
+				Aud float64 "json:\"aud\""
+			}{
+				Cad: 0,
+				Cny: 0,
+				Eur: 0,
+				Jpy: 0,
+				Rub: 0,
+				Usd: 0,
+				Gbp: 0,
+				Aud: 0,
+			},
+		}
+		return
+	}
+
+	eClient, err := ethclient.Dial(utils.Config.Eth1ErigonEndpoint)
+
+	c, err := chainlink_feed.NewFeed(common.HexToAddress("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"), eClient)
+	if err != nil {
+		logger.Errorf("failed to initialized chainlink feed contract: %v", err)
+		return
+	}
+
+	res, err := c.LatestRoundData(nil)
+	if err != nil {
+		logger.Errorf("failed to fetch latest chainlink price feed data: %v", err)
+		return
+	}
+
+	// Extract the ETH/USD price
+	price := new(big.Float).SetInt(res.Answer)
+	decimals, _ := new(big.Float).SetString("100000000") // 8 decimal places for the Chainlink ETH/USD feed
+	price.Quo(price, decimals)
+
+	priceUsd, _ := price.Float64()
+	ethPrice = &EthPrice{
+		Ethereum: struct {
+			Cad float64 "json:\"cad\""
+			Cny float64 "json:\"cny\""
+			Eur float64 "json:\"eur\""
+			Jpy float64 "json:\"jpy\""
+			Rub float64 "json:\"rub\""
+			Usd float64 "json:\"usd\""
+			Gbp float64 "json:\"gbp\""
+			Aud float64 "json:\"aud\""
+		}{
+			Cad: 0,
+			Cny: 0,
+			Eur: 0,
+			Jpy: 0,
+			Rub: 0,
+			Usd: priceUsd,
+			Gbp: 0,
+			Aud: 0,
+		},
 	}
 }
 
