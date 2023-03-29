@@ -156,7 +156,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -301,7 +301,7 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 
 	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -395,7 +395,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -426,7 +426,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -471,7 +471,7 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	validators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -560,7 +560,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -699,7 +699,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -729,7 +729,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -775,7 +775,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
