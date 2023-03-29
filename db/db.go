@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"database/sql"
+	_ "embed"
 	"encoding/hex"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -28,7 +30,11 @@ import (
 	"eth2-exporter/rpc"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	pg_query "github.com/pganalyze/pg_query_go/v4"
 )
+
+//go:embed tables.sql
+var dbSchemaSQL string
 
 var DBPGX *pgxpool.Conn
 
@@ -90,6 +96,32 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 
 func MustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) {
 	WriterDb, ReaderDb = mustInitDB(writer, reader)
+}
+
+func ApplyEmbeddedDbSchema() error {
+
+	tree, err := pg_query.Parse(dbSchemaSQL)
+	if err != nil {
+		return err
+	}
+
+	allowedStatements := map[string]bool{
+		"Node_IndexStmt":           true, // allow the creation of new indices
+		"Node_CreateExtensionStmt": true, // allow the creation of new extensions
+		"Node_CreateStmt":          true, // allow the creation of new tables
+		"Node_DoStmt":              true, // allow do procedures
+	}
+	for _, stmt := range tree.Stmts {
+		stmtType := reflect.TypeOf(stmt.Stmt.Node).Elem().Name()
+
+		if !allowedStatements[stmtType] {
+			return fmt.Errorf("statement of type %v is not allowed: %v", stmtType, stmt.Stmt.String())
+		}
+	}
+
+	_, err = WriterDb.Exec(dbSchemaSQL)
+
+	return err
 }
 
 func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsData, error) {

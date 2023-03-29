@@ -99,14 +99,6 @@ CREATE TABLE IF NOT EXISTS
 
 CREATE INDEX IF NOT EXISTS idx_validator_performance_balance ON validator_performance (balance);
 
-CREATE INDEX IF NOT EXISTS idx_validator_performance_performance1d ON validator_performance (performance1d);
-
-CREATE INDEX IF NOT EXISTS idx_validator_performance_performance7d ON validator_performance (performance7d);
-
-CREATE INDEX IF NOT EXISTS idx_validator_performance_performance31d ON validator_performance (performance31d);
-
-CREATE INDEX IF NOT EXISTS idx_validator_performance_performance365d ON validator_performance (performance365d);
-
 CREATE INDEX IF NOT EXISTS idx_validator_performance_rank7d ON validator_performance (rank7d);
 
 CREATE TABLE IF NOT EXISTS
@@ -645,7 +637,12 @@ CREATE TABLE IF NOT EXISTS
 
 CREATE INDEX IF NOT EXISTS idx_users_subscriptions_unsubscribe_hash ON users_subscriptions (unsubscribe_hash);
 
-CREATE TYPE IF NOT EXISTS notification_channels AS ENUM('webhook_discord', 'webhook', 'email', 'push');
+DO $$
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'notification_channels') THEN
+        CREATE TYPE notification_channels AS ENUM('webhook_discord', 'webhook', 'email', 'push');
+END IF;
+END$$;
 
 CREATE TABLE IF NOT EXISTS
     users_notification_channels (
@@ -1041,14 +1038,6 @@ CREATE TABLE IF NOT EXISTS
         completed_time TIMESTAMP WITHOUT TIME ZONE,
         DATA jsonb NOT NULL,
         PRIMARY KEY (id)
-    );
-
-CREATE TABLE IF NOT EXISTS
-    node_jobs_bls_changes_validators (
-        validatorindex INT NOT NULL,
-        node_job_id VARCHAR(40) NOT NULL,
-        PRIMARY KEY (validatorindex)
-        -- we allow only one job per validator
     );
 
 CREATE TABLE IF NOT EXISTS
