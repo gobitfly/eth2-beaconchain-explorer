@@ -390,7 +390,7 @@ func main() {
 		// logrus.Infof("frontend services initiated")
 
 		logrus.Infof("initializing prices")
-		price.Init(utils.Config.Chain.Config.DepositChainID)
+		price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint)
 		logrus.Infof("prices initialized")
 		if !utils.Config.Frontend.Debug {
 			logrus.Infof("initializing ethclients")
@@ -398,14 +398,12 @@ func main() {
 			logrus.Infof("ethclients initialized")
 		}
 
+		utils.InitSessionStore(cfg.Frontend.SessionSecret)
+
 		if !utils.Config.Frontend.OnlyAPI {
 			if utils.Config.Frontend.SiteDomain == "" {
 				utils.Config.Frontend.SiteDomain = "beaconcha.in"
 			}
-
-			logrus.Infof("frontend database connection established")
-
-			utils.InitSessionStore(cfg.Frontend.SessionSecret)
 
 			csrfBytes, err := hex.DecodeString(cfg.Frontend.CsrfAuthKey)
 			if err != nil {
@@ -609,6 +607,8 @@ func main() {
 			authRouter.HandleFunc("/ad_configuration", handlers.AdConfiguration).Methods("GET")
 			authRouter.HandleFunc("/ad_configuration", handlers.AdConfigurationPost).Methods("POST")
 			authRouter.HandleFunc("/ad_configuration/delete", handlers.AdConfigurationDeletePost).Methods("POST")
+			authRouter.HandleFunc("/explorer_configuration", handlers.ExplorerConfiguration).Methods("GET")
+			authRouter.HandleFunc("/explorer_configuration", handlers.ExplorerConfigurationPost).Methods("POST")
 
 			authRouter.HandleFunc("/notifications-center", handlers.UserNotificationsCenter).Methods("GET")
 			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")

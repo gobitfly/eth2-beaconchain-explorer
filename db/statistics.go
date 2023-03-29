@@ -97,7 +97,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			from blocks_deposits
 			inner join validators on blocks_deposits.publickey = validators.pubkey
 			inner join blocks on blocks_deposits.block_root = blocks.blockroot
-			where block_slot >= $1 and block_slot <= $2 and blocks.status = '1'
+			where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1' and blocks_deposits.valid_signature
 			group by validators.validatorindex
 		) 
 		on conflict (validatorindex, day) do
@@ -113,7 +113,8 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 				select validators.validatorindex, case when block_slot = 0 then -1 else $3 end as day, count(*), sum(amount)
 				from blocks_deposits
 				inner join validators on blocks_deposits.publickey = validators.pubkey
-				where block_slot >= $1 and block_slot <= $2 and status = '1'
+				inner join blocks on blocks_deposits.block_root = blocks.blockroot
+				where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1'
 				group by validators.validatorindex, day
 			) 
 			on conflict (validatorindex, day) do
@@ -124,7 +125,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		}
 	}
 
-	_, err = tx.Exec(depositsQry, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch, day)
+	_, err = tx.Exec(depositsQry, firstEpoch, lastEpoch, day)
 	if err != nil {
 		return err
 	}
@@ -267,34 +268,6 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		return err
 	}
 
-	logrus.Infof("exporting 7d income stats")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, cl_rewards_gwei_7d, el_rewards_wei_7d) 
-		(
-			select validatorindex, $1, sum(coalesce(cl_rewards_gwei, 0)), sum(coalesce(el_rewards_wei, 0)) 
-			from validator_stats 
-			where day <= $1 and day > $1 - 7 
-			group by validatorindex
-		) 
-		on conflict (validatorindex, day) do update set 
-		cl_rewards_gwei_7d = excluded.cl_rewards_gwei_7d, el_rewards_wei_7d=excluded.el_rewards_wei_7d;`, day)
-	if err != nil {
-		return err
-	}
-
-	logrus.Infof("exporting 31d income stats")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, cl_rewards_gwei_31d, el_rewards_wei_31d) 
-		(
-			select validatorindex, $1, sum(coalesce(cl_rewards_gwei, 0)), sum(coalesce(el_rewards_wei, 0)) 
-			from validator_stats 
-			where day <= $1 and day > $1 - 31 
-			group by validatorindex
-		) 
-		on conflict (validatorindex, day) do update set 
-		cl_rewards_gwei_31d = excluded.cl_rewards_gwei_31d, el_rewards_wei_31d=excluded.el_rewards_wei_31d;`, day)
-	if err != nil {
-		return err
-	}
-
 	logger.Infof("exporting total income stats")
 	tx.Exec(`
 	INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei_total, el_rewards_wei_total, mev_rewards_wei_total) (
@@ -392,28 +365,28 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			select 
 			vs_now.validatorindex, 
 				COALESCE(vs_now.end_balance, 0) as balance, 
-				COALESCE(vs_now.cl_rewards_gwei, 0) as performance1d, 
-				COALESCE(vs_now.cl_rewards_gwei_7d , 0)as performance7d, 
-				COALESCE(vs_now.cl_rewards_gwei_31d, 0) as performance31d, 
-				COALESCE(vs_now.cl_rewards_gwei_total, 0) as performance365d, 
-				row_number() over(order by vs_now.cl_rewards_gwei_7d desc) as rank7d,
+				0 as performance1d, 
+				0 as performance7d, 
+				0 as performance31d, 
+				0 as performance365d, 
+				0 as rank7d,
 
-				coalesce(vs_now.cl_rewards_gwei_total - vs_1d.cl_rewards_gwei_total, 0) as cl_performance_1d, 
-				coalesce(vs_now.cl_rewards_gwei_total - vs_7d.cl_rewards_gwei_total, 0) as cl_performance_7d, 
-				coalesce(vs_now.cl_rewards_gwei_total - vs_31d.cl_rewards_gwei_total, 0) as cl_performance_31d, 
-				coalesce(vs_now.cl_rewards_gwei_total - vs_365d.cl_rewards_gwei_total, 0) as cl_performance_365d,
+				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_1d.cl_rewards_gwei_total, 0) as cl_performance_1d, 
+				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_7d.cl_rewards_gwei_total, 0) as cl_performance_7d, 
+				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_31d.cl_rewards_gwei_total, 0) as cl_performance_31d, 
+				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_365d.cl_rewards_gwei_total, 0) as cl_performance_365d,
 				coalesce(vs_now.cl_rewards_gwei_total, 0) as cl_performance_total, 
-
-				coalesce(vs_now.el_rewards_wei_total - vs_1d.el_rewards_wei_total, 0) as el_performance_1d, 
-				coalesce(vs_now.el_rewards_wei_total - vs_7d.el_rewards_wei_total, 0) as el_performance_7d, 
-				coalesce(vs_now.el_rewards_wei_total - vs_31d.el_rewards_wei_total, 0) as el_performance_31d, 
-				coalesce(vs_now.el_rewards_wei_total - vs_365d.el_rewards_wei_total, 0) as el_performance_365d,
+				
+				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_1d.el_rewards_wei_total, 0) as el_performance_1d, 
+				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_7d.el_rewards_wei_total, 0) as el_performance_7d, 
+				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_31d.el_rewards_wei_total, 0) as el_performance_31d, 
+				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_365d.el_rewards_wei_total, 0) as el_performance_365d,
 				coalesce(vs_now.el_rewards_wei_total, 0) as el_performance_total, 
-
-				coalesce(vs_now.mev_rewards_wei_total - vs_1d.mev_rewards_wei_total, 0) as mev_performance_1d, 
-				coalesce(vs_now.mev_rewards_wei_total - vs_7d.mev_rewards_wei_total, 0) as mev_performance_7d, 
-				coalesce(vs_now.mev_rewards_wei_total - vs_31d.mev_rewards_wei_total, 0) as mev_performance_31d, 
-				coalesce(vs_now.mev_rewards_wei_total - vs_365d.mev_rewards_wei_total, 0) as mev_performance_365d,
+				
+				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_1d.mev_rewards_wei_total, 0) as mev_performance_1d, 
+				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_7d.mev_rewards_wei_total, 0) as mev_performance_7d, 
+				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_31d.mev_rewards_wei_total, 0) as mev_performance_31d, 
+				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_365d.mev_rewards_wei_total, 0) as mev_performance_365d,
 				coalesce(vs_now.mev_rewards_wei_total, 0) as mev_performance_total
 			from validator_stats vs_now
 			left join validator_stats vs_1d on vs_1d.validatorindex = vs_now.validatorindex and vs_1d.day = $2
@@ -449,6 +422,26 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			mev_performance_365d=excluded.mev_performance_365d,
 			mev_performance_total=excluded.mev_performance_total
 			;`, day, int64(day)-1, int64(day)-7, int64(day)-31, int64(day)-365)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		insert into validator_performance (                                                                                                 
+			validatorindex,          
+			balance,             
+			performance1d,
+			performance7d,
+			performance31d,  
+			performance365d,                                                                                             
+			rank7d
+		) (
+			select validatorindex, 0, 0, 0, 0, 0, row_number() over(order by validator_performance.cl_performance_7d desc) as rank7d from validator_performance
+		) 
+			on conflict (validatorindex) do update set 
+				rank7d=excluded.rank7d
+		;
+		`)
 	if err != nil {
 		return err
 	}
@@ -554,7 +547,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	start = time.Now()
 	logger.Infof("marking day export as completed in the status table")
-	_, err = tx.Exec("insert into validator_stats_status (day, status) values ($1, true) ON CONFLICT (day) DO UPDATE SET status=EXCLUDED.status", day)
+	_, err = tx.Exec("insert into validator_stats_status (day, status, income_exported) values ($1, true, true) ON CONFLICT (day) DO UPDATE SET status=EXCLUDED.status, income_exported=EXCLUDED.income_exported;", day)
 	if err != nil {
 		return err
 	}
@@ -581,7 +574,7 @@ func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string)
 		if incomeHistory[i].ClRewards < 0 {
 			color = "#f7a35c"
 		}
-		balanceTs := utils.DayToTime(incomeHistory[i].Day + 1)
+		balanceTs := utils.DayToTime(incomeHistory[i].Day)
 		clRewardsSeries[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(incomeHistory[i].ClRewards) / 1e9), Color: color}
 	}
 	return clRewardsSeries, currentDayIncome, err

@@ -330,8 +330,8 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 					Label: "Staking Pools",
 					Links: []types.NavigationLink{
 						{
-							Label:         "Ethermine Staking",
-							Path:          "https://staking.ethermine.org/",
+							Label:         "Run a Validator!",
+							Path:          "https://ethpool.org/",
 							CustomIcon:    "ethermine_staking_logo_svg",
 							IsHighlighted: true,
 						},

@@ -58,6 +58,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
+	totalBalance := uint64(0)
 	for balanceIndex, balance := range latestBalances {
 		if len(balance) == 0 {
 			continue
@@ -68,6 +69,8 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		}
 		balancesMap[balanceIndex].Balance = balance[0].Balance
 		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
+
+		totalBalance += balance[0].Balance
 	}
 
 	var income struct {

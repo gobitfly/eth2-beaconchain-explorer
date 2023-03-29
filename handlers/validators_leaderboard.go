@@ -78,14 +78,14 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 
 	orderColumn := q.Get("order[0][column]")
 	orderByMap := map[string]string{
-		"4": "performance1d",
-		"5": "performance7d",
-		"6": "performance31d",
-		"7": "performance365d",
+		"4": "cl_performance_1d",
+		"5": "cl_performance_7d",
+		"6": "cl_performance_31d",
+		"7": "cl_performance_365d",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
-		orderBy = "performance7d"
+		orderBy = "cl_performance_7d"
 	}
 
 	orderDir := q.Get("order[0][dir]")
@@ -114,10 +114,11 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 					SELECT
 						ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,						
 						validator_performance.balance, 
-						validator_performance.performance1d, 
-						validator_performance.performance7d, 
-						validator_performance.performance31d, 
-						validator_performance.performance365d, 
+						COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d, 
+						COALESCE(validator_performance.cl_performance_7d, 0) AS performance7d, 
+						COALESCE(validator_performance.cl_performance_31d, 0) AS performance31d, 
+						COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d, 
+						COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal, 
 						validator_performance.rank7d, 
 						validator_performance.validatorindex
 					FROM validator_performance
@@ -127,44 +128,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN validators ON validators.validatorindex = a.validatorindex
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			LEFT JOIN (SELECT COUNT(*) FROM validator_performance) cnt(total_count) ON true`, length, start)
-	// } else {
-	// 	// for performance-reasons we combine multiple search results with `union`
-	// 	args := []interface{}{}
-	// 	args = append(args, "%"+strings.ToLower(search)+"%")
-	// 	searchQry := fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE LOWER(name) LIKE $%d `, len(args))
-	// 	if searchIndex != nil {
-	// 		args = append(args, *searchIndex)
-	// 		searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE validatorindex = $%d `, len(args))
-	// 	}
 
-	// 	if searchPubkeyExact != nil {
-	// 		args = append(args, *searchPubkeyExact)
-	// 		searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex = $%d `, len(args))
-	// 	} else if searchPubkeyLike != nil {
-	// 		args = append(args, *searchPubkeyLike+"%")
-	// 		searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex LIKE $%d `, len(args))
-	// 	}
-
-	// 	args = append(args, length)
-	// 	args = append(args, start)
-	// 	qry := fmt.Sprintf(`
-	// 		WITH matched_validators AS (%v)
-	// 		SELECT
-	// 			v.validatorindex, mv.pubkey, COALESCE(vn.name, '') as name,
-	// 			perf.rank, perf.balance, perf.performance1d, perf.performance7d, perf.performance31d, perf.performance365d,
-	// 			cnt.total_count
-	// 		FROM matched_validators mv
-	// 		INNER JOIN validators v ON v.pubkey = mv.pubkey
-	// 		LEFT JOIN validator_names vn ON vn.publickey = mv.pubkey
-	// 		LEFT JOIN (SELECT COUNT(*) FROM matched_validators) cnt(total_count) ON true
-	// 		LEFT JOIN (
-	// 			SELECT ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank, validator_performance.*
-	// 			FROM validator_performance
-	// 			ORDER BY `+orderBy+` `+orderDir+`
-	// 		) perf ON perf.validatorindex = v.validatorindex
-	// 		LIMIT $%d OFFSET $%d`, searchQry, len(args)-1, len(args))
-	// 	err = db.ReaderDb.Select(&performanceData, qry, args...)
-	// }
 	if err != nil {
 		logger.Errorf("error retrieving performanceData data (search=%v): %v", search != "", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
