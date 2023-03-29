@@ -43,21 +43,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := int64(services.LatestEpoch())
 
-	lastDay := 0
-	err := db.WriterDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats")
-
-	if err != nil {
-		return nil, nil, err
-	}
-	lastWeek := lastDay - 7
-	if lastWeek < 0 {
-		lastWeek = 0
-	}
-	lastMonth := lastDay - 31
-	if lastMonth < 0 {
-		lastMonth = 0
-	}
-
 	balances := []*types.Validator{}
 
 	balancesMap := make(map[uint64]*types.Validator, len(balances))
@@ -72,6 +57,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
+	totalBalance := uint64(0)
 	for balanceIndex, balance := range latestBalances {
 		if len(balance) == 0 {
 			continue
@@ -82,24 +68,26 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		}
 		balancesMap[balanceIndex].Balance = balance[0].Balance
 		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
+
+		totalBalance += balance[0].Balance
 	}
 
 	type ClEarnings struct {
-		EarningsTotal     int64 `db:"cl_rewards_gwei_total"`
-		EarningsLastDay   int64 `db:"cl_rewards_gwei"`
-		EarningsLastWeek  int64 `db:"cl_rewards_gwei_7d"`
-		EarningsLastMonth int64 `db:"cl_rewards_gwei_31d"`
+		EarningsTotal     int64 `db:"cl_performance_total"`
+		EarningsLastDay   int64 `db:"cl_performance_1d"`
+		EarningsLastWeek  int64 `db:"cl_performance_7d"`
+		EarningsLastMonth int64 `db:"cl_performance_31d"`
 	}
 
 	c := &ClEarnings{}
 
 	err = db.ReaderDb.Get(c, `
 	SELECT 
-		COALESCE(SUM(cl_rewards_gwei), 0) AS cl_rewards_gwei, 
-		COALESCE(SUM(cl_rewards_gwei_7d), 0) AS cl_rewards_gwei_7d, 
-		COALESCE(SUM(cl_rewards_gwei_31d), 0) AS cl_rewards_gwei_31d, 
-		COALESCE(SUM(cl_rewards_gwei_total), 0) AS cl_rewards_gwei_total
-	FROM validator_stats WHERE day = $1 AND validatorindex = ANY($2)`, lastDay, validatorsPQArray)
+		COALESCE(SUM(cl_performance_1d), 0) AS cl_performance_1d, 
+		COALESCE(SUM(cl_performance_7d), 0) AS cl_performance_7d, 
+		COALESCE(SUM(cl_performance_31d), 0) AS cl_performance_31d, 
+		COALESCE(SUM(cl_performance_total), 0) AS cl_performance_total
+	FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -148,6 +136,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		LastMonthFormatted:   utils.FormatIncome(c.EarningsLastMonth, currency),
 		TotalFormatted:       utils.FormatIncome(c.EarningsTotal, currency),
 		TotalChangeFormatted: utils.FormatIncome(c.EarningsTotal+totalDeposits, currency),
+		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
 	}, balancesMap, nil
 }
 

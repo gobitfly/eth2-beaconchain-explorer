@@ -268,9 +268,17 @@
                   </tr>
                   <tr>
                     <th scope="row">
-                      <div id="earnings-total-header" class="title" data-toggle="tooltip" data-placement="top" title="Total Balance">Total <span class="d-none d-md-inline">Balance</span></div>
+                      <div id="earnings-total-header" class="title">
+                        Total <span data-toggle="tooltip" title="Total income of all selected validators, updated daily"><i class="far fa-question-circle"></i></span>
+                      </div>
                     </th>
                     <td><div id="earnings-total" class="stat">0.000</div></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <div id="balance-total-header" class="title" data-toggle="tooltip" data-placement="top" title="Total Balance">Total <span class="d-none d-md-inline">Balance</span></div>
+                    </th>
+                    <td><div id="balance-total" class="stat">0.000</div></td>
                   </tr>
                   <tr>
                     <th scope="row">
@@ -306,8 +314,11 @@
                   </a>
                 </li>
                 {{ if .CappellaHasHappened }}
-                  <li class="nav-item">
-                    <a class="nav-link" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawals" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-money-bill"></i> <span class="tab-text">Withdrawals</span></a>
+                  <li class="nav-item dashboard-table-nav" style="flex:1;">
+                    <a class="nav-link" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawals" aria-selected="false" style="text-align:center;white-space:nowrap;">
+                      <i class="tab-icon mr-md-1 fas fa-money-bill"></i>
+                      <span class="tab-text">Withdrawals</span>
+                    </a>
                   </li>
                 {{ end }}
               </ul>

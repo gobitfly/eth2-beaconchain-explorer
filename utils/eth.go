@@ -5,6 +5,7 @@ import (
 
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/prysmaticlabs/go-ssz"
 	"github.com/sirupsen/logrus"
 	e2types "github.com/wealdtech/go-eth2-types/v2"
@@ -125,4 +126,8 @@ func VerifyVoluntaryExitSignature(op *phase0.SignedVoluntaryExit, forkVersion, p
 	}
 
 	return nil
+}
+
+func FixAddressCasing(add string) string {
+	return common.HexToAddress(add).Hex()
 }

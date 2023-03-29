@@ -531,30 +531,32 @@ type APIValidatorResponse struct {
 }
 
 type ApiValidatorDailyStatsResponse struct {
-	ValidatorIndex        uint64 `json:"validator_index"`
-	AttesterSlashings     uint64 `json:"attester_slashings"`
-	Day                   uint64 `json:"day"`
-	Deposits              uint64 `json:"deposits"`
-	DepositsAmount        uint64 `json:"deposits_amount"`
-	Withdrawals           uint64 `json:"withdrawals"`
-	WithdrawalsAmount     uint64 `json:"withdrawals_amount"`
-	EndBalance            uint64 `json:"end_balance"`
-	EndEffectiveBalance   uint64 `json:"end_effective_balance"`
-	MaxBalance            uint64 `json:"max_balance"`
-	MaxEffectiveBalance   uint64 `json:"max_effective_balance"`
-	MinBalance            uint64 `json:"min_balance"`
-	MinEffectiveBalance   uint64 `json:"min_effective_balance"`
-	MissedAttestations    uint64 `json:"missed_attestations"`
-	MissedBlocks          uint64 `json:"missed_blocks"`
-	MissedSync            uint64 `json:"missed_sync"`
-	OrphanedAttestations  uint64 `json:"orphaned_attestations"`
-	OrphanedBlocks        uint64 `json:"orphaned_blocks"`
-	OrphanedSync          uint64 `json:"orphaned_sync"`
-	ParticipatedSync      uint64 `json:"participated_sync"`
-	ProposedBlocks        uint64 `json:"proposed_blocks"`
-	ProposerSlashings     uint64 `json:"proposer_slashings"`
-	StartBalance          uint64 `json:"start_balance"`
-	StartEffectiveBalance uint64 `json:"start_effective_balance"`
+	ValidatorIndex        uint64    `json:"validatorindex"`
+	AttesterSlashings     uint64    `json:"attester_slashings"`
+	Day                   uint64    `json:"day"`
+	DayStart              time.Time `json:"day_start"`
+	DayEnd                time.Time `json:"day_end"`
+	Deposits              uint64    `json:"deposits"`
+	DepositsAmount        uint64    `json:"deposits_amount"`
+	Withdrawals           uint64    `json:"withdrawals"`
+	WithdrawalsAmount     uint64    `json:"withdrawals_amount"`
+	EndBalance            uint64    `json:"end_balance"`
+	EndEffectiveBalance   uint64    `json:"end_effective_balance"`
+	MaxBalance            uint64    `json:"max_balance"`
+	MaxEffectiveBalance   uint64    `json:"max_effective_balance"`
+	MinBalance            uint64    `json:"min_balance"`
+	MinEffectiveBalance   uint64    `json:"min_effective_balance"`
+	MissedAttestations    uint64    `json:"missed_attestations"`
+	MissedBlocks          uint64    `json:"missed_blocks"`
+	MissedSync            uint64    `json:"missed_sync"`
+	OrphanedAttestations  uint64    `json:"orphaned_attestations"`
+	OrphanedBlocks        uint64    `json:"orphaned_blocks"`
+	OrphanedSync          uint64    `json:"orphaned_sync"`
+	ParticipatedSync      uint64    `json:"participated_sync"`
+	ProposedBlocks        uint64    `json:"proposed_blocks"`
+	ProposerSlashings     uint64    `json:"proposer_slashings"`
+	StartBalance          uint64    `json:"start_balance"`
+	StartEffectiveBalance uint64    `json:"start_effective_balance"`
 }
 
 type ApiValidatorEth1Response struct {
@@ -569,17 +571,21 @@ type ApiValidatorIncomeHistoryResponse struct {
 		AttestationTargetReward uint64 `json:"attestation_target_reward"`
 		AttestationHeadReward   uint64 `json:"attestation_head_reward"`
 	} `json:"income"`
-	Epoch          uint64 `json:"epoch"`
-	ValidatorIndex uint64 `json:"validatorindex"`
-	Week           uint64 `json:"week"`
+	Epoch          uint64    `json:"epoch"`
+	ValidatorIndex uint64    `json:"validatorindex"`
+	Week           uint64    `json:"week"`
+	WeekStart      time.Time `json:"week_start"`
+	WeekEnd        time.Time `json:"week_end"`
 }
 
 type ApiValidatorBalanceHistoryResponse struct {
-	Balance          uint64 `json:"balance"`
-	EffectiveBalance uint64 `json:"effectivebalance"`
-	Epoch            uint64 `json:"epoch"`
-	Validatorindex   uint64 `json:"validatorindex"`
-	Week             uint64 `json:"week"`
+	Balance          uint64    `json:"balance"`
+	EffectiveBalance uint64    `json:"effectivebalance"`
+	Epoch            uint64    `json:"epoch"`
+	Validatorindex   uint64    `json:"validatorindex"`
+	Week             uint64    `json:"week"`
+	WeekStart        time.Time `json:"week_start"`
+	WeekEnd          time.Time `json:"week_end"`
 }
 
 type ApiValidatorWithdrawalResponse struct {
@@ -638,13 +644,15 @@ type ApiValidatorDepositsResponse struct {
 }
 
 type ApiValidatorAttestationsResponse struct {
-	Attesterslot   uint64 `json:"attesterslot"`
-	Committeeindex uint64 `json:"committeeindex"`
-	Epoch          uint64 `json:"epoch"`
-	Inclusionslot  uint64 `json:"inclusionslot"`
-	Status         uint64 `json:"status"`
-	Validatorindex uint64 `json:"validatorindex"`
-	Week           uint64 `json:"week"`
+	AttesterSlot   uint64    `json:"attesterslot"`
+	CommitteeIndex uint64    `json:"committeeindex"`
+	Epoch          uint64    `json:"epoch"`
+	InclusionSlot  uint64    `json:"inclusionslot"`
+	Status         uint64    `json:"status"`
+	ValidatorIndex uint64    `json:"validatorindex"`
+	Week           uint64    `json:"week"`
+	WeekStart      time.Time `json:"week_start"`
+	WeekEnd        time.Time `json:"week_end"`
 }
 
 // convert this json object to a golang struct called ApiValidatorProposalsResponse

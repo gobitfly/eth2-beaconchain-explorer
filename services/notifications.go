@@ -593,18 +593,27 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 
 	logger.Infof("processing %v push notifications", len(notificationQueueItem))
 
+	batchSize := 500
 	for _, n := range notificationQueueItem {
-		err = notify.SendPushBatch(n.Content.Messages)
-		if err != nil {
-			metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
-			logger.WithError(err).Error("error sending firebase batch job")
-		} else {
-			metrics.NotificationsSent.WithLabelValues("push", "200").Add(float64(len(n.Content.Messages)))
-		}
+		for b := 0; b < len(n.Content.Messages); b += batchSize {
+			start := b
+			end := b + batchSize
+			if len(n.Content.Messages) < end {
+				end = len(n.Content.Messages)
+			}
 
-		_, err = useDB.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
-		if err != nil {
-			return fmt.Errorf("error updating sent status for push notification with id: %v, err: %w", n.Id, err)
+			err = notify.SendPushBatch(n.Content.Messages[start:end])
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
+				logger.WithError(err).Error("error sending firebase batch job")
+			} else {
+				metrics.NotificationsSent.WithLabelValues("push", "200").Add(float64(len(n.Content.Messages)))
+			}
+
+			_, err = useDB.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
+			if err != nil {
+				return fmt.Errorf("error updating sent status for push notification with id: %v, err: %w", n.Id, err)
+			}
 		}
 	}
 	return nil
@@ -1149,7 +1158,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 }
 
 func getUrlPart(validatorIndex uint64) string {
-	return fmt.Sprintf(` For more information visit: https://%s/validator/%v.`, utils.Config.Frontend.SiteDomain, validatorIndex)
+	return fmt.Sprintf(` For more information visit: <a href='https://%s/validator/%v'>https://%s/validator/%v</a>.`, utils.Config.Frontend.SiteDomain, validatorIndex, utils.Config.Frontend.SiteDomain, validatorIndex)
 }
 
 func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName, epoch uint64) error {
@@ -2000,10 +2009,10 @@ func collectWithdrawalNotifications(notificationsByUserID map[uint64]map[types.E
 						continue
 					}
 				}
-				// logger.Infof("creating %v notification for validator %v in epoch %v", types.ValidatorReceivedWithdrawalEventName, event.Index, epoch)
+				// logger.Infof("creating %v notification for validator %v in epoch %v", types.ValidatorReceivedWithdrawalEventName, event.ValidatorIndex, epoch)
 				n := &validatorWithdrawalNotification{
 					SubscriptionID:  *sub.ID,
-					ValidatorIndex:  event.Index,
+					ValidatorIndex:  event.ValidatorIndex,
 					Epoch:           epoch,
 					Slot:            event.Slot,
 					Amount:          event.Amount,
@@ -2317,6 +2326,13 @@ func collectMonitoringMachine(
 		if notifyConditionFullfilled(&data, currentMachineData) {
 			result = append(result, data)
 		}
+	}
+
+	// if at least 90% of users would be notified, we expect an issue on our end and no one will be notified
+	const notifiedSubscriptionsRatioThreshold = 0.9
+	if float64(len(result))/float64(len(allSubscribed)) >= notifiedSubscriptionsRatioThreshold {
+		utils.LogError(nil, fmt.Errorf("error too many users would be notified concerning: %v", eventName), 0)
+		return nil
 	}
 
 	for _, r := range result {

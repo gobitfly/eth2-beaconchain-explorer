@@ -92,6 +92,9 @@ require (
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
+	github.com/pganalyze/pg_query_go v1.0.3 // indirect
+	github.com/pganalyze/pg_query_go/v2 v2.2.0 // indirect
+	github.com/pganalyze/pg_query_go/v4 v4.2.0 // indirect
 	github.com/protolambda/zssz v0.1.5 // indirect
 	github.com/prysmaticlabs/fastssz v0.0.0-20221107182844-78142813af44 // indirect
 	github.com/prysmaticlabs/gohashtree v0.0.2-alpha // indirect

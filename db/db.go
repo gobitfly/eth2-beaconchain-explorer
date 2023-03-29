@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"database/sql"
+	_ "embed"
 	"encoding/hex"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -19,15 +21,20 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
-	"github.com/patrickmn/go-cache"
-
 	"github.com/lib/pq"
+	"github.com/patrickmn/go-cache"
+	prysm_deposit "github.com/prysmaticlabs/prysm/v3/contracts/deposit"
+	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 	"github.com/sirupsen/logrus"
 
 	"eth2-exporter/rpc"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	pg_query "github.com/pganalyze/pg_query_go/v4"
 )
+
+//go:embed tables.sql
+var dbSchemaSQL string
 
 var DBPGX *pgxpool.Conn
 
@@ -89,6 +96,32 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 
 func MustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) {
 	WriterDb, ReaderDb = mustInitDB(writer, reader)
+}
+
+func ApplyEmbeddedDbSchema() error {
+
+	tree, err := pg_query.Parse(dbSchemaSQL)
+	if err != nil {
+		return err
+	}
+
+	allowedStatements := map[string]bool{
+		"Node_IndexStmt":           true, // allow the creation of new indices
+		"Node_CreateExtensionStmt": true, // allow the creation of new extensions
+		"Node_CreateStmt":          true, // allow the creation of new tables
+		"Node_DoStmt":              true, // allow do procedures
+	}
+	for _, stmt := range tree.Stmts {
+		stmtType := reflect.TypeOf(stmt.Stmt.Node).Elem().Name()
+
+		if !allowedStatements[stmtType] {
+			return fmt.Errorf("statement of type %v is not allowed: %v", stmtType, stmt.Stmt.String())
+		}
+	}
+
+	_, err = WriterDb.Exec(dbSchemaSQL)
+
+	return err
 }
 
 func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsData, error) {
@@ -525,12 +558,12 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 
 // UpdateMissedBlocks will update the missed blocks for an epoch range in the database
 func UpdateMissedBlocks(startEpoch, endEpoch uint64) error {
-	_, err := WriterDb.Exec(`UPDATE blocks SET status = '2' WHERE status = '0' AND epoch >= $1 AND epoch <= $2`, startEpoch, endEpoch)
+	_, err := WriterDb.Exec(`UPDATE blocks SET status = '2', blockroot = '\x01' WHERE status = '0' AND epoch >= $1 AND epoch <= $2`, startEpoch, endEpoch)
 	return err
 }
 
 func UpdateMissedBlocksInEpochWithSlotCutoff(slot uint64) error {
-	_, err := WriterDb.Exec(`UPDATE blocks SET status = '2' WHERE status = '0' AND epoch = $1 AND slot < $2`, slot/utils.Config.Chain.Config.SlotsPerEpoch, slot)
+	_, err := WriterDb.Exec(`UPDATE blocks SET status = '2', blockroot = '\x01' WHERE status = '0' AND epoch = $1 AND slot < $2`, slot/utils.Config.Chain.Config.SlotsPerEpoch, slot)
 	return err
 }
 
@@ -1391,6 +1424,11 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 		metrics.TaskDuration.WithLabelValues("db_save_blocks").Observe(time.Since(start).Seconds())
 	}()
 
+	domain, err := utils.GetSigningDomain()
+	if err != nil {
+		return err
+	}
+
 	stmtBlock, err := tx.Prepare(`
 		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, syncaggregate_bits, syncaggregate_signature, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, withdrawalcount, voluntaryexitscount, syncaggregate_participation, proposer, status, exec_parent_hash, exec_fee_recipient, exec_state_root, exec_receipts_root, exec_logs_bloom, exec_random, exec_block_number, exec_gas_limit, exec_gas_used, exec_timestamp, exec_extra_data, exec_base_fee_per_gas, exec_block_hash, exec_transactions_count)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)
@@ -1455,8 +1493,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	defer stmtAttestations.Close()
 
 	stmtDeposits, err := tx.Prepare(`
-		INSERT INTO blocks_deposits (block_slot, block_index, block_root, proof, publickey, withdrawalcredentials, amount, signature)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+		INSERT INTO blocks_deposits (block_slot, block_index, block_root, proof, publickey, withdrawalcredentials, amount, signature, valid_signature)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
 		ON CONFLICT (block_slot, block_index) DO NOTHING`)
 	if err != nil {
 		return err
@@ -1665,7 +1703,17 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 			t = time.Now()
 
 			for i, d := range b.Deposits {
-				_, err := stmtDeposits.Exec(b.Slot, i, b.BlockRoot, nil, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature)
+
+				err := prysm_deposit.VerifyDepositSignature(&ethpb.Deposit_Data{
+					PublicKey:             d.PublicKey,
+					WithdrawalCredentials: d.WithdrawalCredentials,
+					Amount:                d.Amount,
+					Signature:             d.Signature,
+				}, domain)
+
+				signatureValid := err == nil
+
+				_, err = stmtDeposits.Exec(b.Slot, i, b.BlockRoot, nil, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature, signatureValid)
 				if err != nil {
 					return fmt.Errorf("error executing stmtDeposits for block %v: %w", b.Slot, err)
 				}
@@ -2647,6 +2695,61 @@ func DeleteAdConfiguration(id string) error {
 	return err
 }
 
+// get all explorer configurations
+func GetExplorerConfigurations() ([]*types.ExplorerConfig, error) {
+	var configs []*types.ExplorerConfig
+
+	err := ReaderDb.Select(&configs, `
+	SELECT 
+		category, 
+		key, 
+		value, 
+		data_type 
+	FROM 
+		explorer_configurations`)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return []*types.ExplorerConfig{}, nil
+		}
+		return nil, fmt.Errorf("error getting explorer configurations: %w", err)
+	}
+
+	return configs, nil
+}
+
+// save current configurations
+func SaveExplorerConfiguration(configs []types.ExplorerConfig) error {
+	valueStrings := []string{}
+	valueArgs := []interface{}{}
+	for i, config := range configs {
+		valueStrings = append(valueStrings, fmt.Sprintf("($%v, $%v, $%v, $%v)", i*4+1, i*4+2, i*4+3, i*4+4))
+
+		valueArgs = append(valueArgs, config.Category)
+		valueArgs = append(valueArgs, config.Key)
+		valueArgs = append(valueArgs, config.Value)
+		valueArgs = append(valueArgs, config.DataType)
+	}
+	query := fmt.Sprintf(`
+		INSERT INTO explorer_configurations (
+			category, 
+			key, 
+			value, 
+			data_type)
+    	VALUES %s 
+		ON CONFLICT 
+			(category, key) 
+		DO UPDATE SET 
+			value = excluded.value,
+			data_type = excluded.data_type
+			`, strings.Join(valueStrings, ","))
+
+	_, err := WriterDb.Exec(query, valueArgs...)
+	if err != nil {
+		return fmt.Errorf("error inserting/updating explorer configurations: %w", err)
+	}
+	return nil
+}
+
 func GetTotalBLSChanges() (uint64, error) {
 	var count uint64
 	err := ReaderDb.Get(&count, `
@@ -2862,30 +2965,34 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 }
 
 func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
-	var count uint64
+	// the validators' balance will not be checked here as this is only a rough estimation
+	// checking the balance for hundreds of thousands of validators is too expensive
 
-	err := ReaderDb.Get(&count, `
+	var idCondition string
+	if validatorindex > cursor {
+		// find all withdrawable validators between the cursor and the validator
+		idCondition = "(validatorindex > $1 AND validatorindex < $2)"
+	} else if validatorindex < cursor {
+		// find all withdrawable validators behind the cursor AND in front of the validator (i.e. logical OR)
+		idCondition = "(validatorindex > $1 OR validatorindex < $2)"
+	} else {
+		// cursor at validator
+		return 0, nil
+	}
+
+	query := fmt.Sprintf(`
 	SELECT 
-		count(*) 
+		COUNT(*)
 	FROM 
 		validators 
 	WHERE 
-		withdrawalcredentials LIKE '\x01' || '%'::bytea 
-		AND 
-		((effectivebalance = $1 AND balance > $1) OR (withdrawableepoch <= $2 AND balance > 0))
-		AND (
-			(
-				$3::int > $4 AND validatorindex > $4 AND validatorindex < $3
-			)
-			OR
-			(
-				$3::int < $4 AND (validatorindex > $4 OR validatorindex < $3)
-			)
-		);`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch, validatorindex, cursor)
+		%s AND
+		activationepoch <= $3 AND exitepoch > $3 AND
+		withdrawalcredentials LIKE '\x01' || '%%'::bytea`, idCondition)
+
+	count := uint64(0)
+	err := ReaderDb.Get(&count, query, cursor, validatorindex, epoch)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, nil
-		}
 		return 0, fmt.Errorf("error getting withdrawable validator count from cursor: %w", err)
 	}
 
