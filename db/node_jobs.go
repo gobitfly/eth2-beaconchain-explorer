@@ -71,8 +71,13 @@ func GetNodeJobValidatorInfos(job *types.NodeJob) ([]types.NodeJobValidatorInfo,
 	return dbValis, nil
 }
 
-var CreateNodeJobInvalidDataError error
-var CreateNodeJobInternalError error
+type CreateNodeJobUserError struct {
+	Message string
+}
+
+func (e CreateNodeJobUserError) Error() string {
+	return e.Message
+}
 
 func CreateNodeJob(data []byte) (*types.NodeJob, error) {
 	j, err := types.NewNodeJob(data)
@@ -117,7 +122,7 @@ func SubmitNodeJobs() error {
 
 func CreateBLSToExecutionChangesNodeJob(nj *types.NodeJob) (*types.NodeJob, error) {
 	if len(nj.RawData) > 1e6 {
-		return nil, fmt.Errorf("data size exceeds maximum")
+		return nil, CreateNodeJobUserError{Message: "data-size exceeds maximum of 1MB"}
 	}
 	nj.ID = uuid.New().String()
 	nj.Status = types.PendingNodeJobStatus
@@ -127,12 +132,16 @@ func CreateBLSToExecutionChangesNodeJob(nj *types.NodeJob) (*types.NodeJob, erro
 	indicesArr := []uint64{}
 	d, ok := nj.GetBLSToExecutionChangesNodeJobData()
 	if !ok {
-		return nil, fmt.Errorf("invalid job")
+		return nil, CreateNodeJobUserError{Message: "invalid data"}
 	}
 	for _, op := range d {
 		err := utils.VerifyBlsToExecutionChangeSignature(op)
 		if err != nil {
 			return nil, err
+		}
+		_, exists := opsByIndex[uint64(op.Message.ValidatorIndex)]
+		if exists {
+			return nil, CreateNodeJobUserError{Message: fmt.Sprintf("multiple entries for the same validator: %v", uint64(op.Message.ValidatorIndex))}
 		}
 		indicesArr = append(indicesArr, uint64(op.Message.ValidatorIndex))
 		opsByIndex[uint64(op.Message.ValidatorIndex)] = op
@@ -154,10 +163,10 @@ func CreateBLSToExecutionChangesNodeJob(nj *types.NodeJob) (*types.NodeJob, erro
 		withdrawalCredentials := ethutil.SHA256(op.Message.FromBLSPubkey[:])
 		withdrawalCredentials[0] = byte(0) // BLS_WITHDRAWAL_PREFIX
 		if !bytes.Equal(withdrawalCredentials, v.WithdrawalCredentials) {
-			return nil, fmt.Errorf("message.FromBLSPubkey != validator.WithdrawalCredentials for validator with index %v", v.Index)
+			return nil, CreateNodeJobUserError{Message: fmt.Sprintf("fromBLSPubkey do not match withdrawalCredentials for validator with index %v", v.Index)}
 		}
 		if v.WithdrawalCredentials[0] != 0 {
-			return nil, fmt.Errorf("validator.WithdrawalCredentials[0] != 0 for validator with index %v", v.Index)
+			return nil, CreateNodeJobUserError{Message: fmt.Sprintf("withdrawalCredentials[0] != 0 for validator with index %v", v.Index)}
 		}
 		delete(opsToCheck, v.Index)
 	}
@@ -165,10 +174,36 @@ func CreateBLSToExecutionChangesNodeJob(nj *types.NodeJob) (*types.NodeJob, erro
 		return nil, fmt.Errorf("could not check all validators")
 	}
 
-	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data, created_time) values ($1, $2, $3, $4, now())`, nj.ID, nj.Type, nj.Status, nj.RawData)
+	tx, err := WriterDb.Beginx()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error starting db transactions: %w", err)
 	}
+	defer tx.Rollback()
+
+	for _, idx := range indicesArr {
+		res, err := tx.Exec(`insert into node_jobs_bls_changes_validators (validatorindex, node_job_id) values($1, $2) on conflict do nothing`, idx, nj.ID)
+		if err != nil {
+			return nil, fmt.Errorf("error inserting into node_jobs_bls_changes_validators: %w", err)
+		}
+		rows, err := res.RowsAffected()
+		if err != nil {
+			return nil, fmt.Errorf("error getting rowsAffected: %w", err)
+		}
+		if rows != 1 {
+			return nil, CreateNodeJobUserError{Message: fmt.Sprintf("there is already a job for validator %v", idx)}
+		}
+	}
+
+	_, err = tx.Exec(`insert into node_jobs (id, type, status, data, created_time) values ($1, $2, $3, $4, now())`, nj.ID, nj.Type, nj.Status, nj.RawData)
+	if err != nil {
+		return nil, fmt.Errorf("error inserting into node_jobs: %w", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, fmt.Errorf("error commiting db-tx: %w", err)
+	}
+
 	logrus.WithFields(logrus.Fields{"id": nj.ID, "type": nj.Type}).Infof("created node_job")
 	return nj, nil
 }
