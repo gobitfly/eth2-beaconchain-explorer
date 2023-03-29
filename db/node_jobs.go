@@ -206,7 +206,7 @@ func CreateBLSToExecutionChangesNodeJob(nj *types.NodeJob) (*types.NodeJob, erro
 			return nil, fmt.Errorf("error getting rowsAffected: %w", err)
 		}
 		if rows != int64(size) {
-			return nil, CreateNodeJobUserError{Message: fmt.Sprintf("there is already a job for some of the validators")}
+			return nil, CreateNodeJobUserError{Message: "there is already a job for some of the validators"}
 		}
 	}
 
