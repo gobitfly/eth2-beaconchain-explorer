@@ -1044,6 +1044,14 @@ CREATE TABLE IF NOT EXISTS
     );
 
 CREATE TABLE IF NOT EXISTS
+    node_jobs_bls_changes_validators (
+        validatorindex INT NOT NULL,
+        node_job_id VARCHAR(40) NOT NULL,
+        PRIMARY KEY (validatorindex)
+        -- we allow only one job per validator
+    );
+
+CREATE TABLE IF NOT EXISTS
     ad_configurations (
         id VARCHAR(40),
         --uuid
