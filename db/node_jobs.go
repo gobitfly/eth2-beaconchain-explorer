@@ -134,6 +134,7 @@ func CreateBLSToExecutionChangesNodeJob(nj *types.NodeJob) (*types.NodeJob, erro
 	if !ok {
 		return nil, CreateNodeJobUserError{Message: "invalid data"}
 	}
+
 	for _, op := range d {
 		err := utils.VerifyBlsToExecutionChangeSignature(op)
 		if err != nil {
@@ -180,8 +181,23 @@ func CreateBLSToExecutionChangesNodeJob(nj *types.NodeJob) (*types.NodeJob, erro
 	}
 	defer tx.Rollback()
 
-	for _, idx := range indicesArr {
-		res, err := tx.Exec(`insert into node_jobs_bls_changes_validators (validatorindex, node_job_id) values($1, $2) on conflict do nothing`, idx, nj.ID)
+	batchSize := 1000
+	for b := 0; b < len(indicesArr); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(indicesArr) < end {
+			end = len(indicesArr)
+		}
+		size := end - start
+		valueStrs := make([]string, 0, size)
+		valueArgs := make([]interface{}, 0, size+1)
+		valueArgs = append(valueArgs, nj.ID)
+		for i, idx := range indicesArr[start:end] {
+			valueStrs = append(valueStrs, fmt.Sprintf("($1, $%d)", i+2))
+			valueArgs = append(valueArgs, idx)
+		}
+		stmt := fmt.Sprintf(`insert into node_jobs_bls_changes_validators (node_job_id, validatorindex) values %s on conflict do nothing`, strings.Join(valueStrs, ","))
+		res, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return nil, fmt.Errorf("error inserting into node_jobs_bls_changes_validators: %w", err)
 		}
@@ -189,8 +205,8 @@ func CreateBLSToExecutionChangesNodeJob(nj *types.NodeJob) (*types.NodeJob, erro
 		if err != nil {
 			return nil, fmt.Errorf("error getting rowsAffected: %w", err)
 		}
-		if rows != 1 {
-			return nil, CreateNodeJobUserError{Message: fmt.Sprintf("there is already a job for validator %v", idx)}
+		if rows != int64(size) {
+			return nil, CreateNodeJobUserError{Message: fmt.Sprintf("there is already a job for some of the validators")}
 		}
 	}
 
@@ -204,7 +220,7 @@ func CreateBLSToExecutionChangesNodeJob(nj *types.NodeJob) (*types.NodeJob, erro
 		return nil, fmt.Errorf("error commiting db-tx: %w", err)
 	}
 
-	logrus.WithFields(logrus.Fields{"id": nj.ID, "type": nj.Type}).Infof("created node_job")
+	logrus.WithFields(logrus.Fields{"id": nj.ID, "type": nj.Type, "validators": len(indicesArr)}).Infof("created node_job")
 	return nj, nil
 }
 
@@ -242,7 +258,7 @@ func UpdateBLSToExecutionChangesNodeJob(job *types.NodeJob) error {
 		Index                 uint64 `db:"validatorindex"`
 		WithdrawalCredentials []byte `db:"withdrawalcredentials"`
 	}{}
-	logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type, "status": job.Status, "validatorIndices": indicesArr}).Infof("checking node_job")
+	logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type, "status": job.Status, "validators": len(indicesArr)}).Infof("checking node_job")
 	err := WriterDb.Select(&dbValis, `select validatorindex, withdrawalcredentials from validators where validatorindex = any($1)`, pq.Array(indicesArr))
 	if err != nil {
 		return err
@@ -263,7 +279,7 @@ func UpdateBLSToExecutionChangesNodeJob(job *types.NodeJob) error {
 			if err != nil {
 				return err
 			}
-			logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type, "status": types.CompletedNodeJobStatus, "validatorIndices": indicesArr}).Infof("updated node_job")
+			logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type, "status": types.CompletedNodeJobStatus, "validators": len(indicesArr)}).Infof("updated node_job")
 		}
 	}
 	return nil

@@ -47,7 +47,6 @@ type NodeJob struct {
 	Type                NodeJobType   `db:"type"`
 	Status              NodeJobStatus `db:"status"`
 	RawData             []byte        `db:"data"`
-	RawDataHashSha256   []byte        `db:"data_hash_sha256"`
 	Data                interface{}   `db:"-"`
 }
 
