@@ -1,1087 +1,1083 @@
-create extension pg_trgm; /* trigram extension for faster text-search */
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
+/* trigram extension for faster text-search */
 /*
-This table is used to store the current state (latest exported epoch) of all validators
-It also acts as a lookup-table to store the index-pubkey association
-In order to save db space we only use the unique validator index in all other tables
-In the future it is better to replace this table with an in memory cache (redis)
-*/
-drop table if exists validators;
-create table validators
-(
-    validatorindex             int         not null,
-    pubkey                     bytea       not null,
-    pubkeyhex                  text        not null default '',
-    withdrawableepoch          bigint      not null,
-    withdrawalcredentials      bytea       not null,
-    balance                    bigint      not null,
-    balanceactivation          bigint,
-    effectivebalance           bigint      not null,
-    slashed                    bool        not null,
-    activationeligibilityepoch bigint      not null,
-    activationepoch            bigint      not null,
-    exitepoch                  bigint      not null,
-    lastattestationslot        bigint,
-    status                     varchar(20) not null default '',
-    primary key (validatorindex)
-);
-create index idx_validators_pubkey on validators (pubkey);
-create index idx_validators_pubkeyhex on validators (pubkeyhex);
-create index idx_validators_pubkeyhex_pattern_pos on validators (pubkeyhex varchar_pattern_ops);
-create index idx_validators_status on validators (status);
-create index idx_validators_balanceactivation on validators (balanceactivation);
-create index idx_validators_activationepoch on validators (activationepoch);
-create index validators_is_offline_vali_idx on validators (validatorindex, lastattestationslot, pubkey);
-create index idx_validators_withdrawalcredentials on validators (withdrawalcredentials, validatorindex);
-
-drop table if exists validator_pool;
-create table validator_pool
-(
-    publickey bytea not null,
-    pool      varchar(40),
-    primary key (publickey)
-);
-
-drop table if exists validator_names;
-create table validator_names
-(
-    publickey bytea not null,
-    name      varchar(40),
-    primary key (publickey)
-);
-create index idx_validator_names_publickey on validator_names (publickey);
-create index idx_validator_names_name on validator_names(name);
-
-drop table if exists validator_set;
-create table validator_set
-(
-    epoch                      int    not null,
-    validatorindex             int    not null,
-    withdrawableepoch          bigint not null,
-    withdrawalcredentials      bytea  not null,
-    effectivebalance           bigint not null,
-    slashed                    bool   not null,
-    activationeligibilityepoch bigint not null,
-    activationepoch            bigint not null,
-    exitepoch                  bigint not null,
-    primary key (validatorindex, epoch)
-);
-
-drop table if exists validator_performance;
-create table validator_performance
-(
-    validatorindex        int    not null,
-    balance               bigint not null,
-    cl_performance_1d     bigint not null,
-    cl_performance_7d     bigint not null,
-    cl_performance_31d    bigint not null,
-    cl_performance_365d   bigint not null,
-    cl_performance_total  bigint not null,
-    el_performance_1d     bigint not null,
-    el_performance_7d     bigint not null,
-    el_performance_31d    bigint not null,
-    el_performance_365d   bigint not null,
-    el_performance_total  bigint not null,
-    mev_performance_1d    bigint not null,
-    mev_performance_7d    bigint not null,
-    mev_performance_31d   bigint not null,
-    mev_performance_365d  bigint not null,
-    mev_performance_total bigint not null,
-    rank7d                int    not null,
-    primary key (validatorindex)
-);
-create index idx_validator_performance_balance on validator_performance (balance);
-create index idx_validator_performance_performance1d on validator_performance (performance1d);
-create index idx_validator_performance_performance7d on validator_performance (performance7d);
-create index idx_validator_performance_performance31d on validator_performance (performance31d);
-create index idx_validator_performance_performance365d on validator_performance (performance365d);
-create index idx_validator_performance_rank7d on validator_performance (rank7d);
-
-drop table if exists proposal_assignments;
-create table proposal_assignments
-(
-    epoch          int not null,
-    validatorindex int not null,
-    proposerslot   int not null,
-    status         int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
-    primary key (epoch, validatorindex, proposerslot)
-);
-create index idx_proposal_assignments_epoch on proposal_assignments (epoch);
-
-drop table if exists sync_committees;
-create table sync_committees
-(
-    period         int not null,
-    validatorindex int not null,
-    committeeindex int not null,
-    primary key (period, validatorindex, committeeindex)
-);
-
-drop table if exists sync_committees_count_per_validator;
-create table sync_committees_count_per_validator (
-	period int not null unique,
-	count_so_far float8 not null,
-    primary key (period)
-);
-
-drop table if exists validator_balances_recent;
-create table validator_balances_recent
-(
-    epoch          int    not null,
-    validatorindex int    not null,
-    balance        bigint not null,
-    primary key (epoch, validatorindex)
-);
-create index idx_validator_balances_recent_epoch on validator_balances_recent (epoch);
-create index idx_validator_balances_recent_validatorindex on validator_balances_recent (validatorindex);
-create index idx_validator_balances_recent_balance on validator_balances_recent (balance);
-
-drop table if exists validator_stats;
-create table validator_stats
-(
-    validatorindex          int not null,
-    day                     int not null,
-    start_balance           bigint,
-    end_balance             bigint,
-    min_balance             bigint,
-    max_balance             bigint,
-    start_effective_balance bigint,
-    end_effective_balance   bigint,
-    min_effective_balance   bigint,
-    max_effective_balance   bigint,
-    missed_attestations     int,
-    orphaned_attestations   int,
-    participated_sync       int,
-    missed_sync             int,
-    orphaned_sync           int,
-    proposed_blocks         int,
-    missed_blocks           int,
-    orphaned_blocks         int,
-    attester_slashings      int,
-    proposer_slashings      int,
-    deposits                int,
-    deposits_amount         bigint,
-    withdrawals             int,
-    withdrawals_amount      bigint,
-    cl_rewards_gwei         bigint,
-    cl_rewards_gwei_total   bigint,
-    el_rewards_wei          decimal,
-    el_rewards_wei_total    decimal,
-    mev_rewards_wei         decimal,
-    mev_rewards_wei_total   decimal,
-    primary key (validatorindex, day)
-);
-create index idx_validator_stats_day on validator_stats (day);
-
-drop table if exists validator_stats_status;
-create table validator_stats_status
-(
-    day    int     not null,
-    status boolean not null,
-    income_exported boolean not null default false,
-    primary key (day)
-);
-
-drop table if exists validator_attestation_streaks;
-create table validator_attestation_streaks
-(
-    validatorindex int     not null,
-    status         int     not null,
-    start          int     not null,
-    length         int     not null,
-    longest        boolean not null,
-    current        boolean not null,
-    primary key (validatorindex, status, start)
-);
-create index idx_validator_attestation_streaks_validatorindex on validator_attestation_streaks (validatorindex);
-create index idx_validator_attestation_streaks_status on validator_attestation_streaks (status);
-create index idx_validator_attestation_streaks_length on validator_attestation_streaks (length);
-create index idx_validator_attestation_streaks_start on validator_attestation_streaks (start);
-
-drop table if exists queue;
-create table queue
-(
-    ts                        timestamp without time zone,
-    entering_validators_count int not null,
-    exiting_validators_count  int not null,
-    primary key (ts)
-);
-
-drop table if exists validatorqueue_activation;
-create table validatorqueue_activation
-(
-    index     int   not null,
-    publickey bytea not null,
-    primary key (index, publickey)
-);
-
-drop table if exists validatorqueue_exit;
-create table validatorqueue_exit
-(
-    index     int   not null,
-    publickey bytea not null,
-    primary key (index, publickey)
-);
-
-create table epochs_notified (epoch int not null primary key, sentOn timestamp not null);
-
-drop table if exists epochs;
-create table epochs
-(
-    epoch                   int    not null,
-    blockscount             int    not null default 0,
-    proposerslashingscount  int    not null,
-    attesterslashingscount  int    not null,
-    attestationscount       int    not null,
-    depositscount           int    not null,
-    withdrawalcount         int    not null default 0,
-    voluntaryexitscount     int    not null,
-    validatorscount         int    not null,
-    averagevalidatorbalance bigint not null,
-    totalvalidatorbalance   bigint not null,
-    finalized               bool,
-    eligibleether           bigint,
-    globalparticipationrate float,
-    votedether              bigint,
-    rewards_exported        bool not null default false,
-    primary key (epoch)
-);
-
-drop table if exists blocks;
-create table blocks
-(
-    epoch                       int     not null,
-    slot                        int     not null,
-    blockroot                   bytea   not null,
-    parentroot                  bytea   not null,
-    stateroot                   bytea   not null,
-    signature                   bytea   not null,
-    randaoreveal                bytea,
-    graffiti                    bytea,
-    graffiti_text               text    null,
-    eth1data_depositroot        bytea,
-    eth1data_depositcount       int     not null,
-    eth1data_blockhash          bytea,
-    syncaggregate_bits          bytea,
-    syncaggregate_signature     bytea,
-    syncaggregate_participation float   not null default 0,
-    proposerslashingscount      int     not null,
-    attesterslashingscount      int     not null,
-    attestationscount           int     not null,
-    depositscount               int     not null,
-    withdrawalcount             int     not null default 0,
-    voluntaryexitscount         int     not null,
-    proposer                    int     not null,
-    status                      text    not null, /* Can be 0 = scheduled, 1 proposed, 2 missed, 3 orphaned */
-
-    -- https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockV2
-    -- https://github.com/ethereum/consensus-specs/blob/v1.1.9/specs/bellatrix/beacon-chain.md#executionpayload
-    exec_parent_hash            bytea, 
-    exec_fee_recipient          bytea, 
-    exec_state_root             bytea, 
-    exec_receipts_root          bytea, 
-    exec_logs_bloom             bytea, 
-    exec_random                 bytea, 
-    exec_block_number           int,   
-    exec_gas_limit              int,   
-    exec_gas_used               int,   
-    exec_timestamp              int,   
-    exec_extra_data             bytea, 
-    exec_base_fee_per_gas       bigint,
-    exec_block_hash             bytea, 
-    exec_transactions_count     int     not null default 0,
-
-    primary key (slot, blockroot)
-);
-create index idx_blocks_proposer on blocks (proposer);
-create index idx_blocks_epoch on blocks (epoch);
-create index idx_blocks_graffiti_text on blocks using gin (graffiti_text gin_trgm_ops);
-create index idx_blocks_blockrootstatus on blocks (blockroot, status);
-create index idx_blocks_exec_block_number on blocks (exec_block_number);
-
-drop table if exists blocks_withdrawals;
-create table blocks_withdrawals
-(
-    block_slot         int not null,
-    block_root         bytea not null,
-    withdrawalindex    int not null,
-    validatorindex     int not null,
-    address            bytea not null,
-    amount             bigint not null, -- in GWei
-    primary key (block_slot, block_root, withdrawalindex)
-);
-
-create index idx_blocks_withdrawals_recipient on blocks_withdrawals (address);
-create index idx_blocks_withdrawals_validatorindex on blocks_withdrawals (validatorindex);
-
-drop table if exists blocks_bls_change;
-create table blocks_bls_change
-(
-    block_slot           int     not null,
-    block_root           bytea   not null,
-    validatorindex       int     not null,
-    signature            bytea   not null,
-    pubkey               bytea   not null,
-    address              bytea   not null,
-    primary key (block_slot, block_root, validatorindex)
-);
-create index idx_blocks_bls_change_pubkey on blocks_bls_change (pubkey);
-create index idx_blocks_bls_change_address on blocks_bls_change (address);
-
-drop table if exists blocks_transactions;
-create table blocks_transactions
-(
-    block_slot         int    not null,
-    block_index        int    not null,
-    block_root         bytea  not null default '',
-    raw                bytea  not null,
-    txhash             bytea  not null,
-    nonce              int    not null,
-    gas_price          bytea  not null,
-    gas_limit          bigint not null,
-    sender             bytea  not null,
-    recipient          bytea  not null,
-    amount             bytea  not null,
-    payload            bytea  not null,
-    max_priority_fee_per_gas  bigint,
-    max_fee_per_gas           bigint,
-    primary key (block_slot, block_index)
-);
-
-drop table if exists blocks_proposerslashings;
-create table blocks_proposerslashings
-(
-    block_slot         int    not null,
-    block_index        int    not null,
-    block_root         bytea  not null default '',
-    proposerindex      int    not null,
-    header1_slot       bigint not null,
-    header1_parentroot bytea  not null,
-    header1_stateroot  bytea  not null,
-    header1_bodyroot   bytea  not null,
-    header1_signature  bytea  not null,
-    header2_slot       bigint not null,
-    header2_parentroot bytea  not null,
-    header2_stateroot  bytea  not null,
-    header2_bodyroot   bytea  not null,
-    header2_signature  bytea  not null,
-    primary key (block_slot, block_index)
-);
-
-drop table if exists blocks_attesterslashings;
-create table blocks_attesterslashings
-(
-    block_slot                   int       not null,
-    block_index                  int       not null,
-    block_root                   bytea     not null default '',
-    attestation1_indices         integer[] not null,
-    attestation1_signature       bytea     not null,
-    attestation1_slot            bigint    not null,
-    attestation1_index           int       not null,
-    attestation1_beaconblockroot bytea     not null,
-    attestation1_source_epoch    int       not null,
-    attestation1_source_root     bytea     not null,
-    attestation1_target_epoch    int       not null,
-    attestation1_target_root     bytea     not null,
-    attestation2_indices         integer[] not null,
-    attestation2_signature       bytea     not null,
-    attestation2_slot            bigint    not null,
-    attestation2_index           int       not null,
-    attestation2_beaconblockroot bytea     not null,
-    attestation2_source_epoch    int       not null,
-    attestation2_source_root     bytea     not null,
-    attestation2_target_epoch    int       not null,
-    attestation2_target_root     bytea     not null,
-    primary key (block_slot, block_index)
-);
-
-drop table if exists blocks_attestations;
-create table blocks_attestations
-(
-    block_slot      int   not null,
-    block_index     int   not null,
-    block_root      bytea not null default '',
-    aggregationbits bytea not null,
-    validators      int[] not null,
-    signature       bytea not null,
-    slot            int   not null,
-    committeeindex  int   not null,
-    beaconblockroot bytea not null,
-    source_epoch    int   not null,
-    source_root     bytea not null,
-    target_epoch    int   not null,
-    target_root     bytea not null,
-    primary key (block_slot, block_index)
-);
-create index idx_blocks_attestations_beaconblockroot on blocks_attestations (beaconblockroot);
-create index idx_blocks_attestations_source_root on blocks_attestations (source_root);
-create index idx_blocks_attestations_target_root on blocks_attestations (target_root);
-
-drop table if exists blocks_deposits;
-create table blocks_deposits
-(
-    block_slot            int    not null,
-    block_index           int    not null,
-    block_root            bytea  not null default '',
-    proof                 bytea[],
-    publickey             bytea  not null,
-    withdrawalcredentials bytea  not null,
-    amount                bigint not null,
-    signature             bytea  not null,
-    valid_signature       bool  not null default true,
-    primary key (block_slot, block_index)
-);
-
-
-create index idx_blocks_deposits_publickey on blocks_deposits (publickey);
-
-
-drop table if exists blocks_voluntaryexits;
-create table blocks_voluntaryexits
-(
-    block_slot     int   not null,
-    block_index    int   not null,
-    block_root     bytea not null default '',
-    epoch          int   not null,
-    validatorindex int   not null,
-    signature      bytea not null,
-    primary key (block_slot, block_index)
-);
-
-drop table if exists network_liveness;
-create table network_liveness
-(
-    ts                     timestamp without time zone,
-    headepoch              int not null,
-    finalizedepoch         int not null,
-    justifiedepoch         int not null,
-    previousjustifiedepoch int not null,
-    primary key (ts)
-);
-
-drop table if exists graffitiwall;
-create table graffitiwall
-(
-    x         int  not null,
-    y         int  not null,
-    color     text not null,
-    slot      int  not null,
-    validator int  not null,
-    primary key (x, y)
-);
-
-drop table if exists eth1_deposits;
-create table eth1_deposits
-(
-    tx_hash                bytea                       not null,
-    tx_input               bytea                       not null,
-    tx_index               int                         not null,
-    block_number           int                         not null,
-    block_ts               timestamp without time zone not null,
-    from_address           bytea                       not null,
-    publickey              bytea                       not null,
-    withdrawal_credentials bytea                       not null,
-    amount                 bigint                      not null,
-    signature              bytea                       not null,
-    merkletree_index       bytea                       not null,
-    removed                bool                        not null,
-    valid_signature        bool                        not null,
-    primary key (tx_hash, merkletree_index)
-);
-create index idx_eth1_deposits on eth1_deposits (publickey);
-create index idx_eth1_deposits_from_address on eth1_deposits (from_address);
-
-drop table if exists eth1_deposits_aggregated;
-create table eth1_deposits_aggregated
-(
-    from_address         bytea  not null,
-    amount               bigint not null,
-    validcount           int    not null,
-    invalidcount         int    not null,
-    slashedcount         int    not null,
-    totalcount           int    not null,
-    activecount          int    not null,
-    pendingcount         int    not null,
-    voluntary_exit_count int    not null,
-    primary key (from_address)
-);
-
-drop table if exists users;
-create table users
-(
-    id                      serial                 not null unique,
-    password                character varying(256) not null,
-    email                   character varying(100) not null unique,
-    email_confirmed         bool                   not null default 'f',
-    email_confirmation_hash character varying(40) unique,
-    email_confirmation_ts   timestamp without time zone,
-    email_change_to_value   character varying(100),
-    password_reset_hash     character varying(40),
-    password_reset_ts       timestamp without time zone,
-    register_ts             timestamp without time zone,
-    api_key                 character varying(256) unique,
-    stripe_customer_id      character varying(256) unique,
-    user_group              varchar(10),
-    primary key (id, email)
-);
-
-drop table if exists users_datatable;
-create table users_datatable
-(
-    user_id        int                         not null,
-    key            character varying(256)      not null,
-    state          jsonb                       not null,
-    updated_at     timestamp without time zone not null default 'now()',
-    primary key (user_id, key) 
-);
-
-drop table if exists users_stripe_subscriptions;
-create table users_stripe_subscriptions
-(
-    subscription_id character varying(256) unique not null,
-    customer_id     character varying(256)        not null,
-    price_id        character varying(256)        not null,
-    active          bool not null default 'f',
-    payload         json                          not null,
-    purchase_group    character varying(30)         not null default 'api',
-    primary key (customer_id, subscription_id, price_id)
-);
-
-drop table if exists users_app_subscriptions;
-create table users_app_subscriptions
-(
-    id              serial                        not null,
-    user_id         int                           not null,
-    product_id      character varying(256)        not null,
-    price_micros    bigint                        not null,
-    currency        character varying(10)         not null,
-    created_at      timestamp without time zone   not null,
-    updated_at      timestamp without time zone   not null,
-    validate_remotely boolean not null default 't',
-    active          bool not null default 'f',
-    store           character varying(50)         not null,
-    expires_at      timestamp without time zone   not null,
-    reject_reason   character varying(50),
-    receipt         character varying(99999)       not null,
-    receipt_hash    character varying(1024)        not null unique,
-    subscription_id character varying(256)         default ''
-);
-create index idx_user_app_subscriptions on users_app_subscriptions (user_id);
-
-drop table if exists oauth_apps;
-create table oauth_apps
-(
-    id           serial                      not null,
-    owner_id     int                         not null,
-    redirect_uri character varying(100)      not null unique,
-    app_name     character varying(35)       not null,
-    active       bool                        not null default 't',
-    created_ts   timestamp without time zone not null,
-    primary key (id, redirect_uri)
-);
-
-drop table if exists oauth_codes;
-create table oauth_codes
-(
-    id         serial                      not null,
-    user_id    int                         not null,
-    code       character varying(64)       not null,
-    client_id  character varying(128)      not null,
-    consumed   bool                        not null default 'f',
-    app_id     int                         not null,
-    created_ts timestamp without time zone not null,
-    primary key (user_id, app_id, client_id)
-);
-
-drop table if exists users_devices;
-create table users_devices
-(
-    id                 serial                      not null,
-    user_id            int                         not null,
-    refresh_token      character varying(64)       not null,
-    device_name        character varying(20)       not null,
-    notification_token character varying(500),
-    notify_enabled     bool                        not null default 't',
-    active             bool                        not null default 't',
-    app_id             int                         not null,
-    created_ts         timestamp without time zone not null,
-    primary key (user_id, refresh_token)
-);
-
-drop table if exists users_clients;
-create table users_clients
-(
-    id             serial                      not null,
-    user_id        int                         not null,
-    client         character varying(12)       not null,
-    client_version int                         not null,
-    notify_enabled bool                        not null default 't',
-    created_ts     timestamp without time zone not null,
-    primary key (user_id, client)
-);
-
-
-drop table if exists users_subscriptions;
-create table users_subscriptions
-(
-    id                serial                      not null,
-    user_id           int                         not null,
-    event_name        character varying(100)      not null,
-    event_filter      text                        not null default '',
-    event_threshold   real                        default 0,
-    last_sent_ts      timestamp without time zone,
-    last_sent_epoch   int,
-    created_ts        timestamp without time zone not null,
-    created_epoch     int                         not null,
-    unsubscribe_hash  bytea,
-    internal_state    varchar,
-    primary key (user_id, event_name, event_filter)
-);
-create index idx_users_subscriptions_unsubscribe_hash on users_subscriptions (unsubscribe_hash);
-
-CREATE TYPE notification_channels as ENUM ('webhook_discord', 'webhook', 'email', 'push');
-
-drop table if exists users_notification_channels;
-create table users_notification_channels
-(
-    user_id int                   not null,
-    channel notification_channels not null,
-    active  boolean default 't'   not null,
-    primary key (user_id, channel)
-);
-
-drop table if exists notification_queue;
-create table notification_queue(
-    id                  serial not null,
-    created             timestamp without time zone not null,
-    sent                timestamp without time zone, -- record when the transaction was dispatched
-    -- delivered           timestamp without time zone,  --record when the transaction arrived
-    channel             notification_channels not null,
-    content             jsonb not null
-);
-
--- deprecated
--- drop table if exists users_notifications;
--- create table users_notifications
--- (
---     id              serial                      not null,
---     user_id         int                         not null,
---     event_name      character varying(100)      not null,
---     event_filter    text                        not null default '',
---     sent_ts         timestamp without time zone,
---     epoch           int                         not null,
---     primary key(user_id, event_name, event_filter, sent_ts)
--- );
-
-drop table if exists users_validators_tags;
-create table users_validators_tags
-(
-    user_id             int                    not null,
-    validator_publickey bytea                  not null,
-    tag                 character varying(100) not null,
-    primary key (user_id, validator_publickey, tag)
-);
-
-drop table if exists validator_tags;
-create table validator_tags
-(
-    publickey bytea                  not null,
-    tag       character varying(100) not null,
-    primary key (publickey, tag)
-);
-
-drop table if exists users_webhooks;
-create table users_webhooks
-(   
-    id                serial                  not null,
-    user_id           int                     not null,
-    -- label             varchar(200)            not null,
-    url               character varying(1024) not null,
-    retries           int                     not null default 0, -- a backoff parameter that indicates if the requests was successful and when to retry it again
-    request           jsonb,
-    response          jsonb,
-    last_sent         timestamp without time zone,
-    event_names       text[]                  not null,
-    destination       character varying(200), -- discord for example could be a destination and the request would be adapted
-    primary key (user_id, id)
-);
-
-drop table if exists mails_sent;
-create table mails_sent
-(
-    email character varying(100)      not null,
-    ts    timestamp without time zone not null,
-    cnt   int                         not null,
-    primary key (email, ts)
-);
-
-drop table if exists chart_images;
-create table chart_images
-(
-    name  varchar(100) not null primary key,
-    image bytea        not null
-);
-
-drop table if exists api_statistics;
-create table api_statistics
-(
-    ts     timestamp without time zone not null,
-    apikey varchar(64)                 not null,
-    call   varchar(64)                 not null,
-    count  int                         not null default 0,
-    primary key (ts, apikey, call)
-);
-
-drop table if exists stake_pools_stats;
-create table stake_pools_stats
-(
-    id serial not null,
-    address text not null,
-    deposit int,
-    name text not null,
-    category text,
-    PRIMARY KEY(id, address, deposit, name)
-);
-
-drop table if exists price;
-create table price
-(
-    ts     timestamp without time zone not null,
-    eur numeric(20,10)                not null,
-    usd numeric(20,10)                not null,
-    rub numeric(20,10)                not null,
-    cny numeric(20,10)                not null,
-    cad numeric(20,10)                not null,
-    jpy numeric(20,10)                not null,
-    gbp numeric(20,10)                not null,
-    aud numeric(20,10)                not null,
-    primary key (ts)
-);
-
-drop table if exists stats_sharing;
-CREATE TABLE stats_sharing (
-                               id 				bigserial 			primary key,
-                               ts 				timestamp  			not null,
-                               share           bool             not null,
-                               user_id 		 	bigint	 	 		not null,
-                               foreign key(user_id) references users(id)
-);
-
-drop table if exists finality_checkpoints;
-create table finality_checkpoints (
-                                      head_epoch               int   not null,
-                                      head_root                bytea not null,
-                                      current_justified_epoch  int   not null,
-                                      current_justified_root   bytea not null,
-                                      previous_justified_epoch int   not null,
-                                      previous_justified_root  bytea not null,
-                                      finalized_epoch          int   not null,
-                                      finalized_root           bytea not null,
-                                      primary key (head_epoch, head_root)
-);
-
-drop table if exists rocketpool_export_status;
-create table rocketpool_export_status
-(
-    rocketpool_storage_address bytea not null,
-    eth1_block int not null,
-    primary key (rocketpool_storage_address)
-);
-
-drop table if exists rocketpool_minipools;
-create table rocketpool_minipools
-(
-    rocketpool_storage_address bytea not null,
-
-    address bytea not null,
-    pubkey bytea not null,
-    node_address bytea not null,
-    node_fee float not null,
-    deposit_type varchar(20) not null, -- none (invalid), full, half, empty .. see: https://github.com/rocket-pool/rocketpool/blob/683addf4ac/contracts/types/MinipoolDeposit.sol
-    status text not null, -- Initialized, Prelaunch, Staking, Withdrawable, Dissolved .. see: https://github.com/rocket-pool/rocketpool/blob/683addf4ac/contracts/types/MinipoolStatus.sol
-    status_time timestamp without time zone,
-    penalty_count numeric not null default 0,
-    node_deposit_balance numeric,
-    node_refund_balance numeric,
-    user_deposit_balance numeric,
-    is_vacant boolean default false,
-    version int default 0,
-    primary key(rocketpool_storage_address, address)
-);
-
-drop table if exists rocketpool_nodes;
-create table rocketpool_nodes
-(
-    rocketpool_storage_address bytea not null,
-
-    address bytea not null,
-    timezone_location varchar(200) not null,
-    rpl_stake numeric not null,
-    min_rpl_stake numeric not null,
-    max_rpl_stake numeric not null,
-    rpl_cumulative_rewards numeric not null default 0,
-    smoothing_pool_opted_in boolean not null default false,
-    claimed_smoothing_pool  numeric not null,
-    unclaimed_smoothing_pool  numeric not null,
-    unclaimed_rpl_rewards numeric not null,
-    effective_rpl_stake numeric not null,
-    deposit_credit numeric,
-
-    primary key(rocketpool_storage_address, address)
-);
-
-drop table if exists rocketpool_dao_proposals;
-create table rocketpool_dao_proposals
-(
-    rocketpool_storage_address bytea not null,
-
-    id int not null,
-    dao text not null,
-    proposer_address bytea not null,
-    message text not null,
-    created_time timestamp without time zone,
-    start_time timestamp without time zone,
-    end_time timestamp without time zone,
-    expiry_time timestamp without time zone,
-    votes_required float not null,
-    votes_for float not null,
-    votes_against float not null,
-    member_voted boolean not null,
-    member_supported boolean not null,
-    is_cancelled boolean not null,
-    is_executed boolean not null,
-    payload bytea not null,
-    state text not null,
-
-    primary key(rocketpool_storage_address, id)
-);
-
-drop table if exists rocketpool_dao_proposals_member_votes;
-create table rocketpool_dao_proposals_member_votes
-(
-    rocketpool_storage_address bytea not null,
-
-    id int not null,
-    member_address bytea not null,
-    voted       boolean not null,
-    supported   boolean not null,
-
-    primary key(rocketpool_storage_address, id, member_address)
-);
-
-drop table if exists rocketpool_dao_members;
-create table rocketpool_dao_members
-(
-    rocketpool_storage_address bytea not null,
-
-    address bytea not null,
-    id varchar(200) not null,
-    url varchar(200) not null,
-    joined_time timestamp without time zone,
-    last_proposal_time timestamp without time zone,
-    rpl_bond_amount numeric not null,
-    unbonded_validator_count int not null,
-
-    primary key(rocketpool_storage_address, address)
-);
-
-drop table if exists rocketpool_network_stats;
-create table rocketpool_network_stats
-(
-    id 				    bigserial,
-    ts timestamp without time zone not null,
-    rpl_price  numeric not null,
-    claim_interval_time interval not null,
-    claim_interval_time_start timestamp without time zone not null,
-    current_node_fee float not null,
-    current_node_demand numeric not null,
-    reth_supply numeric not null,
-    effective_rpl_staked numeric not null,
-    node_operator_rewards numeric not null,
-    reth_exchange_rate float not null,
-    node_count numeric not null,
-    minipool_count numeric not null,
-    odao_member_count numeric not null,
-    total_eth_staking numeric not null,
-    total_eth_balance numeric not null,
-
-    primary key(id)
-);
-
-drop table if exists rocketpool_reward_tree;
-create table rocketpool_reward_tree
-(
-    id 				    bigserial,
-    data                jsonb not null,
-
-    primary key(id)
-);
-
-drop table if exists eth_store_stats;
-create table eth_store_stats
-(
-    day			                int not null,
-    validator			        int not null,
-    effective_balances_sum_wei numeric not null,
-    start_balances_sum_wei numeric not null,
-    end_balances_sum_wei numeric not null,
-    deposits_sum_wei numeric not null,
-    tx_fees_sum_wei numeric not null,
-    consensus_rewards_sum_wei numeric not null,
-    total_rewards_wei numeric not null,
-    apr float   not null,
-    
-    primary key(day, validator)
-);
-create index idx_eth_store_validator on eth_store_stats (validator, day desc);
-
-drop table if exists historical_pool_performance;
-create table historical_pool_performance
-(
-    day                int not null,
-    pool        varchar(40) not null,
-    validators int not null,
-    effective_balances_sum_wei numeric not null,
-    start_balances_sum_wei numeric not null,
-    end_balances_sum_wei numeric not null,
-    deposits_sum_wei numeric not null,
-    tx_fees_sum_wei numeric not null,
-    consensus_rewards_sum_wei numeric not null,
-    total_rewards_wei numeric not null,
-    apr float   not null,
-    
-    primary key(day, pool)
-);
-create index idx_historical_pool_performance_pool on historical_pool_performance (pool, day desc);
-
---- need to drop all three tabls in the correct order to correctly resolve foreign key constrains
-DROP TABLE IF EXISTS relays;
-DROP TABLE IF EXISTS blocks_tags;
-DROP TABLE IF EXISTS tags;
-
-CREATE TABLE tags (
-	id varchar NOT NULL,
-	metadata jsonb NOT NULL,
-	PRIMARY KEY (id)
-);
-
-CREATE TABLE blocks_tags (
-	slot int4 NOT NULL,
-	blockroot bytea NOT NULL,
-	tag_id varchar NOT NULL,
-	PRIMARY KEY (slot, blockroot, tag_id),
-	FOREIGN KEY (slot, blockroot) REFERENCES blocks(slot, blockroot),
-	FOREIGN KEY (tag_id) REFERENCES tags(id)
-);
-CREATE INDEX idx_blocks_tags_slot ON blocks_tags (slot);
-CREATE INDEX idx_blocks_tags_tag_id ON blocks_tags (tag_id);
-
-CREATE TABLE relays (
-	tag_id varchar NOT NULL,
-	endpoint varchar NOT NULL,
-	public_link varchar NULL,
-	is_censoring bool NULL,
-	is_ethical bool NULL,
-    export_failure_count INT NOT NULL DEFAULT 0,
-    last_export_try_ts timestamp without time zone NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
-    last_export_success_ts timestamp without time zone NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
-	PRIMARY KEY (tag_id, endpoint),
-	FOREIGN KEY (tag_id) REFERENCES tags(id)
-);
-
-
-DROP TABLE IF EXISTS relays_blocks;
-
-CREATE TABLE relays_blocks (
-	tag_id varchar NOT NULL,
-	block_slot int4 NOT NULL,
-	block_root bytea NOT NULL,
-	exec_block_hash bytea NOT NULL,
-	builder_pubkey bytea NOT NULL,
-	proposer_pubkey bytea NOT NULL,
-	proposer_fee_recipient bytea NOT NULL,
-	value numeric NOT NULL,
-	PRIMARY KEY (block_slot, block_root, tag_id)
-);
-CREATE INDEX relays_blocks_block_root_idx ON public.relays_blocks (block_root);
-CREATE INDEX relays_blocks_builder_pubkey_idx ON public.relays_blocks (builder_pubkey);
-CREATE INDEX relays_blocks_exec_block_hash_idx ON public.relays_blocks (exec_block_hash);
-CREATE INDEX relays_blocks_value_idx ON public.relays_blocks (value);
-
-
-DROP TABLE IF EXISTS validator_queue_deposits;
-CREATE TABLE validator_queue_deposits (
-	validatorindex int4 NOT NULL,
-	block_slot int4 NULL,
-	block_index int4 NULL,
-	CONSTRAINT validator_queue_deposits_fk FOREIGN KEY (block_slot,block_index) REFERENCES blocks_deposits(block_slot,block_index),
-	CONSTRAINT validator_queue_deposits_fk_validators FOREIGN KEY (validatorindex) REFERENCES validators(validatorindex)
-);
-CREATE INDEX idx_validator_queue_deposits_block_slot ON validator_queue_deposits USING btree (block_slot);
-CREATE UNIQUE INDEX idx_validator_queue_deposits_validatorindex ON validator_queue_deposits USING btree (validatorindex);
-
-drop table if exists service_status;
-create table service_status (name text not null, executable_name text not null, version text not null, pid int not null, status text not null, metadata jsonb, last_update timestamp not null, primary key (name, executable_name, version, pid));
-
-DROP TABLE IF EXISTS chart_series;
-CREATE TABLE chart_series (
-    "time" timestamp without time zone NOT NULL,
-    indicator character varying(50) NOT NULL,
-    value numeric NOT NULL,
-    primary key ("time", indicator)
-);
-
-drop table if exists chart_series_status;
-create table chart_series_status
-(
-    day    int     not null,
-    status boolean not null,
-    primary key (day)
-);
-
-
-drop table if exists global_notifications;
-create table global_notifications
-(
-    target varchar(20) not null primary key, 
-    content text not null,
-    enabled bool not null
-);
-
-drop table if exists node_jobs;
-create table node_jobs
-(
-    id varchar(40),
-    type varchar(40) not null, -- can be one of: BLS_TO_EXECUTION_CHANGES, VOLUNTARY_EXITS
-    status varchar(40) not null, -- can be one of: PENDING, SUBMITTED_TO_NODE, COMPLETED
-    created_time timestamp without time zone not null default now(),
-    submitted_to_node_time timestamp without time zone,
-    completed_time timestamp without time zone,
-    data jsonb not null,
-    primary key (id)
-);
-
-create table if not exists ad_configurations
-(
-    id varchar(40), --uuid
-    template_id varchar(100) not null, --relative path to the main html file of the page
-    jquery_selector varchar(40) not null, --selector with the html
-    insert_mode varchar(10) not null, -- can be before, after, replace or insert
-    refresh_interval int not null, -- defines how often the ad is refreshed in seconds, 0 = don't refresh
-    enabled bool not null, -- defines if the ad is active
-    for_all_users bool not null, -- if set the ad will be shown to all users even if they have NoAds
-    banner_id int, -- an ad must either have a banner_id OR an html_content
-    html_content text,
-    primary key (id)
-);
-create index idx_ad_configuration_for_template on ad_configurations (template_id, enabled);
-
-create table if not exists  explorer_configurations
-(
-    category varchar(40), -- the category is used to group settings together
-    key varchar(40), -- identifies the config
-    value text, -- holds the value of the config
-    data_type varchar(40), -- defines to which data type the value is mapped
-    primary key (category, key)
-);
-create index idx_explorer_configurations on explorer_configurations (category, key);
+This TABLE IS used to store the current state (latest exported epoch) of ALL validators
+It also acts AS a lookup-table to store the index-pubkey association
+IN ORDER to save db space we only use the UNIQUE validator INDEX IN ALL other tables
+IN the future it IS better to REPLACE this TABLE WITH an IN memory cache (redis)
+ */
+CREATE TABLE IF NOT EXISTS
+    validators (
+        validatorindex INT NOT NULL,
+        pubkey bytea NOT NULL,
+        pubkeyhex TEXT NOT NULL DEFAULT '',
+        withdrawableepoch BIGINT NOT NULL,
+        withdrawalcredentials bytea NOT NULL,
+        balance BIGINT NOT NULL,
+        balanceactivation BIGINT,
+        effectivebalance BIGINT NOT NULL,
+        slashed bool NOT NULL,
+        activationeligibilityepoch BIGINT NOT NULL,
+        activationepoch BIGINT NOT NULL,
+        exitepoch BIGINT NOT NULL,
+        lastattestationslot BIGINT,
+        status VARCHAR(20) NOT NULL DEFAULT '',
+        PRIMARY KEY (validatorindex)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_validators_pubkey ON validators (pubkey);
+
+CREATE INDEX IF NOT EXISTS idx_validators_pubkeyhex ON validators (pubkeyhex);
+
+CREATE INDEX IF NOT EXISTS idx_validators_pubkeyhex_pattern_pos ON validators (pubkeyhex varchar_pattern_ops);
+
+CREATE INDEX IF NOT EXISTS idx_validators_status ON validators (status);
+
+CREATE INDEX IF NOT EXISTS idx_validators_balanceactivation ON validators (balanceactivation);
+
+CREATE INDEX IF NOT EXISTS idx_validators_activationepoch ON validators (activationepoch);
+
+CREATE INDEX IF NOT EXISTS validators_is_offline_vali_idx ON validators (validatorindex, lastattestationslot, pubkey);
+
+CREATE INDEX IF NOT EXISTS idx_validators_withdrawalcredentials ON validators (withdrawalcredentials, validatorindex);
+
+CREATE TABLE IF NOT EXISTS
+    validator_pool (
+        publickey bytea NOT NULL,
+        pool VARCHAR(40),
+        PRIMARY KEY (publickey)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    validator_names (
+        publickey bytea NOT NULL,
+        NAME VARCHAR(40),
+        PRIMARY KEY (publickey)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_validator_names_publickey ON validator_names (publickey);
+
+CREATE INDEX IF NOT EXISTS idx_validator_names_name ON validator_names (NAME);
+
+CREATE TABLE IF NOT EXISTS
+    validator_set (
+        epoch INT NOT NULL,
+        validatorindex INT NOT NULL,
+        withdrawableepoch BIGINT NOT NULL,
+        withdrawalcredentials bytea NOT NULL,
+        effectivebalance BIGINT NOT NULL,
+        slashed bool NOT NULL,
+        activationeligibilityepoch BIGINT NOT NULL,
+        activationepoch BIGINT NOT NULL,
+        exitepoch BIGINT NOT NULL,
+        PRIMARY KEY (validatorindex, epoch)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    validator_performance (
+        validatorindex INT NOT NULL,
+        balance BIGINT NOT NULL,
+        cl_performance_1d BIGINT NOT NULL,
+        cl_performance_7d BIGINT NOT NULL,
+        cl_performance_31d BIGINT NOT NULL,
+        cl_performance_365d BIGINT NOT NULL,
+        cl_performance_total BIGINT NOT NULL,
+        el_performance_1d BIGINT NOT NULL,
+        el_performance_7d BIGINT NOT NULL,
+        el_performance_31d BIGINT NOT NULL,
+        el_performance_365d BIGINT NOT NULL,
+        el_performance_total BIGINT NOT NULL,
+        mev_performance_1d BIGINT NOT NULL,
+        mev_performance_7d BIGINT NOT NULL,
+        mev_performance_31d BIGINT NOT NULL,
+        mev_performance_365d BIGINT NOT NULL,
+        mev_performance_total BIGINT NOT NULL,
+        rank7d INT NOT NULL,
+        PRIMARY KEY (validatorindex)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_validator_performance_balance ON validator_performance (balance);
+
+CREATE INDEX IF NOT EXISTS idx_validator_performance_performance1d ON validator_performance (performance1d);
+
+CREATE INDEX IF NOT EXISTS idx_validator_performance_performance7d ON validator_performance (performance7d);
+
+CREATE INDEX IF NOT EXISTS idx_validator_performance_performance31d ON validator_performance (performance31d);
+
+CREATE INDEX IF NOT EXISTS idx_validator_performance_performance365d ON validator_performance (performance365d);
+
+CREATE INDEX IF NOT EXISTS idx_validator_performance_rank7d ON validator_performance (rank7d);
+
+CREATE TABLE IF NOT EXISTS
+    proposal_assignments (
+        epoch INT NOT NULL,
+        validatorindex INT NOT NULL,
+        proposerslot INT NOT NULL,
+        status INT NOT NULL,
+        /* Can be 0 = scheduled, 1 executed, 2 missed */
+        PRIMARY KEY (epoch, validatorindex, proposerslot)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_proposal_assignments_epoch ON proposal_assignments (epoch);
+
+CREATE TABLE IF NOT EXISTS
+    sync_committees (
+        period INT NOT NULL,
+        validatorindex INT NOT NULL,
+        committeeindex INT NOT NULL,
+        PRIMARY KEY (period, validatorindex, committeeindex)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    sync_committees_count_per_validator (
+        period INT NOT NULL UNIQUE,
+        count_so_far float8 NOT NULL,
+        PRIMARY KEY (period)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    validator_balances_recent (
+        epoch INT NOT NULL,
+        validatorindex INT NOT NULL,
+        balance BIGINT NOT NULL,
+        PRIMARY KEY (epoch, validatorindex)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_validator_balances_recent_epoch ON validator_balances_recent (epoch);
+
+CREATE INDEX IF NOT EXISTS idx_validator_balances_recent_validatorindex ON validator_balances_recent (validatorindex);
+
+CREATE INDEX IF NOT EXISTS idx_validator_balances_recent_balance ON validator_balances_recent (balance);
+
+CREATE TABLE IF NOT EXISTS
+    validator_stats (
+        validatorindex INT NOT NULL,
+        DAY INT NOT NULL,
+        start_balance BIGINT,
+        end_balance BIGINT,
+        min_balance BIGINT,
+        max_balance BIGINT,
+        start_effective_balance BIGINT,
+        end_effective_balance BIGINT,
+        min_effective_balance BIGINT,
+        max_effective_balance BIGINT,
+        missed_attestations INT,
+        orphaned_attestations INT,
+        participated_sync INT,
+        missed_sync INT,
+        orphaned_sync INT,
+        proposed_blocks INT,
+        missed_blocks INT,
+        orphaned_blocks INT,
+        attester_slashings INT,
+        proposer_slashings INT,
+        deposits INT,
+        deposits_amount BIGINT,
+        withdrawals INT,
+        withdrawals_amount BIGINT,
+        cl_rewards_gwei BIGINT,
+        cl_rewards_gwei_total BIGINT,
+        el_rewards_wei DECIMAL,
+        el_rewards_wei_total DECIMAL,
+        mev_rewards_wei DECIMAL,
+        mev_rewards_wei_total DECIMAL,
+        PRIMARY KEY (validatorindex, DAY)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_validator_stats_day ON validator_stats (DAY);
+
+CREATE TABLE IF NOT EXISTS
+    validator_stats_status (
+        DAY INT NOT NULL,
+        status BOOLEAN NOT NULL,
+        income_exported BOOLEAN NOT NULL DEFAULT FALSE,
+        PRIMARY KEY (DAY)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    validator_attestation_streaks (
+        validatorindex INT NOT NULL,
+        status INT NOT NULL,
+        START INT NOT NULL,
+        LENGTH INT NOT NULL,
+        longest BOOLEAN NOT NULL,
+        CURRENT BOOLEAN NOT NULL,
+        PRIMARY KEY (validatorindex, status, START)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_validator_attestation_streaks_validatorindex ON validator_attestation_streaks (validatorindex);
+
+CREATE INDEX IF NOT EXISTS idx_validator_attestation_streaks_status ON validator_attestation_streaks (status);
+
+CREATE INDEX IF NOT EXISTS idx_validator_attestation_streaks_length ON validator_attestation_streaks (LENGTH);
+
+CREATE INDEX IF NOT EXISTS idx_validator_attestation_streaks_start ON validator_attestation_streaks (START);
+
+CREATE TABLE IF NOT EXISTS
+    queue (
+        ts TIMESTAMP WITHOUT TIME ZONE,
+        entering_validators_count INT NOT NULL,
+        exiting_validators_count INT NOT NULL,
+        PRIMARY KEY (ts)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    validatorqueue_activation (
+        INDEX INT NOT NULL,
+        publickey bytea NOT NULL,
+        PRIMARY KEY (INDEX, publickey)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    validatorqueue_exit (
+        INDEX INT NOT NULL,
+        publickey bytea NOT NULL,
+        PRIMARY KEY (INDEX, publickey)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    epochs_notified (
+        epoch INT NOT NULL PRIMARY KEY,
+        sentOn TIMESTAMP NOT NULL
+    );
+
+CREATE TABLE IF NOT EXISTS
+    epochs (
+        epoch INT NOT NULL,
+        blockscount INT NOT NULL DEFAULT 0,
+        proposerslashingscount INT NOT NULL,
+        attesterslashingscount INT NOT NULL,
+        attestationscount INT NOT NULL,
+        depositscount INT NOT NULL,
+        withdrawalcount INT NOT NULL DEFAULT 0,
+        voluntaryexitscount INT NOT NULL,
+        validatorscount INT NOT NULL,
+        averagevalidatorbalance BIGINT NOT NULL,
+        totalvalidatorbalance BIGINT NOT NULL,
+        finalized bool,
+        eligibleether BIGINT,
+        globalparticipationrate FLOAT,
+        votedether BIGINT,
+        rewards_exported bool NOT NULL DEFAULT FALSE,
+        PRIMARY KEY (epoch)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    blocks (
+        epoch INT NOT NULL,
+        slot INT NOT NULL,
+        blockroot bytea NOT NULL,
+        parentroot bytea NOT NULL,
+        stateroot bytea NOT NULL,
+        signature bytea NOT NULL,
+        randaoreveal bytea,
+        graffiti bytea,
+        graffiti_text TEXT NULL,
+        eth1data_depositroot bytea,
+        eth1data_depositcount INT NOT NULL,
+        eth1data_blockhash bytea,
+        syncaggregate_bits bytea,
+        syncaggregate_signature bytea,
+        syncaggregate_participation FLOAT NOT NULL DEFAULT 0,
+        proposerslashingscount INT NOT NULL,
+        attesterslashingscount INT NOT NULL,
+        attestationscount INT NOT NULL,
+        depositscount INT NOT NULL,
+        withdrawalcount INT NOT NULL DEFAULT 0,
+        voluntaryexitscount INT NOT NULL,
+        proposer INT NOT NULL,
+        status TEXT NOT NULL,
+        /* Can be 0 = scheduled, 1 proposed, 2 missed, 3 orphaned */
+        -- https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockV2
+        -- https://github.com/ethereum/consensus-specs/blob/v1.1.9/specs/bellatrix/beacon-chain.md#executionpayload
+        exec_parent_hash bytea,
+        exec_fee_recipient bytea,
+        exec_state_root bytea,
+        exec_receipts_root bytea,
+        exec_logs_bloom bytea,
+        exec_random bytea,
+        exec_block_number INT,
+        exec_gas_limit INT,
+        exec_gas_used INT,
+        exec_timestamp INT,
+        exec_extra_data bytea,
+        exec_base_fee_per_gas BIGINT,
+        exec_block_hash bytea,
+        exec_transactions_count INT NOT NULL DEFAULT 0,
+        PRIMARY KEY (slot, blockroot)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_blocks_proposer ON blocks (proposer);
+
+CREATE INDEX IF NOT EXISTS idx_blocks_epoch ON blocks (epoch);
+
+CREATE INDEX IF NOT EXISTS idx_blocks_graffiti_text ON blocks USING gin (graffiti_text gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_blocks_blockrootstatus ON blocks (blockroot, status);
+
+CREATE INDEX IF NOT EXISTS idx_blocks_exec_block_number ON blocks (exec_block_number);
+
+CREATE TABLE IF NOT EXISTS
+    blocks_withdrawals (
+        block_slot INT NOT NULL,
+        block_root bytea NOT NULL,
+        withdrawalindex INT NOT NULL,
+        validatorindex INT NOT NULL,
+        address bytea NOT NULL,
+        amount BIGINT NOT NULL,
+        -- in GWei
+        PRIMARY KEY (block_slot, block_root, withdrawalindex)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_blocks_withdrawals_recipient ON blocks_withdrawals (address);
+
+CREATE INDEX IF NOT EXISTS idx_blocks_withdrawals_validatorindex ON blocks_withdrawals (validatorindex);
+
+CREATE TABLE IF NOT EXISTS
+    blocks_bls_change (
+        block_slot INT NOT NULL,
+        block_root bytea NOT NULL,
+        validatorindex INT NOT NULL,
+        signature bytea NOT NULL,
+        pubkey bytea NOT NULL,
+        address bytea NOT NULL,
+        PRIMARY KEY (block_slot, block_root, validatorindex)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_blocks_bls_change_pubkey ON blocks_bls_change (pubkey);
+
+CREATE INDEX IF NOT EXISTS idx_blocks_bls_change_address ON blocks_bls_change (address);
+
+CREATE TABLE IF NOT EXISTS
+    blocks_transactions (
+        block_slot INT NOT NULL,
+        block_index INT NOT NULL,
+        block_root bytea NOT NULL DEFAULT '',
+        raw bytea NOT NULL,
+        txhash bytea NOT NULL,
+        nonce INT NOT NULL,
+        gas_price bytea NOT NULL,
+        gas_limit BIGINT NOT NULL,
+        sender bytea NOT NULL,
+        recipient bytea NOT NULL,
+        amount bytea NOT NULL,
+        payload bytea NOT NULL,
+        max_priority_fee_per_gas BIGINT,
+        max_fee_per_gas BIGINT,
+        PRIMARY KEY (block_slot, block_index)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    blocks_proposerslashings (
+        block_slot INT NOT NULL,
+        block_index INT NOT NULL,
+        block_root bytea NOT NULL DEFAULT '',
+        proposerindex INT NOT NULL,
+        header1_slot BIGINT NOT NULL,
+        header1_parentroot bytea NOT NULL,
+        header1_stateroot bytea NOT NULL,
+        header1_bodyroot bytea NOT NULL,
+        header1_signature bytea NOT NULL,
+        header2_slot BIGINT NOT NULL,
+        header2_parentroot bytea NOT NULL,
+        header2_stateroot bytea NOT NULL,
+        header2_bodyroot bytea NOT NULL,
+        header2_signature bytea NOT NULL,
+        PRIMARY KEY (block_slot, block_index)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    blocks_attesterslashings (
+        block_slot INT NOT NULL,
+        block_index INT NOT NULL,
+        block_root bytea NOT NULL DEFAULT '',
+        attestation1_indices INTEGER[] NOT NULL,
+        attestation1_signature bytea NOT NULL,
+        attestation1_slot BIGINT NOT NULL,
+        attestation1_index INT NOT NULL,
+        attestation1_beaconblockroot bytea NOT NULL,
+        attestation1_source_epoch INT NOT NULL,
+        attestation1_source_root bytea NOT NULL,
+        attestation1_target_epoch INT NOT NULL,
+        attestation1_target_root bytea NOT NULL,
+        attestation2_indices INTEGER[] NOT NULL,
+        attestation2_signature bytea NOT NULL,
+        attestation2_slot BIGINT NOT NULL,
+        attestation2_index INT NOT NULL,
+        attestation2_beaconblockroot bytea NOT NULL,
+        attestation2_source_epoch INT NOT NULL,
+        attestation2_source_root bytea NOT NULL,
+        attestation2_target_epoch INT NOT NULL,
+        attestation2_target_root bytea NOT NULL,
+        PRIMARY KEY (block_slot, block_index)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    blocks_attestations (
+        block_slot INT NOT NULL,
+        block_index INT NOT NULL,
+        block_root bytea NOT NULL DEFAULT '',
+        aggregationbits bytea NOT NULL,
+        validators INT[] NOT NULL,
+        signature bytea NOT NULL,
+        slot INT NOT NULL,
+        committeeindex INT NOT NULL,
+        beaconblockroot bytea NOT NULL,
+        source_epoch INT NOT NULL,
+        source_root bytea NOT NULL,
+        target_epoch INT NOT NULL,
+        target_root bytea NOT NULL,
+        PRIMARY KEY (block_slot, block_index)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_blocks_attestations_beaconblockroot ON blocks_attestations (beaconblockroot);
+
+CREATE INDEX IF NOT EXISTS idx_blocks_attestations_source_root ON blocks_attestations (source_root);
+
+CREATE INDEX IF NOT EXISTS idx_blocks_attestations_target_root ON blocks_attestations (target_root);
+
+CREATE TABLE IF NOT EXISTS
+    blocks_deposits (
+        block_slot INT NOT NULL,
+        block_index INT NOT NULL,
+        block_root bytea NOT NULL DEFAULT '',
+        proof bytea[],
+        publickey bytea NOT NULL,
+        withdrawalcredentials bytea NOT NULL,
+        amount BIGINT NOT NULL,
+        signature bytea NOT NULL,
+        valid_signature bool NOT NULL DEFAULT TRUE,
+        PRIMARY KEY (block_slot, block_index)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_blocks_deposits_publickey ON blocks_deposits (publickey);
+
+CREATE TABLE IF NOT EXISTS
+    blocks_voluntaryexits (
+        block_slot INT NOT NULL,
+        block_index INT NOT NULL,
+        block_root bytea NOT NULL DEFAULT '',
+        epoch INT NOT NULL,
+        validatorindex INT NOT NULL,
+        signature bytea NOT NULL,
+        PRIMARY KEY (block_slot, block_index)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    network_liveness (
+        ts TIMESTAMP WITHOUT TIME ZONE,
+        headepoch INT NOT NULL,
+        finalizedepoch INT NOT NULL,
+        justifiedepoch INT NOT NULL,
+        previousjustifiedepoch INT NOT NULL,
+        PRIMARY KEY (ts)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    graffitiwall (
+        x INT NOT NULL,
+        y INT NOT NULL,
+        color TEXT NOT NULL,
+        slot INT NOT NULL,
+        VALIDATOR INT NOT NULL,
+        PRIMARY KEY (x, y)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    eth1_deposits (
+        tx_hash bytea NOT NULL,
+        tx_input bytea NOT NULL,
+        tx_index INT NOT NULL,
+        block_number INT NOT NULL,
+        block_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        from_address bytea NOT NULL,
+        publickey bytea NOT NULL,
+        withdrawal_credentials bytea NOT NULL,
+        amount BIGINT NOT NULL,
+        signature bytea NOT NULL,
+        merkletree_index bytea NOT NULL,
+        removed bool NOT NULL,
+        valid_signature bool NOT NULL,
+        PRIMARY KEY (tx_hash, merkletree_index)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_eth1_deposits ON eth1_deposits (publickey);
+
+CREATE INDEX IF NOT EXISTS idx_eth1_deposits_from_address ON eth1_deposits (from_address);
+
+CREATE TABLE IF NOT EXISTS
+    eth1_deposits_aggregated (
+        from_address bytea NOT NULL,
+        amount BIGINT NOT NULL,
+        validcount INT NOT NULL,
+        invalidcount INT NOT NULL,
+        slashedcount INT NOT NULL,
+        totalcount INT NOT NULL,
+        activecount INT NOT NULL,
+        pendingcount INT NOT NULL,
+        voluntary_exit_count INT NOT NULL,
+        PRIMARY KEY (from_address)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    users (
+        id serial NOT NULL UNIQUE,
+        PASSWORD CHARACTER VARYING(256) NOT NULL,
+        email CHARACTER VARYING(100) NOT NULL UNIQUE,
+        email_confirmed bool NOT NULL DEFAULT 'f',
+        email_confirmation_hash CHARACTER VARYING(40) UNIQUE,
+        email_confirmation_ts TIMESTAMP WITHOUT TIME ZONE,
+        email_change_to_value CHARACTER VARYING(100),
+        password_reset_hash CHARACTER VARYING(40),
+        password_reset_ts TIMESTAMP WITHOUT TIME ZONE,
+        register_ts TIMESTAMP WITHOUT TIME ZONE,
+        api_key CHARACTER VARYING(256) UNIQUE,
+        stripe_customer_id CHARACTER VARYING(256) UNIQUE,
+        user_group VARCHAR(10),
+        PRIMARY KEY (id, email)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    users_datatable (
+        user_id INT NOT NULL,
+        KEY CHARACTER VARYING(256) NOT NULL,
+        state jsonb NOT NULL,
+        updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT 'now()',
+        PRIMARY KEY (user_id, KEY)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    users_stripe_subscriptions (
+        subscription_id CHARACTER VARYING(256) UNIQUE NOT NULL,
+        customer_id CHARACTER VARYING(256) NOT NULL,
+        price_id CHARACTER VARYING(256) NOT NULL,
+        active bool NOT NULL DEFAULT 'f',
+        payload json NOT NULL,
+        purchase_group CHARACTER VARYING(30) NOT NULL DEFAULT 'api',
+        PRIMARY KEY (customer_id, subscription_id, price_id)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    users_app_subscriptions (
+        id serial NOT NULL,
+        user_id INT NOT NULL,
+        product_id CHARACTER VARYING(256) NOT NULL,
+        price_micros BIGINT NOT NULL,
+        currency CHARACTER VARYING(10) NOT NULL,
+        created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        validate_remotely BOOLEAN NOT NULL DEFAULT 't',
+        active bool NOT NULL DEFAULT 'f',
+        store CHARACTER VARYING(50) NOT NULL,
+        expires_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        reject_reason CHARACTER VARYING(50),
+        receipt CHARACTER VARYING(99999) NOT NULL,
+        receipt_hash CHARACTER VARYING(1024) NOT NULL UNIQUE,
+        subscription_id CHARACTER VARYING(256) DEFAULT ''
+    );
+
+CREATE INDEX IF NOT EXISTS idx_user_app_subscriptions ON users_app_subscriptions (user_id);
+
+CREATE TABLE IF NOT EXISTS
+    oauth_apps (
+        id serial NOT NULL,
+        owner_id INT NOT NULL,
+        redirect_uri CHARACTER VARYING(100) NOT NULL UNIQUE,
+        app_name CHARACTER VARYING(35) NOT NULL,
+        active bool NOT NULL DEFAULT 't',
+        created_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        PRIMARY KEY (id, redirect_uri)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    oauth_codes (
+        id serial NOT NULL,
+        user_id INT NOT NULL,
+        code CHARACTER VARYING(64) NOT NULL,
+        client_id CHARACTER VARYING(128) NOT NULL,
+        consumed bool NOT NULL DEFAULT 'f',
+        app_id INT NOT NULL,
+        created_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        PRIMARY KEY (user_id, app_id, client_id)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    users_devices (
+        id serial NOT NULL,
+        user_id INT NOT NULL,
+        refresh_token CHARACTER VARYING(64) NOT NULL,
+        device_name CHARACTER VARYING(20) NOT NULL,
+        notification_token CHARACTER VARYING(500),
+        notify_enabled bool NOT NULL DEFAULT 't',
+        active bool NOT NULL DEFAULT 't',
+        app_id INT NOT NULL,
+        created_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        PRIMARY KEY (user_id, refresh_token)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    users_clients (
+        id serial NOT NULL,
+        user_id INT NOT NULL,
+        client CHARACTER VARYING(12) NOT NULL,
+        client_version INT NOT NULL,
+        notify_enabled bool NOT NULL DEFAULT 't',
+        created_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        PRIMARY KEY (user_id, client)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    users_subscriptions (
+        id serial NOT NULL,
+        user_id INT NOT NULL,
+        event_name CHARACTER VARYING(100) NOT NULL,
+        event_filter TEXT NOT NULL DEFAULT '',
+        event_threshold REAL DEFAULT 0,
+        last_sent_ts TIMESTAMP WITHOUT TIME ZONE,
+        last_sent_epoch INT,
+        created_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        created_epoch INT NOT NULL,
+        unsubscribe_hash bytea,
+        internal_state VARCHAR,
+        PRIMARY KEY (user_id, event_name, event_filter)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_users_subscriptions_unsubscribe_hash ON users_subscriptions (unsubscribe_hash);
+
+CREATE TYPE IF NOT EXISTS notification_channels AS ENUM('webhook_discord', 'webhook', 'email', 'push');
+
+CREATE TABLE IF NOT EXISTS
+    users_notification_channels (
+        user_id INT NOT NULL,
+        channel notification_channels NOT NULL,
+        active BOOLEAN DEFAULT 't' NOT NULL,
+        PRIMARY KEY (user_id, channel)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    notification_queue (
+        id serial NOT NULL,
+        created TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        sent TIMESTAMP WITHOUT TIME ZONE,
+        -- record when the transaction was dispatched
+        -- delivered           timestamp without time zone,  --record when the transaction arrived
+        channel notification_channels NOT NULL,
+        CONTENT jsonb NOT NULL
+    );
+
+CREATE TABLE IF NOT EXISTS
+    users_validators_tags (
+        user_id INT NOT NULL,
+        validator_publickey bytea NOT NULL,
+        tag CHARACTER VARYING(100) NOT NULL,
+        PRIMARY KEY (user_id, validator_publickey, tag)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    validator_tags (
+        publickey bytea NOT NULL,
+        tag CHARACTER VARYING(100) NOT NULL,
+        PRIMARY KEY (publickey, tag)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    users_webhooks (
+        id serial NOT NULL,
+        user_id INT NOT NULL,
+        -- label             varchar(200)            not null,
+        url CHARACTER VARYING(1024) NOT NULL,
+        retries INT NOT NULL DEFAULT 0,
+        -- a backoff parameter that indicates if the requests was successful and when to retry it again
+        request jsonb,
+        response jsonb,
+        last_sent TIMESTAMP WITHOUT TIME ZONE,
+        event_names TEXT[] NOT NULL,
+        destination CHARACTER VARYING(200),
+        -- discord for example could be a destination and the request would be adapted
+        PRIMARY KEY (user_id, id)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    mails_sent (
+        email CHARACTER VARYING(100) NOT NULL,
+        ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        cnt INT NOT NULL,
+        PRIMARY KEY (email, ts)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    chart_images (
+        NAME VARCHAR(100) NOT NULL PRIMARY KEY,
+        image bytea NOT NULL
+    );
+
+CREATE TABLE IF NOT EXISTS
+    api_statistics (
+        ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        apikey VARCHAR(64) NOT NULL,
+        CALL VARCHAR(64) NOT NULL,
+        COUNT INT NOT NULL DEFAULT 0,
+        PRIMARY KEY (
+            ts,
+            apikey,
+            CALL
+        )
+    );
+
+CREATE TABLE IF NOT EXISTS
+    stake_pools_stats (
+        id serial NOT NULL,
+        address TEXT NOT NULL,
+        deposit INT,
+        NAME TEXT NOT NULL,
+        category TEXT,
+        PRIMARY KEY (id, address, deposit, NAME)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    price (
+        ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        eur NUMERIC(20, 10) NOT NULL,
+        usd NUMERIC(20, 10) NOT NULL,
+        rub NUMERIC(20, 10) NOT NULL,
+        cny NUMERIC(20, 10) NOT NULL,
+        cad NUMERIC(20, 10) NOT NULL,
+        jpy NUMERIC(20, 10) NOT NULL,
+        gbp NUMERIC(20, 10) NOT NULL,
+        aud NUMERIC(20, 10) NOT NULL,
+        PRIMARY KEY (ts)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    stats_sharing (
+        id bigserial PRIMARY KEY,
+        ts TIMESTAMP NOT NULL,
+        SHARE bool NOT NULL,
+        user_id BIGINT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    finality_checkpoints (
+        head_epoch INT NOT NULL,
+        head_root bytea NOT NULL,
+        current_justified_epoch INT NOT NULL,
+        current_justified_root bytea NOT NULL,
+        previous_justified_epoch INT NOT NULL,
+        previous_justified_root bytea NOT NULL,
+        finalized_epoch INT NOT NULL,
+        finalized_root bytea NOT NULL,
+        PRIMARY KEY (head_epoch, head_root)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    rocketpool_export_status (
+        rocketpool_storage_address bytea NOT NULL,
+        eth1_block INT NOT NULL,
+        PRIMARY KEY (rocketpool_storage_address)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    rocketpool_minipools (
+        rocketpool_storage_address bytea NOT NULL,
+        address bytea NOT NULL,
+        pubkey bytea NOT NULL,
+        node_address bytea NOT NULL,
+        node_fee FLOAT NOT NULL,
+        deposit_type VARCHAR(20) NOT NULL,
+        -- none (invalid), full, half, empty .. see: https://github.com/rocket-pool/rocketpool/blob/683addf4ac/contracts/types/MinipoolDeposit.sol
+        status TEXT NOT NULL,
+        -- Initialized, Prelaunch, Staking, Withdrawable, Dissolved .. see: https://github.com/rocket-pool/rocketpool/blob/683addf4ac/contracts/types/MinipoolStatus.sol
+        status_time TIMESTAMP WITHOUT TIME ZONE,
+        penalty_count NUMERIC NOT NULL DEFAULT 0,
+        node_deposit_balance NUMERIC,
+        node_refund_balance NUMERIC,
+        user_deposit_balance NUMERIC,
+        is_vacant BOOLEAN DEFAULT FALSE,
+        VERSION INT DEFAULT 0,
+        PRIMARY KEY (rocketpool_storage_address, address)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    rocketpool_nodes (
+        rocketpool_storage_address bytea NOT NULL,
+        address bytea NOT NULL,
+        timezone_location VARCHAR(200) NOT NULL,
+        rpl_stake NUMERIC NOT NULL,
+        min_rpl_stake NUMERIC NOT NULL,
+        max_rpl_stake NUMERIC NOT NULL,
+        rpl_cumulative_rewards NUMERIC NOT NULL DEFAULT 0,
+        smoothing_pool_opted_in BOOLEAN NOT NULL DEFAULT FALSE,
+        claimed_smoothing_pool NUMERIC NOT NULL,
+        unclaimed_smoothing_pool NUMERIC NOT NULL,
+        unclaimed_rpl_rewards NUMERIC NOT NULL,
+        effective_rpl_stake NUMERIC NOT NULL,
+        deposit_credit NUMERIC,
+        PRIMARY KEY (rocketpool_storage_address, address)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    rocketpool_dao_proposals (
+        rocketpool_storage_address bytea NOT NULL,
+        id INT NOT NULL,
+        dao TEXT NOT NULL,
+        proposer_address bytea NOT NULL,
+        message TEXT NOT NULL,
+        created_time TIMESTAMP WITHOUT TIME ZONE,
+        start_time TIMESTAMP WITHOUT TIME ZONE,
+        end_time TIMESTAMP WITHOUT TIME ZONE,
+        expiry_time TIMESTAMP WITHOUT TIME ZONE,
+        votes_required FLOAT NOT NULL,
+        votes_for FLOAT NOT NULL,
+        votes_against FLOAT NOT NULL,
+        member_voted BOOLEAN NOT NULL,
+        member_supported BOOLEAN NOT NULL,
+        is_cancelled BOOLEAN NOT NULL,
+        is_executed BOOLEAN NOT NULL,
+        payload bytea NOT NULL,
+        state TEXT NOT NULL,
+        PRIMARY KEY (rocketpool_storage_address, id)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    rocketpool_dao_proposals_member_votes (
+        rocketpool_storage_address bytea NOT NULL,
+        id INT NOT NULL,
+        member_address bytea NOT NULL,
+        voted BOOLEAN NOT NULL,
+        supported BOOLEAN NOT NULL,
+        PRIMARY KEY (rocketpool_storage_address, id, member_address)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    rocketpool_dao_members (
+        rocketpool_storage_address bytea NOT NULL,
+        address bytea NOT NULL,
+        id VARCHAR(200) NOT NULL,
+        url VARCHAR(200) NOT NULL,
+        joined_time TIMESTAMP WITHOUT TIME ZONE,
+        last_proposal_time TIMESTAMP WITHOUT TIME ZONE,
+        rpl_bond_amount NUMERIC NOT NULL,
+        unbonded_validator_count INT NOT NULL,
+        PRIMARY KEY (rocketpool_storage_address, address)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    rocketpool_network_stats (
+        id bigserial,
+        ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        rpl_price NUMERIC NOT NULL,
+        claim_interval_time INTERVAL NOT NULL,
+        claim_interval_time_start TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        current_node_fee FLOAT NOT NULL,
+        current_node_demand NUMERIC NOT NULL,
+        reth_supply NUMERIC NOT NULL,
+        effective_rpl_staked NUMERIC NOT NULL,
+        node_operator_rewards NUMERIC NOT NULL,
+        reth_exchange_rate FLOAT NOT NULL,
+        node_count NUMERIC NOT NULL,
+        minipool_count NUMERIC NOT NULL,
+        odao_member_count NUMERIC NOT NULL,
+        total_eth_staking NUMERIC NOT NULL,
+        total_eth_balance NUMERIC NOT NULL,
+        PRIMARY KEY (id)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    rocketpool_reward_tree (
+        id bigserial,
+        DATA jsonb NOT NULL,
+        PRIMARY KEY (id)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    eth_store_stats (
+        DAY INT NOT NULL,
+        VALIDATOR INT NOT NULL,
+        effective_balances_sum_wei NUMERIC NOT NULL,
+        start_balances_sum_wei NUMERIC NOT NULL,
+        end_balances_sum_wei NUMERIC NOT NULL,
+        deposits_sum_wei NUMERIC NOT NULL,
+        tx_fees_sum_wei NUMERIC NOT NULL,
+        consensus_rewards_sum_wei NUMERIC NOT NULL,
+        total_rewards_wei NUMERIC NOT NULL,
+        apr FLOAT NOT NULL,
+        PRIMARY KEY (DAY, VALIDATOR)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_eth_store_validator ON eth_store_stats (VALIDATOR, DAY DESC);
+
+CREATE TABLE IF NOT EXISTS
+    historical_pool_performance (
+        DAY INT NOT NULL,
+        pool VARCHAR(40) NOT NULL,
+        validators INT NOT NULL,
+        effective_balances_sum_wei NUMERIC NOT NULL,
+        start_balances_sum_wei NUMERIC NOT NULL,
+        end_balances_sum_wei NUMERIC NOT NULL,
+        deposits_sum_wei NUMERIC NOT NULL,
+        tx_fees_sum_wei NUMERIC NOT NULL,
+        consensus_rewards_sum_wei NUMERIC NOT NULL,
+        total_rewards_wei NUMERIC NOT NULL,
+        apr FLOAT NOT NULL,
+        PRIMARY KEY (DAY, pool)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_historical_pool_performance_pool ON historical_pool_performance (pool, DAY DESC);
+
+CREATE TABLE IF NOT EXISTS
+    tags (
+        id VARCHAR NOT NULL,
+        metadata jsonb NOT NULL,
+        PRIMARY KEY (id)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    blocks_tags (
+        slot int4 NOT NULL,
+        blockroot bytea NOT NULL,
+        tag_id VARCHAR NOT NULL,
+        PRIMARY KEY (slot, blockroot, tag_id),
+        FOREIGN KEY (slot, blockroot) REFERENCES blocks (slot, blockroot),
+        FOREIGN KEY (tag_id) REFERENCES tags (id)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_blocks_tags_slot ON blocks_tags (slot);
+
+CREATE INDEX IF NOT EXISTS idx_blocks_tags_tag_id ON blocks_tags (tag_id);
+
+CREATE TABLE IF NOT EXISTS
+    relays (
+        tag_id VARCHAR NOT NULL,
+        endpoint VARCHAR NOT NULL,
+        public_link VARCHAR NULL,
+        is_censoring bool NULL,
+        is_ethical bool NULL,
+        export_failure_count INT NOT NULL DEFAULT 0,
+        last_export_try_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
+        last_export_success_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
+        PRIMARY KEY (tag_id, endpoint),
+        FOREIGN KEY (tag_id) REFERENCES tags (id)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    relays_blocks (
+        tag_id VARCHAR NOT NULL,
+        block_slot int4 NOT NULL,
+        block_root bytea NOT NULL,
+        exec_block_hash bytea NOT NULL,
+        builder_pubkey bytea NOT NULL,
+        proposer_pubkey bytea NOT NULL,
+        proposer_fee_recipient bytea NOT NULL,
+        VALUE NUMERIC NOT NULL,
+        PRIMARY KEY (block_slot, block_root, tag_id)
+    );
+
+CREATE INDEX IF NOT EXISTS relays_blocks_block_root_idx ON public.relays_blocks (block_root);
+
+CREATE INDEX IF NOT EXISTS relays_blocks_builder_pubkey_idx ON public.relays_blocks (builder_pubkey);
+
+CREATE INDEX IF NOT EXISTS relays_blocks_exec_block_hash_idx ON public.relays_blocks (exec_block_hash);
+
+CREATE INDEX IF NOT EXISTS relays_blocks_value_idx ON public.relays_blocks (VALUE);
+
+CREATE TABLE IF NOT EXISTS
+    validator_queue_deposits (
+        validatorindex int4 NOT NULL,
+        block_slot int4 NULL,
+        block_index int4 NULL,
+        CONSTRAINT validator_queue_deposits_fk FOREIGN KEY (block_slot, block_index) REFERENCES blocks_deposits (block_slot, block_index),
+        CONSTRAINT validator_queue_deposits_fk_validators FOREIGN KEY (validatorindex) REFERENCES validators (validatorindex)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_validator_queue_deposits_block_slot ON validator_queue_deposits USING btree (block_slot);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_validator_queue_deposits_validatorindex ON validator_queue_deposits USING btree (validatorindex);
+
+CREATE TABLE IF NOT EXISTS
+    service_status (
+        NAME TEXT NOT NULL,
+        executable_name TEXT NOT NULL,
+        VERSION TEXT NOT NULL,
+        pid INT NOT NULL,
+        status TEXT NOT NULL,
+        metadata jsonb,
+        last_update TIMESTAMP NOT NULL,
+        PRIMARY KEY (NAME, executable_name, VERSION, pid)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    chart_series (
+        "time" TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        indicator CHARACTER VARYING(50) NOT NULL,
+        VALUE NUMERIC NOT NULL,
+        PRIMARY KEY ("time", indicator)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    chart_series_status (
+        DAY INT NOT NULL,
+        status BOOLEAN NOT NULL,
+        PRIMARY KEY (DAY)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    global_notifications (
+        target VARCHAR(20) NOT NULL PRIMARY KEY,
+        CONTENT TEXT NOT NULL,
+        enabled bool NOT NULL
+    );
+
+CREATE TABLE IF NOT EXISTS
+    node_jobs (
+        id VARCHAR(40),
+        TYPE VARCHAR(40) NOT NULL,
+        -- can be one of: BLS_TO_EXECUTION_CHANGES, VOLUNTARY_EXITS
+        status VARCHAR(40) NOT NULL,
+        -- can be one of: PENDING, SUBMITTED_TO_NODE, COMPLETED
+        created_time TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
+        submitted_to_node_time TIMESTAMP WITHOUT TIME ZONE,
+        completed_time TIMESTAMP WITHOUT TIME ZONE,
+        DATA jsonb NOT NULL,
+        PRIMARY KEY (id)
+    );
+
+CREATE TABLE IF NOT EXISTS
+    ad_configurations (
+        id VARCHAR(40),
+        --uuid
+        template_id VARCHAR(100) NOT NULL,
+        --relative path to the main html file of the page
+        jquery_selector VARCHAR(40) NOT NULL,
+        --selector with the html
+        insert_mode VARCHAR(10) NOT NULL,
+        -- can be before, after, replace or insert
+        refresh_interval INT NOT NULL,
+        -- defines how often the ad is refreshed in seconds, 0 = don't refresh
+        enabled bool NOT NULL,
+        -- defines if the ad is active
+        for_all_users bool NOT NULL,
+        -- if set the ad will be shown to all users even if they have NoAds
+        banner_id INT,
+        -- an ad must either have a banner_id OR an html_content
+        html_content TEXT,
+        PRIMARY KEY (id)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_ad_configuration_for_template ON ad_configurations (template_id, enabled);
+
+CREATE TABLE IF NOT EXISTS
+    explorer_configurations (
+        category VARCHAR(40),
+        -- the category is used to group settings together
+        KEY VARCHAR(40),
+        -- identifies the config
+        VALUE TEXT,
+        -- holds the value of the config
+        data_type VARCHAR(40),
+        -- defines to which data type the value is mapped
+        PRIMARY KEY (category, KEY)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_explorer_configurations ON explorer_configurations (category, KEY);
