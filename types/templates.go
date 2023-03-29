@@ -329,7 +329,6 @@ type ValidatorsPageDataValidators struct {
 }
 
 // ValidatorPageData is a struct to hold data for the validators page
-// ValidatorPageData is a struct to hold data for the validators page
 type ValidatorPageData struct {
 	Epoch                                    uint64 `db:"epoch"`
 	ValidatorIndex                           uint64 `db:"validatorindex"`
@@ -391,6 +390,8 @@ type ValidatorPageData struct {
 	SyncLuck                                 float64
 	ProposalEstimate                         *time.Time
 	SyncEstimate                             *time.Time
+	AvgSlotInterval                          *time.Duration
+	AvgSyncInterval                          *time.Duration
 	Rank7d                                   int64 `db:"rank7d"`
 	RankCount                                int64 `db:"rank_count"`
 	RankPercentage                           float64

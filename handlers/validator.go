@@ -369,6 +369,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 	}
 
+	avgSyncInterval := uint64(getAvgSyncCommitteeInterval(1))
+	avgSyncIntervalAsDuration := time.Duration(
+		utils.Config.Chain.Config.SecondsPerSlot *
+			utils.Config.Chain.Config.SlotsPerEpoch *
+			utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod *
+			avgSyncInterval *
+			1e9)
+	validatorPageData.AvgSyncInterval = &avgSyncIntervalAsDuration
+
 	g := errgroup.Group{}
 	g.Go(func() error {
 		start := time.Now()
@@ -600,7 +609,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		validatorPageData.ProposalLuck = getProposalLuck(slots, 1)
-		validatorPageData.ProposalEstimate = getNextBlockEstimateTimestamp(slots, 1)
+		avgSlotInterval := uint64(getAvgSlotInterval(1))
+		avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot * avgSlotInterval * 1e9)
+		validatorPageData.AvgSlotInterval = &avgSlotIntervalAsDuration
+		if len(slots) > 0 {
+			nextSlotEstimate := utils.SlotToTime(slots[len(slots)-1] + avgSlotInterval)
+			validatorPageData.ProposalEstimate = &nextSlotEstimate
+		}
 
 		if len(proposedToday) > 0 {
 			// get el data
@@ -612,7 +627,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			// get mev data
 			relaysData, err := db.GetRelayDataForIndexedBlocks(execBlocks)
 			if err != nil {
-				return fmt.Errorf("error retrieving mev bribe data from bigtable: %v", err)
+				return fmt.Errorf("error retrieving mev bribe data: %v", err)
 			}
 
 			incomeTodayEl := new(big.Int)
@@ -803,7 +818,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			if expectedSyncCount != 0 {
 				validatorPageData.SyncLuck = float64(validatorPageData.ParticipatedSyncCount+validatorPageData.MissedSyncCount) / float64(expectedSyncCount)
 			}
-			validatorPageData.SyncEstimate = getNextSyncEstimateTimestamp(maxPeriod, 1)
+			nextEstimate := utils.EpochToTime(utils.FirstEpochOfSyncPeriod(maxPeriod + avgSyncInterval))
+			validatorPageData.SyncEstimate = &nextEstimate
 		}
 		return nil
 	})
