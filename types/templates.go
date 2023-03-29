@@ -1230,9 +1230,11 @@ type UserNotificationChannels struct {
 }
 
 type UserValidatorNotificationTableData struct {
-	Index        uint64
-	Pubkey       string
-	Notification []struct {
+	Index          uint64
+	Pubkey         string
+	DepositAddress string
+	DepositEnsName string
+	Notification   []struct {
 		Notification string
 		Timestamp    uint64
 		Threshold    string

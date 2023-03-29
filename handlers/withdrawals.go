@@ -92,6 +92,13 @@ func WithdrawalsData(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	search := q.Get("search[value]")
+	var ensData *types.EnsDomainResponse
+	if utils.IsValidEnsDomain(search) {
+		ensData, _ = GetEnsDomain(search)
+		if len(ensData.Address) > 0 {
+			search = ensData.Address
+		}
+	}
 	search = strings.Replace(search, "0x", "", -1)
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
@@ -193,6 +200,13 @@ func BLSChangeData(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	search := q.Get("search[value]")
+	var ensData *types.EnsDomainResponse
+	if utils.IsValidEnsDomain(search) {
+		ensData, _ = GetEnsDomain(search)
+		if len(ensData.Address) > 0 {
+			search = ensData.Address
+		}
+	}
 	search = strings.Replace(search, "0x", "", -1)
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)

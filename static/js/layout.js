@@ -295,10 +295,19 @@ $(document).ready(function () {
       limit: 5,
       name: "addresses",
       source: bhEth1Accounts,
-      display: "address",
+      display: (data) => data.name || data.address,
       templates: {
         header: '<h3 class="h5">Address</h3>',
         suggestion: function (data) {
+          if (data.name) {
+            return `
+              <div class="d-flex justify-content-between">
+                <div class="text-monospace text-truncate">${data.name}</div>
+                <div class="text-monospace ml-1 d-flex">
+                  0x${data.address.substr(0, 6)}...${data.address.substr(data.address.length - 6)}
+                </div>
+              </div>`
+          }
           return `<div class="text-monospace text-truncate">0x${data.address}</div>`
         },
       },

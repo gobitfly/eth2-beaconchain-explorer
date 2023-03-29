@@ -538,7 +538,7 @@ function loadValidatorsData(data) {
         responsivePriority: 2,
         data: null,
         render: function (data, type, row, meta) {
-          if (type === "display") {
+          if (type === "display" || type === "filter") {
             if (!row.Notification) {
               row.Notification = []
             }
@@ -660,6 +660,20 @@ function loadValidatorsData(data) {
         responsivePriority: 3,
         data: null,
         defaultContent: '<div class="d-flex align-items-center"><i class="fas fa-pen fa-xs text-muted i-custom mx-2" id="edit-validator-events" title="Manage notifications for the selected validator(s)" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#ManageNotificationModal"></i><i class="fas fa-times fa-lg mx-2 i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: var(--red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i></div>',
+      },
+      {
+        // hidden column for filtering by DepositAddress
+        targets: 7,
+        orderable: false,
+        data: "DepositAddress",
+        visible: false,
+      },
+      {
+        // hidden column for filtering by DepositEnsName
+        targets: 7,
+        orderable: false,
+        data: "DepositEnsName",
+        visible: false,
       },
     ],
     rowId: function (data, type, row, meta) {

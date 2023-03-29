@@ -557,3 +557,9 @@ type MempoolTxPageData struct {
 	TargetIsContract   bool
 	IsContractCreation bool
 }
+
+type SearchValidatorsByEth1Result []struct {
+	Eth1Address      string        `db:"from_address" json:"eth1_address"`
+	ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
+	Count            uint64        `db:"count" json:"-"`
+}

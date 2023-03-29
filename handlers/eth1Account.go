@@ -28,6 +28,11 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	address := template.HTMLEscapeString(vars["address"])
+	ensData, _ := GetEnsDomain(address)
+	if len(ensData.Address) > 0 {
+		address = ensData.Address
+	}
+
 	isValid := utils.IsEth1Address(address)
 	if !isValid {
 		templateFiles = append(layoutTemplateFiles, "sprites.html", "execution/addressNotFound.html")
@@ -281,9 +286,7 @@ func Eth1AddressTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address := lowerAddressFromRequest(r)
 	addressBytes := common.FromHex(address)
 
 	pageToken := q.Get("pageToken")
@@ -309,9 +312,7 @@ func Eth1AddressBlocksMined(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address := lowerAddressFromRequest(r)
 
 	pageToken := q.Get("pageToken")
 
@@ -333,9 +334,7 @@ func Eth1AddressUnclesMined(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address := lowerAddressFromRequest(r)
 
 	pageToken := q.Get("pageToken")
 
@@ -357,9 +356,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address := lowerAddressFromRequest(r)
 
 	pageToken, err := strconv.ParseUint(q.Get("pageToken"), 10, 64)
 	if err != nil {
@@ -414,9 +411,7 @@ func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address := lowerAddressFromRequest(r)
 	addressBytes := common.FromHex(address)
 
 	pageToken := q.Get("pageToken")
@@ -442,9 +437,7 @@ func Eth1AddressErc20Transactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address := lowerAddressFromRequest(r)
 
 	addressBytes := common.FromHex(address)
 	pageToken := q.Get("pageToken")
@@ -470,9 +463,7 @@ func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address := lowerAddressFromRequest(r)
 
 	pageToken := q.Get("pageToken")
 	search := ""
@@ -496,9 +487,7 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address := lowerAddressFromRequest(r)
 	pageToken := q.Get("pageToken")
 
 	search := ""
@@ -516,4 +505,14 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
+}
+
+func lowerAddressFromRequest(r *http.Request) string {
+	vars := mux.Vars(r)
+	address := vars["address"]
+	ensData, _ := GetEnsDomain(address)
+	if len(ensData.Address) > 0 {
+		address = ensData.Address
+	}
+	return strings.ToLower(strings.Replace(address, "0x", "", -1))
 }

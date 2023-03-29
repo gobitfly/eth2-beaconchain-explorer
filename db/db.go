@@ -344,9 +344,11 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 				blocks_deposits.signature
 			FROM blocks_deposits
 			INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
-			WHERE ENCODE(publickey, 'hex') LIKE LOWER($3)
-				OR ENCODE(withdrawalcredentials, 'hex') LIKE LOWER($3)
-				OR CAST(block_slot as varchar) LIKE LOWER($3)
+			LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
+			WHERE ENCODE(blocks_deposits.publickey, 'hex') LIKE LOWER($3)
+				OR ENCODE(blocks_deposits.withdrawalcredentials, 'hex') LIKE LOWER($3)
+				OR CAST(blocks_deposits.block_slot as varchar) LIKE LOWER($3)
+				OR ENCODE(eth1_deposits.from_address, 'hex') LIKE LOWER($3)
 			ORDER BY %s %s
 			LIMIT $1
 			OFFSET $2`, orderBy, orderDir), length, start, query+"%")
@@ -389,10 +391,11 @@ func GetEth2DepositsCount(search string) (uint64, error) {
 		SELECT COUNT(*)
 		FROM blocks_deposits
 		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
-		WHERE 
-			ENCODE(publickey, 'hex') LIKE LOWER($1)
-			OR ENCODE(withdrawalcredentials, 'hex') LIKE LOWER($1)
-			OR CAST(block_slot as varchar) LIKE LOWER($1)
+		LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
+		WHERE ENCODE(blocks_deposits.publickey, 'hex') LIKE LOWER($1)
+			OR ENCODE(blocks_deposits.withdrawalcredentials, 'hex') LIKE LOWER($1)
+			OR CAST(blocks_deposits.block_slot as varchar) LIKE LOWER($1)
+			OR ENCODE(eth1_deposits.from_address, 'hex') LIKE LOWER($1)
 		`, search+"%")
 	}
 	if err != nil {
@@ -2691,16 +2694,26 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 				bls.address
 			FROM blocks_bls_change bls
 			INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
+			LEFT JOIN (
+				SELECT 
+					validators.validatorindex as validatorindex,
+					eth1_deposits.from_address as deposit_adress
+				FROM validators 
+				INNER JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
+			) AS val ON val.validatorindex = bls.validatorindex
 			WHERE CAST(bls.validatorindex as varchar) LIKE $3 || '%%'
 				OR pubkey LIKE $4::bytea || '%%'::bytea
 				OR CAST(block_slot as varchar) LIKE $3 || '%%'
 				OR CAST((block_slot / $5) as varchar) LIKE $3 || '%%'
+				OR val.deposit_adress LIKE $4::bytea || '%%'::bytea
 			ORDER BY bls.%s %s
 			LIMIT $1
 			OFFSET $2`, orderBy, orderDir), length, start, strings.ToLower(query), bquery, utils.Config.Chain.Config.SlotsPerEpoch)
 		if err != nil {
+			logger.Infof("error in my query %v", err)
 			return nil, err
 		}
+		logger.Infof("len blsChange; %v", len(blsChange))
 	} else {
 		err := ReaderDb.Select(&blsChange, fmt.Sprintf(`
 			SELECT 
