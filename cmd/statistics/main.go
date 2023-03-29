@@ -91,7 +91,7 @@ func main() {
 
 	db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 
-	price.Init(utils.Config.Chain.Config.DepositChainID)
+	price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint)
 
 	if *statisticsDaysToExport != "" {
 		s := strings.Split(*statisticsDaysToExport, "-")
