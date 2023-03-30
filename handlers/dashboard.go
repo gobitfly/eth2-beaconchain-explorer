@@ -158,11 +158,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil && err != ErrTooManyValidators {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
-	if err != nil {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
-		http.Error(w, "Invalid query", 400)
-		return
 	}
 
 	dashboardData := types.DashboardData{}
