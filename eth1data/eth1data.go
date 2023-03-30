@@ -286,7 +286,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 
 func IsContract(ctx context.Context, address common.Address) (bool, error) {
 	cacheKey := fmt.Sprintf("%d:isContract:%s", utils.Config.Chain.Config.DepositChainID, address.String())
-	if wanted, err := cache.TieredCache.GetBoolWithLocalTimeout(cacheKey, time.Hour*24); err == nil {
+	if wanted, err := cache.TieredCache.GetBoolWithLocalTimeout(cacheKey, time.Hour); err == nil {
 		return wanted, nil
 	}
 
