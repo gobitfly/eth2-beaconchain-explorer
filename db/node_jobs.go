@@ -299,7 +299,7 @@ func SubmitBLSToExecutionChangesNodeJobs() error {
 		}
 		err = SubmitBLSToExecutionChangesNodeJob(job)
 		if err != nil {
-			return err
+			return fmt.Errorf("error calling SubmitBLSToExecutionChangesNodeJob for job %v: %w", job.ID, err)
 		}
 	}
 	return nil
