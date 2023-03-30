@@ -2604,7 +2604,7 @@ func (bigtable *Bigtable) GetEnsRegistration(key string) (*types.EnsNameRegister
 	}
 
 	if len(registration.Name) == 0 {
-		return nil, fmt.Errorf("ens registration for key [%v] not fond", key)
+		return nil, fmt.Errorf("ens registration for key [%v] not found", key)
 	}
 	now := time.Now().Unix()
 

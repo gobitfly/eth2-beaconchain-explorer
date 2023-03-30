@@ -527,6 +527,8 @@ func main() {
 			router.HandleFunc("/tools/broadcast", handlers.BroadcastPost).Methods("POST")
 			router.HandleFunc("/tools/broadcast/status/{jobID}", handlers.BroadcastStatus).Methods("GET")
 
+			router.HandleFunc("/ens/{search}", handlers.EnsSearch).Methods("GET")
+
 			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
 
 			router.HandleFunc("/ethstore", handlers.EthStore).Methods("GET")

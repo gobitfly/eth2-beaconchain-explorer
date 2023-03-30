@@ -504,6 +504,12 @@ func (a ErrorResponse) Value() (driver.Value, error) {
 	return json.Marshal(a)
 }
 
+type EnsSearchPageData = struct {
+	Error  string
+	Search string
+	Result *EnsDomainResponse
+}
+
 type GasNowPageData struct {
 	Code int `json:"code"`
 	Data struct {
