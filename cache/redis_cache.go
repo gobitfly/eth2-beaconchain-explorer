@@ -62,6 +62,24 @@ func (cache *RedisCache) GetUint64(ctx context.Context, key string) (uint64, err
 	return returnValue, nil
 }
 
+func (cache *RedisCache) SetBool(ctx context.Context, key string, value bool, expiration time.Duration) error {
+	return cache.redisRemoteCache.Set(ctx, key, fmt.Sprintf("%t", value), expiration).Err()
+}
+
+func (cache *RedisCache) GetBool(ctx context.Context, key string) (bool, error) {
+
+	value, err := cache.redisRemoteCache.Get(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+
+	returnValue, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, err
+	}
+	return returnValue, nil
+}
+
 func (cache *RedisCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
 	valueMarshal, err := json.Marshal(value)
 	if err != nil {
