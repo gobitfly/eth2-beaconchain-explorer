@@ -307,25 +307,26 @@ type ValidatorsPageData struct {
 
 // ValidatorsPageDataValidators is a struct to hold data about validators for the validators page
 type ValidatorsPageDataValidators struct {
-	TotalCount                 uint64 `db:"total_count"`
-	Epoch                      uint64 `db:"epoch"`
-	PublicKey                  []byte `db:"pubkey"`
-	ValidatorIndex             uint64 `db:"validatorindex"`
-	WithdrawableEpoch          uint64 `db:"withdrawableepoch"`
-	CurrentBalance             uint64 `db:"balance"`
-	EffectiveBalance           uint64 `db:"effectivebalance"`
-	Slashed                    bool   `db:"slashed"`
-	ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
-	ActivationEpoch            uint64 `db:"activationepoch"`
-	ExitEpoch                  uint64 `db:"exitepoch"`
-	LastAttestationSlot        *int64 `db:"lastattestationslot"`
-	Name                       string `db:"name"`
-	State                      string `db:"state"`
-	MissedProposals            uint64 `db:"missedproposals"`
-	ExecutedProposals          uint64 `db:"executedproposals"`
-	MissedAttestations         uint64 `db:"missedattestations"`
-	ExecutedAttestations       uint64 `db:"executedattestations"`
-	Performance7d              int64  `db:"performance7d"`
+	TotalCount                 uint64  `db:"total_count"`
+	Epoch                      uint64  `db:"epoch"`
+	PublicKey                  []byte  `db:"pubkey"`
+	ValidatorIndex             uint64  `db:"validatorindex"`
+	WithdrawableEpoch          uint64  `db:"withdrawableepoch"`
+	CurrentBalance             uint64  `db:"balance"`
+	EffectiveBalance           uint64  `db:"effectivebalance"`
+	Slashed                    bool    `db:"slashed"`
+	ActivationEligibilityEpoch uint64  `db:"activationeligibilityepoch"`
+	ActivationEpoch            uint64  `db:"activationepoch"`
+	ExitEpoch                  uint64  `db:"exitepoch"`
+	LastAttestationSlot        *int64  `db:"lastattestationslot"`
+	Name                       string  `db:"name"`
+	State                      string  `db:"state"`
+	MissedProposals            uint64  `db:"missedproposals"`
+	ExecutedProposals          uint64  `db:"executedproposals"`
+	MissedAttestations         uint64  `db:"missedattestations"`
+	ExecutedAttestations       uint64  `db:"executedattestations"`
+	Performance7d              int64   `db:"performance7d"`
+	DepositAddress             *[]byte `db:"from_address"`
 }
 
 // ValidatorPageData is a struct to hold data for the validators page

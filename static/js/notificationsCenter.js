@@ -721,7 +721,7 @@ function loadValidatorsData(data) {
       },
       {
         // hidden column for filtering by DepositEnsName
-        targets: 7,
+        targets: 8,
         orderable: false,
         data: "DepositEnsName",
         visible: false,
