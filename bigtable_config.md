@@ -1,5 +1,5 @@
 # beaconcha.in bigtable configuration
-This document summarized the bigtable configuration options and table definitions required to run the beaconcha.in explorer. All settings can be applied either by using the GCP bigtable we interface or the `cbt` tool.
+This document summarized the bigtable configuration options and table definitions required to run the beaconcha.in explorer. All settings can be applied either by using the GCP bigtable web interface or the `cbt` tool.
 
 ----
 Table name: `beaconchain`
