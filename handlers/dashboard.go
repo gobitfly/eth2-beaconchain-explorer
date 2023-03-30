@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/price"
 	"eth2-exporter/services"
@@ -25,6 +26,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var ErrTooManyValidators = errors.New("too many validators")
+
 func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, error) {
 	if str == "" {
 		return []uint64{}, nil
@@ -33,9 +36,9 @@ func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, e
 	strSplit := strings.Split(str, ",")
 	strSplitLen := len(strSplit)
 
-	// we only support up to 200 validators
+	// we only support up to [validatorLimit] validators
 	if strSplitLen > validatorLimit {
-		return []uint64{}, fmt.Errorf("too much validators")
+		return []uint64{}, ErrTooManyValidators
 	}
 
 	validators := make([]uint64, strSplitLen)
@@ -152,11 +155,26 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	validatorLimit := getUserPremium(r).MaxValidators
 
+	q := r.URL.Query()
+	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	if err != nil && err != ErrTooManyValidators {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+
 	dashboardData := types.DashboardData{}
 	dashboardData.ValidatorLimit = validatorLimit
 
 	epoch := services.LatestEpoch()
 	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
+
+	dashboardData.NextWithdrawalRow, err = getNextWithdrawalRow(queryValidators)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error calculating next withdrawal row")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
 	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", templateFiles)
 	data.Data = dashboardData
@@ -164,6 +182,138 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	if handleTemplateError(w, r, "dashboard.go", "Dashboard", "", dashboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
+}
+
+func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
+	if len(queryValidators) == 0 {
+		return nil, nil
+	}
+
+	stats := services.GetLatestStats()
+	if stats == nil || stats.LatestValidatorWithdrawalIndex == nil || stats.TotalValidatorCount == nil {
+		return nil, errors.New("stats not available")
+	}
+
+	epoch := services.LatestEpoch()
+
+	// find subscribed validators that are active and have valid withdrawal credentials (balance will be checked later as it will be queried from bigtable)
+	// order by validator index to ensure that "last withdrawal" cursor handling works
+	var validatorsDb []*types.Validator
+	err := db.ReaderDb.Select(&validatorsDb, `
+			SELECT
+				validatorindex,
+				withdrawalcredentials,
+				withdrawableepoch
+			FROM validators
+			WHERE
+				activationepoch <= $1 AND exitepoch > $1 AND
+				withdrawalcredentials LIKE '\x01' || '%'::bytea AND
+				validatorindex = ANY($2)
+			ORDER BY validatorindex ASC`, epoch, pq.Array(queryValidators))
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(validatorsDb) == 0 {
+		return nil, nil
+	}
+
+	// GetValidatorBalanceHistory only takes uint64 slice
+	var validatorIds = make([]uint64, 0, len(validatorsDb))
+	for _, v := range validatorsDb {
+		validatorIds = append(validatorIds, v.Index)
+	}
+
+	// retrieve up2date balances for all valid validators from bigtable
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validatorIds, epoch, epoch)
+	if err != nil {
+		return nil, err
+	}
+
+	// find the first withdrawable validator by matching validators and balances
+	var nextValidator *types.Validator
+	for _, v := range validatorsDb {
+		balance, ok := balances[v.Index]
+		if !ok {
+			continue
+		}
+		if len(balance) == 0 {
+			continue
+		}
+
+		if (balance[0].Balance > 0 && v.WithdrawableEpoch <= epoch) ||
+			(balance[0].EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && balance[0].Balance > utils.Config.Chain.Config.MaxEffectiveBalance) {
+			// this validator is eligible for withdrawal, check if it is the next one
+			if nextValidator == nil || v.Index > *stats.LatestValidatorWithdrawalIndex {
+				nextValidator = v
+				nextValidator.Balance = balance[0].Balance
+				if nextValidator.Index > *stats.LatestValidatorWithdrawalIndex {
+					// the first validator after the cursor has to be the next validator
+					break
+				}
+			}
+		}
+	}
+
+	if nextValidator == nil {
+		return nil, nil
+	}
+
+	_, lastWithdrawnEpoch, err := db.GetValidatorWithdrawalsCount(nextValidator.Index)
+	if err != nil {
+		return nil, err
+	}
+
+	distance, err := db.GetWithdrawableCountFromCursor(epoch, nextValidator.Index, *stats.LatestValidatorWithdrawalIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
+
+	// it normally takes two epochs to finalize
+	latestFinalized := services.LatestFinalizedEpoch()
+	if timeToWithdrawal.Before(utils.EpochToTime(epoch + (epoch - latestFinalized))) {
+		return nil, nil
+	}
+
+	var withdrawalCredentialsTemplate template.HTML
+	address, err := utils.WithdrawalCredentialsToAddress(nextValidator.WithdrawalCredentials)
+	if err != nil {
+		// warning only as "N/A" will be displayed
+		logger.Warn("invalid withdrawal credentials")
+	}
+	if address != nil {
+		withdrawalCredentialsTemplate = template.HTML(fmt.Sprintf(`<a href="/address/0x%x"><span class="text-muted">%s</span></a>`, address, utils.FormatAddress(address, nil, "", false, false, true)))
+	} else {
+		withdrawalCredentialsTemplate = `<span class="text-muted">N/A</span>`
+	}
+
+	var withdrawalAmount uint64
+	if nextValidator.WithdrawableEpoch <= epoch {
+		// full withdrawal
+		withdrawalAmount = nextValidator.Balance
+	} else {
+		// partial withdrawal
+		withdrawalAmount = nextValidator.Balance - utils.Config.Chain.Config.MaxEffectiveBalance
+	}
+
+	if lastWithdrawnEpoch == epoch || nextValidator.Balance < utils.Config.Chain.Config.MaxEffectiveBalance {
+		withdrawalAmount = 0
+	}
+
+	nextData := make([][]interface{}, 0, 1)
+	nextData = append(nextData, []interface{}{
+		template.HTML(fmt.Sprintf("%v", utils.FormatValidator(nextValidator.Index))),
+		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
+		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
+		template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
+		withdrawalCredentialsTemplate,
+		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmount), big.NewInt(1e9)), "ETH", 6))),
+	})
+
+	return nextData, nil
 }
 
 // Dashboard Chart that combines balance data and
@@ -178,10 +328,6 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
-		http.Error(w, "Invalid query", 400)
-		return
-	}
-	if err != nil {
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -348,7 +494,6 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 }
 
 func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
-
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -461,12 +606,12 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch,
 			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '1') as executedproposals,
 			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '2') as missedproposals,
-			COALESCE(validator_stats.cl_rewards_gwei_7d, 0) as performance7d,
+			COALESCE(validator_performance.cl_performance_7d, 0) as performance7d,
 			COALESCE(validator_names.name, '') AS name,
 		    validators.status AS state
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		LEFT JOIN validator_stats ON validators.validatorindex = validator_stats.validatorindex AND validator_stats.day = (SELECT MAX(day) FROM validator_stats)
+		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 		WHERE validators.validatorindex = ANY($1)
 		LIMIT $2`, filter, validatorLimit)
 

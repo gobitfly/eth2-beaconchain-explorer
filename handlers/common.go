@@ -58,6 +58,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
+	totalBalance := uint64(0)
 	for balanceIndex, balance := range latestBalances {
 		if len(balance) == 0 {
 			continue
@@ -68,6 +69,8 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		}
 		balancesMap[balanceIndex].Balance = balance[0].Balance
 		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
+
+		totalBalance += balance[0].Balance
 	}
 
 	var income struct {
@@ -128,17 +131,18 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
-	// calculate combined el and cl earnings
-	earnings1d := ((income.ClIncome1d * 1e9) + income.ElIncome1d) / 1e9
-	earnings7d := ((income.ClIncome7d * 1e9) + income.ElIncome7d) / 1e9
-	earnings31d := ((income.ClIncome31d * 1e9) + income.ElIncome31d) / 1e9
-
+	// convert from wei to gwei
 	// since only the first 5 digits are shown in the frontend, the lost precision is probably negligible
 	income.ElIncome1d /= 1e9
 	income.ElIncome7d /= 1e9
 	income.ElIncome31d /= 1e9
 	income.ElIncome365d /= 1e9
 	income.ElIncomeTotal /= 1e9
+
+	// calculate combined el and cl earnings
+	earnings1d := income.ClIncome1d + income.ElIncome1d
+	earnings7d := income.ClIncome7d + income.ElIncome7d
+	earnings31d := income.ClIncome31d + income.ElIncome31d
 
 	clApr7d := ((float64(income.ClIncome7d) / float64(totalDeposits)) * 365) / 7
 	if clApr7d < float64(-1) {
@@ -207,6 +211,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
 		TotalFormatted:       utils.FormatIncome(income.ClIncomeTotal, currency),
 		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+int64(totalDeposits), currency),
+		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
 	}, balancesMap, nil
 }
 
@@ -220,14 +225,14 @@ func getProposalLuck(slots []uint64, validatorsCount int) float64 {
 		return 0
 	}
 	// Timeframe constants
-	fiveDays := time.Hour * 24 * 5
-	oneWeek := time.Hour * 24 * 7
-	oneMonth := time.Hour * 24 * 30
-	sixWeeks := time.Hour * 24 * 45
-	twoMonths := time.Hour * 24 * 60
-	threeMonths := time.Hour * 24 * 90
-	fourMonths := time.Hour * 24 * 120
-	fiveMonths := time.Hour * 24 * 150
+	fiveDays := utils.Day * 5
+	oneWeek := utils.Week
+	oneMonth := utils.Month
+	sixWeeks := utils.Day * 45
+	twoMonths := utils.Month * 2
+	threeMonths := utils.Month * 3
+	fourMonths := utils.Month * 4
+	fiveMonths := utils.Month * 5
 
 	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
 	// Calculate the expected number of slot proposals for 30 days
@@ -284,56 +289,39 @@ func calcExpectedSlotProposals(timeframe time.Duration, validatorCount int, acti
 	if validatorCount == 0 || activeValidatorsCount == 0 {
 		return 0
 	}
-	slotsPerTimeframe := timeframe.Seconds() / float64(utils.Config.Chain.Config.SecondsPerSlot)
-	return (slotsPerTimeframe / float64(activeValidatorsCount)) * float64(validatorCount)
+	slotsInTimeframe := timeframe.Seconds() / float64(utils.Config.Chain.Config.SecondsPerSlot)
+	return (slotsInTimeframe / float64(activeValidatorsCount)) * float64(validatorCount)
 }
 
-// getNextBlockEstimateTimestamp will return the estimated timestamp of the next block proposal
-// given the blocks proposed by the validators and the number of validators
+//getAvgSlotInterval will return the average block interval for a certain number of validators
 //
-// precondition: proposedBlocks is sorted by ascending block number
-func getNextBlockEstimateTimestamp(slots []uint64, validatorsCount int) *time.Time {
+//result of the function should be interpreted as "1 in every X slots will be proposed by this amount of validators on avg."
+func getAvgSlotInterval(validatorsCount int) float64 {
 	// don't estimate if there are no proposed blocks or no validators
-	if len(slots) == 0 || validatorsCount == 0 {
-		return nil
-	}
 	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
 	if activeValidatorsCount == 0 {
-		return nil
+		return 0
 	}
 
 	probability := float64(validatorsCount) / float64(activeValidatorsCount)
 	// in a geometric distribution, the expected value of the number of trials needed until first success is 1/p
 	// you can think of this as the average interval of blocks until you get a proposal
-	expectedValue := 1 / probability
-
-	// return the timestamp of the last proposed block plus the average interval
-	nextExpectedSlot := slots[len(slots)-1] + uint64(expectedValue)
-	estimate := utils.SlotToTime(nextExpectedSlot)
-	return &estimate
+	return 1 / probability
 }
 
-// getNextSyncEstimateTimestamp will return the estimated timestamp of the next sync committee
-// given the maximum sync period the validators have peen part of and the number of validators
-func getNextSyncEstimateTimestamp(maxPeriod uint64, validatorsCount int) *time.Time {
-	// don't estimate if there are no validators or no sync committees
-	if maxPeriod == 0 || validatorsCount == 0 {
-		return nil
-	}
+//getAvgSyncCommitteeInterval will return the average sync committee interval for a certain number of validators
+//
+//result of the function should be interpreted as "there will be one validator included in every X committees, on average"
+func getAvgSyncCommitteeInterval(validatorsCount int) float64 {
 	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
 	if activeValidatorsCount == 0 {
-		return nil
+		return 0
 	}
 
 	probability := (float64(utils.Config.Chain.Config.SyncCommitteeSize) / float64(activeValidatorsCount)) * float64(validatorsCount)
 	// in a geometric distribution, the expected value of the number of trials needed until first success is 1/p
 	// you can think of this as the average interval of sync committees until you expect to have been part of one
-	expectedValue := 1 / probability
-
-	// return the timestamp of the last sync committee plus the average interval
-	nextExpectedSyncPeriod := maxPeriod + uint64(expectedValue)
-	estimate := utils.EpochToTime(utils.FirstEpochOfSyncPeriod(nextExpectedSyncPeriod))
-	return &estimate
+	return 1 / probability
 }
 
 // LatestState will return common information that about the current state of the eth2 chain

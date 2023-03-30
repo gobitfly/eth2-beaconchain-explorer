@@ -111,13 +111,6 @@ function hex2a(hexx) {
 // typeahead
 $(document).ready(function () {
   // format timestamps within tooltip titles
-  $("[data-tooltip-date=true]").each(function (item) {
-    let titleObject = $($.parseHTML($(this).attr("title")))
-    titleObject.find("[aria-ethereum-date]").each(function (index, element) {
-      formatAriaEthereumDate(this)
-    })
-    $(this).attr("title", titleObject.prop("outerHTML"))
-  })
   formatTimestamps() // make sure this happens before tooltips
   if ($('[data-toggle="tooltip"]').tooltip) {
     $('[data-toggle="tooltip"]').tooltip()
@@ -386,8 +379,12 @@ $(document).ready(function () {
   })
 })
 
-$("[aria-ethereum-date]").each(function (item) {
+$("[aria-ethereum-date]").each(function () {
   formatAriaEthereumDate(this)
+})
+
+$("[aria-ethereum-duration]").each(function () {
+  formatAriaEthereumDuration(this)
 })
 
 $(document).ready(function () {
@@ -503,44 +500,55 @@ function getRelativeTime(tsLuxon) {
   var prefix = ""
   var suffix = ""
   if (tsLuxon.diffNow().milliseconds > 0) {
-    // inverse the difference of the timestamp (3 seconds into the future becomes 3 seconds into the past)
-    var now = luxon.DateTime.utc()
-    tsLuxon = luxon.DateTime.fromSeconds(now.ts / 10e2 - tsLuxon.diffNow().milliseconds / 10e2)
     prefix = "in "
   } else {
+    // inverse the difference of the timestamp (3 seconds into the past becomes 3 seconds into the future)
+    var now = luxon.DateTime.utc()
+    tsLuxon = luxon.DateTime.fromSeconds(now.ts / 10e2 - tsLuxon.diffNow().milliseconds / 10e2)
     suffix = " ago"
   }
   var duration = tsLuxon.diffNow(["days", "hours", "minutes", "seconds"])
+  const formattedDuration = formatLuxonDuration(duration)
+  return `${prefix}${formattedDuration}${suffix}`
+}
+
+function formatAriaEthereumDuration(elem) {
+  const attr = $(elem).attr("aria-ethereum-duration")
+  const duration = luxon.Duration.fromMillis(attr).shiftTo("days", "hours", "minutes", "seconds")
+  $(elem).text(formatLuxonDuration(duration))
+}
+
+function formatLuxonDuration(duration) {
   var daysPart = Math.round(duration.days)
   var hoursPart = Math.round(duration.hours)
   var minutesPart = Math.round(duration.minutes)
   var secondsPart = Math.round(duration.seconds)
   if (daysPart === 0 && hoursPart === 0 && minutesPart === 0 && secondsPart === 0) {
-    return `${prefix}0 secs${suffix}`
+    return `0 secs`
   }
-  var sDays = daysPart === -1 ? "" : "s"
-  var sHours = hoursPart === -1 ? "" : "s"
-  var sMinutes = minutesPart === -1 ? "" : "s"
-  var sSeconds = secondsPart === -1 ? "" : "s"
+  var sDays = daysPart === 1 ? "" : "s"
+  var sHours = hoursPart === 1 ? "" : "s"
+  var sMinutes = minutesPart === 1 ? "" : "s"
+  var sSeconds = secondsPart === 1 ? "" : "s"
   var parts = []
   if (daysPart !== 0) {
-    parts.push(`${daysPart * -1} day${sDays}`)
+    parts.push(`${daysPart} day${sDays}`)
   }
   if (hoursPart !== 0) {
-    parts.push(`${hoursPart * -1} hr${sHours}`)
+    parts.push(`${hoursPart} hr${sHours}`)
   }
   if (minutesPart !== 0) {
-    parts.push(`${minutesPart * -1} min${sMinutes}`)
+    parts.push(`${minutesPart} min${sMinutes}`)
   }
   if (secondsPart !== 0 && parts.length == 0) {
-    parts.push(`${secondsPart * -1} sec${sSeconds}`)
+    parts.push(`${secondsPart} sec${sSeconds}`)
   }
   if (parts.length === 1) {
-    return `${prefix}${parts[0]}${suffix}`
+    return `${parts[0]}`
   } else if (parts.length > 1) {
-    return `${prefix}${parts[0]} ${parts[1]}${suffix}`
+    return `${parts[0]} ${parts[1]}`
   } else {
-    return `${prefix}${duration.days * -1}days  ${duration.hours * -1}hrs ${duration.minutes * -1}mins ${duration.seconds * -1}secs${suffix}`
+    return `${duration.days}days  ${duration.hours}hrs ${duration.minutes}mins ${duration.seconds}secs`
   }
 }
 
@@ -593,3 +601,13 @@ function copyDots(event, element) {
     event.preventDefault()
   }
 }
+$("[data-tooltip-date=true]").each(function (item) {
+  let titleObject = $($.parseHTML($(this).attr("title")))
+  titleObject.find("[aria-ethereum-date]").each(function () {
+    formatAriaEthereumDate(this)
+  })
+  titleObject.find("[aria-ethereum-duration]").each(function () {
+    formatAriaEthereumDuration(this)
+  })
+  $(this).attr("title", titleObject.prop("outerHTML"))
+})

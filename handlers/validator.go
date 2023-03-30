@@ -365,6 +365,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 	}
 
+	avgSyncInterval := uint64(getAvgSyncCommitteeInterval(1))
+	avgSyncIntervalAsDuration := time.Duration(
+		utils.Config.Chain.Config.SecondsPerSlot*
+			utils.Config.Chain.Config.SlotsPerEpoch*
+			utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod*
+			avgSyncInterval) * time.Second
+	validatorPageData.AvgSyncInterval = &avgSyncIntervalAsDuration
+
 	g := errgroup.Group{}
 	g.Go(func() error {
 		start := time.Now()
@@ -403,6 +411,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return fmt.Errorf("error retrieving validator earnings: %v", err)
 		}
+		// each income and apr variable is a struct of 3 fields: cl, el and total
 		validatorPageData.Income1d = earnings.Income1d
 		validatorPageData.Income7d = earnings.Income7d
 		validatorPageData.Income31d = earnings.Income31d
@@ -427,7 +436,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
 
 			// get validator withdrawals
-			withdrawalsCount, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
+			withdrawalsCount, lastWithdrawalsEpoch, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
 			if err != nil {
 				return fmt.Errorf("error getting validator withdrawals count from db: %v", err)
 			}
@@ -445,20 +454,25 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// only calculate the expected next withdrawal if the validator is eligible
-			if stats != nil && stats.LatestValidatorWithdrawalIndex != nil && stats.TotalValidatorCount != nil && validatorPageData.IsWithdrawableAddress && (validatorPageData.CurrentBalance > 0 && validatorPageData.WithdrawableEpoch <= validatorPageData.Epoch || validatorPageData.EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.Config.MaxEffectiveBalance) {
+			isFullWithdrawal := validatorPageData.CurrentBalance > 0 && validatorPageData.WithdrawableEpoch <= validatorPageData.Epoch
+			isPartialWithdrawal := validatorPageData.EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.Config.MaxEffectiveBalance
+			if stats != nil && stats.LatestValidatorWithdrawalIndex != nil && stats.TotalValidatorCount != nil && validatorPageData.IsWithdrawableAddress && (isFullWithdrawal || isPartialWithdrawal) {
 				distance, err := db.GetWithdrawableCountFromCursor(validatorPageData.Epoch, validatorPageData.Index, *stats.LatestValidatorWithdrawalIndex)
 				if err != nil {
 					return fmt.Errorf("error getting withdrawable validator count from cursor: %v", err)
 				}
 
 				timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
-				address, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
-				if err != nil {
-					logger.Warn("invalid withdrawal credentials")
-				}
 
-				// it normally takes to epochs to finalize
+				// it normally takes two epochs to finalize
 				if timeToWithdrawal.After(utils.EpochToTime(latestEpoch + (latestEpoch - latestFinalized))) {
+					address, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
+					if err != nil {
+						// warning only as "N/A" will be displayed
+						logger.Warn("invalid withdrawal credentials")
+					}
+
+					// create the table data
 					tableData := make([][]interface{}, 0, 1)
 					var withdrawalCredentialsTemplate template.HTML
 					if address != nil {
@@ -466,12 +480,23 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					} else {
 						withdrawalCredentialsTemplate = `<span class="text-muted">N/A</span>`
 					}
+
+					var withdrawalAmont uint64
+					if isFullWithdrawal {
+						withdrawalAmont = validatorPageData.CurrentBalance
+					} else {
+						withdrawalAmont = validatorPageData.CurrentBalance - utils.Config.Chain.Config.MaxEffectiveBalance
+					}
+
+					if latestEpoch == lastWithdrawalsEpoch {
+						withdrawalAmont = 0
+					}
 					tableData = append(tableData, []interface{}{
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 						template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
 						withdrawalCredentialsTemplate,
-						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(validatorPageData.CurrentBalance-utils.Config.Chain.Config.MaxEffectiveBalance), big.NewInt(1e9)), "ETH", 6))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmont), big.NewInt(1e9)), "ETH", 6))),
 					})
 
 					validatorPageData.NextWithdrawalRow = tableData
@@ -555,7 +580,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				status, 
 				COALESCE(exec_block_number, 0) as exec_block_number
 			FROM blocks 
-			WHERE proposer = $1`, index)
+			WHERE proposer = $1
+			ORDER BY slot ASC`, index)
 		if err != nil {
 			return fmt.Errorf("error retrieving block-proposals: %v", err)
 		}
@@ -596,7 +622,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		validatorPageData.ProposalLuck = getProposalLuck(slots, 1)
-		validatorPageData.ProposalEstimate = getNextBlockEstimateTimestamp(slots, 1)
+
+		avgSlotInterval := uint64(getAvgSlotInterval(1))
+		avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot*avgSlotInterval) * time.Second
+		validatorPageData.AvgSlotInterval = &avgSlotIntervalAsDuration
+		if len(slots) > 0 {
+			nextSlotEstimate := utils.SlotToTime(slots[len(slots)-1] + avgSlotInterval)
+			validatorPageData.ProposalEstimate = &nextSlotEstimate
+		}
 
 		if len(proposedToday) > 0 {
 			// get el data
@@ -608,7 +641,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			// get mev data
 			relaysData, err := db.GetRelayDataForIndexedBlocks(execBlocks)
 			if err != nil {
-				return fmt.Errorf("error retrieving mev bribe data from bigtable: %v", err)
+				return fmt.Errorf("error retrieving mev bribe data: %v", err)
 			}
 
 			incomeTodayEl := new(big.Int)
@@ -799,7 +832,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			if expectedSyncCount != 0 {
 				validatorPageData.SyncLuck = float64(validatorPageData.ParticipatedSyncCount+validatorPageData.MissedSyncCount) / float64(expectedSyncCount)
 			}
-			validatorPageData.SyncEstimate = getNextSyncEstimateTimestamp(maxPeriod, 1)
+			nextEstimate := utils.EpochToTime(utils.FirstEpochOfSyncPeriod(maxPeriod + avgSyncInterval))
+			validatorPageData.SyncEstimate = &nextEstimate
 		}
 		return nil
 	})
@@ -1295,7 +1329,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	length := uint64(10)
 
-	withdrawalCount, err := db.GetValidatorWithdrawalsCount(index)
+	withdrawalCount, _, err := db.GetValidatorWithdrawalsCount(index)
 	if err != nil {
 		logger.Errorf("error retrieving validator withdrawals count: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
