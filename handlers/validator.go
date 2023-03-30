@@ -371,11 +371,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	avgSyncInterval := uint64(getAvgSyncCommitteeInterval(1))
 	avgSyncIntervalAsDuration := time.Duration(
-		utils.Config.Chain.Config.SecondsPerSlot *
-			utils.Config.Chain.Config.SlotsPerEpoch *
-			utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod *
-			avgSyncInterval *
-			1e9)
+		utils.Config.Chain.Config.SecondsPerSlot*
+			utils.Config.Chain.Config.SlotsPerEpoch*
+			utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod*
+			avgSyncInterval) * time.Second
 	validatorPageData.AvgSyncInterval = &avgSyncIntervalAsDuration
 
 	g := errgroup.Group{}
@@ -622,7 +621,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 		validatorPageData.ProposalLuck = getProposalLuck(slots, 1)
 		avgSlotInterval := uint64(getAvgSlotInterval(1))
-		avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot * avgSlotInterval * 1e9)
+		avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot*avgSlotInterval) * time.Second
 		validatorPageData.AvgSlotInterval = &avgSlotIntervalAsDuration
 		if len(slots) > 0 {
 			nextSlotEstimate := utils.SlotToTime(slots[len(slots)-1] + avgSlotInterval)

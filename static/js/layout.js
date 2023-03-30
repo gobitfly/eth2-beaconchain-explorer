@@ -111,16 +111,6 @@ function hex2a(hexx) {
 // typeahead
 $(document).ready(function () {
   // format timestamps within tooltip titles
-  $("[data-tooltip-date=true]").each(function (item) {
-    let titleObject = $($.parseHTML($(this).attr("title")))
-    titleObject.find("[aria-ethereum-date]").each(function () {
-      formatAriaEthereumDate(this)
-    })
-    titleObject.find("[aria-ethereum-duration]").each(function () {
-      formatAriaEthereumDuration(this)
-    })
-    $(this).attr("title", titleObject.prop("outerHTML"))
-  })
   formatTimestamps() // make sure this happens before tooltips
   if ($('[data-toggle="tooltip"]').tooltip) {
     $('[data-toggle="tooltip"]').tooltip()
@@ -576,3 +566,14 @@ function getIncomeChartValueString(value, currency, ethPrice) {
 
   return `${(value / ethPrice).toFixed(5)} ETH (${value.toFixed(2)} ${currency})`
 }
+
+$("[data-tooltip-date=true]").each(function (item) {
+  let titleObject = $($.parseHTML($(this).attr("title")))
+  titleObject.find("[aria-ethereum-date]").each(function () {
+    formatAriaEthereumDate(this)
+  })
+  titleObject.find("[aria-ethereum-duration]").each(function () {
+    formatAriaEthereumDuration(this)
+  })
+  $(this).attr("title", titleObject.prop("outerHTML"))
+})
