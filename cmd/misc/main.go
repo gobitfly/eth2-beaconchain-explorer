@@ -24,7 +24,7 @@ func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
 	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
-	flag.Int64Var(&opts.TargetVersion, "target-version", -2, "Db migration target version, use -2 to apply up to the latest version, -1 to aply only the next version or the specific versions")
+	flag.Int64Var(&opts.TargetVersion, "target-version", -2, "Db migration target version, use -2 to apply up to the latest version, -1 to apply only the next version or the specific versions")
 	flag.Parse()
 
 	logrus.WithField("config", *configPath).WithField("version", version.Version).Printf("starting")
