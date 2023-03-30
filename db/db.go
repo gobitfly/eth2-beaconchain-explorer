@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"database/sql"
-	_ "embed"
+	"embed"
 	"encoding/hex"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
-	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -23,6 +22,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/patrickmn/go-cache"
+	"github.com/pressly/goose/v3"
 	prysm_deposit "github.com/prysmaticlabs/prysm/v3/contracts/deposit"
 	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 	"github.com/sirupsen/logrus"
@@ -30,11 +30,10 @@ import (
 	"eth2-exporter/rpc"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	pg_query "github.com/pganalyze/pg_query_go/v4"
 )
 
-//go:embed tables.sql
-var dbSchemaSQL string
+//go:embed migrations/*.sql
+var EmbedMigrations embed.FS
 
 var DBPGX *pgxpool.Conn
 
@@ -98,30 +97,28 @@ func MustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) {
 	WriterDb, ReaderDb = mustInitDB(writer, reader)
 }
 
-func ApplyEmbeddedDbSchema() error {
+func ApplyEmbeddedDbSchema(version int64) error {
+	goose.SetBaseFS(EmbedMigrations)
 
-	tree, err := pg_query.Parse(dbSchemaSQL)
-	if err != nil {
+	if err := goose.SetDialect("postgres"); err != nil {
 		return err
 	}
 
-	allowedStatements := map[string]bool{
-		"Node_IndexStmt":           true, // allow the creation of new indices
-		"Node_CreateExtensionStmt": true, // allow the creation of new extensions
-		"Node_CreateStmt":          true, // allow the creation of new tables
-		"Node_DoStmt":              true, // allow do procedures
-	}
-	for _, stmt := range tree.Stmts {
-		stmtType := reflect.TypeOf(stmt.Stmt.Node).Elem().Name()
-
-		if !allowedStatements[stmtType] {
-			return fmt.Errorf("statement of type %v is not allowed: %v", stmtType, stmt.Stmt.String())
+	if version == -2 {
+		if err := goose.Up(WriterDb.DB, "migrations"); err != nil {
+			return err
+		}
+	} else if version == -1 {
+		if err := goose.UpByOne(WriterDb.DB, "migrations"); err != nil {
+			return err
+		}
+	} else {
+		if err := goose.UpTo(WriterDb.DB, "migrations", version); err != nil {
+			return err
 		}
 	}
 
-	_, err = WriterDb.Exec(dbSchemaSQL)
-
-	return err
+	return nil
 }
 
 func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsData, error) {

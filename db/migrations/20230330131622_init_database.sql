@@ -1,3 +1,5 @@
+-- +goose Up
+-- +goose StatementBegin
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 /* trigram extension for faster text-search */
@@ -1078,3 +1080,9 @@ CREATE TABLE IF NOT EXISTS
     );
 
 CREATE INDEX IF NOT EXISTS idx_explorer_configurations ON explorer_configurations (category, KEY);
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+SELECT 'NOT SUPPORTED';
+-- +goose StatementEnd
