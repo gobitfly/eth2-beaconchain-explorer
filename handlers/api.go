@@ -1458,7 +1458,11 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 	response := &types.ApiResponse{}
 	response.Status = "OK"
 
-	response.Data = data
+	if len(data) == 1 {
+		response.Data = data[0]
+	} else {
+		response.Data = data
+	}
 	err = j.Encode(response)
 
 	if err != nil {
@@ -1880,7 +1884,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "no or invalid validator indicies provided")
 	}
 
-	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, latestEpoch-limit, latestEpoch)
+	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, latestEpoch-(limit-1), latestEpoch)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
