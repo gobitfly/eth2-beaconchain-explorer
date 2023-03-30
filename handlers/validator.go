@@ -415,6 +415,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return fmt.Errorf("error retrieving validator earnings: %v", err)
 		}
+		// each income and apr variable is a struct of 3 fields: cl, el and total
 		validatorPageData.Income1d = earnings.Income1d
 		validatorPageData.Income7d = earnings.Income7d
 		validatorPageData.Income31d = earnings.Income31d
