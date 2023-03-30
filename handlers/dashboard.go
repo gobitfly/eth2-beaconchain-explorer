@@ -260,6 +260,11 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		return nil, nil
 	}
 
+	_, lastWithdrawnEpoch, err := db.GetValidatorWithdrawalsCount(nextValidator.Index)
+	if err != nil {
+		return nil, err
+	}
+
 	distance, err := db.GetWithdrawableCountFromCursor(epoch, nextValidator.Index, *stats.LatestValidatorWithdrawalIndex)
 	if err != nil {
 		return nil, err
@@ -292,6 +297,10 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 	} else {
 		// partial withdrawal
 		withdrawalAmount = nextValidator.Balance - utils.Config.Chain.Config.MaxEffectiveBalance
+	}
+
+	if lastWithdrawnEpoch == epoch || nextValidator.Balance < utils.Config.Chain.Config.MaxEffectiveBalance {
+		withdrawalAmount = 0
 	}
 
 	nextData := make([][]interface{}, 0, 1)

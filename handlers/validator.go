@@ -440,7 +440,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
 
 			// get validator withdrawals
-			withdrawalsCount, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
+			withdrawalsCount, lastWithdrawalsEpoch, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
 			if err != nil {
 				return fmt.Errorf("error getting validator withdrawals count from db: %v", err)
 			}
@@ -469,7 +469,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
 
 				// it normally takes two epochs to finalize
-				//
 				if timeToWithdrawal.After(utils.EpochToTime(latestEpoch + (latestEpoch - latestFinalized))) {
 					address, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
 					if err != nil {
@@ -493,7 +492,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 						withdrawalAmont = validatorPageData.CurrentBalance - utils.Config.Chain.Config.MaxEffectiveBalance
 					}
 
-					// add the data
+					if latestEpoch == lastWithdrawalsEpoch {
+						withdrawalAmont = 0
+					}
 					tableData = append(tableData, []interface{}{
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
@@ -1288,7 +1289,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	length := uint64(10)
 
-	withdrawalCount, err := db.GetValidatorWithdrawalsCount(index)
+	withdrawalCount, _, err := db.GetValidatorWithdrawalsCount(index)
 	if err != nil {
 		logger.Errorf("error retrieving validator withdrawals count: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
