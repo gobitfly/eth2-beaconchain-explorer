@@ -139,6 +139,57 @@ function create_typeahead(input_container) {
   // })
 }
 
+function create_validators_typeahead(input_container_selector, table_selector) {
+  var bhEth1Addresses = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function (obj) {
+      return obj.eth1_address
+    },
+    remote: {
+      url: "/search/indexed_validators_by_eth1_addresses/%QUERY",
+      wildcard: "%QUERY",
+    },
+  })
+  $(input_container_selector).typeahead(
+    {
+      minLength: 1,
+      highlight: true,
+      hint: false,
+      autoselect: false,
+    },
+    {
+      limit: 5,
+      name: "addresses",
+      source: bhEth1Addresses,
+      display: function (data) {
+        return data?.eth1_address || ""
+      },
+      templates: {
+        header: '<h5 class="font-weight-bold ml-3">ETH Address</h5>',
+        suggestion: function (data) {
+          var len = data.validator_indices.length > 10 ? 10 + "+" : data.validator_indices.length
+          return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">0x${data.eth1_address}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
+        },
+      },
+    }
+  )
+  $(input_container_selector).on("focus", function (e) {
+    if (e.target.value !== "") {
+      $(this).trigger($.Event("keydown", { keyCode: 40 }))
+    }
+  })
+  $(input_container_selector).on("input", function () {
+    $(".tt-suggestion").first().addClass("tt-cursor")
+  })
+  $(input_container_selector).bind("typeahead:select", function (ev, suggestion) {
+    if (suggestion?.eth1_address) {
+      $(table_selector).DataTable().search(suggestion.eth1_address)
+      $(table_selector).DataTable().draw()
+    }
+  })
+}
+
 function loadMonitoringData(data) {
   let mdata = []
   // let id = 0
@@ -743,6 +794,8 @@ function loadValidatorsData(data) {
   //   //   }
   //   // })
   // }
+
+  create_validators_typeahead("input[aria-controls='validators-notifications']", "#validators-notifications")
 }
 
 // function remove_item_from_event_container(pubkey) {
