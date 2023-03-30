@@ -469,6 +469,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
 
 				// it normally takes two epochs to finalize
+				//
 				if timeToWithdrawal.After(utils.EpochToTime(latestEpoch + (latestEpoch - latestFinalized))) {
 					address, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
 					if err != nil {
@@ -476,6 +477,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 						logger.Warn("invalid withdrawal credentials")
 					}
 
+					// create the table data
 					tableData := make([][]interface{}, 0, 1)
 					var withdrawalCredentialsTemplate template.HTML
 					if address != nil {
@@ -491,6 +493,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 						withdrawalAmont = validatorPageData.CurrentBalance - utils.Config.Chain.Config.MaxEffectiveBalance
 					}
 
+					// add the data
 					tableData = append(tableData, []interface{}{
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
