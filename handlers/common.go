@@ -210,6 +210,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
 		TotalFormatted:       utils.FormatIncome(income.ClIncomeTotal, currency),
 		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+int64(totalDeposits), currency),
+		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
 	}, balancesMap, nil
 }
 
