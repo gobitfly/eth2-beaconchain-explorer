@@ -131,6 +131,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
+	// convert from wei to gwei
 	// since only the first 5 digits are shown in the frontend, the lost precision is probably negligible
 	income.ElIncome1d /= 1e9
 	income.ElIncome7d /= 1e9
