@@ -306,18 +306,34 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 		}
 	}
 
-	// split in pre and post part
-	preComma := "0"
+	trimmedAmount, fullAmount := trimAmount(amount, unitDigits, maxPreCommaDigitsBeforeTrim, digits)
+	tooltip := fmt.Sprintf(`data-toggle="tooltip" data-placement="top" title="%s"`, fullAmount)
+
+	// done, convert to HTML & return
+	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, displayUnit))
+}
+
+func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int, digits int) (trimmedAmount, fullAmount string) {
+	// Initialize trimmedAmount and postComma variables to "0"
+	trimmedAmount = "0"
 	postComma := "0"
+
 	if amount != nil {
 		s := amount.String()
 		l := len(s)
-		if l > int(unitDigits) { // there is a pre comma part
+
+		// Check if there is a part of the amount before the decimal point
+		if l > int(unitDigits) {
+			// Calculate length of preComma part
 			l -= unitDigits
-			preComma = s[:l]
+			// Set preComma to part of the string before the decimal point
+			trimmedAmount = s[:l]
+			// Set postComma to part of the string after the decimal point, after removing trailing zeros
 			postComma = strings.TrimRight(s[l:], "0")
-			// reduce digits if precomma part exceeds limit
+
+			// Check if the preComma part exceeds the maximum number of digits before the decimal point
 			if maxPreCommaDigitsBeforeTrim > 0 && l > maxPreCommaDigitsBeforeTrim {
+				// Reduce the number of digits after the decimal point by the excess number of digits in the preComma part
 				l -= maxPreCommaDigitsBeforeTrim
 				if digits < l {
 					digits = 0
@@ -325,36 +341,34 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 					digits -= l
 				}
 			}
-		} else if l == unitDigits { // there is only post comma part and no leading zeros has to be added
+			// Check if there is only a part of the amount after the decimal point, and no leading zeros need to be added
+		} else if l == unitDigits {
+			// Set postComma to part of the string after the decimal point, after removing trailing zeros
 			postComma = strings.TrimRight(s, "0")
-		} else if l != 0 { // there is only post comma part and leading zeros as to be added
+			// Check if there is only a part of the amount after the decimal point, and leading zeros need to be added
+		} else if l != 0 {
+			// Use fmt package to add leading zeros to the string
 			d := fmt.Sprintf("%%0%dd", unitDigits-l)
+			// Set postComma to resulting string, after removing trailing zeros
 			postComma = strings.TrimRight(fmt.Sprintf(d, 0)+s, "0")
 		}
-	}
 
-	// tooltip
-	var tooltip string
-	if fullAmountTooltip {
-		tooltip = ` data-toggle="tooltip" data-placement="top" title="` + preComma
+		fullAmount = trimmedAmount
 		if len(postComma) > 0 {
-			tooltip += `.` + postComma
+			fullAmount += "." + postComma
 		}
-		tooltip += `"`
-	}
 
-	// limit floating part
-	if len(postComma) > digits {
-		postComma = postComma[:digits]
-	}
+		// limit floating part
+		if len(postComma) > digits {
+			postComma = postComma[:digits]
+		}
 
-	// set floating point
-	if len(postComma) > 0 {
-		preComma += "." + postComma
+		// set floating point
+		if len(postComma) > 0 {
+			trimmedAmount += "." + postComma
+		}
 	}
-
-	// done, convert to HTML & return
-	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, preComma, displayUnit))
+	return trimmedAmount, fullAmount
 }
 
 func FormatMethod(method string) template.HTML {

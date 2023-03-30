@@ -673,24 +673,56 @@ func FormatParticipation(v float64) template.HTML {
 
 // FormatIncome will return a string for a balance
 func FormatIncome(balanceInt int64, currency string) template.HTML {
+	return formatIncome(balanceInt, currency, true)
+}
 
-	decimals := 2
+func FormatIncomeNoCurrency(balanceInt int64, currency string) template.HTML {
+	return formatIncome(balanceInt, currency, false)
+}
 
-	if currency == "ETH" {
-		decimals = 5
+func formatIncome(balanceInt int64, currency string, includeCurrency bool) template.HTML {
+	var income string
+	// always pass absolute value to ensure same amount of decimals
+	if balanceInt >= 0 {
+		income = exchangeAndTrim(currency, balanceInt)
+	} else {
+		income = exchangeAndTrim(currency, -balanceInt)
+	}
+
+	if includeCurrency {
+		currency = " " + currency
+	} else {
+		currency = ""
+	}
+
+	if balanceInt > 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%s%s</b></span>`, income, currency))
+	} else if balanceInt < 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>-%s%s</b></span>`, income, currency))
+	} else {
+		return template.HTML(fmt.Sprintf(`<span>%s%s</span>`, income, currency))
+	}
+}
+
+func FormatExchangedAmount(balanceInt int64, currency string) template.HTML {
+	income := exchangeAndTrim(currency, balanceInt)
+	return template.HTML(fmt.Sprintf(`<span>%s %s</span>`, income, currency))
+}
+
+func exchangeAndTrim(currency string, amount int64) string {
+	decimals := 5
+	preCommaDecimals := 1
+
+	if currency != "ETH" {
+		decimals = 2
+		preCommaDecimals = 4
 	}
 
 	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := (float64(balanceInt) / float64(1e9)) * float64(exchangeRate)
-	balanceFormated := FormatFloat(balance, decimals)
-
-	if balance > 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%s %v</b></span>`, balanceFormated, currency))
-	} else if balance < 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%s %v</b></span>`, balanceFormated, currency))
-	} else {
-		return template.HTML(fmt.Sprintf(`<b>%s %v</b>`, balanceFormated, currency))
-	}
+	exchangedAmount := float64(amount) * exchangeRate
+	// lost precision here but we don't need it for frontend
+	income, _ := trimAmount(big.NewInt(int64(exchangedAmount)), 9, preCommaDecimals, decimals)
+	return income
 }
 
 func FormatIncomeSql(balanceInt sql.NullInt64, currency string) template.HTML {

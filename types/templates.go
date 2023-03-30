@@ -377,15 +377,24 @@ type ValidatorPageData struct {
 	ParticipatedSyncCount                    uint64
 	MissedSyncCount                          uint64
 	OrphanedSyncCount                        uint64
-	UnmissedSyncPercentage                   float64 // missed/(participated+orphaned)
-	IncomeToday                              int64
-	Income1d                                 int64
-	Income7d                                 int64
-	Income31d                                int64
+	UnmissedSyncPercentage                   float64     // missed/(participated+orphaned)
+	IncomeToday                              ClElInt64   `json:"incomeToday"`
+	Income1d                                 ClElInt64   `json:"income1d"`
+	Income7d                                 ClElInt64   `json:"income7d"`
+	Income31d                                ClElInt64   `json:"income31d"`
+	Apr7d                                    ClElFloat64 `json:"apr7d"`
+	Apr31d                                   ClElFloat64 `json:"apr31d"`
+	Apr365d                                  ClElFloat64 `json:"apr365d"`
+	ElIncomeTotal                            int64       `json:"totalExecutionRewards"`
+	ProposalLuck                             float64
+	SyncLuck                                 float64
+	ProposalEstimate                         *time.Time
+	SyncEstimate                             *time.Time
+	AvgSlotInterval                          *time.Duration
+	AvgSyncInterval                          *time.Duration
 	Rank7d                                   int64 `db:"rank7d"`
 	RankCount                                int64 `db:"rank_count"`
 	RankPercentage                           float64
-	Apr                                      float64
 	Proposals                                [][]uint64
 	IncomeHistoryChartData                   []*ChartDataPoint
 	ExecutionIncomeHistoryData               []*ChartDataPoint
@@ -989,12 +998,27 @@ type DashboardValidatorBalanceHistory struct {
 }
 
 // ValidatorEarnings is a struct to hold the earnings of one or multiple validators
+
+type ClElInt64 struct {
+	El    int64
+	Cl    int64
+	Total int64
+}
+
+type ClElFloat64 struct {
+	El    float64
+	Cl    float64
+	Total float64
+}
+
 type ValidatorEarnings struct {
-	Total                   int64         `json:"total"`
-	LastDay                 int64         `json:"lastDay"`
-	LastWeek                int64         `json:"lastWeek"`
-	LastMonth               int64         `json:"lastMonth"`
-	APR                     float64       `json:"apr"`
+	Income1d                ClElInt64     `json:"income1d"`
+	Income7d                ClElInt64     `json:"income7d"`
+	Income31d               ClElInt64     `json:"income31d"`
+	Apr7d                   ClElFloat64   `json:"apr"`
+	Apr31d                  ClElFloat64   `json:"apr31d"`
+	Apr365d                 ClElFloat64   `json:"apr365d"`
+	ElIncomeTotal           int64         `json:"totalExecutionRewards"`
 	TotalDeposits           int64         `json:"totalDeposits"`
 	TotalWithdrawals        uint64        `json:"totalWithdrawals"`
 	EarningsInPeriodBalance int64         `json:"earningsInPeriodBalance"`
