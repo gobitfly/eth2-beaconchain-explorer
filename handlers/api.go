@@ -1625,8 +1625,8 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-
-	eth1Address, err := hex.DecodeString(strings.Replace(vars["address"], "0x", "", -1))
+	search := ReplaceEnsNameWithAddress(vars["address"])
+	eth1Address, err := hex.DecodeString(strings.Replace(search, "0x", "", -1))
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "invalid eth1 address provided")
 		return
@@ -3358,7 +3358,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 	vars := mux.Vars(r)
 	q := r.URL.Query()
 
-	credentialsOrAddressString := vars["withdrawalCredentialsOrEth1address"]
+	credentialsOrAddressString := ReplaceEnsNameWithAddress(vars["withdrawalCredentialsOrEth1address"])
 	credentialsOrAddressString = strings.ToLower(credentialsOrAddressString)
 
 	if !utils.IsValidEth1Address(credentialsOrAddressString) &&

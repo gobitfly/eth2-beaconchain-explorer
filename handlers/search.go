@@ -379,14 +379,7 @@ func FindValidatorIndicesByEth1Address(search string) (types.SearchValidatorsByE
 		Count            uint64        `db:"count" json:"-"`
 	}{}
 
-	var ensData *types.EnsDomainResponse
-	if utils.IsValidEnsDomain(search) {
-		ensData, _ = GetEnsDomain(search)
-		if len(ensData.Address) > 0 {
-			search = ensData.Address
-		}
-	}
-	search = strings.Replace(search, "0x", "", -1)
+	search = strings.Replace(ReplaceEnsNameWithAddress(search), "0x", "", -1)
 	if len(search)%2 != 0 {
 		search = search[:len(search)-1]
 	}

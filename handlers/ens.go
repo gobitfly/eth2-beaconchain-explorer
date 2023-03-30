@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -29,6 +30,16 @@ func ResolveEnsDomain(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
+}
+
+func ReplaceEnsNameWithAddress(search string) string {
+	if utils.IsValidEnsDomain(search) {
+		ensData, _ := GetEnsDomain(search)
+		if len(ensData.Address) > 0 {
+			search = strings.Replace(ensData.Address, "0x", "", -1)
+		}
+	}
+	return search
 }
 
 func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
