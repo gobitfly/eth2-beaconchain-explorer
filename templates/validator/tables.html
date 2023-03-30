@@ -671,11 +671,11 @@
               title="
                 CL: {{ formatPercentageWithPrecision .Apr7d.Cl 2 }}% | {{ formatPercentageWithPrecision .Apr31d.Cl 2 }}% | {{ formatPercentageWithPrecision .Apr365d.Cl 2 }}% <br> 
                 El: {{ formatPercentageWithPrecision .Apr7d.El 2 }}% | {{ formatPercentageWithPrecision .Apr31d.El 2 }}% | {{ formatPercentageWithPrecision .Apr365d.El 2 }}%">
-              <span class="{{ if gtf .Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr7d.Total 2 }}%</b></span>
+              {{ formatPercentageWithPrecision .Apr7d.Total 2 }}%
               |
-              <span class="{{ if gtf .Apr31d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr31d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr31d.Total 2 }}%</b></span>
+              {{ formatPercentageWithPrecision .Apr31d.Total 2 }}%
               |
-              <span class="{{ if gtf .Apr365d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr365d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr365d.Total 2 }}%</b></span>
+              {{ formatPercentageWithPrecision .Apr365d.Total 2 }}%
             </span>
           </td>
         </tr>
@@ -705,7 +705,7 @@
                 CL: 7d: {{ formatPercentageWithPrecision .Apr7d.Cl 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.Cl 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.Cl 2 }}% <br> 
                 El: 7d: {{ formatPercentageWithPrecision .Apr7d.El 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.El 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.El 2 }}% <br>
                 All: 7d: {{ formatPercentageWithPrecision .Apr7d.Total 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.Total 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.Total 2 }}%">
-              <span class="{{ if gtf .Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr7d.Total 2 }}%</b></span>
+              {{ formatPercentageWithPrecision .Apr7d.Total 2 }}%
               <i class="far fa-question-circle"></i>
             </span>
           </td>

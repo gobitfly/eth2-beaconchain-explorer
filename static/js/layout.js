@@ -565,7 +565,7 @@ $("[data-truncate-middle]").each(function (item) {
     truncateMiddle(this)
   })
   addEventListener("copy", (event) => {
-    copyDots(this)
+    copyDots(event, this)
   })
 })
 
@@ -583,7 +583,7 @@ function truncateMiddle(element) {
 }
 
 // function for inserting correct text into clipboard when copying ellipsis of text truncated with 'truncateMiddle()'
-function copyDots(element) {
+function copyDots(event, element) {
   const selection = document.getSelection()
   if (selection.toString().includes("…")) {
     const originalText = element.getAttribute("data-truncate-middle")

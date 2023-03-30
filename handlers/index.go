@@ -28,6 +28,8 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		"svg/bricks.html",
 		"svg/professor.html",
 		"svg/timeline.html",
+		"svg/womanWalking.html",
+		"svg/blob.html",
 		"components/rocket.html",
 		"slotViz.html",
 	)

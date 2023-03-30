@@ -315,6 +315,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	timings.Start = time.Now()
 
+	logger.Info(validatorPageData.Tags)
+	logger.Info(validatorPageData.Pool)
 	if validatorPageData.Pool != "" {
 		validatorPageData.Tags = append(validatorPageData.Tags, "pool:"+validatorPageData.Pool)
 	}
@@ -804,7 +806,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	g.Go(func() error {
 		// add rocketpool-data if available
-		validatorPageData.Rocketpool = &types.RocketpoolValidatorPageData{}
+		/* validatorPageData.Rocketpool = &types.RocketpoolValidatorPageData{}
 		err = db.ReaderDb.Get(validatorPageData.Rocketpool, `
 		SELECT
 			rplm.node_address      AS node_address,
@@ -829,7 +831,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			COALESCE(deposit_credit, 0) AS deposit_credit,
 			COALESCE(is_vacant, false) AS is_vacant,
 			version,
-			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in 
+			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in
 		FROM validators
 		LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
 		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
@@ -843,7 +845,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 		} else if err != nil && err != sql.ErrNoRows {
 			return fmt.Errorf("error getting rocketpool-data for validator for %v route: %v", r.URL.String(), err)
-		}
+		} */
 		return nil
 	})
 
