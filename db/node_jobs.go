@@ -286,7 +286,7 @@ func UpdateBLSToExecutionChangesNodeJob(job *types.NodeJob) error {
 }
 
 func SubmitBLSToExecutionChangesNodeJobs() error {
-	maxSubmittedJobs := 100
+	maxSubmittedJobs := 1000
 	jobs := []*types.NodeJob{}
 	err := WriterDb.Select(&jobs, `select id, type, status, created_time, submitted_to_node_time, completed_time, data from node_jobs where type = $1 and status = $2 order by created_time limit $4-(select count(*) from node_jobs where type = $1 and status = $3)`, types.BLSToExecutionChangesNodeJobType, types.PendingNodeJobStatus, types.SubmittedToNodeNodeJobStatus, maxSubmittedJobs)
 	if err != nil {
