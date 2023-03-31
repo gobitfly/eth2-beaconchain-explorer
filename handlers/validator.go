@@ -584,7 +584,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				status, 
 				COALESCE(exec_block_number, 0) as exec_block_number
 			FROM blocks 
-			WHERE proposer = $1`, index)
+			WHERE proposer = $1
+			ORDER BY slot ASC`, index)
 		if err != nil {
 			return fmt.Errorf("error retrieving block-proposals: %v", err)
 		}
