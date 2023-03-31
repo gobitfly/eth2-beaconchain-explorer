@@ -1800,8 +1800,12 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
 
-		fromName := names[string(t.From)]
-		toName := names[string(t.To)]
+		fromName := ""
+		toName := ""
+		if t != nil {
+			fromName = names[string(t.From)]
+			toName = names[string(t.To)]
+		}
 
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
 		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
