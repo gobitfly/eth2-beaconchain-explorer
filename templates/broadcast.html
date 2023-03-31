@@ -165,9 +165,10 @@
 {{ end }}
 
 {{ define "content" }}
-  {{ with .Data }}
-    <div class="broadcast container mt-12">
-      <div class="row">
+  <div class="broadcast container mt-12 pt-3">
+    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
+    {{ with .Data }}
+      <div class="row mt-3">
         <div class="col-md-12">
           {{ if ne .FlashMessage "" }}
             <div class="alert container mt-2 {{ if contains .FlashMessage "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
@@ -177,7 +178,6 @@
               </button>
             </div>
           {{ end }}
-          {{ if not $.NoAds }}{{ template "bannerGeneric" dict "desktop" "52" "mobile" "52" }}{{ end }}
           {{ template "withdrawalOverviewRow" .Stats }}
           <section class="my-2">
             <div class="row">
@@ -185,6 +185,13 @@
                 <div class="row justify-content-center">
                   <div class="col-md-12 col-lg-8 text-center">
                     <h1 class="h4 ">Submit your signed message</h1>
+                    <ul class="text-left">
+                      <li>This tool can be used for broadcasting <b>already signed</b> BLS-to-execution (0x00 → 0x01) and exit messages.</li>
+                      <li>You can find instructions on how to sign these messages at the <a href="https://launchpad.ethereum.org/en/withdrawals" target="_blank">Staking Launchpad.</a></li>
+                      <li>BLS-to-execution (0x00 → 0x01) messages can be uploaded right now. We will start broadcasting them after the Shanghai hard fork.</li>
+                      <li>Exit messages will be broadcasted immediately.</li>
+                    </ul>
+                    <div class="alert alert-danger"><b>Don't provide your keystore or mnemonic to us or any other website</b></div>
                     <form id="credentialschange" action="/tools/broadcast" method="post">
                       <div class="text-left">
                         <div class="form-group">
@@ -214,6 +221,6 @@
           </section>
         </div>
       </div>
-    </div>
-  {{ end }}
+    {{ end }}
+  </div>
 {{ end }}

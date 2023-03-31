@@ -295,7 +295,8 @@ func main() {
 		apiV1Router.HandleFunc("/sync_committee/{period}", handlers.ApiSyncCommittee).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/eth1deposit/{txhash}", handlers.ApiEth1Deposit).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/leaderboard", handlers.ApiValidatorLeaderboard).Methods("GET", "OPTIONS")
-		apiV1Router.HandleFunc("/validator/{indexOrPubkey}", handlers.ApiValidator).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}", handlers.ApiValidatorGet).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}", handlers.ApiValidatorPost).Methods("POST", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/withdrawals", handlers.ApiValidatorWithdrawals).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/blsChange", handlers.ApiValidatorBlsChange).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/balancehistory", handlers.ApiValidatorBalanceHistory).Methods("GET", "OPTIONS")
@@ -389,7 +390,7 @@ func main() {
 		// logrus.Infof("frontend services initiated")
 
 		logrus.Infof("initializing prices")
-		price.Init(utils.Config.Chain.Config.DepositChainID)
+		price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint)
 		logrus.Infof("prices initialized")
 		if !utils.Config.Frontend.Debug {
 			logrus.Infof("initializing ethclients")
@@ -397,14 +398,12 @@ func main() {
 			logrus.Infof("ethclients initialized")
 		}
 
+		utils.InitSessionStore(cfg.Frontend.SessionSecret)
+
 		if !utils.Config.Frontend.OnlyAPI {
 			if utils.Config.Frontend.SiteDomain == "" {
 				utils.Config.Frontend.SiteDomain = "beaconcha.in"
 			}
-
-			logrus.Infof("frontend database connection established")
-
-			utils.InitSessionStore(cfg.Frontend.SessionSecret)
 
 			csrfBytes, err := hex.DecodeString(cfg.Frontend.CsrfAuthKey)
 			if err != nil {
@@ -605,6 +604,11 @@ func main() {
 			authRouter.HandleFunc("/notifications/bundled/subscribe", handlers.MultipleUsersNotificationsSubscribeWeb).Methods("POST", "OPTIONS")
 			authRouter.HandleFunc("/global_notification", handlers.UserGlobalNotification).Methods("GET")
 			authRouter.HandleFunc("/global_notification", handlers.UserGlobalNotificationPost).Methods("POST")
+			authRouter.HandleFunc("/ad_configuration", handlers.AdConfiguration).Methods("GET")
+			authRouter.HandleFunc("/ad_configuration", handlers.AdConfigurationPost).Methods("POST")
+			authRouter.HandleFunc("/ad_configuration/delete", handlers.AdConfigurationDeletePost).Methods("POST")
+			authRouter.HandleFunc("/explorer_configuration", handlers.ExplorerConfiguration).Methods("GET")
+			authRouter.HandleFunc("/explorer_configuration", handlers.ExplorerConfigurationPost).Methods("POST")
 
 			authRouter.HandleFunc("/notifications-center", handlers.UserNotificationsCenter).Methods("GET")
 			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")

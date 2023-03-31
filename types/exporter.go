@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/jackc/pgtype"
 	"github.com/pkg/errors"
@@ -81,9 +82,6 @@ type Validator struct {
 	WithdrawalCredentials      []byte `db:"withdrawalcredentials"`
 
 	BalanceActivation sql.NullInt64 `db:"balanceactivation"`
-	Balance1d         sql.NullInt64 `db:"balance1d"`
-	Balance7d         sql.NullInt64 `db:"balance7d"`
-	Balance31d        sql.NullInt64 `db:"balance31d"`
 	Status            string        `db:"status"`
 
 	LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`
@@ -513,12 +511,16 @@ type HistoricEthPrice struct {
 }
 
 type Relay struct {
-	ID          string         `db:"tag_id"`
-	Endpoint    string         `db:"endpoint"`
-	Link        sql.NullString `db:"public_link"`
-	IsCensoring sql.NullBool   `db:"is_censoring"`
-	IsEthical   sql.NullBool   `db:"is_ethical"`
-	Logger      logrus.Entry
+	ID                  string         `db:"tag_id"`
+	Endpoint            string         `db:"endpoint"`
+	Link                sql.NullString `db:"public_link"`
+	IsCensoring         sql.NullBool   `db:"is_censoring"`
+	IsEthical           sql.NullBool   `db:"is_ethical"`
+	Name                string         `db:"name"`
+	ExportFailureCount  uint64         `db:"export_failure_count"`
+	LastExportTryTs     time.Time      `db:"last_export_try_ts"`
+	LastExportSuccessTs time.Time      `db:"last_export_success_ts"`
+	Logger              logrus.Entry
 }
 
 type RelayBlock struct {

@@ -14,12 +14,12 @@ import (
 
 // ValidatorsSlashings returns validator slashing using a go template
 func ValidatorsSlashings(w http.ResponseWriter, r *http.Request) {
-	var validatorsSlashingsTemplate = templates.GetTemplate(append(layoutTemplateFiles, "validators_slashings.html")...)
+	templateFiles := append(layoutTemplateFiles, "validators_slashings.html")
+	var validatorsSlashingsTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "validators", "/validators/slashings", "Validator Slashings")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "validators", "/validators/slashings", "Validator Slashings", templateFiles)
 
 	if handleTemplateError(w, r, "validators_slashings.go", "ValidatorsSlashings", "", validatorsSlashingsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed

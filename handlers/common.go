@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
@@ -43,21 +44,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := int64(services.LatestEpoch())
 
-	lastDay := 0
-	err := db.WriterDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats")
-
-	if err != nil {
-		return nil, nil, err
-	}
-	lastWeek := lastDay - 7
-	if lastWeek < 0 {
-		lastWeek = 0
-	}
-	lastMonth := lastDay - 31
-	if lastMonth < 0 {
-		lastMonth = 0
-	}
-
 	balances := []*types.Validator{}
 
 	balancesMap := make(map[uint64]*types.Validator, len(balances))
@@ -72,6 +58,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
+	totalBalance := uint64(0)
 	for balanceIndex, balance := range latestBalances {
 		if len(balance) == 0 {
 			continue
@@ -82,30 +69,41 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		}
 		balancesMap[balanceIndex].Balance = balance[0].Balance
 		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
+
+		totalBalance += balance[0].Balance
 	}
 
-	type ClEarnings struct {
-		EarningsTotal     int64 `db:"cl_rewards_gwei_total"`
-		EarningsLastDay   int64 `db:"cl_rewards_gwei"`
-		EarningsLastWeek  int64 `db:"cl_rewards_gwei_7d"`
-		EarningsLastMonth int64 `db:"cl_rewards_gwei_31d"`
+	var income struct {
+		ClIncome1d    int64 `db:"cl_performance_1d"`
+		ClIncome7d    int64 `db:"cl_performance_7d"`
+		ClIncome31d   int64 `db:"cl_performance_31d"`
+		ClIncome365d  int64 `db:"cl_performance_365d"`
+		ClIncomeTotal int64 `db:"cl_performance_total"`
+		ElIncome1d    int64 `db:"el_performance_1d"`
+		ElIncome7d    int64 `db:"el_performance_7d"`
+		ElIncome31d   int64 `db:"el_performance_31d"`
+		ElIncome365d  int64 `db:"el_performance_365d"`
+		ElIncomeTotal int64 `db:"el_performance_total"`
 	}
 
-	c := &ClEarnings{}
-
-	err = db.ReaderDb.Get(c, `
-	SELECT 
-		COALESCE(SUM(cl_rewards_gwei), 0) AS cl_rewards_gwei, 
-		COALESCE(SUM(cl_rewards_gwei_7d), 0) AS cl_rewards_gwei_7d, 
-		COALESCE(SUM(cl_rewards_gwei_31d), 0) AS cl_rewards_gwei_31d, 
-		COALESCE(SUM(cl_rewards_gwei_total), 0) AS cl_rewards_gwei_total
-	FROM validator_stats WHERE day = $1 AND validatorindex = ANY($2)`, lastDay, validatorsPQArray)
+	err = db.ReaderDb.Get(&income, `
+		SELECT 
+			SUM(cl_performance_1d) AS cl_performance_1d,
+			SUM(cl_performance_7d) AS cl_performance_7d,
+			SUM(cl_performance_31d) AS cl_performance_31d,
+			SUM(cl_performance_365d) AS cl_performance_365d,
+			SUM(cl_performance_total) AS cl_performance_total,
+			SUM(mev_performance_1d) AS el_performance_1d,
+			SUM(mev_performance_7d) AS el_performance_7d,
+			SUM(mev_performance_31d) AS el_performance_31d,
+			SUM(mev_performance_365d) AS el_performance_365d,
+			SUM(mev_performance_total) AS el_performance_total
+		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var apr float64
-	var totalDeposits int64
+	var totalDeposits uint64
 
 	err = db.ReaderDb.Get(&totalDeposits, `
 	SELECT 
@@ -115,6 +113,9 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray)
 	if err != nil {
 		return nil, nil, err
+	}
+	if totalDeposits == 0 {
+		totalDeposits = utils.Config.Chain.Config.MaxEffectiveBalance
 	}
 
 	var totalWithdrawals uint64
@@ -130,25 +131,197 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
-	apr = (((float64(c.EarningsLastWeek) / 1e9) / (float64(32))) * 365) / 7
-	if apr < float64(-1) {
-		apr = float64(-1)
+	// convert from wei to gwei
+	// since only the first 5 digits are shown in the frontend, the lost precision is probably negligible
+	income.ElIncome1d /= 1e9
+	income.ElIncome7d /= 1e9
+	income.ElIncome31d /= 1e9
+	income.ElIncome365d /= 1e9
+	income.ElIncomeTotal /= 1e9
+
+	// calculate combined el and cl earnings
+	earnings1d := income.ClIncome1d + income.ElIncome1d
+	earnings7d := income.ClIncome7d + income.ElIncome7d
+	earnings31d := income.ClIncome31d + income.ElIncome31d
+
+	clApr7d := ((float64(income.ClIncome7d) / float64(totalDeposits)) * 365) / 7
+	if clApr7d < float64(-1) {
+		clApr7d = float64(-1)
+	}
+
+	elApr7d := ((float64(income.ElIncome7d) / float64(totalDeposits)) * 365) / 7
+	if elApr7d < float64(-1) {
+		elApr7d = float64(-1)
+	}
+
+	clApr31d := ((float64(income.ClIncome31d) / float64(totalDeposits)) * 365) / 31
+	if clApr31d < float64(-1) {
+		clApr31d = float64(-1)
+	}
+
+	elApr31d := ((float64(income.ElIncome31d) / float64(totalDeposits)) * 365) / 31
+	if elApr31d < float64(-1) {
+		elApr31d = float64(-1)
+	}
+	clApr365d := (float64(income.ClIncome365d) / float64(totalDeposits))
+	if clApr365d < float64(-1) {
+		clApr365d = float64(-1)
+	}
+
+	elApr365d := (float64(income.ElIncome365d) / float64(totalDeposits))
+	if elApr365d < float64(-1) {
+		elApr365d = float64(-1)
 	}
 
 	return &types.ValidatorEarnings{
-		Total:                c.EarningsTotal,
-		LastDay:              c.EarningsLastDay,
-		LastWeek:             c.EarningsLastWeek,
-		LastMonth:            c.EarningsLastMonth,
-		APR:                  apr,
-		TotalDeposits:        totalDeposits,
-		TotalWithdrawals:     totalWithdrawals,
-		LastDayFormatted:     utils.FormatIncome(c.EarningsLastDay, currency),
-		LastWeekFormatted:    utils.FormatIncome(c.EarningsLastWeek, currency),
-		LastMonthFormatted:   utils.FormatIncome(c.EarningsLastMonth, currency),
-		TotalFormatted:       utils.FormatIncome(c.EarningsTotal, currency),
-		TotalChangeFormatted: utils.FormatIncome(c.EarningsTotal+totalDeposits, currency),
+		Income1d: types.ClElInt64{
+			El:    income.ElIncome1d,
+			Cl:    income.ClIncome1d,
+			Total: earnings1d,
+		},
+		Income7d: types.ClElInt64{
+			El:    income.ElIncome7d,
+			Cl:    income.ClIncome7d,
+			Total: earnings7d,
+		},
+		Income31d: types.ClElInt64{
+			El:    income.ElIncome31d,
+			Cl:    income.ClIncome31d,
+			Total: earnings31d,
+		},
+		Apr7d: types.ClElFloat64{
+			El:    elApr7d,
+			Cl:    clApr7d,
+			Total: clApr7d + elApr7d,
+		},
+		Apr31d: types.ClElFloat64{
+			El:    elApr31d,
+			Cl:    clApr31d,
+			Total: clApr31d + elApr31d,
+		},
+		Apr365d: types.ClElFloat64{
+			El:    elApr365d,
+			Cl:    clApr365d,
+			Total: clApr365d + elApr365d,
+		},
+		ElIncomeTotal:        income.ElIncomeTotal,
+		TotalDeposits:        int64(totalDeposits),
+		LastDayFormatted:     utils.FormatIncome(earnings1d, currency),
+		LastWeekFormatted:    utils.FormatIncome(earnings7d, currency),
+		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
+		TotalFormatted:       utils.FormatIncome(income.ClIncomeTotal, currency),
+		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+int64(totalDeposits), currency),
+		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
 	}, balancesMap, nil
+}
+
+// getProposalLuck calculates the luck of a given set of proposed blocks for a certain number of validators
+// given the blocks proposed by the validators and the number of validators
+//
+// precondition: slots is sorted by ascending block number
+func getProposalLuck(slots []uint64, validatorsCount int) float64 {
+	// Return 0 if there are no proposed blocks or no validators
+	if len(slots) == 0 || validatorsCount == 0 {
+		return 0
+	}
+	// Timeframe constants
+	fiveDays := utils.Day * 5
+	oneWeek := utils.Week
+	oneMonth := utils.Month
+	sixWeeks := utils.Day * 45
+	twoMonths := utils.Month * 2
+	threeMonths := utils.Month * 3
+	fourMonths := utils.Month * 4
+	fiveMonths := utils.Month * 5
+
+	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
+	// Calculate the expected number of slot proposals for 30 days
+	expectedSlotProposals := calcExpectedSlotProposals(oneMonth, validatorsCount, activeValidatorsCount)
+
+	// Get the timeframe for which we should consider qualified proposals
+	var proposalTimeframe time.Duration
+	// Time since the first block in the proposed block slice
+	timeSinceFirstBlock := time.Since(utils.SlotToTime(slots[0]))
+
+	// Determine the appropriate timeframe based on the time since the first block and the expected slot proposals
+	switch {
+	case timeSinceFirstBlock < fiveDays:
+		proposalTimeframe = fiveDays
+	case timeSinceFirstBlock < oneWeek:
+		proposalTimeframe = oneWeek
+	case timeSinceFirstBlock < oneMonth:
+		proposalTimeframe = oneMonth
+	case timeSinceFirstBlock > fiveMonths && expectedSlotProposals <= 0.75:
+		proposalTimeframe = fiveMonths
+	case timeSinceFirstBlock > fourMonths && expectedSlotProposals <= 1:
+		proposalTimeframe = fourMonths
+	case timeSinceFirstBlock > threeMonths && expectedSlotProposals <= 1.4:
+		proposalTimeframe = threeMonths
+	case timeSinceFirstBlock > twoMonths && expectedSlotProposals <= 2.1:
+		proposalTimeframe = twoMonths
+	case timeSinceFirstBlock > sixWeeks && expectedSlotProposals <= 2.8:
+		proposalTimeframe = sixWeeks
+	default:
+		proposalTimeframe = oneMonth
+	}
+
+	// Recalculate expected slot proposals for the new timeframe
+	expectedSlotProposals = calcExpectedSlotProposals(proposalTimeframe, validatorsCount, activeValidatorsCount)
+	if expectedSlotProposals == 0 {
+		return 0
+	}
+	// Cutoff time for proposals to be considered qualified
+	blockProposalCutoffTime := time.Now().Add(-proposalTimeframe)
+
+	// Count the number of qualified proposals
+	qualifiedProposalCount := 0
+	for _, slot := range slots {
+		if utils.SlotToTime(slot).After(blockProposalCutoffTime) {
+			qualifiedProposalCount++
+		}
+	}
+	// Return the luck as the ratio of qualified proposals to expected slot proposals
+	return float64(qualifiedProposalCount) / expectedSlotProposals
+}
+
+// calcExpectedSlotProposals calculates the expected number of slot proposals for a certain time frame and validator count
+func calcExpectedSlotProposals(timeframe time.Duration, validatorCount int, activeValidatorsCount uint64) float64 {
+	if validatorCount == 0 || activeValidatorsCount == 0 {
+		return 0
+	}
+	slotsInTimeframe := timeframe.Seconds() / float64(utils.Config.Chain.Config.SecondsPerSlot)
+	return (slotsInTimeframe / float64(activeValidatorsCount)) * float64(validatorCount)
+}
+
+//getAvgSlotInterval will return the average block interval for a certain number of validators
+//
+//result of the function should be interpreted as "1 in every X slots will be proposed by this amount of validators on avg."
+func getAvgSlotInterval(validatorsCount int) float64 {
+	// don't estimate if there are no proposed blocks or no validators
+	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
+	if activeValidatorsCount == 0 {
+		return 0
+	}
+
+	probability := float64(validatorsCount) / float64(activeValidatorsCount)
+	// in a geometric distribution, the expected value of the number of trials needed until first success is 1/p
+	// you can think of this as the average interval of blocks until you get a proposal
+	return 1 / probability
+}
+
+//getAvgSyncCommitteeInterval will return the average sync committee interval for a certain number of validators
+//
+//result of the function should be interpreted as "there will be one validator included in every X committees, on average"
+func getAvgSyncCommitteeInterval(validatorsCount int) float64 {
+	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
+	if activeValidatorsCount == 0 {
+		return 0
+	}
+
+	probability := (float64(utils.Config.Chain.Config.SyncCommitteeSize) / float64(activeValidatorsCount)) * float64(validatorsCount)
+	// in a geometric distribution, the expected value of the number of trials needed until first success is 1/p
+	// you can think of this as the average interval of sync committees until you expect to have been part of one
+	return 1 / probability
 }
 
 // LatestState will return common information that about the current state of the eth2 chain

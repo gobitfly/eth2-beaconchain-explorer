@@ -16,6 +16,7 @@ import (
 	"eth2-exporter/version"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/url"
 	"sort"
@@ -31,7 +32,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mssola/user_agent"
-	"github.com/protolambda/zrnt/eth2/util/math"
+	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 
@@ -222,10 +223,10 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 			consensus_rewards_sum_wei,
 			total_rewards_wei,
 			apr,
-			(select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgAPR7d,
+			(select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgapr7d,
 			(select avg(consensus_rewards_sum_wei) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgconsensus_rewards7d_wei,
 			(select avg(tx_fees_sum_wei) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7 AND e1.day <= e.day) as avgtx_fees7d_wei,
-			(select avg(apr) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgAPR31d,
+			(select avg(apr) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgapr31d,
 			(select avg(consensus_rewards_sum_wei) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgconsensus_rewards31d_wei,
 			(select avg(tx_fees_sum_wei) from eth_store_stats as e2 where e2.validator = -1 AND e2.day > e.day - 31 AND e2.day <= e.day) as avgtx_fees31d_wei
 		FROM eth_store_stats e
@@ -250,7 +251,18 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	addDayTime := func(dataEntryMap map[string]interface{}) error {
+		day, ok := dataEntryMap["day"].(int64)
+		if !ok {
+			return fmt.Errorf("error type asserting day as an int")
+		} else {
+			dataEntryMap["day_start"] = utils.DayToTime(day)
+			dataEntryMap["day_end"] = utils.DayToTime(day + 1)
+		}
+		return nil
+	}
+
+	returnQueryResults(rows, w, r, addDayTime)
 }
 
 // ApiEpoch godoc
@@ -301,9 +313,8 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '0') as scheduledblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '1') as proposedblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '2') as missedblocks,
-		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '3') as orphanedblocks,
-		(SELECT to_timestamp($2)) as ts
-		FROM epochs WHERE epoch = $1`, epoch, utils.EpochToTime(uint64(epoch)).Unix())
+		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '3') as orphanedblocks
+		FROM epochs WHERE epoch = $1`, epoch)
 	if err != nil {
 		logger.WithError(err).Error("error retrieving epoch data")
 		sendServerErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -311,7 +322,12 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResults(rows, w, r)
+	addEpochTime := func(dataEntryMap map[string]interface{}) error {
+		dataEntryMap["ts"] = utils.EpochToTime(uint64(epoch))
+		return nil
+	}
+
+	returnQueryResults(rows, w, r, addEpochTime)
 }
 
 // ApiEpochSlots godoc
@@ -974,25 +990,39 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 
 func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedSlots uint64, err error) {
 	// retrieve activation and exit epochs from database per validator
-	var validatorsInfo = []struct {
+	type ValidatorInfo struct {
 		Id                         int64  `db:"validatorindex"`
 		ActivationEpoch            uint64 `db:"activationepoch"`
 		ExitEpoch                  uint64 `db:"exitepoch"`
 		FirstPossibleSyncCommittee uint64 // calculated
-	}{}
+	}
 
+	var validatorsInfoFromDb = []ValidatorInfo{}
 	query, args, err := sqlx.In(`SELECT validatorindex, activationepoch, exitepoch FROM validators WHERE validatorindex IN (?) ORDER BY validatorindex ASC`, validators)
 	if err != nil {
 		return 0, err
 	}
 
-	err = db.ReaderDb.Select(&validatorsInfo, db.ReaderDb.Rebind(query), args...)
+	err = db.ReaderDb.Select(&validatorsInfoFromDb, db.ReaderDb.Rebind(query), args...)
 	if err != nil {
 		return 0, err
 	}
 
+	// only check validators are/have been active and that did not exit before altair
+	const noEpoch = uint64(9223372036854775807)
+	var validatorsInfo = make([]ValidatorInfo, 0, len(validatorsInfoFromDb))
+	for _, v := range validatorsInfoFromDb {
+		if v.ActivationEpoch != noEpoch && (v.ExitEpoch == noEpoch || v.ExitEpoch >= utils.Config.Chain.Config.AltairForkEpoch) {
+			validatorsInfo = append(validatorsInfo, v)
+		}
+	}
+
+	if len(validatorsInfo) == 0 {
+		// no validators relevant for sync duties left, early exit
+		return 0, nil
+	}
+
 	// we need all related and unique timeframes (activation and exit sync period) for all validators
-	const noExitEpoch = uint64(9223372036854775807)
 	uniquePeriods := make(map[uint64]bool)
 	uniquePeriods[utils.SyncPeriodOfEpoch(epoch)] = true
 	for i := range validatorsInfo { // we have to use the index as we have to write into slice too
@@ -1005,7 +1035,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 		uniquePeriods[validatorsInfo[i].FirstPossibleSyncCommittee] = true
 
 		// exit epoch (if any)
-		if validatorsInfo[i].ExitEpoch != noExitEpoch && validatorsInfo[i].ExitEpoch > firstSyncEpoch {
+		if validatorsInfo[i].ExitEpoch != noEpoch && validatorsInfo[i].ExitEpoch > firstSyncEpoch {
 			uniquePeriods[utils.SyncPeriodOfEpoch(validatorsInfo[i].ExitEpoch)] = true
 		}
 	}
@@ -1045,7 +1075,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 		}
 
 		lastEpoch := vi.ExitEpoch
-		if vi.ExitEpoch == noExitEpoch {
+		if vi.ExitEpoch == noEpoch {
 			lastEpoch = epoch
 		}
 
@@ -1192,7 +1222,14 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 			rpln.claimed_smoothing_pool     AS claimed_smoothing_pool,
 			rpln.unclaimed_smoothing_pool   AS unclaimed_smoothing_pool,
 			rpln.unclaimed_rpl_rewards      AS unclaimed_rpl_rewards,
-			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in  
+			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in,
+			COALESCE(rpln.deposit_credit, 0) as node_deposit_credit,
+			COALESCE(rplm.node_deposit_balance, 0) AS node_deposit_balance,
+			COALESCE(rplm.node_refund_balance, 0) AS node_refund_balance,
+			COALESCE(rplm.user_deposit_balance, 0) AS user_deposit_balance,
+			COALESCE(rplm.is_vacant, false) AS is_vacant,
+			COALESCE(rpln.effective_rpl_stake, 0) as effective_rpl_stake,
+			COALESCE(rplm.version, 0) AS version
 		FROM rocketpool_minipools rplm 
 		LEFT JOIN validators validators ON rplm.pubkey = validators.pubkey 
 		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
@@ -1220,10 +1257,11 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		lastattestationslot,
 		status,
 		COALESCE(validator_names.name, '') AS name,
-		performance1d,
-		performance7d,
-		performance31d,
-		performance365d,
+		COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d,
+		COALESCE(validator_performance.cl_performance_7d, 0) AS performance7d,
+		COALESCE(validator_performance.cl_performance_31d, 0) AS performance31d,
+		COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d,
+		COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal,
 		rank7d,
 		w.total as total_withdrawals
 	FROM validators
@@ -1253,6 +1291,11 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		return nil, fmt.Errorf("error getting validator balances from bigtable: %w", err)
 	}
 
+	currentDayIncome, err := getCurrentDayIncome(queryIndices)
+	if err != nil {
+		return nil, err
+	}
+
 	for balanceIndex, balance := range balances {
 		if len(balance) == 0 {
 			continue
@@ -1273,11 +1316,42 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 			if int64(balanceIndex) == validatorIndex {
 				eMap["balance"] = balance[0].Balance
 				eMap["effectivebalance"] = balance[0].EffectiveBalance
+				eMap["performance1d"] = currentDayIncome[uint64(validatorIndex)]
 			}
 		}
 	}
 
 	return data, nil
+}
+
+func getCurrentDayIncome(validator_indices []uint64) (map[uint64]uint64, error) {
+	dayIncome := make(map[uint64]uint64)
+	lastDay := int64(0)
+
+	err := db.ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats_status")
+	if err != nil {
+		return dayIncome, err
+	}
+
+	currentDay := uint64(lastDay + 1)
+	startEpoch := currentDay * utils.EpochsPerDay()
+	endEpoch := startEpoch + utils.EpochsPerDay() - 1
+	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validator_indices, startEpoch, endEpoch)
+	if err != nil {
+		return dayIncome, err
+	}
+
+	// agregate all epoch income data to total day income for each validator
+	for validatorIndex, validatorIncome := range income {
+		if len(validatorIncome) == 0 {
+			continue
+		}
+		for _, validatorEpochIncome := range validatorIncome {
+			dayIncome[validatorIndex] += uint64(validatorEpochIncome.TotalClRewards())
+		}
+	}
+
+	return dayIncome, nil
 }
 
 func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorEffectiveness, error) {
@@ -1326,17 +1400,40 @@ func getEpoch(epoch int64) ([]interface{}, error) {
 // ApiValidator godoc
 // @Summary Get up to 100 validators
 // @Tags Validator
+// @Description Searching for too many validators based on their pubkeys will lead to an "URI too long" error
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse{data=[]types.APIValidatorResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey} [get]
-func ApiValidator(w http.ResponseWriter, r *http.Request) {
+func ApiValidatorGet(w http.ResponseWriter, r *http.Request) {
+	apiValidator(w, r)
+}
 
+// ApiValidator godoc
+// @Summary Get unlimited validators
+// @Tags Validator
+// @Produce  json
+// @Param  indexOrPubkey path string true "Validator indicesOrPubkeys, comma separated"
+// @Success 200 {object} types.ApiResponse{data=[]types.APIValidatorResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/validator/{indexOrPubkey} [post]
+func ApiValidatorPost(w http.ResponseWriter, r *http.Request) {
+	apiValidator(w, r)
+}
+
+// This endpoint supports both GET and POST but requires different swagger descriptions based on the type
+func apiValidator(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
-	maxValidators := getUserPremium(r).MaxValidators
+
+	var maxValidators int
+	if r.Method == http.MethodGet {
+		maxValidators = getUserPremium(r).MaxValidators
+	} else {
+		maxValidators = math.MaxInt
+	}
 
 	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
@@ -1397,7 +1494,11 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	response := &types.ApiResponse{}
 	response.Status = "OK"
 
-	response.Data = data
+	if len(data) == 1 {
+		response.Data = data[0]
+	} else {
+		response.Data = data
+	}
 	err = j.Encode(response)
 
 	if err != nil {
@@ -1440,7 +1541,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 
 	latestEpoch := services.LatestEpoch()
 
-	latestDay := latestEpoch / 225
+	latestDay := latestEpoch / utils.EpochsPerDay()
 
 	startDay := int64(-1)
 	endDay := int64(latestDay)
@@ -1462,7 +1563,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 			sendErrorResponse(w, r.URL.String(), "invalid start_day parameter")
 			return
 		}
-		if start < endDay {
+		if start > endDay {
 			sendErrorResponse(w, r.URL.String(), "start_day must be less than end_day")
 			return
 		}
@@ -1510,7 +1611,18 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResultsAsArray(rows, w, r)
+	addDayTime := func(dataEntryMap map[string]interface{}) error {
+		day, ok := dataEntryMap["day"].(int64)
+		if !ok {
+			return fmt.Errorf("error type asserting day as an int")
+		} else {
+			dataEntryMap["day_start"] = utils.DayToTime(day)
+			dataEntryMap["day_end"] = utils.DayToTime(day + 1)
+		}
+		return nil
+	}
+
+	returnQueryResultsAsArray(rows, w, r, addDayTime)
 }
 
 // ApiValidatorByEth1Address godoc
@@ -1604,16 +1716,22 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 		Epoch          uint64                       `json:"epoch"`
 		ValidatorIndex uint64                       `json:"validatorindex"`
 		Week           uint64                       `json:"week"`
+		WeekStart      time.Time                    `json:"week_start"`
+		WeekEnd        time.Time                    `json:"week_end"`
 	}
 	responseData := make([]*responseType, 0, len(history)*101)
 
+	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, epochs := range history {
 		for epoch, income := range epochs {
+			epochAtStartOfTheWeek := (epoch / epochsPerWeek) * epochsPerWeek
 			responseData = append(responseData, &responseType{
+				Income:         income,
 				Epoch:          epoch,
 				ValidatorIndex: validatorIndex,
-				Week:           epoch / 1575,
-				Income:         income,
+				Week:           epoch / epochsPerWeek,
+				WeekStart:      utils.EpochToTime(epochAtStartOfTheWeek),
+				WeekEnd:        utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek),
 			})
 		}
 	}
@@ -1802,7 +1920,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "no or invalid validator indicies provided")
 	}
 
-	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, latestEpoch-limit, latestEpoch)
+	history, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, latestEpoch-(limit-1), latestEpoch)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -1810,14 +1928,18 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 
 	responseData := make([]*types.ApiValidatorBalanceHistoryResponse, 0, len(history)*101)
 
+	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, balances := range history {
 		for _, balance := range balances {
+			epochAtStartOfTheWeek := (balance.Epoch / epochsPerWeek) * epochsPerWeek
 			responseData = append(responseData, &types.ApiValidatorBalanceHistoryResponse{
 				Balance:          balance.Balance,
 				EffectiveBalance: balance.EffectiveBalance,
 				Epoch:            balance.Epoch,
 				Validatorindex:   validatorIndex,
-				Week:             balance.Epoch / 1575,
+				Week:             balance.Epoch / epochsPerWeek,
+				WeekStart:        utils.EpochToTime(epochAtStartOfTheWeek),
+				WeekEnd:          utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek),
 			})
 		}
 	}
@@ -1896,14 +2018,58 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT validator_performance.validatorindex, validator_performance.balance, validator_performance.performance1d, validator_performance.performance7d, validator_performance.performance31d, validator_performance.performance365d, validator_performance.rank7d FROM validator_performance LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex WHERE validator_performance.validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(queryIndices))
+	rows, err := db.ReaderDb.Query(`
+	SELECT 
+		validator_performance.validatorindex, 
+		validator_performance.balance, 
+		COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d, 
+		COALESCE(validator_performance.cl_performance_7d, 0) AS performance7d, 
+		COALESCE(validator_performance.cl_performance_31d, 0) AS performance31d, 
+		COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d, 
+		COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal, 
+		validator_performance.rank7d 
+	FROM validator_performance 
+	LEFT JOIN validators ON 
+		validators.validatorindex = validator_performance.validatorindex 
+	WHERE validator_performance.validatorindex = ANY($1) 
+	ORDER BY validatorindex`, pq.Array(queryIndices))
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
 	defer rows.Close()
 
-	returnQueryResultsAsArray(rows, w, r)
+	data, err := utils.SqlRowsToJSON(rows)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	currentDayIncome, err := getCurrentDayIncome(queryIndices)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "error retrieving current day income")
+		return
+	}
+
+	for _, entry := range data {
+		eMap, ok := entry.(map[string]interface{})
+		if !ok {
+			logger.Errorf("error converting validator data to map[string]interface{}")
+			continue
+		}
+
+		validatorIndex, ok := eMap["validatorindex"].(int64)
+
+		if !ok {
+			logger.Errorf("error converting validatorindex to int64")
+			continue
+		}
+
+		eMap["performanceToday"] = currentDayIncome[uint64(validatorIndex)]
+	}
+
+	j := json.NewEncoder(w)
+	sendOKResponse(j, r.URL.String(), []any{data})
 }
 
 // ApiValidatorExecutionPerformance godoc
@@ -2052,9 +2218,16 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query(`
 			SELECT 
-				balance, performance1d, performance7d, performance31d, performance365d, rank7d, validatorindex
+				balance, 
+				COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d, 
+				COALESCE(validator_performance.cl_performance_7d, 0) AS performance7d, 
+				COALESCE(validator_performance.cl_performance_31d, 0) AS performance31d, 
+				COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d, 
+				COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal, 
+				rank7d, 
+				validatorindex
 			FROM validator_performance 
-			ORDER BY performance7d DESC LIMIT 100`)
+			ORDER BY rank7d DESC LIMIT 100`)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -2126,27 +2299,22 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type responseType struct {
-		AttesterSlot   uint64 `json:"attesterslot"`
-		CommitteeIndex uint64 `json:"committeeindex"`
-		Epoch          uint64 `json:"epoch"`
-		InclusionSlot  uint64 `json:"inclusionslot"`
-		Status         uint64 `json:"status"`
-		ValidatorIndex uint64 `json:"validatorindex"`
-		Week           uint64 `json:"week"`
-	}
-	responseData := make([]*responseType, 0, len(history)*101)
+	responseData := make([]*types.ApiValidatorAttestationsResponse, 0, len(history)*101)
 
+	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, balances := range history {
 		for _, attestation := range balances {
-			responseData = append(responseData, &responseType{
+			epochAtStartOfTheWeek := (attestation.Epoch / epochsPerWeek) * epochsPerWeek
+			responseData = append(responseData, &types.ApiValidatorAttestationsResponse{
 				AttesterSlot:   attestation.AttesterSlot,
 				CommitteeIndex: 0,
 				Epoch:          attestation.Epoch,
 				InclusionSlot:  attestation.InclusionSlot,
 				Status:         attestation.Status,
 				ValidatorIndex: validatorIndex,
-				Week:           attestation.Epoch / 1575,
+				Week:           attestation.Epoch / epochsPerWeek,
+				WeekStart:      utils.EpochToTime(epochAtStartOfTheWeek),
+				WeekEnd:        utils.EpochToTime(epochAtStartOfTheWeek + epochsPerWeek),
 			})
 		}
 	}
@@ -2292,15 +2460,15 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	slotQuery = math.MaxU64(slotQuery, 10000)
+	slotQuery = utilMath.MaxU64(slotQuery, 10000)
 
 	defaultStartPxl := uint64(0)
 	defaultEndPxl := uint64(999)
 
-	startX := math.MinU64(parseUintWithDefault(q.Get("startx"), defaultStartPxl), defaultEndPxl)
-	startY := math.MinU64(parseUintWithDefault(q.Get("starty"), defaultStartPxl), defaultEndPxl)
-	endX := math.MinU64(parseUintWithDefault(q.Get("endx"), defaultEndPxl), defaultEndPxl)
-	endY := math.MinU64(parseUintWithDefault(q.Get("endy"), defaultEndPxl), defaultEndPxl)
+	startX := utilMath.MinU64(parseUintWithDefault(q.Get("startx"), defaultStartPxl), defaultEndPxl)
+	startY := utilMath.MinU64(parseUintWithDefault(q.Get("starty"), defaultStartPxl), defaultEndPxl)
+	endX := utilMath.MinU64(parseUintWithDefault(q.Get("endx"), defaultEndPxl), defaultEndPxl)
+	endY := utilMath.MinU64(parseUintWithDefault(q.Get("endy"), defaultEndPxl), defaultEndPxl)
 
 	if startX > endX || startY > endY {
 		logger.Error("invalid area provided by the coordinates")
@@ -2780,10 +2948,11 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 					lastattestationslot, 
 					validators.status, 
 					validator_performance.balance, 
-					validator_performance.performance1d, 
-					validator_performance.performance7d, 
-					validator_performance.performance31d, 
-					validator_performance.performance365d, 
+					COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d, 
+					COALESCE(validator_performance.cl_performance_7d, 0) AS performance7d, 
+					COALESCE(validator_performance.cl_performance_31d, 0) AS performance31d, 
+					COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d, 
+					COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal, 
 					validator_performance.rank7d, 
 					validator_performance.validatorindex,
 					TRUNC(rplm.node_fee::decimal, 10)::float  AS minipool_node_fee  
@@ -2825,6 +2994,12 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		return
 	}
 
+	currentDayIncome, err := getCurrentDayIncome(queryIndices)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "error retrieving current day income")
+		return
+	}
+
 	for balanceIndex, balance := range balances {
 		if len(balance) == 0 {
 			continue
@@ -2844,6 +3019,7 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 			}
 			if int64(balanceIndex) == validatorIndex {
 				eMap["effectivebalance"] = balance[0].EffectiveBalance
+				eMap["performance1d"] = currentDayIncome[uint64(validatorIndex)]
 			}
 		}
 	}
@@ -3280,7 +3456,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 
 	// We set a max limit to limit the request call time.
 	const maxLimit uint64 = 200
-	limit = math.MinU64(limit, maxLimit)
+	limit = utilMath.MinU64(limit, maxLimit)
 
 	result := []struct {
 		Index  uint64 `db:"validatorindex"`
@@ -3425,7 +3601,9 @@ func getAuthClaims(r *http.Request) *utils.CustomClaims {
 	return claims.(*utils.CustomClaims)
 }
 
-func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request) {
+// Saves the result of a query converted to JSON in the response writer.
+// An arbitrary amount of functions adjustQueryEntriesFuncs can be added to adjust the JSON response.
+func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request, adjustQueryEntriesFuncs ...func(map[string]interface{}) error) {
 	j := json.NewEncoder(w)
 	data, err := utils.SqlRowsToJSON(rows)
 	if err != nil {
@@ -3433,14 +3611,28 @@ func returnQueryResults(rows *sql.Rows, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	err = adjustQueryResults(data, adjustQueryEntriesFuncs...)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not adjust query results")
+		return
+	}
+
 	sendOKResponse(j, r.URL.String(), data)
 }
 
-func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Request) {
+// Saves the result of a query converted to JSON in the response writer as an array.
+// An arbitrary amount of functions adjustQueryEntriesFuncs can be added to adjust the JSON response.
+func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Request, adjustQueryEntriesFuncs ...func(map[string]interface{}) error) {
 	data, err := utils.SqlRowsToJSON(rows)
 
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	err = adjustQueryResults(data, adjustQueryEntriesFuncs...)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not adjust query results")
 		return
 	}
 
@@ -3454,6 +3646,22 @@ func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Re
 	if err != nil {
 		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
 	}
+}
+
+func adjustQueryResults(data []interface{}, adjustQueryEntriesFuncs ...func(map[string]interface{}) error) error {
+	for _, dataEntry := range data {
+		dataEntryMap, ok := dataEntry.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("error type asserting query results as a map")
+		} else {
+			for _, f := range adjustQueryEntriesFuncs {
+				if err := f(dataEntryMap); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // SendErrorResponse exposes sendErrorResponse

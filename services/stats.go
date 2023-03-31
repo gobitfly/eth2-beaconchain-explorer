@@ -11,8 +11,9 @@ import (
 )
 
 func statsUpdater(wg *sync.WaitGroup) {
-	sleepDuration := time.Duration(time.Minute)
+	sleepDuration := time.Duration(time.Duration(utils.Config.Chain.Config.SlotsPerEpoch*utils.Config.Chain.Config.SecondsPerSlot) * time.Second)
 
+	logger.Infof("sleep duration is %v", sleepDuration)
 	firstrun := true
 	for {
 		latestEpoch := LatestEpoch()

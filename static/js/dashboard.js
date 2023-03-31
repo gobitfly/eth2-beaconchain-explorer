@@ -745,7 +745,11 @@ $(document).ready(function () {
 
   function renderDashboardInfo() {
     var el = document.getElementById("dashboard-info")
-    el.innerText = `Found ${state.validatorsCount.pending} pending, ${state.validatorsCount.active_online + state.validatorsCount.active_offline} (${state.validatorsCount.active_online} online + ${state.validatorsCount.active_offline} offline) active and ${state.validatorsCount.exited} exited validators`
+    var slashedText = ""
+    if (state.validatorsCount.slashed > 0) {
+      slashedText = `, ${state.validatorsCount.slashed} slashed`
+    }
+    el.innerText = `${state.validatorsCount.active_online + state.validatorsCount.active_offline} active (${state.validatorsCount.active_online} online, ${state.validatorsCount.active_offline} offline), ${state.validatorsCount.pending} pending, ${state.validatorsCount.exited + state.validatorsCount.slashed} exited validators (${state.validatorsCount.exited} voluntary${slashedText})`
 
     if (state.validators.length > 0) {
       showSelectedValidator()
@@ -951,16 +955,13 @@ $(document).ready(function () {
           console.log(`loaded earnings: fetch: ${t1 - t0}ms`)
           if (!result) return
 
-          // addChange("#earnings-day", result.lastDay)
-          // addChange("#earnings-week", result.lastWeek)
-          // addChange("#earnings-month", result.lastMonth)
-
           document.querySelector("#earnings-day").innerHTML = result.lastDayFormatted || "0.000"
           document.querySelector("#earnings-week").innerHTML = result.lastWeekFormatted || "0.000"
           document.querySelector("#earnings-month").innerHTML = result.lastMonthFormatted || "0.000"
-          document.querySelector("#earnings-total").innerHTML = (result.totalChangeFormatted || "0.000") + ` <span class="d-block" id="earnings-total-change">${result.totalFormatted}</span>`
-          $("#earnings-total span:first").removeClass("text-success").removeClass("text-danger")
-          $("#earnings-total span:first").html($("#earnings-total span:first").html().replace("+", ""))
+          document.querySelector("#earnings-total").innerHTML = result.totalFormatted || "0.000"
+          document.querySelector("#balance-total").innerHTML = result.totalBalance || "0.000"
+          $("#balance-total span:first").removeClass("text-success").removeClass("text-danger")
+          $("#balance-total span:first").html($("#balance-total span:first").html().replace("+", ""))
           // addChange("#earnings-total-change", result.total)
         },
       })

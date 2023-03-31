@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
@@ -13,10 +14,11 @@ import (
 )
 
 func Broadcast(w http.ResponseWriter, r *http.Request) {
-	var tpl = templates.GetTemplate(append(layoutTemplateFiles, "components/bannerGeneric.html", "broadcast.html", "validator/withdrawalOverviewRow.html")...)
+	templateFiles := append(layoutTemplateFiles, "broadcast.html", "validator/withdrawalOverviewRow.html")
+	var tpl = templates.GetTemplate(templateFiles...)
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "tools", "/tools/broadcast", "Broadcast")
+	data := InitPageData(w, r, "tools", "/tools/broadcast", "Broadcast", templateFiles)
 	pageData := &types.BroadcastPageData{}
 	pageData.Stats = services.GetLatestStats()
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
@@ -65,8 +67,14 @@ func BroadcastPost(w http.ResponseWriter, r *http.Request) {
 	jobData := r.FormValue("message")
 	job, err := db.CreateNodeJob([]byte(jobData))
 	if err != nil {
-		logger.Warnf("failed creating a node-job: %v", err)
-		utils.SetFlash(w, r, "info_flash", fmt.Sprintf("Error: %s", err))
+		errMsg := fmt.Sprintf("Error: %s", err)
+		var userErr db.CreateNodeJobUserError
+		if !errors.As(err, &userErr) {
+			// only send error-message if its a UserError, otherwise just tell the user that something is wrong without details
+			errMsg = "Sorry something went wrong :("
+			logger.Errorf("failed creating a node-job: %v", err)
+		}
+		utils.SetFlash(w, r, "info_flash", errMsg)
 		http.Redirect(w, r, "/tools/broadcast", http.StatusSeeOther)
 		return
 	}
@@ -76,10 +84,11 @@ func BroadcastPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
-	var tpl = templates.GetTemplate(append(layoutTemplateFiles, "components/bannerGeneric.html", "broadcaststatus.html")...)
+	templateFiles := append(layoutTemplateFiles, "broadcaststatus.html")
+	var tpl = templates.GetTemplate(templateFiles...)
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "tools", "/tools/broadcast/status", "Broadcast Status")
+	data := InitPageData(w, r, "tools", "/tools/broadcast/status", "Broadcast Status", templateFiles)
 
 	vars := mux.Vars(r)
 
