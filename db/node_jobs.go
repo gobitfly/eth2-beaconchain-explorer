@@ -319,7 +319,7 @@ func SubmitBLSToExecutionChangesNodeJob(job *types.NodeJob) error {
 			d = d[:1000]
 		}
 		jobStatus = types.FailedNodeJobStatus
-		logrus.WithFields(logrus.Fields{"data": fmt.Sprintf("%s", d), "status": resp.Status, "jobID": job.ID}).Warnf("failed submitting a job")
+		logrus.WithFields(logrus.Fields{"data": string(d), "status": resp.Status, "jobID": job.ID}).Warnf("failed submitting a job")
 	}
 	job.Status = jobStatus
 	job.SubmittedToNodeTime.Time = time.Now()
