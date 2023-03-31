@@ -286,7 +286,7 @@ func UpdateBLSToExecutionChangesNodeJob(job *types.NodeJob) error {
 }
 
 func SubmitBLSToExecutionChangesNodeJobs() error {
-	maxSubmittedJobs := 100
+	maxSubmittedJobs := 1000
 	jobs := []*types.NodeJob{}
 	err := WriterDb.Select(&jobs, `select id, type, status, created_time, submitted_to_node_time, completed_time, data from node_jobs where type = $1 and status = $2 order by created_time limit $4-(select count(*) from node_jobs where type = $1 and status = $3)`, types.BLSToExecutionChangesNodeJobType, types.PendingNodeJobStatus, types.SubmittedToNodeNodeJobStatus, maxSubmittedJobs)
 	if err != nil {
@@ -299,7 +299,7 @@ func SubmitBLSToExecutionChangesNodeJobs() error {
 		}
 		err = SubmitBLSToExecutionChangesNodeJob(job)
 		if err != nil {
-			return err
+			return fmt.Errorf("error calling SubmitBLSToExecutionChangesNodeJob for job %v: %w", job.ID, err)
 		}
 	}
 	return nil
@@ -312,18 +312,23 @@ func SubmitBLSToExecutionChangesNodeJob(job *types.NodeJob) error {
 	if err != nil {
 		return err
 	}
+	jobStatus := types.SubmittedToNodeNodeJobStatus
 	if resp.StatusCode != 200 {
 		d, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("http request error: %s: %s, data: %s", resp.Status, d, job.RawData)
+		if len(d) > 1000 {
+			d = d[:1000]
+		}
+		jobStatus = types.FailedNodeJobStatus
+		logrus.WithFields(logrus.Fields{"data": string(d), "status": resp.Status, "jobID": job.ID}).Warnf("failed submitting a job")
 	}
-	job.Status = types.SubmittedToNodeNodeJobStatus
+	job.Status = jobStatus
 	job.SubmittedToNodeTime.Time = time.Now()
 	job.SubmittedToNodeTime.Valid = true
 	_, err = WriterDb.Exec(`update node_jobs set status = $1, submitted_to_node_time = $2 where id = $3`, job.Status, job.SubmittedToNodeTime.Time, job.ID)
 	if err != nil {
 		return err
 	}
-	logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type}).Infof("submitted node_job")
+	logrus.WithFields(logrus.Fields{"id": job.ID, "type": job.Type, "status": jobStatus}).Infof("submitted node_job")
 	return nil
 }
 
