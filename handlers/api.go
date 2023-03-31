@@ -1291,6 +1291,11 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		return nil, fmt.Errorf("error getting validator balances from bigtable: %w", err)
 	}
 
+	currentDayIncome, err := getCurrentDayIncome(queryIndices)
+	if err != nil {
+		return nil, err
+	}
+
 	for balanceIndex, balance := range balances {
 		if len(balance) == 0 {
 			continue
@@ -1311,11 +1316,42 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 			if int64(balanceIndex) == validatorIndex {
 				eMap["balance"] = balance[0].Balance
 				eMap["effectivebalance"] = balance[0].EffectiveBalance
+				eMap["performance1d"] = currentDayIncome[uint64(validatorIndex)]
 			}
 		}
 	}
 
 	return data, nil
+}
+
+func getCurrentDayIncome(validator_indices []uint64) (map[uint64]uint64, error) {
+	dayIncome := make(map[uint64]uint64)
+	lastDay := int64(0)
+
+	err := db.ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats_status")
+	if err != nil {
+		return dayIncome, err
+	}
+
+	currentDay := uint64(lastDay + 1)
+	startEpoch := currentDay * utils.EpochsPerDay()
+	endEpoch := startEpoch + utils.EpochsPerDay() - 1
+	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validator_indices, startEpoch, endEpoch)
+	if err != nil {
+		return dayIncome, err
+	}
+
+	// agregate all epoch income data to total day income for each validator
+	for validatorIndex, validatorIncome := range income {
+		if len(validatorIncome) == 0 {
+			continue
+		}
+		for _, validatorEpochIncome := range validatorIncome {
+			dayIncome[validatorIndex] += uint64(validatorEpochIncome.TotalClRewards())
+		}
+	}
+
+	return dayIncome, nil
 }
 
 func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorEffectiveness, error) {
@@ -2003,7 +2039,37 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	returnQueryResultsAsArray(rows, w, r)
+	data, err := utils.SqlRowsToJSON(rows)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	currentDayIncome, err := getCurrentDayIncome(queryIndices)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "error retrieving current day income")
+		return
+	}
+
+	for _, entry := range data {
+		eMap, ok := entry.(map[string]interface{})
+		if !ok {
+			logger.Errorf("error converting validator data to map[string]interface{}")
+			continue
+		}
+
+		validatorIndex, ok := eMap["validatorindex"].(int64)
+
+		if !ok {
+			logger.Errorf("error converting validatorindex to int64")
+			continue
+		}
+
+		eMap["performanceToday"] = currentDayIncome[uint64(validatorIndex)]
+	}
+
+	j := json.NewEncoder(w)
+	sendOKResponse(j, r.URL.String(), []any{data})
 }
 
 // ApiValidatorExecutionPerformance godoc
@@ -2928,6 +2994,12 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		return
 	}
 
+	currentDayIncome, err := getCurrentDayIncome(queryIndices)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "error retrieving current day income")
+		return
+	}
+
 	for balanceIndex, balance := range balances {
 		if len(balance) == 0 {
 			continue
@@ -2947,6 +3019,7 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 			}
 			if int64(balanceIndex) == validatorIndex {
 				eMap["effectivebalance"] = balance[0].EffectiveBalance
+				eMap["performance1d"] = currentDayIncome[uint64(validatorIndex)]
 			}
 		}
 	}
