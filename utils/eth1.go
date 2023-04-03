@@ -274,13 +274,11 @@ func FormatBigAmount(amount *hexutil.Big, unit string, digits int) template.HTML
 }
 func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, smallUnit bool, newLineForUnit bool) template.HTML {
 	// define display unit & digits used per unit max
-	var displayUnit string
+	displayUnit := " " + unit
 	var unitDigits int
-	if unit == "ETH" {
-		displayUnit = " Ether"
+	if unit == "ETH" || unit == " Ether" {
 		unitDigits = 18
 	} else if unit == "GWei" {
-		displayUnit = " GWei"
 		unitDigits = 9
 	} else {
 		displayUnit = " ?"

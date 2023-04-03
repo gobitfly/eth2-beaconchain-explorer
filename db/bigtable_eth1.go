@@ -1829,7 +1829,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
-			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "ETH", 6),
+			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "Ether", 6),
 		}
 	}
 
@@ -1919,7 +1919,7 @@ func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, search 
 			utils.FormatBlockNumber(b.Number),
 			utils.FormatTimeFromNow(b.Time.AsTime()),
 			utils.FormatBlockUsage(b.GasUsed, b.GasLimit),
-			utils.FormatAmount(reward, "ETH", 6),
+			utils.FormatAmount(reward, "Ether", 6),
 		}
 	}
 
@@ -2006,7 +2006,7 @@ func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, search 
 			utils.FormatBlockNumber(u.Number),
 			utils.FormatTimeFromNow(u.Time.AsTime()),
 			utils.FormatDifficulty(new(big.Int).SetBytes(u.Difficulty)),
-			utils.FormatAmount(new(big.Int).SetBytes(u.Reward), "ETH", 6),
+			utils.FormatAmount(new(big.Int).SetBytes(u.Reward), "Ether", 6),
 		}
 	}
 
@@ -2110,7 +2110,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
-			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "ETH", 6),
+			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "Ether", 6),
 			t.Type,
 		}
 	}

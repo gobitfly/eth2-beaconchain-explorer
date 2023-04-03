@@ -721,8 +721,8 @@ func BlockTransactionsData(w http.ResponseWriter, r *http.Request) {
 			Method:        `<span class="badge badge-light">` + v.Method + `</span>`,
 			FromFormatted: v.FromFormatted,
 			ToFormatted:   v.ToFormatted,
-			Value:         utils.FormatAmountFormated(v.Value, "ETH", 5, 0, true, false),
-			Fee:           utils.FormatAmountFormated(v.Fee, "ETH", 5, 0, true, false),
+			Value:         utils.FormatAmountFormated(v.Value, "Ether", 5, 0, true, false),
+			Fee:           utils.FormatAmountFormated(v.Fee, "Ether", 5, 0, true, false),
 			GasPrice:      utils.FormatAmountFormated(v.GasPrice, "GWei", 5, 0, true, false),
 		}
 	}
@@ -819,7 +819,7 @@ func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", w.Index)),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
 		})
 	}
 
