@@ -1,0 +1,115 @@
+{{ define "js" }}
+  <script>
+    function useHtmlContentChanged(id) {
+      const checked = document.getElementById(`useHtmlContent_${id}`).checked
+      document.getElementById(`htmlContentBox_${id}`).style.display = checked ? "unset" : "none"
+      document.getElementById(`bannerIdBox_${id}`).style.display = checked ? "none" : "unset"
+    }
+    function filterAdConfigurations() {
+      const filterValue = document.getElementById("adFilter").value.toLowerCase()
+      $(".configuration-box").each(function () {
+        const box = $(this)
+        const templateId = box.find("select[name='templateId']")[0].value.toLowerCase()
+        const jQuerySelector = box.find("input[name='jQuerySelector']")[0].value.toLowerCase()
+        if (filterValue.length === 0 || templateId.includes(filterValue) || jQuerySelector.includes(filterValue)) {
+          this.style.display = "flex"
+        } else {
+          this.style.display = "none"
+        }
+      })
+    }
+  </script>
+{{ end }}
+{{ define "css" }}
+{{ end }}
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <h1>Setup your Ad Configurations</h1>
+      {{ $CsrfField := .CsrfField }}
+      {{ $TemplateNames := .TemplateNames }}
+
+
+      <div class="mb-3 card">
+        {{ template "adEditor" dict "Config" .New "TemplateNames" $TemplateNames "CsrfField" $CsrfField }}
+      </div>
+      <div class="p-3">
+        <div class="position-relative d-inline">
+          <input type="text" id="adFilter" oninput="filterAdConfigurations()" placeholder="Search for T. Id or JQ Selector" />
+          <i id="banner-search" class="fas fa-search mt-2"></i>
+        </div>
+        <label for="adFilter">Filter Ad Configurations </label>
+      </div>
+      {{ range .Configurations }}
+        <div class="mb-3 card configuration-box">
+          {{ template "adEditor" dict "Config" . "TemplateNames" $TemplateNames "CsrfField" $CsrfField }}
+          <form id="delete-form-{{ .Id }}" action="/user/ad_configuration/delete" method="POST" onsubmit="return confirm('Do you really want to delete the ad configuration?');">
+            {{ $CsrfField }}
+            <input type="text" name="id" value="{{ .Id }}" class="visually-hidden " />
+            <button id="delete-button" type="submit" class="btn btn-outline-danger btn-sm float-right" data-dismiss="modal">Delete</button>
+          </form>
+        </div>
+      {{ end }}
+    </div>
+  {{ end }}
+{{ end }}
+
+{{ define "adEditor" }}
+  <form action="/user/ad_configuration" id="adEditorForm_{{ .Config.Id }}" method="POST">
+    {{ .CsrfField }}
+    <div class="p-3">
+      {{ $TemplateId := .Config.TemplateId }}
+      <h2>{{ if len .Config.Id }}Edit template: {{ $TemplateId }} - {{ .Config.JQuerySelector }}{{ else }}New Template{{ end }}</h2>
+
+      <input type="text" name="id" value="{{ .Config.Id }}" class="visually-hidden " />
+      <div>
+        <select name="templateId">
+          {{ range .TemplateNames }}
+            <option value="{{ . }}" {{ if (eq . $TemplateId) }}selected="selected"{{ end }}>{{ . }}</option>
+          {{ end }}
+        </select>
+        <label for="templateId">Template Id</label>
+      </div>
+      <div>
+        <input type="text" name="jQuerySelector" value="{{ .Config.JQuerySelector }}" placeholder="E.g. #add-banner" />
+        <label for="jQuerySelector">JQuery Selector</label>
+      </div>
+      <div>
+        <input type="number" name="refreshInterval" value="{{ .Config.RefreshInterval }}" />
+        <label for="refreshInterval">Refresh Interval (in sec, 0 = no refresh)</label>
+      </div>
+      <div>
+        <input type="checkbox" name="enabled" {{ if .Config.Enabled }}checked{{ end }} />
+        <label for="enabled">Is active</label>
+        <input type="checkbox" class="pl-3" name="forAllUsers" {{ if .Config.ForAllUsers }}checked{{ end }} />
+        <label for="enabled">For all users (*Also for Add-Free users!)</label>
+      </div>
+
+      <div>
+        <select name="insertMode">
+          <option value="before" {{ if (eq .Config.InsertMode `before`) }}selected="selected"{{ end }}>Before</option>
+          <option value="after" {{ if (eq .Config.InsertMode `after`) }}selected="selected"{{ end }}>After</option>
+          <option value="insert" {{ if (eq .Config.InsertMode `insert`) }}selected="selected"{{ end }}>Insert</option>
+          <option value="replace" {{ if (eq .Config.InsertMode `replace`) }}selected="selected"{{ end }}>Replace</option>
+        </select>
+        <label for="insertMode">Insert Mode</label>
+      </div>
+
+      <div>
+        <input type="checkbox" id="useHtmlContent_{{ .Id }}" name="useHtmlContent" onclick="useHtmlContentChanged({{ .Config.Id }})" {{ if len .Config.HtmlContent }}checked{{ end }} />
+        <label for="useHtmlContent">Use Custom HTML</label>
+      </div>
+      <div {{ if not (len .Config.HtmlContent) }}style="display:none;"{{ end }} id="htmlContentBox_{{ .Config.Id }}">
+        <label for="htmlContent" class="form-label">Banner HTML</label>
+        <textarea class="form-control" name="htmlContent" rows="20" placeholder="Enter your <div>Banner HTML</div>">{{ .Config.HtmlContent }}</textarea>
+        <div class="form-text">Please ensure that the HTML is valid as there are no sanity checks!</div>
+      </div>
+      <div {{ if (len .Config.HtmlContent) }}style="display:none;"{{ end }} id="bannerIdBox_{{ .Config.Id }}">
+        <input type="number" name="bannerId" value="{{ .Config.BannerId }}" />
+        <label for="bannerId">Revive Zone Id</label>
+        <div class="form-text">Please ensure that the configuration is valid as there are no sanity checks!</div>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary w-100">{{ if len .Config.Id }}Save{{ else }}Add{{ end }}</button>
+  </form>
+{{ end }}

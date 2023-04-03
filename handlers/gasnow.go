@@ -15,11 +15,12 @@ import (
 
 // Will return the gas now page
 func GasNow(w http.ResponseWriter, r *http.Request) {
-	var gasNowTemplate = templates.GetTemplate(append(layoutTemplateFiles, "gasnow.html")...)
+	templateFiles := append(layoutTemplateFiles, "gasnow.html")
+	var gasNowTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "gasnow", "/gasnow", fmt.Sprintf("%v Gwei", 34))
+	data := InitPageData(w, r, "gasnow", "/gasnow", fmt.Sprintf("%v Gwei", 34), templateFiles)
 
 	now := time.Now().Truncate(time.Minute)
 	lastWeek := time.Now().Truncate(time.Minute).Add(-time.Hour * 24 * 7)

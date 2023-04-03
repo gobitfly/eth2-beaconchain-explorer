@@ -29,27 +29,23 @@ const MaxSlotValue = 137438953503 // we only render a page for blocks up to this
 
 // Slot will return the data for a block contained in the slot
 func Slot(w http.ResponseWriter, r *http.Request) {
-
-	var slotTemplate = templates.GetTemplate(
-		append(layoutTemplateFiles,
-			"slot/slot.html",
-			"slot/transactions.html",
-			"slot/withdrawals.html",
-			"slot/attestations.html",
-			"slot/deposits.html",
-			"slot/votes.html",
-			"slot/attesterSlashing.html",
-			"slot/proposerSlashing.html",
-			"slot/exits.html",
-			"slot/overview.html",
-			"slot/execTransactions.html")...,
-	)
-
-	var slotFutureTemplate = templates.GetTemplate(
-		append(layoutTemplateFiles, "slot/slotFuture.html")...,
-	)
-
-	var blockNotFoundTemplate = templates.GetTemplate(append(layoutTemplateFiles, "slotnotfound.html")...)
+	slotTemplateFiles := append(layoutTemplateFiles,
+		"slot/slot.html",
+		"slot/transactions.html",
+		"slot/withdrawals.html",
+		"slot/attestations.html",
+		"slot/deposits.html",
+		"slot/votes.html",
+		"slot/attesterSlashing.html",
+		"slot/proposerSlashing.html",
+		"slot/exits.html",
+		"slot/overview.html",
+		"slot/execTransactions.html")
+	slotFutureTemplateFiles := append(layoutTemplateFiles, "slot/slotFuture.html")
+	blockNotFoundTemplateFiles := append(layoutTemplateFiles, "slotnotfound.html")
+	var slotTemplate = templates.GetTemplate(slotTemplateFiles...)
+	var slotFutureTemplate = templates.GetTemplate(slotFutureTemplateFiles...)
+	var blockNotFoundTemplate = templates.GetTemplate(blockNotFoundTemplateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -61,18 +57,21 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(slotOrHash) != 64 {
 		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
-		if err != nil {
-			logger.Errorf("error parsing blockslot to int: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		if err != nil || blockSlot >= 2147483648 { // block slot must be lower then max int4
+			data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), blockNotFoundTemplateFiles)
+			data.Data = "slot"
+			if handleTemplateError(w, r, "slot.go", "Slot", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+				return // an error has occurred and was processed
+			}
 			return
 		}
 	}
 
-	data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash))
-
 	if blockSlot == -1 {
 		err = db.ReaderDb.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
 		if blockSlot == -1 {
+			data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), blockNotFoundTemplateFiles)
+			data.Data = "slot"
 			if handleTemplateError(w, r, "slot.go", "Slot", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
@@ -89,15 +88,18 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 	if err == sql.ErrNoRows {
 		slot := uint64(blockSlot)
 		//Slot not in database -> Show future block
-		data.Meta.Path = "/slot/" + slotOrHash
 
 		if slot > MaxSlotValue {
 			logger.Errorf("error retrieving blockPageData: %v", err)
+
+			data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), blockNotFoundTemplateFiles)
 			if handleTemplateError(w, r, "slot.go", "Slot", "MaxSlotValue", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 				return // an error has occurred and was processed
 			}
 		}
 
+		data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), slotFutureTemplateFiles)
+		data.Meta.Path = "/slot/" + slotOrHash
 		futurePageData := types.BlockPageData{
 			Slot:         slot,
 			Epoch:        utils.EpochOfSlot(slot),
@@ -127,7 +129,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 			blockPageData.ExecutionData.IsValidMev = blockPageData.IsValidMev
 		}
 	}
-	data.Meta.Path = fmt.Sprintf("/slot/%v", blockPageData.Slot)
+	data := InitPageData(w, r, "blockchain", fmt.Sprintf("/slot/%v", blockPageData.Slot), fmt.Sprintf("Slot %v", slotOrHash), slotTemplateFiles)
 	data.Data = blockPageData
 
 	if utils.IsApiRequest(r) {

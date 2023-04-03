@@ -19,3 +19,6 @@ var SepoliaChainYml string
 
 //go:embed testnet.chain.yml
 var TestnetChainYml string
+
+//go:embed gnosis.chain.yml
+var GnosisChainYml string

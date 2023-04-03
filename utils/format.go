@@ -401,9 +401,9 @@ func FormatEth1AddressStringLowerCase(addr []byte) template.HTML {
 
 // FormatEth1Address will return the eth1-address formated as html
 func FormatEth1Address(addr []byte) template.HTML {
-	copyBtn := CopyButton(hex.EncodeToString(addr))
-	eth1Addr := common.BytesToAddress(addr)
-	return template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
+	eth1Addr := FixAddressCasing(fmt.Sprintf("%x", addr))
+	copyBtn := CopyButton(eth1Addr)
+	return template.HTML(fmt.Sprintf("<a href=\"/address/%s\" class=\"text-monospace\">%s…</a>%s", eth1Addr, eth1Addr[:8], copyBtn))
 }
 
 // FormatEth1Block will return the eth1-block formated as html
@@ -569,7 +569,11 @@ func AddCopyButton(element template.HTML, copyContent string) template.HTML {
 }
 
 func CopyButton(clipboardText interface{}) string {
-	return fmt.Sprintf(`<i class="fa fa-copy text-muted text-white ml-2 p-1" style="opacity: .8;" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
+	value := fmt.Sprintf("%v", clipboardText)
+	if len(value) < 2 || value[0] != '0' || value[1] != 'x' {
+		value = "0x" + value
+	}
+	return fmt.Sprintf(`<i class="fa fa-copy text-muted text-white ml-2 p-1" style="opacity: .8;" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=%s></i>`, value)
 }
 
 func CopyButtonText(clipboardText interface{}) string {
@@ -577,7 +581,11 @@ func CopyButtonText(clipboardText interface{}) string {
 }
 
 func CopyButtonWithTitle(clipboardText interface{}, title string) string {
-	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="%v" data-clipboard-text=0x%v></i>`, title, clipboardText)
+	value := fmt.Sprintf("%v", clipboardText)
+	if len(value) < 2 || value[0] != '0' || value[1] != 'x' {
+		value = "0x" + value
+	}
+	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="%v" data-clipboard-text=%s></i>`, title, value)
 }
 
 func Reverse(s string) string {
@@ -665,24 +673,56 @@ func FormatParticipation(v float64) template.HTML {
 
 // FormatIncome will return a string for a balance
 func FormatIncome(balanceInt int64, currency string) template.HTML {
+	return formatIncome(balanceInt, currency, true)
+}
 
-	decimals := 2
+func FormatIncomeNoCurrency(balanceInt int64, currency string) template.HTML {
+	return formatIncome(balanceInt, currency, false)
+}
 
-	if currency == "ETH" {
-		decimals = 5
+func formatIncome(balanceInt int64, currency string, includeCurrency bool) template.HTML {
+	var income string
+	// always pass absolute value to ensure same amount of decimals
+	if balanceInt >= 0 {
+		income = exchangeAndTrim(currency, balanceInt)
+	} else {
+		income = exchangeAndTrim(currency, -balanceInt)
+	}
+
+	if includeCurrency {
+		currency = " " + currency
+	} else {
+		currency = ""
+	}
+
+	if balanceInt > 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%s%s</b></span>`, income, currency))
+	} else if balanceInt < 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>-%s%s</b></span>`, income, currency))
+	} else {
+		return template.HTML(fmt.Sprintf(`<span>%s%s</span>`, income, currency))
+	}
+}
+
+func FormatExchangedAmount(balanceInt int64, currency string) template.HTML {
+	income := exchangeAndTrim(currency, balanceInt)
+	return template.HTML(fmt.Sprintf(`<span>%s %s</span>`, income, currency))
+}
+
+func exchangeAndTrim(currency string, amount int64) string {
+	decimals := 5
+	preCommaDecimals := 1
+
+	if currency != "ETH" {
+		decimals = 2
+		preCommaDecimals = 4
 	}
 
 	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := (float64(balanceInt) / float64(1e9)) * float64(exchangeRate)
-	balanceFormated := FormatFloat(balance, decimals)
-
-	if balance > 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%s %v</b></span>`, balanceFormated, currency))
-	} else if balance < 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%s %v</b></span>`, balanceFormated, currency))
-	} else {
-		return template.HTML(fmt.Sprintf(`<b>%s %v</b>`, balanceFormated, currency))
-	}
+	exchangedAmount := float64(amount) * exchangeRate
+	// lost precision here but we don't need it for frontend
+	income, _ := trimAmount(big.NewInt(int64(exchangedAmount)), 9, preCommaDecimals, decimals)
+	return income
 }
 
 func FormatIncomeSql(balanceInt sql.NullInt64, currency string) template.HTML {

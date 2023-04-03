@@ -1,5 +1,5 @@
 {{ define "mainNavigation" }}
-  <nav id="nav" class="navbar navbar-expand-lg navbar-light">
+  <nav id="nav" class="main-navigation navbar navbar-expand-lg navbar-light">
     <div class="container">
       <a class="navbar-brand" href="/">
         {{ includeSvg "brand_svg" }}
@@ -54,13 +54,23 @@
 
 {{ define "mainNavigationItem" }}
   {{ if not .IsHidden }}
-    <a class="dropdown-item" href="{{ .Path }}">
-      {{ if .CustomIcon }}
-        {{ includeSvg .CustomIcon }}
-      {{ else }}
-        <span class="nav-icon"><i class="fas {{ .Icon }} mr-2"></i></span>
+    <a class="dropdown-item" {{ if .IsHighlighted }}style="padding:0 0.625rem;"{{ end }} href="{{ .Path }}">
+      {{ $buttonClass := "" }}
+      {{ $textClass := "nav-text" }}
+      {{ if .IsHighlighted }}
+        {{ $buttonClass = "btn btn-primary d-flex align-items-center" }}
+        {{ $textClass = "text-white" }}
       {{ end }}
-      <span class="nav-text">{{ .Label }}</span>
+      <span class="{{ $buttonClass }}">
+        <span class="nav-icon">
+          {{ if .CustomIcon }}
+            {{ includeSvg .CustomIcon }}
+          {{ else }}
+            <i class="fas {{ .Icon }} mr-2"></i>
+          {{ end }}
+        </span>
+        <span class="{{ $textClass }}">{{ .Label }}</span>
+      </span>
     </a>
   {{ end }}
 {{ end }}

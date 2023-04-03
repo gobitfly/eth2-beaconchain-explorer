@@ -17,14 +17,12 @@ var indexTemplateFiles = append(layoutTemplateFiles,
 	"index/genesis.html",
 	"index/hero.html",
 	"index/networkStats.html",
-	"index/participationWarning.html",
 	"index/postGenesis.html",
 	"index/preGenesis.html",
 	"index/recentBlocks.html",
 	"index/recentEpochs.html",
 	"index/genesisCountdown.html",
 	"index/depositDistribution.html",
-	"components/banner.html",
 	"svg/bricks.html",
 	"svg/professor.html",
 	"svg/timeline.html",
@@ -40,23 +38,15 @@ var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateF
 func Index(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "index", "", "")
-	data.Data = services.LatestIndexPageData()
+	data := InitPageData(w, r, "index", "", "", indexTemplateFiles)
+	pageData := services.LatestIndexPageData()
 
 	// data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
-	data.Data.(*types.IndexPageData).Countdown = utils.Config.Frontend.Countdown
+	pageData.Countdown = utils.Config.Frontend.Countdown
 
-	if utils.Config.Frontend.SlotViz.Enabled {
-		data.Data.(*types.IndexPageData).SlotVizData = struct {
-			Epochs        []*types.SlotVizEpochs
-			Selector      string
-			HardforkEpoch uint64
-		}{
-			Epochs:        services.LatestSlotVizMetrics(),
-			Selector:      "slotsViz",
-			HardforkEpoch: utils.Config.Frontend.SlotViz.HardforkEpoch,
-		}
-	}
+	pageData.SlotVizData = getSlotVizData(data.CurrentEpoch)
+
+	data.Data = pageData
 
 	if handleTemplateError(w, r, "index.go", "Index", "", indexTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
@@ -74,4 +64,32 @@ func IndexPageData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
+}
+
+func getSlotVizData(currentEpoch uint64) *types.SlotVizPageData {
+	var visiblFrom uint64
+	var visibleTo uint64
+	configuration, err := services.GetExplorerConfigurationsWithDefaults()
+	if err != nil {
+		utils.LogError(err, "Could not load SlotViz configuration for index page", 0)
+		return nil
+	}
+	visiblFrom, err = configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleFromEpoch)
+	if err != nil {
+		utils.LogError(err, "Could not get visbleFrom for SlotViz on index page", 0)
+		return nil
+	}
+	visibleTo, err = configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleToEpoch)
+	if err != nil {
+		utils.LogError(err, "Could not get visibleTo for SlotViz on index page", 0)
+		return nil
+	}
+	if visiblFrom <= currentEpoch && visibleTo >= currentEpoch {
+		return &types.SlotVizPageData{
+			Epochs:   services.LatestSlotVizMetrics(),
+			Selector: "slotsViz",
+			Config:   configuration[services.ConfigurationCategorySlotViz]}
+
+	}
+	return nil
 }

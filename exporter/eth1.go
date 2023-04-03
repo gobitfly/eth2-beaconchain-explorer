@@ -3,7 +3,6 @@ package exporter
 import (
 	"context"
 	"database/sql"
-	"encoding/hex"
 	"eth2-exporter/db"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
@@ -11,7 +10,6 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -20,8 +18,6 @@ import (
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
 	"github.com/prysmaticlabs/prysm/v3/contracts/deposit"
 	"github.com/prysmaticlabs/prysm/v3/crypto/hash"
 	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
@@ -177,45 +173,7 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 	blocksToFetch := []uint64{}
 	txsToFetch := []string{}
 
-	cfg := params.BeaconConfig()
-	genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Config.GenesisForkVersion, "0x", "", -1))
-	// genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Config.GenesisForkVersion.String(), "0x", "", -1))
-	if err != nil {
-		return nil, err
-	}
-	domain, err := signing.ComputeDomain(
-		cfg.DomainDeposit,
-		genForkVersion,
-		cfg.ZeroHash[:],
-	)
-	if utils.Config.Chain.Config.ConfigName == "zinken" {
-		domain, err = signing.ComputeDomain(
-			cfg.DomainDeposit,
-			[]byte{0x00, 0x00, 0x00, 0x03},
-			cfg.ZeroHash[:],
-		)
-	}
-	if utils.Config.Chain.Config.ConfigName == "toledo" {
-		domain, err = signing.ComputeDomain(
-			cfg.DomainDeposit,
-			[]byte{0x00, 0x70, 0x1E, 0xD0},
-			cfg.ZeroHash[:],
-		)
-	}
-	if utils.Config.Chain.Config.ConfigName == "pyrmont" {
-		domain, err = signing.ComputeDomain(
-			cfg.DomainDeposit,
-			[]byte{0x00, 0x00, 0x20, 0x09},
-			cfg.ZeroHash[:],
-		)
-	}
-	if utils.Config.Chain.Config.ConfigName == "prater" {
-		domain, err = signing.ComputeDomain(
-			cfg.DomainDeposit,
-			[]byte{0x00, 0x00, 0x10, 0x20},
-			cfg.ZeroHash[:],
-		)
-	}
+	domain, err := utils.GetSigningDomain()
 	if err != nil {
 		return nil, err
 	}

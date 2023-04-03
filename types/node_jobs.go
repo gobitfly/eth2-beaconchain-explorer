@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/attestantio/go-eth2-client/spec/capella"
@@ -69,6 +70,9 @@ func (nj *NodeJob) ParseData() error {
 			if nj.Type != "" && nj.Type != UnknownNodeJobType && nj.Type != BLSToExecutionChangesNodeJobType {
 				return fmt.Errorf("nodejob.RawData mismatches nodejob.Type (%v)", nj.Type)
 			}
+			sort.Slice(d, func(i, j int) bool {
+				return d[i].Message.ValidatorIndex < d[j].Message.ValidatorIndex
+			})
 			nj.Type = BLSToExecutionChangesNodeJobType
 			nj.Data = d
 			return nj.SanitizeRawData()

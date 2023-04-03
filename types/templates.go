@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"math/big"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -21,7 +22,7 @@ import (
 // PageData is a struct to hold web page data
 type PageData struct {
 	Active                string
-	HeaderAd              bool
+	AdConfigurations      []*AdConfig
 	Meta                  *Meta
 	ShowSyncingMessage    bool
 	User                  *User
@@ -67,11 +68,12 @@ type NavigationGroup struct {
 }
 
 type NavigationLink struct {
-	Label      string
-	Path       string
-	CustomIcon string
-	Icon       string
-	IsHidden   bool
+	Label         string
+	Path          string
+	CustomIcon    string
+	Icon          string
+	IsHidden      bool
+	IsHighlighted bool
 }
 
 type PageRates struct {
@@ -112,6 +114,7 @@ type Meta struct {
 	Tdata2      string
 	GATag       string
 	NoTrack     bool
+	Templates   string
 }
 
 // LatestState is a struct to hold data for the banner
@@ -199,13 +202,13 @@ type IndexPageData struct {
 	DepositChart              *ChartsPageDataChart
 	DepositDistribution       *ChartsPageDataChart
 	Countdown                 interface{}
-	SlotVizData               SlotVizPageData `json:"slotVizData"`
+	SlotVizData               *SlotVizPageData `json:"slotVizData"`
 }
 
 type SlotVizPageData struct {
-	Epochs        []*SlotVizEpochs
-	Selector      string
-	HardforkEpoch uint64
+	Epochs   []*SlotVizEpochs
+	Selector string
+	Config   ExplorerConfigurationKeyMap
 }
 
 type IndexPageDataEpochs struct {
@@ -334,8 +337,6 @@ type ValidatorPageData struct {
 	WithdrawCredentials                      []byte `db:"withdrawalcredentials"`
 	CurrentBalance                           uint64 `db:"balance"`
 	BalanceActivation                        uint64 `db:"balanceactivation"`
-	Balance7d                                uint64 `db:"balance7d"`
-	Balance31d                               uint64 `db:"balance31d"`
 	EffectiveBalance                         uint64 `db:"effectivebalance"`
 	Slashed                                  bool   `db:"slashed"`
 	SlashedBy                                uint64
@@ -376,15 +377,24 @@ type ValidatorPageData struct {
 	ParticipatedSyncCount                    uint64
 	MissedSyncCount                          uint64
 	OrphanedSyncCount                        uint64
-	UnmissedSyncPercentage                   float64 // missed/(participated+orphaned)
-	IncomeToday                              int64
-	Income1d                                 int64
-	Income7d                                 int64
-	Income31d                                int64
+	UnmissedSyncPercentage                   float64     // missed/(participated+orphaned)
+	IncomeToday                              ClElInt64   `json:"incomeToday"`
+	Income1d                                 ClElInt64   `json:"income1d"`
+	Income7d                                 ClElInt64   `json:"income7d"`
+	Income31d                                ClElInt64   `json:"income31d"`
+	Apr7d                                    ClElFloat64 `json:"apr7d"`
+	Apr31d                                   ClElFloat64 `json:"apr31d"`
+	Apr365d                                  ClElFloat64 `json:"apr365d"`
+	ElIncomeTotal                            int64       `json:"totalExecutionRewards"`
+	ProposalLuck                             float64
+	SyncLuck                                 float64
+	ProposalEstimate                         *time.Time
+	SyncEstimate                             *time.Time
+	AvgSlotInterval                          *time.Duration
+	AvgSyncInterval                          *time.Duration
 	Rank7d                                   int64 `db:"rank7d"`
 	RankCount                                int64 `db:"rank_count"`
 	RankPercentage                           float64
-	Apr                                      float64
 	Proposals                                [][]uint64
 	IncomeHistoryChartData                   []*ChartDataPoint
 	ExecutionIncomeHistoryData               []*ChartDataPoint
@@ -407,7 +417,6 @@ type ValidatorPageData struct {
 	LongestAttestationStreak                 uint64
 	IsRocketpool                             bool
 	Rocketpool                               *RocketpoolValidatorPageData
-	NoAds                                    bool
 	ShowMultipleWithdrawalCredentialsWarning bool
 	CappellaHasHappened                      bool
 	BLSChange                                *BLSChange
@@ -433,8 +442,15 @@ type RocketpoolValidatorPageData struct {
 	SmoothingUnclaimed   *string    `db:"unclaimed_smoothing_pool"`
 	UnclaimedRPL         *string    `db:"unclaimed_rpl_rewards"`
 	SmoothingPoolOptIn   bool       `db:"smoothing_pool_opted_in"`
-	PenaltyCount         *uint64    `db:"penalty_count"`
+	PenaltyCount         int        `db:"penalty_count"`
 	RocketscanUrl        string     `db:"-"`
+	NodeDepositBalance   *string    `db:"node_deposit_balance"`
+	NodeRefundBalance    *string    `db:"node_refund_balance"`
+	UserDepositBalance   *string    `db:"user_deposit_balance"`
+	IsVacant             bool       `db:"is_vacant"`
+	Version              *string    `db:"version"`
+	NodeDepositCredit    *string    `db:"deposit_credit"`
+	EffectiveRPLStake    *string    `db:"effective_rpl_stake"`
 }
 
 type ValidatorStatsTablePageData struct {
@@ -967,12 +983,10 @@ type HeatmapData struct {
 
 // DashboardData is a struct to hold data for the dashboard-page
 type DashboardData struct {
-	// BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
-	// Earnings       ValidatorEarnings                `json:"earnings"`
-	// Validators     [][]interface{}                  `json:"validators"`
 	Csrf                string `json:"csrf"`
 	ValidatorLimit      int    `json:"valLimit"`
 	CappellaHasHappened bool
+	NextWithdrawalRow   [][]interface{}
 }
 
 // DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page
@@ -984,12 +998,27 @@ type DashboardValidatorBalanceHistory struct {
 }
 
 // ValidatorEarnings is a struct to hold the earnings of one or multiple validators
+
+type ClElInt64 struct {
+	El    int64
+	Cl    int64
+	Total int64
+}
+
+type ClElFloat64 struct {
+	El    float64
+	Cl    float64
+	Total float64
+}
+
 type ValidatorEarnings struct {
-	Total                   int64         `json:"total"`
-	LastDay                 int64         `json:"lastDay"`
-	LastWeek                int64         `json:"lastWeek"`
-	LastMonth               int64         `json:"lastMonth"`
-	APR                     float64       `json:"apr"`
+	Income1d                ClElInt64     `json:"income1d"`
+	Income7d                ClElInt64     `json:"income7d"`
+	Income31d               ClElInt64     `json:"income31d"`
+	Apr7d                   ClElFloat64   `json:"apr"`
+	Apr31d                  ClElFloat64   `json:"apr31d"`
+	Apr365d                 ClElFloat64   `json:"apr365d"`
+	ElIncomeTotal           int64         `json:"totalExecutionRewards"`
 	TotalDeposits           int64         `json:"totalDeposits"`
 	TotalWithdrawals        uint64        `json:"totalWithdrawals"`
 	EarningsInPeriodBalance int64         `json:"earningsInPeriodBalance"`
@@ -1001,6 +1030,7 @@ type ValidatorEarnings struct {
 	LastMonthFormatted      template.HTML `json:"lastMonthFormatted"`
 	TotalFormatted          template.HTML `json:"totalFormatted"`
 	TotalChangeFormatted    template.HTML `json:"totalChangeFormatted"`
+	TotalBalance            template.HTML `json:"totalBalance"`
 }
 
 // ValidatorAttestationSlashing is a struct to hold data of an attestation-slashing
@@ -1266,7 +1296,6 @@ type MobilePricing struct {
 type StakeWithUsPageData struct {
 	FlashMessage string
 	RecaptchaKey string
-	NoAds        bool
 }
 type RateLimitError struct {
 	TimeLeft time.Duration
@@ -1322,6 +1351,7 @@ type RocketpoolPageDataMinipool struct {
 	Status                   string    `db:"status"`
 	StatusTime               time.Time `db:"status_time"`
 	PenaltyCount             uint64    `db:"penalty_count"`
+	DepositEth               int       `db:"node_deposit_balance"`
 }
 
 type RocketpoolPageDataNode struct {
@@ -1337,6 +1367,7 @@ type RocketpoolPageDataNode struct {
 	UnclaimedSmoothingPool   string `db:"unclaimed_smoothing_pool"`
 	UnclaimedRplRewards      string `db:"unclaimed_rpl_rewards"`
 	SmoothingPoolOptIn       bool   `db:"smoothing_pool_opted_in"`
+	DepositCredit            string `db:"deposit_credit"`
 }
 
 type RocketpoolPageDataDAOProposal struct {
@@ -1394,6 +1425,18 @@ type UserWebhookRow struct {
 	Events       []EventNameCheckbox     `db:"event_names" json:"-"`
 	Discord      bool
 	CsrfField    template.HTML
+}
+
+type AdConfigurationPageData struct {
+	Configurations []*AdConfig
+	CsrfField      template.HTML
+	New            AdConfig
+	TemplateNames  []string
+}
+
+type ExplorerConfigurationPageData struct {
+	Configurations ExplorerConfigurationMap
+	CsrfField      template.HTML
 }
 
 type UserWebhookRowError struct {
@@ -1893,6 +1936,62 @@ type ValidatorsBLSChange struct {
 	Address                  []byte `db:"address" json:"address,omitempty"`
 	Signature                []byte `db:"signature" json:"signature,omitempty"`
 	WithdrawalCredentialsOld []byte `db:"withdrawalcredentials" json:"withdrawalcredentials,omitempty"`
+}
+
+// AdConfig is a struct to hold the configuration for one specific ad banner placement
+type AdConfig struct {
+	Id              string `db:"id"`
+	TemplateId      string `db:"template_id"`
+	JQuerySelector  string `db:"jquery_selector"`
+	InsertMode      string `db:"insert_mode"`
+	RefreshInterval uint64 `db:"refresh_interval"`
+	Enabled         bool   `db:"enabled"`
+	ForAllUsers     bool   `db:"for_all_users"`
+	BannerId        uint64 `db:"banner_id"`
+	HtmlContent     string `db:"html_content"`
+}
+
+type ExplorerConfigurationCategory string
+type ExplorerConfigurationKey string
+type ExplorerConfigValue struct {
+	Value    string `db:"value"`
+	DataType string `db:"data_type"`
+}
+type ExplorerConfig struct {
+	Category ExplorerConfigurationCategory `db:"category"`
+	Key      ExplorerConfigurationKey      `db:"key"`
+	ExplorerConfigValue
+}
+type ExplorerConfigurationKeyMap map[ExplorerConfigurationKey]ExplorerConfigValue
+type ExplorerConfigurationMap map[ExplorerConfigurationCategory]ExplorerConfigurationKeyMap
+
+func (configMap ExplorerConfigurationMap) GetConfigValue(category ExplorerConfigurationCategory, configKey ExplorerConfigurationKey) (ExplorerConfigValue, error) {
+	configValue := ExplorerConfigValue{}
+	keyMap, ok := configMap[category]
+	if ok {
+		configValue, ok = keyMap[configKey]
+		if ok {
+			return configValue, nil
+		}
+	}
+	return configValue, fmt.Errorf("config value for %s %s not found", category, configKey)
+}
+
+func (configMap ExplorerConfigurationMap) GetUInt64Value(category ExplorerConfigurationCategory, configKey ExplorerConfigurationKey) (uint64, error) {
+	configValue, err := configMap.GetConfigValue(category, configKey)
+	if err == nil {
+		if configValue.DataType != "int" {
+			return 0, fmt.Errorf("wrong data type for %s %s, got %s, expected %s", category, configKey, configValue.DataType, "int")
+		} else {
+			return strconv.ParseUint(configValue.Value, 10, 64)
+		}
+	}
+	return 0, err
+}
+
+func (configMap ExplorerConfigurationMap) GetStringValue(category ExplorerConfigurationCategory, configKey ExplorerConfigurationKey) (string, error) {
+	configValue, err := configMap.GetConfigValue(category, configKey)
+	return configValue.Value, err
 }
 
 type WithdrawalsPageData struct {

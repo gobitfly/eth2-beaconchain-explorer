@@ -746,17 +746,17 @@ func performanceDistribution365dChartData() (*types.GenericChartData, error) {
 		with
 			stats as (
 				select 
-					min(performance365d) as min,
-					max(performance365d) as max
+					min(cl_performance_365d) as min,
+					max(cl_performance_365d) as max
 				from validator_performance
 			),
 			histogram as (
 				select 
 					case
 						when min = max then 0
-						else width_bucket(performance365d, min, max, 999) 
+						else width_bucket(cl_performance_365d, min, max, 999) 
 					end as bucket,
-					max(performance365d) as max,
+					max(cl_performance_365d) as max,
 					count(*) as cnt
 				from  validator_performance, stats
 				group by bucket
@@ -1271,7 +1271,7 @@ func BlockTimeAvgChartData() (*types.GenericChartData, error) {
 		ColumnDataGroupingApproximation: "average",
 		TooltipFormatter: `
 		function (tooltip) {
-			this.point.y = Math.round(this.point.y)
+			this.point.y = Math.round(this.point.y * 100) / 100
 			var orig = tooltip.defaultFormatter.call(this, tooltip)
 			var epoch = timeToEpoch(this.x)
 			if (epoch > 0) {

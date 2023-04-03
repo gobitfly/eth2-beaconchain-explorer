@@ -1800,8 +1800,12 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
 
-		fromName := names[string(t.From)]
-		toName := names[string(t.To)]
+		fromName := ""
+		toName := ""
+		if t != nil {
+			fromName = names[string(t.From)]
+			toName = names[string(t.To)]
+		}
 
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
 		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
@@ -2475,11 +2479,11 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address string, search strin
 
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
-		from := utils.FormatHash(t.From)
+		from := utils.FormatAddressWithLimits(t.From, "", false, "", 13, 0, false)
 		if fmt.Sprintf("%x", t.From) != address {
 			from = utils.FormatAddressAsLink(t.From, "", false, false)
 		}
-		to := utils.FormatHash(t.To)
+		to := utils.FormatAddressWithLimits(t.To, "", false, "", 13, 0, false)
 		if fmt.Sprintf("%x", t.To) != address {
 			to = utils.FormatAddressAsLink(t.To, "", false, false)
 		}
@@ -2559,11 +2563,11 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
-		from := utils.FormatHash(t.From)
+		from := utils.FormatAddressWithLimits(t.From, "", false, "", 13, 0, false)
 		if fmt.Sprintf("%x", t.From) != address {
 			from = utils.FormatAddressAsLink(t.From, "", false, false)
 		}
-		to := utils.FormatHash(t.To)
+		to := utils.FormatAddressWithLimits(t.To, "", false, "", 13, 0, false)
 		if fmt.Sprintf("%x", t.To) != address {
 			to = utils.FormatAddressAsLink(t.To, "", false, false)
 		}
@@ -2986,26 +2990,40 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 	ret := &types.ContractMetadata{}
 
 	if err != nil || row == nil {
-		logrus.Infof("trying to fetch contract metadata")
 		ret, err := utils.TryFetchContractMetadata(address)
 
 		if err != nil {
-			logrus.Errorf("error fetching contract metadata for address %x: %v", address, err)
-			err = cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
+			if err == utils.ErrRateLimit {
+				logrus.Warnf("Hit rate limit when fetching contract metadata for address %x", address)
+			} else {
+				utils.LogError(err, "Fetching contract metadata", 0, fmt.Sprintf("%x", address))
+				err := cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
+				if err != nil {
+					utils.LogError(err, "Caching contract metadata", 0, fmt.Sprintf("%x", address))
+				}
+			}
 			return nil, err
-		} else {
-			err = cache.TieredCache.Set(cacheKey, ret, time.Hour*24)
-			if err != nil {
-				logger.Errorf("error caching contract metadata: %v", err)
-			}
-
-			err = bigtable.SaveContractMetadata(address, ret)
-
-			if err != nil {
-				logger.Errorf("error saving contract metadata to bigtable: %v", err)
-			}
-			return ret, nil
 		}
+
+		// No contract found, caching empty
+		if ret == nil {
+			err = cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
+			if err != nil {
+				utils.LogError(err, "Caching contract metadata", 0, fmt.Sprintf("%x", address))
+			}
+			return nil, nil
+		}
+
+		err = cache.TieredCache.Set(cacheKey, ret, time.Hour*24)
+		if err != nil {
+			utils.LogError(err, "Caching contract metadata", 0, fmt.Sprintf("%x", address))
+		}
+
+		err = bigtable.SaveContractMetadata(address, ret)
+		if err != nil {
+			logger.Errorf("error saving contract metadata to bigtable: %v", err)
+		}
+		return ret, nil
 	}
 
 	for _, ri := range row {

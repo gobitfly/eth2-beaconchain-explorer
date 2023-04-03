@@ -43,8 +43,13 @@ table {
   width: 1rem;
 }
 
-.dropdown-menu.dropdown-menu-right.show {
+.main-navigation .dropdown-menu.dropdown-menu-right.show {
   display: flex;
+}
+
+.main-navigation .dropdown-item svg{
+  width: 1rem;
+  margin-right: 0.5rem;
 }
 
 .icon-inside {
@@ -480,11 +485,13 @@ label.btn.btn-light:hover {
   --statistics-purple: #a145f8;
   --theme-bg-color-secondary: #e1d8d8;
   --theme-bg-card-body: #ebe7e7;
+  --body-color-inverted: #dee2e6;
 }
 
 [data-theme="dark"]:root {
   --theme-bg-color-secondary: #413938;
   --theme-bg-card-body: rgba(92,78,78,0.333333);
+  --body-color-inverted: #343a40;
 }
 
 :root
