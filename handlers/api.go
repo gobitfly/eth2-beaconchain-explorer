@@ -1071,7 +1071,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	expectedCommitties := 0.0
 	for _, vi := range validatorsInfo {
 		if _, found := periodInfoMap[vi.FirstPossibleSyncCommittee]; !found {
-			return 0, fmt.Errorf("required period not found")
+			return 0, fmt.Errorf("required period not found: FirstPossibleSyncCommittee = '%v'", vi.FirstPossibleSyncCommittee)
 		}
 
 		lastEpoch := vi.ExitEpoch
@@ -1079,8 +1079,11 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 			lastEpoch = epoch
 		}
 
-		if _, found := periodInfoMap[utils.SyncPeriodOfEpoch(lastEpoch)]; !found {
-			return 0, fmt.Errorf("required period not found")
+		{
+			spoe := utils.SyncPeriodOfEpoch(lastEpoch)
+			if _, found := periodInfoMap[spoe]; !found {
+				return 0, fmt.Errorf("required period not found: SyncPeriodOfEpoch(%v) = '%v'", lastEpoch, spoe)
+			}
 		}
 
 		expectedCommitties += periodInfoMap[utils.SyncPeriodOfEpoch(lastEpoch)] - periodInfoMap[utils.SyncPeriodOfEpoch(vi.ActivationEpoch)]
