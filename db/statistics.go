@@ -16,17 +16,25 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func WriteValidatorStatisticsForDay(day uint64) error {
+const DAILY_STATS = "DAY"
+const HOURLY_STATS = "HOUR"
+
+func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
-	epochsPerDay := utils.EpochsPerDay()
-	firstEpoch := day * epochsPerDay
-	lastEpoch := firstEpoch + epochsPerDay - 1
+	firstEpoch := uint64(0)
+	lastEpoch := uint64(0)
 
-	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
+	if timePeriod == DAILY_STATS {
+		epochsPerDay := utils.EpochsPerDay()
+		firstEpoch = period * epochsPerDay
+		lastEpoch = firstEpoch + epochsPerDay - 1
+	}
+
+	logger.Infof("exporting statistics for %v %v (epoch %v to %v)", timePeriod, period, firstEpoch, lastEpoch)
 
 	latestDbEpoch, err := GetLatestEpoch()
 	if err != nil {
@@ -68,7 +76,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		for i, stat := range maArr[start:end] {
 			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
 			valueArgs = append(valueArgs, stat.Index)
-			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, period)
 			valueArgs = append(valueArgs, stat.MissedAttestations)
 			valueArgs = append(valueArgs, 0)
 		}
@@ -103,7 +111,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		on conflict (validatorindex, day) do
 			update set deposits = excluded.deposits, 
 			deposits_amount = excluded.deposits_amount;`
-	if day == 0 {
+	if period == 0 {
 		// genesis-deposits will be added to block 0 by the exporter which is technically not 100% correct
 		// since deposits will be added to the validator-balance only after the block which includes the deposits.
 		// to ease the calculation of validator-income (considering deposits) we set the day of genesis-deposits to -1.
@@ -125,7 +133,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		}
 	}
 
-	_, err = tx.Exec(depositsQry, firstEpoch, lastEpoch, day)
+	_, err = tx.Exec(depositsQry, firstEpoch, lastEpoch, period)
 	if err != nil {
 		return err
 	}
@@ -166,7 +174,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			}
 			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3))
 			valueArgs = append(valueArgs, i)
-			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, period)
 			valueArgs = append(valueArgs, clRewards)
 		}
 		stmt := fmt.Sprintf(`
@@ -252,7 +260,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
 		valueArgs = append(valueArgs, proposer)
-		valueArgs = append(valueArgs, day)
+		valueArgs = append(valueArgs, period)
 		valueArgs = append(valueArgs, rewards.TxFeeReward.String())
 		valueArgs = append(valueArgs, rewards.MevReward.String())
 
@@ -282,7 +290,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		cl_rewards_gwei_total = excluded.cl_rewards_gwei_total,
 		el_rewards_wei_total = excluded.el_rewards_wei_total,
 		mev_rewards_wei_total = excluded.mev_rewards_wei_total;
-	`, day)
+	`, period)
 
 	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
 	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(firstEpoch, lastEpoch)
@@ -309,7 +317,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		for i, stat := range balanceStatsArr[start:end] {
 			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10))
 			valueArgs = append(valueArgs, stat.Index)
-			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, period)
 			valueArgs = append(valueArgs, stat.MinBalance)
 			valueArgs = append(valueArgs, stat.MaxBalance)
 			valueArgs = append(valueArgs, stat.MinEffectiveBalance)
@@ -333,8 +341,9 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
 
-	logger.Infof("populate validator_performance table")
-	_, err = tx.Exec(`insert into validator_performance (
+	if timePeriod == DAILY_STATS {
+		logger.Infof("populate validator_performance table")
+		_, err = tx.Exec(`insert into validator_performance (
 		validatorindex,
 		balance,
 		performance1d,
@@ -421,12 +430,12 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			mev_performance_31d=excluded.mev_performance_31d,
 			mev_performance_365d=excluded.mev_performance_365d,
 			mev_performance_total=excluded.mev_performance_total
-			;`, day, int64(day)-1, int64(day)-7, int64(day)-31, int64(day)-365)
-	if err != nil {
-		return err
-	}
+			;`, period, int64(period)-1, int64(period)-7, int64(period)-31, int64(period)-365)
+		if err != nil {
+			return err
+		}
 
-	_, err = tx.Exec(`
+		_, err = tx.Exec(`
 		insert into validator_performance (                                                                                                 
 			validatorindex,          
 			balance,             
@@ -442,8 +451,9 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 				rank7d=excluded.rank7d
 		;
 		`)
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	start = time.Now()
@@ -472,7 +482,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		for i, stat := range syncStatsArr[start:end] {
 			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5))
 			valueArgs = append(valueArgs, stat.Index)
-			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, period)
 			valueArgs = append(valueArgs, stat.ParticipatedSync)
 			valueArgs = append(valueArgs, stat.MissedSync)
 			valueArgs = append(valueArgs, 0)
@@ -502,7 +512,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			group by proposer
 		) 
 		on conflict (validatorindex, day) do update set proposed_blocks = excluded.proposed_blocks, missed_blocks = excluded.missed_blocks, orphaned_blocks = excluded.orphaned_blocks;`,
-		firstEpoch, lastEpoch, day)
+		firstEpoch, lastEpoch, period)
 	if err != nil {
 		return err
 	}
@@ -519,7 +529,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			group by proposer
 		) 
 		on conflict (validatorindex, day) do update set attester_slashings = excluded.attester_slashings, proposer_slashings = excluded.proposer_slashings;`,
-		firstEpoch, lastEpoch, day)
+		firstEpoch, lastEpoch, period)
 	if err != nil {
 		return err
 	}
@@ -539,7 +549,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		on conflict (validatorindex, day) do
 			update set withdrawals = excluded.withdrawals, 
 			withdrawals_amount = excluded.withdrawals_amount;`
-	_, err = tx.Exec(withdrawalsQuery, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch, day)
+	_, err = tx.Exec(withdrawalsQuery, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch, period)
 	if err != nil {
 		return err
 	}
@@ -558,7 +568,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		return err
 	}
 
-	logger.Infof("statistics export of day %v completed, took %v", day, time.Since(exportStart))
+	logger.Infof("statistics export of %v %v completed, took %v", timePeriod, period, time.Since(exportStart))
 	return nil
 }
 

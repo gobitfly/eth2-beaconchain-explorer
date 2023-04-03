@@ -467,6 +467,18 @@ func GetLatestEpoch() (uint64, error) {
 	return epoch, nil
 }
 
+// GetLatestFinalizedEpoch will return the latest finalized epoch from the database
+func GetLatestFinalizedEpoch() (uint64, error) {
+	var epoch uint64
+	err := WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs WHERE finalized")
+
+	if err != nil {
+		return 0, fmt.Errorf("error retrieving latest finalized epoch from DB: %w", err)
+	}
+
+	return epoch, nil
+}
+
 // GetAllEpochs will return a collection of all of the epochs from the database
 func GetAllEpochs() ([]uint64, error) {
 	var epochs []uint64

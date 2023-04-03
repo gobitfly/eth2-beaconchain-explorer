@@ -169,17 +169,17 @@ func main() {
 		return
 	}
 
-	go statisticsLoop()
+	go dailyStatisticsLoop()
 
 	utils.WaitForCtrlC()
 
 	logrus.Println("exiting...")
 }
 
-func statisticsLoop() {
+func dailyStatisticsLoop() {
 	for {
 
-		latestEpoch, err := db.GetLatestEpoch()
+		latestEpoch, err := db.GetLatestFinalizedEpoch()
 		if err != nil {
 			logrus.Errorf("error retreiving latest epoch from the db: %v", err)
 			time.Sleep(time.Minute)
