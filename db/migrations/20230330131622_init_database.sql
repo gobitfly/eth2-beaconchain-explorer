@@ -40,6 +40,8 @@ CREATE INDEX IF NOT EXISTS idx_validators_balanceactivation ON validators (balan
 
 CREATE INDEX IF NOT EXISTS idx_validators_activationepoch ON validators (activationepoch);
 
+CREATE INDEX IF NOT EXISTS idx_validators_exitepoch ON validators (exitepoch);
+
 CREATE INDEX IF NOT EXISTS validators_is_offline_vali_idx ON validators (validatorindex, lastattestationslot, pubkey);
 
 CREATE INDEX IF NOT EXISTS idx_validators_withdrawalcredentials ON validators (withdrawalcredentials, validatorindex);
