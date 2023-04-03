@@ -88,16 +88,16 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	err = db.ReaderDb.Get(&income, `
 		SELECT 
-			SUM(cl_performance_1d) AS cl_performance_1d,
-			SUM(cl_performance_7d) AS cl_performance_7d,
-			SUM(cl_performance_31d) AS cl_performance_31d,
-			SUM(cl_performance_365d) AS cl_performance_365d,
-			SUM(cl_performance_total) AS cl_performance_total,
-			SUM(mev_performance_1d) AS el_performance_1d,
-			SUM(mev_performance_7d) AS el_performance_7d,
-			SUM(mev_performance_31d) AS el_performance_31d,
-			SUM(mev_performance_365d) AS el_performance_365d,
-			SUM(mev_performance_total) AS el_performance_total
+		COALESCE(SUM(cl_performance_1d), 0) AS cl_performance_1d,
+		COALESCE(SUM(cl_performance_7d), 0) AS cl_performance_7d,
+		COALESCE(SUM(cl_performance_31d), 0) AS cl_performance_31d,
+		COALESCE(SUM(cl_performance_365d), 0) AS cl_performance_365d,
+		COALESCE(SUM(cl_performance_total), 0) AS cl_performance_total,
+		COALESCE(SUM(mev_performance_1d), 0) AS el_performance_1d,
+		COALESCE(SUM(mev_performance_7d), 0) AS el_performance_7d,
+		COALESCE(SUM(mev_performance_31d), 0) AS el_performance_31d,
+		COALESCE(SUM(mev_performance_365d), 0) AS el_performance_365d,
+		COALESCE(SUM(mev_performance_total), 0) AS el_performance_total
 		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		return nil, nil, err
@@ -293,9 +293,9 @@ func calcExpectedSlotProposals(timeframe time.Duration, validatorCount int, acti
 	return (slotsInTimeframe / float64(activeValidatorsCount)) * float64(validatorCount)
 }
 
-//getAvgSlotInterval will return the average block interval for a certain number of validators
+// getAvgSlotInterval will return the average block interval for a certain number of validators
 //
-//result of the function should be interpreted as "1 in every X slots will be proposed by this amount of validators on avg."
+// result of the function should be interpreted as "1 in every X slots will be proposed by this amount of validators on avg."
 func getAvgSlotInterval(validatorsCount int) float64 {
 	// don't estimate if there are no proposed blocks or no validators
 	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
@@ -309,9 +309,9 @@ func getAvgSlotInterval(validatorsCount int) float64 {
 	return 1 / probability
 }
 
-//getAvgSyncCommitteeInterval will return the average sync committee interval for a certain number of validators
+// getAvgSyncCommitteeInterval will return the average sync committee interval for a certain number of validators
 //
-//result of the function should be interpreted as "there will be one validator included in every X committees, on average"
+// result of the function should be interpreted as "there will be one validator included in every X committees, on average"
 func getAvgSyncCommitteeInterval(validatorsCount int) float64 {
 	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
 	if activeValidatorsCount == 0 {
