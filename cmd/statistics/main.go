@@ -213,7 +213,7 @@ func dailyStatisticsLoop() {
 			logrus.Infof("Validator Statistics: Latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayValidator)
 			if lastExportedDayValidator <= previousDay || lastExportedDayValidator == 0 {
 				for day := lastExportedDayValidator; day <= previousDay; day++ {
-					err := db.WriteValidatorStatisticsForDay(day)
+					err := db.WriteValidatorStatisticsForTimePeriod(db.DAILY_STATS, day)
 					if err != nil {
 						logrus.Errorf("error exporting stats for day %v: %v", day, err)
 					}

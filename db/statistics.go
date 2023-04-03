@@ -16,8 +16,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const DAILY_STATS = "DAY"
-const HOURLY_STATS = "HOUR"
+const DAILY_STATS = "day"
+const HOURLY_STATS = "hour"
 
 func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) error {
 	exportStart := time.Now()
@@ -25,14 +25,11 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
-	firstEpoch := uint64(0)
-	lastEpoch := uint64(0)
+	epochsPerDay := utils.EpochsPerDay()
+	firstEpoch := period * epochsPerDay
+	lastEpoch := firstEpoch + epochsPerDay - 1
 
-	if timePeriod == DAILY_STATS {
-		epochsPerDay := utils.EpochsPerDay()
-		firstEpoch = period * epochsPerDay
-		lastEpoch = firstEpoch + epochsPerDay - 1
-	}
+	statsTablePrefix := ""
 
 	logger.Infof("exporting statistics for %v %v (epoch %v to %v)", timePeriod, period, firstEpoch, lastEpoch)
 
@@ -81,9 +78,9 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 			valueArgs = append(valueArgs, 0)
 		}
 		stmt := fmt.Sprintf(`
-		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
+		insert into validator_stats`+statsTablePrefix+` (validatorindex, `+timePeriod+`, missed_attestations, orphaned_attestations) VALUES
 		%s
-		on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
+		on conflict (validatorindex, `+timePeriod+`) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
 			strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
@@ -99,7 +96,7 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 
 	logger.Infof("exporting deposits and deposits_amount statistics")
 	depositsQry := `
-		insert into validator_stats (validatorindex, day, deposits, deposits_amount) 
+		insert into validator_stats` + statsTablePrefix + ` (validatorindex, ` + timePeriod + `, deposits, deposits_amount) 
 		(
 			select validators.validatorindex, $3, count(*), sum(amount)
 			from blocks_deposits
@@ -108,7 +105,7 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 			where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1' and blocks_deposits.valid_signature
 			group by validators.validatorindex
 		) 
-		on conflict (validatorindex, day) do
+		on conflict (validatorindex, ` + timePeriod + `) do
 			update set deposits = excluded.deposits, 
 			deposits_amount = excluded.deposits_amount;`
 	if period == 0 {
@@ -116,16 +113,16 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 		// since deposits will be added to the validator-balance only after the block which includes the deposits.
 		// to ease the calculation of validator-income (considering deposits) we set the day of genesis-deposits to -1.
 		depositsQry = `
-			insert into validator_stats (validatorindex, day, deposits, deposits_amount)
+			insert into validator_stats` + statsTablePrefix + ` (validatorindex, ` + timePeriod + `, deposits, deposits_amount)
 			(
-				select validators.validatorindex, case when block_slot = 0 then -1 else $3 end as day, count(*), sum(amount)
+				select validators.validatorindex, case when block_slot = 0 then -1 else $3 end as ` + timePeriod + `, count(*), sum(amount)
 				from blocks_deposits
 				inner join validators on blocks_deposits.publickey = validators.pubkey
 				inner join blocks on blocks_deposits.block_root = blocks.blockroot
 				where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1'
-				group by validators.validatorindex, day
+				group by validators.validatorindex, ` + timePeriod + `
 			) 
-			on conflict (validatorindex, day) do
+			on conflict (validatorindex, ` + timePeriod + `) do
 				update set deposits = excluded.deposits, 
 				deposits_amount = excluded.deposits_amount;`
 		if err != nil {
@@ -178,9 +175,9 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 			valueArgs = append(valueArgs, clRewards)
 		}
 		stmt := fmt.Sprintf(`
-		insert into validator_stats (validatorindex, day, cl_rewards_gwei) VALUES
+		insert into validator_stats`+statsTablePrefix+` (validatorindex, `+timePeriod+`, cl_rewards_gwei) VALUES
 		%s
-		on conflict (validatorindex, day) do update set cl_rewards_gwei = excluded.cl_rewards_gwei;`,
+		on conflict (validatorindex, `+timePeriod+`) do update set cl_rewards_gwei = excluded.cl_rewards_gwei;`,
 			strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
@@ -267,18 +264,19 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 		i++
 	}
 	stmt := fmt.Sprintf(`
-	insert into validator_stats (validatorindex, day, el_rewards_wei, mev_rewards_wei) VALUES
+	insert into validator_stats`+statsTablePrefix+` (validatorindex, `+timePeriod+`, el_rewards_wei, mev_rewards_wei) VALUES
 	%s
-	on conflict (validatorindex, day) do update set el_rewards_wei = excluded.el_rewards_wei, mev_rewards_wei = excluded.mev_rewards_wei;`,
+	on conflict (validatorindex, `+timePeriod+`) do update set el_rewards_wei = excluded.el_rewards_wei, mev_rewards_wei = excluded.mev_rewards_wei;`,
 		strings.Join(valueStrings, ","))
 	_, err = tx.Exec(stmt, valueArgs...)
 	if err != nil {
 		return err
 	}
 
-	logger.Infof("exporting total income stats")
-	tx.Exec(`
-	INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei_total, el_rewards_wei_total, mev_rewards_wei_total) (
+	if timePeriod == DAILY_STATS {
+		logger.Infof("exporting total income stats")
+		tx.Exec(`
+	INSERT INTO validator_stats`+statsTablePrefix+` (validatorindex, day, cl_rewards_gwei_total, el_rewards_wei_total, mev_rewards_wei_total) (
 		SELECT 
 			vs1.validatorindex, 
 			vs1.day, 
@@ -291,6 +289,7 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 		el_rewards_wei_total = excluded.el_rewards_wei_total,
 		mev_rewards_wei_total = excluded.mev_rewards_wei_total;
 	`, period)
+	}
 
 	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
 	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(firstEpoch, lastEpoch)
@@ -328,9 +327,9 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 			valueArgs = append(valueArgs, stat.EndEffectiveBalance)
 		}
 		stmt := fmt.Sprintf(`
-		insert into validator_stats (validatorindex, day, min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance, end_effective_balance) VALUES
+		insert into validator_stats`+statsTablePrefix+` (validatorindex, `+timePeriod+`, min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance, end_effective_balance) VALUES
 		%s
-		on conflict (validatorindex, day) do update set min_balance = excluded.min_balance, max_balance = excluded.max_balance, min_effective_balance = excluded.min_effective_balance, max_effective_balance = excluded.max_effective_balance, start_balance = excluded.start_balance, start_effective_balance = excluded.start_effective_balance, end_balance = excluded.end_balance, end_effective_balance = excluded.end_effective_balance;`,
+		on conflict (validatorindex, `+timePeriod+`) do update set min_balance = excluded.min_balance, max_balance = excluded.max_balance, min_effective_balance = excluded.min_effective_balance, max_effective_balance = excluded.max_effective_balance, start_balance = excluded.start_balance, start_effective_balance = excluded.start_effective_balance, end_balance = excluded.end_balance, end_effective_balance = excluded.end_effective_balance;`,
 			strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
@@ -397,12 +396,12 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_31d.mev_rewards_wei_total, 0) as mev_performance_31d, 
 				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_365d.mev_rewards_wei_total, 0) as mev_performance_365d,
 				coalesce(vs_now.mev_rewards_wei_total, 0) as mev_performance_total
-			from validator_stats vs_now
-			left join validator_stats vs_1d on vs_1d.validatorindex = vs_now.validatorindex and vs_1d.day = $2
-			left join validator_stats vs_7d on vs_7d.validatorindex = vs_now.validatorindex and vs_7d.day = $3
-			left join validator_stats vs_31d on vs_31d.validatorindex = vs_now.validatorindex and vs_31d.day = $4
-			left join validator_stats vs_365d on vs_365d.validatorindex = vs_now.validatorindex and vs_365d.day = $5
-			where vs_now.day = $1
+			from validator_stats`+statsTablePrefix+` vs_now
+			left join validator_stats vs_1d on vs_1d.validatorindex = vs_now.validatorindex and vs_1d.`+timePeriod+` = $2
+			left join validator_stats vs_7d on vs_7d.validatorindex = vs_now.validatorindex and vs_7d.`+timePeriod+` = $3
+			left join validator_stats vs_31d on vs_31d.validatorindex = vs_now.validatorindex and vs_31d.`+timePeriod+` = $4
+			left join validator_stats vs_365d on vs_365d.validatorindex = vs_now.validatorindex and vs_365d.`+timePeriod+` = $5
+			where vs_now.`+timePeriod+` = $1
 		) 
 		on conflict (validatorindex) do update set 
 			balance = excluded.balance, 
@@ -488,9 +487,9 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 			valueArgs = append(valueArgs, 0)
 		}
 		stmt := fmt.Sprintf(`
-		insert into validator_stats (validatorindex, day, participated_sync, missed_sync, orphaned_sync)  VALUES
+		insert into validator_stats`+statsTablePrefix+` (validatorindex, `+timePeriod+`, participated_sync, missed_sync, orphaned_sync)  VALUES
 		%s
-		on conflict (validatorindex, day) do update set participated_sync = excluded.participated_sync, missed_sync = excluded.missed_sync, orphaned_sync = excluded.orphaned_sync;`,
+		on conflict (validatorindex, `+timePeriod+`) do update set participated_sync = excluded.participated_sync, missed_sync = excluded.missed_sync, orphaned_sync = excluded.orphaned_sync;`,
 			strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
@@ -504,14 +503,14 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 	start = time.Now()
 	logger.Infof("exporting proposed_blocks, missed_blocks and orphaned_blocks statistics")
 	_, err = tx.Exec(`
-		insert into validator_stats (validatorindex, day, proposed_blocks, missed_blocks, orphaned_blocks) 
+		insert into validator_stats`+statsTablePrefix+` (validatorindex, `+timePeriod+`, proposed_blocks, missed_blocks, orphaned_blocks) 
 		(
 			select proposer, $3, sum(case when status = '1' then 1 else 0 end), sum(case when status = '2' then 1 else 0 end), sum(case when status = '3' then 1 else 0 end)
 			from blocks
 			where epoch >= $1 and epoch <= $2 and status = '1'
 			group by proposer
 		) 
-		on conflict (validatorindex, day) do update set proposed_blocks = excluded.proposed_blocks, missed_blocks = excluded.missed_blocks, orphaned_blocks = excluded.orphaned_blocks;`,
+		on conflict (validatorindex, `+timePeriod+`) do update set proposed_blocks = excluded.proposed_blocks, missed_blocks = excluded.missed_blocks, orphaned_blocks = excluded.orphaned_blocks;`,
 		firstEpoch, lastEpoch, period)
 	if err != nil {
 		return err
@@ -521,14 +520,14 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 	start = time.Now()
 	logger.Infof("exporting attester_slashings and proposer_slashings statistics")
 	_, err = tx.Exec(`
-		insert into validator_stats (validatorindex, day, attester_slashings, proposer_slashings) 
+		insert into validator_stats`+statsTablePrefix+` (validatorindex, `+timePeriod+`, attester_slashings, proposer_slashings) 
 		(
 			select proposer, $3, sum(attesterslashingscount), sum(proposerslashingscount)
 			from blocks
 			where epoch >= $1 and epoch <= $2 and status = '1'
 			group by proposer
 		) 
-		on conflict (validatorindex, day) do update set attester_slashings = excluded.attester_slashings, proposer_slashings = excluded.proposer_slashings;`,
+		on conflict (validatorindex, `+timePeriod+`) do update set attester_slashings = excluded.attester_slashings, proposer_slashings = excluded.proposer_slashings;`,
 		firstEpoch, lastEpoch, period)
 	if err != nil {
 		return err
@@ -538,7 +537,7 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 	start = time.Now()
 	logger.Infof("exporting withdrawals and withdrawals_amount statistics")
 	withdrawalsQuery := `
-		insert into validator_stats (validatorindex, day, withdrawals, withdrawals_amount) 
+		insert into validator_stats` + statsTablePrefix + ` (validatorindex, ` + timePeriod + `, withdrawals, withdrawals_amount) 
 		(
 			select validatorindex, $3, count(*), sum(amount)
 			from blocks_withdrawals
@@ -546,7 +545,7 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 			where block_slot >= $1 and block_slot <= $2 and blocks.status = '1'
 			group by validatorindex
 		) 
-		on conflict (validatorindex, day) do
+		on conflict (validatorindex, ` + timePeriod + `) do
 			update set withdrawals = excluded.withdrawals, 
 			withdrawals_amount = excluded.withdrawals_amount;`
 	_, err = tx.Exec(withdrawalsQuery, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch, period)
@@ -556,8 +555,8 @@ func WriteValidatorStatisticsForTimePeriod(timePeriod string, period uint64) err
 	logger.Infof("export completed, took %v", time.Since(start))
 
 	start = time.Now()
-	logger.Infof("marking day export as completed in the status table")
-	_, err = tx.Exec("insert into validator_stats_status (day, status, income_exported) values ($1, true, true) ON CONFLICT (day) DO UPDATE SET status=EXCLUDED.status, income_exported=EXCLUDED.income_exported;", day)
+	logger.Infof("marking " + timePeriod + " export as completed in the status table")
+	_, err = tx.Exec("insert into validator_stats"+statsTablePrefix+"_status ("+timePeriod+", status, income_exported) values ($1, true, true) ON CONFLICT ("+timePeriod+") DO UPDATE SET status=EXCLUDED.status, income_exported=EXCLUDED.income_exported;", period)
 	if err != nil {
 		return err
 	}
