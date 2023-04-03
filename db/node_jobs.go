@@ -57,14 +57,19 @@ func GetNodeJobValidatorInfos(job *types.NodeJob) ([]types.NodeJobValidatorInfo,
 	if err != nil {
 		return nil, err
 	}
+	jobStatus := "Pending"
+	switch job.Status {
+	case types.SubmittedToNodeNodeJobStatus:
+		jobStatus = "Submitted to node"
+	case types.CompletedNodeJobStatus:
+		jobStatus = "Processed"
+	case types.FailedNodeJobStatus:
+		jobStatus = "Failed"
+	}
 	for i, info := range dbValis {
-		status := "-"
-		if strings.HasPrefix(info.Status, "exit") {
-			status = "Exit"
-		} else if job.Status == types.PendingNodeJobStatus {
-			status = "Pending"
-		} else if info.WithdrawCredentials[0] == 1 {
-			status = "Withdrawal credentials set"
+		status := jobStatus
+		if strings.HasPrefix(info.Status, "exit") && job.Type == types.BLSToExecutionChangesNodeJobType {
+			status = fmt.Sprintf("%s (Validator Status: Exited)", status)
 		}
 		dbValis[i].Status = status
 	}
