@@ -1080,6 +1080,11 @@ func EpochsPerDay() uint64 {
 	return (uint64(day.Seconds()) / Config.Chain.Config.SlotsPerEpoch) / Config.Chain.Config.SecondsPerSlot
 }
 
+func EpochsPerHour() uint64 {
+	hour := time.Hour
+	return (uint64(hour.Seconds()) / Config.Chain.Config.SlotsPerEpoch) / Config.Chain.Config.SecondsPerSlot
+}
+
 // ForkVersionAtEpoch returns the forkversion active a specific epoch
 func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
 	if epoch >= Config.Chain.Config.CappellaForkEpoch {

@@ -118,7 +118,7 @@ func main() {
 					logrus.Fatalf("error resetting status for day %v: %v", d, err)
 				}
 
-				err = db.WriteValidatorStatisticsForDay(uint64(d))
+				err = db.WriteValidatorStatisticsForTimePeriod(db.DAILY_STATS, uint64(d))
 				if err != nil {
 					logrus.Errorf("error exporting stats for day %v: %v", d, err)
 				}
@@ -149,7 +149,7 @@ func main() {
 				logrus.Fatalf("error resetting status for day %v: %v", *statisticsDayToExport, err)
 			}
 
-			err = db.WriteValidatorStatisticsForDay(uint64(*statisticsDayToExport))
+			err = db.WriteValidatorStatisticsForTimePeriod(db.DAILY_STATS, uint64(*statisticsDayToExport))
 			if err != nil {
 				logrus.Errorf("error exporting stats for day %v: %v", *statisticsDayToExport, err)
 			}
@@ -170,6 +170,7 @@ func main() {
 	}
 
 	go dailyStatisticsLoop()
+	go hourlyStatisticsLoop()
 
 	utils.WaitForCtrlC()
 
@@ -242,6 +243,57 @@ func dailyStatisticsLoop() {
 					}
 				}
 			}
+		}
+
+		services.ReportStatus("statistics", "Running", nil)
+		time.Sleep(time.Minute)
+	}
+}
+
+func hourlyStatisticsLoop() {
+	for {
+
+		latestEpoch, err := db.GetLatestFinalizedEpoch()
+		if err != nil {
+			logrus.Errorf("error retreiving latest epoch from the db: %v", err)
+			time.Sleep(time.Minute)
+			continue
+		}
+
+		epochsPerHour := utils.EpochsPerHour()
+		if latestEpoch < epochsPerHour {
+			logrus.Infof("skipping exporting stats, first hour has not been indexed yet")
+			time.Sleep(time.Minute)
+			continue
+		}
+
+		currentHour := latestEpoch / epochsPerHour
+		previousHour := currentHour - 1
+
+		if previousHour > currentHour {
+			previousHour = currentHour
+		}
+
+		if opt.statisticsValidatorToggle {
+			var lastExportedHourValidator uint64
+			err = db.WriterDb.Get(&lastExportedHourValidator, "select COALESCE(max(hour), 0) from validator_stats_hour_status where status")
+			if err != nil {
+				logrus.Errorf("error retreiving latest exported hour from the db: %v", err)
+			}
+			if lastExportedHourValidator != 0 {
+				lastExportedHourValidator++
+			}
+
+			logrus.Infof("Validator Hourly Statistics: Latest epoch is %v, previous hour is %v, last exported hour is %v", latestEpoch, previousHour, lastExportedHourValidator)
+			if lastExportedHourValidator <= previousHour || lastExportedHourValidator == 0 {
+				for hour := lastExportedHourValidator; hour <= previousHour; hour++ {
+					err := db.WriteValidatorStatisticsForTimePeriod(db.HOURLY_STATS, hour)
+					if err != nil {
+						logrus.Errorf("error exporting stats for hour %v: %v", hour, err)
+					}
+				}
+			}
+
 		}
 
 		services.ReportStatus("statistics", "Running", nil)
