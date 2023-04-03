@@ -263,16 +263,16 @@ func FormatAddressLong(address string) template.HTML {
 
 }
 
-func FormatAmountFormated(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
-	return formatAmount(amount, unit, digits, maxPreCommaDigitsBeforeTrim, fullAmountTooltip, smallUnit, newLineForUnit)
+func FormatAmountFormated(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, smallUnit bool, newLineForUnit bool) template.HTML {
+	return formatAmount(amount, unit, digits, maxPreCommaDigitsBeforeTrim, smallUnit, newLineForUnit)
 }
 func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
-	return formatAmount(amount, unit, digits, 0, false, false, false)
+	return formatAmount(amount, unit, digits, 0, false, false)
 }
 func FormatBigAmount(amount *hexutil.Big, unit string, digits int) template.HTML {
 	return FormatAmount((*big.Int)(amount), unit, digits)
 }
-func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
+func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, smallUnit bool, newLineForUnit bool) template.HTML {
 	// define display unit & digits used per unit max
 	var displayUnit string
 	var unitDigits int
