@@ -294,6 +294,14 @@ func hourlyStatisticsLoop() {
 				}
 			}
 
+			// clean up hours table
+			if lastExportedHourValidator > 50 {
+				_, err = db.WriterDb.Exec("DELETE FROM validator_stats_hour WHERE hour < $1", lastExportedHourValidator-50)
+				if err != nil {
+					logrus.Errorf("error cleaning up validator_stats_hour table: %v", err)
+				}
+			}
+
 		}
 
 		services.ReportStatus("statistics", "Running", nil)
