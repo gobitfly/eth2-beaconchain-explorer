@@ -148,6 +148,7 @@
           console.error('error getting lazy attestations: ', err)
           infLoading.appendChild(getInfoElementAttestations('Error loading attestations...', 'red'));
         }
+        $('[data-toggle="tooltip"]').tooltip();
       }
     }
 
