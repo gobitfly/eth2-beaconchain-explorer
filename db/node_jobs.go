@@ -60,7 +60,7 @@ func GetNodeJobValidatorInfos(job *types.NodeJob) ([]types.NodeJobValidatorInfo,
 	jobStatus := "Pending"
 	switch job.Status {
 	case types.SubmittedToNodeNodeJobStatus:
-		jobStatus = "Subbmitted to node"
+		jobStatus = "Submitted to node"
 	case types.CompletedNodeJobStatus:
 		jobStatus = "Processed"
 	case types.FailedNodeJobStatus:
