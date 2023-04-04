@@ -141,7 +141,6 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 					err = dbErr
 				}
 			} else {
-				type txHashResponse = struct{ TxHash string }
 				result = &types.SearchAheadTransactionsResult{{TxHash: fmt.Sprintf("%x", tx.Hash)}}
 			}
 		}
