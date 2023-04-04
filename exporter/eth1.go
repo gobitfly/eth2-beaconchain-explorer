@@ -180,6 +180,9 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 	}
 
 	for _, depositLog := range depositLogs {
+		if depositLog.Topics[0] != eth1DepositEventSignature {
+			continue
+		}
 		pubkey, withdrawalCredentials, amount, signature, merkletreeIndex, err := deposit.UnpackDepositLogData(depositLog.Data)
 		if err != nil {
 			return depositsToSave, fmt.Errorf("error unpacking eth1-deposit-log: %x: %w", depositLog.Data, err)
