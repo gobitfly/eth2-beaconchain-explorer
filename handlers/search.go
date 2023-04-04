@@ -135,11 +135,15 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			err = db.ReaderDb.Select(result, `
-				SELECT ENCODE(txhash::bytea, 'hex') AS txhash
-				FROM blocks_transactions
-				WHERE txhash = $1
-				ORDER BY block_slot LIMIT 10`, txHash)
+			tx, dbErr := db.BigtableClient.GetIndexedEth1Transaction(txHash)
+			if err != nil || tx == nil {
+				if !strings.Contains(fmt.Sprintf("%s", dbErr), "Tx not found") {
+					err = dbErr
+				}
+			} else {
+				type txHashResponse = struct{ TxHash string }
+				result = &types.SearchAheadTransactionsResult{{TxHash: fmt.Sprintf("%x", tx.Hash)}}
+			}
 		}
 	case "epochs":
 		result = &types.SearchAheadEpochsResult{}
