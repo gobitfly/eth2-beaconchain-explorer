@@ -1407,16 +1407,28 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 		for _, txs := range mempoolTx.Pending {
 			for _, tx := range txs {
 				mempoolTx.TxsByHash[tx.Hash] = tx
+
+				if tx.GasPrice == nil {
+					tx.GasPrice = tx.GasFeeCap
+				}
 			}
 		}
 		for _, txs := range mempoolTx.Queued {
 			for _, tx := range txs {
 				mempoolTx.TxsByHash[tx.Hash] = tx
+
+				if tx.GasPrice == nil {
+					tx.GasPrice = tx.GasFeeCap
+				}
 			}
 		}
 		for _, txs := range mempoolTx.BaseFee {
 			for _, tx := range txs {
 				mempoolTx.TxsByHash[tx.Hash] = tx
+
+				if tx.GasPrice == nil {
+					tx.GasPrice = tx.GasFeeCap
+				}
 			}
 		}
 
