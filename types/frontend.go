@@ -526,10 +526,26 @@ type Eth1AddressSearchItem struct {
 
 type RawMempoolResponse struct {
 	Pending map[string]map[int]RawMempoolTransaction `json:"pending"`
+	Queued  map[string]map[int]RawMempoolTransaction `json:"queued"`
+	BaseFee map[string]map[int]RawMempoolTransaction `json:"baseFee"`
 }
 
 func (mempool RawMempoolResponse) FindTxByHash(txHashString string) *RawMempoolTransaction {
 	for _, pendingData := range mempool.Pending {
+		for _, tx := range pendingData {
+			if fmt.Sprintf("%s", tx.Hash) == txHashString {
+				return &tx
+			}
+		}
+	}
+	for _, pendingData := range mempool.Queued {
+		for _, tx := range pendingData {
+			if fmt.Sprintf("%s", tx.Hash) == txHashString {
+				return &tx
+			}
+		}
+	}
+	for _, pendingData := range mempool.BaseFee {
 		for _, tx := range pendingData {
 			if fmt.Sprintf("%s", tx.Hash) == txHashString {
 				return &tx
