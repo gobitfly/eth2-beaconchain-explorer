@@ -137,7 +137,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			}
 			tx, dbErr := db.BigtableClient.GetIndexedEth1Transaction(txHash)
 			if err != nil || tx == nil {
-				if !strings.Contains(fmt.Sprintf("%s", dbErr), "Tx not found") {
+				if !strings.Contains(fmt.Sprintf("%s", dbErr), "tx not found") {
 					err = dbErr
 				}
 			} else {

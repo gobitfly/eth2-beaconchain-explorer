@@ -1782,7 +1782,7 @@ func (bigtable *Bigtable) GetIndexedEth1Transaction(txHash []byte) (*types.Eth1T
 		return nil, err
 	}
 	if row == nil {
-		return nil, fmt.Errorf("Tx not found %x", txHash)
+		return nil, fmt.Errorf("tx not found %x", txHash)
 	}
 
 	indexedTx := &types.Eth1TransactionIndexed{}
