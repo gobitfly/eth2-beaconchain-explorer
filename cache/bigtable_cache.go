@@ -104,7 +104,7 @@ func (cache *BigtableCache) Get(ctx context.Context, key string, returnValue any
 	err = json.Unmarshal([]byte(res), returnValue)
 	if err != nil {
 		// cache.remoteRedisCache.Del(ctx, key).Err()
-		logrus.Warnf("error unmarshalling data for key %v: %v", key, err)
+		logrus.Errorf("error (bigtable_cache.go / Get) unmarshalling data for key %v: %v", key, err)
 		return nil, err
 	}
 
