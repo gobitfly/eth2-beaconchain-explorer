@@ -40,9 +40,9 @@
             <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Reward paid out to the Proposer as reported by the Relay">MEV Block Reward:</span></div>
             <div class="col-md-10">
               {{ if .IsValidMev }}
-                {{ formatAmountFormatted .MevBribe "Ether" 5 0 false false }}
+                {{ formatAmount .MevBribe "Ether" 5 }}
               {{ else }}
-                <s>{{ formatAmountFormatted .MevBribe "Ether" 5 0 false false }}</s> <i data-toggle="tooltip" data-placement="top" title="This Reward was flagged as invalid" class="fas fa-question-circle text-warning"></i>
+                <s>{{ formatAmount .MevBribe "Ether" 5 }}</s> <i data-toggle="tooltip" data-placement="top" title="This Reward was flagged as invalid" class="fas fa-question-circle text-warning"></i>
               {{ end }}
             </div>
           </div>
@@ -56,7 +56,7 @@
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction rewards from block {{ .Number }}">Tx Reward:</span></div>
             <div class="col-md-10">
-              {{ formatAmountFormatted .Reward "Ether" 5 0 false false }}
+              {{ formatAmount .Reward "Ether" 5 }}
             </div>
           </div>
         {{ end }}
@@ -217,7 +217,7 @@
                 <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction rewards from block {{ .Number }}">Reward:</span></div>
                   <div class="col-md-10 text-monospace text-break">
-                    {{ formatAmountFormatted .Reward "Ether" 5 0 false false }}
+                    {{ formatAmount .Reward "Ether" 5 }}
                   </div>
                 </div>
 
@@ -233,12 +233,12 @@
 
                 <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Base fee per gas">Base fee per gas:</span></div>
-                  <div class="col-md-10 text-monospace text-break">{{ formatAmountFormatted .BaseFeePerGas "GWei" 5 0 false false }}</div>
+                  <div class="col-md-10 text-monospace text-break">{{ formatAmount .BaseFeePerGas "GWei" 5 }}</div>
                 </div>
 
                 <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Burned fees">Burned fees:</span></div>
-                  <div class="col-md-10 text-monospace text-break">{{ formatAmountFormatted .BurnedFees "Ether" 5 0 false false }}</div>
+                  <div class="col-md-10 text-monospace text-break">{{ formatAmount .BurnedFees "Ether" 5 }}</div>
                 </div>
 
                 <div class="row p-1">
