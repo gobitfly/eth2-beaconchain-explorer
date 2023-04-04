@@ -38,6 +38,10 @@ func main() {
 	logrus.WithField("config", *configPath).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
 
 	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, "1")
+	if err != nil {
+		logrus.Errorf("error initializing bigtable: %v", err)
+		return
+	}
 
 	// Per default we start with the latest signatures (first page = latest signatures)
 	page := "https://www.4byte.directory/api/v1/signatures/"
