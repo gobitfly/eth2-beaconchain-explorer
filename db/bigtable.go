@@ -1632,6 +1632,52 @@ func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) (gc
 	return ranges, nil
 }
 
+func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, error) {
+	dayIncome := make(map[uint64]int64)
+	lastDay := int64(0)
+
+	err := ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats_status")
+	if err != nil {
+		return dayIncome, err
+	}
+
+	currentDay := uint64(lastDay + 1)
+	startEpoch := currentDay * utils.EpochsPerDay()
+	endEpoch := startEpoch + utils.EpochsPerDay() - 1
+	income, err := BigtableClient.GetValidatorIncomeDetailsHistory(validator_indices, startEpoch, endEpoch)
+	if err != nil {
+		return dayIncome, err
+	}
+
+	// agregate all epoch income data to total day income for each validator
+	for validatorIndex, validatorIncome := range income {
+		if len(validatorIncome) == 0 {
+			continue
+		}
+		for _, validatorEpochIncome := range validatorIncome {
+			dayIncome[validatorIndex] += validatorEpochIncome.TotalClRewards()
+		}
+	}
+
+	return dayIncome, nil
+}
+
+func GetCurrentDayClIncomeTotal(validator_indices []uint64) (int64, error) {
+	income, err := GetCurrentDayClIncome(validator_indices)
+
+	if err != nil {
+		return 0, err
+	}
+
+	total := int64(0)
+
+	for _, i := range income {
+		total += i
+	}
+
+	return total, nil
+}
+
 func reversePaddedUserID(userID uint64) string {
 	return fmt.Sprintf("%09d", ^uint64(0)-userID)
 }
