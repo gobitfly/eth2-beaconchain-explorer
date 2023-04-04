@@ -86,12 +86,8 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 				d := v.GetData()
 				if len(d) > 3 {
 					m := d[:4]
-
-					if len(v.GetItx()) > 0 || v.GetGasUsed() > 21000 || v.GetErrorMsg() != "" { // check for invokesContract
-						method = fmt.Sprintf("0x%x", m)
-					} else {
-						method = "Transfer*"
-					}
+					invokesContract := len(v.GetItx()) > 0 || v.GetGasUsed() > 21000 || v.GetErrorMsg() != ""
+					method = db.BigtableClient.GetMethodLabel(m, invokesContract)
 				}
 			}
 

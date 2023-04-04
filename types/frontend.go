@@ -557,3 +557,17 @@ type MempoolTxPageData struct {
 	TargetIsContract   bool
 	IsContractCreation bool
 }
+
+type MethodSignatureImportStatus struct {
+	LatestTimestamp *string `json:"latestTimestamp"`
+	NextPage        *string `json:"nextPage"`
+	HasFinished     bool    `json:"hasFinished"`
+}
+
+type MethodSignature struct {
+	Id        int64  `json:"id"`
+	CreatedAt string `json:"created_at"`
+	Text      string `json:"text_signature"`
+	Hex       string `json:"hex_signature"`
+	Bytes     string `json:"bytes_signature"`
+}
