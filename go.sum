@@ -252,12 +252,10 @@ github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/me
 github.com/go-stack/stack v1.8.1 h1:ntEHSVwIt7PNXNpgPmVfMrNhLtgjlmnZha2kOpuRiDw=
 github.com/go-stack/stack v1.8.1/go.mod h1:dcoOX6HbPZSZptuspn9bctJ+N/CnF5gGygcUP3XYfe4=
 github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0/go.mod h1:fyg7847qk6SyHyPtNmDHnmrv/HOrqktSC+C9fM+CJOE=
-github.com/gobitfly/eth-rewards v0.1.2-0.20230310101443-6bd236ef7def h1:u6VbOqWeyG8uwTjwW3YWAjiQlLIq0ECWF6AhZRAhvUk=
-github.com/gobitfly/eth-rewards v0.1.2-0.20230310101443-6bd236ef7def/go.mod h1:JrFv2uq5i+p6yEoRSHralEV139HkPV0wBjZZHWb4he8=
 github.com/gobitfly/eth-rewards v0.1.2-0.20230403064929-411ddc40a5f7 h1:qAEBlj4j25sJjsj5CQraL94rY9jyPIjCZ+hlu84n5l0=
 github.com/gobitfly/eth-rewards v0.1.2-0.20230403064929-411ddc40a5f7/go.mod h1:JrFv2uq5i+p6yEoRSHralEV139HkPV0wBjZZHWb4he8=
-github.com/gobitfly/eth.store v0.0.0-20230306101821-6942a878a8dc h1:6RTT4c3boFp9C4U43E3FE28rhKVG1K5rLyqN9jd04o0=
-github.com/gobitfly/eth.store v0.0.0-20230306101821-6942a878a8dc/go.mod h1:XJDD2M4KcIVfiSbg2XfffNWqfSpDNg81WysmQDqQMaE=
+github.com/gobitfly/eth.store v0.0.0-20230306141701-814b59fb0cea h1:r+d3DHTGauctz8hrE/DRETO9GjG80xuzIzp7CzR66Cs=
+github.com/gobitfly/eth.store v0.0.0-20230306141701-814b59fb0cea/go.mod h1:HAblwtMrQPJUfJDHwLLoa7RhLqGwinVyq56cKS34Hec=
 github.com/gobitfly/prysm/v3 v3.0.0-20230216184552-2f3f1e8190d5 h1:8kVoXCPhDwSjaGlKzBVQeE8n49k6jZumBGiP26FHNy0=
 github.com/gobitfly/prysm/v3 v3.0.0-20230216184552-2f3f1e8190d5/go.mod h1:+v+em7rOykPs93APGWCX/95/3uxU8bSVmbZ4+YNJzdA=
 github.com/goccy/go-yaml v1.9.2/go.mod h1:U/jl18uSupI5rdI2jmuCswEA2htH9eXfferR3KfscvA=
@@ -329,6 +327,8 @@ github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/
 github.com/google/go-cmp v0.5.6/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.5.9 h1:O2Tfq5qg4qc4AmwVlvv0oLiVAGB7enBSJ2x2DqQFi38=
 github.com/google/go-cmp v0.5.9/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
+github.com/google/go-querystring v1.1.0 h1:AnCroh3fv4ZBgVIf1Iwtovgjaw/GiKJo8M8yD/fhyJ8=
+github.com/google/go-querystring v1.1.0/go.mod h1:Kcdr2DB4koayq7X8pmAG4sNG59So17icRSOU623lUBU=
 github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
 github.com/google/gofuzz v1.2.0 h1:xRy4A+RhZaiKjJ1bPfwQ8sedCA+YS2YcCHW6ec7JMi0=
 github.com/google/martian v2.1.0+incompatible h1:/CP5g8u/VJHijgedC/Legn3BAbAaWPgecwXBIDzw5no=
