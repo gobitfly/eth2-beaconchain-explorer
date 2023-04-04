@@ -462,7 +462,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 	if epoch > 0 {
 		epoch--
 	}
-	err := db.ReaderDb.Select(&rows, "SELECT epoch / $2 as day, AVG(globalparticipationrate) as globalparticipationrate FROM epochs WHERE epoch < $1 GROUP BY day ORDER BY day limit 10;", epoch, utils.EpochsPerDay())
+	err := db.ReaderDb.Select(&rows, "SELECT epoch / $2 as day, AVG(globalparticipationrate) as globalparticipationrate FROM epochs WHERE epoch < $1 GROUP BY day ORDER BY day;", epoch, utils.EpochsPerDay())
 	if err != nil {
 		return nil, err
 	}
