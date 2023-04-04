@@ -263,7 +263,7 @@ func FormatAddressLong(address string) template.HTML {
 
 }
 
-func FormatAmountFormated(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, smallUnit bool, newLineForUnit bool) template.HTML {
+func FormatAmountFormatted(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, smallUnit bool, newLineForUnit bool) template.HTML {
 	return formatAmount(amount, unit, digits, maxPreCommaDigitsBeforeTrim, smallUnit, newLineForUnit)
 }
 func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
@@ -272,11 +272,14 @@ func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
 func FormatBigAmount(amount *hexutil.Big, unit string, digits int) template.HTML {
 	return FormatAmount((*big.Int)(amount), unit, digits)
 }
+func FormatBytesAmount(amount []byte, unit string, digits int) template.HTML {
+	return FormatAmount(new(big.Int).SetBytes(amount), unit, digits)
+}
 func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, smallUnit bool, newLineForUnit bool) template.HTML {
 	// define display unit & digits used per unit max
 	displayUnit := " " + unit
 	var unitDigits int
-	if unit == "ETH" || unit == " Ether" {
+	if unit == "ETH" || unit == "Ether" {
 		unitDigits = 18
 	} else if unit == "GWei" {
 		unitDigits = 9
