@@ -42,7 +42,7 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
 func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
 	validatorsPQArray := pq.Array(validators)
-	latestEpoch := int64(services.LatestEpoch())
+	latestEpoch := int64(services.LatestFinalizedEpoch())
 
 	balances := []*types.Validator{}
 
@@ -84,8 +84,10 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		ElIncome31d   int64 `db:"el_performance_31d"`
 		ElIncome365d  int64 `db:"el_performance_365d"`
 		ElIncomeTotal int64 `db:"el_performance_total"`
+		ClIncomeToday int64
 	}
 
+	// el rewards are converted from wei to gwei
 	err = db.ReaderDb.Get(&income, `
 		SELECT 
 		COALESCE(SUM(cl_performance_1d), 0) AS cl_performance_1d,
@@ -93,11 +95,11 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		COALESCE(SUM(cl_performance_31d), 0) AS cl_performance_31d,
 		COALESCE(SUM(cl_performance_365d), 0) AS cl_performance_365d,
 		COALESCE(SUM(cl_performance_total), 0) AS cl_performance_total,
-		COALESCE(SUM(mev_performance_1d), 0) AS el_performance_1d,
-		COALESCE(SUM(mev_performance_7d), 0) AS el_performance_7d,
-		COALESCE(SUM(mev_performance_31d), 0) AS el_performance_31d,
-		COALESCE(SUM(mev_performance_365d), 0) AS el_performance_365d,
-		COALESCE(SUM(mev_performance_total), 0) AS el_performance_total
+		CAST(COALESCE(SUM(mev_performance_1d), 0) / 1e9 AS bigint) AS el_performance_1d,
+		CAST(COALESCE(SUM(mev_performance_7d), 0) / 1e9 AS bigint) AS el_performance_7d,
+		CAST(COALESCE(SUM(mev_performance_31d), 0) / 1e9 AS bigint) AS el_performance_31d,
+		CAST(COALESCE(SUM(mev_performance_365d), 0) / 1e9 AS bigint) AS el_performance_365d,
+		CAST(COALESCE(SUM(mev_performance_total), 0) / 1e9 AS bigint) AS el_performance_total
 		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		return nil, nil, err
@@ -131,14 +133,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
-	// convert from wei to gwei
-	// since only the first 5 digits are shown in the frontend, the lost precision is probably negligible
-	income.ElIncome1d /= 1e9
-	income.ElIncome7d /= 1e9
-	income.ElIncome31d /= 1e9
-	income.ElIncome365d /= 1e9
-	income.ElIncomeTotal /= 1e9
-
 	// calculate combined el and cl earnings
 	earnings1d := income.ClIncome1d + income.ElIncome1d
 	earnings7d := income.ClIncome7d + income.ElIncome7d
@@ -171,6 +165,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	elApr365d := (float64(income.ElIncome365d) / float64(totalDeposits))
 	if elApr365d < float64(-1) {
 		elApr365d = float64(-1)
+	}
+
+	// retrieve cl income not yet in stats
+	currentDayIncome, err := db.GetCurrentDayClIncomeTotal(validators)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	return &types.ValidatorEarnings{
@@ -209,8 +209,8 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		LastDayFormatted:     utils.FormatIncome(earnings1d, currency),
 		LastWeekFormatted:    utils.FormatIncome(earnings7d, currency),
 		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
-		TotalFormatted:       utils.FormatIncome(income.ClIncomeTotal, currency),
-		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+int64(totalDeposits), currency),
+		TotalFormatted:       utils.FormatIncome(income.ClIncomeTotal+currentDayIncome, currency),
+		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency),
 		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
 	}, balancesMap, nil
 }
