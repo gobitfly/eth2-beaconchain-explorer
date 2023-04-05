@@ -3,17 +3,22 @@ package handlers
 import (
 	"encoding/hex"
 	"encoding/json"
+	"eth2-exporter/db"
 	"eth2-exporter/eth1data"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"html/template"
+	"math/big"
 	"net/http"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 // Tx will show the tx using a go template
@@ -61,6 +66,34 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 				txTemplate = txNotFoundTemplate
 			}
 		} else {
+			symbol := GetCurrencySymbol(r)
+			ef := new(big.Float).SetInt(new(big.Int).SetBytes(txData.Value))
+			etherValue := new(big.Float).Quo(ef, big.NewFloat(1e18))
+
+			currentPrice := GetCurrentPrice(r)
+			historicPrice, _ := db.GetHistoricPrices(GetCurrency(r))
+
+			currentEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(float64(currentPrice)))
+
+			txDay := utils.TimeToDay(txData.Timestamp)
+			latestEpoch, _ := db.GetLatestEpoch()
+			currentDay := latestEpoch / utils.EpochsPerDay()
+
+			var historicEthPrice *big.Float
+			if txDay < currentDay {
+				historicEthPrice = new(big.Float).Mul(etherValue, big.NewFloat(historicPrice[txDay]))
+			}
+
+			p := message.NewPrinter(language.English)
+
+			cPrice, _ := currentEthPrice.Float64()
+			txData.CurrentEtherPrice = template.HTML(p.Sprintf(`<span>%s %.2f</span>`, symbol, cPrice))
+			if historicEthPrice != nil {
+				hPrice, _ := historicEthPrice.Float64()
+				txData.HistoricEtherPrice = template.HTML(p.Sprintf(`<span><i class="far fa-clock"></i> %s %.2f</span>`, symbol, hPrice))
+			} else {
+				txData.HistoricEtherPrice = template.HTML("")
+			}
 			data = InitPageData(w, r, "blockchain", path, title, txTemplateFiles)
 			data.Data = txData
 		}

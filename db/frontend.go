@@ -522,11 +522,16 @@ func getMachineStatsGap(resultCount uint64) int {
 
 func GetHistoricPrices(currency string) (map[uint64]float64, error) {
 	data := []struct {
-		Ts       time.Time
-		Currency float64
+		Ts       time.Time `db:"ts"`
+		Currency float64   `db:"currency"`
 	}{}
 
-	if currency != "eur" && currency != "usd" && currency != "rub" && currency != "cny" && currency != "cad" && currency != "gbp" {
+	if currency == "ETH" {
+		currency = "USD"
+	}
+	currency = strings.ToLower(currency)
+
+	if currency != "eur" && currency != "usd" && currency != "rub" && currency != "cny" && currency != "cad" && currency != "jpy" && currency != "gbp" && currency != "aud" {
 		return nil, fmt.Errorf("currency %v not supported", currency)
 	}
 
@@ -539,7 +544,7 @@ func GetHistoricPrices(currency string) (map[uint64]float64, error) {
 	genesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
 
 	for _, d := range data {
-		day := uint64(d.Ts.Sub(genesisTime).Hours()) / 24
+		day := uint64(d.Ts.Add(utils.Day).Sub(genesisTime).Hours()) / 24
 		dataMap[day] = d.Currency
 	}
 
