@@ -884,7 +884,7 @@ func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
 	}
 
 	httpClient := http.Client{Timeout: time.Second * 5}
-	resp, err := httpClient.Get(fmt.Sprintf("https://%s/api?module=contract&action=getsourcecode&address=0x%x&apikey=%s", baseUrl, address, ""))
+	resp, err := httpClient.Get(fmt.Sprintf("https://%s/api?module=contract&action=getsourcecode&address=0x%x&apikey=%s", baseUrl, address, Config.EtherscanAPIKey))
 	if err != nil {
 		return nil, err
 	}

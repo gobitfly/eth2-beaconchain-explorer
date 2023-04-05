@@ -516,7 +516,6 @@ type Relay struct {
 	Link                sql.NullString `db:"public_link"`
 	IsCensoring         sql.NullBool   `db:"is_censoring"`
 	IsEthical           sql.NullBool   `db:"is_ethical"`
-	Name                string         `db:"name"`
 	ExportFailureCount  uint64         `db:"export_failure_count"`
 	LastExportTryTs     time.Time      `db:"last_export_try_ts"`
 	LastExportSuccessTs time.Time      `db:"last_export_success_ts"`

@@ -182,14 +182,6 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 		orderDir = "desc"
 	}
 
-	if orderBy == "lastattestationslot" {
-		if orderDir == "desc" {
-			orderDir = "desc nulls last"
-		} else {
-			orderDir = "asc nulls first"
-		}
-	}
-
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int: %v", err)

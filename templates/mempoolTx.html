@@ -84,8 +84,8 @@
                 <div class="col-md-9">{{ formatBigNumberAddCommasFormated .Gas 0 }}</div>
               </div>
               <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
-                <div class="col-md-3">Gas Fee Cap:</div>
-                <div class="col-md-9">{{ formatBigAmount .GasFeeCap "GWei" 5 }}</div>
+                <div class="col-md-3">Gas Price:</div>
+                <div class="col-md-9">{{ formatBigAmount .GasPrice "GWei" 5 }}</div>
               </div>
               <div class="row  {{ if .Input }}border-bottom{{ end }} p-3 mx-0">
                 <div class="col-md-3">Attributes:</div>
