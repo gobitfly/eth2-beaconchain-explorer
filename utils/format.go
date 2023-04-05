@@ -671,6 +671,31 @@ func FormatParticipation(v float64) template.HTML {
 	return template.HTML(fmt.Sprintf("<span>%.2f %%</span>", v*100.0))
 }
 
+func FormatIncomeClElInt64(balance types.ClElInt64, currency string) template.HTML {
+	var income string = ""
+	className := "text-success"
+	// always pass absolute value to ensure same amount of decimals
+	if balance.Total >= 0 {
+		income = exchangeAndTrim(currency, balance.Total)
+	} else {
+		income = fmt.Sprintf("-%s", exchangeAndTrim(currency, -balance.Total))
+		className = "text-danger"
+	}
+
+	if balance.Total != 0 {
+		return template.HTML(fmt.Sprintf(`
+		<span class="%s" data-toggle="tooltip"
+			data-html="true"
+			title="
+			CL: %s <br> 
+			EL: %s">
+			<b>+%s %s</b>
+		</span>`, className, FormatExchangedAmount(balance.Cl, currency), FormatExchangedAmount(balance.El, currency), income, currency))
+	} else {
+		return template.HTML(fmt.Sprintf(`<span>%s%s</span>`, income, currency))
+	}
+}
+
 // FormatIncome will return a string for a balance
 func FormatIncome(balanceInt int64, currency string) template.HTML {
 	return formatIncome(balanceInt, currency, true)
@@ -706,7 +731,13 @@ func formatIncome(balanceInt int64, currency string, includeCurrency bool) templ
 
 func FormatExchangedAmount(balanceInt int64, currency string) template.HTML {
 	income := exchangeAndTrim(currency, balanceInt)
-	return template.HTML(fmt.Sprintf(`<span>%s %s</span>`, income, currency))
+	proceed := ""
+	if balanceInt > 0 {
+		proceed = "+"
+	} else if balanceInt < 0 {
+		proceed = "-"
+	}
+	return template.HTML(fmt.Sprintf(`<span>%s%s %s</span>`, proceed, income, currency))
 }
 
 func exchangeAndTrim(currency string, amount int64) string {
