@@ -135,12 +135,9 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			tx, dbErr := db.BigtableClient.GetIndexedEth1Transaction(txHash)
-			if err != nil || tx == nil {
-				if !strings.Contains(fmt.Sprintf("%s", dbErr), "tx not found") {
-					err = dbErr
-				}
-			} else {
+			var tx *types.Eth1TransactionIndexed
+			tx, err = db.BigtableClient.GetIndexedEth1Transaction(txHash)
+			if err == nil && tx != nil {
 				result = &types.SearchAheadTransactionsResult{{TxHash: fmt.Sprintf("%x", tx.Hash)}}
 			}
 		}
