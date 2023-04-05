@@ -312,7 +312,6 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 	tooltip := ""
 	if fullAmountTooltip {
 		tooltip = fmt.Sprintf(`data-toggle="tooltip" data-placement="top" title="%s"`, fullAmount)
-
 	}
 
 	// done, convert to HTML & return
