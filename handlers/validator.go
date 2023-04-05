@@ -817,6 +817,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 						syncStats.OrphanedSync++
 					}
 				}
+
+				// data coming from bigtable is limited to the current epoch, so we need to add the remaining sync duties for the current period manually
+				syncStats.ScheduledSync += (actualSyncPeriods[0].LastEpoch - latestEpoch) * utils.Config.Chain.Config.SlotsPerEpoch
 			}
 
 			validatorPageData.SlotsPerSyncCommittee = utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
