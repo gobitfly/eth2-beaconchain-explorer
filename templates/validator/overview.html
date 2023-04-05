@@ -231,7 +231,20 @@
       <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments (Executed: {{ .ExecutedAttestationsCount }}, Missed: {{ .MissedAttestationsCount }}, Orphaned: {{ .OrphanedAttestationsCount }})"><i class="fas fa-file-signature"></i> {{ .AttestationsCount }}{{ if ne .AttestationsCount 0 }}({{ formatPercentageColoredEmoji .UnmissedAttestationsPercentage }}){{ end }}</span>
     </div>
     <div class="mx-3">
-      <span id="syncCount" style="cursor: pointer;" data-toggle="tooltip" title="Sync Participations (Participated: {{ .ParticipatedSyncCount }}, Missed: {{ .MissedSyncCount }}, Orphaned: {{ .OrphanedSyncCount }}, Scheduled: {{ .ScheduledSyncCount }})"><i class="fas fa-sync poin"></i> {{ .SyncCount }}{{ if ne .SyncCount 0 }}({{ formatPercentageColoredEmoji .UnmissedSyncPercentage }}){{ end }}</span>
+      <span id="syncCount" style="cursor: pointer;" data-toggle="tooltip" title="Sync Participations (Participated: {{ .ParticipatedSyncCountSlots }}, Missed: {{ .MissedSyncCountSlots }}, Orphaned: {{ .OrphanedSyncCountSlots }}, Scheduled: {{ .ScheduledSyncCountSlots }})">
+        {{ if ne .ScheduledSyncCountSlots 0 }}
+          <i class="fas fa-sync poin spin"></i>
+        {{ else }}
+          <i class="fas fa-sync poin"></i>
+        {{ end }}
+        {{ .SyncCount }}
+        {{ if ne .SyncCount 0 }}
+          ({{ formatPercentageColoredEmoji .UnmissedSyncPercentage }})
+          {{ if ne .ScheduledSyncCountSlots 0 }}
+            {{ .SlotsDoneInCurrentSyncCommittee }}/{{ .SlotsPerSyncCommittee }}
+          {{ end }}
+        {{ end }}
+      </span>
     </div>
     <div class="mx-3">
       <span id="slashingsCount" style="cursor: pointer;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash"></i> {{ .SlashingsCount }}</span>

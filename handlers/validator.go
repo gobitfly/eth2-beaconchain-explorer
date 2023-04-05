@@ -13,6 +13,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math"
 	"math/big"
 	"net/http"
 	"sort"
@@ -24,7 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
-	"github.com/protolambda/zrnt/eth2/util/math"
+	protomath "github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/gorilla/csrf"
@@ -817,13 +818,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
-			validatorPageData.ParticipatedSyncCount = syncStats.ParticipatedSync
-			validatorPageData.MissedSyncCount = syncStats.MissedSync
-			validatorPageData.OrphanedSyncCount = syncStats.OrphanedSync
-			validatorPageData.ScheduledSyncCount = syncStats.ScheduledSync
+
+			validatorPageData.SlotsPerSyncCommittee = utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
+			validatorPageData.SlotsDoneInCurrentSyncCommittee = validatorPageData.SlotsPerSyncCommittee - syncStats.ScheduledSync
+
+			validatorPageData.ParticipatedSyncCountSlots = syncStats.ParticipatedSync
+			validatorPageData.MissedSyncCountSlots = syncStats.MissedSync
+			validatorPageData.OrphanedSyncCountSlots = syncStats.OrphanedSync
+			validatorPageData.ScheduledSyncCountSlots = syncStats.ScheduledSync
 			// actual sync duty count and percentage
-			validatorPageData.SyncCount = validatorPageData.ParticipatedSyncCount + validatorPageData.MissedSyncCount + validatorPageData.OrphanedSyncCount + syncStats.ScheduledSync
-			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.SyncCount-validatorPageData.MissedSyncCount) / float64(validatorPageData.SyncCount)
+			validatorPageData.SyncCountSlots = validatorPageData.ParticipatedSyncCountSlots + validatorPageData.MissedSyncCountSlots + validatorPageData.OrphanedSyncCountSlots + validatorPageData.ScheduledSyncCountSlots
+			validatorPageData.SyncCount = uint64(math.Ceil(float64(validatorPageData.SyncCountSlots) / float64(validatorPageData.SlotsPerSyncCommittee)))
+			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.SyncCountSlots-validatorPageData.MissedSyncCountSlots) / float64(validatorPageData.SyncCountSlots)
 		}
 		// sync luck
 		if len(allSyncPeriods) > 0 {
@@ -833,7 +839,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("error retrieving expected sync committee slots: %v", err)
 			}
 			if expectedSyncCount != 0 {
-				validatorPageData.SyncLuck = float64(validatorPageData.ParticipatedSyncCount+validatorPageData.MissedSyncCount) / float64(expectedSyncCount)
+				validatorPageData.SyncLuck = float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots) / float64(expectedSyncCount)
 			}
 			nextEstimate := utils.EpochToTime(utils.FirstEpochOfSyncPeriod(maxPeriod + avgSyncInterval))
 			validatorPageData.SyncEstimate = &nextEstimate
@@ -2043,7 +2049,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		if uint64(len(syncDuties))%utils.Config.Chain.Config.SlotsPerEpoch == 0 {
 			// extract correct slots
 			tableData = make([][]interface{}, length)
-			for dataIndex, slotIndex := 0, start%utils.Config.Chain.Config.SlotsPerEpoch; slotIndex < math.MinU64((start%utils.Config.Chain.Config.SlotsPerEpoch)+length, uint64(len(syncDuties))); dataIndex, slotIndex = dataIndex+1, slotIndex+1 {
+			for dataIndex, slotIndex := 0, start%utils.Config.Chain.Config.SlotsPerEpoch; slotIndex < protomath.MinU64((start%utils.Config.Chain.Config.SlotsPerEpoch)+length, uint64(len(syncDuties))); dataIndex, slotIndex = dataIndex+1, slotIndex+1 {
 				epoch := utils.EpochOfSlot(syncDuties[slotIndex].Slot)
 
 				slotTime := utils.SlotToTime(syncDuties[slotIndex].Slot)
