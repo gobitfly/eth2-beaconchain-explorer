@@ -117,7 +117,7 @@
                 <div data-toggle="tooltip" title="" data-original-title="Gas Price" class="d-none d-lg-block">
                   <div id="banner-slot" class="info-item d-flex mr-2 mr-lg-3">
                     <div class="info-item-body">
-                      <a id="banner-gpo-data" href="/gasnow"><i class="fas fa-gas-pump mr-1"></i>{{ formatBalanceWei .GasNow.Data.Fast "GWei" 0 }}</a>
+                      <a id="banner-gpo-data" href="/gasnow"><i class="fas fa-gas-pump mr-1"></i>{{ formatAmountFormatted .GasNow.Data.Fast "GWei" 0 0 false false false }}</a>
                     </div>
                   </div>
                 </div>
