@@ -17,6 +17,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -66,34 +67,38 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 				txTemplate = txNotFoundTemplate
 			}
 		} else {
+			p := message.NewPrinter(language.English)
+
 			symbol := GetCurrencySymbol(r)
 			ef := new(big.Float).SetInt(new(big.Int).SetBytes(txData.Value))
 			etherValue := new(big.Float).Quo(ef, big.NewFloat(1e18))
 
 			currentPrice := GetCurrentPrice(r)
-			historicPrice, _ := db.GetHistoricPrices(GetCurrency(r))
-
 			currentEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(float64(currentPrice)))
-
-			txDay := utils.TimeToDay(txData.Timestamp)
-			latestEpoch, _ := db.GetLatestEpoch()
-			currentDay := latestEpoch / utils.EpochsPerDay()
-
-			var historicEthPrice *big.Float
-			if txDay < currentDay {
-				historicEthPrice = new(big.Float).Mul(etherValue, big.NewFloat(historicPrice[txDay]))
-			}
-
-			p := message.NewPrinter(language.English)
-
 			cPrice, _ := currentEthPrice.Float64()
 			txData.CurrentEtherPrice = template.HTML(p.Sprintf(`<span>%s %.2f</span>`, symbol, cPrice))
-			if historicEthPrice != nil {
-				hPrice, _ := historicEthPrice.Float64()
-				txData.HistoricEtherPrice = template.HTML(p.Sprintf(`<span><i class="far fa-clock"></i> %s %.2f</span>`, symbol, hPrice))
+
+			historicPrices, err := db.GetHistoricPrices(GetCurrency(r))
+			if err != nil {
+				logrus.Errorf("error retrieving historic prices %v", err)
 			} else {
-				txData.HistoricEtherPrice = template.HTML("")
+				txDay := utils.TimeToDay(txData.Timestamp)
+				latestEpoch, err := db.GetLatestEpoch()
+				if err != nil {
+					logrus.Error(err)
+				}
+
+				txData.HistoricEtherPrice = ""
+				currentDay := latestEpoch / utils.EpochsPerDay()
+
+				if txDay < currentDay {
+					// Do not show the historic price if it is the current day
+					historicEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(historicPrices[txDay]))
+					hPrice, _ := historicEthPrice.Float64()
+					txData.HistoricEtherPrice = template.HTML(p.Sprintf(`<span><i class="far fa-clock"></i> %s %.2f</span>`, symbol, hPrice))
+				}
 			}
+
 			data = InitPageData(w, r, "blockchain", path, title, txTemplateFiles)
 			data.Data = txData
 		}
