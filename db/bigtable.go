@@ -895,10 +895,10 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 			slot = max_block_number - slot
 			inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
 
-			status := uint64(1)
+			status := uint64(1) // 1: participated
 			if inclusionSlot == max_block_number {
 				inclusionSlot = 0
-				status = 0
+				status = 0 // 0: missed
 			}
 
 			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, SYNC_COMMITTEES_FAMILY+":"), 10, 64)
