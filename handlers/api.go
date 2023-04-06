@@ -1084,7 +1084,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 			return 0, fmt.Errorf("required period not found: SyncPeriodOfEpoch(%v) = '%v'", lastEpoch, spoe)
 		}
 
-		expectedCommitties += periodInfoMap[utils.SyncPeriodOfEpoch(lastEpoch)] - periodInfoMap[utils.SyncPeriodOfEpoch(vi.ActivationEpoch)]
+		expectedCommitties += periodInfoMap[spoe] - periodInfoMap[utils.SyncPeriodOfEpoch(vi.ActivationEpoch)]
 	}
 
 	// transform committees to slots
