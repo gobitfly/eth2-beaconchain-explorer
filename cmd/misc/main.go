@@ -2,10 +2,14 @@ package main
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/exporter"
+	"eth2-exporter/rpc"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
+	"math/big"
+	"strconv"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
 
@@ -18,11 +22,15 @@ var opts = struct {
 	Command       string
 	User          uint64
 	TargetVersion int64
+	StartEpoch    uint64
+	EndEpoch      uint64
 }{}
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
 	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema")
+	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
+	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
 	flag.Int64Var(&opts.TargetVersion, "target-version", -2, "Db migration target version, use -2 to apply up to the latest version, -1 to apply only the next version or the specific versions")
 	flag.Parse()
@@ -34,6 +42,19 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
+
+	chainIdString := strconv.FormatUint(utils.Config.Chain.Config.DepositChainID, 10)
+
+	_, err = db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Project, chainIdString)
+	if err != nil {
+		utils.LogFatal(err, "error initializing bigtable", 0)
+	}
+
+	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
+	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
+	if err != nil {
+		utils.LogFatal(err, "lighthouse client error", 0)
+	}
 
 	db.MustInitDB(&types.DatabaseConfig{
 		Username: cfg.WriterDatabase.Username,
@@ -79,6 +100,17 @@ func main() {
 			logrus.WithError(err).Fatal("error applying db schema")
 		}
 		logrus.Infof("db schema applied successfully")
+	case "epoch-export":
+		logrus.Infof("exporting epochs %v - %v", opts.StartEpoch, opts.EndEpoch)
+
+		for epoch := opts.StartEpoch; epoch <= opts.EndEpoch; epoch++ {
+			err = exporter.ExportEpoch(epoch, rpcClient)
+
+			if err != nil {
+				logrus.Errorf("error exporting epoch: %v", err)
+			}
+			logrus.Printf("finished export for epoch %v", epoch)
+		}
 	case "checkTransactions":
 
 	default:
