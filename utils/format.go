@@ -36,13 +36,11 @@ func FormatMessageToHtml(message string) template.HTML {
 // FormatSyncParticipationStatus will return a user-friendly format for an sync-participation-status number
 func FormatSyncParticipationStatus(status uint64) template.HTML {
 	if status == 0 {
-		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Scheduled</span>`
+		return `<span class="badge badge-pill bg-danger text-white" style="font-size: 12px; font-weight: 500;">Missed</span>`
 	} else if status == 1 {
 		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Participated</span>`
 	} else if status == 2 {
-		return `<span class="badge badge-pill bg-danger text-white" style="font-size: 12px; font-weight: 500;">Missed</span>`
-	} else if status == 3 {
-		return `<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">No Block</span>`
+		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Scheduled</span>`
 	} else {
 		return "Unknown"
 	}

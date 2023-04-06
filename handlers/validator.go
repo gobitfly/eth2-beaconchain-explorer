@@ -752,6 +752,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
+		validatorPageData.SlotsPerSyncCommittee = utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
+
 		// sync participation
 		// get all sync periods this validator has been part of
 		var actualSyncPeriods []struct {
@@ -803,26 +805,23 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 				for _, r := range res[index] {
 					slotTime := utils.SlotToTime(r.Slot)
-					if r.Status == 0 && time.Since(slotTime) > time.Minute {
+					if r.Status == 0 && time.Since(slotTime) <= time.Minute {
 						r.Status = 2
 					}
 					switch r.Status {
 					case 0:
-						syncStats.ScheduledSync++
+						syncStats.MissedSync++
 					case 1:
 						syncStats.ParticipatedSync++
 					case 2:
-						syncStats.MissedSync++
-					case 3:
-						syncStats.OrphanedSync++
+						syncStats.ScheduledSync++
 					}
 				}
 
 				// data coming from bigtable is limited to the current epoch, so we need to add the remaining sync duties for the current period manually
-				syncStats.ScheduledSync += (actualSyncPeriods[0].LastEpoch - latestEpoch) * utils.Config.Chain.Config.SlotsPerEpoch
+				syncStats.ScheduledSync += validatorPageData.SlotsPerSyncCommittee - ((syncStats.MissedSync + syncStats.ParticipatedSync + syncStats.ScheduledSync) % validatorPageData.SlotsPerSyncCommittee)
 			}
 
-			validatorPageData.SlotsPerSyncCommittee = utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
 			validatorPageData.SlotsDoneInCurrentSyncCommittee = validatorPageData.SlotsPerSyncCommittee - syncStats.ScheduledSync
 
 			validatorPageData.ParticipatedSyncCountSlots = syncStats.ParticipatedSync
@@ -2057,8 +2056,8 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 				slotTime := utils.SlotToTime(syncDuties[slotIndex].Slot)
 
-				if syncDuties[slotIndex].Status == 0 && time.Since(slotTime) > time.Minute {
-					syncDuties[slotIndex].Status = 2
+				if syncDuties[slotIndex].Status == 0 && time.Since(slotTime) <= time.Minute {
+					syncDuties[slotIndex].Status = 2 // scheduled
 				}
 				tableData[dataIndex] = []interface{}{
 					fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
