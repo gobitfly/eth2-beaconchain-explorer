@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"math/big"
 	"strings"
@@ -525,18 +524,15 @@ type Eth1AddressSearchItem struct {
 }
 
 type RawMempoolResponse struct {
-	Pending map[string]map[int]RawMempoolTransaction `json:"pending"`
+	Pending map[string]map[int]*RawMempoolTransaction `json:"pending"`
+	Queued  map[string]map[int]*RawMempoolTransaction `json:"queued"`
+	BaseFee map[string]map[int]*RawMempoolTransaction `json:"baseFee"`
+
+	TxsByHash map[common.Hash]*RawMempoolTransaction
 }
 
 func (mempool RawMempoolResponse) FindTxByHash(txHashString string) *RawMempoolTransaction {
-	for _, pendingData := range mempool.Pending {
-		for _, tx := range pendingData {
-			if fmt.Sprintf("%s", tx.Hash) == txHashString {
-				return &tx
-			}
-		}
-	}
-	return nil
+	return mempool.TxsByHash[common.HexToHash(txHashString)]
 }
 
 type RawMempoolTransaction struct {
@@ -546,6 +542,7 @@ type RawMempoolTransaction struct {
 	Value            *hexutil.Big    `json:"value"`
 	Gas              *hexutil.Big    `json:"gas"`
 	GasFeeCap        *hexutil.Big    `json:"maxFeePerGas,omitempty"`
+	GasTipCap        *hexutil.Big    `json:"maxPriorityFeePerGas,omitempty"`
 	GasPrice         *hexutil.Big    `json:"gasPrice"`
 	Nonce            *hexutil.Big    `json:"nonce"`
 	Input            *string         `json:"input"`
