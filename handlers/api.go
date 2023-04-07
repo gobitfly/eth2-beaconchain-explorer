@@ -980,7 +980,7 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 		return nil, err
 	}
 
-	r.ParticipatedSlots, r.MissedSlots, err = getSyncCommitteeSlotsStatistics(validators, epoch)
+	r.ParticipatedSlots, r.MissedSlots, r.ScheduledSlots, err = getSyncCommitteeSlotsStatistics(validators, epoch)
 	if err != nil {
 		return nil, err
 	}
@@ -1095,7 +1095,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	return expectedSlots, nil
 }
 
-func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (participatedSlots uint64, missedSlots uint64, err error) {
+func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (participatedSlots uint64, missedSlots uint64, scheduledSlots uint64, err error) {
 	// collect aggregated sync committee stats from validator_stats table for all validators
 	var syncStats struct {
 		Participated int64 `db:"participated"`
@@ -1103,11 +1103,11 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (partici
 	}
 	query, args, err := sqlx.In(`SELECT COALESCE(SUM(participated_sync), 0) AS participated, COALESCE(SUM(missed_sync), 0) AS missed FROM validator_stats WHERE validatorindex IN (?)`, validators)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 	err = db.ReaderDb.Get(&syncStats, db.ReaderDb.Rebind(query), args...)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	participatedSlots = uint64(syncStats.Participated)
@@ -1118,7 +1118,7 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (partici
 	var lastExportedDay uint64
 	err = db.WriterDb.Get(&lastExportedDay, "SELECT COALESCE(max(day), 0) FROM validator_stats_status WHERE status")
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 	epochsPerDay := utils.EpochsPerDay()
 	lastExportedEpoch := ((lastExportedDay + 1) * epochsPerDay) - 1
@@ -1136,11 +1136,11 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (partici
 		}
 		query, args, err := sqlx.In(`SELECT COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators FROM sync_committees WHERE period IN(?) AND validatorindex IN(?)`, periods, validators)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 		err = db.ReaderDb.Get(&validatorsInSyncCommittees, db.ReaderDb.Rebind(query), args...)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 
 		if len(validatorsInSyncCommittees.Validators) > 0 {
@@ -1150,19 +1150,34 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (partici
 				vs = append(vs, uint64(v))
 			}
 
-			m, err := db.BigtableClient.GetValidatorSyncDutiesStatistics(vs, lastExportedEpoch, epoch)
+			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory(vs, lastExportedEpoch, epoch)
 			if err != nil {
-				return 0, 0, err
+				return 0, 0, 0, fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
+			}
+			for _, v := range res {
+				for _, r := range v {
+					slotTime := utils.SlotToTime(r.Slot)
+					if r.Status == 0 && time.Since(slotTime) <= time.Minute {
+						r.Status = 2
+					}
+					switch r.Status {
+					case 0:
+						missedSlots++
+					case 1:
+						participatedSlots++
+					case 2:
+						scheduledSlots++
+					}
+				}
 			}
 
-			for _, v := range m {
-				participatedSlots += v.ParticipatedSync
-				missedSlots += v.MissedSync
-			}
+			// data coming from bigtable is limited to the current epoch, so we need to add the remaining sync duties for the current period manually
+			slotsPerSyncCommittee := utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
+			scheduledSlots += slotsPerSyncCommittee - ((missedSlots + participatedSlots + scheduledSlots) % slotsPerSyncCommittee)
 		}
 	}
 
-	return participatedSlots, missedSlots, nil
+	return participatedSlots, missedSlots, scheduledSlots, nil
 }
 
 type Cached struct {
@@ -1344,6 +1359,7 @@ type SyncCommitteesStats struct {
 	ExpectedSlots     uint64 `json:"expectedSlots"`
 	ParticipatedSlots uint64 `json:"participatedSlots"`
 	MissedSlots       uint64 `json:"missedSlots"`
+	ScheduledSlots    uint64 `json:"scheduledSlots"`
 }
 
 type DashboardResponse struct {
