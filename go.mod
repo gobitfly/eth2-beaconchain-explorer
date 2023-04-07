@@ -38,6 +38,7 @@ require (
 	github.com/mr-tron/base58 v1.2.0
 	github.com/mssola/user_agent v0.5.2
 	github.com/mvdan/xurls v1.1.0
+	github.com/pganalyze/pg_query_go/v4 v4.2.0
 	github.com/phyber/negroni-gzip v0.0.0-20180113114010-ef6356a5d029
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.14.0
@@ -92,9 +93,6 @@ require (
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
-	github.com/pganalyze/pg_query_go v1.0.3 // indirect
-	github.com/pganalyze/pg_query_go/v2 v2.2.0 // indirect
-	github.com/pganalyze/pg_query_go/v4 v4.2.0 // indirect
 	github.com/protolambda/zssz v0.1.5 // indirect
 	github.com/prysmaticlabs/fastssz v0.0.0-20221107182844-78142813af44 // indirect
 	github.com/prysmaticlabs/gohashtree v0.0.2-alpha // indirect
