@@ -989,12 +989,18 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 }
 
 func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedSlots uint64, err error) {
+	if epoch < utils.Config.Chain.Config.AltairForkEpoch {
+		// no sync committee duties before altair fork
+		return 0, nil
+	}
+
 	// retrieve activation and exit epochs from database per validator
 	type ValidatorInfo struct {
 		Id                         int64  `db:"validatorindex"`
 		ActivationEpoch            uint64 `db:"activationepoch"`
 		ExitEpoch                  uint64 `db:"exitepoch"`
 		FirstPossibleSyncCommittee uint64 // calculated
+		LastPossibleSyncCommittee  uint64 // calculated
 	}
 
 	var validatorsInfoFromDb = []ValidatorInfo{}
@@ -1008,36 +1014,38 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 		return 0, err
 	}
 
-	// only check validators are/have been active and that did not exit before altair
+	// only check validators that are/have been active and that did not exit before altair
 	const noEpoch = uint64(9223372036854775807)
 	var validatorsInfo = make([]ValidatorInfo, 0, len(validatorsInfoFromDb))
 	for _, v := range validatorsInfoFromDb {
-		if v.ActivationEpoch != noEpoch && (v.ExitEpoch == noEpoch || v.ExitEpoch >= utils.Config.Chain.Config.AltairForkEpoch) {
+		if v.ActivationEpoch != noEpoch && v.ActivationEpoch < epoch && (v.ExitEpoch == noEpoch || v.ExitEpoch >= utils.Config.Chain.Config.AltairForkEpoch) {
 			validatorsInfo = append(validatorsInfo, v)
 		}
 	}
 
 	if len(validatorsInfo) == 0 {
-		// no validators relevant for sync duties left, early exit
+		// no validators relevant for sync duties
 		return 0, nil
 	}
 
 	// we need all related and unique timeframes (activation and exit sync period) for all validators
 	uniquePeriods := make(map[uint64]bool)
-	uniquePeriods[utils.SyncPeriodOfEpoch(epoch)] = true
-	for i := range validatorsInfo { // we have to use the index as we have to write into slice too
-		// activation epoch
+	for i := range validatorsInfo {
+		// first epoch (activation epoch or Altair if Altair was later as there were no sync committees pre Altair)
 		firstSyncEpoch := validatorsInfo[i].ActivationEpoch
-		if utils.Config.Chain.Config.AltairForkEpoch > validatorsInfo[i].ActivationEpoch {
+		if validatorsInfo[i].ActivationEpoch < utils.Config.Chain.Config.AltairForkEpoch {
 			firstSyncEpoch = utils.Config.Chain.Config.AltairForkEpoch
 		}
 		validatorsInfo[i].FirstPossibleSyncCommittee = utils.SyncPeriodOfEpoch(firstSyncEpoch)
 		uniquePeriods[validatorsInfo[i].FirstPossibleSyncCommittee] = true
 
-		// exit epoch (if any)
-		if validatorsInfo[i].ExitEpoch != noEpoch && validatorsInfo[i].ExitEpoch > firstSyncEpoch {
-			uniquePeriods[utils.SyncPeriodOfEpoch(validatorsInfo[i].ExitEpoch)] = true
+		// last epoch (exit epoch or current epoch if not exited yet)
+		lastSyncEpoch := epoch
+		if validatorsInfo[i].ExitEpoch != noEpoch && validatorsInfo[i].ExitEpoch <= epoch {
+			lastSyncEpoch = validatorsInfo[i].ExitEpoch
 		}
+		validatorsInfo[i].LastPossibleSyncCommittee = utils.SyncPeriodOfEpoch(lastSyncEpoch)
+		uniquePeriods[validatorsInfo[i].LastPossibleSyncCommittee] = true
 	}
 
 	// transform map to slice; this will be used to query sync_committees_count_per_validator
@@ -1060,6 +1068,9 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	if err != nil {
 		return 0, err
 	}
+	if len(countStatistics) != len(periodSlice) {
+		return 0, fmt.Errorf("unable to retrieve all sync committee count statistics, required %v entries but got %v entries (epoch: %v)", len(periodSlice), len(countStatistics), epoch)
+	}
 
 	// transform query result to map for easy access
 	periodInfoMap := make(map[uint64]float64)
@@ -1070,23 +1081,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	// calculate expected committies for every single validator and aggregate them
 	expectedCommitties := 0.0
 	for _, vi := range validatorsInfo {
-		if _, found := periodInfoMap[vi.FirstPossibleSyncCommittee]; !found {
-			return 0, fmt.Errorf("required period not found: FirstPossibleSyncCommittee = '%v'", vi.FirstPossibleSyncCommittee)
-		}
-
-		lastEpoch := vi.ExitEpoch
-		if vi.ExitEpoch == noEpoch {
-			lastEpoch = epoch
-		}
-
-		{
-			spoe := utils.SyncPeriodOfEpoch(lastEpoch)
-			if _, found := periodInfoMap[spoe]; !found {
-				return 0, fmt.Errorf("required period not found: SyncPeriodOfEpoch(%v) = '%v'", lastEpoch, spoe)
-			}
-		}
-
-		expectedCommitties += periodInfoMap[utils.SyncPeriodOfEpoch(lastEpoch)] - periodInfoMap[utils.SyncPeriodOfEpoch(vi.ActivationEpoch)]
+		expectedCommitties += periodInfoMap[vi.LastPossibleSyncCommittee] - periodInfoMap[vi.FirstPossibleSyncCommittee]
 	}
 
 	// transform committees to slots
