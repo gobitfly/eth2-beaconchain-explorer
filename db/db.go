@@ -2964,8 +2964,17 @@ func GetWithdrawableValidatorCount(epoch uint64) (uint64, error) {
 		count(*) 
 	FROM 
 		validators 
+	INNER JOIN (
+		SELECT validatorindex, 
+                end_effective_balance, 
+                end_balance,
+                DAY
+        FROM
+                validator_stats
+        WHERE DAY = (SELECT COALESCE(MAX(day), 0) FROM validator_stats_status)) as stats 
+	ON stats.validatorindex = validators.validatorindex
 	WHERE 
-		withdrawalcredentials LIKE '\x01' || '%'::bytea AND ((effectivebalance = $1 AND balance > $1) OR (withdrawableepoch <= $2 AND balance > 0));`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
+		validators.withdrawalcredentials LIKE '\x01' || '%'::bytea AND ((stats.end_effective_balance = $1 AND stats.end_balance > $1) OR (validators.withdrawableepoch <= $2 AND stats.end_balance > 0));`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
