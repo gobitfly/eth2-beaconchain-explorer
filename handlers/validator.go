@@ -799,27 +799,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			lastExportedEpoch := (lastStatsDay+1)*utils.EpochsPerDay() - 1
 			if actualSyncPeriods[0].LastEpoch > lastExportedEpoch {
 				lookback := int64(latestEpoch - lastExportedEpoch)
-				res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, latestEpoch-uint64(lookback), latestEpoch)
+				syncStatsBt, err := db.BigtableClient.GetValidatorSyncCommitteesStats([]uint64{index}, latestEpoch-uint64(lookback), latestEpoch)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 				}
-				for _, r := range res[index] {
-					slotTime := utils.SlotToTime(r.Slot)
-					if r.Status == 0 && time.Since(slotTime) <= time.Minute {
-						r.Status = 2
-					}
-					switch r.Status {
-					case 0:
-						syncStats.MissedSync++
-					case 1:
-						syncStats.ParticipatedSync++
-					case 2:
-						syncStats.ScheduledSync++
-					}
-				}
-
-				// data coming from bigtable is limited to the current epoch, so we need to add the remaining sync duties for the current period manually
-				syncStats.ScheduledSync += validatorPageData.SlotsPerSyncCommittee - ((syncStats.MissedSync + syncStats.ParticipatedSync + syncStats.ScheduledSync) % validatorPageData.SlotsPerSyncCommittee)
+				syncStats.MissedSync += syncStatsBt.MissedSlots
+				syncStats.ParticipatedSync += syncStatsBt.ParticipatedSlots
+				syncStats.ScheduledSync += syncStatsBt.ScheduledSlots
 			}
 
 			validatorPageData.SlotsDoneInCurrentSyncCommittee = validatorPageData.SlotsPerSyncCommittee - syncStats.ScheduledSync
@@ -831,7 +817,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			// actual sync duty count and percentage
 			validatorPageData.SyncCountSlots = validatorPageData.ParticipatedSyncCountSlots + validatorPageData.MissedSyncCountSlots + validatorPageData.OrphanedSyncCountSlots + validatorPageData.ScheduledSyncCountSlots
 			validatorPageData.SyncCount = uint64(math.Ceil(float64(validatorPageData.SyncCountSlots) / float64(validatorPageData.SlotsPerSyncCommittee)))
-			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.SyncCountSlots-validatorPageData.MissedSyncCountSlots) / float64(validatorPageData.SyncCountSlots)
+			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.ParticipatedSyncCountSlots) / float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots)
 		}
 		// sync luck
 		if len(allSyncPeriods) > 0 {
@@ -901,20 +887,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	validatorPageData.IncomeToday.Total = validatorPageData.IncomeToday.Cl + validatorPageData.IncomeToday.El
-
-	// logger.WithFields(logrus.Fields{
-	// 	"index":         index,
-	// 	"BasicInfo":     timings.BasicInfo,
-	// 	"Earnings":      timings.Earnings,
-	// 	"Deposits":      timings.Deposits,
-	// 	"Proposals":     timings.Proposals,
-	// 	"Charts":        timings.Charts,
-	// 	"Effectiveness": timings.Effectiveness,
-	// 	"Statistics":    timings.Statistics,
-	// 	"SyncStats":     timings.SyncStats,
-	// 	"Rocketpool":    timings.Rocketpool,
-	// 	"total":         timings.BasicInfo + timings.Earnings + timings.Deposits + timings.Proposals + timings.Charts + timings.Effectiveness + timings.Statistics + timings.SyncStats + timings.Rocketpool,
-	// }).Infof("got validator page data")
 
 	data.Data = validatorPageData
 

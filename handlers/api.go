@@ -852,7 +852,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	var olderEpochData []interface{}
 	var currentSyncCommittee []interface{}
 	var nextSyncCommittee []interface{}
-	var syncCommitteeStats *SyncCommitteesStats
+	var syncCommitteeStats *SyncCommitteesInfo
 
 	if getValidators {
 		queryIndices, err := parseApiValidatorParamToIndices(parsedBody.IndicesOrPubKey, maxValidators)
@@ -960,32 +960,28 @@ func getSyncCommitteeFor(validators []uint64, period uint64) ([]interface{}, err
 	return utils.SqlRowsToJSON(rows)
 }
 
-func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitteesStats, error) {
-	r := SyncCommitteesStats{}
-
+func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitteesInfo, error) {
 	if epoch < utils.Config.Chain.Config.AltairForkEpoch {
 		// no sync committee duties before altair fork
-		return &r, nil
+		return &SyncCommitteesInfo{}, nil
 	}
 
 	if len(validators) == 0 {
 		// no validators mean no sync committee duties either
-		return &r, nil
+		return &SyncCommitteesInfo{}, nil
 	}
 
-	var err error
-
-	r.ExpectedSlots, err = getExpectedSyncCommitteeSlots(validators, epoch)
+	expectedSlots, err := getExpectedSyncCommitteeSlots(validators, epoch)
 	if err != nil {
 		return nil, err
 	}
 
-	r.ParticipatedSlots, r.MissedSlots, r.ScheduledSlots, err = getSyncCommitteeSlotsStatistics(validators, epoch)
+	stats, err := getSyncCommitteeSlotsStatistics(validators, epoch)
 	if err != nil {
 		return nil, err
 	}
 
-	return &r, nil
+	return &SyncCommitteesInfo{SyncCommitteesStats: stats, ExpectedSlots: expectedSlots}, nil
 }
 
 func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedSlots uint64, err error) {
@@ -1095,7 +1091,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	return expectedSlots, nil
 }
 
-func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (participatedSlots uint64, missedSlots uint64, scheduledSlots uint64, err error) {
+func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.SyncCommitteesStats, error) {
 	// collect aggregated sync committee stats from validator_stats table for all validators
 	var syncStats struct {
 		Participated int64 `db:"participated"`
@@ -1103,22 +1099,23 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (partici
 	}
 	query, args, err := sqlx.In(`SELECT COALESCE(SUM(participated_sync), 0) AS participated, COALESCE(SUM(missed_sync), 0) AS missed FROM validator_stats WHERE validatorindex IN (?)`, validators)
 	if err != nil {
-		return 0, 0, 0, err
+		return types.SyncCommitteesStats{}, err
 	}
 	err = db.ReaderDb.Get(&syncStats, db.ReaderDb.Rebind(query), args...)
 	if err != nil {
-		return 0, 0, 0, err
+		return types.SyncCommitteesStats{}, err
 	}
 
-	participatedSlots = uint64(syncStats.Participated)
-	missedSlots = uint64(syncStats.Missed)
+	retv := types.SyncCommitteesStats{}
+	retv.ParticipatedSlots = uint64(syncStats.Participated)
+	retv.MissedSlots = uint64(syncStats.Missed)
 
 	// validator_stats is updated only once a day, everything missing has to be collected from bigtable (which is slower than validator_stats)
 	// check when the last update to validator_stats was
 	var lastExportedDay uint64
 	err = db.WriterDb.Get(&lastExportedDay, "SELECT COALESCE(max(day), 0) FROM validator_stats_status WHERE status")
 	if err != nil {
-		return 0, 0, 0, err
+		return types.SyncCommitteesStats{}, err
 	}
 	epochsPerDay := utils.EpochsPerDay()
 	lastExportedEpoch := ((lastExportedDay + 1) * epochsPerDay) - 1
@@ -1136,11 +1133,11 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (partici
 		}
 		query, args, err := sqlx.In(`SELECT COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators FROM sync_committees WHERE period IN(?) AND validatorindex IN(?)`, periods, validators)
 		if err != nil {
-			return 0, 0, 0, err
+			return types.SyncCommitteesStats{}, err
 		}
 		err = db.ReaderDb.Get(&validatorsInSyncCommittees, db.ReaderDb.Rebind(query), args...)
 		if err != nil {
-			return 0, 0, 0, err
+			return types.SyncCommitteesStats{}, err
 		}
 
 		if len(validatorsInSyncCommittees.Validators) > 0 {
@@ -1150,34 +1147,17 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (partici
 				vs = append(vs, uint64(v))
 			}
 
-			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory(vs, lastExportedEpoch, epoch)
+			syncStats, err := db.BigtableClient.GetValidatorSyncCommitteesStats(vs, lastExportedEpoch, epoch)
 			if err != nil {
-				return 0, 0, 0, fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
+				return retv, fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 			}
-			for _, v := range res {
-				for _, r := range v {
-					slotTime := utils.SlotToTime(r.Slot)
-					if r.Status == 0 && time.Since(slotTime) <= time.Minute {
-						r.Status = 2
-					}
-					switch r.Status {
-					case 0:
-						missedSlots++
-					case 1:
-						participatedSlots++
-					case 2:
-						scheduledSlots++
-					}
-				}
-			}
-
-			// data coming from bigtable is limited to the current epoch, so we need to add the remaining sync duties for the current period manually
-			slotsPerSyncCommittee := utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
-			scheduledSlots += slotsPerSyncCommittee - ((missedSlots + participatedSlots + scheduledSlots) % slotsPerSyncCommittee)
+			retv.MissedSlots += syncStats.MissedSlots
+			retv.ParticipatedSlots += syncStats.ParticipatedSlots
+			retv.ScheduledSlots += syncStats.ScheduledSlots
 		}
 	}
 
-	return participatedSlots, missedSlots, scheduledSlots, nil
+	return retv, nil
 }
 
 type Cached struct {
@@ -1355,11 +1335,9 @@ func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorE
 	return data, nil
 }
 
-type SyncCommitteesStats struct {
-	ExpectedSlots     uint64 `json:"expectedSlots"`
-	ParticipatedSlots uint64 `json:"participatedSlots"`
-	MissedSlots       uint64 `json:"missedSlots"`
-	ScheduledSlots    uint64 `json:"scheduledSlots"`
+type SyncCommitteesInfo struct {
+	types.SyncCommitteesStats
+	ExpectedSlots uint64 `json:"expectedSlots"`
 }
 
 type DashboardResponse struct {
@@ -1372,7 +1350,7 @@ type DashboardResponse struct {
 	ExecutionPerformance []types.ExecutionPerformanceResponse `json:"execution_performance"`
 	CurrentSyncCommittee interface{}                          `json:"current_sync_committee"`
 	NextSyncCommittee    interface{}                          `json:"next_sync_committee"`
-	SyncCommitteesStats  SyncCommitteesStats                  `json:"sync_committees_stats"`
+	SyncCommitteesStats  SyncCommitteesInfo                   `json:"sync_committees_stats"`
 }
 
 func getEpoch(epoch int64) ([]interface{}, error) {
