@@ -398,6 +398,11 @@ func main() {
 			logrus.Infof("ethclients initialized")
 		}
 
+		if cfg.Frontend.SessionSecret == "" {
+			logrus.Fatal("session secret is empty, please provide a secure random string.")
+			return
+		}
+
 		utils.InitSessionStore(cfg.Frontend.SessionSecret)
 
 		if !utils.Config.Frontend.OnlyAPI {
