@@ -685,7 +685,7 @@ func FormatIncomeClElInt64(income types.ClElInt64, currency string) template.HTM
 			title="
 			CL: %s <br> 
 			EL: %s">
-			<b>+%s %s</b>
+			<b>%s %s</b>
 		</span>`, className, FormatExchangedAmount(income.Cl, currency), FormatExchangedAmount(income.El, currency), incomeTrimmed, currency))
 	} else {
 		return template.HTML(fmt.Sprintf(`<span>%s%s</span>`, incomeTrimmed, currency))
