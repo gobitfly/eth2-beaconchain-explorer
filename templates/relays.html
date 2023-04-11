@@ -59,9 +59,9 @@
                           {{ end }}
                           <td>{{ .BlockCount }} ({{ formatPercentageWithPrecision .NetworkUsage 2 }}%)</td>
                           <td>{{ .UniqueBuilders }}</td>
-                          <td>{{ formatBalanceWei .AverageValue.BigInt "ETH" 8 }}</td>
-                          <td>{{ formatBalanceWei .MaxValue.BigInt "ETH" 8 }} (Slot {{ formatBlockSlot .MaxValueSlot }})</td>
-                          <td>{{ formatBalanceWei .TotalValue.BigInt "ETH" 8 }}</td>
+                          <td>{{ formatAmount .AverageValue.BigInt "ETH" 8 }}</td>
+                          <td>{{ formatAmount .MaxValue.BigInt "ETH" 8 }} (Slot {{ formatBlockSlot .MaxValueSlot }})</td>
+                          <td>{{ formatAmount .TotalValue.BigInt "ETH" 8 }}</td>
                           {{ if .Censors.Valid }}
                             <td>{{ formatYesNo (not .Censors.Bool) }}</td>
                           {{ else }}
@@ -119,7 +119,7 @@
                             </span>
                           {{ end }}
                         </td>
-                        <td>{{ formatBalanceWei .Value.BigInt "ETH" 8 }}</td>
+                        <td>{{ formatAmount .Value.BigInt "ETH" 8 }}</td>
                         <td>
                           <span class="convertmetoutf8" id="slot_{{ .Slot }}" aria-hex-data="{{ .BlockExtraData }}"></span>
                         </td>
@@ -155,7 +155,7 @@
                             </span>
                           {{ end }}
                         </td>
-                        <td>{{ formatBalanceWei .Value.BigInt "ETH" 8 }}</td>
+                        <td>{{ formatAmount .Value.BigInt "ETH" 8 }}</td>
                         <td>
                           <span class="convertmetoutf8" id="slot_{{ .Slot }}" aria-hex-data="{{ .BlockExtraData }}"></span>
                         </td>

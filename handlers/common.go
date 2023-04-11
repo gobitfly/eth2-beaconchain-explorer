@@ -175,7 +175,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
-	incomeTotalElInt64 := types.ClElInt64{
+	incomeTotal := types.ClElInt64{
 		El:    income.ElIncomeTotal,
 		Cl:    income.ClIncomeTotal + currentDayIncome,
 		Total: income.ClIncomeTotal + income.ElIncomeTotal + currentDayIncome,
@@ -203,7 +203,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    income.ClIncome31d,
 			Total: earnings31d,
 		},
-		IncomeTotal: incomeTotalElInt64,
+		IncomeTotal: incomeTotal,
 		Apr7d: types.ClElFloat64{
 			El:    elApr7d,
 			Cl:    clApr7d,
