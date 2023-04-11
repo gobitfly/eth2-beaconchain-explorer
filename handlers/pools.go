@@ -5,6 +5,7 @@ import (
 
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
+	"eth2-exporter/types"
 	"net/http"
 	// "strings"
 )
@@ -20,19 +21,22 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "services", "/pools", "Staking Pools Services Overview", templateFiles)
 
-	distributionData, err := services.ChartHandlers["pools_distribution"].DataFunc()
-	if err != nil {
-		if handleTemplateError(w, r, "pools.go", "Pools", "pools_distribution", err) != nil {
-			return // an error has occurred and was processed
+	cpd := services.LatestChartsPageData()
+	var distributionData *types.GenericChartData
+	var performanceData *types.GenericChartData
+
+	for _, chart := range cpd {
+		if chart.Path == "pools_distribution" {
+			distributionData = chart.Data
 		}
-		return
+		if chart.Path == "historic_pool_performance" {
+			performanceData = chart.Data
+		}
 	}
 
-	performanceData, err := services.ChartHandlers["historic_pool_performance"].DataFunc()
-	if err != nil {
-		if handleTemplateError(w, r, "pools.go", "Pools", "historic_pool_performance", err) != nil {
-			return // an error has occurred and was processed
-		}
+	if distributionData == nil || performanceData == nil {
+		logger.Errorf("unable to retrieve data for %v route", r.URL.String())
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 

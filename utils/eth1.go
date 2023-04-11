@@ -263,24 +263,25 @@ func FormatAddressLong(address string) template.HTML {
 
 }
 
-func FormatAmountFormated(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
+func FormatAmountFormatted(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
 	return formatAmount(amount, unit, digits, maxPreCommaDigitsBeforeTrim, fullAmountTooltip, smallUnit, newLineForUnit)
 }
 func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
-	return formatAmount(amount, unit, digits, 0, false, false, false)
+	return formatAmount(amount, unit, digits, 0, true, false, false)
 }
 func FormatBigAmount(amount *hexutil.Big, unit string, digits int) template.HTML {
 	return FormatAmount((*big.Int)(amount), unit, digits)
 }
+func FormatBytesAmount(amount []byte, unit string, digits int) template.HTML {
+	return FormatAmount(new(big.Int).SetBytes(amount), unit, digits)
+}
 func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
 	// define display unit & digits used per unit max
-	var displayUnit string
+	displayUnit := " " + unit
 	var unitDigits int
-	if unit == "ETH" {
-		displayUnit = " Ether"
+	if unit == "ETH" || unit == "Ether" {
 		unitDigits = 18
 	} else if unit == "GWei" {
-		displayUnit = " GWei"
 		unitDigits = 9
 	} else {
 		displayUnit = " ?"
@@ -307,7 +308,10 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 	}
 
 	trimmedAmount, fullAmount := trimAmount(amount, unitDigits, maxPreCommaDigitsBeforeTrim, digits, false)
-	tooltip := fmt.Sprintf(`data-toggle="tooltip" data-placement="top" title="%s"`, fullAmount)
+	tooltip := ""
+	if fullAmountTooltip {
+		tooltip = fmt.Sprintf(` data-toggle="tooltip" data-placement="top" title="%s"`, fullAmount)
+	}
 
 	// done, convert to HTML & return
 	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, displayUnit))

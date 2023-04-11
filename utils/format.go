@@ -1122,7 +1122,7 @@ func FormatBlockReward(blockNumber int64) template.HTML {
 		reward = big.NewInt(2e+18)
 	}
 
-	return FormatAmount(reward, "ETH", 5)
+	return FormatAmount(reward, "Ether", 5)
 }
 
 func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
@@ -1191,7 +1191,7 @@ func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
 	p := message.NewPrinter(language.English)
 	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
-	f, _ := num.Div(mul).Float64()
+	f, _ := num.DivRound(mul, int32(decimals.Int64())).Float64()
 
 	return template.HTML(p.Sprintf("%s", FormatThousandsEnglish(strconv.FormatFloat(f, 'f', -1, 64))))
 }
@@ -1201,7 +1201,7 @@ func FormatErc20Decimals(balance []byte, metadata *types.ERC20Metadata) decimal.
 	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance), 0)
 
-	return num.Div(mul)
+	return num.DivRound(mul, int32(decimals.Int64()))
 }
 
 func FormatTokenName(balance *types.Eth1AddressBalance) template.HTML {
@@ -1216,23 +1216,6 @@ func FormatTokenName(balance *types.Eth1AddressBalance) template.HTML {
 
 func ToBase64(input []byte) string {
 	return base64.StdEncoding.EncodeToString(input)
-}
-
-// FormatBalance will return a string for a balance
-func FormatBalanceWei(balanceWei *big.Int, unit string, precision int) template.HTML {
-	balanceBigFloat := new(big.Float).SetInt(balanceWei)
-	if unit == "Ether" || unit == "ETH" {
-		balanceBigFloat = new(big.Float).Quo(balanceBigFloat, big.NewFloat(1e18))
-	} else if unit == "GWei" {
-		balanceBigFloat = new(big.Float).Quo(balanceBigFloat, big.NewFloat(1e9))
-	}
-	balanceFloat, _ := balanceBigFloat.Float64()
-	balance := FormatFloat(balanceFloat, precision)
-
-	return template.HTML(balance + " " + unit)
-}
-func FormatBytesAmount(amount []byte, unit string, precision int) template.HTML {
-	return FormatBalanceWei(new(big.Int).SetBytes(amount), unit, precision)
 }
 
 // FormatBalance will return a string for a balance
