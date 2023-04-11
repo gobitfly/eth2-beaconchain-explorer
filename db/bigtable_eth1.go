@@ -3412,13 +3412,8 @@ func (bigtable *Bigtable) SaveMethodSignatures(signatures []types.MethodSignatur
 	}
 
 	for _, sig := range signatures {
-		s, err := json.Marshal(sig)
-		if err != nil {
-			return err
-		}
-
 		mut := gcp_bigtable.NewMutation()
-		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), s)
+		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), []byte(sig.Text))
 
 		key := fmt.Sprintf("1:M_SIGNATURE:%v", sig.Hex)
 
@@ -3436,7 +3431,7 @@ func (bigtable *Bigtable) SaveMethodSignatures(signatures []types.MethodSignatur
 }
 
 // get a method signature by it's hex representation
-func (bigtable *Bigtable) GetMethodSignature(hex string) (*types.MethodSignature, error) {
+func (bigtable *Bigtable) GetMethodSignature(hex string) (*string, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 	key := fmt.Sprintf("1:M_SIGNATURE:%v", hex)
@@ -3448,15 +3443,9 @@ func (bigtable *Bigtable) GetMethodSignature(hex string) (*types.MethodSignature
 	if row == nil {
 		return nil, nil
 	}
-	s := &types.MethodSignature{}
 	row_ := row[DEFAULT_FAMILY][0]
-	err = json.Unmarshal(row_.Value, s)
-	if err != nil {
-		logrus.Errorf("error unmarshalling signrature for row %v: %v", row.Key(), err)
-		return nil, err
-	}
-
-	return s, nil
+	s := fmt.Sprintf("%s", row_.Value)
+	return &s, nil
 }
 
 // get a method label for its byte signature
@@ -3469,9 +3458,9 @@ func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string
 			if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
 				sig, err := bigtable.GetMethodSignature(method)
 				if err == nil && sig != nil {
-					method = sig.Text
+					method = *sig
 				}
-				cache.TieredCache.Set(cacheKey, sig.Text, time.Hour)
+				cache.TieredCache.Set(cacheKey, method, time.Hour)
 			}
 		} else {
 			method = "Transfer*"
