@@ -9,4 +9,7 @@ CREATE INDEX IF NOT EXISTS idx_validators_lastattestationslot ON validators (las
 -- +goose Down
 -- +goose StatementBegin
 SELECT 'down SQL query';
+DROP INDEX IF EXISTS idx_validators_lastattestationslot;
+DROP INDEX IF EXISTS idx_validators_withdrawableepoch;
+DROP INDEX IF EXISTS idx_validators_exitepoch;
 -- +goose StatementEnd
