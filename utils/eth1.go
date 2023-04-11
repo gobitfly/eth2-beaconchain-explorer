@@ -306,21 +306,28 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 		}
 	}
 
-	trimmedAmount, fullAmount := trimAmount(amount, unitDigits, maxPreCommaDigitsBeforeTrim, digits)
+	trimmedAmount, fullAmount := trimAmount(amount, unitDigits, maxPreCommaDigitsBeforeTrim, digits, false)
 	tooltip := fmt.Sprintf(`data-toggle="tooltip" data-placement="top" title="%s"`, fullAmount)
 
 	// done, convert to HTML & return
 	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, displayUnit))
 }
 
-func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int, digits int) (trimmedAmount, fullAmount string) {
+func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int, digits int, addPositiveSign bool) (trimmedAmount, fullAmount string) {
 	// Initialize trimmedAmount and postComma variables to "0"
 	trimmedAmount = "0"
 	postComma := "0"
+	proceed := ""
 
 	if amount != nil {
 		s := amount.String()
 		l := len(s)
+		if amount.Sign() > 0 && addPositiveSign {
+			proceed = "+"
+		} else if amount.Sign() < 0 {
+			proceed = "-"
+			s = strings.Replace(s, "-", "", 1)
+		}
 
 		// Check if there is a part of the amount before the decimal point
 		if l > int(unitDigits) {
@@ -368,7 +375,7 @@ func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int
 			trimmedAmount += "." + postComma
 		}
 	}
-	return trimmedAmount, fullAmount
+	return proceed + trimmedAmount, proceed + fullAmount
 }
 
 func FormatMethod(method string) template.HTML {
