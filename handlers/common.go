@@ -74,17 +74,18 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 
 	var income struct {
-		ClIncome1d    int64 `db:"cl_performance_1d"`
-		ClIncome7d    int64 `db:"cl_performance_7d"`
-		ClIncome31d   int64 `db:"cl_performance_31d"`
-		ClIncome365d  int64 `db:"cl_performance_365d"`
-		ClIncomeTotal int64 `db:"cl_performance_total"`
-		ElIncome1d    int64 `db:"el_performance_1d"`
-		ElIncome7d    int64 `db:"el_performance_7d"`
-		ElIncome31d   int64 `db:"el_performance_31d"`
-		ElIncome365d  int64 `db:"el_performance_365d"`
-		ElIncomeTotal int64 `db:"el_performance_total"`
-		ClIncomeToday int64
+		ClIncome1d            int64 `db:"cl_performance_1d"`
+		ClIncome7d            int64 `db:"cl_performance_7d"`
+		ClIncome31d           int64 `db:"cl_performance_31d"`
+		ClIncome365d          int64 `db:"cl_performance_365d"`
+		ClIncomeTotal         int64 `db:"cl_performance_total"`
+		ClProposerIncomeTotal int64 `db:"cl_proposer_performance_total"`
+		ElIncome1d            int64 `db:"el_performance_1d"`
+		ElIncome7d            int64 `db:"el_performance_7d"`
+		ElIncome31d           int64 `db:"el_performance_31d"`
+		ElIncome365d          int64 `db:"el_performance_365d"`
+		ElIncomeTotal         int64 `db:"el_performance_total"`
+		ClIncomeToday         int64
 	}
 
 	// el rewards are converted from wei to gwei
@@ -95,6 +96,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		COALESCE(SUM(cl_performance_31d), 0) AS cl_performance_31d,
 		COALESCE(SUM(cl_performance_365d), 0) AS cl_performance_365d,
 		COALESCE(SUM(cl_performance_total), 0) AS cl_performance_total,
+		COALESCE(SUM(cl_proposer_performance_total), 0) AS cl_proposer_performance_total,
 		CAST(COALESCE(SUM(mev_performance_1d), 0) / 1e9 AS bigint) AS el_performance_1d,
 		CAST(COALESCE(SUM(mev_performance_7d), 0) / 1e9 AS bigint) AS el_performance_7d,
 		CAST(COALESCE(SUM(mev_performance_31d), 0) / 1e9 AS bigint) AS el_performance_31d,
@@ -168,7 +170,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 
 	// retrieve cl income not yet in stats
-	currentDayIncome, err := db.GetCurrentDayClIncomeTotal(validators)
+	currentDayIncome, currentDayProposerIncome, err := db.GetCurrentDayClIncomeTotal(validators)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -177,6 +179,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		El:    income.ElIncomeTotal,
 		Cl:    income.ClIncomeTotal + currentDayIncome,
 		Total: income.ClIncomeTotal + income.ElIncomeTotal + currentDayIncome,
+	}
+
+	incomeTotalProposer := types.ClElInt64{
+		El:    income.ElIncomeTotal,
+		Cl:    income.ClProposerIncomeTotal + currentDayProposerIncome,
+		Total: income.ClProposerIncomeTotal + income.ElIncomeTotal + currentDayProposerIncome,
 	}
 
 	return &types.ValidatorEarnings{
@@ -211,13 +219,14 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    clApr365d,
 			Total: clApr365d + elApr365d,
 		},
-		TotalDeposits:        int64(totalDeposits),
-		LastDayFormatted:     utils.FormatIncome(earnings1d, currency),
-		LastWeekFormatted:    utils.FormatIncome(earnings7d, currency),
-		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
-		TotalFormatted:       utils.FormatIncomeClElInt64(incomeTotal, currency),
-		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency),
-		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
+		TotalDeposits:          int64(totalDeposits),
+		LastDayFormatted:       utils.FormatIncome(earnings1d, currency),
+		LastWeekFormatted:      utils.FormatIncome(earnings7d, currency),
+		LastMonthFormatted:     utils.FormatIncome(earnings31d, currency),
+		TotalFormatted:         utils.FormatIncomeClElInt64(incomeTotal, currency),
+		ProposerTotalFormatted: utils.FormatIncomeClElInt64(incomeTotalProposer, currency),
+		TotalChangeFormatted:   utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency),
+		TotalBalance:           utils.FormatIncome(int64(totalBalance), currency),
 	}, balancesMap, nil
 }
 

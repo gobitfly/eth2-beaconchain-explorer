@@ -391,6 +391,12 @@ $(document).ready(function () {
   })
 })
 
+$(document).on("inserted.bs.tooltip", function (event) {
+  $("[aria-ethereum-date]").each(function () {
+    formatAriaEthereumDate(this)
+  })
+})
+
 $("[aria-ethereum-date]").each(function () {
   formatAriaEthereumDate(this)
 })

@@ -1289,7 +1289,7 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		return nil, fmt.Errorf("error getting validator balances from bigtable: %w", err)
 	}
 
-	currentDayIncome, err := db.GetCurrentDayClIncome(queryIndices)
+	currentDayIncome, _, err := db.GetCurrentDayClIncome(queryIndices)
 	if err != nil {
 		return nil, err
 	}
@@ -2014,7 +2014,7 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	currentDayIncome, err := db.GetCurrentDayClIncome(queryIndices)
+	currentDayIncome, _, err := db.GetCurrentDayClIncome(queryIndices)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "error retrieving current day income")
 		return
@@ -2964,7 +2964,7 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		return
 	}
 
-	currentDayIncome, err := db.GetCurrentDayClIncome(queryIndices)
+	currentDayIncome, _, err := db.GetCurrentDayClIncome(queryIndices)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "error retrieving current day income")
 		return
