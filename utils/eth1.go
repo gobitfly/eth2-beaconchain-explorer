@@ -325,13 +325,13 @@ func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int
 
 	if amount != nil {
 		s := amount.String()
-		l := len(s)
 		if amount.Sign() > 0 && addPositiveSign {
 			proceed = "+"
 		} else if amount.Sign() < 0 {
 			proceed = "-"
 			s = strings.Replace(s, "-", "", 1)
 		}
+		l := len(s)
 
 		// Check if there is a part of the amount before the decimal point
 		if l > int(unitDigits) {
