@@ -173,6 +173,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
+	incomeTotal := types.ClElInt64{
+		El:    income.ElIncomeTotal,
+		Cl:    income.ClIncomeTotal + currentDayIncome,
+		Total: income.ClIncomeTotal + income.ElIncomeTotal + currentDayIncome,
+	}
+
 	return &types.ValidatorEarnings{
 		Income1d: types.ClElInt64{
 			El:    income.ElIncome1d,
@@ -189,6 +195,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    income.ClIncome31d,
 			Total: earnings31d,
 		},
+		IncomeTotal: incomeTotal,
 		Apr7d: types.ClElFloat64{
 			El:    elApr7d,
 			Cl:    clApr7d,
@@ -204,12 +211,11 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    clApr365d,
 			Total: clApr365d + elApr365d,
 		},
-		ElIncomeTotal:        income.ElIncomeTotal,
 		TotalDeposits:        int64(totalDeposits),
 		LastDayFormatted:     utils.FormatIncome(earnings1d, currency),
 		LastWeekFormatted:    utils.FormatIncome(earnings7d, currency),
 		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
-		TotalFormatted:       utils.FormatIncome(income.ClIncomeTotal+currentDayIncome, currency),
+		TotalFormatted:       utils.FormatIncomeClElInt64(incomeTotal, currency),
 		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency),
 		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
 	}, balancesMap, nil

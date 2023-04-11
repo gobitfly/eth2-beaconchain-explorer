@@ -422,7 +422,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.Apr7d = earnings.Apr7d
 		validatorPageData.Apr31d = earnings.Apr31d
 		validatorPageData.Apr365d = earnings.Apr365d
-		validatorPageData.ElIncomeTotal = earnings.ElIncomeTotal
+		validatorPageData.IncomeTotal = earnings.IncomeTotal
+		validatorPageData.IncomeTotalFormatted = earnings.TotalFormatted
 
 		vbalance, ok := balances[validatorPageData.ValidatorIndex]
 		if !ok {
