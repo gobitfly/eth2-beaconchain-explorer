@@ -721,13 +721,7 @@ func formatIncome(balanceInt int64, currency string, includeCurrency bool) templ
 
 func FormatExchangedAmount(balanceInt int64, currency string) template.HTML {
 	income := exchangeAndTrim(currency, balanceInt)
-	proceed := ""
-	if balanceInt > 0 {
-		proceed = "+"
-	} else if balanceInt < 0 {
-		proceed = "-"
-	}
-	return template.HTML(fmt.Sprintf(`<span>%s%s %s</span>`, proceed, income, currency))
+	return template.HTML(fmt.Sprintf(`<span>%s %s</span>`, income, currency))
 }
 
 func exchangeAndTrim(currency string, amount int64) string {
