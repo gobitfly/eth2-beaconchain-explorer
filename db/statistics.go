@@ -268,8 +268,6 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		if err != nil {
 			return err
 		}
-	} else {
-		logger.Infof("No proposerRewards found")
 	}
 
 	logger.Infof("exporting total income stats")
