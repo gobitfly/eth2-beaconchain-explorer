@@ -119,7 +119,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
-			logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
+			// logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
