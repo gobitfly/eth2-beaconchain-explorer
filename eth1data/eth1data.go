@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"errors"
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
@@ -21,7 +22,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var logger = logrus.New().WithField("module", "eth1data")
+var (
+	logger = logrus.New().WithField("module", "eth1data")
+
+	ErrTransactionNotFound = errors.New("not found")
+)
 
 func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -49,7 +54,10 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(ctx, hash)
 
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving data for tx %v: %v", hash, err)
+		if err.Error() == "not found" {
+			err = ErrTransactionNotFound
+		}
+		return nil, fmt.Errorf("error retrieving data for tx %v: %w", hash, err)
 	}
 
 	if pending {
