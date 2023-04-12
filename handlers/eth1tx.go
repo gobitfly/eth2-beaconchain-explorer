@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 )
@@ -57,7 +58,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 				data.Data = mempoolPageData
 			} else {
-				if !errors.Is(err, eth1data.ErrTransactionNotFound) {
+				if !errors.Is(err, ethereum.NotFound) {
 					logger.Errorf("error getting eth1 transaction data: %v", err)
 				}
 				data = InitPageData(w, r, "blockchain", path, title, txNotFoundTemplateFiles)
