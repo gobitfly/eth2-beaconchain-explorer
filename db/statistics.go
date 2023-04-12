@@ -260,9 +260,9 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			i++
 		}
 		stmt := fmt.Sprintf(`
-	insert into validator_stats (validatorindex, day, el_rewards_wei, mev_rewards_wei) VALUES
-	%s
-	on conflict (validatorindex, day) do update set el_rewards_wei = excluded.el_rewards_wei, mev_rewards_wei = excluded.mev_rewards_wei;`,
+				insert into validator_stats (validatorindex, day, el_rewards_wei, mev_rewards_wei) VALUES
+				%s
+				on conflict (validatorindex, day) do update set el_rewards_wei = excluded.el_rewards_wei, mev_rewards_wei = excluded.mev_rewards_wei;`,
 			strings.Join(valueStrings, ","))
 		_, err = tx.Exec(stmt, valueArgs...)
 		if err != nil {

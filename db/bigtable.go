@@ -1589,9 +1589,11 @@ func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) gcp
 
 		// epochs are sorted descending, so start with the largest epoch and end with the smallest
 		// add \x00 to make the range inclusive
-		rangeEnd = fmt.Sprintf("%s:e:b:%s%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), "\x00")
-		rangeStart = fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch))
-		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
+		if startEpoch < endEpoch {
+			rangeEnd = fmt.Sprintf("%s:e:b:%s%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), "\x00")
+			rangeStart = fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch))
+			ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
+		}
 	} else {
 		// epochs are sorted descending, so start with the largest epoch and end with the smallest
 		// add \x00 to make the range inclusive
