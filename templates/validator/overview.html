@@ -35,11 +35,7 @@
       </div>
       <div class="validator__lifecycle-progress validator__lifecycle-pending">
         <div class="validator__lifecycle-progress-epoch">
-          {{ if and (not $deposited) (ne .ActivationEpoch 9223372036854775807) }}
-            <div data-toggle="tooltip" data-html="true" title="<span>The activation epoch is when your validator becomes active.</span><br><span aria-ethereum-date='{{ .ActivationTs.Unix }}'></span> ">
-              <a href="/epoch/{{ .ActivationEpoch }}">{{ if eq .ActivationEpoch 0 }}genesis{{ else }}{{ .ActivationEpoch }}{{ end }}</a>
-            </div>
-          {{ end }}
+          {{ if not $deposited }}<div data-toggle="tooltip" title="The activation epoch is when your validator becomes active.">{{ if ne .ActivationEpoch 9223372036854775807 }}<a href="/epoch/{{ .ActivationEpoch }}">{{ if eq .ActivationEpoch 0 }}genesis{{ else }}{{ .ActivationEpoch }}{{ end }}</a>{{ end }}</div>{{ end }}
         </div>
       </div>
       <div id="lifecycle-active" class="validator__lifecycle-node-container validator__lifecycle-active">

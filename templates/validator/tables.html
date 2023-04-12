@@ -641,12 +641,6 @@
             {{ .IncomeTotalFormatted }}
           </td>
         </tr>
-        <tr>
-          <th scope="row">Proposer Rewards</th>
-          <td class="pl-0">
-            {{ .IncomeProposerFormatted }}
-          </td>
-        </tr>
         <tr class="">
           <th scope="row">Income Today</th>
           <td class="pl-0">
@@ -759,6 +753,20 @@
             </td>
           </tr>
         {{ end }}
+        <tr>
+          {{ if gt .NetworkStats.CurrentEpoch .ActivationEpoch }}
+            <th scope="row">Active since</th>
+          {{ else }}
+            <th scope="row">Activation</th>
+          {{ end }}
+          <td class="pl-0">
+            {{ if eq .ActivationEpoch 9223372036854775807 }}
+              -
+            {{ else }}
+              <a href="/epoch/{{ .ActivationEpoch }}"> {{ if eq .ActivationEpoch 0 }}genesis{{ else }}<span aria-ethereum-date="{{ .ActivationTs.Unix }}"></span>{{ end }} </a>
+            {{ end }}
+          </td>
+        </tr>
         {{ if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0)) }}
           <tr>
             <th scope="row">Exited since</th>
