@@ -937,25 +937,23 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 
 	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
 
-	for e := firstEpoch; e <= lastEpoch; e++ {
-		data, err := bigtable.GetValidatorAttestationHistory(validators, e, e)
+	data, err := bigtable.GetValidatorAttestationHistory(validators, firstEpoch, lastEpoch)
 
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
+	}
 
-		logger.Infof("retrieved attestation history for epoch %v", e)
+	logger.Infof("retrieved attestation history for epochs %v - %v", firstEpoch, lastEpoch)
 
-		for validator, attestations := range data {
-			for _, attestation := range attestations {
-				if attestation.Status == 0 {
-					if res[validator] == nil {
-						res[validator] = &types.ValidatorMissedAttestationsStatistic{
-							Index: validator,
-						}
+	for validator, attestations := range data {
+		for _, attestation := range attestations {
+			if attestation.Status == 0 {
+				if res[validator] == nil {
+					res[validator] = &types.ValidatorMissedAttestationsStatistic{
+						Index: validator,
 					}
-					res[validator].MissedAttestations++
 				}
+				res[validator].MissedAttestations++
 			}
 		}
 	}
@@ -1587,9 +1585,11 @@ func (bigtable *Bigtable) getSlotRanges(startEpoch uint64, endEpoch uint64) (gcp
 
 		// epochs are sorted descending, so start with the larges epoch and end with the smallest
 		// add \x00 to make the range inclusive
-		rangeEnd = fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), "\x00")
-		rangeStart = fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(endEpoch))
-		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
+		if startEpoch < endEpoch {
+			rangeEnd = fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), "\x00")
+			rangeStart = fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(endEpoch))
+			ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
+		}
 	} else if startEpoch == endEpoch { // special case, only retrieve data for one epoch
 		rangeEnd := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch-1))
 		rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))

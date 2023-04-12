@@ -244,28 +244,32 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	}
 	logrus.Infof("retrieved mev / el rewards data for %v proposer", len(proposerRewards))
 
-	numArgs := 4
-	valueStrings := make([]string, 0, len(proposerRewards))
-	valueArgs := make([]interface{}, 0, len(proposerRewards)*numArgs)
-	i := 0
-	for proposer, rewards := range proposerRewards {
+	if len(proposerRewards) > 0 {
+		numArgs := 4
+		valueStrings := make([]string, 0, len(proposerRewards))
+		valueArgs := make([]interface{}, 0, len(proposerRewards)*numArgs)
+		i := 0
+		for proposer, rewards := range proposerRewards {
 
-		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
-		valueArgs = append(valueArgs, proposer)
-		valueArgs = append(valueArgs, day)
-		valueArgs = append(valueArgs, rewards.TxFeeReward.String())
-		valueArgs = append(valueArgs, rewards.MevReward.String())
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
+			valueArgs = append(valueArgs, proposer)
+			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, rewards.TxFeeReward.String())
+			valueArgs = append(valueArgs, rewards.MevReward.String())
 
-		i++
-	}
-	stmt := fmt.Sprintf(`
+			i++
+		}
+		stmt := fmt.Sprintf(`
 	insert into validator_stats (validatorindex, day, el_rewards_wei, mev_rewards_wei) VALUES
 	%s
 	on conflict (validatorindex, day) do update set el_rewards_wei = excluded.el_rewards_wei, mev_rewards_wei = excluded.mev_rewards_wei;`,
-		strings.Join(valueStrings, ","))
-	_, err = tx.Exec(stmt, valueArgs...)
-	if err != nil {
-		return err
+			strings.Join(valueStrings, ","))
+		_, err = tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+	} else {
+		logger.Infof("No proposerRewards found")
 	}
 
 	logger.Infof("exporting total income stats")
