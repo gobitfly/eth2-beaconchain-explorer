@@ -828,6 +828,87 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	return res, nil
 }
 
+func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]bool, error) {
+	valLen := len(validators)
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
+	defer cancel()
+
+	ranges := bigtable.getSlotRanges(startEpoch, endEpoch)
+
+	res := make(map[uint64]map[uint64]bool)
+
+	columnFilters := []gcp_bigtable.Filter{}
+	if valLen < 1000 {
+		columnFilters = make([]gcp_bigtable.Filter, 0, len(validators))
+		for _, validator := range validators {
+			columnFilters = append(columnFilters, gcp_bigtable.ColumnFilter(fmt.Sprintf("%d", validator)))
+		}
+	}
+
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
+		gcp_bigtable.InterleaveFilters(columnFilters...),
+		gcp_bigtable.LatestNFilter(1),
+	)
+
+	if len(columnFilters) == 1 { // special case to retrieve data for one validators
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
+			columnFilters[0],
+			gcp_bigtable.LatestNFilter(1),
+		)
+	}
+	if len(columnFilters) == 0 { // special case to retrieve data for all validators
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
+			gcp_bigtable.LatestNFilter(1),
+		)
+	}
+
+	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+		//logger.Infof("GetValidatorAttestationHistory rows: %v", len(r[ATTESTATIONS_FAMILY]))
+		for _, ri := range r[ATTESTATIONS_FAMILY] {
+			keySplit := strings.Split(r.Key(), ":")
+
+			attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
+			if err != nil {
+				logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
+				return false
+			}
+			attesterSlot = max_block_number - attesterSlot
+			inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
+
+			status := uint64(1)
+			if inclusionSlot == max_block_number {
+				inclusionSlot = 0
+				status = 0
+			}
+
+			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, ATTESTATIONS_FAMILY+":"), 10, 64)
+			if err != nil {
+				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
+				return false
+			}
+
+			if status == 0 {
+				if res[validator] == nil {
+					res[validator] = make(map[uint64]bool, 0)
+				}
+				res[validator][attesterSlot] = true
+			} else if res[validator] != nil && status != 0 && res[validator][attesterSlot] == true {
+				delete(res[validator], attesterSlot)
+			}
+		}
+		return true
+	}, gcp_bigtable.RowFilter(filter))
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validatorIndex uint64, startEpoch uint64, endEpoch uint64, reverseOrdering bool) ([]*types.ValidatorSyncParticipation, error) {
 	res, err := bigtable.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, startEpoch, endEpoch)
 	if err != nil {
@@ -926,7 +1007,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 
 	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
 
-	data, err := bigtable.GetValidatorAttestationHistory(validators, firstEpoch, lastEpoch)
+	data, err := bigtable.GetValidatorMissedAttestationHistory(validators, firstEpoch, lastEpoch)
 
 	if err != nil {
 		return nil, err
@@ -935,8 +1016,8 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 	logger.Infof("retrieved attestation history for epochs %v - %v", firstEpoch, lastEpoch)
 
 	for validator, attestations := range data {
-		for _, attestation := range attestations {
-			if attestation.Status == 0 {
+		for _, missed := range attestations {
+			if missed {
 				if res[validator] == nil {
 					res[validator] = &types.ValidatorMissedAttestationsStatistic{
 						Index: validator,
