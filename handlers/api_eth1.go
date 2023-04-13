@@ -99,7 +99,7 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := formatBlocksForApiResponse(blocks, relaysData, beaconDataMap)
+	results := formatBlocksForApiResponse(blocks, relaysData, beaconDataMap, nil)
 
 	j := json.NewEncoder(w)
 	sendOKResponse(j, r.URL.String(), []interface{}{results})
@@ -111,8 +111,9 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 // @Description Get a list of proposed or mined blocks from a given fee recipient address, proposer index or proposer pubkey
 // @Produce json
 // @Param addressIndexOrPubkey path string true "Either the fee recipient address, the proposer index or proposer pubkey. You can provide multiple by separating them with ','. Max allowed index or pubkeys are 100, max allowed user addresses are 20."
-// @Param offset query int false "Offset"
-// @Param limit query int false "Limit, amount of entries you wish to receive"
+// @Param offset query int false "Offset" default(0)
+// @Param limit query int false "Limit, amount of entries you wish to receive" default(10)
+// @Param sort query string false "Sort via the block number either by 'asc' or 'desc'" default(desc)
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/execution/{addressIndexOrPubkey}/produced [get]
@@ -143,6 +144,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	var offset uint64 = 0
 	var limit uint64 = 10
+	var sortAsc bool = false
 
 	offsetString := r.URL.Query().Get("offset")
 	offset, err = strconv.ParseUint(offsetString, 10, 64)
@@ -157,6 +159,11 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 	if limit > 100 {
 		limit = 100
+	}
+
+	sortString := r.URL.Query().Get("sort")
+	if sortString == "asc" {
+		sortAsc = true
 	}
 
 	var blockList []uint64
@@ -199,7 +206,12 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := formatBlocksForApiResponse(blocks, relaysData, beaconDataMap)
+	sortFunc := func(i, j types.ExecutionBlockApiResponse) bool { return i.BlockNumber > j.BlockNumber }
+	if sortAsc {
+		sortFunc = func(i, j types.ExecutionBlockApiResponse) bool { return i.BlockNumber < j.BlockNumber }
+	}
+
+	results := formatBlocksForApiResponse(blocks, relaysData, beaconDataMap, sortFunc)
 
 	j := json.NewEncoder(w)
 	sendOKResponse(j, r.URL.String(), []interface{}{results})
@@ -794,7 +806,7 @@ func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
 }
 
-func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map[common.Hash]types.RelaysData, beaconDataMap map[uint64]types.ExecBlockProposer) []types.ExecutionBlockApiResponse {
+func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map[common.Hash]types.RelaysData, beaconDataMap map[uint64]types.ExecBlockProposer, sortFunc func(i, j types.ExecutionBlockApiResponse) bool) []types.ExecutionBlockApiResponse {
 	results := []types.ExecutionBlockApiResponse{}
 
 	latestFinalized := services.LatestFinalizedEpoch()
@@ -858,6 +870,10 @@ func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map
 			RelayData:          relayDataResponse,
 			ConsensusAlgorithm: consensusAlgorithm,
 		})
+	}
+
+	if sortFunc != nil {
+		sort.SliceStable(results, func(i, j int) bool { return sortFunc(results[i], results[j]) })
 	}
 
 	return results
