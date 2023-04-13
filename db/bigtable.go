@@ -1631,13 +1631,14 @@ func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) (gc
 	return ranges, nil
 }
 
-func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, error) {
+func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[uint64]int64, error) {
 	dayIncome := make(map[uint64]int64)
+	dayProposerIncome := make(map[uint64]int64)
 	lastDay := int64(0)
 
 	err := ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats_status")
 	if err != nil {
-		return dayIncome, err
+		return dayIncome, dayProposerIncome, err
 	}
 
 	currentDay := uint64(lastDay + 1)
@@ -1645,7 +1646,7 @@ func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, error)
 	endEpoch := startEpoch + utils.EpochsPerDay() - 1
 	income, err := BigtableClient.GetValidatorIncomeDetailsHistory(validator_indices, startEpoch, endEpoch)
 	if err != nil {
-		return dayIncome, err
+		return dayIncome, dayProposerIncome, err
 	}
 
 	// agregate all epoch income data to total day income for each validator
@@ -1655,26 +1656,32 @@ func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, error)
 		}
 		for _, validatorEpochIncome := range validatorIncome {
 			dayIncome[validatorIndex] += validatorEpochIncome.TotalClRewards()
+			dayProposerIncome[validatorIndex] += int64(validatorEpochIncome.ProposerAttestationInclusionReward) + int64(validatorEpochIncome.ProposerSlashingInclusionReward) + int64(validatorEpochIncome.ProposerSyncInclusionReward)
 		}
 	}
 
-	return dayIncome, nil
+	return dayIncome, dayProposerIncome, nil
 }
 
-func GetCurrentDayClIncomeTotal(validator_indices []uint64) (int64, error) {
-	income, err := GetCurrentDayClIncome(validator_indices)
+func GetCurrentDayClIncomeTotal(validator_indices []uint64) (int64, int64, error) {
+	income, proposerIncome, err := GetCurrentDayClIncome(validator_indices)
 
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	total := int64(0)
+	proposerTotal := int64(0)
+
+	for _, i := range proposerIncome {
+		proposerTotal += i
+	}
 
 	for _, i := range income {
 		total += i
 	}
 
-	return total, nil
+	return total, proposerTotal, nil
 }
 
 func reversePaddedUserID(userID uint64) string {

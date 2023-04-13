@@ -1030,6 +1030,7 @@ type ValidatorEarnings struct {
 	LastDayFormatted        template.HTML `json:"lastDayFormatted"`
 	LastWeekFormatted       template.HTML `json:"lastWeekFormatted"`
 	LastMonthFormatted      template.HTML `json:"lastMonthFormatted"`
+	ProposerTotalFormatted  template.HTML `json:"proposerTotalFormatted"`
 	TotalFormatted          template.HTML `json:"totalFormatted"`
 	TotalChangeFormatted    template.HTML `json:"totalChangeFormatted"`
 	TotalBalance            template.HTML `json:"totalBalance"`
