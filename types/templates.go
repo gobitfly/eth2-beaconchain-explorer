@@ -377,17 +377,17 @@ type ValidatorPageData struct {
 	ParticipatedSyncCount                    uint64
 	MissedSyncCount                          uint64
 	OrphanedSyncCount                        uint64
-	UnmissedSyncPercentage                   float64       // missed/(participated+orphaned)
-	IncomeToday                              ClElInt64     `json:"incomeToday"`
-	Income1d                                 ClElInt64     `json:"income1d"`
-	Income7d                                 ClElInt64     `json:"income7d"`
-	Income31d                                ClElInt64     `json:"income31d"`
-	IncomeTotal                              ClElInt64     `json:"incomeTotal"`
-	IncomeTotalFormatted                     template.HTML `json:"incomeTotalFormatted"`
-	IncomeProposerFormatted                  template.HTML `json:"incomeProposerFormatted"`
-	Apr7d                                    ClElFloat64   `json:"apr7d"`
-	Apr31d                                   ClElFloat64   `json:"apr31d"`
-	Apr365d                                  ClElFloat64   `json:"apr365d"`
+	UnmissedSyncPercentage                   float64        // missed/(participated+orphaned)
+	IncomeToday                              ClElInt64      `json:"incomeToday"`
+	Income1d                                 ClElInt64      `json:"income1d"`
+	Income7d                                 ClElInt64      `json:"income7d"`
+	Income31d                                ClElInt64      `json:"income31d"`
+	IncomeTotal                              ClElInt64      `json:"incomeTotal"`
+	IncomeTotalFormatted                     template.HTML  `json:"incomeTotalFormatted"`
+	IncomeProposerFormatted                  *template.HTML `json:"incomeProposerFormatted"`
+	Apr7d                                    ClElFloat64    `json:"apr7d"`
+	Apr31d                                   ClElFloat64    `json:"apr31d"`
+	Apr365d                                  ClElFloat64    `json:"apr365d"`
 	ProposalLuck                             float64
 	SyncLuck                                 float64
 	ProposalEstimate                         *time.Time
