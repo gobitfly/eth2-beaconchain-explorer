@@ -28,11 +28,6 @@ func main() {
 
 	flag.Parse()
 
-	opt = &options{
-		configPath:             *configPath,
-		statisticsDaysToExport: *statisticsDaysToExport,
-	}
-
 	logrus.Printf("version: %v, config file path: %v", version.Version, *configPath)
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
