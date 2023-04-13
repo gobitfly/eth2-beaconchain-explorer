@@ -183,7 +183,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
 		if err != nil || !valid {
 			utils.SetFlash(w, r, "pricing_flash", "Error: Invalid CAPTCHA")
-			logger.Errorf("error validating recaptcha %v route: %v", r.URL.String(), err)
+			logger.Warnf("error validating recaptcha %v route: %v", r.URL.String(), err)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
@@ -228,7 +228,9 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 	err = db.FrontendWriterDB.Get(&user, "SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active, COALESCE(user_group, '') AS user_group FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
 	if err != nil {
-		logger.Errorf("error retrieving password for user %v: %v", email, err)
+		if err != sql.ErrNoRows {
+			logger.Errorf("error retrieving password for user %v: %v", email, err)
+		}
 		session.AddFlash("Error: Invalid email or password!")
 		session.Save(r, w)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)

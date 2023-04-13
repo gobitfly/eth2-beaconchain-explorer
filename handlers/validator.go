@@ -119,7 +119,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
-			logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
+			// logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -292,7 +292,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		LEFT JOIN validator_pool ON validators.pubkey = validator_pool.publickey
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
-		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance) validator_performance_count(total_count) ON true
+		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance WHERE validatorindex < 2147483647 AND validatorindex >= 0) validator_performance_count(total_count) ON true
 		WHERE validators.validatorindex = $1`, index)
 
 	if err == sql.ErrNoRows {
