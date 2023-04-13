@@ -15,13 +15,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type options struct {
-	configPath             string
-	statisticsDaysToExport string
-}
-
-var opt *options
-
 func main() {
 	configPath := flag.String("config", "", "Path to the config file")
 	statisticsDaysToExport := flag.String("statistics.days", "", "Days to export statistics (will export the day independent if it has been already exported or not")
