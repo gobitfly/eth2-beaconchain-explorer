@@ -802,7 +802,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 				res[validator] = make([]*types.ValidatorAttestation, 0)
 			}
 
-			if len(res[validator]) > 1 && res[validator][len(res[validator])-1].AttesterSlot == attesterSlot {
+			if len(res[validator]) > 0 && res[validator][len(res[validator])-1].AttesterSlot == attesterSlot {
 				res[validator][len(res[validator])-1].InclusionSlot = inclusionSlot
 				res[validator][len(res[validator])-1].Status = status
 				res[validator][len(res[validator])-1].Delay = int64(inclusionSlot - attesterSlot)
@@ -831,7 +831,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]bool, error) {
 	valLen := len(validators)
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*20))
 	defer cancel()
 
 	ranges := bigtable.getSlotRanges(startEpoch, endEpoch)
@@ -867,16 +867,16 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 	}
 
 	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
-		//logger.Infof("GetValidatorAttestationHistory rows: %v", len(r[ATTESTATIONS_FAMILY]))
-		for _, ri := range r[ATTESTATIONS_FAMILY] {
-			keySplit := strings.Split(r.Key(), ":")
+		keySplit := strings.Split(r.Key(), ":")
 
-			attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
-			if err != nil {
-				logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
-				return false
-			}
-			attesterSlot = max_block_number - attesterSlot
+		attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
+			return false
+		}
+		attesterSlot = max_block_number - attesterSlot
+
+		for _, ri := range r[ATTESTATIONS_FAMILY] {
 			inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
 
 			status := uint64(1)
