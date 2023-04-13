@@ -242,6 +242,7 @@ func main() {
 		return
 	}
 
+	lastSuccessulBlockIndexingTs := time.Now()
 	for ; ; time.Sleep(time.Second * 14) {
 		err := HandleChainReorgs(bt, client, *reorgDepth)
 		if err != nil {
@@ -280,8 +281,16 @@ func main() {
 
 			err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
 			if err != nil {
-				logrus.WithError(err).Errorf("error indexing from node, start: %v end: %v concurrency: %v", int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
+				errMsg := fmt.Sprintf("error indexing from node, start: %v end: %v concurrency: %v", int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
+				errEntry := logrus.WithError(err)
+				if time.Since(lastSuccessulBlockIndexingTs) > time.Minute*30 {
+					errEntry.Fatal(errMsg)
+				} else {
+					errEntry.Error(errMsg)
+				}
 				continue
+			} else {
+				lastSuccessulBlockIndexingTs = time.Now()
 			}
 		}
 
