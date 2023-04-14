@@ -416,7 +416,7 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 						},
 						{
 							Label: "API Docs",
-							Path:  "https://beaconcha.in/api/v1/docs/index.html",
+							Path:  "/api/v1/docs/index.html",
 							Icon:  "fa-book-reader",
 						},
 						{
