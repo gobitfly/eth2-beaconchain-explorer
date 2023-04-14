@@ -144,7 +144,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	var offset uint64 = 0
 	var limit uint64 = 10
-	var sortAsc bool = false
+	var isSortAsc bool = false
 
 	offsetString := r.URL.Query().Get("offset")
 	offset, err = strconv.ParseUint(offsetString, 10, 64)
@@ -163,13 +163,13 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	sortString := r.URL.Query().Get("sort")
 	if sortString == "asc" {
-		sortAsc = true
+		isSortAsc = true
 	}
 
 	var blockList []uint64
 	var beaconDataMap = map[uint64]types.ExecBlockProposer{}
 	if len(addresses) > 0 {
-		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByFeeRecipient(addresses, offset, limit)
+		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByFeeRecipient(addresses, offset, limit, isSortAsc)
 		if err != nil {
 			sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from database")
 			return
@@ -181,7 +181,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(indices) > 0 {
-		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit)
+		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc)
 		if err != nil {
 			sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from database")
 			return
@@ -207,7 +207,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sortFunc := func(i, j types.ExecutionBlockApiResponse) bool { return i.BlockNumber > j.BlockNumber }
-	if sortAsc {
+	if isSortAsc {
 		sortFunc = func(i, j types.ExecutionBlockApiResponse) bool { return i.BlockNumber < j.BlockNumber }
 	}
 
@@ -967,10 +967,15 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	return maps.Values(resultPerProposer), nil
 }
 
-func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
+func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64, isSortAsc bool) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
 	var blockListSub []types.ExecBlockProposer
-	err := db.ReaderDb.Select(&blockListSub,
-		`SELECT 
+
+	order := "DESC"
+	if isSortAsc {
+		order = "ASC"
+	}
+
+	query := fmt.Sprintf(`SELECT 
 			exec_block_number,
 			proposer,
 			slot,
@@ -978,8 +983,11 @@ func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64)
 		FROM blocks 
 		WHERE proposer = ANY($1)
 		AND exec_block_number IS NOT NULL AND exec_block_number > 0 
-		ORDER BY exec_block_number DESC
-		OFFSET $2 LIMIT $3`,
+		ORDER BY exec_block_number %s
+		OFFSET $2 LIMIT $3`, order)
+
+	err := db.ReaderDb.Select(&blockListSub,
+		query,
 		pq.Array(indices),
 		offset,
 		limit,
@@ -991,19 +999,28 @@ func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64)
 	return blockList, blockProposerMap, nil
 }
 
-func findExecBlockNumbersByFeeRecipient(addresses [][]byte, offset, limit uint64) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
+func findExecBlockNumbersByFeeRecipient(addresses [][]byte, offset, limit uint64, isSortAsc bool) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
 	var blockListSub []types.ExecBlockProposer
+
+	order := "DESC"
+	if isSortAsc {
+		order = "ASC"
+	}
+
+	query := fmt.Sprintf(`
+		SELECT 
+			exec_block_number,
+			proposer,
+			slot,
+			epoch  
+		FROM blocks 
+		WHERE exec_fee_recipient = ANY($1)
+		AND exec_block_number IS NOT NULL AND exec_block_number > 0 
+		ORDER BY exec_block_number %s
+		OFFSET $2 LIMIT $3`, order)
+
 	err := db.ReaderDb.Select(&blockListSub,
-		`SELECT 
-				exec_block_number,
-				proposer,
-				slot,
-				epoch  
-			FROM blocks 
-			WHERE exec_fee_recipient = ANY($1)
-			AND exec_block_number IS NOT NULL AND exec_block_number > 0 
-			ORDER BY exec_block_number DESC
-			OFFSET $2 LIMIT $3`,
+		query,
 		pq.ByteaArray(addresses),
 		offset,
 		limit,
