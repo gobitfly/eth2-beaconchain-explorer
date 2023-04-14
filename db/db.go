@@ -3006,6 +3006,9 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 }
 
 func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
+	if true {
+		return 100000, nil
+	}
 	// the validators' balance will not be checked here as this is only a rough estimation
 	// checking the balance for hundreds of thousands of validators is too expensive
 
