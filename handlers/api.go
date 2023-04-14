@@ -2020,30 +2020,29 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check for recently activated validators that have no performance data yet but already generate income
-	for incomeValidatorIndex := range currentDayIncome {
-		found := false
-		for _, entry := range data {
-			eMap, ok := entry.(map[string]interface{})
-			if !ok {
-				logger.Errorf("error converting validator data to map[string]interface{}")
-				continue
-			}
-
-			validatorIndex, ok := eMap["validatorindex"].(int64)
-			if !ok {
-				logger.Errorf("error converting validatorindex to int64")
-				continue
-			}
-
-			if uint64(validatorIndex) == incomeValidatorIndex {
-				found = true
-				break
-			}
+	// create a map to easily check if a validator is part of data
+	validatorIndexMap := make(map[uint64]bool)
+	for _, entry := range data {
+		eMap, ok := entry.(map[string]interface{})
+		if !ok {
+			logger.Errorf("error converting validator data to map[string]interface{}")
+			continue
 		}
 
-		if !found {
-			// validator not found in validator_performance, add minimum set of data
+		validatorIndex, ok := eMap["validatorindex"].(int64)
+		if !ok {
+			logger.Errorf("error converting validatorindex to int64")
+			continue
+		}
+
+		validatorIndexMap[uint64(validatorIndex)] = true
+	}
+
+	// check for recently activated validators that have no performance data yet but already generate income
+	for incomeValidatorIndex := range currentDayIncome {
+		_, ok := validatorIndexMap[incomeValidatorIndex]
+		if !ok {
+			// validator not found in data, add minimum set of data
 			data = append(data, map[string]interface{}{
 				"validatorindex":   int64(incomeValidatorIndex),
 				"performancetotal": int64(0), // has to exist and will be updated below
