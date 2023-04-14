@@ -192,6 +192,23 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if isSortAsc {
+		// Remove duplicates from the block list
+		allKeys := make(map[uint64]bool)
+		list := []uint64{}
+		for _, item := range blockList {
+			if _, ok := allKeys[item]; !ok {
+				allKeys[item] = true
+				list = append(list, item)
+			}
+		}
+		blockList = list
+
+		// Trim to the blocks that are within the limit range
+		sort.Slice(blockList, func(i, j int) bool { return blockList[i] < blockList[j] })
+		blockList = blockList[:limit]
+	}
+
 	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, uint64(limit))
 	if err != nil {
 		logger.Errorf("Can not retrieve blocks from bigtable %v", err)
@@ -206,7 +223,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sortFunc := func(i, j types.ExecutionBlockApiResponse) bool { return i.BlockNumber > j.BlockNumber }
+	var sortFunc func(i, j types.ExecutionBlockApiResponse) bool
 	if isSortAsc {
 		sortFunc = func(i, j types.ExecutionBlockApiResponse) bool { return i.BlockNumber < j.BlockNumber }
 	}
