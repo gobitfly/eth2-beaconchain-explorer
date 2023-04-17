@@ -449,32 +449,15 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 }
 
-// FormatGlobalParticipationRate will return the global-participation-rate formated as html
-func FormatGlobalParticipationRate(e uint64, r float64, currency string) template.HTML {
-	if e == 0 {
-		return `<span class="text-small text-muted">Calculating...</span>`
-	}
-	p := message.NewPrinter(language.English)
-	rr := fmt.Sprintf("%.2f%%", r*100)
-	tpl := `
-	<div style="position:relative;width:inherit;height:inherit;">
-	  %.0[1]f <small class="text-muted ml-3">(%[2]v)</small>
-	  <div class="progress" style="position:absolute;width:100%%;height:4px;">
-		<div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div>
-	  </div>
-	</div>`
-	return template.HTML(p.Sprintf(tpl, float64(e)/1e9*price.GetEthPrice(currency), rr))
-}
-
-func FormatGlobalParticipationRateStyle(voted uint64, participationRate float64, currency string) template.HTML {
+func FormatGlobalParticipationRate(voted uint64, participationRate float64, currency string) template.HTML {
 	if voted == 0 {
-		return `<span class="style-paragraph-1">Calculating...</span>`
+		return `<span>Calculating...</span>`
 	}
 	p := message.NewPrinter(language.English)
 	rr := fmt.Sprintf("%.2f%%", participationRate*100)
 	tpl := `
 	<div style="position:relative;width:inherit;height:inherit;">
-		<span class="style-paragraph-1">%.0[1]f</span><span class="style-paragraph-3 ml-3">(%[2]v)
+		<span>%.0[1]f</span><span class="style-paragraph-3 ml-3">(%[2]v)
 	  <div class="progress" style="width:100%%;height:4px;">
 		<div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div>
 	  </div>
@@ -520,9 +503,9 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 
 	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
 	if len(hash) > 3 && trunc {
-		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…%x</span>", hash[:2], hash[len(hash)-2:]))
+		return template.HTML(fmt.Sprintf("<span class=\"style-hash\">%#x…%x</span>", hash[:2], hash[len(hash)-2:]))
 	}
-	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
+	return template.HTML(fmt.Sprintf("<span class=\"style-hash\">%#x</span>", hash))
 }
 
 // WithdrawalCredentialsToAddress converts withdrawalCredentials to an address if possible

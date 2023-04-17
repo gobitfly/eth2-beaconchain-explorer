@@ -2,7 +2,7 @@
   <div style="margin-top: 0.625rem;">
     <div class="d-flex justify-content-between">
       <div class="d-md-flex align-self-center">
-        <h1 class="style-header-idk mb-0 mr-2 text-nowrap">
+        <h1 class="style-table-title mb-0 mr-2 text-nowrap">
           <!-- using nonconventional characters for whitespaces because of linter -->
           Validator{{ if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid") }} {{ .Index }}{{ end }}
         </h1>
@@ -18,7 +18,7 @@
       <div>
         <a class="dropdown-toggle btn btn-primary btm-sm style-paragraph-6 text-white" style="padding: 0.2rem 0.7rem" id="validatorDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">More</a>
         <div class="dropdown-menu dropdown-menu-right p-0" aria-labelledby="validatorDropdown">
-          <div class="dropdown-item px-3 style-link" role="button" type="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal">
+          <div class="dropdown-item px-3 style-paragraph-7" role="button" type="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal">
             <span class="nav-icon"><i class="fa fa-edit"></i></span>
             Edit validator name
           </div>
@@ -26,25 +26,27 @@
             <form class="dropdown-item px-3" action="{{ printf "%#x" .PublicKey }}/remove" method="post">
               <button style="all: unset; cursor: pointer" type="submit" id="unfollow-button">
                 <span class="nav-icon"><i class="far fa-bookmark"></i></span>
-                <span class="style-link">Unfollow notifications</span>
+                <span class="style-paragraph-7">Unfollow notifications</span>
               </button>
             </form>
           {{ else }}
             {{ if .User.Authenticated }}
-              <div class="dropdown-item px-3 style-link" role="button" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal">
+              <div class="dropdown-item px-3 style-paragraph-7" role="button" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal">
                 <span class="nav-icon"><i class="fas fa-bookmark"></i></span>
-                Follow for notifications
+                Add notification
               </div>
             {{ else }}
-              <form class="dropdown-item px-3 disabled">
-                <button style="all: unset; cursor: pointer" id="follow-button">
-                  <span class="nav-icon"><i class="fas fa-bookmark"></i></span>
-                  <span class="style-link" >Follow for notifications</span>
-                </button>
-              </form>
+              <span  data-toggle="tooltip" title="Login to follow validator">
+                <form class="dropdown-item px-3 disabled">
+                  <button style="all: unset; cursor: pointer" id="follow-button">
+                    <span class="nav-icon"><i class="fas fa-bookmark"></i></span>
+                    <span class="style-paragraph-7" >Add notification</span>
+                  </button>
+                </form>
+              </span>
             {{ end }}
           {{ end }}
-          <a class="dropdown-item px-3 style-link" href="/validator/{{ .Index }}/stats">
+          <a class="dropdown-item px-3 style-paragraph-7" href="/validator/{{ .Index }}/stats">
             <span class="nav-icon"><i class="fas fa-table"></i></span>
             View daily statistics
           </a>

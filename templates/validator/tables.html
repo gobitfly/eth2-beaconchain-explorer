@@ -1,20 +1,20 @@
 {{ define "validatorProposedTable" }}
   <div class="table-responsive">
     <table class="table" style="margin-top: 0 !important;" id="blocks-table" width="100%">
-      <thead>
+      <thead class="style-table-header">
         <tr>
           <th>Epoch</th>
           <th>Slot</th>
           <th>Block</th>
           <th>Time</th>
           <th>Status</th>
-          <th>Execution Reward</th>
+          <th>Proposer Reward (EL)</th>
           <th>Root Hash</th>
-          <th>Fee Recipient</th>
+          <th>Proposer Reward Recipient</th>
           <th>Graffiti</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody class="style-table-data"></tbody>
     </table>
   </div>
     <script>
@@ -82,17 +82,17 @@
 {{ define "validatorAttestationsTable" }}
   <div class="table-responsive">
     <table class="table" style="margin-top: 0 !important;" id="attestations-table" width="100%">
-      <thead>
+      <thead class="style-table-header">
         <tr>
           <th>Epoch</th>
           <th>Slot</th>
           <th>Status</th>
           <th>Time</th>
           <th><span data-toggle="tooltip" title="Inclusion Slot">Incl. Slot</span></th>
-          <th class="text-truncate" data-toggle="tooltip" title="The optimal inclusion distance shows the difference between the inclusion slot and the earliest slot it could have been included. The best case for the optimal inclusion distance is 0.">Opt.Incl.Dist.</th>
+          <th class="text-truncate" data-toggle="tooltip" data-html="true" title="The difference between the inclusion slot and its earliest possible slot. The ideal value is 0.">Opt. Incl. Dist.</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody class="style-table-data"></tbody>
     </table>
   </div>
     <script>
@@ -145,7 +145,7 @@
 {{ define "validatorWithdrawalTable" }}
   <div class="table-responsive">
     <table class="table" style="margin-top: 0 !important;" id="withdrawal-table" width="100%">
-      <thead>
+      <thead class="style-table-header">
         <tr>
           <th>Epoch</th>
           <th>Slot</th>
@@ -154,7 +154,7 @@
           <th>Amount</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody class="style-table-data"></tbody>
     </table>
   </div>
     <script>
@@ -221,7 +221,7 @@
 {{ define "validatorSyncTable" }}
   <div class="table-responsive">
     <table class="table" style="margin-top: 0 !important;" id="sync-table" width="100%">
-      <thead>
+      <thead class="style-table-header">
         <tr>
           <th>Period</th>
           <th>Epoch</th>
@@ -229,7 +229,7 @@
           <th>Status</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody class="style-table-data"></tbody>
     </table>
   </div>
     <script>
@@ -304,7 +304,7 @@
 {{ define "validatorSlashingsTable" }}
   <div class="table-responsive">
     <table class="table" style="margin-top: 0 !important;" id="slashings-table" width="100%">
-      <thead>
+      <thead class="style-table-header">
         <tr>
           <th>Slashed Validators</th>
           <th>Time</th>
@@ -313,7 +313,7 @@
           <th>Epoch</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody class="style-table-data"></tbody>
     </table>
   </div>
     <script>
@@ -349,7 +349,7 @@
   {{ with .Data }}
     <div>
       {{ if .WithdrawCredentials }}
-        <h4 class="my-3">Withdrawal Address</h4>
+        <h4 class="my-3 style-table-title">Withdrawal Address</h4>
         <p>
           <span>Your current withdrawal credentials are: {{ formatWithdawalCredentials .WithdrawCredentials true }}</span>
         </p>
@@ -366,11 +366,11 @@
           </div>
         {{ end }}
       {{ end }}
-      <h4 class="my-3">Execution Layer</h4>
+      <h4 class="my-3 style-table-title">Execution Layer</h4>
       <h6 class="">This table displays the deposits made to the Ethereum staking deposit contract.</h6>
       <div class="table-responsive card card-body p-0">
         <table class="table" style="margin-top: 0 !important;" id="deposits-eth1-table" width="100%">
-          <thead>
+          <thead class="style-table-header" >
             <tr>
               <th>From Address</th>
               <th>Tx Hash</th>
@@ -381,7 +381,7 @@
               <th>Valid</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody class="style-table-data">
             {{ range $i, $deposit := .Deposits.Eth1Deposits }}
               <tr>
                 <td>{{ formatEth1Address $deposit.FromAddress }}</td>
@@ -412,7 +412,7 @@
       <i class="fas fa-arrow-down"></i>
     </div>
     <div class="table-eth2">
-      <h4 class="my-3">Consensus Layer</h4>
+      <h4 class="my-3 style-table-title">Consensus Layer</h4>
       {{ if not .Deposits.Eth2Deposits }}
         <h6 class="">No beacon chain deposits found for this validator. It takes <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{ .InclusionDelay }} hours</a> for a deposit to be processed by the beacon chain.</h6>
         <div class="wip d-flex justify-content-center p-3">
@@ -531,7 +531,7 @@
         <h6 class="">This table displays the deposits received and processed by the beacon chain.</h6>
         <div class="table-responsive p-0 card card-body my-3">
           <table class="table" style="margin-top: 0 !important" id="deposits-eth2-table" width="100%">
-            <thead>
+            <thead class="style-table-header">
               <tr>
                 <th>Epoch</th>
                 <th>Slot</th>
@@ -542,7 +542,7 @@
                 <th>Signature</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody class="style-table-data">
               {{ range $i, $deposit := .Deposits.Eth2Deposits }}
                 <tr>
                   <td>{{ epochOfSlot $deposit.BlockSlot | formatEpoch }}</td>
@@ -574,14 +574,14 @@
   {{ with .Data }}
     <div class="table-responsive">
       <table style="margin-top: 0px !important;" class="table" id="validator-history-table" width="100%">
-        <thead>
+        <thead class="style-table-header">
           <tr>
             <th>Epoch</th>
             <th>Rewards</th>
             <th data-toggle="tooltip" title="Events like attestations, sync duties, block proposals and withdrawals for a given epoch">Events</th>
           </tr>
         </thead>
-        <tbody></tbody>
+        <tbody class="style-table-data"></tbody>
       </table>
     </div>
 
@@ -623,18 +623,18 @@
 
 {{ define "validatorIncomeTable" }}
   {{ with .Data }}
-    <span class="h4"> General </span>
+    <span class="h4 style-table-title"> General </span>
     <table class="table" style="margin-top: 0 !important" width="100%">
-      <tbody style="font-size: 0.875rem;">
+      <tbody>
         <tr>
-          <th scope="row">Total Rewards</th>
-          <td class="pl-0">
+          <th class="style-table-header" style="border-top: 0" scope="row">Total Rewards</th>
+          <td class="style-table-data pl-0" style="border-top: 0">
             {{ .IncomeTotalFormatted }}
           </td>
         </tr>
-        <tr class="">
-          <th scope="row">Income Today</th>
-          <td class="pl-0">
+        <tr>
+          <th class="style-table-header" scope="row">Income Today</th>
+          <td class="style-table-data pl-0">
             <span
               data-toggle="tooltip"
               data-html="true"
@@ -647,8 +647,8 @@
         </tr>
         <!-- shown in desktop -->
         <tr class="d-none d-sm-table-row">
-          <th scope="row">Income 1d | 7d | 31d</th>
-          <td class="pl-0">
+          <th class="style-table-header" scope="row">Income 1d | 7d | 31d</th>
+          <td class="style-table-data pl-0">
             <span
               data-toggle="tooltip"
               data-html="true"
@@ -661,8 +661,8 @@
           </td>
         </tr>
         <tr class="d-none d-sm-table-row">
-          <th scope="row">APR 7d | 31d | 365d</th>
-          <td class="pl-0">
+          <th class="style-table-header" scope="row">APR 7d | 31d | 365d</th>
+          <td class="style-table-data pl-0">
             <span
               data-toggle="tooltip"
               data-html="true"
@@ -679,8 +679,8 @@
         </tr>
         <!-- shown in mobile -->
         <tr class="d-sm-none">
-          <th scope="row">Income 7d</th>
-          <td class="pl-0">
+          <th class="style-table-header" scope="row">Income 7d</th>
+          <td class="style-table-data pl-0">
             <span
               data-toggle="tooltip"
               data-html="true"
@@ -694,8 +694,8 @@
           </td>
         </tr>
         <tr class="d-sm-none">
-          <th scope="row">APR 7d</th>
-          <td class="pl-0">
+          <th class="style-table-header" scope="row">APR 7d</th>
+          <td class="style-table-data pl-0">
             <span
               data-toggle="tooltip"
               data-html="true"
@@ -710,8 +710,8 @@
         </tr>
         <!-- end -->
         <tr>
-          <th scope="row">Luck</th>
-          <td class="pl-0">
+          <th class="style-table-header" scope="row">Luck</th>
+          <td class="style-table-data pl-0">
             {{ $hasProposalLuck := nef .ProposalLuck 0 }}
             {{ $hasSyncLuck := nef .SyncLuck 0 }}
             <!-- prettier-ignore-attribute -->
@@ -732,8 +732,8 @@
         </tr>
         {{ if not (eq .WithdrawableEpoch 9223372036854775807) }}
           <tr>
-            <th scope="row">Withdrawable</th>
-            <td class="pl-0">
+            <th class="style-table-header" scope="row">Withdrawable</th>
+            <td class="style-table-data pl-0">
               {{ if gt .NetworkStats.CurrentEpoch .WithdrawableEpoch }}
                 <a href="/epoch/{{ .WithdrawableEpoch }}">
                   <span title="Epoch: {{ .WithdrawableEpoch }}" data-toggle="tooltip" aria-ethereum-date="{{ .WithdrawableTs.Unix }}"></span>
@@ -746,11 +746,11 @@
         {{ end }}
         <tr>
           {{ if gt .NetworkStats.CurrentEpoch .ActivationEpoch }}
-            <th scope="row">Active since</th>
+            <th class="style-table-header" scope="row">Active since</th>
           {{ else }}
-            <th scope="row">Activation</th>
+            <th  class="style-table-header" scope="row">Activation</th>
           {{ end }}
-          <td class="pl-0">
+          <td class="style-table-data pl-0">
             {{ if eq .ActivationEpoch 9223372036854775807 }}
               -
             {{ else }}
@@ -760,25 +760,11 @@
         </tr>
         {{ if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0)) }}
           <tr>
-            <th scope="row">Exited since</th>
-            <td class="pl-0">
+            <th class="style-table-header" scope="row">Exited since</th>
+            <td class="style-table-data pl-0">
               <a href="/epoch/{{ .ExitEpoch }}">
                 <span aria-ethereum-date="{{ .ExitTs.Unix }}"></span>
               </a>
-            </td>
-          </tr>
-        {{ end }}
-        {{ if not (eq .WithdrawableEpoch 9223372036854775807) }}
-          <tr>
-            <th scope="row">Withdrawable</th>
-            <td>
-              {{ if gt .NetworkStats.CurrentEpoch .WithdrawableEpoch }}
-                <a href="/epoch/{{ .WithdrawableEpoch }}">
-                  <span title="Epoch: {{ .WithdrawableEpoch }}" data-toggle="tooltip" aria-ethereum-date="{{ .WithdrawableTs.Unix }}"></span>
-                </a>
-              {{ else }}
-                <span title="Epoch: {{ .WithdrawableEpoch }}" data-toggle="tooltip" aria-ethereum-date="{{ .WithdrawableTs.Unix }}"></span>
-              {{ end }}
             </td>
           </tr>
         {{ end }}

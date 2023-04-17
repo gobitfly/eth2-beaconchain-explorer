@@ -566,12 +566,6 @@ body main {
   font-weight: 500;
 }
 
-.style-link {
-  font-family: "Mukta", sans-serif;
-  font-size: 0.875rem;
-  font-weight: 300;
-}
-
 .style-status-tag-text {
   font-family: "Mukta", sans-serif;
   font-size: 0.75rem;
@@ -580,7 +574,7 @@ body main {
 
 .style-hash {
   font-family: "Roboto Mono";
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 400;
 }
 
@@ -607,13 +601,19 @@ body main {
   font-size: 0.75rem;
   font-weight: 500;
 }
-.style-header-idk {
+.style-table-title {
   font-family: "Montserrat", sans-serif;
   font-size: 1.25rem;
   font-weight: 500;
 }
 
-.style-paragraph-topsecret {
+.style-table-header {
+  font-family: "Mukta", sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.style-table-data {
   font-family: "Mukta", sans-serif;
   font-size: 0.875rem;
   font-weight: 300;
@@ -654,8 +654,13 @@ body main {
     font-size: 1.5rem;
   }
 
-  .style-paragraph-topsecret {
+  .style-table-header,
+  .style-table-data {
     font-size: 1rem;
+  }
+
+  .style-hash {
+    font-size: 0.875rem;
   }
 }
 
@@ -663,7 +668,7 @@ body main {
   .style-header-account {
     font-size: 1.125rem;
   }
-  .style-header-idk {
+  .style-table-title {
     font-size: 1.5rem;
   }
 }
@@ -885,8 +890,17 @@ body main {
   }
 }
 
+.table {
+  color: var(--font-color)
+}
+
 .table-responsive .table th {
   border: 0;
+}
+
+.table-responsive .table th,
+.table-responsive .table td {
+  padding: .8rem .6rem;
 }
 
 .table-responsive .table tbody tr:first-of-type td {

@@ -796,7 +796,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		}
 		epoch.Ts = utils.EpochToTime(epoch.Epoch)
 		epoch.FinalizedFormatted = utils.FormatEpochStatus(epoch.Finalized, epoch.GlobalParticipationRate)
-		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRateStyle(epoch.VotedEther, epoch.GlobalParticipationRate, currency)
+		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate, currency)
 		epoch.ExecutionReward = big.NewInt(0)
 		epochsMap[epoch.Epoch] = epoch
 	}
@@ -848,7 +848,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 				Finalized:                        false,
 				FinalizedFormatted:               utils.FormatEpochStatus(false, 0),
 				GlobalParticipationRate:          0,
-				GlobalParticipationRateFormatted: utils.FormatGlobalParticipationRateStyle(0, 1, ""),
+				GlobalParticipationRateFormatted: utils.FormatGlobalParticipationRate(0, 1, ""),
 				ExecutionReward:                  big.NewInt(0),
 				VotedEther:                       0,
 			}

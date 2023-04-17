@@ -33,31 +33,31 @@
     </div>
     <div class="card-body p-0">
       <div role="table" class="style-grid" id="blocks-table">
-        <div class="d-contents" role="rowgroup">
+        <div class="d-contents style-table-header" role="rowgroup">
           <div class="d-contents" role="row">
-            <div class="style-paragraph-6 style-grid-header pl-3" role="columnheader">Block</div>
-            <div class="style-paragraph-6 style-grid-header pr-2 d-none d-sm-flex" role="columnheader">Slot</div>
-            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader"><span class="d-none d-sm-flex">Status</span></div>
-            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader">Proposer</div>
-            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader">EL Reward</div>
-            <div class="style-paragraph-6 style-grid-header pr-2" role="columnheader">Reward Recipient</div>
+            <div class="style-grid-header pl-3" role="columnheader">Block</div>
+            <div class="style-grid-header pr-2 d-none d-sm-flex" role="columnheader">Slot</div>
+            <div class="style-grid-header pr-2" role="columnheader"><span class="d-none d-sm-flex">Status</span></div>
+            <div class="style-grid-header pr-2" role="columnheader">Proposer</div>
+            <div class="style-grid-header pr-2" role="columnheader">EL Reward</div>
+            <div class="style-grid-header pr-2" role="columnheader">Reward Recipient</div>
           </div>
         </div>
-        <div class="d-contents" role="rowgroup" v-if="page && page.blocks && page.blocks.length">
+        <div class="d-contents style-table-data" role="rowgroup" v-if="page && page.blocks && page.blocks.length">
           <div class="d-contents" role="row" v-for="block in page.blocks">
-            <div role="cell" class="style-paragraph-1 style-grid-cell ml-2 pl-2 pr-2">
+            <div role="cell" class="style-grid-cell ml-2 pl-2 pr-2">
               <a v-if="block.exec_block_number != 0" v-bind:href="'/block/' + block.exec_block_number" v-html="addCommas(block.exec_block_number)"></a>
               <span v-else>-</span>
             </div>
             <div role="cell" class="style-grid-cell d-none d-sm-flex pr-2">
               <div class="d-flex flex-column">
-                <a class="style-paragraph-1" style="margin-bottom: -0.3rem" v-bind:href="'/slot/' + block.slot" v-html="addCommas(block.slot)"></a>
+                <a style="margin-bottom: -0.3rem" v-bind:href="'/slot/' + block.slot" v-html="addCommas(block.slot)"></a>
                 <span class="style-paragraph-3" style="color:var(--text-addition)">${ block.ts | fromNow }</span>
               </div>
             </div>
             <div role="cell" class="style-grid-cell pr-2" v-html="block.status_formatted"></div>
-            <div role="cell" class="style-paragraph-1 style-grid-cell pr-2" v-html="block.proposer_formatted"></div>
-            <div role="cell" class="style-paragraph-1 style-grid-cell pr-2" v-html="block.exec_reward"></div>
+            <div role="cell" class="style-grid-cell pr-2" v-html="block.proposer_formatted"></div>
+            <div role="cell" class="style-grid-cell pr-2" v-html="block.exec_reward"></div>
             <div role="cell" class="style-hash style-grid-cell mr-2" v-html="block.exec_reward_recipient"></div>
           </div>
         </div>

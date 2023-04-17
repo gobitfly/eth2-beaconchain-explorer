@@ -5,7 +5,7 @@
   <div class="validator__lifecycle-container">
     <div class="validator__lifecycle-content">
       <div id="lifecycle-deposited" class="validator__lifecycle-node-container validator__lifecycle-deposited">
-        <div class="validator__lifecycle-node-header style-paragraph-topsecret"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#2-deposit-contract-status-deposited">Deposited</a></div>
+        <div class="validator__lifecycle-node-header style-table-data"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#2-deposit-contract-status-deposited">Deposited</a></div>
         <div class="validator__lifecycle-node" data-toggle="tooltip" title="This will turn green when your deposit has been processed by the beacon chain">
           <i class="fas fa-check deposit-success"></i>
           <i class="fas fa-times fail deposit-fail"></i>
@@ -16,13 +16,13 @@
         </div>
       </div>
       <div class="validator__lifecycle-progress validator__lifecycle-deposited text-white">
-        <div class="validator__lifecycle-progress-epoch style-paragraph-topsecret">
+        <div class="validator__lifecycle-progress-epoch style-table-data">
           {{ if not $deposited }}<div data-toggle="tooltip" title="The eligible epoch is when your validator is registered by the beacon chain and joins the queue to be activated."><a href="/epoch/{{ .ActivationEligibilityEpoch }}">{{ if eq .ActivationEligibilityEpoch 0 }}Genesis{{ else }}{{ .ActivationEligibilityEpoch }}{{ end }}</a></div>{{ end }}
         </div>
       </div>
       <div id="lifecycle-pending" class="validator__lifecycle-node-container validator__lifecycle-pending">
         <div class="validator__lifecycle-node-container">
-          <div class="validator__lifecycle-node-header style-paragraph-topsecret"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#3-validator-queue-status-pending">Pending</a></div>
+          <div class="validator__lifecycle-node-header style-table-data"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#3-validator-queue-status-pending">Pending</a></div>
           <div class="validator__lifecycle-node" data-toggle="tooltip" title="After being processed your validator joins a queue to be activated">
             <i class="fas fa-hourglass-half pending-waiting"></i>
             <i class="fas fa-check"></i>
@@ -34,13 +34,13 @@
         </div>
       </div>
       <div class="validator__lifecycle-progress validator__lifecycle-pending">
-        <div class="validator__lifecycle-progress-epoch style-paragraph-topsecret">
+        <div class="validator__lifecycle-progress-epoch style-table-data">
           {{ if not $deposited }}<div data-toggle="tooltip" title="The activation epoch is when your validator becomes active.">{{ if ne .ActivationEpoch 9223372036854775807 }}<a href="/epoch/{{ .ActivationEpoch }}">{{ if eq .ActivationEpoch 0 }}Genesis{{ else }}{{ .ActivationEpoch }}{{ end }}</a>{{ end }}</div>{{ end }}
         </div>
       </div>
       <div id="lifecycle-active" class="validator__lifecycle-node-container validator__lifecycle-active">
         <div class="validator__lifecycle-node-container">
-          <div class="validator__lifecycle-node-header style-paragraph-topsecret"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#4-staking-status-active">Active</a></div>
+          <div class="validator__lifecycle-node-header style-table-data"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#4-staking-status-active">Active</a></div>
           <div class="validator__lifecycle-node" data-toggle="tooltip" title="Once your validator reaches this state it can participate in attesting and proposing. Make sure it stays online!">
             <i class="fas fa-power-off online"></i>
             <i class="fas fa-power-off offline"></i>
@@ -53,13 +53,13 @@
         </div>
       </div>
       <div class="validator__lifecycle-progress validator__lifecycle-active">
-        <div class="validator__lifecycle-progress-epoch style-paragraph-topsecret">
+        <div class="validator__lifecycle-progress-epoch style-table-data">
           {{ if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0)) }}<div data-toggle="tooltip" title="The exit epoch is when your validator will leave the network"><a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a></div>{{ end }}
         </div>
       </div>
       <div id="lifecycle-exited" class="validator__lifecycle-node-container validator__lifecycle-exited">
         <div class="validator__lifecycle-node-container">
-          <div class="validator__lifecycle-node-header style-paragraph-topsecret"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#4-staking-status-active">Exited</a></div>
+          <div class="validator__lifecycle-node-header style-table-data"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#4-staking-status-active">Exited</a></div>
           <div class="validator__lifecycle-node" data-toggle="tooltip" title="If your validator misbehaves or chooses to leave the network it will join a queue to leave.">
             <i class="fas fa-door-open"></i>
             <div class="spinner">
@@ -151,7 +151,7 @@
       <div>
         <div class="style-validator-overview-header">Balance</div>
         <div class="style-validator-overview-value">{{ formatCurrentBalance .CurrentBalance $.Rates.Currency }}</div>
-        <div class="style-paragraph-topsecret">
+        <div class="style-table-data">
           <span class="text-addition">{{ formatEffectiveBalance .EffectiveBalance "ETH" }}</span>
           <a class="no-highlight" href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance" data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator">
             <i class="fas fa-question-circle"></i>
@@ -183,7 +183,7 @@
       <div>
         <div class="style-validator-overview-header">Balance</div>
         <div class="style-validator-overview-value">{{ formatCurrentBalance .CurrentBalance $.Rates.Currency }}</div>
-        <div class="style-paragraph-topsecret">
+        <div class="style-table-data">
           <span class="text-addition">{{ formatEffectiveBalance .EffectiveBalance "ETH" }}</span>
           <a class="no-highlight" href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance" data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator">
             <i class="fas fa-question-circle"></i>
@@ -225,7 +225,7 @@
 {{ end }}
 
 {{ define "validatorOverviewCount" }}
-  <div class="style-paragraph-topsecret d-flex flex-wrap justify-content-center my-3 my-md-4">
+  <div class="style-table-data d-flex flex-wrap justify-content-center my-3 my-md-4">
     <div class="mx-3">
       <span id="blockCount" style="cursor: pointer;" data-toggle="tooltip" title="Blocks (Proposed: {{ .ProposedBlocksCount }}, Missed: {{ .MissedBlocksCount }}, Orphaned: {{ .OrphanedBlocksCount }}, Scheduled: {{ .ScheduledBlocksCount }})"><i class="fas fa-cubes poin"></i> {{ .BlocksCount }}{{ if ne .BlocksCount 0 }}({{ formatPercentageColoredEmoji .UnmissedBlocksPercentage }}){{ end }}</span>
     </div>
