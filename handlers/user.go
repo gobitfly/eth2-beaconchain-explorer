@@ -1234,7 +1234,9 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 
 	err = db.FrontendWriterDB.Get(&currentUser, "SELECT id, email, password, email_confirmed FROM users WHERE id = $1", user.UserID)
 	if err != nil {
-		logger.Errorf("error retrieving password for user %v: %v", user.UserID, err)
+		if err != sql.ErrNoRows {
+			logger.Errorf("error retrieving password for user %v: %v", user.UserID, err)
+		}
 		session.AddFlash("Error: Invalid password!")
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)

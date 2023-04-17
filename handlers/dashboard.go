@@ -265,7 +265,7 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		return nil, err
 	}
 
-	distance, err := db.GetWithdrawableCountFromCursor(epoch, nextValidator.Index, *stats.LatestValidatorWithdrawalIndex)
+	distance, err := GetWithdrawableCountFromCursor(epoch, nextValidator.Index, *stats.LatestValidatorWithdrawalIndex)
 	if err != nil {
 		return nil, err
 	}

@@ -173,6 +173,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
+	incomeTotal := types.ClElInt64{
+		El:    income.ElIncomeTotal,
+		Cl:    income.ClIncomeTotal + currentDayIncome,
+		Total: income.ClIncomeTotal + income.ElIncomeTotal + currentDayIncome,
+	}
+
 	return &types.ValidatorEarnings{
 		Income1d: types.ClElInt64{
 			El:    income.ElIncome1d,
@@ -189,6 +195,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    income.ClIncome31d,
 			Total: earnings31d,
 		},
+		IncomeTotal: incomeTotal,
 		Apr7d: types.ClElFloat64{
 			El:    elApr7d,
 			Cl:    clApr7d,
@@ -204,12 +211,11 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    clApr365d,
 			Total: clApr365d + elApr365d,
 		},
-		ElIncomeTotal:        income.ElIncomeTotal,
 		TotalDeposits:        int64(totalDeposits),
 		LastDayFormatted:     utils.FormatIncome(earnings1d, currency),
 		LastWeekFormatted:    utils.FormatIncome(earnings7d, currency),
 		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
-		TotalFormatted:       utils.FormatIncome(income.ClIncomeTotal+currentDayIncome, currency),
+		TotalFormatted:       utils.FormatIncomeClElInt64(incomeTotal, currency),
 		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency),
 		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
 	}, balancesMap, nil
@@ -327,6 +333,7 @@ func getAvgSyncCommitteeInterval(validatorsCount int) float64 {
 // LatestState will return common information that about the current state of the eth2 chain
 func LatestState(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", utils.Config.Chain.Config.SecondsPerSlot)) // set local cache to the seconds per slot interval
 	currency := GetCurrency(r)
 	data := services.LatestState()
 	// data.Currency = currency
@@ -534,4 +541,36 @@ func handleTemplateError(w http.ResponseWriter, r *http.Request, fileIdentifier 
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 	}
 	return err
+}
+
+func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
+	// the validators' balance will not be checked here as this is only a rough estimation
+	// checking the balance for hundreds of thousands of validators is too expensive
+
+	var maxValidatorIndex uint64
+	err := db.WriterDb.Get(&maxValidatorIndex, "SELECT COALESCE(MAX(validatorindex), 0) FROM validators")
+	if err != nil {
+		return 0, fmt.Errorf("error getting withdrawable validator count from cursor: %w", err)
+	}
+
+	if maxValidatorIndex == 0 {
+		return 0, nil
+	}
+
+	activeValidators := services.LatestIndexPageData().ActiveValidators
+	if activeValidators == 0 {
+		activeValidators = maxValidatorIndex
+	}
+
+	if validatorindex > cursor {
+		// if the validatorindex is after the cursor, simply return the number of validators between the cursor and the validatorindex
+		// the returned data is then scaled using the number of currently active validators in order to account for exited / entering validators
+		return (validatorindex - cursor) * activeValidators / maxValidatorIndex, nil
+	} else if validatorindex < cursor {
+		// if the validatorindex is before the cursor (wraparound case) return the number of validators between the cursor and the most recent validator plus the amount of validators from the validator 0 to the validatorindex
+		// the returned data is then scaled using the number of currently active validators in order to account for exited / entering validators
+		return (maxValidatorIndex - cursor + validatorindex) * activeValidators / maxValidatorIndex, nil
+	} else {
+		return 0, nil
+	}
 }

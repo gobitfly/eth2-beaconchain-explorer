@@ -84,7 +84,6 @@
     <div class="container mt-2 validator-content">
       {{ template "flashMessage" . }}
       {{ template "validatorHeading" . }}
-      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="row align-items-stretch">
         <div class="col-lg-7 col-xl-8 px-lg-2 my-2">
           <div class="card d-flex flex-column justify-content-center h-100 py-0 px-0 card-body">
@@ -395,6 +394,8 @@
         {{ template "AddValidatorWatchlistModal" .AddValidatorWatchlistModal }}
       {{ end }}
 
+
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
     </div>
   {{ end }}
 {{ end }}

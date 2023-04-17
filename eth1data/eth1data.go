@@ -49,7 +49,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(ctx, hash)
 
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving data for tx %v: %v", hash, err)
+		return nil, fmt.Errorf("error retrieving data for tx %v: %w", hash, err)
 	}
 
 	if pending {
