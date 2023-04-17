@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
 	"net/http"
 )
 
@@ -55,6 +56,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 // IndexPageData will show the main "index" page in json format
 func IndexPageData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", utils.Config.Chain.Config.SecondsPerSlot)) // set local cache to the seconds per slot interval
 
 	err := json.NewEncoder(w).Encode(services.LatestIndexPageData())
 

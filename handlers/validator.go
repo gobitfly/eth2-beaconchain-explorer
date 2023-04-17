@@ -119,7 +119,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
-			logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
+			// logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -288,7 +288,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		LEFT JOIN validator_pool ON validators.pubkey = validator_pool.publickey
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
-		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance) validator_performance_count(total_count) ON true
+		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance WHERE validatorindex < 2147483647 AND validatorindex >= 0) validator_performance_count(total_count) ON true
 		WHERE validators.validatorindex = $1`, index)
 
 	if err == sql.ErrNoRows {
@@ -416,7 +416,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.Apr7d = earnings.Apr7d
 		validatorPageData.Apr31d = earnings.Apr31d
 		validatorPageData.Apr365d = earnings.Apr365d
-		validatorPageData.ElIncomeTotal = earnings.ElIncomeTotal
+		validatorPageData.IncomeTotal = earnings.IncomeTotal
+		validatorPageData.IncomeTotalFormatted = earnings.TotalFormatted
 
 		vbalance, ok := balances[validatorPageData.ValidatorIndex]
 		if !ok {
@@ -455,7 +456,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			isFullWithdrawal := validatorPageData.CurrentBalance > 0 && validatorPageData.WithdrawableEpoch <= validatorPageData.Epoch
 			isPartialWithdrawal := validatorPageData.EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.Config.MaxEffectiveBalance
 			if stats != nil && stats.LatestValidatorWithdrawalIndex != nil && stats.TotalValidatorCount != nil && validatorPageData.IsWithdrawableAddress && (isFullWithdrawal || isPartialWithdrawal) {
-				distance, err := db.GetWithdrawableCountFromCursor(validatorPageData.Epoch, validatorPageData.Index, *stats.LatestValidatorWithdrawalIndex)
+				distance, err := GetWithdrawableCountFromCursor(validatorPageData.Epoch, validatorPageData.Index, *stats.LatestValidatorWithdrawalIndex)
 				if err != nil {
 					return fmt.Errorf("error getting withdrawable validator count from cursor: %v", err)
 				}
@@ -494,7 +495,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 						template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
 						withdrawalCredentialsTemplate,
-						template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmont), big.NewInt(1e9)), "ETH", 6))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmont), big.NewInt(1e9)), "Ether", 6))),
 					})
 
 					validatorPageData.NextWithdrawalRow = tableData
@@ -1349,7 +1350,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimeFromNow(utils.SlotToTime(w.Slot)))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
 		})
 	}
 

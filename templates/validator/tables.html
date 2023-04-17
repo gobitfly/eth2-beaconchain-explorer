@@ -627,8 +627,10 @@
     <table class="table" style="margin-top: 0 !important" width="100%">
       <tbody style="font-size: 0.875rem;">
         <tr>
-          <th scope="row">Total Tx Rewards</th>
-          <td class="pl-0">{{ formatExchangedAmount .ElIncomeTotal $.Rates.Currency }}</td>
+          <th scope="row">Total Rewards</th>
+          <td class="pl-0">
+            {{ .IncomeTotalFormatted }}
+          </td>
         </tr>
         <tr class="">
           <th scope="row">Income Today</th>

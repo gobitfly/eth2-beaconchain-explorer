@@ -171,12 +171,6 @@
         },
         columnDefs: [
           {
-            targets: 3,
-            render: function (data, type, row) {
-              return `<div class="d-flex justify-content-between">${data}<i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i></div>`
-            },
-          },
-          {
             targets: 4,
             render: function (data, type, row) {
               return `<div class="d-flex"><div data-toggle="tooltip" title="${data}" style="max-width: 130px;" class="text-truncate">${data}</div><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i></div>`

@@ -36,8 +36,8 @@
                 Follow for notifications
               </div>
             {{ else }}
-              <form class="dropdown-item px-3" action="{{ printf "%#x" .PublicKey }}/add" method="post">
-                <button style="all: unset; cursor: pointer" type="submit" id="follow-button">
+              <form class="dropdown-item px-3 disabled">
+                <button style="all: unset; cursor: pointer" id="follow-button">
                   <span class="nav-icon"><i class="fas fa-bookmark"></i></span>
                   <span class="style-link" >Follow for notifications</span>
                 </button>

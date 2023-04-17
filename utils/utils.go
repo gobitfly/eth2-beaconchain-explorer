@@ -132,8 +132,9 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatAmount":                            FormatAmount,
 		"formatExchangedAmount":                   FormatExchangedAmount,
 		"formatBigAmount":                         FormatBigAmount,
+		"formatBytesAmount":                       FormatBytesAmount,
 		"formatYesNo":                             FormatYesNo,
-		"formatAmountFormatted":                   FormatAmountFormated,
+		"formatAmountFormatted":                   FormatAmountFormatted,
 		"formatAddressAsLink":                     FormatAddressAsLink,
 		"formatBuilder":                           FormatBuilder,
 		"formatDifficulty":                        FormatDifficulty,
@@ -213,8 +214,6 @@ func GetTemplateFuncs() template.FuncMap {
 			return num
 		},
 		// ETH1 related formatting
-		"formatBalanceWei":      FormatBalanceWei,
-		"formatBytesAmount":     FormatBytesAmount,
 		"formatEth1TxStatus":    FormatEth1TxStatus,
 		"formatTimestampUInt64": FormatTimestampUInt64,
 		"formatEth1AddressFull": FormatEth1AddressFull,
@@ -885,7 +884,7 @@ func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
 	}
 
 	httpClient := http.Client{Timeout: time.Second * 5}
-	resp, err := httpClient.Get(fmt.Sprintf("https://%s/api?module=contract&action=getsourcecode&address=0x%x&apikey=%s", baseUrl, address, ""))
+	resp, err := httpClient.Get(fmt.Sprintf("https://%s/api?module=contract&action=getsourcecode&address=0x%x&apikey=%s", baseUrl, address, Config.EtherscanAPIKey))
 	if err != nil {
 		return nil, err
 	}

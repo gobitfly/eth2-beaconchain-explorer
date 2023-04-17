@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"database/sql"
-	_ "embed"
+	"embed"
 	"encoding/hex"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
-	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -23,6 +22,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/patrickmn/go-cache"
+	"github.com/pressly/goose/v3"
 	prysm_deposit "github.com/prysmaticlabs/prysm/v3/contracts/deposit"
 	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 	"github.com/sirupsen/logrus"
@@ -30,11 +30,10 @@ import (
 	"eth2-exporter/rpc"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	pg_query "github.com/pganalyze/pg_query_go/v4"
 )
 
-//go:embed tables.sql
-var dbSchemaSQL string
+//go:embed migrations/*.sql
+var EmbedMigrations embed.FS
 
 var DBPGX *pgxpool.Conn
 
@@ -98,30 +97,28 @@ func MustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) {
 	WriterDb, ReaderDb = mustInitDB(writer, reader)
 }
 
-func ApplyEmbeddedDbSchema() error {
+func ApplyEmbeddedDbSchema(version int64) error {
+	goose.SetBaseFS(EmbedMigrations)
 
-	tree, err := pg_query.Parse(dbSchemaSQL)
-	if err != nil {
+	if err := goose.SetDialect("postgres"); err != nil {
 		return err
 	}
 
-	allowedStatements := map[string]bool{
-		"Node_IndexStmt":           true, // allow the creation of new indices
-		"Node_CreateExtensionStmt": true, // allow the creation of new extensions
-		"Node_CreateStmt":          true, // allow the creation of new tables
-		"Node_DoStmt":              true, // allow do procedures
-	}
-	for _, stmt := range tree.Stmts {
-		stmtType := reflect.TypeOf(stmt.Stmt.Node).Elem().Name()
-
-		if !allowedStatements[stmtType] {
-			return fmt.Errorf("statement of type %v is not allowed: %v", stmtType, stmt.Stmt.String())
+	if version == -2 {
+		if err := goose.Up(WriterDb.DB, "migrations"); err != nil {
+			return err
+		}
+	} else if version == -1 {
+		if err := goose.UpByOne(WriterDb.DB, "migrations"); err != nil {
+			return err
+		}
+	} else {
+		if err := goose.UpTo(WriterDb.DB, "migrations", version); err != nil {
+			return err
 		}
 	}
 
-	_, err = WriterDb.Exec(dbSchemaSQL)
-
-	return err
+	return nil
 }
 
 func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsData, error) {
@@ -1159,7 +1156,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 			// }
 
 			if c.Status != v.Status {
-				logger.Infof("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
+				logger.Tracef("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
 				queries.WriteString(fmt.Sprintf("UPDATE validators SET status = '%s' WHERE validatorindex = %d;\n", v.Status, c.Index))
 				updates++
 			}
@@ -2967,8 +2964,17 @@ func GetWithdrawableValidatorCount(epoch uint64) (uint64, error) {
 		count(*) 
 	FROM 
 		validators 
+	INNER JOIN (
+		SELECT validatorindex, 
+                end_effective_balance, 
+                end_balance,
+                DAY
+        FROM
+                validator_stats
+        WHERE DAY = (SELECT COALESCE(MAX(day), 0) FROM validator_stats_status)) as stats 
+	ON stats.validatorindex = validators.validatorindex
 	WHERE 
-		withdrawalcredentials LIKE '\x01' || '%'::bytea AND ((effectivebalance = $1 AND balance > $1) OR (withdrawableepoch <= $2 AND balance > 0));`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
+		validators.withdrawalcredentials LIKE '\x01' || '%'::bytea AND ((stats.end_effective_balance = $1 AND stats.end_balance > $1) OR (validators.withdrawableepoch <= $2 AND stats.end_balance > 0));`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
@@ -2994,41 +3000,6 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 			return 0, nil
 		}
 		return 0, fmt.Errorf("error getting withdrawable validator count: %w", err)
-	}
-
-	return count, nil
-}
-
-func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
-	// the validators' balance will not be checked here as this is only a rough estimation
-	// checking the balance for hundreds of thousands of validators is too expensive
-
-	var idCondition string
-	if validatorindex > cursor {
-		// find all withdrawable validators between the cursor and the validator
-		idCondition = "(validatorindex > $1 AND validatorindex < $2)"
-	} else if validatorindex < cursor {
-		// find all withdrawable validators behind the cursor AND in front of the validator (i.e. logical OR)
-		idCondition = "(validatorindex > $1 OR validatorindex < $2)"
-	} else {
-		// cursor at validator
-		return 0, nil
-	}
-
-	query := fmt.Sprintf(`
-	SELECT 
-		COUNT(*)
-	FROM 
-		validators 
-	WHERE 
-		%s AND
-		activationepoch <= $3 AND exitepoch > $3 AND
-		withdrawalcredentials LIKE '\x01' || '%%'::bytea`, idCondition)
-
-	count := uint64(0)
-	err := ReaderDb.Get(&count, query, cursor, validatorindex, epoch)
-	if err != nil {
-		return 0, fmt.Errorf("error getting withdrawable validator count from cursor: %w", err)
 	}
 
 	return count, nil

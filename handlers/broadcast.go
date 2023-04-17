@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
@@ -68,11 +69,11 @@ func BroadcastPost(w http.ResponseWriter, r *http.Request) {
 	job, err := db.CreateNodeJob([]byte(jobData))
 	if err != nil {
 		errMsg := fmt.Sprintf("Error: %s", err)
-		var userErr db.CreateNodeJobUserError
+		var userErr types.CreateNodeJobUserError
 		if !errors.As(err, &userErr) {
 			// only send error-message if its a UserError, otherwise just tell the user that something is wrong without details
 			errMsg = "Sorry something went wrong :("
-			logger.Errorf("failed creating a node-job: %v", err)
+			logger.WithError(err).Errorf("failed creating a node-job")
 		}
 		utils.SetFlash(w, r, "info_flash", errMsg)
 		http.Redirect(w, r, "/tools/broadcast", http.StatusSeeOther)
@@ -94,7 +95,9 @@ func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
 
 	job, err := db.GetNodeJob(vars["jobID"])
 	if err != nil {
-		logger.Errorf("error retrieving job %v", err)
+		if err != sql.ErrNoRows {
+			logger.Errorf("error retrieving job %v", err)
+		}
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}

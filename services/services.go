@@ -1462,10 +1462,40 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 			errorCount = 0
 		}
 
+		mempoolTx.TxsByHash = make(map[common.Hash]*types.RawMempoolTransaction)
+
+		for _, txs := range mempoolTx.Pending {
+			for _, tx := range txs {
+				mempoolTx.TxsByHash[tx.Hash] = tx
+
+				if tx.GasPrice == nil {
+					tx.GasPrice = tx.GasFeeCap
+				}
+			}
+		}
+		for _, txs := range mempoolTx.Queued {
+			for _, tx := range txs {
+				mempoolTx.TxsByHash[tx.Hash] = tx
+
+				if tx.GasPrice == nil {
+					tx.GasPrice = tx.GasFeeCap
+				}
+			}
+		}
+		for _, txs := range mempoolTx.BaseFee {
+			for _, tx := range txs {
+				mempoolTx.TxsByHash[tx.Hash] = tx
+
+				if tx.GasPrice == nil {
+					tx.GasPrice = tx.GasFeeCap
+				}
+			}
+		}
+
 		cacheKey := fmt.Sprintf("%d:frontend:mempool", utils.Config.Chain.Config.DepositChainID)
 		err = cache.TieredCache.Set(cacheKey, mempoolTx, time.Hour*24)
 		if err != nil {
-			logger.Errorf("error caching relaysData: %v", err)
+			logger.Errorf("error caching mempool data: %v", err)
 		}
 		if firstRun {
 			logger.Info("initialized mempool updater")

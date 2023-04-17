@@ -237,12 +237,16 @@
     </div>
     {{ if .CappellaHasHappened }}
       <div class="mx-3">
-        <span id="withdrawalCount" style="cursor: pointer;" data-toggle="tooltip" {{ if .IsWithdrawableAddress }}title="Withdrawals processed for this validator"{{ else }}title="To receive payouts you need 0x01 withdrawal credentials"{{ end }}>
-          <i class="fas fa-money-bill"></i>
+        <span id="withdrawalCount" style="cursor: pointer;" data-toggle="tooltip" {{ if .IsWithdrawableAddress }}title="Withdrawals processed for this validator"{{ else }}title="To receive withdrawals, 0x01 withdrawal credentials are required. Click here for more information."{{ end }}>
           {{ if .IsWithdrawableAddress }}
-            <span> {{ .WithdrawalCount }} </span>
+            <i class="fas fa-money-bill"></i>
+            {{ .WithdrawalCount }}
           {{ else }}
-            <span><i class="text-warning fas fa-exclamation-triangle"></i></span>
+            <a href="https://launchpad.ethereum.org/en/withdrawals">
+              <i class="fas fa-money-bill" style="color:var(--body-color)"></i>
+              <i class="text-warning fas fa-exclamation-triangle"></i>
+              <i class="fas fa-external-link-alt"></i>
+            </a>
           {{ end }}
         </span>
       </div>

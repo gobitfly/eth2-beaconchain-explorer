@@ -713,6 +713,27 @@ func FormatParticipation(v float64) template.HTML {
 	return template.HTML(fmt.Sprintf("<span>%.2f %%</span>", v*100.0))
 }
 
+func FormatIncomeClElInt64(income types.ClElInt64, currency string) template.HTML {
+	var incomeTrimmed string = exchangeAndTrim(currency, income.Total)
+	className := "text-success"
+	if income.Total < 0 {
+		className = "text-danger"
+	}
+
+	if income.Cl != 0 || income.El != 0 {
+		return template.HTML(fmt.Sprintf(`
+		<span class="%s" data-toggle="tooltip"
+			data-html="true"
+			title="
+			CL: %s <br> 
+			EL: %s">
+			<b>%s %s</b>
+		</span>`, className, FormatExchangedAmount(income.Cl, currency), FormatExchangedAmount(income.El, currency), incomeTrimmed, currency))
+	} else {
+		return template.HTML(fmt.Sprintf(`<span>%s%s</span>`, incomeTrimmed, currency))
+	}
+}
+
 // FormatIncome will return a string for a balance
 func FormatIncome(balanceInt int64, currency string) template.HTML {
 	return formatIncome(balanceInt, currency, true)
@@ -723,13 +744,7 @@ func FormatIncomeNoCurrency(balanceInt int64, currency string) template.HTML {
 }
 
 func formatIncome(balanceInt int64, currency string, includeCurrency bool) template.HTML {
-	var income string
-	// always pass absolute value to ensure same amount of decimals
-	if balanceInt >= 0 {
-		income = exchangeAndTrim(currency, balanceInt)
-	} else {
-		income = exchangeAndTrim(currency, -balanceInt)
-	}
+	var income string = exchangeAndTrim(currency, balanceInt)
 
 	if includeCurrency {
 		currency = " " + currency
@@ -738,11 +753,11 @@ func formatIncome(balanceInt int64, currency string, includeCurrency bool) templ
 	}
 
 	if balanceInt > 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%s%s</b></span>`, income, currency))
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>%s%s</b></span>`, income, currency))
 	} else if balanceInt < 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>-%s%s</b></span>`, income, currency))
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%s%s</b></span>`, income, currency))
 	} else {
-		return template.HTML(fmt.Sprintf(`<span>%s%s</span>`, income, currency))
+		return template.HTML(fmt.Sprintf(`<span>0%s</span>`, currency))
 	}
 }
 
@@ -763,7 +778,7 @@ func exchangeAndTrim(currency string, amount int64) string {
 	exchangeRate := ExchangeRateForCurrency(currency)
 	exchangedAmount := float64(amount) * exchangeRate
 	// lost precision here but we don't need it for frontend
-	income, _ := trimAmount(big.NewInt(int64(exchangedAmount)), 9, preCommaDecimals, decimals)
+	income, _ := trimAmount(big.NewInt(int64(exchangedAmount)), 9, preCommaDecimals, decimals, true)
 	return income
 }
 
@@ -1140,7 +1155,7 @@ func FormatBlockReward(blockNumber int64) template.HTML {
 		reward = big.NewInt(2e+18)
 	}
 
-	return FormatAmount(reward, "ETH", 5)
+	return FormatAmount(reward, "Ether", 5)
 }
 
 func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
@@ -1209,7 +1224,7 @@ func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
 	p := message.NewPrinter(language.English)
 	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
-	f, _ := num.Div(mul).Float64()
+	f, _ := num.DivRound(mul, int32(decimals.Int64())).Float64()
 
 	return template.HTML(p.Sprintf("%s", FormatThousandsEnglish(strconv.FormatFloat(f, 'f', -1, 64))))
 }
@@ -1219,7 +1234,7 @@ func FormatErc20Decimals(balance []byte, metadata *types.ERC20Metadata) decimal.
 	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance), 0)
 
-	return num.Div(mul)
+	return num.DivRound(mul, int32(decimals.Int64()))
 }
 
 func FormatTokenName(balance *types.Eth1AddressBalance) template.HTML {
@@ -1234,23 +1249,6 @@ func FormatTokenName(balance *types.Eth1AddressBalance) template.HTML {
 
 func ToBase64(input []byte) string {
 	return base64.StdEncoding.EncodeToString(input)
-}
-
-// FormatBalance will return a string for a balance
-func FormatBalanceWei(balanceWei *big.Int, unit string, precision int) template.HTML {
-	balanceBigFloat := new(big.Float).SetInt(balanceWei)
-	if unit == "Ether" || unit == "ETH" {
-		balanceBigFloat = new(big.Float).Quo(balanceBigFloat, big.NewFloat(1e18))
-	} else if unit == "GWei" {
-		balanceBigFloat = new(big.Float).Quo(balanceBigFloat, big.NewFloat(1e9))
-	}
-	balanceFloat, _ := balanceBigFloat.Float64()
-	balance := FormatFloat(balanceFloat, precision)
-
-	return template.HTML(balance + " " + unit)
-}
-func FormatBytesAmount(amount []byte, unit string, precision int) template.HTML {
-	return FormatBalanceWei(new(big.Int).SetBytes(amount), unit, precision)
 }
 
 // FormatBalance will return a string for a balance

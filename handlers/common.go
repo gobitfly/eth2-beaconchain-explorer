@@ -42,7 +42,7 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
 func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
 	validatorsPQArray := pq.Array(validators)
-	latestEpoch := int64(services.LatestEpoch())
+	latestEpoch := int64(services.LatestFinalizedEpoch())
 
 	balances := []*types.Validator{}
 
@@ -84,20 +84,22 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		ElIncome31d   int64 `db:"el_performance_31d"`
 		ElIncome365d  int64 `db:"el_performance_365d"`
 		ElIncomeTotal int64 `db:"el_performance_total"`
+		ClIncomeToday int64
 	}
 
+	// el rewards are converted from wei to gwei
 	err = db.ReaderDb.Get(&income, `
 		SELECT 
-			SUM(cl_performance_1d) AS cl_performance_1d,
-			SUM(cl_performance_7d) AS cl_performance_7d,
-			SUM(cl_performance_31d) AS cl_performance_31d,
-			SUM(cl_performance_365d) AS cl_performance_365d,
-			SUM(cl_performance_total) AS cl_performance_total,
-			SUM(mev_performance_1d) AS el_performance_1d,
-			SUM(mev_performance_7d) AS el_performance_7d,
-			SUM(mev_performance_31d) AS el_performance_31d,
-			SUM(mev_performance_365d) AS el_performance_365d,
-			SUM(mev_performance_total) AS el_performance_total
+		COALESCE(SUM(cl_performance_1d), 0) AS cl_performance_1d,
+		COALESCE(SUM(cl_performance_7d), 0) AS cl_performance_7d,
+		COALESCE(SUM(cl_performance_31d), 0) AS cl_performance_31d,
+		COALESCE(SUM(cl_performance_365d), 0) AS cl_performance_365d,
+		COALESCE(SUM(cl_performance_total), 0) AS cl_performance_total,
+		CAST(COALESCE(SUM(mev_performance_1d), 0) / 1e9 AS bigint) AS el_performance_1d,
+		CAST(COALESCE(SUM(mev_performance_7d), 0) / 1e9 AS bigint) AS el_performance_7d,
+		CAST(COALESCE(SUM(mev_performance_31d), 0) / 1e9 AS bigint) AS el_performance_31d,
+		CAST(COALESCE(SUM(mev_performance_365d), 0) / 1e9 AS bigint) AS el_performance_365d,
+		CAST(COALESCE(SUM(mev_performance_total), 0) / 1e9 AS bigint) AS el_performance_total
 		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		return nil, nil, err
@@ -130,14 +132,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// convert from wei to gwei
-	// since only the first 5 digits are shown in the frontend, the lost precision is probably negligible
-	income.ElIncome1d /= 1e9
-	income.ElIncome7d /= 1e9
-	income.ElIncome31d /= 1e9
-	income.ElIncome365d /= 1e9
-	income.ElIncomeTotal /= 1e9
 
 	// calculate combined el and cl earnings
 	earnings1d := income.ClIncome1d + income.ElIncome1d
@@ -173,6 +167,18 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		elApr365d = float64(-1)
 	}
 
+	// retrieve cl income not yet in stats
+	currentDayIncome, err := db.GetCurrentDayClIncomeTotal(validators)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	incomeTotal := types.ClElInt64{
+		El:    income.ElIncomeTotal,
+		Cl:    income.ClIncomeTotal + currentDayIncome,
+		Total: income.ClIncomeTotal + income.ElIncomeTotal + currentDayIncome,
+	}
+
 	return &types.ValidatorEarnings{
 		Income1d: types.ClElInt64{
 			El:    income.ElIncome1d,
@@ -189,6 +195,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    income.ClIncome31d,
 			Total: earnings31d,
 		},
+		IncomeTotal: incomeTotal,
 		Apr7d: types.ClElFloat64{
 			El:    elApr7d,
 			Cl:    clApr7d,
@@ -204,13 +211,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    clApr365d,
 			Total: clApr365d + elApr365d,
 		},
-		ElIncomeTotal:        income.ElIncomeTotal,
 		TotalDeposits:        int64(totalDeposits),
 		LastDayFormatted:     utils.FormatIncome(earnings1d, currency),
 		LastWeekFormatted:    utils.FormatIncome(earnings7d, currency),
 		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
-		TotalFormatted:       utils.FormatIncome(income.ClIncomeTotal, currency),
-		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+int64(totalDeposits), currency),
+		TotalFormatted:       utils.FormatIncomeClElInt64(incomeTotal, currency),
+		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency),
 		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
 	}, balancesMap, nil
 }
@@ -293,9 +299,9 @@ func calcExpectedSlotProposals(timeframe time.Duration, validatorCount int, acti
 	return (slotsInTimeframe / float64(activeValidatorsCount)) * float64(validatorCount)
 }
 
-//getAvgSlotInterval will return the average block interval for a certain number of validators
+// getAvgSlotInterval will return the average block interval for a certain number of validators
 //
-//result of the function should be interpreted as "1 in every X slots will be proposed by this amount of validators on avg."
+// result of the function should be interpreted as "1 in every X slots will be proposed by this amount of validators on avg."
 func getAvgSlotInterval(validatorsCount int) float64 {
 	// don't estimate if there are no proposed blocks or no validators
 	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
@@ -309,9 +315,9 @@ func getAvgSlotInterval(validatorsCount int) float64 {
 	return 1 / probability
 }
 
-//getAvgSyncCommitteeInterval will return the average sync committee interval for a certain number of validators
+// getAvgSyncCommitteeInterval will return the average sync committee interval for a certain number of validators
 //
-//result of the function should be interpreted as "there will be one validator included in every X committees, on average"
+// result of the function should be interpreted as "there will be one validator included in every X committees, on average"
 func getAvgSyncCommitteeInterval(validatorsCount int) float64 {
 	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
 	if activeValidatorsCount == 0 {
@@ -327,6 +333,7 @@ func getAvgSyncCommitteeInterval(validatorsCount int) float64 {
 // LatestState will return common information that about the current state of the eth2 chain
 func LatestState(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", utils.Config.Chain.Config.SecondsPerSlot)) // set local cache to the seconds per slot interval
 	currency := GetCurrency(r)
 	data := services.LatestState()
 	// data.Currency = currency
@@ -534,4 +541,36 @@ func handleTemplateError(w http.ResponseWriter, r *http.Request, fileIdentifier 
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 	}
 	return err
+}
+
+func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
+	// the validators' balance will not be checked here as this is only a rough estimation
+	// checking the balance for hundreds of thousands of validators is too expensive
+
+	var maxValidatorIndex uint64
+	err := db.WriterDb.Get(&maxValidatorIndex, "SELECT COALESCE(MAX(validatorindex), 0) FROM validators")
+	if err != nil {
+		return 0, fmt.Errorf("error getting withdrawable validator count from cursor: %w", err)
+	}
+
+	if maxValidatorIndex == 0 {
+		return 0, nil
+	}
+
+	activeValidators := services.LatestIndexPageData().ActiveValidators
+	if activeValidators == 0 {
+		activeValidators = maxValidatorIndex
+	}
+
+	if validatorindex > cursor {
+		// if the validatorindex is after the cursor, simply return the number of validators between the cursor and the validatorindex
+		// the returned data is then scaled using the number of currently active validators in order to account for exited / entering validators
+		return (validatorindex - cursor) * activeValidators / maxValidatorIndex, nil
+	} else if validatorindex < cursor {
+		// if the validatorindex is before the cursor (wraparound case) return the number of validators between the cursor and the most recent validator plus the amount of validators from the validator 0 to the validatorindex
+		// the returned data is then scaled using the number of currently active validators in order to account for exited / entering validators
+		return (maxValidatorIndex - cursor + validatorindex) * activeValidators / maxValidatorIndex, nil
+	} else {
+		return 0, nil
+	}
 }

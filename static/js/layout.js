@@ -1,3 +1,15 @@
+//We want to prevent the intial page scroll to tab anchors
+function stopInitialScrollEvent(event) {
+  event.preventDefault()
+  event.stopImmediatePropagation()
+  event.stopPropagation()
+  window.scrollTo(0, 0)
+}
+window.addEventListener("scroll", stopInitialScrollEvent)
+window.addEventListener("load", function (event) {
+  window.removeEventListener("scroll", stopInitialScrollEvent)
+})
+
 // FAB toggle
 function toggleFAB() {
   var fabContainer = document.querySelector(".fab-message")
