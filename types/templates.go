@@ -375,7 +375,6 @@ type ValidatorPageData struct {
 	SyncCount                                uint64 // amount of sync committees the validator was (and is) part of
 	SlotsPerSyncCommittee                    uint64
 	SlotsDoneInCurrentSyncCommittee          uint64
-	SyncCountSlots                           uint64
 	ScheduledSyncCountSlots                  uint64
 	ParticipatedSyncCountSlots               uint64
 	MissedSyncCountSlots                     uint64
