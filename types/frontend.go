@@ -554,3 +554,9 @@ type MempoolTxPageData struct {
 	TargetIsContract   bool
 	IsContractCreation bool
 }
+
+type SyncCommitteesStats struct {
+	ParticipatedSlots uint64 `json:"participatedSlots"`
+	MissedSlots       uint64 `json:"missedSlots"`
+	ScheduledSlots    uint64 `json:"scheduledSlots"`
+}
