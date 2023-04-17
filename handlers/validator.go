@@ -815,8 +815,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.OrphanedSyncCountSlots = syncStats.OrphanedSync
 			validatorPageData.ScheduledSyncCountSlots = syncStats.ScheduledSync
 			// actual sync duty count and percentage
-			validatorPageData.SyncCountSlots = validatorPageData.ParticipatedSyncCountSlots + validatorPageData.MissedSyncCountSlots + validatorPageData.OrphanedSyncCountSlots + validatorPageData.ScheduledSyncCountSlots
-			validatorPageData.SyncCount = uint64(math.Ceil(float64(validatorPageData.SyncCountSlots) / float64(validatorPageData.SlotsPerSyncCommittee)))
+			syncCountSlotsIncludingScheduled := validatorPageData.ParticipatedSyncCountSlots + validatorPageData.MissedSyncCountSlots + validatorPageData.OrphanedSyncCountSlots + validatorPageData.ScheduledSyncCountSlots
+			validatorPageData.SyncCount = uint64(math.Ceil(float64(syncCountSlotsIncludingScheduled) / float64(validatorPageData.SlotsPerSyncCommittee)))
 			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.ParticipatedSyncCountSlots) / float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots)
 		}
 		// sync luck

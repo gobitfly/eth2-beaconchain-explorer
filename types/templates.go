@@ -380,7 +380,7 @@ type ValidatorPageData struct {
 	ParticipatedSyncCountSlots               uint64
 	MissedSyncCountSlots                     uint64
 	OrphanedSyncCountSlots                   uint64
-	UnmissedSyncPercentage                   float64     // missed/(participated+orphaned)
+	UnmissedSyncPercentage                   float64     // participated/(participated+missed)
 	IncomeToday                              ClElInt64   `json:"incomeToday"`
 	Income1d                                 ClElInt64   `json:"income1d"`
 	Income7d                                 ClElInt64   `json:"income7d"`
