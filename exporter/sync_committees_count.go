@@ -53,7 +53,7 @@ func exportSyncCommitteesCount() error {
 		t := time.Now()
 		countSoFar, err = exportSyncCommitteesCountAtPeriod(period, countSoFar)
 		if err != nil {
-			return fmt.Errorf("error exporting snyc-committee count at period %v: %w", period, err)
+			return fmt.Errorf("error exporting sync-committee count at period %v: %w", period, err)
 		}
 		logrus.WithFields(logrus.Fields{
 			"period":   period,

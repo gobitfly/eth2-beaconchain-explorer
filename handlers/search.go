@@ -404,7 +404,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		logger.WithError(err).Error("error doing query for searchAhead")
+		logger.WithError(err).WithField("searchType", searchType).Error("error doing query for searchAhead")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
