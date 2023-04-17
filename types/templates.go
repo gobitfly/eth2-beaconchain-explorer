@@ -390,7 +390,6 @@ type ValidatorPageData struct {
 	Apr7d                                    ClElFloat64   `json:"apr7d"`
 	Apr31d                                   ClElFloat64   `json:"apr31d"`
 	Apr365d                                  ClElFloat64   `json:"apr365d"`
-	ElIncomeTotal                            int64         `json:"totalExecutionRewards"`
 	ProposalLuck                             float64
 	SyncLuck                                 float64
 	ProposalEstimate                         *time.Time
