@@ -940,7 +940,16 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	// not utilized in design prototype
 	//data.Subtitle = template.HTML(utils.Config.Frontend.SiteSubtitle)
-	data.ChurnRate = *GetLatestStats().ValidatorChurnLimit
+	queueCount := struct {
+		EnteringValidators uint64 `db:"entering_validators_count"`
+		ExitingValidators  uint64 `db:"exiting_validators_count"`
+	}{}
+	err = db.ReaderDb.Get(&queueCount, "SELECT entering_validators_count, exiting_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("error retrieving validator queue count: %v", err)
+	}
+	data.EnteringValidators = queueCount.EnteringValidators
+	data.ExitingValidators = queueCount.ExitingValidators
 
 	// get eth.store
 	ethstore, err := getEthStoreStatisticsData()
@@ -974,7 +983,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	for ts, fast := range group {
 		gasPriceData = append(gasPriceData, []float64{float64(ts * 1000), math.Round(fast/1e4) / 1e5})
 	}
-
 	sort.SliceStable(gasPriceData, func(i int, j int) bool {
 		return gasPriceData[i][0] < gasPriceData[j][0]
 	})

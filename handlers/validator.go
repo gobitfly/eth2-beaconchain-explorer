@@ -621,7 +621,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		validatorPageData.ProposalLuck = getProposalLuck(slots, 1)
-
 		avgSlotInterval := uint64(getAvgSlotInterval(1))
 		avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot*avgSlotInterval) * time.Second
 		validatorPageData.AvgSlotInterval = &avgSlotIntervalAsDuration
@@ -839,7 +838,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	g.Go(func() error {
 		// add rocketpool-data if available
-		/* validatorPageData.Rocketpool = &types.RocketpoolValidatorPageData{}
+		validatorPageData.Rocketpool = &types.RocketpoolValidatorPageData{}
 		err = db.ReaderDb.Get(validatorPageData.Rocketpool, `
 		SELECT
 			rplm.node_address      AS node_address,
@@ -878,7 +877,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 		} else if err != nil && err != sql.ErrNoRows {
 			return fmt.Errorf("error getting rocketpool-data for validator for %v route: %v", r.URL.String(), err)
-		} */
+		}
 		return nil
 	})
 
