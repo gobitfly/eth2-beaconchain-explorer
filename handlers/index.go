@@ -19,7 +19,6 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		"index/genesis.html",
 		"index/hero.html",
 		"index/networkStats.html",
-		"index/participationWarning.html",
 		"index/postGenesis.html",
 		"index/preGenesis.html",
 		"index/recentBlocks.html",
