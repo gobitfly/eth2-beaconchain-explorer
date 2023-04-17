@@ -370,7 +370,7 @@
       <h6 class="">This table displays the deposits made to the Ethereum staking deposit contract.</h6>
       <div class="table-responsive card card-body p-0">
         <table class="table" style="margin-top: 0 !important;" id="deposits-eth1-table" width="100%">
-          <thead class="style-table-header" >
+          <thead class="style-table-header">
             <tr>
               <th>From Address</th>
               <th>Tx Hash</th>
@@ -669,11 +669,7 @@
               title="
                 CL: {{ formatPercentageWithPrecision .Apr7d.Cl 2 }}% | {{ formatPercentageWithPrecision .Apr31d.Cl 2 }}% | {{ formatPercentageWithPrecision .Apr365d.Cl 2 }}% <br> 
                 El: {{ formatPercentageWithPrecision .Apr7d.El 2 }}% | {{ formatPercentageWithPrecision .Apr31d.El 2 }}% | {{ formatPercentageWithPrecision .Apr365d.El 2 }}%">
-              {{ formatPercentageWithPrecision .Apr7d.Total 2 }}%
-              |
-              {{ formatPercentageWithPrecision .Apr31d.Total 2 }}%
-              |
-              {{ formatPercentageWithPrecision .Apr365d.Total 2 }}%
+              {{ formatPercentageWithPrecision .Apr7d.Total 2 }}% | {{ formatPercentageWithPrecision .Apr31d.Total 2 }}% | {{ formatPercentageWithPrecision .Apr365d.Total 2 }}%
             </span>
           </td>
         </tr>
@@ -748,7 +744,7 @@
           {{ if gt .NetworkStats.CurrentEpoch .ActivationEpoch }}
             <th class="style-table-header" scope="row">Active since</th>
           {{ else }}
-            <th  class="style-table-header" scope="row">Activation</th>
+            <th class="style-table-header" scope="row">Activation</th>
           {{ end }}
           <td class="style-table-data pl-0">
             {{ if eq .ActivationEpoch 9223372036854775807 }}

@@ -136,7 +136,7 @@
     <!-- Validator Lifecycle State Diagram -->
     <div id="validating-overview">
       <div>
-        <div class="style-validator-overview-header"> Rank </div>
+        <div class="style-validator-overview-header">Rank</div>
         <a class="no-highlight style-validator-overview-value" href="/validators/leaderboard">
           {{ if gt .Rank7d 0 }}
             {{ .Rank7d }}
@@ -173,7 +173,7 @@
 
 {{ define "validatorOverviewExited" }}
   {{ with .Data }}
-    <div {{ if .Slashed }} id="validating-overview" {{ else }} class="d-flex justify-content-around" style="max-width: 30rem; margin: auto; line-height: 1;" {{ end }}>
+    <div {{ if .Slashed }}id="validating-overview"{{ else }}class="d-flex justify-content-around" style="max-width: 30rem; margin: auto; line-height: 1;"{{ end }}>
       {{ if .Slashed }}
         <div>
           <div class="style-validator-overview-header">Slashed by</div>
