@@ -18,13 +18,13 @@ import (
 )
 
 func Eth1Blocks(w http.ResponseWriter, r *http.Request) {
-
-	var eth1BlocksTemplate = templates.GetTemplate("layout.html", "execution/blocks.html")
+	templateFiles := append(layoutTemplateFiles, "execution/blocks.html")
+	var eth1BlocksTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "blockchain", "/eth1blocks", "Ethereum Blocks")
-	if handleTemplateError(w, r, eth1BlocksTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	data := InitPageData(w, r, "blockchain", "/eth1blocks", "Ethereum Blocks", templateFiles)
+	if handleTemplateError(w, r, "eth1Blocks.go", "Eth1Blocks", "", eth1BlocksTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -227,10 +227,10 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 			proposer,                           // Proposer
 			fmt.Sprintf(`<span data-toggle="tooltip" data-placement="top" title="%d transactions (%d internal transactions)">%d<BR /><span style="font-size: .63rem; color: grey;">%d</span></span>`, b.GetTransactionCount(), b.GetInternalTransactionCount(), b.GetTransactionCount(), b.GetInternalTransactionCount()),                                                                                                                                                                               // Transactions
 			fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="Gas Used %%" style="font-size: .63rem; color: grey;">%.2f%%</span>&nbsp;<span data-toggle="tooltip" data-placement="top" title="%% of Gas Target" style="font-size: .63rem; color: grey;">(%+.2f%%)</span>`, utils.FormatAddCommas(b.GetGasUsed()), float64(int64(float64(b.GetGasUsed())/float64(b.GetGasLimit())*10000.0))/100.0, float64(int64(((float64(b.GetGasUsed())-gasHalf)/gasHalf)*10000.0))/100.0), // Gas Used
-			utils.FormatAddCommas(b.GetGasLimit()),                              // Gas Limit
-			utils.FormatAmountFormated(baseFee, "GWei", 5, 4, true, true, true), // Base Fee
-			utils.FormatAmountFormated(new(big.Int).Add(utils.Eth1BlockReward(blockNumber, b.GetDifficulty()), new(big.Int).Add(txReward, new(big.Int).SetBytes(b.GetUncleReward()))), "ETH", 5, 4, true, true, true),                                                                         // Reward
-			fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="%% of Transactions Fees" style="font-size: .63rem; color: grey;">%.2f%%</span>`, utils.FormatAmountFormated(burned, "ETH", 5, 4, true, true, false), float64(int64(burnedPercentage*10000.0))/100.0), // Burned Fees
+			utils.FormatAddCommas(b.GetGasLimit()),                               // Gas Limit
+			utils.FormatAmountFormatted(baseFee, "GWei", 5, 4, true, true, true), // Base Fee
+			utils.FormatAmountFormatted(new(big.Int).Add(utils.Eth1BlockReward(blockNumber, b.GetDifficulty()), new(big.Int).Add(txReward, new(big.Int).SetBytes(b.GetUncleReward()))), "Ether", 5, 4, true, true, true),                                                                         // Reward
+			fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="%% of Transactions Fees" style="font-size: .63rem; color: grey;">%.2f%%</span>`, utils.FormatAmountFormatted(burned, "Ether", 5, 4, true, true, false), float64(int64(burnedPercentage*10000.0))/100.0), // Burned Fees
 		}
 	}
 

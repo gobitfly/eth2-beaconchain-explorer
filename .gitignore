@@ -28,3 +28,4 @@ tokenlists/
 lastAttestationCache
 cmd/forkwatch
 **/.DS_Store
+_gitignore/

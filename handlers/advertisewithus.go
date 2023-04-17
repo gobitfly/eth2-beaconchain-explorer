@@ -11,13 +11,14 @@ import (
 )
 
 func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
-	var advertisewithusTemplate = templates.GetTemplate("layout.html", "advertisewithus.html")
+	templateFiles := append(layoutTemplateFiles, "advertisewithus.html")
+	var advertisewithusTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "advertisewithus", "/advertisewithus", "Adverstise With Us")
+	data := InitPageData(w, r, "advertisewithus", "/advertisewithus", "Adverstise With Us", templateFiles)
 
 	pageData := &types.AdvertiseWithUsPageData{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
@@ -30,7 +31,7 @@ func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data = pageData
-	if handleTemplateError(w, r, advertisewithusTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "advertisewithus.go", "AdvertiseWithUs", "", advertisewithusTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -55,7 +56,7 @@ func AdvertiseWithUsPost(w http.ResponseWriter, r *http.Request) {
 		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
 		if err != nil || !valid {
 			utils.SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
-			logger.Errorf("error validating recaptcha %v route: %v", r.URL.String(), err)
+			logger.Warnf("error validating recaptcha %v route: %v", r.URL.String(), err)
 			http.Redirect(w, r, "/pricing", http.StatusSeeOther)
 			return
 		}

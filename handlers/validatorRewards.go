@@ -28,13 +28,14 @@ type rewardsResp struct {
 }
 
 func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
-	var validatorRewardsServicesTemplate = templates.GetTemplate("layout.html", "validatorRewards.html")
+	templateFiles := append(layoutTemplateFiles, "validatorRewards.html")
+	var validatorRewardsServicesTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/rewards", "Ethereum Validator Rewards")
+	data := InitPageData(w, r, "services", "/rewards", "Ethereum Validator Rewards", templateFiles)
 
 	var supportedCurrencies []string
 	err = db.ReaderDb.Select(&supportedCurrencies,
@@ -42,29 +43,30 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 			from information_schema.columns 
 			where table_name = 'price'`)
 	if err != nil {
-		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
+		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %v", err)
 	}
 
 	var minTime time.Time
 	err = db.ReaderDb.Get(&minTime,
 		`select ts from price order by ts asc limit 1`)
 	if err != nil {
-		logger.Errorf("error getting min ts: %w", err)
+		logger.Errorf("error getting min ts: %v", err)
 	}
 
 	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), MinDateTimestamp: uint64(minTime.Unix()), ShowSubscriptions: data.User.Authenticated}
 
-	if handleTemplateError(w, r, validatorRewardsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "validatorRewards.go", "ValidatorRewards", "", validatorRewardsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
 
 func getUserRewardSubscriptions(uid uint64) [][]string {
 	var dbResp []types.Subscription
+
 	err := db.FrontendWriterDB.Select(&dbResp,
-		`select * from users_subscriptions where event_name=$1 AND user_id=$2`, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName), uid)
+		`select id, user_id, event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold, unsubscribe_hash, internal_state from users_subscriptions where event_name=$1 AND user_id=$2`, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName), uid)
 	if err != nil {
-		logger.Errorf("error getting prices: %w", err)
+		logger.Errorf("error getting prices: %v", err)
 	}
 
 	res := make([][]string, len(dbResp))
@@ -91,7 +93,7 @@ func isValidCurrency(currency string) bool {
 		from information_schema.columns 
 		where table_name = 'price' AND column_name=$1;`, currency)
 	if err != nil {
-		logger.Errorf("error checking currency: %w", err)
+		logger.Errorf("error checking currency: %v", err)
 		return false
 	}
 

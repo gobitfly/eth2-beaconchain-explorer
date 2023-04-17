@@ -15,17 +15,13 @@ import (
 )
 
 func Pricing(w http.ResponseWriter, r *http.Request) {
-
-	var pricingTemplate = templates.GetTemplate(
-		"layout.html",
-		"payment/pricing.html",
-		"svg/pricing.html",
-	)
+	templateFiles := append(layoutTemplateFiles, "payment/pricing.html", "svg/pricing.html")
+	var pricingTemplate = templates.GetTemplate(templateFiles...)
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "pricing", "/pricing", "API Pricing")
+	data := InitPageData(w, r, "pricing", "/pricing", "API Pricing", templateFiles)
 
 	pageData := &types.ApiPricing{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
@@ -56,24 +52,20 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = pageData
 
-	if handleTemplateError(w, r, pricingTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "pricing.go", "Pricing", "", pricingTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
 
 func MobilePricing(w http.ResponseWriter, r *http.Request) {
 
-	var mobilePricingTemplate = templates.GetTemplate(
-		"layout.html",
-		"payment/mobilepricing.html",
-		"svg/mobilepricing.html",
-	)
+	templateFiles := append(layoutTemplateFiles, "payment/mobilepricing.html", "svg/mobilepricing.html")
+	var mobilePricingTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
-
-	data := InitPageData(w, r, "premium", "/premium", "Premium Pricing")
+	data := InitPageData(w, r, "premium", "/premium", "Premium Pricing", templateFiles)
 
 	pageData := &types.MobilePricing{}
 	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
@@ -112,7 +104,7 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = pageData
 
-	if handleTemplateError(w, r, mobilePricingTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "pricing.go", "MobilePricing", "", mobilePricingTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -139,7 +131,7 @@ func PricingPost(w http.ResponseWriter, r *http.Request) {
 		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
 		if err != nil || !valid {
 			utils.SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
-			logger.Errorf("error validating recaptcha %v route: %v", r.URL.String(), err)
+			logger.Warnf("error validating recaptcha %v route: %v", r.URL.String(), err)
 			http.Redirect(w, r, "/pricing", http.StatusSeeOther)
 			return
 		}

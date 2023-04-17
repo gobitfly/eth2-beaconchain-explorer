@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/jackc/pgtype"
 	"github.com/pkg/errors"
@@ -81,9 +82,6 @@ type Validator struct {
 	WithdrawalCredentials      []byte `db:"withdrawalcredentials"`
 
 	BalanceActivation sql.NullInt64 `db:"balanceactivation"`
-	Balance1d         sql.NullInt64 `db:"balance1d"`
-	Balance7d         sql.NullInt64 `db:"balance7d"`
-	Balance31d        sql.NullInt64 `db:"balance31d"`
 	Status            string        `db:"status"`
 
 	LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`
@@ -93,7 +91,7 @@ type Validator struct {
 // ValidatorQueue is a struct to hold validator queue data
 type ValidatorQueue struct {
 	Activating uint64
-	Exititing  uint64
+	Exiting    uint64
 }
 
 type SyncAggregate struct {
@@ -105,25 +103,37 @@ type SyncAggregate struct {
 
 // Block is a struct to hold block data
 type Block struct {
-	Status            uint64
-	Proposer          uint64
-	BlockRoot         []byte
-	Slot              uint64
-	ParentRoot        []byte
-	StateRoot         []byte
-	Signature         []byte
-	RandaoReveal      []byte
-	Graffiti          []byte
-	Eth1Data          *Eth1Data
-	BodyRoot          []byte
-	ProposerSlashings []*ProposerSlashing
-	AttesterSlashings []*AttesterSlashing
-	Attestations      []*Attestation
-	Deposits          []*Deposit
-	VoluntaryExits    []*VoluntaryExit
-	SyncAggregate     *SyncAggregate    // warning: sync aggregate may be nil, for phase0 blocks
-	ExecutionPayload  *ExecutionPayload // warning: payload may be nil, for phase0/altair blocks
-	Canonical         bool
+	Status                     uint64
+	Proposer                   uint64
+	BlockRoot                  []byte
+	Slot                       uint64
+	ParentRoot                 []byte
+	StateRoot                  []byte
+	Signature                  []byte
+	RandaoReveal               []byte
+	Graffiti                   []byte
+	Eth1Data                   *Eth1Data
+	BodyRoot                   []byte
+	ProposerSlashings          []*ProposerSlashing
+	AttesterSlashings          []*AttesterSlashing
+	Attestations               []*Attestation
+	Deposits                   []*Deposit
+	VoluntaryExits             []*VoluntaryExit
+	SyncAggregate              *SyncAggregate    // warning: sync aggregate may be nil, for phase0 blocks
+	ExecutionPayload           *ExecutionPayload // warning: payload may be nil, for phase0/altair blocks
+	Canonical                  bool
+	SignedBLSToExecutionChange []*SignedBLSToExecutionChange
+}
+
+type SignedBLSToExecutionChange struct {
+	Message   BLSToExecutionChange
+	Signature []byte
+}
+
+type BLSToExecutionChange struct {
+	Validatorindex uint64
+	BlsPubkey      []byte
+	Address        []byte
 }
 
 type Transaction struct {
@@ -159,6 +169,31 @@ type ExecutionPayload struct {
 	BaseFeePerGas uint64
 	BlockHash     []byte
 	Transactions  []*Transaction
+	Withdrawals   []*Withdrawals
+}
+
+type Withdrawals struct {
+	Slot           uint64 `json:"slot,omitempty"`
+	BlockRoot      []byte `json:"blockroot,omitempty"`
+	Index          uint64 `json:"index"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+	Address        []byte `json:"address"`
+	Amount         uint64 `json:"amount"`
+}
+
+type WithdrawalsByEpoch struct {
+	Epoch          uint64
+	ValidatorIndex uint64
+	Amount         uint64
+}
+
+type WithdrawalsNotification struct {
+	Slot           uint64 `json:"slot,omitempty"`
+	Index          uint64 `json:"index"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+	Address        []byte `json:"address"`
+	Amount         uint64 `json:"amount"`
+	Pubkey         []byte `json:"pubkey"`
 }
 
 // Eth1Data is a struct to hold the ETH1 data
@@ -476,13 +511,15 @@ type HistoricEthPrice struct {
 }
 
 type Relay struct {
-	ID          string         `db:"tag_id"`
-	Endpoint    string         `db:"endpoint"`
-	Link        sql.NullString `db:"public_link"`
-	IsCensoring sql.NullBool   `db:"is_censoring"`
-	IsEthical   sql.NullBool   `db:"is_ethical"`
-	Name        string         `db:"name"`
-	Logger      logrus.Entry
+	ID                  string         `db:"tag_id"`
+	Endpoint            string         `db:"endpoint"`
+	Link                sql.NullString `db:"public_link"`
+	IsCensoring         sql.NullBool   `db:"is_censoring"`
+	IsEthical           sql.NullBool   `db:"is_ethical"`
+	ExportFailureCount  uint64         `db:"export_failure_count"`
+	LastExportTryTs     time.Time      `db:"last_export_try_ts"`
+	LastExportSuccessTs time.Time      `db:"last_export_success_ts"`
+	Logger              logrus.Entry
 }
 
 type RelayBlock struct {

@@ -23,7 +23,7 @@ func bundle(staticDir string) (map[string]string, error) {
 
 	fileInfo, err := os.Stat(staticDir)
 	if err != nil {
-		return nameMapping, fmt.Errorf("error getting stats about the static dir", err)
+		return nameMapping, fmt.Errorf("error getting stats about the static dir: %v", err)
 	}
 
 	if !fileInfo.IsDir() {
@@ -34,7 +34,7 @@ func bundle(staticDir string) (map[string]string, error) {
 	if _, err := os.Stat(bundleDir); os.IsNotExist(err) {
 		os.Mkdir(bundleDir, 0755)
 	} else if err != nil {
-		return nameMapping, fmt.Errorf("error getting stats about the bundle dir", err)
+		return nameMapping, fmt.Errorf("error getting stats about the bundle dir: %v", err)
 	}
 
 	type fileType struct {

@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
 	"net/http"
 )
 
@@ -37,21 +38,17 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	)
 
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "index", "", "")
-	data.Data = services.LatestIndexPageData()
+	data := InitPageData(w, r, "index", "", "", indexTemplateFiles)
+	pageData := services.LatestIndexPageData()
 
 	// data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
-	data.Data.(*types.IndexPageData).Countdown = utils.Config.Frontend.Countdown
+	pageData.Countdown = utils.Config.Frontend.Countdown
 
-	// data.Data.(*types.IndexPageData).SlotVizData = struct {
-	// 	Epochs   []*types.SlotVizEpochs
-	// 	Selector string
-	// }{
-	// 	Epochs:   services.LatestSlotVizMetrics(),
-	// 	Selector: "slotsViz",
-	// }
+	pageData.SlotVizData = getSlotVizData(data.CurrentEpoch)
 
-	if handleTemplateError(w, r, indexTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	data.Data = pageData
+
+	if handleTemplateError(w, r, "index.go", "Index", "", indexTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -59,6 +56,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 // IndexPageData will show the main "index" page in json format
 func IndexPageData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", utils.Config.Chain.Config.SecondsPerSlot)) // set local cache to the seconds per slot interval
 
 	err := json.NewEncoder(w).Encode(services.LatestIndexPageData())
 
@@ -67,4 +65,32 @@ func IndexPageData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
+}
+
+func getSlotVizData(currentEpoch uint64) *types.SlotVizPageData {
+	var visiblFrom uint64
+	var visibleTo uint64
+	configuration, err := services.GetExplorerConfigurationsWithDefaults()
+	if err != nil {
+		utils.LogError(err, "Could not load SlotViz configuration for index page", 0)
+		return nil
+	}
+	visiblFrom, err = configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleFromEpoch)
+	if err != nil {
+		utils.LogError(err, "Could not get visbleFrom for SlotViz on index page", 0)
+		return nil
+	}
+	visibleTo, err = configuration.GetUInt64Value(services.ConfigurationCategorySlotViz, services.ConfigurationKeyVisibleToEpoch)
+	if err != nil {
+		utils.LogError(err, "Could not get visibleTo for SlotViz on index page", 0)
+		return nil
+	}
+	if visiblFrom <= currentEpoch && visibleTo >= currentEpoch {
+		return &types.SlotVizPageData{
+			Epochs:   services.LatestSlotVizMetrics(),
+			Selector: "slotsViz",
+			Config:   configuration[services.ConfigurationCategorySlotViz]}
+
+	}
+	return nil
 }

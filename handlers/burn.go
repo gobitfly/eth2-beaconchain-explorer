@@ -10,9 +10,10 @@ import (
 
 func Burn(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	data := InitPageData(w, r, "burn", "/burn", "Eth Burned")
+	templateFiles := append(layoutTemplateFiles, "burn.html")
+	data := InitPageData(w, r, "burn", "/burn", "Eth Burned", templateFiles)
 
-	var burnTemplate = templates.GetTemplate("layout.html", "burn.html")
+	var burnTemplate = templates.GetTemplate(templateFiles...)
 
 	// data.Meta.Tdata1 = utils.FormatAmount((data.Data.(*types.BurnPageData).TotalBurned / 1e18) * data.Data.(*types.BurnPageData).Price)
 	// data.Meta.Tdata2 = utils.FormatAmount(data.Data.(*types.BurnPageData).BurnRate24h/1e18) + " ETH/min"
@@ -32,7 +33,7 @@ func Burn(w http.ResponseWriter, r *http.Request) {
 	latestBurn.Currency = currency
 
 	data.Data = latestBurn
-	if handleTemplateError(w, r, burnTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "burn.go", "Burn", "", burnTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

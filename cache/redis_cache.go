@@ -17,7 +17,8 @@ type RedisCache struct {
 
 func InitRedisCache(ctx context.Context, redisAddress string) (*RedisCache, error) {
 	rdc := redis.NewClient(&redis.Options{
-		Addr: redisAddress,
+		Addr:        redisAddress,
+		ReadTimeout: time.Second * 20,
 	})
 
 	if err := rdc.Ping(ctx).Err(); err != nil {
@@ -62,6 +63,24 @@ func (cache *RedisCache) GetUint64(ctx context.Context, key string) (uint64, err
 	return returnValue, nil
 }
 
+func (cache *RedisCache) SetBool(ctx context.Context, key string, value bool, expiration time.Duration) error {
+	return cache.redisRemoteCache.Set(ctx, key, fmt.Sprintf("%t", value), expiration).Err()
+}
+
+func (cache *RedisCache) GetBool(ctx context.Context, key string) (bool, error) {
+
+	value, err := cache.redisRemoteCache.Get(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+
+	returnValue, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, err
+	}
+	return returnValue, nil
+}
+
 func (cache *RedisCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
 	valueMarshal, err := json.Marshal(value)
 	if err != nil {
@@ -79,7 +98,7 @@ func (cache *RedisCache) Get(ctx context.Context, key string, returnValue interf
 	err = json.Unmarshal([]byte(value), returnValue)
 	if err != nil {
 		cache.redisRemoteCache.Del(ctx, key).Err()
-		logrus.Warnf("error unmarshalling data for key %v: %v", key, err)
+		logrus.Errorf("error (redit_cache / Get) unmarshalling data for key %v: %v", key, err)
 		return nil, err
 	}
 

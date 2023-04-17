@@ -78,6 +78,9 @@ func Init() {
 	ready.Add(1)
 	go ethStoreStatisticsDataUpdater(ready)
 
+	ready.Add(1)
+	go startMonitoringService(ready)
+
 	ready.Wait()
 }
 
@@ -127,7 +130,13 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			relays.is_censoring as censors,
 			relays.is_ethical as ethical,
 			stats.block_count / (select max(blocks.slot) - $1 from blocks)::float as network_usage,
-			stats.*
+			stats.relay_id,
+			stats.block_count,
+			stats.total_value,
+			stats.avg_value,
+			stats.unique_builders,
+			stats.max_value,
+			stats.max_value_slot
 		from relays
 		left join stats on stats.relay_id = relays.tag_id
 		left join tags on tags.id = relays.tag_id 
@@ -142,9 +151,14 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 	dayInSlots := 24 * 60 * 60 / utils.Config.Chain.Config.SecondsPerSlot
 
 	tmp := [3]types.RelayInfoContainer{{Days: 7}, {Days: 31}, {Days: 180}}
+	latest := LatestSlot()
 	for i := 0; i < len(tmp); i++ {
 		tmp[i].IsFirst = i == 0
-		err = overallStatsQuery.Select(&tmp[i].RelaysInfo, LatestSlot()-(tmp[i].Days*dayInSlots))
+		var forSlot uint64 = 0
+		if latest > tmp[i].Days*dayInSlots {
+			forSlot = latest - (tmp[i].Days * dayInSlots)
+		}
+		err = overallStatsQuery.Select(&tmp[i].RelaysInfo, forSlot)
 		if err != nil {
 			return nil, err
 		}
@@ -155,6 +169,10 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 	}
 	relaysData.RelaysInfoContainers = tmp
 
+	var forSlot uint64 = 0
+	if latest > (14 * dayInSlots) {
+		forSlot = latest - (14 * dayInSlots)
+	}
 	err = db.ReaderDb.Select(&relaysData.TopBuilders, `
 		select 
 			builder_pubkey,
@@ -175,7 +193,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 					limit 1
 				) as latest_slot
 			from (
-				select * 
+				select builder_pubkey, tag_id
 				from relays_blocks
 				where block_slot > $1
 				order by block_slot desc) rb
@@ -183,7 +201,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 		) foo
 		left join tags on tags.id = foo.tag_id
 		group by builder_pubkey 
-		order by c desc`, LatestSlot()-(14*dayInSlots))
+		order by c desc`, forSlot)
 	if err != nil {
 		logger.Errorf("failed to get builder ranking %v", err)
 		return nil, err
@@ -237,7 +255,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			validators.validatorindex as proposer,
 			encode(exec_extra_data, 'hex') as block_extra_data
 		from (
-			select * 
+			select value, block_slot, builder_pubkey, proposer_fee_recipient, block_root, tag_id, proposer_pubkey
 			from relays_blocks
 			where relays_blocks.block_root not in (select bt.blockroot from blocks_tags bt where bt.tag_id='invalid-relay-reward') 
 			order by relays_blocks.value desc
@@ -323,7 +341,7 @@ func epochUpdater(wg *sync.WaitGroup) {
 
 		// latest exported epoch
 		var epoch uint64
-		err = db.WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM blocks")
+		err = db.WriterDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 		if err != nil {
 			logger.Errorf("error retrieving latest exported epoch from the database: %v", err)
 		} else {
@@ -526,21 +544,19 @@ func slotVizUpdater(wg *sync.WaitGroup) {
 
 	for {
 		latestEpoch := LatestEpoch()
-		if latestEpoch > 0 {
-			epochData, err := db.GetSlotVizData(latestEpoch)
+		epochData, err := db.GetSlotVizData(latestEpoch)
+		if err != nil {
+			logger.Errorf("error retrieving slot viz data from database: %v latest epoch: %v", err, latestEpoch)
+		} else {
+			cacheKey := fmt.Sprintf("%d:frontend:slotVizMetrics", utils.Config.Chain.Config.DepositChainID)
+			err = cache.TieredCache.Set(cacheKey, epochData, time.Hour*24)
 			if err != nil {
-				logger.Errorf("error retrieving slot viz data from database: %v latest epoch: %v", err, latestEpoch)
-			} else {
-				cacheKey := fmt.Sprintf("%d:frontend:slotVizMetrics", utils.Config.Chain.Config.DepositChainID)
-				err = cache.TieredCache.Set(cacheKey, epochData, time.Hour*24)
-				if err != nil {
-					logger.Errorf("error caching slotVizMetrics: %v", err)
-				}
-				if firstRun {
-					logger.Info("initialized slotViz metrics")
-					wg.Done()
-					firstRun = false
-				}
+				logger.Errorf("error caching slotVizMetrics: %v", err)
+			}
+			if firstRun {
+				logger.Info("initialized slotViz metrics")
+				wg.Done()
+				firstRun = false
 			}
 		}
 		ReportStatus("slotVizUpdater", "Running", nil)
@@ -564,11 +580,15 @@ func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
 	}
 	daysLastIndex := len(ethStoreDays) - 1
 
+	if daysLastIndex < 0 {
+		return nil, fmt.Errorf("no eth store stats found in db")
+	}
+
 	effectiveBalances := [][]float64{}
 	totalRewards := [][]float64{}
 	aprs := [][]float64{}
 	for _, stat := range ethStoreDays {
-		ts := float64(utils.EpochToTime(stat.Day*225).Unix()) * 1000
+		ts := float64(utils.EpochToTime(stat.Day*utils.EpochsPerDay()).Unix()) * 1000
 
 		effectiveBalances = append(effectiveBalances, []float64{
 			ts,
@@ -591,10 +611,10 @@ func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
 		TotalRewards:              totalRewards,
 		APRs:                      aprs,
 		ProjectedAPR:              ethStoreDays[daysLastIndex].APR.Mul(decimal.NewFromInt(100)).InexactFloat64(),
-		StartEpoch:                ethStoreDays[daysLastIndex].Day * 225,
+		StartEpoch:                ethStoreDays[daysLastIndex].Day * utils.EpochsPerDay(),
 		YesterdayRewards:          ethStoreDays[daysLastIndex].TotalRewardsWei.Div(decimal.NewFromInt(1e18)).InexactFloat64(),
 		YesterdayEffectiveBalance: ethStoreDays[daysLastIndex].EffectiveBalancesSum.Div(decimal.NewFromInt(1e18)).InexactFloat64(),
-		YesterdayTs:               utils.EpochToTime(ethStoreDays[daysLastIndex].Day * 225).Unix(),
+		YesterdayTs:               utils.EpochToTime(ethStoreDays[daysLastIndex].Day * utils.EpochsPerDay()).Unix(),
 	}
 
 	return data, nil
@@ -660,7 +680,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
 		genesisDelay := time.Duration(int64(utils.Config.Chain.Config.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
 
-		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+		minGenesisTime := time.Unix(int64(utils.Config.Chain.Config.MinGenesisTime), 0)
 
 		data.MinGenesisTime = minGenesisTime.Unix()
 		data.NetworkStartTs = minGenesisTime.Add(genesisDelay).Unix()
@@ -699,13 +719,17 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	if data.DepositChart != nil && data.DepositChart.Data != nil && data.DepositChart.Data.Series != nil {
 		series := data.DepositChart.Data.Series
 		if len(series) > 2 {
-			points := series[1].Data.([][]float64)
-			periodDays := float64(len(points))
-			avgDepositPerDay := data.DepositedTotal / periodDays
-			daysUntilThreshold := (data.DepositThreshold - data.DepositedTotal) / avgDepositPerDay
-			estimatedTimeToThreshold := time.Now().Add(time.Hour * 24 * time.Duration(daysUntilThreshold))
-			if estimatedTimeToThreshold.After(time.Unix(data.NetworkStartTs, 0)) {
-				data.NetworkStartTs = estimatedTimeToThreshold.Add(time.Duration(int64(utils.Config.Chain.Config.GenesisDelay) * 1000 * 1000 * 1000)).Unix()
+			points, ok := series[1].Data.([][]float64)
+			if !ok {
+				logger.Errorf("error parsing deposit chart data could not convert  series to [][]float64 series: %+v", series[1].Data)
+			} else {
+				periodDays := float64(len(points))
+				avgDepositPerDay := data.DepositedTotal / periodDays
+				daysUntilThreshold := (data.DepositThreshold - data.DepositedTotal) / avgDepositPerDay
+				estimatedTimeToThreshold := time.Now().Add(time.Hour * 24 * time.Duration(daysUntilThreshold))
+				if estimatedTimeToThreshold.After(time.Unix(data.NetworkStartTs, 0)) {
+					data.NetworkStartTs = estimatedTimeToThreshold.Add(time.Duration(int64(utils.Config.Chain.Config.GenesisDelay) * 1000 * 1000 * 1000)).Unix()
+				}
 			}
 		}
 	}
@@ -1107,38 +1131,7 @@ func LatestIndexPageData() *types.IndexPageData {
 	} else {
 		logger.Errorf("error retrieving indexPageData from cache: %v", err)
 	}
-	return &types.IndexPageData{
-		NetworkName:           "",
-		DepositContract:       "",
-		ShowSyncingMessage:    false,
-		CurrentEpoch:          0,
-		CurrentFinalizedEpoch: 0,
-		CurrentBlock:          0,
-		ScheduledCount:        0,
-		FinalityDelay:         0,
-		ActiveValidators:      0,
-		EnteringValidators:    0,
-		ExitingValidators:     0,
-		StakedEther:           "",
-		AverageBalance:        "",
-		DepositedTotal:        0,
-		DepositThreshold:      0,
-		ValidatorsRemaining:   0,
-		NetworkStartTs:        0,
-		MinGenesisTime:        0,
-		Blocks:                []*types.IndexPageDataBlocks{},
-		Epochs:                []*types.IndexPageDataEpochs{},
-		//StakedEtherChartData:      [][]float64{},
-		//ActiveValidatorsChartData: [][]float64{},
-		Subtitle:            "",
-		Genesis:             false,
-		GenesisPeriod:       false,
-		Mainnet:             false,
-		DepositChart:        &types.ChartsPageDataChart{},
-		DepositDistribution: &types.ChartsPageDataChart{},
-		Countdown:           nil,
-		SlotVizData:         types.SlotVizPageData{},
-	}
+	return &types.IndexPageData{}
 }
 
 // LatestPoolsPageData returns the latest pools page data
@@ -1251,13 +1244,36 @@ func GetLatestStats() *types.Stats {
 				DepositCount: 0,
 			},
 		},
-		InvalidDepositCount:   new(uint64),
-		UniqueValidatorCount:  new(uint64),
-		TotalValidatorCount:   new(uint64),
-		ActiveValidatorCount:  new(uint64),
-		PendingValidatorCount: new(uint64),
-		ValidatorChurnLimit:   new(uint64),
+		InvalidDepositCount:            new(uint64),
+		UniqueValidatorCount:           new(uint64),
+		TotalValidatorCount:            new(uint64),
+		ActiveValidatorCount:           new(uint64),
+		PendingValidatorCount:          new(uint64),
+		ValidatorChurnLimit:            new(uint64),
+		LatestValidatorWithdrawalIndex: new(uint64),
 	}
+}
+
+var globalNotificationMessage = template.HTML("")
+var globalNotificationMessageTs time.Time
+var globalNotificationMux = &sync.Mutex{}
+
+func GlobalNotificationMessage() template.HTML {
+	globalNotificationMux.Lock()
+	defer globalNotificationMux.Unlock()
+
+	if time.Since(globalNotificationMessageTs) > time.Minute*10 {
+		globalNotificationMessageTs = time.Now()
+
+		err := db.WriterDb.Get(&globalNotificationMessage, "SELECT content FROM global_notifications WHERE target = $1 AND enabled", utils.Config.Chain.Name)
+
+		if err != nil && err != sql.ErrNoRows {
+			logger.Errorf("error updating global notification message: %v", err)
+			globalNotificationMessage = ""
+			return globalNotificationMessage
+		}
+	}
+	return globalNotificationMessage
 }
 
 // IsSyncing returns true if the chain is still syncing
@@ -1299,11 +1315,16 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		return nil, err
 	}
 	var raw json.RawMessage
-
 	err = client.Call(&raw, "eth_getBlockByNumber", "pending", true)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving pending block data: %v", err)
 	}
+
+	// var res map[string]interface{}
+	// err = json.Unmarshal(raw, &res)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	var header *geth_types.Header
 	var body rpcBlock
@@ -1328,18 +1349,19 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		gpoData.Data.Rapid = medianGasPrice
 		gpoData.Data.Fast = tailGasPrice
 	} else {
-		return nil, fmt.Errorf("current pending block contains no tx")
+		gpoData.Data.Rapid = new(big.Int)
+		gpoData.Data.Fast = new(big.Int)
 	}
 
 	err = client.Call(&raw, "txpool_content")
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogFatal(err, "error getting raw json data from txpool_content", 0)
 	}
 
 	txPoolContent := &TxPoolContent{}
 	err = json.Unmarshal(raw, txPoolContent)
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogFatal(err, "unmarshal txpoolcontent json error", 0)
 	}
 
 	pendingTxs := make([]*geth_types.Transaction, 0, len(txPoolContent.Pending))
@@ -1426,7 +1448,7 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 		if client == nil {
 			client, err = geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
 			if err != nil {
-				logrus.Error("can't connect to geth node: ", err)
+				utils.LogError(err, "can't connect to geth node", 0)
 				time.Sleep(time.Second * 30)
 				continue
 			}
@@ -1448,10 +1470,40 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 			errorCount = 0
 		}
 
+		mempoolTx.TxsByHash = make(map[common.Hash]*types.RawMempoolTransaction)
+
+		for _, txs := range mempoolTx.Pending {
+			for _, tx := range txs {
+				mempoolTx.TxsByHash[tx.Hash] = tx
+
+				if tx.GasPrice == nil {
+					tx.GasPrice = tx.GasFeeCap
+				}
+			}
+		}
+		for _, txs := range mempoolTx.Queued {
+			for _, tx := range txs {
+				mempoolTx.TxsByHash[tx.Hash] = tx
+
+				if tx.GasPrice == nil {
+					tx.GasPrice = tx.GasFeeCap
+				}
+			}
+		}
+		for _, txs := range mempoolTx.BaseFee {
+			for _, tx := range txs {
+				mempoolTx.TxsByHash[tx.Hash] = tx
+
+				if tx.GasPrice == nil {
+					tx.GasPrice = tx.GasFeeCap
+				}
+			}
+		}
+
 		cacheKey := fmt.Sprintf("%d:frontend:mempool", utils.Config.Chain.Config.DepositChainID)
 		err = cache.TieredCache.Set(cacheKey, mempoolTx, time.Hour*24)
 		if err != nil {
-			logger.Errorf("error caching relaysData: %v", err)
+			logger.Errorf("error caching mempool data: %v", err)
 		}
 		if firstRun {
 			logger.Info("initialized mempool updater")
@@ -1532,7 +1584,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	// }
 
 	// swap this for GetEpochIncomeHistory in the future
-	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, latestEpoch, 10)
+	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, latestEpoch-10, latestBlock)
 	if err != nil {
 		logger.WithError(err).Error("error getting validator income history")
 	}
@@ -1586,12 +1638,12 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	logger.Infof("burn rate per min: %v inflation per min: %v emission: %v", data.BurnRate1h, rewards.InexactFloat64(), data.Emission)
 	// logger.Infof("calculated emission: %v", data.Emission)
 
-	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", latestEpoch-225)
+	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", latestEpoch-utils.EpochsPerDay())
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (24h) from blocks table: %v", err)
 	}
 
-	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(exec_gas_used::numeric * 100 / exec_gas_limit) from blocks where epoch >= $1 and exec_gas_used > 0 and exec_gas_limit > 0", latestEpoch-225)
+	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(exec_gas_used::numeric * 100 / exec_gas_limit) from blocks where epoch >= $1 and exec_gas_used > 0 and exec_gas_limit > 0", latestEpoch-utils.EpochsPerDay())
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block utilization from blocks table: %v", err)
 	}

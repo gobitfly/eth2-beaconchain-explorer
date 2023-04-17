@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -139,7 +140,11 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 	}
 
 	// setting tooltip & limit name/address if necessary
+
 	addressString := fmt.Sprintf("0x%x", address)
+	if IsEth1Address(addressString) {
+		addressString = FixAddressCasing(addressString)
+	}
 	tooltip := ""
 	if len(name) == 0 { // no name set
 		tooltip = addressString
@@ -148,14 +153,14 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 		if l <= digitsLimit { // len inside digitsLimits, not much to do
 			name = addressString
 		} else { // reduce to digits limit
-			digitsLimit -= 5                  // we will need 5 digits for 0x & …
-			name = fmt.Sprintf("%x", address) // get hex bytes as string
-			f := digitsLimit / 2              // as this int devision will always cut, we at an odd limit, we will have more digits at the end
-			name = fmt.Sprintf("0x%s…%s", name[:f], name[(l-(digitsLimit-f)):])
+			digitsLimit -= 5     // we will need 5 digits for 0x & …
+			name = addressString // get hex bytes as string
+			f := digitsLimit / 2 // as this int devision will always cut, we at an odd limit, we will have more digits at the end
+			name = fmt.Sprintf("%s…%s", name[:(f+2)], name[(l-(digitsLimit-f)+2):])
 		}
 		name = fmt.Sprintf(`<span class="text-monospace">%s</span>`, name)
 	} else { // name set
-		tooltip = fmt.Sprintf("%s\n0x%x", name, address) // set tool tip first, as we will change name
+		tooltip = fmt.Sprintf("%s\n%s", name, addressString) // set tool tip first, as we will change name
 		// limit name if necessary
 		if nameLimit > 0 && len(name) > nameLimit {
 			name = name[:nameLimit-3] + "…"
@@ -192,15 +197,16 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 func FormatAddressAsLink(address []byte, name string, verified bool, isContract bool) template.HTML {
 	ret := ""
 	name = template.HTMLEscapeString(name)
+	addressString := FixAddressCasing(fmt.Sprintf("%x", address))
 
 	if len(name) > 0 {
 		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/0x%x\">✔ %s (0x%x…%x)</a> %v", address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">✔ %s (%s…%s)</a> %v", addressString, name, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
 		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/0x%x\">%s 0x%x…%x</a> %v", address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">%s %s…%s</a> %v", addressString, name, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
 		}
 	} else {
-		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/0x%x\">0x%x…%x</a> %v", address, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">%s…%s</a> %v", addressString, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
 	}
 
 	if isContract {
@@ -212,15 +218,16 @@ func FormatAddressAsLink(address []byte, name string, verified bool, isContract 
 func FormatAddressAsTokenLink(token, address []byte, name string, verified bool, isContract bool) template.HTML {
 	ret := ""
 	name = template.HTMLEscapeString(name)
+	addressString := FixAddressCasing(fmt.Sprintf("%x", address))
 
 	if len(name) > 0 {
 		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/0x%x?a=0x%x\">✔ %s (0x%x…%x)</a> %v", token, address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/%x?a=%s\">✔ %s (%s…%s)</a> %v", token, addressString, name, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
 		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/0x%x?a=0x%x\">%s 0x%x…%x</a> %v", token, address, name, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/%x?a=%s\">%s %s…%s</a> %v", token, addressString, name, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
 		}
 	} else {
-		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/0x%x?a=0x%x\">0x%x…%x</a> %v", token, address, address[:3], address[len(address)-3:], CopyButton(hex.EncodeToString(address)))
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/token/%x?a=%s\">%s…%s</a> %v", token, addressString, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
 	}
 
 	if isContract {
@@ -245,31 +252,36 @@ func FormatHashLong(hash common.Hash) template.HTML {
 }
 
 func FormatAddressLong(address string) template.HTML {
+	address = FixAddressCasing(address)
 	test := `
-	<span class="text-monospace mw-100"><span class="text-primary">0x%s</span><span class="text-truncate">%s</span><span class="text-primary">%s</span></span>`
+	<span class="text-monospace mw-100"><span class="text-primary">%s</span><span class="text-truncate">%s</span><span class="text-primary">%s</span></span>`
 	if len(address) > 4 {
-		return template.HTML(fmt.Sprintf(test, address[:4], address[4:len(address)-4], address[len(address)-4:]))
+		return template.HTML(fmt.Sprintf(test, address[:6], address[6:len(address)-4], address[len(address)-4:]))
 	}
 
 	return template.HTML(address)
 
 }
 
-func FormatAmountFormated(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
+func FormatAmountFormatted(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
 	return formatAmount(amount, unit, digits, maxPreCommaDigitsBeforeTrim, fullAmountTooltip, smallUnit, newLineForUnit)
 }
 func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
-	return formatAmount(amount, unit, digits, 0, false, false, false)
+	return formatAmount(amount, unit, digits, 0, true, false, false)
+}
+func FormatBigAmount(amount *hexutil.Big, unit string, digits int) template.HTML {
+	return FormatAmount((*big.Int)(amount), unit, digits)
+}
+func FormatBytesAmount(amount []byte, unit string, digits int) template.HTML {
+	return FormatAmount(new(big.Int).SetBytes(amount), unit, digits)
 }
 func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
 	// define display unit & digits used per unit max
-	var displayUnit string
+	displayUnit := " " + unit
 	var unitDigits int
-	if unit == "ETH" {
-		displayUnit = " ETH"
+	if unit == "ETH" || unit == "Ether" {
 		unitDigits = 18
 	} else if unit == "GWei" {
-		displayUnit = " GWei"
 		unitDigits = 9
 	} else {
 		displayUnit = " ?"
@@ -295,18 +307,44 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 		}
 	}
 
-	// split in pre and post part
-	preComma := "0"
+	trimmedAmount, fullAmount := trimAmount(amount, unitDigits, maxPreCommaDigitsBeforeTrim, digits, false)
+	tooltip := ""
+	if fullAmountTooltip {
+		tooltip = fmt.Sprintf(` data-toggle="tooltip" data-placement="top" title="%s"`, fullAmount)
+	}
+
+	// done, convert to HTML & return
+	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, displayUnit))
+}
+
+func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int, digits int, addPositiveSign bool) (trimmedAmount, fullAmount string) {
+	// Initialize trimmedAmount and postComma variables to "0"
+	trimmedAmount = "0"
 	postComma := "0"
+	proceed := ""
+
 	if amount != nil {
 		s := amount.String()
+		if amount.Sign() > 0 && addPositiveSign {
+			proceed = "+"
+		} else if amount.Sign() < 0 {
+			proceed = "-"
+			s = strings.Replace(s, "-", "", 1)
+		}
 		l := len(s)
-		if l > int(unitDigits) { // there is a pre comma part
+
+		// Check if there is a part of the amount before the decimal point
+		if l > int(unitDigits) {
+			// Calculate length of preComma part
 			l -= unitDigits
-			preComma = s[:l]
+			// Set preComma to part of the string before the decimal point
+			trimmedAmount = s[:l]
+			// Set postComma to part of the string after the decimal point, after removing trailing zeros
 			postComma = strings.TrimRight(s[l:], "0")
-			// reduce digits if precomma part exceeds limit
+
+			// Check if the preComma part exceeds the maximum number of digits before the decimal point
 			if maxPreCommaDigitsBeforeTrim > 0 && l > maxPreCommaDigitsBeforeTrim {
+				// Reduce the number of digits after the decimal point by the excess number of digits in the preComma part
 				l -= maxPreCommaDigitsBeforeTrim
 				if digits < l {
 					digits = 0
@@ -314,37 +352,34 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 					digits -= l
 				}
 			}
-
-		} else if l == unitDigits { // there is only post comma part and no leading zeros has to be added
+			// Check if there is only a part of the amount after the decimal point, and no leading zeros need to be added
+		} else if l == unitDigits {
+			// Set postComma to part of the string after the decimal point, after removing trailing zeros
 			postComma = strings.TrimRight(s, "0")
-		} else if l != 0 { // there is only post comma part and leading zeros as to be added
+			// Check if there is only a part of the amount after the decimal point, and leading zeros need to be added
+		} else if l != 0 {
+			// Use fmt package to add leading zeros to the string
 			d := fmt.Sprintf("%%0%dd", unitDigits-l)
+			// Set postComma to resulting string, after removing trailing zeros
 			postComma = strings.TrimRight(fmt.Sprintf(d, 0)+s, "0")
 		}
-	}
 
-	// tooltip
-	var tooltip string
-	if fullAmountTooltip {
-		tooltip = ` data-toggle="tooltip" data-placement="top" title="` + preComma
+		fullAmount = trimmedAmount
 		if len(postComma) > 0 {
-			tooltip += `.` + postComma
+			fullAmount += "." + postComma
 		}
-		tooltip += `"`
-	}
 
-	// limit floating part
-	if len(postComma) > digits {
-		postComma = postComma[:digits]
-	}
+		// limit floating part
+		if len(postComma) > digits {
+			postComma = postComma[:digits]
+		}
 
-	// set floating point
-	if len(postComma) > 0 {
-		preComma += "." + postComma
+		// set floating point
+		if len(postComma) > 0 {
+			trimmedAmount += "." + postComma
+		}
 	}
-
-	// done, convert to HTML & return
-	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, preComma, displayUnit))
+	return proceed + trimmedAmount, proceed + fullAmount
 }
 
 // NewFormat returns a new HTML-formatted string representing the given Wei big.Int amount, with the specified number of digits after the decimal point and number of digits hidden on mobile views.
@@ -379,64 +414,11 @@ func NewFormat(amount *big.Int, unit string, digits int, maxPreCommaDigitsBefore
 		unitDigits = 0
 	}
 
-	// Initialize preComma and postComma variables to "0"
-	preComma := "0"
-	postComma := "0"
-
-	s := amount.String()
-	l := len(s)
-
-	// Check if there is a part of the amount before the decimal point
-	if l > int(unitDigits) {
-		// Calculate length of preComma part
-		l -= unitDigits
-		// Set preComma to part of the string before the decimal point
-		preComma = s[:l]
-		// Set postComma to part of the string after the decimal point, after removing trailing zeros
-		postComma = strings.TrimRight(s[l:], "0")
-
-		// Check if the preComma part exceeds the maximum number of digits before the decimal point
-		if maxPreCommaDigitsBeforeTrim > 0 && l > maxPreCommaDigitsBeforeTrim {
-			// Reduce the number of digits after the decimal point by the excess number of digits in the preComma part
-			l -= maxPreCommaDigitsBeforeTrim
-			if digits < l {
-				digits = 0
-			} else {
-				digits -= l
-			}
-		}
-		// Check if there is only a part of the amount after the decimal point, and no leading zeros need to be added
-	} else if l == unitDigits {
-		// Set postComma to part of the string after the decimal point, after removing trailing zeros
-		postComma = strings.TrimRight(s, "0")
-		// Check if there is only a part of the amount after the decimal point, and leading zeros need to be added
-	} else if l != 0 {
-		// Use fmt package to add leading zeros to the string
-		d := fmt.Sprintf("%%0%dd", unitDigits-l)
-		// Set postComma to resulting string, after removing trailing zeros
-		postComma = strings.TrimRight(fmt.Sprintf(d, 0)+s, "0")
-	}
-
-	// tooltip
-	var tooltip string
-	tooltip = ` data-toggle="tooltip" data-placement="top" title="` + preComma
-	if len(postComma) > 0 {
-		tooltip += `.` + postComma
-	}
-	tooltip += `"`
-
-	// limit floating part
-	if len(postComma) > digits {
-		postComma = postComma[:digits]
-	}
-
-	// set floating point
-	if len(postComma) > 0 {
-		preComma += "." + postComma
-	}
+	trimmedAmount, fullAMount := trimAmount(amount, unitDigits, maxPreCommaDigitsBeforeTrim, digits, false)
+	tooltip := fmt.Sprintf(`data-toggle="tooltip" data-placement="top" title="%s"`, fullAMount)
 
 	// done, convert to HTML & return
-	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, preComma, displayUnit))
+	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, displayUnit))
 }
 
 func FormatMethod(method string) template.HTML {

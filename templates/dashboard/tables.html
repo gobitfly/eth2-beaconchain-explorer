@@ -1,0 +1,93 @@
+{{ define "dashboardWithdrawalTable" }}
+  <div class="table-responsive">
+    <table class="table" style="margin-top: 0 !important;" id="withdrawal-table" width="100%">
+      <thead>
+        <tr>
+          <th>Validator</th>
+          <th>Epoch</th>
+          <th>Slot</th>
+          <th>Time</th>
+          <th>Recipient Address</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <script>
+    function getValidatorString() {
+      var validatorsStr = (validatorsStr = localStorage.getItem("dashboard_validators"))
+
+      if (!validatorsStr) {
+        var usp = new URLSearchParams(window.location.search)
+        validatorsStr = usp.get("validators")
+      }
+      return validatorsStr ? JSON.parse(validatorsStr).join(",") : undefined
+    }
+
+    function isWithdrawalTabActive() {
+      return $("#withdrawal-tab").hasClass("active")
+    }
+
+    window.addEventListener("load", function () {
+      var table
+
+      if (isWithdrawalTabActive()) {
+        createWithdrawalTable()
+      }
+
+      $('a[data-toggle="tab"]').on("shown.bs.tab", function (e) {
+        if (e.target.id === "withdrawal-tab" && !table) {
+          createWithdrawalTable()
+        }
+      })
+      window.addEventListener("dashboard_validators_set", function () {
+        if (isWithdrawalTabActive() || table) {
+          createWithdrawalTable()
+        }
+      })
+
+      function createWithdrawalTable() {
+        if (!table) {
+          table = $("#withdrawal-table").DataTable({
+            processing: true,
+            serverSide: true,
+            stateSave: true,
+            ordering: true,
+            order: [[1, "desc"]],
+            lengthChange: false,
+            searching: false,
+            ajax: {
+              url: `/dashboard/data/withdrawal`,
+              data: function (d) {
+                d.validators = getValidatorString()
+              },
+              dataSrc: function ( { data } ) {
+                // add the estimate row if it exists
+                {{ if .NextWithdrawalRow }}
+                  let row = {{.NextWithdrawalRow}}
+                  if (row && row.length) {
+                    data = row.concat(data)
+                  }
+                {{ end }}
+                return data
+              },
+            },
+            pagingType: "input",
+            pageLength: 10,
+            language: {
+              search: "",
+              paginate: {
+                previous: '<i class="fas fa-chevron-left"></i>',
+                next: '<i class="fas fa-chevron-right"></i>',
+              },
+            },
+          })
+          initializedWithdrawalTable = true
+        } else {
+          table.ajax.reload()
+        }
+      }
+    })
+  </script>
+{{ end }}

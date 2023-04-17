@@ -35,81 +35,54 @@
         <path d="M618.371,552.55988a48,48,0,1,1,23.34031-63.74348A48.05437,48.05437,0,0,1,618.371,552.55988Zm-35.35277-76.19831a36,36,0,1,0,47.80761,17.50523A36.04072,36.04072,0,0,0,583.01827,476.36157Z" transform="translate(-285.31105 -86.11101)" fill="#3f3d56" />
       </svg>
     </div>
-    <script>
-        {{if .DepositChart}}
-    var series = {{.DepositChart.Data.Series}}
-    var filteredSeries = []
-    if (series && series.length && series.length > 1) {
-      filteredSeries.push(series[1])
-      // for (let i = 0; i < series.length; i++) {
-      //   if (series && series[i].data && series[i].data.length) {
-      //       filteredSeries.push(series[i])
-      //   }
-      // }
-    }
-    // Hide eth2 deposit series
-    // if (filteredSeries.length > 1) {
-    //     filteredSeries[0].visible = false
-    // }
-    window.addEventListener('load', function() {
-        Highcharts.stockChart('deposit-chart',{
-            chart: {
-               type: {{.DepositChart.Data.Type}},
-               height: 180,
-            },
-            rangeSelector: {  enabled: false },
-            // title: {
-            //     enabled: false,
-            //     useHTML: true,
-            //     text: '<a href="charts/{{.DepositChart.Path}}">{{.DepositChart.Data.Title}}</a>',
-            // },
-            // subtitle: {
-            //   enabled: false,
-            //   text: {{.DepositChart.Data.Subtitle}}
-            //   },
-            plotOptions: {
+    {{ if .DepositChart }}
+      <script>
+        const chartData = {{.DepositChart.Data }}
+        const series = chartData?.series
+        if (series?.length && series.length > 2) {
+          const filteredSeries = []
+          filteredSeries.push(series[2])
+          filteredSeries.push(series[1])
+          window.addEventListener("load", function () {
+            Highcharts.stockChart("deposit-chart", {
+              chart: {
+                type: chartData.type,
+                height: 250,
+              },
+              rangeSelector: { enabled: false },
+              plotOptions: {
                 column: {
-                    stacking: {{.DepositChart.Data.StackingMode}},
-                    dataGrouping: {
-                        {{ if .DepositChart.Data.ColumnDataGroupingApproximation }}approximation: {{.DepositChart.Data.ColumnDataGroupingApproximation}},{{end}}
-                    }
+                  dataGrouping: {
+                    ...(chartData.ColumnDataGroupingApproximation ? { approximation: chartData.ColumnDataGroupingApproximation } : undefined),
+                  },
                 },
                 series: {
-                    {{ if .DepositChart.Data.PlotOptionsSeriesCursor }}cursor: {{.DepositChart.Data.PlotOptionsSeriesCursor}},{{end}}
-                    events: {
-                        {{ if .DepositChart.Data.PlotOptionsSeriesEventsClick }}click: {{.DepositChart.Data.PlotOptionsSeriesEventsClick}},{{end}}
-                    }
-                }
-            },
-            xAxis: {
-                type: 'datetime',
-                labels: {
-                    // formatter: function(){
-                    //     var epoch = timeToEpoch(this.value)
-                    //     var orig = this.axis.defaultLabelFormatter.call(this)
-                    //     return `${orig}<br/>Epoch ${epoch}`
-                    // }
-                }
-            },
-            yAxis: [{
-                title: { text: {{.DepositChart.Data.YAxisTitle}} },
-                opposite: false,
-            }],
-            series: filteredSeries,
-            navigator: { enabled: false },
-            scrollbar: { enabled: false },
-            tooltip: {
-                // formatter: function(tooltip) {
-                //     var orig = tooltip.defaultFormatter.call(this, tooltip)
-                //     var epoch = timeToEpoch(this.x)
-                //     orig[0] = orig[0]+'<span style="font-size:10px">Epoch '+epoch+'</span>'
-                //     return orig
-                // }
-            },
-            legend: {enabled: false}
-        })
-    })
-    {{end}}
-    </script>
+                  ...(chartData.PlotOptionsSeriesCursor ? { cursor: chartData.PlotOptionsSeriesCursor } : undefined),
+                  events: {
+                    ...(chartData.PlotOptionsSeriesEventsClick ? { click: chartData.PlotOptionsSeriesEventsClick } : undefined),
+                  },
+                },
+              },
+              xAxis: {
+                type: "datetime",
+              },
+              yAxis: [
+                {
+                  title: { text: chartData.y_axis_title },
+                  opposite: false,
+                },
+              ],
+              series: filteredSeries,
+              navigator: { enabled: true },
+              scrollbar: { enabled: false },
+              tooltip: {
+                shared: true,
+              },
+              legend: { enabled: false },
+            })
+          })
+        }
+      </script>
+    {{ end }}
   </div>
 {{ end }}

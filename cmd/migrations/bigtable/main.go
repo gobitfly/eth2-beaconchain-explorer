@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -18,8 +19,8 @@ func main() {
 
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
 
-	start := flag.Int("start", 1, "Start epoch")
-	end := flag.Int("end", 1, "End epoch")
+	start := flag.Uint64("start", 1, "Start epoch")
+	end := flag.Uint64("end", 1, "End epoch")
 
 	flag.Parse()
 
@@ -44,16 +45,48 @@ func main() {
 
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogFatal(err, "new bigtable lighthouse client error", 0)
 	}
 
 	for i := *start; i <= *end; i++ {
 		i := i
 
 		logrus.Infof("exporting epoch %v", i)
+
+		logrus.Infof("deleting existing epoch data")
+		err := bt.DeleteEpoch(i)
+		if err != nil {
+			utils.LogFatal(err, "deleting epoch error", 0)
+		}
+
+		firstSlot := i * utils.Config.Chain.Config.SlotsPerEpoch
+		lastSlot := (i+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+
+		c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", firstSlot), i)
+		if err != nil {
+			utils.LogFatal(err, "getting sync comittee error", 0)
+		}
+
+		validatorsU64 := make([]uint64, len(c.Validators))
+		for i, idxStr := range c.Validators {
+			idxU64, err := strconv.ParseUint(idxStr, 10, 64)
+			if err != nil {
+				utils.LogFatal(err, "parsing validator index to uint error", 0)
+			}
+			validatorsU64[i] = idxU64
+		}
+
+		logrus.Infof("saving sync assignments for %v validators", len(validatorsU64))
+
+		err = db.BigtableClient.SaveSyncCommitteesAssignments(firstSlot, lastSlot, validatorsU64)
+		if err != nil {
+			logrus.Fatalf("error saving sync committee assignments: %v", err)
+		}
+		logrus.Infof("exported sync committee assignments to bigtable in %v", i)
+
 		data, err := rpcClient.GetEpochData(uint64(i), true)
 		if err != nil {
-			logrus.Fatal(err)
+			utils.LogFatal(err, "getting epoch data error", 0)
 		}
 
 		g := new(errgroup.Group)
@@ -85,7 +118,7 @@ func main() {
 		err = g.Wait()
 
 		if err != nil {
-			logrus.Fatal(err)
+			utils.LogFatal(err, "wait group error", 0)
 		}
 	}
 
@@ -110,14 +143,14 @@ func monitor(configPath string) {
 
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
-		logrus.Fatal(err)
+		utils.LogFatal(err, "new bigtable lighthouse client in monitor error", 0)
 	}
 	current := uint64(0)
 
 	for {
 		head, err := rpcClient.GetChainHead()
 		if err != nil {
-			logrus.Fatal(err)
+			utils.LogFatal(err, "getting chain head from lighthouse in monitor error", 0)
 		}
 
 		logrus.Infof("current is %v, head is %v, finalized is %v", current, head.HeadEpoch, head.FinalizedEpoch)
@@ -131,7 +164,7 @@ func monitor(configPath string) {
 			logrus.Infof("exporting epoch %v", i)
 			data, err := rpcClient.GetEpochData(i, true)
 			if err != nil {
-				logrus.Fatal(err)
+				utils.LogFatal(err, "getting epoch data error", 0)
 			}
 
 			g := new(errgroup.Group)
@@ -163,7 +196,7 @@ func monitor(configPath string) {
 			err = g.Wait()
 
 			if err != nil {
-				logrus.Fatal(err)
+				utils.LogFatal(err, "wait group error", 0)
 			}
 		}
 		current = head.HeadEpoch

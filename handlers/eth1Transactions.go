@@ -20,15 +20,15 @@ const (
 )
 
 func Eth1Transactions(w http.ResponseWriter, r *http.Request) {
-
-	var eth1TransactionsTemplate = templates.GetTemplate("layout.html", "execution/transactions.html")
+	templateFiles := append(layoutTemplateFiles, "execution/transactions.html")
+	var eth1TransactionsTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "blockchain", "/eth1transactions", "Transactions")
+	data := InitPageData(w, r, "blockchain", "/eth1transactions", "Transactions", templateFiles)
 	data.Data = getTransactionDataStartingWithPageToken("")
 
-	if handleTemplateError(w, r, eth1TransactionsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "eth1Transactions.go", "Eth1Transactions", "", eth1TransactionsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -118,8 +118,8 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 				utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
 				utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", visibleDigitsForHash+5, 18, true),
 				toText,
-				utils.FormatAmountFormated(new(big.Int).SetBytes(v.GetValue()), "ETH", 8, 4, true, true, false),
-				utils.FormatAmountFormated(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), "ETH", 8, 4, true, true, false),
+				utils.FormatAmountFormatted(new(big.Int).SetBytes(v.GetValue()), "Ether", 8, 4, true, true, false),
+				utils.FormatAmountFormatted(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), "Ether", 8, 4, true, true, false),
 			})
 		}
 
@@ -140,7 +140,7 @@ func getEth1BlockAndNext(number uint64) (*types.Eth1Block, uint64, error) {
 		return nil, 0, err
 	}
 	if block == nil {
-		return nil, 0, fmt.Errorf("Block %d not found", number)
+		return nil, 0, fmt.Errorf("block %d not found", number)
 	}
 
 	nextBlock := uint64(0)

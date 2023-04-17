@@ -1,0 +1,76 @@
+{{ define "mainNavigation" }}
+  <nav id="nav" class="main-navigation navbar navbar-expand-lg navbar-light">
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        {{ includeSvg "brand_svg" }}
+        <span class="brand-text">beaconcha.in</span>
+      </a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav ml-auto">
+          {{ range . }}
+            {{ $hasBigGroups := .HasBigGroups }}
+            {{ $numberOfGroups := (len .Groups) }}
+            <li class="nav-item {{ if .IsActive }}active{{ end }} {{ if $numberOfGroups }}dropdown{{ end }}">
+              {{ if len .Groups }}
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown{{ .Label }}" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <span class="nav-text">{{ .Label }}</span>
+                </a>
+
+                <div class="dropdown-menu {{ if $hasBigGroups }}dropdown-menu-right p-sm-2 p-md-4 px-lg-2 align-content-between flex-wrap flex-lg-nowrap{{ end }}" aria-labelledby="navbarDropdown{ .Label }}">
+                  {{ range $groupIndex, $group := .Groups }}
+                    {{ if $hasBigGroups }}
+                      <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
+                        <span class="ml-4" style="font-size: 18px; font-weight: 700; letter-spacing: .3px;">{{ .Label }}</span>
+                        {{ range .Links }}
+                          {{ template "mainNavigationItem" . }}
+                        {{ end }}
+                      </div>
+                    {{ else }}
+                      {{ $numberOfLinks := (len .Links) }}
+                      {{ range $index, $link := .Links }}
+                        {{ template "mainNavigationItem"  $link }}
+                        {{ if and (eq $index (sub $numberOfLinks 1)) (not (eq $groupIndex (sub $numberOfGroups 1))) }}
+                          <hr />
+                        {{ end }}
+                      {{ end }}
+                    {{ end }}
+                  {{ end }}
+                </div>
+              {{ else }}
+                <a class="nav-link" href="{{ .Path }}">
+                  <span class="nav-text">{{ .Label }}</span>
+                </a>
+              {{ end }}
+            </li>
+          {{ end }}
+        </ul>
+      </div>
+    </div>
+  </nav>
+{{ end }}
+
+{{ define "mainNavigationItem" }}
+  {{ if not .IsHidden }}
+    <a class="dropdown-item" {{ if .IsHighlighted }}style="padding:0 0.625rem;"{{ end }} href="{{ .Path }}">
+      {{ $buttonClass := "" }}
+      {{ $textClass := "nav-text" }}
+      {{ if .IsHighlighted }}
+        {{ $buttonClass = "btn btn-primary d-flex align-items-center" }}
+        {{ $textClass = "text-white" }}
+      {{ end }}
+      <span class="{{ $buttonClass }}">
+        <span class="nav-icon">
+          {{ if .CustomIcon }}
+            {{ includeSvg .CustomIcon }}
+          {{ else }}
+            <i class="fas {{ .Icon }} mr-2"></i>
+          {{ end }}
+        </span>
+        <span class="{{ $textClass }}">{{ .Label }}</span>
+      </span>
+    </a>
+  {{ end }}
+{{ end }}

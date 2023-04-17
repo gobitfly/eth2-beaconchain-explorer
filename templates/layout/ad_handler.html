@@ -1,0 +1,84 @@
+{{ define "addHandler" }}
+  <style>
+    @keyframes fadeInAd {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+    ins[data-revive-id] {
+      opacity: 0;
+    }
+    ins[data-revive-id] iframe {
+      max-width: 100% !important;
+    }
+    ins[data-revive-loaded] {
+      opacity: 1;
+      animation: fadeInAd 5s;
+    }
+  </style>
+  <script>
+    const configurations = {{ . }}
+    const bannerTemplate = `
+        <div id="r-banner" class=" my-2 pb-1 ad d-flex justify-content-center align-items-center ad-banner">
+            <div id="revive-banner" class="position-relative d-flex justify-content-center align-items-center" style="width:100%; height: 90px">
+              <ins ref="ins" data-revive-zoneid="--bannerId--" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"> </ins>
+            </div>
+        </div>
+    `
+    function refreshAd(id) {
+      if (document.hasFocus()) {
+        const ins = $(`#${id}`).find("ins")
+        ins.removeAttr("data-revive-loaded")
+        ins.removeAttr("data-revive-seq")
+        window.reviveAsync?.["5b200397ccf8a9353bf44ef99b45268c"].refresh()
+      }
+    }
+
+    function makeSureReviveIsInitiated(id) {
+      const ins = $(`#${id}`).find("ins")
+      if (ins && ins.attr("data-revive-id") && !ins.attr("data-revive-seq") && !ins.attr("data-revive-loaded")) {
+        window.reviveAsync?.["5b200397ccf8a9353bf44ef99b45268c"].refresh()
+      }
+    }
+
+    function initiateConfig(config, retry = false) {
+      const container = $(config.JQuerySelector)[0]
+      if (container) {
+        const htmlText = config.HtmlContent?.length ? config.HtmlContent : bannerTemplate.replace("--bannerId--", config.BannerId)
+        const temp = document.createElement("div")
+        temp.innerHTML = htmlText
+        const ad = temp.firstElementChild
+        ad.id = config.Id
+        switch (config.InsertMode) {
+          case "replace":
+            container.replaceWith(ad)
+            break
+          case "before":
+            container.before(ad)
+            break
+          case "after":
+            container.after(ad)
+            break
+          default:
+            container.append(ad)
+            break
+        }
+        if (config.RefreshInterval) {
+          setInterval(() => refreshAd(config.Id), config.RefreshInterval * 1000)
+        }
+        makeSureReviveIsInitiated(config.Id)
+      } else if (retry) {
+        setTimeout(() => initiateConfig(config), 1000) //If we didn't find the element initially let's retry it once after one second.
+      } else {
+        console.log(`Ad component ${config.JQuerySelector} not found`)
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", function () {
+      configurations?.forEach((config) => initiateConfig(config, true))
+    })
+  </script>
+{{ end }}

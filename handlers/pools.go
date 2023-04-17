@@ -5,33 +5,38 @@ import (
 
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
+	"eth2-exporter/types"
 	"net/http"
 	// "strings"
 )
 
 func Pools(w http.ResponseWriter, r *http.Request) {
-	var poolsServicesTemplate = templates.GetTemplate(
-		"layout.html",
+	templateFiles := append(layoutTemplateFiles,
 		"pools/pools.html",
 		"pools/loadingSvg.html",
-		"pools/charts.html",
-		"bannerPools.html")
+		"pools/charts.html")
+	var poolsServicesTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/pools", "Staking Pools Services Overview")
+	data := InitPageData(w, r, "services", "/pools", "Staking Pools Services Overview", templateFiles)
 
-	distributionData, err := services.ChartHandlers["pools_distribution"].DataFunc()
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
+	cpd := services.LatestChartsPageData()
+	var distributionData *types.GenericChartData
+	var performanceData *types.GenericChartData
+
+	for _, chart := range cpd {
+		if chart.Path == "pools_distribution" {
+			distributionData = chart.Data
+		}
+		if chart.Path == "historic_pool_performance" {
+			performanceData = chart.Data
+		}
 	}
 
-	performanceData, err := services.ChartHandlers["historic_pool_performance"].DataFunc()
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+	if distributionData == nil || performanceData == nil {
+		logger.Errorf("unable to retrieve data for %v route", r.URL.String())
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -47,7 +52,7 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = poolData
 
-	if handleTemplateError(w, r, poolsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "pools.go", "Pools", "Done", poolsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

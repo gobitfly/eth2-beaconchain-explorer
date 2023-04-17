@@ -11,13 +11,14 @@ import (
 )
 
 func EthClientsServices(w http.ResponseWriter, r *http.Request) {
-	var ethClientsServicesTemplate = templates.GetTemplate("layout.html", "ethClientsServices.html")
+	templateFiles := append(layoutTemplateFiles, "ethClientsServices.html")
+	var ethClientsServicesTemplate = templates.GetTemplate(templateFiles...)
 
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/ethClientsServices", "Ethereum Clients Services Overview")
+	data := InitPageData(w, r, "services", "/ethClientsServices", "Ethereum Clients Services Overview", templateFiles)
 
 	pageData := ethclients.GetEthClientData()
 	pageData.CsrfField = csrf.TemplateField(r)
@@ -37,8 +38,6 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 			switch item {
 			case "geth":
 				pageData.Geth.IsUserSubscribed = true
-			case "openethereum":
-				pageData.OpenEthereum.IsUserSubscribed = true
 			case "nethermind":
 				pageData.Nethermind.IsUserSubscribed = true
 			case "besu":
@@ -67,7 +66,7 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data = pageData
-	if handleTemplateError(w, r, ethClientsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "ethClientsServices.go", "EthClientsServices", "", ethClientsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

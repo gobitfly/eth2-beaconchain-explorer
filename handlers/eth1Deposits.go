@@ -12,14 +12,14 @@ import (
 	"strings"
 )
 
-// Eth1Deposits will return information about deposits using a go template
-func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
-
-	var eth1DepositsTemplate = templates.GetTemplate("layout.html", "eth1Deposits.html", "index/depositChart.html")
+// Deposits will return information about deposits using a go template
+func Deposits(w http.ResponseWriter, r *http.Request) {
+	templateFiles := append(layoutTemplateFiles, "deposits.html", "index/depositChart.html")
+	var DepositsTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	pageData := &types.EthOneDepositsPageData{}
+	pageData := &types.DepositsPageData{}
 
 	latestChartsPageData := services.LatestChartsPageData()
 	if len(latestChartsPageData) != 0 {
@@ -32,15 +32,18 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pageData.Stats = services.GetLatestStats()
-	pageData.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
+	pageData.DepositContract = utils.Config.Chain.Config.DepositContractAddress
 
-	data := InitPageData(w, r, "blockchain", "/deposits/eth1", "Initiated Deposits")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "blockchain", "/deposits", "Deposits", templateFiles)
 	data.Data = pageData
 
-	if handleTemplateError(w, r, eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "eth1Depostis.go", "Deposits", "", DepositsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
+}
+
+func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/validators/deposits", http.StatusMovedPermanently)
 }
 
 // Eth1DepositsData will return eth1-deposits as json
@@ -80,12 +83,13 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 	orderByMap := map[string]string{
 		"0": "from_address",
 		"1": "publickey",
-		"2": "amount",
-		"3": "tx_hash",
-		"4": "block_ts",
-		"5": "block_number",
-		"6": "state",
-		"7": "valid_signature",
+		"2": "withdrawal_credential",
+		"3": "amount",
+		"4": "tx_hash",
+		"5": "block_ts",
+		"6": "block_number",
+		"7": "state",
+		"8": "valid_signature",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -113,6 +117,7 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
 			utils.FormatPublicKey(d.PublicKey),
+			utils.FormatWithdawalCredentials(d.WithdrawalCredentials, true),
 			utils.FormatDepositAmount(d.Amount, currency),
 			utils.FormatEth1TxHash(d.TxHash),
 			utils.FormatTimestamp(d.BlockTs.Unix()),
@@ -139,19 +144,18 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 
 // Eth1Deposits will return information about deposits using a go template
 func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
-
-	var eth1DepositsLeaderboardTemplate = templates.GetTemplate("layout.html", "eth1DepositsLeaderboard.html")
+	templateFiles := append(layoutTemplateFiles, "eth1DepositsLeaderboard.html")
+	var eth1DepositsLeaderboardTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Initiated Deposits")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Initiated Deposits", templateFiles)
 
 	data.Data = types.EthOneDepositLeaderBoardPageData{
 		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
-	if handleTemplateError(w, r, eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "eth1Deposits.go", "Eth1DepositsLeaderboard", "", eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
@@ -206,9 +210,7 @@ func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 
 	orderDir := q.Get("order[0][dir]")
 
-	latestEpoch := services.LatestEpoch()
-
-	deposits, depositCount, err := db.GetEth1DepositsLeaderboard(search, length, start, orderBy, orderDir, latestEpoch)
+	deposits, depositCount, err := db.GetEth1DepositsLeaderboard(search, length, start, orderBy, orderDir)
 	if err != nil {
 		logger.Errorf("GetEth1Deposits error retrieving eth1_deposit leaderboard data: %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

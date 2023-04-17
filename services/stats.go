@@ -11,8 +11,9 @@ import (
 )
 
 func statsUpdater(wg *sync.WaitGroup) {
-	sleepDuration := time.Duration(time.Minute)
+	sleepDuration := time.Duration(time.Duration(utils.Config.Chain.Config.SlotsPerEpoch*utils.Config.Chain.Config.SecondsPerSlot) * time.Second)
 
+	logger.Infof("sleep duration is %v", sleepDuration)
 	firstrun := true
 	for {
 		latestEpoch := LatestEpoch()
@@ -86,6 +87,49 @@ func calculateStats() (*types.Stats, error) {
 	}
 
 	stats.ValidatorChurnLimit = &validatorChurnLimit
+
+	LatestValidatorWithdrawalIndex, err := db.GetMostRecentWithdrawalValidator()
+	if err != nil {
+		logger.WithError(err).Error("error getting most recent withdrawal validator index")
+	}
+
+	stats.LatestValidatorWithdrawalIndex = &LatestValidatorWithdrawalIndex
+
+	epoch := LatestEpoch()
+	WithdrawableValidatorCount, err := db.GetWithdrawableValidatorCount(epoch)
+	if err != nil {
+		logger.WithError(err).Error("error getting withdrawable validator count")
+	}
+
+	stats.WithdrawableValidatorCount = &WithdrawableValidatorCount
+
+	PendingBLSChangeValidatorCount, err := db.GetPendingBLSChangeValidatorCount()
+	if err != nil {
+		logger.WithError(err).Error("error getting withdrawable validator count")
+	}
+
+	stats.PendingBLSChangeValidatorCount = &PendingBLSChangeValidatorCount
+
+	TotalAmountWithdrawn, WithdrawalCount, err := db.GetTotalAmountWithdrawn()
+	if err != nil {
+		logger.WithError(err).Error("error getting total amount withdrawn")
+	}
+	stats.TotalAmountWithdrawn = &TotalAmountWithdrawn
+	stats.WithdrawalCount = &WithdrawalCount
+
+	TotalAmountDeposited, err := db.GetTotalAmountDeposited()
+	if err != nil {
+		logger.WithError(err).Error("error getting total deposited")
+	}
+
+	stats.TotalAmountDeposited = &TotalAmountDeposited
+
+	BLSChangeCount, err := db.GetBLSChangeCount()
+	if err != nil {
+		logger.WithError(err).Error("error getting bls change count")
+	}
+
+	stats.BLSChangeCount = &BLSChangeCount
 
 	return &stats, nil
 }

@@ -91,6 +91,10 @@ func (cache *BigtableCache) SetUint64(ctx context.Context, key string, value uin
 	return cache.setByte(ctx, key, ui64tob(value), expiration)
 }
 
+func (cache *BigtableCache) SetBool(ctx context.Context, key string, value bool, expiration time.Duration) error {
+	return cache.setByte(ctx, key, booltob(value), expiration)
+}
+
 func (cache *BigtableCache) Get(ctx context.Context, key string, returnValue any) (any, error) {
 	res, err := cache.getByte(ctx, key)
 	if err != nil {
@@ -100,7 +104,7 @@ func (cache *BigtableCache) Get(ctx context.Context, key string, returnValue any
 	err = json.Unmarshal([]byte(res), returnValue)
 	if err != nil {
 		// cache.remoteRedisCache.Del(ctx, key).Err()
-		logrus.Warnf("error unmarshalling data for key %v: %v", key, err)
+		logrus.Errorf("error (bigtable_cache.go / Get) unmarshalling data for key %v: %v", key, err)
 		return nil, err
 	}
 
@@ -140,6 +144,15 @@ func (cache *BigtableCache) getByte(ctx context.Context, key string) ([]byte, er
 	return res.Value, nil
 }
 
+func (cache *BigtableCache) GetString(ctx context.Context, key string) (string, error) {
+
+	res, err := cache.getByte(ctx, key)
+	if err != nil {
+		return "", err
+	}
+	return string(res), nil
+}
+
 func (cache *BigtableCache) GetUint64(ctx context.Context, key string) (uint64, error) {
 
 	res, err := cache.getByte(ctx, key)
@@ -150,13 +163,14 @@ func (cache *BigtableCache) GetUint64(ctx context.Context, key string) (uint64, 
 	return btoi64(res), nil
 }
 
-func (cache *BigtableCache) GetString(ctx context.Context, key string) (string, error) {
+func (cache *BigtableCache) GetBool(ctx context.Context, key string) (bool, error) {
 
 	res, err := cache.getByte(ctx, key)
 	if err != nil {
-		return "", err
+		return false, err
 	}
-	return string(res), nil
+
+	return btobool(res), nil
 }
 
 func ui64tob(val uint64) []byte {
@@ -173,4 +187,18 @@ func btoi64(val []byte) uint64 {
 		r |= uint64(val[i]) << (8 * i)
 	}
 	return r
+}
+
+func booltob(val bool) []byte {
+	r := make([]byte, 1)
+	if val {
+		r[0] = 1
+	} else {
+		r[0] = 0
+	}
+	return r
+}
+
+func btobool(val []byte) bool {
+	return val[0] == 1
 }

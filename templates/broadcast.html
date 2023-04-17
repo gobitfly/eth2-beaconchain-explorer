@@ -1,0 +1,226 @@
+{{ define "js" }}
+  <script src="https://www.google.com/recaptcha/api.js" async></script>
+  <script>
+    let textArea
+    let fileSelect
+    let selectContainer
+    let dropOverlay
+    function onSubmit(token) {
+      var form = document.getElementById("credentialschange")
+      if (form.reportValidity()) {
+        form.submit()
+      }
+    }
+
+    function loadLocalFile(file) {
+      try {
+        if (file) {
+          const reader = new FileReader()
+          reader.onload = function ({ target: { result } }) {
+            textArea.value = result
+            onTextChanged()
+          }
+          reader.readAsText(file)
+        } else {
+          console.warn("File could not be loaded, please try again")
+        }
+      } catch (e) {
+        console.error(`Error on file drop: ${e}`)
+      }
+    }
+
+    function onDrop(evt) {
+      evt.stopPropagation()
+      evt.preventDefault()
+      loadLocalFile(evt.dataTransfer?.files?.[0])
+      onDragEnd()
+    }
+
+    function onSelectChanged() {
+      if (fileSelect.files?.length) {
+        loadLocalFile(fileSelect.files[0])
+      }
+    }
+
+    function hide(element, hide) {
+      if (hide) {
+        element.classList.add("hidden")
+      } else {
+        element.classList.remove("hidden")
+      }
+    }
+
+    function onTextChanged() {
+      hide(selectContainer, textArea.value.length > 0)
+    }
+
+    function onDragEnter(evt) {
+      evt.preventDefault()
+      hide(dropOverlay, false)
+      hide(selectContainer, true)
+    }
+
+    function onDragEnd() {
+      hide(dropOverlay, true)
+      onTextChanged()
+    }
+
+    window.addEventListener("load", function () {
+      textArea = document.getElementById("message")
+      fileSelect = document.getElementById("fileSelect")
+      selectContainer = document.getElementById("selectContainer")
+      dropOverlay = document.getElementById("dropOverlay")
+      dropOverlay.addEventListener("drop", onDrop)
+      dropOverlay.addEventListener("mouseleave", onDragEnd)
+      dropOverlay.addEventListener("dragenter", onDragEnter)
+      dropOverlay.addEventListener("dragover", onDragEnter)
+      dropOverlay.addEventListener("dragleave", onDragEnd)
+      dropOverlay.addEventListener("dragend", onDragEnd)
+      textArea.addEventListener("dragenter", onDragEnter)
+      textArea.addEventListener("drop", onDragEnter)
+      textArea.addEventListener("input", onTextChanged)
+      textArea.addEventListener("change", onTextChanged)
+      fileSelect.addEventListener("change", onSelectChanged)
+    })
+  </script>
+{{ end }}
+
+{{ define "css" }}
+  <style>
+    @media (min-width: 1140px) {
+      .max-lg-300 {
+        max-width: 300px;
+      }
+    }
+    .broadcast .input-container {
+      position: relative;
+    }
+    .broadcast .select-container {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      pointer-events: none;
+    }
+    .broadcast .select-container:hover {
+      opacity: 0.9;
+    }
+
+    .broadcast .select-content {
+      position: relative;
+      display: inline-flex;
+      flex-direction: column;
+      cursor: pointer;
+    }
+    .broadcast .select-content input {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      top: 0;
+      opacity: 0;
+      pointer-events: all;
+      cursor: pointer;
+    }
+    .broadcast .select-content label {
+      max-width: 400px;
+      text-align: center;
+    }
+    .broadcast .drop-overlay {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background-color: rgba(0, 0, 0, 0.8);
+      border-radius: 0.25rem;
+      pointer-events: all;
+    }
+    .broadcast .drop-overlay label,
+    .broadcast .drop-overlay .fa-file-import {
+      color: white;
+      pointer-events: none;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .broadcast .input-container .fa-file-import {
+      font-size: 3rem;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+
+    .broadcast .hidden {
+      display: none;
+    }
+  </style>
+{{ end }}
+
+{{ define "content" }}
+  <div class="broadcast container mt-12 pt-3">
+    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
+    {{ with .Data }}
+      <div class="row mt-3">
+        <div class="col-md-12">
+          {{ if ne .FlashMessage "" }}
+            <div class="alert container mt-2 {{ if contains .FlashMessage "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
+              <div class="p-2">{{ .FlashMessage | formatHTML }}</div>
+              <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          {{ end }}
+          {{ template "withdrawalOverviewRow" .Stats }}
+          <section class="my-2">
+            <div class="row">
+              <div class="col-md-12">
+                <div class="row justify-content-center">
+                  <div class="col-md-12 col-lg-8 text-center">
+                    <h1 class="h4 ">Submit your signed message</h1>
+                    <ul class="text-left">
+                      <li>This tool can be used for broadcasting <b>already signed</b> BLS-to-execution (0x00 → 0x01) and exit messages.</li>
+                      <li>You can find instructions on how to sign these messages at the <a href="https://launchpad.ethereum.org/en/withdrawals" target="_blank">Staking Launchpad.</a></li>
+                      <li>BLS-to-execution (0x00 → 0x01) messages can be uploaded right now. We will start broadcasting them after the Shanghai hard fork.</li>
+                      <li>Exit messages will be broadcasted immediately.</li>
+                    </ul>
+                    <div class="alert alert-danger"><b>Don't provide your keystore or mnemonic to us or any other website</b></div>
+                    <form id="credentialschange" action="/tools/broadcast" method="post">
+                      <div class="text-left">
+                        <div class="form-group">
+                          <label for="bls_to_execution_changes">Signature JSON</label>
+                          <div class="input-container">
+                            <textarea class="form-control" id="message" name="message" rows="30" autofocus></textarea>
+                            <div class="select-container" id="selectContainer">
+                              <div class="select-content">
+                                <i class="fas fa-file-import"></i>
+                                <label>Drop your json-file here, click to select one or paste your json-text in the input area.</label>
+                                <input type="file" id="fileSelect" />
+                              </div>
+                            </div>
+                            <div class="drop-overlay hidden" id="dropOverlay">
+                              <i class="fas fa-file-import"></i>
+                              <label>Drop json-file here</label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <button data-sitekey="{{ .RecaptchaKey }}" data-callback="onSubmit" data-action="submit" type="submit" class="g-recaptcha btn btn-primary text-center">Submit & Broadcast</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    {{ end }}
+  </div>
+{{ end }}
