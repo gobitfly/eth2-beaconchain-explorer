@@ -166,7 +166,7 @@
         <span data-toggle="tooltip" data-placement="top" title="The tail gas price of the current block">
           {{- if .GasNow }}
             {{ if ge (bigIntCmp .GasNow.Data.Fast 1E9) 0 }}
-              {{ formatBalanceWei .GasNow.Data.Fast "GWei" 0 }}
+              {{ formatAmountFormatted .GasNow.Data.Fast "GWei" 0 0 false false false }}
             {{ else }}
               < 1 Gwei
             {{ end }}
