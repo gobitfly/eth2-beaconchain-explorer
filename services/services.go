@@ -1123,38 +1123,7 @@ func LatestIndexPageData() *types.IndexPageData {
 	} else {
 		logger.Errorf("error retrieving indexPageData from cache: %v", err)
 	}
-	return &types.IndexPageData{
-		NetworkName:               "",
-		DepositContract:           "",
-		ShowSyncingMessage:        false,
-		CurrentEpoch:              0,
-		CurrentFinalizedEpoch:     0,
-		CurrentSlot:               0,
-		ScheduledCount:            0,
-		FinalityDelay:             0,
-		ActiveValidators:          0,
-		EnteringValidators:        0,
-		ExitingValidators:         0,
-		StakedEther:               "",
-		AverageBalance:            "",
-		DepositedTotal:            0,
-		DepositThreshold:          0,
-		ValidatorsRemaining:       0,
-		NetworkStartTs:            0,
-		MinGenesisTime:            0,
-		Blocks:                    []*types.IndexPageDataBlocks{},
-		Epochs:                    []*types.IndexPageDataEpochs{},
-		StakedEtherChartData:      [][]float64{},
-		ActiveValidatorsChartData: [][]float64{},
-		Subtitle:                  "",
-		Genesis:                   false,
-		GenesisPeriod:             false,
-		Mainnet:                   false,
-		DepositChart:              &types.ChartsPageDataChart{},
-		DepositDistribution:       &types.ChartsPageDataChart{},
-		Countdown:                 nil,
-		SlotVizData:               nil,
-	}
+	return &types.IndexPageData{}
 }
 
 // LatestPoolsPageData returns the latest pools page data

@@ -315,8 +315,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	timings.Start = time.Now()
 
-	logger.Info(validatorPageData.Tags)
-	logger.Info(validatorPageData.Pool)
 	if validatorPageData.Pool != "" {
 		validatorPageData.Tags = append(validatorPageData.Tags, "pool:"+validatorPageData.Pool)
 	}
@@ -1767,32 +1765,60 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			})
 			continue
 		}
-		events := template.HTML("")
-		if incomeDetails[index][i].AttestationSourcePenalty > 0 && incomeDetails[index][i].AttestationTargetPenalty > 0 {
-			events += utils.FormatAttestationStatusShort(2)
-		} else {
-			events += utils.FormatAttestationStatusShort(1)
+		event := types.ValidatorHistoryEvent{}
+
+		if incomeDetails[index][i].AttestationSourceReward > 0 {
+			event.AttestationSourceStatus = 1
+		} else if incomeDetails[index][i].AttestationSourcePenalty > 0 {
+			event.AttestationSourceStatus = 2
+		}
+
+		if incomeDetails[index][i].AttestationTargetReward > 0 {
+			event.AttestationTargetStatus = 1
+		} else if incomeDetails[index][i].AttestationTargetPenalty > 0 {
+			event.AttestationTargetStatus = 2
+		}
+
+		if incomeDetails[index][i].AttestationHeadReward > 0 {
+			event.AttestationHeadStatus = 1
 		}
 
 		if incomeDetails[index][i].ProposerAttestationInclusionReward > 0 {
-			block := utils.FormatBlockStatusShort(1)
-			events += block
+			event.BlockProposalStatus = 1
 		} else if incomeDetails[index][i].ProposalsMissed > 0 {
-			block := utils.FormatBlockStatusShort(2)
-			events += block
+			event.BlockProposalStatus = 2
+		}
+
+		if syncReward, syncPenalty := incomeDetails[index][i].SyncCommitteeReward, incomeDetails[index][i].SyncCommitteePenalty; syncReward > 0 {
+			if syncPenalty > 0 {
+				event.SyncParticipationStatus = 3
+				balanceChangeForSlot := (syncReward + syncPenalty) / utils.Config.Chain.Config.SlotsPerEpoch
+				event.SyncParticipationCount = utils.Config.Chain.Config.SlotsPerEpoch - (syncPenalty / balanceChangeForSlot)
+			} else {
+				event.SyncParticipationStatus = 1
+				event.SyncParticipationCount = utils.Config.Chain.Config.SlotsPerEpoch
+			}
+		} else if syncPenalty > 0 {
+			event.SyncParticipationStatus = 2
+		}
+
+		if incomeDetails[index][i].ProposerSlashingInclusionReward > 0 || incomeDetails[index][i].SlashingReward > 0 {
+			event.SlashingStatus = 1
+		}
+		if incomeDetails[index][i].SlashingPenalty > 0 {
+			event.SlashingStatus = 2
 		}
 
 		if withdrawalMap[i] != nil {
-			withdrawal := utils.FormatWithdrawalShort(uint64(withdrawalMap[i].Slot), withdrawalMap[i].Amount)
-			events += withdrawal
+			event.WithdrawalStatus = 1
+			event.WithdrawalAmount = withdrawalMap[i].Amount
 		}
 
 		rewards := incomeDetails[index][i].TotalClRewards()
 		tableData = append(tableData, []interface{}{
 			utils.FormatEpoch(i),
 			utils.FormatBalanceChangeFormated(&rewards, currency, incomeDetails[index][i]),
-			template.HTML(""),
-			template.HTML(events),
+			template.HTML(utils.FormatValidatorHistoryEvent(event)),
 		})
 	}
 
