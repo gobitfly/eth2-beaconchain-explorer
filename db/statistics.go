@@ -146,7 +146,8 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		}
 	}
 
-	batchSize = 16000 // max parameters: 65535
+	numArgs := 4
+	batchSize = 65500 / numArgs // max parameters: 65535
 	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
 		start := b
 		end := b + batchSize
@@ -155,7 +156,6 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		}
 
 		logrus.Info(start, end)
-		numArgs := 4
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
 		for i := start; i <= end; i++ {
@@ -247,7 +247,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	}
 	logrus.Infof("retrieved mev / el rewards data for %v proposer", len(proposerRewards))
 
-	numArgs := 4
+	numArgs = 4
 	valueStrings := make([]string, 0, len(proposerRewards))
 	valueArgs := make([]interface{}, 0, len(proposerRewards)*numArgs)
 	i := 0
