@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -16,9 +17,10 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
-	"github.com/gorilla/sessions"
 	"github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 )
 
 var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
@@ -38,129 +40,300 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 }
 
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
-func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, error) {
+func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
 	validatorsPQArray := pq.Array(validators)
-	latestEpoch := int64(services.LatestEpoch())
-	lastDayEpoch := latestEpoch - 225
-	lastWeekEpoch := latestEpoch - 225*7
-	lastMonthEpoch := latestEpoch - 225*31
-
-	if lastDayEpoch < 0 {
-		lastDayEpoch = 0
-	}
-	if lastWeekEpoch < 0 {
-		lastWeekEpoch = 0
-	}
-	if lastMonthEpoch < 0 {
-		lastMonthEpoch = 0
-	}
+	latestEpoch := int64(services.LatestFinalizedEpoch())
 
 	balances := []*types.Validator{}
 
-	err := db.ReaderDb.Select(&balances, `SELECT 
-			   COALESCE(balance, 0) AS balance, 
-			   COALESCE(balanceactivation, 0) AS balanceactivation, 
-			   COALESCE(balance1d, 0) AS balance1d, 
-			   COALESCE(balance7d, 0) AS balance7d, 
-			   COALESCE(balance31d , 0) AS balance31d,
-       			activationepoch,
-       			pubkey
-		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
-	if err != nil {
-		logger.Error(err)
-		return nil, err
-	}
-
-	deposits := []struct {
-		Epoch     int64
-		Amount    int64
-		Publickey []byte
-	}{}
-
-	err = db.ReaderDb.Select(&deposits, "SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))", validatorsPQArray)
-	if err != nil {
-		return nil, err
-	}
-
-	depositsMap := make(map[string]map[int64]int64)
-	for _, d := range deposits {
-		if _, exists := depositsMap[fmt.Sprintf("%x", d.Publickey)]; !exists {
-			depositsMap[fmt.Sprintf("%x", d.Publickey)] = make(map[int64]int64)
-		}
-		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
-	}
-
-	var earningsTotal int64
-	var earningsLastDay int64
-	var earningsLastWeek int64
-	var earningsLastMonth int64
-	var apr float64
-	var totalDeposits int64
+	balancesMap := make(map[uint64]*types.Validator, len(balances))
 
 	for _, balance := range balances {
-		if int64(balance.ActivationEpoch) >= latestEpoch {
+		balancesMap[balance.Index] = balance
+	}
+
+	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), uint64(latestEpoch))
+	if err != nil {
+		logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
+		return nil, nil, err
+	}
+
+	totalBalance := uint64(0)
+	for balanceIndex, balance := range latestBalances {
+		if len(balance) == 0 {
 			continue
 		}
-		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
-			totalDeposits += deposit
 
-			if epoch > int64(balance.ActivationEpoch) {
-				earningsTotal -= deposit
-			}
-			if epoch > lastDayEpoch && epoch > int64(balance.ActivationEpoch) {
-				earningsLastDay -= deposit
-			}
-			if epoch > lastWeekEpoch && epoch > int64(balance.ActivationEpoch) {
-				earningsLastWeek -= deposit
-			}
-			if epoch > lastMonthEpoch && epoch > int64(balance.ActivationEpoch) {
-				earningsLastMonth -= deposit
-			}
+		if balancesMap[balanceIndex] == nil {
+			balancesMap[balanceIndex] = &types.Validator{}
 		}
+		balancesMap[balanceIndex].Balance = balance[0].Balance
+		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
 
-		if int64(balance.ActivationEpoch) > lastDayEpoch {
-			balance.Balance1d = balance.BalanceActivation
-		}
-		if int64(balance.ActivationEpoch) > lastWeekEpoch {
-			balance.Balance7d = balance.BalanceActivation
-		}
-		if int64(balance.ActivationEpoch) > lastMonthEpoch {
-			balance.Balance31d = balance.BalanceActivation
-		}
-
-		earningsTotal += int64(balance.Balance) - balance.BalanceActivation.Int64
-		earningsLastDay += int64(balance.Balance) - balance.Balance1d.Int64
-		earningsLastWeek += int64(balance.Balance) - balance.Balance7d.Int64
-		earningsLastMonth += int64(balance.Balance) - balance.Balance31d.Int64
+		totalBalance += balance[0].Balance
 	}
 
+	var income struct {
+		ClIncome1d    int64 `db:"cl_performance_1d"`
+		ClIncome7d    int64 `db:"cl_performance_7d"`
+		ClIncome31d   int64 `db:"cl_performance_31d"`
+		ClIncome365d  int64 `db:"cl_performance_365d"`
+		ClIncomeTotal int64 `db:"cl_performance_total"`
+		ElIncome1d    int64 `db:"el_performance_1d"`
+		ElIncome7d    int64 `db:"el_performance_7d"`
+		ElIncome31d   int64 `db:"el_performance_31d"`
+		ElIncome365d  int64 `db:"el_performance_365d"`
+		ElIncomeTotal int64 `db:"el_performance_total"`
+		ClIncomeToday int64
+	}
+
+	// el rewards are converted from wei to gwei
+	err = db.ReaderDb.Get(&income, `
+		SELECT 
+		COALESCE(SUM(cl_performance_1d), 0) AS cl_performance_1d,
+		COALESCE(SUM(cl_performance_7d), 0) AS cl_performance_7d,
+		COALESCE(SUM(cl_performance_31d), 0) AS cl_performance_31d,
+		COALESCE(SUM(cl_performance_365d), 0) AS cl_performance_365d,
+		COALESCE(SUM(cl_performance_total), 0) AS cl_performance_total,
+		CAST(COALESCE(SUM(mev_performance_1d), 0) / 1e9 AS bigint) AS el_performance_1d,
+		CAST(COALESCE(SUM(mev_performance_7d), 0) / 1e9 AS bigint) AS el_performance_7d,
+		CAST(COALESCE(SUM(mev_performance_31d), 0) / 1e9 AS bigint) AS el_performance_31d,
+		CAST(COALESCE(SUM(mev_performance_365d), 0) / 1e9 AS bigint) AS el_performance_365d,
+		CAST(COALESCE(SUM(mev_performance_total), 0) / 1e9 AS bigint) AS el_performance_total
+		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var totalDeposits uint64
+
+	err = db.ReaderDb.Get(&totalDeposits, `
+	SELECT 
+		COALESCE(SUM(amount), 0) 
+	FROM blocks_deposits d
+	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' 
+	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray)
+	if err != nil {
+		return nil, nil, err
+	}
 	if totalDeposits == 0 {
-		totalDeposits = 32 * 1e9
+		totalDeposits = utils.Config.Chain.Config.MaxEffectiveBalance
 	}
 
-	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
-	if apr < float64(-1) {
-		apr = float64(-1)
+	var totalWithdrawals uint64
+
+	err = db.ReaderDb.Get(&totalWithdrawals, `
+	SELECT 
+		COALESCE(sum(w.amount), 0)
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	WHERE validatorindex = ANY($1)
+	`, validatorsPQArray)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// calculate combined el and cl earnings
+	earnings1d := income.ClIncome1d + income.ElIncome1d
+	earnings7d := income.ClIncome7d + income.ElIncome7d
+	earnings31d := income.ClIncome31d + income.ElIncome31d
+
+	clApr7d := ((float64(income.ClIncome7d) / float64(totalDeposits)) * 365) / 7
+	if clApr7d < float64(-1) {
+		clApr7d = float64(-1)
+	}
+
+	elApr7d := ((float64(income.ElIncome7d) / float64(totalDeposits)) * 365) / 7
+	if elApr7d < float64(-1) {
+		elApr7d = float64(-1)
+	}
+
+	clApr31d := ((float64(income.ClIncome31d) / float64(totalDeposits)) * 365) / 31
+	if clApr31d < float64(-1) {
+		clApr31d = float64(-1)
+	}
+
+	elApr31d := ((float64(income.ElIncome31d) / float64(totalDeposits)) * 365) / 31
+	if elApr31d < float64(-1) {
+		elApr31d = float64(-1)
+	}
+	clApr365d := (float64(income.ClIncome365d) / float64(totalDeposits))
+	if clApr365d < float64(-1) {
+		clApr365d = float64(-1)
+	}
+
+	elApr365d := (float64(income.ElIncome365d) / float64(totalDeposits))
+	if elApr365d < float64(-1) {
+		elApr365d = float64(-1)
+	}
+
+	// retrieve cl income not yet in stats
+	currentDayIncome, err := db.GetCurrentDayClIncomeTotal(validators)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	incomeTotal := types.ClElInt64{
+		El:    income.ElIncomeTotal,
+		Cl:    income.ClIncomeTotal + currentDayIncome,
+		Total: income.ClIncomeTotal + income.ElIncomeTotal + currentDayIncome,
 	}
 
 	return &types.ValidatorEarnings{
-		Total:                earningsTotal,
-		LastDay:              earningsLastDay,
-		LastWeek:             earningsLastWeek,
-		LastMonth:            earningsLastMonth,
-		APR:                  apr,
-		TotalDeposits:        totalDeposits,
-		LastDayFormatted:     utils.FormatIncome(earningsLastDay, currency),
-		LastWeekFormatted:    utils.FormatIncome(earningsLastWeek, currency),
-		LastMonthFormatted:   utils.FormatIncome(earningsLastMonth, currency),
-		TotalFormatted:       utils.FormatIncome(earningsTotal, currency),
-		TotalChangeFormatted: utils.FormatIncome(earningsTotal+totalDeposits, currency),
-	}, nil
+		Income1d: types.ClElInt64{
+			El:    income.ElIncome1d,
+			Cl:    income.ClIncome1d,
+			Total: earnings1d,
+		},
+		Income7d: types.ClElInt64{
+			El:    income.ElIncome7d,
+			Cl:    income.ClIncome7d,
+			Total: earnings7d,
+		},
+		Income31d: types.ClElInt64{
+			El:    income.ElIncome31d,
+			Cl:    income.ClIncome31d,
+			Total: earnings31d,
+		},
+		IncomeTotal: incomeTotal,
+		Apr7d: types.ClElFloat64{
+			El:    elApr7d,
+			Cl:    clApr7d,
+			Total: clApr7d + elApr7d,
+		},
+		Apr31d: types.ClElFloat64{
+			El:    elApr31d,
+			Cl:    clApr31d,
+			Total: clApr31d + elApr31d,
+		},
+		Apr365d: types.ClElFloat64{
+			El:    elApr365d,
+			Cl:    clApr365d,
+			Total: clApr365d + elApr365d,
+		},
+		TotalDeposits:        int64(totalDeposits),
+		LastDayFormatted:     utils.FormatIncome(earnings1d, currency),
+		LastWeekFormatted:    utils.FormatIncome(earnings7d, currency),
+		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
+		TotalFormatted:       utils.FormatIncomeClElInt64(incomeTotal, currency),
+		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency),
+		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
+	}, balancesMap, nil
+}
+
+// getProposalLuck calculates the luck of a given set of proposed blocks for a certain number of validators
+// given the blocks proposed by the validators and the number of validators
+//
+// precondition: slots is sorted by ascending block number
+func getProposalLuck(slots []uint64, validatorsCount int) float64 {
+	// Return 0 if there are no proposed blocks or no validators
+	if len(slots) == 0 || validatorsCount == 0 {
+		return 0
+	}
+	// Timeframe constants
+	fiveDays := utils.Day * 5
+	oneWeek := utils.Week
+	oneMonth := utils.Month
+	sixWeeks := utils.Day * 45
+	twoMonths := utils.Month * 2
+	threeMonths := utils.Month * 3
+	fourMonths := utils.Month * 4
+	fiveMonths := utils.Month * 5
+
+	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
+	// Calculate the expected number of slot proposals for 30 days
+	expectedSlotProposals := calcExpectedSlotProposals(oneMonth, validatorsCount, activeValidatorsCount)
+
+	// Get the timeframe for which we should consider qualified proposals
+	var proposalTimeframe time.Duration
+	// Time since the first block in the proposed block slice
+	timeSinceFirstBlock := time.Since(utils.SlotToTime(slots[0]))
+
+	// Determine the appropriate timeframe based on the time since the first block and the expected slot proposals
+	switch {
+	case timeSinceFirstBlock < fiveDays:
+		proposalTimeframe = fiveDays
+	case timeSinceFirstBlock < oneWeek:
+		proposalTimeframe = oneWeek
+	case timeSinceFirstBlock < oneMonth:
+		proposalTimeframe = oneMonth
+	case timeSinceFirstBlock > fiveMonths && expectedSlotProposals <= 0.75:
+		proposalTimeframe = fiveMonths
+	case timeSinceFirstBlock > fourMonths && expectedSlotProposals <= 1:
+		proposalTimeframe = fourMonths
+	case timeSinceFirstBlock > threeMonths && expectedSlotProposals <= 1.4:
+		proposalTimeframe = threeMonths
+	case timeSinceFirstBlock > twoMonths && expectedSlotProposals <= 2.1:
+		proposalTimeframe = twoMonths
+	case timeSinceFirstBlock > sixWeeks && expectedSlotProposals <= 2.8:
+		proposalTimeframe = sixWeeks
+	default:
+		proposalTimeframe = oneMonth
+	}
+
+	// Recalculate expected slot proposals for the new timeframe
+	expectedSlotProposals = calcExpectedSlotProposals(proposalTimeframe, validatorsCount, activeValidatorsCount)
+	if expectedSlotProposals == 0 {
+		return 0
+	}
+	// Cutoff time for proposals to be considered qualified
+	blockProposalCutoffTime := time.Now().Add(-proposalTimeframe)
+
+	// Count the number of qualified proposals
+	qualifiedProposalCount := 0
+	for _, slot := range slots {
+		if utils.SlotToTime(slot).After(blockProposalCutoffTime) {
+			qualifiedProposalCount++
+		}
+	}
+	// Return the luck as the ratio of qualified proposals to expected slot proposals
+	return float64(qualifiedProposalCount) / expectedSlotProposals
+}
+
+// calcExpectedSlotProposals calculates the expected number of slot proposals for a certain time frame and validator count
+func calcExpectedSlotProposals(timeframe time.Duration, validatorCount int, activeValidatorsCount uint64) float64 {
+	if validatorCount == 0 || activeValidatorsCount == 0 {
+		return 0
+	}
+	slotsInTimeframe := timeframe.Seconds() / float64(utils.Config.Chain.Config.SecondsPerSlot)
+	return (slotsInTimeframe / float64(activeValidatorsCount)) * float64(validatorCount)
+}
+
+// getAvgSlotInterval will return the average block interval for a certain number of validators
+//
+// result of the function should be interpreted as "1 in every X slots will be proposed by this amount of validators on avg."
+func getAvgSlotInterval(validatorsCount int) float64 {
+	// don't estimate if there are no proposed blocks or no validators
+	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
+	if activeValidatorsCount == 0 {
+		return 0
+	}
+
+	probability := float64(validatorsCount) / float64(activeValidatorsCount)
+	// in a geometric distribution, the expected value of the number of trials needed until first success is 1/p
+	// you can think of this as the average interval of blocks until you get a proposal
+	return 1 / probability
+}
+
+// getAvgSyncCommitteeInterval will return the average sync committee interval for a certain number of validators
+//
+// result of the function should be interpreted as "there will be one validator included in every X committees, on average"
+func getAvgSyncCommitteeInterval(validatorsCount int) float64 {
+	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
+	if activeValidatorsCount == 0 {
+		return 0
+	}
+
+	probability := (float64(utils.Config.Chain.Config.SyncCommitteeSize) / float64(activeValidatorsCount)) * float64(validatorsCount)
+	// in a geometric distribution, the expected value of the number of trials needed until first success is 1/p
+	// you can think of this as the average interval of sync committees until you expect to have been part of one
+	return 1 / probability
 }
 
 // LatestState will return common information that about the current state of the eth2 chain
 func LatestState(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", utils.Config.Chain.Config.SecondsPerSlot)) // set local cache to the seconds per slot interval
 	currency := GetCurrency(r)
 	data := services.LatestState()
 	// data.Currency = currency
@@ -234,6 +407,10 @@ func GetCurrentPriceFormatted(r *http.Request) template.HTML {
 	return utils.FormatAddCommas(uint64(price))
 }
 
+func GetCurrentPriceKFormatted(r *http.Request) template.HTML {
+	return utils.KFormatterEthPrice(GetCurrentPrice(r))
+}
+
 func GetTruncCurrentPriceFormatted(r *http.Request) string {
 	price := GetCurrentPrice(r)
 	symbol := GetCurrencySymbol(r)
@@ -279,6 +456,9 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// never store the page number
+	settings.Start = 0
+
 	key := settings.Key
 	if len(key) == 0 {
 		logger.Errorf("no key provided")
@@ -290,20 +470,20 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 		dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
 		key = dataTableStatePrefix + key
 		count := 0
-		for k := range session.Values {
+		for k := range session.Values() {
 			k, ok := k.(string)
 			if ok && strings.HasPrefix(k, dataTableStatePrefix) {
 				count += 1
 			}
 		}
 		if count > 50 {
-			_, ok := session.Values[key]
+			_, ok := session.Values()[key]
 			if !ok {
 				logger.Errorf("error maximum number of datatable states stored in session")
 				return
 			}
 		}
-		session.Values[key] = settings
+		session.Values()[key] = settings
 
 		err := session.Save(r, w)
 		if err != nil {
@@ -323,31 +503,74 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	response.Data = ""
 }
 
-func GetDataTableState(user *types.User, session *sessions.Session, tableKey string) (*types.DataTableSaveState, error) {
+func GetDataTableState(user *types.User, session *utils.CustomSession, tableKey string) *types.DataTableSaveState {
+	state := types.DataTableSaveState{
+		Start: 0,
+	}
 	if user.Authenticated {
 		state, err := db.GetDataTablesState(user.UserID, tableKey)
-		if err != nil {
-			return nil, err
+		if err != nil && err != sql.ErrNoRows {
+			logger.Errorf("error getting data table state from db: %v", err)
+			return state
 		}
-		return state, nil
+		return state
 	}
-	stateRaw, exists := session.Values["table:state:"+utils.GetNetwork()+":"+tableKey]
+	stateRaw, exists := session.Values()["table:state:"+utils.GetNetwork()+":"+tableKey]
 	if !exists {
-		return nil, nil
+		return &state
 	}
 	state, ok := stateRaw.(types.DataTableSaveState)
 	if !ok {
-		return nil, fmt.Errorf("error parsing session value into type DataTableSaveState")
+		logger.Errorf("error getting state from session: %+v", stateRaw)
+		return &state
 	}
-	return &state, nil
+	return &state
 }
 
 // used to handle errors constructed by Template.ExecuteTemplate correctly
-func handleTemplateError(w http.ResponseWriter, r *http.Request, err error) error {
+func handleTemplateError(w http.ResponseWriter, r *http.Request, fileIdentifier string, functionIdentifier string, infoIdentifier string, err error) error {
 	// ignore network related errors
 	if err != nil && !errors.Is(err, syscall.EPIPE) && !errors.Is(err, syscall.ETIMEDOUT) {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		logger.WithFields(logrus.Fields{
+			"file":       fileIdentifier,
+			"function":   functionIdentifier,
+			"info":       infoIdentifier,
+			"error type": fmt.Sprintf("%T", err),
+			"route":      r.URL.String(),
+		}).WithError(err).Error("error executing template")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 	}
 	return err
+}
+
+func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
+	// the validators' balance will not be checked here as this is only a rough estimation
+	// checking the balance for hundreds of thousands of validators is too expensive
+
+	var maxValidatorIndex uint64
+	err := db.WriterDb.Get(&maxValidatorIndex, "SELECT COALESCE(MAX(validatorindex), 0) FROM validators")
+	if err != nil {
+		return 0, fmt.Errorf("error getting withdrawable validator count from cursor: %w", err)
+	}
+
+	if maxValidatorIndex == 0 {
+		return 0, nil
+	}
+
+	activeValidators := services.LatestIndexPageData().ActiveValidators
+	if activeValidators == 0 {
+		activeValidators = maxValidatorIndex
+	}
+
+	if validatorindex > cursor {
+		// if the validatorindex is after the cursor, simply return the number of validators between the cursor and the validatorindex
+		// the returned data is then scaled using the number of currently active validators in order to account for exited / entering validators
+		return (validatorindex - cursor) * activeValidators / maxValidatorIndex, nil
+	} else if validatorindex < cursor {
+		// if the validatorindex is before the cursor (wraparound case) return the number of validators between the cursor and the most recent validator plus the amount of validators from the validator 0 to the validatorindex
+		// the returned data is then scaled using the number of currently active validators in order to account for exited / entering validators
+		return (maxValidatorIndex - cursor + validatorindex) * activeValidators / maxValidatorIndex, nil
+	} else {
+		return 0, nil
+	}
 }

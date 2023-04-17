@@ -2,7 +2,6 @@ function setValidatorStatus(state, activationEpoch) {
   // deposited, deposited_valid, deposited_invalid, pending, active_online, active_offline, exiting_online, exiting_offline, slashing_online, slashing_offline, exited, slashed
   // we cans set elements to active, failed and done
   var status = state
-  console.log(status)
 
   var depositToPending = document.querySelector(".validator__lifecycle-progress.validator__lifecycle-deposited")
   var pendingToActive = document.querySelector(".validator__lifecycle-progress.validator__lifecycle-pending")

@@ -24,19 +24,19 @@ var poapData atomic.Value
 var poapDataEpoch uint64
 
 func Poap(w http.ResponseWriter, r *http.Request) {
-	var poapTemplate = templates.GetTemplate("layout.html", "poap.html")
+	templateFiles := append(layoutTemplateFiles, "poap.html")
+	var poapTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "more", "/poap", "POAP")
-	data.HeaderAd = true
+	data := InitPageData(w, r, "more", "/poap", "POAP", templateFiles)
 	data.Data = struct {
 		PoapClients []string
 	}{
 		PoapClients: poapClients,
 	}
 
-	if handleTemplateError(w, r, poapTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "poap.go", "Poap", "", poapTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }

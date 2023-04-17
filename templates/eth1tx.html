@@ -6,21 +6,22 @@
 {{ end }}
 
 {{ define "content" }}
-  {{ with .Data }}
-    <div class="container mt-2">
-      <div class="my-3">
-        <div class="d-md-flex py-2 justify-content-md-between">
-          <h1 class="h4 mb-1 mb-md-0">
-            <span class="ml-1 mr-1"><i class="fas fa-credit-card mr-2"></i>Transaction Details</span>
-          </h1>
-          <nav aria-label="breadcrumb">
-            <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
-              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-              <li class="breadcrumb-item active" aria-current="page">Tx Details</li>
-            </ol>
-          </nav>
-        </div>
+  <div class="container mt-2">
+    <div class="my-3">
+      <div class="d-md-flex py-2 justify-content-md-between">
+        <h1 class="h4 mb-1 mb-md-0">
+          <span class="ml-1 mr-1"><i class="fas fa-credit-card mr-2"></i>Transaction Details</span>
+        </h1>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
+            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Tx Details</li>
+          </ol>
+        </nav>
       </div>
+    </div>
+    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
+    {{ with .Data }}
       <div class="card">
         <div class="card-header">
           <ul class="nav nav-tabs card-header-tabs border-bottom-0" role="tablist">
@@ -52,7 +53,7 @@
                   <div class="d-flex align-items-center">
                     <div style="min-width: 0;">{{ .Hash | formatHashLong }}</div>
                     <div class="ml-2 flex-shrink-1">
-                      <button class="btn btn-dark text-white btn-sm align-bottom" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .Hash }}">
+                      <button class="btn btn-dark text-white btn-sm align-bottom" type="button" id="copy-button" data-toggle="tooltip" title="Copy transaction hash to clipboard" data-clipboard-text="0x{{ printf "%x" .Hash }}">
                         <i class="fa fa-copy"></i>
                       </button>
                     </div>
@@ -119,7 +120,11 @@
                       <div class="col-md-auto">
                         <div class="d-flex flex-wrap">
                           {{ if .TargetIsContract }}
-                            <div class="mr-2 flex-shrink-1"><span class="badge badge-secondary align-middle text-white">Contract</span></div>
+                            {{ if .DepositContractInteractions }}
+                              <div class="mr-2 flex-shrink-1"><span class="badge badge-primary align-middle text-white">Deposit Contract</span></div>
+                            {{ else }}
+                              <div class="mr-2 flex-shrink-1"><span class="badge badge-secondary align-middle text-white">Contract</span></div>
+                            {{ end }}
                           {{ end }}
                           {{ if ne .ToName "" }}
                             <div class="flex-shrink-1"><span class="badge badge-dark align-middle text-white">Name: {{ .ToName }}</span></div>
@@ -159,7 +164,27 @@
                           <span>{{ .To }}</span>
                           <span>For</span>
                           <span>{{ .Amount }}</span>
-                          <span>{{ .Token }}</span>
+                          <span>{{ .Token | formatTokenSymbolHTML }}</span>
+                        </li>
+                      {{ end }}
+                    </ul>
+                  </div>
+                </div>
+              {{ end }}
+              {{ if .DepositContractInteractions }}
+                <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
+                  <div class="col-md-3">Beaconchain Deposits:</div>
+                  <div class="col-md-9">
+                    <ul class="fa-ul mb-0 mt-2">
+                      {{ range $i, $deposit := .DepositContractInteractions }}
+                        <li class="mb-1">
+                          <i class="fa-li fas fa-long-arrow-alt-right"></i>
+                          <span>Deposit of</span>
+                          <span>{{ formatBytesAmount $deposit.Amount "Ether" 8 }}</span>
+                          <span>to Validator</span>
+                          <span>{{ formatPublicKey $deposit.ValidatorPubkey }}</span>
+                          <span>with withdrawal credentials</span>
+                          <span>{{ formatWithdawalCredentials $deposit.WithdrawalCreds true }}</span>
                         </li>
                       {{ end }}
                     </ul>
@@ -226,7 +251,7 @@
                   <div class="col-md-9">
                     <textarea readonly class="form-control bg-light text-monospace ">{{ .CallData }}</textarea>
                     <div class="mt-2">
-                      <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .CallData }}">Copy Raw Data <i class="fa fa-copy"></i></button>
+                      <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy raw data to clipboard" data-clipboard-text="{{ .CallData }}">Copy Raw Data <i class="fa fa-copy"></i></button>
                     </div>
                   </div>
                 </div>
@@ -308,7 +333,7 @@
                     <div class="col-md-9">
                       <textarea readonly class="form-control bg-light text-monospace ">{{ printf "0x%x" .Data }}</textarea>
                       <div class="mt-2">
-                        <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .Data }}">Copy Raw Data <i class="fa fa-copy"></i></button>
+                        <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy raw data to clipboard" data-clipboard-text="0x{{ printf "%x" .Data }}">Copy Raw Data <i class="fa fa-copy"></i></button>
                       </div>
                     </div>
                   </div>
@@ -340,6 +365,6 @@
           </div>
         </div>
       </div>
-    </div>
-  {{ end }}
+    {{ end }}
+  </div>
 {{ end }}

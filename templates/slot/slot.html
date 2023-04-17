@@ -1,0 +1,497 @@
+{{ define "js" }}
+
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/datatable_input.js"></script>
+
+  <script>
+    {
+      var attestations_tab_loaded = false
+      let atab = $('#attestations-tab')
+      if(atab.length > 0) {
+        atab.on('shown.bs.tab', function (event) { if(!attestations_tab_loaded) { setupInfiniteScrollAttestations(); }; attestations_tab_loaded = true; });
+      } else {
+        console.error('error getting #attestations-tab')
+        const att = document.getElementById('attestations');
+        if(att) {
+          att.appendChild(getInfoElementAttestations('Error loading attestations...', 'red'));
+        }
+      }
+    }
+
+    function getInfoElementAttestations (text, color) {
+      const att_card = document.createElement('div'); {
+        att_card.classList.add('card', 'my-2');
+        att_card.innerHTML = `
+          <DIV class='card-body px-0 py-1'>
+            <DIV class='row p-1 mx-0'>
+              <DIV class='col-md-12 text-center'>
+                <B style='color: ` + color + `'>` + text + `</B>
+              </DIV>
+            </DIV>
+          </DIV>
+        `;
+      }
+      return att_card;
+    }
+
+    function getAttestationElement (element) {
+      const att_card = document.createElement('div'); {
+        att_card.classList.add('card', 'my-2');
+        att_card.innerHTML = `
+          <DIV class='card-body px-0 py-1'>
+            <DIV class='row border-bottom p-1 mx-0'>
+              <DIV class='col-md-12 text-center'>
+                <B>
+                  Attestation ` + element.BlockIndex + `
+                </B>
+              </DIV>
+            </DIV>
+            <DIV class='row border-bottom p-1 mx-0'>
+              <DIV class='col-md-2'>
+                <SPAN data-toggle="tooltip" data-placement="top" title="Slot number to which the validator is attesting">
+                  Slot:
+                </SPAN>
+              </DIV>
+              <DIV class='col-md-10'>
+                <A href="/slot/` + element.Slot + `">` + element.Slot + `</A>
+              </DIV>
+            </DIV>
+            <DIV class='row border-bottom p-1 mx-0'>
+              <DIV class='col-md-2'>
+                <SPAN data-toggle="tooltip" data-placement="top" title="An identifier for a specific committee during a slot">
+                  Committee Index:
+                </SPAN>
+              </DIV>
+              <DIV class='col-md-10'>
+                ` + element.CommitteeIndex + `
+              </DIV>
+            </DIV>
+            <DIV class='row border-bottom p-1 mx-0'>
+              <DIV class='col-md-2'>
+                <SPAN data-toggle="tooltip" data-placement="top" title="Represents the aggregated attestation of all participating validators in this attestation">
+                  Aggregation Bits:
+                </SPAN>
+              </DIV>
+              <DIV class='col-md-10'>
+                ` + element.AggregationBits + `
+              </DIV>
+            </DIV>
+            <DIV class='row border-bottom p-1 mx-0'>
+              <DIV class='col-md-2'>
+                <SPAN data-toggle="tooltip" data-placement="top" title="Validators who have submitted their attestation and have been included by the block proposer">
+                  Validators:
+                </SPAN>
+              </DIV>
+              <DIV class='col-md-10'>
+                ` + element.Validators + `
+              </DIV>
+            </DIV>
+            <DIV class='row border-bottom p-1 mx-0'>
+              <DIV class='col-md-2'>
+                <SPAN data-toggle="tooltip" data-placement="top" title="Points to the block to which validators are attesting">
+                  Beacon Block Root:
+                </SPAN>
+              </DIV>
+              <DIV class='col-md-10 text-monospace text-break'>
+                <A href="/slot/` + element.BeaconBlockRoot + `">0x` + element.BeaconBlockRoot + `</A>
+              </DIV>
+            </DIV>
+            <DIV class='row border-bottom p-1 mx-0'>
+              <DIV class='col-md-2'>
+                <SPAN data-toggle="tooltip" data-placement="top" title="Points to the latest justified epoch">
+                  Source:
+                </SPAN>
+              </DIV>
+              <DIV class='col-md-10'>
+                Epoch
+                <A href="/epoch/` + element.SourceEpoch + `">` + element.SourceEpoch + `</A>
+                <SPAN class="text-monospace text-break">(<A href="` + element.SourceRoot + `">0x` + element.SourceRoot + `</A>)</SPAN>
+              </DIV>
+            </DIV>
+            <DIV class='row border-bottom p-1 mx-0'>
+              <DIV class='col-md-2'>
+                <SPAN data-toggle="tooltip" data-placement="top" title="Points to the latest epoch boundary">
+                  Target:
+                </SPAN>
+              </DIV>
+              <DIV class='col-md-10'>
+                Epoch
+                <A href="/epoch/` + element.TargetEpoch + `">` + element.TargetEpoch + `</A>
+                <SPAN class="text-monospace text-break">(<A href="` + element.TargetRoot + `">0x` + element.TargetRoot + `</A>)</SPAN>
+              </DIV>
+            </DIV>
+            <DIV class='row p-1 mx-0'>
+              <DIV class='col-md-2'>
+                Signature:
+              </DIV>
+              <DIV class='col-md-10 text-monospace text-break'>
+                0x` + element.Signature + `
+              </DIV>
+            </DIV>
+          </DIV>
+        `;
+      }
+      return att_card;
+    }
+
+    async function setupInfiniteScrollAttestations() {
+      const infLoading = document.getElementById('attestations');
+      if(infLoading) {
+        try {
+          const res = await fetch(`/slot/${encodeURI({{.Slot}})}/attestations`);
+          const data = await res.json();
+
+          for (let i = 1; i < data.length; ++i) {
+            infLoading.appendChild(getAttestationElement(data[i]));
+          }
+        } catch (err) {
+          console.error('error getting lazy attestations: ', err)
+          infLoading.appendChild(getInfoElementAttestations('Error loading attestations...', 'red'));
+        }
+      }
+    }
+
+    $(document).ready(function () {
+      let slotNumber = {{ .Slot }} || 0
+      var depositsTblOpts = {
+        processing: true,
+        serverSide: true,
+        ordering: false,
+        searching: false,
+        ajax: "/slot/" + slotNumber + "/deposits",
+        pageLength: 10,
+        pagingType: "input",
+        language: {
+          searchPlaceholder: "Deposit Number / Public Key / Credentials",
+          search: "",
+          paginate: {
+            previous: '<i class="fas fa-chevron-left"></i>',
+            next: '<i class="fas fa-chevron-right"></i>',
+          },
+        },
+        columnDefs: [
+          {
+            targets: 4,
+            render: function (data, type, row) {
+              return `<div class="d-flex"><div data-toggle="tooltip" title="${data}" style="max-width: 130px;" class="text-truncate">${data}</div><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i></div>`
+            },
+          },
+        ],
+        preDrawCallback: function () {
+          // this does not always work.. not sure how to solve the staying tooltip
+          try {
+            $("#block_deposits").find('[data-toggle="tooltip"]').tooltip("dispose")
+          } catch (e) {
+            console.error(e)
+          }
+        },
+        drawCallback: function (settings) {
+          formatTimestamps()
+          $("#block_deposits").find('[data-toggle="tooltip"]').tooltip()
+        },
+      }
+      let usp = new URLSearchParams(window.location.search)
+      let q = usp.get("q")
+
+      if (q) {
+        depositsTblOpts.search = { search: q }
+      }
+
+      $("#block_deposits").DataTable(depositsTblOpts)
+
+      let votesTblOpts = {
+        processing: true,
+        serverSide: true,
+        ordering: false,
+        stateSave: true,
+        searching: true,
+        ajax: "/slot/" + slotNumber + "/votes",
+        pageLength: 16,
+        pagingType: "input",
+        language: {
+          searchPlaceholder: "Validator",
+          search: "",
+          paginate: {
+            previous: '<i class="fas fa-chevron-left"></i>',
+            next: '<i class="fas fa-chevron-right"></i>',
+          },
+        },
+        columnDefs: [{ targets: [3], className: "white-space-normal" }],
+        preDrawCallback: function () {
+          // this does not always work.. not sure how to solve the staying tooltip
+          try {
+            $("#block_votes").find('[data-toggle="tooltip"]').tooltip("dispose")
+          } catch (e) {
+            console.error(e)
+          }
+        },
+        drawCallback: function (settings) {
+          formatTimestamps()
+          $("#block_votes").find('[data-toggle="tooltip"]').tooltip()
+        },
+      }
+
+      if (q) {
+        votesTblOpts.search = { search: q }
+      }
+
+      $("#block_votes").DataTable(votesTblOpts)
+
+
+      let withdrawalOpts = {
+          processing: true,
+          serverSide: true,
+          ordering: false,
+          info: false,
+          // stateSave: true,
+          searching: false,
+          ajax: "/slot/" + slotNumber + "/withdrawals",
+          paging: false,
+          // deferLoading: true,
+          pageLength: 10,
+          preDrawCallback: function () {
+            try {
+              $("#block_withdrawals").find('[data-toggle="tooltip"]').tooltip("dispose")
+            } catch (e) {
+              console.error(e)
+            }
+          },
+          drawCallback: function (settings) {
+            formatTimestamps()
+            $("#block_withdrawals").find('[data-toggle="tooltip"]').tooltip()
+          }
+        }
+
+        $("#block_withdrawals").DataTable(withdrawalOpts)
+
+        let blsChangeOpts = {
+          processing: true,
+          serverSide: true,
+          ordering: false,
+          info: false,
+          // stateSave: true,
+          searching: false,
+          ajax: "/slot/" + slotNumber + "/blsChange",
+          paging: false,
+          // deferLoading: true,
+          pageLength: 10,
+          preDrawCallback: function () {
+            try {
+              $("#block_blsChange").find('[data-toggle="tooltip"]').tooltip("dispose")
+            } catch (e) {
+              console.error(e)
+            }
+          },
+          drawCallback: function (settings) {
+            formatTimestamps()
+            $("#block_blsChange").find('[data-toggle="tooltip"]').tooltip()
+          }
+        }
+
+        $("#block_blsChange").DataTable(blsChangeOpts)
+    })
+  </script>
+
+  <script>
+    viewHexDataAs("graffiti", "utf-8")
+    viewHexDataAs("extra-data", "utf-8")
+  </script>
+{{ end }}
+
+{{ define "css" }}
+  <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+    {{ $isBlockView := (contains $.Meta.Path "block") }}
+    <div class="container mt-2">
+      <div class="d-md-flex py-2 justify-content-md-between">
+        <h1 class="h4 my-3 mb-md-0">
+          {{ if $isBlockView }}
+            {{ with .ExecutionData }}
+              {{ if gt .PreviousBlock 0 }}
+                <a href="/block/{{ .PreviousBlock }}"><i class="fa fa-chevron-left"></i></a>
+              {{ end }}
+              <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block {{ .Number }}</span>
+              {{ if gt .NextBlock 0 }}
+                <a href="/block/{{ .NextBlock }}"><i class="fa fa-chevron-right"></i></a>
+              {{ end }}
+            {{ end }}
+          {{ else }}
+            {{ if not (eq .Slot 0) }}
+              <a href="/slot/{{ .PreviousSlot }}"><i class="fa fa-chevron-left"></i></a>
+            {{ end }}
+            <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Slot <span id="slot">{{ formatAddCommas .Slot }}</span></span>
+            {{ if gt .NextSlot 0 }}
+              <a href="/slot/{{ .NextSlot }}"><i class="fa fa-chevron-right"></i></a>
+            {{ end }}
+          {{ end }}
+        </h1>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
+            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+            <li class="breadcrumb-item"><a href="/slots" title="Slots">Slots</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Slot details</li>
+          </ol>
+        </nav>
+      </div>
+      {{ if ne (len .Tags) 0 }}
+        <div class="tags">
+          {{ range .Tags }}
+            <a class="user-select-none mb-2 mr-1 px-2 py-2 badge badge-primary shadow-sm text-white" {{ if .Color }}style="background-color: {{ .Color }};"{{ end }} data-toggle="tooltip" data-placement="bottom" title="{{ .Summary }}" {{ if .PublicLink }}href="{{ .PublicLink }}" target="_blank" rel="noopener noreferrer"{{ end }}>
+              {{ .Name }}
+              <i class="fas fa-info-circle pl-1"></i>
+              {{ if .PublicLink }}
+                <i class="fas fa-link"></i>
+              {{ end }}
+            </a>
+          {{ end }}
+        </div>
+      {{ end }}
+
+      {{ $bannerId := "r-banner-slot" }}
+      {{ if $isBlockView }}
+        {{ $bannerId = "r-banner-block" }}
+      {{ end }}
+      <div id="{{ $bannerId }}" info="{{ $.Meta.Templates }}"></div>
+
+      <ul style="margin-bottom: -1px; " class="nav nav-tabs justify-content-start" id="tab" role="tablist">
+        <li class="nav-item">
+          <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true">Overview</a>
+        </li>
+        {{ with .ExecutionData }}
+          <li class="nav-item">
+            <a class="nav-link" id="transactions-tab" data-toggle="tab" href="#transactions" role="tab" aria-controls="transactions" aria-selected="false">Transactions <span class="badge bg-secondary text-white">{{ .TxCount }}</span></a>
+          </li>
+        {{ end }}
+        <li class="nav-item">
+          <a class="nav-link" id="votes-tab" data-toggle="tab" href="#votes" role="tab" aria-controls="votes" aria-selected="false">Votes <span class="badge bg-secondary text-white">{{ .VotesCount }}</span></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{ .AttestationsCount }}</span></a>
+        </li>
+        {{ if gt .DepositsCount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{ .DepositsCount }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt .VoluntaryExitscount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="voluntary-exits-tab" data-toggle="tab" href="#voluntary-exits" role="tab" aria-controls="voluntary-exits" aria-selected="false">Voluntary Exits <span class="badge bg-secondary text-white">{{ .VoluntaryExitscount }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt .AttesterSlashingsCount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="attester-slashings-tab" data-toggle="tab" href="#attester-slashings" role="tab" aria-controls="attester-slashings" aria-selected="false">Attester Slashings <span class="badge bg-secondary text-white">{{ .AttesterSlashingsCount }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt .ProposerSlashingsCount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="proposer-slashings-tab" data-toggle="tab" href="#proposer-slashings" role="tab" aria-controls="proposer-slashings" aria-selected="false">Proposer Slashings <span class="badge bg-secondary text-white">{{ .ProposerSlashingsCount }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt .WithdrawalCount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawal" aria-selected="false">Withdrawals <span class="badge bg-secondary text-white">{{ .WithdrawalCount }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt .BLSChangeCount 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="blsChange-tab" data-toggle="tab" href="#blsChange" role="tab" aria-controls="blsChange" aria-selected="false">BLS Change <span class="badge bg-secondary text-white">{{ .BLSChangeCount }}</span></a>
+          </li>
+        {{ end }}
+      </ul>
+      <style>
+        .block-card {
+          border-top-left-radius: 0;
+          border-top-right-radius: 0;
+        }
+      </style>
+      <div class="tab-content" id="tabContent">
+        <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+          <div class="card block-card">
+            {{ template "block_overview" $ }}
+          </div>
+        </div>
+        {{ if gt .VotesCount 0 }}
+          <div class="tab-pane fade" id="votes" role="tabpanel" aria-labelledby="votes-tab">
+            <div class="card block-card">
+              {{ template "block_votes" . }}
+            </div>
+          </div>
+        {{ end }}
+        <div class="tab-pane fade" id="attestations" role="tabpanel" aria-labelledby="attestations-tab">
+          <div class="card block-card">
+            <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
+              <div class="row p-1 mx-0">
+                <h3 class="h5 col-md-12 text-center"><b>Showing {{ .AttestationsCount }} Attestations </b></h3>
+              </div>
+            </div>
+          </div>
+          {{ template "block_attestations" . }}
+        </div>
+        {{ if .ExecutionData }}
+          <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
+            <div class="card block-card py-1">
+              {{ template "execution_transactions" .ExecutionData }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt .WithdrawalCount 0 }}
+          <div class="tab-pane fade" id="withdrawals" role="tabpanel" aria-labelledby="withdrawals-tab">
+            <div class="card block-card py-1">
+              {{ template "block_withdrawals" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt .BLSChangeCount 0 }}
+          <div class="tab-pane fade" id="blsChange" role="tabpanel" aria-labelledby="blsChange-tab">
+            <div class="card block-card py-1">
+              {{ template "block_blsChange" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt .DepositsCount 0 }}
+          <div class="tab-pane fade" id="deposits" role="tabpanel" aria-labelledby="deposits-tab">
+            <div class="card block-card">
+              {{ template "block_deposits" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt .VoluntaryExitscount 0 }}
+          <div class="tab-pane fade" id="voluntary-exits" role="tabpanel" aria-labelledby="voluntary-exits-tab">
+            <div class="card block-card">
+              {{ template "block_exits" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt .AttesterSlashingsCount 0 }}
+          <!-- Nav tabs -->
+          <div class="tab-pane fade" id="attester-slashings" role="tabpanel" aria-labelledby="attester-slashings-tab">
+            <div class="card block-card">
+              <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
+                <div class="row p-1 mx-0">
+                  <h3 class="h5 col-md-12 text-center"><b>Showing {{ .AttesterSlashingsCount }} Attester Slashing(s) </b></h3>
+                </div>
+              </div>
+            </div>
+            {{ template "block_attesterSlashing" . }}
+          </div>
+        {{ end }}
+        {{ if gt .ProposerSlashingsCount 0 }}
+          <div class="tab-pane fade" id="proposer-slashings" role="tabpanel" aria-labelledby="proposer-slashings-tab">
+            <div class="card block-card">
+              <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
+                <div class="row p-1 mx-0">
+                  <h3 class="h5 col-md-12 text-center"><b>Showing {{ .ProposerSlashingsCount }} Proposer Slashing(s) </b></h3>
+                </div>
+              </div>
+            </div>
+            {{ template "block_proposerSlashing" . }}
+          </div>
+        {{ end }}
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

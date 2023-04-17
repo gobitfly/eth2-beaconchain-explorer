@@ -25,7 +25,6 @@ var thresholdHexLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{5,96}$`)
 
 // Search handles search requests
 func Search(w http.ResponseWriter, r *http.Request) {
-	var searchNotFoundTemplate = templates.GetTemplate("layout.html", "searchnotfound.html")
 
 	search := r.FormValue("search")
 
@@ -45,10 +44,11 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/address/"+search, http.StatusMovedPermanently)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
-		data := InitPageData(w, r, "search", "/search", "")
-		data.HeaderAd = true
+		templateFiles := append(layoutTemplateFiles, "searchnotfound.html")
+		var searchNotFoundTemplate = templates.GetTemplate(templateFiles...)
+		data := InitPageData(w, r, "search", "/search", "", templateFiles)
 
-		if handleTemplateError(w, r, searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		if handleTemplateError(w, r, "search.go", "Search", "", searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 			return // an error has occurred and was processed
 		}
 	}
@@ -131,15 +131,15 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if transactionLikeRE.MatchString(strings.ToLower(strings.Replace(search, "0x", "", -1))) {
 			txHash, txHashErr := hex.DecodeString(strings.ToLower(strings.Replace(search, "0x", "", -1)))
 			if txHashErr != nil {
-				logger.Errorf("error parsing txHash %v: %w", search, txHashErr)
+				logger.Errorf("error parsing txHash %v: %v", search, txHashErr)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			err = db.ReaderDb.Select(result, `
-				SELECT ENCODE(txhash::bytea, 'hex') AS txhash
-				FROM blocks_transactions
-				WHERE txhash = $1
-				ORDER BY block_slot LIMIT 10`, txHash)
+			var tx *types.Eth1TransactionIndexed
+			tx, err = db.BigtableClient.GetIndexedEth1Transaction(txHash)
+			if err == nil && tx != nil {
+				result = &types.SearchAheadTransactionsResult{{TxHash: fmt.Sprintf("%x", tx.Hash)}}
+			}
 		}
 	case "epochs":
 		result = &types.SearchAheadEpochsResult{}
@@ -235,7 +235,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case "indexed_validators_by_eth1_addresses":
-		if len(search) <= 1 {
+		if len(search) <= 1 || len(search) > 40 {
 			break
 		}
 		if len(search)%2 != 0 {
@@ -254,20 +254,55 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 				return
 			}
-			err = db.ReaderDb.Select(result, `
-			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
-				SELECT 
-					DISTINCT ON(validatorindex) validatorindex,
-					ENCODE(from_address::bytea, 'hex') as from_address,
-					DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
-					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
-				FROM eth1_deposits
-				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE from_address LIKE $1 || '%'::bytea
-			) a 
-			WHERE validatorrow <= $2 AND addressrow <= 10
-			GROUP BY from_address
-			ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
+			if len(eth1AddressHash) == 20 {
+				// if it is an eth1-address just search for exact match
+				err = db.ReaderDb.Select(result, `
+				SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
+					SELECT 
+						DISTINCT ON(validatorindex) validatorindex,
+						ENCODE(from_address::bytea, 'hex') as from_address,
+						DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
+						DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
+					FROM eth1_deposits
+					INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
+					WHERE from_address = $1
+				) a 
+				WHERE validatorrow <= $2 AND addressrow <= 10
+				GROUP BY from_address
+				ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
+			} else if len(eth1AddressHash) <= 16 {
+				// if the lenght is less then 32 use byte-wise comparison
+				err = db.ReaderDb.Select(result, `
+				SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
+					SELECT 
+						DISTINCT ON(validatorindex) validatorindex,
+						ENCODE(from_address::bytea, 'hex') as from_address,
+						DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
+						DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
+					FROM eth1_deposits
+					INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
+					WHERE from_address LIKE $1 || '%'::bytea
+				) a 
+				WHERE validatorrow <= $2 AND addressrow <= 10
+				GROUP BY from_address
+				ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
+			} else {
+				// otherwise use hex (see BIDS-1570)
+				err = db.ReaderDb.Select(result, `
+				SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
+					SELECT 
+						DISTINCT ON(validatorindex) validatorindex,
+						ENCODE(from_address::bytea, 'hex') as from_address,
+						DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
+						DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
+					FROM eth1_deposits
+					INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
+					WHERE encode(from_address,'hex') LIKE $1
+				) a 
+				WHERE validatorrow <= $2 AND addressrow <= 10
+				GROUP BY from_address
+				ORDER BY count DESC`, search+"%", searchValidatorsResultLimit)
+			}
 			if err != nil {
 				logger.Errorf("error reading result data: %v", err)
 				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -369,7 +404,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		logger.WithError(err).Error("error doing query for searchAhead")
+		logger.WithError(err).WithField("searchType", searchType).Error("error doing query for searchAhead")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}

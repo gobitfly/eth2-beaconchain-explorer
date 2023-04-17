@@ -3,6 +3,7 @@ package exporter
 import (
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
+	"eth2-exporter/services"
 	"eth2-exporter/utils"
 	"fmt"
 	"strconv"
@@ -33,7 +34,7 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 	for _, p := range dbPeriods {
 		dbPeriodsMap[p] = true
 	}
-	currEpoch := utils.TimeToEpoch(time.Now())
+	currEpoch := services.LatestFinalizedEpoch() - 1
 	lastPeriod := utils.SyncPeriodOfEpoch(uint64(currEpoch)) + 1 // we can look into the future
 	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.Config.AltairForkEpoch)
 	for p := firstPeriod; p <= lastPeriod; p++ {
@@ -42,7 +43,7 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 			t0 := time.Now()
 			err = exportSyncCommitteeAtPeriod(rpcClient, p)
 			if err != nil {
-				return fmt.Errorf("error exporting snyc-committee at period %v: %w", p, err)
+				return fmt.Errorf("error exporting sync-committee at period %v: %w", p, err)
 			}
 			logrus.WithFields(logrus.Fields{
 				"period":   p,
@@ -67,7 +68,7 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 	}
 
 	firstEpoch := utils.FirstEpochOfSyncPeriod(p)
-	lastEpoch := firstEpoch + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod
+	lastEpoch := firstEpoch + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod - 1
 
 	logger.Infof("exporting sync committee assignments for period %v (epoch %v to %v)", p, firstEpoch, lastEpoch)
 

@@ -130,7 +130,7 @@ func CreateAPIKey(userID uint64) error {
 		return err
 	}
 
-	key, err := utils.GenerateAPIKey(u.Password, u.Email, fmt.Sprint(u.RegisterTs.Unix()))
+	key, err := utils.GenerateRandomAPIKey()
 	if err != nil {
 		return err
 	}
@@ -229,7 +229,7 @@ func GetUserDevicesByUserID(userID uint64) ([]types.PairedDevice, error) {
 	if len(data) > 0 {
 		return data, nil
 	}
-	return nil, errors.New("no rows found")
+	return nil, nil
 }
 
 // InsertUserDevice Insert user device and return device id
@@ -467,7 +467,7 @@ func MobileDeviceSettingsUpdate(userID, deviceID uint64, notifyEnabled, active s
 	}
 
 	if query == "" {
-		return nil, errors.New("No params for change provided")
+		return nil, errors.New("no params for change provided")
 	}
 
 	rows, err := FrontendWriterDB.Query("UPDATE users_devices SET "+query+" WHERE user_id = $1 AND id = $2 RETURNING notify_enabled;",
@@ -549,7 +549,7 @@ func GetHistoricPrices(currency string) (map[uint64]float64, error) {
 func GetUserAPIKeyStatistics(apikey *string) (*types.ApiStatistics, error) {
 	stats := &types.ApiStatistics{}
 
-	query := fmt.Sprintf(`
+	query := `
 	SELECT (
 		SELECT 
 			COALESCE(SUM(count), 0) as daily 
@@ -564,7 +564,7 @@ func GetUserAPIKeyStatistics(apikey *string) (*types.ApiStatistics, error) {
 			api_statistics 
 		WHERE 
 			ts > NOW() - INTERVAL '1 month' AND apikey = $1
-	)`)
+	)`
 
 	err := FrontendWriterDB.Get(stats, query, apikey)
 	if err != nil {

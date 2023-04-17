@@ -33,6 +33,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // the notificationCollector is responsible for collecting & queuing notifications
@@ -41,7 +43,6 @@ import (
 // the epochs_notified sql table is used to keep track of already notified epochs
 // before collecting notifications several db consistency checks are done
 func notificationCollector() {
-
 	for {
 		latestFinalizedEpoch := LatestFinalizedEpoch()
 
@@ -77,7 +78,7 @@ func notificationCollector() {
 			var exported uint64
 			err := db.WriterDb.Get(&exported, "SELECT COUNT(*) FROM epochs WHERE epoch <= $1 AND epoch >= $2", epoch, epoch-3)
 			if err != nil {
-				logger.Errorf("error retrieving export statuf of epoch %v: %v", epoch, err)
+				logger.Errorf("error retrieving export status of epoch %v: %v", epoch, err)
 				ReportStatus("notification-collector", "Error", nil)
 				break
 			}
@@ -105,7 +106,7 @@ func notificationCollector() {
 				break
 			}
 
-			queueNotifications(notifications, db.FrontendWriterDB) // this caused the collected notifications to be queuened and sent
+			queueNotifications(notifications, db.FrontendWriterDB) // this caused the collected notifications to be queued and sent
 
 			// Network DB Notifications (user related, must only run on one instance ever!!!!)
 			if utils.Config.Notifications.UserDBNotifications {
@@ -176,7 +177,7 @@ func notificationSender() {
 		if err != nil {
 			logger.WithError(err).Errorf("error executing advisory unlock")
 
-			conn.Close()
+			err = conn.Close()
 			if err != nil {
 				logger.WithError(err).Warn("error returning connection to connection pool (advisory unlock)")
 			}
@@ -189,7 +190,7 @@ func notificationSender() {
 		}
 
 		if !unlocked {
-			logger.Error("error releasing advisory lock unlocked: ", unlocked)
+			utils.LogError(nil, fmt.Errorf("error releasing advisory lock unlocked: %v", unlocked), 0)
 		}
 
 		conn.Close()
@@ -259,6 +260,13 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 	}
 	logger.Infof("collecting validator got slashed notifications took: %v\n", time.Since(start))
 
+	err = collectWithdrawalNotifications(notificationsByUserID, epoch)
+	if err != nil {
+		metrics.Errors.WithLabelValues("notifications_collect_validator_withdrawal").Inc()
+		return nil, fmt.Errorf("error collecting withdrawal notifications: %v", err)
+	}
+	logger.Infof("collecting withdrawal notifications took: %v\n", time.Since(start))
+
 	err = collectNetworkNotifications(notificationsByUserID, types.NetworkLivenessIncreasedEventName)
 	if err != nil {
 		metrics.Errors.WithLabelValues("notifications_collect_network").Inc()
@@ -266,33 +274,48 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 	}
 	logger.Infof("collecting network notifications took: %v\n", time.Since(start))
 
-	err = collectRocketpoolComissionNotifications(notificationsByUserID, types.RocketpoolCommissionThresholdEventName)
-	if err != nil {
-		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_comission").Inc()
-		return nil, fmt.Errorf("error collecting rocketpool commission: %v", err)
-	}
-	logger.Infof("collecting rocketpool commissions took: %v\n", time.Since(start))
+	// Rocketpool
+	{
+		var ts int64
+		err = db.ReaderDb.Get(&ts, `SELECT id FROM rocketpool_network_stats LIMIT 1;`)
 
-	err = collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID, types.RocketpoolNewClaimRoundStartedEventName)
-	if err != nil {
-		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_reward_claim").Inc()
-		return nil, fmt.Errorf("error collecting new rocketpool claim round: %v", err)
-	}
-	logger.Infof("collecting rocketpool claim round took: %v\n", time.Since(start))
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				logger.Infof("skipped the collecting of rocketpool notifications, because rocketpool_network_stats is empty")
+			} else {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_notifications").Inc()
+				return nil, fmt.Errorf("error collecting rocketpool notifications: %v", err)
+			}
+		} else {
+			err = collectRocketpoolComissionNotifications(notificationsByUserID, types.RocketpoolCommissionThresholdEventName)
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_comission").Inc()
+				return nil, fmt.Errorf("error collecting rocketpool commission: %v", err)
+			}
+			logger.Infof("collecting rocketpool commissions took: %v\n", time.Since(start))
 
-	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMaxReached, epoch)
-	if err != nil {
-		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_max_reached").Inc()
-		return nil, fmt.Errorf("error collecting rocketpool max collateral: %v", err)
-	}
-	logger.Infof("collecting rocketpool max collateral took: %v\n", time.Since(start))
+			err = collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID, types.RocketpoolNewClaimRoundStartedEventName)
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_reward_claim").Inc()
+				return nil, fmt.Errorf("error collecting new rocketpool claim round: %v", err)
+			}
+			logger.Infof("collecting rocketpool claim round took: %v\n", time.Since(start))
 
-	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMinReached, epoch)
-	if err != nil {
-		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_min_reached").Inc()
-		return nil, fmt.Errorf("error collecting rocketpool min collateral: %v", err)
+			err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMaxReached, epoch)
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_max_reached").Inc()
+				return nil, fmt.Errorf("error collecting rocketpool max collateral: %v", err)
+			}
+			logger.Infof("collecting rocketpool max collateral took: %v\n", time.Since(start))
+
+			err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMinReached, epoch)
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_min_reached").Inc()
+				return nil, fmt.Errorf("error collecting rocketpool min collateral: %v", err)
+			}
+			logger.Infof("collecting rocketpool min collateral took: %v\n", time.Since(start))
+		}
 	}
-	logger.Infof("collecting rocketpool min collateral took: %v\n", time.Since(start))
 
 	err = collectSyncCommittee(notificationsByUserID, types.SyncCommitteeSoon, epoch)
 	if err != nil {
@@ -486,7 +509,7 @@ func garbageCollectNotificationQueue(useDB *sqlx.DB) error {
 func getNetwork() string {
 	domainParts := strings.Split(utils.Config.Frontend.SiteDomain, ".")
 	if len(domainParts) >= 3 {
-		return fmt.Sprintf("%s: ", strings.Title(domainParts[0]))
+		return fmt.Sprintf("%s: ", cases.Title(language.English).String(domainParts[0]))
 	}
 	return ""
 }
@@ -570,18 +593,27 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 
 	logger.Infof("processing %v push notifications", len(notificationQueueItem))
 
+	batchSize := 500
 	for _, n := range notificationQueueItem {
-		_, err = notify.SendPushBatch(n.Content.Messages)
-		if err != nil {
-			metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
-			logger.WithError(err).Error("error sending firebase batch job")
-		} else {
-			metrics.NotificationsSent.WithLabelValues("push", "200").Add(float64(len(n.Content.Messages)))
-		}
+		for b := 0; b < len(n.Content.Messages); b += batchSize {
+			start := b
+			end := b + batchSize
+			if len(n.Content.Messages) < end {
+				end = len(n.Content.Messages)
+			}
 
-		_, err = useDB.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
-		if err != nil {
-			return fmt.Errorf("error updating sent status for push notification with id: %v, err: %w", n.Id, err)
+			err = notify.SendPushBatch(n.Content.Messages[start:end])
+			if err != nil {
+				metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
+				logger.WithError(err).Error("error sending firebase batch job")
+			} else {
+				metrics.NotificationsSent.WithLabelValues("push", "200").Add(float64(len(n.Content.Messages)))
+			}
+
+			_, err = useDB.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
+			if err != nil {
+				return fmt.Errorf("error updating sent status for push notification with id: %v, err: %w", n.Id, err)
+			}
 		}
 	}
 	return nil
@@ -1103,7 +1135,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					if resp != nil {
 						b, err := io.ReadAll(resp.Body)
 						if err != nil {
-							logger.Error("error reading body for discord webhook response: %v", err)
+							logger.Errorf("error reading body for discord webhook response: %v", err)
 						} else {
 							errResp.Body = string(b)
 						}
@@ -1126,7 +1158,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 }
 
 func getUrlPart(validatorIndex uint64) string {
-	return fmt.Sprintf(` For more information visit: https://%s/validator/%v.`, utils.Config.Frontend.SiteDomain, validatorIndex)
+	return fmt.Sprintf(` For more information visit: <a href='https://%s/validator/%v'>https://%s/validator/%v</a>.`, utils.Config.Frontend.SiteDomain, validatorIndex, utils.Config.Frontend.SiteDomain, validatorIndex)
 }
 
 func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName, epoch uint64) error {
@@ -1335,7 +1367,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 	}
 
 	// get attestations for all validators for the last n epochs
-	attestations, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{}, epoch, 4) // retrieve attestation data of the last 3 epochs
+	attestations, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{}, epoch-4, epoch) // retrieve attestation data of the last 3 epochs
 	if err != nil {
 		return fmt.Errorf("error getting validator attestations from bigtable %w", err)
 	}
@@ -1889,6 +1921,120 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 	return nil
 }
 
+type validatorWithdrawalNotification struct {
+	SubscriptionID  uint64
+	ValidatorIndex  uint64
+	Epoch           uint64
+	Slot            uint64
+	Amount          uint64
+	Address         []byte
+	EventFilter     string
+	UnsubscribeHash sql.NullString
+}
+
+func (n *validatorWithdrawalNotification) GetLatestState() string {
+	return ""
+}
+
+func (n *validatorWithdrawalNotification) GetUnsubscribeHash() string {
+	if n.UnsubscribeHash.Valid {
+		return n.UnsubscribeHash.String
+	}
+	return ""
+}
+
+func (n *validatorWithdrawalNotification) GetEmailAttachment() *types.EmailAttachment {
+	return nil
+}
+
+func (n *validatorWithdrawalNotification) GetSubscriptionID() uint64 {
+	return n.SubscriptionID
+}
+
+func (n *validatorWithdrawalNotification) GetEpoch() uint64 {
+	return n.Epoch
+}
+
+func (n *validatorWithdrawalNotification) GetEventName() types.EventName {
+	return types.ValidatorReceivedWithdrawalEventName
+}
+
+func (n *validatorWithdrawalNotification) GetInfo(includeUrl bool) string {
+	generalPart := fmt.Sprintf(`A withdrawal of %v has been processed for validator %v.`, utils.FormatCurrentBalance(n.Amount, "ETH"), n.ValidatorIndex)
+	if includeUrl {
+		return generalPart + getUrlPart(n.ValidatorIndex)
+	}
+	return generalPart
+}
+
+func (n *validatorWithdrawalNotification) GetTitle() string {
+	return "Withdrawal Processed"
+}
+
+func (n *validatorWithdrawalNotification) GetEventFilter() string {
+	return n.EventFilter
+}
+
+func (n *validatorWithdrawalNotification) GetInfoMarkdown() string {
+	generalPart := fmt.Sprintf(`A withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/%[4]v).`, n.ValidatorIndex, utils.FormatCurrentBalance(n.Amount, "ETH"), n.Slot, utils.FormatHash(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
+	return generalPart
+}
+
+// collectWithdrawalNotifications collects all notifications validator withdrawals
+func collectWithdrawalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, epoch uint64) error {
+
+	// get all users that are subscribed to this event (scale: a few thousand rows depending on how many users we have)
+	_, subMap, err := db.GetSubsForEventFilter(types.ValidatorReceivedWithdrawalEventName)
+	if err != nil {
+		return fmt.Errorf("error getting subscriptions for missed attestations %w", err)
+	}
+
+	// get all the withdrawal events for a specific epoch. Will be at most X per slot (currently 16 on mainnet, which is 32 * 16 per epoch; 512 rows).
+	events, err := db.GetEpochWithdrawals(epoch)
+	if err != nil {
+		return fmt.Errorf("error getting withdrawals from database, err: %w", err)
+	}
+
+	// logger.Infof("retrieved %v events", len(events))
+	for _, event := range events {
+		subscribers, ok := subMap[hex.EncodeToString(event.Pubkey)]
+		if ok {
+			for _, sub := range subscribers {
+				if sub.UserID == nil || sub.ID == nil {
+					return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+				}
+				if sub.LastEpoch != nil {
+					lastSentEpoch := *sub.LastEpoch
+					if lastSentEpoch >= epoch || epoch < sub.CreatedEpoch {
+						continue
+					}
+				}
+				// logger.Infof("creating %v notification for validator %v in epoch %v", types.ValidatorReceivedWithdrawalEventName, event.ValidatorIndex, epoch)
+				n := &validatorWithdrawalNotification{
+					SubscriptionID:  *sub.ID,
+					ValidatorIndex:  event.ValidatorIndex,
+					Epoch:           epoch,
+					Slot:            event.Slot,
+					Amount:          event.Amount,
+					Address:         event.Address,
+					EventFilter:     hex.EncodeToString(event.Pubkey),
+					UnsubscribeHash: sub.UnsubscribeHash,
+				}
+				if _, exists := notificationsByUserID[*sub.UserID]; !exists {
+					notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
+				}
+				if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
+					notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
+				}
+				notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
+				metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
+			}
+		}
+	}
+
+	return nil
+}
+
 type ethClientNotification struct {
 	SubscriptionID  uint64
 	UserID          uint64
@@ -1934,8 +2080,6 @@ func (n *ethClientNotification) GetInfo(includeUrl bool) string {
 			url = "https://github.com/ethereum/go-ethereum/releases"
 		case "Nethermind":
 			url = "https://github.com/NethermindEth/nethermind/releases"
-		case "OpenEthereum":
-			url = "https://github.com/openethereum/openethereum/releases"
 		case "Teku":
 			url = "https://github.com/ConsenSys/teku/releases"
 		case "Prysm":
@@ -1976,8 +2120,6 @@ func (n *ethClientNotification) GetInfoMarkdown() string {
 		url = "https://github.com/ethereum/go-ethereum/releases"
 	case "Nethermind":
 		url = "https://github.com/NethermindEth/nethermind/releases"
-	case "OpenEthereum":
-		url = "https://github.com/openethereum/openethereum/releases"
 	case "Teku":
 		url = "https://github.com/ConsenSys/teku/releases"
 	case "Prysm":
@@ -2076,10 +2218,7 @@ func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.
 
 func isMachineDataRecent(machineData *types.MachineMetricSystemUser) bool {
 	nowTs := time.Now().Unix()
-	if machineData.CurrentDataInsertTs < nowTs-60*60 { // only if data is up 2 date (last hour)
-		return false
-	}
-	return true
+	return machineData.CurrentDataInsertTs >= nowTs-60*60
 }
 
 func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, epoch uint64) error {
@@ -2091,11 +2230,7 @@ func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map
 			}
 
 			percentFree := float64(machineData.CurrentData.DiskNodeBytesFree) / float64(machineData.CurrentData.DiskNodeBytesTotal+1)
-			if percentFree < subscribeData.EventThreshold {
-				//logrus.Infof("disk percent full %v | threshold %v | free %v | total %v", percentFree, subscribeData.EventThreshold, machineData.CurrentData.DiskNodeBytesFree, machineData.CurrentData.DiskNodeBytesTotal)
-				return true
-			}
-			return false
+			return percentFree < subscribeData.EventThreshold
 		},
 		epoch,
 	)
@@ -2117,11 +2252,7 @@ func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.
 			total := float64(machineData.CurrentData.CpuNodeSystemSecondsTotal) - float64(machineData.FiveMinuteOldData.CpuNodeSystemSecondsTotal)
 			percentLoad := float64(1) - (idle / total)
 
-			if percentLoad > subscribeData.EventThreshold {
-				//logrus.Infof("cpu percent load %v | threshold %v | idle %v | total %v", percentLoad, subscribeData.EventThreshold, idle, total)
-				return true
-			}
-			return false
+			return percentLoad > subscribeData.EventThreshold
 		},
 		epoch,
 	)
@@ -2139,11 +2270,7 @@ func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[ty
 			memTotal := float64(machineData.CurrentData.MemoryNodeBytesTotal)
 			memUsage := float64(1) - (memFree / memTotal)
 
-			if memUsage > subscribeData.EventThreshold {
-				//logrus.Infof("memUsage %v | threshold %v | memFree %v | memTotal %v", memUsage, subscribeData.EventThreshold, memFree, memTotal)
-				return true
-			}
-			return false
+			return memUsage > subscribeData.EventThreshold
 		},
 		epoch,
 	)
@@ -2199,6 +2326,13 @@ func collectMonitoringMachine(
 		if notifyConditionFullfilled(&data, currentMachineData) {
 			result = append(result, data)
 		}
+	}
+
+	// if at least 90% of users would be notified, we expect an issue on our end and no one will be notified
+	const notifiedSubscriptionsRatioThreshold = 0.9
+	if float64(len(result))/float64(len(allSubscribed)) >= notifiedSubscriptionsRatioThreshold {
+		utils.LogError(nil, fmt.Errorf("error too many users would be notified concerning: %v", eventName), 0)
+		return nil
 	}
 
 	for _, r := range result {
@@ -2371,12 +2505,12 @@ func (n *taxReportNotification) GetEventName() types.EventName {
 }
 
 func (n *taxReportNotification) GetInfo(includeUrl bool) string {
-	generalPart := fmt.Sprint(`Please find attached the income history of your selected validators.`)
+	generalPart := `Please find attached the income history of your selected validators.`
 	return generalPart
 }
 
 func (n *taxReportNotification) GetTitle() string {
-	return fmt.Sprint("Income Report")
+	return "Income Report"
 }
 
 func (n *taxReportNotification) GetEventFilter() string {
@@ -2584,7 +2718,7 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 	case types.RocketpoolCommissionThresholdEventName:
 		return fmt.Sprintf(`The current RPL commission rate of %v has reached your configured threshold.`, n.ExtraData)
 	case types.RocketpoolNewClaimRoundStartedEventName:
-		return fmt.Sprintf(`A new reward round has started. You can now claim your rewards from the previous round.`)
+		return `A new reward round has started. You can now claim your rewards from the previous round.`
 	case types.RocketpoolColleteralMaxReached:
 		return `Your RPL collateral has reached your configured threshold at 150%.`
 	case types.RocketpoolColleteralMinReached:
@@ -2603,7 +2737,7 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 			inTime = time.Until(utils.EpochToTime(syncStartEpoch))
 		}
 
-		return fmt.Sprintf(`Your validator %v has been elected to be part of the next sync committee. The additional duties start at epoch %v, which is in %s and will last for a day until epoch %v.`, extras[0], extras[1], inTime.Round(time.Second), extras[2])
+		return fmt.Sprintf(`Your validator %v has been elected to be part of the next sync committee. The additional duties start at epoch %v, which is in %s and will last for about a day until epoch %v.`, extras[0], extras[1], inTime.Round(time.Second), extras[2])
 	}
 
 	return ""
@@ -2612,9 +2746,9 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 func (n *rocketpoolNotification) GetTitle() string {
 	switch n.EventName {
 	case types.RocketpoolCommissionThresholdEventName:
-		return fmt.Sprintf(`Rocketpool Commission`)
+		return `Rocketpool Commission`
 	case types.RocketpoolNewClaimRoundStartedEventName:
-		return fmt.Sprintf(`Rocketpool Claim Available`)
+		return `Rocketpool Claim Available`
 	case types.RocketpoolColleteralMaxReached:
 		return `Rocketpool Max Collateral`
 	case types.RocketpoolColleteralMinReached:
@@ -2850,7 +2984,7 @@ func (b *BigFloat) Value() (driver.Value, error) {
 
 func (b *BigFloat) Scan(value interface{}) error {
 	if value == nil {
-		return errors.New("Can not cast nil to BigFloat")
+		return errors.New("can not cast nil to BigFloat")
 	}
 
 	switch t := value.(type) {
@@ -2867,7 +3001,7 @@ func (b *BigFloat) Scan(value interface{}) error {
 			return fmt.Errorf("failed to load value to []uint8: %v", value)
 		}
 	default:
-		return fmt.Errorf("Could not scan type %T into BigFloat", t)
+		return fmt.Errorf("could not scan type %T into BigFloat", t)
 	}
 
 	return nil
@@ -2910,13 +3044,12 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 	var dbResult []struct {
 		SubscriptionID  uint64         `db:"id"`
 		UserID          uint64         `db:"user_id"`
-		Epoch           uint64         `db:"created_epoch"`
 		EventFilter     string         `db:"event_filter"`
 		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 	}
 
 	err = db.FrontendWriterDB.Select(&dbResult, `
-				SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
+				SELECT us.id, us.user_id, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 				FROM users_subscriptions AS us 
 				WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '26 hours' OR us.last_sent_ts IS NULL) AND event_filter = ANY($2);
 				`,
@@ -2931,7 +3064,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 		n := &rocketpoolNotification{
 			SubscriptionID:  r.SubscriptionID,
 			UserID:          r.UserID,
-			Epoch:           r.Epoch,
+			Epoch:           epoch,
 			EventFilter:     r.EventFilter,
 			EventName:       eventName,
 			ExtraData:       fmt.Sprintf("%v|%v|%v", mapping[r.EventFilter], nextPeriod*utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, (nextPeriod+1)*utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod),

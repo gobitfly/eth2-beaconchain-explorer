@@ -1,0 +1,122 @@
+{{ define "js" }}
+{{ end }}
+
+{{ define "css" }}
+  <style></style>
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+    <div class="container mt-2">
+      <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+          <h1 class="h4 mb-1 mb-md-0">
+            <span class="ml-1 mr-1"><i class="fas fa-credit-card mr-2"></i>Pending Transaction Details</span>
+          </h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
+              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Mempool Tx Details</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <ul class="nav nav-tabs card-header-tabs border-bottom-0" role="tablist">
+            <li class="nav-item">
+              <a class="nav-link show active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true"><i class="fas fa-info-circle"></i><span class="tab-text" style="margin-left: 6px;">Overview</span></a>
+            </li>
+          </ul>
+        </div>
+        <div class="card-body px-0 py-1">
+          <div class="tab-content h-100">
+            <div id="overview" class="tab-pane d-flex flex-column fade show active" role="tabpanel" aria-labelledby="overview-tab">
+              <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
+                <div class="col-md-3">Transaction Hash:</div>
+                <div class="col-md-9">
+                  <div class="d-flex align-items-center">
+                    <div style="min-width: 0;">{{ .Hash | formatHashLong }}</div>
+                    <div class="ml-2 flex-shrink-1">
+                      <button class="btn btn-dark text-white btn-sm align-bottom" type="button" id="copy-button" data-toggle="tooltip" title="Copy transaction hash to clipboard" data-clipboard-text="0x{{ printf "%x" .Hash }}">
+                        <i class="fa fa-copy"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Status:</div>
+                <div class="col-md-9">
+                  <div class="d-flex flex-wrap">
+                    <div class="mr-2 flex-shrink-1">
+                      <h5 class="m-0">
+                        <span class="badge badge-info badge-pill align-middle text-white"><i class="fas fa-info-circle pr-1"></i> In Mempool</span>
+                      </h5>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">From:</div>
+                <div class="col-md-9">{{ formatEth1AddressFull .From }}</div>
+              </div>
+              <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
+                <div class="col-md-3">{{ if .IsContractCreation }}Creates Contract{{ else if .TargetIsContract }}Interacts With{{ else }}To{{ end }}:</div>
+                {{ if .To }}
+                  <div class="col-md-9">
+                    <div class="d-flex">
+                      <div class="row no-gutters w-100">
+                        <div class="col-md-auto" style="min-width: 0;">
+                          <span class="align-middle mr-2">{{ formatEth1AddressFull .To }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {{ end }}
+              </div>
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Value:</div>
+                <div class="col-md-9">{{ formatBigAmount .Value "Ether" 8 }}</div>
+              </div>
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Gas Limit:</div>
+                <div class="col-md-9">{{ formatBigNumberAddCommasFormated .Gas 0 }}</div>
+              </div>
+              <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
+                <div class="col-md-3">Gas Price:</div>
+                <div class="col-md-9">{{ formatBigAmount .GasPrice "GWei" 5 }}</div>
+              </div>
+              <div class="row  {{ if .Input }}border-bottom{{ end }} p-3 mx-0">
+                <div class="col-md-3">Attributes:</div>
+                <div class="col-md-9">
+                  <div class="d-flex flex-wrap">
+                    <div class="mr-2 flex-shrink-1">
+                      <span class="badge badge-dark align-middle text-light p-1 px-2">Nonce: <span class="text-white">{{ bigToInt .Nonce }}</span></span>
+                    </div>
+                    {{ if .TransactionIndex }}
+                      <div class="mr-2 flex-shrink-1">
+                        <span class="badge badge-dark align-middle text-light p-1 px-2">Transaction Index: <span class="text-white">{{ bigToInt .TransactionIndex }}</span></span>
+                      </div>
+                    {{ end }}
+                  </div>
+                </div>
+              </div>
+              {{ if .Input }}
+                <div class="row p-3 mx-0">
+                  <div class="col-md-3">Input:</div>
+                  <div class="col-md-9">
+                    <textarea readonly class="form-control bg-light text-monospace ">{{ .Input }}</textarea>
+                    <div class="mt-2">
+                      <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy raw data to clipboard" data-clipboard-text="{{ .Input }}">Copy Input Data <i class="fa fa-copy"></i></button>
+                    </div>
+                  </div>
+                </div>
+              {{ end }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

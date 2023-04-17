@@ -59,89 +59,14 @@
           document.getElementById("app-style-initial").id = "app-theme"
         }
       </script>
-        <script>
-            function updateLang(lang) {
-                document.cookie = "language=" + lang + ";samesite=strict;path=/"
-                window.location.reload()
-            }
-
-            function updateCurrency(currency) {
-                document.cookie = "currency=" + currency + ";samesite=strict;path=/"
-                window.location.reload(true)
-            }
-
-            function getCookie(cname) {
-                var name = cname + "="
-                var ca = document.cookie.split(';')
-                for(var i = 0; i < ca.length; i++) {
-                    var c = ca[i]
-                    while (c.charAt(0) == ' ') {
-                        c = c.substring(1)
-                    }
-                    if (c.indexOf(name) == 0) {
-                        return c.substring(name.length, c.length)
-                    }
-                }
-                return ""
-            }
-
-            window.addEventListener('load', function() {
-                var currentCurrency = getCookie('currency')
-
-                if (currentCurrency) {
-                    document.getElementById('currencyDropdown').textContent = currentCurrency
-                    document.getElementById('currencyFlagDropdown').innerHTML = "<img class='currency-flag-dropdown-image' src='/img/" + currentCurrency +  ".svg'>"
-                }
-            })
-
-            window.addEventListener('DOMContentLoaded', function () {
-              if ({{.Mainnet}}) {
-                document.getElementById('initialPrice').textContent = ''
-                switch (getCookie('currency')) {
-                  case 'AUD':
-                        document.getElementById('currentCurrencySymbol').textContent = 'A$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.AudTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.AudRoundPrice}}
-                        break
-                  case 'CAD':
-                        document.getElementById('currentCurrencySymbol').textContent = 'C$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CadTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.CadRoundPrice}}
-                        break
-                  case 'CNY':
-                        document.getElementById('currentCurrencySymbol').textContent = '¥'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.CnyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.CnyRoundPrice}}
-                        break
-                  case 'EUR':
-                        document.getElementById('currentCurrencySymbol').textContent = '€'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.EurTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.EurRoundPrice}}
-                        break
-                  case 'GBP':
-                        document.getElementById('currentCurrencySymbol').textContent = '£'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.GbpTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.GbpRoundPrice}}
-                        break
-                  case 'JPY':
-                        document.getElementById('currentCurrencySymbol').textContent = '¥'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.JpyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.JpyRoundPrice}}
-                        break
-                  case 'RUB':
-                        document.getElementById('currentCurrencySymbol').textContent = '₽'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.RubTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.RubRoundPrice}}
-                        break
-                  default:
-                        document.getElementById('currentCurrencySymbol').textContent = '$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.Rates.UsdTruncPrice}}
-                        document.getElementById('currentCurencyPrice').innerHTML = {{formatAddCommas .Rates.UsdRoundPrice}}
-                        break
-                }
-              }
-            })
-        </script> {{ template "css" .Data }}
+      <script>
+        function updateCurrency(currency) {
+          document.cookie = "currency=" + currency + ";samesite=strict;path=/"
+          window.location.reload(true)
+        }
+      </script>
+      {{ template "css" .Data }}
+      <script src="/js/jquery.min.js"></script>
     </head>
     <header></header>
     <body ontouchstart="">
@@ -184,9 +109,8 @@
                   <div class="info-item-body">
                     <a id="banner-eth-price-data">
                       <span id="currentCurrencySymbol" class="currency-symbol">{{ .Rates.CurrentSymbol }}</span>
-                      <span id="initialPrice">{{ .Rates.CurrentPriceFormatted }}</span>
-                      <span id="currentKFormattedPrice" class="k-formatted-price"></span>
-                      <span id="currentCurencyPrice" class="price"></span>
+                      <span id="currentKFormattedPrice" class="k-formatted-price">{{ .Rates.CurrentPriceKFormatted }}</span>
+                      <span id="currentCurrencyPrice" class="price">{{ .Rates.CurrentPriceFormatted }}</span>
                     </a>
                   </div>
                 </div>
@@ -196,7 +120,7 @@
                 <div data-toggle="tooltip" title="" data-original-title="Gas Price" class="d-none d-lg-block">
                   <div id="banner-slot" class="info-item d-flex mr-2 mr-lg-3">
                     <div class="info-item-body">
-                      <a id="banner-gpo-data" href="/gasnow"><i class="fas fa-gas-pump mr-1"></i>{{ formatBalanceWei .GasNow.Data.Fast "GWei" 0 }}</a>
+                      <a id="banner-gpo-data" href="/gasnow"><i class="fas fa-gas-pump mr-1"></i>{{ formatAmountFormatted .GasNow.Data.Fast "GWei" 0 0 false false false }}</a>
                     </div>
                   </div>
                 </div>
@@ -206,7 +130,7 @@
               {{ if gt .FinalizationDelay 3 }}
                 <div data-toggle="tooltip" title="" data-original-title="Finality: the last finalized epoch was {{ .FinalizationDelay }} epochs ago" id="banner-fin" class="info-item d-flex mr-2 mr-lg-3">
                   <div class="info-item-header mr-1">
-                    <span class="item-icon"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{ .FinalizationDelay }} epochs ago"></i></span>
+                    <span class="item-icon"><i class="fas fa-exclamation-triangle"></i></span>
                   </div>
                   <div class="info-item-body text-warning">
                     <span id="banner-fin-data">{{ .FinalizationDelay }}</span>
@@ -239,63 +163,16 @@
                   <div id="currencyDropdown">{{ .Rates.Currency }}</div>
                 </a>
                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('ETH')">
-                    <img class="currency-flag-option" src="/img/ETH.svg" />
-                    <span class="currency-name">Ether</span>
-                    ETH
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('USD')">
-                    <img class="currency-flag-option" src="/img/USD.svg" />
-                    <span class="currency-name">United States Dollar</span>
-                    USD
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('EUR')">
-                    <img class="currency-flag-option" src="/img/EUR.svg" />
-                    <span class="currency-name">Euro</span>
-                    EUR
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('GBP')">
-                    <img class="currency-flag-option" src="/img/GBP.svg" />
-                    <span class="currency-name">Pound Sterling</span>
-                    GBP
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CNY')">
-                    <img class="currency-flag-option" src="/img/CNY.svg" />
-                    <span class="currency-name">Chinese Yuan</span>
-                    CNY
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('RUB')">
-                    <img class="currency-flag-option" src="/img/RUB.svg" />
-                    <span class="currency-name">Russian Ruble</span>
-                    RUB
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CAD')">
-                    <img class="currency-flag-option" src="/img/CAD.svg" />
-                    <span class="currency-name">Canadian Dollar</span>
-                    CAD
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('AUD')">
-                    <img class="currency-flag-option" src="/img/AUD.svg" />
-                    <span class="currency-name">Australian Dollar</span>
-                    AUD
-                  </a>
-                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('JPY')">
-                    <img class="currency-flag-option" src="/img/JPY.svg" />
-                    <span class="currency-name">Japanese Yen</span>
-                    JPY
-                  </a>
+                  {{ range .AvailableCurrencies }}
+                    <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency({{ . }})">
+                      <img class="currency-flag-option" src="/img/{{ . }}.svg" />
+                      <span class="currency-name">{{ getCurrencyLabel . }}</span>
+                      {{ . }}
+                    </a>
+                  {{ end }}
                 </div>
               </div>
             {{ end }}
-            <!--<div class="dropdown">
-                        <a class="btn btn-transparent btn-sm dropdown-toggle" id="langDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fas fa-globe m-0 p-0"></i>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="langDropdown">
-                            <a class="dropdown-item" onClick="updateLang('en-US')">English</a>
-                            <a class="dropdown-item" onClick="updateLang('ru-RU')">Russian</a>
-                        </div>
-                    </div> -->
             {{ if .User.Authenticated }}
               <div class="dropdown">
                 <a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -304,6 +181,11 @@
                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
                   <a class="dropdown-item" href="/user/notifications">Notifications</a>
                   <a class="dropdown-item" href="/user/settings">Settings</a>
+                  {{ if eq .User.UserGroup "ADMIN" }}
+                    <a class="dropdown-item" href="/user/global_notification">Global Notification</a>
+                    <a class="dropdown-item" href="/user/ad_configuration">Ad Configuration</a>
+                    <a class="dropdown-item" href="/user/explorer_configuration">Explorer Configuration</a>
+                  {{ end }}
                   <a data-no-instant class="dropdown-item" href="/logout">Logout</a>
                 </div>
               </div>
@@ -328,464 +210,9 @@
         </div>
       </div>
       <!-- Banner end -->
-
-      <nav {{ if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register")) }}style="display:none;"{{ end }} id="nav" class="navbar navbar-expand-lg navbar-light">
-        <div class="container">
-          <a class="navbar-brand" href="/">
-            <svg style="width: 22px; height: 22px; margin-bottom: .55rem;" id="Ebene_1" data-name="Ebene 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-              <defs>
-                <style>
-                  .cls-1 {
-                    fill: #1d1d1b;
-                  }
-
-                  .cls-2 {
-                    fill: #fff;
-                  }
-                  [data-theme="dark"] .cls-1 {
-                    fill: #fff;
-                  }
-
-                  [data-theme="dark"] .cls-2 {
-                    fill: #1e1c1f;
-                  }
-                </style>
-              </defs>
-              <rect class="cls-1" x="-14.88" y="-19.92" width="149.75" height="146.77" />
-              <path
-                class="cls-2"
-                d="M59-12.9c-47.25,0-66.43-4.44-66.43,32.35C-7.45,45-8.17,120-8.17,120H22.56S35.78,94.52,36.41,93.86c1.36-1.42,20.81,9,22,10.23.25.26,5.4,15.91,5.4,15.91h64.48s-.15-68-.15-90.77C128.17-15.07,99.59-12.9,59-12.9ZM84.32,88c-16.59,13.26-43.13,6.9-51-15.71a36.18,36.18,0,0,1-1.21-19.85c.85-4,2.2-4.57,5.49-2.37,7,4.68,13.88,9.24,21.36,14.22.73-1.33,1.7-2.6,2.35-4.05a4.31,4.31,0,0,0,.31-2.3c-.5-3.11,1-5.85,3.83-6.55a5.18,5.18,0,0,1,6.24,4,5.48,5.48,0,0,1-3.93,6.44,2.48,2.48,0,0,0-1.24.65c-.17.26-3.07,4.92-3.07,4.92L73.72,74.5c3.47,2.39,6.91,4.76,10.41,7.1S87.52,85.42,84.32,88ZM66.2,39.23a16.16,16.16,0,0,1,16.27,9.91c.06.15.12.31.19.46.66,1.53.42,2-1.22,2.44l-.59.15c-1.08.28-1.25-.7-2.07-2.57a11.47,11.47,0,0,0-11.87-6.85c-1.65.18-2.79.48-3-.39C63.25,39.65,63.37,39.49,66.2,39.23ZM89.32,50l-.92.24c-1.68.44-2-1.13-3.25-4.13A18,18,0,0,0,66.62,35c-2.55.26-4.32.72-4.66-.67-1.05-4.37-.87-4.62,3.53-5a25.51,25.51,0,0,1,25.4,16c.09.25.18.5.29.75C92.22,48.55,91.86,49.3,89.32,50Zm11.77-3.08-1.4.36-.77.2c-2.19.57-2.68.21-3.62-1.91a42.4,42.4,0,0,0-3.91-7.76c-7.3-10-17-14.34-29.28-12.41-1.47.24-2.36-.22-2.72-1.71-.22-1-.47-1.9-.68-2.86-.38-1.72.17-2.58,1.86-2.89,10.6-2,20.2.43,28.84,6.86,6.46,4.81,10.69,11.29,13.32,19C103.34,45.49,102.85,46.39,101.09,46.89Z" />
-            </svg>
-            <span class="brand-text">beaconcha.in</span>
-          </a>
-          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-          </button>
-          <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav ml-auto">
-              <!-- <li class="nav-item">
-                            <a ga-outbound="" class="nav-link text-primary"
-                            href="https://gitcoin.co/grants/collections?collection_id=14#">
-                                <span class="nav-icon">
-                                    <img src="/img/gitcoin_logo.svg" style="width: auto; height: 1rem;" class="mb-2">
-                                </span>
-                                <span class="nav-text">Support Ethereum</span>
-                            </a>
-                        </li> -->
-              <li class="nav-item {{ if eq .Active "blockchain" }}active{{ end }} dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                  <span class="nav-text">Blockchain</span>
-                </a>
-                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                  <a class="dropdown-item" href="/epochs">
-                    <span class="nav-icon"><i class="fas fa-history mr-2"></i></span>
-                    <span class="nav-text">Epochs</span>
-                  </a>
-                  <a class="dropdown-item" href="/slots">
-                    <span class="nav-icon"><i class="fas fa-cube mr-2"></i></span>
-                    <span class="nav-text">Slots</span>
-                  </a>
-                  <hr />
-                  <a class="dropdown-item" href="/blocks">
-                    <span class="nav-icon"><i class="fas fa-cubes mr-2"></i></span>
-                    <span class="nav-text">Blocks</span>
-                  </a>
-                  <a class="dropdown-item" href="/transactions">
-                    <span class="nav-icon"><i class="fas fa-credit-card mr-2"></i></span>
-                    <span class="nav-text">Txs</span>
-                  </a>
-                  <a class="dropdown-item" href="/mempool">
-                    <span class="nav-icon"><i class="fas fa-upload mr-2"></i></span>
-                    <span class="nav-text">Mempool</span>
-                  </a>
-                </div>
-              </li>
-              <li class="nav-item {{ if eq .Active "validators" }}active{{ end }} dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                  <!-- <span class="nav-icon"><i class="fas fa-thumbs-up"></i></span> -->
-                  <span class="nav-text">Validators</span>
-                </a>
-                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                  <a class="dropdown-item" href="/validators">
-                    <span class="nav-icon"><i class="fas fa-table mr-2"></i></span>
-                    <span class="nav-text">Overview</span>
-                  </a>
-                  <a class="dropdown-item" href="/validators/slashings">
-                    <span class="nav-icon"><i class="fas fa-user-slash mr-2"></i></span>
-                    <span class="nav-text">Slashings</span>
-                  </a>
-                  <hr />
-                  <a class="dropdown-item" href="/validators/leaderboard">
-                    <span class="nav-icon"><i class="fas fa-medal mr-2"></i></span>
-                    <span class="nav-text">Validator Leaderboard</span>
-                  </a>
-                  <a class="dropdown-item" href="/validators/deposit-leaderboard">
-                    <span class="nav-icon"><i class="fas fa-file-import mr-2"></i></span>
-                    <span class="nav-text">Deposit Leaderboard</span>
-                  </a>
-                  <!--
-                                <a class="dropdown-item" href="/validators/streakleaderboard">
-                                    <span class="nav-icon"><i class="fas fa-fire mr-2"></i></span>
-                                    <span class="nav-text">Streak Leaderboard</span>
-                                </a>
-                                -->
-                  <hr />
-                  <a class="dropdown-item" href="/validators/initiated-deposits">
-                    <span class="nav-icon"><i class="fas fa-file-signature mr-2"></i></span>
-                    <span class="nav-text">Initiated Deposits</span>
-                  </a>
-                  <a class="dropdown-item" href="/validators/included-deposits">
-                    <span class="nav-icon"><i class="fas fa-clipboard-check mr-2"></i></span>
-                    <span class="nav-text">Included Deposits</span>
-                  </a>
-                </div>
-              </li>
-              <!-- <li class="nav-item {{ if eq .Active "stats" }}active{{ end }} dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="nav-icon"><i class="fas fa-cubes"></i></span>
-                                <span class="nav-text">Stats</span>
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <a class="dropdown-item" href="/charts">
-                                    <span class="nav-icon"><i class="fas fa-chart-bar mr-2"></i></span>
-                                    <span class="nav-text">Charts</span>
-                                </a>
-                                <a class="dropdown-item" href="/calculator">
-                                    <span class="nav-icon"><i class="fas fa-calculator mr-2"></i></span>
-                                    <span class="nav-text">Calculator</span>
-                                </a>
-                                <hr>
-                                <a class="dropdown-item" href="/vis">
-                                    <span class="nav-icon"><i class="fas fa-project-diagram mr-2"></i></span>
-                                    <span class="nav-text">Block Viz</span>
-                                </a>
-                                <a ga-outbound class="dropdown-item" href="https://eth2.ethernodes.org/">
-                                    <span class="nav-icon"><i class="fas fa-network-wired mr-2"></i></span>
-                                    <span class="nav-text">Nodes</span>
-                                </a>
-                                <hr>
-                                <a class="dropdown-item" href="/pools/rocketpool">
-                                    <span class="nav-icon"><i class="fas fa-rocket mr-2"></i></span>
-                                    <span class="nav-text">Rocketpool</span>
-                                </a>
-                            </div>
-                        </li> -->
-              <style>
-                .nav-cube {
-                  --mainColor: rgba(75, 75, 75, 0.7);
-                  --strokeColor: rgba(55, 55, 55, 1);
-                  --lightColor: rgba(0, 0, 0, 0.5);
-                  --darkColor: rgba(100, 100, 100, 0.8);
-                }
-                .active .nav-cube {
-                  --mainColor: rgba(55, 55, 55, 1);
-                  --strokeColor: rgba(35, 35, 35, 1);
-                  --lightColor: rgba(0, 0, 0, 1);
-                  --darkColor: rgba(80, 80, 80, 1);
-                }
-                [data-theme="dark"] .nav-cube {
-                  --mainColor: rgba(180, 180, 180, 0.7);
-                  --strokeColor: rgba(200, 200, 200, 1);
-                  --lightColor: rgba(255, 255, 255, 0.5);
-                  --darkColor: rgba(150, 150, 150, 0.8);
-                }
-                [data-theme="dark"] .active .nav-cube {
-                  --mainColor: rgba(200, 200, 200, 1);
-                  --strokeColor: rgba(220, 220, 220, 1);
-                  --lightColor: rgba(255, 255, 255, 1);
-                  --darkColor: rgba(170, 170, 170, 1);
-                }
-              </style>
-              <li class="nav-item {{ if eq .Active "dashboard" }}active{{ end }}">
-                <a class="nav-link" href="/dashboard">
-                  <!-- <span class="nav-icon">
-                                    <svg style="width: 21px; height: 23px;" xmlns="http://www.w3.org/2000/svg" class="nav-cube" viewBox="80 20 150 100">
-                                        <defs>
-                                            <g id="cube" class="cube-unit">
-                                                <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
-                                                <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
-                                                <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
-                                            </g>
-                                            <g id="cube" class="cube-unit">
-                                                <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
-                                                <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
-                                                <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
-                                            </g>
-
-                                            <g style="transform: scale(0.6)" id="cube-small" class="cube-unit">
-                                                <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
-                                                <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
-                                                <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
-                                            </g>
-                                            <g id="cube" class="cube-unit">
-                                                <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
-                                                <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
-                                                <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
-                                            </g>
-                                        </defs>
-                                        <g class="move"><use href="#cube-small" x="129" y="56"/></g>
-                                        <g style="opacity: .2;">
-                                            <use href="#cube" x="121" y="48"/>
-                                            <use href="#cube" x="121" y="24"/>
-                                            <use href="#cube" x="121" y="0"/>
-                                            <use href="#cube" x="100" y="60"/>
-                                            <use href="#cube" x="100" y="36"/>
-                                            <use href="#cube" x="100" y="12"/>
-                                            <use href="#cube" x="142" y="60"/>
-                                            <use href="#cube" x="142" y="36"/>
-                                            <use href="#cube" x="142" y="12"/>
-                                            <use href="#cube" x="163" y="72"/>
-                                            <use href="#cube" x="163" y="48"/>
-                                            <use href="#cube" x="163" y="24"/>
-                                            <use href="#cube" x="79" y="72"/>
-                                            <use href="#cube" x="79" y="48"/>
-                                            <use href="#cube" x="79" y="24"/>
-                                            <use href="#cube" x="121" y="72"/>
-                                            <use href="#cube" x="121" y="48"/>
-                                            <use href="#cube" x="121" y="24"/>
-                                            <use href="#cube" x="100" y="84"/>
-                                            <use href="#cube" x="100" y="60"/>
-                                            <use href="#cube" x="100" y="36"/>
-                                            <use href="#cube" x="142" y="84"/>
-                                            <use href="#cube" x="142" y="60"/>
-                                            <use href="#cube" x="142" y="36"/>
-                                            <use href="#cube" x="121" y="96"/>
-                                            <use href="#cube" x="121" y="72"/>
-                                            <use href="#cube-small" x="129" y="56"/>
-                                        </g>
-                                    </svg>
-                                </span> -->
-                  <span class="nav-text">Dashboard</span>
-                </a>
-              </li>
-              <li>
-                <a class="nav-link" href="/user/notifications">
-                  <span class="nav-text">Notifications</span>
-                </a>
-              </li>
-              <!-- <li class="nav-item {{ if eq .Active "services" }}active{{ end }} dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="nav-icon"><i class="fas fa-tools"></i></span>
-                                <span class="nav-text">Services</span>
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <a class="dropdown-item" href="/stakingServices">
-                                    <span class="nav-icon"><i class="fas fa-drumstick-bite mr-2"></i></span>
-                                    <span class="nav-text">Staking Services</span>
-                                </a>
-                                <a class="dropdown-item" href="/pools">
-                                    <span class="nav-icon"><i class="fas fa-chart-pie mr-2"></i></span>
-                                    <span class="nav-text">Staking pools</span>
-                                </a>
-                                <a class="dropdown-item" href="/ethClients">
-                                    <span class="nav-icon"><i class="fas fa-desktop mr-2"></i></span>
-                                    <span class="nav-text">Ethereum Clients</span>
-                                </a>
-                                <a class="dropdown-item" href="/rewards">
-                                    <span class="nav-icon"><i class="far fa-money-bill-alt mr-2"></i></span>
-                                    <span class="nav-text">Income History</span>
-                                </a>
-                                <a class="dropdown-item" href="/education">
-                                    <span class="nav-icon"><i class="fa fa-book mr-2"></i></span>
-                                    <span class="nav-text">Educational Material</span>
-                                </a>
-                                <hr>
-                                <a class="dropdown-item" href="https://beaconcha.in/api/v1/docs/index.html">
-                                    <span class="nav-icon"><i class="fas fa-laptop-code mr-2"></i></span>
-                                    <span class="nav-text">API Docs</span>
-                                </a>
-                                <a class="dropdown-item" href="/pricing">
-                                    <span class="nav-icon"><i class="fas fa-laptop-code mr-2"></i></span>
-                                    <span class="nav-text">API Pricing</span>
-                                </a>
-                            </div>
-                        </li> -->
-              <li class="nav-item dropdown {{ if eq .Active "more" }}active{{ end }}">
-                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                  <!-- <span class="nav-icon"><i class="fas fa-info mr-2"></i></span> -->
-                  <span class="nav-text">More</span>
-                </a>
-                <div class="dropdown-menu dropdown-menu-right p-sm-2 p-md-4 px-lg-2" aria-labelledby="navbarDropdown">
-                  <!--<a class="dropdown-item" href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121">
-                                    <span class="nav-icon"><i class="fab fa-apple mr-2"></i></span>
-                                    <span class="nav-text">iOS App</span>
-                                </a>
-                                <a class="dropdown-item" href="https://play.google.com/store/apps/details?id=in.beaconcha.mobile">
-                                    <span class="nav-icon"><i class="fab fa-android mr-2"></i></span>
-                                    <span class="nav-text">Android App</span>
-                                </a>-->
-
-                  <!-- MEGAMENU -->
-                  <div class="d-flex align-content-between flex-wrap flex-lg-nowrap">
-                    <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
-                      <span class="ml-4" style="font-size: 18px; font-weight: 700; letter-spacing: .3px;">Staking Pools</span>
-                      <a class="dropdown-item" href="/ethstore">
-                        <span class="nav-icon">
-                          <svg style="width: 1rem;" id="ethermine-stake-logo" viewBox="7.98 -0.02 24.78 40.07">
-                            <path data-name="Rechteck 13" transform="translate(0 .03)" style="fill:none" d="M0 0h40v40H0z"></path>
-                            <g data-name="Ebene 2">
-                              <path data-name="Pfad 25" d="M165.132 200.79v-10.124l12.375-7.286z" transform="translate(-144.758 -160.76)" style="fill:#eee"></path>
-                              <path data-name="Linie 4" transform="translate(8 22.62)" style="fill:#f7a836" d="m0 0 12.374 17.41"></path>
-                              <path data-name="Pfad 26" d="M107.764 200.79v-10.124L95.39 183.38" transform="translate(-87.39 -160.76)" style="fill:#f5f5f5"></path>
-                              <path data-name="Pfad 27" d="M138.035 68.872v-13l-5.845 9.707z" transform="translate(-117.662 -55.87)" style="fill:#fff"></path>
-                              <path data-name="Pfad 28" d="m95.52 127.209 12.351 7.263v-12.945l-6.6-3.867z" transform="translate(-87.497 -106.699)" style="fill:#fff"></path>
-                              <path data-name="Pfad 29" d="m170.913 65.455-5.773-9.585v13z" transform="translate(-144.766 -55.87)" style="fill:#eee"></path>
-                              <path data-name="Pfad 30" d="m171.721 117.48-6.581 3.9v12.945l12.351-7.263z" transform="translate(-144.766 -106.55)" style="fill:#eee"></path>
-                              <path data-name="Pfad 31" d="m95.39 145.142 12.351-5.682.021 2.775-.021 10.17z" transform="translate(-87.39 -124.631)" style="fill:#f5f5f5"></path>
-                            </g>
-                          </svg>
-                        </span>
-                        <span class="nav-text ml-3">ETH.STORE</span>
-                      </a>
-                      <a class="dropdown-item" href="/stakingServices">
-                        <span class="nav-icon"><i class="fas fa-drumstick-bite"></i></span>
-                        <span class="nav-text ml-3">Staking Services</span>
-                      </a>
-                      <a class="dropdown-item" href="/pools">
-                        <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
-                        <span class="nav-text ml-3">Pool Benchmarks</span>
-                      </a>
-                      <a class="dropdown-item" href="/pools/rocketpool">
-                        <span class="nav-icon"><i class="fas fa-rocket"></i></span>
-                        <span class="nav-text ml-3">Rocket Pool Stats</span>
-                      </a>
-                    </div>
-                    <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
-                      <span class="ml-4" style="display: block; font-size: 18px; font-weight: 700; letter-spacing: .3px;">Stats</span>
-                      <a class="dropdown-item" href="/charts">
-                        <span class="nav-icon"><i class="fas fa-chart-bar"></i></span>
-                        <span class="nav-text ml-3">Charts</span>
-                      </a>
-                      <a class="dropdown-item" href="/rewards">
-                        <span class="nav-icon"><i class="far fa-money-bill-alt"></i></span>
-                        <span class="nav-text ml-3">Income History</span>
-                      </a>
-                      <a class="dropdown-item" href="/calculator">
-                        <span class="nav-icon"><i class="fas fa-calculator"></i></span>
-                        <span class="nav-text ml-3">Profit Calculator</span>
-                      </a>
-                      <a class="dropdown-item" href="/vis">
-                        <span class="nav-icon"><i class="fas fa-project-diagram"></i></span>
-                        <span class="nav-text ml-3">Block Viz</span>
-                      </a>
-                      <a class="dropdown-item" href="/relays">
-                        <span class="nav-icon"><i class="fas fa-robot"></i></span>
-                        <span class="nav-text ml-3">Relays</span>
-                      </a>
-                      <a class="dropdown-item" href="/burn">
-                        <span class="nav-icon"><i class="fas fa-burn" aria-hidden="true"></i></span>
-                        <span class="nav-text ml-3">EIP-1559 Burn</span>
-                      </a>
-                      {{ if .Mainnet }}
-                        <a class="dropdown-item" href="/correlations">
-                          <span class="nav-icon"><i class="fas fa-chart-line" aria-hidden="true"></i></span>
-                          <span class="nav-text ml-3">Correlations</span>
-                        </a>
-                      {{ end }}
-                      <!-- <a ga-outbound class="dropdown-item" href="https://eth2.ethernodes.org/">
-                                            <span class="nav-icon"><i class="fas fa-network-wired"></i></span>
-                                            <span class="nav-text ml-3">Nodes</span>
-                                        </a> -->
-                    </div>
-                    <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
-                      <span class="ml-4" style="display: block; font-size: 18px; font-weight: 700; letter-spacing: .3px;">Tools</span>
-                      <a class="dropdown-item" href="/mobile">
-                        <span class="nav-icon"><i class="fas fa-mobile-alt"></i></span>
-                        <span class="nav-text ml-3" style="padding-right: 10px;">Beaconchain App</span>
-                      </a>
-                      <a class="dropdown-item" href="/premium">
-                        <span class="nav-icon"><i class="far fa-gem"></i></span>
-                        <span class="nav-text ml-3" style="padding-right: 10px;">Beaconchain Premium</span>
-                      </a>
-                      <a class="dropdown-item" href="/user/webhooks">
-                        <span class="nav-icon">
-                          <svg id="icon" viewBox="0 0 32 32" style="width: 20px; margin-bottom: 3px; fill: var(--font-color);" xmlns="http://www.w3.org/2000/svg">
-                            <!-- credit https://www.iconfinder.com/carbon-design -->
-                            <defs>
-                              <style>
-                                .webhook-cls-1 {
-                                  fill: none;
-                                }
-                              </style>
-                            </defs>
-                            <path d="M24,26a3,3,0,1,0-2.8164-4H13v1a5,5,0,1,1-5-5V16a7,7,0,1,0,6.9287,8h6.2549A2.9914,2.9914,0,0,0,24,26Z" />
-                            <path d="M24,16a7.024,7.024,0,0,0-2.57.4873l-3.1656-5.5395a3.0469,3.0469,0,1,0-1.7326.9985l4.1189,7.2085.8686-.4976a5.0006,5.0006,0,1,1-1.851,6.8418L17.937,26.501A7.0005,7.0005,0,1,0,24,16Z" />
-                            <path d="M8.532,20.0537a3.03,3.03,0,1,0,1.7326.9985C11.74,18.47,13.86,14.7607,13.89,14.708l.4976-.8682-.8677-.497a5,5,0,1,1,6.812-1.8438l1.7315,1.002a7.0008,7.0008,0,1,0-10.3462,2.0356c-.457.7427-1.1021,1.8716-2.0737,3.5728Z" />
-                            <rect class="webhook-cls-1" data-name="&lt;Transparent Rectangle&gt;" height="32" id="_Transparent_Rectangle_" width="32" />
-                          </svg>
-                        </span>
-                        <span class="nav-text ml-3">Webhooks</span>
-                      </a>
-                      <a class="dropdown-item" href="https://beaconcha.in/api/v1/docs/index.html">
-                        <span class="nav-icon"><i class="fas fa-book-reader"></i></span>
-                        <span class="nav-text ml-3">API Docs</span>
-                      </a>
-                      <a class="dropdown-item" href="/pricing">
-                        <span class="nav-icon"><i class="fas fa-laptop-code"></i></span>
-                        <span class="nav-text ml-3">API Pricing</span>
-                      </a>
-                      <a class="dropdown-item" href="/tools/unitConverter">
-                        <span class="nav-icon"><i class="fas fa-sync"></i></span>
-                        <span class="nav-text ml-3">Unit Converter</span>
-                      </a>
-                      <a class="dropdown-item" href="/gasnow">
-                        <span class="nav-icon"><i class="fas fa-gas-pump"></i></span>
-                        <span class="nav-text ml-3">GasNow</span>
-                      </a>
-                    </div>
-                    <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
-                      <span class="ml-4" style="display: block; font-size: 18px; font-weight: 700; letter-spacing: .3px;">Services</span>
-                      <a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in">
-                        <span class="nav-icon"><i class="fas fa-external-link-alt"></i></span>
-                        <span class="nav-text ml-3">Knowledge Base</span>
-                      </a>
-                      <a class="dropdown-item" href="/user/notifications">
-                        <span class="nav-icon"><i class="fas fa-bell"></i></span>
-                        <span class="nav-text ml-3">Notifications</span>
-                      </a>
-                      <a class="dropdown-item" href="/graffitiwall">
-                        <span class="nav-icon"><i class="fas fa-paint-brush"></i></span>
-                        <span class="nav-text ml-3">Graffiti Wall</span>
-                      </a>
-                      <a class="dropdown-item" href="/ethClients">
-                        <span class="nav-icon"><i class="fas fa-desktop mr-2"></i></span><span class="nav-text ml-3">Ethereum Clients</span>
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            </ul>
-          </div>
-          <!-- </div> -->
-        </div>
-      </nav>
+      {{ template "mainNavigation" .MainMenuItems }}
       <main>
-        <!-- <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;">
-          <span class="d-none d-md-block">
-            <span>
-              <span>
-                <a style="color: #ff6600;" href="https://blog.ethereum.org/2022/08/24/mainnet-merge-announcement" target="_blank">The Merge</a>
-              </span>
-              on Sep. 14th,
-              <span>
-                <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=Nx-jYgI0QVI" target="_blank">on YouTube</a>
-              </span>
-              hosted by
-              <span>
-                <a style="color: #ff6600;" href="https://discord.io/ethstaker" target="_blank">Ethstaker</a>
-              </span>
-            </span>
-          </span>
-          <span class="d-md-none p-1" style="font-size: 90%;">
-            <span>
-              <span> <a style="color: #ff6600;" href="https://blog.ethereum.org/2022/08/24/mainnet-merge-announcement" target="_blank">The Merge</a> </span>, on Sep. 14th,
-              <span style="color: #ff6600;">
-                <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=Nx-jYgI0QVI" target="_blank">on YouTube</a>
-              </span>
-            </span>
-          </span>
-        </div> -->
-
+        {{ .GlobalNotification }}
         <!-- Discount banner
             <div class="p-1" style="overflow-wrap: break-word; background-color: var(--bg-color-light); height: 40px; display: flex; justify-content: center; align-items: center;">
                 <span class="d-none d-md-block">
@@ -826,13 +253,6 @@
                 </span>
             </div> -->
 
-        <!-- {{ if .HeaderAd }}
-          <div class="container">
-            <div class="d-flex justify-content-between pt-4 pb-3">
-              <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-            </div>
-          </div>
-        {{ end }} -->
         {{ template "content" . }}
         {{ if not .User.Authenticated }}
           <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index: 999; bottom: 3%; left: 50%; transform: translateX(-50%); width: 100%; justify-content: center; align-items: center;">
@@ -873,7 +293,7 @@
               <h5>Resources</h5>
               <div class="d-flex flex-column">
                 <a class="my-1" href="/advertisewithus"><i class="fas fa-ad mr-2"></i>Advertise</a>
-                <a class="my-1" href="/premium"><i class="fas fa-user-astronaut mr-2"></i>Beaconcha.in Premium</a>
+                <a class="my-1" href="/premium"><i class="fas fa-user-astronaut mr-2"></i>beaconcha.in Premium</a>
                 <a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag Shop</a>
                 <a class="my-1" href="/pricing"><i class="fas fa-laptop-code mr-2"></i>API Pricing</a>
                 <!-- <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>GitHub</a> -->
@@ -883,8 +303,8 @@
               <h5>Links</h5>
               <div class="d-flex flex-column">
                 <a class="my-1" href="https://discord.io/beaconchain"><i class="fab fa-discord mr-2"></i>Discord</a>
-                <a class="my-1" href="https://twitter.com/beaconcha_in"><i class="fab fa-twitter mr-2"></i>Beaconcha.in</a>
-                <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>GitHub</a>
+                <a class="my-1" href="https://twitter.com/beaconcha_in"><i class="fab fa-twitter mr-2"></i>beaconcha.in</a>
+                <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>GitHub Explorer</a>
                 <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer-app"><i class="fab fa-github mr-2"></i>GitHub Mobile App</a>
                 <!-- <a class="my-1" href="https://www.reddit.com/u/etherchain/"><i class="fab fa-reddit mr-2"></i>Reddit</a> -->
                 <!-- <a class="my-1" href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a> -->
@@ -918,7 +338,6 @@
         </footer>
       </div>
 
-      <script src="/js/jquery.min.js"></script>
       <script src="/js/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
       <script src="/theme/js/bootstrap.min.js"></script>
       <script src="/js/luxon.min.js"></script>
@@ -989,6 +408,8 @@
         {{ end }}
       {{ end }}
       <script src="/js/clipboard.min.js"></script>
+      <script src="/js/requestInterval.js"></script>
+
       {{ template "js" .Data }}
       {{ if not .Meta.NoTrack }}
         {{ if ne .Meta.GATag "" }}
@@ -1048,7 +469,8 @@
                     </script>
         {{ end }}
       {{ end }}
-      {{ if not .NoAds }}<script type="text/javascript" async src="/js/revive.min.js"></script>{{ end }}
+      <script type="text/javascript" async src="/js/revive.min.js"></script>
+      {{ template "addHandler" .AdConfigurations }}
       {{ if .Debug }}
         <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.min.js" integrity="sha512-O9SYDgWAM3bEzit1z6mkFd+dxKUplO/oB8UwYGAkg2Zy/WzDUQ2mYA/ysk3c0CxiXAN4u8T9JeZ0Ahk2Jj/33Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <script src="/js/debug.js"></script>

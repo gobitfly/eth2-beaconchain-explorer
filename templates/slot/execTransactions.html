@@ -1,0 +1,99 @@
+{{ define "execution_transactions" }}
+  <div class="row p-1 mx-0">
+    <div class="col-md-12 text-center"><b>Showing {{ .TxCount }} Transactions </b></div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm text-left">
+      <tbody id="transactions_table">
+        <tr style="background-color: var(--bg-color-light);">
+          <th class="border-0">Tx Hash</th>
+          <th class="border-0">Method</th>
+          <th class="border-0">From</th>
+          <th class="border-0">To</th>
+          <th class="border-0">Value</th>
+          <th class="border-0">Tx Fee</th>
+          <th class="border-0">Gas Price</th>
+        </tr>
+        {{ range .Txs }}
+          <tr class="border-bottom">
+            <td class="border-0">{{ .HashFormatted }}</td>
+            <td class="border-0"><span class="badge badge-light">{{ if gt (len .Method ) 0 }}{{ .Method }}{{ else }}Transfer{{ end }}</span></td>
+            <td class="border-0">{{ .FromFormatted }}</td>
+            <td class="border-0">{{ .ToFormatted }}</td>
+            <td class="border-0">{{ formatAmountFormatted .Value "Ether" 5 0 true true false }}</td>
+            <td class="border-0">{{ formatAmountFormatted .Fee "Ether" 5  0 true true false }}</td>
+            <td class="border-0">{{ formatAmountFormatted .GasPrice "GWei" 5 0 true true false }}</td>
+          </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    <script>
+      const blockNumber = {{.Number}}
+      function getInfoElementTransactions(text, color) {
+        const txn_tr = document.createElement("tr")
+        {
+          txn_tr.innerHTML =
+            `
+          <TD class="border-0" colspan='7' style='text-align: center; font-weight: bold; color: ${color};'>${text}</TD>
+        `
+        }
+        return txn_tr
+      }
+
+      function getTransactionsElement(element, last = false) {
+        const txn_tr = document.createElement("tr")
+        {
+          if (!last) {
+            txn_tr.classList.add("border-bottom")
+          }
+          txn_tr.innerHTML = `
+          <TD class="border-0">${element.HashFormatted}</TD>
+          <TD class="border-0">${element.Method}</TD>
+          <TD class="border-0">${element.FromFormatted}</TD>
+          <TD class="border-0">${element.ToFormatted}</TD>
+          <TD class="border-0">${element.Value}</TD>
+          <TD class="border-0">${element.Fee}</TD>
+          <TD class="border-0">${element.GasPrice}</TD>
+        `
+        }
+        return txn_tr
+      }
+
+      async function setupLazyLoadTransactions() {
+        const infLoading = document.getElementById("transactions_table")
+        if (infLoading) {
+          try {
+            const res = await fetch(`/block/${blockNumber}/transactions`)
+            const data = await res.json()
+
+            const lastElement = data.length - 1
+            const startElement = data.length > 10 ? 10 : 0
+            for (let i = startElement; i < data.length; ++i) {
+              infLoading.appendChild(getTransactionsElement(data[i], i == lastElement))
+            }
+          } catch (err) {
+            console.error("error getting lazy transactions: ", err)
+            infLoading.appendChild(getInfoElementTransactions("Error loading transactions...", "red"))
+          }
+        }
+      }
+
+      var transactionsTabLoaded = false
+      let ttab = $("#transactions-tab")
+      if (ttab.length > 0) {
+        ttab.on("shown.bs.tab", function (event) {
+          if (!transactionsTabLoaded) {
+            setupLazyLoadTransactions()
+          }
+          transactionsTabLoaded = true
+        })
+      } else {
+        console.error("error getting #transactions-tab")
+        const att = document.getElementById("transactions_table")
+        if (att) {
+          att.appendChild(getInfoElementTransactions("Error loading attestations...", "red"))
+        }
+      }
+    </script>
+  </div>
+{{ end }}

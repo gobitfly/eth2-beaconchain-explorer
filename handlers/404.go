@@ -64,14 +64,12 @@ func handleHTTPError(err error, handler func(http.ResponseWriter, *http.Request)
 }
 
 func NotFound(w http.ResponseWriter, r *http.Request) {
-	notFoundTemplate := templates.GetTemplate(
-		"layout.html",
-		"svg/relax.html",
-		"404notfound.html")
+	templateFiles := append(layoutTemplateFiles, "svg/relax.html", "404notfound.html")
+	notFoundTemplate := templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusNotFound)
-	data := InitPageData(w, r, "blockchain", r.URL.Path, "Not Found")
+	data := InitPageData(w, r, "blockchain", r.URL.Path, "Not Found", templateFiles)
 	err := notFoundTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing not-found template for %v route: %v", r.URL.String(), err)

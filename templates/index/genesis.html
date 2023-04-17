@@ -368,7 +368,6 @@
         fetch("/launchMetrics")
           .then((res) => res.json())
           .then((data) => {
-            data = data.Epochs
             var participationInputs = ["02", "04", "06", "10"]
             var firstProposed = ["01", "03", null, null]
             var finalized = [null, null, "11", null]

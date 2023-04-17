@@ -21,10 +21,6 @@ kbd {
   background-color: transparent;
   padding: 0;
 }
-.checkbox-custom-size { 
-  width: 1.1rem;
-  height: 1.1rem;
-}
 .container-height { 
   height: 650px; 
 }
@@ -52,19 +48,7 @@ kbd {
   height: 10rem;
   overflow-y: auto;
 } */
-.custom-remove-modal { 
-  position: relative;
-  min-width: 280px;
-  padding: 2rem 4rem 3rem;
-}
-.custom-remove-modal-close { 
-  position: relative; 
-  top: -1rem; 
-  right: -2.5rem;
-}
-.custom-remove-modal-close button:hover { 
-  color: var(--dark);
-}
+
 .heading { 
   font-size: 1.8rem;
   letter-spacing: 2px;
@@ -325,66 +309,8 @@ div.dataTables_scrollBody table {
 .twitter-typeahead {
   width: 100%;
 }
-#AddValidatorWatchlistModal .tt-open {
-  background-color: var(--dark);
-  scrollbar-color: var(--light);
-  scrollbar-width: thin;
-}
-#AddValidatorWatchlistModal .tt-open::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-#AddValidatorWatchlistModal .tt-open::-webkit-scrollbar-thumb {
-  background-color: var(--dark);
-  border-radius: 10px;
-  color: var(--light);
-}
-#AddValidatorWatchlistModal .tt-suggestion.tt-cursor,
-#AddValidatorWatchlistModal .tt-suggestion:hover {
-  background-color: var(--primary);
-  cursor: pointer;
-}
-#AddValidatorWatchlistModal .tt-menu {
-  width: 100%;
-  max-height: 19rem;
-  margin-top: 4px;
-  padding: .5rem;
-  background-color: var(--bg-color);
-  -webkit-border-radius: 4px;
-  -moz-border-radius: 4px;
-  border-radius: 4px;
-  border: 1px solid var(--dark);
-  overflow-y: auto;
-  cursor: pointer;
-}
-#AddValidatorWatchlistModal .tt-suggestion {
-  line-height: 34px;
-  margin: 0;
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
+
 @media screen and (max-width: 450px) {
-  .custom-modal {
-    padding: 0 !important;
-    overflow-y: auto;
-  }
-  .custom-modal .custom-modal-dialog {
-    width: 100%;
-    max-width: none;
-    height: 100%;
-    margin: 0;
-  }
-  .custom-modal .custom-modal-content {
-    height: 100%;
-    border: 0;
-    border-radius: 0;
-  }
-  .custom-remove-modal { 
-    padding: 1.3rem 1.8rem 2.5rem;
-  }
-  .custom-remove-modal-close { 
-    right: -1rem;
-  }
   div.dataTables_filter,
   div.dataTables_filter label {
     width: 100% !important;

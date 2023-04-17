@@ -3,6 +3,7 @@ package eth1data
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
@@ -48,7 +49,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(ctx, hash)
 
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving data for tx %v: %v", hash, err)
+		return nil, fmt.Errorf("error retrieving data for tx %v: %w", hash, err)
 	}
 
 	if pending {
@@ -76,11 +77,10 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		txPageData.To = &receipt.ContractAddress
 		txPageData.IsContractCreation = true
 	}
-	code, err := GetCodeAt(ctx, *txPageData.To)
+	txPageData.TargetIsContract, err = IsContract(ctx, *txPageData.To)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving code data for tx %v recipient %v: %v", hash, tx.To(), err)
 	}
-	txPageData.TargetIsContract = len(code) != 0
 
 	header, err := GetBlockHeaderByHash(ctx, receipt.BlockHash)
 	if err != nil {
@@ -168,10 +168,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 				contractMetadataCache[log.Address] = cmEntry
 			}
 
-			if cmEntry.err != nil || cmEntry.meta == nil {
-				if !wasContractMetadataCached {
-					logger.Warnf("error retrieving abi for contract %v: %v", tx.To(), cmEntry.err)
-				}
+			if cmEntry.err != nil || cmEntry.meta == nil || cmEntry.meta.ABI == nil {
 				eth1Event := &types.Eth1EventData{
 					Address: log.Address,
 					Name:    "",
@@ -238,6 +235,47 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		}
 	}
 
+	// staking deposit information (only add complete events if any)
+	for _, v := range txPageData.Events {
+		if v.Address == common.HexToAddress(utils.Config.Chain.Config.DepositContractAddress) && strings.HasPrefix(v.Name, "DepositEvent") {
+			var d types.DepositContractInteraction
+
+			if pubkey, found := v.DecodedData["pubkey"]; found {
+				d.ValidatorPubkey, err = hex.DecodeString(pubkey.Raw[2:])
+				if err != nil {
+					continue
+				}
+			} else {
+				continue
+			}
+
+			if wcreds, found := v.DecodedData["withdrawal_credentials"]; found {
+				d.WithdrawalCreds, err = hex.DecodeString(wcreds.Raw[2:])
+				if err != nil {
+					continue
+				}
+			} else {
+				continue
+			}
+
+			if amount, found := v.DecodedData["amount"]; found {
+				// amount is a little endian hex denominated in GEwei so we have to decode and reverse it and then convert to ETH
+				ba, err := hex.DecodeString(amount.Raw[2:])
+				if err != nil {
+					continue
+				}
+				utils.ReverseSlice(ba)
+				amount := new(big.Int).Mul(new(big.Int).SetBytes(ba), big.NewInt(1000000000))
+
+				d.Amount = amount.Bytes()
+			} else {
+				continue
+			}
+
+			txPageData.DepositContractInteractions = append(txPageData.DepositContractInteractions, d)
+		}
+	}
+
 	err = cache.TieredCache.Set(cacheKey, txPageData, time.Hour*24)
 	if err != nil {
 		return nil, fmt.Errorf("error writing data for tx %v to cache: %v", hash, err)
@@ -246,25 +284,24 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	return txPageData, nil
 }
 
-func GetCodeAt(ctx context.Context, address common.Address) ([]byte, error) {
-	cacheKey := fmt.Sprintf("%d:a:%s", utils.Config.Chain.Config.DepositChainID, address.String())
-	if wanted, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Hour); err == nil {
-		logger.Infof("retrieved code data for address %v from cache", address)
-
-		return []byte(wanted), nil
+func IsContract(ctx context.Context, address common.Address) (bool, error) {
+	cacheKey := fmt.Sprintf("%d:isContract:%s", utils.Config.Chain.Config.DepositChainID, address.String())
+	if wanted, err := cache.TieredCache.GetBoolWithLocalTimeout(cacheKey, time.Hour); err == nil {
+		return wanted, nil
 	}
 
 	code, err := rpc.CurrentErigonClient.GetNativeClient().CodeAt(ctx, address, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving code data for address %v: %v", address, err)
+		return false, fmt.Errorf("error retrieving code data for address %v: %v", address, err)
 	}
 
-	err = cache.TieredCache.SetString(cacheKey, string(code), time.Hour*24)
+	isContract := len(code) != 0
+	err = cache.TieredCache.SetBool(cacheKey, isContract, time.Hour*24)
 	if err != nil {
-		return nil, fmt.Errorf("error writing code data for address %v to cache: %v", address, err)
+		return false, fmt.Errorf("error writing code data for address %v to cache: %v", address, err)
 	}
 
-	return code, nil
+	return isContract, nil
 }
 
 func GetBlockHeaderByHash(ctx context.Context, hash common.Hash) (*geth_types.Header, error) {

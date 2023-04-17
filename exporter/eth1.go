@@ -2,14 +2,14 @@ package exporter
 
 import (
 	"context"
-	"encoding/hex"
+	"database/sql"
 	"eth2-exporter/db"
+	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -18,8 +18,6 @@ import (
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
-	"github.com/prysmaticlabs/prysm/v3/config/params"
 	"github.com/prysmaticlabs/prysm/v3/contracts/deposit"
 	"github.com/prysmaticlabs/prysm/v3/crypto/hash"
 	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
@@ -42,12 +40,12 @@ var gethRequestEntityTooLargeRE = regexp.MustCompile("413 Request Entity Too Lar
 // If a reorg of the eth1-chain happened within these 100 blocks it will delete
 // removed deposits.
 func eth1DepositsExporter() {
-	eth1DepositContractAddress = common.HexToAddress(utils.Config.Indexer.Eth1DepositContractAddress)
+	eth1DepositContractAddress = common.HexToAddress(utils.Config.Chain.Config.DepositContractAddress)
 	eth1DepositContractFirstBlock = utils.Config.Indexer.Eth1DepositContractFirstBlock
 
 	rpcClient, err := gethRPC.Dial(utils.Config.Eth1GethEndpoint)
 	if err != nil {
-		logger.Fatal(err)
+		utils.LogFatal(err, "new exporter geth client error", 0)
 	}
 	eth1RPCClient = rpcClient
 	client := ethclient.NewClient(rpcClient)
@@ -125,6 +123,15 @@ func eth1DepositsExporter() {
 			continue
 		}
 
+		if len(depositsToSave) > 0 {
+			err = aggregateDeposits()
+			if err != nil {
+				logger.WithError(err).Errorf("error saving eth1-deposits-leaderboard")
+				time.Sleep(time.Second * 5)
+				continue
+			}
+		}
+
 		// make sure we are progressing even if there are no deposits in the last batch
 		lastFetchedBlock = toBlock
 
@@ -149,13 +156,14 @@ func eth1DepositsExporter() {
 func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1Deposit, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
-
+	topic := common.BytesToHash(eth1DepositEventSignature[:])
 	qry := ethereum.FilterQuery{
 		Addresses: []common.Address{
 			eth1DepositContractAddress,
 		},
 		FromBlock: new(big.Int).SetUint64(fromBlock),
 		ToBlock:   new(big.Int).SetUint64(toBlock),
+		Topics:    [][]common.Hash{{topic}},
 	}
 
 	depositLogs, err := eth1Client.FilterLogs(ctx, qry)
@@ -166,45 +174,7 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 	blocksToFetch := []uint64{}
 	txsToFetch := []string{}
 
-	cfg := params.BeaconConfig()
-	genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Config.GenesisForkVersion, "0x", "", -1))
-	// genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Config.GenesisForkVersion.String(), "0x", "", -1))
-	if err != nil {
-		return nil, err
-	}
-	domain, err := signing.ComputeDomain(
-		cfg.DomainDeposit,
-		genForkVersion,
-		cfg.ZeroHash[:],
-	)
-	if utils.Config.Chain.Config.ConfigName == "zinken" {
-		domain, err = signing.ComputeDomain(
-			cfg.DomainDeposit,
-			[]byte{0x00, 0x00, 0x00, 0x03},
-			cfg.ZeroHash[:],
-		)
-	}
-	if utils.Config.Chain.Config.ConfigName == "toledo" {
-		domain, err = signing.ComputeDomain(
-			cfg.DomainDeposit,
-			[]byte{0x00, 0x70, 0x1E, 0xD0},
-			cfg.ZeroHash[:],
-		)
-	}
-	if utils.Config.Chain.Config.ConfigName == "pyrmont" {
-		domain, err = signing.ComputeDomain(
-			cfg.DomainDeposit,
-			[]byte{0x00, 0x00, 0x20, 0x09},
-			cfg.ZeroHash[:],
-		)
-	}
-	if utils.Config.Chain.Config.ConfigName == "prater" {
-		domain, err = signing.ComputeDomain(
-			cfg.DomainDeposit,
-			[]byte{0x00, 0x00, 0x10, 0x20},
-			cfg.ZeroHash[:],
-		)
-	}
+	domain, err := utils.GetSigningDomain()
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +212,7 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 
 	headers, txs, err := eth1BatchRequestHeadersAndTxs(blocksToFetch, txsToFetch)
 	if err != nil {
-		return depositsToSave, fmt.Errorf("error getting eth1-blocks: %w", err)
+		return depositsToSave, fmt.Errorf("error getting eth1-blocks: %w\nblocks to fetch: %v\n tx to fetch: %v", err, blocksToFetch, txsToFetch)
 	}
 
 	for _, d := range depositsToSave {
@@ -366,13 +336,24 @@ func eth1BatchRequestHeadersAndTxs(blocksToFetch []uint64, txsToFetch []string) 
 		errors = append(errors, err)
 	}
 
-	if len(elems) == 0 {
+	lenElems := len(elems)
+
+	if lenElems == 0 {
 		return headers, txs, nil
 	}
 
-	ioErr := eth1RPCClient.BatchCall(elems)
-	if ioErr != nil {
-		return nil, nil, ioErr
+	for i := 0; (i * 100) < lenElems; i++ {
+		start := (i * 100)
+		end := start + 100
+
+		if end > lenElems {
+			end = lenElems
+		}
+
+		ioErr := eth1RPCClient.BatchCall(elems[start:end])
+		if ioErr != nil {
+			return nil, nil, ioErr
+		}
 	}
 
 	for _, e := range errors {
@@ -382,4 +363,48 @@ func eth1BatchRequestHeadersAndTxs(blocksToFetch []uint64, txsToFetch []string) 
 	}
 
 	return headers, txs, nil
+}
+
+func aggregateDeposits() error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("exporter_aggregate_eth1_deposits").Observe(time.Since(start).Seconds())
+	}()
+	_, err := db.WriterDb.Exec(`
+		INSERT INTO eth1_deposits_aggregated (from_address, amount, validcount, invalidcount, slashedcount, totalcount, activecount, pendingcount, voluntary_exit_count)
+		SELECT
+			eth1.from_address,
+			SUM(eth1.amount) as amount,
+			SUM(eth1.validcount) AS validcount,
+			SUM(eth1.invalidcount) AS invalidcount,
+			COUNT(CASE WHEN v.status = 'slashed' THEN 1 END) AS slashedcount,
+			COUNT(v.pubkey) AS totalcount,
+			COUNT(CASE WHEN v.status = 'active_online' OR v.status = 'active_offline' THEN 1 END) as activecount,
+			COUNT(CASE WHEN v.status = 'deposited' THEN 1 END) AS pendingcount,
+			COUNT(CASE WHEN v.status = 'exited' THEN 1 END) AS voluntary_exit_count
+		FROM (
+			SELECT 
+				from_address,
+				publickey,
+				SUM(amount) AS amount,
+				COUNT(CASE WHEN valid_signature = 't' THEN 1 END) AS validcount,
+				COUNT(CASE WHEN valid_signature = 'f' THEN 1 END) AS invalidcount
+			FROM eth1_deposits
+			GROUP BY from_address, publickey
+		) eth1
+		LEFT JOIN (SELECT pubkey, status FROM validators) v ON v.pubkey = eth1.publickey
+		GROUP BY eth1.from_address
+		ON CONFLICT (from_address) DO UPDATE SET
+			amount               = excluded.amount,
+			validcount           = excluded.validcount,
+			invalidcount         = excluded.invalidcount,
+			slashedcount         = excluded.slashedcount,
+			totalcount           = excluded.totalcount,
+			activecount          = excluded.activecount,
+			pendingcount         = excluded.pendingcount,
+			voluntary_exit_count = excluded.voluntary_exit_count`)
+	if err != nil && err != sql.ErrNoRows {
+		return nil
+	}
+	return err
 }

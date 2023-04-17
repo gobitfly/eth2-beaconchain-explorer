@@ -6,10 +6,10 @@ import (
 	"net/http"
 )
 
-// Blocks will return information about blocks using a go template
+// Will return the confirmation page
 func Confirmation(w http.ResponseWriter, r *http.Request) {
-
-	var confirmationTemplate = templates.GetTemplate("layout.html", "confirmation.html")
+	templateFiles := append(layoutTemplateFiles, "confirmation.html")
+	var confirmationTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -35,11 +35,11 @@ func Confirmation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := InitPageData(w, r, "confirmation", "/blocks", "Blocks")
+	data := InitPageData(w, r, "confirmation", "/blocks", "Blocks", templateFiles)
 	data.Data = pageData
 	data.Meta.NoTrack = true
 
-	if handleTemplateError(w, r, confirmationTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	if handleTemplateError(w, r, "confirmation.go", "Confirmation", "", confirmationTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
 }
