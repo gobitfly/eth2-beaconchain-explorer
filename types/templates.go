@@ -372,12 +372,14 @@ type ValidatorPageData struct {
 	WithdrawalCount                          uint64
 	SlashingsCount                           uint64
 	PendingCount                             uint64
-	SyncCount                                uint64
-	ScheduledSyncCount                       uint64
-	ParticipatedSyncCount                    uint64
-	MissedSyncCount                          uint64
-	OrphanedSyncCount                        uint64
-	UnmissedSyncPercentage                   float64        // missed/(participated+orphaned)
+	SyncCount                                uint64 // amount of sync committees the validator was (and is) part of
+	SlotsPerSyncCommittee                    uint64
+	SlotsDoneInCurrentSyncCommittee          uint64
+	ScheduledSyncCountSlots                  uint64
+	ParticipatedSyncCountSlots               uint64
+	MissedSyncCountSlots                     uint64
+	OrphanedSyncCountSlots                   uint64
+	UnmissedSyncPercentage                   float64        // participated/(participated+missed)
 	IncomeToday                              ClElInt64      `json:"incomeToday"`
 	Income1d                                 ClElInt64      `json:"income1d"`
 	Income7d                                 ClElInt64      `json:"income7d"`
