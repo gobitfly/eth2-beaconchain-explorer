@@ -2015,6 +2015,10 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 
 	latestEpoch := int64(services.LatestFinalizedEpoch())
 	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, uint64(latestEpoch), uint64(latestEpoch))
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "error retrieving balances")
+		return
+	}
 
 	// create a map to easily check if a validator is part of data
 	validatorIndexMap := make(map[uint64]bool)
