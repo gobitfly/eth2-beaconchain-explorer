@@ -1990,7 +1990,6 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.ReaderDb.Query(`
 	SELECT 
 		validator_performance.validatorindex, 
-		validator_performance.balance, 
 		COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d, 
 		COALESCE(validator_performance.cl_performance_7d, 0) AS performance7d, 
 		COALESCE(validator_performance.cl_performance_31d, 0) AS performance31d, 
@@ -2017,6 +2016,13 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 	currentDayIncome, err := db.GetCurrentDayClIncome(queryIndices)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "error retrieving current day income")
+		return
+	}
+
+	latestEpoch := int64(services.LatestFinalizedEpoch())
+	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, uint64(latestEpoch), uint64(latestEpoch))
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "error retrieving balances")
 		return
 	}
 
@@ -2063,6 +2069,7 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		eMap["balance"] = latestBalances[uint64(validatorIndex)][0].Balance
 		eMap["performancetoday"] = currentDayIncome[uint64(validatorIndex)]
 		eMap["performancetotal"] = eMap["performancetotal"].(int64) + currentDayIncome[uint64(validatorIndex)]
 	}
