@@ -3470,7 +3470,7 @@ func (bigtable *Bigtable) GetMethodSignature(hex string) (*string, error) {
 	return &s, nil
 }
 
-// get a method label for its byte signature
+// get a method label for its byte signature with defaults
 func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string {
 	method := "Transfer"
 	if len(id) > 0 {
