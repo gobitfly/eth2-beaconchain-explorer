@@ -686,16 +686,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			lookback := int64(finalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
 			if lookback > 0 {
 				// logger.Infof("retrieving attestations not yet in stats, lookback is %v", lookback)
-				attestationsNotInStats, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, finalizedEpoch-uint64(lookback), finalizedEpoch)
+				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, finalizedEpoch-uint64(lookback), finalizedEpoch)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator attestations not in stats from bigtable: %v", err)
 				}
 
-				for _, v := range attestationsNotInStats {
-					for _, a := range v {
-						if a.Status == 0 {
-							attestationStats.MissedAttestations++
-						}
+				for _, missed := range missedAttestations[index] {
+					if missed {
+						attestationStats.MissedAttestations++
 					}
 				}
 			}
