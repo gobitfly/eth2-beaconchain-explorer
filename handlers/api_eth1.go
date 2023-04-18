@@ -108,7 +108,8 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 // ApiETH1AccountProposedBlocks godoc
 // @Summary Get proposed or mined blocks
 // @Tags Execution
-// @Description Get a list of proposed or mined blocks from a given fee recipient address, proposer index or proposer pubkey
+// @Description Get a list of proposed or mined blocks from a given fee recipient address, proposer index or proposer pubkey.
+// @Description Mixed use of recipient addresses and proposer indexes or proposer pubkeys with an offset is discouraged as it can lead to skipped entries.
 // @Produce json
 // @Param addressIndexOrPubkey path string true "Either the fee recipient address, the proposer index or proposer pubkey. You can provide multiple by separating them with ','. Max allowed index or pubkeys are 100, max allowed user addresses are 20."
 // @Param offset query int false "Offset" default(0)
@@ -192,20 +193,24 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if isSortAsc {
-		// Remove duplicates from the block list
-		allKeys := make(map[uint64]bool)
-		list := []uint64{}
-		for _, item := range blockList {
-			if _, ok := allKeys[item]; !ok {
-				allKeys[item] = true
-				list = append(list, item)
-			}
+	// Remove duplicates from the block list
+	allKeys := make(map[uint64]bool)
+	list := []uint64{}
+	for _, item := range blockList {
+		if _, ok := allKeys[item]; !ok {
+			allKeys[item] = true
+			list = append(list, item)
 		}
-		blockList = list
+	}
+	blockList = list
 
-		// Trim to the blocks that are within the limit range
+	// Trim to the blocks that are within the limit range
+	if isSortAsc {
 		sort.Slice(blockList, func(i, j int) bool { return blockList[i] < blockList[j] })
+	} else {
+		sort.Slice(blockList, func(i, j int) bool { return blockList[i] > blockList[j] })
+	}
+	if len(blockList) > int(limit) {
 		blockList = blockList[:limit]
 	}
 
