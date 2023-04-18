@@ -44,13 +44,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := int64(services.LatestFinalizedEpoch())
 
-	balances := []*types.Validator{}
-
-	balancesMap := make(map[uint64]*types.Validator, len(balances))
-
-	for _, balance := range balances {
-		balancesMap[balance.Index] = balance
-	}
+	balancesMap := make(map[uint64]*types.Validator, 0)
 
 	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), uint64(latestEpoch))
 	if err != nil {
