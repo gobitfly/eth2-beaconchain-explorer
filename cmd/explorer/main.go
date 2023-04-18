@@ -731,10 +731,6 @@ func main() {
 		services.InitGitCoinFeed()
 	}
 
-	// if utils.Config.Frontend.PoolsUpdater.Enabled {
-	// services.InitPools() // making sure the website is available before updating
-	// }
-
 	utils.WaitForCtrlC()
 
 	logrus.Println("exiting...")
