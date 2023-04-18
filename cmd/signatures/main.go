@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"flag"
@@ -22,10 +23,11 @@ import (
 * so that we can label the transction function calls instead of the "id"
 **/
 func main() {
-
 	bigtableProject := flag.String("bigtable.project", "", "Bigtable project")
 	bigtableInstance := flag.String("bigtable.instance", "", "Bigtable instance")
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
+	metricsAddr := flag.String("metrics.address", "localhost:9090", "serve metrics on that addr")
+	metricsEnabled := flag.Bool("metrics.enabled", false, "enable serving metrics")
 
 	flag.Parse()
 
@@ -37,14 +39,31 @@ func main() {
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
 
+	if *metricsEnabled {
+		go func() {
+			logrus.WithFields(logrus.Fields{"addr": *metricsAddr}).Infof("Serving metrics")
+			if err := metrics.Serve(*metricsAddr); err != nil {
+				logrus.WithError(err).Fatal("Error serving metrics")
+			}
+		}()
+	}
+
 	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, "1")
 	if err != nil {
 		logrus.Errorf("error initializing bigtable: %v", err)
 		return
 	}
 
+	go ImportMethodSignatures(bt)
+
+	utils.WaitForCtrlC()
+}
+
+func ImportMethodSignatures(bt *db.Bigtable) {
+
 	// Per default we start with the latest signatures (first page = latest signatures)
-	page := "https://www.4byte.directory/api/v1/signatures/"
+	const firstPage = "https://www.4byte.directory/api/v1/signatures/"
+	page := firstPage
 	status, err := bt.GetMethodSignatureImportStatus()
 	if err != nil {
 		logrus.Errorf("error getting signature import status from bigtable: %v", err)
@@ -63,14 +82,19 @@ func main() {
 	if status.LatestTimestamp != nil {
 		latestTimestamp, _ = time.Parse(time.RFC3339, *status.LatestTimestamp)
 	}
+	sleepTime := time.Second * 2
 
-	for ; ; time.Sleep(time.Second * 2) { // timout needed due to rate limit
+	for ; ; time.Sleep(sleepTime) { // timout needed due to rate limit
+		sleepTime = time.Second * 2
 		logrus.Infof("Get signatures for: %v", page)
+		start := time.Now()
 		next, sigs, err := GetNextSignitures(bt, page, *status)
 
 		if err != nil {
+			metrics.Errors.WithLabelValues("method_signatures_get_signatures_failed").Inc()
 			logrus.Errorf("error getting signature: %v", err)
-			break
+			sleepTime = time.Minute
+			continue
 		}
 
 		// If had a complete sync done in the past, we only need to get signatures newer then the onces from our prev. run
@@ -78,14 +102,19 @@ func main() {
 			createdAt, _ := time.Parse(time.RFC3339, *status.LatestTimestamp)
 			if createdAt.UnixNano() <= latestTimestamp.UnixMilli() {
 				logrus.Info("Our Signature Data is up to date")
-				break
+				sleepTime = time.Hour
+				isFirst = true
+				page = firstPage
+				continue
 			}
 		}
 
 		err = db.BigtableClient.SaveMethodSignatures(sigs)
 		if err != nil {
+			metrics.Errors.WithLabelValues("method_signatures_save_to_bt_failed").Inc()
 			logrus.Errorf("error saving signatures into bigtable: %v", err)
-			break
+			sleepTime = time.Minute
+			continue
 		}
 
 		// Lets save the timestamp from the first (=latest) entry
@@ -97,19 +126,23 @@ func main() {
 		if next == nil {
 			status.NextPage = nil
 			status.HasFinished = true
-			break
 		} else {
 			if !status.HasFinished {
 				status.NextPage = next
 			}
 			page = *next
 		}
+		if status != nil && (status.HasFinished || status.NextPage != nil) {
+			logrus.Infof("Save Sig ts: %v next: %v", *status.LatestTimestamp, *status.NextPage)
+			err = bt.SaveMethodSignatureImportStatus(*status)
+			if err != nil {
+				metrics.Errors.WithLabelValues("method_signatures_save_status_to_bt_failed").Inc()
+				logrus.Errorf("error saving signature status into bigtable: %v", err)
+				sleepTime = time.Minute
+			}
+		}
+		metrics.TaskDuration.WithLabelValues("method_signatures_page_imported").Observe(time.Since(start).Seconds())
 	}
-	if status != nil && (status.HasFinished || status.NextPage != nil) {
-		logrus.Infof("Save Sig ts: %v next: %v", *status.LatestTimestamp, *status.NextPage)
-		bt.SaveMethodSignatureImportStatus(*status)
-	}
-
 }
 
 func GetNextSignitures(bt *db.Bigtable, page string, status types.MethodSignatureImportStatus) (*string, []types.MethodSignature, error) {
