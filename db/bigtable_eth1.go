@@ -3466,7 +3466,7 @@ func (bigtable *Bigtable) GetMethodSignature(hex string) (*string, error) {
 		return nil, nil
 	}
 	row_ := row[DEFAULT_FAMILY][0]
-	s := fmt.Sprintf("%s", row_.Value)
+	s := string(row_.Value)
 	return &s, nil
 }
 
