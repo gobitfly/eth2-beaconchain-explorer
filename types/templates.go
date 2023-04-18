@@ -372,20 +372,23 @@ type ValidatorPageData struct {
 	WithdrawalCount                          uint64
 	SlashingsCount                           uint64
 	PendingCount                             uint64
-	SyncCount                                uint64
-	ScheduledSyncCount                       uint64
-	ParticipatedSyncCount                    uint64
-	MissedSyncCount                          uint64
-	OrphanedSyncCount                        uint64
-	UnmissedSyncPercentage                   float64     // missed/(participated+orphaned)
-	IncomeToday                              ClElInt64   `json:"incomeToday"`
-	Income1d                                 ClElInt64   `json:"income1d"`
-	Income7d                                 ClElInt64   `json:"income7d"`
-	Income31d                                ClElInt64   `json:"income31d"`
-	Apr7d                                    ClElFloat64 `json:"apr7d"`
-	Apr31d                                   ClElFloat64 `json:"apr31d"`
-	Apr365d                                  ClElFloat64 `json:"apr365d"`
-	ElIncomeTotal                            int64       `json:"totalExecutionRewards"`
+	SyncCount                                uint64 // amount of sync committees the validator was (and is) part of
+	SlotsPerSyncCommittee                    uint64
+	SlotsDoneInCurrentSyncCommittee          uint64
+	ScheduledSyncCountSlots                  uint64
+	ParticipatedSyncCountSlots               uint64
+	MissedSyncCountSlots                     uint64
+	OrphanedSyncCountSlots                   uint64
+	UnmissedSyncPercentage                   float64       // participated/(participated+missed)
+	IncomeToday                              ClElInt64     `json:"incomeToday"`
+	Income1d                                 ClElInt64     `json:"income1d"`
+	Income7d                                 ClElInt64     `json:"income7d"`
+	Income31d                                ClElInt64     `json:"income31d"`
+	IncomeTotal                              ClElInt64     `json:"incomeTotal"`
+	IncomeTotalFormatted                     template.HTML `json:"incomeTotalFormatted"`
+	Apr7d                                    ClElFloat64   `json:"apr7d"`
+	Apr31d                                   ClElFloat64   `json:"apr31d"`
+	Apr365d                                  ClElFloat64   `json:"apr365d"`
 	ProposalLuck                             float64
 	SyncLuck                                 float64
 	ProposalEstimate                         *time.Time
@@ -1015,10 +1018,10 @@ type ValidatorEarnings struct {
 	Income1d                ClElInt64     `json:"income1d"`
 	Income7d                ClElInt64     `json:"income7d"`
 	Income31d               ClElInt64     `json:"income31d"`
+	IncomeTotal             ClElInt64     `json:"incomeTotal"`
 	Apr7d                   ClElFloat64   `json:"apr"`
 	Apr31d                  ClElFloat64   `json:"apr31d"`
 	Apr365d                 ClElFloat64   `json:"apr365d"`
-	ElIncomeTotal           int64         `json:"totalExecutionRewards"`
 	TotalDeposits           int64         `json:"totalDeposits"`
 	TotalWithdrawals        uint64        `json:"totalWithdrawals"`
 	EarningsInPeriodBalance int64         `json:"earningsInPeriodBalance"`

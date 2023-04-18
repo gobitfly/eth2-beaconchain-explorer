@@ -118,10 +118,9 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 					utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
 					utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", visibleDigitsForHash+5, 18, true),
 					toText,
-					utils.FormatAmountFormated(new(big.Int).SetBytes(v.GetValue()), "ETH", 8, 4, true, true, false),
-					utils.FormatAmountFormated(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), "ETH", 8, 4, true, true, false),
+					utils.FormatAmountFormatted(new(big.Int).SetBytes(v.GetValue()), "Ether", 8, 4, true, true, false),
+					utils.FormatAmountFormatted(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), "Ether", 8, 4, true, true, false),
 				})
-
 				return nil
 			})
 			wg.Wait()

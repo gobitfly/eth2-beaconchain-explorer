@@ -398,6 +398,11 @@ func main() {
 			logrus.Infof("ethclients initialized")
 		}
 
+		if cfg.Frontend.SessionSecret == "" {
+			logrus.Fatal("session secret is empty, please provide a secure random string.")
+			return
+		}
+
 		utils.InitSessionStore(cfg.Frontend.SessionSecret)
 
 		if !utils.Config.Frontend.OnlyAPI {
@@ -725,10 +730,6 @@ func main() {
 	if utils.Config.Frontend.ShowDonors.Enabled {
 		services.InitGitCoinFeed()
 	}
-
-	// if utils.Config.Frontend.PoolsUpdater.Enabled {
-	// services.InitPools() // making sure the website is available before updating
-	// }
 
 	utils.WaitForCtrlC()
 

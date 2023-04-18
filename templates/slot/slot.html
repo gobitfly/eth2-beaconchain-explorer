@@ -148,7 +148,6 @@
           console.error('error getting lazy attestations: ', err)
           infLoading.appendChild(getInfoElementAttestations('Error loading attestations...', 'red'));
         }
-        $('[data-toggle="tooltip"]').tooltip();
       }
     }
 
@@ -171,12 +170,6 @@
           },
         },
         columnDefs: [
-          {
-            targets: 3,
-            render: function (data, type, row) {
-              return `<div class="d-flex justify-content-between">${data}<i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i></div>`
-            },
-          },
           {
             targets: 4,
             render: function (data, type, row) {
@@ -343,7 +336,6 @@
           </ol>
         </nav>
       </div>
-      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       {{ if ne (len .Tags) 0 }}
         <div class="tags">
           {{ range .Tags }}
@@ -357,6 +349,13 @@
           {{ end }}
         </div>
       {{ end }}
+
+      {{ $bannerId := "r-banner-slot" }}
+      {{ if $isBlockView }}
+        {{ $bannerId = "r-banner-block" }}
+      {{ end }}
+      <div id="{{ $bannerId }}" info="{{ $.Meta.Templates }}"></div>
+
       <ul style="margin-bottom: -1px; " class="nav nav-tabs justify-content-start" id="tab" role="tablist">
         <li class="nav-item">
           <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true">Overview</a>

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
@@ -82,7 +83,9 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		// retrieve consensus data
 		blockPageData, err := GetSlotPageData(blockSlot)
 		if err != nil {
-			logger.Errorf("error retrieving slot page data: %v", err)
+			if err != sql.ErrNoRows {
+				logger.Errorf("error retrieving slot page data: %v", err)
+			}
 
 			data.Data = "block"
 			if handleTemplateError(w, r, "eth1Block.go", "Eth1Block", "GetSlotPageData", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {

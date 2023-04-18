@@ -1156,7 +1156,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 			// }
 
 			if c.Status != v.Status {
-				logger.Infof("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
+				logger.Tracef("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
 				queries.WriteString(fmt.Sprintf("UPDATE validators SET status = '%s' WHERE validatorindex = %d;\n", v.Status, c.Index))
 				updates++
 			}
@@ -2964,8 +2964,17 @@ func GetWithdrawableValidatorCount(epoch uint64) (uint64, error) {
 		count(*) 
 	FROM 
 		validators 
+	INNER JOIN (
+		SELECT validatorindex, 
+                end_effective_balance, 
+                end_balance,
+                DAY
+        FROM
+                validator_stats
+        WHERE DAY = (SELECT COALESCE(MAX(day), 0) FROM validator_stats_status)) as stats 
+	ON stats.validatorindex = validators.validatorindex
 	WHERE 
-		withdrawalcredentials LIKE '\x01' || '%'::bytea AND ((effectivebalance = $1 AND balance > $1) OR (withdrawableepoch <= $2 AND balance > 0));`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
+		validators.withdrawalcredentials LIKE '\x01' || '%'::bytea AND ((stats.end_effective_balance = $1 AND stats.end_balance > $1) OR (validators.withdrawableepoch <= $2 AND stats.end_balance > 0));`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
@@ -2991,41 +3000,6 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 			return 0, nil
 		}
 		return 0, fmt.Errorf("error getting withdrawable validator count: %w", err)
-	}
-
-	return count, nil
-}
-
-func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
-	// the validators' balance will not be checked here as this is only a rough estimation
-	// checking the balance for hundreds of thousands of validators is too expensive
-
-	var idCondition string
-	if validatorindex > cursor {
-		// find all withdrawable validators between the cursor and the validator
-		idCondition = "(validatorindex > $1 AND validatorindex < $2)"
-	} else if validatorindex < cursor {
-		// find all withdrawable validators behind the cursor AND in front of the validator (i.e. logical OR)
-		idCondition = "(validatorindex > $1 OR validatorindex < $2)"
-	} else {
-		// cursor at validator
-		return 0, nil
-	}
-
-	query := fmt.Sprintf(`
-	SELECT 
-		COUNT(*)
-	FROM 
-		validators 
-	WHERE 
-		%s AND
-		activationepoch <= $3 AND exitepoch > $3 AND
-		withdrawalcredentials LIKE '\x01' || '%%'::bytea`, idCondition)
-
-	count := uint64(0)
-	err := ReaderDb.Get(&count, query, cursor, validatorindex, epoch)
-	if err != nil {
-		return 0, fmt.Errorf("error getting withdrawable validator count from cursor: %w", err)
 	}
 
 	return count, nil

@@ -104,7 +104,7 @@ func UserModalAddNetworkEvent(w http.ResponseWriter, r *http.Request) {
 		} else {
 			err := db.DeleteSubscription(user.UserID, utils.GetNetwork(), ev.Event, string(ev.Event))
 			if err != nil {
-				logger.WithError(err).Errorf("error adding subscription for user: %v", user.UserID)
+				logger.WithError(err).Errorf("error deleting subscription for user: %v", user.UserID)
 				utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating a network subscription, please try again in a bit.")
 				http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 				return

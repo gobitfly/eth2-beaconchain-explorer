@@ -837,7 +837,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 }
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validatorIndex uint64, startEpoch uint64, endEpoch uint64, reverseOrdering bool) ([]*types.ValidatorSyncParticipation, error) {
-	res, err := bigtable.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, startEpoch, endEpoch)
+	res, err := bigtable.getValidatorSyncDutiesHistory([]uint64{validatorIndex}, startEpoch, endEpoch)
 	if err != nil {
 		return nil, err
 	}
@@ -847,7 +847,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validatorIndex ui
 	return res[validatorIndex], nil
 }
 
-func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorSyncParticipation, error) {
+func (bigtable *Bigtable) getValidatorSyncDutiesHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorSyncParticipation, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
 	defer cancel()
 
@@ -895,10 +895,10 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 			slot = max_block_number - slot
 			inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
 
-			status := uint64(1)
+			status := uint64(1) // 1: participated
 			if inclusionSlot == max_block_number {
 				inclusionSlot = 0
-				status = 0
+				status = 0 // 0: missed
 			}
 
 			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, SYNC_COMMITTEES_FAMILY+":"), 10, 64)
@@ -964,7 +964,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 }
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorSyncDutiesStatistic, error) {
-	data, err := bigtable.GetValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
+	data, err := bigtable.getValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
 
 	if err != nil {
 		return nil, err
@@ -989,6 +989,37 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 	}
 
 	return res, nil
+}
+
+func (bigtable *Bigtable) GetValidatorSyncCommitteesStats(validators []uint64, startEpoch uint64, endEpoch uint64) (types.SyncCommitteesStats, error) {
+	res, err := bigtable.getValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
+	if err != nil {
+		return types.SyncCommitteesStats{}, fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
+	}
+
+	retv := types.SyncCommitteesStats{}
+	for _, v := range res {
+		for _, r := range v {
+			slotTime := utils.SlotToTime(r.Slot)
+			if r.Status == 0 && time.Since(slotTime) <= time.Minute {
+				r.Status = 2
+			}
+			switch r.Status {
+			case 0:
+				retv.MissedSlots++
+			case 1:
+				retv.ParticipatedSlots++
+			case 2:
+				retv.ScheduledSlots++
+			}
+		}
+	}
+
+	// data coming from bigtable is limited to the current epoch, so we need to add the remaining sync duties for the current period manually
+	slotsPerSyncCommittee := utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
+	retv.ScheduledSlots += slotsPerSyncCommittee - ((retv.MissedSlots + retv.ParticipatedSlots + retv.ScheduledSlots) % slotsPerSyncCommittee)
+
+	return retv, nil
 }
 
 // returns the validator attestation effectiveness in %
@@ -1629,6 +1660,52 @@ func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) (gc
 		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 	}
 	return ranges, nil
+}
+
+func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, error) {
+	dayIncome := make(map[uint64]int64)
+	lastDay := int64(0)
+
+	err := ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats_status")
+	if err != nil {
+		return dayIncome, err
+	}
+
+	currentDay := uint64(lastDay + 1)
+	startEpoch := currentDay * utils.EpochsPerDay()
+	endEpoch := startEpoch + utils.EpochsPerDay() - 1
+	income, err := BigtableClient.GetValidatorIncomeDetailsHistory(validator_indices, startEpoch, endEpoch)
+	if err != nil {
+		return dayIncome, err
+	}
+
+	// agregate all epoch income data to total day income for each validator
+	for validatorIndex, validatorIncome := range income {
+		if len(validatorIncome) == 0 {
+			continue
+		}
+		for _, validatorEpochIncome := range validatorIncome {
+			dayIncome[validatorIndex] += validatorEpochIncome.TotalClRewards()
+		}
+	}
+
+	return dayIncome, nil
+}
+
+func GetCurrentDayClIncomeTotal(validator_indices []uint64) (int64, error) {
+	income, err := GetCurrentDayClIncome(validator_indices)
+
+	if err != nil {
+		return 0, err
+	}
+
+	total := int64(0)
+
+	for _, i := range income {
+		total += i
+	}
+
+	return total, nil
 }
 
 func reversePaddedUserID(userID uint64) string {
