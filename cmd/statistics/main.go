@@ -1,6 +1,7 @@
 package main
 
 import (
+	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/price"
 	"eth2-exporter/services"
@@ -95,6 +96,16 @@ func main() {
 	}
 
 	price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint)
+
+	if utils.Config.TieredCacheProvider == "redis" || len(utils.Config.RedisCacheEndpoint) != 0 {
+		cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
+	} else if utils.Config.TieredCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
+		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	}
+
+	if utils.Config.TieredCacheProvider != "bigtable" && utils.Config.TieredCacheProvider != "redis" {
+		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis, bigtable)")
+	}
 
 	if *statisticsDaysToExport != "" {
 		s := strings.Split(*statisticsDaysToExport, "-")
