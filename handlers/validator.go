@@ -366,7 +366,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AttestationsCount = 0
 	}
 
-	if validatorPageData.ExitEpoch != 9223372036854775807 && validatorPageData.ExitEpoch < validatorPageData.Epoch {
+	if validatorPageData.ExitEpoch != 9223372036854775807 && validatorPageData.ExitEpoch <= validatorPageData.Epoch {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 	}
 
