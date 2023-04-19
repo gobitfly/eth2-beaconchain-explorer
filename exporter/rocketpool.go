@@ -396,7 +396,7 @@ func (rp *RocketpoolExporter) Save(count int64) error {
 	if err != nil {
 		return err
 	}
-	if count%60 == 0 { // every hour (smart contracts aren't updated that often)
+	if count%5 == 0 { // every hour (smart contracts aren't updated that often)
 		err = rp.SaveNetworkStats()
 		if err != nil {
 			return err
@@ -882,6 +882,7 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 				unclaimed_smoothing_pool = excluded.unclaimed_smoothing_pool,
 				unclaimed_rpl_rewards = excluded.unclaimed_rpl_rewards,
 				effective_rpl_stake = excluded.effective_rpl_stake,
+				timezone_location = excluded.timezone_location,
 				deposit_credit = excluded.deposit_credit
 		`, strings.Join(valueStrings, ","))
 
