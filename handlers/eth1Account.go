@@ -368,7 +368,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	withdrawals, err := db.GetAddressWithdrawals(common.HexToAddress(address).Bytes(), uint64(pageToken+25), uint64(pageToken))
+	withdrawals, err := db.GetAddressWithdrawals(common.HexToAddress(address).Bytes(), 25, uint64(pageToken))
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 block table data")
 	}
