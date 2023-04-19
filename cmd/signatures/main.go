@@ -88,7 +88,7 @@ func ImportMethodSignatures(bt *db.Bigtable) {
 		sleepTime = time.Second * 2
 		logrus.Infof("Get signatures for: %v", page)
 		start := time.Now()
-		next, sigs, err := GetNextSignitures(bt, page, *status)
+		next, sigs, err := GetNextSignatures(bt, page, *status)
 
 		if err != nil {
 			metrics.Errors.WithLabelValues("method_signatures_get_signatures_failed").Inc()
@@ -145,7 +145,7 @@ func ImportMethodSignatures(bt *db.Bigtable) {
 	}
 }
 
-func GetNextSignitures(bt *db.Bigtable, page string, status types.MethodSignatureImportStatus) (*string, []types.MethodSignature, error) {
+func GetNextSignatures(bt *db.Bigtable, page string, status types.MethodSignatureImportStatus) (*string, []types.MethodSignature, error) {
 
 	httpClient := &http.Client{Timeout: time.Second * 10}
 
