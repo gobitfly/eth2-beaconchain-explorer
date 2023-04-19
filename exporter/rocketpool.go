@@ -396,7 +396,7 @@ func (rp *RocketpoolExporter) Save(count int64) error {
 	if err != nil {
 		return err
 	}
-	if count%5 == 0 { // every hour (smart contracts aren't updated that often)
+	if count%5 == 0 { // smart contracts aren't updated that often, so lets save it less often
 		err = rp.SaveNetworkStats()
 		if err != nil {
 			return err
