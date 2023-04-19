@@ -93,13 +93,15 @@
       </div>
       <div class="row border-bottom p-3 mx-0">
         <div class="col-md-2">Time:</div>
-        <div class="col-md-7"><span aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW">{{ .Ts }}</span> (<span id="timestamp" aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="LOCAL">{{ .Ts }}</span>) <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" onclick="copyTs()"></i></div>
-        <div class="col-md-3 text-right">
-          <div id="unixTs" hidden>{{ .Ts.Unix }}</div>
-          <div class="btn-group btn-group-toggle" data-toggle="buttons">
-            <label class="btn btn-light text-dark active btn-sm" onclick="setTs()"> <input type="radio" name="options" id="optionTs" /> Timestamp </label>
-            <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setUtc()"> <input type="radio" name="options" id="optionUtc" /> UTC </label>
-            <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setLocal()"> <input type="radio" name="options" id="optionLocal" checked /> Local </label>
+        <div class="col-md-10 d-flex justify-between flex-wrap">
+          <div><span aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW">{{ .Ts }}</span> (<span id="timestamp" aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="LOCAL">{{ .Ts }}</span>) <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" onclick="copyTs()"></i></div>
+          <div class="flex-grow-1 text-right">
+            <div id="unixTs" hidden>{{ .Ts.Unix }}</div>
+            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+              <label class="btn btn-light text-dark active btn-sm" onclick="setTs()"> <input type="radio" name="options" id="optionTs" /> Timestamp </label>
+              <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setUtc()"> <input type="radio" name="options" id="optionUtc" /> UTC </label>
+              <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setLocal()"> <input type="radio" name="options" id="optionLocal" checked /> Local </label>
+            </div>
           </div>
         </div>
       </div>
@@ -135,11 +137,13 @@
           </div>
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="32 byte long message included by the block proposer">Graffiti:</span></div>
-            <div class="col-md-7 text-monospace text-break" id="graffiti" aria-hex-data="{{ printf "%#x" .Graffiti }}">{{ printf "%#x" .Graffiti }}</div>
-            <div class="col-md-3 text-right">
-              <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                <label class="btn btn-light text-dark btn-sm pl-4 pr-4 active" onclick="viewHexDataAs('graffiti', 'hex')"> <input type="radio" name="options" id="optionHex" /> Hex </label>
-                <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="viewHexDataAs('graffiti', 'utf-8')"> <input type="radio" name="options" id="optionUTF8" checked /> UTF-8 </label>
+            <div class="col-md-10 d-flex justify-between flex-wrap">
+              <div id="graffiti" class="mw-100 text-monospace text-break" aria-hex-data="{{ printf "%#x" .Graffiti }}">{{ printf "%#x" .Graffiti }}</div>
+              <div class="flex-grow-1 text-right">
+                <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                  <label class="btn btn-light text-dark btn-sm pl-4 pr-4 active" onclick="viewHexDataAs('graffiti', 'hex')"> <input type="radio" name="options" id="optionHex" /> Hex </label>
+                  <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="viewHexDataAs('graffiti', 'utf-8')"> <input type="radio" name="options" id="optionUTF8" checked /> UTF-8 </label>
+                </div>
               </div>
             </div>
           </div>
@@ -254,13 +258,13 @@
 
                 <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Extra Data">Block Extra Data</span></div>
-                  <div class="col-md-8 text-monospace text-break" id="extra-data" aria-hex-data="{{ .Extra }}">
-                    {{ .Extra }}
-                  </div>
-                  <div class="col-md-2 text-right">
-                    <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                      <label class="btn btn-light text-dark btn-sm pl-4 pr-4 active" onclick="viewHexDataAs('extra-data', 'hex')"> <input type="radio" name="options" id="optionHex" /> Hex </label>
-                      <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="viewHexDataAs('extra-data', 'utf-8')"> <input type="radio" name="options" id="optionUTF8" checked /> UTF-8 </label>
+                  <div class="col-md-10 text-monospace text-break d-flex justify-between flex-wrap">
+                    <div id="extra-data" class="mw-100" aria-hex-data="{{ .Extra }}">{{ .Extra }}</div>
+                    <div class="flex-grow-1 text-right">
+                      <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                        <label class="btn btn-light text-dark btn-sm pl-4 pr-4 active" onclick="viewHexDataAs('extra-data', 'hex')"> <input type="radio" name="options" id="optionHex" /> Hex </label>
+                        <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="viewHexDataAs('extra-data', 'utf-8')"> <input type="radio" name="options" id="optionUTF8" checked /> UTF-8 </label>
+                      </div>
                     </div>
                   </div>
                 </div>
