@@ -624,10 +624,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 		var slots []uint64
 		for _, p := range proposals {
-			slots = append(slots, p.Slot)
+			if p.ExecBlockNumber > 0 {
+				slots = append(slots, p.Slot)
+			}
 		}
 
-		validatorPageData.ProposalLuck = getProposalLuck(slots, 1)
+		lookbackAmount := getProposalLuckBlockLookbackAmount(1)
+		startPeriod := len(slots) - lookbackAmount
+		if startPeriod < 0 {
+			startPeriod = 0
+		}
+
+		validatorPageData.ProposalLuck = getProposalLuck(slots[startPeriod:], 1)
 		avgSlotInterval := uint64(getAvgSlotInterval(1))
 		avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot*avgSlotInterval) * time.Second
 		validatorPageData.AvgSlotInterval = &avgSlotIntervalAsDuration
