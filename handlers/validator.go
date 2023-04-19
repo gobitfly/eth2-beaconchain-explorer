@@ -1628,7 +1628,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	// Every validator is scheduled to issue an attestation once per epoch
 	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
 	// Special care needs to be take for exited and pending validators
-	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 && activationAndExitEpoch.ExitEpoch < services.LatestFinalizedEpoch() {
+	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 && activationAndExitEpoch.ExitEpoch <= services.LatestFinalizedEpoch() {
 		totalCount += activationAndExitEpoch.ExitEpoch - activationAndExitEpoch.ActivationEpoch
 	} else {
 		totalCount += services.LatestFinalizedEpoch() - activationAndExitEpoch.ActivationEpoch + 1
