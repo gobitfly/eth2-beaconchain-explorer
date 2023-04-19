@@ -366,7 +366,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AttestationsCount = 0
 	}
 
-	if validatorPageData.ExitEpoch != 9223372036854775807 {
+	if validatorPageData.ExitEpoch != 9223372036854775807 && validatorPageData.ExitEpoch <= validatorPageData.Epoch {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 	}
 
@@ -624,10 +624,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 		var slots []uint64
 		for _, p := range proposals {
-			slots = append(slots, p.Slot)
+			if p.ExecBlockNumber > 0 {
+				slots = append(slots, p.Slot)
+			}
 		}
 
-		validatorPageData.ProposalLuck = getProposalLuck(slots, 1)
+		lookbackAmount := getProposalLuckBlockLookbackAmount(1)
+		startPeriod := len(slots) - lookbackAmount
+		if startPeriod < 0 {
+			startPeriod = 0
+		}
+
+		validatorPageData.ProposalLuck = getProposalLuck(slots[startPeriod:], 1)
 		avgSlotInterval := uint64(getAvgSlotInterval(1))
 		avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot*avgSlotInterval) * time.Second
 		validatorPageData.AvgSlotInterval = &avgSlotIntervalAsDuration
@@ -1177,8 +1185,8 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		totalCount = 0
 	}
 	lastAttestationEpoch := epoch
-	if ae.ExitEpoch != 9223372036854775807 {
-		lastAttestationEpoch = ae.ExitEpoch
+	if ae.ExitEpoch != 9223372036854775807 && ae.ExitEpoch <= epoch {
+		lastAttestationEpoch = ae.ExitEpoch - 1
 		totalCount = ae.ExitEpoch - ae.ActivationEpoch
 	}
 
@@ -1628,7 +1636,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	// Every validator is scheduled to issue an attestation once per epoch
 	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
 	// Special care needs to be take for exited and pending validators
-	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 {
+	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 && activationAndExitEpoch.ExitEpoch <= services.LatestFinalizedEpoch() {
 		totalCount += activationAndExitEpoch.ExitEpoch - activationAndExitEpoch.ActivationEpoch
 	} else {
 		totalCount += services.LatestFinalizedEpoch() - activationAndExitEpoch.ActivationEpoch + 1
@@ -1644,7 +1652,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	currentEpoch := services.LatestEpoch() - 1
 	// for an exited validator we show the history until his exit
-	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 {
+	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 && currentEpoch > (activationAndExitEpoch.ExitEpoch-1) {
 		currentEpoch = activationAndExitEpoch.ExitEpoch - 1
 	}
 
