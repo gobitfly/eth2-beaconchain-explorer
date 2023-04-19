@@ -775,15 +775,15 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 		)
 	}
 	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
-		for _, ri := range r[ATTESTATIONS_FAMILY] {
-			keySplit := strings.Split(r.Key(), ":")
+		keySplit := strings.Split(r.Key(), ":")
 
-			attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
-			if err != nil {
-				logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
-				return false
-			}
-			attesterSlot = max_block_number - attesterSlot
+		attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
+			return false
+		}
+		attesterSlot = max_block_number - attesterSlot
+		for _, ri := range r[ATTESTATIONS_FAMILY] {
 			inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
 
 			status := uint64(1)
