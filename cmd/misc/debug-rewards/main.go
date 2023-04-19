@@ -55,7 +55,7 @@ func main() {
 	for day := *dayStart; day <= *dayEnd; day++ {
 		startEpoch := day * utils.EpochsPerDay()
 		endEpoch := startEpoch + utils.EpochsPerDay() - 1
-		hist, err := bt.GetValidatorIncomeDetailsHistory([]uint64{*validator, 130185}, startEpoch, endEpoch)
+		hist, err := bt.GetValidatorIncomeDetailsHistory([]uint64{*validator}, startEpoch, endEpoch)
 		if err != nil {
 			logrus.Fatal(err)
 		}
