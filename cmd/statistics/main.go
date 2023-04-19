@@ -179,9 +179,9 @@ func main() {
 func statisticsLoop() {
 	for {
 
-		latestEpoch, err := db.GetLatestEpoch()
-		if err != nil {
-			logrus.Errorf("error retreiving latest epoch from the db: %v", err)
+		latestEpoch := services.LatestFinalizedEpoch()
+		if latestEpoch == 0 {
+			logrus.Errorf("error retreiving latest finalized epoch from cache")
 			time.Sleep(time.Minute)
 			continue
 		}
@@ -192,7 +192,6 @@ func statisticsLoop() {
 			time.Sleep(time.Minute)
 			continue
 		}
-
 		currentDay := (latestEpoch - 1) / epochsPerDay // we wait for an extra epoch to be sure that all rewards/penalties are finalized.
 		previousDay := currentDay - 1
 
@@ -202,7 +201,7 @@ func statisticsLoop() {
 
 		if opt.statisticsValidatorToggle {
 			var lastExportedDayValidator uint64
-			err = db.WriterDb.Get(&lastExportedDayValidator, "select COALESCE(max(day), 0) from validator_stats_status where status")
+			err := db.WriterDb.Get(&lastExportedDayValidator, "select COALESCE(max(day), 0) from validator_stats_status where status")
 			if err != nil {
 				logrus.Errorf("error retreiving latest exported day from the db: %v", err)
 			}
@@ -224,7 +223,7 @@ func statisticsLoop() {
 
 		if opt.statisticsChartToggle {
 			var lastExportedDayChart uint64
-			err = db.WriterDb.Get(&lastExportedDayChart, "select COALESCE(max(day), 0) from chart_series_status where status")
+			err := db.WriterDb.Get(&lastExportedDayChart, "select COALESCE(max(day), 0) from chart_series_status where status")
 			if err != nil {
 				logrus.Errorf("error retreiving latest exported day from the db: %v", err)
 			}

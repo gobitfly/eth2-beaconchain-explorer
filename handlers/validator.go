@@ -690,12 +690,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					return fmt.Errorf("error retrieving validator attestations not in stats from bigtable: %v", err)
 				}
+				attestationStats.MissedAttestations += uint64(len(missedAttestations[index]))
 
-				for _, missed := range missedAttestations[index] {
-					if missed {
-						attestationStats.MissedAttestations++
-					}
-				}
 			}
 
 			validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations

@@ -896,7 +896,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 					res[validator] = make(map[uint64]bool, 0)
 				}
 				res[validator][attesterSlot] = true
-			} else if res[validator] != nil && status != 0 && res[validator][attesterSlot] {
+			} else if res[validator] != nil && res[validator][attesterSlot] {
 				delete(res[validator], attesterSlot)
 			}
 		}
@@ -1013,7 +1013,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 		return nil, err
 	}
 
-	logger.Infof("retrieved attestation history for epochs %v - %v", firstEpoch, lastEpoch)
+	logger.Infof("retrieved missed attestation history for epochs %v - %v", firstEpoch, lastEpoch)
 
 	for validator, attestations := range data {
 		for _, missed := range attestations {
