@@ -373,7 +373,7 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 
 func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDataPoint, error) {
 	var limit uint64 = 300
-	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit)
+	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit, false)
 	if err != nil {
 		return nil, err
 	}
