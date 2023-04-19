@@ -1178,7 +1178,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	}
 	lastAttestationEpoch := epoch
 	if ae.ExitEpoch != 9223372036854775807 && ae.ExitEpoch < epoch {
-		lastAttestationEpoch = ae.ExitEpoch
+		lastAttestationEpoch = ae.ExitEpoch - 1
 		totalCount = ae.ExitEpoch - ae.ActivationEpoch
 	}
 
