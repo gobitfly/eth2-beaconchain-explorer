@@ -1135,7 +1135,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 
 		relaysData, err = db.GetRelayDataForIndexedBlocks(execBlocks)
 		if err != nil {
-			logger.Errorf("error retrieving mev bribe data from bigtable: %v", err)
+			logger.Errorf("error retrieving mev bribe data: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -1755,45 +1755,44 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(validatorHistory))
 
-	for i := endEpoch; i >= startEpoch; i-- {
-		if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
+	for epoch := endEpoch; epoch >= startEpoch; epoch-- {
+		if incomeDetails[index] == nil || incomeDetails[index][epoch] == nil {
 			tableData = append(tableData, []interface{}{
-				utils.FormatEpoch(i),
+				utils.FormatEpoch(epoch),
 				"pending...",
-				template.HTML(""),
 				template.HTML(""),
 			})
 			continue
 		}
 		event := types.ValidatorHistoryEvent{}
 
-		if incomeDetails[index][i].AttestationSourceReward > 0 {
+		if incomeDetails[index][epoch].AttestationSourceReward > 0 {
 			event.AttestationSourceStatus = 1
-		} else if incomeDetails[index][i].AttestationSourcePenalty > 0 {
+		} else if incomeDetails[index][epoch].AttestationSourcePenalty > 0 {
 			event.AttestationSourceStatus = 2
 		}
 
-		if incomeDetails[index][i].AttestationTargetReward > 0 {
+		if incomeDetails[index][epoch].AttestationTargetReward > 0 {
 			event.AttestationTargetStatus = 1
-		} else if incomeDetails[index][i].AttestationTargetPenalty > 0 {
+		} else if incomeDetails[index][epoch].AttestationTargetPenalty > 0 {
 			event.AttestationTargetStatus = 2
 		}
 
-		if incomeDetails[index][i].AttestationHeadReward > 0 {
+		if incomeDetails[index][epoch].AttestationHeadReward > 0 {
 			event.AttestationHeadStatus = 1
 		}
 
-		if incomeDetails[index][i].ProposerAttestationInclusionReward > 0 {
+		if incomeDetails[index][epoch].ProposerAttestationInclusionReward > 0 {
 			event.BlockProposalStatus = 1
-		} else if incomeDetails[index][i].ProposalsMissed > 0 {
+		} else if incomeDetails[index][epoch].ProposalsMissed > 0 {
 			event.BlockProposalStatus = 2
 		}
 
-		if syncReward, syncPenalty := incomeDetails[index][i].SyncCommitteeReward, incomeDetails[index][i].SyncCommitteePenalty; syncReward > 0 {
+		if syncReward, syncPenalty := float64(incomeDetails[index][epoch].SyncCommitteeReward), float64(incomeDetails[index][epoch].SyncCommitteePenalty); syncReward > 0 {
 			if syncPenalty > 0 {
 				event.SyncParticipationStatus = 3
-				balanceChangeForSlot := (syncReward + syncPenalty) / utils.Config.Chain.Config.SlotsPerEpoch
-				event.SyncParticipationCount = utils.Config.Chain.Config.SlotsPerEpoch - (syncPenalty / balanceChangeForSlot)
+				balanceChangeForSlot := (syncReward + syncPenalty) / float64(utils.Config.Chain.Config.SlotsPerEpoch)
+				event.SyncParticipationCount = utils.Config.Chain.Config.SlotsPerEpoch - uint64(syncPenalty/balanceChangeForSlot)
 			} else {
 				event.SyncParticipationStatus = 1
 				event.SyncParticipationCount = utils.Config.Chain.Config.SlotsPerEpoch
@@ -1802,22 +1801,22 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			event.SyncParticipationStatus = 2
 		}
 
-		if incomeDetails[index][i].ProposerSlashingInclusionReward > 0 || incomeDetails[index][i].SlashingReward > 0 {
+		if incomeDetails[index][epoch].ProposerSlashingInclusionReward > 0 || incomeDetails[index][epoch].SlashingReward > 0 {
 			event.SlashingStatus = 1
 		}
-		if incomeDetails[index][i].SlashingPenalty > 0 {
+		if incomeDetails[index][epoch].SlashingPenalty > 0 {
 			event.SlashingStatus = 2
 		}
 
-		if withdrawalMap[i] != nil {
+		if withdrawalMap[epoch] != nil {
 			event.WithdrawalStatus = 1
-			event.WithdrawalAmount = withdrawalMap[i].Amount
+			event.WithdrawalAmount = withdrawalMap[epoch].Amount
 		}
 
-		rewards := incomeDetails[index][i].TotalClRewards()
+		rewards := incomeDetails[index][epoch].TotalClRewards()
 		tableData = append(tableData, []interface{}{
-			utils.FormatEpoch(i),
-			utils.FormatBalanceChangeFormated(&rewards, currency, incomeDetails[index][i]),
+			utils.FormatEpoch(epoch),
+			utils.FormatBalanceChangeFormated(&rewards, currency, incomeDetails[index][epoch]),
 			template.HTML(utils.FormatValidatorHistoryEvent(event)),
 		})
 	}

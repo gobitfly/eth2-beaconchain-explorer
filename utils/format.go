@@ -874,9 +874,9 @@ func formatValidatorTag(tag string) string {
 	case tag == "rocketpool", tag == "pool:rocketpool":
 		result = `<a href="/pools/rocketpool" title="Rocket Pool Validator" data-toggle="tooltip" class="mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">Rocket Pool</a>`
 	case strings.HasPrefix(tag, "pool:"):
-		result = fmt.Sprintf(`<a href="/pools" title="This validator is part of a staking-pool." data-toggle="tooltip" class="mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">Pool: %s</a>`, tag[5:])
+		result = fmt.Sprintf(`<a href="/pools" title="This validator is part of a staking-pool." data-toggle="tooltip" class="mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">Pool: %s</a>`, strings.TrimPrefix(tag, "pool:"))
 	case strings.HasPrefix(tag, "name:"):
-		result = fmt.Sprintf(`<span title="This name has been set by the owner of this validator." data-toggle="tooltip" class="mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">%s</span>`, tag[5:])
+		result = fmt.Sprintf(`<span title="This name has been set by the owner of this validator." data-toggle="tooltip" class="mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">%s</span>`, strings.TrimPrefix(tag, "name:"))
 	case tag == "ssv":
 		result = `<a href="https://github.com/bloxapp/ssv/" title="Secret Shared Validator" data-toggle="tooltip" class=""mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">SSV</a>`
 	default:

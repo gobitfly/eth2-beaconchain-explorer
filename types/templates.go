@@ -343,7 +343,6 @@ type ValidatorsPageDataValidators struct {
 }
 
 // ValidatorPageData is a struct to hold data for the validators page
-// ValidatorPageData is a struct to hold data for the validators page
 type ValidatorPageData struct {
 	Epoch                                    uint64 `db:"epoch"`
 	ValidatorIndex                           uint64 `db:"validatorindex"`
@@ -1076,15 +1075,6 @@ type ValidatorHistory struct {
 	IncomeDetails     *itypes.ValidatorEpochIncome `db:"-" json:"income_details,omitempty"`
 	WithdrawalStatus  sql.NullInt64                `db:"withdrawal_status" json:"withdrawal_status,omitempty"`
 	WithdrawalSlot    sql.NullInt64                `db:"withdrawal_slot" json:"withdrawal_slot,omitempty"`
-}
-
-type ValidatorDuty struct {
-	SourceAttestationStatus uint64
-	TargetAttestationStatus uint64
-	HeadAttestationStatus   uint64
-	BlockProposalStatus     uint64
-	SyncCommitteeStatus     uint64
-	SlashingStatus          uint64
 }
 
 type ValidatorSlashing struct {
