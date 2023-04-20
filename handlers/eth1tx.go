@@ -78,22 +78,22 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 			cPrice, _ := currentEthPrice.Float64()
 			txData.CurrentEtherPrice = template.HTML(p.Sprintf(`<span>%s %.2f</span>`, symbol, cPrice))
 
-			historicPrices, err := db.GetHistoricPrices(GetCurrency(r))
+			txDay := utils.TimeToDay(txData.Timestamp)
+			latestEpoch, err := db.GetLatestEpoch()
 			if err != nil {
-				logrus.Errorf("error retrieving historic prices %v", err)
-			} else {
-				txDay := utils.TimeToDay(txData.Timestamp)
-				latestEpoch, err := db.GetLatestEpoch()
+				logrus.Error(err)
+			}
+
+			txData.HistoricEtherPrice = ""
+			currentDay := latestEpoch / utils.EpochsPerDay()
+
+			if txDay < currentDay {
+				// Do not show the historic price if it is the current day
+				price, err := db.GetHistoricPrice(GetCurrency(r), txDay)
 				if err != nil {
-					logrus.Error(err)
-				}
-
-				txData.HistoricEtherPrice = ""
-				currentDay := latestEpoch / utils.EpochsPerDay()
-
-				if txDay < currentDay {
-					// Do not show the historic price if it is the current day
-					historicEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(historicPrices[txDay]))
+					logrus.Errorf("error retrieving historic prices %v", err)
+				} else {
+					historicEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(price))
 					hPrice, _ := historicEthPrice.Float64()
 					txData.HistoricEtherPrice = template.HTML(p.Sprintf(`<span><i class="far fa-clock"></i> %s %.2f</span>`, symbol, hPrice))
 				}
