@@ -203,7 +203,7 @@ func statisticsLoop() {
 			time.Sleep(time.Minute)
 			continue
 		}
-		currentDay := (latestEpoch - 1) / epochsPerDay // we wait for an extra epoch to be sure that all rewards/penalties are finalized.
+		currentDay := latestEpoch / epochsPerDay
 		previousDay := currentDay - 1
 
 		if previousDay > currentDay {
