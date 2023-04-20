@@ -32,7 +32,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -125,7 +125,6 @@ func main() {
 		}
 	case "debug-rewards":
 		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator)
-	case "checkTransactions":
 
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
