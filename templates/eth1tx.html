@@ -1,4 +1,20 @@
 {{ define "js" }}
+  <script>
+    function togglePriceContent(currentPrice, historicPrice) {
+      var content = document.getElementById("valuePriceButton")
+
+      if (content.hasAttribute("historic-price")) {
+        content.setAttribute("data-original-title", "Current Value")
+        content.innerHTML = currentPrice
+      } else {
+        content.setAttribute("data-original-title", "Estimated Value on Day of Txn")
+        content.innerHTML = historicPrice
+      }
+
+      $(content).tooltip("show")
+      content.toggleAttribute("historic-price")
+    }
+  </script>
 {{ end }}
 
 {{ define "css" }}
@@ -193,7 +209,12 @@
               {{ end }}
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-3">Value:</div>
-                <div class="col-md-9">{{ formatBytesAmount .Value "Ether" 8 }}</div>
+                <div class="col-md-9">
+                  {{ formatBytesAmount .Value "Ether" 8 }}
+                  <span id="valuePriceButton" class="btn btn-secondary text-white" data-html="true" data-toggle="tooltip" data-placement="bottom" data-original-title="Current Value" {{ if .HistoricEtherPrice }}onclick="togglePriceContent('{{ .CurrentEtherPrice }}','{{ .HistoricEtherPrice }}')"{{ end }}>
+                    {{ .CurrentEtherPrice }}
+                  </span>
+                </div>
               </div>
               <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
                 <div class="col-md-3">Transaction Fee:</div>
