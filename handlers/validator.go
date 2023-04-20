@@ -79,7 +79,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	latestEpoch := services.LatestEpoch()
-	latestFinalized := services.LatestFinalizedEpoch()
+	lastFinalizedEpoch := services.LatestFinalizedEpoch()
 
 	validatorPageData := types.ValidatorPageData{}
 
@@ -471,7 +471,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
 
 				// it normally takes two epochs to finalize
-				if timeToWithdrawal.After(utils.EpochToTime(latestEpoch + (latestEpoch - latestFinalized))) {
+				if timeToWithdrawal.After(utils.EpochToTime(latestEpoch + (latestEpoch - lastFinalizedEpoch))) {
 					address, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
 					if err != nil {
 						// warning only as "N/A" will be displayed
@@ -659,11 +659,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 			incomeTodayEl := new(big.Int)
 			for _, execBlock := range execBlocks {
-				// add mev bribe if present
-				if relaysDatum, hasMevBribes := relaysData[common.BytesToHash(execBlock.Hash)]; hasMevBribes {
-					incomeTodayEl = new(big.Int).Add(incomeTodayEl, relaysDatum.MevBribe.Int)
-				} else {
-					incomeTodayEl = new(big.Int).Add(incomeTodayEl, new(big.Int).SetBytes(execBlock.GetTxReward()))
+
+				blockEpoch := utils.TimeToEpoch(execBlock.Time.AsTime())
+				if blockEpoch <= int64(lastFinalizedEpoch) {
+					// add mev bribe if present
+					if relaysDatum, hasMevBribes := relaysData[common.BytesToHash(execBlock.Hash)]; hasMevBribes {
+						incomeTodayEl = new(big.Int).Add(incomeTodayEl, relaysDatum.MevBribe.Int)
+					} else {
+						incomeTodayEl = new(big.Int).Add(incomeTodayEl, new(big.Int).SetBytes(execBlock.GetTxReward()))
+					}
 				}
 			}
 			validatorPageData.IncomeToday.El = incomeTodayEl.Int64() / 1e9
@@ -687,11 +691,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// add attestationStats that are not yet in validator_stats
-			finalizedEpoch := services.LatestFinalizedEpoch()
-			lookback := int64(finalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
+			lookback := int64(lastFinalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
 			if lookback > 0 {
 				// logger.Infof("retrieving attestations not yet in stats, lookback is %v", lookback)
-				attestationsNotInStats, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, finalizedEpoch-uint64(lookback), finalizedEpoch)
+				attestationsNotInStats, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, lastFinalizedEpoch-uint64(lookback), lastFinalizedEpoch)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator attestations not in stats from bigtable: %v", err)
 				}
