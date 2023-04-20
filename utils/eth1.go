@@ -383,7 +383,7 @@ func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int
 }
 
 func FormatMethod(method string) template.HTML {
-	return template.HTML(fmt.Sprintf(`<span class="badge badge-light">%s</span>`, method))
+	return template.HTML(fmt.Sprintf(`<span class="badge badge-light text-truncate mw-100" data-toggle="tooltip" title="%s">%s</span>`, method, method))
 }
 
 func FormatBlockUsage(gasUsage uint64, gasLimit uint64) template.HTML {

@@ -1682,6 +1682,7 @@ type Eth1TxData struct {
 	TargetIsContract            bool
 	IsContractCreation          bool
 	CallData                    string
+	Method                      string
 	Events                      []*Eth1EventData
 	Transfers                   []*Transfer
 	DepositContractInteractions []DepositContractInteraction
