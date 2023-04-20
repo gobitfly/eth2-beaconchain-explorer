@@ -981,7 +981,7 @@ func (bigtable *Bigtable) getValidatorSyncDutiesHistory(validators []uint64, sta
 				res[validator] = make([]*types.ValidatorSyncParticipation, 0)
 			}
 
-			if len(res[validator]) > 1 && res[validator][len(res[validator])-1].Slot == slot {
+			if len(res[validator]) > 0 && res[validator][len(res[validator])-1].Slot == slot {
 				res[validator][len(res[validator])-1].Status = status
 			} else {
 				res[validator] = append(res[validator], &types.ValidatorSyncParticipation{
