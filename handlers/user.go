@@ -2455,7 +2455,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 
 		// }
 
-		events := make([]types.EventNameCheckbox, 0, 7)
+		events := make([]types.EventNameCheckbox, 0, 10)
 
 		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Validator is Offline",
@@ -2471,6 +2471,11 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 			EventLabel: "Proposal Submitted",
 			EventName:  types.ValidatorExecutedProposalEventName,
 			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorExecutedProposalEventName)),
+		})
+		events = append(events, types.EventNameCheckbox{
+			EventLabel: "Withdrawal",
+			EventName:  types.ValidatorReceivedWithdrawalEventName,
+			Active:     utils.ElementExists(wh.EventNames, string(types.ValidatorReceivedWithdrawalEventName)),
 		})
 		events = append(events, types.EventNameCheckbox{
 			EventLabel: "Slashed",
@@ -2554,7 +2559,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 
 	// logger.Infof("events: %+v", webhooks)
 
-	events := make([]types.EventNameCheckbox, 0, 7)
+	events := make([]types.EventNameCheckbox, 0, 10)
 
 	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Validator is Offline",
@@ -2567,6 +2572,10 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Proposal Submitted",
 		EventName:  types.ValidatorExecutedProposalEventName,
+	})
+	events = append(events, types.EventNameCheckbox{
+		EventLabel: "Withdrawal",
+		EventName:  types.ValidatorReceivedWithdrawalEventName,
 	})
 	events = append(events, types.EventNameCheckbox{
 		EventLabel: "Got Slashed",
@@ -2632,6 +2641,7 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	validatorIsOffline := r.FormValue(string(types.ValidatorIsOfflineEventName)) == "on"
 	validatorProposalMissed := r.FormValue(string(types.ValidatorMissedProposalEventName)) == "on"
 	validatorProposalSubmitted := r.FormValue(string(types.ValidatorExecutedProposalEventName)) == "on"
+	validatorReceivedWithdrawal := r.FormValue(string(types.ValidatorReceivedWithdrawalEventName)) == "on"
 	validatorGotSlashed := r.FormValue(string(types.ValidatorGotSlashedEventName)) == "on"
 	validatorSyncCommiteeSoon := r.FormValue(string(types.SyncCommitteeSoon)) == "on"
 	validatorAttestationMissed := r.FormValue(string(types.ValidatorMissedAttestationEventName)) == "on"
@@ -2651,6 +2661,7 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	events[string(types.ValidatorIsOfflineEventName)] = validatorIsOffline
 	events[string(types.ValidatorMissedProposalEventName)] = validatorProposalMissed
 	events[string(types.ValidatorExecutedProposalEventName)] = validatorProposalSubmitted
+	events[string(types.ValidatorReceivedWithdrawalEventName)] = validatorReceivedWithdrawal
 	events[string(types.ValidatorGotSlashedEventName)] = validatorGotSlashed
 	events[string(types.SyncCommitteeSoon)] = validatorSyncCommiteeSoon
 	events[string(types.ValidatorMissedAttestationEventName)] = validatorAttestationMissed
@@ -2765,6 +2776,7 @@ func UsersEditWebhook(w http.ResponseWriter, r *http.Request) {
 	validatorIsOffline := r.FormValue(string(types.ValidatorIsOfflineEventName)) == "on"
 	validatorProposalMissed := r.FormValue(string(types.ValidatorMissedProposalEventName)) == "on"
 	validatorProposalSubmitted := r.FormValue(string(types.ValidatorExecutedProposalEventName)) == "on"
+	validatorReceivedWithdrawal := r.FormValue(string(types.ValidatorReceivedWithdrawalEventName)) == "on"
 	validatorGotSlashed := r.FormValue(string(types.ValidatorGotSlashedEventName)) == "on"
 	validatorSyncCommiteeSoon := r.FormValue(string(types.SyncCommitteeSoon)) == "on"
 	validatorAttestationMissed := r.FormValue(string(types.ValidatorMissedAttestationEventName)) == "on"
@@ -2784,6 +2796,7 @@ func UsersEditWebhook(w http.ResponseWriter, r *http.Request) {
 	events[string(types.ValidatorIsOfflineEventName)] = validatorIsOffline
 	events[string(types.ValidatorMissedProposalEventName)] = validatorProposalMissed
 	events[string(types.ValidatorExecutedProposalEventName)] = validatorProposalSubmitted
+	events[string(types.ValidatorReceivedWithdrawalEventName)] = validatorReceivedWithdrawal
 	events[string(types.ValidatorGotSlashedEventName)] = validatorGotSlashed
 	events[string(types.SyncCommitteeSoon)] = validatorSyncCommiteeSoon
 	events[string(types.ValidatorMissedAttestationEventName)] = validatorAttestationMissed
