@@ -1269,7 +1269,7 @@ func (bigtable *Bigtable) GetValidatorProposalHistory(validators []uint64, start
 				res[validator] = make([]*types.ValidatorProposal, 0)
 			}
 
-			if len(res[validator]) > 1 && res[validator][len(res[validator])-1].Slot == proposalSlot {
+			if len(res[validator]) > 0 && res[validator][len(res[validator])-1].Slot == proposalSlot {
 				res[validator][len(res[validator])-1].Slot = proposalSlot
 				res[validator][len(res[validator])-1].Status = status
 			} else {
