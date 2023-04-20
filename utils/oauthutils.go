@@ -122,7 +122,7 @@ func accessTokenGetClaims(tokenStringFull string, validate bool) (*CustomClaims,
 	})
 
 	if err != nil && validate {
-		if !strings.Contains(err.Error(), "token is expired") {
+		if !strings.Contains(err.Error(), "token is expired") && token != nil {
 			logger.WithFields(
 				logrus.Fields{
 					"error":       err,

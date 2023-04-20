@@ -265,7 +265,7 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		return nil, err
 	}
 
-	distance, err := db.GetWithdrawableCountFromCursor(epoch, nextValidator.Index, *stats.LatestValidatorWithdrawalIndex)
+	distance, err := GetWithdrawableCountFromCursor(epoch, nextValidator.Index, *stats.LatestValidatorWithdrawalIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +310,7 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 		template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
 		withdrawalCredentialsTemplate,
-		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmount), big.NewInt(1e9)), "ETH", 6))),
+		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmount), big.NewInt(1e9)), "Ether", 6))),
 	})
 
 	return nextData, nil
@@ -373,7 +373,7 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 
 func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDataPoint, error) {
 	var limit uint64 = 300
-	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit)
+	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit, false)
 	if err != nil {
 		return nil, err
 	}
@@ -560,7 +560,7 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimeFromNow(utils.SlotToTime(w.Slot)))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
 		})
 	}
 

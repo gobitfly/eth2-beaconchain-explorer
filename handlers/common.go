@@ -173,6 +173,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
+	incomeTotal := types.ClElInt64{
+		El:    income.ElIncomeTotal,
+		Cl:    income.ClIncomeTotal + currentDayIncome,
+		Total: income.ClIncomeTotal + income.ElIncomeTotal + currentDayIncome,
+	}
+
 	return &types.ValidatorEarnings{
 		Income1d: types.ClElInt64{
 			El:    income.ElIncome1d,
@@ -189,6 +195,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    income.ClIncome31d,
 			Total: earnings31d,
 		},
+		IncomeTotal: incomeTotal,
 		Apr7d: types.ClElFloat64{
 			El:    elApr7d,
 			Cl:    clApr7d,
@@ -204,15 +211,33 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    clApr365d,
 			Total: clApr365d + elApr365d,
 		},
-		ElIncomeTotal:        income.ElIncomeTotal,
 		TotalDeposits:        int64(totalDeposits),
 		LastDayFormatted:     utils.FormatIncome(earnings1d, currency),
 		LastWeekFormatted:    utils.FormatIncome(earnings7d, currency),
 		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
-		TotalFormatted:       utils.FormatIncome(income.ClIncomeTotal+currentDayIncome, currency),
+		TotalFormatted:       utils.FormatIncomeClElInt64(incomeTotal, currency),
 		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency),
 		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
 	}, balancesMap, nil
+}
+
+func getProposalLuckBlockLookbackAmount(validatorCount int) int {
+	switch {
+	case validatorCount <= 4:
+		return 10
+	case validatorCount <= 10:
+		return 15
+	case validatorCount <= 20:
+		return 20
+	case validatorCount <= 50:
+		return 30
+	case validatorCount <= 100:
+		return 50
+	case validatorCount <= 200:
+		return 65
+	default:
+		return 75
+	}
 }
 
 // getProposalLuck calculates the luck of a given set of proposed blocks for a certain number of validators
@@ -233,6 +258,8 @@ func getProposalLuck(slots []uint64, validatorsCount int) float64 {
 	threeMonths := utils.Month * 3
 	fourMonths := utils.Month * 4
 	fiveMonths := utils.Month * 5
+	sixMonths := utils.Month * 6
+	year := utils.Year
 
 	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
 	// Calculate the expected number of slot proposals for 30 days
@@ -243,6 +270,8 @@ func getProposalLuck(slots []uint64, validatorsCount int) float64 {
 	// Time since the first block in the proposed block slice
 	timeSinceFirstBlock := time.Since(utils.SlotToTime(slots[0]))
 
+	targetBlocks := 8.0
+
 	// Determine the appropriate timeframe based on the time since the first block and the expected slot proposals
 	switch {
 	case timeSinceFirstBlock < fiveDays:
@@ -251,15 +280,19 @@ func getProposalLuck(slots []uint64, validatorsCount int) float64 {
 		proposalTimeframe = oneWeek
 	case timeSinceFirstBlock < oneMonth:
 		proposalTimeframe = oneMonth
-	case timeSinceFirstBlock > fiveMonths && expectedSlotProposals <= 0.75:
+	case timeSinceFirstBlock > year && expectedSlotProposals <= targetBlocks/12:
+		proposalTimeframe = year
+	case timeSinceFirstBlock > sixMonths && expectedSlotProposals <= targetBlocks/6:
+		proposalTimeframe = sixMonths
+	case timeSinceFirstBlock > fiveMonths && expectedSlotProposals <= targetBlocks/5:
 		proposalTimeframe = fiveMonths
-	case timeSinceFirstBlock > fourMonths && expectedSlotProposals <= 1:
+	case timeSinceFirstBlock > fourMonths && expectedSlotProposals <= targetBlocks/4:
 		proposalTimeframe = fourMonths
-	case timeSinceFirstBlock > threeMonths && expectedSlotProposals <= 1.4:
+	case timeSinceFirstBlock > threeMonths && expectedSlotProposals <= targetBlocks/3:
 		proposalTimeframe = threeMonths
-	case timeSinceFirstBlock > twoMonths && expectedSlotProposals <= 2.1:
+	case timeSinceFirstBlock > twoMonths && expectedSlotProposals <= targetBlocks/2:
 		proposalTimeframe = twoMonths
-	case timeSinceFirstBlock > sixWeeks && expectedSlotProposals <= 2.8:
+	case timeSinceFirstBlock > sixWeeks && expectedSlotProposals <= targetBlocks/1.5:
 		proposalTimeframe = sixWeeks
 	default:
 		proposalTimeframe = oneMonth
@@ -327,6 +360,7 @@ func getAvgSyncCommitteeInterval(validatorsCount int) float64 {
 // LatestState will return common information that about the current state of the eth2 chain
 func LatestState(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", utils.Config.Chain.Config.SecondsPerSlot)) // set local cache to the seconds per slot interval
 	currency := GetCurrency(r)
 	data := services.LatestState()
 	// data.Currency = currency
@@ -534,4 +568,36 @@ func handleTemplateError(w http.ResponseWriter, r *http.Request, fileIdentifier 
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 	}
 	return err
+}
+
+func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
+	// the validators' balance will not be checked here as this is only a rough estimation
+	// checking the balance for hundreds of thousands of validators is too expensive
+
+	var maxValidatorIndex uint64
+	err := db.WriterDb.Get(&maxValidatorIndex, "SELECT COALESCE(MAX(validatorindex), 0) FROM validators")
+	if err != nil {
+		return 0, fmt.Errorf("error getting withdrawable validator count from cursor: %w", err)
+	}
+
+	if maxValidatorIndex == 0 {
+		return 0, nil
+	}
+
+	activeValidators := services.LatestIndexPageData().ActiveValidators
+	if activeValidators == 0 {
+		activeValidators = maxValidatorIndex
+	}
+
+	if validatorindex > cursor {
+		// if the validatorindex is after the cursor, simply return the number of validators between the cursor and the validatorindex
+		// the returned data is then scaled using the number of currently active validators in order to account for exited / entering validators
+		return (validatorindex - cursor) * activeValidators / maxValidatorIndex, nil
+	} else if validatorindex < cursor {
+		// if the validatorindex is before the cursor (wraparound case) return the number of validators between the cursor and the most recent validator plus the amount of validators from the validator 0 to the validatorindex
+		// the returned data is then scaled using the number of currently active validators in order to account for exited / entering validators
+		return (maxValidatorIndex - cursor + validatorindex) * activeValidators / maxValidatorIndex, nil
+	} else {
+		return 0, nil
+	}
 }

@@ -336,7 +336,6 @@
           </ol>
         </nav>
       </div>
-      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       {{ if ne (len .Tags) 0 }}
         <div class="tags">
           {{ range .Tags }}
@@ -350,6 +349,13 @@
           {{ end }}
         </div>
       {{ end }}
+
+      {{ $bannerId := "r-banner-slot" }}
+      {{ if $isBlockView }}
+        {{ $bannerId = "r-banner-block" }}
+      {{ end }}
+      <div id="{{ $bannerId }}" info="{{ $.Meta.Templates }}"></div>
+
       <ul style="margin-bottom: -1px; " class="nav nav-tabs justify-content-start" id="tab" role="tablist">
         <li class="nav-item">
           <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true">Overview</a>

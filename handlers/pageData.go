@@ -400,12 +400,12 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 					Label: "Tools",
 					Links: []types.NavigationLink{
 						{
-							Label: "Beaconchain App",
+							Label: "beaconcha.in App",
 							Path:  "/mobile",
 							Icon:  "fa-mobile-alt",
 						},
 						{
-							Label: "Beaconchain Premium",
+							Label: "beaconcha.in Premium",
 							Path:  "/premium",
 							Icon:  "fa-gem",
 						},
@@ -416,7 +416,7 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 						},
 						{
 							Label: "API Docs",
-							Path:  "https://beaconcha.in/api/v1/docs/index.html",
+							Path:  "/api/v1/docs/index.html",
 							Icon:  "fa-book-reader",
 						},
 						{

@@ -147,7 +147,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 				template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 				template.HTML(fmt.Sprintf("%v", utils.FormatTimeFromNow(utils.SlotToTime(w.Slot)))),
 				template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-				template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+				template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
 			})
 		}
 
@@ -166,7 +166,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		withdrawalSummary = template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(sumWithdrawals), big.NewInt(1e9)), "ETH", 6)))
+		withdrawalSummary = template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(sumWithdrawals), big.NewInt(1e9)), "Ether", 6)))
 		return nil
 	})
 	// }
@@ -368,7 +368,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	withdrawals, err := db.GetAddressWithdrawals(common.HexToAddress(address).Bytes(), uint64(pageToken+25), uint64(pageToken))
+	withdrawals, err := db.GetAddressWithdrawals(common.HexToAddress(address).Bytes(), 25, uint64(pageToken))
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 block table data")
 	}
@@ -380,7 +380,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimeFromNow(utils.SlotToTime(w.Slot)))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
 		}
 	}
 

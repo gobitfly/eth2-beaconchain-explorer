@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/eth1data"
 	"eth2-exporter/services"
@@ -15,6 +16,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -62,7 +64,9 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 				data.Data = mempoolPageData
 			} else {
-				logger.Errorf("error getting eth1 transaction data: %v", err)
+				if !errors.Is(err, ethereum.NotFound) {
+					logger.Errorf("error getting eth1 transaction data: %v", err)
+				}
 				data = InitPageData(w, r, "blockchain", path, title, txNotFoundTemplateFiles)
 				txTemplate = txNotFoundTemplate
 			}

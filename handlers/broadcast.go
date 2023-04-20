@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
@@ -94,7 +95,9 @@ func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
 
 	job, err := db.GetNodeJob(vars["jobID"])
 	if err != nil {
-		logger.Errorf("error retrieving job %v", err)
+		if err != sql.ErrNoRows {
+			logger.Errorf("error retrieving job %v", err)
+		}
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
