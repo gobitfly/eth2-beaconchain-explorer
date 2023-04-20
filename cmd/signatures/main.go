@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/metrics"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"flag"
@@ -38,6 +39,22 @@ func main() {
 	}
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
+
+	db.MustInitDB(&types.DatabaseConfig{
+		Username: cfg.WriterDatabase.Username,
+		Password: cfg.WriterDatabase.Password,
+		Name:     cfg.WriterDatabase.Name,
+		Host:     cfg.WriterDatabase.Host,
+		Port:     cfg.WriterDatabase.Port,
+	}, &types.DatabaseConfig{
+		Username: cfg.ReaderDatabase.Username,
+		Password: cfg.ReaderDatabase.Password,
+		Name:     cfg.ReaderDatabase.Name,
+		Host:     cfg.ReaderDatabase.Host,
+		Port:     cfg.ReaderDatabase.Port,
+	})
+	defer db.ReaderDb.Close()
+	defer db.WriterDb.Close()
 
 	if *metricsEnabled {
 		go func() {
@@ -142,6 +159,7 @@ func ImportMethodSignatures(bt *db.Bigtable) {
 			}
 		}
 		metrics.TaskDuration.WithLabelValues("method_signatures_page_imported").Observe(time.Since(start).Seconds())
+		services.ReportStatus("signatures", "Running", nil)
 	}
 }
 
