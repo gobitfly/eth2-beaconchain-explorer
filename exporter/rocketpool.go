@@ -1252,15 +1252,10 @@ func NewRocketpoolMinipool(rp *rocketpool.RocketPool, addr []byte, atlasDeployed
 		return nil, err
 	}
 
-	depositType, err := mp.GetDepositType(nil)
-	if err != nil {
-		return nil, err
-	}
 	rpm := &RocketpoolMinipool{
 		Address:     addr,
 		Pubkey:      pubk.Bytes(),
 		NodeAddress: nodeAddr.Bytes(),
-		DepositType: depositType.String(),
 	}
 	err = rpm.Update(rp, atlasDeployed)
 	if err != nil {
@@ -1286,6 +1281,7 @@ func (r *RocketpoolMinipool) Update(rp *rocketpool.RocketPool, atlasDeployed boo
 	var statusDetail minipool.StatusDetails = minipool.StatusDetails{
 		IsVacant: false,
 	}
+	var depositType rpTypes.MinipoolDeposit
 
 	// Node fee can change on conversion starting with Atlas
 	wg.Go(func() error {
@@ -1342,6 +1338,12 @@ func (r *RocketpoolMinipool) Update(rp *rocketpool.RocketPool, atlasDeployed boo
 		return err
 	})
 
+	wg.Go(func() error {
+		var err error
+		depositType, err = mp.GetDepositType(nil)
+		return err
+	})
+
 	if err := wg.Wait(); err != nil {
 		return err
 	}
@@ -1355,6 +1357,7 @@ func (r *RocketpoolMinipool) Update(rp *rocketpool.RocketPool, atlasDeployed boo
 	r.NodeRefundBalance = nodeRefundBalance
 	r.UserDepositBalance = userDepositBalance
 	r.IsVacant = statusDetail.IsVacant
+	r.DepositType = depositType.String()
 	return nil
 }
 
