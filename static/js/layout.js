@@ -10,6 +10,12 @@ window.addEventListener("load", function (event) {
   window.removeEventListener("scroll", stopInitialScrollEvent)
 })
 
+function applyTTFix() {
+  $("button, a").on("mousedown", (evt) => {
+    evt.preventDefault() // prevent setting the browser focus on all mouse buttons, which prevents tooltips from disapearing
+  })
+}
+
 // FAB toggle
 function toggleFAB() {
   var fabContainer = document.querySelector(".fab-message")
@@ -119,6 +125,31 @@ function hex2a(hexx) {
   for (var i = 0; i < hex.length; i += 2) str += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
   return str
 }
+
+var observeDOM = (function () {
+  var MutationObserver = window.MutationObserver || window.WebKitMutationObserver
+
+  return function (obj, callback) {
+    if (!obj || obj.nodeType !== 1) return
+
+    if (MutationObserver) {
+      // define a new observer
+      var mutationObserver = new MutationObserver(callback)
+
+      // have the observer observe for changes in children
+      mutationObserver.observe(obj, { childList: true, subtree: true })
+      return mutationObserver
+    }
+
+    // browser support fallback
+    else if (window.addEventListener) {
+      obj.addEventListener("DOMNodeInserted", callback, false)
+      obj.addEventListener("DOMNodeRemoved", callback, false)
+    }
+  }
+})()
+
+observeDOM(document.documentElement, applyTTFix)
 
 // typeahead
 $(document).ready(function () {
@@ -388,6 +419,12 @@ $(document).ready(function () {
     } else {
       console.log("invalid typeahead-selection", sug)
     }
+  })
+})
+
+$(document).on("inserted.bs.tooltip", function (event) {
+  $("[aria-ethereum-date]").each(function () {
+    formatAriaEthereumDate(this)
   })
 })
 
