@@ -878,9 +878,16 @@ func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
 // }
 
 func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
-	baseUrl := "api.etherscan.io"
-	if Config.Chain.Config.DepositChainID == 5 {
+	baseUrl := ""
+	switch dcid := Config.Chain.Config.DepositChainID; dcid {
+	case 1: // mainnet
+		baseUrl = "api.etherscan.io"
+	case 5: // goerli
 		baseUrl = "api-goerli.etherscan.io"
+	case 11155111: // sepolia
+		baseUrl = "api-sepolia.etherscan.io"
+	default: // unsupported
+		return nil, nil
 	}
 
 	httpClient := http.Client{Timeout: time.Second * 5}
