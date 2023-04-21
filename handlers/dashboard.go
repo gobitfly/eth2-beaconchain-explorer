@@ -393,23 +393,24 @@ func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDat
 
 	for i := len(blocks) - 1; i >= 0; i-- {
 		blockEpoch := utils.TimeToEpoch(blocks[i].Time.AsTime())
-		if blockEpoch <= int64(lastFinalizedEpoch) {
-			consData := consMap[blocks[i].Number]
-			day := int64(consData.Epoch / epochsPerDay)
-			color := "#90ed7d"
-			totalReward, _ := utils.WeiToEther(utils.Eth1TotalReward(blocks[i])).Float64()
-			relayData, ok := relaysData[common.BytesToHash(blocks[i].Hash)]
-			if ok {
-				totalReward, _ = utils.WeiToEther(relayData.MevBribe.BigInt()).Float64()
-			}
+		if blockEpoch > int64(lastFinalizedEpoch) {
+			continue
+		}
+		consData := consMap[blocks[i].Number]
+		day := int64(consData.Epoch / epochsPerDay)
+		color := "#90ed7d"
+		totalReward, _ := utils.WeiToEther(utils.Eth1TotalReward(blocks[i])).Float64()
+		relayData, ok := relaysData[common.BytesToHash(blocks[i].Hash)]
+		if ok {
+			totalReward, _ = utils.WeiToEther(relayData.MevBribe.BigInt()).Float64()
+		}
 
-			//balanceTs := blocks[i].GetTime().AsTime().Unix()
+		//balanceTs := blocks[i].GetTime().AsTime().Unix()
 
-			chartData[len(blocks)-1-i] = &types.ChartDataPoint{
-				X:     float64(utils.DayToTime(day).Unix() * 1000), //float64(balanceTs * 1000),
-				Y:     utils.ExchangeRateForCurrency(currency) * totalReward,
-				Color: color,
-			}
+		chartData[len(blocks)-1-i] = &types.ChartDataPoint{
+			X:     float64(utils.DayToTime(day).Unix() * 1000), //float64(balanceTs * 1000),
+			Y:     utils.ExchangeRateForCurrency(currency) * totalReward,
+			Color: color,
 		}
 	}
 	return chartData, nil

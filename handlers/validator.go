@@ -661,13 +661,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			for _, execBlock := range execBlocks {
 
 				blockEpoch := utils.TimeToEpoch(execBlock.Time.AsTime())
-				if blockEpoch <= int64(lastFinalizedEpoch) {
-					// add mev bribe if present
-					if relaysDatum, hasMevBribes := relaysData[common.BytesToHash(execBlock.Hash)]; hasMevBribes {
-						incomeTodayEl = new(big.Int).Add(incomeTodayEl, relaysDatum.MevBribe.Int)
-					} else {
-						incomeTodayEl = new(big.Int).Add(incomeTodayEl, new(big.Int).SetBytes(execBlock.GetTxReward()))
-					}
+				if blockEpoch > int64(lastFinalizedEpoch) {
+					continue
+				}
+				// add mev bribe if present
+				if relaysDatum, hasMevBribes := relaysData[common.BytesToHash(execBlock.Hash)]; hasMevBribes {
+					incomeTodayEl = new(big.Int).Add(incomeTodayEl, relaysDatum.MevBribe.Int)
+				} else {
+					incomeTodayEl = new(big.Int).Add(incomeTodayEl, new(big.Int).SetBytes(execBlock.GetTxReward()))
 				}
 			}
 			validatorPageData.IncomeToday.El = incomeTodayEl.Int64() / 1e9
