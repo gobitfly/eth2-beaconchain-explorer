@@ -274,7 +274,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	}
 
 	logger.Infof("exporting total income stats")
-	tx.Exec(`
+	_, err = tx.Exec(`
 	INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei_total, cl_proposer_rewards_gwei_total, el_rewards_wei_total, mev_rewards_wei_total) (
 		SELECT 
 			vs1.validatorindex, 
@@ -290,6 +290,9 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		el_rewards_wei_total = excluded.el_rewards_wei_total,
 		mev_rewards_wei_total = excluded.mev_rewards_wei_total;
 	`, day)
+	if err != nil {
+		return err
+	}
 
 	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
 	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(firstEpoch, lastEpoch)
