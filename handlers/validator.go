@@ -116,8 +116,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Request came with a hash
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
+		// Request came with a hash
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
 			// logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
@@ -127,130 +127,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
 			// the validator might only have a public key but no index yet
-			var name string
-			err = db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
-			if err != nil && err != sql.ErrNoRows {
-				logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-				// err == sql.ErrNoRows -> unnamed
-			} else {
-				validatorPageData.Name = name
-			}
-
-			var pool string
-			err = db.ReaderDb.Get(&pool, `SELECT pool FROM validator_pool WHERE publickey = $1`, pubKey)
-			if err != nil && err != sql.ErrNoRows {
-				logger.Errorf("error getting validator-pool from db for pubKey %v: %v", pubKey, err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-				// err == sql.ErrNoRows -> (no pool set)
-			} else {
-				if validatorPageData.Name == "" {
-					validatorPageData.Name = fmt.Sprintf("Pool: %s", pool)
-				} else {
-					validatorPageData.Name += fmt.Sprintf(" / Pool: %s", pool)
-				}
-			}
-			deposits, err := db.GetValidatorDeposits(pubKey)
-			if err != nil {
-				logger.Errorf("error getting validator-deposits from db: %v", err)
-			}
-			validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
-			validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(deposits)
-			if err != nil || len(deposits.Eth1Deposits) == 0 {
-				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
-				data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", index), "", validatorNotFoundTemplateFiles)
-
-				if handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
-					return // an error has occurred and was processed
-				}
-				return
-			}
-
-			// there is no validator-index but there are eth1-deposits for the publickey
-			// which means the validator is in DEPOSITED state
-			// in this state there is nothing to display but the eth1-deposits
-			validatorPageData.Status = "deposited"
-			validatorPageData.PublicKey = pubKey
-			if deposits != nil && len(deposits.Eth1Deposits) > 0 {
-				deposits.LastEth1DepositTs = deposits.Eth1Deposits[len(deposits.Eth1Deposits)-1].BlockTs
-			}
-			validatorPageData.Deposits = deposits
-
-			latestDeposit := time.Now().Unix()
-			if len(deposits.Eth1Deposits) > 1 {
-			} else if time.Unix(latestDeposit, 0).Before(utils.SlotToTime(0)) {
-				validatorPageData.InclusionDelay = 0
-			}
-
-			for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
-				if deposit.ValidSignature {
-					validatorPageData.Eth1DepositAddress = deposit.FromAddress
-					break
-				}
-			}
-
-			sumValid := uint64(0)
-			// check if a valid deposit exists
-			for _, d := range deposits.Eth1Deposits {
-				if d.ValidSignature {
-					sumValid += d.Amount
-				} else {
-					validatorPageData.Status = "deposited_invalid"
-				}
-			}
-
-			// enough deposited for the validator to be activated
-			if sumValid >= 32e9 {
-				validatorPageData.Status = "deposited_valid"
-			}
-
-			filter := db.WatchlistFilter{
-				UserId:         data.User.UserID,
-				Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
-				Tag:            types.ValidatorTagsWatchlist,
-				JoinValidators: false,
-				Network:        utils.GetNetwork(),
-			}
-			watchlist, err := db.GetTaggedValidators(filter)
-			if err != nil {
-				logger.Errorf("error getting tagged validators from db: %v", err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-
-			validatorPageData.Watchlist = watchlist
-
-			if data.User.Authenticated {
-				events := make([]types.EventNameCheckbox, 0)
-				for _, ev := range types.AddWatchlistEvents {
-					events = append(events, types.EventNameCheckbox{
-						EventLabel: ev.Desc,
-						EventName:  ev.Event,
-						Active:     false,
-						Warning:    ev.Warning,
-						Info:       ev.Info,
-					})
-				}
-				validatorPageData.AddValidatorWatchlistModal = &types.AddValidatorWatchlistModal{
-					Events:         events,
-					ValidatorIndex: validatorPageData.Index,
-					CsrfField:      csrf.TemplateField(r),
-				}
-			}
-
-			data.Data = validatorPageData
-			if utils.IsApiRequest(r) {
-				w.Header().Set("Content-Type", "application/json")
-				err = json.NewEncoder(w).Encode(data.Data)
-			} else {
-				err = validatorTemplate.ExecuteTemplate(w, "layout", data)
-			}
-
-			if handleTemplateError(w, r, "validator.go", "Validator", "Done (no index)", err) != nil {
-				return // an error has occurred and was processed
-			}
+			handleValidatorWithNoIndex(w, r, pubKey, index, &validatorPageData, data)
 			return
 		}
 	} else {
@@ -305,6 +182,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	} else if err != nil {
 		logger.Errorf("error getting validator for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Check if the validator has balance data in the finalized epochs
+	// balances, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, latestFinalized, latestFinalized)
+	var balances map[uint64][]*types.ValidatorBalance
+	if err != nil {
+		http.Error(w, "error getting validator balance data", 404)
+		return
+	}
+	if _, ok := balances[index]; !ok {
+		// An index would be available but there is no balance data in the finalized epochs
+		// so treat it as if the index is not available
+		handleValidatorWithNoIndex(w, r, validatorPageData.PublicKey, index, &validatorPageData, data)
 		return
 	}
 
@@ -942,6 +833,148 @@ func hasMultipleWithdrawalCredentials(deposits *types.ValidatorDeposits) bool {
 	}
 
 	return false
+}
+
+func handleValidatorWithNoIndex(w http.ResponseWriter, r *http.Request, pubKey []byte, index uint64, validatorPageData *types.ValidatorPageData, data *types.PageData) {
+	validatorTemplateFiles := append(layoutTemplateFiles,
+		"validator/validator.html",
+		"validator/heading.html",
+		"validator/tables.html",
+		"validator/modals.html",
+		"modals.html",
+		"validator/overview.html",
+		"validator/charts.html",
+		"validator/countdown.html",
+		"components/flashMessage.html",
+		"components/rocket.html")
+	validatorNotFoundTemplateFiles := append(layoutTemplateFiles, "validator/validatornotfound.html")
+	var validatorTemplate = templates.GetTemplate(validatorTemplateFiles...)
+	var validatorNotFoundTemplate = templates.GetTemplate(validatorNotFoundTemplateFiles...)
+
+	var name string
+	err := db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
+	if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+		// err == sql.ErrNoRows -> unnamed
+	} else {
+		validatorPageData.Name = name
+	}
+
+	var pool string
+	err = db.ReaderDb.Get(&pool, `SELECT pool FROM validator_pool WHERE publickey = $1`, pubKey)
+	if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("error getting validator-pool from db for pubKey %v: %v", pubKey, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+		// err == sql.ErrNoRows -> (no pool set)
+	} else {
+		if validatorPageData.Name == "" {
+			validatorPageData.Name = fmt.Sprintf("Pool: %s", pool)
+		} else {
+			validatorPageData.Name += fmt.Sprintf(" / Pool: %s", pool)
+		}
+	}
+	deposits, err := db.GetValidatorDeposits(pubKey)
+	if err != nil {
+		logger.Errorf("error getting validator-deposits from db: %v", err)
+	}
+	validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
+	validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(deposits)
+	if err != nil || len(deposits.Eth1Deposits) == 0 {
+		SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
+		data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", index), "", validatorNotFoundTemplateFiles)
+
+		if handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+			return // an error has occurred and was processed
+		}
+		return
+	}
+
+	// there is no validator-index but there are eth1-deposits for the publickey
+	// which means the validator is in DEPOSITED state
+	// in this state there is nothing to display but the eth1-deposits
+	validatorPageData.Status = "deposited"
+	validatorPageData.PublicKey = pubKey
+	if deposits != nil && len(deposits.Eth1Deposits) > 0 {
+		deposits.LastEth1DepositTs = deposits.Eth1Deposits[len(deposits.Eth1Deposits)-1].BlockTs
+	}
+	validatorPageData.Deposits = deposits
+
+	latestDeposit := time.Now().Unix()
+	if len(deposits.Eth1Deposits) > 1 {
+	} else if time.Unix(latestDeposit, 0).Before(utils.SlotToTime(0)) {
+		validatorPageData.InclusionDelay = 0
+	}
+
+	for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
+		if deposit.ValidSignature {
+			validatorPageData.Eth1DepositAddress = deposit.FromAddress
+			break
+		}
+	}
+
+	sumValid := uint64(0)
+	// check if a valid deposit exists
+	for _, d := range deposits.Eth1Deposits {
+		if d.ValidSignature {
+			sumValid += d.Amount
+		} else {
+			validatorPageData.Status = "deposited_invalid"
+		}
+	}
+
+	// enough deposited for the validator to be activated
+	if sumValid >= 32e9 {
+		validatorPageData.Status = "deposited_valid"
+	}
+
+	filter := db.WatchlistFilter{
+		UserId:         data.User.UserID,
+		Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
+		Tag:            types.ValidatorTagsWatchlist,
+		JoinValidators: false,
+		Network:        utils.GetNetwork(),
+	}
+	watchlist, err := db.GetTaggedValidators(filter)
+	if err != nil {
+		logger.Errorf("error getting tagged validators from db: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	validatorPageData.Watchlist = watchlist
+
+	if data.User.Authenticated {
+		events := make([]types.EventNameCheckbox, 0)
+		for _, ev := range types.AddWatchlistEvents {
+			events = append(events, types.EventNameCheckbox{
+				EventLabel: ev.Desc,
+				EventName:  ev.Event,
+				Active:     false,
+				Warning:    ev.Warning,
+				Info:       ev.Info,
+			})
+		}
+		validatorPageData.AddValidatorWatchlistModal = &types.AddValidatorWatchlistModal{
+			Events:         events,
+			ValidatorIndex: validatorPageData.Index,
+			CsrfField:      csrf.TemplateField(r),
+		}
+	}
+
+	data.Data = validatorPageData
+	if utils.IsApiRequest(r) {
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(data.Data)
+	} else {
+		err = validatorTemplate.ExecuteTemplate(w, "layout", data)
+	}
+
+	if handleTemplateError(w, r, "validator.go", "Validator", "Done (no index)", err) != nil {
+		return // an error has occurred and was processed
+	}
 }
 
 // ValidatorDeposits returns a validator's deposits in json

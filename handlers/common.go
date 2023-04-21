@@ -42,7 +42,7 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
 func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
 	validatorsPQArray := pq.Array(validators)
-	latestEpoch := services.LatestEpoch()
+	latestFinalizedEpoch := services.LatestFinalizedEpoch()
 
 	balances := []*types.Validator{}
 
@@ -52,7 +52,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		balancesMap[balance.Index] = balance
 	}
 
-	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, latestEpoch, latestEpoch)
+	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, latestFinalizedEpoch, latestFinalizedEpoch)
 	if err != nil {
 		logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
 		return nil, nil, err
