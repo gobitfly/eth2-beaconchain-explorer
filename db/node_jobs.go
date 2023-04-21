@@ -445,11 +445,16 @@ func SubmitVoluntaryExitNodeJob(job *types.NodeJob) error {
 	if err != nil {
 		return err
 	}
+	jobStatus := types.SubmittedToNodeNodeJobStatus
 	if resp.StatusCode != 200 {
 		d, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("http request error: %s: %s, data: %s", resp.Status, d, job.RawData)
+		if len(d) > 1000 {
+			d = d[:1000]
+		}
+		jobStatus = types.FailedNodeJobStatus
+		logrus.WithFields(logrus.Fields{"res": string(d), "status": resp.Status, "jobID": job.ID, "jobType": job.Type}).Warnf("failed submitting a job")
 	}
-	job.Status = types.SubmittedToNodeNodeJobStatus
+	job.Status = jobStatus
 	job.SubmittedToNodeTime.Time = time.Now()
 	job.SubmittedToNodeTime.Valid = true
 	_, err = WriterDb.Exec(`update node_jobs set status = $1, submitted_to_node_time = $2 where id = $3`, job.Status, job.SubmittedToNodeTime.Time, job.ID)
