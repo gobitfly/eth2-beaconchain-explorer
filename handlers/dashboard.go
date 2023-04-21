@@ -389,8 +389,13 @@ func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDat
 
 	var chartData = make([]*types.ChartDataPoint, len(blocks))
 	epochsPerDay := utils.EpochsPerDay()
+	lastFinalizedEpoch := services.LatestFinalizedEpoch()
 
 	for i := len(blocks) - 1; i >= 0; i-- {
+		blockEpoch := utils.TimeToEpoch(blocks[i].Time.AsTime())
+		if blockEpoch > int64(lastFinalizedEpoch) {
+			continue
+		}
 		consData := consMap[blocks[i].Number]
 		day := int64(consData.Epoch / epochsPerDay)
 		color := "#90ed7d"
