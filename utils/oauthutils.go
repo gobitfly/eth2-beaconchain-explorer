@@ -209,7 +209,6 @@ func GetAuthorizationClaims(r *http.Request) *CustomClaims {
 
 	claims, err := ValidateAccessTokenGetClaims(accessToken)
 	if err != nil {
-		logger.Warnf("ValidateAccessTokenGetClaims failed") // #REMOVE just for test purpose, can be removed after testing
 		return nil
 	}
 	return claims
