@@ -877,19 +877,37 @@ func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
 // 	}
 // }
 
+func GetEtherscanAPIBaseUrl(provideDefault bool) string {
+	const mainnetBaseUrl = "api.etherscan.io"
+	const goerliBaseUrl = "api-goerli.etherscan.io"
+	const sepoliaBaseUrl = "api-sepolia.etherscan.io"
+
+	// check config first
+	if len(Config.EtherscanAPIBaseURL) > 0 {
+		return Config.EtherscanAPIBaseURL
+	}
+
+	// check chain id
+	switch Config.Chain.Config.DepositChainID {
+	case 1: // mainnet
+		return mainnetBaseUrl
+	case 5: // goerli
+		return goerliBaseUrl
+	case 11155111: // sepolia
+		return sepoliaBaseUrl
+	}
+
+	// use default
+	if provideDefault {
+		return mainnetBaseUrl
+	}
+	return ""
+}
+
 func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
-	baseUrl := Config.EtherscanAPIBaseURL
+	baseUrl := GetEtherscanAPIBaseUrl(false)
 	if len(baseUrl) < 1 {
-		switch dcid := Config.Chain.Config.DepositChainID; dcid {
-		case 1: // mainnet
-			baseUrl = "api.etherscan.io"
-		case 5: // goerli
-			baseUrl = "api-goerli.etherscan.io"
-		case 11155111: // sepolia
-			baseUrl = "api-sepolia.etherscan.io"
-		default: // unsupported
-			return nil, nil
-		}
+		return nil, nil
 	}
 
 	httpClient := http.Client{Timeout: time.Second * 5}

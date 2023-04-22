@@ -23,18 +23,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	calculatorPageData.TotalStaked = total
-
-	calculatorPageData.EtherscanApiBaseUrl = utils.Config.EtherscanAPIBaseURL
-	if len(calculatorPageData.EtherscanApiBaseUrl) < 1 {
-		switch dcid := utils.Config.Chain.Config.DepositChainID; dcid {
-		case 5: // goerli
-			calculatorPageData.EtherscanApiBaseUrl = "api-goerli.etherscan.io"
-		case 11155111: // sepolia
-			calculatorPageData.EtherscanApiBaseUrl = "api-sepolia.etherscan.io"
-		default:
-			calculatorPageData.EtherscanApiBaseUrl = "api.etherscan.io"
-		}
-	}
+	calculatorPageData.EtherscanApiBaseUrl = utils.GetEtherscanAPIBaseUrl(true)
 
 	w.Header().Set("Content-Type", "text/html")
 
