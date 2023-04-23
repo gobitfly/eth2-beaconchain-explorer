@@ -469,16 +469,18 @@ func FormatGraffitiAsLink(graffiti []byte) template.HTML {
 // hash is required, trunc is optional.
 // Only the first value in trunc_opt will be used.
 func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
-	trunc := true
-	if len(trunc_opt) > 0 {
-		trunc = trunc_opt[0]
-	}
+	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%s</span>", FormatHashRaw(hash, trunc_opt...)))
+}
 
-	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
-	if len(hash) > 3 && trunc {
-		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…%x</span>", hash[:2], hash[len(hash)-2:]))
+// FormatHashRaw will return a hash formated
+// hash is required, trunc is optional.
+// Only the first value in trunc_opt will be used.
+func FormatHashRaw(hash []byte, trunc_opt ...bool) string {
+	s := common.BytesToAddress(hash).Hex()
+	if len(s) >= 10 && (len(trunc_opt) < 1 || trunc_opt[0]) {
+		return fmt.Sprintf("%s…%s", s[:6], s[len(s)-4:])
 	}
-	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
+	return s
 }
 
 // WithdrawalCredentialsToAddress converts withdrawalCredentials to an address if possible
