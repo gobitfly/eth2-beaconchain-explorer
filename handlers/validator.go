@@ -186,8 +186,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the validator has balance data in the finalized epochs
-	// balances, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, latestFinalized, latestFinalized)
-	var balances map[uint64][]*types.ValidatorBalance
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{index}, latestFinalized, latestFinalized)
 	if err != nil {
 		http.Error(w, "error getting validator balance data", 404)
 		return
