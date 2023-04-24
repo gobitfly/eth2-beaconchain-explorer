@@ -2102,8 +2102,10 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 
 	names := make(map[string]string)
 	for _, t := range transactions {
-		names[string(t.From)] = ""
-		names[string(t.To)] = ""
+		if t != nil {
+			names[string(t.From)] = ""
+			names[string(t.To)] = ""
+		}
 	}
 	names, _, err = BigtableClient.GetAddressesNamesArMetadata(&names, nil)
 	if err != nil {
@@ -2113,8 +2115,12 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
 
-		fromName := names[string(t.From)]
-		toName := names[string(t.To)]
+		fromName := ""
+		toName := ""
+		if t != nil {
+			fromName = names[string(t.From)]
+			toName = names[string(t.To)]
+		}
 
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
 		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
@@ -2178,8 +2184,10 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 
 	names := make(map[string]string)
 	for _, t := range transfers {
-		names[string(t.From)] = ""
-		names[string(t.To)] = ""
+		if t != nil {
+			names[string(t.From)] = ""
+			names[string(t.To)] = ""
+		}
 	}
 
 	err = bigtable.GetAddressNames(names)
@@ -2252,9 +2260,11 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 	tokensToAdd := make(map[string]*types.ERC20Metadata)
 	// init
 	for _, t := range transfers {
-		names[string(t.From)] = ""
-		names[string(t.To)] = ""
-		tokens[string(t.TokenAddress)] = nil
+		if t != nil {
+			names[string(t.From)] = ""
+			names[string(t.To)] = ""
+			tokens[string(t.TokenAddress)] = nil
+		}
 	}
 	g := new(errgroup.Group)
 	g.SetLimit(25)
@@ -2382,17 +2392,16 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 	names := make(map[string]string)
 	tokens := make(map[string]*types.ERC20Metadata)
 	for _, t := range transactions {
-		names[string(t.From)] = ""
-		names[string(t.To)] = ""
-		tokens[string(t.TokenAddress)] = nil
+		if t != nil {
+			names[string(t.From)] = ""
+			names[string(t.To)] = ""
+			tokens[string(t.TokenAddress)] = nil
+		}
 	}
 	names, tokens, err = BigtableClient.GetAddressesNamesArMetadata(&names, &tokens)
 	if err != nil {
 		return nil, err
 	}
-
-	// fromName := names[string(t.From)]
-	// toName := names[string(t.To)]
 
 	tableData := make([][]interface{}, len(transactions))
 
@@ -3291,9 +3300,11 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 	names := make(map[string]string)
 	tokens := make(map[string]*types.ERC20Metadata)
 	for _, t := range transactions {
-		names[string(t.From)] = ""
-		names[string(t.To)] = ""
-		tokens[string(t.TokenAddress)] = nil
+		if t != nil {
+			names[string(t.From)] = ""
+			names[string(t.To)] = ""
+			tokens[string(t.TokenAddress)] = nil
+		}
 	}
 	names, tokens, err = BigtableClient.GetAddressesNamesArMetadata(&names, &tokens)
 	if err != nil {
