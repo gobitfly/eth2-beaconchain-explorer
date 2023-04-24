@@ -456,11 +456,18 @@ table {
 }
 
 @media (min-width: 1140px) and (max-width: 1440px) {
-  .navbar .nav-item img {
-    display: none;
+  .navbar .nav-item i {
+    display: unset;
+  }
+
+  .navbar .nav-item svg {
+    display: unset;
+  }
+
+  .navbar-brand i {
+    display: unset;
   }
 }
-
 
 label.btn.btn-light:hover {
   color: var(--font-color);
