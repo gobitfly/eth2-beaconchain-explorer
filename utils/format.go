@@ -476,7 +476,10 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 // hash is required, trunc is optional.
 // Only the first value in trunc_opt will be used.
 func FormatHashRaw(hash []byte, trunc_opt ...bool) string {
-	s := common.BytesToAddress(hash).Hex()
+	s := fmt.Sprintf("%#x", hash)
+	if len(s) == 42 { // if it's an address, we checksum it (0x + 40)
+		s = common.BytesToAddress(hash).Hex()
+	}
 	if len(s) >= 10 && (len(trunc_opt) < 1 || trunc_opt[0]) {
 		return fmt.Sprintf("%s…%s", s[:6], s[len(s)-4:])
 	}
