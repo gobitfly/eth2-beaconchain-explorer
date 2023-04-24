@@ -1290,7 +1290,7 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		return nil, fmt.Errorf("error getting validator balances from bigtable: %w", err)
 	}
 
-	currentDayIncome, err := db.GetCurrentDayClIncome(queryIndices)
+	currentDayIncome, _, err := db.GetCurrentDayClIncome(queryIndices)
 	if err != nil {
 		return nil, err
 	}
@@ -1383,10 +1383,10 @@ func ApiValidatorGet(w http.ResponseWriter, r *http.Request) {
 // @Summary Get unlimited validators
 // @Tags Validator
 // @Produce  json
-// @Param  indexOrPubkey path string true "Validator indicesOrPubkeys, comma separated"
+// @Param  indexOrPubkey body types.DashboardRequest true "Validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse{data=[]types.APIValidatorResponse}
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/validator/{indexOrPubkey} [post]
+// @Router /api/v1/validator [post]
 func ApiValidatorPost(w http.ResponseWriter, r *http.Request) {
 	apiValidator(w, r)
 }
@@ -1398,13 +1398,29 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	var maxValidators int
+	var param string
 	if r.Method == http.MethodGet {
 		maxValidators = getUserPremium(r).MaxValidators
+
+		// Get the validators from the URL
+		param = vars["indexOrPubkey"]
 	} else {
 		maxValidators = math.MaxInt
+
+		// Get the validators from the request body
+		decoder := json.NewDecoder(r.Body)
+		req := &types.DashboardRequest{}
+
+		err := decoder.Decode(req)
+		if err != nil {
+			sendErrorResponse(w, r.URL.String(), "error decoding request body")
+			return
+		}
+		param = req.IndicesOrPubKey
 	}
 
-	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
+	queryIndices, err := parseApiValidatorParamToIndices(param, maxValidators)
+
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -2013,7 +2029,7 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	currentDayIncome, err := db.GetCurrentDayClIncome(queryIndices)
+	currentDayIncome, _, err := db.GetCurrentDayClIncome(queryIndices)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "error retrieving current day income")
 		return
@@ -2998,7 +3014,7 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		return
 	}
 
-	currentDayIncome, err := db.GetCurrentDayClIncome(queryIndices)
+	currentDayIncome, _, err := db.GetCurrentDayClIncome(queryIndices)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "error retrieving current day income")
 		return
@@ -3522,10 +3538,6 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), 100)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
-		http.Error(w, "Invalid query", 400)
-		return
-	}
-	if err != nil {
 		http.Error(w, "Invalid query", 400)
 		return
 	}

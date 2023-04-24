@@ -379,16 +379,17 @@ type ValidatorPageData struct {
 	ParticipatedSyncCountSlots               uint64
 	MissedSyncCountSlots                     uint64
 	OrphanedSyncCountSlots                   uint64
-	UnmissedSyncPercentage                   float64       // participated/(participated+missed)
-	IncomeToday                              ClElInt64     `json:"incomeToday"`
-	Income1d                                 ClElInt64     `json:"income1d"`
-	Income7d                                 ClElInt64     `json:"income7d"`
-	Income31d                                ClElInt64     `json:"income31d"`
-	IncomeTotal                              ClElInt64     `json:"incomeTotal"`
-	IncomeTotalFormatted                     template.HTML `json:"incomeTotalFormatted"`
-	Apr7d                                    ClElFloat64   `json:"apr7d"`
-	Apr31d                                   ClElFloat64   `json:"apr31d"`
-	Apr365d                                  ClElFloat64   `json:"apr365d"`
+	UnmissedSyncPercentage                   float64        // participated/(participated+missed)
+	IncomeToday                              ClElInt64      `json:"incomeToday"`
+	Income1d                                 ClElInt64      `json:"income1d"`
+	Income7d                                 ClElInt64      `json:"income7d"`
+	Income31d                                ClElInt64      `json:"income31d"`
+	IncomeTotal                              ClElInt64      `json:"incomeTotal"`
+	IncomeTotalFormatted                     template.HTML  `json:"incomeTotalFormatted"`
+	IncomeProposerFormatted                  *template.HTML `json:"incomeProposerFormatted"`
+	Apr7d                                    ClElFloat64    `json:"apr7d"`
+	Apr31d                                   ClElFloat64    `json:"apr31d"`
+	Apr365d                                  ClElFloat64    `json:"apr365d"`
 	ProposalLuck                             float64
 	SyncLuck                                 float64
 	ProposalEstimate                         *time.Time
@@ -1031,6 +1032,7 @@ type ValidatorEarnings struct {
 	LastDayFormatted        template.HTML `json:"lastDayFormatted"`
 	LastWeekFormatted       template.HTML `json:"lastWeekFormatted"`
 	LastMonthFormatted      template.HTML `json:"lastMonthFormatted"`
+	ProposerTotalFormatted  template.HTML `json:"proposerTotalFormatted"`
 	TotalFormatted          template.HTML `json:"totalFormatted"`
 	TotalChangeFormatted    template.HTML `json:"totalChangeFormatted"`
 	TotalBalance            template.HTML `json:"totalBalance"`
@@ -1686,6 +1688,8 @@ type Eth1TxData struct {
 	Events                      []*Eth1EventData
 	Transfers                   []*Transfer
 	DepositContractInteractions []DepositContractInteraction
+	CurrentEtherPrice           template.HTML
+	HistoricEtherPrice          template.HTML
 }
 
 type Eth1EventData struct {
