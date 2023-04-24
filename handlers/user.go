@@ -1190,11 +1190,7 @@ func UserUpdateFlagsPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shareStats := FormValueOrJSON(r, "shareStats")
-
-	logger.Errorf("shareStats: %v", shareStats)
-
-	err = db.SetUserMonitorSharingSetting(user.UserID, shareStats == "true")
+	err = db.SetUserMonitorSharingSetting(user.UserID, FormValueOrJSON(r, "shareStats") == "true")
 	if err != nil {
 		logger.Errorf("error setting user monitor sharing settings: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
