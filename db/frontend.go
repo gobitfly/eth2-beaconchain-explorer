@@ -260,7 +260,7 @@ func AddSubscription(userID uint64, network string, eventName types.EventName, e
 	nowEpoch := utils.TimeToEpoch(now)
 
 	var onConflictDo string = "NOTHING"
-	if strings.HasPrefix(string(eventName), "monitoring_") || eventName == types.RocketpoolColleteralMaxReached || eventName == types.RocketpoolColleteralMinReached || eventName == types.ValidatorIsOfflineEventName {
+	if strings.HasPrefix(string(eventName), "monitoring_") || eventName == types.RocketpoolCollateralMaxReached || eventName == types.RocketpoolCollateralMinReached || eventName == types.ValidatorIsOfflineEventName {
 		onConflictDo = "UPDATE SET event_threshold = $6"
 	}
 
