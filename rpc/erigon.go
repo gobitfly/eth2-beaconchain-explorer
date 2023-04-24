@@ -250,7 +250,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 				continue
 			}
 
-			if len(c.Transactions) <= trace.TransactionPosition {
+			if trace.TransactionPosition >= len(c.Transactions) {
 				return fmt.Errorf("error transaction position %v out of range", trace.TransactionPosition)
 			}
 
