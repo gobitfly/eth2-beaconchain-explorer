@@ -1153,7 +1153,9 @@ func logErrorInfo(err error, callerSkip int, additionalInfos ...map[string]inter
 
 		// Replace the last occurrence of the next error in the current error
 		lastIdx := strings.LastIndex(errColl[idx], errColl[idx+1])
-		errColl[idx] = errColl[idx][:lastIdx] + nextErrInfoText + errColl[idx][lastIdx+len(errColl[idx+1]):]
+		if lastIdx != -1 {
+			errColl[idx] = errColl[idx][:lastIdx] + nextErrInfoText + errColl[idx][lastIdx+len(errColl[idx+1]):]
+		}
 
 		errInfoText = strings.ReplaceAll(errInfoText, errMarkSign, "")
 		logFields = logFields.WithField(errInfoText, errColl[idx])
