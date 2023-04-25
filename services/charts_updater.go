@@ -647,7 +647,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 		if len(balance) == 0 {
 			continue
 		}
-		currentBalances = append(currentBalances, float64(balance[0].Balance)/1e6)
+		currentBalances = append(currentBalances, float64(balance[0].Balance)/1e9)
 	}
 
 	bins := int(math.Sqrt(float64(len(currentBalances)))) + 1
