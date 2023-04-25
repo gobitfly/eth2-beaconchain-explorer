@@ -727,15 +727,17 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 					metrics.NotificationsQueued.WithLabelValues("email", string(event)).Inc()
 				}
 
-				if len(notificationTitles) > 2 {
-					subject = fmt.Sprintf("%s: %s,... and %d other notifications", utils.Config.Frontend.SiteDomain, notificationTitles[0], len(notificationTitles)-1)
-				} else {
-					subject = fmt.Sprintf("%s: %s and %s", utils.Config.Frontend.SiteDomain, notificationTitles[0], notificationTitles[1])
-				}
-
 				if event == "validator_balance_decreased" {
 					msg.Body += template.HTML("<br>You will not receive any further balance decrease mails for these validators until the balance of a validator is increasing again.<br>")
 				}
+			}
+
+			if len(notificationTitles) > 2 {
+				subject = fmt.Sprintf("%s: %s,... and %d other notifications", utils.Config.Frontend.SiteDomain, notificationTitles[0], len(notificationTitles)-1)
+			} else if len(notificationTitles) == 2 {
+				subject = fmt.Sprintf("%s: %s and %s", utils.Config.Frontend.SiteDomain, notificationTitles[0], notificationTitles[1])
+			} else {
+				subject = fmt.Sprintf("%s: %s", utils.Config.Frontend.SiteDomain, notificationTitles[0])
 			}
 
 			// msg.Body += template.HTML(fmt.Sprintf("<br>Best regards<br>\n%s", utils.Config.Frontend.SiteDomain))
