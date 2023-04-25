@@ -125,6 +125,8 @@ MAX_ATTESTATIONS: 128
 MAX_DEPOSITS: 16
 # 2**4 (= 16)
 MAX_VOLUNTARY_EXITS: 16
+# 2**4 (= 16)
+MAX_BLS_TO_EXECUTION_CHANGES: 16
 # Signature domains
 # ---------------------------------------------------------------
 DOMAIN_BEACON_PROPOSER: 0x00000000
@@ -158,3 +160,13 @@ SYNC_COMMITTEE_SIZE: 512
 # 2**9 (= 512)
 # assert EPOCHS_PER_SYNC_COMMITTEE_PERIOD * SLOTS_PER_EPOCH <= SLOTS_PER_HISTORICAL_ROOT
 EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 512
+
+# Execution
+# ---------------------------------------------------------------
+# 2**4 (= 16) withdrawals
+MAX_WITHDRAWALS_PER_PAYLOAD: 16
+
+# Withdrawals processing
+# ---------------------------------------------------------------
+# 2**14 (= 16384) validators
+MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: 16384
