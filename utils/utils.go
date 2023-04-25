@@ -1143,15 +1143,19 @@ func logErrorInfo(err error, callerSkip int, additionalInfos ...map[string]inter
 		}
 	}
 
+	errMarkSign := "~"
 	for idx := 0; idx < (len(errColl) - 1); idx++ {
-		errInfoText := fmt.Sprintf("'errInfo_%v'", idx)
-		nextErrInfoText := fmt.Sprintf("'errInfo_%v'", idx+1)
+		errInfoText := fmt.Sprintf("%serrInfo_%v%s", errMarkSign, idx, errMarkSign)
+		nextErrInfoText := fmt.Sprintf("%serrInfo_%v%s", errMarkSign, idx+1, errMarkSign)
 		if idx == (len(errColl) - 2) {
-			nextErrInfoText = "'error'"
+			nextErrInfoText = fmt.Sprintf("%serror%s", errMarkSign, errMarkSign)
 		}
-		errColl[idx] = strings.ReplaceAll(errColl[idx], errColl[idx+1], nextErrInfoText)
 
-		errInfoText = strings.ReplaceAll(errInfoText, "'", "")
+		// Replace the last occurrence of the next error in the current error
+		lastIdx := strings.LastIndex(errColl[idx], errColl[idx+1])
+		errColl[idx] = errColl[idx][:lastIdx] + nextErrInfoText + errColl[idx][lastIdx+len(errColl[idx+1]):]
+
+		errInfoText = strings.ReplaceAll(errInfoText, errMarkSign, "")
 		logFields = logFields.WithField(errInfoText, errColl[idx])
 	}
 
