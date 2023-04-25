@@ -736,7 +736,7 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 				subject = fmt.Sprintf("%s: %s,... and %d other notifications", utils.Config.Frontend.SiteDomain, notificationTitles[0], len(notificationTitles)-1)
 			} else if len(notificationTitles) == 2 {
 				subject = fmt.Sprintf("%s: %s and %s", utils.Config.Frontend.SiteDomain, notificationTitles[0], notificationTitles[1])
-			} else {
+			} else if len(notificationTitles) == 1 {
 				subject = fmt.Sprintf("%s: %s", utils.Config.Frontend.SiteDomain, notificationTitles[0])
 			}
 
