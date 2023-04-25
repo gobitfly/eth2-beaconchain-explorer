@@ -1708,8 +1708,8 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	g := new(errgroup.Group)
 
-	startEpoch := currentEpoch - start - 9
 	endEpoch := currentEpoch - start
+	startEpoch := endEpoch - 9
 	if startEpoch > endEpoch { // handle underflows of startEpoch
 		startEpoch = 0
 	}
@@ -1755,6 +1755,8 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(validatorHistory))
 
+	var proposedInEpochMap map[uint64]uint64
+	queriedMissedSlots := false
 	for epoch := endEpoch; epoch >= startEpoch; epoch-- {
 		if incomeDetails[index] == nil || incomeDetails[index][epoch] == nil {
 			tableData = append(tableData, []interface{}{
@@ -1764,47 +1766,63 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			})
 			continue
 		}
+		currentIncomeDetails := incomeDetails[index][epoch]
 		event := types.ValidatorHistoryEvent{}
 
-		if incomeDetails[index][epoch].AttestationSourceReward > 0 {
+		if currentIncomeDetails.AttestationSourceReward > 0 {
 			event.AttestationSourceStatus = 1
-		} else if incomeDetails[index][epoch].AttestationSourcePenalty > 0 {
+		} else if currentIncomeDetails.AttestationSourcePenalty > 0 {
 			event.AttestationSourceStatus = 2
 		}
 
-		if incomeDetails[index][epoch].AttestationTargetReward > 0 {
+		if currentIncomeDetails.AttestationTargetReward > 0 {
 			event.AttestationTargetStatus = 1
-		} else if incomeDetails[index][epoch].AttestationTargetPenalty > 0 {
+		} else if currentIncomeDetails.AttestationTargetPenalty > 0 {
 			event.AttestationTargetStatus = 2
 		}
 
-		if incomeDetails[index][epoch].AttestationHeadReward > 0 {
+		if currentIncomeDetails.AttestationHeadReward > 0 {
 			event.AttestationHeadStatus = 1
 		}
 
-		if incomeDetails[index][epoch].ProposerAttestationInclusionReward > 0 {
+		if currentIncomeDetails.ProposerAttestationInclusionReward > 0 {
 			event.BlockProposalStatus = 1
-		} else if incomeDetails[index][epoch].ProposalsMissed > 0 {
+		} else if currentIncomeDetails.ProposalsMissed > 0 {
 			event.BlockProposalStatus = 2
 		}
 
-		if syncReward, syncPenalty := float64(incomeDetails[index][epoch].SyncCommitteeReward), float64(incomeDetails[index][epoch].SyncCommitteePenalty); syncReward > 0 {
-			if syncPenalty > 0 {
-				event.SyncParticipationStatus = 3
-				balanceChangeForSlot := (syncReward + syncPenalty) / float64(utils.Config.Chain.Config.SlotsPerEpoch)
-				event.SyncParticipationCount = utils.Config.Chain.Config.SlotsPerEpoch - uint64(syncPenalty/balanceChangeForSlot)
-			} else {
-				event.SyncParticipationStatus = 1
-				event.SyncParticipationCount = utils.Config.Chain.Config.SlotsPerEpoch
+		syncReward := currentIncomeDetails.SyncCommitteeReward
+		syncPenalty := currentIncomeDetails.SyncCommitteePenalty
+		if syncReward > 0 || syncPenalty > 0 {
+			// fill map with missed slots for the epochs in the range
+			if !queriedMissedSlots {
+				proposedInEpochMap, err = GetProposedSlotCountForEpochs(startEpoch, endEpoch)
+				if err != nil {
+					logger.Error(err)
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					return
+				}
+				queriedMissedSlots = true
 			}
-		} else if syncPenalty > 0 {
-			event.SyncParticipationStatus = 2
+			// calculate the number of unmissed slots
+			event.ProposedSlotsCount = proposedInEpochMap[epoch]
+			// calculate the participation count and status
+			if syncReward > 0 && syncPenalty > 0 {
+				event.SyncParticipationStatus = 3
+				balanceChangeForSlot := (syncReward + syncPenalty) / event.ProposedSlotsCount
+				event.SyncParticipationCount = syncReward / balanceChangeForSlot
+			} else if syncReward > 0 {
+				event.SyncParticipationStatus = 1
+				event.SyncParticipationCount = event.ProposedSlotsCount
+			} else if syncPenalty > 0 {
+				event.SyncParticipationStatus = 2
+			}
 		}
 
-		if incomeDetails[index][epoch].ProposerSlashingInclusionReward > 0 || incomeDetails[index][epoch].SlashingReward > 0 {
+		if currentIncomeDetails.ProposerSlashingInclusionReward > 0 || currentIncomeDetails.SlashingReward > 0 {
 			event.SlashingStatus = 1
 		}
-		if incomeDetails[index][epoch].SlashingPenalty > 0 {
+		if currentIncomeDetails.SlashingPenalty > 0 {
 			event.SlashingStatus = 2
 		}
 
@@ -1813,10 +1831,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			event.WithdrawalAmount = withdrawalMap[epoch].Amount
 		}
 
-		rewards := incomeDetails[index][epoch].TotalClRewards()
+		rewards := currentIncomeDetails.TotalClRewards()
 		tableData = append(tableData, []interface{}{
 			utils.FormatEpoch(epoch),
-			utils.FormatBalanceChangeFormated(&rewards, currency, incomeDetails[index][epoch]),
+			utils.FormatBalanceChangeFormated(&rewards, currency, currentIncomeDetails),
 			template.HTML(utils.FormatValidatorHistoryEvent(event)),
 		})
 	}
@@ -1840,6 +1858,27 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+}
+
+func GetProposedSlotCountForEpochs(startEpoch, endEpoch uint64) (map[uint64]uint64, error) {
+	var proposedInEpochs []struct {
+		Epoch         uint64 `db:"epoch"`
+		ProposedSlots uint64 `db:"proposed_slots"`
+	}
+	err := db.ReaderDb.Select(&proposedInEpochs, `
+		SELECT epoch, COUNT(*) AS proposed_slots
+		FROM blocks
+		WHERE epoch BETWEEN $1 AND $2 AND status NOT IN ('0', '2')
+		GROUP BY epoch
+	`, startEpoch, endEpoch)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving missed slots: %v", err)
+	}
+	proposedInEpochMap := make(map[uint64]uint64)
+	for _, proposedInEpoch := range proposedInEpochs {
+		proposedInEpochMap[proposedInEpoch.Epoch] = proposedInEpoch.ProposedSlots
+	}
+	return proposedInEpochMap, nil
 }
 
 // Validator returns validator data using a go template

@@ -2057,6 +2057,7 @@ type ValidatorHistoryEvent struct {
 	BlockProposalStatus     uint64
 	SyncParticipationStatus uint64
 	SyncParticipationCount  uint64
+	ProposedSlotsCount      uint64
 	SlashingStatus          uint64
 	WithdrawalStatus        uint64
 	WithdrawalAmount        uint64

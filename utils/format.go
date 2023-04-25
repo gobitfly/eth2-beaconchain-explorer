@@ -1298,7 +1298,7 @@ func FormatValidatorHistoryEvent(event types.ValidatorHistoryEvent) template.HTM
 	`
 	var syncTooltip string
 	if event.SyncParticipationStatus > 0 {
-		syncTooltip = fmt.Sprintf("%d/%d", event.SyncParticipationCount, Config.Chain.Config.SlotsPerEpoch)
+		syncTooltip = fmt.Sprintf("%d/%d", event.SyncParticipationCount, event.ProposedSlotsCount)
 	}
 
 	var withdrawalTooltip string
