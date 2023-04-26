@@ -1906,7 +1906,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 			network = ""
 		}
 
-		if filterLen == 0 && (eventName == types.RocketpoolColleteralMaxReached || eventName == types.RocketpoolColleteralMinReached) {
+		if filterLen == 0 && (eventName == types.RocketpoolCollateralMaxReached || eventName == types.RocketpoolCollateralMinReached) {
 
 			myValidators, err2 := db.GetTaggedValidators(filterWatchlist)
 			if err2 != nil {
@@ -2055,7 +2055,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 			}
 		}
 	} else {
-		if filterLen == 0 && (eventName == types.RocketpoolColleteralMaxReached || eventName == types.RocketpoolColleteralMinReached) {
+		if filterLen == 0 && (eventName == types.RocketpoolCollateralMaxReached || eventName == types.RocketpoolCollateralMinReached) {
 
 			err = db.DeleteAllSubscription(user.UserID, utils.GetNetwork(), eventName)
 			if err != nil {

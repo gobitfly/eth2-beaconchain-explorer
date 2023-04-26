@@ -301,14 +301,14 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 			}
 			logger.Infof("collecting rocketpool claim round took: %v\n", time.Since(start))
 
-			err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMaxReached, epoch)
+			err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolCollateralMaxReached, epoch)
 			if err != nil {
 				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_max_reached").Inc()
 				return nil, fmt.Errorf("error collecting rocketpool max collateral: %v", err)
 			}
 			logger.Infof("collecting rocketpool max collateral took: %v\n", time.Since(start))
 
-			err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMinReached, epoch)
+			err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolCollateralMinReached, epoch)
 			if err != nil {
 				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_min_reached").Inc()
 				return nil, fmt.Errorf("error collecting rocketpool min collateral: %v", err)
@@ -639,21 +639,6 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 			continue
 		}
 		go func(userEmail string, userNotifications map[types.EventName][]types.Notification) {
-			notification := ""
-			othernotifications := ""
-			i := 0
-			for notificationEvent := range userNotifications {
-				if i == 0 {
-					notification = string(notificationEvent)
-				} else if i == 1 {
-					othernotifications = fmt.Sprintf(" and %s", notificationEvent)
-				}
-				i++
-			}
-			if i > 1 {
-				othernotifications = fmt.Sprintf(",... and %d other notifications", i)
-			}
-			subject := fmt.Sprintf("%s: %s", utils.Config.Frontend.SiteDomain, notification+othernotifications)
 			attachments := []types.EmailAttachment{}
 
 			var msg types.Email
@@ -662,6 +647,9 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 				msg.Body += template.HTML(fmt.Sprintf("<b>Notice: This email contains notifications for the %s network!</b><br>", utils.Config.Chain.Name))
 			}
 
+			subject := ""
+			notificationTitlesMap := make(map[string]bool)
+			notificationTitles := []string{}
 			for event, ns := range userNotifications {
 				if len(msg.Body) > 0 {
 					msg.Body += "<br>"
@@ -673,6 +661,13 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 				msg.Body += template.HTML(fmt.Sprintf("%s<br>====<br><br>", types.EventLabel[event_title]))
 				unsubURL := "https://" + utils.Config.Frontend.SiteDomain + "/notifications/unsubscribe"
 				for i, n := range ns {
+					// Find all unique notification titles for the subject
+					title := n.GetTitle()
+					if _, ok := notificationTitlesMap[title]; !ok {
+						notificationTitlesMap[title] = true
+						notificationTitles = append(notificationTitles, title)
+					}
+
 					unsubHash := n.GetUnsubscribeHash()
 					if unsubHash == "" {
 						id := n.GetSubscriptionID()
@@ -731,9 +726,18 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 
 					metrics.NotificationsQueued.WithLabelValues("email", string(event)).Inc()
 				}
+
 				if event == "validator_balance_decreased" {
 					msg.Body += template.HTML("<br>You will not receive any further balance decrease mails for these validators until the balance of a validator is increasing again.<br>")
 				}
+			}
+
+			if len(notificationTitles) > 2 {
+				subject = fmt.Sprintf("%s: %s,... and %d other notifications", utils.Config.Frontend.SiteDomain, notificationTitles[0], len(notificationTitles)-1)
+			} else if len(notificationTitles) == 2 {
+				subject = fmt.Sprintf("%s: %s and %s", utils.Config.Frontend.SiteDomain, notificationTitles[0], notificationTitles[1])
+			} else if len(notificationTitles) == 1 {
+				subject = fmt.Sprintf("%s: %s", utils.Config.Frontend.SiteDomain, notificationTitles[0])
 			}
 
 			// msg.Body += template.HTML(fmt.Sprintf("<br>Best regards<br>\n%s", utils.Config.Frontend.SiteDomain))
@@ -884,7 +888,7 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 								},
 							}
 
-							if strings.HasPrefix(string(n.GetEventName()), "monitoring") || n.GetEventName() == types.EthClientUpdateEventName || n.GetEventName() == types.RocketpoolColleteralMaxReached || n.GetEventName() == types.RocketpoolColleteralMinReached {
+							if strings.HasPrefix(string(n.GetEventName()), "monitoring") || n.GetEventName() == types.EthClientUpdateEventName || n.GetEventName() == types.RocketpoolCollateralMaxReached || n.GetEventName() == types.RocketpoolCollateralMinReached {
 								fields = append(fields,
 									types.DiscordEmbedField{
 										Name:   "Target",
@@ -2719,9 +2723,9 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 		return fmt.Sprintf(`The current RPL commission rate of %v has reached your configured threshold.`, n.ExtraData)
 	case types.RocketpoolNewClaimRoundStartedEventName:
 		return `A new reward round has started. You can now claim your rewards from the previous round.`
-	case types.RocketpoolColleteralMaxReached:
+	case types.RocketpoolCollateralMaxReached:
 		return `Your RPL collateral has reached your configured threshold at 150%.`
-	case types.RocketpoolColleteralMinReached:
+	case types.RocketpoolCollateralMinReached:
 		return `Your RPL collateral has reached your configured threshold at 10%.`
 	case types.SyncCommitteeSoon:
 		extras := strings.Split(n.ExtraData, "|")
@@ -2749,9 +2753,9 @@ func (n *rocketpoolNotification) GetTitle() string {
 		return `Rocketpool Commission`
 	case types.RocketpoolNewClaimRoundStartedEventName:
 		return `Rocketpool Claim Available`
-	case types.RocketpoolColleteralMaxReached:
+	case types.RocketpoolCollateralMaxReached:
 		return `Rocketpool Max Collateral`
-	case types.RocketpoolColleteralMinReached:
+	case types.RocketpoolCollateralMinReached:
 		return `Rocketpool Min Collateral`
 	case types.SyncCommitteeSoon:
 		return `Sync Committee Duty`
@@ -2928,13 +2932,13 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 			if threshold == 0 {
 				threshold = 1.0
 			}
-			if eventName == types.RocketpoolColleteralMaxReached {
+			if eventName == types.RocketpoolCollateralMaxReached {
 				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(threshold))) >= 1
 			} else {
 				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMin.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(threshold))) <= -1
 			}
 		} else {
-			if eventName == types.RocketpoolColleteralMaxReached {
+			if eventName == types.RocketpoolCollateralMaxReached {
 				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(sub.EventThreshold*-1))) <= -1
 			} else {
 				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(sub.EventThreshold*-1))) >= -1

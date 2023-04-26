@@ -46,8 +46,8 @@ const (
 	TaxReportEventName                               EventName = "user_tax_report"
 	RocketpoolCommissionThresholdEventName           EventName = "rocketpool_commision_threshold"
 	RocketpoolNewClaimRoundStartedEventName          EventName = "rocketpool_new_claimround"
-	RocketpoolColleteralMinReached                   EventName = "rocketpool_colleteral_min"
-	RocketpoolColleteralMaxReached                   EventName = "rocketpool_colleteral_max"
+	RocketpoolCollateralMinReached                   EventName = "rocketpool_colleteral_min"
+	RocketpoolCollateralMaxReached                   EventName = "rocketpool_colleteral_max"
 	SyncCommitteeSoon                                EventName = "validator_synccommittee_soon"
 )
 
@@ -89,8 +89,8 @@ var EventLabel map[EventName]string = map[EventName]string{
 	TaxReportEventName:                               "You have an available tax report",
 	RocketpoolCommissionThresholdEventName:           "Your configured rocket pool commission threshold is reached",
 	RocketpoolNewClaimRoundStartedEventName:          "Your rocket pool claim round is available",
-	RocketpoolColleteralMinReached:                   "You reached the rocketpool min collateral",
-	RocketpoolColleteralMaxReached:                   "You reached the rocketpool max collateral",
+	RocketpoolCollateralMinReached:                   "You reached the rocketpool min collateral",
+	RocketpoolCollateralMaxReached:                   "You reached the rocketpool max collateral",
 	SyncCommitteeSoon:                                "Your validator(s) will soon be part of the sync committee",
 }
 
@@ -129,8 +129,8 @@ var EventNames = []EventName{
 	TaxReportEventName,
 	RocketpoolCommissionThresholdEventName,
 	RocketpoolNewClaimRoundStartedEventName,
-	RocketpoolColleteralMinReached,
-	RocketpoolColleteralMaxReached,
+	RocketpoolCollateralMinReached,
+	RocketpoolCollateralMaxReached,
 	SyncCommitteeSoon,
 }
 
