@@ -27,6 +27,7 @@ func main() {
 
 	epochStart := flag.Uint64("epoch-start", 0, "start epoch to export")
 	epochEnd := flag.Uint64("epoch-end", 0, "end epoch to export")
+	reExport := flag.Bool("re-export", false, "re export already exported epochs (only in combinations with epochEnd)")
 	sleepDuration := flag.Duration("sleep", time.Minute, "duration to sleep between export runs")
 
 	flag.Parse()
@@ -70,7 +71,11 @@ func main() {
 		start := time.Now()
 		epochsCompleted := int64(0)
 		notExportedEpochs := []uint64{}
-		err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch >= $1 AND epoch <= $2 ORDER BY epoch DESC", *epochStart, *epochEnd)
+		not := "NOT"
+		if *reExport {
+			not = ""
+		}
+		err = db.WriterDb.Select(&notExportedEpochs, fmt.Sprintf("SELECT epoch FROM epochs WHERE finalized AND %v rewards_exported AND epoch >= $1 AND epoch <= $2 ORDER BY epoch DESC", not), *epochStart, *epochEnd)
 		if err != nil {
 			logrus.Fatal(err)
 		}
