@@ -3011,10 +3011,11 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 			if err == utils.ErrRateLimit {
 				logrus.Warnf("Hit rate limit when fetching contract metadata for address %x", address)
 			} else {
-				utils.LogError(err, "Fetching contract metadata", 0, fmt.Sprintf("%x", address))
+				logAdditionalInfo := map[string]interface{}{"address": fmt.Sprintf("%x", address)}
+				utils.LogError(err, "Fetching contract metadata", 0, logAdditionalInfo)
 				err := cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
 				if err != nil {
-					utils.LogError(err, "Caching contract metadata", 0, fmt.Sprintf("%x", address))
+					utils.LogError(err, "Caching contract metadata", 0, logAdditionalInfo)
 				}
 			}
 			return nil, err
@@ -3024,14 +3025,14 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 		if ret == nil {
 			err = cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
 			if err != nil {
-				utils.LogError(err, "Caching contract metadata", 0, fmt.Sprintf("%x", address))
+				utils.LogError(err, "Caching contract metadata", 0, map[string]interface{}{"address": fmt.Sprintf("%x", address)})
 			}
 			return nil, nil
 		}
 
 		err = cache.TieredCache.Set(cacheKey, ret, time.Hour*24)
 		if err != nil {
-			utils.LogError(err, "Caching contract metadata", 0, fmt.Sprintf("%x", address))
+			utils.LogError(err, "Caching contract metadata", 0, map[string]interface{}{"address": fmt.Sprintf("%x", address)})
 		}
 
 		err = bigtable.SaveContractMetadata(address, ret)
