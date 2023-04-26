@@ -3432,7 +3432,7 @@ func (bigtable *Bigtable) SaveSignatureImportStatus(status types.SignatureImport
 	return nil
 }
 
-// Save a list of method signatures
+// Save a list of signatures
 func (bigtable *Bigtable) SaveSignatures(signatures []types.Signature, st types.SignatureType) error {
 
 	mutsWrite := &types.BulkMutations{
@@ -3459,7 +3459,7 @@ func (bigtable *Bigtable) SaveSignatures(signatures []types.Signature, st types.
 	return nil
 }
 
-// get a method signature by it's hex representation
+// get a signature by it's hex representation
 func (bigtable *Bigtable) GetSignature(hex string, st types.SignatureType) (*string, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -3483,7 +3483,7 @@ func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string
 	if len(id) > 0 {
 		if invokesContract {
 			method = fmt.Sprintf("0x%x", id)
-			cacheKey := fmt.Sprintf("METHOD:HASH_TO_LABEL:%s", method)
+			cacheKey := fmt.Sprintf("M:H2L:%s", method)
 			if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
 				sig, err := bigtable.GetSignature(method, types.MethodSignature)
 				if err == nil && sig != nil {
@@ -3498,13 +3498,13 @@ func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string
 	return method
 }
 
-// get a event label for its byte signature with defaults
+// get an event label for its byte signature with defaults
 func (bigtable *Bigtable) GetEventLabel(id []byte) string {
 	label := ""
 	if len(id) > 0 {
 		method := fmt.Sprintf("0x%x", id)
-		cacheKey := fmt.Sprintf("EVENT:HASH_TO_LABEL:%s", method)
-		if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
+		cacheKey := fmt.Sprintf("E:H2L:%s", fmt.Sprintf("0x%x", id))
+		if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &label); err != nil {
 			sig, err := bigtable.GetSignature(method, types.EventSignature)
 			if err == nil && sig != nil {
 				label = *sig

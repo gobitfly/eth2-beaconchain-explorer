@@ -72,7 +72,7 @@ func main() {
 	}
 
 	go ImportSignatures(bt, types.MethodSignature)
-	time.Sleep(time.Second * 2) // we need a little delay, as the api does not like to two requests at the same time
+	time.Sleep(time.Second * 2) // we need a little delay, as the api does not like two requests at the same time
 	go ImportSignatures(bt, types.EventSignature)
 
 	utils.WaitForCtrlC()
