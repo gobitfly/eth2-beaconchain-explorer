@@ -2447,7 +2447,7 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 // @Param endx query int false "End X limit" default(999)
 // @Param endy query int false "End Y limit" default(999)
 // @Param startSlot query string false "Start slot to query (end slot - 10000 if empty)"
-// @Param endSlot query string false "End slot to query"
+// @Param slot query string false "End slot to query"
 // @Param summarize query bool false "Only return end state of each pixel" default(true)
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
@@ -2458,20 +2458,21 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	startSlot := uint64(0)
 	endSlot := uint64(0)
-	if q.Get("endSlot") == "" {
+	if q.Get("slot") == "" {
 		endSlot = services.LatestSlot()
 	} else {
 		var err error
-		endSlot, err = strconv.ParseUint(q.Get("endSlot"), 10, 64)
+		endSlot, err = strconv.ParseUint(q.Get("slot"), 10, 64)
 		if err != nil {
-			logger.WithError(err).Errorf("invalid endSlot provided: %v", err)
-			sendErrorResponse(w, r.URL.String(), "invalid endSlot provided")
+			logger.WithError(err).Errorf("invalid slot provided: %v", err)
+			sendErrorResponse(w, r.URL.String(), "invalid slot provided")
 			return
 		}
 	}
+	endSlot = utilMath.MaxU64(endSlot, 10000)
 
 	if q.Get("startSlot") == "" {
-		startSlot = utilMath.MaxU64(endSlot, 10000) - 10000
+		startSlot = endSlot - 10000
 	} else {
 		var err error
 		startSlot, err = strconv.ParseUint(q.Get("startSlot"), 10, 64)
