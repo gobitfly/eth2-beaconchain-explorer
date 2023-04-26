@@ -1868,7 +1868,7 @@ func GetProposedSlotCountForEpochs(startEpoch, endEpoch uint64) (map[uint64]uint
 	err := db.ReaderDb.Select(&proposedInEpochs, `
 		SELECT epoch, COUNT(*) AS proposed_slots
 		FROM blocks
-		WHERE epoch BETWEEN $1 AND $2 AND status NOT IN ('0', '2')
+		WHERE epoch BETWEEN $1 AND $2 AND status = '1'
 		GROUP BY epoch
 	`, startEpoch, endEpoch)
 	if err != nil {
