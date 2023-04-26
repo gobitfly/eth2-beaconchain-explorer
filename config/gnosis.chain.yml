@@ -1,5 +1,31 @@
-CONFIG_NAME: gnosis
-PRESET_BASE: mainnet
+# Gnosis config
+
+# Extends the mainnet preset
+PRESET_BASE: 'mainnet'
+
+# Free-form short name of the network that this configuration applies to - known
+# canonical network names include:
+# * 'mainnet' - there can be only one
+# * 'prater' - testnet
+# Must match the regex: [a-z0-9\-]
+CONFIG_NAME: 'gnosis'
+
+
+# Forking
+# ---------------------------------------------------------------
+# Some forks are disabled for now:
+#  - These may be re-assigned to another fork-version later
+#  - Temporarily set to max uint64 value: 2**64 - 1
+
+# Altair
+ALTAIR_FORK_VERSION: 0x01000064
+ALTAIR_FORK_EPOCH: 512
+# Bellatrix
+BELLATRIX_FORK_VERSION: 0x02000064
+BELLATRIX_FORK_EPOCH: 18446744073709551615
+# Capella
+CAPELLA_FORK_EPOCH: 18446744073709551615
+
 
 # Misc
 # ---------------------------------------------------------------
@@ -139,12 +165,6 @@ DOMAIN_AGGREGATE_AND_PROOF: 0x06000000
 DOMAIN_SYNC_COMMITTEE: 0x07000000
 DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF: 0x08000000
 DOMAIN_CONTRIBUTION_AND_PROOF: 0x09000000
-
-ALTAIR_FORK_VERSION: 0x01000064
-ALTAIR_FORK_EPOCH: 512
-
-BELLATRIX_FORK_VERSION: 0x02000064
-BELLATRIX_FORK_EPOCH: 18446744073709551615
 
 INACTIVITY_SCORE_BIAS: 4
 # 2**4 (= 16)
