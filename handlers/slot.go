@@ -713,12 +713,13 @@ func BlockTransactionsData(w http.ResponseWriter, r *http.Request) {
 
 	data := make([]*transactionsData, len(transactions.Txs))
 	for i, v := range transactions.Txs {
-		if len(v.Method) == 0 {
-			v.Method = "Transfer"
+		methodFormatted := `<span class="badge badge-light">Transfer</span>`
+		if len(v.Method) > 0 && v.Method != "Transfer" {
+			methodFormatted = fmt.Sprintf(`<span class="badge badge-light text-truncate mw-100" data-toggle="tooltip" title="%v"{>%v</span>`, v.Method, v.Method)
 		}
 		data[i] = &transactionsData{
 			HashFormatted: v.HashFormatted,
-			Method:        `<span class="badge badge-light">` + v.Method + `</span>`,
+			Method:        methodFormatted,
 			FromFormatted: v.FromFormatted,
 			ToFormatted:   v.ToFormatted,
 			Value:         utils.FormatAmountFormatted(v.Value, "Ether", 5, 0, true, true, false),
