@@ -71,19 +71,24 @@ func main() {
 		return
 	}
 
-	go ImportMethodSignatures(bt)
+	go ImportSignatures(bt, types.MethodSignature)
+	time.Sleep(time.Second * 2) // we need a little delay, as the api does not like to two requests at the same time
+	go ImportSignatures(bt, types.EventSignature)
 
 	utils.WaitForCtrlC()
 }
 
-func ImportMethodSignatures(bt *db.Bigtable) {
+func ImportSignatures(bt *db.Bigtable, st types.SignatureType) {
 
 	// Per default we start with the latest signatures (first page = latest signatures)
-	const firstPage = "https://www.4byte.directory/api/v1/signatures/"
+	firstPage := "https://www.4byte.directory/api/v1/signatures/"
+	if st == types.EventSignature {
+		firstPage = "https://www.4byte.directory/api/v1/event-signatures/"
+	}
 	page := firstPage
-	status, err := bt.GetMethodSignatureImportStatus()
+	status, err := bt.GetSignatureImportStatus(st)
 	if err != nil {
-		logrus.Errorf("error getting signature import status from bigtable: %v", err)
+		logrus.Errorf("error getting %v signature import status from bigtable: %v", st, err)
 		return
 	}
 	isFirst := true
@@ -99,17 +104,17 @@ func ImportMethodSignatures(bt *db.Bigtable) {
 	if status.LatestTimestamp != nil {
 		latestTimestamp, _ = time.Parse(time.RFC3339, *status.LatestTimestamp)
 	}
-	sleepTime := time.Second * 2
+	sleepTime := time.Second * 4
 
 	for ; ; time.Sleep(sleepTime) { // timout needed due to rate limit
-		sleepTime = time.Second * 2
+		sleepTime = time.Second * 4
 		logrus.Infof("Get signatures for: %v", page)
 		start := time.Now()
 		next, sigs, err := GetNextSignatures(bt, page, *status)
 
 		if err != nil {
-			metrics.Errors.WithLabelValues("method_signatures_get_signatures_failed").Inc()
-			logrus.Errorf("error getting signature: %v", err)
+			metrics.Errors.WithLabelValues(fmt.Sprintf("%v_signatures_get_signatures_failed", st)).Inc()
+			logrus.Errorf("error getting %v signature: %v", st, err)
 			sleepTime = time.Minute
 			continue
 		}
@@ -118,7 +123,7 @@ func ImportMethodSignatures(bt *db.Bigtable) {
 		if status.LatestTimestamp != nil && status.HasFinished {
 			createdAt, _ := time.Parse(time.RFC3339, *status.LatestTimestamp)
 			if createdAt.UnixNano() <= latestTimestamp.UnixMilli() {
-				logrus.Info("Our Signature Data is up to date")
+				logrus.Infof("Our %v signature data is up to date", st)
 				sleepTime = time.Hour
 				isFirst = true
 				page = firstPage
@@ -126,10 +131,10 @@ func ImportMethodSignatures(bt *db.Bigtable) {
 			}
 		}
 
-		err = db.BigtableClient.SaveMethodSignatures(sigs)
+		err = db.BigtableClient.SaveSignatures(sigs, st)
 		if err != nil {
-			metrics.Errors.WithLabelValues("method_signatures_save_to_bt_failed").Inc()
-			logrus.Errorf("error saving signatures into bigtable: %v", err)
+			metrics.Errors.WithLabelValues(fmt.Sprintf("%v_signatures_save_to_bt_failed", st)).Inc()
+			logrus.Errorf("error saving %v signatures into bigtable: %v", st, err)
 			sleepTime = time.Minute
 			continue
 		}
@@ -150,20 +155,20 @@ func ImportMethodSignatures(bt *db.Bigtable) {
 			page = *next
 		}
 		if status != nil && (status.HasFinished || status.NextPage != nil) {
-			logrus.Infof("Save Sig ts: %v next: %v", *status.LatestTimestamp, *status.NextPage)
-			err = bt.SaveMethodSignatureImportStatus(*status)
+			logrus.Infof("Save %v Sig ts: %v next: %v", st, *status.LatestTimestamp, *status.NextPage)
+			err = bt.SaveSignatureImportStatus(*status, st)
 			if err != nil {
-				metrics.Errors.WithLabelValues("method_signatures_save_status_to_bt_failed").Inc()
-				logrus.Errorf("error saving signature status into bigtable: %v", err)
+				metrics.Errors.WithLabelValues(fmt.Sprintf("%v_signatures_save_status_to_bt_failed", st)).Inc()
+				logrus.Errorf("error saving %v signature status into bigtable: %v", st, err)
 				sleepTime = time.Minute
 			}
 		}
-		metrics.TaskDuration.WithLabelValues("method_signatures_page_imported").Observe(time.Since(start).Seconds())
-		services.ReportStatus("signatures", "Running", nil)
+		metrics.TaskDuration.WithLabelValues(fmt.Sprintf("%v_signatures_page_imported", st)).Observe(time.Since(start).Seconds())
+		services.ReportStatus(fmt.Sprintf("%v_signatures", st), "Running", nil)
 	}
 }
 
-func GetNextSignatures(bt *db.Bigtable, page string, status types.MethodSignatureImportStatus) (*string, []types.MethodSignature, error) {
+func GetNextSignatures(bt *db.Bigtable, page string, status types.SignatureImportStatus) (*string, []types.Signature, error) {
 
 	httpClient := &http.Client{Timeout: time.Second * 10}
 
@@ -182,8 +187,8 @@ func GetNextSignatures(bt *db.Bigtable, page string, status types.MethodSignatur
 	}
 
 	type signatureResponse struct {
-		Results []types.MethodSignature `json:"results"`
-		Next    *string                 `json:"next"`
+		Results []types.Signature `json:"results"`
+		Next    *string           `json:"next"`
 	}
 
 	respParsed := &signatureResponse{}

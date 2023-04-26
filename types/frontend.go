@@ -561,13 +561,20 @@ type SyncCommitteesStats struct {
 	ScheduledSlots    uint64 `json:"scheduledSlots"`
 }
 
-type MethodSignatureImportStatus struct {
+type SignatureType string
+
+const (
+	MethodSignature SignatureType = "method"
+	EventSignature  SignatureType = "event"
+)
+
+type SignatureImportStatus struct {
 	LatestTimestamp *string `json:"latestTimestamp"`
 	NextPage        *string `json:"nextPage"`
 	HasFinished     bool    `json:"hasFinished"`
 }
 
-type MethodSignature struct {
+type Signature struct {
 	Id        int64  `json:"id"`
 	CreatedAt string `json:"created_at"`
 	Text      string `json:"text_signature"`

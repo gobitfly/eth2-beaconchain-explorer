@@ -3371,17 +3371,24 @@ func (bigtable *Bigtable) SearchForAddress(addressPrefix []byte, limit int) ([]*
 	return data, nil
 }
 
+func getSignaturePrefix(st types.SignatureType) string {
+	if st == types.EventSignature {
+		return "e"
+	}
+	return "m"
+}
+
 // Get the status of the last signature import run
-func (bigtable *Bigtable) GetMethodSignatureImportStatus() (*types.MethodSignatureImportStatus, error) {
+func (bigtable *Bigtable) GetSignatureImportStatus(st types.SignatureType) (*types.SignatureImportStatus, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
-	key := "1:M_SIGNATURE_IMPORT_STATUS"
+	key := fmt.Sprintf("1:%v_SIGNATURE_IMPORT_STATUS", getSignaturePrefix(st))
 	row, err := bigtable.tableData.ReadRow(ctx, key)
 	if err != nil {
 		logrus.Errorf("error reading signature imoprt status row %v: %v", row.Key(), err)
 		return nil, err
 	}
-	s := &types.MethodSignatureImportStatus{}
+	s := &types.SignatureImportStatus{}
 	if row == nil {
 		return s, nil
 	}
@@ -3396,7 +3403,7 @@ func (bigtable *Bigtable) GetMethodSignatureImportStatus() (*types.MethodSignatu
 }
 
 // Save the status of the last signature import run
-func (bigtable *Bigtable) SaveMethodSignatureImportStatus(status types.MethodSignatureImportStatus) error {
+func (bigtable *Bigtable) SaveSignatureImportStatus(status types.SignatureImportStatus, st types.SignatureType) error {
 
 	mutsWrite := &types.BulkMutations{
 		Keys: make([]string, 0, 1),
@@ -3411,7 +3418,7 @@ func (bigtable *Bigtable) SaveMethodSignatureImportStatus(status types.MethodSig
 	mut := gcp_bigtable.NewMutation()
 	mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), s)
 
-	key := "1:M_SIGNATURE_IMPORT_STATUS"
+	key := fmt.Sprintf("1:%v_SIGNATURE_IMPORT_STATUS", getSignaturePrefix(st))
 
 	mutsWrite.Keys = append(mutsWrite.Keys, key)
 	mutsWrite.Muts = append(mutsWrite.Muts, mut)
@@ -3426,7 +3433,7 @@ func (bigtable *Bigtable) SaveMethodSignatureImportStatus(status types.MethodSig
 }
 
 // Save a list of method signatures
-func (bigtable *Bigtable) SaveMethodSignatures(signatures []types.MethodSignature) error {
+func (bigtable *Bigtable) SaveSignatures(signatures []types.Signature, st types.SignatureType) error {
 
 	mutsWrite := &types.BulkMutations{
 		Keys: make([]string, 0, 1),
@@ -3437,7 +3444,7 @@ func (bigtable *Bigtable) SaveMethodSignatures(signatures []types.MethodSignatur
 		mut := gcp_bigtable.NewMutation()
 		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), []byte(sig.Text))
 
-		key := fmt.Sprintf("1:M_SIGNATURE:%v", sig.Hex)
+		key := fmt.Sprintf("1:%v_SIGNATURE:%v", getSignaturePrefix(st), sig.Hex)
 
 		mutsWrite.Keys = append(mutsWrite.Keys, key)
 		mutsWrite.Muts = append(mutsWrite.Muts, mut)
@@ -3453,10 +3460,10 @@ func (bigtable *Bigtable) SaveMethodSignatures(signatures []types.MethodSignatur
 }
 
 // get a method signature by it's hex representation
-func (bigtable *Bigtable) GetMethodSignature(hex string) (*string, error) {
+func (bigtable *Bigtable) GetSignature(hex string, st types.SignatureType) (*string, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
-	key := fmt.Sprintf("1:M_SIGNATURE:%v", hex)
+	key := fmt.Sprintf("1:%v_SIGNATURE:%v", getSignaturePrefix(st), hex)
 	row, err := bigtable.tableData.ReadRow(ctx, key)
 	if err != nil {
 		logrus.Errorf("error reading signature imoprt status row %v: %v", row.Key(), err)
@@ -3478,7 +3485,7 @@ func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string
 			method = fmt.Sprintf("0x%x", id)
 			cacheKey := fmt.Sprintf("METHOD:HASH_TO_LABEL:%s", method)
 			if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
-				sig, err := bigtable.GetMethodSignature(method)
+				sig, err := bigtable.GetSignature(method, types.MethodSignature)
 				if err == nil && sig != nil {
 					method = *sig
 				}
@@ -3489,6 +3496,23 @@ func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string
 		}
 	}
 	return method
+}
+
+// get a event label for its byte signature with defaults
+func (bigtable *Bigtable) GetEventLabel(id []byte) string {
+	label := ""
+	if len(id) > 0 {
+		method := fmt.Sprintf("0x%x", id)
+		cacheKey := fmt.Sprintf("EVENT:HASH_TO_LABEL:%s", method)
+		if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
+			sig, err := bigtable.GetSignature(method, types.EventSignature)
+			if err == nil && sig != nil {
+				label = *sig
+			}
+			cache.TieredCache.Set(cacheKey, method, time.Hour)
+		}
+	}
+	return label
 }
 
 func prefixSuccessor(prefix string, pos int) string {
