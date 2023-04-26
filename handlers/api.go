@@ -2522,7 +2522,7 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 		validator
 	FROM graffitiwall
 	WHERE slot BETWEEN $1 AND $2 AND x BETWEEN $3 AND $4 AND y BETWEEN $5 AND $6
-	ORDER BY x, y, slot desc`, startSlot, endSlot, startX, endX, startY, endY)
+	ORDER BY x, y, slot DESC`, startSlot, endSlot, startX, endX, startY, endY)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")

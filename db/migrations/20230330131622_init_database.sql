@@ -470,15 +470,13 @@ CREATE TABLE IF NOT EXISTS
 
 CREATE TABLE IF NOT EXISTS
     graffitiwall (
-        slot INT NOT NULL,
         x INT NOT NULL,
         y INT NOT NULL,
         color TEXT NOT NULL,
+        slot INT NOT NULL,
         VALIDATOR INT NOT NULL,
-        PRIMARY KEY (slot)
+        PRIMARY KEY (x, y)
     );
-
-CREATE INDEX IF NOT EXISTS idx_graffitiwall_coordinates ON graffitiwall (x, y);
 
 CREATE TABLE IF NOT EXISTS
     eth1_deposits (
