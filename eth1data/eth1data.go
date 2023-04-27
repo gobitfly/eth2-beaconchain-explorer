@@ -167,11 +167,14 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 				cmEntry.meta, cmEntry.err = db.BigtableClient.GetContractMetadata(log.Address.Bytes())
 				contractMetadataCache[log.Address] = cmEntry
 			}
-
 			if cmEntry.err != nil || cmEntry.meta == nil || cmEntry.meta.ABI == nil {
+				name := ""
+				if len(log.Topics) > 0 {
+					name = db.BigtableClient.GetEventLabel(log.Topics[0][:])
+				}
 				eth1Event := &types.Eth1EventData{
 					Address: log.Address,
-					Name:    "",
+					Name:    name,
 					Topics:  log.Topics,
 					Data:    log.Data,
 				}
