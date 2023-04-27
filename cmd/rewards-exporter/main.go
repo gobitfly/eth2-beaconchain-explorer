@@ -23,7 +23,7 @@ func main() {
 	bnAddress := flag.String("beacon-node-address", "", "Url of the beacon node api")
 	enAddress := flag.String("execution-node-address", "", "Url of the execution node api")
 	epoch := flag.Int64("epoch", -1, "epoch to export (use -1 to export latest finalized epoch)")
-	batchConcurrency := flag.Int("batch-concurrency", -1, "epoch to export at the same time (only for historic)")
+	batchConcurrency := flag.Int("batch-concurrency", 5, "epoch to export at the same time (only for historic)")
 
 	epochStart := flag.Uint64("epoch-start", 0, "start epoch to export")
 	epochEnd := flag.Uint64("epoch-end", 0, "end epoch to export")
