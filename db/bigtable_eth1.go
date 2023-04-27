@@ -3509,7 +3509,7 @@ func (bigtable *Bigtable) GetEventLabel(id []byte) string {
 		if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &label); err != nil {
 			sig, err := bigtable.GetSignature(event, types.EventSignature)
 			if err == nil && sig != nil {
-				if sig == nil {
+				if sig != nil {
 					label = *sig
 				}
 				cache.TieredCache.Set(cacheKey, label, time.Hour)
