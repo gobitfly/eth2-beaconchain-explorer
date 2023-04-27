@@ -415,7 +415,7 @@ $(document).ready(function () {
       clearSearch.empty().append(copyIcon)
     }, 500)
   })
-
+  $.fn.DataTable.ext.pager.numbers_length = 5
   var validatorsDataTable = (window.vdt = $("#validators").DataTable({
     processing: true,
     serverSide: false,
@@ -428,6 +428,10 @@ $(document).ready(function () {
     language: {
       search: "",
       searchPlaceholder: "Search...",
+      paginate: {
+        previous: '<i class="fas fa-chevron-left"></i>',
+        next: '<i class="fas fa-chevron-right"></i>',
+      },
     },
     preDrawCallback: function () {
       // this does not always work.. not sure how to solve the staying tooltip
