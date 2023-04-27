@@ -17,7 +17,7 @@
       </div>
       <div class="validator__lifecycle-progress validator__lifecycle-deposited text-white">
         <div class="validator__lifecycle-progress-epoch">
-          {{ if not $deposited }}<div data-toggle="tooltip" title="The eligible epoch is when your validator is registered by the beacon chain and joins the queue to be activated."><a href="/epoch/{{ .ActivationEligibilityEpoch }}">{{ if eq .ActivationEligibilityEpoch 0 }}genesis{{ else }}{{ .ActivationEligibilityEpoch }}{{ end }}</a></div>{{ end }}
+          {{ if and (not $deposited) ( ne .ActivationEligibilityEpoch 9223372036854775807) }}<div data-toggle="tooltip" data-html="true" title="<span>The eligible epoch is when your validator is registered by the beacon chain and joins the queue to be activated.</span><br><span aria-ethereum-date='{{ .ActivationEligibilityTs.Unix }}'></span>"><a href="/epoch/{{ .ActivationEligibilityEpoch }}">{{ if eq .ActivationEligibilityEpoch 0 }}genesis{{ else }}{{ .ActivationEligibilityEpoch }}{{ end }}</a></div>{{ end }}
         </div>
       </div>
       <div id="lifecycle-pending" class="validator__lifecycle-node-container validator__lifecycle-pending">
@@ -35,7 +35,11 @@
       </div>
       <div class="validator__lifecycle-progress validator__lifecycle-pending">
         <div class="validator__lifecycle-progress-epoch">
-          {{ if not $deposited }}<div data-toggle="tooltip" title="The activation epoch is when your validator becomes active.">{{ if ne .ActivationEpoch 9223372036854775807 }}<a href="/epoch/{{ .ActivationEpoch }}">{{ if eq .ActivationEpoch 0 }}genesis{{ else }}{{ .ActivationEpoch }}{{ end }}</a>{{ end }}</div>{{ end }}
+          {{ if and (not $deposited) (ne .ActivationEpoch 9223372036854775807) }}
+            <div data-toggle="tooltip" data-html="true" title="<span>The activation epoch is when your validator becomes active.</span><br><span aria-ethereum-date='{{ .ActivationTs.Unix }}'></span> ">
+              <a href="/epoch/{{ .ActivationEpoch }}">{{ if eq .ActivationEpoch 0 }}genesis{{ else }}{{ .ActivationEpoch }}{{ end }}</a>
+            </div>
+          {{ end }}
         </div>
       </div>
       <div id="lifecycle-active" class="validator__lifecycle-node-container validator__lifecycle-active">
@@ -54,7 +58,7 @@
       </div>
       <div class="validator__lifecycle-progress validator__lifecycle-active">
         <div class="validator__lifecycle-progress-epoch">
-          {{ if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0)) }}<div data-toggle="tooltip" title="The exit epoch is when your validator will leave the network"><a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a></div>{{ end }}
+          {{ if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0)) }}<div data-toggle="tooltip" data-html="true" title="<span>The exit epoch is when your validator will leave the network</span><br><span aria-ethereum-date='{{ .ExitTs.Unix }}'></span>"><a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a></div>{{ end }}
         </div>
       </div>
       <div id="lifecycle-exited" class="validator__lifecycle-node-container validator__lifecycle-exited">
@@ -231,7 +235,20 @@
       <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments (Executed: {{ .ExecutedAttestationsCount }}, Missed: {{ .MissedAttestationsCount }}, Orphaned: {{ .OrphanedAttestationsCount }})"><i class="fas fa-file-signature"></i> {{ .AttestationsCount }}{{ if ne .AttestationsCount 0 }}({{ formatPercentageColoredEmoji .UnmissedAttestationsPercentage }}){{ end }}</span>
     </div>
     <div class="mx-3">
-      <span id="syncCount" style="cursor: pointer;" data-toggle="tooltip" title="Sync Participations (Participated: {{ .ParticipatedSyncCount }}, Missed: {{ .MissedSyncCount }}, Orphaned: {{ .OrphanedSyncCount }}, Scheduled: {{ .ScheduledSyncCount }})"><i class="fas fa-sync poin"></i> {{ .SyncCount }}{{ if ne .SyncCount 0 }}({{ formatPercentageColoredEmoji .UnmissedSyncPercentage }}){{ end }}</span>
+      <span id="syncCount" style="cursor: pointer;" data-toggle="tooltip" title="Sync Participations (Participated: {{ .ParticipatedSyncCountSlots }}, Missed: {{ .MissedSyncCountSlots }}, Orphaned: {{ .OrphanedSyncCountSlots }}, Scheduled: {{ .ScheduledSyncCountSlots }})">
+        {{ if .ScheduledSyncCountSlots }}
+          <i class="fas fa-sync poin spin"></i>
+        {{ else }}
+          <i class="fas fa-sync poin"></i>
+        {{ end }}
+        {{ .SyncCount }}
+        {{ if .SyncCount }}
+          ({{ formatPercentageColoredEmoji .UnmissedSyncPercentage }})
+          {{ if .ScheduledSyncCountSlots }}
+            {{ .SlotsDoneInCurrentSyncCommittee }}/{{ .SlotsPerSyncCommittee }}
+          {{ end }}
+        {{ end }}
+      </span>
     </div>
     <div class="mx-3">
       <span id="slashingsCount" style="cursor: pointer;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash"></i> {{ .SlashingsCount }}</span>

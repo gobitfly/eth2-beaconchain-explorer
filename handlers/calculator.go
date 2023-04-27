@@ -4,6 +4,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"net/http"
 )
 
@@ -22,6 +23,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	calculatorPageData.TotalStaked = total
+	calculatorPageData.EtherscanApiBaseUrl = utils.GetEtherscanAPIBaseUrl(true)
 
 	w.Header().Set("Content-Type", "text/html")
 

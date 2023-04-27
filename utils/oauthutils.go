@@ -122,7 +122,7 @@ func accessTokenGetClaims(tokenStringFull string, validate bool) (*CustomClaims,
 	})
 
 	if err != nil && validate {
-		if !strings.Contains(err.Error(), "token is expired") {
+		if !strings.Contains(err.Error(), "token is expired") && token != nil {
 			logger.WithFields(
 				logrus.Fields{
 					"error":       err,
@@ -209,7 +209,6 @@ func GetAuthorizationClaims(r *http.Request) *CustomClaims {
 
 	claims, err := ValidateAccessTokenGetClaims(accessToken)
 	if err != nil {
-		logger.Warnf("ValidateAccessTokenGetClaims failed") // #REMOVE just for test purpose, can be removed after testing
 		return nil
 	}
 	return claims

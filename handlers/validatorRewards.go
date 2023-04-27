@@ -111,7 +111,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	validatorArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.Errorf("error retrieving active validators %v", err)
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -152,7 +152,7 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	validatorArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.Errorf("error retrieving active validators %v", err)
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -226,7 +226,8 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	_, err = parseValidatorsFromQueryString(validatorArr, validatorLimit)
 	if err != nil {
-		http.Error(w, "Invalid query, Invalid Validators", 400)
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		http.Error(w, "Invalid query", 400)
 		return
 	}
 

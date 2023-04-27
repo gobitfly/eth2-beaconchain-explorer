@@ -1,4 +1,9 @@
 {{ define "execution_transactions" }}
+  <style>
+    #transactions_table td {
+      max-width: 200px;
+    }
+  </style>
   <div class="row p-1 mx-0">
     <div class="col-md-12 text-center"><b>Showing {{ .TxCount }} Transactions </b></div>
   </div>
@@ -17,7 +22,7 @@
         {{ range .Txs }}
           <tr class="border-bottom">
             <td class="border-0">{{ .HashFormatted }}</td>
-            <td class="border-0"><span class="badge badge-light">{{ if gt (len .Method ) 0 }}{{ .Method }}{{ else }}Transfer{{ end }}</span></td>
+            <td class="border-0" {{ if gt (len .Method ) 0 }}data-toggle="tooltip" title="{{ .Method }}"{{ end }}><span class="badge badge-light text-truncate mw-100">{{ if gt (len .Method ) 0 }}{{ .Method }}{{ else }}Transfer{{ end }}</span></td>
             <td class="border-0">{{ .FromFormatted }}</td>
             <td class="border-0">{{ .ToFormatted }}</td>
             <td class="border-0">{{ formatAmountFormatted .Value "Ether" 5 0 true true false }}</td>

@@ -36,13 +36,11 @@ func FormatMessageToHtml(message string) template.HTML {
 // FormatSyncParticipationStatus will return a user-friendly format for an sync-participation-status number
 func FormatSyncParticipationStatus(status uint64) template.HTML {
 	if status == 0 {
-		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Scheduled</span>`
+		return `<span class="badge badge-pill bg-danger text-white" style="font-size: 12px; font-weight: 500;">Missed</span>`
 	} else if status == 1 {
 		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Participated</span>`
 	} else if status == 2 {
-		return `<span class="badge badge-pill bg-danger text-white" style="font-size: 12px; font-weight: 500;">Missed</span>`
-	} else if status == 3 {
-		return `<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">No Block</span>`
+		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Scheduled</span>`
 	} else {
 		return "Unknown"
 	}
@@ -471,16 +469,21 @@ func FormatGraffitiAsLink(graffiti []byte) template.HTML {
 // hash is required, trunc is optional.
 // Only the first value in trunc_opt will be used.
 func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
-	trunc := true
-	if len(trunc_opt) > 0 {
-		trunc = trunc_opt[0]
-	}
+	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%s</span>", FormatHashRaw(hash, trunc_opt...)))
+}
 
-	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
-	if len(hash) > 3 && trunc {
-		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…%x</span>", hash[:2], hash[len(hash)-2:]))
+// FormatHashRaw will return a hash formated
+// hash is required, trunc is optional.
+// Only the first value in trunc_opt will be used.
+func FormatHashRaw(hash []byte, trunc_opt ...bool) string {
+	s := fmt.Sprintf("%#x", hash)
+	if len(s) == 42 { // if it's an address, we checksum it (0x + 40)
+		s = common.BytesToAddress(hash).Hex()
 	}
-	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
+	if len(s) >= 10 && (len(trunc_opt) < 1 || trunc_opt[0]) {
+		return fmt.Sprintf("%s…%s", s[:6], s[len(s)-4:])
+	}
+	return s
 }
 
 // WithdrawalCredentialsToAddress converts withdrawalCredentials to an address if possible
@@ -688,7 +691,7 @@ func FormatIncomeClElInt64(income types.ClElInt64, currency string) template.HTM
 			<b>%s %s</b>
 		</span>`, className, FormatExchangedAmount(income.Cl, currency), FormatExchangedAmount(income.El, currency), incomeTrimmed, currency))
 	} else {
-		return template.HTML(fmt.Sprintf(`<span>%s%s</span>`, incomeTrimmed, currency))
+		return template.HTML(fmt.Sprintf(`<span>%s %s</span>`, incomeTrimmed, currency))
 	}
 }
 

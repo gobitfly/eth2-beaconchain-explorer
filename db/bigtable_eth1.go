@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"eth2-exporter/cache"
 	"eth2-exporter/erc1155"
@@ -1832,15 +1833,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
 		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
 
-		method := "Transfer"
-		if len(t.MethodId) > 0 {
-
-			if t.InvokesContract {
-				method = fmt.Sprintf("0x%x", t.MethodId)
-			} else {
-				method = "Transfer*"
-			}
-		}
+		method := bigtable.GetMethodLabel(t.MethodId, t.InvokesContract)
 		// logger.Infof("hash: %x amount: %s", t.Hash, new(big.Int).SetBytes(t.Value))
 
 		tableData[i] = []interface{}{
@@ -3018,10 +3011,11 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 			if err == utils.ErrRateLimit {
 				logrus.Warnf("Hit rate limit when fetching contract metadata for address %x", address)
 			} else {
-				utils.LogError(err, "Fetching contract metadata", 0, fmt.Sprintf("%x", address))
+				logAdditionalInfo := map[string]interface{}{"address": fmt.Sprintf("%x", address)}
+				utils.LogError(err, "Fetching contract metadata", 0, logAdditionalInfo)
 				err := cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
 				if err != nil {
-					utils.LogError(err, "Caching contract metadata", 0, fmt.Sprintf("%x", address))
+					utils.LogError(err, "Caching contract metadata", 0, logAdditionalInfo)
 				}
 			}
 			return nil, err
@@ -3031,14 +3025,14 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 		if ret == nil {
 			err = cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
 			if err != nil {
-				utils.LogError(err, "Caching contract metadata", 0, fmt.Sprintf("%x", address))
+				utils.LogError(err, "Caching contract metadata", 0, map[string]interface{}{"address": fmt.Sprintf("%x", address)})
 			}
 			return nil, nil
 		}
 
 		err = cache.TieredCache.Set(cacheKey, ret, time.Hour*24)
 		if err != nil {
-			utils.LogError(err, "Caching contract metadata", 0, fmt.Sprintf("%x", address))
+			utils.LogError(err, "Caching contract metadata", 0, map[string]interface{}{"address": fmt.Sprintf("%x", address)})
 		}
 
 		err = bigtable.SaveContractMetadata(address, ret)
@@ -3376,6 +3370,154 @@ func (bigtable *Bigtable) SearchForAddress(addressPrefix []byte, limit int) ([]*
 	}
 
 	return data, nil
+}
+
+func getSignaturePrefix(st types.SignatureType) string {
+	if st == types.EventSignature {
+		return "e"
+	}
+	return "m"
+}
+
+// Get the status of the last signature import run
+func (bigtable *Bigtable) GetSignatureImportStatus(st types.SignatureType) (*types.SignatureImportStatus, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+	key := fmt.Sprintf("1:%v_SIGNATURE_IMPORT_STATUS", getSignaturePrefix(st))
+	row, err := bigtable.tableData.ReadRow(ctx, key)
+	if err != nil {
+		logrus.Errorf("error reading signature imoprt status row %v: %v", row.Key(), err)
+		return nil, err
+	}
+	s := &types.SignatureImportStatus{}
+	if row == nil {
+		return s, nil
+	}
+	row_ := row[DEFAULT_FAMILY][0]
+	err = json.Unmarshal(row_.Value, s)
+	if err != nil {
+		logrus.Errorf("error unmarshalling signature import status for row %v: %v", row.Key(), err)
+		return nil, err
+	}
+
+	return s, nil
+}
+
+// Save the status of the last signature import run
+func (bigtable *Bigtable) SaveSignatureImportStatus(status types.SignatureImportStatus, st types.SignatureType) error {
+
+	mutsWrite := &types.BulkMutations{
+		Keys: make([]string, 0, 1),
+		Muts: make([]*gcp_bigtable.Mutation, 0, 1),
+	}
+
+	s, err := json.Marshal(status)
+	if err != nil {
+		return err
+	}
+
+	mut := gcp_bigtable.NewMutation()
+	mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), s)
+
+	key := fmt.Sprintf("1:%v_SIGNATURE_IMPORT_STATUS", getSignaturePrefix(st))
+
+	mutsWrite.Keys = append(mutsWrite.Keys, key)
+	mutsWrite.Muts = append(mutsWrite.Muts, mut)
+
+	err = bigtable.WriteBulk(mutsWrite, bigtable.tableData)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Save a list of signatures
+func (bigtable *Bigtable) SaveSignatures(signatures []types.Signature, st types.SignatureType) error {
+
+	mutsWrite := &types.BulkMutations{
+		Keys: make([]string, 0, 1),
+		Muts: make([]*gcp_bigtable.Mutation, 0, 1),
+	}
+
+	for _, sig := range signatures {
+		mut := gcp_bigtable.NewMutation()
+		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), []byte(sig.Text))
+
+		key := fmt.Sprintf("1:%v_SIGNATURE:%v", getSignaturePrefix(st), sig.Hex)
+
+		mutsWrite.Keys = append(mutsWrite.Keys, key)
+		mutsWrite.Muts = append(mutsWrite.Muts, mut)
+	}
+
+	err := bigtable.WriteBulk(mutsWrite, bigtable.tableData)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// get a signature by it's hex representation
+func (bigtable *Bigtable) GetSignature(hex string, st types.SignatureType) (*string, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+	key := fmt.Sprintf("1:%v_SIGNATURE:%v", getSignaturePrefix(st), hex)
+	row, err := bigtable.tableData.ReadRow(ctx, key)
+	if err != nil {
+		logrus.Errorf("error reading signature imoprt status row %v: %v", row.Key(), err)
+		return nil, err
+	}
+	if row == nil {
+		return nil, nil
+	}
+	row_ := row[DEFAULT_FAMILY][0]
+	s := string(row_.Value)
+	return &s, nil
+}
+
+// get a method label for its byte signature with defaults
+func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string {
+	method := "Transfer"
+	if len(id) > 0 {
+		if invokesContract {
+			method = fmt.Sprintf("0x%x", id)
+			cacheKey := fmt.Sprintf("M:H2L:%s", method)
+			if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
+				sig, err := bigtable.GetSignature(method, types.MethodSignature)
+				if err == nil {
+					if sig != nil {
+						method = *sig
+					}
+					cache.TieredCache.Set(cacheKey, method, time.Hour)
+				}
+			}
+		} else {
+			method = "Transfer*"
+		}
+	}
+	return method
+}
+
+// get an event label for its byte signature with defaults
+func (bigtable *Bigtable) GetEventLabel(id []byte) string {
+	label := ""
+	if len(id) > 0 {
+		event := fmt.Sprintf("0x%x", id)
+		cacheKey := fmt.Sprintf("E:H2L:%s", event)
+		if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &label); err != nil {
+			sig, err := bigtable.GetSignature(event, types.EventSignature)
+			if err == nil {
+				if sig != nil {
+					label = *sig
+				}
+				cache.TieredCache.Set(cacheKey, label, time.Hour)
+			}
+		}
+	}
+	return label
 }
 
 func prefixSuccessor(prefix string, pos int) string {

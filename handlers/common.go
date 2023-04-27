@@ -42,17 +42,11 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
 func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
 	validatorsPQArray := pq.Array(validators)
-	latestEpoch := int64(services.LatestFinalizedEpoch())
+	latestFinalizedEpoch := services.LatestFinalizedEpoch()
 
-	balances := []*types.Validator{}
+	balancesMap := make(map[uint64]*types.Validator, 0)
 
-	balancesMap := make(map[uint64]*types.Validator, len(balances))
-
-	for _, balance := range balances {
-		balancesMap[balance.Index] = balance
-	}
-
-	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, uint64(latestEpoch), uint64(latestEpoch))
+	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, latestFinalizedEpoch, latestFinalizedEpoch)
 	if err != nil {
 		logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
 		return nil, nil, err
@@ -74,17 +68,18 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 
 	var income struct {
-		ClIncome1d    int64 `db:"cl_performance_1d"`
-		ClIncome7d    int64 `db:"cl_performance_7d"`
-		ClIncome31d   int64 `db:"cl_performance_31d"`
-		ClIncome365d  int64 `db:"cl_performance_365d"`
-		ClIncomeTotal int64 `db:"cl_performance_total"`
-		ElIncome1d    int64 `db:"el_performance_1d"`
-		ElIncome7d    int64 `db:"el_performance_7d"`
-		ElIncome31d   int64 `db:"el_performance_31d"`
-		ElIncome365d  int64 `db:"el_performance_365d"`
-		ElIncomeTotal int64 `db:"el_performance_total"`
-		ClIncomeToday int64
+		ClIncome1d            int64 `db:"cl_performance_1d"`
+		ClIncome7d            int64 `db:"cl_performance_7d"`
+		ClIncome31d           int64 `db:"cl_performance_31d"`
+		ClIncome365d          int64 `db:"cl_performance_365d"`
+		ClIncomeTotal         int64 `db:"cl_performance_total"`
+		ClProposerIncomeTotal int64 `db:"cl_proposer_performance_total"`
+		ElIncome1d            int64 `db:"el_performance_1d"`
+		ElIncome7d            int64 `db:"el_performance_7d"`
+		ElIncome31d           int64 `db:"el_performance_31d"`
+		ElIncome365d          int64 `db:"el_performance_365d"`
+		ElIncomeTotal         int64 `db:"el_performance_total"`
+		ClIncomeToday         int64
 	}
 
 	// el rewards are converted from wei to gwei
@@ -95,6 +90,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		COALESCE(SUM(cl_performance_31d), 0) AS cl_performance_31d,
 		COALESCE(SUM(cl_performance_365d), 0) AS cl_performance_365d,
 		COALESCE(SUM(cl_performance_total), 0) AS cl_performance_total,
+		COALESCE(SUM(cl_proposer_performance_total), 0) AS cl_proposer_performance_total,
 		CAST(COALESCE(SUM(mev_performance_1d), 0) / 1e9 AS bigint) AS el_performance_1d,
 		CAST(COALESCE(SUM(mev_performance_7d), 0) / 1e9 AS bigint) AS el_performance_7d,
 		CAST(COALESCE(SUM(mev_performance_31d), 0) / 1e9 AS bigint) AS el_performance_31d,
@@ -168,7 +164,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 
 	// retrieve cl income not yet in stats
-	currentDayIncome, err := db.GetCurrentDayClIncomeTotal(validators)
+	currentDayIncome, currentDayProposerIncome, err := db.GetCurrentDayClIncomeTotal(validators)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -177,6 +173,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		El:    income.ElIncomeTotal,
 		Cl:    income.ClIncomeTotal + currentDayIncome,
 		Total: income.ClIncomeTotal + income.ElIncomeTotal + currentDayIncome,
+	}
+
+	incomeTotalProposer := types.ClElInt64{
+		El:    income.ElIncomeTotal,
+		Cl:    income.ClProposerIncomeTotal + currentDayProposerIncome,
+		Total: income.ClProposerIncomeTotal + income.ElIncomeTotal + currentDayProposerIncome,
 	}
 
 	return &types.ValidatorEarnings{
@@ -211,14 +213,34 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    clApr365d,
 			Total: clApr365d + elApr365d,
 		},
-		TotalDeposits:        int64(totalDeposits),
-		LastDayFormatted:     utils.FormatIncome(earnings1d, currency),
-		LastWeekFormatted:    utils.FormatIncome(earnings7d, currency),
-		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
-		TotalFormatted:       utils.FormatIncomeClElInt64(incomeTotal, currency),
-		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency),
-		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
+		TotalDeposits:          int64(totalDeposits),
+		LastDayFormatted:       utils.FormatIncome(earnings1d, currency),
+		LastWeekFormatted:      utils.FormatIncome(earnings7d, currency),
+		LastMonthFormatted:     utils.FormatIncome(earnings31d, currency),
+		TotalFormatted:         utils.FormatIncomeClElInt64(incomeTotal, currency),
+		ProposerTotalFormatted: utils.FormatIncomeClElInt64(incomeTotalProposer, currency),
+		TotalChangeFormatted:   utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency),
+		TotalBalance:           utils.FormatIncome(int64(totalBalance), currency),
 	}, balancesMap, nil
+}
+
+func getProposalLuckBlockLookbackAmount(validatorCount int) int {
+	switch {
+	case validatorCount <= 4:
+		return 10
+	case validatorCount <= 10:
+		return 15
+	case validatorCount <= 20:
+		return 20
+	case validatorCount <= 50:
+		return 30
+	case validatorCount <= 100:
+		return 50
+	case validatorCount <= 200:
+		return 65
+	default:
+		return 75
+	}
 }
 
 // getProposalLuck calculates the luck of a given set of proposed blocks for a certain number of validators
@@ -239,6 +261,8 @@ func getProposalLuck(slots []uint64, validatorsCount int) float64 {
 	threeMonths := utils.Month * 3
 	fourMonths := utils.Month * 4
 	fiveMonths := utils.Month * 5
+	sixMonths := utils.Month * 6
+	year := utils.Year
 
 	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
 	// Calculate the expected number of slot proposals for 30 days
@@ -249,6 +273,8 @@ func getProposalLuck(slots []uint64, validatorsCount int) float64 {
 	// Time since the first block in the proposed block slice
 	timeSinceFirstBlock := time.Since(utils.SlotToTime(slots[0]))
 
+	targetBlocks := 8.0
+
 	// Determine the appropriate timeframe based on the time since the first block and the expected slot proposals
 	switch {
 	case timeSinceFirstBlock < fiveDays:
@@ -257,15 +283,19 @@ func getProposalLuck(slots []uint64, validatorsCount int) float64 {
 		proposalTimeframe = oneWeek
 	case timeSinceFirstBlock < oneMonth:
 		proposalTimeframe = oneMonth
-	case timeSinceFirstBlock > fiveMonths && expectedSlotProposals <= 0.75:
+	case timeSinceFirstBlock > year && expectedSlotProposals <= targetBlocks/12:
+		proposalTimeframe = year
+	case timeSinceFirstBlock > sixMonths && expectedSlotProposals <= targetBlocks/6:
+		proposalTimeframe = sixMonths
+	case timeSinceFirstBlock > fiveMonths && expectedSlotProposals <= targetBlocks/5:
 		proposalTimeframe = fiveMonths
-	case timeSinceFirstBlock > fourMonths && expectedSlotProposals <= 1:
+	case timeSinceFirstBlock > fourMonths && expectedSlotProposals <= targetBlocks/4:
 		proposalTimeframe = fourMonths
-	case timeSinceFirstBlock > threeMonths && expectedSlotProposals <= 1.4:
+	case timeSinceFirstBlock > threeMonths && expectedSlotProposals <= targetBlocks/3:
 		proposalTimeframe = threeMonths
-	case timeSinceFirstBlock > twoMonths && expectedSlotProposals <= 2.1:
+	case timeSinceFirstBlock > twoMonths && expectedSlotProposals <= targetBlocks/2:
 		proposalTimeframe = twoMonths
-	case timeSinceFirstBlock > sixWeeks && expectedSlotProposals <= 2.8:
+	case timeSinceFirstBlock > sixWeeks && expectedSlotProposals <= targetBlocks/1.5:
 		proposalTimeframe = sixWeeks
 	default:
 		proposalTimeframe = oneMonth
@@ -541,4 +571,36 @@ func handleTemplateError(w http.ResponseWriter, r *http.Request, fileIdentifier 
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 	}
 	return err
+}
+
+func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
+	// the validators' balance will not be checked here as this is only a rough estimation
+	// checking the balance for hundreds of thousands of validators is too expensive
+
+	var maxValidatorIndex uint64
+	err := db.WriterDb.Get(&maxValidatorIndex, "SELECT COALESCE(MAX(validatorindex), 0) FROM validators")
+	if err != nil {
+		return 0, fmt.Errorf("error getting withdrawable validator count from cursor: %w", err)
+	}
+
+	if maxValidatorIndex == 0 {
+		return 0, nil
+	}
+
+	activeValidators := services.LatestIndexPageData().ActiveValidators
+	if activeValidators == 0 {
+		activeValidators = maxValidatorIndex
+	}
+
+	if validatorindex > cursor {
+		// if the validatorindex is after the cursor, simply return the number of validators between the cursor and the validatorindex
+		// the returned data is then scaled using the number of currently active validators in order to account for exited / entering validators
+		return (validatorindex - cursor) * activeValidators / maxValidatorIndex, nil
+	} else if validatorindex < cursor {
+		// if the validatorindex is before the cursor (wraparound case) return the number of validators between the cursor and the most recent validator plus the amount of validators from the validator 0 to the validatorindex
+		// the returned data is then scaled using the number of currently active validators in order to account for exited / entering validators
+		return (maxValidatorIndex - cursor + validatorindex) * activeValidators / maxValidatorIndex, nil
+	} else {
+		return 0, nil
+	}
 }

@@ -641,6 +641,14 @@
             {{ .IncomeTotalFormatted }}
           </td>
         </tr>
+        {{ if .IncomeProposerFormatted }}
+          <tr>
+            <th scope="row">Proposer Rewards</th>
+            <td class="pl-0">
+              {{ .IncomeProposerFormatted }}
+            </td>
+          </tr>
+        {{ end }}
         <tr class="">
           <th scope="row">Income Today</th>
           <td class="pl-0">
@@ -726,13 +734,13 @@
             <!-- prettier-ignore-attribute -->
             <span data-toggle="tooltip" data-html="true" data-tooltip-date="true" title="<span>Block Prop. {{ if $hasProposalLuck }}(exp. <span aria-ethereum-date='{{ .ProposalEstimate.Unix }}' aria-ethereum-date-format='FROMNOW'></span>) {{ formatPercentageWithPrecision .ProposalLuck 2 }}%{{ end }} (on avg. every <span aria-ethereum-duration='{{ .AvgSlotInterval.Milliseconds }}'></span>)<br>Sync Com. {{ if $hasSyncLuck }}(exp. <span aria-ethereum-date='{{ .SyncEstimate.Unix }}' aria-ethereum-date-format='FROMNOW'></span>) {{ formatPercentageWithPrecision .SyncLuck 2 }}%{{ end }} (on avg. every <span aria-ethereum-duration='{{ .AvgSyncInterval.Milliseconds }}'></span>)</span>">
               {{ if $hasProposalLuck }}
-                {{ formatPercentageWithPrecision .ProposalLuck 2 }}% <i class="tab-icon mr-md-1 fas fa-cubes d-none d-sm-inline-block"></i>
+                {{ formatPercentageWithPrecision .ProposalLuck 1 }}% <i class="tab-icon mr-md-1 fas fa-cubes d-none d-sm-inline-block"></i>
               {{ else }}
                 -
               {{ end }}
               |
               {{ if $hasSyncLuck }}
-                {{ formatPercentageWithPrecision .SyncLuck 2 }}% <i class="tab-icon mr-md-1 fas fa-sync d-none d-sm-inline-block"></i>
+                {{ formatPercentageWithPrecision .SyncLuck 1 }}% <i class="tab-icon mr-md-1 fas fa-sync d-none d-sm-inline-block"></i>
               {{ else }}
                 -
               {{ end }}
@@ -753,20 +761,6 @@
             </td>
           </tr>
         {{ end }}
-        <tr>
-          {{ if gt .NetworkStats.CurrentEpoch .ActivationEpoch }}
-            <th scope="row">Active since</th>
-          {{ else }}
-            <th scope="row">Activation</th>
-          {{ end }}
-          <td class="pl-0">
-            {{ if eq .ActivationEpoch 9223372036854775807 }}
-              -
-            {{ else }}
-              <a href="/epoch/{{ .ActivationEpoch }}"> {{ if eq .ActivationEpoch 0 }}genesis{{ else }}<span aria-ethereum-date="{{ .ActivationTs.Unix }}"></span>{{ end }} </a>
-            {{ end }}
-          </td>
-        </tr>
         {{ if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0)) }}
           <tr>
             <th scope="row">Exited since</th>

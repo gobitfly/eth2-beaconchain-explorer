@@ -332,9 +332,6 @@ function switchFrom(el1, el2, el3, el4) {
 var firstSwitch = true
 
 $(document).ready(function () {
-  $("button").on("mousedown", (evt) => {
-    evt.preventDefault() // prevent setting the browser focus on all mouse buttons, which prevents tooltips from disapearing
-  })
   $("#rewards-button").on("click", () => {
     localStorage.setItem("load_dashboard_validators", true)
     window.location.href = "/rewards"
@@ -418,7 +415,7 @@ $(document).ready(function () {
       clearSearch.empty().append(copyIcon)
     }, 500)
   })
-
+  $.fn.DataTable.ext.pager.numbers_length = 5
   var validatorsDataTable = (window.vdt = $("#validators").DataTable({
     processing: true,
     serverSide: false,
@@ -431,6 +428,10 @@ $(document).ready(function () {
     language: {
       search: "",
       searchPlaceholder: "Search...",
+      paginate: {
+        previous: '<i class="fas fa-chevron-left"></i>',
+        next: '<i class="fas fa-chevron-right"></i>',
+      },
     },
     preDrawCallback: function () {
       // this does not always work.. not sure how to solve the staying tooltip

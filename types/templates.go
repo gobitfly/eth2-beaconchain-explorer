@@ -372,21 +372,24 @@ type ValidatorPageData struct {
 	WithdrawalCount                          uint64
 	SlashingsCount                           uint64
 	PendingCount                             uint64
-	SyncCount                                uint64
-	ScheduledSyncCount                       uint64
-	ParticipatedSyncCount                    uint64
-	MissedSyncCount                          uint64
-	OrphanedSyncCount                        uint64
-	UnmissedSyncPercentage                   float64       // missed/(participated+orphaned)
-	IncomeToday                              ClElInt64     `json:"incomeToday"`
-	Income1d                                 ClElInt64     `json:"income1d"`
-	Income7d                                 ClElInt64     `json:"income7d"`
-	Income31d                                ClElInt64     `json:"income31d"`
-	IncomeTotal                              ClElInt64     `json:"incomeTotal"`
-	IncomeTotalFormatted                     template.HTML `json:"incomeTotalFormatted"`
-	Apr7d                                    ClElFloat64   `json:"apr7d"`
-	Apr31d                                   ClElFloat64   `json:"apr31d"`
-	Apr365d                                  ClElFloat64   `json:"apr365d"`
+	SyncCount                                uint64 // amount of sync committees the validator was (and is) part of
+	SlotsPerSyncCommittee                    uint64
+	SlotsDoneInCurrentSyncCommittee          uint64
+	ScheduledSyncCountSlots                  uint64
+	ParticipatedSyncCountSlots               uint64
+	MissedSyncCountSlots                     uint64
+	OrphanedSyncCountSlots                   uint64
+	UnmissedSyncPercentage                   float64        // participated/(participated+missed)
+	IncomeToday                              ClElInt64      `json:"incomeToday"`
+	Income1d                                 ClElInt64      `json:"income1d"`
+	Income7d                                 ClElInt64      `json:"income7d"`
+	Income31d                                ClElInt64      `json:"income31d"`
+	IncomeTotal                              ClElInt64      `json:"incomeTotal"`
+	IncomeTotalFormatted                     template.HTML  `json:"incomeTotalFormatted"`
+	IncomeProposerFormatted                  *template.HTML `json:"incomeProposerFormatted"`
+	Apr7d                                    ClElFloat64    `json:"apr7d"`
+	Apr31d                                   ClElFloat64    `json:"apr31d"`
+	Apr365d                                  ClElFloat64    `json:"apr365d"`
 	ProposalLuck                             float64
 	SyncLuck                                 float64
 	ProposalEstimate                         *time.Time
@@ -1029,6 +1032,7 @@ type ValidatorEarnings struct {
 	LastDayFormatted        template.HTML `json:"lastDayFormatted"`
 	LastWeekFormatted       template.HTML `json:"lastWeekFormatted"`
 	LastMonthFormatted      template.HTML `json:"lastMonthFormatted"`
+	ProposerTotalFormatted  template.HTML `json:"proposerTotalFormatted"`
 	TotalFormatted          template.HTML `json:"totalFormatted"`
 	TotalChangeFormatted    template.HTML `json:"totalChangeFormatted"`
 	TotalBalance            template.HTML `json:"totalBalance"`
@@ -1077,6 +1081,7 @@ type StakingCalculatorPageData struct {
 	BestValidatorBalanceHistory *[]ValidatorBalanceHistory
 	WatchlistBalanceHistory     [][]interface{}
 	TotalStaked                 uint64
+	EtherscanApiBaseUrl         string
 }
 
 type DepositsPageData struct {
@@ -1680,9 +1685,12 @@ type Eth1TxData struct {
 	TargetIsContract            bool
 	IsContractCreation          bool
 	CallData                    string
+	Method                      string
 	Events                      []*Eth1EventData
 	Transfers                   []*Transfer
 	DepositContractInteractions []DepositContractInteraction
+	CurrentEtherPrice           template.HTML
+	HistoricEtherPrice          template.HTML
 }
 
 type Eth1EventData struct {

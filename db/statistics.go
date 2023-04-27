@@ -146,7 +146,8 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		}
 	}
 
-	batchSize = 16000 // max parameters: 65535
+	numArgs := 4
+	batchSize = 65500 / numArgs // max parameters: 65535
 	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
 		start := b
 		end := b + batchSize
@@ -155,24 +156,26 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		}
 
 		logrus.Info(start, end)
-		numArgs := 3
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
 		for i := start; i <= end; i++ {
 			clRewards := int64(0)
+			clProposerRewards := uint64(0)
 
 			if incomeStats[uint64(i)] != nil {
 				clRewards = incomeStats[uint64(i)].TotalClRewards()
+				clProposerRewards = incomeStats[uint64(i)].ProposerAttestationInclusionReward + incomeStats[uint64(i)].ProposerSlashingInclusionReward + incomeStats[uint64(i)].ProposerSyncInclusionReward
 			}
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3))
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3, (i-start)*numArgs+4))
 			valueArgs = append(valueArgs, i)
 			valueArgs = append(valueArgs, day)
 			valueArgs = append(valueArgs, clRewards)
+			valueArgs = append(valueArgs, clProposerRewards)
 		}
 		stmt := fmt.Sprintf(`
-		insert into validator_stats (validatorindex, day, cl_rewards_gwei) VALUES
+		insert into validator_stats (validatorindex, day, cl_rewards_gwei, cl_proposer_rewards_gwei) VALUES
 		%s
-		on conflict (validatorindex, day) do update set cl_rewards_gwei = excluded.cl_rewards_gwei;`,
+		on conflict (validatorindex, day) do update set cl_rewards_gwei = excluded.cl_rewards_gwei, cl_proposer_rewards_gwei = excluded.cl_proposer_rewards_gwei;`,
 			strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
@@ -244,45 +247,52 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	}
 	logrus.Infof("retrieved mev / el rewards data for %v proposer", len(proposerRewards))
 
-	numArgs := 4
-	valueStrings := make([]string, 0, len(proposerRewards))
-	valueArgs := make([]interface{}, 0, len(proposerRewards)*numArgs)
-	i := 0
-	for proposer, rewards := range proposerRewards {
+	if len(proposerRewards) > 0 {
+		numArgs = 4
+		valueStrings := make([]string, 0, len(proposerRewards))
+		valueArgs := make([]interface{}, 0, len(proposerRewards)*numArgs)
+		i := 0
+		for proposer, rewards := range proposerRewards {
 
-		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
-		valueArgs = append(valueArgs, proposer)
-		valueArgs = append(valueArgs, day)
-		valueArgs = append(valueArgs, rewards.TxFeeReward.String())
-		valueArgs = append(valueArgs, rewards.MevReward.String())
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
+			valueArgs = append(valueArgs, proposer)
+			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, rewards.TxFeeReward.String())
+			valueArgs = append(valueArgs, rewards.MevReward.String())
 
-		i++
-	}
-	stmt := fmt.Sprintf(`
-	insert into validator_stats (validatorindex, day, el_rewards_wei, mev_rewards_wei) VALUES
-	%s
-	on conflict (validatorindex, day) do update set el_rewards_wei = excluded.el_rewards_wei, mev_rewards_wei = excluded.mev_rewards_wei;`,
-		strings.Join(valueStrings, ","))
-	_, err = tx.Exec(stmt, valueArgs...)
-	if err != nil {
-		return err
+			i++
+		}
+		stmt := fmt.Sprintf(`
+				insert into validator_stats (validatorindex, day, el_rewards_wei, mev_rewards_wei) VALUES
+				%s
+				on conflict (validatorindex, day) do update set el_rewards_wei = excluded.el_rewards_wei, mev_rewards_wei = excluded.mev_rewards_wei;`,
+			strings.Join(valueStrings, ","))
+		_, err = tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
 	}
 
 	logger.Infof("exporting total income stats")
-	tx.Exec(`
-	INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei_total, el_rewards_wei_total, mev_rewards_wei_total) (
+	_, err = tx.Exec(`
+	INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei_total, cl_proposer_rewards_gwei_total, el_rewards_wei_total, mev_rewards_wei_total) (
 		SELECT 
 			vs1.validatorindex, 
 			vs1.day, 
 			COALESCE(vs1.cl_rewards_gwei, 0) + COALESCE(vs2.cl_rewards_gwei_total, 0) AS cl_rewards_gwei_total_new, 
+			COALESCE(vs1.cl_proposer_rewards_gwei, 0) + COALESCE(vs2.cl_proposer_rewards_gwei_total, 0) AS cl_proposer_rewards_gwei_total_new, 
 			COALESCE(vs1.el_rewards_wei, 0) + COALESCE(vs2.el_rewards_wei_total, 0) AS el_rewards_wei_total_new, 
 			COALESCE(vs1.mev_rewards_wei, 0) + COALESCE(vs2.mev_rewards_wei_total, 0) AS mev_rewards_wei_total_new 
 		FROM validator_stats vs1 LEFT JOIN validator_stats vs2 ON vs2.day = vs1.day - 1 AND vs2.validatorindex = vs1.validatorindex WHERE vs1.day = $1
 	) ON CONFLICT (validatorindex, day) DO UPDATE SET 
 		cl_rewards_gwei_total = excluded.cl_rewards_gwei_total,
+		cl_proposer_rewards_gwei_total = excluded.cl_proposer_rewards_gwei_total,
 		el_rewards_wei_total = excluded.el_rewards_wei_total,
 		mev_rewards_wei_total = excluded.mev_rewards_wei_total;
 	`, day)
+	if err != nil {
+		return err
+	}
 
 	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
 	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(firstEpoch, lastEpoch)
@@ -349,6 +359,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		cl_performance_31d,
 		cl_performance_365d,
 		cl_performance_total,
+		cl_proposer_performance_total,
 
 		el_performance_1d,
 		el_performance_7d,
@@ -376,6 +387,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_31d.cl_rewards_gwei_total, 0) as cl_performance_31d, 
 				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_365d.cl_rewards_gwei_total, 0) as cl_performance_365d,
 				coalesce(vs_now.cl_rewards_gwei_total, 0) as cl_performance_total, 
+				coalesce(vs_now.cl_proposer_rewards_gwei_total, 0) as cl_proposer_performance_total, 
 				
 				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_1d.el_rewards_wei_total, 0) as el_performance_1d, 
 				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_7d.el_rewards_wei_total, 0) as el_performance_7d, 
@@ -409,6 +421,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			cl_performance_31d=excluded.cl_performance_31d,
 			cl_performance_365d=excluded.cl_performance_365d,
 			cl_performance_total=excluded.cl_performance_total,
+			cl_proposer_performance_total=excluded.cl_proposer_performance_total,
 
 			el_performance_1d=excluded.el_performance_1d,
 			el_performance_7d=excluded.el_performance_7d,
