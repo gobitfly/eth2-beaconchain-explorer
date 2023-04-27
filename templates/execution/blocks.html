@@ -60,6 +60,27 @@
             },
           },
         ],
+        stateSave: true,
+        stateSaveCallback: function (settings, data) {
+          data.search.search = ""
+          data.order = []
+          data.columns = []
+          data.start = 0
+          data.key = `${settings.sTableId}`
+          fetch("/tables/state", {
+            method: "POST",
+            body: JSON.stringify(data),
+          })
+            .then((res) => res.json())
+            .then(({ status, data }) => {
+              if (status !== "OK") {
+                console.error("error updating table state, err:", data, "status: ", status)
+              }
+            })
+            .catch((err) => {
+              console.error("error updating table state, err: ", err)
+            })
+        },
         preDrawCallback: function () {
           // this does not always work.. not sure how to solve the staying tooltip
           try {
