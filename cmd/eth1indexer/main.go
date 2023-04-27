@@ -282,11 +282,10 @@ func main() {
 			err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
 			if err != nil {
 				errMsg := fmt.Sprintf("error indexing from node, start: %v end: %v concurrency: %v", int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
-				errEntry := logrus.WithError(err)
 				if time.Since(lastSuccessulBlockIndexingTs) > time.Minute*30 {
-					errEntry.Fatal(errMsg)
+					utils.LogFatal(err, errMsg, 0)
 				} else {
-					errEntry.Error(errMsg)
+					utils.LogError(err, errMsg, 0)
 				}
 				continue
 			} else {
