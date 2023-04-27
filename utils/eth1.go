@@ -158,7 +158,7 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 			f := digitsLimit / 2 // as this int devision will always cut, we at an odd limit, we will have more digits at the end
 			name = fmt.Sprintf("%s…%s", name[:(f+2)], name[(l-(digitsLimit-f)+2):])
 		}
-		name = fmt.Sprintf(`<span class="text-monospace">%s</span>`, name)
+		name = fmt.Sprintf(`<span>%s</span>`, name)
 	} else { // name set
 		tooltip = fmt.Sprintf("%s\n%s", name, addressString) // set tool tip first, as we will change name
 		// limit name if necessary
@@ -380,6 +380,45 @@ func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int
 		}
 	}
 	return proceed + trimmedAmount, proceed + fullAmount
+}
+
+// NewFormat returns a new HTML-formatted string representing the given Wei big.Int amount, with the specified number of digits after the decimal point and number of digits hidden on mobile views.
+//
+// Parameters:
+//   - `amount` : the Wei(!) amount to be formatted.
+//   - `unit` : the unit in which the amount should be formatted. Supported values are ETH and GWei.
+//   - `digits` : the number of digits after the decimal point to be displayed.
+//   - `maxPreCommaDigitsBeforeTrim` : the maximum number of digits before the decimal point that should be displayed before trimming excess decimal digits. If this is set to 0, no digits are trimmed.
+//
+// **NOTE** Every number is rounded down
+//
+// TODO Replace every formatAmount with this
+func NewFormat(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int) template.HTML {
+	if amount == nil {
+		return template.HTML(`NA`)
+	}
+
+	// define display unit & digits used per unit max
+	var displayUnit string
+	var unitDigits int
+	// if more units are added, make sure to add them in the godoc
+	switch unit {
+	case "ETH":
+		displayUnit = " ETH"
+		unitDigits = 18
+	case "GWei":
+		displayUnit = " GWei"
+		unitDigits = 9
+	default:
+		displayUnit = " Wei"
+		unitDigits = 0
+	}
+
+	trimmedAmount, fullAMount := trimAmount(amount, unitDigits, maxPreCommaDigitsBeforeTrim, digits, false)
+	tooltip := fmt.Sprintf(`data-toggle="tooltip" data-placement="top" title="%s"`, fullAMount)
+
+	// done, convert to HTML & return
+	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, displayUnit))
 }
 
 func FormatMethod(method string) template.HTML {

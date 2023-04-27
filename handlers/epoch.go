@@ -73,10 +73,10 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//Create placeholder structs
-		blocks := make([]*types.IndexPageDataBlocks, utils.Config.Chain.Config.SlotsPerEpoch)
+		blocks := make([]*types.OldIndexPageDataBlocks, utils.Config.Chain.Config.SlotsPerEpoch)
 		for i := range blocks {
 			slot := uint64(i) + (epoch * utils.Config.Chain.Config.SlotsPerEpoch)
-			block := types.IndexPageDataBlocks{
+			block := types.OldIndexPageDataBlocks{
 				Epoch:  epoch,
 				Slot:   slot,
 				Ts:     utils.SlotToTime(slot),

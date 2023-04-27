@@ -13,6 +13,7 @@ import (
 	"math"
 	"math/big"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -177,15 +178,15 @@ func FormatBalanceChangeFormated(balance *int64, currencyName string, details *i
 
 	if currencyName == "ETH" {
 		if balance == nil || *balance == 0 {
-			return template.HTML("<span class=\"float-right\">0 GWei</span>")
+			return template.HTML("<span>0 GWei</span>")
 		}
 		if *balance < 0 {
-			return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger float-right\">%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
+			return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger\">%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
 		}
-		return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success float-right\">+%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
+		return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success\">+%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
 	} else {
 		if balance == nil {
-			return template.HTML("<span class=\"float-right\">0 " + currencyName + "</span>")
+			return template.HTML("<span>0 " + currencyName + "</span>")
 		}
 		if *balance == 0 {
 			return template.HTML("pending")
@@ -335,6 +336,31 @@ func FormatBlockStatusShort(status uint64) template.HTML {
 	}
 }
 
+func FormatBlockStatusStyle(status uint64) template.HTML {
+	if status == 0 {
+		return `<div title="This slot is still scheduled" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-neutral-1"><div class="style-status-tag-text" >S<span class="d-none d-sm-inline">cheduled</span></div></div>`
+	} else if status == 1 {
+		return `<div title="This block has been proposed" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-good"><div class="style-status-tag-text text-white" >P<span class="d-none d-sm-inline">roposed</span></div></div>`
+	} else if status == 2 {
+		return `<div title="This block proposal has been missed" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-bad"><div class="style-status-tag-text" >M<span class="d-none d-sm-inline">issed</span></div></div>`
+	} else if status == 3 {
+		return `<div title="This block has been orphaned" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-neutral-2"><div class="style-status-tag-text text-white" >O<span class="d-none d-sm-inline">rphaned</span></div></div>`
+	} else {
+		return `<div title="This shouldn't be possible" data-toggle="tooltip" class="style-badge style-badge-single-char style-bg-neutral-2"><div class="style-status-tag-text text-white" >?</div></div>`
+	}
+}
+
+func FormatEpochStatus(finalized bool, participationRate float64) template.HTML {
+	if finalized {
+		return `<div title="This epoch is finalized" data-toggle="tooltip" class="style-badge style-bg-good"><div class="style-status-tag-text text-white" ><span class="d-sm-none">FIN</span><span class="d-none d-sm-inline">Finalized</span></div></div>`
+	} else if participationRate > 0.66 && participationRate < 1 {
+		// since the latest epoch in the db always has a participation rate of 1, check for < 1 instead of <= 1
+		return `<div title="This epoch is not finalized but safe, making a revert unlikely" data-toggle="tooltip" class="style-badge style-badge-long style-bg-neutral-2"><div class="style-status-tag-text text-white" ><span class="d-sm-none">NFS</span><span class="d-none d-sm-inline">Not finalized (Safe)</span></div></div>`
+	} else {
+		return `<div title="This epoch is not finalized" data-toggle="tooltip" class="style-badge style-bg-neutral-1"><div class="style-status-tag-text" ><span class="d-sm-none">NF</span><span class="d-none d-sm-inline">Not finalized</span></div></div>`
+	}
+}
+
 // FormatBlockStatusShort will return an html status for a block.
 func FormatWithdrawalShort(slot uint64, amount uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<span title=\"Withdrawal processed in epoch %v during slot %v for %v\" data-toggle=\"tooltip\" class=\"mx-1 badge badge-pill bg-success text-white\" style=\"font-size: 12px; font-weight: 500;\"><i class=\"fas fa-money-bill\"></i></span>", EpochOfSlot(slot), slot, FormatCurrentBalance(amount, "ETH")))
@@ -378,7 +404,7 @@ func FormatDepositAmount(balanceInt uint64, currency string) template.HTML {
 func FormatEffectiveBalance(balanceInt uint64, currency string) template.HTML {
 	exchangeRate := ExchangeRateForCurrency(currency)
 	balance := float64(balanceInt) / float64(1e9)
-	return template.HTML(fmt.Sprintf("%.1f %v", balance*exchangeRate, currency))
+	return template.HTML(fmt.Sprintf("%.0f %v", balance*exchangeRate, currency))
 }
 
 // FormatEpoch will return the epoch formated as html
@@ -421,21 +447,20 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 }
 
-// FormatGlobalParticipationRate will return the global-participation-rate formated as html
-func FormatGlobalParticipationRate(e uint64, r float64, currency string) template.HTML {
-	if e == 0 {
-		return `<span class="text-small text-muted">Calculating...</span>`
+func FormatGlobalParticipationRate(voted uint64, participationRate float64, currency string) template.HTML {
+	if voted == 0 {
+		return `<span>Calculating...</span>`
 	}
 	p := message.NewPrinter(language.English)
-	rr := fmt.Sprintf("%.2f%%", r*100)
+	rr := fmt.Sprintf("%.2f%%", participationRate*100)
 	tpl := `
 	<div style="position:relative;width:inherit;height:inherit;">
-	  %.0[1]f <small class="text-muted ml-3">(%[2]v)</small>
-	  <div class="progress" style="position:absolute;bottom:-6px;width:100%%;height:4px;">
+		<span>%.0[1]f</span><span class="style-paragraph-3 ml-3">(%[2]v)
+	  <div class="progress" style="width:100%%;height:4px;">
 		<div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div>
 	  </div>
 	</div>`
-	return template.HTML(p.Sprintf(tpl, float64(e)/1e9*price.GetEthPrice(currency), rr))
+	return template.HTML(p.Sprintf(tpl, float64(voted)/1e9*price.GetEthPrice(currency), rr))
 }
 
 func FormatEtherValue(symbol string, ethPrice *big.Float, currentPrice template.HTML) template.HTML {
@@ -469,7 +494,7 @@ func FormatGraffitiAsLink(graffiti []byte) template.HTML {
 // hash is required, trunc is optional.
 // Only the first value in trunc_opt will be used.
 func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
-	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%s</span>", FormatHashRaw(hash, trunc_opt...)))
+	return template.HTML(fmt.Sprintf("<span class=\"style-hash\">%s</span>", FormatHashRaw(hash, trunc_opt...)))
 }
 
 // FormatHashRaw will return a hash formated
@@ -821,87 +846,78 @@ func FormatTimestampTs(ts time.Time) template.HTML {
 // pending, active_online, active_offline, exiting_online, exciting_offline, slashing_online, slashing_offline, exited, slashed
 func FormatValidatorStatus(status string) template.HTML {
 	if status == "deposited" || status == "deposited_valid" || status == "deposited_invalid" {
-		return "<span><b>Deposited</b></span>"
+		return "Deposited"
 	} else if status == "pending" {
-		return "<span><b>Pending</b></span>"
+		return "Pending"
 	} else if status == "active_online" {
-		return "<b>Active</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+		return `<span class="text-success">Active</span>`
 	} else if status == "active_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Active</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		return `<span class="text-warning" data-toggle="tooltip" title="No attestation in the last 2 epochs">Active</span>`
 	} else if status == "exiting_online" {
-		return "<b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+		return `Exiting`
 	} else if status == "exiting_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		return `<span class="text-danger" data-toggle="tooltip" title="No attestation in the last 2 epochs">Exiting</span>`
 	} else if status == "slashing_online" {
-		return "<b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+		return `<span class="text-danger">Slashing</span>`
 	} else if status == "slashing_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		return `<span class="text-danger" data-toggle="tooltip" title="No attestation in the last 2 epochs">Slashing</span>`
 	} else if status == "exited" {
-		return "<span><b>Exited</b></span>"
+		return "Exited"
 	} else if status == "slashed" {
-		return "<span><b>Slashed</b></span>"
+		return `<span class="text-danger">Slashed</span>`
 	}
-	return "<b>Unknown</b>"
-}
-
-func formatPool(tag []string) string {
-	if len(tag) > 1 {
-		tagType := tag[0]
-		tagName := strings.Split(tag[len(tag)-1], " ")
-		if len(tagName) > 1 {
-			_, err := strconv.ParseInt(tagName[len(tagName)-1], 10, 64)
-			if err == nil {
-				name := ""
-				for _, s := range tagName[:len(tagName)-1] {
-					if s == "-" {
-						continue
-					}
-					name += s + " "
-				}
-				return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 18px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, name)
-			}
-		}
-		return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 18px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, tag[len(tag)-1])
-	}
-	return ""
-}
-
-func formatSpecialTag(tag string) string {
-	special_tag := strings.Split(tag, ":")
-	if len(special_tag) > 1 {
-		if special_tag[0] == "pool" {
-			return formatPool(special_tag)
-		}
-	}
-	return fmt.Sprintf(`<span style="font-size: 18px;" class="badge bg-dark text-light mr-1">%s</span>`, tag)
+	return "Unknown"
 }
 
 // FormatValidatorTag will return html formated text of a validator-tag.
 // Depending on the tag it will describe the tag in a tooltip and link to more information regarding the tag.
-func FormatValidatorTag(tag string) template.HTML {
+func formatValidatorTag(tag string) string {
 	var result string
-	switch tag {
-	case "rocketpool":
-		result = `<span style="background-color: rgba(240, 149, 45, .2); font-size: 18px;" class="badge-pill mr-1 font-weight-normal" data-toggle="tooltip" title="Rocket Pool Validator"><a style="color: var(--yellow);" href="/pools/rocketpool">Rocket Pool</a></span>`
-	case "ssv":
-		result = `<span style="background-color: rgba(238, 113, 18, .2); font-size: 18px;" class="badge-pill mr-1 font-weight-normal" data-toggle="tooltip" title="Secret Shared Validator"><a style="color: var(--orange);" href="https://github.com/bloxapp/ssv/">SSV</a></span>`
+	switch {
+	case tag == "rocketpool", tag == "pool:rocketpool":
+		result = `<a href="/pools/rocketpool" title="Rocket Pool Validator" data-toggle="tooltip" class="mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">Rocket Pool</a>`
+	case strings.HasPrefix(tag, "pool:"):
+		result = fmt.Sprintf(`<a href="/pools" title="This validator is part of a staking-pool." data-toggle="tooltip" class="mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">Pool: %s</a>`, strings.TrimPrefix(tag, "pool:"))
+	case strings.HasPrefix(tag, "name:"):
+		result = fmt.Sprintf(`<span title="This name has been set by the owner of this validator." data-toggle="tooltip" class="mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">%s</span>`, strings.TrimPrefix(tag, "name:"))
+	case tag == "ssv":
+		result = `<a href="https://github.com/bloxapp/ssv/" title="Secret Shared Validator" data-toggle="tooltip" class=""mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">SSV</a>`
 	default:
-		result = formatSpecialTag(tag)
+		result = fmt.Sprintf(`<span class="mr-2 badge badge-pill style-bg-neutral-1 style-status-tag-text text-dark">%s</span>`, tag)
 	}
-	return template.HTML(result)
+
+	return result
 }
 
 func FormatValidatorTags(tags []string) template.HTML {
 	str := ""
+	// some validators have duplicate tags, we dedup them
+	dedupMap := make(map[string]string)
 	for _, tag := range tags {
-		str += string(FormatValidatorTag(tag)) + " "
+		// some tags have a number at the end, we want to remove that
+		re := regexp.MustCompile(`(.+) - \d+`)
+		match := re.FindStringSubmatch(tag)
+		if len(match) > 1 {
+			tag = match[1]
+		}
+		trimmedTag := tag
+		trimmedTag = strings.TrimPrefix(trimmedTag, "pool:")
+		trimmedTag = strings.ReplaceAll(trimmedTag, " ", "")
+		trimmedTag = strings.ToLower(trimmedTag)
+		dedupedTag, ok := dedupMap[trimmedTag]
+		if !ok || tag < dedupedTag {
+			dedupMap[trimmedTag] = tag
+		}
+	}
+	for _, tag := range dedupMap {
+		str += formatValidatorTag(tag) + " "
 	}
 	return template.HTML(str)
 }
 
 // FormatValidator will return html formatted text for a validator
 func FormatValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i><a href=\"/validator/%v\">%v</a>", validator, validator))
+	return template.HTML(fmt.Sprintf("<a href=\"/validator/%v\">%v</a>", validator, validator))
 }
 
 func FormatValidatorWithName(validator interface{}, name string) template.HTML {
@@ -919,9 +935,9 @@ func FormatValidatorWithName(validator interface{}, name string) template.HTML {
 	}
 
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i> <a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validatorLink))
+		return template.HTML(fmt.Sprintf("<a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validatorLink))
 	} else {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i> <a href=\"/validator/%v\">%v</a>", validatorLink, validatorRead))
+		return template.HTML(fmt.Sprintf("<a href=\"/validator/%v\">%v</a>", validatorLink, validatorRead))
 	}
 }
 
@@ -1238,4 +1254,60 @@ func FormatTimestampUInt64(ts uint64) template.HTML {
 // FormatEth1AddressFull will return the eth1-address formated as html
 func FormatEth1AddressFull(addr common.Address) template.HTML {
 	return FormatAddress(addr.Bytes(), nil, "", false, false, true)
+}
+
+func FormatHeaderHash(address []byte) template.HTML {
+	if l := len(address) * 2; l < 8 {
+		return template.HTML(fmt.Sprintf("0x%x", address))
+	}
+	return template.HTML(fmt.Sprintf(`
+	<h2 class="overflow-auto text-nowrap style-header-account mb-0">
+		0x<span style="color: var(--primary)">%x</span><span data-truncate-middle="%x"></span><span style="color: var(--primary)">%x</span>
+	</h2>`, address[:2], address[2:len(address)-2], address[len(address)-2:]))
+}
+
+func FormatValidatorHistoryEvent(event types.ValidatorHistoryEvent) template.HTML {
+	colorMap := map[uint64]string{
+		0: "var(--text-addition)",
+		1: "var(--green)",
+		2: "var(--red)",
+		3: "#f7a53c",
+	}
+	str := `
+		<div class="style-history-event">
+			<svg viewBox="0 0 14 12" xmlns="http://www.w3.org/2000/svg" fill="%s">
+				<path d="M6.22302 0V3H9.33467L6.22302 0Z" />
+				<path d="M7.6746 10.4625C7.60167 10.4789 7.52874 10.4906 7.45581 10.4953C7.43393 10.4977 7.41205 10.5 7.39017 10.5H5.83435C5.68606 10.5 5.55235 10.4203 5.48672 10.2937L5.27279 9.87891C5.23146 9.79922 5.14881 9.75 5.05886 9.75C4.96892 9.75 4.88383 9.79922 4.84494 9.87891L4.63101 10.2937C4.56051 10.432 4.40736 10.5141 4.24935 10.5C4.09134 10.4859 3.9552 10.3805 3.91144 10.2352L3.50061 8.92969L3.26237 9.69844C3.11408 10.1742 2.65949 10.5 2.14412 10.5H1.94478C1.73086 10.5 1.55583 10.3313 1.55583 10.125C1.55583 9.91875 1.73086 9.75 1.94478 9.75H2.14412C2.31672 9.75 2.46744 9.64219 2.51606 9.48281L2.87828 8.32266C2.96093 8.05781 3.21375 7.875 3.50061 7.875C3.78746 7.875 4.04029 8.05781 4.12294 8.32266L4.40493 9.22734C4.58482 9.08203 4.81334 9 5.05643 9C5.44296 9 5.79545 9.21094 5.96805 9.54375L6.07501 9.75H6.29137C6.21601 9.54375 6.20142 9.31875 6.25734 9.09844L6.62198 7.68984C6.69005 7.425 6.83105 7.18594 7.03039 6.99375L9.33495 4.77187V3.75H6.2233C5.79302 3.75 5.44539 3.41484 5.44539 3V0H1.55583C0.697691 0 0 0.672656 0 1.5V10.5C0 11.3273 0.697691 12 1.55583 12H7.77913C8.63726 12 9.33495 11.3273 9.33495 10.5V10.0477C9.26932 10.0734 9.20368 10.0945 9.13561 10.1109L7.6746 10.4625ZM0.997916 5.67937C0.848411 5.47359 0.77378 5.23102 0.77378 4.95188V4.78031C0.77378 4.75758 0.782045 4.73812 0.798576 4.72195C0.815107 4.70578 0.835284 4.69805 0.859107 4.69805H1.49262C1.5162 4.69805 1.53638 4.70602 1.55315 4.72195C1.56968 4.73812 1.57795 4.75734 1.57795 4.78031V4.91063C1.57795 5.12109 1.67519 5.29617 1.86991 5.43562C2.06439 5.57531 2.33009 5.64492 2.66727 5.64492C2.95656 5.64492 3.1751 5.58562 3.32217 5.46656C3.46925 5.34773 3.54291 5.19445 3.54291 5.00672C3.54291 4.87875 3.50255 4.77 3.42184 4.6807C3.34114 4.59141 3.22615 4.51031 3.07665 4.43695C2.92714 4.36383 2.703 4.27219 2.40399 4.1625C2.06706 4.04367 1.79406 3.93164 1.58548 3.82617C1.37666 3.72094 1.20212 3.57797 1.06234 3.39726C0.922313 3.21656 0.852301 2.99133 0.852301 2.72133C0.852301 2.31867 1.00424 2.00062 1.30787 1.76742C1.6115 1.53398 2.01723 1.4175 2.52506 1.4175C2.88095 1.4175 3.19528 1.47703 3.46828 1.59586C3.74103 1.71492 3.9535 1.88062 4.10544 2.09344C4.25737 2.30625 4.33322 2.55211 4.33322 2.83125V2.94797C4.33322 2.97094 4.32495 2.99039 4.30842 3.00633C4.29165 3.0225 4.27171 3.03023 4.24789 3.03023H3.60733C3.5835 3.03023 3.56333 3.02227 3.5468 3.00633C3.53002 2.99039 3.522 2.97094 3.522 2.94797V2.8725C3.522 2.65758 3.4306 2.4757 3.24803 2.32688C3.06522 2.17828 2.81264 2.10375 2.48981 2.10375C2.22872 2.10375 2.02598 2.15648 1.88109 2.26148C1.7362 2.36672 1.664 2.51531 1.664 2.7075C1.664 2.84484 1.70193 2.95687 1.77802 3.04383C1.85386 3.13078 1.96788 3.20976 2.11981 3.28055C2.27175 3.35156 2.50658 3.44179 2.82455 3.55172C3.16149 3.67523 3.43084 3.7875 3.63237 3.88805C3.83389 3.98883 4.00722 4.12945 4.15211 4.31016C4.29675 4.49086 4.3692 4.71633 4.3692 4.98609C4.3692 5.39789 4.21143 5.72508 3.89588 5.96742C3.58034 6.21 3.14957 6.33117 2.60382 6.33117C2.23358 6.33117 1.91099 6.27398 1.6358 6.15961C1.36062 6.04523 1.14815 5.88515 0.998646 5.67914L0.997916 5.67937Z" />
+				<path d="M13.7155 3.61172L13.3654 3.27422C12.9862 2.90859 12.3712 2.90859 11.9895 3.27422L11.2748 3.96328L13.0008 5.62734L13.7155 4.93828C14.0947 4.57266 14.0947 3.97969 13.7155 3.61172Z" />
+				<path d="M7.58242 7.52363C7.48275 7.61973 7.41225 7.73926 7.37822 7.87285L7.01357 9.28145C6.97954 9.41035 7.01843 9.54394 7.11567 9.63769C7.21291 9.73144 7.35147 9.76895 7.48518 9.73613L8.9462 9.38457C9.08233 9.35176 9.20874 9.28379 9.30841 9.1877L12.4492 6.15723L10.7232 4.49316L7.58242 7.52363Z" />
+			</svg>
+			<svg viewBox="0 0 14 12" xmlns="http://www.w3.org/2000/svg" fill="%s">
+				<path d="M7.6746 10.4625C7.60167 10.4789 7.52874 10.4906 7.45581 10.4953C7.43393 10.4977 7.41205 10.5 7.39017 10.5H5.83435C5.68606 10.5 5.55235 10.4203 5.48672 10.2938L5.27279 9.87891C5.23146 9.79922 5.14881 9.75 5.05886 9.75C4.96892 9.75 4.88383 9.79922 4.84494 9.87891L4.63101 10.2938C4.56051 10.432 4.40736 10.5141 4.24935 10.5C4.09134 10.4859 3.9552 10.3805 3.91144 10.2352L3.50061 8.92969L3.26237 9.69844C3.11408 10.1742 2.65949 10.5 2.14412 10.5H1.94478C1.73086 10.5 1.55583 10.3313 1.55583 10.125C1.55583 9.91875 1.73086 9.75 1.94478 9.75H2.14412C2.31672 9.75 2.46744 9.64219 2.51606 9.48281L2.87828 8.32266C2.96093 8.05781 3.21375 7.875 3.50061 7.875C3.78746 7.875 4.04029 8.05781 4.12294 8.32266L4.40493 9.22734C4.58482 9.08203 4.81334 9 5.05643 9C5.44296 9 5.79545 9.21094 5.96805 9.54375L6.07501 9.75H6.29137C6.21601 9.54375 6.20142 9.31875 6.25734 9.09844L6.62198 7.68984C6.69005 7.425 6.83105 7.18594 7.03039 6.99375L9.33495 4.77187V3.75H6.2233C5.79302 3.75 5.44539 3.41484 5.44539 3V0H1.55583C0.697691 0 0 0.672656 0 1.5V10.5C0 11.3273 0.697691 12 1.55583 12H7.77913C8.63726 12 9.33495 11.3273 9.33495 10.5V10.0477C9.26932 10.0734 9.20368 10.0945 9.13561 10.1109L7.6746 10.4625ZM0.80198 2.16562C0.778156 2.16562 0.757979 2.15766 0.741448 2.14172C0.724674 2.12578 0.716652 2.10633 0.716652 2.08336V1.55484C0.716652 1.53211 0.724918 1.51266 0.741448 1.49648C0.757979 1.48031 0.778156 1.47258 0.80198 1.47258H4.2688C4.29238 1.47258 4.31255 1.48055 4.32933 1.49648C4.34586 1.51266 4.35412 1.53187 4.35412 1.55484V2.08336C4.35412 2.10633 4.34586 2.12578 4.32933 2.14172C4.31255 2.15789 4.29262 2.16562 4.2688 2.16562H2.95899C2.93516 2.16562 2.92349 2.17711 2.92349 2.19984V6.19406C2.92349 6.21703 2.91523 6.23648 2.8987 6.25242C2.88192 6.26859 2.86199 6.27633 2.83817 6.27633H2.18326C2.15944 6.27633 2.13926 6.26836 2.12273 6.25242C2.10596 6.23648 2.09793 6.21703 2.09793 6.19406V2.19984C2.09793 2.17711 2.08602 2.16562 2.06244 2.16562H0.80198Z" />
+				<path d="M6.22302 0V3H9.33467L6.22302 0Z" />
+				<path d="M13.7155 3.61172L13.3654 3.27422C12.9862 2.90859 12.3712 2.90859 11.9895 3.27422L11.2748 3.96328L13.0008 5.62734L13.7155 4.93828C14.0947 4.57266 14.0947 3.97969 13.7155 3.61172Z" />
+				<path d="M7.58242 7.52363C7.48275 7.61973 7.41225 7.73926 7.37822 7.87285L7.01357 9.28145C6.97954 9.41035 7.01843 9.54395 7.11567 9.6377C7.21291 9.73145 7.35147 9.76894 7.48518 9.73613L8.9462 9.38457C9.08233 9.35176 9.20874 9.28379 9.30841 9.1877L12.4492 6.15723L10.7232 4.49316L7.58242 7.52363Z" />
+			</svg>
+			<svg viewBox="0 0 14 12" xmlns="http://www.w3.org/2000/svg" fill="%s">
+				<path d="M6.22302 0V3H9.33467L6.22302 0Z" />
+				<path d="M7.6746 10.4625C7.60167 10.4789 7.52874 10.4906 7.45581 10.4953C7.43393 10.4977 7.41205 10.5 7.39017 10.5H5.83435C5.68606 10.5 5.55235 10.4203 5.48672 10.2938L5.27279 9.87891C5.23146 9.79922 5.14881 9.75 5.05886 9.75C4.96892 9.75 4.88383 9.79922 4.84494 9.87891L4.63101 10.2938C4.56051 10.432 4.40736 10.5141 4.24935 10.5C4.09134 10.4859 3.9552 10.3805 3.91144 10.2352L3.50061 8.92969L3.26237 9.69844C3.11408 10.1742 2.65949 10.5 2.14412 10.5H1.94478C1.73086 10.5 1.55583 10.3313 1.55583 10.125C1.55583 9.91875 1.73086 9.75 1.94478 9.75H2.14412C2.31672 9.75 2.46744 9.64219 2.51606 9.48281L2.87828 8.32266C2.96093 8.05781 3.21375 7.875 3.50061 7.875C3.78746 7.875 4.04028 8.05781 4.12294 8.32266L4.40493 9.22734C4.58482 9.08203 4.81334 9 5.05643 9C5.44296 9 5.79545 9.21094 5.96805 9.54375L6.07501 9.75H6.29137C6.21601 9.54375 6.20142 9.31875 6.25734 9.09844L6.62198 7.68984C6.69005 7.425 6.83105 7.18594 7.03039 6.99375L9.33495 4.77188V3.75H6.2233C5.79302 3.75 5.44539 3.41484 5.44539 3V0H1.55583C0.697691 0 0 0.672656 0 1.5V10.5C0 11.3273 0.697691 12 1.55583 12H7.77913C8.63726 12 9.33495 11.3273 9.33495 10.5V10.0477C9.26932 10.0734 9.20368 10.0945 9.13561 10.1109L7.6746 10.4625ZM1.07838 6.21445C1.05456 6.21445 1.03438 6.20648 1.01785 6.19055C1.00108 6.17461 0.993054 6.15516 0.993054 6.13219V1.49273C0.993054 1.47 1.00132 1.45055 1.01785 1.43438C1.03438 1.41844 1.05456 1.41047 1.07838 1.41047H1.73329C1.75687 1.41047 1.77704 1.41844 1.79382 1.43438C1.81035 1.45055 1.81861 1.46977 1.81861 1.49273V3.41437C1.81861 3.43734 1.83028 3.44859 1.85411 3.44859H3.66932C3.6929 3.44859 3.70481 3.43734 3.70481 3.41437V1.49273C3.70481 1.47 3.71308 1.45055 3.72961 1.43438C3.74614 1.4182 3.76631 1.41047 3.79014 1.41047H4.44504C4.46862 1.41047 4.4888 1.41844 4.50557 1.43438C4.5221 1.45055 4.53037 1.46977 4.53037 1.49273V6.13195C4.53037 6.15492 4.5221 6.17438 4.50557 6.19031C4.4888 6.20648 4.46887 6.21422 4.44504 6.21422H3.79014C3.76631 6.21422 3.74614 6.20625 3.72961 6.19031C3.71283 6.17438 3.70481 6.15492 3.70481 6.13195V4.16906C3.70481 4.14633 3.6929 4.13484 3.66932 4.13484H1.85435C1.83053 4.13484 1.81886 4.14633 1.81886 4.16906V6.13195C1.81886 6.15492 1.81059 6.17438 1.79406 6.19031C1.77729 6.20648 1.75735 6.21422 1.73353 6.21422H1.07862L1.07838 6.21445Z" />
+				<path d="M7.58242 7.52363C7.48275 7.61973 7.41225 7.73926 7.37822 7.87285L7.01357 9.28145C6.97954 9.41035 7.01843 9.54395 7.11567 9.6377C7.21291 9.73145 7.35148 9.76895 7.48518 9.73613L8.9462 9.38457C9.08233 9.35176 9.20874 9.28379 9.30841 9.1877L12.4492 6.15723L10.7232 4.49316L7.58242 7.52363Z" />
+				<path d="M13.7155 3.61172L13.3654 3.27422C12.9862 2.90859 12.3712 2.90859 11.9895 3.27422L11.2748 3.96328L13.0008 5.62734L13.7155 4.93828C14.0947 4.57266 14.0947 3.97969 13.7155 3.61172Z" />
+			</svg>
+			<i class="fas fa-cube" style="color: %s"></i>
+			<span data-toggle="tooltip" title="%s"><i class="fas fa-sync" style="color: %s"></i></span>
+			<i class="fas fa-user-slash" style="color: %s"></i>
+			<span data-toggle="tooltip" title="%s"><i class="fas fa-money-bill" style="color: %s"></i></span>
+		</div>
+	`
+	var syncTooltip string
+	if event.SyncParticipationStatus > 0 {
+		syncTooltip = fmt.Sprintf("%d/%d", event.SyncParticipationCount, event.ProposedSlotsCount)
+	}
+
+	var withdrawalTooltip string
+	if event.WithdrawalStatus > 0 {
+		withdrawalTooltip = fmt.Sprintf("Withdrawal processed for %v", FormatCurrentBalance(event.WithdrawalAmount, "ETH"))
+	}
+
+	return template.HTML(fmt.Sprintf(str, colorMap[event.AttestationSourceStatus], colorMap[event.AttestationTargetStatus], colorMap[event.AttestationHeadStatus], colorMap[event.BlockProposalStatus], syncTooltip, colorMap[event.SyncParticipationStatus], colorMap[event.SlashingStatus], withdrawalTooltip, colorMap[event.WithdrawalStatus]))
 }

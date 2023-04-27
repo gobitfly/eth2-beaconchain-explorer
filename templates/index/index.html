@@ -31,94 +31,68 @@
                     updateIn: -1,
                     page: {{.}},
                     chartOptions: {
-                        credits: { enabled: creditsEnabled },
-                        rangeSelector: {enabled: false},
-                        navigator: {enabled: false},
-                        scrollbar: {enabled: false},
-                        chart: {type: 'spline'},
-                        title: {text: 'Network History'},
-                        subtitle: {},
-                        xAxis: {
-                            type: 'datetime',
-                            range: 7 * 24 * 60 * 60 * 1000,
-                            labels: {
-                                formatter: function () {
-                                    var epoch = timeToEpoch(this.value)
-                                    var orig = this.axis.defaultLabelFormatter.call(this)
-                                    return `${orig}<br/>Epoch ${epoch}`
-                                }
-                            }
+                        chart: {
+                            height: 254,
                         },
-                        yAxis: [{
-                            title: {text: 'Balance [ETH]'},
-                            labels: {
-                                formatter: function () {
-                                    return this.value.toFixed(0);
-                                }
-                            },
-                            opposite: false
-                        }, {
-                            title: {text: 'Active Validators'},
-                            labels: {
-                                formatter: function () {
-                                    return this.value.toFixed(0);
-                                }
-                            },
-                            opposite: true
-                        }],
+                        plotOptions: {
+                            line: {stacking: false },
+                        },
                         series: [
                             {
-                                name: "Staked Ether",
-                                yAxis: 0,
-                                data: {{.StakedEtherChartData}}
+                                name: "Gas Price",
+                                color: '#90ED7D',
+                                data: {{.GasPriceHistory}},
                             },
-                            {
-                                name: "Active Validators",
-                                yAxis: 1,
-                                data: {{.ActiveValidatorsChartData}}
-                            }
                         ],
-                        legend: {enabled: true},
-                        tooltip: {
-                            formatter: function (tooltip) {
-                                var orig = tooltip.defaultFormatter.call(this, tooltip)
-                                var epoch = timeToEpoch(this.x)
-                                orig[0] = `${orig[0]}<span style="font-size:10px">Epoch ${epoch}</span>`
-                                return orig
+                        yAxis: [{
+                            title: {
+                                text: 'Gas Price',
+                            },
+
+                            startOnTick: false,
+                            endOnTick: false,
+                            opposite: false,
+                            labels: {
+                                enabled: false,
                             }
                         },
-                    },
-                    responsive: {
-                        rules: [
-                            {
-                                condition: {maxWidth: 400,},
-                                chartOptions: {
-                                    legend: {enabled: false,},
-                                    chart: {},
-                                    legend: {layout: 'vertical',},
-                                    yAxis: [
-                                        {
-                                            title: {text: null,},
-                                            labels: {enabled: false,},
-                                            opposite: false
-                                        },
-                                        {
-                                            title: {text: null,},
-                                            labels: {enabled: false,},
-                                            opposite: true
-                                        }
-                                    ],
-                                    tooltip: {
-                                        formatter: function (tooltip) {
-                                            var orig = tooltip.defaultFormatter.call(this, tooltip)
-                                            var epoch = timeToEpoch(this.x)
-                                            orig[0] = `${orig[0]}<span style="font-size:10px">Ep ${epoch}</span>`
-                                            return orig
-                                        }
-                                    },
-                                },
-                            },
+                        {
+                            linkedTo: 0,
+                            opposite: true,
+                            labels: {
+                                reserveSpace: true,
+                                formatter: function () {
+                                    var orig = this.axis.defaultLabelFormatter.call(this)
+                                    return `${orig} GWei`
+                                }
+                            }
+                        }
                         ],
+                        title: {
+                            text: '<span class="mukta font-weight-medium fs-20" >Gas Price History</span>',
+                            useHTML: true,
+                        },
+                        rangeSelector: false,
+                        navigator: {
+                            enabled: false,
+                        },
+                        scrollbar: {
+                            enabled: false,
+                        },
+                        responsive: {
+                            rules: [{
+                                condition: {
+                                    callback: function() {
+                                        return window.innerWidth >= 1140;
+                                    }
+                                },
+                                chartOptions: {
+                                    chart: {
+                                        height: 160,
+                                    },
+                                }
+                            }]
+                        },
                     },
                 }
             },
@@ -155,6 +129,7 @@
                     if (this.updateIn <= 0) {
                         $.getJSON('/index/data', function (response) {
                             this.page = response;
+                            $('.style-grid [data-toggle="tooltip"]').tooltip()
                         }.bind(this));
                         this.updateIn = 5;
                     } else {
@@ -192,151 +167,6 @@
     svg rect[epoch] {
       cursor: pointer;
     }
-  </style>
-
-  <style>
-    .hero-container {
-      position: relative;
-      min-height: 250px;
-      width: 100%;
-      display: flex;
-      flex-direction: row-reverse;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-      margin-top: 1rem;
-    }
-
-    .hero-image {
-      overflow: hidden;
-      flex: 1;
-      max-width: 500px;
-      min-width: 320px;
-      max-height: 400px;
-      min-height: 200px;
-      position: relative;
-    }
-
-    .hero-image svg {
-      overflow: hidden;
-      width: inherit;
-      height: inherit;
-    }
-
-    .hero-text {
-      font-size: 2rem;
-      flex: 1;
-      min-width: 305px;
-      max-width: 500px;
-      position: relative;
-    }
-
-    .hero-text-background {
-      position: absolute;
-      width: 100%;
-      height: 98%;
-      /* bottom: -40%; */
-      /* transform: scale(.5) translateY(20%); */
-      border-radius: 65% 35% 70% 30% / 50% 50% 50% 50%;
-      background-image: var(--linear-gradient);
-      box-shadow: 5px 15px 30px var(--shadow-light);
-      z-index: -50;
-      -webkit-animation: slide-bottom 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-      animation: slide-bottom 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-      opacity: 0.6;
-    }
-
-    /* ----------------------------------------------
-             * Generated by Animista on 2020-5-27 13:15:6
-             * Licensed under FreeBSD License.
-             * See http://animista.net/license for more info.
-             * w: http://animista.net, t: @cssanimista
-             * ---------------------------------------------- */
-    @-webkit-keyframes slide-bottom {
-      0% {
-        -webkit-transform: translateY(0);
-        transform: translateY(0);
-      }
-
-      100% {
-        -webkit-transform: scale(1) translateY(25%);
-        transform: scale(1) translateY(25%);
-      }
-    }
-
-    @keyframes slide-bottom {
-      0% {
-        -webkit-transform: translateY(0);
-        transform: translateY(0);
-      }
-
-      100% {
-        -webkit-transform: scale(1) translateY(25%);
-        transform: scale(1) translateY(25%);
-      }
-    }
-
-    @media (max-width: 1140px) {
-      .hero-text-background {
-        animation: none;
-        transform: scale(1) translateY(1.5rem);
-        height: calc(100% - 1.5rem);
-        border-radius: 0.5rem;
-        opacity: 0.8;
-      }
-
-      .hero-container {
-        margin-bottom: 50px;
-      }
-    }
-
-    @media (max-width: 960px) {
-      .hero-image {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-      }
-
-      .hero-container {
-        flex-wrap: nowrap;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .hero-text {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-      }
-
-      .hero-image svg {
-        opacity: 0.2;
-      }
-
-      .hero-text-background {
-        transform: scale(1) translateY(10%);
-        animation: none;
-        opacity: 0.1;
-      }
-    }
-
-    @media (max-width: 960px) {
-      .index-stats {
-        font-size: 0.9rem;
-      }
-
-      .index-stats h5,
-      .card-title {
-        font-size: 1rem !important;
-      }
-    }
-
-    [v-cloak] {
-      visibility: hidden;
-    }
 
     .responsive-border-right {
       border-right-color: rgb(222, 226, 230);
@@ -349,11 +179,18 @@
         border: hidden;
       }
     }
+
+    [v-cloak] {
+      visibility: hidden;
+    }
   </style>
+
+  {{ template "hero_css" }}
+  {{ template "postGenesis_css" }}
 {{ end }}
 
 {{ define "content" }}
-  <div class="container mt-2">
+  <div class="container">
     <div id="app" v-cloak>
       {{ with .Data }}
         {{ template "hero" . }}
@@ -365,7 +202,7 @@
         {{ else if .GenesisPeriod }}
           {{ template "genesis" . }}
         {{ else }}
-          {{ template "postGenesis" . }}
+          {{ template "postGenesis" $ }}
         {{ end }}
       {{ end }}
     </div>

@@ -5,7 +5,7 @@
   <div class="validator__lifecycle-container">
     <div class="validator__lifecycle-content">
       <div id="lifecycle-deposited" class="validator__lifecycle-node-container validator__lifecycle-deposited">
-        <div class="validator__lifecycle-node-header"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#2-deposit-contract-status-deposited">Deposited</a></div>
+        <div class="validator__lifecycle-node-header style-table-data"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#2-deposit-contract-status-deposited">Deposited</a></div>
         <div class="validator__lifecycle-node" data-toggle="tooltip" title="This will turn green when your deposit has been processed by the beacon chain">
           <i class="fas fa-check deposit-success"></i>
           <i class="fas fa-times fail deposit-fail"></i>
@@ -16,13 +16,13 @@
         </div>
       </div>
       <div class="validator__lifecycle-progress validator__lifecycle-deposited text-white">
-        <div class="validator__lifecycle-progress-epoch">
+        <div class="validator__lifecycle-progress-epoch style-table-data">
           {{ if and (not $deposited) ( ne .ActivationEligibilityEpoch 9223372036854775807) }}<div data-toggle="tooltip" data-html="true" title="<span>The eligible epoch is when your validator is registered by the beacon chain and joins the queue to be activated.</span><br><span aria-ethereum-date='{{ .ActivationEligibilityTs.Unix }}'></span>"><a href="/epoch/{{ .ActivationEligibilityEpoch }}">{{ if eq .ActivationEligibilityEpoch 0 }}genesis{{ else }}{{ .ActivationEligibilityEpoch }}{{ end }}</a></div>{{ end }}
         </div>
       </div>
       <div id="lifecycle-pending" class="validator__lifecycle-node-container validator__lifecycle-pending">
         <div class="validator__lifecycle-node-container">
-          <div class="validator__lifecycle-node-header"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#3-validator-queue-status-pending">Pending</a></div>
+          <div class="validator__lifecycle-node-header style-table-data"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#3-validator-queue-status-pending">Pending</a></div>
           <div class="validator__lifecycle-node" data-toggle="tooltip" title="After being processed your validator joins a queue to be activated">
             <i class="fas fa-hourglass-half pending-waiting"></i>
             <i class="fas fa-check"></i>
@@ -34,7 +34,7 @@
         </div>
       </div>
       <div class="validator__lifecycle-progress validator__lifecycle-pending">
-        <div class="validator__lifecycle-progress-epoch">
+        <div class="validator__lifecycle-progress-epoch style-table-data">
           {{ if and (not $deposited) (ne .ActivationEpoch 9223372036854775807) }}
             <div data-toggle="tooltip" data-html="true" title="<span>The activation epoch is when your validator becomes active.</span><br><span aria-ethereum-date='{{ .ActivationTs.Unix }}'></span> ">
               <a href="/epoch/{{ .ActivationEpoch }}">{{ if eq .ActivationEpoch 0 }}genesis{{ else }}{{ .ActivationEpoch }}{{ end }}</a>
@@ -44,7 +44,7 @@
       </div>
       <div id="lifecycle-active" class="validator__lifecycle-node-container validator__lifecycle-active">
         <div class="validator__lifecycle-node-container">
-          <div class="validator__lifecycle-node-header"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#4-staking-status-active">Active</a></div>
+          <div class="validator__lifecycle-node-header style-table-data"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#4-staking-status-active">Active</a></div>
           <div class="validator__lifecycle-node" data-toggle="tooltip" title="Once your validator reaches this state it can participate in attesting and proposing. Make sure it stays online!">
             <i class="fas fa-power-off online"></i>
             <i class="fas fa-power-off offline"></i>
@@ -57,13 +57,13 @@
         </div>
       </div>
       <div class="validator__lifecycle-progress validator__lifecycle-active">
-        <div class="validator__lifecycle-progress-epoch">
+        <div class="validator__lifecycle-progress-epoch style-table-data">
           {{ if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0)) }}<div data-toggle="tooltip" data-html="true" title="<span>The exit epoch is when your validator will leave the network</span><br><span aria-ethereum-date='{{ .ExitTs.Unix }}'></span>"><a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a></div>{{ end }}
         </div>
       </div>
       <div id="lifecycle-exited" class="validator__lifecycle-node-container validator__lifecycle-exited">
         <div class="validator__lifecycle-node-container">
-          <div class="validator__lifecycle-node-header"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#4-staking-status-active">Exited</a></div>
+          <div class="validator__lifecycle-node-header style-table-data"><a class="no-highlight" href="https://kb.beaconcha.in/ethereum-2.0-depositing#4-staking-status-active">Exited</a></div>
           <div class="validator__lifecycle-node" data-toggle="tooltip" title="If your validator misbehaves or chooses to leave the network it will join a queue to leave.">
             <i class="fas fa-door-open"></i>
             <div class="spinner">
@@ -138,33 +138,37 @@
 {{ define "validatorOverviewValidating" }}
   {{ with .Data }}
     <!-- Validator Lifecycle State Diagram -->
-    <div class="overview-container d-flex flex-wrap justify-content-center">
-      <div class="m-3 position-relative" style="flex-basis: 4rem; white-space: nowrap;">
-        <span style="top:-1.2rem; white-space: nowrap;" class="text-muted font-weight-lighter position-absolute"><small>{{ if gtf .RankPercentage 0.0 }}{{ if gtf .RankPercentage 0.001 }}Rank {{ formatPercentageWithGPrecision .RankPercentage 3 }} %{{ else }}Top 0.1%{{ end }}{{ else }}Rank{{ end }}</small></span>
-        <a class="no-highlight" href="/validators/leaderboard">
-          <i style="font-size: 16px;" class="fas fa-medal"></i>
-          <span id="validatorRank" style="font-weight: bold; font-size:16px;">{{ if gt .Rank7d 0 }}{{ .Rank7d }}{{ else }}N/A{{ end }}</span>
+    <div id="validating-overview">
+      <div>
+        <div class="style-validator-overview-header">Rank</div>
+        <a class="no-highlight style-validator-overview-value" href="/validators/leaderboard">
+          {{ if gt .Rank7d 0 }}
+            {{ .Rank7d }}
+            {{ if gtf .RankPercentage 0.0 }}
+              ({{ if gtf .RankPercentage 0.001 }}{{ formatPercentageWithGPrecision .RankPercentage 3 }}%{{ else }}Top 0.1%{{ end }})
+            {{ end }}
+          {{ else }}
+            N/A
+          {{ end }}
         </a>
       </div>
-      <div class="m-3 position-relative" style="flex-basis: 4rem; white-space: nowrap;">
-        <span style="top:-1.2rem; white-space: nowrap;" class="text-muted font-weight-lighter position-absolute"><small>Status</small></span>
-        {{ .Status | formatValidatorStatus }}
-      </div>
-      <div class="m-3 position-relative" style="flex-basis: 4rem; white-space: nowrap;">
-        <span style="top:-1.2rem; white-space: nowrap;" class="text-muted font-weight-lighter position-absolute"><small>Balance</small></span>
-        <div class="d-flex flex-column">
-          <span style="font-weight: bold; font-size:18px;">{{ formatCurrentBalance .CurrentBalance $.Rates.Currency }}</span>
-          <span style="font-size: 0.8rem; color: gray"
-            >{{ formatEffectiveBalance .EffectiveBalance "ETH" }}
-            <span data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"
-              ><a class="no-highlight" href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance"><i class="far ml-1 fa-question-circle"></i></a></span
-          ></span>
+      <div>
+        <div class="style-validator-overview-header">Balance</div>
+        <div class="style-validator-overview-value">{{ formatCurrentBalance .CurrentBalance $.Rates.Currency }}</div>
+        <div class="style-table-data">
+          <span class="text-addition">{{ formatEffectiveBalance .EffectiveBalance "ETH" }}</span>
+          <a class="no-highlight" href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance" data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator">
+            <i class="fas fa-question-circle"></i>
+          </a>
         </div>
       </div>
-
-      <div class="m-3 position-relative" style="flex-basis: 4rem; white-space: nowrap;">
-        <span style="top:-1.2rem; white-space: nowrap;" class="text-muted font-weight-lighter position-absolute"><small>Effectiveness</small></span>
-        {{ .AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness }}
+      <div>
+        <div class="style-validator-overview-header">Status</div>
+        <div class="style-validator-overview-value">{{ .Status | formatValidatorStatus }}</div>
+      </div>
+      <div>
+        <div class="style-validator-overview-header">Effectiveness</div>
+        <div class="style-validator-overview-value">{{ .AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness }}</div>
       </div>
     </div>
     {{ template "validatorOverviewCount" . }}
@@ -173,33 +177,31 @@
 
 {{ define "validatorOverviewExited" }}
   {{ with .Data }}
-    <div class="overview-container d-flex flex-wrap justify-content-center">
+    <div {{ if .Slashed }}id="validating-overview"{{ else }}class="d-flex justify-content-around" style="max-width: 30rem; margin: auto; line-height: 1;"{{ end }}>
       {{ if .Slashed }}
-        <div style="width: 80px;" class="m-3 position-relative">
-          <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Slashed by</small></span>
-          {{ .SlashedBy | formatValidator }}
+        <div>
+          <div class="style-validator-overview-header">Slashed by</div>
+          <div class="style-validator-overview-value">{{ .SlashedBy | formatValidator }}</div>
         </div>
       {{ end }}
-      <div class="m-3 position-relative">
-        <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Balance</small></span>
-        <div style="width: 8.32rem" class="d-flex flex-column">
-          <span style="font-weight: bold; font-size:18px;">{{ formatCurrentBalance .CurrentBalance $.Rates.Currency }}</span>
-          <span
-            >{{ formatEffectiveBalance .EffectiveBalance "ETH" }}
-            <span style="font-size:0.8rem; color:gray" data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"
-              ><a class="no-highlight" href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance"><i class="far ml-1 fa-question-circle"></i></a></span
-          ></span>
+      <div>
+        <div class="style-validator-overview-header">Balance</div>
+        <div class="style-validator-overview-value">{{ formatCurrentBalance .CurrentBalance $.Rates.Currency }}</div>
+        <div class="style-table-data">
+          <span class="text-addition">{{ formatEffectiveBalance .EffectiveBalance "ETH" }}</span>
+          <a class="no-highlight" href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance" data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator">
+            <i class="fas fa-question-circle"></i>
+          </a>
         </div>
       </div>
-      <div style="width: 80px;" class="m-3 position-relative">
-        <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Status</small></span>
-        {{ .Status | formatValidatorStatus }}
+      <div>
+        <div class="style-validator-overview-header">Status</div>
+        <div class="style-validator-overview-value">{{ .Status | formatValidatorStatus }}</div>
       </div>
-
       {{ if .Slashed }}
-        <div style="width: 8.32rem" class="m-3 position-relative">
-          <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Reason</small></span>
-          {{ .SlashedFor }}
+        <div>
+          <div class="style-validator-overview-header">Reason</div>
+          <div class="style-validator-overview-value">{{ .SlashedFor }}</div>
         </div>
       {{ end }}
     </div>
@@ -227,7 +229,7 @@
 {{ end }}
 
 {{ define "validatorOverviewCount" }}
-  <div class="row flex-wrap justify-content-center p-3 mb-3">
+  <div class="style-table-data d-flex flex-wrap justify-content-center my-3 my-md-4">
     <div class="mx-3">
       <span id="blockCount" style="cursor: pointer;" data-toggle="tooltip" title="Blocks (Proposed: {{ .ProposedBlocksCount }}, Missed: {{ .MissedBlocksCount }}, Orphaned: {{ .OrphanedBlocksCount }}, Scheduled: {{ .ScheduledBlocksCount }})"><i class="fas fa-cubes poin"></i> {{ .BlocksCount }}{{ if ne .BlocksCount 0 }}({{ formatPercentageColoredEmoji .UnmissedBlocksPercentage }}){{ end }}</span>
     </div>
@@ -250,13 +252,6 @@
         {{ end }}
       </span>
     </div>
-    <div class="mx-3">
-      <span id="slashingsCount" style="cursor: pointer;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash"></i> {{ .SlashingsCount }}</span>
-    </div>
-    <div class="mx-3">
-      <span id="depositCount" style="cursor: pointer;" data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="fas fa-wallet"></i> {{ .DepositsCount }}</span>
-    </div>
-
     {{ if .CappellaHasHappened }}
       <div class="mx-3">
         <span id="withdrawalCount" style="cursor: pointer;" data-toggle="tooltip" {{ if .IsWithdrawableAddress }}title="Withdrawals processed for this validator"{{ else }}title="To receive withdrawals, 0x01 withdrawal credentials are required. Click here for more information."{{ end }}>
@@ -273,17 +268,6 @@
         </span>
       </div>
     {{ end }}
-
-
-    <!--
-    <div class="mx-3">
-        {{ if ne .CurrentAttestationStreak .LongestAttestationStreak }}
-      <span id="attestationStreak" style="cursor: default;" data-toggle="tooltip" title="Attestation Streaks (Current / Longest)"><i class="fas fa-fire"></i> {{ .CurrentAttestationStreak }} / {{ .LongestAttestationStreak }}</span>
-    {{ else }}
-      <span id="attestationStreak" style="cursor: default;" data-toggle="tooltip" title="Attestation Streak"><i class="fas fa-fire"></i> {{ .LongestAttestationStreak }}</span>
-    {{ end }}
-    </div>
-    -->
   </div>
 
   <script>

@@ -616,6 +616,40 @@ function getIncomeChartValueString(value, currency, ethPrice) {
   return `${(value / ethPrice).toFixed(5)} ETH (${value.toFixed(2)} ${currency})`
 }
 
+$("[data-truncate-middle]").each(function (item) {
+  truncateMiddle(this)
+  addEventListener("resize", (event) => {
+    truncateMiddle(this)
+  })
+  addEventListener("copy", (event) => {
+    copyDots(event, this)
+  })
+})
+
+// function for trimming an placing ellipsis in the middle when text is overflowing
+function truncateMiddle(element) {
+  element.innerHTML = element.getAttribute("data-truncate-middle")
+  const parent = element.parentElement
+  // get ratio of visible width to full width
+  const ratio = parent.offsetWidth / parent.scrollWidth
+  if (ratio < 1) {
+    const removeCount = Math.ceil((parent.innerText.length * (1 - ratio)) / 2) + 1
+    const originalText = element.getAttribute("data-truncate-middle")
+    element.innerHTML = originalText.substr(0, originalText.length / 2 - removeCount) + "…" + originalText.substr(originalText.length / 2 + removeCount)
+  }
+}
+
+// function for inserting correct text into clipboard when copying ellipsis of text truncated with 'truncateMiddle()'
+function copyDots(event, element) {
+  const selection = document.getSelection()
+  if (selection.toString().includes("…")) {
+    const originalText = element.getAttribute("data-truncate-middle")
+    const diff = originalText.length - (element.innerText.length - 1)
+    const replaceText = selection.toString().replace("…", originalText.substr(originalText.length / 2 - diff / 2, diff))
+    event.clipboardData.setData("text/plain", replaceText)
+    event.preventDefault()
+  }
+}
 $("[data-tooltip-date=true]").each(function (item) {
   let titleObject = $($.parseHTML($(this).attr("title")))
   titleObject.find("[aria-ethereum-date]").each(function () {

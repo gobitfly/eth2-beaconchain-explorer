@@ -30,6 +30,9 @@
       <link rel="preload" as="font" href="https://fonts.gstatic.com/s/robotomono/v7/L0x5DF4xlVMF-BfR8bXMIjhLq38.woff2" crossorigin />
       <link rel="preload" as="font" href="https://fonts.gstatic.com/s/barlow/v4/7cHqv4kjgoGqM7E3_-gs51os.woff2" crossorigin />
       <link rel="preload" as="font" href="/fonts/Inter-Regular.woff2" crossorigin />
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+      <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;600;700&family=Mukta:wght@300;500;700&display=swap" rel="stylesheet" />
       <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css" />
       <link id="app-style" rel="stylesheet" href="/css/layout.css" />
       <link rel="stylesheet" href="/css/layout/toggle.css" />
@@ -139,7 +142,6 @@
 
           </div>
           <!-- Fill content -->
-          <!-- <div class="d-flex flex-fill"></div> -->
           <div class="info-banner-center">
             <div class="info-banner-search">
               <div class="search-container">
@@ -249,7 +251,6 @@
                     </span>
                 </span>
             </div> -->
-
         {{ template "content" . }}
         {{ if not .User.Authenticated }}
           <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index: 999; bottom: 3%; left: 50%; transform: translateX(-50%); width: 100%; justify-content: center; align-items: center;">

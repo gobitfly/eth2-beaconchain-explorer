@@ -1,30 +1,37 @@
+{{ define "postGenesis_css" }}
+  {{ template "networkStats_css" }}
+  {{ template "recentBlocks_css" }}
+  {{ template "recentEpochs_css" }}
+  <style>
+    @media (min-width: 1140px) {
+      #pg-tablesrow .col-lg-6:first-of-type {
+        padding-left: 5px;
+      }
+      #pg-tablesrow .col-lg-6:last-of-type {
+        padding-right: 5px;
+      }
+    }
+  </style>
+{{ end }}
+
 {{ define "postGenesis" }}
-  <div style="position:relative" class="card mt-3 index-stats">
+  <div style="position:relative;" class="card mt-3 index-stats">
     {{ if not .ShowSyncingMessage }}
-      <div style="position:absolute; border-bottom-left-radius: 0; border-bottom-right-radius: 0; font-size:.70rem; height:.8rem;" class="progress w-100" data-placement="bottom" :title="'This epoch is '+ epochCompletePercent +'% complete'">
-        <div :style="'width:' + epochCompletePercent + '%;padding: 0 .3rem;'" class="progress-bar bg-secondary" role="progressbar" :aria-valuenow="scheduledCount" aria-valuemin="0" aria-valuemax="32"><span v-if="scheduledCount > 0">${scheduledCount} / 32 slots left in epoch ${ page.current_epoch }</span><span v-else>${page.current_epoch} epoch complete</span></div>
-      </div>
-    {{ end }}
-    <div class="card-header pt-3">
-      <div class="row">
-        {{ template "networkStats" }}
-      </div>
-    </div>
-    <div class="card-body">
-      <div class="row">
-        <div class="col-lg-12">
-          <highcharts height="600px" :constructor-type="'stockChart'" :options="chartOptions"></highcharts>
-          {{ if .SlotVizData }}<div class="m-2" id="slotsViz"></div>{{ end }}
+      <div style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; height:1.5rem;" class="progress w-100 style-slots-left" data-placement="bottom" :title="'This epoch is '+ epochCompletePercent +'% complete'">
+        <div :style="'width:' + epochCompletePercent + '%;padding: 0 .3rem;'" class="progress-bar bg-secondary" role="progressbar" :aria-valuenow="scheduledCount" aria-valuemin="0" aria-valuemax="32">
+          <span v-if="scheduledCount > 0">${scheduledCount} / 32 slots left in epoch <span v-html="addCommas(page.current_epoch)"></span></span><span v-else><span v-html="addCommas(page.current_epoch)"></span> epoch complete</span>
         </div>
       </div>
-    </div>
+    {{ end }}
+    {{ template "networkStats" $ }}
   </div>
-  <div class="row">
-    <div class="col-lg-6 mt-3 pr-lg-2">
-      {{ template "recentEpochs" }}
-    </div>
-    <div class="col-lg-6 mt-3 pl-lg-2">
+  <div id="pg-tablesrow" class="row">
+    <div class="col-lg-6" style="margin-top: 10px">
       {{ template "recentBlocks" }}
     </div>
+    <div class="col-lg-6" style="margin-top: 10px">
+      {{ template "recentEpochs" }}
+    </div>
   </div>
+  <script></script>
 {{ end }}
