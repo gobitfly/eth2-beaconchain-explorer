@@ -3486,10 +3486,10 @@ func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string
 			cacheKey := fmt.Sprintf("M:H2L:%s", method)
 			if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
 				sig, err := bigtable.GetSignature(method, types.MethodSignature)
-				if err == nil && sig != nil {
-					method = *sig
-				}
 				if err == nil {
+					if sig != nil {
+						method = *sig
+					}
 					cache.TieredCache.Set(cacheKey, method, time.Hour)
 				}
 			}
@@ -3505,14 +3505,14 @@ func (bigtable *Bigtable) GetEventLabel(id []byte) string {
 	label := ""
 	if len(id) > 0 {
 		event := fmt.Sprintf("0x%x", id)
-		cacheKey := fmt.Sprintf("E:H2L:%s", fmt.Sprintf("0x%x", id))
+		cacheKey := fmt.Sprintf("E:H2L:%s", event)
 		if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &label); err != nil {
 			sig, err := bigtable.GetSignature(event, types.EventSignature)
 			if err == nil && sig != nil {
-				label = *sig
-			}
-			if err == nil {
-				cache.TieredCache.Set(cacheKey, event, time.Hour)
+				if sig == nil {
+					label = *sig
+				}
+				cache.TieredCache.Set(cacheKey, label, time.Hour)
 			}
 		}
 	}
