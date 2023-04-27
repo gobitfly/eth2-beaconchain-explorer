@@ -43,6 +43,10 @@ table {
   width: 1rem;
 }
 
+.main-navigation .nav-link:focus {
+  outline:none;
+}
+
 .main-navigation .dropdown-menu.dropdown-menu-right.show {
   display: flex;
 }
