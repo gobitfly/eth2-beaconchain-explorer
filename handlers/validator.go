@@ -116,8 +116,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Request came with a hash
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
+		// Request came with a hash
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
 			// logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
@@ -128,7 +128,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			// the validator might only have a public key but no index yet
 			var name string
-			err = db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
+			err := db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
 			if err != nil && err != sql.ErrNoRows {
 				logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -430,11 +430,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		vbalance, ok := balances[validatorPageData.ValidatorIndex]
-		if !ok {
-			return fmt.Errorf("error retrieving validator balances: %v", err)
+		if ok {
+			validatorPageData.CurrentBalance = vbalance.Balance
+			validatorPageData.EffectiveBalance = vbalance.EffectiveBalance
 		}
-		validatorPageData.CurrentBalance = vbalance.Balance
-		validatorPageData.EffectiveBalance = vbalance.EffectiveBalance
 
 		if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
 			// validators can have 0x01 credentials even before the cappella fork
