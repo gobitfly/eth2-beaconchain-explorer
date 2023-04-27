@@ -415,7 +415,7 @@ $(document).ready(function () {
       clearSearch.empty().append(copyIcon)
     }, 500)
   })
-
+  $.fn.DataTable.ext.pager.numbers_length = 5
   var validatorsDataTable = (window.vdt = $("#validators").DataTable({
     processing: true,
     serverSide: false,
