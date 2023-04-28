@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
+	"eth2-exporter/utils"
 	"net/http"
 )
 
@@ -23,7 +24,7 @@ func Burn(w http.ResponseWriter, r *http.Request) {
 
 	currency := GetCurrency(r)
 
-	if currency == "ETH" {
+	if currency == utils.Config.Frontend.ClCurrencySymbol {
 		currency = "USD"
 	}
 

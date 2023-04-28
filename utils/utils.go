@@ -470,6 +470,26 @@ func ReadConfig(cfg *types.Config, path string) error {
 		cfg.Chain.DomainVoluntaryExit = "0x04000000"
 	}
 
+	if cfg.Frontend.ClCurrencySymbol == "" {
+		switch cfg.Chain.Name {
+		case "gnosis":
+			cfg.Frontend.ClCurrencySymbol = "mGNO"
+			cfg.Frontend.ClCurrencyDivisor = 1
+		default:
+			cfg.Frontend.ClCurrencySymbol = "ETH"
+			cfg.Frontend.ClCurrencyDivisor = 1
+		}
+	}
+
+	if cfg.Frontend.ElCurrencySymbol == "" {
+		switch cfg.Chain.Name {
+		case "gnosis":
+			cfg.Frontend.ElCurrencySymbol = "xDAI"
+		default:
+			cfg.Frontend.ElCurrencySymbol = "ETH"
+		}
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
 		"genesisValidatorsRoot":  cfg.Chain.GenesisValidatorsRoot,

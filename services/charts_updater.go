@@ -395,7 +395,7 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Average Balance [ETH]",
+				Name: fmt.Sprintf("Average Balance [%s]", utils.Config.Frontend.ClCurrencySymbol),
 				Data: dailyAverageBalance,
 			},
 		},

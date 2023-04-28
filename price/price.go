@@ -265,6 +265,8 @@ func GetCurrencyLabel(currency string) string {
 	switch currency {
 	case "ETH":
 		return "Ether"
+	case "GNO":
+		return "Gnosis"
 	case "USD":
 		return "United States Dollar"
 	case "EUR":

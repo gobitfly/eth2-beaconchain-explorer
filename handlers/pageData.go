@@ -89,6 +89,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		GlobalNotification:  services.GlobalNotificationMessage(),
 		AvailableCurrencies: price.GetAvailableCurrencies(),
 		MainMenuItems:       createMenuItems(active, isMainnet),
+		ClCurrencySymbol:    utils.Config.Frontend.ClCurrencySymbol,
 	}
 
 	adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplates, data.NoAds)

@@ -521,7 +521,7 @@ func getMachineStatsGap(resultCount uint64) int {
 }
 
 func GetHistoricPrice(currency string, day uint64) (float64, error) {
-	if currency == "ETH" {
+	if currency == utils.Config.Frontend.ClCurrencySymbol {
 		currency = "USD"
 	}
 	currency = strings.ToLower(currency)
