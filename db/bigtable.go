@@ -1466,16 +1466,21 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 	filter := gcp_bigtable.ChainFilters(
 		gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
 		gcp_bigtable.InterleaveFilters(columnFilters...),
+		gcp_bigtable.LatestNFilter(1),
 	)
 
 	if len(columnFilters) == 1 { // special case to retrieve data for one validator
 		filter = gcp_bigtable.ChainFilters(
 			gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
 			columnFilters[0],
+			gcp_bigtable.LatestNFilter(1),
 		)
 	}
 	if len(columnFilters) == 0 { // special case to retrieve data for all validators
-		filter = gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY)
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
+			gcp_bigtable.LatestNFilter(1),
+		)
 	}
 
 	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
@@ -1546,16 +1551,21 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 	filter := gcp_bigtable.ChainFilters(
 		gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
 		gcp_bigtable.InterleaveFilters(columnFilters...),
+		gcp_bigtable.LatestNFilter(1),
 	)
 
 	if len(columnFilters) == 1 { // special case to retrieve data for one validators
 		filter = gcp_bigtable.ChainFilters(
 			gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
 			columnFilters[0],
+			gcp_bigtable.LatestNFilter(1),
 		)
 	}
 	if len(columnFilters) == 0 { // special case to retrieve data for all validators
-		filter = gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY)
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
+			gcp_bigtable.LatestNFilter(1),
+		)
 	}
 
 	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
