@@ -126,8 +126,54 @@ func main() {
 	case "debug-rewards":
 		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator)
 
+	case "calculate-balance-based-rewards":
+		CalculateBalanceBasedRewards(opts.StartDay, opts.EndDay)
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
+	}
+}
+
+func CalculateBalanceBasedRewards(startDay, endDay uint64) {
+	for day := startDay; day <= endDay; day++ {
+		func(day uint64) {
+
+			tx, err := db.WriterDb.Begin()
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			defer tx.Rollback()
+
+			logrus.Infof("processing day %v", day)
+
+			_, err = tx.Exec(`insert into validator_stats (day, validatorindex, cl_rewards_gwei) (
+				select vs1.day, vs1.validatorindex, case when vs2.start_balance = vs1.start_balance and vs2.start_balance = vs1.deposits_amount then 0 else vs2.start_balance-vs1.start_balance-coalesce(vs1.deposits_amount,0) end as income from validator_stats vs1
+				left join validator_stats vs2 on vs2.day = vs1.day+1 and vs2.validatorindex = vs1.validatorindex where vs1.day = $1
+			) ON CONFLICT (day, validatorindex) DO UPDATE
+			SET cl_rewards_gwei = EXCLUDED.cl_rewards_gwei;`, day)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
+			tx.Exec(`
+				INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei_total, el_rewards_wei_total, mev_rewards_wei_total) (
+					SELECT 
+						vs1.validatorindex, 
+						vs1.day, 
+						COALESCE(vs1.cl_rewards_gwei, 0) + COALESCE(vs2.cl_rewards_gwei_total, 0) AS cl_rewards_gwei_total_new, 
+						COALESCE(vs1.el_rewards_wei, 0) + COALESCE(vs2.el_rewards_wei_total, 0) AS el_rewards_wei_total_new, 
+						COALESCE(vs1.mev_rewards_wei, 0) + COALESCE(vs2.mev_rewards_wei_total, 0) AS mev_rewards_wei_total_new 
+					FROM validator_stats vs1 LEFT JOIN validator_stats vs2 ON vs2.day = vs1.day - 1 AND vs2.validatorindex = vs1.validatorindex WHERE vs1.day = $1
+				) ON CONFLICT (validatorindex, day) DO UPDATE SET 
+					cl_rewards_gwei_total = excluded.cl_rewards_gwei_total,
+					el_rewards_wei_total = excluded.el_rewards_wei_total,
+					mev_rewards_wei_total = excluded.mev_rewards_wei_total;
+				`, day)
+
+			err = tx.Commit()
+			if err != nil {
+				logrus.Fatal(err)
+			}
+		}(day)
 	}
 }
 
