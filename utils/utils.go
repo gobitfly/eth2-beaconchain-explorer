@@ -121,7 +121,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
 		"formatTimestamp":                         FormatTimestamp,
 		"formatTsWithoutTooltip":                  FormatTsWithoutTooltip,
-		"formatTimestampTs":                       FormatTimestampTs,
 		"formatTime":                              FormatTime,
 		"formatValidatorName":                     FormatValidatorName,
 		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
@@ -215,7 +214,6 @@ func GetTemplateFuncs() template.FuncMap {
 		},
 		// ETH1 related formatting
 		"formatEth1TxStatus":    FormatEth1TxStatus,
-		"formatTimestampUInt64": FormatTimestampUInt64,
 		"formatEth1AddressFull": FormatEth1AddressFull,
 		"byteToString": func(num []byte) string {
 			return string(num)

@@ -82,7 +82,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 			cPrice, _ := currentEthPrice.Float64()
 			txData.CurrentEtherPrice = template.HTML(p.Sprintf(`<span>%s %.2f</span>`, symbol, cPrice))
 
-			txDay := utils.TimeToDay(txData.Timestamp)
+			txDay := utils.TimeToDay(uint64(txData.Timestamp.Unix()))
 			latestEpoch, err := db.GetLatestEpoch()
 			if err != nil {
 				logrus.Error(err)

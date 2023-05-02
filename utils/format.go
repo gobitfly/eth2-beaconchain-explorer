@@ -803,17 +803,12 @@ func FormatMachineName(machineName string) template.HTML {
 
 // FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
 func FormatTimestamp(ts int64) template.HTML {
-	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(ts, 0), ts))
+	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(ts, 0).Format("2006-01-02 15:04:05"), ts))
 }
 
-// FormatTs will return a timestamp formated as html. This is supposed to be used together with client-side js
+// FormatTsWithoutTooltip will return a timestamp formated as html. This is supposed to be used together with client-side js
 func FormatTsWithoutTooltip(ts int64) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" data-timestamp=\"%d\"></span>", ts))
-}
-
-// FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
-func FormatTimestampTs(ts time.Time) template.HTML {
-	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-timestamp=\"%d\"></span>", ts, ts.Unix()))
 }
 
 // FormatValidatorStatus will return the validator-status formated as html
@@ -1228,11 +1223,6 @@ func FormatEth1TxStatus(status uint64) template.HTML {
 	} else {
 		return template.HTML("<h5 class=\"m-0\"><span class=\"badge badge-danger badge-pill align-middle text-white\"><i class=\"fas fa-times-circle\"></i> Failed</span></h5>")
 	}
-}
-
-// FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
-func FormatTimestampUInt64(ts uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(int64(ts), 0), ts))
 }
 
 // FormatEth1AddressFull will return the eth1-address formated as html

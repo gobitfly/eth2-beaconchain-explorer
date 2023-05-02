@@ -1680,7 +1680,7 @@ type Eth1TxData struct {
 	Receipt                     *geth_types.Receipt
 	ErrorMsg                    string
 	BlockNumber                 int64
-	Timestamp                   uint64
+	Timestamp                   time.Time
 	IsPending                   bool
 	TargetIsContract            bool
 	IsContractCreation          bool
